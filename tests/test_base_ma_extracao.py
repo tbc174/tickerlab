@@ -1,6 +1,7 @@
 """Extração de M&A por modelo de linguagem (série 1, PR 2): o modelo copia, o código confere."""
 
 from datetime import date
+from typing import get_args
 
 import pandas as pd
 import pytest
@@ -71,6 +72,21 @@ def test_numero_sem_o_trecho_de_origem_e_descartado():
     ]
 
 
+def test_valor_escrito_por_extenso_no_texto_passa_lido_em_bilhoes():
+    # caso real (conferência dos 40, Oi): o texto diz "R$ 1.030.000.000,00" e o modelo lê 1,03 bilhão
+    trecho = (
+        "no montante total de R$ 1.030.000.000,00 (um bilhão e trinta milhões de reais)"
+    )
+    lido = {"campo": "valor_participacao", "valor": 1.03, "unidade": "bilhoes", "moeda": "BRL",
+            "trecho": trecho}  # fmt: skip
+    inventado = lido | {"valor": 1.3}
+    conferida = mx.conferir(
+        _leitura(valores=[lido, inventado]), f"{TEXTO} Proposta {trecho}.", PUBLICO_EM
+    )
+    assert [v.em_unidades for v in conferida.leitura.valores] == [pytest.approx(1.03e9)]
+    assert [d.motivo for d in conferida.descartes] == [mx.NUMERO_FORA_DO_TRECHO]
+
+
 def test_moeda_diferente_do_simbolo_do_trecho_e_descartada():
     dolar = {"campo": "preco_por_acao", "valor": 3.10, "unidade": "unidade", "moeda": "BRL",
              "trecho": "O preço por ação é de US$ 3,10"}  # fmt: skip
@@ -110,6 +126,46 @@ def test_trecho_so_com_palavra_generica_nao_prova_o_nome():
     conferida = _conferir(_leitura(partes=partes))
     assert conferida.leitura.partes == []
     assert conferida.descartes[0].motivo == mx.NOME_FORA_DO_TRECHO
+
+
+TEXTO_COM_APELIDO = (
+    "FATO RELEVANTE. A Centrais Elétricas Brasileiras S.A. (B3: ELET3) (“Companhia” ou "
+    "“Eletrobras”) e a 3R Petroleum Óleo e Gás S.A. (“3R”) (B3: RRRP3) comunicam que a Eletrobras transferiu "
+    "100% das ações da Beta, que passa a ser subsidiária integral da 3R."
+)
+
+
+def _conferir_parte_no_texto_com_apelido(nome: str, trecho: str) -> mx.LeituraConferida:
+    partes = [{"nome": nome, "papel": "vendedor", "participacao_depois": None, "trecho": trecho}]  # fmt: skip
+    leitura = _leitura(
+        partes=partes, trecho_do_tipo="transferiu 100% das ações da Beta"
+    )
+    return mx.conferir(leitura, TEXTO_COM_APELIDO, PUBLICO_EM)
+
+
+@pytest.mark.parametrize(
+    ("nome", "trecho"),
+    [
+        (
+            "Centrais Elétricas Brasileiras S.A.",
+            "a Eletrobras transferiu 100% das ações da Beta",
+        ),
+        ("3R Petroleum Óleo e Gás S.A.", "passa a ser subsidiária integral da 3R"),
+    ],
+)
+def test_apelido_que_o_documento_define_logo_depois_do_nome_prova_o_nome(nome, trecho):
+    # série 1, guia v2: o modelo copia o trecho da ação, que usa o apelido ("a Eletrobras")
+    conferida = _conferir_parte_no_texto_com_apelido(nome, trecho)
+    assert [p.nome for p in conferida.leitura.partes] == [nome]
+
+
+def test_apelido_de_outra_empresa_nao_prova_o_nome():
+    conferida = _conferir_parte_no_texto_com_apelido(
+        "Furnas Centrais Elétricas S.A.",
+        "a Eletrobras transferiu 100% das ações da Beta",
+    )
+    assert conferida.leitura.partes == []
+    assert mx.NOME_FORA_DO_TRECHO in [d.motivo for d in conferida.descartes]
 
 
 def test_participacao_sem_o_numero_no_trecho_perde_so_o_numero():
@@ -304,6 +360,13 @@ def test_pedido_tem_guia_em_cache_esquema_e_texto_cortado():
     assert "AQ_CONTROLE" in pedido["system"][0]["text"]
     assert pedido["output_config"]["format"]["schema"] == mx.ESQUEMA_DA_RESPOSTA
     assert len(pedido["messages"][0]["content"]) <= mx.MAX_CARACTERES_DO_TEXTO
+
+
+def test_guia_explica_todo_tipo_e_traz_as_regras_de_escolha():
+    guia = mx.pedido("x", mx.MODELO)["system"][0]["text"]
+    assert all(f"{tipo}:" in guia or f"{tipo}," in guia for tipo in get_args(mx.Tipo))
+    assert "Ponto de vista de quem publicou" in guia  # v2: medida da amostra, 18/10
+    assert "OPA só com oferta" in guia
 
 
 def test_esquema_lista_os_codigos_do_dicionario():

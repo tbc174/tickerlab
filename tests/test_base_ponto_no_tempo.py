@@ -4,6 +4,8 @@ o que foi divulgado depois."""
 
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from base.contas_cvm import COLUNAS
 from base.ponto_no_tempo import (
@@ -408,3 +410,87 @@ def test_com_divulgacao_usa_o_registro_seguinte_na_entrega_do_pedido_de_registro
     )
     publicadas = com_divulgacao(contas, indice, "dados_abertos", cadastro=CADASTRO)
     assert publicadas["divulgado_em"].tolist() == [pd.Timestamp("2022-03-29")]
+
+
+# --- série T1: DFC, DVA e DRA na mesma tabela ------------------------------------------------------
+def _dfc_do_itr(valor, divulgado_em, versao):
+    """O caixa operacional acumulado do 1º semestre de 2023, num ITR."""
+    return _conta(
+        valor, divulgado_em, referencia=pd.Timestamp("2023-06-30"), versao=versao
+    ) | {
+        "documento": "ITR",
+        "demonstracao": "DFC_MI",
+        "conta": "6.01",
+        "descricao": "Caixa Líquido Atividades Operacionais",
+        "inicio": pd.Timestamp("2023-01-01"),
+    }
+
+
+def test_itr_versao_2_so_vale_a_partir_da_propria_divulgacao():
+    base = montar_base(
+        _publicadas(
+            _dfc_do_itr(300.0, "2023-08-10", versao=1),
+            _dfc_do_itr(280.0, "2023-09-20", versao=2),
+        )
+    )
+    assert como_era_em(base, "2023-08-09").empty
+    assert como_era_em(base, "2023-09-19")["valor"].tolist() == [300.0]
+    assert como_era_em(base, "2023-09-20")["valor"].tolist() == [280.0]
+    assert set(base["demonstracao"]) == {"DFC_MI"}
+
+
+def test_publicadas_do_enet_trazem_dfc_dva_e_dra_inteiras():
+    from base.enet import ler_xml_enet
+    from base.ponto_no_tempo import publicadas_do_enet
+    from tests.test_base_enet import _dfp
+
+    publicadas = publicadas_do_enet(
+        [ler_xml_enet(_dfp(versao=1))], _indice_do_brb(), cadastro=SEM_CADASTRO
+    )
+    assert {"DFC_MI", "DFC_MD", "DVA", "DRA"} <= set(publicadas["demonstracao"])
+    assert "7.04.01" in set(publicadas["conta"])  # a D&A da DVA, para o EBITDA
+    assert "DMPL" not in set(publicadas["demonstracao"])
+
+
+# --- sem olhar o futuro (propriedade) ----------------------------------------------------------------
+PRIMEIRO_DIA = pd.Timestamp("2023-01-02")
+CONTAS_DO_SORTEIO = ("1", "3.11", "6.01", "7.04.01")
+
+
+@st.composite
+def _publicacoes(desenho):
+    """Até 8 publicações de 4 contas (balanço, DRE, DFC e DVA) em 20 dias, com valores repetidos,
+    em branco e versões no mesmo dia: o gerador procura a combinação que vaza o futuro."""
+    quantas = desenho(st.integers(min_value=1, max_value=8))
+    linhas = []
+    for versao in range(1, quantas + 1):
+        conta = desenho(st.sampled_from(CONTAS_DO_SORTEIO))
+        valor = desenho(st.sampled_from([1.0, 2.0, 3.0, float("nan")]))
+        dia = PRIMEIRO_DIA + pd.Timedelta(days=desenho(st.integers(0, 20)))
+        linha = _conta(valor, dia, versao=versao, conta=conta)
+        if conta.startswith(("6", "7")):
+            linha["demonstracao"] = "DFC_MI" if conta.startswith("6") else "DVA"
+        linhas.append(linha)
+    return pd.DataFrame(linhas)
+
+
+def _sem_ate(foto):
+    return (
+        foto.drop(columns="ate")
+        .sort_values(["conta", "divulgado_em"])
+        .reset_index(drop=True)
+    )
+
+
+@settings(max_examples=60, deadline=None)
+@given(publicadas=_publicacoes(), dias=st.integers(0, 22))
+def test_cortar_o_futuro_nao_muda_o_passado(publicadas, dias):
+    """A foto de um dia é a mesma com ou sem as publicações que vieram depois dele."""
+    dia = PRIMEIRO_DIA + pd.Timedelta(days=dias)
+    inteira = como_era_em(montar_base(publicadas), dia)
+    so_o_passado = publicadas[publicadas["divulgado_em"] <= dia]
+    if so_o_passado.empty:
+        assert inteira.empty
+        return
+    cortada = como_era_em(montar_base(so_o_passado), dia)
+    pd.testing.assert_frame_equal(_sem_ate(inteira), _sem_ate(cortada))

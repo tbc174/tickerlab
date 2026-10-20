@@ -18,6 +18,7 @@ from src import (
     ficha,
     paginas,
     planos,
+    precos_de_referencia,
     topicos,
 )
 from src import indicadores as ind
@@ -39,6 +40,12 @@ from src.banco.dados_do_usuario import (
 from src.banco.eventos import Evento
 from src.banco.modelo import PLANOS, assinaturas
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
+from src.commodities import painel_de_precos
+from src.commodities.cafe.pacote_do_mapa import (
+    gravar_pacote,
+    montar_vista,
+    vista_em_dicionario,
+)
 from src.conformidade import exportar_meus_dados, registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
@@ -49,10 +56,10 @@ from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
     chaves_publicas,
-    com_token,
+    da_sessao,
     gerar_chave,
-    token,
 )
+from tests.test_commodities_cafe_pacote_do_mapa import pacote_de_exemplo
 from tests.test_compartilhamentos import _congelada
 
 TAXA = 0.10
@@ -79,7 +86,7 @@ def cliente(banco, monkeypatch, chave):
     with banco.begin() as conexao:
         ana = entrar(conexao, "ana", "ana@exemplo.com")[0]
         registrar_aceite(conexao, ana.id)
-    cliente = TestClient(app, headers=com_token(token(chave)))
+    cliente = TestClient(app, headers=da_sessao(banco, ana))
     yield cliente
 
 
@@ -350,6 +357,40 @@ def test_juros_e_inflacao_sem_series_coletadas_503(cliente, no_dia):
     assert "coletadas" in resposta.json()["detail"]
 
 
+@pytest.fixture
+def pacote_do_mapa_gravado(tmp_path, monkeypatch):
+    caminho = tmp_path / "mapa_do_cafe.json"
+    pacote = pacote_de_exemplo()
+    gravar_pacote(pacote, caminho)
+    monkeypatch.setenv("TICKERLAB_MAPA_DO_CAFE", str(caminho))
+    monkeypatch.setattr(rotas, "hoje_no_brasil", lambda: date(2026, 11, 5))
+    return pacote
+
+
+def test_mapa_do_cafe_igual_ao_pacote(cliente, pacote_do_mapa_gravado):
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa", params={"tipo": "conilon"})
+    assert resposta.status_code == 200, resposta.text
+    vista = montar_vista(pacote_do_mapa_gravado, "conilon", 11)
+    assert resposta.json() == json.loads(json.dumps(vista_em_dicionario(vista)))
+    assert resposta.json()["malha"]["type"] == "FeatureCollection"
+
+
+def test_mapa_do_cafe_comeca_no_arabica(cliente, pacote_do_mapa_gravado):
+    assert cliente.get("/api/v1/commodities/cafe/mapa").json()["tipo"] == "arabica"
+
+
+def test_mapa_do_cafe_recusa_o_total(cliente, pacote_do_mapa_gravado):
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa", params={"tipo": "total"})
+    assert resposta.status_code == 422
+
+
+def test_mapa_do_cafe_sem_pacote_503(cliente, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_MAPA_DO_CAFE", str(tmp_path / "nao-existe.json"))
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa")
+    assert resposta.status_code == 503
+    assert "mapa do café" in resposta.json()["detail"]
+
+
 def _eventos_no_periodo(fechamento):
     dias = fechamento.index
     return [
@@ -561,7 +602,11 @@ def test_toda_rota_da_v1_tem_contrato_ou_e_da_conta():
         caminho = rota.path  # type: ignore[attr-defined]
         if caminho in ROTAS_PUBLICAS:
             continue
-        assert caminho in paginas.POR_ROTA or caminho in acesso.ROTAS_DA_CONTA, caminho
+        assert (
+            caminho in paginas.POR_ROTA
+            or caminho in acesso.ROTAS_DA_CONTA
+            or acesso.ROTAS_DE_ARQUIVO.get(caminho) in paginas.POR_ROTA
+        ), caminho
         dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
         assert acesso.conta_com_acesso in dependencias, caminho
 
@@ -669,7 +714,7 @@ def test_as_tentativas_de_uma_conta_nao_contam_na_outra(cliente, banco, chave):
     da_bia = cliente.post(
         "/api/v1/backtest",
         json=PEDIDO_DA_FICHA,
-        headers=com_token(token(chave, sub="bia", email="bia@exemplo.com")),
+        headers=da_sessao(banco, bia),
     )
     assert da_bia.status_code == 200, da_bia.text
     assert da_bia.json()["ficha"]["tentativas_da_pessoa"] == 1
@@ -924,7 +969,13 @@ def stripe_de_teste(monkeypatch):
 
 def _ana_admin(banco):
     with banco.begin() as conexao:
-        entrar(conexao, "ana", "ana@exemplo.com", emails_de_admin=("ana@exemplo.com",))
+        entrar(
+            conexao,
+            "ana",
+            "ana@exemplo.com",
+            emails_de_admin=("ana@exemplo.com",),
+            email_confirmado=True,
+        )
 
 
 def _assinatura_da_ana(banco, cliente="cus_ana"):
@@ -1081,6 +1132,16 @@ def test_relatorio_empresa_do_pro_traz_as_secoes_da_base(
     assert secoes["limites"]["paragrafos"]
 
 
+def test_relatorio_empresa_sem_analise_gerada_devolve_analise_nula(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    monkeypatch.setenv("TICKERLAB_ANALISES", str(tmp_path / "sem-analises"))
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["analise"] is None
+
+
 def test_relatorio_empresa_do_gratuito_vem_trancado_sem_numeros(
     cliente, banco, tmp_path, monkeypatch
 ):
@@ -1121,3 +1182,101 @@ def test_relatorio_empresa_de_ticker_sem_empresa_da_404(cliente):
 
 def test_relatorio_empresa_exige_ticker(cliente):
     assert cliente.get("/api/v1/relatorio-empresa").status_code == 422
+
+
+# --- Painel do café (PR 11 do plano do café; a tela só existe no React) ---------------------
+
+
+@pytest.fixture
+def cafe_semeado(banco, monkeypatch):
+    from src.commodities.cafe import painel as painel_do_cafe
+    from tests.test_painel_do_cafe import semear_acervo, tabelas_de_exemplo
+
+    with banco.begin() as conexao:
+        semear_acervo(conexao)
+    monkeypatch.setattr(painel_do_cafe, "tabelas_pela_porta", tabelas_de_exemplo)
+    return painel_do_cafe
+
+
+@pytest.mark.parametrize("tipo", ["arabica", "conilon"])
+def test_painel_do_cafe_igual_ao_montar_painel(
+    cliente, banco, no_dia, cafe_semeado, tipo
+):
+    resposta = cliente.get("/api/v1/painel-do-cafe", params={"tipo": tipo})
+    assert resposta.status_code == 200, resposta.text
+    with banco.connect() as conexao:
+        lido = cafe_semeado.montar_painel(
+            conexao, tipo, HOJE, tabelas=cafe_semeado.tabelas_pela_porta()
+        )
+    assert resposta.json() == _json(esquemas.de_painel_do_cafe(lido))
+    dados = resposta.json()
+    assert dados["tipo"] == tipo
+    assert dados["aviso_diario"] == cafe_semeado.AVISO_DIARIO
+    assert dados["preco_de_referencia"]["conteudo"] is not None
+
+
+def test_painel_do_cafe_com_regiao_escolhida(cliente, no_dia, cafe_semeado):
+    regiao = cafe_semeado.regiao_padrao("conilon").id
+    resposta = cliente.get(
+        "/api/v1/painel-do-cafe", params={"tipo": "conilon", "regiao": regiao}
+    )
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["regiao"] == regiao
+
+
+@pytest.mark.parametrize(
+    "params", [{"tipo": "robusta"}, {"regiao": "nao-existe"}], ids=["tipo", "regiao"]
+)
+def test_painel_do_cafe_recusa_tipo_ou_regiao_desconhecidos_422(
+    cliente, no_dia, params
+):
+    resposta = cliente.get("/api/v1/painel-do-cafe", params=params)
+    assert resposta.status_code == 422
+
+
+def test_painel_do_cafe_exige_login(banco, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
+    cliente_sem_login = TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
+    assert cliente_sem_login.get("/api/v1/painel-do-cafe").status_code == 401
+
+
+# --- Preços de referência (ADR 0062, Emenda 2: a tela vai para o React) -------------------
+
+
+def _semear_precos_de_referencia(banco):
+    meses = pd.date_range("2025-08-01", "2026-09-01", freq="MS")
+    valores = pd.Series([float(v) for v in range(1, len(meses) + 1)], index=meses)
+    codigos = [f"bm-pink-{c}" for c in painel_de_precos.CHAVES_DO_PAINEL]
+    codigos += [f"fmi-{c}" for c in precos_de_referencia.COMPARAVEIS]
+    with banco.begin() as conexao:
+        for codigo in codigos:
+            acervo.garantir_serie(conexao, precos_de_referencia.serie_do_acervo(codigo))
+            acervo.gravar(conexao, codigo, valores, date(2026, 10, 5))
+
+
+def test_precos_de_referencia_igual_a_tela(cliente, banco, no_dia):
+    _semear_precos_de_referencia(banco)
+    resposta = cliente.get("/api/v1/precos-de-referencia")
+    assert resposta.status_code == 200, resposta.text
+    with banco.connect() as conexao:
+        lido = painel_de_precos.montar_painel(conexao, HOJE)
+    assert resposta.json() == _json(esquemas.de_precos_de_referencia(lido, HOJE))
+    dados = resposta.json()
+    assert dados["aviso_diario"] == painel_de_precos.AVISO_DIARIO
+    assert dados["atribuicao"] == painel_de_precos.ATRIBUICAO
+    itens = {i["chave"]: i for i in dados["itens"]}
+    assert list(itens) == list(painel_de_precos.CHAVES_DO_PAINEL)
+    assert itens["ureia"]["texto"] == "14,00"
+    assert itens["ureia"]["legenda"] == "Média de 09/2026, Pink Sheet do Banco Mundial."
+    assert itens["ureia"]["nota_das_fontes"] == painel_de_precos.NOTA_FONTES_DIFEREM
+    assert itens["cafe-arabica"]["com_fmi"] is True
+    assert dados["spread"], "arábica e robusta semeados: o spread existe"
+
+
+def test_precos_de_referencia_sem_series_coletadas_503(cliente, no_dia):
+    resposta = cliente.get("/api/v1/precos-de-referencia")
+    assert resposta.status_code == 503
+    assert "coletados" in resposta.json()["detail"]
+    assert (
+        "python -m" not in resposta.json()["detail"]
+    )  # comando interno não vai a quem usa

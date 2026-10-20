@@ -7,12 +7,16 @@ import { type PaginaDoApp, paginasDoApp } from "../conteudo";
 import { linkDoClassico } from "./classico";
 import { navegador } from "./navegador";
 import { Backtest } from "./telas/Backtest";
+import { BuscaPorCnpj } from "./telas/BuscaPorCnpj";
 import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
+import { MapaDoCafe } from "./telas/MapaDoCafe";
 import { MeusDados } from "./telas/MeusDados";
+import { PainelDoCafe } from "./telas/PainelDoCafe";
 import { Planos } from "./telas/Planos";
+import { PrecosDeReferencia } from "./telas/PrecosDeReferencia";
 import { RelatorioEmpresa } from "./telas/RelatorioEmpresa";
 import { RetornoMensal } from "./telas/RetornoMensal";
 import { Risco } from "./telas/Risco";
@@ -25,6 +29,7 @@ export const TELAS_DO_APP: PaginaDoApp[] = paginasDoApp.filter((p) => p.contrato
 const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   visao_geral: (pagina) => <VisaoGeral pagina={pagina} />,
   juros_e_inflacao: (pagina) => <JurosEInflacao pagina={pagina} />,
+  precos_de_referencia: (pagina) => <PrecosDeReferencia pagina={pagina} />,
   linha_do_tempo: (pagina) => <LinhaDoTempo pagina={pagina} />,
   risco: (pagina) => <Risco pagina={pagina} />,
   retorno_mensal: (pagina) => <RetornoMensal pagina={pagina} />,
@@ -32,8 +37,11 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   backtest: (pagina) => <Backtest pagina={pagina} />,
   planos: (pagina) => <Planos pagina={pagina} />,
   relatorio_empresa: (pagina) => <RelatorioEmpresa pagina={pagina} />,
+  busca_por_cnpj: (pagina) => <BuscaPorCnpj pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
+  mapa_do_cafe: (pagina) => <MapaDoCafe pagina={pagina} />,
+  painel_do_cafe: (pagina) => <PainelDoCafe pagina={pagina} />,
   // o Pulse é o Workspace: o Início do app novo
   pulse: () => <Navigate to="/" replace />,
 };

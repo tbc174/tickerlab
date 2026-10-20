@@ -140,3 +140,35 @@ def test_falha_passageira_nao_derruba_a_tarefa_mas_tudo_falhando_sim(url, monkey
 )
 def test_fim_da_janela(hora, fim):
     assert carga_enet.fim_da_janela(hora, "06:00") == fim
+
+
+def _pacote_de(nome: str) -> bytes:
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as z:
+        z.writestr(nome, b"?")
+    return saida.getvalue()
+
+
+def test_pacote_de_formato_desconhecido_nao_diz_que_a_fonte_esta_fora_do_ar(
+    url, monkeypatch, caplog
+):
+    mundo = _Mundo(monkeypatch, datetime(2026, 10, 14, 0, 30, tzinfo=FUSO))
+    mundo.baixar = lambda link: _pacote_de("coisa-estranha.bin")  # type: ignore[method-assign]
+    assert carga_enet.main(["--desde", "2024", "--ate", "2024"]) == 1
+    assert "formato que o leitor não conhece" in caplog.text
+    assert "fora do ar" not in caplog.text
+
+
+def test_falha_de_rede_continua_dizendo_que_a_fonte_pode_estar_fora_do_ar(
+    url, monkeypatch, caplog
+):
+    comeco = datetime(2026, 10, 14, 0, 30, tzinfo=FUSO)
+    mundo = _Mundo(monkeypatch, comeco)
+
+    def sem_rede(link: str) -> bytes:
+        raise ConnectionError("sem rede")
+
+    mundo.baixar = sem_rede  # type: ignore[method-assign]
+    assert carga_enet.main(["--desde", "2024", "--ate", "2024"]) == 1
+    assert "fora do ar" in caplog.text
+    assert "formato que o leitor não conhece" not in caplog.text

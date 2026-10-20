@@ -92,7 +92,7 @@ function arquivosDaMarca(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root: fileURLToPath(new URL("./app", import.meta.url)),
   base: BASE,
   publicDir: false,
@@ -102,5 +102,23 @@ export default defineConfig({
     emptyOutDir: true,
   },
   // `npm run app:dev`: a tela em http://localhost:5173/ falando com a API local (uvicorn na 8000)
-  server: { proxy: { "/api": "http://127.0.0.1:8000" } },
-});
+  // o X-Forwarded-Host faz o papel do nginx: a API só aceita pedido que muda algo (POST) se a origem
+  // for o endereço que o navegador usou, e o proxy troca o Host
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8000",
+        configure: (proxy) =>
+          proxy.on("proxyReq", (pedido, original) => {
+            pedido.setHeader("x-forwarded-host", original.headers.host ?? "");
+          }),
+      },
+    },
+  },
+  // no `app:dev`, a página (em web/app) pede "/src/app/main.tsx" na raiz do servidor, que não existe
+  // dentro de web/app; no build o caminho relativo da página já resolve e nada muda
+  resolve:
+    command === "serve"
+      ? { alias: [{ find: /^\/src\//, replacement: fileURLToPath(new URL("./src/", import.meta.url)) }] }
+      : {},
+}));

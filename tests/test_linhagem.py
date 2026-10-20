@@ -10,12 +10,14 @@ import pandas as pd
 import pytest
 import sqlalchemy as sa
 
+from base.dmpl import FORMATO_DMPL
 from base.linhagem import linhagem_da_linha, linhagem_da_tabela
 from base.ponto_no_tempo import gravar_parquet, montar_base
 from src import acervo
 from src import versao_do_codigo as vc
 from src.banco.coletas import registrar
 from src.banco.conexao import criar_engine, migrar_para
+from tests.test_base_dmpl import _dmpl
 from tests.test_base_ponto_no_tempo import _tres_publicacoes
 
 URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2022.zip"
@@ -69,6 +71,21 @@ def test_linha_sorteada_volta_ao_original(ambiente):
     assert origem.baixado_em.replace(tzinfo=None) == BAIXADO_EM.replace(tzinfo=None)
     assert origem.original_confere  # o arquivo no acervo tem o SHA-256 do registro
     assert caminho.completa
+
+
+def test_linha_da_dmpl_confere_com_o_formato_dela(ambiente):
+    """A DMPL tem a coluna do patrimônio no hash: conferida como demonstração, não bateria."""
+    motor, pasta = ambiente
+    pasta_dmpl = pasta.parent / "dmpl"
+    base = montar_base(pd.DataFrame([_dmpl(800.0, "2024-03-01")]), FORMATO_DMPL)
+    origens = [{"url": URL, "sha256": hashlib.sha256(ORIGINAL).hexdigest()}]
+    gravar_parquet(base, pasta_dmpl, origens=origens, formato=FORMATO_DMPL)
+    linha = base.iloc[0]
+    with motor.connect() as c:
+        caminho = linhagem_da_linha(c, pasta_dmpl, linha, FORMATO_DMPL)
+        como_demonstracao = linhagem_da_linha(c, pasta_dmpl, linha)
+    assert caminho.base_confere and caminho.completa
+    assert not como_demonstracao.base_confere
 
 
 def test_original_mexido_no_acervo_quebra_a_linhagem(ambiente):

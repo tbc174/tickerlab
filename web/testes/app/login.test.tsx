@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-// O login com o Google no app novo: o token fica só na memória e vai só para a API.
+// O login no app novo: o token do Google vai uma vez só, para abrir a sessão (o cookie HttpOnly, que o
+// app não vê); depois, nenhum pedido leva token e nada fica guardado no navegador.
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { conteudoDoApp } from "../../src/conteudo";
-import { ANA, TOKEN, abrirApp, respostaJson } from "./ajudantes";
+import { ANA, DO_APP, TOKEN, abrirApp, respostaJson } from "./ajudantes";
 
 function abrir(eu: () => Response) {
   const aberto = abrirApp("/", { eu, entraSozinho: false });
@@ -15,7 +16,7 @@ let google: ReturnType<typeof abrirApp>["google"];
 
 // como na vida real, o token só chega depois de o Google ser inicializado (o botão vem depois)
 async function googlePronto() {
-  await screen.findByText(/Entre com o Google/);
+  await screen.findByText(/Entrar no TickerLab/);
   await waitFor(() => expect(google.id.initialize).toHaveBeenCalled());
 }
 
@@ -36,13 +37,23 @@ afterEach(() => {
 });
 
 describe("login", () => {
-  it("sem login, pede para entrar e não chama a API com token", async () => {
+  it("sem sessão, pede para entrar e não chama a API com token", async () => {
     const buscar = abrir(() => respostaJson(200, ANA));
     await googlePronto();
     expect(google.id.initialize).toHaveBeenCalledWith(
       expect.objectContaining({ client_id: "id-de-teste" }),
     );
-    expect(buscar).toHaveBeenCalledTimes(1); // só a configuração
+    // a configuração e a pergunta "já há sessão?" (sem token: o navegador mandaria o cookie)
+    expect(buscar.mock.calls.map(([e]) => e)).toEqual(["/api/v1/configuracao", "/api/v1/eu"]);
+    expect(buscar).toHaveBeenCalledWith("/api/v1/eu", { method: "GET", headers: DO_APP, credentials: "same-origin" });
+    expect(google.id.prompt).toHaveBeenCalledTimes(1); // sem sessão, o Google tenta entrar sozinho
+  });
+
+  it("com a sessão aberta, entra direto: sem o Google e sem token", async () => {
+    const aberto = abrirApp("/", { comSessao: true, entraSozinho: false });
+    expect(await screen.findByText(/Ana · Gratuito/)).toBeTruthy();
+    expect(aberto.google.id.prompt).not.toHaveBeenCalled();
+    expect(aberto.buscar.mock.calls.some(([e]) => e === "/api/v1/conta")).toBe(false);
   });
 
   it("o botão do Google só é desenhado depois do initialize (antes, o Google não desenha nada)", async () => {
@@ -55,14 +66,15 @@ describe("login", () => {
     expect(desenhou).toBeGreaterThan(iniciou);
   });
 
-  it("com o token do Google, busca a conta e mostra o nome e o plano", async () => {
+  it("o token do Google só abre a sessão: a conta é lida pelo cookie, sem token", async () => {
     const buscar = abrir(() => respostaJson(200, ANA));
     await entrar();
     expect(await screen.findByText(/Ana · Gratuito/)).toBeTruthy();
-    expect(buscar).toHaveBeenCalledWith("/api/v1/eu", {
-      method: "GET",
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    });
+    const comToken = buscar.mock.calls.filter(([, pedido]) => JSON.stringify(pedido?.headers ?? {}).includes(TOKEN));
+    expect(comToken.map(([e]) => e)).toEqual(["/api/v1/conta"]);
+    // depois de abrir a sessão, a conta é lida de novo, agora pelo cookie
+    const enderecos = buscar.mock.calls.map(([e]) => e);
+    expect(enderecos.indexOf("/api/v1/eu", enderecos.indexOf("/api/v1/conta"))).toBeGreaterThan(0);
   });
 
   it("o token não fica guardado no navegador", async () => {
@@ -77,12 +89,19 @@ describe("login", () => {
     expect(guardado).not.toContain(TOKEN);
   });
 
-  it("sair esquece o token e desliga a entrada automática", async () => {
-    abrir(() => respostaJson(200, ANA));
+  it("sair encerra a sessão na API e desliga a entrada automática", async () => {
+    const buscar = abrir(() => respostaJson(200, ANA));
     await entrar();
     fireEvent.click(await screen.findByRole("button", { name: "Sair" }));
-    expect(await screen.findByText(/Entre com o Google/)).toBeTruthy();
+    expect(await screen.findByText(/Entrar no TickerLab/)).toBeTruthy();
+    expect(buscar).toHaveBeenCalledWith("/api/v1/sair", {
+      method: "POST",
+      headers: { ...DO_APP, "Content-Type": "application/json" },
+      body: "{}",
+      credentials: "same-origin",
+    });
     expect(google.id.disableAutoSelect).toHaveBeenCalled();
+    expect(google.id.prompt).toHaveBeenCalledTimes(1); // depois do Sair, o Google não entra sozinho
   });
 });
 
@@ -93,7 +112,7 @@ describe("conta recusada pela API", () => {
     );
     await entrar();
     expect(await screen.findByText(/Sua sessão terminou/)).toBeTruthy();
-    expect(screen.getByText(/Entre com o Google/)).toBeTruthy();
+    expect(screen.getByText(/Entrar no TickerLab/)).toBeTruthy();
   });
 
   it("primeiro login: cria a conta pela API e entra (sem passar pelo app atual)", async () => {
@@ -104,8 +123,7 @@ describe("conta recusada pela API", () => {
         criada
           ? respostaJson(200, ANA)
           : respostaJson(401, { detail: "Conta não encontrada." }, { "X-TickerLab-Motivo": "conta-nova" }),
-      rotas: (endereco) => {
-        if (endereco !== "/api/v1/conta") return undefined;
+      conta: () => {
         criada = true;
         return respostaJson(200, { ...ANA, primeira_vez: true });
       },
@@ -115,8 +133,9 @@ describe("conta recusada pela API", () => {
     expect(await screen.findByText(/Ana · Gratuito/)).toBeTruthy();
     expect(aberto.buscar).toHaveBeenCalledWith("/api/v1/conta", {
       method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+      headers: { ...DO_APP, Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
       body: "{}",
+      credentials: "same-origin",
     });
   });
 
@@ -124,14 +143,46 @@ describe("conta recusada pela API", () => {
     const aberto = abrirApp("/", {
       entraSozinho: false,
       eu: () => respostaJson(401, { detail: "Conta não encontrada." }, { "X-TickerLab-Motivo": "conta-nova" }),
-      rotas: (endereco) =>
-        endereco === "/api/v1/conta" ? respostaJson(503, { detail: "Fora do ar." }) : undefined,
+      conta: () => respostaJson(503, { detail: "Fora do ar." }),
     });
     google = aberto.google;
     await entrar();
     expect(await screen.findByText(/Fora do ar/)).toBeTruthy();
-    expect(screen.getByText(/Entre com o Google/)).toBeTruthy();
+    expect(screen.getByText(/Entrar no TickerLab/)).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Criar a conta no app/ })).toBeNull();
+  });
+
+  it("a entrada é uma página própria: sem o menu do app, sem o rodapé e com os textos legais", async () => {
+    abrir(() => respostaJson(200, ANA));
+    await googlePronto();
+    // o menu e as abas só levam a telas que pedem login; o rodapé falava da fonte de preços
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByText(/Yahoo/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Versão clássica" })).toBeNull();
+    expect(screen.getByText(conteudoDoApp.entrada.explicacao)).toBeTruthy();
+    for (const ponto of conteudoDoApp.entrada.pontos) expect(screen.getByText(ponto)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Termos de uso" }).getAttribute("href")).toBe(
+      "https://tickerlab.com.br/termos.html",
+    );
+    expect(screen.getByRole("link", { name: "Política de privacidade" }).getAttribute("href")).toBe(
+      "https://tickerlab.com.br/privacidade.html",
+    );
+  });
+
+  it("o botão do Google ocupa a largura do cartão, dentro do que o Google aceita (200 a 400 px)", async () => {
+    abrir(() => respostaJson(200, ANA));
+    await googlePronto();
+    await waitFor(() => expect(google.id.renderButton).toHaveBeenCalled());
+    const [, opcoes] = google.id.renderButton.mock.calls[0] as [HTMLElement, { width: number }];
+    expect(opcoes.width).toBeGreaterThanOrEqual(200); // no jsdom a largura medida é 0: fica no mínimo
+    expect(opcoes.width).toBeLessThanOrEqual(400);
+  });
+
+  it("depois de entrar, a moldura do app volta (menu e rodapé)", async () => {
+    abrir(() => respostaJson(200, ANA));
+    await entrar();
+    await screen.findByText(/Ana · Gratuito/);
+    expect(screen.getAllByRole("navigation").length).toBeGreaterThan(0);
   });
 
   it("a tela de entrada diz o que a conta guarda", async () => {
@@ -213,7 +264,8 @@ describe("conta recusada pela API", () => {
     await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled());
     expect(aberto.buscar).toHaveBeenCalledWith("/api/v1/meus-dados", {
       method: "GET",
-      headers: { Authorization: `Bearer ${TOKEN}` },
+      headers: DO_APP,
+      credentials: "same-origin",
     });
     const apagar = screen.getByRole("link", { name: /Apagar a conta/ });
     expect(apagar.getAttribute("href")).toBe("/classico/meus-dados");
@@ -236,10 +288,19 @@ describe("conta recusada pela API", () => {
     expect(screen.queryByText(/Ana · Gratuito/)).toBeNull();
   });
 
+  it("com a sessão aberta e termos novos, abre direto o aceite", async () => {
+    abrirApp("/", {
+      comSessao: true,
+      entraSozinho: false,
+      eu: () => respostaJson(403, { detail: "Aceite os termos." }, { "X-TickerLab-Motivo": "termos" }),
+    });
+    expect(await screen.findByRole("heading", { name: "Antes de começar" })).toBeTruthy();
+  });
+
   it("na tela de aceite dá para sair", async () => {
     abrir(() => respostaJson(403, { detail: "Aceite os termos." }, { "X-TickerLab-Motivo": "termos" }));
     await entrar();
     fireEvent.click(await screen.findByRole("button", { name: "Sair" }));
-    expect(await screen.findByText(/Entre com o Google/)).toBeTruthy();
+    expect(await screen.findByText(/Entrar no TickerLab/)).toBeTruthy();
   });
 });

@@ -37,6 +37,7 @@ APELIDOS = ("aconteceu_em", "publico_em", "coletado_em")
 # tabela → arquivos dentro de `<acervo>/base` (o `onde` do dicionário diz o mesmo; um teste confere)
 ARQUIVOS: dict[str, str] = {
     "demonstracoes_como_era": "demonstracoes/*.parquet",
+    "dmpl_como_era": "dmpl/*.parquet",
     "tickers_no_tempo": "fca/tickers.parquet",
     "valores_mobiliarios": "fca/valores_mobiliarios.parquet",
     "emissores": "fca/emissores.parquet",
@@ -54,6 +55,12 @@ ARQUIVOS: dict[str, str] = {
     "comex_cafe": "commodities/comex_cafe/*.parquet",
     "conab_cafe": "commodities/conab_cafe/*.parquet",
     "ons_geracao": "setoriais/ons/*.parquet",
+    "ccee_pld": "setoriais/ccee/*.parquet",
+    "ons_restricao": "setoriais/ons_restricao/*.parquet",
+    "ons_capacidade": "setoriais/ons_capacidade/*.parquet",
+    "anp_concessionarios": "setoriais/anp_concessionarios/*.parquet",
+    "antt_siade": "setoriais/antt_siade/*.parquet",
+    "comex_preco_medio": "setoriais/comex_preco_medio/*.parquet",
     "cftc_cot_agro": "setoriais/cftc/*.parquet",
     "aneel_samp": "setoriais/aneel/*.parquet",
     "anatel_acessos": "setoriais/anatel/*.parquet",

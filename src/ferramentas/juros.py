@@ -4,7 +4,9 @@ Juros simples: o juro de cada período é sempre sobre o capital inicial.
 Juros compostos: o juro de cada período é sobre o montante até ali (juro sobre juro).
 
 As taxas são frações (0,01 = 1%) e valem por período; a página converte "ao ano" em "ao mês"
-com `taxa_por_mes`, que usa a taxa equivalente composta (12,68% ao ano = 1% ao mês, não 12%).
+com `taxa_por_mes`. Nos compostos vale a taxa equivalente (12,68% ao ano = 1% ao mês); nos simples
+vale a proporcional (12% ao ano = 1% ao mês), porque o juro simples não capitaliza: com a
+equivalente, 10% ao ano por 10 anos dariam R$ 19.568,97 em vez dos R$ 20.000 do livro-texto.
 """
 
 from dataclasses import dataclass
@@ -75,11 +77,17 @@ def taxa_equivalente(taxa: float, de_meses: float, para_meses: float) -> float:
     return (1 + taxa) ** (para_meses / de_meses) - 1
 
 
-def taxa_por_mes(taxa: float, unidade: str) -> float:
-    """A taxa ao mês, a partir de uma taxa "ao mês" ou "ao ano" (`unidade`: "mes" ou "ano")."""
+def taxa_por_mes(taxa: float, unidade: str, composto: bool = True) -> float:
+    """A taxa ao mês, a partir de uma taxa "ao mês" ou "ao ano" (`unidade`: "mes" ou "ano").
+
+    "Ao ano" vira a taxa equivalente nos juros compostos e a proporcional (taxa ÷ 12) nos simples."""
     if unidade == "mes":
         return taxa
     if unidade == "ano":
+        if not composto:
+            if taxa <= -1:
+                raise ValueError("A taxa precisa ser maior que -100%.")
+            return taxa / 12
         return taxa_equivalente(taxa, de_meses=12, para_meses=1)
     raise ValueError(f"A unidade da taxa precisa ser uma de {UNIDADES}.")
 

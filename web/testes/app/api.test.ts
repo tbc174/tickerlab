@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ErroDaApi, pedir } from "../../src/app/api";
+import { ErroDaApi, SESSAO, pedir } from "../../src/app/api";
 import type {
   BacktestDoAtivoV1,
   MeuPlanoV1,
@@ -13,6 +13,7 @@ import type {
   JurosEInflacaoV1,
   LinhaDoTempoDoAtivoV1,
   MinhasSimulacoesV1,
+  PainelDoCafeV1,
   PulseV1,
   SimulacaoV1,
   VisaoGeralV1,
@@ -22,6 +23,7 @@ import comparacao from "./exemplos/comparacao.json";
 import ficha from "./exemplos/ficha.json";
 import juros from "./exemplos/juros_e_inflacao.json";
 import linha from "./exemplos/linha_do_tempo.json";
+import painelDoCafe from "./exemplos/painel_do_cafe.json";
 import mensal from "./exemplos/retorno_mensal.json";
 import risco from "./exemplos/risco.json";
 import exemplo from "./exemplos/visao_geral.json";
@@ -55,23 +57,41 @@ async function erroDe(promessa: Promise<unknown>): Promise<ErroDaApi> {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("pedir", () => {
-  it("chama /api/v1 no próprio endereço, com o token e os parâmetros", async () => {
+  it("com a sessão, chama /api/v1 no próprio endereço com os parâmetros, sem token nenhum", async () => {
     const buscar = comResposta(respostaJson(200, { ok: true }));
-    await pedir("/v1/comparacao", "tok", { ticker: "PETR4", com: ["VALE3", "AAPL"], taxa: undefined });
+    await pedir("/v1/comparacao", SESSAO, { ticker: "PETR4", com: ["VALE3", "AAPL"], taxa: undefined });
     expect(buscar).toHaveBeenCalledWith("/api/v1/comparacao?ticker=PETR4&com=VALE3&com=AAPL", {
       method: "GET",
-      headers: { Authorization: "Bearer tok" },
+      headers: { "X-TickerLab-Pedido": "1" },
+      credentials: "same-origin",
     });
   });
 
-  it("POST manda o corpo em JSON", async () => {
+  it("POST manda o corpo em JSON e a prova de que saiu do app (contra CSRF)", async () => {
     const buscar = comResposta(respostaJson(200, {}));
-    await pedir("/v1/backtest", "tok", {}, { ticker: "PETR4" });
+    await pedir("/v1/backtest", SESSAO, {}, { ticker: "PETR4" });
     expect(buscar).toHaveBeenCalledWith("/api/v1/backtest", {
       method: "POST",
-      headers: { Authorization: "Bearer tok", "Content-Type": "application/json" },
+      headers: { "X-TickerLab-Pedido": "1", "Content-Type": "application/json" },
       body: '{"ticker":"PETR4"}',
+      credentials: "same-origin",
     });
+  });
+
+  it("o token do Google (só para abrir a sessão) vai no Authorization", async () => {
+    const buscar = comResposta(respostaJson(200, {}));
+    await pedir("/v1/conta", "tok", {}, {});
+    expect(buscar).toHaveBeenCalledWith(
+      "/api/v1/conta",
+      expect.objectContaining({
+        headers: { "X-TickerLab-Pedido": "1", Authorization: "Bearer tok", "Content-Type": "application/json" },
+      }),
+    );
+  });
+
+  it("resposta sem corpo (204, o sair) não é erro", async () => {
+    comResposta(new Response(null, { status: 204 }));
+    await expect(pedir("/v1/sair", SESSAO, {}, {})).resolves.toBeUndefined();
   });
 
   it("recusa rota que não seja da API v1 (o token nunca sai para outro endereço)", async () => {
@@ -90,6 +110,8 @@ describe("erros", () => {
     [401, "conta-nova", "conta-nova"],
     [403, "termos", "termos"],
     [403, "plano", "plano"], // a página não abre no plano da conta (ADR 0062)
+    [401, "sessao", "sessao-vencida"], // o cookie da sessão venceu ou foi encerrado
+    [403, "pedido-de-fora", "indisponivel"], // a API não reconheceu o pedido como do app: não são os termos
   ])("%i com motivo %s vira %s", async (status, motivo, tipo) => {
     comResposta(respostaJson(status, { detail: "Texto da API." }, { "X-TickerLab-Motivo": motivo }));
     const erro = await erroDe(pedir("/v1/eu", "tok"));
@@ -280,5 +302,49 @@ describe("tipos das respostas", () => {
     expect(Object.keys(f ?? {}).sort()).toEqual(campos("FichaV1"));
     expect(Object.keys(f?.veredito ?? {}).sort()).toEqual(campos("VereditoV1"));
     expect(Object.keys(f?.checagens[0] ?? {}).sort()).toEqual(campos("ChecagemV1"));
+  });
+});
+
+describe("tipos do Painel do café", () => {
+  const esquemas = JSON.parse(
+    readFileSync(join(process.cwd(), "..", "docs", "api", "openapi-v1.json"), "utf8"),
+  ).components.schemas;
+  const campos = (nome: string) => Object.keys(esquemas[nome].properties).sort();
+  const chaves = (objeto: object) => Object.keys(objeto).sort();
+
+  it("PainelDoCafeV1 (exemplo do Python) bate com o OpenAPI, caixa a caixa", () => {
+    const p: PainelDoCafeV1 = painelDoCafe.resposta;
+    expect(chaves(p)).toEqual(campos("PainelDoCafeV1"));
+    expect(chaves(p.regioes[0])).toEqual(campos("OpcaoDeRegiaoV1"));
+    const conteudos: [object | null, string][] = [
+      [p.preco_de_referencia.conteudo, "PrecoDoCafeV1"],
+      [p.preco_de_referencia.conteudo?.item ?? null, "PrecoDeReferenciaDoCafeV1"],
+      [p.preco_de_referencia.conteudo?.spread[0] ?? null, "PontoDoSpreadDoCafeV1"],
+      [p.preco_de_referencia.conteudo?.marcos[0] ?? null, "MarcoDoCafeV1"],
+      [p.cambio.conteudo, "CambioDoCafeV1"],
+      [p.fundos.conteudo, "FundosDoCafeV1"],
+      [p.fundos.conteudo?.historico[0] ?? null, "PontoDosFundosV1"],
+      [p.exportacoes.conteudo, "ExportacoesDoCafeV1"],
+      [p.exportacoes.conteudo?.destinos[0] ?? null, "DestinoDoCafeV1"],
+      [p.balanco.conteudo, "BalancoDoCafeV1"],
+      [p.balanco.conteudo?.estoque_consumo_mundo[0] ?? null, "PontoAnualDoCafeV1"],
+      [p.safra.conteudo, "SafraDoCafeV1"],
+      [p.safra.conteudo?.linhas[0] ?? null, "LinhaDaSafraV1"],
+      [p.termometro.conteudo, "TermometroDaConabV1"],
+      [p.termometro.conteudo?.erros[0] ?? null, "ErroDaSafraV1"],
+      [p.bienalidade.conteudo?.marcas[0] ?? null, "PontoDaSafraV1"],
+      [p.clima.conteudo, "ClimaDaRegiaoV1"],
+      [p.clima.conteudo?.chuva ?? null, "IndiceDeChuvaV1"],
+      [p.clima.conteudo?.temperatura ?? null, "TemperaturaDoMesV1"],
+      [p.calendario.conteudo?.fase ?? null, "FaseDoCafeV1"],
+      [p.calendario.conteudo?.itens[0] ?? null, "ItemDoCalendarioV1"],
+      [p.contrapartes.conteudo?.fichas[0] ?? null, "FichaDaContraparteV1"],
+      [p.contrapartes.conteudo?.fichas[0].fatos[0] ?? null, "FatoDaContraparteV1"],
+    ];
+    for (const [conteudo, nome] of conteudos) {
+      expect(conteudo, `o exemplo tem ${nome}`).not.toBeNull();
+      expect(chaves(conteudo ?? {}), nome).toEqual(campos(nome));
+    }
+    expect(chaves(p.fundos)).toEqual(campos("BlocoDosFundosV1"));
   });
 });

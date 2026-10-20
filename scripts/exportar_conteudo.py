@@ -38,11 +38,11 @@ from src import (
     qualidade_texto,
     regras_de_imposto,
 )
+from src import autenticacao as aut
 from src import graficos_pdf as gp
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
-from src.autenticacao import AVISO_DA_ENTRADA
 from src.conteudo import carregar_glossario
 from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
@@ -192,6 +192,25 @@ def _site() -> dict:
     }
 
 
+def _ativos() -> list[dict[str, str]]:
+    """O catálogo da busca do campo Ativo (o mesmo do Streamlit), com o rótulo que a lista mostra.
+
+    Vai num JSON à parte que o app carrega só quando o campo aparece (ADR 0048): é estático, muda
+    só quando `scripts/gerar_catalogo.py` roda, e não precisa de rota na API.
+    """
+    tabela = catalogo.carregar()
+    return [
+        {
+            "simbolo": simbolo,
+            "codigo": linha["codigo"],
+            "nome": linha["nome"],
+            "tipo": linha["tipo"],
+            "rotulo": catalogo.rotulo(simbolo),
+        }
+        for simbolo, linha in tabela.iterrows()
+    ]
+
+
 def _variacao(valor: float) -> dict[str, float | str]:
     """Um retorno como o PDF mostra: com sinal e a seta (a cor sozinha não basta)."""
     return {
@@ -335,7 +354,13 @@ def _app() -> dict[str, object]:
                 "explicacao": ficha.EXPLICACAO,
             },
         },
-        "entrada": {"aviso": AVISO_DA_ENTRADA},
+        "entrada": {
+            "titulo": aut.TITULO_DA_ENTRADA,
+            "explicacao": aut.EXPLICACAO_DA_ENTRADA,
+            "lembrete_da_versao_classica": aut.LEMBRETE_DA_VERSAO_CLASSICA,
+            "pontos": list(aut.PONTOS_DA_ENTRADA),
+            "aviso": aut.AVISO_DA_ENTRADA,
+        },
         "assinatura": {
             "retorno_ok": cobranca.RETORNO_DO_PAGAMENTO_OK,
             "retorno_cancelado": cobranca.RETORNO_DO_PAGAMENTO_CANCELADO,
@@ -403,6 +428,7 @@ def conteudo() -> dict[str, object]:
         "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
         "catalogo": _catalogo(),
+        "ativos": _ativos(),
     }
 
 

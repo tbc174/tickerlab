@@ -30,6 +30,11 @@ PAUSA = PAUSA_ENTRE_PEDIDOS_EM_SEGUNDOS
 TAMANHO_MAXIMO_DO_RESUMO = 300  # o resumo vai no endereço do push do Kuma
 
 
+def agora() -> datetime:
+    """O relógio da rodada; o teste troca esta função para fixar o momento."""
+    return datetime.now(UTC)
+
+
 def _avisar(problemas: list[str]) -> int:
     linha = "FALHAS: b3-negocios no VPS: " + "; ".join(problemas)
     print(linha[:TAMANHO_MAXIMO_DO_RESUMO])
@@ -45,15 +50,15 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
 
-    agora = datetime.now(UTC)
+    momento = agora()
     try:
         rodada = copiar_janela(
-            ClienteHttp(), opcoes.pasta, agora, pausa=PAUSA, espaco=espaco_do_disco
+            ClienteHttp(), opcoes.pasta, momento, pausa=PAUSA, espaco=espaco_do_disco
         )
     except FreioDeDisco as erro:
         return _avisar([f"FreioDeDisco: {erro}"])
     apagados = apagar_antigos(
-        opcoes.pasta, agora.astimezone(FUSO_DA_B3).date(), opcoes.retencao
+        opcoes.pasta, momento.astimezone(FUSO_DA_B3).date(), opcoes.retencao
     )
     log.info(
         "b3-negocios: %d novos, %d iguais, %d já inteiros, %d sem arquivo, %d falhas; "

@@ -1,8 +1,8 @@
 """Resumo do relatório mensal do Cecafé (café, PR 6): sacas por tipo de café e por destino.
 
-Fonte só pesquisa (`licencas-por-fonte.md`): este leitor serve à pesquisa interna sobre o PDF
-guardado pelo arquivista; nada daqui vai para tela, API ou tabela do catálogo. O relatório chama a
-espécie conilon + robusta de "canéfora".
+Marca "não comercial" registrada (`licencas-por-fonte.md`; o robots.txt do site veda PDF): pela
+ADR 0102 o arquivista guarda o PDF com ritmo e este leitor o resume; o que for para tela, API ou
+tabela cita o Cecafé e o mês do relatório. O relatório chama a espécie conilon + robusta de "canéfora".
 """
 
 import re

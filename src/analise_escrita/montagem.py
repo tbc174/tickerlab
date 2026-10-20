@@ -47,6 +47,16 @@ def _cita(parte: saida.Parte, ids: frozenset[str]) -> bool:
     )
 
 
+def _partes_do_dossie(analise: saida.Analise, entrada: dict[str, Any]) -> set[str]:
+    dossie = _so_pro(entrada)
+    return {p.chave for p in analise.partes if _cita(p, dossie)}
+
+
+def sem_o_dossie(analise: saida.Analise, entrada: dict[str, Any]) -> saida.Analise:
+    """A análise de quem não é Pro (D4): a parte que cita o dossiê vira o molde sem o dossiê."""
+    return _juntar(analise, molde(entrada, False), _partes_do_dossie(analise, entrada))
+
+
 def _juntar(
     analise: saida.Analise, reserva: saida.Analise, fora: Collection[str]
 ) -> saida.Analise:
@@ -76,8 +86,7 @@ def _montar(
     conferencia = porta1.conferir(analise, entrada)
     fora = set(conferencia.partes_reprovadas) | set(reprovadas)
     if not incluir_so_pro:
-        dossie = _so_pro(entrada)
-        fora |= {p.chave for p in analise.partes if _cita(p, dossie)}
+        fora |= _partes_do_dossie(analise, entrada)
     return Montagem(_juntar(analise, reserva, fora), conferencia)
 
 

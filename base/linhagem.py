@@ -28,7 +28,7 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base.parquet import conferir_tabela, e_tabela_da_base
-from base.ponto_no_tempo import SEM_DATA, conferir_pasta
+from base.ponto_no_tempo import DEMONSTRACOES, SEM_DATA, Formato, conferir_pasta
 from src import acervo
 from src.banco.modelo import coletas
 
@@ -200,13 +200,18 @@ def _linhagem_da_tabela(
 
 
 def linhagem_da_linha(
-    conexao: sa.Connection, pasta: Path, linha: pd.Series
+    conexao: sa.Connection,
+    pasta: Path,
+    linha: pd.Series,
+    formato: Formato = DEMONSTRACOES,
 ) -> Linhagem:
-    """O caminho de uma linha da base "por ano" até os originais, a coleta e a versão do código."""
+    """O caminho de uma linha da base "por ano" até os originais, a coleta e a versão do código.
+
+    `formato`: o da tabela da pasta (a DMPL tem a coluna do patrimônio no fato e no hash).
+    """
     ano = _ano_da_linha(linha)
-    return _linhagem(
-        conexao, ano, pasta / f"{ano}.json", conferir_pasta(pasta).get(ano, False)
-    )
+    confere = conferir_pasta(pasta, formato).get(ano, False)
+    return _linhagem(conexao, ano, pasta / f"{ano}.json", confere)
 
 
 def linhagem_da_tabela(conexao: sa.Connection, arquivo: Path) -> Linhagem:

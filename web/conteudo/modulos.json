@@ -52,6 +52,30 @@
         "ticker": null
       },
       {
+        "descricao": "Resultado, dívida, caixa, notas clássicas e valuation de uma empresa da B3, com a fonte de cada número.",
+        "disponivel": true,
+        "nome": "Relatório da empresa",
+        "pagina_do_app": "relatorio-empresa",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "Quais fundos e grandes gestores têm a ação, quem entrou e quem saiu.",
+        "disponivel": true,
+        "nome": "Donos e fundos",
+        "pagina_do_app": "donos",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "Digite o CNPJ de uma companhia aberta e veja de que grupo ela faz parte e os fatos públicos, com data e fonte.",
+        "disponivel": true,
+        "nome": "Busca por CNPJ",
+        "pagina_do_app": "busca-por-cnpj",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
         "descricao": "O resumo do que mudou nos seus ativos desde a última visita.",
         "disponivel": true,
         "nome": "Pulse",

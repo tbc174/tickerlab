@@ -5,6 +5,9 @@
 de administrador só ao e-mail da lista que o Google confirmou e guarda a origem do cadastro (cookie
 `tl_origem`) só no primeiro login.
 
+Depois do login, `POST /v1/conta` abre a sessão de 30 dias e põe o cookie (src/api_v1/sessao.py);
+`POST /v1/sair` encerra a sessão e apaga o cookie.
+
 `POST /v1/aceite-dos-termos` grava o aceite dos termos atuais (a mesma `registrar_aceite` do
 Streamlit), conferindo que a tela mostrou a versão atual.
 
@@ -14,7 +17,7 @@ estas são justamente as que criam a conta e registram o aceite. Sem o aceite, n
 
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
@@ -24,14 +27,17 @@ from src.api_v1.acesso import (
     conta_sem_o_aceite,
     exigir_api_ligada,
     identidade_logada,
+    recusar_pedido_de_fora,
 )
 from src.api_v1.rotas import EuV1, eu_da_conta
+from src.api_v1.sessao import por_o_cookie, tirar_o_cookie, token_do_cookie
 from src.autenticacao import (
     IdentidadeDoGoogle,
     LoginInvalidoError,
     emails_de_admin,
     registrar_login,
 )
+from src.banco import sessoes
 from src.banco.conexao import obter_engine
 from src.banco.usuarios import Usuario, buscar_por_id
 from src.conformidade import VERSAO_DOS_TERMOS, aceitar_os_termos
@@ -56,10 +62,14 @@ class AceiteV1(BaseModel):
 
 @router.post("/conta")
 def entrar(
+    request: Request,
+    response: Response,
     identidade: Annotated[IdentidadeDoGoogle, Depends(identidade_logada)],
     tl_origem: Annotated[str | None, Cookie(alias=NOME_DO_COOKIE)] = None,
 ) -> ContaV1:
-    """Cria a conta de quem o token prova ser (ou só registra o acesso, se ela já existe)."""
+    """Cria a conta de quem o token prova ser (ou só registra o acesso) e abre a sessão."""
+    # o token no Authorization já barra outro site; com o cookie, vale a mesma prova das outras rotas
+    recusar_pedido_de_fora(request)
     # a conta ainda pode não existir: o limite fica pelo identificador do Google
     if not LIMITE.permitir(f"google:{identidade.sub}", agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
@@ -67,6 +77,7 @@ def entrar(
         usuario, primeira_vez = _registrar(identidade, tl_origem)
     except LoginInvalidoError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
+    abrir_a_sessao(request, response, usuario)
     return ContaV1(**eu_da_conta(usuario).model_dump(), primeira_vez=primeira_vez)
 
 
@@ -80,6 +91,46 @@ def _registrar(
         return registrar_login(identidade, admins=admins, origem=origem)
     except IntegrityError:
         return registrar_login(identidade, admins=admins, origem=origem)
+
+
+def abrir_a_sessao(
+    request: Request, response: Response, usuario: Usuario, provedor: str = "google"
+) -> None:
+    """Abre a sessão nova e põe o cookie; a sessão que o navegador ainda tinha é encerrada."""
+    antiga = token_do_cookie(request)
+    with obter_engine().begin() as conexao:
+        if antiga:
+            sessoes.encerrar(conexao, antiga)
+        token = sessoes.abrir(conexao, usuario.id, provedor)
+    por_o_cookie(response, token)
+
+
+@router.post("/sair", status_code=204)
+def sair(request: Request, response: Response) -> None:
+    """Encerra a sessão do cookie (neste aparelho) e apaga o cookie. Sem sessão, não é erro."""
+    recusar_pedido_de_fora(request)
+    token = token_do_cookie(request)
+    if token:
+        with obter_engine().begin() as conexao:
+            sessoes.encerrar(conexao, token)
+    tirar_o_cookie(response)
+
+
+class EncerradasV1(BaseModel):
+    encerradas: int  # quantas sessões estavam abertas (este aparelho e os outros)
+
+
+@router.post("/sair-de-todos")
+def sair_de_todos(
+    response: Response, conta: Annotated[Usuario, Depends(conta_sem_o_aceite)]
+) -> EncerradasV1:
+    """Encerra as sessões da conta em todos os aparelhos (a pessoa perdeu um celular, por exemplo).
+
+    Vale mesmo sem os termos atuais aceitos: sair não depende de aceitar nada."""
+    with obter_engine().begin() as conexao:
+        quantas = sessoes.encerrar_todas(conexao, conta.id)
+    tirar_o_cookie(response)
+    return EncerradasV1(encerradas=quantas)
 
 
 @router.post("/aceite-dos-termos")

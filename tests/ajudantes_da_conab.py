@@ -21,14 +21,23 @@ ABAS_DE_AREA = {
 }
 
 
-def _cabecalho(safra: int, blocos: tuple[str, ...]) -> list[list]:
-    titulos = ["REGIÃO/UF"]
+def _cabecalho(
+    safra: int, blocos: tuple[str, ...], desenho: str = "atual"
+) -> list[list]:
+    """`desenho` "com_letras": o das planilhas antigas da CONAB, com "(a)" e "(b)" junto do ano e a linha das
+    letras em branco; "canto_solto": como o atual, mas a célula REGIÃO/UF trazia um número (85)."""
+    antigo = desenho == "com_letras"
+    titulos = ["REGIÃO/UF" if desenho != "canto_solto" else 85]
     anos = [""]
     letras = [""]
     for bloco in blocos:
         titulos += [bloco, "", ""]
-        anos += [f"Safra {safra - 1}", f"Safra {safra}", "VAR. % "]
-        letras += [" (a)", "(b)", "(b/a)"]
+        if antigo:
+            anos += [f"Safra {safra - 1} (a)", f"Safra {safra} (b)", "VAR. % (b/a)"]
+            letras += ["", "", ""]
+        else:
+            anos += [f"Safra {safra - 1}", f"Safra {safra}", "VAR. % "]
+            letras += [" (a)", "(b)", "(b/a)"]
     return [[""] * len(titulos)] * 3 + [titulos, anos, letras]
 
 
@@ -36,7 +45,9 @@ def _linha(rotulo: str, valores: list) -> list:
     return [rotulo, *[x for v in valores for x in (v * 0.9, v, 11.1)]]
 
 
-def _aba_de_producao(safra: int, tipo: str, fator: float) -> list[list]:
+def _aba_de_producao(
+    safra: int, tipo: str, fator: float, desenho: str = "atual"
+) -> list[list]:
     linhas = _cabecalho(
         safra,
         (
@@ -44,6 +55,7 @@ def _aba_de_producao(safra: int, tipo: str, fator: float) -> list[list]:
             "PRODUTIVIDADE (sc/ha)",
             "PRODUÇÃO (mil sacas beneficiadas)",
         ),
+        desenho,
     )
     mg, es = 100000 * fator, 20000 * fator
     linhas += [
@@ -58,9 +70,13 @@ def _aba_de_producao(safra: int, tipo: str, fator: float) -> list[list]:
     return linhas
 
 
-def _aba_de_area(safra: int, tipo: str, fator: float) -> list[list]:
+def _aba_de_area(
+    safra: int, tipo: str, fator: float, desenho: str = "atual"
+) -> list[list]:
     linhas = _cabecalho(
-        safra, ("ÁREA EM FORMAÇÃO (ha)", "ÁREA EM PRODUÇÃO (ha)", "ÁREA TOTAL (ha)")
+        safra,
+        ("ÁREA EM FORMAÇÃO (ha)", "ÁREA EM PRODUÇÃO (ha)", "ÁREA TOTAL (ha)"),
+        desenho,
     )
     linhas += [
         _linha("MG", [8000.0 * fator, 100000.0 * fator, 108000.0 * fator]),
@@ -70,8 +86,10 @@ def _aba_de_area(safra: int, tipo: str, fator: float) -> list[list]:
     return linhas
 
 
-def planilha(safra: int = 2026, fator_do_arabica: float = 1.0) -> bytes:
-    """Um levantamento com as safras `safra - 1` (coluna a) e `safra` (coluna b)."""
+def planilha(
+    safra: int = 2026, fator_do_arabica: float = 1.0, desenho: str = "atual"
+) -> bytes:
+    """Um levantamento com as safras `safra - 1` (coluna a) e `safra` (coluna b), no `desenho` dado."""
     livro = Workbook()
     livro.remove(livro.active)
     for nome, tipo in ABAS_DE_PRODUCAO.items():
@@ -79,14 +97,14 @@ def planilha(safra: int = 2026, fator_do_arabica: float = 1.0) -> bytes:
             fator_do_arabica if tipo == "arabica" else 0.3 if tipo == "conilon" else 1.3
         )
         aba = livro.create_sheet(nome)
-        for linha in _aba_de_producao(safra, tipo, fator):
+        for linha in _aba_de_producao(safra, tipo, fator, desenho):
             aba.append(linha)
     for nome, tipo in ABAS_DE_AREA.items():
         fator = (
             fator_do_arabica if tipo == "arabica" else 0.3 if tipo == "conilon" else 1.3
         )
         aba = livro.create_sheet(nome)
-        for linha in _aba_de_area(safra, tipo, fator):
+        for linha in _aba_de_area(safra, tipo, fator, desenho):
             aba.append(linha)
     livro.create_sheet("10 % Colheita").append(["não é para ler"])
     saida = io.BytesIO()

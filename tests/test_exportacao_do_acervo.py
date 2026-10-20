@@ -28,7 +28,11 @@ CURVA = SerieDoAcervo("tesouro-eua-10a", "10 anos", "fração ao ano", "diária"
 def pessoas(banco):
     with banco.begin() as c:
         chefe = entrar(
-            c, "chefe", "chefe@exemplo.com", emails_de_admin=("chefe@exemplo.com",)
+            c,
+            "chefe",
+            "chefe@exemplo.com",
+            emails_de_admin=("chefe@exemplo.com",),
+            email_confirmado=True,
         )[0]
         ana = entrar(c, "ana", "ana@exemplo.com")[0]
         for serie, valor in ((IPCA, 0.44), (IBOV, 130_000.0), (CURVA, 0.041)):

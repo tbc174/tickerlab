@@ -62,7 +62,7 @@ export const CONFIANCA: [string, string][] = [
   ],
   [
     "Privacidade",
-    "Login com o Google; você exporta ou apaga a sua conta quando quiser. O site não usa " +
+    "Login com o Google, com sessão de 30 dias; você exporta ou apaga a sua conta quando quiser. O site não usa " +
       "Google Fonts nem ferramentas de rastreamento.",
   ],
   [
@@ -91,7 +91,8 @@ export const PERGUNTAS: [string, string][] = [
   [
     "O que fica guardado sobre mim?",
     "Seu perfil do Google (nome, e-mail), preferências, favoritos, simulações salvas e o " +
-      "registro dos relatórios gerados (não o PDF). Detalhes na Política de privacidade.",
+      "registro dos relatórios gerados, com o PDF original por 1 ano (menos o de \"Minha carteira\", " +
+      "que nunca fica guardado). Detalhes na Política de privacidade.",
   ],
   [
     "Preciso pagar?",

@@ -13,14 +13,21 @@ from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.commodities import cftc_cot, comex_cafe, faostat_cafe, usda_psd
 from base.contrapartes import cafe as contrapartes_cafe
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
+from base.dmpl import FORMATO_DMPL
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
 from base.setoriais import anac as setoriais_anac
 from base.setoriais import anatel as setoriais_anatel
 from base.setoriais import aneel as setoriais_aneel
 from base.setoriais import anp as setoriais_anp
+from base.setoriais import anp_concessionarios as setoriais_anp_concessionarios
 from base.setoriais import ans as setoriais_ans
+from base.setoriais import antt_siade as setoriais_antt_siade
+from base.setoriais import ccee as setoriais_ccee
+from base.setoriais import comex_preco_medio as setoriais_comex_preco_medio
 from base.setoriais import ons as setoriais_ons
+from base.setoriais import ons_capacidade as setoriais_ons_capacidade
+from base.setoriais import ons_restricao as setoriais_ons_restricao
 from base.setoriais import susep as setoriais_susep
 from src.banco.coletas import (
     A_CONFIRMAR,
@@ -94,6 +101,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
     tickers, emissores = _tickers_e_emissores_da_carga()
     return {
         "demonstracoes_como_era": list(COLUNAS_DA_BASE),
+        "dmpl_como_era": list(FORMATO_DMPL.colunas_da_base),
         "achados_de_qualidade": [c.name for c in achados_de_qualidade.columns],
         "cadastro_das_companhias": list(cadastro.columns),
         "rotulos_atraso": [*rotulo.COLUNAS, "montado_em", "versao_do_codigo"],
@@ -107,6 +115,12 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "faostat_cafe": list(faostat_cafe.COLUNAS),
         "comex_cafe": list(comex_cafe.COLUNAS),
         "ons_geracao": list(setoriais_ons.COLUNAS),
+        "ccee_pld": list(setoriais_ccee.COLUNAS),
+        "ons_restricao": [*setoriais_ons_restricao.COLUNAS, "visto_em"],
+        "ons_capacidade": [*setoriais_ons_capacidade.COLUNAS, "visto_em"],
+        "anp_concessionarios": [*setoriais_anp_concessionarios.COLUNAS, "visto_em"],
+        "antt_siade": [*setoriais_antt_siade.COLUNAS, "visto_em"],
+        "comex_preco_medio": [*setoriais_comex_preco_medio.COLUNAS, "visto_em"],
         "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),
         "amostra_painel": [
             *amostra_universo.COLUNAS,
@@ -366,10 +380,13 @@ def test_contrato_comeca_na_versao_1():
     (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA), e
     `debentures_assembleias` 2.0.0 (17/10/2026), a chave passou a ser o `link` (a CVM põe vários
     arquivos numa entrega e, de 2003 a 2015, não dá a versão), e `cnpj_situacao_especial` 2.0.0
-    (17/10/2026), o `publico_em` passou do mês do arquivo para `disponivel_em`."""
+    (17/10/2026), o `publico_em` passou do mês do arquivo para `disponivel_em`, e
+    `demonstracoes_como_era` 2.0.0 (19/10/2026, série T1), a tabela ganhou a DFC, a DVA e a DRA
+    (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
     assert maiores.pop("cnpj_situacao_especial") == "2"
+    assert maiores.pop("demonstracoes_como_era") == "2"
     assert set(maiores.values()) == {"1"}

@@ -33,6 +33,12 @@ TEXTOS = (
 )  # fmt: skip
 
 
+def ler_original_em_parquet(conteudo_do_parquet: bytes) -> pd.DataFrame:
+    """O original em Parquet que o ONS entrega (bytes do acervo), como veio; as outras tabelas do ONS
+    (restrição, capacidade) leem por aqui."""
+    return pd.read_parquet(io.BytesIO(conteudo_do_parquet))
+
+
 def ler(conteudo_do_parquet: bytes) -> pd.DataFrame:
     """Um arquivo de geração do ONS (anual ou mensal), com `disponivel_em`."""
     tabela = pd.read_parquet(io.BytesIO(conteudo_do_parquet)).rename(columns=NOMES)

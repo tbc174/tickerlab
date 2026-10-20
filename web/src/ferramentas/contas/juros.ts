@@ -53,10 +53,15 @@ export function taxaEquivalente(taxa: number, deMeses: number, paraMeses: number
   return (1 + taxa) ** (paraMeses / deMeses) - 1;
 }
 
-/** A taxa ao mês, a partir de uma taxa "ao mês" ou "ao ano". */
-export function taxaPorMes(taxa: number, unidade: Unidade): number {
+/** A taxa ao mês, a partir de uma taxa "ao mês" ou "ao ano". "Ao ano" vira a taxa equivalente nos
+ * juros compostos e a proporcional (taxa ÷ 12) nos simples. */
+export function taxaPorMes(taxa: number, unidade: Unidade, composto = true): number {
   if (unidade === "mes") return taxa;
-  if (unidade === "ano") return taxaEquivalente(taxa, 12, 1);
+  if (unidade === "ano") {
+    if (composto) return taxaEquivalente(taxa, 12, 1);
+    if (taxa <= -1) throw new RangeError("A taxa precisa ser maior que -100%.");
+    return taxa / 12;
+  }
   throw new RangeError('A unidade da taxa precisa ser "mes" ou "ano".');
 }
 

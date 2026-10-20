@@ -172,7 +172,7 @@ def test_cnpj_sem_token_e_falha():
 def test_catalogo_tem_ids_unicos_e_grupos_conhecidos():
     ids = [f.id for f in fontes.FONTES]
     assert len(ids) == len(set(ids))
-    assert {f.grupo for f in fontes.FONTES} <= {"diaria", "semanal", "mensal"}
+    assert {f.grupo for f in fontes.FONTES} <= {*fontes.GRUPOS, "carga-unica"}
     pesadas = {f.id for f in fontes.FONTES if f.pesada}
     assert {"rfb-cnpj", "pgfn-divida"} <= pesadas
     vigias = {f.id for f in fontes.FONTES if f.vigia}
@@ -393,23 +393,33 @@ def test_meses_recentes_do_fidc_e_do_cda_todo_dia():
     assert (fidc.grupo, cda.grupo) == ("diaria", "diaria")
     assert not (fidc.pesada or cda.pesada)  # a CVM regrava sem mudar os cabeçalhos
     alvos_fidc = fidc.descobrir(None, agora)  # type: ignore[arg-type]
-    assert [a.url.rsplit("_", 1)[-1] for a in alvos_fidc] == [
-        "202606.zip",
-        "202607.zip",
-        "202608.zip",
-        "202609.zip",
-    ]
+    assert (
+        [a.url.rsplit("_", 1)[-1] for a in alvos_fidc]
+        == [
+            "202606.zip",
+            "202607.zip",
+            "202608.zip",
+            "202609.zip",
+            "202610.zip",  # o mês corrente: o 404 dele registra o "não encontrado" (visto_em)
+        ]
+    )
     assert alvos_fidc[0].url.startswith(
         "https://dados.cvm.gov.br/dados/FIDC/DOC/INF_MENSAL/DADOS/inf_mensal_fidc_"
     )
     assert all(a.obter is not None for a in alvos_fidc)  # 404 vira "nao_encontrado"
     alvos_cda = cda.descobrir(None, agora)  # type: ignore[arg-type]
     assert [a.url.rsplit("/", 1)[-1] for a in alvos_cda] == [
-        f"cda_fi_2026{m:02d}.zip" for m in range(5, 10)
+        f"cda_fi_2026{m:02d}.zip" for m in range(5, 11)
     ]
     # virada do ano, no fuso de São Paulo (1º/01 às 01h UTC ainda é 31/12)
     janeiro = fidc.descobrir(None, datetime(2027, 1, 1, 1, 0, tzinfo=UTC))  # type: ignore[arg-type]
-    assert [a.url[-10:-4] for a in janeiro] == ["202608", "202609", "202610", "202611"]
+    assert [a.url[-10:-4] for a in janeiro] == [
+        "202608",
+        "202609",
+        "202610",
+        "202611",
+        "202612",
+    ]
 
 
 def test_clima_do_cafe_inmet_por_ano_chirps_por_mes_e_malha_por_uf():
@@ -453,3 +463,19 @@ def test_mapbiomas_cafe_e_um_zip_pesado_no_google_drive_atras_da_confirmacao():
     (alvo,) = fonte.descobrir(None, datetime(2026, 10, 18, tzinfo=UTC))  # type: ignore[arg-type]
     assert alvo.url.startswith("https://drive.google.com/uc?id=")
     assert alvo.extensao == ".zip" and alvo.obter is not None
+
+
+def test_chirps_historico_e_a_carga_unica_de_1991_ate_antes_dos_meses_recentes():
+    """Item 10 do café: a normal 1991–2020 pede 30 anos de GeoTIFFs. A fonte `chirps-historico` fica
+    fora dos grupos do cron (só roda pelo id, uma vez) e termina onde `chirps-mensal` começa."""
+    agora = datetime(2026, 10, 18, 12, tzinfo=UTC)
+    historico = fontes.POR_ID["chirps-historico"]
+    assert historico.pesada and historico.grupo not in fontes.GRUPOS
+    assert all(f.id != "chirps-historico" for g in fontes.GRUPOS for f in fontes.FONTES if f.grupo == g)  # fmt: skip
+    meses = historico.descobrir(None, agora)  # type: ignore[arg-type]
+    nomes = [a.url.rsplit("/", 1)[-1] for a in meses]
+    assert nomes[0] == "chirps-v2.0.1991.01.tif.gz" and nomes[-1] == "chirps-v2.0.2026.06.tif.gz"  # fmt: skip
+    assert len(nomes) == len(set(nomes)) == (2026 - 1991) * 12 + 6
+    recentes = {a.url for a in fontes.POR_ID["chirps-mensal"].descobrir(None, agora)}  # type: ignore[arg-type]
+    assert recentes.isdisjoint(a.url for a in meses)
+    assert all(a.obter is not None and a.extensao == ".tif.gz" for a in meses)

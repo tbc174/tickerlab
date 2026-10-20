@@ -5,7 +5,8 @@ faltar), cada linha de tabela, parágrafo e ponto também ganha id, e as lacunas
 linhas próprias: o modelo cita o que falta do mesmo jeito que cita um número. A porta 1 confere a
 análise contra estas linhas, e o hash diz se a análise guardada ainda vale para a ficha de agora.
 
-Fora da entrada: a seção de valuation e o preço da ação (uso interno, sem licença para publicar).
+Fora da entrada: a seção de valuation, o dividend yield e o preço da ação (a D3 mudada em 20/10/2026
+liberou o preço do Yahoo na tela e no PDF da ficha, não no texto publicado da análise).
 """
 
 import hashlib
@@ -16,7 +17,13 @@ from typing import Any
 
 from base import dossie as dossie_da_base
 from src.analise_escrita import numeros
-from src.relatorio_empresa import Relatorio, nome_da_tabela
+from src.relatorio_empresa import (
+    COMO_SAI_O_DY,
+    FONTE_DOS_MULTIPLOS,
+    Relatorio,
+    nome_da_tabela,
+)
+from src.rotulos_ia import mascarar_pessoas
 from src.setores import grupo_do_setor
 
 VERSAO = 1
@@ -69,10 +76,16 @@ def _linha_do_item(secao: str, item: dict[str, Any]) -> dict[str, Any]:
     return {"id": f"{secao}.{item['chave']}", "tipo": "numero", **_sem_vazios(campos)}
 
 
+def _usa_o_preco(item: dict[str, Any]) -> bool:
+    """O número sai do preço da ação (o DY, fora da seção de valuation)."""
+    return item.get("fonte") == FONTE_DOS_MULTIPLOS
+
+
 def _linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
     chave = secao["chave"]
     for item in secao["itens"]:
-        yield {"secao": chave, **_linha_do_item(chave, item)}
+        if not _usa_o_preco(item):
+            yield {"secao": chave, **_linha_do_item(chave, item)}
     for tabela, linhas in secao["tabelas"].items():
         for i, celulas in enumerate(linhas):
             yield {
@@ -83,7 +96,7 @@ def _linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
                 "celulas": celulas,
             }
     for i, texto in enumerate(secao["paragrafos"]):
-        if TRECHO_DO_PRECO not in texto:
+        if TRECHO_DO_PRECO not in texto and texto != COMO_SAI_O_DY:
             linha = {
                 "id": f"{chave}.paragrafos.{i}",
                 "tipo": "paragrafo",
@@ -201,7 +214,20 @@ def entrada_da_ficha(
         "obrigatorias": _obrigatorias(linhas),
     }
     dossie_da_base.conferir_sem_pessoas(entrada, set(pessoas))
+    conferir_sem_nome_com_cargo(entrada)
     return entrada
+
+
+def conferir_sem_nome_com_cargo(entrada: dict[str, Any]) -> None:
+    """D4 (parecer de privacidade, ADR 0088): nome de pessoa escrito junto de um cargo não vai à API.
+
+    A lista de pessoas da base só pega o texto que é exatamente um nome; esta trava pega o nome dentro
+    da frase ("CFO Maria Souza"), com a mesma heurística da rotulagem. Barra em vez de mascarar: a
+    entrada tem hash e o app a remonta para conferir.
+    """
+    for texto in _textos(entrada):
+        if mascarar_pessoas(texto) != texto:
+            raise PessoaNaEntradaError("nome de pessoa junto de um cargo na entrada")
 
 
 def hash_da_entrada(entrada: dict[str, Any]) -> str:

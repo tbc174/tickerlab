@@ -21,6 +21,25 @@ class Atualizacao:
 
 ATUALIZACOES: tuple[Atualizacao, ...] = (
     Atualizacao(
+        data=date(2026, 10, 19),
+        titulo="Busca por CNPJ, login que dura 30 dias e termos de uso atualizados",
+        resumo=(
+            "Uma página nova para começar a pesquisa pelo CNPJ da empresa, um login que não pede "
+            "para entrar toda hora e os textos legais revistos."
+        ),
+        novidades=(
+            (
+                "Busca por CNPJ: digite o CNPJ de uma companhia aberta e veja de que grupo ela faz "
+                "parte e os fatos públicos, com a data e a fonte de cada linha."
+            ),
+            "O login com o Google agora mantém a sua sessão por 30 dias.",
+            (
+                "Termos de uso e Política de privacidade atualizados para refletir o que o produto "
+                "faz hoje."
+            ),
+        ),
+    ),
+    Atualizacao(
         data=date(2026, 10, 14),
         titulo="Relatório da empresa mais claro e números conferidos com o PDF da CVM",
         resumo=(

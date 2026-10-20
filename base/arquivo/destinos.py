@@ -56,8 +56,8 @@ _B3_BDI_CONTRA_OS_TERMOS = (
 
 DESTINOS: dict[str, Destino] = {
     # CVM
-    "cvm-hist-dfp": _tabela("demonstracoes_como_era"),
-    "cvm-hist-itr": _tabela("demonstracoes_como_era"),
+    "cvm-hist-dfp": _tabela("demonstracoes_como_era", "dmpl_como_era"),
+    "cvm-hist-itr": _tabela("demonstracoes_como_era", "dmpl_como_era"),
     "cvm-hist-fre": _tabela(
         "fre_comites",
         "fre_conselho",
@@ -114,17 +114,11 @@ DESTINOS: dict[str, Destino] = {
     # setoriais
     "anp-vendas-distribuidora": _tabela("anp_vendas"),
     "anp-producao-poco": _planejada("serie-5/PR3", "produção por poço, com o operador"),
-    "anp-concessionarios": _planejada(
-        "serie-T/T8", "quem opera cada bloco e campo; liga a produção à empresa"
-    ),
+    "anp-concessionarios": _tabela("anp_concessionarios"),
     "ons-geracao-usina": _tabela("ons_geracao"),
-    "ons-capacidade-geracao": _planejada(
-        "serie-T/T6", _SO_LIGA_HOJE + " (capacidade por usina)"
-    ),
-    "ons-restricao-eolica-solar": _planejada(
-        "serie-T/T6", "corte de geração (curtailment) por usina"
-    ),
-    "ccee-pld": _planejada("serie-T/T6", "PLD horário, diário e mensal por submercado"),
+    "ons-capacidade-geracao": _tabela("ons_capacidade"),
+    "ons-restricao-eolica-solar": _tabela("ons_restricao"),
+    "ccee-pld": _tabela("ccee_pld"),
     "aneel-samp": _tabela("aneel_samp"),
     "anatel-acessos": _tabela("anatel_acessos"),
     "anac-estatistico": _tabela("anac_estatistico"),
@@ -138,10 +132,8 @@ DESTINOS: dict[str, Destino] = {
         "serie-T/T9", _SO_LIGA_HOJE + " (entidades supervisionadas)"
     ),
     "antt-pedagio": _planejada("serie-5/PR1", "praças de pedágio e tráfego"),
-    "antt-siade": _planejada(
-        "serie-T/T8", _SO_LIGA_HOJE + " (desempenho por ferrovia)"
-    ),
-    "comexstat": _tabela("comex_cafe"),
+    "antt-siade": _tabela("antt_siade"),
+    "comexstat": _tabela("comex_cafe", "comex_preco_medio"),
     # governo, sanções e identificadores
     "cgu-ceis": _planejada("sinais/PR4", "sanções administrativas da CGU"),
     "cgu-cnep": _planejada("sinais/PR4", "sanções da Lei Anticorrupção"),
@@ -173,6 +165,7 @@ DESTINOS: dict[str, Destino] = {
     "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "conab-cafe-safra": _tabela("conab_cafe"),
+    "conab-cafe-publicacao": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
     "usda-psd-cafe": _tabela("usda_psd_cafe"),
     "faostat-cafe": _tabela("faostat_cafe"),
@@ -181,13 +174,22 @@ DESTINOS: dict[str, Destino] = {
         "balanço mundial do café a partir do relatório mensal da ICO em PDF; marca 'não comercial' "
         "registrada, coleta e uso citando a ICO e a data (ADR 0102)",
     ),
-    "cecafe-relatorio-mensal": _pesquisa(
-        "só pesquisa: o robots.txt de www.cecafe.com.br proíbe PDF (lido em 18/10/2026) e a "
-        "página de termos não traz texto; a coleta falha, sem baixar, até a Cecafé autorizar por escrito"
+    "fnc-estadisticas": _planejada(
+        "cafe/PR4",
+        "preço, área, produção e exportação de café da Colômbia nas planilhas da FNC; marca 'não "
+        "comercial' registrada (os termos vedam robô), coleta com ritmo e uso citando a FNC e a data "
+        "(ADR 0102)",
+    ),
+    "cecafe-relatorio-mensal": _planejada(
+        "cafe/PR6",
+        "exportações de café por tipo e destino no relatório mensal do Cecafé em PDF; marca 'não "
+        "comercial' registrada (o robots.txt veda PDF, lido em 18/10/2026 e vigiado), coleta com ritmo "
+        "e uso citando o Cecafé e a data (ADR 0102)",
     ),
     # clima por região cafeeira (plano do café, PR 8): `base/commodities/clima_regiao.py`
     "inmet-bdmep": _tabela("clima_regiao_cafe"),
     "chirps-mensal": _tabela("clima_regiao_cafe"),
+    "chirps-historico": _tabela("clima_regiao_cafe"),
     "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # área de café por município (plano do café, PR 8): `base/commodities/area_municipio.py`
     "mapbiomas-cafe": _tabela("area_cafe_municipio"),
