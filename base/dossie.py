@@ -34,6 +34,7 @@ import pandas as pd
 
 from base import concentracao
 from base import indicadores_de_caixa as t1
+from base.bcb_ifdata import DIAS_ATE_FICAR_PUBLICO, MESES_DA_DATA_BASE
 from base.cnpj import formatar, raiz
 from base.dicionario import TABELAS
 from base.rede.ligacoes_das_fontes import (
@@ -132,10 +133,26 @@ class SerieDaAgencia:
     medida: str  # o que o número é, escrito para a tela
     unidade: str
     # filtros de igualdade da porta: `(coluna, valor)` ou `(coluna, (valores aceitos))`
-    filtros: tuple[tuple[str, str | tuple[str, ...]], ...] = ()
+    filtros: tuple[tuple[str, str | int | tuple[str, ...]], ...] = ()
     chave_em_digitos: bool = False  # CNPJ: casa formatado ou não
     grupo: str | None = (
         None  # a coluna do grupo econômico, quando a agência o informa (molde D)
+    )
+    data: str = (
+        "competencia"  # a coluna da data (o IF.data usa a data-base do trimestre)
+    )
+    meses_por_periodo: int = (
+        1  # quantos meses cada data vale: 4 datas-base trimestrais fazem o ano
+    )
+    como_era: bool = (
+        False  # a tabela diz quando o número ficou público: a noite lê o que era no dia
+    )
+    ligacao: str = "empresa_serie"  # a tabela que liga a entidade à companhia aberta
+    chave_e_o_grupo: bool = (
+        False  # a entidade já é o grupo (o conglomerado prudencial do BC)
+    )
+    abertura: str | None = (
+        None  # a coluna que abre o número de cada entidade (a modalidade)
     )
 
 
@@ -220,7 +237,92 @@ SERIES_DAS_AGENCIAS = (
 )
 
 
-_SERIE_POR_NOME = {serie.nome: serie for serie in SERIES_DAS_AGENCIAS}
+FONTE_DO_IFDATA = "bcb-ifdata"
+CONGLOMERADO_PRUDENCIAL = 1  # o tipo 1 do IF.data: a base do REB do Banco Central
+RESUMO, CARTEIRA_PF, CARTEIRA_PJ = (
+    1,
+    11,
+    13,
+)  # relatórios do IF.data (os de modalidade, desde 2025)
+# os nomes do relatório 1 no acervo (201403 a 202606); a carteira mudou de nome com a contabilidade
+# de 2025 (Resolução CMN 4.966): "Classificada" até 2024, sem o adjetivo desde então
+CARTEIRA_DE_CREDITO = ("Carteira de Crédito Classificada", "Carteira de Crédito")
+
+
+def _do_ifdata(
+    nome: str,
+    medida: str,
+    coluna: str | tuple[str, ...],
+    unidade: str = "R$",
+    relatorio: int = RESUMO,
+    abertura: str | None = None,
+) -> SerieDaAgencia:
+    """Uma série do conglomerado prudencial no IF.data: o estoque da última data-base de cada ano,
+    lido como era público no dia (a data-base sai 120 dias depois)."""
+    return SerieDaAgencia(
+        nome,
+        FONTE_DO_IFDATA,
+        "ifdata_valores",
+        "cod_inst",
+        "saldo",
+        ULTIMO_MES,
+        medida,
+        unidade,
+        (
+            ("tipo_instituicao", CONGLOMERADO_PRUDENCIAL),
+            ("relatorio", relatorio),
+            ("coluna", (coluna,) if isinstance(coluna, str) else coluna),
+        ),
+        data="data_base",
+        meses_por_periodo=MESES_NO_ANO // len(MESES_DA_DATA_BASE),
+        como_era=True,
+        ligacao="ligacao_dos_bancos",
+        chave_e_o_grupo=True,
+        abertura=abertura,
+    )
+
+
+# fora de `SERIES_DAS_AGENCIAS`: só o relatório do setor (molde D) as lê; a ficha da empresa, não
+SERIES_DOS_BANCOS = (
+    _do_ifdata(
+        "bcb_ativo_total",
+        "Ativo total dos conglomerados prudenciais (Banco Central)",
+        "Ativo Total",
+    ),
+    _do_ifdata(
+        "bcb_carteira_de_credito",
+        "Carteira de crédito dos conglomerados prudenciais (Banco Central)",
+        CARTEIRA_DE_CREDITO,
+    ),
+    _do_ifdata(
+        "bcb_captacoes",
+        "Captações dos conglomerados prudenciais (Banco Central)",
+        "Captações",
+    ),
+    _do_ifdata(
+        "bcb_indice_de_basileia",
+        "Índice de Basileia do conglomerado prudencial (Banco Central)",
+        "Índice de Basileia",
+        unidade="fração",
+    ),
+    _do_ifdata(
+        "bcb_carteira_pf_por_modalidade",
+        "Carteira de crédito a pessoas físicas, por modalidade (Banco Central)",
+        "Total",
+        relatorio=CARTEIRA_PF,
+        abertura="grupo",
+    ),
+    _do_ifdata(
+        "bcb_carteira_pj_por_modalidade",
+        "Carteira de crédito a pessoas jurídicas, por modalidade (Banco Central)",
+        "Total",
+        relatorio=CARTEIRA_PJ,
+        abertura="grupo",
+    ),
+)
+_SERIE_POR_NOME = {
+    serie.nome: serie for serie in (*SERIES_DAS_AGENCIAS, *SERIES_DOS_BANCOS)
+}
 
 
 @dataclass(frozen=True)
@@ -236,14 +338,33 @@ class SetorDoLancamento:
     agencia: str  # para o motivo de cada membro ("ligada à ANS por 2 entidades")
     series: tuple[str, ...]  # `SerieDaAgencia.nome`: a base da concentração
     mercado_regional: bool = False  # competem por região: o total nacional mede escala
+    # números de cada membro mostrados lado a lado, sem concentração (Basileia não se soma)
+    lado_a_lado: tuple[str, ...] = ()
+    contracao: str = "à"  # "ligada à ANS", "ligada ao Banco Central"
 
     @property
     def fontes_b13(self) -> tuple[str, ...]:
         return tuple(dict.fromkeys(_SERIE_POR_NOME[n].fonte_b13 for n in self.series))
 
+    @property
+    def todas_as_series(self) -> tuple[str, ...]:
+        return (*self.series, *self.lado_a_lado)
+
 
 SETORES_DO_LANCAMENTO = (
     SetorDoLancamento("eletricas", "Elétricas", "ANEEL", ("aneel_consumidores",)),
+    SetorDoLancamento(
+        "bancos",
+        "Bancos",
+        "Banco Central",
+        ("bcb_ativo_total", "bcb_carteira_de_credito", "bcb_captacoes"),
+        lado_a_lado=(
+            "bcb_indice_de_basileia",
+            "bcb_carteira_pf_por_modalidade",
+            "bcb_carteira_pj_por_modalidade",
+        ),
+        contracao="ao",
+    ),
     SetorDoLancamento("seguros", "Seguros", "SUSEP", ("susep_premio_ganho",)),
     SetorDoLancamento(
         "saude_suplementar",
@@ -264,10 +385,12 @@ SETORES_DO_LANCAMENTO = (
 
 
 def fontes_do_setor(nomes_das_series: Iterable[str]) -> list[str]:
-    """As licenças do setor regulado: a ligação empresa ↔ série e só as agências das séries dadas."""
+    """As licenças do setor regulado: só as agências das séries dadas e a tabela que liga cada uma à
+    companhia (a empresa ↔ série; a `ligacao_dos_bancos` no IF.data)."""
     nomes = set(nomes_das_series)
-    tabelas = [serie.tabela for serie in SERIES_DAS_AGENCIAS if serie.nome in nomes]
-    return fontes_das_tabelas(("empresa_serie", *tabelas))
+    series = [serie for serie in _SERIE_POR_NOME.values() if serie.nome in nomes]
+    tabelas = dict.fromkeys(t for s in series for t in (s.ligacao, s.tabela))
+    return fontes_das_tabelas(tabelas or ("empresa_serie",))
 
 
 @dataclass(frozen=True)
@@ -333,9 +456,13 @@ SECOES = (
         (
             "empresa_serie",
             *dict.fromkeys(
-                _SERIE_POR_NOME[nome].tabela
+                tabela
                 for setor in SETORES_DO_LANCAMENTO
-                for nome in setor.series
+                for nome in setor.todas_as_series
+                for tabela in (
+                    _SERIE_POR_NOME[nome].ligacao,
+                    _SERIE_POR_NOME[nome].tabela,
+                )
             ),
         ),
     ),
@@ -415,7 +542,20 @@ LIMITES = {
         "2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é "
         "o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está "
         "ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria "
-        "entidade. A variação do HHI só compara dois anos seguidos e completos."
+        "entidade. A variação do HHI só compara dois anos seguidos e completos. "
+        "Bancos: o IF.data do Banco Central, com todas as instituições do sistema financeiro e cada "
+        "conglomerado prudencial como um participante (o BC já junta as instituições do grupo; a "
+        "companhia aberta se liga ao conglomerado pela base), a mesma base do Relatório de Economia "
+        "Bancária (REB). O estoque é o da última data-base do ano (são 4 por ano), que sai 120 dias "
+        "depois dela. A carteira de crédito é a carteira classificada (desde 2025, a carteira de "
+        "crédito da contabilidade nova) e o REB usa a carteira ativa: a participação de cada banco "
+        "muda um pouco, mas a CR4 de crédito fica perto da publicada (2022: 58,7% contra 58,6%; "
+        "2023: 57,8% contra 57,8%; 2024: 57,3% contra 57,9%). O ativo é o total (o REB tira as "
+        "aplicações interfinanceiras) e as captações são mais largas que os depósitos do REB. O REB "
+        "mede com a régua do BC (o HHI normalizado); aqui, com a do CADE. Quando o BC revisa uma "
+        "data-base, vale a revisão, com a data da primeira publicação: a base não guarda o dia da "
+        "revisão. Basileia e carteira por modalidade são de cada conglomerado, sem somar; a carteira "
+        "por modalidade só existe desde 2025."
     ),
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
@@ -1611,22 +1751,29 @@ def secao_credito(
 # --- setor regulado ------------------------------------------------------------------------------
 
 
-def serie_anual(tabela: pd.DataFrame, modo: str) -> pd.DataFrame:
-    """De (competencia, chave, valor) por mês para (ano, chave, valor) por ano.
+def serie_anual(
+    tabela: pd.DataFrame, modo: str, meses_por_periodo: int = 1
+) -> pd.DataFrame:
+    """De (competencia, chave, valor) por mês para (ano, chave, valor) por ano; a coluna `abertura`
+    (a modalidade), quando vem, continua separada.
 
     `SOMA_DO_ANO` soma os meses (passageiros, prêmios); `ULTIMO_MES` fica com o último mês que a fonte
-    tem em cada ano (consumidores, acessos: um estoque, que não se soma).
+    tem em cada ano (consumidores, acessos: um estoque, que não se soma). `meses_por_periodo`: quanto
+    cada data vale (a data-base trimestral do IF.data vale 3, e as 4 do ano fazem o ano completo).
     """
     ano = tabela["competencia"].dt.year
     # quantos meses a fonte tem em cada ano e qual o último: o ano corrente ainda está pela metade
     meses = tabela.groupby(ano)["competencia"].agg(meses="nunique", ultimo_mes="max")
+    meses["meses"] *= meses_por_periodo
     if modo == ULTIMO_MES:
         ultimo = tabela.groupby(ano)["competencia"].transform("max")
         tabela, ano = (
             tabela[tabela["competencia"] == ultimo],
             ano[tabela["competencia"] == ultimo],
         )
-    somada = tabela.groupby([ano.rename("ano"), "chave"])["valor"].sum().reset_index()
+    abertura = ["abertura"] if "abertura" in tabela.columns else []
+    por = [ano.rename("ano"), "chave", *abertura]
+    somada = tabela.groupby(por)["valor"].sum().reset_index()
     return somada.merge(meses.rename_axis("ano").reset_index(), on="ano")
 
 
@@ -1737,6 +1884,54 @@ def _ligacoes_principais(
     )
 
 
+COLUNAS_DA_B13 = (
+    "fonte",
+    "chave",
+    "nome",
+    "cnpj_companhia",
+    "via",
+    "principal",
+    "desde",
+)
+
+
+def ligacoes_dos_bancos(
+    ligacao: pd.DataFrame, chaves: set[str], hoje: pd.Timestamp
+) -> pd.DataFrame:
+    """A `ligacao_dos_bancos` no formato da tabela empresa ↔ série (B13), para o setor dos bancos.
+
+    Só os conglomerados das séries (`chaves`: o mesmo banco no tipo 2 não conta duas vezes), ligados
+    à companhia aberta pela data-base mais nova já pública no dia; `desde` é a 1ª data-base da ligação.
+    Como na B13, a estrutura de hoje vale também nos anos passados.
+    """
+    if ligacao.empty:
+        return pd.DataFrame(columns=list(COLUNAS_DA_B13))
+    ligacao = ligacao.assign(
+        cod_inst=ligacao["cod_inst"].astype(str).str.strip(),
+        cnpj=ligacao["cnpj"].fillna("").astype(str).str.strip(),
+    )
+    publica = pd.to_datetime(ligacao["data_base"]) + pd.Timedelta(
+        days=DIAS_ATE_FICAR_PUBLICO
+    )
+    ligacao = ligacao[(publica <= hoje) & ligacao["cod_inst"].isin(chaves)]
+    ultima = ligacao.sort_values("data_base").drop_duplicates("cod_inst", keep="last")
+    ligadas = ultima[ultima["cnpj"] != ""]
+    desde = ligacao.groupby(["cod_inst", "cnpj"])["data_base"].min().rename("desde")
+    ligadas = ligadas.join(desde, on=["cod_inst", "cnpj"])
+    return pd.DataFrame(
+        {
+            "fonte": FONTE_DO_IFDATA,
+            "chave": ligadas["cod_inst"],
+            "nome": ligadas["instituicao"],
+            "cnpj_companhia": digitos(ligadas["cnpj"]),
+            "via": ligadas["ligado_por"],
+            "principal": True,
+            "desde": pd.to_datetime(ligadas["desde"]),
+        },
+        columns=list(COLUNAS_DA_B13),
+    ).reset_index(drop=True)
+
+
 def membros_do_setor(
     setor: SetorDoLancamento, empresas: pd.DataFrame, empresa_serie: pd.DataFrame
 ) -> pd.DataFrame:
@@ -1748,7 +1943,8 @@ def membros_do_setor(
     entidades = ligacoes.groupby("cnpj")["chave"].nunique()
     membros = empresas[empresas["cnpj"].isin(entidades.index)]
     motivo = [
-        f"ligada à {setor.agencia} por {n} {'entidade' if n == 1 else 'entidades'}"
+        f"ligada {setor.contracao} {setor.agencia} por {n} "
+        f"{'entidade' if n == 1 else 'entidades'}"
         for n in membros["cnpj"].map(entidades)
     ]
     return (
@@ -1814,10 +2010,13 @@ def participantes(
     grupos: pd.DataFrame | None,
 ) -> pd.DataFrame:
     """De (ano, chave, valor, meses, ultimo_mes) por entidade para (ano, participante, por, valor,
-    meses, ultimo_mes): o grupo da agência, senão a companhia aberta, senão a própria entidade."""
+    meses, ultimo_mes): o grupo da agência, senão a companhia aberta, senão a própria entidade. No
+    IF.data a entidade já é o grupo (o conglomerado prudencial): cada uma é um participante."""
     dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
     companhia = dados["chave"].map(_companhia_de_cada_entidade(serie, empresa_serie))
-    grupo = _grupo_da_agencia(dados, grupos)
+    grupo = (
+        dados["chave"] if serie.chave_e_o_grupo else _grupo_da_agencia(dados, grupos)
+    )
     participante = ("entidade:" + dados["chave"]).mask(
         companhia.notna(), "companhia:" + companhia.astype(str)
     )
@@ -1900,6 +2099,55 @@ def _participacao_dos_membros(
     return pd.concat(partes, ignore_index=True)[colunas]
 
 
+def _lado_a_lado(
+    serie: SerieDaAgencia,
+    dados: pd.DataFrame,
+    membros: pd.DataFrame,
+    empresa_serie: pd.DataFrame,
+) -> pd.DataFrame:
+    """O número de cada membro por entidade e ano, sem somar as entidades (um índice não se soma) nem
+    dividir pelo mercado, nos últimos anos; a modalidade (`abertura`) continua separada."""
+    ligacoes = _ligacoes_principais(empresa_serie, (serie.fonte_b13,))
+    entidades = ligacoes.merge(membros[["cnpj", "empresa"]], on="cnpj")[
+        ["cnpj", "empresa", "chave", "nome"]
+    ].rename(columns={"nome": "entidade"})
+    tabela = dados.assign(chave=dados["chave"].astype(str).str.strip()).merge(
+        entidades, on="chave"
+    )
+    if tabela.empty:
+        return pd.DataFrame()
+    anos = sorted(tabela["ano"].unique(), reverse=True)[:ANOS_NAS_SERIES]
+    abertura = ["abertura"] if "abertura" in tabela.columns else []
+    colunas = ["cnpj", "empresa", "chave", "entidade", "ano", *abertura, "valor"]
+    return (
+        tabela[tabela["ano"].isin(anos)]
+        .assign(serie=serie.nome)[["serie", *colunas, "ultimo_mes"]]
+        .sort_values(
+            ["empresa", "ano", *abertura],
+            ascending=[True, False] + [True] * len(abertura),
+        )
+        .reset_index(drop=True)
+    )
+
+
+def _tabelas_lado_a_lado(
+    setor: SetorDoLancamento,
+    series: Mapping[str, pd.DataFrame],
+    membros: pd.DataFrame,
+    empresa_serie: pd.DataFrame,
+) -> dict[str, pd.DataFrame]:
+    """`lado_a_lado_<serie>` de cada série do lado a lado que tem número de algum membro."""
+    tabelas = {}
+    for nome in setor.lado_a_lado:
+        dados = series.get(nome)
+        if dados is None or dados.empty:
+            continue
+        tabela = _lado_a_lado(_SERIE_POR_NOME[nome], dados, membros, empresa_serie)
+        if not tabela.empty:
+            tabelas[f"lado_a_lado_{nome}"] = tabela
+    return tabelas
+
+
 def secao_setor(
     setor: SetorDoLancamento,
     membros: pd.DataFrame,
@@ -1945,6 +2193,9 @@ def secao_setor(
         return None
     tabelas["participacao_dos_membros"] = pd.concat(participacoes, ignore_index=True)
     tabelas["membros"] = membros
+    lado_a_lado = _tabelas_lado_a_lado(setor, series, membros, empresa_serie)
+    tabelas |= lado_a_lado
+    usadas += [nome.removeprefix("lado_a_lado_") for nome in lado_a_lado]
     paragrafos = [
         *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
         *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),

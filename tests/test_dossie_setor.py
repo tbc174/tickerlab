@@ -79,9 +79,13 @@ def _secao() -> dict:
 
 
 def test_setores_do_lancamento_usam_series_que_existem() -> None:
-    fontes = {s.nome: s.fonte_b13 for s in dossie.SERIES_DAS_AGENCIAS}
+    fontes = {
+        s.nome: s.fonte_b13
+        for s in (*dossie.SERIES_DAS_AGENCIAS, *dossie.SERIES_DOS_BANCOS)
+    }
     assert [s.chave for s in dossie.SETORES_DO_LANCAMENTO] == [
         "eletricas",
+        "bancos",
         "seguros",
         "saude_suplementar",
         "telecom",

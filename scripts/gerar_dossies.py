@@ -81,12 +81,17 @@ class Leitor:
         )
 
     def somar(
-        self, tabela: str, por: list[str], valor: str, filtros: Filtros
+        self,
+        tabela: str,
+        por: list[str],
+        valor: str,
+        filtros: Filtros,
+        como_era_em: pd.Timestamp | None = None,
     ) -> pd.DataFrame:
         """A soma de `valor` por `por`, feita na porta (série de milhões de linhas)."""
         if not self._existe(tabela):
             return VAZIA
-        return self.porta.somar(tabela, por, valor, filtros)
+        return self.porta.somar(tabela, por, valor, filtros, como_era_em=como_era_em)
 
     def tem_coluna(self, tabela: str, coluna: str) -> bool:
         """A tabela existe nesta base e tem a coluna (a da Anatel antiga não tem o grupo)."""
@@ -117,6 +122,8 @@ class Entradas:
     ratings: pd.DataFrame
     assembleias: pd.DataFrame  # debentures_assembleias
     series: dict[str, pd.DataFrame]
+    # a ligação dos bancos (IF.data) no formato da empresa_serie: só o setor dos bancos a usa
+    bancos: pd.DataFrame
     grupos: dict[
         str, pd.DataFrame
     ]  # (ano, chave, grupo) das séries cuja agência informa o grupo
@@ -198,30 +205,38 @@ def _pessoas(entidades: pd.DataFrame) -> set[str]:
     return {n for n in pessoas["nome"].dropna().map(dossie.normalizar_nome) if n}
 
 
-def ler_serie(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
-    """(ano, chave, valor) de todo o mercado de uma agência, já no modo da série.
+def ler_serie(
+    leitor: Leitor, serie: dossie.SerieDaAgencia, hoje: pd.Timestamp | None = None
+) -> pd.DataFrame:
+    """(ano, chave, valor) de todo o mercado de uma agência, já no modo da série (mais a `abertura`,
+    quando a série tem uma).
 
-    A porta soma por mês e chave como a fonte escreve; aqui a chave é limpa (o mesmo CNPJ formatado e
-    em dígitos vira um só) e somada de novo, o que dá o mesmo que limpar antes de somar.
+    A porta soma por data e chave como a fonte escreve; aqui a chave é limpa (o mesmo CNPJ formatado e
+    em dígitos vira um só) e somada de novo, o que dá o mesmo que limpar antes de somar. A série
+    `como_era` (o IF.data) é lida como era em `hoje`: a data-base ainda não pública fica de fora.
     """
+    abertura = [serie.abertura] if serie.abertura else []
     somada = leitor.somar(
         serie.tabela,
-        ["competencia", serie.chave],
+        [serie.data, serie.chave, *abertura],
         serie.valor,
         {coluna: valor for coluna, valor in serie.filtros},
+        como_era_em=hoje if serie.como_era else None,
     )
     if somada.empty:
         return VAZIA
     chave = somada[serie.chave].astype(str).str.strip()
     mensais = pd.DataFrame(
         {
-            "competencia": pd.to_datetime(somada["competencia"]),
+            "competencia": pd.to_datetime(somada[serie.data]),
             "chave": dossie.digitos(chave) if serie.chave_em_digitos else chave,
+            **({"abertura": somada[serie.abertura]} if serie.abertura else {}),
             "valor": somada[serie.valor],
         }
     )
-    mensais = mensais.groupby(["competencia", "chave"], as_index=False)["valor"].sum()
-    return dossie.serie_anual(mensais, serie.modo)
+    por = ["competencia", "chave", *(["abertura"] if serie.abertura else [])]
+    mensais = mensais.groupby(por, as_index=False)["valor"].sum()
+    return dossie.serie_anual(mensais, serie.modo, serie.meses_por_periodo)
 
 
 def ler_grupos(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
@@ -291,6 +306,29 @@ def _rede(
     return dossie.preparar_rede(ligacoes, entidades, identificadores, controladas, hoje)
 
 
+COLUNAS_DA_LIGACAO_DOS_BANCOS = (
+    "data_base",
+    "cod_inst",
+    "instituicao",
+    "cnpj",
+    "ligado_por",
+)
+
+
+def _bancos(
+    leitor: Leitor, series: dict[str, pd.DataFrame], dia: pd.Timestamp
+) -> pd.DataFrame:
+    """A ligação dos conglomerados das séries dos bancos às companhias, como era no dia."""
+    chaves = {
+        str(chave)
+        for s in dossie.SERIES_DOS_BANCOS
+        if not series[s.nome].empty
+        for chave in series[s.nome]["chave"]
+    }
+    ligacao = leitor.ler("ligacao_dos_bancos", [*COLUNAS_DA_LIGACAO_DOS_BANCOS])
+    return dossie.ligacoes_dos_bancos(ligacao, chaves, dia)
+
+
 def _dia(agora: pd.Timestamp) -> pd.Timestamp:
     """O dia de `agora`, sem fuso: as datas da base (entrega, publicação) não têm fuso."""
     return (agora.tz_localize(None) if agora.tzinfo else agora).normalize()
@@ -305,6 +343,10 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
     entidades = leitor.ler("entidades", ["id_entidade", "nome", "trata_como_pessoa"])
     controladoras = _controladoras(leitor, hoje, entidades)
     controladas = leitor.ler("controladas")
+    series = {
+        s.nome: ler_serie(leitor, s, hoje)
+        for s in (*dossie.SERIES_DAS_AGENCIAS, *dossie.SERIES_DOS_BANCOS)
+    }
     return Entradas(
         empresas=_empresas(
             leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
@@ -348,7 +390,8 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         },
         ratings=leitor.ler("ratings", [*COLUNAS_DOS_RATINGS]),
         assembleias=leitor.ler("debentures_assembleias", [*COLUNAS_DAS_ASSEMBLEIAS]),
-        series={s.nome: ler_serie(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS},
+        series=series,
+        bancos=_bancos(leitor, series, _dia(hoje)),
         grupos={
             s.nome: ler_grupos(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS if s.grupo
         },
@@ -465,19 +508,26 @@ class Resumo:
 SetorMontado = tuple[str, list[str], dict]  # chave do setor, CNPJs dos membros, a seção
 
 
+def _ligacoes_dos_setores(entradas: Entradas) -> pd.DataFrame:
+    """A empresa_serie mais a ligação dos bancos: as entidades de todas as agências dos setores."""
+    partes = [t for t in (entradas.empresa_serie, entradas.bancos) if not t.empty]
+    if len(partes) < 2:
+        return partes[0] if partes else entradas.empresa_serie
+    return pd.concat(partes, ignore_index=True)
+
+
 def montar_setores(entradas: Entradas) -> tuple[list[SetorMontado], list[str]]:
     """A seção de cada setor do lançamento, uma vez para todo o mercado; um setor que quebra fica de
     fora e vai nas falhas, sem derrubar os outros nem a noite."""
     montados, falhas = [], []
+    ligacoes = _ligacoes_dos_setores(entradas)
     for setor in dossie.SETORES_DO_LANCAMENTO:
         try:
-            membros = dossie.membros_do_setor(
-                setor, entradas.empresas, entradas.empresa_serie
-            )
+            membros = dossie.membros_do_setor(setor, entradas.empresas, ligacoes)
             if membros.empty:  # nenhuma companhia da base no setor: nada a montar
                 continue
             secao = dossie.secao_setor(
-                setor, membros, entradas.series, entradas.empresa_serie, entradas.grupos
+                setor, membros, entradas.series, ligacoes, entradas.grupos
             )
         except Exception as erro:  # noqa: BLE001 (um setor não derruba a noite)
             falhas.append(f"setor {setor.chave}: {type(erro).__name__}: {erro}")
