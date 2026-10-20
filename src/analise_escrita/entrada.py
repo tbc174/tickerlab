@@ -23,6 +23,7 @@ from src.relatorio_empresa import (
     Relatorio,
     nome_da_tabela,
 )
+from src.rotulos_ia import mascarar_pessoas
 from src.setores import grupo_do_setor
 
 VERSAO = 1
@@ -213,7 +214,20 @@ def entrada_da_ficha(
         "obrigatorias": _obrigatorias(linhas),
     }
     dossie_da_base.conferir_sem_pessoas(entrada, set(pessoas))
+    conferir_sem_nome_com_cargo(entrada)
     return entrada
+
+
+def conferir_sem_nome_com_cargo(entrada: dict[str, Any]) -> None:
+    """D4 (parecer de privacidade, ADR 0088): nome de pessoa escrito junto de um cargo não vai à API.
+
+    A lista de pessoas da base só pega o texto que é exatamente um nome; esta trava pega o nome dentro
+    da frase ("CFO Maria Souza"), com a mesma heurística da rotulagem. Barra em vez de mascarar: a
+    entrada tem hash e o app a remonta para conferir.
+    """
+    for texto in _textos(entrada):
+        if mascarar_pessoas(texto) != texto:
+            raise PessoaNaEntradaError("nome de pessoa junto de um cargo na entrada")
 
 
 def hash_da_entrada(entrada: dict[str, Any]) -> str:

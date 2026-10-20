@@ -101,7 +101,14 @@ def _agora() -> str:
 
 
 def ler_entradas(caminhos: Sequence[Path]) -> list[dict[str, Any]]:
-    return [json.loads(c.read_text(encoding="utf-8")) for c in caminhos]
+    """Lê as entradas e barra, antes de qualquer envio à API, a que traz nome de pessoa (D4)."""
+    entradas = [json.loads(c.read_text(encoding="utf-8")) for c in caminhos]
+    for caminho, entrada in zip(caminhos, entradas, strict=True):
+        try:
+            en.conferir_sem_nome_com_cargo(entrada)
+        except en.PessoaNaEntradaError as erro:
+            raise ValueError(f"{caminho.name}: {erro}") from erro
+    return entradas
 
 
 def ler_manifesto(pasta: Path) -> dict[str, Any]:
