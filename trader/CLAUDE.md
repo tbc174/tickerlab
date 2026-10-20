@@ -46,6 +46,12 @@ numba, joblib, MetaTrader5, PySide6).
 | Modelos | `modelos.py` (H1/H2), `redes.py` (H4), `arima.py` (H5) |
 | Registro de tentativas e holdout | `registro.py`, `holdout.py` |
 | Universo e grupos | `universo.py` |
+| Diário das operações e ficha da tentativa | `diario.py`, `ficha.py` |
+| Leitura que recusa dado ausente; balanço só depois de público | `base_local.py` |
+| Aquecimento das janelas e cobertura | `aquecimento.py` |
+| VaR/CVaR históricos e Benjamini-Hochberg | `quant.py` |
+| Catálogo de fatores candidatos (nenhum medido) | `fatores/` |
+| Conferência dos custos (B3 à vista) e da validação | `docs/trader-conferencia-custos-e-validacao.md` |
 | Painel | `interface/` |
 
 Pastas fora do Git (no PC): `dados_mt5/`, `dados_b3/`, `dados_juros/` e **`pesquisa_m2/`**
