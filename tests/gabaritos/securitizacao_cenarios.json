@@ -1,0 +1,86 @@
+{
+ "base": {
+  "totais_por_classe": {
+   "senior": {
+    "juros": 8372087,
+    "principal": 80000000,
+    "perda": 0
+   },
+   "mezanino": {
+    "juros": 4997636,
+    "principal": 13727683,
+    "perda": 1272317
+   },
+   "subordinada": {
+    "juros": 0,
+    "principal": 0,
+    "perda": 5000000
+   }
+  },
+  "residual": 13217675,
+  "pago_a_subordinada": 13217675,
+  "perda_total": 6272317,
+  "reconciliacao": {
+   "entradas": 123715081,
+   "saidas": 122715081,
+   "reserva_final": 1000000,
+   "diferenca": 0
+  }
+ },
+ "inadimplência ×2": {
+  "totais_por_classe": {
+   "senior": {
+    "juros": 8717094,
+    "principal": 80000000,
+    "perda": 0
+   },
+   "mezanino": {
+    "juros": 4008258,
+    "principal": 7666641,
+    "perda": 7333359
+   },
+   "subordinada": {
+    "juros": 0,
+    "principal": 0,
+    "perda": 5000000
+   }
+  },
+  "residual": 12525893,
+  "pago_a_subordinada": 12525893,
+  "perda_total": 12333359,
+  "reconciliacao": {
+   "entradas": 116317886,
+   "saidas": 115317886,
+   "reserva_final": 1000000,
+   "diferenca": 0
+  }
+ },
+ "atraso e recuperação": {
+  "totais_por_classe": {
+   "senior": {
+    "juros": 8346340,
+    "principal": 80000000,
+    "perda": 0
+   },
+   "mezanino": {
+    "juros": 4562946,
+    "principal": 12204750,
+    "perda": 2795250
+   },
+   "subordinada": {
+    "juros": 0,
+    "principal": 0,
+    "perda": 5000000
+   }
+  },
+  "residual": 12394750,
+  "pago_a_subordinada": 12394750,
+  "perda_total": 7795250,
+  "reconciliacao": {
+   "entradas": 121209590,
+   "saidas": 120508786,
+   "reserva_final": 700804,
+   "diferenca": 0
+  }
+ }
+}
