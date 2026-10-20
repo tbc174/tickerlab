@@ -160,6 +160,66 @@ def test_cnpj_acha_o_mes_mais_recente_pelo_compartilhamento_da_receita():
     assert propfind_raiz[2]["Authorization"].startswith("Basic ")
 
 
+def _cliente_do_cnpj():
+    base = fontes.RAIZ_DO_CNPJ
+    webdav = fontes.WEBDAV_DA_RECEITA
+    pasta = f"/public.php/webdav/{fontes.PASTA_DO_CNPJ}"
+    return Paginas(
+        {
+            base: b"<html></html>",
+            webdav + fontes.PASTA_DO_CNPJ + "/": _propfind(
+                [
+                    f"{pasta}/",
+                    f"{pasta}/2023-05/",
+                    f"{pasta}/2026-09/",
+                    f"{pasta}/2024-01/",
+                ]
+            ),
+            webdav + fontes.PASTA_DO_CNPJ + "/2024-01/": _propfind(
+                [
+                    f"{pasta}/2024-01/",
+                    f"{pasta}/2024-01/Empresas0.zip",
+                    f"{pasta}/2024-01/Estabelecimentos3.zip",
+                    f"{pasta}/2024-01/Socios1.zip",
+                    f"{pasta}/2024-01/Simples.zip",
+                    f"{pasta}/2024-01/Cnaes.zip",
+                    f"{pasta}/2024-01/Motivos.zip",
+                ]
+            ),
+        },
+        finais={base: "https://arquivos.receitafederal.gov.br/index.php/s/AbC123xyz"},
+    )
+
+
+def test_descobre_todos_os_meses_do_cnpj():
+    assert fontes.meses_do_cnpj(_cliente_do_cnpj()) == ["2023-05", "2024-01", "2026-09"]
+
+
+def test_arquivos_do_mes_filtra_pelos_nomes_pedidos():
+    cliente = _cliente_do_cnpj()
+    alvos = fontes.arquivos_do_mes(
+        cliente, "2024-01", ("Estabelecimentos", "Socios", "Simples")
+    )
+    nomes = [a.url.rsplit("/", 1)[-1] for a in alvos]
+    assert nomes == ["Estabelecimentos3.zip", "Socios1.zip", "Simples.zip"]
+    assert all("/2024-01/" in a.url and "AbC123xyz" in a.url for a in alvos)
+
+
+def test_arquivos_do_mes_sem_filtro_traz_todos_os_zips():
+    alvos = fontes.arquivos_do_mes(_cliente_do_cnpj(), "2024-01")
+    assert len(alvos) == 6
+
+
+def test_arquivos_do_mes_inexistente_e_falha():
+    with pytest.raises(ErroDeDescoberta):
+        fontes.arquivos_do_mes(_cliente_do_cnpj(), "2019-01")
+
+
+def test_mes_malformado_nao_vira_caminho():
+    with pytest.raises(ErroDeDescoberta):
+        fontes.arquivos_do_mes(_cliente_do_cnpj(), "../2024-01")
+
+
 def test_cnpj_sem_token_e_falha():
     cliente = Paginas(
         {fontes.RAIZ_DO_CNPJ: b""},
