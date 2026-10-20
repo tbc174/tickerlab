@@ -16,7 +16,7 @@ Premissas padrão do valuation (a pessoa troca na página): desconto de 12% ao a
 """
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, timedelta
 from zoneinfo import ZoneInfo
@@ -34,6 +34,7 @@ from src.numero import Comparacao, Numero
 from src.padroes import INDICADORES, MULTIPLOS
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.qualidade_texto import texto_do_selo
+from src.rastro import DocumentoUsado, Metrica, Rastro
 from src.setores import NOMES, SEM_GRUPO, grupo_do_setor, grupo_para_comparar
 
 # as seções na ordem do molde A (relatórios v2): quem é, o que os dados mostram e o que mudou no
@@ -221,6 +222,7 @@ class Item:
     fonte: str = ""  # de onde veio (o contrato do número, `src/numero.py`)
     comparacao: Comparacao | None = None
     sem_comparacao: str = ""  # por que não há com o quê comparar
+    rastro: Rastro | None = None  # como foi calculado e de onde veio (`src/rastro.py`)
 
     @property
     def numero(self) -> Numero:
@@ -273,6 +275,26 @@ class Relatorio:
     def como_dict(self) -> dict:
         """Para a API: datas em texto ISO e números que faltam como None."""
         return para_json(asdict(self))
+
+    def metricas(self) -> list[Metrica]:
+        """Cada número com rastro como dado (o `Metric` do `data_model.md`), sem as seções
+        trancadas: quem não tem o plano não recebe o número por aqui também."""
+        return [
+            Metrica(
+                self.cnpj,
+                i.chave,
+                i.nome,
+                i.valor,
+                i.unidade,
+                i.base,
+                i.rastro,
+                i.motivo,
+            )
+            for s in self.secoes
+            if not s.trancada
+            for i in s.itens
+            if i.rastro is not None
+        ]
 
 
 @dataclass(frozen=True)
@@ -387,6 +409,99 @@ def _contra_o_anterior(chave: str, unidade: str, c: "_Calculos") -> Comparacao |
     )
 
 
+# --- o rastro de cada número (`src/rastro.py`) -----------------------------------------------------
+CALCULO_DOS_FUNDAMENTOS = f"fundamentos {fundamentos.VERSAO_DOS_FUNDAMENTOS}"
+CALCULO_DO_FUNDAMENTALISTA = (
+    f"fundamentalista {fundamentalista.VERSAO_DO_FUNDAMENTALISTA}"
+)
+CALCULO_DAS_NOTAS_CLASSICAS = (
+    f"notas clássicas {notas_classicas.VERSAO_DAS_NOTAS_CLASSICAS}"
+)
+CRESCIMENTOS = ("crescimento_receita", "crescimento_lucro")
+# quantos exercícios cada nota clássica lê: o Altman só o último; as outras comparam com o anterior
+ANOS_DAS_NOTAS_CLASSICAS = {"piotroski": 2, "altman": 1, "beneish": 2}
+
+
+def _ultimas_versoes(documentos: pd.DataFrame) -> list[pd.Series]:
+    """Uma linha por demonstração: a versão mais recente, que é a dos números guardados."""
+    if documentos.empty:
+        return []
+    ultimas = documentos.sort_values(["referencia", "versao"]).drop_duplicates(
+        ["documento", "referencia"], keep="last"
+    )
+    return [linha for _, linha in ultimas.iterrows()]
+
+
+def _documento(linha: pd.Series) -> DocumentoUsado:  # uma linha de `_ultimas_versoes`
+    link = linha["link"]
+    return DocumentoUsado(
+        f"{linha['documento']} de {_dia(linha['referencia']):%d/%m/%Y}, "
+        f"versão {int(linha['versao'])}",
+        _dia(linha["recebido_em"]),
+        link if isinstance(link, str) else "",
+    )
+
+
+def documentos_usados(documentos: pd.DataFrame) -> tuple[DocumentoUsado, ...]:
+    """Os documentos da CVM, com o dia em que a CVM os recebeu e o link do original."""
+    return tuple(_documento(linha) for linha in _ultimas_versoes(documentos))
+
+
+def _dfps_por_ano(documentos: pd.DataFrame) -> dict[int, DocumentoUsado]:
+    dfps = (
+        documentos[documentos["documento"] == "DFP"]
+        if not documentos.empty
+        else documentos
+    )
+    return {
+        _dia(linha["referencia"]).year: _documento(linha)
+        for linha in _ultimas_versoes(dfps)
+    }
+
+
+def _fechamento(e: "Entradas") -> DocumentoUsado:
+    """O preço usado: o último fechamento guardado (sem a série, o dia não é conhecido)."""
+    dia = (
+        _dia(e.fechamentos.index.max())
+        if e.fechamentos is not None and not e.fechamentos.empty
+        else None
+    )
+    return DocumentoUsado(f"fechamento de {e.ticker} (Yahoo Finance)", dia)
+
+
+def _dfps(c: "_Calculos", anos: Iterable[int]) -> tuple[DocumentoUsado, ...]:
+    return tuple(c.dfps[ano] for ano in sorted(anos) if ano in c.dfps)
+
+
+def _ultimos_anos(c: "_Calculos", quantos: int) -> range:
+    ultimo = max(c.dfps, default=0)
+    return range(ultimo - quantos + 1, ultimo + 1)
+
+
+def _rastro(chave: str, c: "_Calculos") -> Rastro:
+    """O rastro de um indicador da tela (`fundamentos`) ou dos novos (`fundamentalista`)."""
+    if chave in fundamentos.FORMULAS:
+        formula, versao = fundamentos.FORMULAS[chave], CALCULO_DOS_FUNDAMENTOS
+    else:
+        formula, versao = fundamentalista.FORMULAS[chave], CALCULO_DO_FUNDAMENTALISTA
+    documentos = (
+        _dfps(c, _ultimos_anos(c, fundamentos.ANOS_DO_CRESCIMENTO + 1))
+        if chave in CRESCIMENTOS
+        else c.documentos
+    )
+    return Rastro.dos_documentos(formula, versao, FONTE_DA_CVM, documentos)
+
+
+def _com_o_preco(rastro: Rastro, c: "_Calculos") -> Rastro:
+    return Rastro.dos_documentos(
+        rastro.formula,
+        rastro.versao_do_calculo,
+        rastro.fonte_id,
+        (*rastro.documentos, c.fechamento),
+        (FONTE_DO_PRECO,),
+    )
+
+
 def _item(indicador: fundamentos.Indicador, c: "_Calculos") -> Item:
     """O indicador escrito, com a nota ao lado e a comparação: a do setor quando há nota contra o
     setor, a faixa fixa quando a nota é por faixa e, nos outros, o balanço anterior."""
@@ -410,6 +525,7 @@ def _item(indicador: fundamentos.Indicador, c: "_Calculos") -> Item:
         fonte=FONTE_DAS_DEMONSTRACOES,
         comparacao=comparacao,
         sem_comparacao="" if comparacao else SEM_O_ANTERIOR,
+        rastro=_rastro(indicador.chave, c),
     )
 
 
@@ -433,6 +549,11 @@ class _Calculos:
     grupo: str
     balancos: list[date]  # as datas dos balanços guardados, em ordem
     anterior: dict[str, fundamentos.Indicador]  # os indicadores até o balanço anterior
+    documentos: tuple[DocumentoUsado, ...]  # os dos 12 meses e do balanço mais recente
+    dfps: dict[
+        int, DocumentoUsado
+    ]  # a DFP de cada exercício (crescimento, notas, dividendos)
+    fechamento: DocumentoUsado  # o preço usado nos múltiplos
 
     @property
     def data_anterior(self) -> date | None:
@@ -493,6 +614,9 @@ def _calcular(e: Entradas) -> _Calculos:
         grupo,
         balancos,
         _indicadores_de_antes(e, balancos),
+        documentos_usados(tela.documentos),
+        _dfps_por_ano(e.dados.documentos),
+        _fechamento(e),
     )
 
 
@@ -522,6 +646,12 @@ def _notas_classicas(c: _Calculos) -> Secao:
                 fonte=FONTE_DAS_DEMONSTRACOES,
                 comparacao=Comparacao(
                     "escala do artigo", ESCALAS_DO_ARTIGO[nota.chave]
+                ),
+                rastro=Rastro.dos_documentos(
+                    nota.formula,
+                    CALCULO_DAS_NOTAS_CLASSICAS,
+                    FONTE_DA_CVM,
+                    _dfps(c, _ultimos_anos(c, ANOS_DAS_NOTAS_CLASSICAS[nota.chave])),
                 ),
             )
         )
@@ -594,7 +724,12 @@ def _padrao_do_multiplo(
 
 def _item_com_o_preco(indicador: fundamentos.Indicador, c: _Calculos) -> Item:
     """O item de um número que usa o preço: cita o Yahoo, e o balanço anterior usa o preço de hoje."""
-    item = replace(_item(indicador, c), fonte=FONTE_DOS_MULTIPLOS)
+    item = _item(indicador, c)
+    item = replace(
+        item,
+        fonte=FONTE_DOS_MULTIPLOS,
+        rastro=_com_o_preco(_rastro(indicador.chave, c), c),
+    )
     if item.comparacao is None:
         return item
     contra = f"{item.comparacao.contra}, com o preço de hoje"
@@ -720,14 +855,20 @@ def _dividendos(c: _Calculos) -> Secao:
     )
     dy = c.indicadores.get("dividend_yield")
     itens = [] if dy is None else [_item_com_o_preco(dy, c)]
+
+    def rastro(chave: str) -> Rastro:
+        return Rastro.dos_documentos(fundamentalista.FORMULAS[chave], CALCULO_DO_FUNDAMENTALISTA,
+                                     FONTE_DA_CVM, _dfps(c, anos))  # fmt: skip
+
     itens += [
         Item("anos_pagando", "Anos pagando dividendos", str(d.anos_pagando), float(d.anos_pagando),
              "anos", base, fonte=FONTE_DAS_ACOES,
-             comparacao=Comparacao("anos com DFP guardada", f"{d.anos_pagando} de {len(anos)}")),
+             comparacao=Comparacao("anos com DFP guardada", f"{d.anos_pagando} de {len(anos)}"),
+             rastro=rastro("anos_pagando")),
         Item("diluicao", "Diluição ao ano", escrever(d.diluicao_anual, fundamentos.FRACAO), d.diluicao_anual,
              fundamentos.FRACAO, base,
              "" if d.diluicao_anual is not None else SEM_DILUICAO,
-             fonte=FONTE_DAS_ACOES, comparacao=diluicao),
+             fonte=FONTE_DAS_ACOES, comparacao=diluicao, rastro=rastro("diluicao")),
     ]  # fmt: skip
     return Secao(
         "dividendos",

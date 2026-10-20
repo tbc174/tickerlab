@@ -1688,6 +1688,38 @@
         "title": "DestinoDoCafeV1",
         "type": "object"
       },
+      "DocumentoUsadoV1": {
+        "description": "Um documento que entrou na conta: a demonstração da CVM ou o fechamento do preço.",
+        "properties": {
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "publicado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicado Em"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome",
+          "publicado_em",
+          "url"
+        ],
+        "title": "DocumentoUsadoV1",
+        "type": "object"
+      },
       "EncerradasV1": {
         "properties": {
           "encerradas": {
@@ -2544,6 +2576,16 @@
           "nota_texto": {
             "title": "Nota Texto",
             "type": "string"
+          },
+          "rastro": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RastroDoNumeroV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sem_comparacao": {
             "title": "Sem Comparacao",
@@ -4769,6 +4811,59 @@
           "nota_da_variacao"
         ],
         "title": "PulseV1",
+        "type": "object"
+      },
+      "RastroDoNumeroV1": {
+        "description": "Como o número foi calculado e de onde veio (`src/rastro.py`): a conta, a versão dela, a\nfonte (o id da coleta, com a licença) e quando o insumo mais novo ficou público.",
+        "properties": {
+          "documentos": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentoUsadoV1"
+            },
+            "title": "Documentos",
+            "type": "array"
+          },
+          "fonte_id": {
+            "title": "Fonte Id",
+            "type": "string"
+          },
+          "formula": {
+            "title": "Formula",
+            "type": "string"
+          },
+          "outras_fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Outras Fontes",
+            "type": "array"
+          },
+          "publicado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicado Em"
+          },
+          "versao_do_calculo": {
+            "title": "Versao Do Calculo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formula",
+          "versao_do_calculo",
+          "fonte_id",
+          "publicado_em",
+          "documentos",
+          "outras_fontes"
+        ],
+        "title": "RastroDoNumeroV1",
         "type": "object"
       },
       "RegiaoDoMapaV1": {

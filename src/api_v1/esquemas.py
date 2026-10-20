@@ -737,6 +737,26 @@ class ComparacaoDoNumeroV1(BaseModel):
     valor: float | None = None  # o número comparado, quando é um só
 
 
+class DocumentoUsadoV1(BaseModel):
+    """Um documento que entrou na conta: a demonstração da CVM ou o fechamento do preço."""
+
+    nome: str  # "DFP de 31/12/2025, versão 1"
+    publicado_em: date | None  # quando ficou público (null: o dia não é conhecido)
+    url: str  # o documento original ("" quando não há link)
+
+
+class RastroDoNumeroV1(BaseModel):
+    """Como o número foi calculado e de onde veio (`src/rastro.py`): a conta, a versão dela, a
+    fonte (o id da coleta, com a licença) e quando o insumo mais novo ficou público."""
+
+    formula: str
+    versao_do_calculo: str  # "fundamentos 2": muda quando a fórmula muda
+    fonte_id: str  # "cvm"
+    publicado_em: date | None
+    documentos: list[DocumentoUsadoV1]
+    outras_fontes: list[str]  # ["yahoo"] nos números que usam o preço
+
+
 class ItemDoRelatorioV1(BaseModel):
     """Um número com o contrato inteiro: de quando é (`base`), de onde veio (`fonte`) e a
     comparação (ou, em `sem_comparacao`, por que não há com o quê comparar)."""
@@ -753,6 +773,9 @@ class ItemDoRelatorioV1(BaseModel):
     fonte: str
     comparacao: ComparacaoDoNumeroV1 | None
     sem_comparacao: str
+    rastro: RastroDoNumeroV1 | None = (
+        None  # null: frase (nome, auditor) ou número da base
+    )
 
 
 class TabelaDoRelatorioV1(BaseModel):
