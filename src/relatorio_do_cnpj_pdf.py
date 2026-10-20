@@ -28,8 +28,6 @@ def _capa(relatorio: RelatorioDoCnpj, gerado_em: datetime) -> list[tuple[str, st
         if relatorio.como_era_em:
             linhas.append(("Ficha da noite de", f"{relatorio.como_era_em:%d/%m/%Y}"))
     linhas.append(("Gerado em", f"{gerado_em:%d/%m/%Y às %H:%M}"))
-    if relatorio.fontes:
-        linhas.append(("Fontes", "; ".join(relatorio.fontes)))
     return linhas
 
 
