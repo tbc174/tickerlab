@@ -96,6 +96,10 @@ cd web; npm run site                                        # páginas, CSS e JS
 - **O PR é de quem abriu até o merge:** o auto-merge não acorda ninguém quando o CI fica vermelho. Ao abrir o
   PR, ligue o Auto-fix do app (`mcp__ccd_pr__set_monitor` com `auto_fix` e `address_comments`), e não feche a
   conversa nem dê a tarefa por pronta antes do merge.
+- **Agente da fila:** os ramos `claude/agente-*` são de um agente na nuvem que resolve pendências
+  fáceis. O passo "Portão do agente" do CI (`scripts/portao_do_agente.py`) deixa entrar sozinho só
+  PR de teste e doc; outro código espera o rótulo `revisado` posto por uma pessoa (e de novo a cada
+  commit novo); área sensível falha sempre. Não ponha `revisado` sem ler o diff.
 - A `main` vai para produção sozinha (deploy automático só de commits com CI verde). Trate cada
   merge como uma publicação.
 - Mensagens de commit em português, no formato `tipo: o que mudou` (`feat`, `fix`, `docs`,

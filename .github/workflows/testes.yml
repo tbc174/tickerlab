@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # labeled/unlabeled: o rótulo "revisado" libera o PR do agente da fila no portão (abaixo)
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -44,6 +46,16 @@ jobs:
           fi
           echo "so_texto=$so_texto" >> "$GITHUB_OUTPUT"
           echo "Só texto: $so_texto"
+
+      # Agente da fila (ramos claude/agente-*): teste e doc entram sozinhos; outro código espera o
+      # rótulo "revisado"; área proibida falha sempre. Os outros ramos passam direto.
+      - name: Portão do agente
+        if: github.event_name == 'pull_request'
+        env:
+          RAMO: ${{ github.head_ref }}
+          ACAO: ${{ github.event.action }}
+          ROTULOS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: python3 scripts/portao_do_agente.py HEAD^1
 
   # A suíte em 5 máquinas ao mesmo tempo (era uma só, ~8 min e meio de testes; 14/10/2026). Cada
   # parte roda arquivos inteiros, repartidos por tempo (scripts/repartir_testes.py): 3 partes do app,
