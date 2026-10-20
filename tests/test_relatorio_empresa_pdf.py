@@ -6,7 +6,7 @@ from io import BytesIO
 from pypdf import PdfReader
 
 from src import relatorio_empresa as re_
-from src.relatorio_empresa_pdf import relatorio_da_empresa
+from src.relatorio_empresa_pdf import TITULO_DO_ANEXO, relatorio_da_empresa
 from tests.test_relatorio_empresa import _entradas, dados_da_weg  # noqa: F401
 
 
@@ -36,6 +36,46 @@ def test_pdf_tem_limites_e_cuidados(dados_da_weg):  # noqa: F811
     texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio)))
     assert _sem_espacos(re_.SECOES["limites"]) in texto
     assert _sem_espacos("não é recomendação") in texto
+
+
+def _links(pdf: bytes) -> list[str]:
+    return [
+        anotacao.get_object()["/A"]["/URI"]
+        for pagina in PdfReader(BytesIO(pdf)).pages
+        for anotacao in pagina.get("/Annots", [])
+        if "/URI" in anotacao.get_object().get("/A", {})
+    ]
+
+
+def test_pdf_fecha_com_o_anexo_de_como_cada_numero_foi_calculado(dados_da_weg):  # noqa: F811
+    """Item 7 do lançamento: no papel, o rastro de cada número e o link de cada documento."""
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    pdf = relatorio_da_empresa(relatorio)
+    texto = _sem_espacos(_texto(pdf))
+    assert _sem_espacos(TITULO_DO_ANEXO) in texto
+    margem = next(
+        i for s in relatorio.secoes for i in s.itens if i.chave == "margem_ebit"
+    )
+    assert margem.rastro is not None
+    assert _sem_espacos(margem.rastro.formula) in texto
+    assert _sem_espacos(margem.rastro.versao_do_calculo) in texto
+    urls = {d.url for d in margem.rastro.documentos if d.url}
+    assert urls and urls <= set(_links(pdf))  # o documento original, clicável
+
+
+def test_pdf_sem_rastro_nao_tem_o_anexo(dados_da_weg):  # noqa: F811
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio, com_rastro=False)))
+    assert _sem_espacos(TITULO_DO_ANEXO) not in texto
+
+
+def test_amostra_publica_fica_sem_o_anexo_ate_o_pode():
+    """O PDF da amostra vai para o site (texto público, nível 1): o anexo só entra com o "pode"
+    do Tiago."""
+    from src import amostra_do_relatorio
+
+    texto = _sem_espacos(_texto(amostra_do_relatorio.pdf()))
+    assert _sem_espacos(TITULO_DO_ANEXO) not in texto
 
 
 PASSOS = [("Receita", 10e9), ("Custo", -6e9), ("Outras", -2.5e9), ("Lucro", 1.5e9)]

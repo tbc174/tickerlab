@@ -7,6 +7,7 @@ título e o convite) para quem não é Pro.
 """
 
 import logging
+import re
 from dataclasses import replace
 
 import pandas as pd
@@ -26,6 +27,7 @@ from src.fundamentos import VERSAO_DOS_FUNDAMENTOS
 from src.moedas import moeda_do_ticker
 from src.padroes import VERSAO_DOS_PADROES
 from src.planos import LimiteDoPlanoError
+from src.rastro import Rastro, como_foi_calculado
 from src.relatorio_empresa import (
     Item,
     Premissas,
@@ -47,6 +49,8 @@ from telas.comum import (
 from telas.research.comum import _ainda_nao_coletado, _sem_banco_agora
 
 ITENS_POR_LINHA = 3
+COMO_FOI_CALCULADO = "Como foi calculado"
+MARCAS_DO_MARKDOWN = re.compile(r"[\\`*_\[\]$#<>|~]")
 GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
 CHAVE_DO_PDF = "relatorio_empresa_pdf"
 SO_B3 = (
@@ -98,6 +102,22 @@ def _origem(item: Item) -> str:
     return " ".join([p for p in partes if p] + [item.sem_comparacao])
 
 
+def _literal(texto: str) -> str:
+    """O texto sem virar Markdown (o "R$" da fórmula não abre LaTeX, o "*" não vira negrito)."""
+    return MARCAS_DO_MARKDOWN.sub(r"\\\g<0>", texto)
+
+
+def _como_foi_calculado(coluna, rastro: Rastro) -> None:
+    """O rastro do número em um clique (item 7 do lançamento): fórmula, versão, fonte, publicação
+    e o link de cada documento usado."""
+    with coluna.popover(COMO_FOI_CALCULADO, icon=":material/functions:"):
+        for linha in como_foi_calculado(rastro):
+            texto = _literal(linha.texto)
+            if linha.url:
+                texto += f" ([abrir o original]({linha.url}))"
+            st.markdown(f"**{linha.rotulo}:** {texto}")
+
+
 def _mostrar_item(coluna, item: Item) -> None:
     ajuda = " ".join(p for p in (_origem(item), item.nota_texto) if p)
     coluna.metric(item.nome, item.texto, help=ajuda or None)  # a explicação fica no (?)
@@ -107,6 +127,8 @@ def _mostrar_item(coluna, item: Item) -> None:
         coluna.caption(item.motivo)
     if item.nota:
         coluna.caption(f"Nota: **{item.nota}**")
+    if item.rastro is not None:
+        _como_foi_calculado(coluna, item.rastro)
 
 
 def _titulo_da_tabela(chave: str) -> str:

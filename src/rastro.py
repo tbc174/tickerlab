@@ -77,6 +77,47 @@ class Rastro:
         return [nome for nome, valor in partes if not valor]
 
 
+DOCUMENTO = "documento"
+SEM_DIA = "dia não conhecido"
+
+
+@dataclass(frozen=True)
+class LinhaDoRastro:
+    """Uma linha do "como foi calculado": o rótulo, o texto e o link do documento original."""
+
+    rotulo: str  # "Fórmula", "Versão do cálculo", "Fonte", "Publicado em", "Documento"
+    texto: str
+    url: str = ""
+
+
+def _dia(dia: date | None) -> str:
+    return f"{dia:%d/%m/%Y}" if dia else SEM_DIA
+
+
+def como_foi_calculado(rastro: Rastro) -> list[LinhaDoRastro]:
+    """O rastro para quem lê, parte por parte: a página, o PDF e o app novo mostram estas linhas
+    (item 7 do lançamento: "como foi calculado" em um clique e o documento original)."""
+    fontes = rastro.fonte_id
+    if rastro.outras_fontes:
+        fontes += f" (também {', '.join(rastro.outras_fontes)})"
+    linhas = [
+        LinhaDoRastro(FORMULA.capitalize(), rastro.formula),
+        LinhaDoRastro(VERSAO.capitalize(), rastro.versao_do_calculo),
+        LinhaDoRastro(FONTE.capitalize(), fontes),
+        LinhaDoRastro(PUBLICADO_EM.capitalize(), _dia(rastro.publicado_em)),
+    ]
+    return linhas + [
+        LinhaDoRastro(DOCUMENTO.capitalize(), _documento(d), d.url)
+        for d in rastro.documentos
+    ]
+
+
+def _documento(documento: DocumentoUsado) -> str:
+    if documento.publicado_em is None:
+        return f"{documento.nome} (dia da publicação não conhecido)"
+    return f"{documento.nome}, publicado em {_dia(documento.publicado_em)}"
+
+
 @dataclass(frozen=True)
 class Metrica:
     """Um número do relatório como dado (o `Metric` do `data_model.md`), para a API e a base."""

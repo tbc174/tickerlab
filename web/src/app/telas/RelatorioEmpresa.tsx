@@ -10,6 +10,7 @@ import type {
   NotaDaAnaliseV1,
   ParteDaAnaliseV1,
   PontoDoRelatorioV1,
+  RastroDoNumeroV1,
   RelatorioDaEmpresaV1,
   SecaoDoRelatorioV1,
   TabelaDoRelatorioV1,
@@ -46,7 +47,32 @@ function Item({ item }: { item: ItemDoRelatorioV1 }) {
           {item.nota_texto}
         </details>
       ) : null}
+      {item.rastro ? <ComoFoiCalculado rastro={item.rastro} /> : null}
     </div>
+  );
+}
+
+// o rastro do número em um clique (item 7 do lançamento): as linhas vêm escritas da API
+function ComoFoiCalculado({ rastro }: { rastro: RastroDoNumeroV1 }) {
+  return (
+    <details className="legenda-do-numero">
+      <summary>Como foi calculado</summary>
+      <ul>
+        {rastro.linhas.map((linha, i) => (
+          <li key={i}>
+            <strong>{linha.rotulo}:</strong> {linha.texto}
+            {linha.url ? (
+              <>
+                {" "}
+                <a href={linha.url} target="_blank" rel="noreferrer">
+                  abrir o original
+                </a>
+              </>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
