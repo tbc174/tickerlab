@@ -12,7 +12,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 51
+      "tabelas": 53
     },
     {
       "historico_desde": "2010-01-01",
@@ -274,7 +274,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 56
+      "tabelas": 58
     },
     {
       "chave": "credito_e_fidc",
@@ -1540,6 +1540,26 @@
       "tabela": "auditores"
     },
     {
+      "atraso": "A entrega à CVM",
+      "frase": "Parecer do auditor de cada DFP desde 2010, lido do CSV de pareceres da CVM (relatório do auditor independente): tipo de opinião (campo da CVM).",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "pareceres_dfp"
+    },
+    {
+      "atraso": "A entrega à CVM",
+      "frase": "Parecer do auditor de cada ITR desde 2011, lido do CSV de pareceres da CVM (relatório da revisão especial): tipo de opinião (campo da CVM).",
+      "frequencia": "Mensal",
+      "historico_desde": "2011-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "pareceres_itr"
+    },
+    {
       "atraso": null,
       "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
       "frequencia": "Anual",
@@ -1814,6 +1834,6 @@
     "fontes": 24,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 86
+    "tabelas": 88
   }
 }

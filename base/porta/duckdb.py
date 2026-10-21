@@ -92,6 +92,8 @@ ARQUIVOS: dict[str, str] = {
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",
     "fca_geral": "fca_geral/*.parquet",
+    "pareceres_dfp": "pareceres_dfp/*.parquet",
+    "pareceres_itr": "pareceres_itr/*.parquet",
     "trocas_de_auditor": "trocas_de_auditor/trocas.parquet",
     "curva_juros": "curva_juros/*.parquet",
     "bcb_selic_focus": "bcb_selic_focus/bcb_selic_focus.parquet",

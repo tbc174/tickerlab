@@ -4,6 +4,7 @@
     python -m scripts.montar_base_historica eventos negociacoes   (só estas)
     python -m scripts.montar_base_historica cnpj_situacao_especial (retratos do CNPJ, B2)
     python -m scripts.montar_base_historica auditores trocas_de_auditor (B3; as trocas leem os auditores)
+    python -m scripts.montar_base_historica pareceres_dfp pareceres_itr (T2; parecer do auditor dos CSVs do DFP e do ITR)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
     python -m scripts.montar_base_historica controladas empresa_serie (B13; a ligação lê as controladas)
     python -m scripts.montar_base_historica rotulos_atraso         (rótulo do modelo 8, de DFP, ITR e cadastro)
