@@ -34,6 +34,12 @@ ACAO_DOCUMENTO_APAGADO = "documento_apagado"
 ACAO_OPERACAO_APAGADA = "operacao_apagada"
 ACAO_OPERACAO_EXPIRADA = "operacao_expirada"
 ACAO_SALA_BAIXADA = "sala_baixada"
+# Originação (B-33): só ids e códigos de fase; nunca origem, próximo passo nem texto do contato.
+ACAO_NEGOCIO_ABERTO = "negocio_aberto"
+ACAO_NEGOCIO_FASE_MUDADA = "negocio_fase_mudada"
+ACAO_NEGOCIO_ATUALIZADO = "negocio_atualizado"
+ACAO_CONTATO_REGISTRADO = "contato_registrado"
+ACAO_CONTATO_APAGADO = "contato_apagado"
 
 
 @dataclass(frozen=True)
