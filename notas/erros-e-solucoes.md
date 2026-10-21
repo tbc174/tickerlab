@@ -627,3 +627,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** as duas travas olham nomes, não o que o código faz. A da licença (ADR 0008) recusa campo de esquema chamado `preco`, `close`, `fechamento` etc. A da porta procura o texto `ler_tabela` no arquivo, e a função se chamava `ler_tabelas_da_base`.
 - **Solução:** o bloco virou `preco_de_referencia` (como o #451, que usa `ultimo_valor`, `bm` e `fmi`) e a função virou `tabelas_pela_porta`. Antes de abrir um PR com esquema novo ou leitura da base, rode `pytest tests/test_api_v1_esquemas.py tests/test_porta_unica.py`.
 - **Data:** 18/10/2026
+
+## Teste "arquivo repetido" da sala falha às vezes no CI: o PDF de teste muda a cada chamada (#553)
+- **Sintoma:** `tests/test_sala_documentos.py::test_o_mesmo_arquivo_duas_vezes_na_sala_e_recusado` falha com `DID NOT RAISE DocumentoRepetidoError` em uma rodada e passa na seguinte, sem mudança no código (a `main` ficou vermelha em `fe418e3e`, um commit só de docs).
+- **Causa:** `tests/ajudantes_da_sala.pdf` (fpdf2) grava `/CreationDate` ao segundo (e o `/ID`, derivado dele) dentro do PDF. Duas chamadas que caem em segundos diferentes dão bytes diferentes, o SHA-256 muda e a sala não vê "repetido".
+- **Solução:** gerar o conteúdo uma vez e enviar os mesmos bytes nas duas chamadas. Regra geral: teste que compara dois PDFs gerados (igualdade, hash, "repetido") gera uma vez e reaproveita os bytes; nunca chama o gerador duas vezes esperando o mesmo resultado.
+- **Data:** 21/10/2026
