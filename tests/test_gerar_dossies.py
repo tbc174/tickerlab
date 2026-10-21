@@ -476,6 +476,65 @@ def test_serie_da_anatel_nao_soma_o_recorte_por_tecnologia(tmp_path: Path) -> No
     ]
 
 
+def _linhas_da_agencia(tabela: dict[str, list], valor: str) -> pd.DataFrame:
+    """Dois meses de uma agência: dezembro de 2024 (público em 2025-03) e dezembro de 2025 (público só
+    em 2026-03, depois do dia da ficha)."""
+    linhas = len(tabela["competencia"])
+    return pd.DataFrame(
+        {
+            **tabela,
+            valor: [10.0, 99.0][:linhas],
+            "disponivel_em": [D("2025-03-31"), D("2026-03-31")][:linhas],
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    ("nome", "pasta", "colunas", "valor"),
+    [
+        (
+            "anatel_telefonia_movel",
+            "anatel/Acessos_Telefonia_Movel_2025",
+            {
+                "servico": ["telefonia_movel"] * 2,
+                "recorte": ["modalidade"] * 2,
+                "cnpj": ["02.558.157/0001-62"] * 2,
+            },
+            "acessos",
+        ),
+        (
+            "ans_beneficiarios",
+            "ans/beneficiarios_2025",
+            {"cd_operadora": ["123456"] * 2},
+            "beneficiarios",
+        ),
+        (
+            "susep_premio_ganho",
+            "susep/seguros_2025",
+            {"coenti": ["1111"] * 2},
+            "premio_ganho",
+        ),
+    ],
+)
+def test_serie_da_agencia_e_lida_como_era_no_dia(
+    tmp_path: Path, nome: str, pasta: str, colunas: dict[str, list], valor: str
+) -> None:
+    """Cortar o futuro não muda o passado: o mês que a agência só publica depois do dia da ficha não
+    entra na série (ANS, Anatel e SUSEP gravam `disponivel_em`)."""
+    tabela = {"competencia": [D("2024-12-31"), D("2025-12-31")], **colunas}
+    _gravar(
+        tmp_path / "base",
+        f"setoriais/{pasta}.parquet",
+        _linhas_da_agencia(tabela, valor),
+    )
+    serie = next(s for s in dossie.SERIES_DAS_AGENCIAS if s.nome == nome)
+    with Porta(tmp_path / "base") as porta:
+        anual = gerar_dossies.ler_serie(
+            gerar_dossies.Leitor(porta), serie, D("2025-06-30")
+        )
+    assert anual["ano"].tolist() == [2024]
+
+
 def test_le_a_base_so_pela_porta() -> None:
     """O gerador só lê (não grava a base): não tem a exceção dos montadores do `test_porta_unica`."""
     from tests.test_porta_unica import _montador
