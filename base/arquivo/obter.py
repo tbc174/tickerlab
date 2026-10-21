@@ -42,6 +42,7 @@ import zlib
 from collections.abc import Callable, Mapping
 from datetime import date
 from pathlib import Path
+from typing import IO
 from urllib.parse import urlencode
 
 import pandas as pd
@@ -232,6 +233,67 @@ def _referencia_valida(achado: re.Match[str]) -> str:
         or 0xE000 <= codigo <= 0x10FFFF
     )
     return achado.group(0) if vale and codigo not in (0xFFFE, 0xFFFF) else ""
+
+
+TAMANHO_DO_PEDACO_DO_XML = 1024**2
+# quantos caracteres atrás de um "&" ainda cabem numa referência numérica (`&#x10FFFF;` tem 10)
+ALCANCE_DA_REFERENCIA = 12
+
+
+class TextoDoXml:
+    """O texto de um XML grande, lido em pedaços de um arquivo binário (UTF-16 com BOM ou UTF-8), com a
+    mesma limpeza de `decodificar_xml`; é o `read` que o `iterparse` pede, sem carregar o arquivo inteiro.
+
+    Uma referência numérica cortada entre dois pedaços (`&#1` | `1;`) espera o pedaço seguinte para ser
+    julgada: o resultado é igual ao de `decodificar_xml` para qualquer corte.
+    """
+
+    def __init__(
+        self, binario: IO[bytes], tamanho_do_pedaco: int = TAMANHO_DO_PEDACO_DO_XML
+    ) -> None:
+        self.binario = binario
+        self.tamanho_do_pedaco = tamanho_do_pedaco
+        self.decodificador: codecs.IncrementalDecoder | None = None
+        self.inicio = b""
+        self.pronto = ""  # limpo, esperando o `read`
+        self.pendente = ""  # decodificado, mas pode terminar numa referência cortada
+        self.acabou = False
+
+    def _decodificador_para(self, inicio: bytes) -> codecs.IncrementalDecoder:
+        nome = (
+            "utf-16"
+            if inicio.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE))
+            else "utf-8-sig"
+        )
+        return codecs.getincrementaldecoder(nome)()
+
+    def _proximo_pedaco(self) -> None:
+        bruto = self.binario.read(self.tamanho_do_pedaco)
+        fim_da_leitura = not bruto
+        if self.decodificador is None:
+            self.inicio += bruto
+            if len(self.inicio) < 2 and not fim_da_leitura:  # o BOM tem 2 bytes
+                return
+            self.decodificador = self._decodificador_para(self.inicio)
+            bruto, self.inicio = self.inicio, b""
+        self.acabou = fim_da_leitura
+        texto = self.pendente + self.decodificador.decode(bruto, final=self.acabou)
+        corte = len(texto)
+        if not self.acabou:
+            e_comercial = texto.rfind("&", max(0, len(texto) - ALCANCE_DA_REFERENCIA))
+            if e_comercial >= 0 and ";" not in texto[e_comercial:]:
+                corte = e_comercial
+        self.pendente = texto[corte:]
+        limpo = REFERENCIA_NUMERICA.sub(_referencia_valida, texto[:corte])
+        self.pronto += CONTROLE_INVALIDO.sub("", limpo)
+
+    def read(self, tamanho: int = -1) -> str:
+        while not self.acabou and (tamanho < 0 or len(self.pronto) < tamanho):
+            self._proximo_pedaco()
+        if tamanho < 0:
+            tamanho = len(self.pronto)
+        entregue, self.pronto = self.pronto[:tamanho], self.pronto[tamanho:]
+        return entregue
 
 
 def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:
