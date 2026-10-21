@@ -47,8 +47,11 @@ from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 # (as Novidades por e-mail, 14/10, entraram sem novo aceite: o consentimento delas é à parte).
 # Versão 8: formas de entrar e sessão de 30 dias (#461), encarregado e privacidade@, base legal
 # por dado, origem do cadastro, registros de acesso, transferência internacional, a base de
-# empresas e os relatórios escritos pelo modelo (ADR 0100); pré-lançamento sem cobrança
-VERSAO_DOS_TERMOS = "2026-10-19.8"
+# empresas e os relatórios escritos pelo modelo (ADR 0100); pré-lançamento sem cobrança.
+# Versão 9: transferência internacional provedor por provedor, depois de ler os contratos
+# (cláusulas da ANPD no Stripe; Google e Microsoft responsáveis próprios no login; o IP de quem
+# só visita o site vai à Cloudflare)
+VERSAO_DOS_TERMOS = "2026-10-21.9"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
