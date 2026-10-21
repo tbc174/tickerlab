@@ -70,6 +70,13 @@ def test_tarefa_com_duas_linhas_usa_o_maior_intervalo_entre_elas():
     assert tarefa.horarios == ("10 9 * * *", "40 13 * * *")
 
 
+def test_guarda_o_log_de_cada_tarefa():
+    agenda = _por_nome(ler_agenda(CRONTAB_DE_EXEMPLO))
+
+    assert agenda["eventos-cvm"].log == "/home/usuario/eventos-cvm.log"
+    assert agenda["cripto-no"].log == "/home/usuario/logs/cripto-no.log"
+
+
 @pytest.mark.parametrize(
     ("expressao", "periodo"),
     [
