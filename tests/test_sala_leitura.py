@@ -156,7 +156,9 @@ def test_no_linux_o_filho_se_limita_antes_de_ler(tmp_path):
         "from src.sala.leitura import _limitar_o_proprio_processo as limitar; limitar();"
         "print(resource.getrlimit(resource.RLIMIT_AS)[0], resource.getrlimit(resource.RLIMIT_FSIZE)[0]);"
         "sys.stdout.flush();"
-        "open('proibido.txt', 'w').write('x')"
+        # o Python ignora o SIGXFSZ, então gravar vira OSError (EFBIG); no `with` o erro sobe
+        # (num arquivo anônimo, fechado pelo coletor de lixo, ele seria engolido e a saída daria 0)
+        "\nwith open('proibido.txt', 'w') as f: f.write('x')"
     )
     resultado = subprocess.run(
         [sys.executable, "-I", "-c", codigo, str(leitura.RAIZ_DO_PROJETO)],
@@ -166,7 +168,8 @@ def test_no_linux_o_filho_se_limita_antes_de_ler(tmp_path):
     )
     memoria, arquivo = resultado.stdout.split()[:2]
     assert int(memoria) == leitura.MEMORIA_MAXIMA_EM_BYTES and int(arquivo) == 0
-    assert resultado.returncode != 0  # gravar arquivo é proibido (SIGXFSZ ou EFBIG)
+    assert resultado.returncode != 0  # gravar arquivo é proibido (EFBIG)
+    assert b"File too large" in resultado.stderr
     assert (
         not (tmp_path / "proibido.txt").exists()
         or (tmp_path / "proibido.txt").stat().st_size == 0
