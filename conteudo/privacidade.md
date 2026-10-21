@@ -1,6 +1,6 @@
 # Política de privacidade do TickerLab
 
-Última atualização: 21/10/2026 (versão 9: transferência internacional provedor por provedor, depois da leitura dos contratos: as cláusulas-padrão da ANPD no Stripe, o Google e a Microsoft como responsáveis próprios no login, e o endereço IP de quem só visita o site, visto pela Cloudflare).
+Última atualização: 21/10/2026 (versão 10: os sócios e administradores do cadastro público do CNPJ passam a aparecer, com o nome que a Receita Federal publica, no quadro de sócios da empresa consultada, com os limites, a finalidade e a base legal descritos na seção sobre a base de dados de empresas).
 
 O TickerLab é uma **plataforma de inteligência financeira** para quem analisa empresas: análise de ações, teste de estratégias com dados do passado, relatórios sobre empresas, uma base de dados públicos sobre empresas e a área do café. Esta página explica, em linguagem simples, quais dados pessoais ele guarda, para quê, com que base legal, por quanto tempo, com quem divide e quais são os seus direitos, de acordo com a **LGPD** (Lei Geral de Proteção de Dados, Lei 13.709/2018).
 
@@ -76,14 +76,16 @@ Não usamos cookies de rastreamento nem de publicidade, e o site e o app não ca
 
 ## A base de dados de empresas e as pessoas que aparecem nela
 
-A base do TickerLab é sobre **empresas**: documentos e cadastros públicos (CVM, SEC, Banco Central, Receita Federal, PGFN, CGU, tribunais de contas, agências reguladoras e outros). Pessoas aparecem nela só pela **função que exercem no mercado**, e com limites:
+A base do TickerLab é sobre **empresas**: documentos e cadastros públicos (CVM, SEC, Banco Central, Receita Federal, PGFN, CGU, tribunais de contas, agências reguladoras e outros). Pessoas aparecem nela só pela **função que exercem no mercado ou numa empresa**, e com limites:
 
 - Nas negociações de ações informadas à CVM e à SEC por diretores, conselheiros e controladores, guardamos **o cargo, nunca o nome** da pessoa.
-- Os sócios e administradores do cadastro público do CNPJ **não aparecem no app**. Na montagem da base, cada um vira só um identificador interno, sem nome e com o CPF mascarado como a Receita Federal publica, usado para ligar empresas entre si ("têm sócio em comum").
-- O app **não tem busca por nome de pessoa nem por CPF**, não mostra fichas de pessoas e nunca cruza os dados da base com os dados das contas.
+- **Sócios e administradores do cadastro público do CNPJ** (Receita Federal, dados abertos): aparecem **no quadro de sócios da empresa que você consulta pelo CNPJ**, com o nome, o CPF mascarado como a Receita publica, a qualificação (sócio, administrador), a data de entrada e, se o sócio for estrangeiro, o país. Nada além do que a Receita publica: não guardamos CPF completo, faixa etária, representante legal, telefone nem e-mail de ninguém, e não completamos esses dados com outras fontes. O nome aparece só ali: a ligação entre duas empresas diz que elas têm um sócio em comum, sem dizer qual. Cada consulta devolve os sócios de **uma empresa** de cada vez e fica registrada; exportações em lote saem sem os nomes. Microempreendedor individual e empresário individual são a própria pessoa: deles mostramos o endereço só até o município e a UF, e nenhum sinal negativo. O quadro de sócios com nome entra no ar depois desta política; até lá, cada sócio aparece só como "sócio pessoa física".
+- **Para quê e com que base legal.** Para quem precisa conhecer a empresa com que faz negócio (contraparte, crédito, compliance, fornecedor, compra e venda de empresas), a mesma finalidade com que a Receita Federal publica o cadastro. Base legal: legítimo interesse (LGPD, art. 7º, IX, e art. 10), sobre dados de acesso público, respeitando a finalidade da publicação (art. 7º, § 3º). O teste de legítimo interesse e o relatório de impacto estão escritos e guardados. É proibido usar esses dados para prospecção, marketing, montagem de perfil de pessoa ou revenda de listas.
+- O app **não tem busca por nome de pessoa nem por CPF**, não mostra fichas de pessoas nem a lista "empresas de fulano", e nunca cruza os dados da base com os dados das contas.
+- **Por quanto tempo.** O nome fica enquanto a Receita o publicar no quadro da empresa; quando ela o retira (a pessoa deixou a sociedade), ele sai na atualização mensal seguinte, e o histórico da empresa guarda só "sócio pessoa física", sem o nome. Tudo o que sai da base leva o crédito "Fonte: Receita Federal, dados abertos do CNPJ" e o mês da extração.
 - O que mostramos sobre empresas são **fatos com data e fonte**, nunca acusações. Uma empresa que se achar retratada de forma errada pode escrever para contato@tickerlab.com.br; a correção sai com errata visível.
 
-Se você é administrador, conselheiro ou sócio de uma empresa e quer saber o que a base guarda sobre o seu papel nela, ou se opor a isso, escreva para **privacidade@tickerlab.com.br** (LGPD, art. 18).
+Se você é administrador, conselheiro ou sócio de uma empresa e quer saber o que a base guarda sobre o seu papel nela, ou se opor a isso, escreva para **privacidade@tickerlab.com.br** (LGPD, art. 18) dizendo qual empresa; não é preciso enviar documentos. Se você se opuser, o seu nome sai da tela e da API em até 15 dias e passa a aparecer só como "sócio pessoa física"; o que a Receita publica continua no cadastro dela, e a correção de um dado errado é pedida a ela.
 
 ## Por quanto tempo guardamos
 

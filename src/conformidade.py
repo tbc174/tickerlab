@@ -54,7 +54,9 @@ from src.sala.documentos import apagar_arquivos_da_conta
 # Versão 9: transferência internacional provedor por provedor, depois de ler os contratos
 # (cláusulas da ANPD no Stripe; Google e Microsoft responsáveis próprios no login; o IP de quem
 # só visita o site vai à Cloudflare)
-VERSAO_DOS_TERMOS = "2026-10-21.9"
+# Versão 10: os sócios do cadastro público do CNPJ aparecem com o nome que a Receita publica,
+# só no quadro de sócios da empresa consultada (ADR 0106; portão com quatro condições)
+VERSAO_DOS_TERMOS = "2026-10-21.10"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
