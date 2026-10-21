@@ -254,6 +254,22 @@ def test_sala_sem_chave_nao_abre(conexao, ana, raiz):
         documentos.abrir_documento(conexao, **_ids(ana, doc_b))
 
 
+def test_abrir_e_ler_nunca_criam_chave(motor, ana, raiz):
+    """Só o envio cria a chave da operação; sem ela, abrir e ler dão erro e não gravam nada."""
+    with motor.begin() as conexao:
+        operacao = _operacao(conexao, ana)
+        documento = _receber(conexao, ana, operacao).documento
+        sem_chave = {"chave_cifrada": None, "versao_da_chave": None}
+        conexao.execute(sa.update(operacoes).values(**sem_chave))
+        with pytest.raises(cofre.CifraInvalidaError):
+            documentos.abrir_documento(conexao, **_ids(ana, documento))
+    situacao = documentos.ler_documento(motor, **_ids(ana, documento))
+    assert situacao == "erro_na_leitura"
+    with motor.begin() as conexao:
+        da_sala = {"usuario_id": ana.id, "operacao_id": operacao.id}
+        assert sala.chave_da_operacao(conexao, **da_sala) is None
+
+
 def test_apagar_a_operacao_some_com_a_chave(conexao, ana, raiz):
     operacao = _operacao(conexao, ana)
     _receber(conexao, ana, operacao)

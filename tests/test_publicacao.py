@@ -129,13 +129,15 @@ def _servicos_do_compose() -> dict[str, str]:
     return dict(zip(partes[1::2], partes[2::2], strict=True))
 
 
-def test_so_a_api_ve_a_sala_de_dados_e_a_chave_dela():
-    """B-20: o app Streamlit não monta os arquivos cifrados nem lê a chave-mestra."""
+def test_so_a_api_le_a_chave_da_sala_e_o_app_ve_os_arquivos_para_apagar_a_conta():
+    """B-20: a chave-mestra só na API; os arquivos cifrados também no app, porque apagar a conta
+    (`conformidade.apagar_conta`, na tela Meus dados) tira os arquivos do disco. Sem a chave, o
+    app não decifra nada."""
     servicos = _servicos_do_compose()
+    for nome in ("tickerlab", "tickerlab-api"):
+        assert "- ./dados_sala:/app/dados_sala" in servicos[nome], nome
     for nome, texto in servicos.items():
-        e_a_api = nome == "tickerlab-api"
-        assert ("- ./dados_sala:/app/dados_sala" in texto) is e_a_api, nome
-        assert ("- .env.sala" in texto) is e_a_api, nome
+        assert ("- .env.sala" in texto) is (nome == "tickerlab-api"), nome
 
 
 def test_a_imagem_cria_a_pasta_da_sala_so_para_o_usuario_do_app():

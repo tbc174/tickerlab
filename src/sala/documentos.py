@@ -41,25 +41,39 @@ class Aberto:
     conteudo: bytes
 
 
-def _chave_da_operacao(
+def _chave_guardada(
     conexao: sa.Connection, usuario_id: uuid.UUID, operacao_id: uuid.UUID
 ) -> bytes:
-    """A chave da operação; na primeira vez, cria e grava (embrulhada pela chave-mestra)."""
-    da_sala = {"usuario_id": usuario_id, "operacao_id": operacao_id}
-    guardada = sala.chave_da_operacao(conexao, **da_sala)
+    """A chave da operação já gravada; sem ela, nada decifra (`cofre.CifraInvalidaError`)."""
+    guardada = sala.chave_da_operacao(
+        conexao, usuario_id=usuario_id, operacao_id=operacao_id
+    )
     if guardada is None:
-        chave, embrulhada, versao = cofre.nova_chave_da_operacao(operacao_id)
-        if sala.guardar_chave_da_operacao(
-            conexao, **da_sala, chave_cifrada=embrulhada, versao_da_chave=versao
-        ):
-            return chave
-        guardada = sala.chave_da_operacao(
-            conexao, **da_sala
-        )  # outro envio gravou antes
-        if guardada is None:
-            raise RuntimeError("A operação sumiu no meio do envio.")
+        raise cofre.CifraInvalidaError("A operação não tem chave.")
     embrulhada, versao = guardada
     return cofre.abrir_chave_da_operacao(embrulhada, versao, operacao_id)
+
+
+def _chave_para_gravar(
+    conexao: sa.Connection, usuario_id: uuid.UUID, operacao_id: uuid.UUID
+) -> bytes:
+    """A chave da operação; no primeiro envio, cria e grava (embrulhada pela chave-mestra).
+
+    Só o envio cria a chave: abrir e ler usam `_chave_guardada`, que nunca grava.
+    """
+    if sala.chave_da_operacao(conexao, usuario_id=usuario_id, operacao_id=operacao_id):
+        return _chave_guardada(conexao, usuario_id, operacao_id)
+    chave, embrulhada, versao = cofre.nova_chave_da_operacao(operacao_id)
+    if sala.guardar_chave_da_operacao(
+        conexao,
+        usuario_id=usuario_id,
+        operacao_id=operacao_id,
+        chave_cifrada=embrulhada,
+        versao_da_chave=versao,
+    ):
+        return chave
+    # outro envio gravou a chave entre a leitura e a gravação: vale a que ficou
+    return _chave_guardada(conexao, usuario_id, operacao_id)
 
 
 def _recusar(
@@ -107,7 +121,7 @@ def receber_documento(
         tipo = arquivos.conferir(conteudo, nome_original)
     except arquivos.ArquivoRecusado as recusa:
         return _recusar(conexao, usuario_id, operacao_id, recusa.motivo, len(conteudo))
-    chave = _chave_da_operacao(conexao, usuario_id, operacao_id)
+    chave = _chave_para_gravar(conexao, usuario_id, operacao_id)
     documento = sala.registrar_documento(
         conexao,
         usuario_id=usuario_id,
@@ -166,7 +180,7 @@ def abrir_documento(
     )
     if cofre.nonce_de(cifrado) != sala.nonce_do_documento(conexao, **ids):
         raise cofre.CifraInvalidaError("O arquivo do disco não é o deste documento.")
-    chave = _chave_da_operacao(conexao, usuario_id, operacao_id)
+    chave = _chave_guardada(conexao, usuario_id, operacao_id)
     conteudo = cofre.decifrar_documento(
         chave,
         cifrado,
@@ -218,7 +232,7 @@ def _guardar_texto(
     if resultado.situacao == "lido":
         # o CPF é mascarado aqui, do lado da API, mesmo que o filho tenha devolvido outra coisa
         paginas = [mascara.mascarar_cpfs(pagina) for pagina in resultado.paginas]
-        chave = _chave_da_operacao(conexao, usuario_id, documento.operacao_id)
+        chave = _chave_guardada(conexao, usuario_id, documento.operacao_id)
         cifrado = cofre.cifrar_documento(
             chave,
             json.dumps(paginas, ensure_ascii=False).encode("utf-8"),
@@ -313,7 +327,7 @@ def texto_do_documento(
         )
     except FileNotFoundError:
         return None
-    chave = _chave_da_operacao(conexao, usuario_id, operacao_id)
+    chave = _chave_guardada(conexao, usuario_id, operacao_id)
     texto = cofre.decifrar_documento(
         chave,
         cifrado,

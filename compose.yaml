@@ -7,8 +7,9 @@
 # A pasta dados_locais guarda o cache de preços (SQLite). O contêiner roda como usuário 1000,
 # então a pasta precisa ser desse usuário ANTES do primeiro "docker compose up":
 #   mkdir -p dados_locais && sudo chown 1000:1000 dados_locais
-# A sala de dados (B-20) guarda os arquivos cifrados em dados_sala, montada SÓ na API, e a
-# chave-mestra fica em .env.sala, lido SÓ pela API (o app Streamlit não vê nem uma nem outra).
+# A sala de dados (B-20) guarda os arquivos cifrados em dados_sala e a chave-mestra fica em
+# .env.sala, lido SÓ pela API. O app Streamlit também monta dados_sala, só para apagar os
+# arquivos quando a pessoa apaga a conta (Meus dados); sem a chave, ele não decifra nada.
 # Os dois são criados pelo projeto-acoes/configurar-chave-da-sala.ps1 antes do primeiro "up":
 #   dados_sala do usuário 1000, permissão 700; .env.sala permissão 600 (fora do Git)
 services:
@@ -33,6 +34,9 @@ services:
       STREAMLIT_SERVER_BASE_URL_PATH: classico
     volumes:
       - ./dados_locais:/app/dados_locais
+      # os arquivos cifrados da sala de dados: o app só os apaga (apagar a conta); a chave não
+      # está aqui, só na API
+      - ./dados_sala:/app/dados_sala
       # login do Google: o secrets.toml fica só no servidor (permissão 600, fora do Git). Crie o
       # arquivo ANTES do "up" (pode ficar vazio = modo local); senão o Docker cria uma pasta no lugar.
       - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro
@@ -60,7 +64,7 @@ services:
     volumes:
       # a API v1 (leitura, desligada até a 1ª tela nova) calcula com o mesmo cache de preços do app
       - ./dados_locais:/app/dados_locais
-      # os arquivos cifrados da sala de dados (src/sala/guarda.py); só a API monta
+      # os arquivos cifrados da sala de dados (src/sala/guarda.py); só a API tem a chave
       - ./dados_sala:/app/dados_sala
     networks:
       - db
