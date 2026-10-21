@@ -48,7 +48,10 @@ def test_refaz_cada_tabela_com_o_leitor_da_fonte():
         len(tabelas["precos/mb"]) == 4
     )  # o candle de 05/01 ainda estava aberto na coleta
     assert len(tabelas["cftc"]) == 4
-    assert tabelas["gdelt"]["noticias"].tolist() == [8, 2]
+    # regressão (cripto-verificar de 18/10/2026): o ponto de 02/01 à meia-noite, que o GDELT traz
+    # no fim do período (`enddatetime`), a coleta descarta; o refazer o guardava e a tabela
+    # refeita ganhava um dia que a guardada não tem
+    assert tabelas["gdelt"]["noticias"].tolist() == [8]
 
 
 def test_cada_original_e_lido_com_a_hora_em_que_foi_baixado():
