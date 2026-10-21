@@ -6,6 +6,7 @@ com os mesmos números já escritos. A cascata do lucro e a ponte da dívida vir
 tela recolhe sai por inteiro.
 """
 
+from collections.abc import Callable
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -89,7 +90,25 @@ def _titulo_da_tabela(pdf: RelatorioPDF, titulo: str) -> None:
     pdf.cell(0, 6, titulo, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
 
-def escrever_secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
+def _tabela_do_relatorio(pdf: RelatorioPDF, chave: str, linhas: list[dict]) -> None:
+    if chave in dossie.TITULOS_DAS_TABELAS:
+        _titulo_da_tabela(pdf, dossie.titulo_da_tabela(chave))
+        pdf.tabela_de_texto(list(linhas[0]), [list(linha.values()) for linha in linhas])
+        return
+    _titulo_da_tabela(pdf, nome_da_tabela(chave))
+    pdf.tabela(*_cabecalho_e_linhas(linhas))
+
+
+def escrever_secao(
+    pdf: RelatorioPDF,
+    secao: Secao,
+    estilo: Estilo,
+    escrever_tabela: Callable[
+        [RelatorioPDF, str, list[dict]], None
+    ] = _tabela_do_relatorio,
+) -> None:
+    """`escrever_tabela` deixa o relatório do setor, que já traz as tabelas escritas, usar o mesmo
+    corpo de seção."""
     pdf.secao(secao.titulo, reservar=40, numerada=True)
     if secao.itens:
         _itens(pdf, secao.itens)
@@ -110,12 +129,6 @@ def escrever_secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
                     nota=linha["nota"],
                 )
             continue
-        if chave in dossie.TITULOS_DAS_TABELAS:
-            _titulo_da_tabela(pdf, dossie.titulo_da_tabela(chave))
-            pdf.tabela_de_texto(
-                list(linhas[0]), [list(linha.values()) for linha in linhas]
-            )
-            continue
         if chave in GRAFICOS:
             passos = [(linha["passo"], float(linha["valor"])) for linha in linhas]
             grafico = grafico_de_cascata(
@@ -123,8 +136,7 @@ def escrever_secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
             )
             pdf.imagem(grafico)
             continue
-        _titulo_da_tabela(pdf, nome_da_tabela(chave))
-        pdf.tabela(*_cabecalho_e_linhas(linhas))
+        escrever_tabela(pdf, chave, linhas)
 
 
 def _sem_marcas_de_markdown(texto: str) -> str:

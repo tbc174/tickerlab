@@ -86,7 +86,12 @@ function cabecalhosPara(token: string): Record<string, string> {
 
 /** Um arquivo de uma rota da v1 (a exportação dos dados, um PDF), com a sessão. Com `corpo`, o
  * pedido é um POST (o CNPJ de uma busca não pode ir no endereço). */
-export async function baixar(rota: string, token: string, corpo?: unknown): Promise<Blob> {
+export async function baixar(
+  rota: string,
+  token: string,
+  corpo?: unknown,
+  parametros: Parametros = {},
+): Promise<Blob> {
   if (!ROTA_DA_V1.test(rota)) throw new Error(`rota fora da API v1: ${rota}`);
   const pedido: RequestInit =
     corpo === undefined
@@ -99,7 +104,7 @@ export async function baixar(rota: string, token: string, corpo?: unknown): Prom
         };
   let resposta: Response;
   try {
-    resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}`, pedido);
+    resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}${consulta(parametros)}`, pedido);
   } catch {
     throw new ErroDaApi("rede", SEM_CONEXAO);
   }
