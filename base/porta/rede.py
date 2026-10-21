@@ -4,7 +4,9 @@
 anda pelas ligações nos dois sentidos até `profundidade` saltos e devolve as ligações, as entidades
 e os identificadores encontrados. Com `como_era_em`, só o que já era público no dia e ainda valia
 (D5), sem o fim que só veio depois; um identificador que já tinha acabado no dia continua (é a
-história conhecida, como o ticker antigo).
+história conhecida, como o ticker antigo). Vale também para quem pede pelo `id_entidade` direto: a
+entidade que só ficou pública depois do dia não vira centro, e os dados de uma entidade da rede só
+saem se ela já era pública (N10 do mapa do Plano Mestre v3.1).
 """
 
 import re
@@ -64,12 +66,20 @@ def resolver(con: duckdb.DuckDBPyConnection, id_ou_cnpj: str, dia: str | None) -
     """O id_entidade de um id, CNPJ (14 ou raiz de 8) ou outro identificador; erro se nenhum ou
     mais de um."""
     existem = views(con)
-    if "entidades" in existem and con.execute(
-        "SELECT count(*) FROM entidades WHERE id_entidade = $id", {"id": id_ou_cnpj}
-    ).fetchone() != (0,):
-        return id_ou_cnpj
+    quando = "" if dia is None else f" pública até {dia}"
+    if "entidades" in existem:
+        # N10: o id direto também passa pelo dia; antes, a entidade que só ficou pública depois
+        # dele saía como centro da rede (pelo CNPJ não, porque o identificador já era filtrado)
+        parametros: dict[str, object] = {"id": id_ou_cnpj}
+        sql = _com_dia(
+            "SELECT count(*) FROM entidades WHERE id_entidade = $id {publico}",
+            parametros,
+            dia,
+        )
+        if con.execute(sql, parametros).fetchone() != (0,):
+            return id_ou_cnpj
     if ID_DE_ENTIDADE.match(id_ou_cnpj) or "identificadores" not in existem:
-        raise LookupError(f"{id_ou_cnpj}: nenhuma entidade com este id na base")
+        raise LookupError(f"{id_ou_cnpj}: nenhuma entidade{quando} com este id na base")
     texto = SEPARADORES.sub("", id_ou_cnpj.strip()).upper()
     tentativas: list[list[tuple[str, str]]] = []
     if len(texto) == 14:  # o fundo é o CNPJ inteiro; a empresa, a raiz
@@ -85,7 +95,6 @@ def resolver(con: duckdb.DuckDBPyConnection, id_ou_cnpj: str, dia: str | None) -
             )
         if achados:
             return achados[0]
-    quando = "" if dia is None else f" pública até {dia}"
     raise LookupError(f"{id_ou_cnpj}: nenhuma entidade{quando} com este identificador")
 
 
@@ -112,13 +121,20 @@ def _vizinhas(
     ).df()
 
 
-def _entidades(con: duckdb.DuckDBPyConnection, saltos: dict[str, int]) -> pd.DataFrame:
+def _entidades(
+    con: duckdb.DuckDBPyConnection, saltos: dict[str, int], dia: str | None
+) -> pd.DataFrame:
+    """Cada entidade da rede com o salto; os dados dela só se ela já era pública no dia (a ponta de
+    uma ligação pública pode ter ficado pública depois por outra fonte: fica só o id)."""
     tabela = pd.DataFrame({"id_entidade": list(saltos), "salto": list(saltos.values())})
     if "entidades" in views(con):
-        dados = con.execute(
-            f"SELECT * FROM entidades WHERE id_entidade IN {_LISTA.format('ids')}",
-            {"ids": list(saltos)},
-        ).df()
+        parametros: dict[str, object] = {"ids": list(saltos)}
+        sql = _com_dia(
+            f"SELECT * FROM entidades WHERE id_entidade IN {_LISTA.format('ids')} {{publico}}",
+            parametros,
+            dia,
+        )
+        dados = con.execute(sql, parametros).df()
         tabela = tabela.merge(dados, on="id_entidade", how="left")
     return tabela.sort_values(["salto", "id_entidade"], ignore_index=True)
 
@@ -175,6 +191,6 @@ def rede(
     return Rede(
         centro,
         ligacoes,
-        _entidades(con, saltos),
+        _entidades(con, saltos, dia),
         _identificadores(con, list(saltos), dia),
     )
