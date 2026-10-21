@@ -254,19 +254,56 @@ def _zip_vazio() -> bytes:
 
 
 @pytest.mark.parametrize(
-    ("fonte", "primeiro", "ultimo"),
+    ("fonte", "primeiro", "ultimo", "quantos"),
     [
-        ("b3-boletim-pr", "filelist=PR260915.zip", "filelist=PR261014.zip"),
-        ("b3-cotahist-dia", "COTAHIST_D15092026.ZIP", "COTAHIST_D14102026.ZIP"),
+        # o PR só pede pregão que já fechou (sem 12/10, feriado, nem 14/10, hoje às 2h)
+        ("b3-boletim-pr", "filelist=PR260915.zip", "filelist=PR261013.zip", 20),
+        ("b3-cotahist-dia", "COTAHIST_D15092026.ZIP", "COTAHIST_D14102026.ZIP", 22),
     ],
 )
-def test_boletins_da_janela(fonte, primeiro, ultimo):
+def test_boletins_da_janela(fonte, primeiro, ultimo, quantos):
     alvos = fontes.POR_ID[fonte].descobrir(None, AGORA)
     assert alvos[0].url.endswith(primeiro)
     assert alvos[-1].url.endswith(ultimo)
-    assert len(alvos) == 22
+    assert len(alvos) == quantos
     assert {a.extensao for a in alvos} == {".zip"}
     assert fontes.POR_ID[fonte].grupo == "diaria"
+
+
+def _urls_do_pr(agora):
+    return [
+        a.url[-10:-4] for a in fontes.POR_ID["b3-boletim-pr"].descobrir(None, agora)
+    ]
+
+
+def test_pr_nao_pede_feriado():
+    assert "261012" not in _urls_do_pr(
+        AGORA
+    )  # 12/10/2026, N. Sra. Aparecida (a B3 deu 500)
+    assert "261013" in _urls_do_pr(AGORA)
+
+
+def test_pr_so_pede_o_dia_corrente_depois_do_boletim_final():
+    de_manha = datetime(2026, 10, 21, 5, tzinfo=UTC)  # 2h em Brasília
+    de_noite = datetime(2026, 10, 22, 1, 30, tzinfo=UTC)  # 21/10 às 22h30
+    assert _urls_do_pr(de_manha)[-1] == "261020"
+    assert _urls_do_pr(de_noite)[-1] == "261021"
+    assert (
+        _urls_do_pr(datetime(2026, 10, 22, 0, 30, tzinfo=UTC))[-1] == "261020"
+    )  # 21h30
+
+
+def test_pr_da_rodada_de_19_10_nao_repete_os_dois_500():
+    """Em 19/10/2026 às 2h a B3 deu 500 para o feriado (12/10) e para o dia corrente (19/10)."""
+    urls = _urls_do_pr(datetime(2026, 10, 19, 5, tzinfo=UTC))
+    assert "261012" not in urls
+    assert "261019" not in urls
+    assert urls[-1] == "261016"
+
+
+def test_pr_do_dia_seguinte_ao_feriado_e_pedido_as_2h():
+    terca = datetime(2026, 10, 13, 5, tzinfo=UTC)  # 13/10 às 2h; 12/10 foi feriado
+    assert _urls_do_pr(terca)[-1] == "261009"  # sexta anterior: último pregão fechado
 
 
 def _fonte_do_boletim(fonte_id: str, url: str) -> coleta.Fonte:
