@@ -1097,3 +1097,70 @@ sa.Index(
     checklist_da_sala.c.operacao_id,
     checklist_da_sala.c.usuario_id,
 )
+
+
+# --- Originação: o funil das operações (B-33, migração 0041; plano `2026-10-21-b33-crm-de-originacao`) ---
+# Um negócio por operação (a chave primária é a própria operação) e os contatos que a pessoa anotou.
+# Mesmo isolamento da sala: chave composta com `usuario_id`, cascata com a operação e a conta.
+# Nenhuma coluna de e-mail ou telefone, de propósito: o registro é um caderno, não envia nada.
+FASES_DO_NEGOCIO = (
+    "ideia",
+    "qualificacao",
+    "analise",
+    "proposta",
+    "negociacao",
+    "fechado",
+    "perdido",
+)
+TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO = 300
+TAMANHO_MAXIMO_DO_CONTATO = 500
+
+negocios_da_originacao = sa.Table(
+    "negocios_da_originacao",
+    metadata,
+    sa.Column("operacao_id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("fase", sa.String(12), nullable=False, server_default="ideia"),
+    sa.Column("origem", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO), nullable=False),
+    sa.Column("alvo", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO)),
+    sa.Column("proximo_passo", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO)),
+    sa.Column("responsavel", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO)),
+    sa.Column("fase_desde", sa.Date, nullable=False),
+    _momento("criado_em"),
+    _momento("atualizado_em"),
+    _da_operacao("negocios_da_originacao"),
+    sa.UniqueConstraint(
+        "operacao_id", "usuario_id", name="uq_negocios_da_originacao_operacao"
+    ),
+    sa.CheckConstraint(_entre("fase", FASES_DO_NEGOCIO), name="fase"),
+)
+sa.Index("ix_negocios_da_originacao_usuario_id", negocios_da_originacao.c.usuario_id)
+
+contatos_do_negocio = sa.Table(
+    "contatos_do_negocio",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("descricao", sa.String(TAMANHO_MAXIMO_DO_CONTATO), nullable=False),
+    sa.Column("ocorreu_em", sa.Date, nullable=False),
+    _momento("registrado_em"),
+    sa.ForeignKeyConstraint(
+        ["operacao_id", "usuario_id"],
+        [
+            "negocios_da_originacao.operacao_id",
+            "negocios_da_originacao.usuario_id",
+        ],
+        name="fk_contatos_do_negocio_negocio",
+        ondelete="CASCADE",
+    ),
+    sa.CheckConstraint(
+        f"length(descricao) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_CONTATO}", name="descricao"
+    ),
+)
+sa.Index(
+    "ix_contatos_do_negocio_negocio",
+    contatos_do_negocio.c.operacao_id,
+    contatos_do_negocio.c.usuario_id,
+)
+sa.Index("ix_contatos_do_negocio_usuario_id", contatos_do_negocio.c.usuario_id)

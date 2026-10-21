@@ -33,6 +33,7 @@ from src.banco.modelo import (
     watchlists,
 )
 from src.banco.origens import buscar_linha as buscar_origem_do_cadastro
+from src.banco.originacao import dados_para_exportar as originacao_para_exportar
 from src.banco.pulse import dados_para_exportar as pulse_para_exportar
 from src.banco.sala import dados_para_exportar as sala_para_exportar
 from src.banco.tentativas import contar_por_ativo
@@ -168,6 +169,8 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         "links_compartilhados": links_para_exportar(conexao, usuario_id),
         # metadados da sala de dados (B-20); os arquivos saem pelo "Baixar a sala"
         "sala_de_dados": sala_para_exportar(conexao, usuario_id=usuario_id),
+        # o funil de originação (B-33): fase, próximo passo e os contatos anotados à mão
+        "originacao": originacao_para_exportar(conexao, usuario_id=usuario_id),
         "origem_do_cadastro": _origem_do_cadastro(conexao, usuario_id),
         "favoritos": [
             l.ticker
