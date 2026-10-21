@@ -23,6 +23,7 @@ from src.banco.conexao import criar_engine, migrar_para
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.credito import features as fc
 from src.credito.dicionario import (
+    DAS_DEMONSTRACOES,
     DICIONARIO,
     VERSAO_DAS_FEATURES,
     dicionario_como_lista,
@@ -91,7 +92,7 @@ def test_as_features_reusam_os_numeros_da_ficha(banco):
 
 def test_toda_feature_tem_rastro_completo_e_a_formula_do_dicionario(banco):
     f = fc.features_das_demonstracoes(_dados(banco, WEG), DIA)
-    assert [x.chave for x in f.features] == list(DICIONARIO)
+    assert [x.chave for x in f.features] == list(DAS_DEMONSTRACOES)
     for feature in f.features:
         assert feature.rastro.formula == DICIONARIO[feature.chave].formula
         assert feature.rastro.versao_do_calculo == VERSAO_DAS_FEATURES
@@ -159,7 +160,7 @@ def test_features_e_dicionario_viram_json(banco):
     lido = json.loads(texto)
     assert lido["data_da_analise"] == "2026-09-30"
     assert lido["features"][0]["disponivel_em"] <= "2026-09-30"
-    assert set(f.valores()) == set(DICIONARIO)
+    assert set(f.valores()) == set(DAS_DEMONSTRACOES)
     assert json.loads(json.dumps(dicionario_como_lista()))[0]["chave"] == (
         "divida_liquida_sobre_ebitda"
     )

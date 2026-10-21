@@ -131,17 +131,20 @@ def _juntar(*listas: Sequence[DocumentoUsado]) -> list[DocumentoUsado]:
     return list(vistos.values())
 
 
-def _feature(
+def nova_feature(
     chave: str,
-    valor: float | None,
+    valor: float | str | None,
     periodo: str,
     documentos: Sequence[DocumentoUsado],
     motivo: str = "",
+    fonte: str = FONTE_DA_CVM,
 ) -> Feature:
+    """A feature com o rastro (fórmula do dicionário, `disponivel_em` do documento mais novo); com
+    motivo, ou sem valor, fica não observada."""
     if valor is None and not motivo:
         motivo = SEM_A_CONTA
     rastro = Rastro.dos_documentos(
-        DICIONARIO[chave].formula, VERSAO_DAS_FEATURES, FONTE_DA_CVM, documentos
+        DICIONARIO[chave].formula, VERSAO_DAS_FEATURES, fonte, documentos
     )
     return Feature(
         chave, None if motivo else valor, periodo, rastro, rastro.publicado_em, motivo
@@ -170,13 +173,13 @@ def _razao(
         if numerador is None or denominador is None or motivo
         else numerador / denominador
     )
-    return _feature(chave, valor, periodo, documentos, motivo)
+    return nova_feature(chave, valor, periodo, documentos, motivo)
 
 
 def _de_um_insumo(chave: str, insumo: ca.Insumo, motivo: str) -> Feature:
     """Não observado porque o insumo não foi observado (o motivo dele vem junto)."""
     texto = motivo or f"{insumo.nome}: {insumo.motivo or SEM_A_CONTA}"
-    return _feature(chave, None, insumo.periodo, insumo.rastro.documentos, texto)
+    return nova_feature(chave, None, insumo.periodo, insumo.rastro.documentos, texto)
 
 
 def _alavancagem_e_cobertura(
@@ -208,7 +211,7 @@ def _alavancagem_e_cobertura(
             _razao(chave, cima.valor, baixo.valor, nome, periodo, documentos, motivo)
         )
     do_balanco = list(liquida.rastro.documentos)
-    features.insert(1, _feature(
+    features.insert(1, nova_feature(
         "divida_liquida_sobre_pl", pl.valor, pl.base, do_balanco, motivo or pl.motivo
     ))  # fmt: skip
     return features
@@ -254,7 +257,7 @@ def _crescimento(dados: DadosDaEmpresa, motivo: str) -> list[Feature]:
             if len(anos_com_receita) > anos
             else []
         )
-        features.append(_feature(
+        features.append(nova_feature(
             chave, indicador.valor, indicador.base, _dfps_dos_anos(dados, usados),
             motivo or indicador.motivo,
         ))  # fmt: skip
