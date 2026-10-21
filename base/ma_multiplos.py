@@ -17,10 +17,14 @@ De onde vem cada parte:
   dos últimos 12 meses (o último DFP mais o ITR mais novo), o balanço mais recente e as ações em
   circulação conferidas pelo lucro por ação declarado (a CVM às vezes as informa em milhares).
 
-Múltiplos: EV/receita, EV/EBIT, P/L e P/VP, com EV = patrimônio + dívida bruta − caixa e aplicações (e o
-contrário quando só o EV foi lido). Um lado zero ou negativo → sem múltiplo. Banco e seguradora
-(`e_financeira`) ficam sem EV: a dívida é o negócio deles. O EV/EBITDA do plano fica para depois (a
-depreciação está no fluxo de caixa); o EV/EBIT compara o mesmo preço.
+Múltiplos: EV/receita, EV/EBITDA, EV/EBIT, P/L e P/VP, com EV = patrimônio + dívida bruta − caixa e
+aplicações (e o contrário quando só o EV foi lido). EBITDA = EBIT + depreciação e amortização do fluxo de
+caixa, como no Research. Um lado zero ou negativo → sem múltiplo. Banco e seguradora (`e_financeira`)
+ficam sem EV: a dívida é o negócio deles.
+
+**Quando o múltiplo ficou público** (`valor_publico_em`): o dia do documento de onde veio o valor, que
+pode ser depois do anúncio (o fato relevante diz que comprou; o valor sai num documento seguinte). Os
+comps por transação (`src/comps_por_transacao.py`) só usam a operação a partir desse dia.
 """
 
 from dataclasses import dataclass
@@ -146,12 +150,15 @@ def calcular(valor: mx.ValorLido, contas: pd.DataFrame) -> dict:
             else patrimonio + divida_liquida
         )
     receita, ebit, lucro = ttm.get("receita"), ttm.get("ebit"), _lucro(ttm)
+    depreciacao = ttm.get("depreciacao")
+    ebitda = None if ebit is None or depreciacao is None else ebit + depreciacao
     pl = saldo.get("patrimonio_liquido")
     return {
         "valor_da_empresa": ev,
         "valor_do_patrimonio": patrimonio,
         "acoes": acoes,
         "receita_12m": receita,
+        "ebitda_12m": None if financeira else ebitda,
         "ebit_12m": None if financeira else ebit,
         "lucro_12m": lucro,
         "patrimonio_liquido": pl,
@@ -159,6 +166,7 @@ def calcular(valor: mx.ValorLido, contas: pd.DataFrame) -> dict:
         "base_12m": base_12m,
         "balanco_em": balanco_em,
         "ev_receita": _divisao(ev, receita),
+        "ev_ebitda": None if financeira else _divisao(ev, ebitda),
         "ev_ebit": None if financeira else _divisao(ev, ebit),
         "p_l": _divisao(patrimonio, lucro),
         "p_vp": _divisao(patrimonio, pl),
@@ -195,7 +203,8 @@ def multiplos(
         cnpj, motivo = alvo_aberta(membros, emissoras)
         valor, protocolo, motivo_do_valor = valor_lido(membros)
         linha |= {"alvo_cnpj": cnpj, "valor_campo": valor.campo if valor else None,
-                  "valor_lido": valor.em_unidades if valor else None, "valor_protocolo": protocolo or None}  # fmt: skip
+                  "valor_lido": valor.em_unidades if valor else None, "valor_protocolo": protocolo or None,
+                  "valor_publico_em": por_protocolo[protocolo].publico_em if protocolo else None}  # fmt: skip
         if cnpj is None or valor is None:
             linhas.append(linha | {"motivo": motivo or motivo_do_valor})
             continue
@@ -209,7 +218,7 @@ def multiplos(
 
 COLUNAS = [
     "operacao", "alvo", "alvo_cnpj", "anuncio", "valor_campo", "valor_lido", "valor_protocolo",
-    "valor_da_empresa", "valor_do_patrimonio", "acoes", "receita_12m", "ebit_12m", "lucro_12m",
-    "patrimonio_liquido", "divida_liquida", "base_12m", "balanco_em", "entregue_ate",
-    "ev_receita", "ev_ebit", "p_l", "p_vp", "nota", "motivo",
+    "valor_publico_em", "valor_da_empresa", "valor_do_patrimonio", "acoes", "receita_12m",
+    "ebitda_12m", "ebit_12m", "lucro_12m", "patrimonio_liquido", "divida_liquida", "base_12m",
+    "balanco_em", "entregue_ate", "ev_receita", "ev_ebitda", "ev_ebit", "p_l", "p_vp", "nota", "motivo",
 ]  # fmt: skip
