@@ -168,16 +168,30 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     assert "os links compartilhados e a assinatura" in texto
 
 
-def test_versao_9_dos_termos_pede_novo_aceite_e_cobre_o_login_e_o_encarregado():
+def test_versao_10_dos_termos_pede_novo_aceite_e_cobre_os_socios_do_cnpj():
     """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal.
 
     Versão 9 (21/10): transferência internacional provedor por provedor (P-35): o Stripe tem
     as cláusulas da ANPD, o Google e a Microsoft são responsáveis próprios no login e o IP de
     quem só visita o site vai à Cloudflare.
+
+    Versão 10 (21/10): os sócios do cadastro público do CNPJ aparecem com o nome que a Receita
+    publica, só no quadro de sócios da empresa consultada, com as regras da ADR 0106 (sem busca
+    por pessoa, ligação sem dizer o sócio, um CNPJ por consulta, oposição em 15 dias).
     """
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-21.9"
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-21.10"
     privacidade = conformidade.carregar_texto("privacidade")
+    assert "não aparecem no app" not in privacidade
     for trecho in (
+        "no quadro de sócios da empresa que você consulta pelo CNPJ",
+        "CPF mascarado como a Receita publica",
+        "têm um sócio em comum, sem dizer qual",
+        "uma empresa** de cada vez e fica registrada",
+        "legítimo interesse (LGPD, art. 7º, IX, e art. 10)",
+        "prospecção, marketing, montagem de perfil de pessoa ou revenda de listas",
+        "não tem busca por nome de pessoa nem por CPF",
+        "Fonte: Receita Federal, dados abertos do CNPJ",
+        "sai da tela e da API em até 15 dias",
         "privacidade@tickerlab.com.br",
         "Encarregado",
         "__Host-tl_sessao",
