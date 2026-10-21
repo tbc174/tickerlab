@@ -433,10 +433,14 @@ def multiplos_da_amostra(
 
 
 def relatorio_dos_multiplos(modelo: str, tabela: pd.DataFrame) -> str:
-    com = tabela[tabela[["ev_receita", "ev_ebit", "p_l", "p_vp"]].notna().any(axis=1)]
+    com = tabela[
+        tabela[["ev_receita", "ev_ebitda", "ev_ebit", "p_l", "p_vp"]]
+        .notna()
+        .any(axis=1)
+    ]
     motivos = tabela.loc[tabela["motivo"].fillna("") != "", "motivo"].value_counts()
     colunas = ["alvo", "anuncio", "valor_campo", "base_12m", "entregue_ate",
-               "ev_receita", "ev_ebit", "p_l", "p_vp"]  # fmt: skip
+               "ev_receita", "ev_ebitda", "ev_ebit", "p_l", "p_vp"]  # fmt: skip
     return (
         f"## Múltiplos implícitos ({modelo})\n\n{len(com)} de {len(tabela)} operações com algum "
         f"múltiplo; todos de documentos entregues antes do anúncio.\n\nSem múltiplo, por "

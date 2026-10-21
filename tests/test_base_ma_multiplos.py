@@ -82,6 +82,29 @@ def test_preco_por_acao_vira_os_quatro_multiplos():
     assert linha["motivo"] == ""
 
 
+def test_ebitda_soma_a_depreciacao_ao_ebit():
+    ano = ANO | {"depreciacao": 20.0}
+    linha = _linha([_leitura("fato", ANUNCIO, [PRECO])], _dfp(*DFP_2024, ano))
+    assert linha["ebitda_12m"] == 80.0  # EBIT 60 + depreciação 20
+    assert linha["ev_ebitda"] == 3.0  # 240 ÷ 80
+
+
+def test_sem_depreciacao_fica_sem_ev_ebitda():
+    linha = _linha([_leitura("fato", ANUNCIO, [PRECO])], _dfp(*DFP_2024))
+    assert pd.isna(linha["ebitda_12m"]) and pd.isna(linha["ev_ebitda"])
+
+
+def test_o_valor_fica_publico_no_dia_do_documento_que_o_trouxe():
+    # o fato relevante anunciou sem valor; o valor veio num comunicado 20 dias depois
+    depois = date(2025, 5, 30)
+    membros = [_leitura("fato", ANUNCIO, []), _leitura("comunicado", depois, [PRECO])]
+    emissoras = EMISSORAS | {"comunicado": EMISSORAS["fato"]}
+    tabela = mm.multiplos(membros, emissoras, *_cvm(_dfp(*DFP_2024)))
+    linha = tabela.iloc[0]
+    assert (linha["anuncio"], linha["valor_publico_em"]) == (ANUNCIO, depois)
+    assert linha["valor_protocolo"] == "comunicado"
+
+
 def test_valor_da_empresa_lido_tira_a_divida_para_o_patrimonio():
     ev = {"campo": mm.VALOR_DA_EMPRESA, "valor": 0.3, "unidade": "mil"}
     linha = _linha([_leitura("fato", ANUNCIO, [PRECO, ev])], _dfp(*DFP_2024))
