@@ -187,9 +187,12 @@ def test_arquivo_recusado_fica_na_auditoria_so_com_o_motivo(
 
 def test_o_mesmo_arquivo_duas_vezes_na_sala_e_recusado(conexao, ana, raiz):
     operacao = _operacao(conexao, ana)
-    _receber(conexao, ana, operacao)
+    # Os mesmos bytes nas duas vezes: cada `gerar.pdf` grava a hora de criação (ao segundo)
+    # dentro do PDF, e duas chamadas na virada do segundo dariam hashes diferentes.
+    conteudo = gerar.pdf("Balanço da Alfa")
+    _receber(conexao, ana, operacao, conteudo)
     with pytest.raises(sala.DocumentoRepetidoError):
-        _receber(conexao, ana, operacao)
+        _receber(conexao, ana, operacao, conteudo)
 
 
 def test_sem_a_chave_mestra_nada_entra(conexao, ana, raiz, monkeypatch):
