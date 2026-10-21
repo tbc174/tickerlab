@@ -7,16 +7,20 @@ uma pessoa daqui. CNPJ 11.222.333/0001-81: exemplo com DV válido; ...-82, o mes
 
 import io
 import re
+import tracemalloc
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
+from xml.etree.ElementTree import Element, tostring
 
 import pytest
 import requests
+from defusedxml.ElementTree import fromstring
 
 from base import cnpj, tce_pr
 from base.arquivo import coleta, fontes
 from base.arquivo.coleta import Resposta
+from base.arquivo.obter import TextoDoXml, decodificar_xml
 
 AGORA = datetime(2026, 10, 18, 9, tzinfo=UTC)  # domingo, 6h em Brasília
 CPF_INVENTADO = "00012345678909"  # como o PIT manda: 14 posições, zeros à esquerda
@@ -496,3 +500,82 @@ def test_xml_partido_em_pedacos_entra_e_o_credor_pf_de_um_pedaco_leva_o_pagament
     assert re.findall(
         r'idPagamento="(\d+)"', xmls["2025_411370_EmpenhoPagamento_1.xml"]
     ) == ["2"]
+
+
+# --- XML grande lido em fluxo (Curitiba, 1,6 a 2,7 GB por ano em LicitacaoVencedor) ----------------
+
+
+def _vencedores_grandes(linhas: int) -> bytes:
+    corpo = "".join(
+        f'<LicitacaoVencedor cdIBGE="411520" idlicitacao="{i}" nrDocumento="{CNPJ_BOM}" '
+        f'nmPessoa="Empresa Inventada {i}" dsItem="{"item de compra " * 30}" vlPropostaItem="{i}.50" '
+        'nrQuantidade="5.000" DataReferencia="2026/09 "/>'
+        for i in range(linhas)
+    )
+    return f'<?xml version="1.0"?><root>{corpo}</root>'.encode("utf-16")
+
+
+def _regravado_pela_arvore(tipo: str, conteudo: bytes) -> bytes:
+    """O que o código antigo (árvore inteira na memória) devolvia: a referência da igualdade byte a byte."""
+    raiz = fromstring(decodificar_xml(conteudo))
+    saida = Element(raiz.tag)
+    for linha in raiz:
+        tce_pr._regravar_linha(tipo, linha.attrib, saida)
+    return tostring(saida, encoding="utf-8", xml_declaration=True)
+
+
+@pytest.mark.parametrize(
+    "conteudo",
+    [
+        VENCEDORES.encode(),
+        b"\xef\xbb\xbf" + VENCEDORES.encode(),
+        VENCEDORES.encode("utf-16"),
+        b"<root/>",
+    ],
+)
+def test_fluxo_regrava_igual_a_arvore_inteira(conteudo):
+    assert tce_pr.regravar_xml("LicitacaoVencedor", conteudo) == _regravado_pela_arvore(
+        "LicitacaoVencedor", conteudo
+    )
+
+
+@pytest.mark.parametrize("tamanho_do_pedaco", [1, 2, 3, 7, 1024])
+@pytest.mark.parametrize("codificacao", ["utf-8", "utf-16"])
+def test_texto_do_xml_e_igual_a_decodificar_xml_em_qualquer_corte(
+    tamanho_do_pedaco, codificacao
+):
+    # referências numéricas (válidas e de controle) e letras acentuadas caem em cortes de todo tipo
+    texto = '<r a="&#11;x&#x1F;y&#233;z&#x1F600;w&amp;&#0;" b="ação\x0b\x01"/>' * 20
+    conteudo = texto.encode(codificacao)
+    lido = TextoDoXml(io.BytesIO(conteudo), tamanho_do_pedaco).read()
+    assert lido == decodificar_xml(conteudo)
+
+
+def test_xml_grande_e_lido_sem_carregar_o_arquivo_na_memoria(monkeypatch):
+    monkeypatch.setattr(tce_pr, "LIMITE_NA_MEMORIA", 1024**2)
+    conteudo = _vencedores_grandes(30_000)  # ~30 MB em UTF-16
+    tracemalloc.start()
+    with tce_pr.regravar_xml_em_arquivo(
+        "LicitacaoVencedor", io.BytesIO(conteudo)
+    ) as regravado:
+        _, pico = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        tamanho = regravado.seek(0, io.SEEK_END)
+        regravado.seek(0)
+        assert regravado.read(200).startswith(b"<?xml")
+    assert (
+        tamanho > 5 * 1024**2
+    )  # o regravado é grande: foi para o disco, não para a memória
+    assert pico < 8 * 1024**2  # o XML tem ~30 MB e o regravado ~6 MB
+
+
+def test_zip_com_xml_grande_entra_em_fluxo_com_zip64_e_o_mesmo_conteudo(monkeypatch):
+    zip_interno = _zip({"2018_411520_LicitacaoVencedor.xml": _vencedores_grandes(200)})
+    pequeno = tce_pr.regravar(zip_interno)
+    monkeypatch.setattr(
+        tce_pr, "LIMITE_NA_MEMORIA", 100
+    )  # tudo "grande": entra em fluxo
+    grande = tce_pr.regravar(zip_interno)
+    assert _xmls(grande) == _xmls(pequeno)
+    assert zipfile.ZipFile(io.BytesIO(grande)).testzip() is None
+    assert tce_pr.vestigios_de_pessoa(grande) == []

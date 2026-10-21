@@ -27,14 +27,17 @@ corrente toda semana, e o acervo guarda uma vez só o que não mudou.
 import io
 import logging
 import re
+import shutil
+import tempfile
 import zipfile
 from collections.abc import Mapping
+from typing import IO
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from defusedxml.ElementTree import fromstring, iterparse
 
 from base import cnpj
-from base.arquivo.obter import decodificar_xml
+from base.arquivo.obter import TextoDoXml, decodificar_xml
 
 log = logging.getLogger(__name__)
 
@@ -49,9 +52,12 @@ DATA_FIXA_NO_ZIP = (
 )  # a menor que o ZIP aceita: o regravado não muda com o dia
 SISTEMA_UNIX = 3  # o mesmo "criado em" no PC e no servidor (senão o SHA-256 muda)
 PERMISSOES_NO_ZIP = 0o644 << 16
-# o XML é lido linha a linha, mas o texto decodificado fica inteiro na memória (~2,5× o XML, com a
-# entrada): o maior da Despesa de 2025 tem 228 MB (Londrina); a carga roda com memória para isso
-LIMITE_DO_XML = 1024**3
+# o XML é lido em fluxo (pedaço a pedaço) e o regravado vai para um arquivo temporário: a memória não
+# cresce com o tamanho. Medido em 21/10/2026: o `LicitacaoVencedor` de Curitiba vai de 1,6 a 2,7 GB por
+# ano (1,2 milhão de linhas em 2018, 1 GB de regravado). O limite só barra defeito ou bomba de descompressão
+LIMITE_DO_XML = 8 * 1024**3
+# até este tamanho o regravado fica na memória; acima, no disco, e entra no ZIP em fluxo (ZIP64)
+LIMITE_NA_MEMORIA = 64 * 1024**2
 # município grande parte o XML em pedaços (`Empenho_1.xml`, `Empenho_2.xml`, medido na Despesa de 2025):
 # o tipo é o mesmo, e o pedaço não pode ficar de fora
 NOME_DO_XML = re.compile(r"^\d{4}_\d+_([A-Za-z]+)(?:_\d+)?\.xml$")
@@ -255,27 +261,26 @@ def _regravar_linha(tipo: str, original: Mapping[str, str], destino: Element) ->
     return True
 
 
-def regravar_xml(
-    tipo: str, conteudo: bytes, empenhos_descartados: set[str] | None = None
-) -> bytes:
-    """O XML em UTF-8 só com as linhas do tipo e os atributos da lista (`defusedxml`: recusa entidades).
+def regravar_xml_em_arquivo(
+    tipo: str, entrada: IO[bytes], empenhos_descartados: set[str] | None = None
+) -> IO[bytes]:
+    """O XML em UTF-8 só com as linhas do tipo e os atributos da lista, num arquivo temporário (de volta
+    ao início; quem chama fecha). Lê `entrada` em pedaços e grava cada linha ao terminar de lê-la, então a
+    memória não depende do tamanho do XML (`defusedxml`: recusa entidades).
 
     `empenhos_descartados` (Despesa): no `Empenho`, recebe o `idEmpenho` de cada linha de credor que pode
     ser pessoa, que sai; nos XMLs que dependem do empenho, saem as linhas desses empenhos. Quantas linhas
     saíram vai na raiz (`descartadasPorCredorPf`).
     """
     descartados = empenhos_descartados if empenhos_descartados is not None else set()
-    saida: Element | None = None
+    corpo = tempfile.SpooledTemporaryFile(max_size=LIMITE_NA_MEMORIA)  # noqa: SIM115 (devolvido)
     raiz: Element | None = None
+    destino = Element("")
     fora = 0
-    # linha a linha, descartando o que já foi lido: o XML de Londrina em 2025 tem 228 MB, e a árvore
-    # inteira de um XML desse tamanho passa de vários GB
-    for evento, elemento in iterparse(
-        io.StringIO(decodificar_xml(conteudo)), events=("start", "end")
-    ):
+    linhas = 0
+    for evento, elemento in iterparse(TextoDoXml(entrada), events=("start", "end")):
         if raiz is None:
             raiz = elemento
-            saida = Element(elemento.tag)
             continue
         if evento == "start" or elemento is raiz:
             continue
@@ -287,22 +292,64 @@ def regravar_xml(
             tipo in DEPENDENTES_DO_EMPENHO and elemento.get("idEmpenho") in descartados
         ):
             fora += 1
-        elif not _regravar_linha(tipo, elemento.attrib, saida):
+        elif _regravar_linha(tipo, elemento.attrib, destino):
+            corpo.write(tostring(destino[0], encoding="utf-8"))
+            linhas += 1
+            destino.clear()
+        else:
             descartados.add(elemento.get("idEmpenho", ""))
             fora += 1
         raiz.clear()
-    if saida is None:
+    if raiz is None:
+        corpo.close()
         raise ValueError("TCE-PR: XML vazio")
-    if fora:
-        saida.set(DESCARTADAS, str(fora))
-    return tostring(saida, encoding="utf-8", xml_declaration=True)
+    return _montar_xml(raiz.tag, fora, linhas, corpo)
 
 
-def _gravar(arquivo_zip: zipfile.ZipFile, nome: str, conteudo: bytes) -> None:
+def _montar_xml(
+    raiz: str, descartadas: int, linhas: int, corpo: IO[bytes]
+) -> IO[bytes]:
+    """O documento completo (a raiz leva a contagem das descartadas, que só se sabe no fim), igual ao
+    que `tostring` daria para a árvore inteira: `<raiz />` sem linhas, `<raiz>...</raiz>` com elas."""
+    elemento_raiz = Element(raiz)
+    if descartadas:
+        elemento_raiz.set(DESCARTADAS, str(descartadas))
+    cabecalho = tostring(elemento_raiz, encoding="utf-8", xml_declaration=True)
+    pronto = tempfile.SpooledTemporaryFile(max_size=LIMITE_NA_MEMORIA)  # noqa: SIM115 (devolvido)
+    if linhas:
+        pronto.write(cabecalho.removesuffix(b" />") + b">")
+        corpo.seek(0)
+        shutil.copyfileobj(corpo, pronto, length=1024**2)
+        pronto.write(f"</{raiz}>".encode())
+    else:
+        pronto.write(cabecalho)
+    corpo.close()
+    pronto.seek(0)
+    return pronto
+
+
+def regravar_xml(
+    tipo: str, conteudo: bytes, empenhos_descartados: set[str] | None = None
+) -> bytes:
+    """`regravar_xml_em_arquivo` para um XML que já está na memória."""
+    with regravar_xml_em_arquivo(
+        tipo, io.BytesIO(conteudo), empenhos_descartados
+    ) as regravado:
+        return regravado.read()
+
+
+def _gravar(arquivo_zip: zipfile.ZipFile, nome: str, conteudo: IO[bytes]) -> None:
     info = zipfile.ZipInfo(nome, DATA_FIXA_NO_ZIP)
     info.create_system = SISTEMA_UNIX
     info.external_attr = PERMISSOES_NO_ZIP
-    arquivo_zip.writestr(info, conteudo, compress_type=zipfile.ZIP_DEFLATED)
+    info.compress_type = zipfile.ZIP_DEFLATED
+    tamanho = conteudo.seek(0, io.SEEK_END)
+    conteudo.seek(0)
+    if tamanho <= LIMITE_NA_MEMORIA:
+        arquivo_zip.writestr(info, conteudo.read(), compress_type=zipfile.ZIP_DEFLATED)
+        return
+    with arquivo_zip.open(info, "w", force_zip64=True) as destino:
+        shutil.copyfileobj(conteudo, destino, length=1024**2)
 
 
 def regravar(zip_interno: bytes) -> bytes:
@@ -329,12 +376,16 @@ def regravar(zip_interno: bytes) -> bytes:
         # o `Empenho` é lido primeiro: ele diz quais empenhos (de credor que pode ser pessoa) levam
         # junto a liquidação, o pagamento e os estornos; a gravação segue em ordem de nome
         descartados: set[str] = set()
-        xmls = {
-            nome: regravar_xml(tipo, entrada.read(info), descartados)
-            for tipo, nome, info in sorted(membros, key=lambda m: m[0] != "Empenho")
-        }
-        for nome in sorted(xmls):
-            _gravar(regravado, nome, xmls[nome])
+        xmls: dict[str, IO[bytes]] = {}
+        try:
+            for tipo, nome, info in sorted(membros, key=lambda m: m[0] != "Empenho"):
+                with entrada.open(info) as lido:
+                    xmls[nome] = regravar_xml_em_arquivo(tipo, lido, descartados)
+            for nome in sorted(xmls):
+                _gravar(regravado, nome, xmls[nome])
+        finally:
+            for arquivo in xmls.values():
+                arquivo.close()
     return saida.getvalue()
 
 
