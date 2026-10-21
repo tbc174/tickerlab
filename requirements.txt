@@ -39,6 +39,7 @@ matplotlib-inline==0.2.2
 multitasking==0.0.13
 narwhals==2.26.0
 nest-asyncio2==1.7.4
+networkx==3.7  # grafo da cadeia de controle da rede (base/rede/controle.py); BSD-3, sem dependências
 nodeenv==1.11.0
 numpy==2.5.3
 packaging==26.3
