@@ -6668,6 +6668,40 @@
         "summary": "Relatorio Do Setor"
       }
     },
+    "/v1/relatorio-setor/pdf": {
+      "get": {
+        "description": "O mesmo relatório da rota acima em PDF, com \"Limites e cuidados\" (mesmo acesso, mesmo plano).",
+        "operationId": "relatorio_do_setor_em_pdf_v1_relatorio_setor_pdf_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "setor",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Setor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Do Setor Em Pdf"
+      }
+    },
     "/v1/retorno-mensal": {
       "get": {
         "operationId": "retorno_mensal_v1_retorno_mensal_get",
