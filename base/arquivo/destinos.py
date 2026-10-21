@@ -56,8 +56,8 @@ _B3_BDI_CONTRA_OS_TERMOS = (
 
 DESTINOS: dict[str, Destino] = {
     # CVM
-    "cvm-hist-dfp": _tabela("demonstracoes_como_era", "dmpl_como_era"),
-    "cvm-hist-itr": _tabela("demonstracoes_como_era", "dmpl_como_era"),
+    "cvm-hist-dfp": _tabela("demonstracoes_como_era", "dmpl_como_era", "pareceres_dfp"),
+    "cvm-hist-itr": _tabela("demonstracoes_como_era", "dmpl_como_era", "pareceres_itr"),
     "cvm-hist-fre": _tabela(
         "fre_comites",
         "fre_conselho",

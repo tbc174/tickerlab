@@ -168,7 +168,7 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     assert "os links compartilhados e a assinatura" in texto
 
 
-def test_versao_10_dos_termos_pede_novo_aceite_e_cobre_os_socios_do_cnpj():
+def test_versao_11_dos_termos_pede_novo_aceite_e_cobre_a_sala_de_dados():
     """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal.
 
     Versão 9 (21/10): transferência internacional provedor por provedor (P-35): o Stripe tem
@@ -178,11 +178,26 @@ def test_versao_10_dos_termos_pede_novo_aceite_e_cobre_os_socios_do_cnpj():
     Versão 10 (21/10): os sócios do cadastro público do CNPJ aparecem com o nome que a Receita
     publica, só no quadro de sócios da empresa consultada, com as regras da ADR 0106 (sem busca
     por pessoa, ligação sem dizer o sócio, um CNPJ por consulta, oposição em 15 dias).
+
+    Versão 11 (21/10): a sala de dados (B-20, D13): nos dados de terceiros dentro dos documentos
+    o cliente é o controlador e o TickerLab é o operador (LGPD, art. 39); os prazos e o apagamento
+    batem com `src/sala/retencao.py`; nenhum modelo lê os documentos; cópias de 14 dias; aviso
+    de incidente em 3 dias úteis. Termos e privacidade dizem a mesma coisa.
     """
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-21.10"
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-21.11"
     privacidade = conformidade.carregar_texto("privacidade")
     assert "não aparecem no app" not in privacidade
     for trecho in (
+        "## A sala de dados",
+        "**Você é o controlador** dos dados de terceiros",
+        "**O TickerLab é o operador** (LGPD, art. 39)",
+        "**Nenhum modelo de linguagem** recebe os documentos da sala",
+        "**90, 180 ou 365 dias** (180, se não escolher)",
+        "mais **30 dias** para baixar",
+        "apagar a operação apaga a chave dela",
+        "separadas das do resto do app e apagadas depois de **14 dias**",
+        "as operações e os documentos da sala de dados",
+        "não consegue procurar documentos por nome nem por CPF",
         "no quadro de sócios da empresa que você consulta pelo CNPJ",
         "CPF mascarado como a Receita publica",
         "têm um sócio em comum, sem dizer qual",
@@ -208,6 +223,32 @@ def test_versao_10_dos_termos_pede_novo_aceite_e_cobre_os_socios_do_cnpj():
     termos = conformidade.carregar_texto("termos")
     assert "Pré-lançamento" in termos and "30 dias" in termos
     assert "modelo de linguagem" in termos and "nunca são acusação" in termos
+    for trecho in (
+        "## Sala de dados",
+        "**você é o controlador** desses dados",
+        "O TickerLab é o **operador** (LGPD, art. 39)",
+        "**nunca** vão a um modelo nem a outro serviço",
+        "**90, 180 ou 365 dias** (180, se não escolher)",
+        "disponível para baixar por mais **30 dias**",
+        "apagar a operação apaga a chave dela",
+        "apagadas depois de **14 dias**",
+        "em até **3 dias úteis**",
+    ):
+        assert trecho in termos, trecho
+
+
+def test_os_prazos_da_sala_nos_textos_legais_batem_com_o_codigo():
+    """Os textos prometem os prazos de `src/sala/retencao.py`: quem mudar um, muda o outro."""
+    from src.sala import retencao
+
+    assert retencao.PRAZOS_DE_GUARDA_EM_DIAS == (90, 180, 365)
+    assert retencao.PRAZO_PADRAO_EM_DIAS == 180
+    assert retencao.DIAS_PARA_BAIXAR_DEPOIS_DE_ENCERRAR == 30
+    assert retencao.PRORROGACAO_MAXIMA_EM_DIAS == 365
+    for nome in ("termos", "privacidade"):
+        texto = conformidade.carregar_texto(nome)
+        assert "**90, 180 ou 365 dias** (180, se não escolher)" in texto, nome
+        assert "365 dias de cada vez" in texto and "**30 dias**" in texto, nome
 
 
 def test_politica_de_privacidade_cita_o_pulse():
