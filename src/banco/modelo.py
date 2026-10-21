@@ -882,3 +882,218 @@ fre_eventos_de_capital = sa.Table(
     sa.Column("valor", sa.Float),
     _momento("coletado_em"),
 )
+
+
+# --- Sala de dados por operação (B-20, migração 0040; plano `2026-10-20-b20-sala-de-dados`) ---
+# Cada operação (M&A, dívida, crédito, FIDC) é uma sala com os documentos dela. Isolamento no banco:
+# toda tabela tem `usuario_id` e se liga à operação pela chave composta (operacao_id, usuario_id),
+# então o banco recusa uma linha de uma conta na sala de outra; evidência, contradição e item do
+# checklist só apontam coisas da mesma sala (chaves compostas com operacao_id). Tudo sai com a conta.
+TIPOS_DE_OPERACAO = ("ma", "divida", "credito", "fidc")
+SITUACOES_DA_OPERACAO = ("aberta", "encerrada")
+TIPOS_DE_DOCUMENTO = ("pdf", "xlsx", "docx", "csv")
+SITUACOES_DO_DOCUMENTO = ("na_fila", "lido", "sem_texto", "erro_na_leitura")
+QUEM_EXTRAIU = ("pessoa", "regra")
+REVISOES_DA_EVIDENCIA = ("automatico", "revisado", "contestado", "rejeitado")
+ESTADOS_DA_CONTRADICAO = ("aberta", "explicada", "descartada")
+ESTADOS_DO_CHECKLIST = (
+    "pendente",
+    "recebido",
+    "revisado",
+    "contestado",
+    "nao_se_aplica",
+)
+TAMANHO_MAXIMO_DO_NOME_DA_OPERACAO = 200
+TAMANHO_MAXIMO_DO_NOME_DO_DOCUMENTO = 255
+TAMANHO_MAXIMO_DA_NOTA = 2000
+
+
+def _entre(coluna: str, valores: tuple[str, ...]) -> str:
+    return f"{coluna} IN ({', '.join(repr(v) for v in valores)})"
+
+
+def _da_operacao(tabela: str) -> sa.ForeignKeyConstraint:
+    return sa.ForeignKeyConstraint(
+        ["operacao_id", "usuario_id"],
+        ["operacoes.id", "operacoes.usuario_id"],
+        name=f"fk_{tabela}_operacao_id_operacoes",
+        ondelete="CASCADE",
+    )
+
+
+def _da_mesma_sala(
+    tabela: str, coluna: str, alvo: str, ondelete: str | None = "CASCADE"
+) -> sa.ForeignKeyConstraint:
+    return sa.ForeignKeyConstraint(
+        [coluna, "operacao_id", "usuario_id"],
+        [f"{alvo}.id", f"{alvo}.operacao_id", f"{alvo}.usuario_id"],
+        name=f"fk_{tabela}_{coluna}_{alvo}",
+        ondelete=ondelete,
+    )
+
+
+operacoes = sa.Table(
+    "operacoes",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("tipo", sa.String(10), nullable=False),
+    sa.Column("nome", sa.String(TAMANHO_MAXIMO_DO_NOME_DA_OPERACAO), nullable=False),
+    sa.Column("situacao", sa.String(10), nullable=False, server_default="aberta"),
+    sa.Column("retencao_ate", sa.Date, nullable=False),
+    # chave da operação embrulhada pela chave-mestra (PR 2); vazia até lá, e nunca sai do banco
+    sa.Column("chave_cifrada", sa.LargeBinary),
+    sa.Column("versao_da_chave", sa.Integer),
+    _momento("criada_em"),
+    _momento("atualizada_em"),
+    sa.UniqueConstraint("id", "usuario_id", name="uq_operacoes_id_usuario_id"),
+    sa.CheckConstraint(_entre("tipo", TIPOS_DE_OPERACAO), name="tipo"),
+    sa.CheckConstraint(_entre("situacao", SITUACOES_DA_OPERACAO), name="situacao"),
+    sa.CheckConstraint(
+        f"length(nome) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_NOME_DA_OPERACAO}", name="nome"
+    ),
+    sa.CheckConstraint(
+        "(chave_cifrada IS NULL) = (versao_da_chave IS NULL)", name="chave"
+    ),
+)
+sa.Index(
+    "ix_operacoes_usuario_id_criada_em", operacoes.c.usuario_id, operacoes.c.criada_em
+)
+sa.Index("ix_operacoes_retencao_ate", operacoes.c.retencao_ate)
+
+documentos_da_sala = sa.Table(
+    "documentos_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column(
+        "nome_original", sa.String(TAMANHO_MAXIMO_DO_NOME_DO_DOCUMENTO), nullable=False
+    ),
+    sa.Column("tipo", sa.String(10), nullable=False),
+    sa.Column("tamanho_bytes", sa.BigInteger, nullable=False),
+    sa.Column("paginas", sa.Integer),
+    sa.Column("sha256", sa.String(64), nullable=False),
+    sa.Column("nonce", sa.LargeBinary),  # da cifra do arquivo (PR 2)
+    sa.Column("situacao", sa.String(20), nullable=False, server_default="na_fila"),
+    sa.Column("lido_por", sa.String(40)),  # versão do leitor
+    _momento("recebido_em"),
+    _da_operacao("documentos_da_sala"),
+    sa.UniqueConstraint(
+        "id", "operacao_id", "usuario_id", name="uq_documentos_da_sala_id_operacao"
+    ),
+    # o mesmo arquivo só é recusado dentro da mesma sala
+    sa.UniqueConstraint("operacao_id", "sha256", name="uq_documentos_da_sala_sha256"),
+    sa.CheckConstraint(_entre("tipo", TIPOS_DE_DOCUMENTO), name="tipo"),
+    sa.CheckConstraint(_entre("situacao", SITUACOES_DO_DOCUMENTO), name="situacao"),
+    sa.CheckConstraint("tamanho_bytes > 0", name="tamanho"),
+    sa.CheckConstraint("paginas IS NULL OR paginas >= 0", name="paginas"),
+    sa.CheckConstraint("length(sha256) = 64", name="sha256"),
+    sa.CheckConstraint(
+        f"length(nome_original) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_NOME_DO_DOCUMENTO}",
+        name="nome",
+    ),
+)
+sa.Index("ix_documentos_da_sala_usuario_id", documentos_da_sala.c.usuario_id)
+
+evidencias_da_sala = sa.Table(
+    "evidencias_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("documento_id", sa.Uuid, nullable=False),
+    sa.Column("metrica", sa.String(120), nullable=False),
+    sa.Column("periodo", sa.String(20), nullable=False),
+    sa.Column("valor_numero", sa.Numeric(28, 6)),
+    sa.Column("valor_texto", sa.String(500)),
+    sa.Column("unidade", sa.String(20)),
+    sa.Column("moeda", sa.String(3)),
+    sa.Column("pagina", sa.Integer),
+    sa.Column("secao", sa.String(200)),
+    sa.Column("tabela", sa.String(200)),
+    sa.Column("trecho", sa.String(TAMANHO_MAXIMO_DA_NOTA)),
+    sa.Column("conferida", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("extraido_por", sa.String(10), nullable=False),
+    sa.Column(
+        "estado_de_revisao", sa.String(12), nullable=False, server_default="automatico"
+    ),
+    _momento("criada_em"),
+    _da_operacao("evidencias_da_sala"),
+    _da_mesma_sala("evidencias_da_sala", "documento_id", "documentos_da_sala"),
+    sa.UniqueConstraint(
+        "id", "operacao_id", "usuario_id", name="uq_evidencias_da_sala_id_operacao"
+    ),
+    sa.CheckConstraint(_entre("extraido_por", QUEM_EXTRAIU), name="extraido_por"),
+    sa.CheckConstraint(
+        _entre("estado_de_revisao", REVISOES_DA_EVIDENCIA), name="estado_de_revisao"
+    ),
+    sa.CheckConstraint(
+        "valor_numero IS NOT NULL OR valor_texto IS NOT NULL", name="valor"
+    ),
+    sa.CheckConstraint("pagina IS NULL OR pagina >= 1", name="pagina"),
+)
+sa.Index("ix_evidencias_da_sala_usuario_id", evidencias_da_sala.c.usuario_id)
+sa.Index(
+    "ix_evidencias_da_sala_documento_id",
+    evidencias_da_sala.c.documento_id,
+    evidencias_da_sala.c.operacao_id,
+    evidencias_da_sala.c.usuario_id,
+)
+
+contradicoes_da_sala = sa.Table(
+    "contradicoes_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("evidencia_a", sa.Uuid, nullable=False),
+    sa.Column("evidencia_b", sa.Uuid, nullable=False),
+    sa.Column("diferenca", sa.Numeric(28, 6)),
+    sa.Column("estado", sa.String(12), nullable=False, server_default="aberta"),
+    sa.Column("nota", sa.String(TAMANHO_MAXIMO_DA_NOTA)),
+    _momento("criada_em"),
+    _da_operacao("contradicoes_da_sala"),
+    _da_mesma_sala("contradicoes_da_sala", "evidencia_a", "evidencias_da_sala"),
+    _da_mesma_sala("contradicoes_da_sala", "evidencia_b", "evidencias_da_sala"),
+    sa.UniqueConstraint(
+        "evidencia_a", "evidencia_b", name="uq_contradicoes_da_sala_evidencias"
+    ),
+    sa.CheckConstraint("evidencia_a <> evidencia_b", name="duas_evidencias"),
+    sa.CheckConstraint(_entre("estado", ESTADOS_DA_CONTRADICAO), name="estado"),
+)
+sa.Index("ix_contradicoes_da_sala_usuario_id", contradicoes_da_sala.c.usuario_id)
+sa.Index(
+    "ix_contradicoes_da_sala_evidencia_b",
+    contradicoes_da_sala.c.evidencia_b,
+    contradicoes_da_sala.c.operacao_id,
+    contradicoes_da_sala.c.usuario_id,
+)
+
+checklist_da_sala = sa.Table(
+    "checklist_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("codigo", sa.String(60), nullable=False),  # do modelo de checklist (PR 4)
+    sa.Column("estado", sa.String(15), nullable=False, server_default="pendente"),
+    sa.Column("documento_id", sa.Uuid),
+    sa.Column("nota", sa.String(TAMANHO_MAXIMO_DA_NOTA)),
+    _momento("atualizado_em"),
+    _da_operacao("checklist_da_sala"),
+    # sem cascata: apagar o documento solta o item antes (src/banco/sala.py); o banco só impede
+    # que o item aponte um documento de outra sala
+    _da_mesma_sala(
+        "checklist_da_sala", "documento_id", "documentos_da_sala", ondelete=None
+    ),
+    sa.UniqueConstraint("operacao_id", "codigo", name="uq_checklist_da_sala_codigo"),
+    sa.CheckConstraint(_entre("estado", ESTADOS_DO_CHECKLIST), name="estado"),
+)
+sa.Index("ix_checklist_da_sala_usuario_id", checklist_da_sala.c.usuario_id)
+sa.Index(
+    "ix_checklist_da_sala_documento_id",
+    checklist_da_sala.c.documento_id,
+    checklist_da_sala.c.operacao_id,
+    checklist_da_sala.c.usuario_id,
+)
