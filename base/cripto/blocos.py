@@ -37,8 +37,12 @@ BLOCOS_POR_HALVING = 210_000
 # depois de 64 divisões por 2, a emissão em satoshis vira zero (o protocolo para aí)
 ULTIMO_HALVING = 64
 SEGUNDOS_POR_DIA = 86_400
-# saídas que ninguém consegue gastar (OP_RETURN) não entram nas moedas não gastas
+# saídas que ninguém consegue gastar não entram nas moedas não gastas. O Bitcoin Core (IsUnspendable)
+# usa o script, não o tipo: começa em OP_RETURN (0x6a), ou passa de 10.000 bytes. O tipo "nulldata"
+# cobre só o OP_RETURN bem formado; um OP_RETURN com "push" quebrado vira "nonstandard" (bloco 360.603).
 TIPOS_IMPOSSIVEIS_DE_GASTAR = frozenset({"nulldata"})
+PREFIXO_DO_OP_RETURN = "6a"
+TAMANHO_MAXIMO_DO_SCRIPT = 10_000
 # Regras do conjunto de moedas não gastas do Bitcoin Core que o histograma segue, para a soma bater
 # com o `gettxoutsetinfo` do nó: a coinbase do bloco 0 nunca entrou no conjunto, e em 2010 duas
 # coinbases repetiram a transação de uma anterior ainda não gasta e a apagaram (BIP30).
@@ -161,7 +165,14 @@ def _entradas_gastas(tx: dict) -> list[dict]:
 
 
 def _pode_ser_gasta(saida: dict) -> bool:
-    return saida["scriptPubKey"].get("type") not in TIPOS_IMPOSSIVEIS_DE_GASTAR
+    script = saida["scriptPubKey"]
+    if script.get("type") in TIPOS_IMPOSSIVEIS_DE_GASTAR:
+        return False
+    codigo = script.get("hex", "")
+    return not (
+        codigo.startswith(PREFIXO_DO_OP_RETURN)
+        or len(codigo) // 2 > TAMANHO_MAXIMO_DO_SCRIPT
+    )
 
 
 def _soma_das_saidas(tx: dict) -> int:
