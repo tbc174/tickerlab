@@ -1582,12 +1582,12 @@ Balanço, resultado, capital, segmentação e carteira de crédito de cada banco
 - **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Trimestral (data-base em mar, jun, set e dez)
-- **Atraso de divulgação:** Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira versão `<AAAAMM>.v<N>`
+- **Atraso de divulgação:** Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como `<AAAAMM>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
-- **Chaves:** `data_base`, `tipo_instituicao`, `cod_inst`, `relatorio`, `grupo`, `conta`, `coluna`
+- **Chaves:** `data_base`, `tipo_instituicao`, `cod_inst`, `relatorio`, `grupo`, `conta`, `coluna`, `visto_em`
 - **Três datas:** aconteceu_em = `data_base`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/valores/tipo_<t>/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)
 - **Linhagem:** O `<AAAAMM>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada resposta da API (no acervo e no registro de coletas, fonte `bcb-ifdata`, com a data da coleta) e a versão do código que gravou.
 
@@ -1603,7 +1603,8 @@ Balanço, resultado, capital, segmentação e carteira de crédito de cada banco
 | `coluna` | Nome da coluna, com a letra da nota ("Disponibilidades (a)") | texto |
 | `descricao` | Fórmula da coluna nas contas do Cosif | texto |
 | `saldo` | Valor da linha | reais (R$), já multiplicado pela escala informada |
-| `disponivel_em` | Desde quando o número era público (como era na data) | data (dia) |
+| `disponivel_em` | Desde quando o número era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois | data (dia) |
+| `visto_em` | Dia (São Paulo) em que o arquivista baixou a resposta que trouxe este valor; vazio se não havia o dia (acervo desligado) | data (dia) |
 
 ## `ifdata_cadastro`
 

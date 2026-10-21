@@ -203,8 +203,10 @@ class Porta:
             tabela, versao, filtros, como_era_em, colunas or []
         )
         selecao = "*" if colunas is None else ", ".join(_nome(c) for c in colunas)
+        # numa foto de D, a revisão vista depois não entra e, de cada chave, fica a mais nova já pública
+        mais_nova = self._so_a_mais_nova(tabela) if como_era_em is not None else ""
         resultado = self.con.execute(
-            f"SELECT {selecao} FROM {_nome(view)} WHERE {onde}", parametros
+            f"SELECT {selecao} FROM {_nome(view)} WHERE {onde} {mais_nova}", parametros
         ).df()
         return resultado if como_era_em is None else sem_o_fim_futuro(resultado)
 

@@ -36,8 +36,13 @@ import sqlalchemy as sa
 
 from base import bcb_ifdata, bcb_scr
 from base.parquet import GRAVADO, IGUAL, gravar_com_versoes, gravar_tabela
+from base.publicacao import dia_da_coleta
 from src import acervo
-from src.banco.coletas import com_registro, original_mais_recente
+from src.banco.coletas import (
+    coletas_guardadas,
+    com_registro,
+    original_mais_recente,
+)
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -103,6 +108,30 @@ def _data_da_base(data_base: int) -> date:
     return date(ano, mes, calendar.monthrange(ano, mes)[1])
 
 
+def _coletas_do_relatorio(
+    conexao: sa.Connection, url: str, lido: bytes
+) -> list[tuple[pd.Timestamp, bytes]]:
+    """Cada resposta guardada do relatório (o dia da baixada e o conteúdo). Sem nenhuma guardada
+    (acervo desligado), só a que foi lida agora, sem dia."""
+    guardadas = coletas_guardadas(conexao, url)
+    if not guardadas:
+        return [(pd.NaT, lido)]
+    return [(dia_da_coleta(baixado_em), c) for baixado_em, _, c in guardadas]
+
+
+def _valores_do_tipo(
+    coletas: dict[str, list[tuple[pd.Timestamp, bytes]]],
+) -> pd.DataFrame:
+    """Os relatórios de um tipo, cada um com as revisões do BC (uma coleta por baixada)."""
+    partes = []
+    for guardadas in coletas.values():
+        lidas = [(dia, bcb_ifdata.ler_valores(c)) for dia, c in guardadas]
+        lidas = [(dia, t) for dia, t in lidas if not t.empty]
+        if lidas:
+            partes.append(bcb_ifdata.valores_com_revisoes(lidas))
+    return pd.concat(partes, ignore_index=True)
+
+
 def carregar_ifdata_data(
     conexao: sa.Connection, data_base: int, pasta: Path, de_novo: bool
 ) -> str:
@@ -115,17 +144,18 @@ def carregar_ifdata_data(
             conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
             if conteudo is not None:
                 lidos.append((url, conteudo))
-        tabelas = [bcb_ifdata.ler_valores(c) for _, c in lidos]
-        tabelas = [t for t in tabelas if not t.empty]
-        if not tabelas:
+        coletas = {u: _coletas_do_relatorio(conexao, u, c) for u, c in lidos}
+        origens = [
+            _origem(u, c) for u, guardadas in coletas.items() for _, c in guardadas
+        ]
+        if all(bcb_ifdata.ler_valores(c).empty for _, c in lidos):
             resultados.append("vazio")
             continue
-        juntas = pd.concat(tabelas, ignore_index=True)
         resultados.append(
             gravar_com_versoes(
-                lambda t=juntas: t.assign(disponivel_em=bcb_ifdata.disponivel_em),
+                lambda c=coletas: _valores_do_tipo(c),
                 pasta / "ifdata" / "valores" / f"tipo_{tipo}" / str(data_base),
-                [_origem(u, c) for u, c in lidos],
+                origens,
                 ORDEM_DOS_VALORES,
             )
         )

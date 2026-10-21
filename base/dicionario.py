@@ -2718,7 +2718,10 @@ TABELAS: dict[str, Tabela] = {
         atraso=(
             "Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 "
             "dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada "
-            "revisão vira versão `<AAAAMM>.v<N>`"
+            "revisão vira linha nova da mesma chave, que só vale desde o dia em que foi vista "
+            "(`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica "
+            "guardada como `<AAAAMM>.v<N>`. O que o BC revisou antes da 1ª coleta guardada "
+            "(10/2026) não aparece"
         ),
         onde=(
             "Parquet em `<acervo>/base/bcb/ifdata/valores/tipo_<t>/<AAAAMM>.parquet` (servidor de "
@@ -2750,7 +2753,17 @@ TABELAS: dict[str, Tabela] = {
             "descricao": ("Fórmula da coluna nas contas do Cosif", TEXTO),
             "saldo": ("Valor da linha", REAIS),
             "disponivel_em": (
-                "Desde quando o número era público (como era na data)",
+                (
+                    "Desde quando o número era público (como era na data): o prazo, ou o dia em "
+                    "que a revisão do BC foi vista, se for depois"
+                ),
+                DATA,
+            ),
+            "visto_em": (
+                (
+                    "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe este valor; "
+                    "vazio se não havia o dia (acervo desligado)"
+                ),
                 DATA,
             ),
         },
@@ -5317,7 +5330,8 @@ _CONTRATO = {
     "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "amostra_painel": _contrato(modulo=_ME, chaves=("cnpj", "data"), datas={"aconteceu_em": "data"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
-    "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    # 2.0.0 (21/10/2026): a revisão do BC é linha nova da mesma chave (`visto_em`), que vale só desde o dia em que foi vista
+    "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
     "ligacao_dos_bancos": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
     "scr_credito": _contrato(modulo=_FIDC, chaves=("data_base", "uf", "segmento", "cliente", "cnae_ocupacao", "porte", "modalidade", "submodalidade", "origem", "indexador"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),

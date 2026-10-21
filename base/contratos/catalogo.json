@@ -3960,7 +3960,7 @@
       "tabela": "ifdata_valores",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "data_base": {
           "descricao": "Fim do trimestre a que o número se refere",
@@ -4003,7 +4003,11 @@
           "unidade": "reais (R$), já multiplicado pela escala informada"
         },
         "disponivel_em": {
-          "descricao": "Desde quando o número era público (como era na data)",
+          "descricao": "Desde quando o número era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe este valor; vazio se não havia o dia (acervo desligado)",
           "unidade": "data (dia)"
         }
       },
@@ -4014,7 +4018,8 @@
         "relatorio",
         "grupo",
         "conta",
-        "coluna"
+        "coluna",
+        "visto_em"
       ],
       "datas": {
         "aconteceu_em": "data_base",
@@ -4026,7 +4031,7 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Trimestral (data-base em mar, jun, set e dez)",
-      "atraso": "Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira versão `<AAAAMM>.v<N>`"
+      "atraso": "Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como `<AAAAMM>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece"
     },
     "ifdata_cadastro": {
       "tabela": "ifdata_cadastro",
