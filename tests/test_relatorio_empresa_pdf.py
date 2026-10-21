@@ -1,6 +1,7 @@
 """PDF do relatório completo de empresa (série 2 da base de ML, PR 7): as mesmas seções e números da
 página (a mesma estrutura de `src/relatorio_empresa.py`), com "Limites e perguntas em aberto" e os gráficos."""
 
+from datetime import date
 from io import BytesIO
 
 from pypdf import PdfReader
@@ -69,13 +70,25 @@ def test_pdf_sem_rastro_nao_tem_o_anexo(dados_da_weg):  # noqa: F811
     assert _sem_espacos(TITULO_DO_ANEXO) not in texto
 
 
-def test_amostra_publica_fica_sem_o_anexo_ate_o_pode():
-    """O PDF da amostra vai para o site (texto público, nível 1): o anexo só entra com o "pode"
-    do Tiago."""
-    from src import amostra_do_relatorio
+def test_amostra_publica_leva_o_anexo_quando_a_ficha_tem_rastro():
+    """O PDF da amostra do site mostra como cada número foi calculado ("pode" do Tiago, 21/10). A
+    ficha congelada da CPFL é de antes do rastro: aqui ela ganha o rastro de um item."""
+    from src import amostra_do_relatorio, dossie
 
-    texto = _sem_espacos(_texto(amostra_do_relatorio.pdf()))
-    assert _sem_espacos(TITULO_DO_ANEXO) not in texto
+    ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    assert ficha is not None
+    item = next(i for s in ficha.secoes for i in s.itens if i.valor is not None)
+    item.rastro = dossie.RastroDaFicha(
+        formula="soma das linhas da tabela de teste",
+        versao_do_calculo="1",
+        fonte_id="cvm",
+        publicado_em=date(2026, 5, 14),
+    )
+    pdf = amostra_do_relatorio.pdf(amostra_do_relatorio.montar(ficha))
+    texto = _sem_espacos(_texto(pdf))
+    assert _sem_espacos(TITULO_DO_ANEXO) in texto
+    assert _sem_espacos("soma das linhas da tabela de teste") in texto
+    assert _sem_espacos("14/05/2026") in texto
 
 
 PASSOS = [("Receita", 10e9), ("Custo", -6e9), ("Outras", -2.5e9), ("Lucro", 1.5e9)]
