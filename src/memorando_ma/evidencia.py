@@ -111,11 +111,14 @@ def _dia_da_base(base: str) -> date | None:
     return date(dias[-1].ano, dias[-1].mes, dias[-1].dia) if dias else None  # type: ignore[arg-type]
 
 
-def do_item(secao: str, item: Item) -> Evidencia | None:
+def do_item(
+    secao: str, item: Item, dia_da_ficha: date | None = None
+) -> Evidencia | None:
     """O item de uma seção da ficha (ou do cadastro) como evidência; None se não há como sustentar.
 
     Com rastro e valor: número. Com rastro e só texto (o auditor): trecho da fonte do rastro. Sem
-    rastro (o cadastro): trecho da fonte do item, com o dia escrito na base.
+    rastro (o cadastro): trecho da fonte do item, com o dia escrito na base; se a base não tem dia
+    inteiro ("FRE de 2026"), vale o dia da ficha (o item já era público quando a ficha foi montada).
     """
     id = f"{secao}.{item.chave}"
     afirmacao = f"{item.nome}: {item.texto}"
@@ -136,7 +139,7 @@ def do_item(secao: str, item: Item) -> Evidencia | None:
             id, TRECHO, afirmacao, item.rastro.publicado_em, documento=documento,
             medido_em=item.base,
         )  # fmt: skip
-    if item.fonte and (dia := _dia_da_base(item.base)):
+    if item.fonte and (dia := _dia_da_base(item.base) or dia_da_ficha):
         return Evidencia(
             id, TRECHO, afirmacao, dia, documento=item.fonte, medido_em=item.base
         )
