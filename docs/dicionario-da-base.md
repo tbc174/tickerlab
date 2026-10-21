@@ -2194,6 +2194,76 @@ Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, i
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `pareceres_dfp`
+
+Parecer do auditor de cada DFP desde 2010, lido do CSV de pareceres da CVM (relatório do auditor independente): tipo de opinião (campo da CVM), ênfase e continuidade operacional (pelos títulos do texto livre, sem palavra solta). Só a classificação é guardada, não o texto; a declaração dos diretores e o parecer do conselho fiscal ficam de fora. A firma não está neste CSV: liga-se a `auditores` por CNPJ e data. Documento sem relatório do auditor não tem linha
+
+- **Fonte:** CVM: dados abertos do DFP, CSV de pareceres (`base/pareceres.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal: a carga relê todos os anos (a CVM reescreve os antigos com reapresentações)
+- **Atraso de divulgação:** A entrega à CVM (`DT_RECEB` do arquivo principal); documento enviado com a empresa fora do registro vale a partir do registro seguinte
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/pareceres_dfp/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data a que o documento se refere | data (dia) |
+| `versao` | Versão do DFP | número inteiro |
+| `id_documento` | Número do documento na CVM | texto |
+| `disponivel_em` | Data em que o documento ficou público (a entrega à CVM, ou o registro da empresa) | data (dia) |
+| `opiniao` | `sem_ressalva`, `com_ressalva`, `adversa`, `abstencao` (a CVM escreve "Negativa de Opinião") ou `nao_classificado` (campo vazio, como em parte de 2010) | texto |
+| `enfase` | Parágrafo de ênfase no relatório: `sim`, `nao` ou `nao_classificado` (relatório curto demais ou texto ambíguo: nunca no chute) | texto |
+| `continuidade_operacional` | Incerteza relevante sobre a continuidade operacional apontada pelo auditor: `sim`, `nao` ou `nao_classificado` (relatório curto demais ou texto ambíguo: nunca no chute) | texto |
+| `caracteres_do_relatorio` | Tamanho do texto do relatório lido (quanto menor, menos confiável a classificação) | número inteiro |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `pareceres_itr`
+
+Parecer do auditor de cada ITR desde 2011, lido do CSV de pareceres da CVM (relatório da revisão especial): tipo de opinião (campo da CVM), ênfase e continuidade operacional (pelos títulos do texto livre, sem palavra solta). Só a classificação é guardada, não o texto; a declaração dos diretores e o parecer do conselho fiscal ficam de fora. A firma não está neste CSV: liga-se a `auditores` por CNPJ e data. Documento sem relatório do auditor não tem linha
+
+- **Fonte:** CVM: dados abertos do ITR, CSV de pareceres (`base/pareceres.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal: a carga relê todos os anos (a CVM reescreve os antigos com reapresentações)
+- **Atraso de divulgação:** A entrega à CVM (`DT_RECEB` do arquivo principal); documento enviado com a empresa fora do registro vale a partir do registro seguinte
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2011-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/pareceres_itr/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data a que o documento se refere | data (dia) |
+| `versao` | Versão do ITR | número inteiro |
+| `id_documento` | Número do documento na CVM | texto |
+| `disponivel_em` | Data em que o documento ficou público (a entrega à CVM, ou o registro da empresa) | data (dia) |
+| `opiniao` | `sem_ressalva`, `com_ressalva`, `adversa`, `abstencao` (a CVM escreve "Negativa de Opinião") ou `nao_classificado` (campo vazio, como em parte de 2010) | texto |
+| `enfase` | Parágrafo de ênfase no relatório: `sim`, `nao` ou `nao_classificado` (relatório curto demais ou texto ambíguo: nunca no chute) | texto |
+| `continuidade_operacional` | Incerteza relevante sobre a continuidade operacional apontada pelo auditor: `sim`, `nao` ou `nao_classificado` (relatório curto demais ou texto ambíguo: nunca no chute) | texto |
+| `caracteres_do_relatorio` | Tamanho do texto do relatório lido (quanto menor, menos confiável a classificação) | número inteiro |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `fca_geral`
 
 Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, como a companhia informou naquele formulário. É o cadastro "como era na data" do modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje

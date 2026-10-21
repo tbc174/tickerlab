@@ -175,6 +175,64 @@ _DOCUMENTO = {
     ),
 }
 
+_CLASSE_DO_TEXTO = "`sim`, `nao` ou `nao_classificado` (relatório curto demais ou texto ambíguo: nunca no chute)"
+
+
+def _pareceres(documento: str, relatorio: str, desde: str) -> Tabela:
+    """`pareceres_dfp` e `pareceres_itr`: o mesmo formato, um por tipo de documento da CVM (série T, T2)."""
+    return Tabela(
+        descricao=(
+            f"Parecer do auditor de cada {documento} desde {desde}, lido do CSV de pareceres da CVM "
+            f"({relatorio}): tipo de opinião (campo da CVM), ênfase e continuidade operacional "
+            "(pelos títulos do texto livre, sem palavra solta). Só a classificação é guardada, não o "
+            "texto; a declaração dos diretores e o parecer do conselho fiscal ficam de fora. A firma "
+            "não está neste CSV: liga-se a `auditores` por CNPJ e data. Documento sem relatório do "
+            "auditor não tem linha"
+        ),
+        fonte=f"CVM: dados abertos do {documento}, CSV de pareceres (`base/pareceres.py`)",
+        familia_da_fonte="cvm",
+        frequencia="Mensal: a carga relê todos os anos (a CVM reescreve os antigos com reapresentações)",
+        atraso=(
+            "A entrega à CVM (`DT_RECEB` do arquivo principal); documento enviado com a empresa "
+            "fora do registro vale a partir do registro seguinte"
+        ),
+        onde=_onde_da_historica(f"pareceres_{documento.lower()}"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "referencia": ("Data a que o documento se refere", DATA),
+            "versao": (f"Versão do {documento}", NUMERO),
+            "id_documento": ("Número do documento na CVM", TEXTO),
+            "disponivel_em": (
+                "Data em que o documento ficou público (a entrega à CVM, ou o registro da empresa)",
+                DATA,
+            ),
+            "opiniao": (
+                (
+                    "`sem_ressalva`, `com_ressalva`, `adversa`, `abstencao` (a CVM escreve "
+                    '"Negativa de Opinião") ou `nao_classificado` (campo vazio, como em parte de 2010)'
+                ),
+                TEXTO,
+            ),
+            "enfase": (
+                "Parágrafo de ênfase no relatório: " + _CLASSE_DO_TEXTO,
+                TEXTO,
+            ),
+            "continuidade_operacional": (
+                "Incerteza relevante sobre a continuidade operacional apontada pelo auditor: "
+                + _CLASSE_DO_TEXTO,
+                TEXTO,
+            ),
+            "caracteres_do_relatorio": (
+                "Tamanho do texto do relatório lido (quanto menor, menos confiável a classificação)",
+                NUMERO,
+            ),
+            **_ORIGEM_DA_LINHA,
+        },
+    )
+
+
 TABELAS: dict[str, Tabela] = {
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -3596,6 +3654,8 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_DA_LINHA,
         },
     ),
+    "pareceres_dfp": _pareceres("DFP", "relatório do auditor independente", "2010"),
+    "pareceres_itr": _pareceres("ITR", "relatório da revisão especial", "2011"),
     "fca_geral": Tabela(
         descricao=(
             "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A "
@@ -5348,6 +5408,8 @@ _CONTRATO = {
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
+    "pareceres_dfp": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "pareceres_itr": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2011-01-01"),
     "fca_geral": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
