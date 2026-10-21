@@ -23,7 +23,12 @@ from urllib.parse import parse_qs, urlparse
 import pandas as pd
 
 from base.cripto.arquivos import ler_tabela
-from base.cripto.atencao import juntar_gdelt, ler_gdelt, ler_wikipedia
+from base.cripto.atencao import (
+    dias_do_periodo,
+    juntar_gdelt,
+    ler_gdelt,
+    ler_wikipedia,
+)
 from base.cripto.cftc import ler_tff
 from base.cripto.coleta import CRIPTOATIVOS_DA_RECEITA
 from base.cripto.ponto_no_tempo import como_era_em, hash_do_conteudo
@@ -77,7 +82,7 @@ def refazer(originais: Iterable[Original]) -> dict[str, pd.DataFrame]:
                 ler_gdelt(par["timelinevolraw"]),
                 ler_gdelt(par["timelinetone"]),
             )
-            partes["gdelt"].append(juntar_gdelt(volume, tom))
+            partes["gdelt"].append(dias_do_periodo(juntar_gdelt(volume, tom), periodo))
     return {
         nome: _sem_repetir(pd.concat(linhas), CHAVES[nome])
         for nome, linhas in partes.items()

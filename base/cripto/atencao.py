@@ -99,3 +99,14 @@ def juntar_gdelt(volume: pd.DataFrame, tom: pd.DataFrame) -> pd.DataFrame:
         pd.to_datetime(dias["dia"]).dt.tz_localize("UTC") + MARGEM_DO_GDELT
     )
     return dias
+
+
+def dias_do_periodo(dias: pd.DataFrame, periodo: str) -> pd.DataFrame:
+    """Só os dias de `inicio` até antes de `fim` do pedido (`periodo` = `AAAAMMDDhhmmss-AAAAMMDDhhmmss`,
+    como em `endereco_gdelt`). O GDELT traz também o ponto do instante `fim`, que é o começo do dia
+    seguinte: a coleta o descarta ao gravar, e o refazer dos originais tem de descartá-lo também."""
+    inicio, fim = (
+        pd.to_datetime(ponto, format="%Y%m%d%H%M%S").date()
+        for ponto in periodo.split("-")
+    )
+    return dias[(dias["dia"] >= inicio) & (dias["dia"] < fim)]
