@@ -5,8 +5,8 @@ import json
 import pandas as pd
 import pytest
 
-from base import receita_carga as rc
 from base.receita_retrato import ParteDoQsa
+from scripts import carga_receita_mes as rc
 
 CHAVE_DE_PESSOAS = b"k" * 32
 

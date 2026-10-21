@@ -14,7 +14,7 @@ PODEM_GRAVAR_PARQUET = {
     "base/parquet.py": "é o gravador com manifesto",
     "base/ponto_no_tempo.py": "base 'como era na data': manifesto próprio, com `sha256_da_tabela`",
     "base/arquivo/obter.py": "original baixado pelo arquivista, guardado em `bruto/`, fora de `base/`",
-    "base/receita_carga.py": "CNPJ em partes (vigente e mudanças): manifesto próprio por mês, com o SHA-256 de cada ZIP; entrar na raiz de Merkle é a linha da fila sobre a carga do CNPJ",
+    "scripts/carga_receita_mes.py": "CNPJ em partes (vigente e mudanças): manifesto próprio por mês, com o SHA-256 de cada ZIP; entrar na raiz de Merkle é a linha da fila sobre a carga do CNPJ",
     "base/cripto/reprodutivel.py": "Parquet só na memória, para calcular o hash",
     "scripts/barras_b3_do_dia.py": "intradiário em `<acervo>/intradiario/`, fora de `base/` (ADR 0019)",
     "scripts/coletar_iex_do_dia.py": "intradiário em `dados_locais/intradiario/`, fora de `base/`",

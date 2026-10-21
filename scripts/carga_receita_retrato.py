@@ -20,7 +20,6 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import receita_carga as carga
 from base.arquivo.cliente_http import ClienteHttp
 from base.arquivo.fontes import arquivos_do_mes, meses_do_cnpj
 from base.pessoas.chave import ErroSemChave, ler_chave
@@ -31,6 +30,7 @@ from base.receita_retrato import (
     ler_qsa,
     ler_simples,
 )
+from scripts import carga_receita_mes as carga
 from src import acervo
 
 log = logging.getLogger("tickerlab.carga_receita_retrato")
