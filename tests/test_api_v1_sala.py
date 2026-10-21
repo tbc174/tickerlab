@@ -269,6 +269,8 @@ def test_nome_estranho_nao_quebra_o_cabecalho_do_download(ana):
         (b"MZ\x90\x00 isto nao e documento", arquivos.TIPO_NAO_ACEITO),
         (b"", arquivos.VAZIO),
     ],
+    # id fixo: os bytes gerados mudam a cada processo e o xdist exige a mesma lista em todos
+    ids=["pdf_ativo", "pdf_cifrado", "com_macro", "tipo_nao_aceito", "vazio"],
 )
 def test_arquivo_recusado_volta_422_com_o_codigo_e_nao_entra(ana, conteudo, motivo):
     operacao = _criar(ana)
