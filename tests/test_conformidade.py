@@ -168,9 +168,14 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     assert "os links compartilhados e a assinatura" in texto
 
 
-def test_versao_8_dos_termos_pede_novo_aceite_e_cobre_o_login_e_o_encarregado():
-    """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal."""
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-19.8"
+def test_versao_9_dos_termos_pede_novo_aceite_e_cobre_o_login_e_o_encarregado():
+    """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal.
+
+    Versão 9 (21/10): transferência internacional provedor por provedor (P-35): o Stripe tem
+    as cláusulas da ANPD, o Google e a Microsoft são responsáveis próprios no login e o IP de
+    quem só visita o site vai à Cloudflare.
+    """
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-21.9"
     privacidade = conformidade.carregar_texto("privacidade")
     for trecho in (
         "privacidade@tickerlab.com.br",
@@ -180,6 +185,10 @@ def test_versao_8_dos_termos_pede_novo_aceite_e_cobre_o_login_e_o_encarregado():
         "tl_origem",
         "Transferência internacional",
         "Registros técnicos de acesso",
+        'O contrato do Stripe traz também as cláusulas-padrão da ANPD (LGPD, art. 33, II, "b"',
+        "o Google e a Microsoft tratam a sua conta como responsáveis próprios",
+        "Quem só visita o site, sem conta, tem o endereço IP",
+        "Os contratos da Cloudflare, do Resend e da Anthropic trazem só as cláusulas-padrão",
     ):
         assert trecho in privacidade, trecho
     termos = conformidade.carregar_texto("termos")
