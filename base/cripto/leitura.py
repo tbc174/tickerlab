@@ -55,6 +55,12 @@ TAMANHO_PARA_FREAR = 150 * GIGABYTE
 TAMANHO_PARA_SOLTAR = 50 * GIGABYTE
 DIAS_PARA_ESTAR_PARADO = 365
 SEGUNDOS_POR_DIA = 86_400
+# Versão das regras que montaram o histograma do ponto. A 2 passou a tratar como impossível de gastar
+# todo script que o Bitcoin Core assim trata (ver `blocos.py`); os pontos da versão 1 (sem o campo)
+# trazem a moeda de 600 satoshis do bloco 360.603 que a regra antiga contava, e a leitura tira essa
+# moeda ao carregá-los (o nó é podado: reler a cadeia do zero não é possível).
+VERSAO_DAS_REGRAS_DO_PONTO = 2
+SATOSHIS_A_MAIS_NOS_PONTOS_DA_VERSAO_1 = {360_603: 600}
 MOTIVO_DA_REORGANIZACAO = "reorganização da cadeia: a rede trocou este bloco por outro"
 
 PASTA_DOS_BLOCOS = "blocos"
@@ -264,6 +270,7 @@ def _salvar_ponto(pasta: Path, estado: Estado) -> None:
         histograma=estado.histograma[:quantas],
         horas=estado.horas[:quantas],
         dia_aberto=estado.dia_aberto.isoformat() if estado.dia_aberto else "",
+        regras=VERSAO_DAS_REGRAS_DO_PONTO,
     )
     os.replace(provisorio, arquivo)
 
@@ -271,13 +278,22 @@ def _salvar_ponto(pasta: Path, estado: Estado) -> None:
 def _carregar_ponto(arquivo: Path) -> Estado:
     with np.load(arquivo, allow_pickle=False) as ponto:
         dia_aberto = str(ponto["dia_aberto"])
-        return Estado(
+        estado = Estado(
             altura=int(ponto["altura"]),
             hash=str(ponto["hash"]),
             histograma=ponto["histograma"].copy(),
             horas=ponto["horas"].copy(),
             dia_aberto=date.fromisoformat(dia_aberto) if dia_aberto else None,
         )
+        if "regras" not in ponto.files:
+            _corrigir_ponto_da_versao_1(estado)
+        return estado
+
+
+def _corrigir_ponto_da_versao_1(estado: Estado) -> None:
+    for altura, satoshis in SATOSHIS_A_MAIS_NOS_PONTOS_DA_VERSAO_1.items():
+        if altura <= estado.altura:
+            estado.histograma[altura] -= satoshis
 
 
 def _listar_pontos(pasta: Path) -> list[Path]:
