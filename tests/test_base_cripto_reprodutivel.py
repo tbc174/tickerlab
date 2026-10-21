@@ -107,6 +107,29 @@ def test_receita_le_a_planilha_e_ignora_a_pagina(monkeypatch):
     assert set(tabelas["receita/criptoativo"]["criptoativo"]) == {"BTC"}
 
 
+def test_gdelt_corta_cada_par_no_proprio_periodo():
+    # regressão (conferência real de 21/10/2026): o corte usava o período do último original
+    # lido, e não o do par; com dois períodos, o 1º par era cortado com o do 2º
+    def par(inicio: str, fim: str, quando: datetime):
+        url = URL_DO_GDELT.replace(
+            "startdatetime=20170101000000", f"startdatetime={inicio}"
+        )
+        url = url.replace("enddatetime=20170102000000", f"enddatetime={fim}")
+        return [
+            _original(
+                "gdelt-cripto", VOLUME, url.format(modo="timelinevolraw"), quando
+            ),
+            _original("gdelt-cripto", TOM, url.format(modo="timelinetone"), quando),
+        ]
+
+    tabelas = refazer(
+        par("20170101000000", "20170102000000", DIA_DA_COLETA)
+        + par("20170102000000", "20170103000000", DIA_DA_COLETA.replace(day=14))
+    )
+
+    assert tabelas["gdelt"]["dia"].tolist() == [date(2017, 1, 1), date(2017, 1, 2)]
+
+
 def test_gdelt_sem_o_par_nao_entra():
     # a coleta só grava o dia quando a contagem e o tom vieram; o refazer faz igual
     tabelas = refazer(
