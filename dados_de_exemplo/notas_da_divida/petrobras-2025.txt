@@ -1,0 +1,30 @@
+(Em milhões de reais, exceto se indicado de outra forma)
+94 PÚBLICA
+30.4. Informações resumidas sobre os financiamentos (passivo circulante e não circulante)
+Consolidado
+Vencimento em 2026 2027 2028 2029 2030
+2031 
+em diante Total (1) Valor justo (4)
+Financiamentos em Dólares : 7.960 11.005 8.605 3.899 11.204 48.838 91.511 91.506
+Indexados a taxas flutuantes (2) 6.409 7.270 2.880 792 3.845 1.222 22.418
+Indexados a taxas fixas 1.551 3.735 5.725 3.107 7.359 47.616 69.093
+Taxa média a.a. 6,3% 6,0% 5,7% 6,1% 6,2% 6,6% 6,4%
+Financiamentos em Reais : 3.692 811 758 5.292 3.494 28.629 42.676 39.880
+Indexados a taxas flutuantes (3) 1.570 188 188 188 2.905 26.157 31.196
+Indexados a taxas fixas 2.122 623 570 5.104 589 2.472 11.480
+Taxa média a.a. 10,1% 9,3% 9,6% 9,9% 10,4% 8,1% 9,3%
+Financiamentos em Euro : 117 − 576 142 285 1.988 3.108 3.095
+Indexados a taxas fixas 117 − 576 142 285 1.988 3.108
+Taxa média a.a. 4,6% − 4,7% 4,7% 4,7% 4,8% 4,7%
+Financiamentos em Libras : 225 − − 2.179 − 3.058 5.462 5.438
+Indexados a taxas fixas 225 − − 2.179 − 3.058 5.462
+Taxa média a.a. 6,1% − − 6,1% − 6,6% 6,3%
+Financiamentos em Renminbi : 32 25 25 25 2.625 − 2.732 2.638
+Indexados a taxas flutuantes 32 25 25 25 2.625 − 2.732
+Taxa média a.a. 3,1% 3,1% 3,1% 3,1% 3,1% − 3,1%
+Total em 31 de dezembro de 2025 12.026 11.841 9.964 11.537 17.608 82.513 145.489 142.557
+Taxa média a.a. (4) 7,3% 6,8% 6,8% 7,1% 7,2% 6,6% 6,7%
+(1) Em 31 de dezembro de 2025, o prazo médio ponderado de vencimento dos financiamentos é de 11,70 anos (12,52 anos em 31 de dezembro de 2024).
+(2) Operações com indexador variável + spread fixo.
+(3) Operações com indexador variável + spread fixo, conforme aplicável.
+(4) Em 31 de dezembro de 2024, o valor justo total é de R$ 137.549 e a taxa média ao ano é de 6,8%.
