@@ -2,7 +2,9 @@
 
 `instrumentos`: a dívida que já existe, como `DebtInstrument`, lida pela porta da base e "como era"
 no dia. `perfil`: o perfil de vencimentos por ano e indexador, cada número com o rastro. `nota_dfp`: o
-cronograma de vencimentos da nota de endividamento da DFP (o grupo inteiro), lido por regra. Nada aqui
+cronograma de vencimentos da nota de endividamento da DFP (o grupo inteiro), lido por regra.
+`capacidade` (B-22): quanto mais de dívida cabe pelas regras que quem usa declara (alavancagem,
+cobertura de juros, caixa mínimo), com a regra que amarra e a sensibilidade a choques. Nada aqui
 é opinião de risco nem recomendação; o que a fonte não diz fica "não observado".
 """
 
