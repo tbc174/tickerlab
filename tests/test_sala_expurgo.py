@@ -200,3 +200,27 @@ def test_o_script_sai_com_erro_se_o_disco_falhar(banco, monkeypatch):
 
     monkeypatch.setattr(guarda, "apagar_operacao", falhar)
     assert expurgar_salas.main() == 1
+
+
+def test_prorrogada_entre_a_consulta_e_o_apagar_nao_some(
+    conexao, ana, raiz, monkeypatch
+):
+    operacao = _operacao_com_documento(
+        conexao, ana, retencao_ate=HOJE - timedelta(days=1)
+    )
+    consulta = expurgo._vencidas
+
+    def consultar_e_prorrogar(conexao_, hoje):
+        achadas = consulta(conexao_, hoje)
+        conexao_.execute(
+            sa.update(operacoes)
+            .where(operacoes.c.id == operacao.id)
+            .values(retencao_ate=HOJE + timedelta(days=30))
+        )
+        return achadas
+
+    monkeypatch.setattr(expurgo, "_vencidas", consultar_e_prorrogar)
+    resultado = expurgo.expurgar(conexao, hoje=HOJE, raiz=raiz)
+    assert resultado.operacoes_vencidas == 0
+    assert operacao.id in {l.id for l in conexao.execute(sa.select(operacoes.c.id))}
+    assert len(_arquivos_da_operacao(raiz, operacao)) == 1

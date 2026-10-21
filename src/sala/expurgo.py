@@ -59,16 +59,23 @@ def expurgar_vencidas(
     conexao: sa.Connection, *, hoje: date, raiz: Path
 ) -> tuple[int, int]:
     """Apaga as operações vencidas (banco, chave e disco); devolve (apagadas, falhas no disco)."""
-    falhas = 0
-    vencidas = _vencidas(conexao, hoje)
-    for operacao_id, dono_id in vencidas:
-        conexao.execute(sa.delete(operacoes).where(operacoes.c.id == operacao_id))
+    falhas = apagadas = 0
+    for operacao_id, dono_id in _vencidas(conexao, hoje):
+        # o prazo entra de novo no DELETE: quem prorrogou entre a consulta e aqui não perde a sala
+        saiu = conexao.execute(
+            sa.delete(operacoes).where(
+                operacoes.c.id == operacao_id, operacoes.c.retencao_ate < hoje
+            )
+        )
+        if not saiu.rowcount:
+            continue
+        apagadas += 1
         auditoria.registrar(
             conexao, dono_id, auditoria.ACAO_OPERACAO_EXPIRADA, operacao_id, {}
         )
         if not _apagar_pasta(raiz, operacao_id):
             falhas += 1
-    return len(vencidas), falhas
+    return apagadas, falhas
 
 
 def _pastas_de_operacao(raiz: Path) -> list[tuple[uuid.UUID, Path]]:
