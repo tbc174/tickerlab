@@ -133,14 +133,15 @@ class Metrica:
 
     def como_dict(self) -> dict:
         """Para a API: datas em texto ISO."""
-        return {k: _datas_em_texto(v) for k, v in asdict(self).items()}
+        return {k: datas_em_texto(v) for k, v in asdict(self).items()}
 
 
-def _datas_em_texto(valor: object) -> object:
+def datas_em_texto(valor: object) -> object:
+    """O valor pronto para JSON: toda data (também dentro de dicionários e listas) vira texto ISO."""
     if isinstance(valor, dict):
-        return {k: _datas_em_texto(v) for k, v in valor.items()}
+        return {k: datas_em_texto(v) for k, v in valor.items()}
     if isinstance(valor, list | tuple):
-        return [_datas_em_texto(v) for v in valor]
+        return [datas_em_texto(v) for v in valor]
     if isinstance(valor, date):
         return valor.isoformat()
     return valor
