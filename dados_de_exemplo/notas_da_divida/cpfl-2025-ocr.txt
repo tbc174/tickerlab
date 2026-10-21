@@ -1,0 +1,27 @@
+(Valores expressos em milhares de reais, exceto quando indicado de outra forma)
+vencimentos assim programados:
+Ano de vencimento Consolidado
+2027 3.060.533
+2028 2.372.998
+2029 286.171
+2030 185.074
+2031 114.494
+2032 a 2036 318.854
+2037 a 2041 133.811
+2042 a 2046 16.352
+Subtotal 6.488.287
+Marcação a mercado (70.734)
+Total 6.417.553
+O saldo de principal de debêntures registrado no passivo não circulante tem seus vencimentos assim
+programados:
+Ano de vencimento Consolidado
+2027 383.686
+2028 1.152.796
+2029 4.016.207
+2030 2.311.754
+2031 2.246.489
+2032 a 2036 7.463.467
+2037 a 2041 377.687
+Subtotal 17.952.086
+Marcação a mercado (209.617)
+Total 17.742.469
