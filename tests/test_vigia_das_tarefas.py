@@ -6,6 +6,7 @@ import os
 from datetime import UTC, datetime
 
 from scripts import vigia_das_tarefas as vigia
+from src.classificar_falha import validar
 
 CRONTAB = """\
 0 7 * * * /home/usuario/rodar-tarefa.sh eventos-cvm /home/usuario/eventos-cvm.log 'x'
@@ -106,3 +107,90 @@ def test_crontab_pela_entrada_padrao(tmp_path, monkeypatch):
 
     assert codigo == 0
     assert len(json.loads(saida.read_text(encoding="utf-8"))["tarefas"]) == 4
+
+
+def _preparar_com_logs(tmp_path):
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "series-macro.log").write_text(
+        "rodada antiga\nHTTPError: 403 Client Error: Forbidden\n"
+        "rodada nova\njson.decoder.JSONDecodeError: Expecting value\n"
+        "src.bcb.BcbIndisponivelError: https://api.bcb.gov.br/dados não respondeu JSON\n",
+        encoding="utf-8",
+    )
+    crontab = tmp_path / "crontab.txt"
+    crontab.write_text(
+        f"30 6 * * * /home/usuario/rodar-tarefa.sh series-macro {logs / 'series-macro.log'} 'x'\n"
+        f"*/10 * * * * /home/usuario/rodar-tarefa.sh cripto-no {logs / 'nao-existe.log'} 'y'\n"
+        f"0 7 * * * /home/usuario/rodar-tarefa.sh eventos-cvm {logs / 'eventos.log'} 'z'\n"
+        f"0 2 * * * /home/usuario/rodar-tarefa.sh arquivo-diaria {logs / 'arquivo.log'} 'w'\n",
+        encoding="utf-8",
+    )
+    marcas = tmp_path / "estado-tarefas"
+    marcas.mkdir()
+    (marcas / "series-macro.falha").write_text(
+        "2026-10-21T06:30:09-03:00 saída 1\n", "utf-8"
+    )
+    (marcas / "cripto-no.falha").write_text(
+        "2026-10-21T11:50:01-03:00 saída 1\nFALHAS: C7: a soma não bate\n", "utf-8"
+    )
+    (marcas / "eventos-cvm.ok").write_text("2026-10-21T07:00:03-03:00\n", "utf-8")
+    (marcas / "arquivo-diaria.ok").write_text("2026-10-18T02:10:00-03:00\n", "utf-8")
+    resumos = tmp_path / "resumos"
+    resumos.mkdir()
+    (resumos / "eventos-cvm.json").write_text("{}", "utf-8")  # sobra de quando falhou
+    return crontab, marcas, resumos
+
+
+def _rodar_com_resumos(tmp_path) -> dict[str, dict]:
+    crontab, marcas, resumos = _preparar_com_logs(tmp_path)
+    argumentos = ["--crontab", str(crontab), "--marcas", str(marcas)]
+    argumentos += ["--saida", str(tmp_path / "estado.json"), "--agora", AGORA]
+    assert (
+        vigia.main([*argumentos, "--servidor", "casa", "--resumos", str(resumos)]) == 0
+    )
+    return {
+        arquivo.stem: json.loads(arquivo.read_text(encoding="utf-8"))
+        for arquivo in resumos.glob("*.json")
+    }
+
+
+def test_escreve_um_resumo_valido_por_falha_ou_atraso_e_apaga_o_das_que_voltaram(
+    tmp_path,
+):
+    resumos = _rodar_com_resumos(tmp_path)
+
+    assert set(resumos) == {"series-macro", "cripto-no", "arquivo-diaria"}
+    for resumo in resumos.values():
+        validar(resumo)
+
+
+def test_resumo_usa_o_erro_mais_recente_do_log_e_o_codigo_da_marca(tmp_path):
+    resumo = _rodar_com_resumos(tmp_path)["series-macro"]
+
+    assert resumo == {
+        "servidor": "casa",
+        "tarefa": "series-macro",
+        "hora": "2026-10-21T06:30:09-03:00",
+        "codigo": 1,
+        "tipo": "resposta_nao_json",
+        "excecao": "BcbIndisponivelError",
+        "host": "api.bcb.gov.br",
+    }
+
+
+def test_resumo_le_a_linha_falhas_da_marca_quando_o_log_nao_existe(tmp_path):
+    resumo = _rodar_com_resumos(tmp_path)["cripto-no"]
+
+    assert resumo["tipo"] == "conferencia_falhou"
+    assert "C7" not in json.dumps(resumo)
+
+
+def test_tarefa_atrasada_vira_resumo_do_tipo_atrasada(tmp_path):
+    resumo = _rodar_com_resumos(tmp_path)["arquivo-diaria"]
+
+    assert resumo["tipo"] == "atrasada"
+    assert resumo["codigo"] is None
+    assert (
+        resumo["hora"] == "2026-10-19T04:10:00-03:00"
+    )  # quando o último sucesso venceu

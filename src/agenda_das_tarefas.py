@@ -49,12 +49,15 @@ DOMINGO_TAMBEM = 7
 
 @dataclass(frozen=True)
 class TarefaAgendada:
-    """Uma tarefa do crontab: nome, maior intervalo entre rodadas, prazo e as expressões do cron."""
+    """Uma tarefa do crontab: nome, maior intervalo entre rodadas, prazo, expressões do cron e log."""
 
     nome: str
     periodo: timedelta
     prazo: timedelta
     horarios: tuple[str, ...]
+    log: str | None = (
+        None  # o LOG do rodar-tarefa.sh (o da 1ª linha, se a tarefa tiver várias)
+    )
 
 
 @dataclass(frozen=True)
@@ -75,12 +78,17 @@ def ler_agenda(texto_do_crontab: str) -> list[TarefaAgendada]:
     A tarefa com mais de uma linha (ex.: duas rodadas por dia) vira uma entrada só.
     """
     horarios_por_nome: dict[str, list[str]] = {}
+    log_por_nome: dict[str, str | None] = {}
     for linha in texto_do_crontab.splitlines():
         lida = _ler_linha(linha)
         if lida:
-            nome, expressao = lida
+            nome, expressao, log = lida
             horarios_por_nome.setdefault(nome, []).append(expressao)
-    return [_agendar(nome, horarios) for nome, horarios in horarios_por_nome.items()]
+            log_por_nome.setdefault(nome, log)
+    return [
+        _agendar(nome, horarios, log_por_nome[nome])
+        for nome, horarios in horarios_por_nome.items()
+    ]
 
 
 def periodo_da_expressao(expressao: str) -> timedelta:
@@ -97,13 +105,15 @@ def prazo_do_periodo(periodo: timedelta) -> timedelta:
     return periodo + FOLGA_ACIMA_DE_UMA_SEMANA
 
 
-def _agendar(nome: str, horarios: list[str]) -> TarefaAgendada:
+def _agendar(nome: str, horarios: list[str], log: str | None) -> TarefaAgendada:
     periodo = _maior_intervalo(horarios)
-    return TarefaAgendada(nome, periodo, prazo_do_periodo(periodo), tuple(horarios))
+    return TarefaAgendada(
+        nome, periodo, prazo_do_periodo(periodo), tuple(horarios), log
+    )
 
 
-def _ler_linha(linha: str) -> tuple[str, str] | None:
-    """Devolve (nome da tarefa, expressão do cron) de uma linha do `rodar-tarefa.sh`, ou None."""
+def _ler_linha(linha: str) -> tuple[str, str, str | None] | None:
+    """Devolve (nome, expressão do cron, log) de uma linha do `rodar-tarefa.sh`, ou None."""
     partes = linha.split()
     if not partes or partes[0].startswith("#") or "=" in partes[0]:
         return None
@@ -125,7 +135,8 @@ def _ler_linha(linha: str) -> tuple[str, str] | None:
     nome = comando[posicao + 1]
     if not NOME_VALIDO.match(nome):
         raise ValueError(f"nome de tarefa fora do padrão no crontab: {nome[:40]!r}")
-    return nome, expressao
+    log = comando[posicao + 2] if posicao + 2 < len(comando) else None
+    return nome, expressao, log
 
 
 def _maior_intervalo(horarios: Iterable[str]) -> timedelta:
