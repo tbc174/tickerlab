@@ -8,8 +8,17 @@ cobertura de juros, caixa mínimo), com a regra que amarra e a sensibilidade a c
 é opinião de risco nem recomendação; o que a fonte não diz fica "não observado".
 `simulador` (B-23): o fluxo de juros e amortização de um instrumento novo (pré, CDI ou IPCA; SAC,
 Price ou bullet; carência), com a curva de juros `curva_do_dia` como era no dia, sem extrapolar.
+`cenarios`: o mesmo instrumento com choques paralelos e de inclinação na curva; `covenants`: a
+alavancagem e a cobertura projetadas no fim de cada ano, contra as regras declaradas da B-22.
 """
 
+from src.divida.cenarios import (
+    CENARIOS_PADRAO,
+    CenarioDeCurva,
+    TabelaDeCenarios,
+    tabela_de_cenarios,
+)
+from src.divida.covenants import CovenantsPreliminares, covenants_preliminares
 from src.divida.curva_do_dia import (
     CurvaDoDia,
     ForaDaCurva,
@@ -32,7 +41,10 @@ from src.divida.perfil import FaixaDoPerfil, PerfilDeVencimentos, perfil_de_venc
 from src.divida.simulador import Instrumento, Periodo, Simulacao, simular
 
 __all__ = [
+    "CENARIOS_PADRAO",
     "NAO_OBSERVADO",
+    "CenarioDeCurva",
+    "CovenantsPreliminares",
     "CronogramaDaNota",
     "CurvaDoDia",
     "DebtInstrument",
@@ -43,6 +55,8 @@ __all__ = [
     "PerfilDeVencimentos",
     "Periodo",
     "Simulacao",
+    "TabelaDeCenarios",
+    "covenants_preliminares",
     "curva_como_era",
     "faixas_da_serie",
     "instrumentos_das_ofertas",
@@ -51,4 +65,5 @@ __all__ = [
     "perfil_de_vencimentos",
     "serie_do_total",
     "simular",
+    "tabela_de_cenarios",
 ]
