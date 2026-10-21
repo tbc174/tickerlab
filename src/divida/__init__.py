@@ -6,8 +6,24 @@ cronograma de vencimentos da nota de endividamento da DFP (o grupo inteiro), lid
 `capacidade` (B-22): quanto mais de dívida cabe pelas regras que quem usa declara (alavancagem,
 cobertura de juros, caixa mínimo), com a regra que amarra e a sensibilidade a choques. Nada aqui
 é opinião de risco nem recomendação; o que a fonte não diz fica "não observado".
+`simulador` (B-23): o fluxo de juros e amortização de um instrumento novo (pré, CDI ou IPCA; SAC,
+Price ou bullet; carência), com a curva de juros `curva_do_dia` como era no dia, sem extrapolar.
+`cenarios`: o mesmo instrumento com choques paralelos e de inclinação na curva; `covenants`: a
+alavancagem e a cobertura projetadas no fim de cada ano, contra as regras declaradas da B-22.
 """
 
+from src.divida.cenarios import (
+    CENARIOS_PADRAO,
+    CenarioDeCurva,
+    TabelaDeCenarios,
+    tabela_de_cenarios,
+)
+from src.divida.covenants import CovenantsPreliminares, covenants_preliminares
+from src.divida.curva_do_dia import (
+    CurvaDoDia,
+    ForaDaCurva,
+    curva_como_era,
+)
 from src.divida.instrumentos import (
     NAO_OBSERVADO,
     DebtInstrument,
@@ -22,18 +38,32 @@ from src.divida.nota_dfp import (
     serie_do_total,
 )
 from src.divida.perfil import FaixaDoPerfil, PerfilDeVencimentos, perfil_de_vencimentos
+from src.divida.simulador import Instrumento, Periodo, Simulacao, simular
 
 __all__ = [
+    "CENARIOS_PADRAO",
     "NAO_OBSERVADO",
+    "CenarioDeCurva",
+    "CovenantsPreliminares",
     "CronogramaDaNota",
+    "CurvaDoDia",
     "DebtInstrument",
     "FaixaDaNota",
     "FaixaDoPerfil",
+    "ForaDaCurva",
+    "Instrumento",
     "PerfilDeVencimentos",
+    "Periodo",
+    "Simulacao",
+    "TabelaDeCenarios",
+    "covenants_preliminares",
+    "curva_como_era",
     "faixas_da_serie",
     "instrumentos_das_ofertas",
     "instrumentos_do_emissor",
     "ler_cronogramas",
     "perfil_de_vencimentos",
     "serie_do_total",
+    "simular",
+    "tabela_de_cenarios",
 ]
