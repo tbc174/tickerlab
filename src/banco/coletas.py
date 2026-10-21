@@ -237,7 +237,7 @@ USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
         "yahoo",
         "múltiplos com preço (P/L, P/VP) na ficha da empresa, nos padrões setoriais e no "
         "'Quanto daria?' (ADR 0070)",
-        "distribuidor licenciado da B3 ou Tiingo com redistribuição (ADR 0008, itens 6 e 7)",
+        "licença direto da B3; preços dos EUA desligados na 1ª cobrança (ADR 0008, Emenda 4)",
         "Preço da ação: Yahoo Finance (uso pessoal; mostrado com a fonte citada enquanto o "
         "TickerLab não cobra, ADR 0008 Emenda 3)",
     ),
