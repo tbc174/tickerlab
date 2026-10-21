@@ -447,6 +447,104 @@ def test_rede_com_profundidade(tmp_path):
         Porta(tmp_path).rede(RAIZ, profundidade=0)
 
 
+def test_rede_por_id_direto_de_quem_ainda_nao_era_publico_e_erro(base):
+    """N10: pelo id (não pelo CNPJ), a entidade que só ficou pública depois do dia não aparece."""
+    entidades = _entidades("EA", "EC1", "EC2", "EC3", "EC4", "EAUD", "EX")
+    entidades.loc[entidades["id_entidade"] == "EA", "publico_em"] = pd.Timestamp(
+        "2021-05-31"
+    )
+    _gravar(base, "rede/entidades.parquet", entidades)
+    with Porta(base) as p:
+        assert p.rede("EA").centro == "EA"  # sem data, a de hoje
+        with pytest.raises(LookupError, match="pública até 2020-12-31"):
+            p.rede("EA", como_era_em=DIA)
+
+
+@settings(max_examples=20, deadline=None)
+@given(
+    publicas=st.lists(DIAS, min_size=2, max_size=6),
+    ligacoes=st.lists(
+        st.tuples(
+            st.integers(0, 5), st.integers(0, 5), DIAS, st.one_of(st.none(), DIAS)
+        ),
+        min_size=1,
+        max_size=12,
+    ),
+    dia=DIAS,
+)
+def test_rede_por_id_direto_nao_traz_o_que_ficou_publico_depois(
+    tmp_path_factory, publicas, ligacoes, dia
+):
+    """N10: pedir a rede pelo id direto não traz entidade nem ligação pública só depois do dia, e
+    cortar o futuro das tabelas não muda a rede de antes."""
+    ids = [f"E{i}" for i in range(len(publicas))]
+    entidades = _entidades(*ids).assign(publico_em=pd.to_datetime(publicas))
+    # uma linha por (de, para, dia): a chave da ligação não se repete
+    unicas = {
+        (ids[de % len(ids)], ids[para % len(ids)], publico): ate
+        for de, para, publico, ate in ligacoes
+        if de % len(ids) != para % len(ids)
+    }
+    if not unicas:
+        return
+    tabela = _ligacoes(
+        *(
+            {
+                "de": de,
+                "para": para,
+                "tipo": "controlada_de",
+                "aconteceu_em": str(publico),
+                "publico_em": str(publico),
+                "ate": None if ate is None else str(ate),
+            }
+            for (de, para, publico), ate in unicas.items()
+        )
+    )
+    dia_ = pd.Timestamp(dia)
+
+    def _rede(pasta, entidades_, ligacoes_):
+        _gravar(pasta, "rede/entidades.parquet", entidades_)
+        _gravar(pasta, "rede/ligacoes.parquet", ligacoes_)
+        _gravar(
+            pasta,
+            "rede/identificadores.parquet",
+            _identificadores(("E0", "cnpj_raiz", RAIZ, None, None, "2010-01-01")),
+        )
+        with Porta(pasta, conferidas={}) as p:
+            try:
+                return p.rede("E0", como_era_em=str(dia), profundidade=3)
+            except LookupError:
+                return None
+
+    # uma pasta por exemplo, com as duas bases dentro: criar a pasta é o que demora
+    pasta = tmp_path_factory.mktemp("base")
+    inteira = _rede(pasta / "inteira", entidades, tabela)
+    cortada = _rede(
+        pasta / "cortada",
+        entidades[entidades["publico_em"] <= dia_],
+        tabela[tabela["publico_em"] <= dia_],
+    )
+    if entidades.iloc[0]["publico_em"] > dia_:
+        assert inteira is None and cortada is None
+        return
+    assert inteira is not None and cortada is not None
+    assert (inteira.ligacoes["publico_em"] <= dia_).all()
+    assert (inteira.entidades["publico_em"].dropna() <= dia_).all()
+    assert inteira.entidades["nome"].notna().tolist() == (
+        inteira.entidades["publico_em"].notna().tolist()
+    )
+
+    def _linhas(tabela, colunas):
+        return sorted(map(tuple, tabela[colunas].astype(str).to_numpy()))
+
+    assert _linhas(inteira.ligacoes, ligacoes_da_rede.CHAVE) == _linhas(
+        cortada.ligacoes, ligacoes_da_rede.CHAVE
+    )
+    assert _linhas(inteira.entidades, ["id_entidade", "salto", "nome"]) == _linhas(
+        cortada.entidades, ["id_entidade", "salto", "nome"]
+    )
+
+
 URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv"
 ORIGINAL = b"cadastro de mentira"
 BAIXADO_EM = datetime(2026, 10, 13, 0, 30, tzinfo=UTC)
