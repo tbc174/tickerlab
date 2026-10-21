@@ -261,10 +261,9 @@ ROTAS_DA_CONTA = frozenset(
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
-        # molde D: pedem login; o plano só decide se as seções da base vêm trancadas (ainda sem a
-        # página "Relatório do setor", que chega no PR 4 do plano e leva as rotas para o contrato dela)
+        # molde D: a lista de setores só pede login (ajuda a página "Relatório do setor", que tem o
+        # contrato de /v1/relatorio-setor; é ele que diz o plano das seções da base)
         "/v1/setores",
-        "/v1/relatorio-setor",
     }
 )
 
