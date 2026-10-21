@@ -120,3 +120,39 @@ def test_imagem_leva_a_versao_do_codigo():
     assert (
         'subir() { TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose up' in deploy
     )
+
+
+def _servicos_do_compose() -> dict[str, str]:
+    """O texto de cada serviço do compose.yaml (do nome até o próximo serviço)."""
+    compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
+    partes = re.split(r"^  ([a-z-]+):$", compose, flags=re.MULTILINE)
+    return dict(zip(partes[1::2], partes[2::2], strict=True))
+
+
+def test_so_a_api_le_a_chave_da_sala_e_o_app_ve_os_arquivos_para_apagar_a_conta():
+    """B-20: a chave-mestra só na API; os arquivos cifrados também no app, porque apagar a conta
+    (`conformidade.apagar_conta`, na tela Meus dados) tira os arquivos do disco. Sem a chave, o
+    app não decifra nada."""
+    servicos = _servicos_do_compose()
+    for nome in ("tickerlab", "tickerlab-api"):
+        assert "- ./dados_sala:/app/dados_sala" in servicos[nome], nome
+    for nome, texto in servicos.items():
+        assert ("- .env.sala" in texto) is (nome == "tickerlab-api"), nome
+
+
+def test_a_imagem_cria_a_pasta_da_sala_so_para_o_usuario_do_app():
+    dockerfile = (RAIZ / "Dockerfile").read_text(encoding="utf-8")
+    assert "/app/dados_sala" in dockerfile
+    assert "chmod 700 /app/dados_sala" in dockerfile
+    dockerignore = (RAIZ / ".dockerignore").read_text(encoding="utf-8").split()
+    assert {"dados_sala", ".env.sala"} <= set(dockerignore)
+
+
+def test_chave_e_arquivos_da_sala_ficam_fora_do_git():
+    gitignore = (RAIZ / ".gitignore").read_text(encoding="utf-8").split()
+    assert {".env.sala", "dados_sala/"} <= set(gitignore)
+
+
+def test_a_biblioteca_da_cifra_esta_fixada_nos_dois_requirements():
+    for arquivo in ("requirements.txt", "requirements-prod.txt"):
+        assert _pacotes_do_requirements(arquivo).get("cryptography"), arquivo
