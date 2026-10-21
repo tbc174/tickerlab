@@ -181,6 +181,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "mapa_do_cafe",
                 "painel_do_cafe",
                 "busca_por_cnpj",
+                "relatorio_do_setor",
             },
         ),
         ("conta", {"simulacoes", "meus_dados", "planos", "admin"}),
@@ -252,6 +253,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "linha_do_tempo",
         "relatorio_empresa",
         "busca_por_cnpj",
+        "relatorio_do_setor",
         "planos",
         "meus_dados",
         "simulacoes",
@@ -301,8 +303,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
-        "/v1/setores",  # até a página "Relatório do setor" (PR 4 do molde D)
-        "/v1/relatorio-setor",
+        "/v1/setores",  # a lista de setores da página "Relatório do setor"
         "/v1/configuracao",
     }
 

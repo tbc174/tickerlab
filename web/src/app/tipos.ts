@@ -529,6 +529,51 @@ export interface BuscaPorCnpjV1 {
   avisos: string[];
 }
 
+/** Um setor do relatório do setor: a chave vai em `/v1/relatorio-setor?setor=`. */
+export interface SetorV1 {
+  chave: string;
+  nome: string;
+  empresas: number; // companhias abertas com ticker no setor
+  como_era_em: string | null; // o dia da ficha da noite (null: a noite ainda não trouxe o setor)
+}
+
+export interface SetoresV1 {
+  setores: SetorV1[];
+}
+
+export interface MembroDoSetorV1 {
+  cnpj: string;
+  empresa: string;
+  tickers: string[];
+  motivo: string; // por que está no setor
+}
+
+/** Uma frase de "O que os dados mostram": saiu de uma regra fixa e leva o id de cada número. */
+export interface FraseDoSetorV1 {
+  texto: string;
+  ids: string[];
+}
+
+export interface FaltaNoSetorV1 {
+  kpi: string;
+  motivo: string;
+  fonte: string; // de onde viria
+}
+
+/** O relatório do setor (molde D): as seções no formato do relatório da empresa. */
+export interface RelatorioDoSetorV1 {
+  setor: string;
+  nome: string;
+  como_era_em: string | null;
+  membros: MembroDoSetorV1[];
+  secoes: SecaoDoRelatorioV1[];
+  frases: FraseDoSetorV1[]; // vazia quando a seção vem trancada
+  nao_temos: FaltaNoSetorV1[]; // sempre presente
+  fontes: string[];
+  limites: string[]; // "Limites e cuidados": sempre presentes
+  avisos: string[];
+}
+
 /** Uma camada do Mapa do café: o que pinta os municípios, com o "o que é isto" e a fonte. */
 export interface CamadaDoMapaV1 {
   chave: string; // "producao", "area", "chuva" ou "geada"

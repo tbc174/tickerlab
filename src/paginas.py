@@ -590,6 +590,31 @@ PAGINAS = (
         so_no_app_novo=True,
     ),
     Pagina(
+        "relatorio_do_setor",
+        "Relatório do setor",
+        GRUPO_RESEARCH,
+        ":material/domain:",
+        "Escolha um setor e veja quem está nele, o tamanho do mercado, a concentração (CR4 e HHI "
+        "com a faixa do CADE), as empresas lado a lado e o que ainda não temos, com a fonte de "
+        "cada número.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET",
+            "/v1/relatorio-setor",
+            (
+                Entrada(
+                    "setor",
+                    "texto",
+                    "A chave do setor do lançamento; a lista, com os nomes, vem de /v1/setores.",
+                    obrigatoria=True,
+                ),
+            ),
+            "RelatorioDoSetorV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "por_dentro",
         "Pessoas de dentro",
         GRUPO_RESEARCH,
