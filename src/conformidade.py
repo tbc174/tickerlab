@@ -40,6 +40,7 @@ from src.banco.tentativas import contar_por_ativo
 from src.banco.teses import dados_para_exportar as diario_para_exportar
 from src.banco.usuarios import Usuario
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
+from src.sala.documentos import apagar_arquivos_da_conta
 
 # versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
 # alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas.
@@ -383,8 +384,12 @@ def apagar_conta(conexao: sa.Connection, usuario_id: uuid.UUID) -> bool:
     """Apaga a pessoa e tudo o que é dela (em cascata) e deixa só um registro sem dado pessoal.
 
     Devolve se havia o que apagar. A cobrança no Stripe é encerrada por quem chama
-    (`cobranca.encerrar_cobranca`), antes desta função, porque envolve a internet.
+    (`cobranca.encerrar_cobranca`), antes desta função, porque envolve a internet. Os arquivos
+    da sala de dados saem do disco antes da linha da conta (depois, a cascata já teria levado a
+    lista das operações); se o banco falhar depois, a conta fica sem os arquivos, o lado seguro
+    do erro.
     """
+    apagar_arquivos_da_conta(conexao, usuario_id=usuario_id)
     existia = (
         conexao.execute(sa.delete(usuarios).where(usuarios.c.id == usuario_id)).rowcount
         > 0

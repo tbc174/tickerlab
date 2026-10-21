@@ -93,6 +93,9 @@ yfinance==1.7.0
 alembic==1.20.0
 Authlib==1.8.0
 joserfc==1.7.5
+# cryptography: cifra os arquivos da sala de dados (AES-256-GCM, src/sala/cofre.py); já vinha
+# junto com a Authlib, agora fixada (Apache-2.0 ou BSD-3).
+cryptography==50.0.2
 Mako==1.4.3
 psycopg==3.3.6
 psycopg-binary==3.3.6

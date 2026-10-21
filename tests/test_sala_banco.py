@@ -465,3 +465,90 @@ def test_apagar_conta_leva_a_sala_inteira_e_so_a_da_pessoa(conexao, ana, bia):
     assert conformidade.apagar_conta(conexao, ana.id) is True
     for tabela in TABELAS_DA_SALA:
         assert _donos(conexao, tabela) == {bia.id}, tabela.name
+
+
+def test_toda_coluna_da_sala_ou_sai_no_exportar_ou_esta_na_lista_do_que_nao_sai():
+    """Coluna nova numa tabela da sala quebra este teste até alguém decidir se ela sai."""
+    campos_da_operacao = set(sala.Operacao.__dataclass_fields__)
+    for tabela in (operacoes, *TABELAS_DA_SALA[1:]):
+        colunas = set(tabela.c.keys())
+        saem = set(sala.COLUNAS_EXPORTADAS.get(tabela.name, campos_da_operacao))
+        nao_saem = sala.COLUNAS_QUE_NAO_SAEM[tabela.name]
+        assert saem | nao_saem == colunas, tabela.name
+        assert not saem & nao_saem, tabela.name
+
+
+def test_exportar_traz_exatamente_as_colunas_da_lista(conexao, ana):
+    _sala_cheia(conexao, ana)
+    (operacao,) = conformidade.exportar_meus_dados(conexao, ana.id)["sala_de_dados"]
+    partes = {
+        "documentos": "documentos_da_sala",
+        "evidencias": "evidencias_da_sala",
+        "contradicoes": "contradicoes_da_sala",
+        "checklist": "checklist_da_sala",
+    }
+    for chave, tabela in partes.items():
+        for linha in operacao[chave]:
+            assert tuple(linha) == sala.COLUNAS_EXPORTADAS[tabela], chave
+    assert set(operacao) - set(partes) == set(sala.Operacao.__dataclass_fields__)
+
+
+# --- chave, nonce e leitura (PR 2) --------------------------------------------------------
+
+
+def test_chave_da_operacao_e_gravada_uma_vez_e_so_para_a_dona(conexao, ana, bia):
+    operacao = _operacao(conexao, ana)
+    da_ana = {"usuario_id": ana.id, "operacao_id": operacao.id}
+    da_bia = {"usuario_id": bia.id, "operacao_id": operacao.id}
+    assert not sala.guardar_chave_da_operacao(
+        conexao, **da_bia, chave_cifrada=b"da-bia", versao_da_chave=1
+    )
+    assert sala.chave_da_operacao(conexao, **da_ana) is None
+    assert sala.guardar_chave_da_operacao(
+        conexao, **da_ana, chave_cifrada=b"primeira", versao_da_chave=1
+    )
+    assert not sala.guardar_chave_da_operacao(
+        conexao, **da_ana, chave_cifrada=b"segunda", versao_da_chave=2
+    )
+    assert sala.chave_da_operacao(conexao, **da_ana) == (b"primeira", 1)
+    assert sala.chave_da_operacao(conexao, **da_bia) is None
+
+
+def test_nonce_e_leitura_so_mexem_no_documento_da_conta(conexao, ana, bia):
+    operacao = _operacao(conexao, ana)
+    documento = _documento(conexao, ana, operacao)
+    do_documento = {"operacao_id": operacao.id, "documento_id": documento.id}
+    assert not sala.guardar_nonce(
+        conexao, usuario_id=bia.id, **do_documento, nonce=b"n" * 12
+    )
+    assert sala.nonce_do_documento(conexao, usuario_id=ana.id, **do_documento) is None
+    assert sala.guardar_nonce(
+        conexao, usuario_id=ana.id, **do_documento, nonce=b"n" * 12
+    )
+    assert (
+        sala.nonce_do_documento(conexao, usuario_id=ana.id, **do_documento) == b"n" * 12
+    )
+    assert sala.nonce_do_documento(conexao, usuario_id=bia.id, **do_documento) is None
+    leitura = {"situacao": "lido", "paginas": 3, "lido_por": "teste"}
+    assert not sala.marcar_leitura(
+        conexao, usuario_id=bia.id, **do_documento, **leitura
+    )
+    assert sala.buscar_documento(conexao, usuario_id=bia.id, **do_documento) is None
+    assert sala.marcar_leitura(conexao, usuario_id=ana.id, **do_documento, **leitura)
+    lido = sala.buscar_documento(conexao, usuario_id=ana.id, **do_documento)
+    assert (lido.situacao, lido.paginas, lido.lido_por) == ("lido", 3, "teste")
+
+
+def test_marcar_leitura_so_aceita_o_resultado_de_uma_leitura(conexao, ana):
+    operacao = _operacao(conexao, ana)
+    documento = _documento(conexao, ana, operacao)
+    with pytest.raises(ValueError, match="Situação"):
+        sala.marcar_leitura(
+            conexao,
+            usuario_id=ana.id,
+            operacao_id=operacao.id,
+            documento_id=documento.id,
+            situacao="na_fila",
+            paginas=None,
+            lido_por="teste",
+        )

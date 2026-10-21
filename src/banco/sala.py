@@ -5,8 +5,9 @@ consulta filtra pelos dois. Para outra conta, a resposta é a mesma de um id que
 ou `False`): a rota devolve 404, não 403, e não confirma que o id existe (D11). Nem admin vê a sala
 de outra pessoa: não há função "de todas as contas" aqui.
 
-Ainda sem arquivo: o PR 2 guarda o arquivo cifrado e preenche a chave da operação e o nonce do
-documento, que nunca saem do banco (nem na exportação dos dados).
+Os arquivos cifrados ficam no disco (`src/sala/documentos.py` junta banco, cifra e disco); aqui
+ficam a chave da operação (embrulhada pela chave-mestra) e o nonce do documento, que nunca saem
+do banco (nem na exportação dos dados).
 """
 
 import uuid
@@ -31,6 +32,7 @@ from src.banco.modelo import (
 from src.sala import retencao
 
 TAMANHO_DO_SHA256 = 64
+SITUACOES_DEPOIS_DA_LEITURA = ("lido", "sem_texto", "erro_na_leitura")
 CARACTERES_HEXADECIMAIS = frozenset("0123456789abcdef")
 
 
@@ -322,6 +324,111 @@ def _buscar_documento(
     return Documento(**linha._mapping) if linha else None
 
 
+def buscar_documento(
+    conexao: sa.Connection,
+    *,
+    usuario_id: uuid.UUID,
+    operacao_id: uuid.UUID,
+    documento_id: uuid.UUID,
+) -> Documento | None:
+    """O documento, se for da sala e da conta; `None` se não existe ou é de outra pessoa."""
+    return _buscar_documento(conexao, usuario_id, operacao_id, documento_id)
+
+
+def chave_da_operacao(
+    conexao: sa.Connection, *, usuario_id: uuid.UUID, operacao_id: uuid.UUID
+) -> tuple[bytes, int] | None:
+    """A chave da operação embrulhada e a versão da chave-mestra; `None` se ainda não há chave."""
+    linha = conexao.execute(
+        sa.select(operacoes.c.chave_cifrada, operacoes.c.versao_da_chave).where(
+            _da_conta(usuario_id, operacao_id), operacoes.c.chave_cifrada.is_not(None)
+        )
+    ).first()
+    return (linha.chave_cifrada, linha.versao_da_chave) if linha else None
+
+
+def guardar_chave_da_operacao(
+    conexao: sa.Connection,
+    *,
+    usuario_id: uuid.UUID,
+    operacao_id: uuid.UUID,
+    chave_cifrada: bytes,
+    versao_da_chave: int,
+) -> bool:
+    """Grava a chave da operação, só se ela ainda não tem uma. Devolve se gravou.
+
+    Nunca troca uma chave existente: os arquivos já cifrados com ela ficariam ilegíveis. Dois
+    envios ao mesmo tempo numa sala nova: um grava, o outro lê a chave que ficou.
+    """
+    return (
+        conexao.execute(
+            sa.update(operacoes)
+            .where(
+                _da_conta(usuario_id, operacao_id), operacoes.c.chave_cifrada.is_(None)
+            )
+            .values(chave_cifrada=chave_cifrada, versao_da_chave=versao_da_chave)
+        ).rowcount
+        > 0
+    )
+
+
+def guardar_nonce(
+    conexao: sa.Connection,
+    *,
+    usuario_id: uuid.UUID,
+    operacao_id: uuid.UUID,
+    documento_id: uuid.UUID,
+    nonce: bytes,
+) -> bool:
+    """Grava o nonce da cifra do arquivo original. Devolve se o documento é da conta."""
+    return (
+        conexao.execute(
+            sa.update(documentos_da_sala)
+            .where(_do_documento(usuario_id, operacao_id, documento_id))
+            .values(nonce=nonce)
+        ).rowcount
+        > 0
+    )
+
+
+def nonce_do_documento(
+    conexao: sa.Connection,
+    *,
+    usuario_id: uuid.UUID,
+    operacao_id: uuid.UUID,
+    documento_id: uuid.UUID,
+) -> bytes | None:
+    """O nonce da cifra do original; `None` se o documento não é da conta ou não tem arquivo."""
+    return conexao.execute(
+        sa.select(documentos_da_sala.c.nonce).where(
+            _do_documento(usuario_id, operacao_id, documento_id)
+        )
+    ).scalar()
+
+
+def marcar_leitura(
+    conexao: sa.Connection,
+    *,
+    usuario_id: uuid.UUID,
+    operacao_id: uuid.UUID,
+    documento_id: uuid.UUID,
+    situacao: str,
+    paginas: int | None,
+    lido_por: str,
+) -> bool:
+    """Grava o resultado da leitura (`lido`, `sem_texto` ou `erro_na_leitura`) e as páginas."""
+    if situacao not in SITUACOES_DEPOIS_DA_LEITURA:
+        raise ValueError(f"Situação depois da leitura: {SITUACOES_DEPOIS_DA_LEITURA}.")
+    return (
+        conexao.execute(
+            sa.update(documentos_da_sala)
+            .where(_do_documento(usuario_id, operacao_id, documento_id))
+            .values(situacao=situacao, paginas=paginas, lido_por=lido_por)
+        ).rowcount
+        > 0
+    )
+
+
 def listar_documentos(
     conexao: sa.Connection, *, usuario_id: uuid.UUID, operacao_id: uuid.UUID
 ) -> list[Documento]:
@@ -403,14 +510,75 @@ def _texto(valor: object) -> object:
     return valor
 
 
+# o que sai no "Exportar meus dados", coluna por coluna (lista fechada: coluna nova não sai sem
+# alguém decidir; `test_sala_banco` trava que toda coluna está aqui ou em COLUNAS_QUE_NAO_SAEM)
+COLUNAS_EXPORTADAS: dict[str, tuple[str, ...]] = {
+    "documentos_da_sala": (
+        "id",
+        "operacao_id",
+        "nome_original",
+        "tipo",
+        "tamanho_bytes",
+        "paginas",
+        "sha256",
+        "situacao",
+        "lido_por",
+        "recebido_em",
+    ),
+    "evidencias_da_sala": (
+        "id",
+        "operacao_id",
+        "documento_id",
+        "metrica",
+        "periodo",
+        "valor_numero",
+        "valor_texto",
+        "unidade",
+        "moeda",
+        "pagina",
+        "secao",
+        "tabela",
+        "trecho",
+        "conferida",
+        "extraido_por",
+        "estado_de_revisao",
+        "criada_em",
+    ),
+    "contradicoes_da_sala": (
+        "id",
+        "operacao_id",
+        "evidencia_a",
+        "evidencia_b",
+        "diferenca",
+        "estado",
+        "nota",
+        "criada_em",
+    ),
+    "checklist_da_sala": (
+        "id",
+        "operacao_id",
+        "codigo",
+        "estado",
+        "documento_id",
+        "nota",
+        "atualizado_em",
+    ),
+}
+# o que nunca sai: a conta (já é a da pessoa) e o que só serve para decifrar os arquivos
+COLUNAS_QUE_NAO_SAEM: dict[str, frozenset[str]] = {
+    "operacoes": frozenset({"usuario_id", "chave_cifrada", "versao_da_chave"}),
+    "documentos_da_sala": frozenset({"usuario_id", "nonce"}),
+    "evidencias_da_sala": frozenset({"usuario_id"}),
+    "contradicoes_da_sala": frozenset({"usuario_id"}),
+    "checklist_da_sala": frozenset({"usuario_id"}),
+}
+
+
 def _linhas(
-    conexao: sa.Connection,
-    tabela: sa.Table,
-    usuario_id: uuid.UUID,
-    sem: frozenset[str] = frozenset(),
+    conexao: sa.Connection, tabela: sa.Table, usuario_id: uuid.UUID
 ) -> dict[uuid.UUID, list[dict]]:
-    """As linhas da conta numa tabela da sala, agrupadas pela operação, sem as colunas `sem`."""
-    colunas = [c for c in tabela.c if c.name not in sem | {"usuario_id"}]
+    """As linhas da conta numa tabela da sala, agrupadas pela operação, só nas colunas exportadas."""
+    colunas = [tabela.c[nome] for nome in COLUNAS_EXPORTADAS[tabela.name]]
     por_operacao: dict[uuid.UUID, list[dict]] = {}
     for linha in conexao.execute(
         sa.select(*colunas)
@@ -425,10 +593,11 @@ def _linhas(
 def dados_para_exportar(conexao: sa.Connection, *, usuario_id: uuid.UUID) -> list[dict]:
     """A sala inteira da conta para "Exportar meus dados": metadados, sem o conteúdo dos arquivos.
 
-    A chave da operação e o nonce do arquivo ficam de fora: não dizem nada à pessoa e só serviriam
+    Só saem as colunas de `COLUNAS_EXPORTADAS` (a operação sai pelos campos de `Operacao`): a chave
+    da operação e o nonce do arquivo ficam de fora, porque não dizem nada à pessoa e só serviriam
     para decifrar o arquivo. Os arquivos saem pelo "Baixar a sala" (PR 3).
     """
-    documentos = _linhas(conexao, documentos_da_sala, usuario_id, frozenset({"nonce"}))
+    documentos = _linhas(conexao, documentos_da_sala, usuario_id)
     evidencias = _linhas(conexao, evidencias_da_sala, usuario_id)
     contradicoes = _linhas(conexao, contradicoes_da_sala, usuario_id)
     checklist = _linhas(conexao, checklist_da_sala, usuario_id)

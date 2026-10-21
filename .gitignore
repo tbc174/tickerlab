@@ -9,6 +9,7 @@ __pycache__/
 
 # Segredos: nunca commitar
 .env
+.env.sala
 *.key
 
 # Dados baixados (podem ser baixados de novo)
@@ -21,6 +22,9 @@ Thumbs.db
 # Banco de preços local (cache em SQLite): cada pessoa gera o seu
 dados_locais/
 *.sqlite
+
+# Sala de dados (arquivos cifrados de cada operação; B-20)
+dados_sala/
 
 # Segredos do Streamlit (login do Google): nunca commitar
 .streamlit/secrets.toml

@@ -35,10 +35,12 @@ COPY dados_de_exemplo ./dados_de_exemplo
 ARG TICKERLAB_VERSAO=""
 ENV TICKERLAB_VERSAO=${TICKERLAB_VERSAO}
 
-# o cache de preços (SQLite) grava em dados_locais; no compose, essa pasta vem de fora
+# o cache de preços (SQLite) grava em dados_locais e a sala de dados em dados_sala (só a API
+# monta; permissão 700); no compose, as duas pastas vêm de fora
 RUN useradd --create-home --uid 1000 app \
-    && mkdir -p /app/dados_locais \
-    && chown app:app /app/dados_locais
+    && mkdir -p /app/dados_locais /app/dados_sala \
+    && chown app:app /app/dados_locais /app/dados_sala \
+    && chmod 700 /app/dados_sala
 USER app
 
 EXPOSE 8501

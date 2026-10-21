@@ -12,8 +12,10 @@ estudos
 guias
 notas
 dados_locais
+dados_sala
 *.sqlite
 .env
+.env.sala
 README.md
 requirements.txt
 ruff.toml
