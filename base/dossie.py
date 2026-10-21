@@ -193,6 +193,7 @@ SERIES_DAS_AGENCIAS = (
             (("servico", servico), ("recorte", ("completo", "modalidade"))),
             chave_em_digitos=True,
             grupo="grupo_economico",
+            como_era=True,
         )
         for servico, texto in (
             ("telefonia_movel", "telefonia móvel"),
@@ -209,6 +210,7 @@ SERIES_DAS_AGENCIAS = (
         ULTIMO_MES,
         "Beneficiários de planos de saúde (ANS)",
         "beneficiários",
+        como_era=True,
     ),
     SerieDaAgencia(
         "anac_passageiros",
@@ -229,6 +231,7 @@ SERIES_DAS_AGENCIAS = (
         SOMA_DO_ANO,
         "Prêmio ganho das seguradoras (SUSEP)",
         "R$",
+        como_era=True,
     ),
     SerieDaAgencia(
         "anp_vendas",
