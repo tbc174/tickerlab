@@ -76,7 +76,7 @@ def refazer(originais: Iterable[Original]) -> dict[str, pd.DataFrame]:
             continue
         for tabela, linhas in _ler(original):
             partes[tabela].append(linhas)
-    for par in gdelt.values():
+    for periodo, par in gdelt.items():
         if {"timelinevolraw", "timelinetone"} <= par.keys():
             volume, tom = (
                 ler_gdelt(par["timelinevolraw"]),
