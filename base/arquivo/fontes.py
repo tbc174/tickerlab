@@ -36,6 +36,7 @@ from base.arquivo.obter import (
     zip_que_pode_faltar,
 )
 from base.commodities import cftc_cot
+from src import calendario_b3
 from src.commodities.cafe.regioes import CODIGO_DA_UF
 
 PORTAL_DA_CVM = "https://dados.cvm.gov.br"
@@ -247,6 +248,7 @@ TAMANHO_MINIMO_DE_UM_DIA_BOM = 40_000_000
 BOLETIM_PR_DA_B3 = (
     "https://www.b3.com.br/pesquisapregao/download?filelist=PR{aammdd}.zip"
 )
+HORA_DO_BOLETIM_FINAL_DA_B3 = 22  # o PR do dia sai em versões até ~21h
 COTAHIST_DO_DIA = (
     "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{ddmmaaaa}.ZIP"
 )
@@ -769,10 +771,21 @@ def _zip_do_dia(endereco: str) -> Alvo:
     return Alvo(endereco, ".zip", zip_que_pode_faltar(endereco))
 
 
+def _pregoes_com_boletim_final(agora: datetime) -> list[date]:
+    """Os pregões da janela cujo boletim PR já existe: sem feriado (a B3 responde 500 ou zip vazio)
+    e sem o dia corrente antes da hora do boletim final (às 2h ele ainda não existe e a B3 também
+    responde 500). Depois das 22h o dia corrente entra, como antes."""
+    hora_local = agora.astimezone(FUSO_DA_B3)
+    pregoes = [d for d in _dias_da_janela_da_b3(agora) if calendario_b3.eh_pregao(d)]
+    if hora_local.hour < HORA_DO_BOLETIM_FINAL_DA_B3:
+        return [d for d in pregoes if d < hora_local.date()]
+    return pregoes
+
+
 def descobrir_boletim_pr(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return [
         _zip_do_dia(BOLETIM_PR_DA_B3.format(aammdd=f"{dia:%y%m%d}"))
-        for dia in _dias_da_janela_da_b3(agora)
+        for dia in _pregoes_com_boletim_final(agora)
     ]
 
 
