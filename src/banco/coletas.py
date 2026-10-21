@@ -9,7 +9,7 @@ import hashlib
 import logging
 import uuid
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import NamedTuple
 
@@ -211,6 +211,53 @@ MARCA_DA_REVENDA = {
     A_CONFIRMAR: Marca.A_CONFIRMAR,
     NAO_COMERCIAL: Marca.NAO_COMERCIAL,
 }
+
+
+class Coleta(StrEnum):
+    """Podemos baixar, e como? (ADR 0108, D3)."""
+
+    ABERTA = "aberta"  # o termo e o robots.txt permitem, ou não dizem nada
+    # API com chave ou conta, pelo caminho que o dono oferece
+    COM_CADASTRO = "com_cadastro"
+    # a licença do dado permite reuso, mas o robots.txt fecha o servidor ou o caminho que usamos
+    ROBOTS_FECHA = "robots_fecha"
+    TERMO_VEDA = "termo_veda"  # o termo veda robô, raspagem ou cópia
+    NAO_LIDA = "nao_lida"
+
+
+class Guarda(StrEnum):
+    """Podemos guardar, e por quanto tempo? (ADR 0108, D3)."""
+
+    SEM_PRAZO = "sem_prazo"
+    COM_PRAZO = "com_prazo"  # com o número de dias em `dias_de_guarda`
+    # cópia como prova interna, nunca mostrada (ADR 0102, ponto 3)
+    SO_PROVA = "so_prova"
+    NAO_GUARDAR = "nao_guardar"
+    NAO_DIZ = "nao_diz"
+
+
+class ColetaEGuarda(NamedTuple):
+    """As duas perguntas da ADR 0108 (D3) ao lado da revenda, por família do `LICENCAS`.
+
+    A data da leitura dos termos é a de `TERMOS_LIDOS_EM` (`base/arquivo/registro.py`), sem cópia
+    aqui; `revisar_em` vazio vale a leitura mais o prazo padrão do portão externo.
+    """
+
+    coleta: Coleta
+    guarda: Guarda
+    termo: str = ""  # endereço e hash da cópia guardada do termo
+    revisar_em: date | None = None
+    dias_de_guarda: int | None = None  # só com `Guarda.COM_PRAZO`
+    # as condições (a) e (b) do D5.3 da ADR 0108, que deixam `ROBOTS_FECHA` sair pela API externa:
+    # (a) licença escrita pelo próprio órgão permite reuso comercial (CC BY, ODbL, domínio público);
+    # (b) a coleta respeita o Crawl-delay e se identifica com o User-Agent do TickerLab
+    licenca_permite_reuso_comercial: bool = False
+    respeita_ritmo_e_se_identifica: bool = False
+
+
+# A linha 159 da fila (Dados) preenche cada família a partir da auditoria N0; até lá, vazio: o portão
+# da API externa (`src/portao_externo.py`) nega toda família sem resposta. O app não lê isto (ADR 0102).
+COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {}
 MOSTRAR = "mostrar"  # em tela, relatório, PDF, API ou newsletter
 USOS = ("treinar", "rotular", "exportar", MOSTRAR)
 # ADR 0102: a única família fora dos quatro usos. Dado de mercado da B3 pede contrato (ADRs 0019 e
@@ -369,7 +416,9 @@ def pode_usar(uso: str, fonte: str) -> bool:
     """A fonte pode `uso` ("treinar", "rotular", "exportar" ou "mostrar")? `exigir_licenca` sem o erro.
 
     Pela ADR 0102 a marca não decide: toda fonte entra em qualquer uso, com a fonte e a data citadas
-    (`citacoes_das_fontes`); só a B3 fica fora, até o contrato (ADRs 0019 e 0056).
+    (`citacoes_das_fontes`); só a B3 fica fora, até o contrato (ADRs 0019 e 0056). Vale para o app
+    (tela, PDF, newsletter e a v1 interna); a API externa tem outra regra, que nega por padrão:
+    `src/portao_externo.py` (ADR 0108).
     """
     _conferir_uso(uso)
     return not fora_dos_usos(fonte)
