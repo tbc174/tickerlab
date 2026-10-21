@@ -23,6 +23,17 @@ ACAO_NEWSLETTER_INSCRITA = "newsletter_inscrita"  # Research, etapa 5c (decisão
 ACAO_NEWSLETTER_CANCELADA = "newsletter_cancelada"
 ACAO_NOVIDADES_INSCRITA = "novidades_inscrita"  # Novidades e ofertas por e-mail (0037)
 ACAO_NOVIDADES_CANCELADA = "novidades_cancelada"
+# Sala de dados (B-20, D15): detalhes só com ids, tamanho, tipo e código do motivo; nunca o nome do
+# arquivo nem o SHA-256 (o registro fica depois da exclusão, e o hash confirmaria quem tinha um
+# documento conhecido). Recusado e baixados entram com o upload (PR 2 e 3); expirada, com o expurgo.
+ACAO_OPERACAO_CRIADA = "operacao_criada"
+ACAO_DOCUMENTO_ENVIADO = "documento_enviado"
+ACAO_DOCUMENTO_RECUSADO = "documento_recusado"
+ACAO_DOCUMENTO_BAIXADO = "documento_baixado"
+ACAO_DOCUMENTO_APAGADO = "documento_apagado"
+ACAO_OPERACAO_APAGADA = "operacao_apagada"
+ACAO_OPERACAO_EXPIRADA = "operacao_expirada"
+ACAO_SALA_BAIXADA = "sala_baixada"
 
 
 @dataclass(frozen=True)
