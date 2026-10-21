@@ -2684,11 +2684,11 @@ Uma linha por relação entre duas entidades da rede (ADR 0077), com as três da
 | `tipo` | controlada_de, coligada_de, participada_de (FRE sem o tipo), opera_para, do_conglomerado_de, audita, emite ou detem | texto |
 | `papel` | Detalhe do tipo: comprado, emprestado ou vendido (detem); a via e se é a principal (opera_para); lider (do_conglomerado_de) | texto |
 | `participacao` | Participação informada no FRE (vazia nos outros) | pontos percentuais (66,25 = 66,25%) |
-| `aconteceu_em` | Data do fato: referência do FRE, início do mandato, primeiro mês da carteira | data (dia) |
+| `aconteceu_em` | Data do fato: referência do FRE, início do mandato, primeiro mês da carteira. É o início da validade (valido_de): a ligação vale de `aconteceu_em` até `ate` | data (dia) |
 | `infracao_em` | Data da infração, nas sanções (vazia nas fontes de hoje) | data (dia) |
 | `publico_em` | Desde quando a relação era pública (como era na data) | data (dia) |
 | `coletado_em` | Quando a base guardou o arquivo de onde veio (registro de coletas) | data (dia) |
-| `ate` | Até quando valeu, sem incluir o dia (vazio: ainda vale) | data (dia) |
+| `ate` | Até quando valeu, sem incluir o dia (vazio: ainda vale): o fim da validade (valido_ate). O que valia em D sabendo o que se sabia em K: `base/rede/controle.py::valiam_em` | data (dia) |
 | `ate_publico_em` | Desde quando se sabia que tinha acabado: o FRE, o FCA ou a carteira que já não a mostra (vazio: ainda vale). Como era em D usa este, não o `ate` | data (dia) |
 | `situacao` | vigente ou encerrada | texto |
 | `encerrada_por` | fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente | texto |

@@ -4389,7 +4389,10 @@ TABELAS: dict[str, Tabela] = {
                 PONTOS_PERCENTUAIS,
             ),
             "aconteceu_em": (
-                "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira",
+                (
+                    "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira. "
+                    "É o início da validade (valido_de): a ligação vale de `aconteceu_em` até `ate`"
+                ),
                 DATA,
             ),
             "infracao_em": (
@@ -4404,7 +4407,14 @@ TABELAS: dict[str, Tabela] = {
                 "Quando a base guardou o arquivo de onde veio (registro de coletas)",
                 DATA,
             ),
-            "ate": ("Até quando valeu, sem incluir o dia (vazio: ainda vale)", DATA),
+            "ate": (
+                (
+                    "Até quando valeu, sem incluir o dia (vazio: ainda vale): o fim da validade "
+                    "(valido_ate). O que valia em D sabendo o que se sabia em K: "
+                    "`base/rede/controle.py::valiam_em`"
+                ),
+                DATA,
+            ),
             "ate_publico_em": (
                 (
                     "Desde quando se sabia que tinha acabado: o FRE, o FCA ou a carteira que já não a "

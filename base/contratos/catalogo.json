@@ -6651,7 +6651,7 @@
           "unidade": "pontos percentuais (66,25 = 66,25%)"
         },
         "aconteceu_em": {
-          "descricao": "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira",
+          "descricao": "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira. É o início da validade (valido_de): a ligação vale de `aconteceu_em` até `ate`",
           "unidade": "data (dia)"
         },
         "infracao_em": {
@@ -6667,7 +6667,7 @@
           "unidade": "data (dia)"
         },
         "ate": {
-          "descricao": "Até quando valeu, sem incluir o dia (vazio: ainda vale)",
+          "descricao": "Até quando valeu, sem incluir o dia (vazio: ainda vale): o fim da validade (valido_ate). O que valia em D sabendo o que se sabia em K: `base/rede/controle.py::valiam_em`",
           "unidade": "data (dia)"
         },
         "ate_publico_em": {
