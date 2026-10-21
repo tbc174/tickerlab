@@ -9,6 +9,7 @@ sem nenhuma chamada de rede.
 
 import socket
 import uuid
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -315,7 +316,12 @@ def _retrato(cliente, operacao_id):
     base = f"/v1/operacoes/{operacao_id}"
     evidencias = [
         {k: v for k, v in e.items() if k not in {"id", "documento_id", "criada_em"}}
-        for e in cliente.get(f"{base}/evidencias").json()
+        for e in sorted(
+            cliente.get(f"{base}/evidencias").json(),
+            key=lambda e: Decimal(
+                e["valor_numero"]
+            ),  # criadas na mesma hora: ordem do id
+        )
     ]
     contradicoes = [
         {k: c[k] for k in ("estado", "nota", "diferenca")}
