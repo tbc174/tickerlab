@@ -6,7 +6,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from base import bcb_ifdata
 from base.parquet import conferir_tabela, gravar_tabela
+from base.setoriais import revisoes
 from scripts import carga_bcb_credito as carga
 from src import acervo
 from src import versao_do_codigo as vc
@@ -16,6 +18,7 @@ from tests.test_base_bcb import ITAU, _empresas_e_tickers
 
 PASTA = Path(__file__).parent / "arquivos" / "bcb"
 VERSAO = "c4e1f00d9e6b0b5a9c1d2e3f4a5b6c7d8e9f0a1b"
+CHAVE_DO_ITAU = list(bcb_ifdata.CHAVE_DOS_VALORES)
 VAZIO = json.dumps({"@odata.context": "x", "value": []}).encode()
 
 
@@ -105,7 +108,41 @@ def test_revisao_do_bc_vira_versao(ambiente):
     assert list(destino.glob("202506.v1.*"))
     nova = pd.read_parquet(destino / "202506.parquet")
     itau = nova[(nova["cod_inst"] == ITAU) & (nova["coluna"] == "Ativo Total")]
-    assert itau["saldo"].iloc[0] == 1.0
+    # a vigente guarda o valor antigo e o revisado (cada um com a data em que foi visto)
+    assert itau.sort_values("visto_em")["saldo"].iloc[-1] == 1.0
+
+
+def test_revisao_do_bc_so_vale_desde_o_dia_em_que_foi_vista(ambiente):
+    """Achado do #495: a versão vigente ficava com o `disponivel_em` da 1ª publicação, e o "como era em"
+    de um dia antes da revisão devolvia o número revisado (olhar o futuro). A revisão vira linha nova,
+    com `visto_em` e `disponivel_em` do dia em que o arquivista a baixou."""
+    pasta, respostas, _ = ambiente
+    _rodar(pasta, "--so", "ifdata", "--desde", "2025", "--ate", "2025")
+    chave = "@AnoMes=202506&@TipoInstituicao=1&@Relatorio='1'"
+    resposta = json.loads(respostas[chave])
+    for linha in resposta["value"]:
+        if linha["CodInst"] == ITAU and linha["NomeColuna"] == "Ativo Total":
+            antigo = linha["Saldo"]
+            linha["Saldo"] = 1.0
+    respostas[chave] = json.dumps(resposta).encode()
+    _rodar(pasta, "--so", "ifdata", "--desde", "2025", "--ate", "2025")
+
+    tabela = pd.read_parquet(pasta / "ifdata" / "valores" / "tipo_1" / "202506.parquet")
+    itau = tabela[(tabela["cod_inst"] == ITAU) & (tabela["coluna"] == "Ativo Total")]
+    itau = itau.sort_values("saldo", ascending=False)
+    assert itau["saldo"].tolist() == [antigo, 1.0]
+    primeira, revisao = itau.iloc[0], itau.iloc[1]
+    assert primeira["disponivel_em"] == bcb_ifdata.disponivel_em(itau).iloc[0]
+    assert revisao["disponivel_em"] == revisao["visto_em"] > primeira["disponivel_em"]
+    depois = revisao["visto_em"]
+    antes = depois - pd.Timedelta(days=1)
+    assert revisoes.como_era_em(itau, antes, CHAVE_DO_ITAU)["saldo"].tolist() == [
+        antigo
+    ]
+    assert revisoes.como_era_em(itau, depois, CHAVE_DO_ITAU)["saldo"].tolist() == [1.0]
+    # o resto da tabela não é revisão: uma linha por chave, sem repetir
+    outras = tabela.drop(itau.index)
+    assert not outras.duplicated(CHAVE_DO_ITAU).any()
 
 
 def test_scr_grava_um_parquet_por_ano(ambiente):

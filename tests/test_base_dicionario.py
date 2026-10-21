@@ -236,6 +236,7 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
         "ifdata_valores": [
             *bcb_ifdata.ler_valores(_ifdata("valores_202506_t1_r1.json")).columns,
             "disponivel_em",
+            "visto_em",
         ],
         "ifdata_cadastro": list(cadastro.columns),
         "ligacao_dos_bancos": list(
@@ -382,11 +383,14 @@ def test_contrato_comeca_na_versao_1():
     arquivos numa entrega e, de 2003 a 2015, não dá a versão), e `cnpj_situacao_especial` 2.0.0
     (17/10/2026), o `publico_em` passou do mês do arquivo para `disponivel_em`, e
     `demonstracoes_como_era` 2.0.0 (19/10/2026, série T1), a tabela ganhou a DFC, a DVA e a DRA
-    (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas)."""
+    (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas), e
+    `ifdata_valores` 2.0.0 (21/10/2026), a chave ganhou o `visto_em` (a revisão do BC é linha nova da
+    mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
     assert maiores.pop("cnpj_situacao_especial") == "2"
     assert maiores.pop("demonstracoes_como_era") == "2"
+    assert maiores.pop("ifdata_valores") == "2"
     assert set(maiores.values()) == {"1"}

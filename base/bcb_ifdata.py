@@ -12,7 +12,12 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
   - o nome da coluna vem com a letra da nota numa linha nova ("Disponibilidades \\n(a)"): vira um
     espaço só.
 - **"Como era na data":** jun/2026 já estava publicado em 14/10 (106 dias) e set/2026 não; a base usa
-  data-base + 120 dias. Cada revisão do BC vira versão (o SHA-256 da resposta fica no manifesto).
+  data-base + 120 dias. O BC revisa datas-base já publicadas: cada baixada do arquivista é uma coleta
+  e a tabela guarda uma linha por **valor diferente** de cada chave (`base/setoriais/revisoes.py`). O
+  primeiro valor vale desde o prazo; a revisão vale só desde o dia em que foi vista (`visto_em`), nunca
+  antes (ADR 0027, exigência 3). Limite: o que o BC revisou antes da 1ª coleta guardada não aparece, e
+  a linha da primeira coleta sem dia (acervo desligado) fica com `visto_em` vazio. A versão anterior da
+  tabela continua guardada como `<AAAAMM>.v<N>` e o SHA-256 de cada resposta fica no manifesto.
 - **Ligação com a bolsa:** o cadastro de cada data dá a raiz do CNPJ do líder do conglomerado (ou o
   próprio código, para a instituição individual); a raiz liga ao CNPJ da empresa do FCA e aos tickers
   que valiam no ano (`base/fca.py`). Antes de 2010, sem FCA, a ligação chega ao CNPJ mas não à ação.
@@ -20,11 +25,13 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
 
 import json
 import re
+from collections.abc import Sequence
 
 import pandas as pd
 
 from base.cnpj import raiz as raiz_do_cnpj
 from base.fca import vale_na_data
+from base.setoriais import revisoes
 
 API = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/"
 PRIMEIRO_ANO = 2000
@@ -51,6 +58,15 @@ MESES_DA_DATA_BASE = (3, 6, 9, 12)
 DIAS_ATE_FICAR_PUBLICO = 120
 # por onde a instituição chegou à empresa da bolsa (série 3, PR 8)
 PELO_PROPRIO_CNPJ, PELO_LIDER = "próprio CNPJ", "líder do conglomerado"
+CHAVE_DOS_VALORES = (
+    "data_base",
+    "tipo_instituicao",
+    "cod_inst",
+    "relatorio",
+    "grupo",
+    "conta",
+    "coluna",
+)
 COLUNAS_DOS_VALORES = {
     "TipoInstituicao": "tipo_instituicao",
     "CodInst": "cod_inst",
@@ -154,6 +170,19 @@ def ler_cadastro(conteudo_json: bytes) -> pd.DataFrame:
 def disponivel_em(tabela: pd.DataFrame) -> pd.Series:
     """Desde quando o número era público: data-base + 120 dias (jun/2026 saiu em até 106)."""
     return tabela["data_base"] + pd.Timedelta(days=DIAS_ATE_FICAR_PUBLICO)
+
+
+def valores_com_revisoes(
+    coletas: Sequence[tuple[pd.Timestamp, pd.DataFrame]],
+) -> pd.DataFrame:
+    """As coletas de um relatório (dia da baixada, `ler_valores`) numa tabela com as revisões do BC.
+
+    Sem o dia (acervo desligado) a coleta entra com `visto_em` vazio: o valor vale desde o prazo."""
+    com_prazo = [
+        (dia, tabela.assign(disponivel_em=disponivel_em(tabela)))
+        for dia, tabela in coletas
+    ]
+    return revisoes.juntar_coletas(com_prazo, list(CHAVE_DOS_VALORES))
 
 
 def _raiz(cnpj: pd.Series) -> pd.Series:

@@ -290,6 +290,34 @@ def test_somar_conta_so_a_revisao_mais_nova(base):
     ]  # a revisão ainda não era pública
 
 
+def test_ler_como_era_em_devolve_uma_linha_por_chave_antes_e_depois_da_revisao(base):
+    """IF.data: o BC revisou o saldo; a revisão é linha nova da mesma chave e só vale desde o dia em que
+    foi vista. Um dia antes, o `como_era_em` devolve o número antigo (e uma linha só)."""
+    _gravar(
+        base,
+        "bcb/ifdata/valores/tipo_1/202506.parquet",
+        pd.DataFrame(
+            {
+                "data_base": pd.to_datetime(["2025-06-30"] * 2),
+                "tipo_instituicao": [1, 1],
+                "cod_inst": ["C1", "C1"],
+                "relatorio": [1, 1],
+                "grupo": ["g", "g"],
+                "conta": ["1", "1"],
+                "coluna": ["Ativo Total"] * 2,
+                "saldo": [10.0, 99.0],
+                "visto_em": pd.to_datetime(["2026-10-14", "2026-11-14"]),
+                "disponivel_em": pd.to_datetime(["2025-10-28", "2026-11-14"]),
+            }
+        ),
+    )
+    with Porta(base) as p:
+        antes = p.ler("ifdata_valores", como_era_em="2026-11-13")
+        depois = p.ler("ifdata_valores", como_era_em="2026-11-14")
+    assert antes["saldo"].tolist() == [10.0]
+    assert depois["saldo"].tolist() == [99.0]
+
+
 def test_somar_e_exato(base):
     """Em DOUBLE, 0,1 + 0,2 dá 0,30000000000000004 e a ordem da soma mexe na 15ª casa; em DECIMAL não."""
     _gravar(
