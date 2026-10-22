@@ -1164,3 +1164,107 @@ sa.Index(
     contatos_do_negocio.c.usuario_id,
 )
 sa.Index("ix_contatos_do_negocio_usuario_id", contatos_do_negocio.c.usuario_id)
+
+
+# --- Garantias das operações (B-17, migração 0042; plano `2026-10-21-b17-garantias`) ---
+# A exposição é a dívida a cobrir; cada garantia aponta para uma exposição da mesma operação. Mesmo
+# isolamento da sala: chave composta com `usuario_id`, cascata com a operação e com a conta. Titular só
+# por id opaco (`titular_ref`): nenhuma coluna de nome, CPF ou endereço. O laudo é um documento da
+# mesma sala, com a página citada; apagar o documento solta o laudo (src/banco/sala.py), não a garantia.
+TIPOS_DE_GARANTIA = (
+    "imovel",
+    "recebiveis",
+    "veiculo",
+    "acoes",
+    "fianca",
+    "aval",
+    "cessao_fiduciaria",
+    "outro",
+)
+LIQUIDEZES_DA_GARANTIA = ("alta", "media", "baixa")
+TAMANHO_MAXIMO_DO_ROTULO_DA_EXPOSICAO = 120
+TAMANHO_MAXIMO_DO_TITULAR_REF = 60
+
+exposicoes_da_operacao = sa.Table(
+    "exposicoes_da_operacao",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column(
+        "rotulo", sa.String(TAMANHO_MAXIMO_DO_ROTULO_DA_EXPOSICAO), nullable=False
+    ),
+    sa.Column("valor", sa.Numeric(28, 6), nullable=False),
+    sa.Column("moeda", sa.String(3), nullable=False),
+    sa.Column("vencimento", sa.Date),
+    _momento("criada_em"),
+    _momento("atualizada_em"),
+    _da_operacao("exposicoes_da_operacao"),
+    sa.UniqueConstraint(
+        "id", "operacao_id", "usuario_id", name="uq_exposicoes_da_operacao_id"
+    ),
+    sa.CheckConstraint("valor > 0", name="valor"),
+    sa.CheckConstraint(
+        f"length(rotulo) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_ROTULO_DA_EXPOSICAO}",
+        name="rotulo",
+    ),
+)
+sa.Index("ix_exposicoes_da_operacao_usuario_id", exposicoes_da_operacao.c.usuario_id)
+sa.Index(
+    "ix_exposicoes_da_operacao_operacao",
+    exposicoes_da_operacao.c.operacao_id,
+    exposicoes_da_operacao.c.usuario_id,
+)
+
+garantias_da_operacao = sa.Table(
+    "garantias_da_operacao",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("exposicao_id", sa.Uuid, nullable=False),
+    sa.Column("tipo", sa.String(20), nullable=False),
+    sa.Column("valor_avaliado", sa.Numeric(28, 6), nullable=False),
+    sa.Column("moeda", sa.String(3), nullable=False),
+    sa.Column("avaliado_em", sa.Date, nullable=False),
+    sa.Column("haircut", sa.Numeric(7, 6), nullable=False),
+    sa.Column("liquidez", sa.String(5), nullable=False),
+    sa.Column("prioridade", sa.Integer, nullable=False, server_default="1"),
+    sa.Column("onus_anteriores", sa.Numeric(28, 6), nullable=False, server_default="0"),
+    sa.Column("valido_ate", sa.Date),
+    sa.Column("titular_ref", sa.String(TAMANHO_MAXIMO_DO_TITULAR_REF)),
+    sa.Column("laudo_id", sa.Uuid),
+    sa.Column("laudo_pagina", sa.Integer),
+    _momento("criada_em"),
+    _momento("atualizada_em"),
+    _da_operacao("garantias_da_operacao"),
+    _da_mesma_sala("garantias_da_operacao", "exposicao_id", "exposicoes_da_operacao"),
+    # sem cascata: apagar o documento solta o laudo antes (src/banco/sala.py)
+    _da_mesma_sala(
+        "garantias_da_operacao", "laudo_id", "documentos_da_sala", ondelete=None
+    ),
+    sa.CheckConstraint(_entre("tipo", TIPOS_DE_GARANTIA), name="tipo"),
+    sa.CheckConstraint(_entre("liquidez", LIQUIDEZES_DA_GARANTIA), name="liquidez"),
+    sa.CheckConstraint("haircut >= 0 AND haircut <= 1", name="haircut"),
+    sa.CheckConstraint("valor_avaliado >= 0", name="valor_avaliado"),
+    sa.CheckConstraint("onus_anteriores >= 0", name="onus_anteriores"),
+    sa.CheckConstraint("prioridade >= 1", name="prioridade"),
+    sa.CheckConstraint(
+        "(laudo_id IS NULL) = (laudo_pagina IS NULL) "
+        "AND (laudo_pagina IS NULL OR laudo_pagina >= 1)",
+        name="laudo",
+    ),
+)
+sa.Index("ix_garantias_da_operacao_usuario_id", garantias_da_operacao.c.usuario_id)
+sa.Index(
+    "ix_garantias_da_operacao_exposicao",
+    garantias_da_operacao.c.exposicao_id,
+    garantias_da_operacao.c.operacao_id,
+    garantias_da_operacao.c.usuario_id,
+)
+sa.Index(
+    "ix_garantias_da_operacao_laudo",
+    garantias_da_operacao.c.laudo_id,
+    garantias_da_operacao.c.operacao_id,
+    garantias_da_operacao.c.usuario_id,
+)
