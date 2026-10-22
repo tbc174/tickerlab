@@ -30,7 +30,7 @@ from base.enet_antigo import (
     FormatoNaoLido,
     eh_pacote_enxuto,
     enxugar,
-    ler_dfp_antigo,
+    ler_documento_antigo,
     tem_dfp_antigo,
     tem_itr_antigo,
 )
@@ -157,10 +157,8 @@ def original_do_pacote(pacote: bytes) -> tuple[bytes, str]:
     """
     if any(NOME_DO_XML.match(n) for n in _nomes_do_pacote(pacote)):
         return limpar_xml(xml_do_pacote(pacote)), ".xml"
-    if tem_dfp_antigo(pacote):
+    if tem_dfp_antigo(pacote) or tem_itr_antigo(pacote):
         return enxugar(pacote), ".zip"
-    if tem_itr_antigo(pacote):
-        raise FormatoNaoLido("pacote do ITR no formato antigo (.itr): ainda não é lido")
     return limpar_xml(
         xml_do_pacote(pacote)
     ), ".xml"  # sobe o erro de formato desconhecido
@@ -169,7 +167,7 @@ def original_do_pacote(pacote: bytes) -> tuple[bytes, str]:
 def ler_documento_guardado(original: bytes) -> DocumentoEnet:
     """O documento de um original do acervo: o XML limpo ou o zip enxuto do formato antigo."""
     return (
-        ler_dfp_antigo(original)
+        ler_documento_antigo(original)
         if eh_pacote_enxuto(original)
         else ler_xml_enet(original)
     )

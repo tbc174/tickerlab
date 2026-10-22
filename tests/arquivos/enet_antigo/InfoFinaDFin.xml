@@ -33,11 +33,86 @@
   <InfoFinaDFin>
     <CodigoTipoDemonstracaoFinanceira>8</CodigoTipoDemonstracaoFinanceira>
     <CodigoTipoInformacaoFinanceira>1</CodigoTipoInformacaoFinanceira>
+    <NumeroIdentificacaoPeriodo>1</NumeroIdentificacaoPeriodo>
     <NumeroConta>5.01</NumeroConta>
-    <DescricaoConta1>DMPL sem nome</DescricaoConta1>
+    <DescricaoConta1>Saldos Iniciais</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>203364</ValorConta1>
+    <ValorConta2>0</ValorConta2>
+    <ValorConta3>4164</ValorConta3>
+    <ValorConta4>-81818</ValorConta4>
+    <ValorConta5>-5791</ValorConta5>
+    <ValorConta6>119919</ValorConta6>
+    <ValorConta7>0</ValorConta7>
+    <ValorConta8>0</ValorConta8>
+    <ValorConta9>0</ValorConta9>
+  </InfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>8</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>1</CodigoTipoInformacaoFinanceira>
+    <NumeroIdentificacaoPeriodo>2</NumeroIdentificacaoPeriodo>
+    <NumeroConta>5.01</NumeroConta>
+    <DescricaoConta1>Saldos Iniciais</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>192612</ValorConta1>
+    <ValorConta2>0</ValorConta2>
+    <ValorConta3>4164</ValorConta3>
+    <ValorConta4>-90369</ValorConta4>
+    <ValorConta5>0</ValorConta5>
+    <ValorConta6>106407</ValorConta6>
+    <ValorConta7>0</ValorConta7>
+    <ValorConta8>0</ValorConta8>
+    <ValorConta9>0</ValorConta9>
+  </InfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>8</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>1</CodigoTipoInformacaoFinanceira>
+    <NumeroIdentificacaoPeriodo>3</NumeroIdentificacaoPeriodo>
+    <NumeroConta>5.01</NumeroConta>
+    <DescricaoConta1>Saldos Iniciais</DescricaoConta1>
     <IndicadorContaFixa>true</IndicadorContaFixa>
     <ValorConta1>1</ValorConta1>
-    <ValorConta2>2</ValorConta2>
-    <ValorConta3>9</ValorConta3>
+    <ValorConta2>1</ValorConta2>
+    <ValorConta3>1</ValorConta3>
+    <ValorConta4>1</ValorConta4>
+    <ValorConta5>1</ValorConta5>
+    <ValorConta6>5</ValorConta6>
+    <ValorConta7>0</ValorConta7>
+    <ValorConta8>0</ValorConta8>
+    <ValorConta9>0</ValorConta9>
+  </InfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>8</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>1</CodigoTipoInformacaoFinanceira>
+    <NumeroIdentificacaoPeriodo>0</NumeroIdentificacaoPeriodo>
+    <NumeroConta>5.01</NumeroConta>
+    <DescricaoConta1>Saldos Iniciais</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>7</ValorConta1>
+    <ValorConta2>7</ValorConta2>
+    <ValorConta3>7</ValorConta3>
+    <ValorConta4>7</ValorConta4>
+    <ValorConta5>7</ValorConta5>
+    <ValorConta6>35</ValorConta6>
+    <ValorConta7>0</ValorConta7>
+    <ValorConta8>0</ValorConta8>
+    <ValorConta9>0</ValorConta9>
+  </InfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>8</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>2</CodigoTipoInformacaoFinanceira>
+    <NumeroIdentificacaoPeriodo>1</NumeroIdentificacaoPeriodo>
+    <NumeroConta>5.01</NumeroConta>
+    <DescricaoConta1>Saldos Iniciais</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>203364</ValorConta1>
+    <ValorConta2>4164</ValorConta2>
+    <ValorConta3>0</ValorConta3>
+    <ValorConta4>-81818</ValorConta4>
+    <ValorConta5>-5791</ValorConta5>
+    <ValorConta6>119919</ValorConta6>
+    <ValorConta7>10</ValorConta7>
+    <ValorConta8>119929</ValorConta8>
+    <ValorConta9>0</ValorConta9>
   </InfoFinaDFin>
 </ArrayOfInfoFinaDFin>
