@@ -1226,6 +1226,33 @@
           "resultado": 129045.0
          }
         ]
+       },
+       {
+        "texto": "No mesmo ano, o mercado inteiro cresceu 841.545 consumidores (conta nossa), menos que o ganho da AES ELPA sozinha.",
+        "notas": [
+         "tamanho.tamanho_aneel_consumidores.2",
+         "tamanho.tamanho_aneel_consumidores.1",
+         "participacao.participacao_aneel_consumidores.1",
+         "participacao.participacao_aneel_consumidores.0"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.1",
+            "valor": 87543053.0,
+            "conta": null
+           },
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.2",
+            "valor": 86701508.0,
+            "conta": null
+           }
+          ],
+          "resultado": 841545.0
+         }
+        ]
        }
       ]
      },
@@ -1811,7 +1838,7 @@
         "contas": []
        },
        {
-        "texto": "Capex zero numa operação de rede também não fecha; o mais provável é que o investimento esteja registrado fora da linha de capex, como ativo da concessão, e o relatório não separa.",
+        "texto": "Capex zero numa operação de rede também não fecha; uma hipótese é que o investimento esteja registrado fora da linha de capex, como ativo da concessão, e o relatório não permite conferir.",
         "notas": [],
         "contas": []
        },
