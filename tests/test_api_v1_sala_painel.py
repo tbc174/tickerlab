@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from src import api
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso
 from src.api_v1 import sala as rotas_da_sala
+from src.api_v1 import sala_garantias as rotas_das_garantias
 from src.api_v1 import sala_painel as rotas_do_painel
 from src.api_v1 import sala_trabalho as rotas_do_trabalho
 from src.banco import modelo
@@ -238,7 +239,12 @@ def test_toda_rota_da_sala_pertence_a_pagina_da_sala():
     assert pagina_da_sala.somente_admin and pagina_da_sala.so_no_app_novo
     rotas = {
         (metodo, r.path)
-        for roteador in (rotas_da_sala, rotas_do_trabalho, rotas_do_painel)
+        for roteador in (
+            rotas_da_sala,
+            rotas_do_trabalho,
+            rotas_do_painel,
+            rotas_das_garantias,
+        )
         for r in roteador.router.routes
         for metodo in r.methods  # type: ignore[attr-defined]
     }
