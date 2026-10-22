@@ -64,7 +64,7 @@ números como eles são**.
 | Cobrança | Stripe **só em modo de teste**: nenhum pagamento real é feito. O Plus existe, mas ainda não está à venda |
 | App novo em React (substituto do Streamlit) | é o principal desde 18/10/2026, na raiz de `app.tickerlab.com.br`: 9 telas; um link antigo de página que ainda não migrou abre na versão clássica |
 | API de leitura v1 | pronta e documentada (`docs/api/`), **desligada em produção**; no ar só a rota pública da ferramenta "Quanto daria?" |
-| Base de dados | em construção contínua: 35 tabelas com contrato versionado, coletas diárias, âncora no Bitcoin toda noite |
+| Base de dados | em construção contínua: 92 tabelas com contrato versionado, coletas diárias, âncora no Bitcoin toda noite |
 | Newsletter | pronta, enviada só para administradores até o parecer jurídico |
 | TickerLab Trade (pesquisa de trading com ML) | fase M2 terminada **sem modelo aprovado**; pesquisa pausada |
 
@@ -101,7 +101,7 @@ registrado no próprio repositório (`notas/`, `guias/`, `estudos/`).
 
 Contados no repositório em 15/10/2026.
 
-| 37 páginas no app | 14 ferramentas grátis | 35 tabelas na base | 58 fontes arquivadas | mais de 3.500 testes |
+| 37 páginas no app | 14 ferramentas grátis | 92 tabelas catalogadas na base | 58 fontes arquivadas | mais de 3.500 testes |
 |:---:|:---:|:---:|:---:|:---:|
 | análise, estratégias, research, carteira, relatórios e conta | calculadoras e simuladores no site | com contrato de dados versionado | CVM, BCB, Tesouro, B3, órgãos públicos e cripto | com PostgreSQL de verdade e cobertura mínima de 85% |
 
@@ -271,7 +271,7 @@ responder como os dados **eram** em qualquer data.
   conteúdo muda, a tabela anterior é guardada.
 - **Linhagem:** cada linha de cada tabela se liga ao manifesto, à coleta e ao original no acervo;
   as tabelas derivadas seguem até os originais das tabelas de entrada.
-- **Contrato de dados:** as 35 tabelas têm catálogo (`base/contratos/catalogo.json`), contrato
+- **Contrato de dados:** as 92 tabelas têm catálogo (`base/contratos/catalogo.json`), contrato
   congelado por versão e changelog (`docs/CHANGELOG-da-base.md`), com versão semântica conferida
   no CI. O dicionário de cada coluna está em `docs/dicionario-da-base.md`.
 - **Âncora no Bitcoin:** toda noite, se a base mudou, uma raiz de Merkle dos manifestos é
