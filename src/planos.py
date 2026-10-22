@@ -7,7 +7,7 @@ Mudar um limite é mudar um número neste arquivo.
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.banco.modelo import PLANOS, TIPOS_DE_RELATORIO
+from src.banco.modelo import PLANOS, PLANOS_DA_API, TIPOS_DE_RELATORIO
 
 PLANO_DO_MODO_LOCAL = "pro"  # sem contas (desenvolvimento) não há o que limitar
 
@@ -153,6 +153,38 @@ def motivo_sem_acesso(plano: str | None, recurso: str) -> str | None:
 
 def descrever_limite(limite: int | None) -> str:
     return "Ilimitadas" if limite is None else str(limite)
+
+
+# API externa (N7, ADR 0108): as quotas de cada organização. O plano da API é do contrato com a
+# organização, não da conta de uma pessoa, e o pré-lançamento não mexe nele (sem "tudo liberado").
+@dataclass(frozen=True)
+class LimitesDaApi:
+    nome: str
+    pedidos_por_minuto: int
+    pedidos_por_mes: int
+    linhas_por_resposta: int
+    chaves_ativas: int  # a antiga de uma rotação e as revogadas não contam
+
+
+PLANO_DA_API_MAIS_RESTRITO = "piloto"
+LIMITES_DA_API = {
+    "piloto": LimitesDaApi(
+        nome="Piloto",
+        pedidos_por_minuto=60,
+        pedidos_por_mes=10_000,
+        linhas_por_resposta=1_000,
+        chaves_ativas=3,
+    ),
+}
+# um plano da API novo no banco exige quotas aqui
+assert set(LIMITES_DA_API) == set(PLANOS_DA_API)
+
+
+def limites_da_api(plano_da_api: str | None) -> LimitesDaApi:
+    """As quotas da organização; um plano desconhecido ou vazio vale o mais restrito."""
+    return LIMITES_DA_API.get(
+        plano_da_api or "", LIMITES_DA_API[PLANO_DA_API_MAIS_RESTRITO]
+    )
 
 
 # a página de planos (o Streamlit e o app novo mostram as mesmas frases)
