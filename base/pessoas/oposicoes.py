@@ -9,7 +9,9 @@ Registrar conta o prazo de 15 dias (`prazo_ate`). Daí em diante:
 1. a saída já não mostra o nome (`consulta.socios_da_empresa` lê as oposições);
 2. `atender` faz a lápide: tira a pessoa de `pessoas` (restrito), troca o `id_pessoa` por vazio no QSA vigente
    e nas mudanças (`base.parquet.regravar_por_lapide`, que anota o dia no manifesto) e marca `atendida_em`;
-3. a carga do mês seguinte lê `pessoas_oposicoes` e não traz a pessoa de volta (`ids_opostos`).
+3. a carga do mês seguinte lê `pessoas_oposicoes` e não traz a pessoa de volta (`ids_opostos`). Uma carga que
+   já rodava quando o pedido chegou leu as oposições antes dele e traz a pessoa de volta: `restos` conta esses
+   casos (o `conferir` do script acusa) e rodar `atender` de novo limpa.
 
 A tabela de oposições guarda só o id e as datas (prova do atendimento, 5 anos no RIPD) e sobrevive às cargas.
 Log só com contagens e o dia: nunca nome, CPF ou id. Não rode `atender` durante a carga mensal.
@@ -133,6 +135,20 @@ def pendentes(restrita: Path) -> pd.DataFrame:
 def vencidas(restrita: Path, hoje: date) -> int:
     """Quantas oposições ainda sem lápide passaram do prazo (a LIA manda rever a base se houver uma)."""
     return int((pendentes(restrita)["prazo_ate"] < hoje).sum())
+
+
+def restos(restrita: Path) -> int:
+    """Linhas no restrito de quem já teve a lápide: a carga que rodava durante o pedido trouxe de volta."""
+    registro = ler(restrita)
+    atendidos = set(registro.loc[registro["atendida_em"].notna(), "id_pessoa"])
+    pasta = restrita / PASTA_DAS_PESSOAS
+    arquivos = sorted(pasta.rglob("*.parquet")) if atendidos and pasta.is_dir() else []
+    return sum(
+        int(
+            pd.read_parquet(a, columns=["id_pessoa"])["id_pessoa"].isin(atendidos).sum()
+        )
+        for a in arquivos
+    )
 
 
 def _tirar_do_restrito(restrita: Path, ids: set[str]) -> int:

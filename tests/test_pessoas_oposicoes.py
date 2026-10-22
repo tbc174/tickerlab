@@ -352,3 +352,29 @@ def test_script_acesso_mostra_o_papel_sem_nome_nem_cpf(pastas, capsys, monkeypat
     texto = capsys.readouterr().out
     assert "49" in texto and "2019-03-01" in texto
     assert "MARIA" not in texto and "982247" not in texto
+
+
+def test_carga_durante_o_pedido_e_pega_pelo_conferir(pastas, capsys, monkeypatch):
+    """A carga leu as oposições antes do pedido e trouxe o nome de volta: o `conferir` acusa, o `atender` limpa."""
+    pasta, restrita = pastas
+    _opor(restrita)
+    oposicoes.atender(pasta, restrita, date(2026, 10, 23))
+    with monkeypatch.context() as carga_antiga:
+        carga_antiga.setattr(rc, "ids_opostos", lambda _restrita: set())
+        _mes(
+            pasta,
+            restrita,
+            "2026-10",
+            (EMPRESA, MARIA, "982247"),
+            (EMPRESA, JOAO, "123456"),
+        )
+    assert oposicoes.restos(restrita) == 1
+    conferir = ["conferir", "--restrita", str(restrita), "--hoje", "2026-10-24"]
+    assert cli.main(conferir) == 1
+    assert "FALHAS:" in capsys.readouterr().out
+    atender = ["atender", "--base", str(pasta), "--restrita", str(restrita)]
+    assert cli.main([*atender, "--hoje", "2026-10-24"]) == 0
+    assert "MARIA" not in capsys.readouterr().out
+    assert oposicoes.restos(restrita) == 0
+    assert list(_pessoas(restrita)["nome"]) == [JOAO]
+    assert cli.main(conferir) == 0
