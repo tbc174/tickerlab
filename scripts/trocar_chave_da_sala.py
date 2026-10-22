@@ -47,7 +47,7 @@ def main(argumentos: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("comando", choices=["situacao", "reembrulhar", "pode-retirar"])
     parser.add_argument("versao", nargs="?", type=int)
     dados = parser.parse_args(argumentos)
