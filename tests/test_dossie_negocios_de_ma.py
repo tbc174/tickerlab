@@ -101,6 +101,17 @@ def _itens(secao: dict) -> dict[str, dict]:
     return {item["chave"]: item for item in secao["itens"]}
 
 
+def test_data_do_negocio_com_fuso_de_utc_compara_com_hoje():
+    """Regressão de 22/10: a base traz `conhecido_em` em UTC e a montagem da noite quebrava (TypeError)."""
+    datas = _datas().assign(
+        conhecido_em_do_negocio=lambda t: pd.to_datetime(
+            t["conhecido_em_do_negocio"]
+        ).dt.tz_localize("UTC")
+    )
+    com_fuso = _por_empresa(datas=datas)[RAIZ]
+    assert com_fuso.equals(_por_empresa()[RAIZ])
+
+
 def test_conta_o_papel_da_empresa_em_cada_negocio_uma_vez():
     ma = _por_empresa()[RAIZ]
     assert dict(ma["papel"].value_counts()) == {
