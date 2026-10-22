@@ -1274,6 +1274,91 @@ Gênero, raça e pessoas com deficiência na administração por órgão, como a
 | `pcd_nao_aplicavel` | Como a CVM publica (`pcd_nao_aplicavel`) | texto |
 | `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
 
+## `fre_capital_social`
+
+Capital social de cada FRE (integralizado, subscrito, emitido e autorizado), com as ações ordinárias e preferenciais, as classes e os títulos conversíveis em ação
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `id_capital_social`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_capital_social/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `id_capital_social` | Identificador da linha de capital na CVM | texto |
+| `tipo_capital` | integralizado, subscrito, emitido ou autorizado (o "Capital ..." da CVM, sem acento) | texto |
+| `autorizado_em` | Data da autorização ou aprovação do capital | data (dia) |
+| `valor_capital` | Valor do capital | reais (R$), já multiplicado pela escala informada |
+| `acoes_ordinarias` | Quantidade de ações ordinárias | ações |
+| `acoes_preferenciais` | Quantidade de ações preferenciais | ações |
+| `acoes_total` | Quantidade total de ações | ações |
+| `acoes_por_classe` | Quantidade por classe, como "Preferencial Classe A=1000; Ordinária Classe A=500" (vazio sem classe declarada) | texto |
+| `titulos_conversiveis` | Títulos conversíveis em ação, separados por "; " (sem as condições de conversão, texto livre; vazio quando a companhia diz que não há) | texto |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
+## `fre_empregados`
+
+Empregados por região (recorte `local`) e por posição, liderança ou não (recorte `posicao`), com gênero, raça, faixa etária, PCD e região, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores)
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `recorte`, `grupo`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2023-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_empregados/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `recorte` | `local` (por região) ou `posicao` (liderança ou não) | texto |
+| `grupo` | A região (Norte, Nordeste, Centro-Oeste, Sudeste, Sul, Exterior) ou a posição (Liderança, Não-liderança), como a CVM escreve | texto |
+| `genero_feminino` | Como a CVM publica (`genero_feminino`) | número com decimais, na unidade da fonte |
+| `genero_masculino` | Como a CVM publica (`genero_masculino`) | número com decimais, na unidade da fonte |
+| `genero_nao_binario` | Como a CVM publica (`genero_nao_binario`) | número com decimais, na unidade da fonte |
+| `genero_outros` | Como a CVM publica (`genero_outros`) | número com decimais, na unidade da fonte |
+| `genero_sem_resposta` | Como a CVM publica (`genero_sem_resposta`) | número com decimais, na unidade da fonte |
+| `raca_amarelo` | Como a CVM publica (`raca_amarelo`) | número com decimais, na unidade da fonte |
+| `raca_branco` | Como a CVM publica (`raca_branco`) | número com decimais, na unidade da fonte |
+| `raca_preto` | Como a CVM publica (`raca_preto`) | número com decimais, na unidade da fonte |
+| `raca_pardo` | Como a CVM publica (`raca_pardo`) | número com decimais, na unidade da fonte |
+| `raca_indigena` | Como a CVM publica (`raca_indigena`) | número com decimais, na unidade da fonte |
+| `raca_outros` | Como a CVM publica (`raca_outros`) | número com decimais, na unidade da fonte |
+| `raca_sem_resposta` | Como a CVM publica (`raca_sem_resposta`) | número com decimais, na unidade da fonte |
+| `idade_ate_30` | Como a CVM publica (`idade_ate_30`) | número com decimais, na unidade da fonte |
+| `idade_30_a_50` | Como a CVM publica (`idade_30_a_50`) | número com decimais, na unidade da fonte |
+| `idade_acima_50` | Como a CVM publica (`idade_acima_50`) | número com decimais, na unidade da fonte |
+| `pcd_sim` | Só no recorte `posicao`: como a CVM publica (`pcd_sim`) | número com decimais, na unidade da fonte |
+| `pcd_nao` | Só no recorte `posicao`: como a CVM publica (`pcd_nao`) | número com decimais, na unidade da fonte |
+| `pcd_sem_resposta` | Só no recorte `posicao`: como a CVM publica (`pcd_sem_resposta`) | número com decimais, na unidade da fonte |
+| `regiao_norte` | Só no recorte `posicao`: como a CVM publica (`regiao_norte`) | número com decimais, na unidade da fonte |
+| `regiao_nordeste` | Só no recorte `posicao`: como a CVM publica (`regiao_nordeste`) | número com decimais, na unidade da fonte |
+| `regiao_centro_oeste` | Só no recorte `posicao`: como a CVM publica (`regiao_centro_oeste`) | número com decimais, na unidade da fonte |
+| `regiao_sudeste` | Só no recorte `posicao`: como a CVM publica (`regiao_sudeste`) | número com decimais, na unidade da fonte |
+| `regiao_sul` | Só no recorte `posicao`: como a CVM publica (`regiao_sul`) | número com decimais, na unidade da fonte |
+| `regiao_exterior` | Só no recorte `posicao`: como a CVM publica (`regiao_exterior`) | número com decimais, na unidade da fonte |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
 ## `ofertas_antigas`
 
 Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo (sem chave única: a ICVM 476 não tem número de processo). O nome do vendedor e o nome e o documento do ofertante sem CNPJ nunca entram

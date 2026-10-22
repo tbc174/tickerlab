@@ -12,7 +12,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 53
+      "tabelas": 55
     },
     {
       "historico_desde": "2010-01-01",
@@ -274,7 +274,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 58
+      "tabelas": 60
     },
     {
       "chave": "credito_e_fidc",
@@ -1320,6 +1320,26 @@
       "tabela": "fre_diversidade"
     },
     {
+      "atraso": null,
+      "frase": "Capital social de cada FRE (integralizado, subscrito, emitido e autorizado), com as ações ordinárias e preferenciais, as classes e os títulos conversíveis em ação.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_capital_social"
+    },
+    {
+      "atraso": null,
+      "frase": "Empregados por região (recorte local) e por posição, liderança ou não (recorte posicao), com gênero, raça, faixa etária, PCD e região, como a CVM publica no FRE de 2023 em diante.",
+      "frequencia": "Anual",
+      "historico_desde": "2023-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_empregados"
+    },
+    {
       "atraso": "Nenhum além das datas da própria oferta",
       "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo.",
       "frequencia": "Diária",
@@ -1834,6 +1854,6 @@
     "fontes": 24,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 88
+    "tabelas": 90
   }
 }
