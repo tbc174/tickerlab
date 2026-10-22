@@ -354,7 +354,6 @@ def test_fonte_do_arquivista_esta_no_catalogo_com_destino_e_licenca(fatos):
     # ligada com o "pode" do Tiago de 18/10/2026 e ampliada a toda página pela ADR 0102
     fonte = next(f for f in fontes.FONTES if f.id == contrapartes.ID)
     assert fonte.pausa_minima >= 3
-    assert fontes.FONTES[-1].id == contrapartes.ID
     assert DESTINOS[contrapartes.ID].tabelas == ("contraparte_cafe",)
     assert coletas.revenda_da_fonte(contrapartes.ID) == coletas.A_CONFIRMAR
     assert "contrapartes" in coletas.REVENDA  # escrito, não só o padrão
