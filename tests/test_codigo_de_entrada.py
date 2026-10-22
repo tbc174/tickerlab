@@ -1,7 +1,7 @@
 """Código de entrada por e-mail (plano do login, PR 2, tarefa 7): 6 dígitos, 10 minutos, 5 tentativas.
 
-O banco guarda só hashes (do e-mail e do código). Pedir um código novo invalida o anterior; há um
-limite de pedidos por e-mail. O expurgo apaga o que venceu há tempo (LGPD: guardar só o necessário).
+O banco guarda só hashes (do e-mail e do código). Pedir um código novo não derruba o anterior que
+ainda vale (um estranho que sabe o e-mail não tranca a dona); há um limite de pedidos por e-mail. O expurgo apaga o que venceu há tempo (LGPD: guardar só o necessário).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -68,14 +68,63 @@ def test_codigo_usado_nao_vale_de_novo(banco):
         assert not cod.conferir_codigo(conexao, EMAIL, codigo, agora=AGORA)
 
 
-def test_codigo_novo_invalida_o_anterior(banco):
+def _errado(*codigos):
+    return next(c for c in ("000000", "111111", "222222", "333333") if c not in codigos)
+
+
+def test_codigo_novo_nao_derruba_o_anterior_que_ainda_vale(banco):
+    # quem pede o código é quem digita o e-mail, não quem é dono dele: se o pedido novo derrubasse o
+    # anterior, um estranho que sabe o e-mail invalidaria o código que a dona acabou de receber
+    with banco.begin() as conexao:
+        primeiro = _pedir(conexao)
+        _pedir(conexao, AGORA + timedelta(minutes=1))
+        assert cod.conferir_codigo(
+            conexao, EMAIL, primeiro, agora=AGORA + timedelta(minutes=2)
+        )
+
+
+def test_estranho_que_esgota_os_pedidos_nao_tranca_a_dona_do_email(banco):
+    # os 3 pedidos do estranho caem na caixa da dona: qualquer um deles a deixa entrar
+    with banco.begin() as conexao:
+        recebidos = [_pedir(conexao, AGORA + timedelta(minutes=i)) for i in range(3)]
+        assert _pedir(conexao, AGORA + timedelta(minutes=3)) is None
+        assert cod.conferir_codigo(
+            conexao, EMAIL, recebidos[0], agora=AGORA + timedelta(minutes=4)
+        )
+
+
+def test_entrar_gasta_todos_os_codigos_vivos_do_email(banco):
     with banco.begin() as conexao:
         primeiro = _pedir(conexao)
         segundo = _pedir(conexao, AGORA + timedelta(minutes=1))
         agora = AGORA + timedelta(minutes=2)
-        if primeiro != segundo:
-            assert not cod.conferir_codigo(conexao, EMAIL, primeiro, agora=agora)
         assert cod.conferir_codigo(conexao, EMAIL, segundo, agora=agora)
+        assert not cod.conferir_codigo(conexao, EMAIL, primeiro, agora=agora)
+
+
+def test_cada_tentativa_conta_em_todos_os_codigos_vivos(banco):
+    # com vários códigos vivos, o chute é comparado com todos; para o limite de chutes não crescer,
+    # a tentativa gasta uma de cada um (5 erros esgotam os 3 códigos)
+    with banco.begin() as conexao:
+        codigos = [_pedir(conexao, AGORA + timedelta(minutes=i)) for i in range(3)]
+        agora = AGORA + timedelta(minutes=4)
+        for _ in range(cod.TENTATIVAS):
+            assert not cod.conferir_codigo(
+                conexao, EMAIL, _errado(*codigos), agora=agora
+            )
+        for codigo in codigos:
+            assert not cod.conferir_codigo(conexao, EMAIL, codigo, agora=agora)
+
+
+def test_codigo_esgotado_nao_atrapalha_o_novo(banco):
+    with banco.begin() as conexao:
+        primeiro = _pedir(conexao)
+        for _ in range(cod.TENTATIVAS):
+            cod.conferir_codigo(conexao, EMAIL, _errado(primeiro), agora=AGORA)
+        segundo = _pedir(conexao, AGORA + timedelta(minutes=1))
+        assert cod.conferir_codigo(
+            conexao, EMAIL, segundo, agora=AGORA + timedelta(minutes=2)
+        )
 
 
 def test_codigo_de_um_email_nao_abre_outro(banco):

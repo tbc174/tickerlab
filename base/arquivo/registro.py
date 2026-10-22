@@ -74,6 +74,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
     ),
     date(2026, 10, 21),
 )
+# rodada 1 da pesquisa de dados escondidos (licencas-por-fonte.md): BCB e Tesouro Transparente
+# relidos em 22/10/2026, depois da auditoria; vale o dia mais novo
+TERMOS_LIDOS_EM |= dict.fromkeys(("bcb", "tesouro"), date(2026, 10, 22))
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")
