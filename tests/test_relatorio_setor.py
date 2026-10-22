@@ -7,16 +7,18 @@ membros pelo setor da CVM e os indicadores de cada um. Os testes usam uma noite 
 
 import json
 import re
-from datetime import date
+from dataclasses import replace
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from base import dossie as dossie_da_base
-from src import dossie, fundamentos
+from src import cruzamentos, dossie, fundamentos
 from src import relatorio_setor as rs
 from src.analise_escrita import porta1
+from src.dossie import Ficha, SecaoDaFicha
 from src.relatorio_empresa import escrever
 from tests.test_dossie_no_app import CPFL, _bruta, _pasta
 from tests.test_setores import SETORES_REAIS
@@ -396,12 +398,56 @@ def test_setor_sem_a_noite_traz_os_membros_e_o_aviso() -> None:
     assert [s.chave for s in relatorio.secoes] == [
         "membros",
         "lado_a_lado",
+        "cruzamentos",
         "o_que_os_dados_mostram",
         "nao_temos",
         "metodologia",
     ]
     lado = next(s for s in relatorio.secoes if s.chave == "lado_a_lado")
     assert lado.tabelas["lado_a_lado"][0]["Companhia"] == "BANCO DO BRASIL S.A."
+
+
+def _ficha_com_fundos_entrando() -> Ficha:
+    janelas = [
+        {"janela": "atual", "compras": 900.0, "vendas": 100.0, "ate": "2026-09-30"},
+        {"janela": "anterior", "compras": 500.0, "vendas": 400.0, "ate": "2026-06-30"},
+    ]
+    capital = SecaoDaFicha(
+        chave="capital_e_acionistas",
+        titulo="Capital e acionistas",
+        tabelas={"fundos_janelas": janelas},
+        fontes=["CVM, tabela de teste"],
+    )
+    return Ficha(
+        versao_do_esquema=1,
+        cnpj="02429144000193",
+        empresa="Alfa",
+        gerado_em=datetime(2026, 10, 17, 6, 0, tzinfo=UTC),
+        secoes=[capital],
+    )
+
+
+def test_cruzamentos_do_setor_dizem_k_de_n_com_quem_e_a_fonte(noite) -> None:
+    entradas = replace(_entradas(noite), fichas={"Alfa": _ficha_com_fundos_entrando()})
+    relatorio = rs.montar_relatorio_do_setor(entradas, "pro", HOJE)
+    secao = next(s for s in relatorio.secoes if s.chave == "cruzamentos")
+    fundos = next(p for p in secao.paragrafos if p.startswith("Fundos entrando"))
+    assert "1 de 1 companhias do setor com dado têm achado" in fundos
+    assert "Com achado: Alfa." in fundos and "Fonte: CVM, tabela de teste." in fundos
+    assert secao.paragrafos[-1] == cruzamentos.LIMITE_DOS_CRUZAMENTOS
+
+
+def test_cruzamentos_sem_nenhuma_ficha_dizem_que_nao_ha_o_que_cruzar(noite) -> None:
+    relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "pro", HOJE)
+    secao = next(s for s in relatorio.secoes if s.chave == "cruzamentos")
+    assert rs.SEM_FICHAS_PARA_CRUZAR in secao.paragrafos
+    assert not secao.trancada
+
+
+def test_cruzamentos_ficam_trancados_sem_o_dossie_da_base(noite) -> None:
+    relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "gratuito", HOJE)
+    secao = next(s for s in relatorio.secoes if s.chave == "cruzamentos")
+    assert secao.trancada and "Com achado" not in " ".join(secao.paragrafos)
 
 
 def test_relatorio_vira_json(noite) -> None:

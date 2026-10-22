@@ -59,6 +59,7 @@ def test_api_relatorio_setor(cliente, banco, com_a_noite) -> None:
         "concentracao",
         "participacao",
         "lado_a_lado",
+        "cruzamentos",
         "o_que_os_dados_mostram",
         "nao_temos",
         "metodologia",
