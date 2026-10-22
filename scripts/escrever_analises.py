@@ -61,6 +61,12 @@ __all__ = ["TetoPassado"]
 LOTE_TERMINADO = "ended"
 SEM_A_PORTA_2 = "a porta 2 não conferiu esta resposta"
 _FORA_DO_NOME = re.compile(r"[^\w .()-]")
+_IDENTIDADE = (
+    "cnpj",
+    "empresa",
+    "setor",
+    "nome",
+)  # vão no topo da análise, não na linhagem
 
 
 # --- arquivos -------------------------------------------------------------------------------------
@@ -68,9 +74,23 @@ def _algarismos(cnpj: str) -> str:
     return re.sub(r"\D", "", cnpj)
 
 
+def _e_setor(entrada: dict[str, Any]) -> bool:
+    return entrada.get("tipo") == saida.TIPO_SETOR
+
+
 def chave(entrada: dict[str, Any]) -> str:
-    """O CNPJ só com os algarismos: nome de arquivo e `custom_id` do lote."""
+    """O CNPJ só com os algarismos (o setor: `setor-` e a chave dele): nome de arquivo e
+    `custom_id` do lote."""
+    if _e_setor(entrada):
+        return f"setor-{entrada['setor']}"
     return _algarismos(entrada["cnpj"])
+
+
+def identidade(entrada: dict[str, Any]) -> dict[str, str]:
+    """De quem é a análise, para a linhagem: a empresa pelo CNPJ ou o setor pela chave."""
+    if _e_setor(entrada):
+        return {"setor": entrada["setor"], "nome": entrada["nome"]}
+    return {"cnpj": entrada["cnpj"], "empresa": entrada["empresa"]}
 
 
 def arquivo_da_resposta(pasta: Path, entrada: dict[str, Any], modelo: str) -> Path:
@@ -123,6 +143,7 @@ def ler_manifesto(pasta: Path) -> dict[str, Any]:
 def gravar_manifesto(pasta: Path, manifesto: dict[str, Any]) -> None:
     manifesto |= {
         "versao_do_guia": pe.VERSAO_DO_GUIA,
+        "versao_do_guia_do_setor": pe.VERSAO_DO_GUIA_DO_SETOR,
         "versao_do_molde": VERSAO_DO_MOLDE,
         "atualizado_em": _agora(),
     }
@@ -157,7 +178,7 @@ def resposta_guardada(
         return None
     if registro["hash_da_entrada"] != en.hash_da_entrada(entrada):
         return None
-    if registro["versao_do_guia"] != pe.VERSAO_DO_GUIA:
+    if registro["versao_do_guia"] != pe.guia_de(entrada).versao:
         return None
     if _cortada_com_limite_menor(registro):
         return None
@@ -285,10 +306,9 @@ def _registro_da_resposta(
     """A linhagem da resposta (0100, item 10): de que entrada, por qual modelo e guia, a que custo."""
     tokens = _tokens(mensagem.usage)
     return {
-        "cnpj": entrada["cnpj"],
-        "empresa": entrada["empresa"],
+        **identidade(entrada),
         "modelo": modelo,
-        "versao_do_guia": pe.VERSAO_DO_GUIA,
+        "versao_do_guia": pe.guia_de(entrada).versao,
         "versao_do_molde": VERSAO_DO_MOLDE,
         "hash_da_entrada": hash_da_entrada or en.hash_da_entrada(entrada),
         "origem": origem,
@@ -412,10 +432,12 @@ def buscar(
 
 
 # --- porta 2: às cegas ----------------------------------------------------------------------------
-def _analise_da_resposta(registro: dict[str, Any]) -> saida.Analise | None:
+def _analise_da_resposta(
+    registro: dict[str, Any], entrada: dict[str, Any]
+) -> saida.Analise | None:
     try:
         dados = pe.ler_resposta(registro["stop_reason"], registro["resposta_bruta"])
-        return saida.ler_analise(dados)
+        return saida.ler_analise(dados, saida.partes_de(entrada))
     except saida.RespostaInvalidaError:
         return None  # fora do formato: vira molde na conferência, sem gastar a porta 2
 
@@ -437,7 +459,7 @@ def _a_conferir(
             registro = resposta_guardada(pasta, entrada, modelo)
             if registro is None or _cega_valida(pasta, entrada, modelo, registro):
                 continue
-            analise = _analise_da_resposta(registro)
+            analise = _analise_da_resposta(registro, entrada)
             if analise is not None:
                 yield entrada, modelo, analise, registro
 
@@ -544,9 +566,7 @@ def _linhagem(
     cega: dict[str, Any] | None,
     porta3_: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    da_resposta = {
-        k: v for k, v in (registro or {}).items() if k not in ("cnpj", "empresa")
-    }
+    da_resposta = {k: v for k, v in (registro or {}).items() if k not in _IDENTIDADE}
     porta1 = [asdict(r) for r in m.conferencia.reprovacoes] if m.conferencia else None
     motivo = m.motivo or (SEM_A_PORTA_2 if registro and cega is None else None)
     return da_resposta | {
@@ -565,8 +585,7 @@ def conferir(entradas: list[dict[str, Any]], pasta: Path, modelo: str) -> int:
         destino = arquivo_da_analise(pasta, entrada)
         porta3_ = _porta3_mantida(_ler(destino), registro) if registro else None
         analise = {
-            "cnpj": entrada["cnpj"],
-            "empresa": entrada["empresa"],
+            **identidade(entrada),
             "corte": entrada[
                 "corte"
             ],  # o app remonta a ficha neste corte para conferir o hash

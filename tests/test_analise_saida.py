@@ -137,5 +137,5 @@ def test_esquema_usa_so_o_que_a_saida_estruturada_aceita():
 
 
 def test_titulos_das_partes():
-    assert set(sa.TITULOS) == set(sa.PARTES)
+    assert set(sa.TITULOS) == set(sa.PARTES) | set(sa.PARTES_DO_SETOR)
     assert sa.TITULOS["limites"] == "Limites e perguntas em aberto"

@@ -4,6 +4,7 @@ A porta 1 confere que cada número existe na ficha; a 2 confere o que a frase di
 quando caiu, a comparação trocada, a contagem por extenso, o juízo de valor disfarçado). Ela é às
 cegas: o pedido não diz quem escreveu nem leva o gabarito. Nunca aprova por falta: frase sem
 veredito, veredito fora da lista ou resposta fora do formato reprovam a parte (que vira molde).
+A análise de um setor (molde D) tem o próprio texto de sistema, com os cuidados do setor.
 """
 
 import json
@@ -40,6 +41,16 @@ oportunidade, vai subir), ou acusa alguém.
 
 Em `motivo`, uma frase curta dizendo o que não está nos dados ou qual é o juízo (vazio quando \
 sustentada). Julgue todas as frases; na dúvida, não marque como sustentada."""
+SISTEMA_DO_SETOR = SISTEMA.replace(
+    "de uma companhia aberta brasileira", "de um setor da bolsa brasileira"
+) + (
+    f"\n\nNo setor, também é `{FORA_DOS_DADOS}`: a frase que usa como fato do setor uma linha com o "
+    "campo `ano_parcial` (um ano que a base ainda não fechou) sem dizer que o ano está incompleto; a "
+    "soma de receitas, lucros ou dívidas das companhias apresentada como o tamanho do setor; e a "
+    "explicação de uma mudança que as linhas não trazem (quem controla quem, compra de área). E é "
+    f"`{JUIZO_DE_VALOR}` a frase que dá nota, ranking ou classificação às companhias (a melhor, a mais "
+    'eficiente); "a maior parte" ou "a maior receita", com o número, é fato.'
+)
 
 _ITEM = {
     "type": "object",
@@ -105,11 +116,12 @@ def pedido(
     pe.modelo_conhecido(modelo)
     ficha = json.dumps(entrada, ensure_ascii=False, separators=(",", ":"))
     texto = "\n".join(_linhas_da_analise(analise))
+    sistema = SISTEMA_DO_SETOR if entrada.get("tipo") == saida.TIPO_SETOR else SISTEMA
     return {
         "model": modelo,
         "max_tokens": MAX_TOKENS_DO_VEREDITO,
         "system": [
-            {"type": "text", "text": SISTEMA, "cache_control": {"type": "ephemeral"}}
+            {"type": "text", "text": sistema, "cache_control": {"type": "ephemeral"}}
         ],
         "output_config": {"format": {"type": "json_schema", "schema": ESQUEMA}},
         "messages": [

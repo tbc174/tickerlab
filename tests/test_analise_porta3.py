@@ -34,7 +34,7 @@ def test_nota_tem_as_propriedades_do_painel():
 
 def test_nota_abre_a_fonte_ao_lado_de_cada_frase():
     nota = _nota()
-    for titulo in saida.TITULOS.values():
+    for titulo in (saida.TITULOS[c] for c in saida.PARTES):
         assert titulo in nota
     assert (
         "`retorno.roe` ROE (retorno sobre o patrimônio): 26,4% (" in nota

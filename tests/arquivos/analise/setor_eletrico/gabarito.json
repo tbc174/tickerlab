@@ -10,7 +10,13 @@
   "o_que_mudaria",
   "limites"
  ],
- "mudancas": [],
+ "mudancas": [
+  {
+   "em": "2026-10-22",
+   "por": "Produto · molde D PR 6",
+   "o_que": "nota lacuna.ano_parcial.2026 acrescentada às 4 frases que citam a linha de 2026 (a entrada do setor passou a ter a lacuna do ano parcial); o texto não mudou"
+  }
+ ],
  "analise": {
   "partes": [
    {
@@ -371,7 +377,8 @@
          "participacao.participacao_aneel_consumidores.0",
          "membros.membros",
          "lado_a_lado.lado_a_lado.29",
-         "lado_a_lado.lado_a_lado.9"
+         "lado_a_lado.lado_a_lado.9",
+         "lacuna.ano_parcial.2026"
         ],
         "contas": []
        },
@@ -995,7 +1002,8 @@
         "notas": [
          "concentracao.concentracao_aneel_consumidores.0",
          "tamanho.tamanho_aneel_consumidores.0",
-         "tamanho.tamanho_aneel_consumidores.1"
+         "tamanho.tamanho_aneel_consumidores.1",
+         "lacuna.ano_parcial.2026"
         ],
         "contas": [
          {
@@ -1023,7 +1031,8 @@
          "concentracao.cr4_aneel_consumidores",
          "o_que_os_dados_mostram.paragrafos.1",
          "o_que_os_dados_mostram.paragrafos.2",
-         "concentracao.concentracao_aneel_consumidores.0"
+         "concentracao.concentracao_aneel_consumidores.0",
+         "lacuna.ano_parcial.2026"
         ],
         "contas": []
        }
@@ -2254,7 +2263,8 @@
          "lado_a_lado.lado_a_lado.18",
          "lado_a_lado.lado_a_lado.32",
          "lado_a_lado.lado_a_lado.9",
-         "concentracao.concentracao_aneel_consumidores.0"
+         "concentracao.concentracao_aneel_consumidores.0",
+         "lacuna.ano_parcial.2026"
         ],
         "contas": [
          {
