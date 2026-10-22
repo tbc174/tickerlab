@@ -132,6 +132,11 @@ CONFERIDAS: dict[str, str] = {
     "contraparte_cafe": "base/conferidas/contrapartes_cafe.csv",
 }
 _NO_BANCO = "mora no banco do app (VPS), não no acervo: entra só por `extras`"
+_CNPJ_DA_CARGA = (
+    "a carga mensal do CNPJ (`scripts/carga_receita_retrato.py`) grava em pasta própria "
+    "(`vigente/` e `mudancas/`) e ainda não rodou no servidor (fila 120): entra na porta depois "
+    "dela e do portão de qualidade da API externa"
+)
 FORA_DA_PORTA: dict[str, str] = {
     "achados_de_qualidade": _NO_BANCO,
     "padroes_setoriais": _NO_BANCO,
@@ -140,6 +145,11 @@ FORA_DA_PORTA: dict[str, str] = {
     "cadastro_das_companhias": (
         "não é Parquet da base: é lido do original no acervo (`base/cadastro.py::ler_cadastro`)"
     ),
+    **{
+        f"cnpj_{nome}{sufixo}": _CNPJ_DA_CARGA
+        for nome in ("estabelecimentos", "simples", "qsa")
+        for sufixo in ("", "_mudancas")
+    },
 }
 
 # D9: tabela → (o evento, o detalhe), em SQL sobre as colunas dela

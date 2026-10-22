@@ -1,0 +1,52 @@
+{
+  "tabela": "cnpj_qsa",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "tipo_socio": {
+      "descricao": "1 pessoa jurídica, 2 pessoa física ou 3 estrangeiro, como a Receita publica",
+      "unidade": "texto"
+    },
+    "raiz_socio_pj": {
+      "descricao": "Raiz do CNPJ do sócio, só quando ele é pessoa jurídica; vazio nos outros",
+      "unidade": "texto"
+    },
+    "id_pessoa": {
+      "descricao": "Pseudônimo (HMAC com chave fora do Git) do sócio pessoa física; vazio para sócio pessoa jurídica e para quem se opôs. O nome, que a Receita publica, fica só no esquema `pessoas` (acervo restrito, fora desta tabela) e atrás do portão dos nomes",
+      "unidade": "texto"
+    },
+    "qualificacao": {
+      "descricao": "Código da qualificação do sócio (sócio-administrador, diretor...)",
+      "unidade": "texto"
+    },
+    "data_entrada": {
+      "descricao": "Data de entrada na sociedade",
+      "unidade": "data (dia)"
+    },
+    "pais": {
+      "descricao": "Código do país do sócio estrangeiro; vazio no resto",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj_basico",
+    "tipo_socio",
+    "raiz_socio_pj",
+    "id_pessoa"
+  ],
+  "datas": {
+    "aconteceu_em": "data_entrada"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": true,
+  "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+  "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+}

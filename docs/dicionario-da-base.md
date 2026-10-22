@@ -2195,6 +2195,240 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `cnpj_estabelecimentos`
+
+Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação cadastral, datas, atividade (CNAE), endereço e situação especial. Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5). O endereço de empresário individual e de MEI deve ficar só até o município e a UF, mas o leitor da tabela de empresas, que diz quem é quem, ainda não existe: por ora a carga grava o endereço inteiro de todos, e por isso a tabela conta como dado de pessoa. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`base/receita_retrato.py`, `scripts/carga_receita_mes.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cnpj`
+- **Três datas:** aconteceu_em = `data_situacao_cadastral`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<pasta da carga>/vigente/estabelecimentos/<2 primeiros caracteres da raiz>.parquet` (servidor de casa, `scripts/carga_receita_retrato.py`; o `manifesto.json` da pasta guarda o SHA-256 de cada ZIP lido)
+- **Linhagem:** O `manifesto.json` da carga diz, por mês, o SHA-256 de cada ZIP da Receita lido; o ZIP dos meses âncora (05/2023, 01/2024, 01/2025 e 01/2026) fica no acervo (`rfb-cnpj`, `cnpj/<AAAA-MM>/`) e leva ao registro de coletas. A linha não leva a versão do código que a montou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ com os 14 caracteres (com letras no CNPJ novo) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `matriz` | Verdadeiro na matriz, falso na filial | verdadeiro ou falso |
+| `situacao_cadastral` | Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada) | texto |
+| `data_situacao_cadastral` | Data da situação cadastral; vazio quando a Receita põe zero | data (dia) |
+| `motivo_situacao` | Código do motivo da situação cadastral, como a Receita publica | texto |
+| `pais` | Código do país, só para quem tem sede fora do Brasil; vazio no resto | texto |
+| `data_inicio_atividade` | Data de início da atividade; vazio quando a Receita põe zero | data (dia) |
+| `cnae_principal` | Código da atividade principal (CNAE fiscal, 7 dígitos) | texto |
+| `cnae_secundaria` | Códigos das atividades secundárias, separados por vírgula | texto |
+| `tipo_logradouro` | Tipo do logradouro (rua, avenida...); vazio nas raízes só com município | texto |
+| `logradouro` | Logradouro; vazio nas raízes só com município | texto |
+| `numero` | Número do endereço; vazio nas raízes só com município | texto |
+| `complemento` | Complemento do endereço; vazio nas raízes só com município | texto |
+| `bairro` | Bairro; vazio nas raízes só com município | texto |
+| `cep` | CEP; vazio nas raízes só com município | texto |
+| `uf` | Sigla do estado | texto |
+| `municipio` | Código do município na Receita (não é o código do IBGE) | texto |
+| `situacao_especial` | Situação especial, como a Receita escreve; vazio quando não há | texto |
+| `data_situacao_especial` | Data da situação especial informada | data (dia) |
+| `dv_confere` | Falso quando o dígito verificador do CNPJ não confere; a linha fica, não é descartada | verdadeiro ou falso |
+
+## `cnpj_estabelecimentos_mudancas`
+
+O que mudou de um mês para o outro em `cnpj_estabelecimentos`: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial, devolvem o retrato de qualquer mês (é o histórico "como era na data" do CNPJ). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`base/receita_retrato.py`, `scripts/carga_receita_mes.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `mes`, `cnpj`, `ordem`
+- **Três datas:** publico_em = `mes`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<pasta da carga>/mudancas/estabelecimentos/<AAAA-MM>.parquet` (servidor de casa, `scripts/carga_receita_retrato.py`; o `manifesto.json` da pasta guarda o SHA-256 de cada ZIP lido)
+- **Linhagem:** O `manifesto.json` da carga diz, por mês, o SHA-256 de cada ZIP da Receita lido; o ZIP dos meses âncora (05/2023, 01/2024, 01/2025 e 01/2026) fica no acervo (`rfb-cnpj`, `cnpj/<AAAA-MM>/`) e leva ao registro de coletas. A linha não leva a versão do código que a montou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `mes` | Mês do retrato em que a mudança apareceu | AAAA-MM |
+| `tipo` | entrou, saiu ou mudou, de um mês para o seguinte | texto |
+| `cnpj` | CNPJ com os 14 caracteres (com letras no CNPJ novo) | texto |
+| `ordem` | Número da linha dentro da chave quando ela se repete (ordenada pelo conteúdo) | número inteiro |
+| `cnpj_basico_antes` | Antes da mudança. Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `cnpj_basico_depois` | Depois da mudança. Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `matriz_antes` | Antes da mudança. Verdadeiro na matriz, falso na filial | verdadeiro ou falso |
+| `matriz_depois` | Depois da mudança. Verdadeiro na matriz, falso na filial | verdadeiro ou falso |
+| `situacao_cadastral_antes` | Antes da mudança. Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada) | texto |
+| `situacao_cadastral_depois` | Depois da mudança. Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada) | texto |
+| `data_situacao_cadastral_antes` | Antes da mudança. Data da situação cadastral; vazio quando a Receita põe zero | data (dia) |
+| `data_situacao_cadastral_depois` | Depois da mudança. Data da situação cadastral; vazio quando a Receita põe zero | data (dia) |
+| `motivo_situacao_antes` | Antes da mudança. Código do motivo da situação cadastral, como a Receita publica | texto |
+| `motivo_situacao_depois` | Depois da mudança. Código do motivo da situação cadastral, como a Receita publica | texto |
+| `pais_antes` | Antes da mudança. Código do país, só para quem tem sede fora do Brasil; vazio no resto | texto |
+| `pais_depois` | Depois da mudança. Código do país, só para quem tem sede fora do Brasil; vazio no resto | texto |
+| `data_inicio_atividade_antes` | Antes da mudança. Data de início da atividade; vazio quando a Receita põe zero | data (dia) |
+| `data_inicio_atividade_depois` | Depois da mudança. Data de início da atividade; vazio quando a Receita põe zero | data (dia) |
+| `cnae_principal_antes` | Antes da mudança. Código da atividade principal (CNAE fiscal, 7 dígitos) | texto |
+| `cnae_principal_depois` | Depois da mudança. Código da atividade principal (CNAE fiscal, 7 dígitos) | texto |
+| `cnae_secundaria_antes` | Antes da mudança. Códigos das atividades secundárias, separados por vírgula | texto |
+| `cnae_secundaria_depois` | Depois da mudança. Códigos das atividades secundárias, separados por vírgula | texto |
+| `tipo_logradouro_antes` | Antes da mudança. Tipo do logradouro (rua, avenida...); vazio nas raízes só com município | texto |
+| `tipo_logradouro_depois` | Depois da mudança. Tipo do logradouro (rua, avenida...); vazio nas raízes só com município | texto |
+| `logradouro_antes` | Antes da mudança. Logradouro; vazio nas raízes só com município | texto |
+| `logradouro_depois` | Depois da mudança. Logradouro; vazio nas raízes só com município | texto |
+| `numero_antes` | Antes da mudança. Número do endereço; vazio nas raízes só com município | texto |
+| `numero_depois` | Depois da mudança. Número do endereço; vazio nas raízes só com município | texto |
+| `complemento_antes` | Antes da mudança. Complemento do endereço; vazio nas raízes só com município | texto |
+| `complemento_depois` | Depois da mudança. Complemento do endereço; vazio nas raízes só com município | texto |
+| `bairro_antes` | Antes da mudança. Bairro; vazio nas raízes só com município | texto |
+| `bairro_depois` | Depois da mudança. Bairro; vazio nas raízes só com município | texto |
+| `cep_antes` | Antes da mudança. CEP; vazio nas raízes só com município | texto |
+| `cep_depois` | Depois da mudança. CEP; vazio nas raízes só com município | texto |
+| `uf_antes` | Antes da mudança. Sigla do estado | texto |
+| `uf_depois` | Depois da mudança. Sigla do estado | texto |
+| `municipio_antes` | Antes da mudança. Código do município na Receita (não é o código do IBGE) | texto |
+| `municipio_depois` | Depois da mudança. Código do município na Receita (não é o código do IBGE) | texto |
+| `situacao_especial_antes` | Antes da mudança. Situação especial, como a Receita escreve; vazio quando não há | texto |
+| `situacao_especial_depois` | Depois da mudança. Situação especial, como a Receita escreve; vazio quando não há | texto |
+| `data_situacao_especial_antes` | Antes da mudança. Data da situação especial informada | data (dia) |
+| `data_situacao_especial_depois` | Depois da mudança. Data da situação especial informada | data (dia) |
+| `dv_confere_antes` | Antes da mudança. Falso quando o dígito verificador do CNPJ não confere; a linha fica, não é descartada | verdadeiro ou falso |
+| `dv_confere_depois` | Depois da mudança. Falso quando o dígito verificador do CNPJ não confere; a linha fica, não é descartada | verdadeiro ou falso |
+
+## `cnpj_simples`
+
+Opção pelo Simples Nacional e pelo MEI de cada empresa do CNPJ aberto da Receita, o retrato mais recente, com as datas de opção e de exclusão. Sem dado de pessoa além do próprio CNPJ. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`base/receita_retrato.py`, `scripts/carga_receita_mes.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`
+- **Três datas:** nenhuma coluna da tabela traz estas datas
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<pasta da carga>/vigente/simples/<2 primeiros caracteres da raiz>.parquet` (servidor de casa, `scripts/carga_receita_retrato.py`; o `manifesto.json` da pasta guarda o SHA-256 de cada ZIP lido)
+- **Linhagem:** O `manifesto.json` da carga diz, por mês, o SHA-256 de cada ZIP da Receita lido; o ZIP dos meses âncora (05/2023, 01/2024, 01/2025 e 01/2026) fica no acervo (`rfb-cnpj`, `cnpj/<AAAA-MM>/`) e leva ao registro de coletas. A linha não leva a versão do código que a montou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `optante_simples` | Verdadeiro se a empresa é optante do Simples Nacional | verdadeiro ou falso |
+| `data_opcao_simples` | Data da opção pelo Simples; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_simples` | Data da exclusão do Simples; vazio quando a Receita põe zero | data (dia) |
+| `optante_mei` | Verdadeiro se a empresa é MEI | verdadeiro ou falso |
+| `data_opcao_mei` | Data do enquadramento como MEI; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_mei` | Data do desenquadramento do MEI; vazio quando a Receita põe zero | data (dia) |
+
+## `cnpj_simples_mudancas`
+
+O que mudou de um mês para o outro em `cnpj_simples`: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial, devolvem o retrato de qualquer mês (é o histórico "como era na data" do CNPJ). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`base/receita_retrato.py`, `scripts/carga_receita_mes.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `mes`, `cnpj_basico`, `ordem`
+- **Três datas:** publico_em = `mes`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<pasta da carga>/mudancas/simples/<AAAA-MM>.parquet` (servidor de casa, `scripts/carga_receita_retrato.py`; o `manifesto.json` da pasta guarda o SHA-256 de cada ZIP lido)
+- **Linhagem:** O `manifesto.json` da carga diz, por mês, o SHA-256 de cada ZIP da Receita lido; o ZIP dos meses âncora (05/2023, 01/2024, 01/2025 e 01/2026) fica no acervo (`rfb-cnpj`, `cnpj/<AAAA-MM>/`) e leva ao registro de coletas. A linha não leva a versão do código que a montou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `mes` | Mês do retrato em que a mudança apareceu | AAAA-MM |
+| `tipo` | entrou, saiu ou mudou, de um mês para o seguinte | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `ordem` | Número da linha dentro da chave quando ela se repete (ordenada pelo conteúdo) | número inteiro |
+| `optante_simples_antes` | Antes da mudança. Verdadeiro se a empresa é optante do Simples Nacional | verdadeiro ou falso |
+| `optante_simples_depois` | Depois da mudança. Verdadeiro se a empresa é optante do Simples Nacional | verdadeiro ou falso |
+| `data_opcao_simples_antes` | Antes da mudança. Data da opção pelo Simples; vazio quando a Receita põe zero | data (dia) |
+| `data_opcao_simples_depois` | Depois da mudança. Data da opção pelo Simples; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_simples_antes` | Antes da mudança. Data da exclusão do Simples; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_simples_depois` | Depois da mudança. Data da exclusão do Simples; vazio quando a Receita põe zero | data (dia) |
+| `optante_mei_antes` | Antes da mudança. Verdadeiro se a empresa é MEI | verdadeiro ou falso |
+| `optante_mei_depois` | Depois da mudança. Verdadeiro se a empresa é MEI | verdadeiro ou falso |
+| `data_opcao_mei_antes` | Antes da mudança. Data do enquadramento como MEI; vazio quando a Receita põe zero | data (dia) |
+| `data_opcao_mei_depois` | Depois da mudança. Data do enquadramento como MEI; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_mei_antes` | Antes da mudança. Data do desenquadramento do MEI; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_mei_depois` | Depois da mudança. Data do desenquadramento do MEI; vazio quando a Receita põe zero | data (dia) |
+
+## `cnpj_qsa`
+
+Quadro de sócios e administradores das empresas do CNPJ aberto da Receita, o retrato mais recente. Traz tipo, qualificação, data de entrada, país e, para sócio pessoa física, só o pseudônimo `id_pessoa`. Nome, CPF mascarado e representante legal não entram: o nome fica no esquema `pessoas` (acervo restrito) e só sai de casa quando o portão dos nomes abrir (`base/pessoas/portao.py`, fechado, ADR 0106 item 4); CPF inteiro quebra a carga; faixa etária e representante legal nem são lidos. A porta é o CNPJ: não há busca por pessoa. Quem se opôs (art. 18) tem o id apagado. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`base/receita_retrato.py`, `scripts/carga_receita_mes.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cnpj_basico`, `tipo_socio`, `raiz_socio_pj`, `id_pessoa`
+- **Três datas:** aconteceu_em = `data_entrada`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<pasta da carga>/vigente/qsa/<2 primeiros caracteres da raiz>.parquet` (servidor de casa, `scripts/carga_receita_retrato.py`; o `manifesto.json` da pasta guarda o SHA-256 de cada ZIP lido)
+- **Linhagem:** O `manifesto.json` da carga diz, por mês, o SHA-256 de cada ZIP da Receita lido; o ZIP dos meses âncora (05/2023, 01/2024, 01/2025 e 01/2026) fica no acervo (`rfb-cnpj`, `cnpj/<AAAA-MM>/`) e leva ao registro de coletas. A linha não leva a versão do código que a montou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `tipo_socio` | 1 pessoa jurídica, 2 pessoa física ou 3 estrangeiro, como a Receita publica | texto |
+| `raiz_socio_pj` | Raiz do CNPJ do sócio, só quando ele é pessoa jurídica; vazio nos outros | texto |
+| `id_pessoa` | Pseudônimo (HMAC com chave fora do Git) do sócio pessoa física; vazio para sócio pessoa jurídica e para quem se opôs. O nome, que a Receita publica, fica só no esquema `pessoas` (acervo restrito, fora desta tabela) e atrás do portão dos nomes | texto |
+| `qualificacao` | Código da qualificação do sócio (sócio-administrador, diretor...) | texto |
+| `data_entrada` | Data de entrada na sociedade | data (dia) |
+| `pais` | Código do país do sócio estrangeiro; vazio no resto | texto |
+
+## `cnpj_qsa_mudancas`
+
+O que mudou de um mês para o outro em `cnpj_qsa`: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial, devolvem o retrato de qualquer mês (é o histórico "como era na data" do CNPJ). O sócio pessoa física é só o `id_pessoa`; o histórico de quem saiu nunca leva nome. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`base/receita_retrato.py`, `scripts/carga_receita_mes.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `mes`, `cnpj_basico`, `tipo_socio`, `raiz_socio_pj`, `id_pessoa`, `ordem`
+- **Três datas:** publico_em = `mes`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<pasta da carga>/mudancas/qsa/<AAAA-MM>.parquet` (servidor de casa, `scripts/carga_receita_retrato.py`; o `manifesto.json` da pasta guarda o SHA-256 de cada ZIP lido)
+- **Linhagem:** O `manifesto.json` da carga diz, por mês, o SHA-256 de cada ZIP da Receita lido; o ZIP dos meses âncora (05/2023, 01/2024, 01/2025 e 01/2026) fica no acervo (`rfb-cnpj`, `cnpj/<AAAA-MM>/`) e leva ao registro de coletas. A linha não leva a versão do código que a montou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `mes` | Mês do retrato em que a mudança apareceu | AAAA-MM |
+| `tipo` | entrou, saiu ou mudou, de um mês para o seguinte | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `tipo_socio` | 1 pessoa jurídica, 2 pessoa física ou 3 estrangeiro, como a Receita publica | texto |
+| `raiz_socio_pj` | Raiz do CNPJ do sócio, só quando ele é pessoa jurídica; vazio nos outros | texto |
+| `id_pessoa` | Pseudônimo (HMAC com chave fora do Git) do sócio pessoa física; vazio para sócio pessoa jurídica e para quem se opôs. O nome, que a Receita publica, fica só no esquema `pessoas` (acervo restrito, fora desta tabela) e atrás do portão dos nomes | texto |
+| `ordem` | Número da linha dentro da chave quando ela se repete (ordenada pelo conteúdo) | número inteiro |
+| `qualificacao_antes` | Antes da mudança. Código da qualificação do sócio (sócio-administrador, diretor...) | texto |
+| `qualificacao_depois` | Depois da mudança. Código da qualificação do sócio (sócio-administrador, diretor...) | texto |
+| `data_entrada_antes` | Antes da mudança. Data de entrada na sociedade | data (dia) |
+| `data_entrada_depois` | Depois da mudança. Data de entrada na sociedade | data (dia) |
+| `pais_antes` | Antes da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
+| `pais_depois` | Depois da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.

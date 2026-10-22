@@ -1,0 +1,78 @@
+{
+  "tabela": "cnpj_qsa_mudancas",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "mes": {
+      "descricao": "Mês do retrato em que a mudança apareceu",
+      "unidade": "AAAA-MM"
+    },
+    "tipo": {
+      "descricao": "entrou, saiu ou mudou, de um mês para o seguinte",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "tipo_socio": {
+      "descricao": "1 pessoa jurídica, 2 pessoa física ou 3 estrangeiro, como a Receita publica",
+      "unidade": "texto"
+    },
+    "raiz_socio_pj": {
+      "descricao": "Raiz do CNPJ do sócio, só quando ele é pessoa jurídica; vazio nos outros",
+      "unidade": "texto"
+    },
+    "id_pessoa": {
+      "descricao": "Pseudônimo (HMAC com chave fora do Git) do sócio pessoa física; vazio para sócio pessoa jurídica e para quem se opôs. O nome, que a Receita publica, fica só no esquema `pessoas` (acervo restrito, fora desta tabela) e atrás do portão dos nomes",
+      "unidade": "texto"
+    },
+    "ordem": {
+      "descricao": "Número da linha dentro da chave quando ela se repete (ordenada pelo conteúdo)",
+      "unidade": "número inteiro"
+    },
+    "qualificacao_antes": {
+      "descricao": "Antes da mudança. Código da qualificação do sócio (sócio-administrador, diretor...)",
+      "unidade": "texto"
+    },
+    "qualificacao_depois": {
+      "descricao": "Depois da mudança. Código da qualificação do sócio (sócio-administrador, diretor...)",
+      "unidade": "texto"
+    },
+    "data_entrada_antes": {
+      "descricao": "Antes da mudança. Data de entrada na sociedade",
+      "unidade": "data (dia)"
+    },
+    "data_entrada_depois": {
+      "descricao": "Depois da mudança. Data de entrada na sociedade",
+      "unidade": "data (dia)"
+    },
+    "pais_antes": {
+      "descricao": "Antes da mudança. Código do país do sócio estrangeiro; vazio no resto",
+      "unidade": "texto"
+    },
+    "pais_depois": {
+      "descricao": "Depois da mudança. Código do país do sócio estrangeiro; vazio no resto",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "mes",
+    "cnpj_basico",
+    "tipo_socio",
+    "raiz_socio_pj",
+    "id_pessoa",
+    "ordem"
+  ],
+  "datas": {
+    "publico_em": "mes"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": true,
+  "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+  "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+}

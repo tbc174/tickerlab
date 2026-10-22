@@ -1,0 +1,47 @@
+{
+  "tabela": "cnpj_simples",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "optante_simples": {
+      "descricao": "Verdadeiro se a empresa é optante do Simples Nacional",
+      "unidade": "verdadeiro ou falso"
+    },
+    "data_opcao_simples": {
+      "descricao": "Data da opção pelo Simples; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_exclusao_simples": {
+      "descricao": "Data da exclusão do Simples; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "optante_mei": {
+      "descricao": "Verdadeiro se a empresa é MEI",
+      "unidade": "verdadeiro ou falso"
+    },
+    "data_opcao_mei": {
+      "descricao": "Data do enquadramento como MEI; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_exclusao_mei": {
+      "descricao": "Data do desenquadramento do MEI; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj_basico"
+  ],
+  "datas": {},
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+  "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+}
