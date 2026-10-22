@@ -423,9 +423,78 @@ def test_acoes_novas_da_auditoria_tem_nomes_unicos():
         auditoria.ACAO_DOCUMENTO_APAGADO,
         auditoria.ACAO_OPERACAO_APAGADA,
         auditoria.ACAO_OPERACAO_EXPIRADA,
+        auditoria.ACAO_OPERACAO_ENCERRADA,
+        auditoria.ACAO_OPERACAO_PRORROGADA,
         auditoria.ACAO_SALA_BAIXADA,
     ]
     assert len(set(acoes)) == len(acoes)
+
+
+def _acoes_da_auditoria(conexao, *acoes):
+    return conexao.execute(
+        sa.select(tabela_da_auditoria)
+        .where(tabela_da_auditoria.c.acao.in_(acoes))
+        .order_by(tabela_da_auditoria.c.criado_em)
+    ).all()
+
+
+def test_encerrar_e_prorrogar_gravam_a_acao_com_ids_e_datas(conexao, ana):
+    operacao = _operacao(conexao, ana, nome="Projeto Fulana")
+    sala.encerrar_operacao(
+        conexao, usuario_id=ana.id, operacao_id=operacao.id, hoje=HOJE
+    )
+    sala.prorrogar_operacao(
+        conexao, usuario_id=ana.id, operacao_id=operacao.id, dias=90, hoje=HOJE
+    )
+    encerrou, prorrogou = _acoes_da_auditoria(
+        conexao, auditoria.ACAO_OPERACAO_ENCERRADA, auditoria.ACAO_OPERACAO_PRORROGADA
+    )
+    assert (encerrou.ator_id, encerrou.alvo_id) == (ana.id, operacao.id)
+    assert encerrou.detalhes == {"retencao_ate": str(HOJE + timedelta(days=30))}
+    assert (prorrogou.ator_id, prorrogou.alvo_id) == (ana.id, operacao.id)
+    assert prorrogou.detalhes == {
+        "dias": 90,
+        "retencao_ate": str(HOJE + timedelta(days=90)),
+    }
+    assert "Fulana" not in json.dumps(
+        [dict(encerrou.detalhes), dict(prorrogou.detalhes)]
+    )
+
+
+def test_encerrar_de_novo_nao_grava_outra_acao(conexao, ana):
+    operacao = _operacao(conexao, ana)
+    for _ in range(2):
+        sala.encerrar_operacao(
+            conexao, usuario_id=ana.id, operacao_id=operacao.id, hoje=HOJE
+        )
+    assert len(_acoes_da_auditoria(conexao, auditoria.ACAO_OPERACAO_ENCERRADA)) == 1
+
+
+def test_encerrar_e_prorrogar_de_outra_conta_nao_gravam_nada(conexao, ana, bia):
+    operacao = _operacao(conexao, ana)
+    de_bia = {"usuario_id": bia.id, "operacao_id": operacao.id}
+    sala.encerrar_operacao(conexao, **de_bia, hoje=HOJE)
+    sala.prorrogar_operacao(conexao, **de_bia, dias=90, hoje=HOJE)
+    assert not _acoes_da_auditoria(
+        conexao, auditoria.ACAO_OPERACAO_ENCERRADA, auditoria.ACAO_OPERACAO_PRORROGADA
+    )
+
+
+def test_se_a_auditoria_falha_a_mudanca_nao_fica(conexao, ana, monkeypatch):
+    operacao = _operacao(conexao, ana)
+
+    def falha(*_, **__):
+        raise RuntimeError("auditoria fora do ar")
+
+    monkeypatch.setattr(sala.auditoria, "registrar", falha)
+    with pytest.raises(RuntimeError), conexao.begin_nested():
+        sala.encerrar_operacao(
+            conexao, usuario_id=ana.id, operacao_id=operacao.id, hoje=HOJE
+        )
+    monkeypatch.undo()
+    atual = sala.buscar_operacao(conexao, usuario_id=ana.id, operacao_id=operacao.id)
+    assert atual.situacao == "aberta"
+    assert not _acoes_da_auditoria(conexao, auditoria.ACAO_OPERACAO_ENCERRADA)
 
 
 # --- LGPD: exportar e apagar a conta ------------------------------------------------------

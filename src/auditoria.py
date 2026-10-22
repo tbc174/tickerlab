@@ -33,6 +33,10 @@ ACAO_DOCUMENTO_BAIXADO = "documento_baixado"
 ACAO_DOCUMENTO_APAGADO = "documento_apagado"
 ACAO_OPERACAO_APAGADA = "operacao_apagada"
 ACAO_OPERACAO_EXPIRADA = "operacao_expirada"
+ACAO_OPERACAO_ENCERRADA = (
+    "operacao_encerrada"  # só o novo prazo (data), sem nome (RIPD R-S4)
+)
+ACAO_OPERACAO_PRORROGADA = "operacao_prorrogada"
 ACAO_SALA_BAIXADA = "sala_baixada"
 # Originação (B-33): só ids e códigos de fase; nunca origem, próximo passo nem texto do contato.
 ACAO_NEGOCIO_ABERTO = "negocio_aberto"
