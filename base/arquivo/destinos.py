@@ -219,6 +219,15 @@ DESTINOS: dict[str, Destino] = {
             "termos-cecafe-robots",
             "termos-inmet",
             "termos-cnpj-licenca",
+            "termos-kraken",
+            "termos-yahoo",
+            "termos-gdelt",
+            "termos-gleif",
+            "termos-faostat",
+            "termos-chirps",
+            "termos-mapbiomas",
+            "termos-iex",
+            "termos-banco-mundial",
         )
     },
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
