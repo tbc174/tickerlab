@@ -91,10 +91,7 @@ LICENCAS = {
     "fnc": "FNC: só uso pessoal, veda robô; coleta com ritmo, cita a fonte (ADR 0102)",
     # COTAHIST, arquivos públicos e carteiras dos índices: no produto com a fonte citada desde
     # 22/10/2026 (ADR 0008, Emenda 6; risco assumido pelo Tiago); a marca segue "não comercial"
-    "b3": (
-        "Política de Consumo de Market Data B3 V1.1 e termos de uso da B3: sem licença; no produto "
-        "com a fonte citada, risco assumido pelo Tiago (ADR 0008, Emenda 6)"
-    ),
+    "b3": "Sem licença da B3; uso com a fonte citada, risco assumido (ADR 0008, Emenda 6)",
     # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
     "assessoria": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
     # termos lidos em 16/10/2026 (archive.org/about/terms); só a data das cópias entra na base
