@@ -1,0 +1,266 @@
+{
+  "aviso": "Nada aqui é recomendação de investimento. Os números descrevem o que as companhias e as agências entregaram, sem dizer o que vai acontecer.",
+  "dados_de": "19/10/2026",
+  "destaques": [
+    {
+      "data": "12/2025 (ficha de 19/10/2026)",
+      "fonte": "ODbL (dados abertos da ANEEL, SAMP; citar a ANEEL), ligados a cada companhia pelo formulário de referência da CVM e pelo nome da distribuidora",
+      "texto": "Em 12/2025, as distribuidoras do país atendiam 87,5 milhões de consumidores. As 9 companhias abertas desta página, com as distribuidoras que a base liga a cada uma, somam 66,7 milhões: 76,2% do total.",
+      "titulo": "9 companhias abertas atendem 76,2% dos consumidores do país"
+    },
+    {
+      "data": "12/2025 (ficha de 19/10/2026)",
+      "fonte": "ODbL (dados abertos da ANEEL, SAMP; citar a ANEEL), ligados a cada companhia pelo formulário de referência da CVM e pelo nome da distribuidora",
+      "texto": "Neoenergia, Equatorial, CPFL Energia e Cemig atendem juntas 47,2 milhões de consumidores, 70,7% do que as 9 somam.",
+      "titulo": "As 4 maiores concentram 53,9% do país"
+    },
+    {
+      "data": "ficha de 19/10/2026 (formulário mais recente)",
+      "fonte": "ODbL (dados abertos da CVM; citar a fonte): Formulário de Referência",
+      "texto": "CPFL Energia, Cemig, Energisa, Light e Rede Energia Participações têm o auditor atual desde 2022, segundo o formulário de referência. Juntas, atendem 34,0% dos consumidores do país.",
+      "titulo": "5 das 9 informam o auditor atual desde 2022"
+    }
+  ],
+  "limites": [
+    "Nada aqui é recomendação de investimento. Os números descrevem o que as companhias e as agências entregaram, sem dizer o que vai acontecer.",
+    "Esta página usa a ficha da noite (CVM e ANEEL). Resultado, dívida e caixa de cada companhia (DFP e ITR) ficam para o relatório completo do setor, no app.",
+    "A ligação entre a companhia e as distribuidoras da ANEEL vem do formulário de referência e do nome da distribuidora. Duas companhias ficaram de fora da tabela porque essa ligação ainda precisa de conferência, e uma por ter dado antigo: AXIA Energia: a ligação com as distribuidoras da ANEEL foi feita só pelo nome e ainda não foi conferida; AES Elpa: a ligação com as distribuidoras da ANEEL foi feita só pelo nome e ainda não foi conferida; CEB: o último dado da base é de 12/2005.",
+    "A Energisa e a Rede Energia Participações são duas companhias na CVM. O formulário de referência da Energisa registra uma participação pequena na Rede Energia, então a base não soma as duas: se somasse, a tabela teria outra ordem.",
+    "O auditor vem do campo “auditor atual” do formulário; a lista de trocas passadas ainda diverge dele em duas companhias, por isso o histórico de trocas não aparece aqui. A Neoenergia informa o auditor atual “desde” uma data futura: aparece na tabela com o aviso e fica fora da conta do peso de cada auditor.",
+    "Companhia em recuperação judicial aparece com o nome registrado na CVM; a página não avalia a situação de nenhuma delas."
+  ],
+  "nao_temos": [
+    {
+      "fonte": "base do TickerLab",
+      "kpi": "Energia vendida e mercado faturado",
+      "motivo": "A base tem este número, mas o relatório do setor ainda não o traz."
+    },
+    {
+      "fonte": "base do TickerLab",
+      "kpi": "Geração por usina",
+      "motivo": "A base tem este número, mas o relatório do setor ainda não o traz."
+    },
+    {
+      "fonte": "base do TickerLab",
+      "kpi": "Perdas de energia",
+      "motivo": "Parcial: só o que a SAMP dá. A base tem este número, mas o relatório do setor ainda não o traz."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "PLD e CMO",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "Curtailment",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "Capacidade instalada",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "GSF",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "ENA e EAR",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "DEC e FEC",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "RAP",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "Reajuste tarifário",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "nenhuma coletada ainda",
+      "kpi": "Mercado livre e geração distribuída",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "release ou ITR da empresa",
+      "kpi": "Inadimplência dos consumidores",
+      "motivo": "A base ainda não tem este número."
+    },
+    {
+      "fonte": "release ou ITR da empresa",
+      "kpi": "EBITDA regulatório",
+      "motivo": "A base ainda não tem este número."
+    }
+  ],
+  "setor": "eletricas",
+  "tabelas": [
+    {
+      "chave": "consumidores",
+      "colunas": [
+        "Companhia",
+        "Consumidores",
+        "Participação no país",
+        "Dado de"
+      ],
+      "linhas": [
+        [
+          "Neoenergia",
+          "15.443.941",
+          "17,6%",
+          "12/2025"
+        ],
+        [
+          "Equatorial",
+          "13.540.224",
+          "15,5%",
+          "12/2025"
+        ],
+        [
+          "CPFL Energia",
+          "9.743.641",
+          "11,1%",
+          "12/2025"
+        ],
+        [
+          "Cemig",
+          "8.459.031",
+          "9,7%",
+          "12/2025"
+        ],
+        [
+          "Copel",
+          "4.761.124",
+          "5,4%",
+          "12/2025"
+        ],
+        [
+          "Energisa",
+          "4.031.891",
+          "4,6%",
+          "12/2025"
+        ],
+        [
+          "Light",
+          "3.924.878",
+          "4,5%",
+          "12/2025"
+        ],
+        [
+          "Rede Energia Participações",
+          "3.572.158",
+          "4,1%",
+          "12/2025"
+        ],
+        [
+          "Celesc",
+          "3.247.086",
+          "3,7%",
+          "12/2025"
+        ]
+      ],
+      "titulo": "Consumidores atendidos, por companhia aberta"
+    },
+    {
+      "chave": "auditor_de_cada",
+      "colunas": [
+        "Companhia",
+        "Auditor atual",
+        "Desde"
+      ],
+      "linhas": [
+        [
+          "Neoenergia",
+          "PwC",
+          "01/01/2027 (data futura no formulário)"
+        ],
+        [
+          "Equatorial",
+          "EY",
+          "01/01/2020"
+        ],
+        [
+          "CPFL Energia",
+          "PwC",
+          "01/01/2022"
+        ],
+        [
+          "Cemig",
+          "KPMG",
+          "27/04/2022"
+        ],
+        [
+          "Copel",
+          "PwC",
+          "01/01/2024"
+        ],
+        [
+          "Energisa",
+          "Deloitte",
+          "01/01/2022"
+        ],
+        [
+          "Light",
+          "Deloitte",
+          "01/04/2022"
+        ],
+        [
+          "Rede Energia Participações",
+          "Deloitte",
+          "01/01/2022"
+        ],
+        [
+          "Celesc",
+          "KPMG",
+          "01/04/2023"
+        ]
+      ],
+      "titulo": "Auditor atual de cada companhia"
+    },
+    {
+      "chave": "peso_por_auditor",
+      "colunas": [
+        "Auditor",
+        "Companhias",
+        "Consumidores",
+        "Participação no país"
+      ],
+      "linhas": [
+        [
+          "PwC",
+          "2",
+          "14.504.765",
+          "16,6%"
+        ],
+        [
+          "EY",
+          "1",
+          "13.540.224",
+          "15,5%"
+        ],
+        [
+          "KPMG",
+          "2",
+          "11.706.117",
+          "13,4%"
+        ],
+        [
+          "Deloitte",
+          "3",
+          "11.528.927",
+          "13,2%"
+        ]
+      ],
+      "titulo": "Quanto do país cada auditor acompanha (8 companhias com data possível)"
+    }
+  ],
+  "titulo": "Elétricas: quem atende os consumidores do país e quem audita"
+}

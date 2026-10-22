@@ -3,7 +3,15 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type Modulo, amostraRelatorio, exemplo, marca, planos, site } from "../src/conteudo";
+import {
+  type Modulo,
+  amostraRelatorio,
+  exemplo,
+  marca,
+  planos,
+  relatorioSemanalEletricas,
+  site,
+} from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
@@ -410,5 +418,32 @@ describe("relatório de exemplo da base (plano do relatório-modelo, 17/10/2026)
 
   it("a página inicial leva ao relatório de exemplo", () => {
     expect(renderizar("index.html")).toContain('href="/relatorio-de-exemplo.html"');
+  });
+});
+
+
+describe("relatório de setor da semana: elétricas (ADR 0109, item 10)", () => {
+  const html = renderizar("relatorio-de-setor-eletricas.html");
+  const texto = semTags(html);
+
+  it("abre com o título, a data dos dados e o aviso de que não é recomendação", () => {
+    expect(texto).toContain(relatorioSemanalEletricas.titulo);
+    expect(texto).toContain(`Dados da base de ${relatorioSemanalEletricas.dados_de}`);
+    expect(texto).toContain("Nada aqui é recomendação de investimento");
+  });
+
+  it("cada destaque mostra a fonte e a data", () => {
+    expect(relatorioSemanalEletricas.destaques.length).toBeGreaterThanOrEqual(3);
+    for (const d of relatorioSemanalEletricas.destaques) {
+      expect(texto).toContain(d.titulo);
+      expect(texto).toContain(`Fonte: ${d.fonte}; dado de ${d.data}.`);
+    }
+  });
+
+  it("mostra as tabelas, o que falta e os limites", () => {
+    for (const t of relatorioSemanalEletricas.tabelas) expect(texto).toContain(t.titulo);
+    expect(texto).toContain("O que este relatório ainda não traz");
+    expect(texto).toContain("Limites e cuidados");
+    for (const l of relatorioSemanalEletricas.limites) expect(texto).toContain(l);
   });
 });
