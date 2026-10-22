@@ -110,6 +110,8 @@ class Motivo(StrEnum):
     TERMOS_SEM_DATA = "termos_sem_data"
     LEITURA_VENCIDA = "leitura_vencida"
     CONSULTA_PROIBIDA = "consulta_proibida"  # busca reversa por pessoa ou por nome
+    # N7 (D8): a organização não tem linha de contrato vigente para o conjunto e a finalidade
+    SEM_CONTRATO_DA_ORGANIZACAO = "sem_contrato_da_organizacao"
 
 
 # D2.3 (auditoria N0): sair desta lista pede decisão nova. Vale a fonte e o que começa por ela

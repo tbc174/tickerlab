@@ -6,6 +6,8 @@ organização recebe `organizacao_id` pelo nome e filtra por ele; para outra org
 de um id que não existe (`False`, `[]` ou `ChaveInexistenteError`).
 
 Nada se apaga para suspender ou revogar: preenche-se `suspensa_em`, `suspenso_em` ou `revogada_em`.
+O consumo (D10) é agregado por organização, chave, dia (UTC), canal, finalidade e conjunto: sem IP,
+parâmetro de busca nem corpo de resposta.
 A auditoria leva só ids, o prefixo da chave e códigos; nunca a chave, o hash nem o nome da organização.
 Quem chama (o script do admin, PR 3) decide quando fazer o commit.
 """
@@ -17,6 +19,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql, sqlite
 
 from base import cnpj as cnpj_
 from src import auditoria
@@ -27,6 +30,7 @@ from src.banco.modelo import (
     TAMANHO_MAXIMO_DO_CONJUNTO,
     TAMANHO_MAXIMO_DO_NOME_DA_ORGANIZACAO,
     chaves_da_api,
+    consumo_da_api,
     direitos_da_organizacao,
     organizacoes,
 )
@@ -49,6 +53,7 @@ PRAZO_DA_ROTACAO = timedelta(
 INTERVALO_DO_ULTIMO_USO = timedelta(
     hours=1
 )  # gravar a cada pedido seria uma escrita por pedido
+_INSERT_DO_BANCO = {"postgresql": postgresql.insert, "sqlite": sqlite.insert}
 # comparado quando o prefixo não existe, para os dois caminhos fazerem a mesma conta
 _HASH_DE_NINGUEM = "0" * TAMANHO_DO_HASH
 
@@ -90,6 +95,16 @@ class ChaveListada:
     expira_em: datetime | None
     revogada_em: datetime | None
     ultimo_uso: datetime | None
+
+
+@dataclass(frozen=True)
+class ConsumoDoMes:
+    """A soma do mês de uma organização: `pedidos` aceitos (é o que a quota conta), as `linhas`
+    servidas neles e os `negados` (o portão ou o contrato disseram não)."""
+
+    pedidos: int
+    linhas: int
+    negados: int
 
 
 @dataclass(frozen=True)
@@ -507,6 +522,15 @@ def _conjunto_valido(conjunto: str) -> str:
     return limpo
 
 
+def _finalidade_valida(finalidade: str) -> str:
+    if finalidade not in FINALIDADES_DA_ORGANIZACAO:
+        raise ValueError(
+            "A finalidade de uma organização é "
+            f"{' ou '.join(FINALIDADES_DA_ORGANIZACAO)} (treino nunca)."
+        )
+    return finalidade
+
+
 def conceder_direito(
     conexao: sa.Connection,
     *,
@@ -522,11 +546,7 @@ def conceder_direito(
 
     Sozinha não libera nada: o pedido passa só se esta linha e o portão (N3) deixarem.
     """
-    if finalidade not in FINALIDADES_DA_ORGANIZACAO:
-        raise ValueError(
-            "A finalidade de uma organização é "
-            f"{' ou '.join(FINALIDADES_DA_ORGANIZACAO)} (treino nunca)."
-        )
+    _finalidade_valida(finalidade)
     if vigente_ate is not None and vigente_ate < vigente_desde:
         raise ValueError("A vigência termina antes de começar.")
     if buscar_organizacao(conexao, organizacao_id) is None:
@@ -630,6 +650,16 @@ def reativar_direito(
     return mudou
 
 
+def _vigente(organizacao_id: uuid.UUID, dia: date) -> list[sa.ColumnElement[bool]]:
+    tabela = direitos_da_organizacao
+    return [
+        tabela.c.organizacao_id == organizacao_id,
+        tabela.c.suspenso_em.is_(None),
+        tabela.c.vigente_desde <= dia,
+        sa.or_(tabela.c.vigente_ate.is_(None), tabela.c.vigente_ate >= dia),
+    ]
+
+
 def direitos_vigentes(
     conexao: sa.Connection, organizacao_id: uuid.UUID, dia: date
 ) -> list[Direito]:
@@ -637,12 +667,88 @@ def direitos_vigentes(
     tabela = direitos_da_organizacao
     linhas = conexao.execute(
         sa.select(tabela)
-        .where(
-            tabela.c.organizacao_id == organizacao_id,
-            tabela.c.suspenso_em.is_(None),
-            tabela.c.vigente_desde <= dia,
-            sa.or_(tabela.c.vigente_ate.is_(None), tabela.c.vigente_ate >= dia),
-        )
+        .where(*_vigente(organizacao_id, dia))
         .order_by(tabela.c.conjunto, tabela.c.finalidade)
     )
     return [_direito(linha) for linha in linhas]
+
+
+def contrato_permite(
+    conexao: sa.Connection,
+    organizacao_id: uuid.UUID,
+    *,
+    conjunto: str,
+    finalidade: str,
+    dia: date,
+) -> bool:
+    """O contrato da organização tem linha vigente no dia para este conjunto e finalidade?"""
+    tabela = direitos_da_organizacao
+    return conexao.execute(
+        sa.select(
+            sa.exists().where(
+                *_vigente(organizacao_id, dia),
+                tabela.c.conjunto == conjunto,
+                tabela.c.finalidade == finalidade,
+            )
+        )
+    ).scalar_one()
+
+
+# ---------------------------------------------------------------- consumo (D10)
+
+
+def registrar_consumo(
+    conexao: sa.Connection,
+    contexto: ContextoDaChave,
+    *,
+    conjunto: str,
+    finalidade: str,
+    linhas: int,
+    negado: bool = False,
+    agora: datetime | None = None,
+) -> None:
+    """Soma um pedido da chave do `contexto` na linha do dia (UTC). Negado conta só em `negados`."""
+    if linhas < 0:
+        raise ValueError("O número de linhas servidas não pode ser negativo.")
+    pedidos, servidas, negados = (0, 0, 1) if negado else (1, linhas, 0)
+    inserir = _INSERT_DO_BANCO[conexao.dialect.name](consumo_da_api)
+    conexao.execute(
+        inserir.values(
+            organizacao_id=contexto.organizacao_id,
+            chave_id=contexto.chave_id,
+            dia=(agora or _agora()).astimezone(UTC).date(),
+            canal=contexto.canal.value,
+            finalidade=_finalidade_valida(finalidade),
+            conjunto=_conjunto_valido(conjunto),
+            pedidos=pedidos,
+            linhas=servidas,
+            negados=negados,
+        ).on_conflict_do_update(
+            index_elements=list(consumo_da_api.primary_key.columns),
+            set_={
+                "pedidos": consumo_da_api.c.pedidos + inserir.excluded.pedidos,
+                "linhas": consumo_da_api.c.linhas + inserir.excluded.linhas,
+                "negados": consumo_da_api.c.negados + inserir.excluded.negados,
+            },
+        )
+    )
+
+
+def consumo_do_mes(
+    conexao: sa.Connection, organizacao_id: uuid.UUID, dia: date
+) -> ConsumoDoMes:
+    """A soma do mês (UTC) que contém `dia`, de todas as chaves da organização."""
+    inicio = dia.replace(day=1)
+    fim = (inicio + timedelta(days=32)).replace(day=1)
+    pedidos, linhas, negados = conexao.execute(
+        sa.select(
+            sa.func.coalesce(sa.func.sum(consumo_da_api.c.pedidos), 0),
+            sa.func.coalesce(sa.func.sum(consumo_da_api.c.linhas), 0),
+            sa.func.coalesce(sa.func.sum(consumo_da_api.c.negados), 0),
+        ).where(
+            consumo_da_api.c.organizacao_id == organizacao_id,
+            consumo_da_api.c.dia >= inicio,
+            consumo_da_api.c.dia < fim,
+        )
+    ).one()
+    return ConsumoDoMes(pedidos=int(pedidos), linhas=int(linhas), negados=int(negados))
