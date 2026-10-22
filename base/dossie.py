@@ -410,6 +410,9 @@ class SecaoDaBase:
     tabelas: tuple[str, ...]
 
 
+# o M&A das assessorias (série 5 da base): as partes, o negócio, a data em que ficou conhecido
+TABELAS_DO_MA = ("ma_assessorias", "ma_partes", "ma_negocios", "ma_datas")
+
 SECOES = (
     SecaoDaBase(
         "auditor_e_controladas",
@@ -476,7 +479,7 @@ SECOES = (
             ),
         ),
     ),
-    SecaoDaBase("negocios", "Negócios (M&A pela CVM)", ("eventos",)),
+    SecaoDaBase("negocios", "Negócios e eventos", ("eventos", *TABELAS_DO_MA)),
     SecaoDaBase(
         "rede", "Ligações na rede", ("ligacoes", "entidades", "identificadores")
     ),
@@ -570,7 +573,15 @@ LIMITES = {
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
         "reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. "
-        "O assunto é escrito pela empresa."
+        "O assunto é escrito pela empresa. M&A das assessorias: negócios de compra, venda e "
+        "investimento que as assessorias de M&A independentes publicam nos sites delas, nos quais a "
+        "empresa aparece com o papel dito no título (comprou, vendeu ou foi comprada), contados uma "
+        "vez por negócio mesmo que as duas pontas o publiquem. A data é a da primeira prova de que o "
+        "negócio já era público (a primeira cópia da página no arquivo da web ou a nossa primeira "
+        "coleta), não a do fechamento. Só entram empresas ligadas por nome exato ao CNPJ; nome em "
+        "dúvida fica de fora. Cobre as assessorias que a base lê (hoje uma), sobretudo o middle "
+        "market: não é a lista de todas as operações do mercado, e a ausência de negócios aqui não "
+        "quer dizer que a empresa não fez nenhum. Sem valores e sem a outra parte do negócio."
     ),
     "rede": (
         "Ligações da rede de entidades do TickerLab, montada com o Formulário de Referência (FRE), o "
@@ -2306,10 +2317,99 @@ def secao_setor(
 # --- negócios ------------------------------------------------------------------------------------
 
 
-def secao_negocios(eventos: pd.DataFrame) -> dict[str, Any] | None:
-    """Fatos relevantes e comunicados de compra, venda, fusão ou reorganização (None: nenhum)."""
+LIGACOES_CERTAS_DO_MA = frozenset({"nome_exato", "nome_fantasia"})
+TIPOS_DE_COMPRA = frozenset({"AQ_CONTROLE", "AQ_MINORITARIA", "VENDA_ATIVO", "PE_VC"})
+# o papel da empresa no negócio; vale o primeiro de `ORDEM_DOS_PAPEIS` quando ela aparece em mais de um
+PAPEIS_DO_MA = {"comprador": "comprou", "vendedor": "vendeu", "alvo": "foi_comprada"}
+OUTRO_PAPEL_DO_MA = "outro"
+ORDEM_DOS_PAPEIS = ("comprou", "vendeu", "foi_comprada", OUTRO_PAPEL_DO_MA)
+FONTES_DO_MA = ("assessoria", "wayback")  # as páginas das assessorias e a prova da data
+ITENS_DO_MA = (
+    ("comprou", "ma_comprou", "Negócios de M&A em que comprou ou investiu"),
+    ("vendeu", "ma_vendeu", "Negócios de M&A em que vendeu"),
+    ("foi_comprada", "ma_foi_comprada", "Negócios de M&A em que foi comprada ou recebeu investimento"),
+)  # fmt: skip
+COLUNAS_DO_MA = ["id_negocio", "papel", "tipo", "conhecido_em", "confirmado"]
+
+
+def negocios_de_ma_por_empresa(
+    partes: pd.DataFrame,
+    negocios: pd.DataFrame,
+    datas: pd.DataFrame,
+    assessorias: pd.DataFrame,
+    hoje: str,
+) -> dict[str, pd.DataFrame]:
+    """Os negócios de M&A das assessorias de cada empresa (raiz do CNPJ), como eram conhecidos em `hoje`.
+
+    Só entra a parte ligada à empresa por nome exato e o negócio cuja prova de data é de `hoje` para
+    trás (sem olhar o futuro). Um negócio publicado por duas assessorias conta uma vez, com o papel
+    mais forte da empresa nele. Sem nomes, valores nem a outra parte: só o que se agrega.
+    """
+    if any(t.empty for t in (partes, negocios, datas, assessorias)):
+        return {}
+    ligadas = partes[
+        partes["ligacao_por"].isin(LIGACOES_CERTAS_DO_MA)
+        & partes["cnpj_raiz"].fillna("").astype(str).ne("")
+    ]
+    if ligadas.empty:
+        return {}
+    chave = ["assessoria", "url"]
+    juntas = (
+        ligadas[[*chave, "papel", "cnpj_raiz"]]
+        .merge(negocios[[*chave, "id_negocio"]], on=chave)
+        .merge(datas[[*chave, "conhecido_em_do_negocio", "confirmado_por"]], on=chave)
+        .merge(assessorias[[*chave, "tipo"]], on=chave)
+    )
+    juntas["conhecido_em"] = pd.to_datetime(juntas["conhecido_em_do_negocio"])
+    juntas = juntas[
+        juntas["conhecido_em"].notna() & (juntas["conhecido_em"] <= pd.Timestamp(hoje))
+    ].copy()
+    papel = juntas["papel"].map(PAPEIS_DO_MA)
+    juntas["papel"] = papel.where(juntas["tipo"].isin(TIPOS_DE_COMPRA)).fillna(
+        OUTRO_PAPEL_DO_MA
+    )
+    juntas["confirmado"] = juntas["confirmado_por"].notna()
+    juntas["_forca"] = juntas["papel"].map(ORDEM_DOS_PAPEIS.index)
+    unicas = juntas.sort_values(["_forca", "conhecido_em"]).drop_duplicates(
+        ["cnpj_raiz", "id_negocio"]
+    )
+    return {
+        str(raiz): linhas[COLUNAS_DO_MA] for raiz, linhas in unicas.groupby("cnpj_raiz")
+    }
+
+
+def _tabelas_do_ma(ma: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Os negócios de M&A por ano em que ficaram conhecidos, e os mais recentes (sem a outra parte)."""
+    ano = ma["conhecido_em"].dt.year.rename("ano")
+    por_ano = (
+        ma.groupby([ano, "papel"]).size().unstack(fill_value=0)
+        .reindex(columns=list(ORDEM_DOS_PAPEIS), fill_value=0)
+        .reset_index()
+        .sort_values("ano", ascending=False)
+        .head(ANOS_NAS_SERIES)
+    )  # fmt: skip
+    recentes = ma.sort_values("conhecido_em", ascending=False).head(LINHAS_NAS_LISTAS)
+    return {
+        "ma_por_ano": por_ano,
+        "ma_recentes": recentes[["conhecido_em", "papel", "tipo", "confirmado"]],
+    }
+
+
+def _itens_do_ma(ma: pd.DataFrame) -> list[dict[str, Any]]:
+    base = _data(ma["conhecido_em"].max())
+    contagem = ma["papel"].value_counts()
+    return [
+        _item(chave, nome, int(contagem.get(papel, 0)), "negócios", base, publicado_em=base, fontes=FONTES_DO_MA)
+        for papel, chave, nome in ITENS_DO_MA
+    ]  # fmt: skip
+
+
+def _itens_e_tabelas_da_cvm(
+    eventos: pd.DataFrame,
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """Fatos relevantes e comunicados de compra, venda, fusão ou reorganização (vazio: nenhum)."""
     if eventos.empty:
-        return None
+        return [], {}
     # a base guarda a data sem hora (`datetime.date`): vira data do pandas para ordenar e agrupar
     eventos = eventos.assign(publicado_em=pd.to_datetime(eventos["publicado_em"]))
     assunto = eventos["assunto"].fillna("").map(normalizar_nome)
@@ -2318,7 +2418,7 @@ def secao_negocios(eventos: pd.DataFrame) -> dict[str, Any] | None:
         & assunto.str.contains(PALAVRAS_DE_NEGOCIO)
     ].sort_values("publicado_em", ascending=False)
     if negocios.empty:
-        return None
+        return [], {}
     por_ano = (
         negocios.groupby(negocios["publicado_em"].dt.year.rename("ano"))
         .size()
@@ -2344,7 +2444,24 @@ def secao_negocios(eventos: pd.DataFrame) -> dict[str, Any] | None:
         ),
         "negocios_por_ano": por_ano,
     }
-    return _secao("negocios", itens, tabelas)
+    return itens, tabelas
+
+
+def secao_negocios(
+    eventos: pd.DataFrame, ma: pd.DataFrame | None = None
+) -> dict[str, Any] | None:
+    """Negócios e eventos: os documentos da CVM sobre compra, venda, fusão ou reorganização e o M&A das
+    assessorias (`negocios_de_ma_por_empresa`, já só da empresa da ficha). None: nenhum dos dois."""
+    itens, tabelas = _itens_e_tabelas_da_cvm(eventos)
+    if ma is not None and not ma.empty:
+        itens += _itens_do_ma(ma)
+        tabelas |= _tabelas_do_ma(ma)
+        fontes = fontes_das_tabelas(_SECAO_POR_CHAVE["negocios"].tabelas)
+    else:
+        fontes = fontes_das_tabelas(["eventos"])
+    if not itens:
+        return None
+    return _secao("negocios", itens, tabelas, fontes=fontes)
 
 
 # --- ligações na rede (molde B: a busca por CNPJ, plano de 19/10/2026) ---------------------------
@@ -2847,6 +2964,21 @@ _ORIGENS_FIXAS = {
     "negocios": Origem(
         "eventos",
         "fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão ou reorganização",
+    ),
+    "ma_comprou": Origem(
+        "ma_datas",
+        "negócios de M&A das assessorias em que a empresa é a compradora ou a investidora, já "
+        "conhecidos no dia, cada negócio uma vez",
+    ),
+    "ma_vendeu": Origem(
+        "ma_datas",
+        "negócios de M&A das assessorias em que a empresa é a vendedora, já conhecidos no dia, "
+        "cada negócio uma vez",
+    ),
+    "ma_foi_comprada": Origem(
+        "ma_datas",
+        "negócios de M&A das assessorias em que a empresa é a alvo de compra ou investimento, "
+        "já conhecidos no dia, cada negócio uma vez",
     ),
     "ligacoes": Origem("ligacoes", "empresas ligadas à companhia na rede, como era no dia"),
     "valores_mobiliarios": Origem(

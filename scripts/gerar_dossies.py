@@ -40,6 +40,7 @@ log = logging.getLogger(__name__)
 FUSO = ZoneInfo("America/Sao_Paulo")  # o dia da pasta é o do Brasil, não o do servidor
 TAMANHO_MAXIMO_DO_RESUMO = 300  # o resumo vai no endereço do push do Kuma
 VAZIA = pd.DataFrame()
+RAIZ_DO_CNPJ = 8  # os 8 primeiros dígitos: a empresa, sem a filial
 Filtros = dict[str, object]
 
 
@@ -131,6 +132,8 @@ class Entradas:
     pessoas: set[str]
     rede: dossie.RedeDaNoite
     hoje: pd.Timestamp  # o dia da ficha, sem fuso, para comparar com as datas da base
+    # o M&A das assessorias de cada empresa (raiz do CNPJ), como era conhecido em `hoje`
+    negocios_de_ma: dict[str, pd.DataFrame] = field(default_factory=dict)
 
 
 # só as colunas que as seções de qualidade do lucro, de geração de caixa e de capital usam (a DRE de
@@ -415,6 +418,19 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         pessoas=_pessoas(entidades),
         rede=_rede(leitor, hoje, entidades, controladas),
         hoje=_dia(hoje),
+        negocios_de_ma=_negocios_de_ma(leitor, _dia(hoje)),
+    )
+
+
+def _negocios_de_ma(leitor: Leitor, hoje: pd.Timestamp) -> dict[str, pd.DataFrame]:
+    """O M&A das assessorias por raiz de CNPJ (vazio: a base ainda não tem as tabelas)."""
+    chave = ["assessoria", "url"]
+    return dossie.negocios_de_ma_por_empresa(
+        leitor.ler("ma_partes", [*chave, "papel", "cnpj_raiz", "ligacao_por"]),
+        leitor.ler("ma_negocios", [*chave, "id_negocio"]),
+        leitor.ler("ma_datas", [*chave, "conhecido_em_do_negocio", "confirmado_por"]),
+        leitor.ler("ma_assessorias", [*chave, "tipo"]),
+        hoje.strftime("%Y-%m-%d"),
     )
 
 
@@ -457,6 +473,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     ratings = _por_cnpj(entradas.ratings, "cnpj")
     assembleias = _por_cnpj(entradas.assembleias, "cnpj")
     hoje = entradas.hoje
+    de_ma = entradas.negocios_de_ma
 
     def governanca(cnpj: str) -> dict | None:
         do_fre = {nome: fre[nome].get(cnpj, VAZIA) for nome in COLUNAS_DA_GOVERNANCA}
@@ -508,7 +525,9 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             empresa_serie.get(c, VAZIA), entradas.series
         ),
         "setor": setores.get,
-        "negocios": lambda c: dossie.secao_negocios(eventos.get(c, VAZIA)),
+        "negocios": lambda c: dossie.secao_negocios(
+            eventos.get(c, VAZIA), de_ma.get(c[:RAIZ_DO_CNPJ])
+        ),
         "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }
 

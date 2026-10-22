@@ -122,7 +122,7 @@ const relatorio = (trancado: boolean): RelatorioDaEmpresaV1 => ({
     }),
     secao(
       "negocios",
-      "Negócios (M&A pela CVM)",
+      "Negócios e eventos",
       trancado ? { trancada: true, paragrafos: [CONVITE] } : {},
     ),
     secao("metodologia", "Metodologia e fontes", {
