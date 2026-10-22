@@ -154,6 +154,28 @@ def test_dois_envios_ao_mesmo_tempo_numa_sala_nova_ficam_com_a_mesma_chave(
 
 
 @pytest.mark.parametrize(
+    ("nome", "guardado"),
+    [
+        ("Procuração 529.982.247-25.pdf", "Procuração ***.***.***-25.pdf"),
+        ("cpf_52998224725.pdf", "cpf_***.***.***-25.pdf"),
+        ("529.982.247-25 e 111.444.777-35.pdf", "***.***.***-25 e ***.***.***-35.pdf"),
+        ("Balanço 2025.pdf", "Balanço 2025.pdf"),  # sem CPF: nada muda
+        ("contrato 12345678901.pdf", "contrato 12345678901.pdf"),  # dígito não confere
+    ],
+)
+def test_cpf_no_nome_do_arquivo_e_guardado_mascarado(
+    conexao, ana, raiz, nome, guardado
+):
+    operacao = _operacao(conexao, ana)
+    documento = _receber(conexao, ana, operacao, nome=nome).documento
+    assert documento.nome_original == guardado
+    listados = sala.listar_documentos(
+        conexao, usuario_id=ana.id, operacao_id=operacao.id
+    )
+    assert [d.nome_original for d in listados] == [guardado]
+
+
+@pytest.mark.parametrize(
     ("gerador", "nome", "motivo"),
     [
         pytest.param(gerar.pdf_com_javascript, "a.pdf", arquivos.PDF_ATIVO, id="js"),

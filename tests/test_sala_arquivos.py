@@ -178,6 +178,17 @@ def test_a_palavra_javascript_no_texto_nao_e_nome_do_pdf():
             arquivos.ZIP_CAMINHO_ESTRANHO,
         ),
         _caso("com-senha", gerar.zip_com_senha, arquivos.ARQUIVO_DANIFICADO),
+        _caso(
+            "tamanho-declarado-menor",
+            gerar.zip_que_declara_menos_do_que_tem,
+            arquivos.ZIP_GRANDE_DEMAIS,
+        ),
+        _caso(
+            "tamanho-declarado-menor-e-pequeno",
+            lambda: gerar.zip_que_declara_menos_do_que_tem(real=500),
+            arquivos.ZIP_GRANDE_DEMAIS,
+        ),
+        _caso("ole-no-xlsx", gerar.xlsx_com_ole, arquivos.OBJETO_EMBUTIDO),
     ],
 )
 def test_recusa_office_com_macro_bomba_ou_caminho_estranho(gerador, motivo):
@@ -194,3 +205,32 @@ def test_todo_motivo_tem_codigo_curto_sem_espaco():
     assert len(set(arquivos.MOTIVOS_DE_RECUSA)) == len(arquivos.MOTIVOS_DE_RECUSA)
     for motivo in arquivos.MOTIVOS_DE_RECUSA:
         assert motivo.isascii() and " " not in motivo and len(motivo) <= 30
+
+
+# --- objeto OLE embutido e tamanho real do ZIP --------------------------------------------
+
+
+def test_docx_com_objeto_ole_embutido_e_recusado():
+    assert _motivo(gerar.docx_com_ole(), "a.docx") == arquivos.OBJETO_EMBUTIDO
+
+
+def test_docx_com_ole_ligado_a_arquivo_de_fora_e_recusado():
+    conteudo = gerar.docx_com_ole_ligado_por_fora()
+    assert _motivo(conteudo, "a.docx") == arquivos.OBJETO_EMBUTIDO
+
+
+def test_docx_com_grafico_de_planilha_embutida_continua_aceito():
+    """A planilha de um gráfico é `package`, não OLE: o que já entrava segue entrando."""
+    assert arquivos.conferir(gerar.docx_com_grafico_de_planilha(), "a.docx") == "docx"
+
+
+def test_zip_que_declara_o_tamanho_certo_continua_aceito():
+    assert arquivos.conferir(gerar.xlsx(("a", 1), ("b", 2)), "a.xlsx") == "xlsx"
+    assert arquivos.conferir(gerar.docx(["um"], ["dois"]), "a.docx") == "docx"
+
+
+def test_o_tamanho_real_e_contado_sem_depender_do_sistema(monkeypatch):
+    """Nada de `resource` (só existe no Linux): a conta é pelos bytes lidos de verdade."""
+    monkeypatch.setattr(arquivos, "DESCOMPRIMIDO_MAXIMO", 1024)
+    conteudo = gerar.zip_que_declara_menos_do_que_tem(real=5000)
+    assert _motivo(conteudo, "a.xlsx") == arquivos.ZIP_GRANDE_DEMAIS
