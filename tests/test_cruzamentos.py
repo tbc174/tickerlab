@@ -312,8 +312,8 @@ def test_o_dossie_ganha_a_secao_e_o_cuidado_sem_perder_o_que_tinha():
     assert "recomendação" in com.limites[-1]
 
 
-def test_a_secao_entra_depois_do_auditor_na_ordem_do_relatorio():
+def test_a_secao_entra_depois_da_governanca_na_ordem_do_relatorio():
     from src.relatorio_empresa import ORDEM_DAS_SECOES
 
     ordem = list(ORDEM_DAS_SECOES)
-    assert ordem.index("cruzamentos") == ordem.index("auditor_e_controladas") + 1
+    assert ordem.index("cruzamentos") == ordem.index("governanca") + 1
