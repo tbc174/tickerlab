@@ -1,0 +1,93 @@
+{
+  "setor": "eletricas",
+  "dados_de": "2026-10-19",
+  "total_do_pais": 87543053,
+  "grupos": [
+    {
+      "nome": "NEOENERGIA S.A.",
+      "cnpj": "01083200000118",
+      "consumidores": 15443941,
+      "ano_base": "2025-12",
+      "auditor": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA",
+      "auditor_desde": "2027-01-01"
+    },
+    {
+      "nome": "EQUATORIAL S.A.",
+      "cnpj": "03220438000173",
+      "consumidores": 13540224,
+      "ano_base": "2025-12",
+      "auditor": "ERNST & YOUNG AUDITORES INDEPENDENTES S/S Ltda",
+      "auditor_desde": "2020-01-01"
+    },
+    {
+      "nome": "CPFL ENERGIA S.A.",
+      "cnpj": "02429144000193",
+      "consumidores": 9743641,
+      "ano_base": "2025-12",
+      "auditor": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA",
+      "auditor_desde": "2022-01-01"
+    },
+    {
+      "nome": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "cnpj": "17155730000164",
+      "consumidores": 8459031,
+      "ano_base": "2025-12",
+      "auditor": "KPMG AUDITORES INDEPENDENTES LTDA",
+      "auditor_desde": "2022-04-27"
+    },
+    {
+      "nome": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "cnpj": "76483817000120",
+      "consumidores": 4761124,
+      "ano_base": "2025-12",
+      "auditor": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA",
+      "auditor_desde": "2024-01-01"
+    },
+    {
+      "nome": "ENERGISA S.A.",
+      "cnpj": "00864214000106",
+      "consumidores": 4031891,
+      "ano_base": "2025-12",
+      "auditor": "DELOITTE TOUCHE TOHMATSU AUDITORES INDEPENDENTES LTDA",
+      "auditor_desde": "2022-01-01"
+    },
+    {
+      "nome": "LIGHT S.A. - Em Recuperação Judicial",
+      "cnpj": "03378521000175",
+      "consumidores": 3924878,
+      "ano_base": "2025-12",
+      "auditor": "Deloitte Touche Tohmatsu Auditores Independentes Ltda",
+      "auditor_desde": "2022-04-01"
+    },
+    {
+      "nome": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "cnpj": "61584140000149",
+      "consumidores": 3572158,
+      "ano_base": "2025-12",
+      "auditor": "DELOITTE TOUCHE TOHMATSU AUDITORES INDEPENDENTES LTDA",
+      "auditor_desde": "2022-01-01"
+    },
+    {
+      "nome": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "cnpj": "83878892000155",
+      "consumidores": 3247086,
+      "ano_base": "2025-12",
+      "auditor": "KPMG AUDITORES INDEPENDENTES LTDA",
+      "auditor_desde": "2023-04-01"
+    }
+  ],
+  "de_fora": [
+    {
+      "nome": "AXIA Energia",
+      "motivo": "a ligação com as distribuidoras da ANEEL foi feita só pelo nome e ainda não foi conferida"
+    },
+    {
+      "nome": "AES Elpa",
+      "motivo": "a ligação com as distribuidoras da ANEEL foi feita só pelo nome e ainda não foi conferida"
+    },
+    {
+      "nome": "CEB",
+      "motivo": "o último dado da base é de 12/2005"
+    }
+  ]
+}

@@ -38,6 +38,7 @@ from src import (
     planos,
     qualidade_texto,
     regras_de_imposto,
+    relatorio_semanal,
 )
 from src import autenticacao as aut
 from src import graficos_pdf as gp
@@ -429,6 +430,7 @@ def conteudo() -> dict[str, object]:
         "exemplo": painel_de_exemplo(),
         "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
+        "relatorio_semanal_eletricas": relatorio_semanal.para_o_site(),
         "catalogo": _catalogo(),
         "ativos": _ativos(),
     }

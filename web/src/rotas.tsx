@@ -44,6 +44,10 @@ import { DADOS as DADOS_DAS_NOVIDADES, Novidades } from "./paginas/Novidades";
 import { DADOS as DADOS_DOS_PLANOS, Precos } from "./paginas/Precos";
 import { DADOS as DADOS_DO_PRODUTO, Produto } from "./paginas/Produto";
 import { DADOS as DADOS_DO_RELATORIO, RelatorioExemplo } from "./paginas/RelatorioExemplo";
+import {
+  DADOS as DADOS_DO_SEMANAL_ELETRICAS,
+  RelatorioSemanalEletricas,
+} from "./paginas/RelatorioSemanalEletricas";
 import { DADOS as DADOS_DO_SOBRE, Sobre } from "./paginas/Sobre";
 import type { DadosDaPagina } from "./site/Moldura";
 
@@ -121,6 +125,11 @@ export const ROTAS: Rota[] = [
     arquivo: "relatorio-de-exemplo.html",
     dados: DADOS_DO_RELATORIO,
     conteudo: () => <RelatorioExemplo />,
+  },
+  {
+    arquivo: "relatorio-de-setor-eletricas.html",
+    dados: DADOS_DO_SEMANAL_ELETRICAS,
+    conteudo: () => <RelatorioSemanalEletricas />,
   },
   { arquivo: "novidades.html", dados: DADOS_DAS_NOVIDADES, conteudo: () => <Novidades /> },
   {
