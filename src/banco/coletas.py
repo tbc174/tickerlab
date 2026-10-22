@@ -36,7 +36,7 @@ LICENCAS = {
     # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
     # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
     "bm": "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles",
-    "fmi": "© FMI: uso comercial e coleta em massa pedem permissão (copyright@imf.org)",
+    "fmi": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI (ADR 0102)",
     "tesouro": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
     "iex": "Termos do IEX HIST (com atribuição)",
     "yahoo": "Uso pessoal: só interno, nunca exportar",
@@ -104,6 +104,14 @@ LICENCAS = {
     "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
+    # lote organismos (termos lidos em 22/10/2026, licencas-por-fonte.md, rodadas 1 e 4)
+    "bce": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+    "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
+    "eurostat": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+    "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+    "bis": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+    "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+    "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -134,7 +142,7 @@ REVENDA = {
     "chirps": VENDAVEL_COM_ATRIBUICAO,  # domínio público
     "mapbiomas": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
-    "fmi": A_CONFIRMAR,  # uso comercial pede permissão por escrito do FMI
+    "fmi": NAO_COMERCIAL,  # uso comercial pede permissão por escrito do FMI; sem pedir (Tiago, 22/10/2026)
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
     # treino de ML permitido por escrito (licencas-por-fonte.md, 13/10/2026); revenda ainda sem resposta
     "sec": SO_USO_INTERNO,  # os arquivos são escritos pelas empresas
@@ -192,6 +200,13 @@ REVENDA = {
     "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "ico": NAO_COMERCIAL,  # PDF sem termos lidos; coleta e uso com a fonte citada (ADR 0102)
     "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
+    "bce": VENDAVEL_COM_ATRIBUICAO,  # "Source: ECB statistics"
+    "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
+    "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
+    "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
+    "bis": NAO_COMERCIAL,  # só uso não comercial sem permissão; sem pedir (Tiago, 22/10/2026)
+    "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
 }
 
 
