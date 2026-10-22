@@ -18,7 +18,14 @@ import requests
 import sqlalchemy as sa
 
 from base import intradiario_b3, tce_pr
-from base.arquivo import assessorias, contrapartes, lote_bcb, lote_eua, wayback
+from base.arquivo import (
+    assessorias,
+    contrapartes,
+    lote_bcb,
+    lote_eua,
+    lote_setoriais,
+    wayback,
+)
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
@@ -1237,6 +1244,9 @@ FONTES: list[Fonte] = [
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),
+    # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
+    # ANP e INPI (linha 245 da fila)
+    *lote_setoriais.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

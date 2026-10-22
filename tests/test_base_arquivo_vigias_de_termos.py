@@ -76,6 +76,13 @@ _SEM_VIGIA = {
         ("treasury", "tic", "ofr", "census"),
         "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
     ),
+    # lote setoriais Brasil (22/10/2026)
+    **dict.fromkeys(
+        ("inep", "senatran", "inpi"),
+        "a licença é o rodapé CC BY-ND do site gov.br, que vale para o site inteiro, não uma página de termos do conjunto",
+    ),
+    "ans-demonstracoes": "as demonstrações contábeis não declaram licença: não há texto de termos a vigiar",
+    "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
     # não há página de termos de terceiro a vigiar
     "btc": "nó próprio, sem terceiro",
     "rfb": "a página da Receita pede login",

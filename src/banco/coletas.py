@@ -121,6 +121,15 @@ LICENCAS = {
     "nyfed": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
     "tic": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
     "census": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+    # lote setoriais Brasil (termos lidos em 22/10/2026, licencas-por-fonte.md): EPE é CC BY 4.0;
+    # INEP, Senatran e INPI só têm o rodapé CC BY-ND 3.0 do site gov.br, que vale para o conteúdo do
+    # site e não para o conjunto: mostrar "como publicado" com a fonte citada (precedente da CONAB)
+    "epe": "CC BY 4.0 (dados abertos da EPE; citar a EPE)",
+    "inep": "CC BY-ND 3.0 (rodapé do site do INEP): uso como publicado, citando o INEP (ADR 0102)",
+    "senatran": "CC BY-ND 3.0 (rodapé do site da Senatran): uso como publicado, citando a Senatran (ADR 0102)",
+    "inpi": "Dados abertos do INPI, licença do conjunto não achada (rodapé CC BY-ND 3.0 do site): uso como publicado, citando o INPI (ADR 0102)",
+    # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
+    "ans-demonstracoes": "Demonstrações contábeis da ANS: sem licença declarada; uso citando a ANS (ADR 0102)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -223,6 +232,13 @@ REVENDA = {
     "nyfed": VENDAVEL_COM_ATRIBUICAO,
     "tic": VENDAVEL_COM_ATRIBUICAO,
     "census": VENDAVEL_COM_ATRIBUICAO,
+    # lote setoriais Brasil: CC BY 4.0 (EPE); rodapé CC BY-ND do site gov.br e licença do conjunto
+    # não achada (INEP, Senatran, INPI, demonstrações da ANS): a confirmar, coleta e uso com a fonte citada
+    "epe": VENDAVEL_COM_ATRIBUICAO,
+    "inep": A_CONFIRMAR,
+    "senatran": A_CONFIRMAR,
+    "inpi": A_CONFIRMAR,
+    "ans-demonstracoes": A_CONFIRMAR,
 }
 
 
