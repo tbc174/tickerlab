@@ -278,3 +278,30 @@ def test_sem_preco_dy_e_multiplos_ficam_com_o_motivo(dados_da_weg):
     assert dy.valor is None and "preço" in dy.motivo
     for item in relatorio.secao("valuation").itens:
         assert item.valor is None and "preço" in item.motivo
+
+
+def test_anexo_de_anos_tem_contas_nas_linhas_e_anos_nas_colunas():
+    contas = pd.DataFrame(
+        {"receita": [100.0, 120.0, None], "lpa_basico": [1.5, 2.0, 2.5]},
+        index=pd.Index([2023, 2024, 2025], name="ano"),
+    )
+    linhas = re_.anexo_de_anos(contas)
+    assert [linha["conta"] for linha in linhas] == ["Receita", "LPA básico"]
+    assert list(linhas[0]) == ["conta", "unidade", "2023", "2024", "2025"]
+    assert linhas[0]["unidade"] == "R$" and linhas[1]["unidade"] == "R$ por ação"
+    assert (
+        linhas[0]["2024"] == 120.0 and linhas[0]["2025"] is None
+    )  # ano sem a conta: vazio
+    assert re_.anexo_de_anos(pd.DataFrame()) == []
+
+
+def test_historico_traz_o_anexo_com_fonte_e_sem_ano_alem_do_publicado(dados_da_weg):
+    secao = re_.montar(_entradas(dados_da_weg)).secao("historico")
+    anexo = secao.tabelas["anexo_de_anos"]
+    anos = [c for c in anexo[0] if c.isdigit()]
+    assert anos == sorted(anos) and int(anos[-1]) <= 2025
+    # o anexo toma o lugar da tabela de anos nas linhas na página, no PDF e na API; ela fica na
+    # seção porque a análise escrita cita as linhas dela
+    assert "contas" in secao.tabelas
+    assert list(secao.tabelas_a_mostrar()) == ["anexo_de_anos", "vertical"]
+    assert any("DFP" in p and "CVM" in p for p in secao.paragrafos)
