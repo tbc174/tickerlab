@@ -94,6 +94,7 @@ from src.planos import (
     texto_do_uso,
 )
 from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
+from src.relatorio_do_setor_pdf import relatorio_do_setor as pdf_do_setor
 from src.relatorio_empresa import montar as montar_relatorio
 from src.simulacoes import (
     endereco_no_app_novo,
@@ -1064,6 +1065,27 @@ def relatorio_do_setor(
     except relatorio_setor.SetorDesconhecidoError as erro:
         raise HTTPException(status_code=404, detail=SETOR_DESCONHECIDO) from erro
     return esquemas.de_relatorio_do_setor(relatorio)
+
+
+@router.get("/relatorio-setor/pdf", response_class=Response)
+def relatorio_do_setor_em_pdf(
+    conta: Conta,
+    setor: Annotated[str, Query(max_length=TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR)],
+) -> Response:
+    """O mesmo relatório da rota acima em PDF, com "Limites e cuidados" (mesmo acesso, mesmo plano)."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = relatorio_setor.relatorio_do_setor(conexao, setor, conta.plano)
+    except relatorio_setor.SetorDesconhecidoError as erro:
+        raise HTTPException(status_code=404, detail=SETOR_DESCONHECIDO) from erro
+    return Response(
+        content=pdf_do_setor(relatorio),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="relatorio-do-setor-{relatorio.setor}-tickerlab.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 def openapi_v1() -> dict:

@@ -2,8 +2,8 @@
 // Relatório do setor no app novo (molde D, PR 4): as rotas GET /v1/setores e /v1/relatorio-setor, com
 // dados de mentira. O setor vai no endereço (não é dado pessoal); "O que não temos" e os limites
 // ficam sempre à vista.
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RelatorioDoSetorV1, SecaoDoRelatorioV1, SetoresV1 } from "../../src/app/tipos";
 import { abrirApp, respostaJson } from "./ajudantes";
 
@@ -116,5 +116,44 @@ describe("relatório do setor", () => {
     abrir(() => respostaJson(404, { detail: "Setor fora da lista do relatório do setor (veja /v1/setores)." }));
     const alerta = await screen.findByRole("alert");
     expect(alerta.textContent).toContain("Setor fora da lista");
+  });
+
+  it("Baixar PDF: pede o PDF do setor escolhido por GET, com o setor no endereço, e entrega o arquivo", async () => {
+    const criar = vi.fn(() => "blob:pdf");
+    Object.assign(URL, { createObjectURL: criar, revokeObjectURL: vi.fn() });
+    const clicar = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { buscar } = abrirApp("/relatorio-do-setor", {
+      rotas: (endereco) => {
+        if (endereco.startsWith("/api/v1/setores")) return respostaJson(200, SETORES);
+        if (endereco.startsWith("/api/v1/relatorio-setor/pdf")) {
+          return new Response("%PDF-1.7", { status: 200, headers: { "content-type": "application/pdf" } });
+        }
+        return endereco.startsWith("/api/v1/relatorio-setor") ? respostaJson(200, RELATORIO) : undefined;
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Baixar PDF" }));
+    await waitFor(() => expect(clicar).toHaveBeenCalled());
+    const [[endereco, pedido]] = buscar.mock.calls.filter(([e]) => String(e).includes("/pdf"));
+    expect(String(endereco)).toBe("/api/v1/relatorio-setor/pdf?setor=eletricas");
+    expect(pedido?.method).toBe("GET");
+    expect(criar).toHaveBeenCalled();
+    clicar.mockRestore();
+  });
+
+  it("Baixar PDF: se a API recusar, mostra a mensagem e não baixa nada", async () => {
+    const clicar = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    abrirApp("/relatorio-do-setor", {
+      rotas: (endereco) => {
+        if (endereco.startsWith("/api/v1/setores")) return respostaJson(200, SETORES);
+        if (endereco.startsWith("/api/v1/relatorio-setor/pdf")) {
+          return respostaJson(404, { detail: "Setor fora da lista do relatório do setor (veja /v1/setores)." });
+        }
+        return endereco.startsWith("/api/v1/relatorio-setor") ? respostaJson(200, RELATORIO) : undefined;
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Baixar PDF" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Setor");
+    expect(clicar).not.toHaveBeenCalled();
+    clicar.mockRestore();
   });
 });

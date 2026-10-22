@@ -5,12 +5,50 @@
 import { useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { ErroDaApi, baixar } from "../api";
 import { Carregando } from "../Carregando";
+import { useConta } from "../conta";
 import { formatarData } from "../formatar";
 import type { RelatorioDoSetorV1, SetoresV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
 import { ConviteDoPro, Secao, fimDoPrimeiroBloco } from "./RelatorioEmpresa";
+
+function BaixarPdf({ rota, setor }: { rota: string; setor: string }) {
+  const token = useConta()?.token ?? null;
+  const [baixando, setBaixando] = useState(false);
+  const [falha, setFalha] = useState<string | null>(null);
+  const baixarAgora = () => {
+    if (token === null) return;
+    setBaixando(true);
+    setFalha(null);
+    baixar(`${rota}/pdf`, token, undefined, { setor })
+      .then((arquivo) => {
+        const endereco = URL.createObjectURL(arquivo);
+        const ancora = document.createElement("a");
+        ancora.href = endereco;
+        ancora.download = `relatorio-do-setor-${setor}-tickerlab.pdf`;
+        ancora.click();
+        URL.revokeObjectURL(endereco);
+      })
+      .catch((erro: unknown) =>
+        setFalha(erro instanceof ErroDaApi ? erro.message : "Não deu agora. Tente de novo em instantes."),
+      )
+      .finally(() => setBaixando(false));
+  };
+  return (
+    <>
+      <button type="button" className="botao" disabled={baixando} onClick={baixarAgora}>
+        Baixar PDF
+      </button>
+      {falha ? (
+        <p className="erro-do-app" role="alert">
+          {falha}
+        </p>
+      ) : null}
+    </>
+  );
+}
 
 function Lista({ titulo, itens, id }: { titulo: string; itens: string[]; id: string }) {
   return (
@@ -101,7 +139,12 @@ function Resultado({ rota, setor }: { rota: string; setor: string }) {
   const pedido = usarPedido<RelatorioDoSetorV1>(rota, { setor });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Montando o relatório do setor…" />;
   if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
-  return <Relatorio dados={pedido.dados} />;
+  return (
+    <>
+      <BaixarPdf rota={rota} setor={setor} />
+      <Relatorio dados={pedido.dados} />
+    </>
+  );
 }
 
 function Escolha({ pagina, setores }: { pagina: PaginaDoApp; setores: SetoresV1["setores"] }) {

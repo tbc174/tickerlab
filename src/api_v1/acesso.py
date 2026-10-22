@@ -269,7 +269,10 @@ ROTAS_DA_CONTA = frozenset(
 
 
 # o arquivo de uma página (o PDF) abre com as mesmas regras de plano da rota JSON dela
-ROTAS_DE_ARQUIVO = {"/v1/busca-por-cnpj/pdf": "/v1/busca-por-cnpj"}
+ROTAS_DE_ARQUIVO = {
+    "/v1/busca-por-cnpj/pdf": "/v1/busca-por-cnpj",
+    "/v1/relatorio-setor/pdf": "/v1/relatorio-setor",
+}
 
 
 def conta_com_acesso(
