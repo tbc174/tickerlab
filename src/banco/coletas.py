@@ -106,13 +106,13 @@ LICENCAS = {
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
     # lote EUA (termos lidos em 22/10/2026): obra do governo federal dos EUA é domínio público; citar
     # a agência. O Fed e o NY Fed avisam que há séries de terceiros dentro de alguns conjuntos
-    "treasury": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+    "treasury": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
     "fed": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
     "bls": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
     "eia": "Domínio público (Energy Information Administration; citar a EIA)",
     "ofr": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
     "nyfed": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
-    "tic": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar o Tesouro)",
+    "tic": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
     "census": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"

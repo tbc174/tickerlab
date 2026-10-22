@@ -1039,13 +1039,6 @@
       "termos_lidos_em": "2026-10-21"
     },
     {
-      "id": "contrapartes-cafe",
-      "licenca": "Página guardada só como prova; na ficha, fato e link",
-      "marca": "a_confirmar",
-      "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-18"
-    },
-    {
       "id": "sec-edgar-indice-diario",
       "licenca": "Acesso público (EDGAR, SEC)",
       "marca": "uso_interno",
@@ -1152,63 +1145,63 @@
     },
     {
       "id": "treasury-fiscaldata-divida-total",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-fiscaldata-juros-medios",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-fiscaldata-cambio-oficial",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-fiscaldata-leiloes",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-fiscaldata-resultado-mensal",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-fiscaldata-receitas-e-despesas",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-fiscaldata-vendas-de-titulos",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-curva-juros",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "treasury-curva-juros-historico",
-      "licenca": "Domínio público (Fiscal Data e curvas de juros, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
       "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-22"
@@ -1341,21 +1334,21 @@
     },
     {
       "id": "tic-detentores-estrangeiros",
-      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tic-posicoes-de-longo-prazo",
-      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tic-carteira-global",
-      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar o Tesouro)",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
@@ -1394,6 +1387,13 @@
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "contrapartes-cafe",
+      "licenca": "Página guardada só como prova; na ficha, fato e link",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-18"
     }
   ],
   "tabelas": [

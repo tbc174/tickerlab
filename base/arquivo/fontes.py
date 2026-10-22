@@ -1228,12 +1228,12 @@ FONTES: list[Fonte] = [
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
-    # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
-    # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
-    contrapartes.fonte(),
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
     *lote_eua.fontes(),
+    # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
+    # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
+    contrapartes.fonte(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
