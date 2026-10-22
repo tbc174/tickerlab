@@ -233,6 +233,227 @@ def _pareceres(documento: str, relatorio: str, desde: str) -> Tabela:
     )
 
 
+_ONDE_DO_CNPJ = (
+    "Parquet em `<pasta da carga>/{pasta}` (servidor de casa, `scripts/carga_receita_retrato.py`; o "
+    "`manifesto.json` da pasta guarda o SHA-256 de cada ZIP lido)"
+)
+_LINHAGEM_DO_CNPJ = (
+    "O `manifesto.json` da carga diz, por mês, o SHA-256 de cada ZIP da Receita lido; o ZIP dos meses "
+    "âncora (05/2023, 01/2024, 01/2025 e 01/2026) fica no acervo (`rfb-cnpj`, `cnpj/<AAAA-MM>/`) e leva "
+    "ao registro de coletas. A linha não leva a versão do código que a montou."
+)
+_FREQUENCIA_DO_CNPJ = (
+    "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)"
+)
+_ATRASO_DO_CNPJ = (
+    "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 "
+    "(`base/receita_diff.py`, valor prudente até a medida no servidor)"
+)
+_FINALIDADE_DO_CNPJ = (
+    "Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, "
+    "M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o "
+    "RIPD da base e a ADR 0106"
+)
+_RESSALVA_DO_CNPJ = 'CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair'
+_CONTATOS_FORA = (
+    "Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5)"
+)
+
+_ESTABELECIMENTO = {
+    "cnpj": ("CNPJ com os 14 caracteres (com letras no CNPJ novo)", TEXTO),
+    "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+    "matriz": ("Verdadeiro na matriz, falso na filial", SIM_OU_NAO),
+    "situacao_cadastral": (
+        "Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada)",
+        TEXTO,
+    ),
+    "data_situacao_cadastral": (
+        "Data da situação cadastral; vazio quando a Receita põe zero",
+        DATA,
+    ),
+    "motivo_situacao": (
+        "Código do motivo da situação cadastral, como a Receita publica",
+        TEXTO,
+    ),
+    "pais": (
+        "Código do país, só para quem tem sede fora do Brasil; vazio no resto",
+        TEXTO,
+    ),
+    "data_inicio_atividade": (
+        "Data de início da atividade; vazio quando a Receita põe zero",
+        DATA,
+    ),
+    "cnae_principal": ("Código da atividade principal (CNAE fiscal, 7 dígitos)", TEXTO),
+    "cnae_secundaria": (
+        "Códigos das atividades secundárias, separados por vírgula",
+        TEXTO,
+    ),
+    "tipo_logradouro": (
+        "Tipo do logradouro (rua, avenida...); vazio nas raízes só com município",
+        TEXTO,
+    ),
+    "logradouro": ("Logradouro; vazio nas raízes só com município", TEXTO),
+    "numero": ("Número do endereço; vazio nas raízes só com município", TEXTO),
+    "complemento": (
+        "Complemento do endereço; vazio nas raízes só com município",
+        TEXTO,
+    ),
+    "bairro": ("Bairro; vazio nas raízes só com município", TEXTO),
+    "cep": ("CEP; vazio nas raízes só com município", TEXTO),
+    "uf": ("Sigla do estado", TEXTO),
+    "municipio": ("Código do município na Receita (não é o código do IBGE)", TEXTO),
+    "situacao_especial": (
+        "Situação especial, como a Receita escreve; vazio quando não há",
+        TEXTO,
+    ),
+    "data_situacao_especial": ("Data da situação especial informada", DATA),
+    "dv_confere": (
+        "Falso quando o dígito verificador do CNPJ não confere; a linha fica, não é descartada",
+        SIM_OU_NAO,
+    ),
+}
+_SIMPLES = {
+    "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+    "optante_simples": (
+        "Verdadeiro se a empresa é optante do Simples Nacional",
+        SIM_OU_NAO,
+    ),
+    "data_opcao_simples": (
+        "Data da opção pelo Simples; vazio quando a Receita põe zero",
+        DATA,
+    ),
+    "data_exclusao_simples": (
+        "Data da exclusão do Simples; vazio quando a Receita põe zero",
+        DATA,
+    ),
+    "optante_mei": ("Verdadeiro se a empresa é MEI", SIM_OU_NAO),
+    "data_opcao_mei": (
+        "Data do enquadramento como MEI; vazio quando a Receita põe zero",
+        DATA,
+    ),
+    "data_exclusao_mei": (
+        "Data do desenquadramento do MEI; vazio quando a Receita põe zero",
+        DATA,
+    ),
+}
+_QSA = {
+    "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+    "tipo_socio": (
+        "1 pessoa jurídica, 2 pessoa física ou 3 estrangeiro, como a Receita publica",
+        TEXTO,
+    ),
+    "raiz_socio_pj": (
+        "Raiz do CNPJ do sócio, só quando ele é pessoa jurídica; vazio nos outros",
+        TEXTO,
+    ),
+    "id_pessoa": (
+        (
+            "Pseudônimo (HMAC com chave fora do Git) do sócio pessoa física; vazio para sócio pessoa "
+            "jurídica e para quem se opôs. O nome, que a Receita publica, fica só no esquema "
+            "`pessoas` (acervo restrito, fora desta tabela) e atrás do portão dos nomes"
+        ),
+        TEXTO,
+    ),
+    "qualificacao": (
+        "Código da qualificação do sócio (sócio-administrador, diretor...)",
+        TEXTO,
+    ),
+    "data_entrada": ("Data de entrada na sociedade", DATA),
+    "pais": ("Código do país do sócio estrangeiro; vazio no resto", TEXTO),
+}
+
+
+def _mudancas_do_cnpj(
+    vigente: dict[str, tuple[str, str]], chave: tuple[str, ...]
+) -> dict[str, tuple[str, str]]:
+    """As colunas de `<tabela>_mudancas`: o mês, o tipo, a chave e, por valor, o antes e o depois."""
+    colunas = {
+        "mes": ("Mês do retrato em que a mudança apareceu", "AAAA-MM"),
+        "tipo": ("entrou, saiu ou mudou, de um mês para o seguinte", TEXTO),
+        **{c: vigente[c] for c in chave},
+        "ordem": (
+            "Número da linha dentro da chave quando ela se repete (ordenada pelo conteúdo)",
+            NUMERO,
+        ),
+    }
+    for coluna, (descricao, unidade) in vigente.items():
+        if coluna not in chave:
+            colunas[f"{coluna}_antes"] = (f"Antes da mudança. {descricao}", unidade)
+            colunas[f"{coluna}_depois"] = (f"Depois da mudança. {descricao}", unidade)
+    return colunas
+
+
+def _tabelas_do_cnpj() -> dict[str, Tabela]:
+    """As três tabelas vigentes do CNPJ aberto da Receita e a das mudanças de cada uma (ADR 0106, PRs 4 e 5)."""
+    descricoes = {
+        "estabelecimentos": (
+            "Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação "
+            "cadastral, datas, atividade (CNAE), endereço e situação especial. "
+            + _CONTATOS_FORA
+            + ". O endereço de empresário individual e de MEI deve ficar só até o município e a UF, mas o "
+            "leitor da tabela de empresas, que diz quem é quem, ainda não existe: por ora a carga "
+            "grava o endereço inteiro de todos, e por isso a tabela conta como dado de pessoa. "
+            + _FINALIDADE_DO_CNPJ
+        ),
+        "simples": (
+            "Opção pelo Simples Nacional e pelo MEI de cada empresa do CNPJ aberto da Receita, o retrato mais "
+            "recente, com as datas de opção e de exclusão. Sem dado de pessoa além do próprio CNPJ. "
+            + _FINALIDADE_DO_CNPJ
+        ),
+        "qsa": (
+            "Quadro de sócios e administradores das empresas do CNPJ aberto da Receita, o retrato mais "
+            "recente. Traz tipo, qualificação, data de entrada, país e, para sócio pessoa física, só o "
+            "pseudônimo `id_pessoa`. Nome, CPF mascarado e representante legal não entram: o nome "
+            "fica no esquema `pessoas` (acervo restrito) e só sai de casa quando o portão dos "
+            "nomes abrir (`base/pessoas/portao.py`, fechado, ADR 0106 item 4); CPF inteiro quebra a "
+            "carga; faixa etária e representante legal nem são lidos. A porta é o CNPJ: não há busca "
+            "por pessoa. Quem se opôs (art. 18) tem o id apagado. "
+            + _FINALIDADE_DO_CNPJ
+        ),
+    }
+    vigentes = {"estabelecimentos": _ESTABELECIMENTO, "simples": _SIMPLES, "qsa": _QSA}
+    chaves = {
+        "estabelecimentos": ("cnpj",),
+        "simples": ("cnpj_basico",),
+        "qsa": ("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"),
+    }
+    tabelas: dict[str, Tabela] = {}
+    for nome, colunas in vigentes.items():
+        comum = {
+            "fonte": "Receita Federal: dados abertos do CNPJ (`base/receita_retrato.py`, `scripts/carga_receita_mes.py`)",
+            "familia_da_fonte": "rfb-cnpj",
+            "frequencia": _FREQUENCIA_DO_CNPJ,
+            "atraso": _ATRASO_DO_CNPJ,
+            "linhagem": _LINHAGEM_DO_CNPJ,
+            "ressalva_de_revenda": _RESSALVA_DO_CNPJ,
+        }
+        tabelas[f"cnpj_{nome}"] = Tabela(
+            descricao=descricoes[nome],
+            onde=_ONDE_DO_CNPJ.format(
+                pasta=f"vigente/{nome}/<2 primeiros caracteres da raiz>.parquet"
+            ),
+            colunas=colunas,
+            **comum,  # type: ignore[arg-type]
+        )
+        tabelas[f"cnpj_{nome}_mudancas"] = Tabela(
+            descricao=(
+                f"O que mudou de um mês para o outro em `cnpj_{nome}`: uma linha por entrada, saída ou "
+                "mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato "
+                'inicial, devolvem o retrato de qualquer mês (é o histórico "como era na data" do CNPJ). '
+                + (
+                    "O sócio pessoa física é só o `id_pessoa`; o histórico de quem saiu nunca leva nome. "
+                    if nome == "qsa"
+                    else ""
+                )
+                + _FINALIDADE_DO_CNPJ
+            ),
+            onde=_ONDE_DO_CNPJ.format(pasta=f"mudancas/{nome}/<AAAA-MM>.parquet"),
+            colunas=_mudancas_do_cnpj(colunas, chaves[nome]),
+            **comum,  # type: ignore[arg-type]
+        )
+    return tabelas
+
+
 TABELAS: dict[str, Tabela] = {
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -3557,6 +3778,7 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    **_tabelas_do_cnpj(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -5646,6 +5868,12 @@ _CONTRATO = {
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro; 3.0.0 (17/10/2026): uma linha por versão da entrega
     "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): público desde `disponivel_em`, não do mês do arquivo
+    "cnpj_estabelecimentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj",), datas={"aconteceu_em": "data_situacao_cadastral"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),

@@ -1,0 +1,105 @@
+{
+  "tabela": "cnpj_estabelecimentos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ com os 14 caracteres (com letras no CNPJ novo)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "matriz": {
+      "descricao": "Verdadeiro na matriz, falso na filial",
+      "unidade": "verdadeiro ou falso"
+    },
+    "situacao_cadastral": {
+      "descricao": "Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada)",
+      "unidade": "texto"
+    },
+    "data_situacao_cadastral": {
+      "descricao": "Data da situação cadastral; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "motivo_situacao": {
+      "descricao": "Código do motivo da situação cadastral, como a Receita publica",
+      "unidade": "texto"
+    },
+    "pais": {
+      "descricao": "Código do país, só para quem tem sede fora do Brasil; vazio no resto",
+      "unidade": "texto"
+    },
+    "data_inicio_atividade": {
+      "descricao": "Data de início da atividade; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "cnae_principal": {
+      "descricao": "Código da atividade principal (CNAE fiscal, 7 dígitos)",
+      "unidade": "texto"
+    },
+    "cnae_secundaria": {
+      "descricao": "Códigos das atividades secundárias, separados por vírgula",
+      "unidade": "texto"
+    },
+    "tipo_logradouro": {
+      "descricao": "Tipo do logradouro (rua, avenida...); vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "logradouro": {
+      "descricao": "Logradouro; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "numero": {
+      "descricao": "Número do endereço; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "complemento": {
+      "descricao": "Complemento do endereço; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "bairro": {
+      "descricao": "Bairro; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "cep": {
+      "descricao": "CEP; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla do estado",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Código do município na Receita (não é o código do IBGE)",
+      "unidade": "texto"
+    },
+    "situacao_especial": {
+      "descricao": "Situação especial, como a Receita escreve; vazio quando não há",
+      "unidade": "texto"
+    },
+    "data_situacao_especial": {
+      "descricao": "Data da situação especial informada",
+      "unidade": "data (dia)"
+    },
+    "dv_confere": {
+      "descricao": "Falso quando o dígito verificador do CNPJ não confere; a linha fica, não é descartada",
+      "unidade": "verdadeiro ou falso"
+    }
+  },
+  "chaves": [
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "data_situacao_cadastral"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": true,
+  "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+  "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+}

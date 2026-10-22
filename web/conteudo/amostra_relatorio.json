@@ -68,7 +68,8 @@
     "Os números são da base do TickerLab em 17/10/2026 e mudam quando a companhia reapresenta um documento ou um fundo entrega uma carteira atrasada.",
     "As ofertas estão pelo valor registrado na CVM, não pelo colocado. O assunto dos documentos é escrito pela própria companhia, e os documentos de negócios são escolhidos pelas palavras do assunto: pode faltar algum ou sobrar algum.",
     "O setor regulado soma as entidades que o FRE liga à companhia hoje, também nos anos anteriores: um ano antigo pode contar uma distribuidora comprada depois.",
-    "Nomes de pessoas (administradores, conselheiros, sócios) não aparecem."
+    "Nomes de pessoas (administradores, conselheiros, sócios) não aparecem.",
+    "Representa esta empresa e viu um fato errado? Escreva para contato@tickerlab.com.br com o CNPJ e o fato. A contestação aparece ao lado do fato até a conferência."
   ],
   "pdf": "/relatorio/exemplo-CPFE3.pdf",
   "razao_social": "CPFL ENERGIA S.A.",

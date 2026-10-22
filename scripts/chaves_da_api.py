@@ -24,6 +24,7 @@ from datetime import UTC, date, datetime
 import sqlalchemy as sa
 
 from src.administracao import PermissaoNegadaError, exigir_admin
+from src.administracao_das_chaves import ERROS_ESPERADOS
 from src.autenticacao import VARIAVEL_DOS_ADMINS, emails_de_admin
 from src.banco import chaves_da_api as cb
 from src.banco.conexao import criar_engine
@@ -37,14 +38,6 @@ from src.chaves_da_api import ChaveNova
 from src.configuracao import url_do_banco
 
 SAIDA_OK, SAIDA_ERRO, SAIDA_RECUSA = 0, 1, 2
-# os erros que o admin pode causar e que a mensagem já explica (sem traceback)
-ERROS_ESPERADOS = (
-    cb.OrganizacaoInvalidaError,
-    cb.OrganizacaoSuspensaError,
-    cb.LimiteDeChavesError,
-    cb.ChaveInexistenteError,
-    ValueError,
-)
 
 
 class NadaMudouError(Exception):
