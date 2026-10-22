@@ -88,7 +88,8 @@ Uma conta tem `operacao`, `de` (os operandos) e `resultado`:
   parte do mercado escrita "x%" é o operando x/100, nunca x. O mesmo vale para o resultado: a
   diferença entre duas partes é uma fração.
 - **Ponto percentual são duas contas.** Primeiro a `diferenca` das duas frações; depois o `produto`
-  desse resultado (`"conta": 0`) pelo cem. O texto escreve o resultado do produto ("ponto percentual").
+  desse resultado (o operando com `"conta"` igual à posição da diferença) pelo cem. O texto escreve o
+  resultado do produto ("ponto percentual").
 - Constante: só o cem, para "de cada cem" e para o ponto percentual: `{"id": null, "valor": 100,
   "conta": null}`.
 - Resultado de uma conta anterior da mesma frase: `{"id": null, "valor": null, "conta": <posição>}`.
