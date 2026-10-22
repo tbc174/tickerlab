@@ -150,3 +150,24 @@ def test_verificar_acusa_tabela_que_nao_se_refaz(acervo, monkeypatch):
     monkeypatch.setattr(coletar_cripto, "_originais_do_registro", _originais_da_kraken)
 
     assert coletar_cripto.main(["verificar"]) == 1
+
+
+def test_baixar_da_fonte_manda_o_agente_do_tickerlab(monkeypatch):
+    from base.arquivo.cliente_http import AGENTE
+
+    enviados = {}
+
+    class Resposta:
+        content = b"ok"
+
+        def raise_for_status(self):
+            pass
+
+    def obter(_url, **kwargs):
+        enviados.update(kwargs["headers"])
+        return Resposta()
+
+    monkeypatch.setattr(coletar_cripto.rede, "obter", obter)
+
+    assert coletar_cripto._baixar_da_fonte("https://exemplo.test/x") == b"ok"
+    assert enviados["User-Agent"] == AGENTE

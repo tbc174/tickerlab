@@ -25,6 +25,7 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
+from base.arquivo.cliente_http import AGENTE
 from src.banco.series import SerieDoAcervo, garantir_serie, gravar
 
 log = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ URL_DA_PAGINA_DO_PINK = "https://www.worldbank.org/en/research/commodity-markets
 URL_DO_FMI = "https://api.imf.org/external/sdmx/2.1/data/PCPS/G001.{indicadores}.USD.M"
 CABECALHO_CSV_DO_FMI = "application/vnd.sdmx.data+csv;version=1.0.0"
 TEMPO_LIMITE = 60
-USER_AGENT = {"User-Agent": "TickerLab (preços mensais de referência)"}
+USER_AGENT = {"User-Agent": AGENTE}
 
 ABA_MENSAL = "Monthly Prices"
 LINHA_DOS_NOMES = 5  # na aba mensal: nomes na linha 5 e unidades na 6 (a contar de 1)

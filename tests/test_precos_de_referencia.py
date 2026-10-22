@@ -228,3 +228,9 @@ def test_calendario_da_coleta():
     assert precos.deve_coletar("bm-pink", date(2026, 10, 20), tem_dados=False)
     assert precos.deve_coletar("fmi-pcps", date(2026, 10, 10), tem_dados=True)
     assert not precos.deve_coletar("fmi-pcps", date(2026, 10, 3), tem_dados=True)
+
+
+def test_pedidos_de_referencia_mandam_o_agente_do_tickerlab():
+    from base.arquivo.cliente_http import AGENTE
+
+    assert precos.USER_AGENT == {"User-Agent": AGENTE}
