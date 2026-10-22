@@ -41,22 +41,52 @@ def _data(valor: object) -> object:
 PREFIXO_DO_CIK = "CIK"  # empresas dos EUA (SEC) guardadas no lugar do CNPJ
 
 
-def gravar_setores(conexao: sa.Connection, setores: pd.DataFrame) -> int:
-    """Substitui o mapa CNPJ → setor da CVM (um cadastro vazio não apaga o guardado).
+TAMANHO_DO_SETOR = 120
+TAMANHO_DO_TEXTO_DO_CADASTRO = 40  # situação e categoria
 
-    Os setores das empresas dos EUA (`CIK...`, gravados por `gravar_setor`) ficam intactos.
+
+def _texto_do_cadastro(linha: dict, coluna: str, tamanho: int) -> str | None:
+    """A coluna de texto cortada no tamanho da tabela; vazia ou ausente vira nulo."""
+    texto = linha.get(coluna)
+    return (texto[:tamanho] or None) if isinstance(texto, str) else None
+
+
+def _data_do_cadastro(linha: dict, coluna: str) -> date | None:
+    valor = linha.get(coluna)
+    return valor if isinstance(valor, date) else None
+
+
+def _linha_do_cadastro(linha: dict, agora: datetime) -> dict:
+    return {
+        "cnpj": linha["cnpj"],
+        "setor": (linha["setor"] or "")[:TAMANHO_DO_SETOR],
+        "situacao": _texto_do_cadastro(linha, "situacao", TAMANHO_DO_TEXTO_DO_CADASTRO),
+        "situacao_desde": _data_do_cadastro(linha, "situacao_desde"),
+        "categoria": _texto_do_cadastro(
+            linha, "categoria", TAMANHO_DO_TEXTO_DO_CADASTRO
+        ),
+        "registro": _data_do_cadastro(linha, "registro"),
+        "atualizado_em": agora,
+    }
+
+
+def gravar_setores(
+    conexao: sa.Connection, setores: pd.DataFrame, agora: datetime | None = None
+) -> int:
+    """Substitui o cadastro da CVM (setor, situação, categoria, registro); vazio não apaga o guardado.
+
+    Os setores das empresas dos EUA (`CIK...`, gravados por `gravar_setor`) ficam intactos. Um
+    `setores` só com setor (de um arquivo antigo) grava as outras colunas nulas.
     """
     if setores.empty:
         return 0
+    agora = agora or datetime.now(UTC)
     conexao.execute(
         sa.delete(setores_cvm).where(~setores_cvm.c.cnpj.startswith(PREFIXO_DO_CIK))
     )
     conexao.execute(
         sa.insert(setores_cvm),
-        [
-            {"cnpj": l.cnpj, "setor": (l.setor or "")[:120]}
-            for l in setores.itertuples()
-        ],
+        [_linha_do_cadastro(linha, agora) for linha in setores.to_dict("records")],
     )
     return len(setores)
 
@@ -65,7 +95,9 @@ def gravar_setor(conexao: sa.Connection, chave: str, setor: str) -> None:
     """O setor de uma empresa só (as dos EUA chegam uma por vez, pela coleta da SEC)."""
     conexao.execute(sa.delete(setores_cvm).where(setores_cvm.c.cnpj == chave))
     conexao.execute(
-        sa.insert(setores_cvm).values(cnpj=chave, setor=(setor or "")[:120])
+        sa.insert(setores_cvm).values(
+            cnpj=chave, setor=(setor or "")[:TAMANHO_DO_SETOR]
+        )
     )
 
 

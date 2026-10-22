@@ -365,11 +365,18 @@ documentos_financeiros = sa.Table(
     sa.Column("link", sa.String(500), nullable=False),
     _momento("coletado_em"),
 )
+# o cadastro público da companhia (cad_cia_aberta.csv): setor e, desde a 0044, situação, categoria e
+# registro na CVM; as empresas dos EUA (`CIK...`) só têm o setor
 setores_cvm = sa.Table(
     "setores_cvm",
     metadata,
     sa.Column("cnpj", sa.String(18), primary_key=True),
     sa.Column("setor", sa.String(120), nullable=False),
+    sa.Column("situacao", sa.String(40)),  # ATIVO, CANCELADA...
+    sa.Column("situacao_desde", sa.Date),  # desde quando a situação vale
+    sa.Column("categoria", sa.String(40)),  # Categoria A ou B
+    sa.Column("registro", sa.Date),  # a data do registro na CVM
+    sa.Column("atualizado_em", sa.DateTime(timezone=True)),  # quando a coleta gravou
 )
 
 # Research (0008): dados públicos da CVM, iguais para todos (nada pessoal aqui)

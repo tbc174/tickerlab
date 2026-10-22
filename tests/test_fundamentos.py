@@ -214,6 +214,38 @@ def test_banco_usa_outro_plano_de_contas_e_e_reconhecido():
     )  # sem EBIT: plano financeiro
 
 
+def test_cadastro_traz_situacao_categoria_e_registro():
+    """O registro ativo vence o cancelado; as datas viram `date` e a data torta vira nulo."""
+    setores = dm.ler_setores((PASTA / "cad_cia_aberta.csv").read_bytes()).set_index(
+        "cnpj"
+    )
+    itau = setores.loc[ITAU]
+    assert (itau["situacao"], itau["categoria"]) == ("ATIVO", "Categoria A")
+    assert itau["situacao_desde"] == date(2024, 2, 15)
+    assert itau["registro"] == date(1991, 5, 21)
+    torto = (
+        "CNPJ_CIA;DENOM_SOCIAL;DT_REG;SIT;DT_INI_SIT;SETOR_ATIV;CATEG_REG\n"
+        "11.111.111/0001-11;EMPRESA A;;CANCELADA;31/12/1999;Têxtil;\n"
+    ).encode("cp1252")
+    linha = dm.ler_setores(torto).iloc[0]
+    assert linha["situacao"] == "CANCELADA" and linha["categoria"] == ""
+    assert linha["situacao_desde"] is None and linha["registro"] is None
+
+
+def test_cadastro_so_com_o_setor_da_as_outras_colunas_vazias():
+    """Um arquivo antigo, só com SIT e SETOR_ATIV, ainda serve: o setor vem, o resto fica vazio."""
+    antigo = (
+        "CNPJ_CIA;DENOM_SOCIAL;SIT;SETOR_ATIV\n00.000.000/0001-91;BANCO DO BRASIL;ATIVO;Bancos\n"
+    ).encode("cp1252")
+    linha = dm.ler_setores(antigo).iloc[0]
+    assert (linha["setor"], linha["situacao"], linha["categoria"]) == (
+        "Bancos",
+        "ATIVO",
+        "",
+    )
+    assert linha["situacao_desde"] is None and linha["registro"] is None
+
+
 def test_itr_fica_com_a_versao_mais_nova_e_separa_os_acumulados():
     contas, documentos = _ler("itr_cia_aberta_2026.zip", "ITR")
     petr = contas[contas["cnpj"] == PETROBRAS]

@@ -476,8 +476,34 @@ def ler_primeiras_entregas(conteudo_do_zip: bytes, documento: str) -> pd.DataFra
     return tabela[colunas].reset_index(drop=True)
 
 
+# as colunas do cadastro que vão para o banco do app; um arquivo sem a coluna dá a coluna vazia
+COLUNAS_DO_CADASTRO = {
+    "situacao": "SIT",
+    "situacao_desde": "DT_INI_SIT",
+    "categoria": "CATEG_REG",
+    "registro": "DT_REG",
+}
+DATAS_DO_CADASTRO = ("situacao_desde", "registro")
+
+
+def _coluna_do_cadastro(cadastro: pd.DataFrame, coluna: str) -> pd.Series:
+    if coluna not in cadastro.columns:
+        return pd.Series("", index=cadastro.index, dtype=str)
+    return cadastro[coluna].str.strip()
+
+
+def _datas(texto: pd.Series) -> pd.Series:
+    """`AAAA-MM-DD` → `date`; vazio ou inválido → None (o banco guarda nulo, não um chute)."""
+    datas = pd.to_datetime(texto, format="%Y-%m-%d", errors="coerce")
+    return datas.dt.date.astype(object).where(datas.notna(), None)
+
+
 def ler_setores(conteudo_csv: bytes) -> pd.DataFrame:
-    """CNPJ → setor de atividade (do registro ativo, quando houver mais de um)."""
+    """CNPJ → setor, situação (e desde quando), categoria e data de registro na CVM.
+
+    Do registro ativo, quando a companhia tem mais de um. O arquivo da CVM traz as colunas todas;
+    um arquivo só com o setor (como o de exemplo dos testes) dá as outras vazias.
+    """
     cadastro = pd.read_csv(
         io.BytesIO(conteudo_csv),
         sep=";",
@@ -488,12 +514,19 @@ def ler_setores(conteudo_csv: bytes) -> pd.DataFrame:
     )
     cadastro["ativo"] = cadastro["SIT"].str.upper().eq("ATIVO")
     cadastro = cadastro.sort_values("ativo").drop_duplicates("CNPJ_CIA", keep="last")
-    return pd.DataFrame(
+    setores = pd.DataFrame(
         {
             "cnpj": cadastro["CNPJ_CIA"].str.strip(),
             "setor": cadastro["SETOR_ATIV"].str.strip(),
+            **{
+                nome: _coluna_do_cadastro(cadastro, coluna)
+                for nome, coluna in COLUNAS_DO_CADASTRO.items()
+            },
         }
     ).reset_index(drop=True)
+    for coluna in DATAS_DO_CADASTRO:
+        setores[coluna] = _datas(setores[coluna])
+    return setores
 
 
 def e_financeira(setor: str, contas_da_empresa: Iterable[str] = ()) -> bool:
