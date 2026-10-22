@@ -102,5 +102,10 @@ def test_reapresentacao_sai_escrita_em_reais_e_com_as_datas(secoes) -> None:
 
 def test_secoes_novas_vem_na_ordem_do_molde_a() -> None:
     ordem = re_.ORDEM_DAS_SECOES
-    assert ordem.index("qualidade_do_lucro") == ordem.index("qualidade") + 1
+    assert (
+        ordem.index("qualidade_do_lucro") == ordem.index("caixa") + 2
+    )  # depois da geração de caixa
+    assert (
+        "qualidade" not in ordem
+    )  # uma seção só: os selos moram na da qualidade do lucro
     assert ordem.index("capital_e_acionistas") == ordem.index("ofertas_e_fundos") + 1

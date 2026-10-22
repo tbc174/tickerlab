@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base import cda, conselhos, fca, ligacoes, ofertas
+from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas
 from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
@@ -91,6 +91,10 @@ def _colunas_das_ofertas_e_conselhos() -> dict[str, list[str]]:
             conselhos.ler_remuneracao_extremos(fre_zip).columns
         ),
         "fre_diversidade": conselhos.colunas_da_diversidade(),
+        "fre_capital_social": list(fre_governanca.COLUNAS_DO_CAPITAL),
+        "fre_empregados": list(fre_governanca.COLUNAS_DOS_EMPREGADOS),
+        "fre_acionistas": list(fre_governanca.COLUNAS_DOS_ACIONISTAS),
+        "fre_partes_relacionadas": list(fre_governanca.COLUNAS_DAS_PARTES),
         "ofertas_antigas": list(ofertas.ler_antigas(ofertas_zip).columns),
         "ofertas_resolucao_160": list(ofertas.ler_resolucao_160(ofertas_zip).columns),
     }

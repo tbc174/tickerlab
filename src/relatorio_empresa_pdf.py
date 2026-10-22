@@ -215,7 +215,7 @@ def relatorio_da_empresa(
     if relatorio.em_conferencia:
         pdf.aviso_destacado(
             "Há números desta empresa em conferência pelas regras de qualidade: veja a seção "
-            "Qualidade dos dados."
+            "Qualidade do lucro."
         )
     pdf.aviso_destacado(relatorio.aviso_das_notas)
     if relatorio.analise:

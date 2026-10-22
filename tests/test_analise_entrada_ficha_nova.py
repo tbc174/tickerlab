@@ -63,7 +63,9 @@ def test_secao_nova_aparece_na_entrada_com_linhas_so_pro(entrada, chave):
     assert chave in entrada["secoes"]
     linhas = [linha for linha in entrada["linhas"] if linha["secao"] == chave]
     assert linhas, f"{chave} sumiu das linhas da entrada"
-    assert all(linha["so_pro"] for linha in linhas)
+    # os selos "em conferência" (regras fixas da CVM) valem para todos os planos
+    do_dossie = [li for li in linhas if "em conferência" not in (li.get("texto") or "")]
+    assert do_dossie and all(linha["so_pro"] for linha in do_dossie)
     assert any(linha.get("valor") is not None for linha in linhas)
 
 

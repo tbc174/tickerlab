@@ -389,7 +389,7 @@ ORDEM_V2 = [
     "retorno",
     "endividamento",
     "caixa",
-    "qualidade",
+    "qualidade_do_lucro",
     "dividendos",
     "ofertas_e_fundos",
     "auditor_e_controladas",

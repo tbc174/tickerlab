@@ -86,7 +86,7 @@ def test_numero_com_achado_aberto_ganha_o_selo(dados_da_weg):
         porque="A empresa refez o lucro no balanço seguinte.", conta="3.11",
     )  # fmt: skip
     relatorio = re_.montar(_entradas(dados_da_weg, achados=[achado]))
-    qualidade = relatorio.secao("qualidade")
+    qualidade = relatorio.secao("qualidade_do_lucro")
     assert any("refez o lucro" in p for p in qualidade.paragrafos)
     assert relatorio.em_conferencia
 
