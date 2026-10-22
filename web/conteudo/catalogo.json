@@ -728,7 +728,7 @@
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-21"
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ccee-pld",
@@ -749,21 +749,21 @@
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-21"
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-direto",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-21"
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-leiloes",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-21"
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "anp-vendas-distribuidora",
@@ -854,7 +854,7 @@
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-21"
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "aneel-samp",
@@ -1408,6 +1408,83 @@
       "marca": "a_confirmar",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-18"
+    },
+    {
+      "id": "bcb-mercado-imobiliario",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-str",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-consorcios",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-leiloes-selic",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-tarifas-instituicao",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-cosif",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-entes",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-entregas",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-rreo",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-rgf",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-dca",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
     }
   ],
   "tabelas": [

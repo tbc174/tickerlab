@@ -190,6 +190,40 @@ DESTINOS: dict[str, Destino] = {
     "bcb-pix-chaves": _planejada("serie-T/T9", _SO_LIGA_HOJE + " (ISPB ao banco)"),
     "tesouro-br-direto": _tabela("curva_juros"),
     "tesouro-br-leiloes": _tabela("curva_juros"),
+    # lote BCB e SICONFI da rodada 1 (linha 242 da fila): guardados; a carga na base é a linha seguinte
+    "bcb-mercado-imobiliario": _planejada(
+        "rodada-1/lote-bcb", "crédito imobiliário do Banco Central, por tipo e região"
+    ),
+    "bcb-str": _planejada(
+        "rodada-1/lote-bcb", "giro, TED e portabilidade de crédito no STR, por dia"
+    ),
+    "bcb-consorcios": _planejada(
+        "rodada-1/lote-bcb", "panorama trimestral dos consórcios, com o dicionário"
+    ),
+    "bcb-leiloes-selic": _planejada(
+        "rodada-1/lote-bcb", "leilões de títulos públicos e de swap cambial do BC"
+    ),
+    "bcb-tarifas-instituicao": _planejada(
+        "rodada-1/lote-bcb", "tarifas de cada banco listado"
+    ),
+    "bcb-cosif": _planejada(
+        "rodada-1/lote-bcb", "balancete mensal (4010) de cada banco listado"
+    ),
+    "tesouro-br-siconfi-entes": _planejada(
+        "rodada-1/lote-bcb", "estados e municípios do SICONFI, com o CNPJ do ente"
+    ),
+    "tesouro-br-siconfi-entregas": _planejada(
+        "rodada-1/lote-bcb", "o que cada estado e capital entregou ao SICONFI"
+    ),
+    "tesouro-br-siconfi-rreo": _planejada(
+        "rodada-1/lote-bcb", "RREO de estados e capitais, por bimestre"
+    ),
+    "tesouro-br-siconfi-rgf": _planejada(
+        "rodada-1/lote-bcb", "RGF do Executivo de estados e capitais, por quadrimestre"
+    ),
+    "tesouro-br-siconfi-dca": _planejada(
+        "rodada-1/lote-bcb", "balanço anual (DCA) de estados e capitais"
+    ),
     "tesouro-br-divida": _planejada(
         "serie-T/T7", "estoque e emissões da dívida federal, CAPAG e dívida dos estados"
     ),

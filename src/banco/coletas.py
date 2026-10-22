@@ -65,6 +65,13 @@ LICENCAS = {
     "tesouro-br-divida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-direto": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-leiloes": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    # SICONFI (rodada 1 da pesquisa de dados escondidos, lido em 22/10/2026): só estados e capitais,
+    # contas públicas sem pessoa física; o id leva "tesouro-br" para não cair na licença dos EUA
+    "tesouro-br-siconfi-entes": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-entregas": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-rreo": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-rgf": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-dca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
     # prévia do balanço (14/10/2026): licença declarada no conjunto no dados.gov.br (o rodapé CC
     # BY-ND dos sites é do conteúdo das páginas); confirmação por escrito pedida às agências
     "anp": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
@@ -175,6 +182,11 @@ REVENDA = {
     "tesouro-br-divida": VENDAVEL_ODBL,
     "tesouro-br-direto": VENDAVEL_ODBL,
     "tesouro-br-leiloes": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-entes": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-entregas": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-rreo": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-rgf": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-dca": VENDAVEL_ODBL,
     "anp": VENDAVEL_COM_ATRIBUICAO,
     "anac": VENDAVEL_COM_ATRIBUICAO,
     "ans": VENDAVEL_COM_ATRIBUICAO,
