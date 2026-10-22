@@ -20,11 +20,12 @@ companhias têm achado. Tipos simples (texto, número, data ISO), prontos para v
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any
 
 from src.dossie import Ficha, SecaoDaFicha, dia, para_data, reais
+from src.relatorio_empresa import Dossie, Secao
 
 SECAO_DE_CAPITAL = "capital_e_acionistas"
 SECAO_DE_QUALIDADE = "qualidade_do_lucro"
@@ -349,6 +350,44 @@ REGRAS: tuple[Callable[[Ficha, date], Cruzamento], ...] = (
 def cruzamentos_da_ficha(ficha: Ficha, hoje: date) -> list[Cruzamento]:
     """Os quatro cruzamentos da ficha, na mesma ordem sempre (com achado ou "sem achado")."""
     return [regra(ficha, hoje) for regra in REGRAS]
+
+
+# --- a seção da ficha ----------------------------------------------------------------------------
+CHAVE_DA_SECAO = "cruzamentos"
+TITULO_DA_SECAO = "Cruzamentos"
+SEM_FONTE = "Sem dado da ficha para olhar."
+LIMITE_DOS_CRUZAMENTOS = (
+    "Os cruzamentos são regras fixas sobre a ficha da noite (fundos, número refeito, auditor e o "
+    "agregado dos insiders, sem nomes); mostram o que os dados registram até o dia da ficha, "
+    "nunca o que vem depois, e não são recomendação de investimento."
+)
+
+
+def _paragrafo(c: Cruzamento) -> str:
+    """O achado (ou o que foi olhado), a data do dado e a fonte: nenhuma frase sem lastro (ADR 0100)."""
+    texto = c.frase if c.frase.startswith(c.titulo) else f"{c.titulo}: {c.frase}"
+    if not (c.medido_em and c.fontes):
+        return f"{texto} {SEM_FONTE}"
+    return f"{texto} Dado de {dia(c.medido_em)}. Fonte: {'; '.join(c.fontes)}."
+
+
+def secao_dos_cruzamentos(ficha: Ficha, hoje: date) -> Secao:
+    """Os quatro cruzamentos da ficha como seção do relatório (tela, PDF e API leem os parágrafos)."""
+    cruzados = cruzamentos_da_ficha(ficha, hoje)
+    return Secao(
+        CHAVE_DA_SECAO,
+        TITULO_DA_SECAO,
+        paragrafos=[_paragrafo(c) for c in cruzados],
+    )
+
+
+def com_os_cruzamentos(dossie: Dossie, ficha: Ficha, hoje: date) -> Dossie:
+    """O dossiê com a seção de cruzamentos e o cuidado dela; `hoje` corta o futuro."""
+    return replace(
+        dossie,
+        secoes=[*dossie.secoes, secao_dos_cruzamentos(ficha, hoje)],
+        limites=[*dossie.limites, LIMITE_DOS_CRUZAMENTOS],
+    )
 
 
 # --- o relatório do setor ------------------------------------------------------------------------
