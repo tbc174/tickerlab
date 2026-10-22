@@ -53,8 +53,8 @@ class Limites:
     pdfs_guardados: int = 10
     # links compartilhados ativos (onda 4): vencidos e revogados não contam
     links_ativos: int = 3
-    # sala de dados por operação (B-20, D6 do plano): só admins por enquanto, os mesmos números
-    # em todos os planos até a sala abrir para clientes (o tamanho de cada arquivo e as 300
+    # sala de dados por operação (B-20, D6 do plano): os mesmos números em todos os planos
+    # (a sala está aberta a toda conta logada; separar por plano é decisão de preço) (o tamanho de cada arquivo e as 300
     # páginas ficam em src/sala/arquivos.py: são regra de segurança, não de plano)
     operacoes_na_sala: int = 20
     documentos_por_operacao: int = 100

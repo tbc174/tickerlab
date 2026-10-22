@@ -16,11 +16,9 @@ import {
 } from "./telas/Avisos";
 import { Compartilhado } from "./telas/Compartilhado";
 import { Inicio } from "./telas/Inicio";
-import { Sala } from "./telas/Sala";
 
 // o link compartilhado (onda 4): abre sem login, só com o código depois do "#"
 const ROTA_PUBLICA_DO_LINK = "/c";
-export const ENDERECO_DA_SALA = "sala-de-dados";
 
 export function App() {
   const api = useConfiguracao();
@@ -67,8 +65,6 @@ export function App() {
             {TELAS_DO_APP.map((pagina) => (
               <Route key={pagina.chave} path={pagina.url} element={telaDa(pagina)} />
             ))}
-            {/* só administradores: fora do pacote público de páginas (src/paginas.py, somente_admin) */}
-            <Route path={ENDERECO_DA_SALA} element={<Sala />} />
             <Route path="*" element={<NaoEncontrada />} />
           </Routes>
         </Moldura>

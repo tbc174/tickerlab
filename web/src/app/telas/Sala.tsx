@@ -1,8 +1,7 @@
-// A sala de dados por operação (B-20, PR 5), só para administradores: as operações da conta, e em cada
+// A sala de dados por operação (B-20, PR 5), aberta a toda conta logada: as operações da conta, e em cada
 // uma os documentos, as evidências, as contradições entre documentos, o checklist do tipo da operação,
 // o aviso de prazo e "Baixar a sala". A tela não calcula nem escreve regra: todo texto, rótulo, prazo
-// e descrição de contradição vem da API (src/api_v1/sala_painel.py). Quem não é administrador não vê o
-// link no menu e, se chegar ao endereço, recebe "não encontrada" (a API também responde 404).
+// e descrição de contradição vem da API (src/api_v1/sala_painel.py). A API só devolve a sala da própria conta.
 import { type FormEvent, type ReactNode, useRef, useState } from "react";
 import { ErroDaApi, baixar, mudar } from "../api";
 import { Carregando } from "../Carregando";
@@ -17,7 +16,6 @@ import type {
 } from "../tiposDaSala";
 import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
-import { NaoEncontrada } from "./Avisos";
 
 const KB = 1024;
 const MB = KB * KB;
@@ -448,8 +446,6 @@ function ConteudoDaSala() {
 }
 
 export function Sala() {
-  const eu = useConta()?.eu ?? null;
-  if (!eu?.administrador) return <NaoEncontrada />;
   return (
     <section>
       <header className="cabecalho-da-tela">

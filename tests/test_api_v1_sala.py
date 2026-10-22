@@ -111,21 +111,31 @@ def _chamadas(operacao_id, documento_id):
     ]
 
 
-def test_toda_rota_da_sala_exige_conta_de_admin():
-    """Rota nova na sala sem a trava de admin falha aqui, antes de chegar à produção."""
+def test_toda_rota_da_sala_exige_conta_logada():
+    """Rota nova na sala sem exigir login falha aqui, antes de chegar à produção."""
     for rota in rotas_da_sala.router.routes:
         dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
-        assert rotas_da_sala.conta_da_sala in dependencias, rota.path  # type: ignore[attr-defined]
+        assert rotas_da_sala.conta_logada in dependencias, rota.path  # type: ignore[attr-defined]
 
 
-def test_quem_nao_e_admin_nao_ve_a_sala(carla, ana):
-    operacao = _criar(ana)
-    documento = _documento(ana, operacao)
-    for metodo, endereco, corpo in _chamadas(operacao, documento):
+def test_quem_nao_e_admin_usa_a_propria_sala_e_so_ela(carla, ana):
+    """D13: a sala está aberta a toda conta logada; o isolamento é por conta e por operação."""
+    operacao_da_ana = _criar(ana)
+    documento_da_ana = _documento(ana, operacao_da_ana)
+    # a conta comum cria e usa a sua própria operação
+    propria = _criar(carla, nome="Operação da Carla")
+    _documento(carla, propria)
+    nomes = [o["nome"] for o in carla.get("/v1/operacoes").json()]
+    assert nomes == ["Operação da Carla"]
+    assert carla.get(f"/v1/operacoes/{propria}").status_code == 200
+    # tudo o que é da Ana dá o mesmo 404 de um id que não existe
+    for metodo, endereco, corpo in _chamadas(operacao_da_ana, documento_da_ana):
+        if operacao_da_ana not in endereco:  # listar e criar são da própria conta
+            continue
         resposta = carla.request(metodo, endereco, json=corpo)
         assert resposta.status_code == 404, (metodo, endereco)
     resposta = carla.post(
-        f"/v1/operacoes/{operacao}/documentos",
+        f"/v1/operacoes/{operacao_da_ana}/documentos",
         files={"arquivo": ("a.pdf", gerar.pdf("x"), "application/pdf")},
     )
     assert resposta.status_code == 404

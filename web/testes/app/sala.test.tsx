@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// A sala de dados no app novo (B-20, PR 5): só para administradores, tudo vindo da API. Dados de mentira:
+// A sala de dados no app novo (B-20, PR 5): aberta a toda conta logada, tudo vindo da API. Dados de mentira:
 // nenhum documento real.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -129,10 +129,12 @@ describe("sala de dados", () => {
     expect(screen.getByText("prazo perto")).toBeTruthy();
   });
 
-  it("quem não é admin não vê o link e, pelo endereço, recebe 'não encontrada'", async () => {
+  it("quem não é admin também vê o link no menu e a própria sala", async () => {
     abrir(undefined, ANA);
-    await screen.findByRole("heading", { name: /não encontrada/i });
-    expect(screen.queryByRole("link", { name: "Sala de dados" })).toBeNull();
+    await screen.findByRole("heading", { name: "Sala de dados" });
+    expect(screen.getAllByRole("link", { name: "Sala de dados" }).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/A sala guarda os documentos/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /não encontrada/i })).toBeNull();
   });
 
   it("abrir a operação mostra documentos, evidências, contradições e checklist, com os textos da API", async () => {
