@@ -8,9 +8,11 @@ Lê os originais que o arquivista já guardou (não baixa nada) e grava, com man
 (`gravar_com_versoes`: com as mesmas origens, nada é lido de novo):
 - `<base>/ofertas/antigas.parquet` e `<base>/ofertas/resolucao_160.parquet` (a baixada mais nova);
 - do FRE de cada ano, `<base>/fre_<tabela>/<ano>.parquet` para conselho, comitês, remuneração,
-  extremos da remuneração, diversidade, capital social e empregados (`base/fre_governanca.py`), juntando todas as baixadas guardadas do ano (as versões
+  extremos da remuneração, diversidade, capital social, empregados, acionistas e partes
+  relacionadas (`base/fre_governanca.py`), juntando todas as baixadas guardadas do ano (as versões
   antigas dos formulários continuam valendo com a data delas).
-Nenhuma pessoa entra: as colunas de nome, CPF, nascimento e currículo nem são lidas. Recusa rodar sem
+Nenhuma pessoa entra: as colunas de nome, CPF, nascimento e currículo nem são lidas; acionista e
+parte relacionada pessoa física só somados, sem nome nem documento (ADR 0075). Recusa rodar sem
 a versão do código (exigência 13 da ADR 0055).
 """
 
@@ -56,6 +58,11 @@ TABELAS_DO_FRE: dict[str, tuple[Callable[[bytes], pd.DataFrame], list[str]]] = {
     "fre_empregados": (
         fre_governanca.ler_empregados,
         [*DOCUMENTO, "recorte", "grupo"],
+    ),
+    "fre_acionistas": (fre_governanca.ler_acionistas, [*DOCUMENTO, "id_acionista"]),
+    "fre_partes_relacionadas": (
+        fre_governanca.ler_partes_relacionadas,
+        [*DOCUMENTO, "linha"],
     ),
 }
 # nome do Parquet → (leitor, colunas de ordem do hash)

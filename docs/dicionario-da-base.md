@@ -1359,6 +1359,90 @@ Empregados por região (recorte `local`) e por posição, liderança ou não (re
 | `regiao_exterior` | Só no recorte `posicao`: como a CVM publica (`regiao_exterior`) | número com decimais, na unidade da fonte |
 | `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
 
+## `fre_acionistas`
+
+Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física, com as ações e o percentual de cada espécie, desde 2010. Empresa e fundo entram com nome e CNPJ; pessoa física (ou CPF, ou nome sem cara de empresa) só somada por grupo, sem nome, CPF, UF nem nacionalidade (ADR 0075, item 5); o representante legal nem é lido
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim
+- **Chaves:** `cnpj`, `referencia`, `versao`, `id_acionista`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_acionistas/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `id_acionista` | Identificador do acionista na CVM; nas pessoas somadas, "pf:<grupo>:<controlador S/N>:<acordo S/N>" (o grupo é o `id_acionista_relacionado` ou "raiz") | texto |
+| `tipo_acionista` | `pj` (empresa ou fundo), `pf_somada` (pessoas físicas do grupo, somadas), `outros` ou `tesouraria` (as linhas fixas da CVM) | texto |
+| `acionista` | Nome do acionista; só em `pj` | texto |
+| `cnpj_acionista` | CNPJ do acionista; só em `pj` (vazio quando a CVM traz só zeros) | texto |
+| `id_acionista_relacionado` | De quem a linha é acionista (o `id_acionista` do grupo); vazio na companhia e quando o grupo é pessoa física | texto |
+| `tipo_relacionado` | PJ ou PF: o tipo de quem a linha é acionista | texto |
+| `cnpj_acionista_relacionado` | CNPJ de quem a linha é acionista; vazio quando é pessoa física | texto |
+| `acoes_ordinarias` | Ações ordinárias | ações |
+| `percentual_ordinarias` | Percentual das ações ordinárias (0 a 100) | número com decimais, na unidade da fonte |
+| `acoes_preferenciais` | Ações preferenciais | ações |
+| `percentual_preferenciais` | Percentual das ações preferenciais (0 a 100) | número com decimais, na unidade da fonte |
+| `acoes_total` | Total de ações | ações |
+| `percentual_total` | Percentual do total de ações (0 a 100) | número com decimais, na unidade da fonte |
+| `controlador` | O acionista é controlador? | verdadeiro ou falso |
+| `acordo_de_acionistas` | Participa de acordo de acionistas? | verdadeiro ou falso |
+| `residente_exterior` | Reside no exterior? Só em `pj` | verdadeiro ou falso |
+| `nacionalidade` | Nacionalidade; só em `pj` | texto |
+| `uf` | UF; só em `pj` | texto |
+| `composicao_em` | Data da composição do capital informada | data (dia) |
+| `ultima_alteracao_em` | Data da última alteração da participação | data (dia) |
+| `acionistas_no_grupo` | Quantos acionistas a linha soma (1 fora das pessoas somadas) | número inteiro |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
+## `fre_partes_relacionadas`
+
+Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação, os montantes, a taxa e a posição da companhia. Empresa entra com nome e CNPJ; pessoa física (ou CPF, ou sem tipo e nome sem cara de empresa) só somada por tipo e relação, sem nome nem documento (ADR 0075, item 5); o objeto e as garantias (texto livre) nem são lidos
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim
+- **Chaves:** `cnpj`, `referencia`, `versao`, `linha`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_partes_relacionadas/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `linha` | Posição da transação no documento ("1", "2"...); nas pessoas somadas, "pf:<tipo>:<relacao>" | texto |
+| `tipo_pessoa` | PJ, PF ou `nao_informado`, como a companhia declara | texto |
+| `contraparte` | Nome da parte relacionada; vazio nas pessoas somadas | texto |
+| `cnpj_contraparte` | CNPJ da parte relacionada; vazio nas pessoas somadas | texto |
+| `relacao` | Categoria da relação com a companhia (controle_comum, controle_conjunto, controladora, controlada, coligada, administracao, familiar, acionista, outra, nao_informada), tirada do texto livre | texto |
+| `data_transacao` | Data da transação; vazio nas pessoas somadas | data (dia) |
+| `montante_envolvido` | Montante envolvido (soma nas pessoas somadas) | reais (R$), já multiplicado pela escala informada |
+| `saldo_existente` | Saldo existente (soma nas pessoas somadas) | reais (R$), já multiplicado pela escala informada |
+| `montante_de_interesse` | Montante de interesse da parte relacionada (soma nas pessoas somadas) | reais (R$), já multiplicado pela escala informada |
+| `emprestimo` | É empréstimo ou dívida? (alguma, nas pessoas somadas) | verdadeiro ou falso |
+| `taxa_de_juros` | Taxa de juros em % quando é um número ("3,5%"); "CDI + 1%" e "N/A" ficam vazios | número com decimais, na unidade da fonte |
+| `posicao_contratual` | `credor`, `devedor` ou `outra`: a posição da companhia | texto |
+| `transacoes` | Quantas transações a linha soma (1 fora das pessoas somadas) | número inteiro |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
 ## `ofertas_antigas`
 
 Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo (sem chave única: a ICVM 476 não tem número de processo). O nome do vendedor e o nome e o documento do ofertante sem CNPJ nunca entram
