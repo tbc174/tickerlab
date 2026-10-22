@@ -23,7 +23,7 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
-from src import bcb, ibge_sidra
+from src import bcb, ibge_sidra, rede
 from src.banco import series as acervo_de_series
 from src.banco.coletas import buscar_com_registro
 from src.banco.conexao import criar_engine, migrar_para
@@ -116,7 +116,7 @@ def coletar_tabela(
 def coletar_tudo(
     motor: sa.Engine,
     hoje: date,
-    buscar: Callable[..., requests.Response] = requests.get,
+    buscar: Callable[..., requests.Response] = rede.get_com_agente,
     so: str | None = None,
 ) -> bool:
     """Roda cada tabela (ou só a de nome `so`); devolve False se alguma falhou (as outras seguem)."""

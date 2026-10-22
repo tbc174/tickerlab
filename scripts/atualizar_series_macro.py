@@ -21,7 +21,7 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
-from src import bcb, dados, precos_de_referencia, tesouro_eua
+from src import bcb, dados, precos_de_referencia, rede, tesouro_eua
 from src.banco import series as acervo_de_series
 from src.banco.coletas import buscar_com_registro
 from src.banco.conexao import criar_engine, migrar_para
@@ -223,7 +223,7 @@ def coletar_yahoo(motor: sa.Engine, hoje: date, buscar: BuscarYahoo) -> int:
 def coletar_tudo(
     motor: sa.Engine,
     hoje: date,
-    buscar: Callable[..., requests.Response] = requests.get,
+    buscar: Callable[..., requests.Response] = rede.get_com_agente,
     buscar_yahoo: BuscarYahoo = _fechamento_do_yahoo,
 ) -> bool:
     """Roda cada fonte; devolve False se alguma falhou (as outras seguem)."""

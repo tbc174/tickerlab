@@ -25,6 +25,7 @@ import requests
 import sqlalchemy as sa
 from defusedxml import DefusedXmlException
 
+from base.arquivo.agente import AGENTE
 from base.enet import DocumentoEnet, ler_xml_enet, limpar_xml
 from base.enet_antigo import (
     FormatoNaoLido,
@@ -43,7 +44,7 @@ log = logging.getLogger(__name__)
 FONTE = "cvm-enet"
 PAUSA_ENTRE_PEDIDOS = 1.5  # segundos entre o fim de um pedido e o começo do próximo
 TEMPO_LIMITE = 120  # segundos por pacote
-CABECALHO = {"User-Agent": "TickerLab (contato@tickerlab.com.br)"}
+CABECALHO = {"User-Agent": AGENTE}
 # o XML do documento dentro do pacote: 014206DFP31-12-2022v1.xml, 001023ITR31-03-2026v1.xml
 NOME_DO_XML = re.compile(r"^\d+(DFP|ITR)\d{2}-\d{2}-\d{4}v\d+\.xml$", re.IGNORECASE)
 # o que um pacote ruim pode causar (rede, zip estragado, XML inválido ou malicioso, valor estranho);

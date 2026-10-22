@@ -37,7 +37,7 @@ import sqlalchemy as sa
 from base import bcb_ifdata, bcb_scr
 from base.parquet import GRAVADO, IGUAL, gravar_com_versoes, gravar_tabela
 from base.publicacao import dia_da_coleta
-from src import acervo
+from src import acervo, rede
 from src.banco.coletas import (
     coletas_guardadas,
     com_registro,
@@ -64,11 +64,7 @@ ORDEM_DO_CADASTRO = ["cod_inst"]
 def _baixar_da_fonte(url: str) -> bytes | None:
     for tentativa in (1, 2):
         try:
-            resposta = requests.get(
-                url,
-                timeout=900,
-                headers={"User-Agent": "TickerLab (contato@tickerlab.com.br)"},
-            )
+            resposta = rede.get_com_agente(url, timeout=900)
             if resposta.status_code == NAO_ENCONTRADO:
                 return None
             resposta.raise_for_status()

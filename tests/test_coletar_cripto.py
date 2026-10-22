@@ -167,7 +167,7 @@ def test_baixar_da_fonte_manda_o_agente_do_tickerlab(monkeypatch):
         enviados.update(kwargs["headers"])
         return Resposta()
 
-    monkeypatch.setattr(coletar_cripto.rede, "obter", obter)
+    monkeypatch.setattr("requests.get", obter)
 
     assert coletar_cripto._baixar_da_fonte("https://exemplo.test/x") == b"ok"
     assert enviados["User-Agent"] == AGENTE

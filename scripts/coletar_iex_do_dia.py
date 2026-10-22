@@ -49,7 +49,7 @@ import pandas as pd
 import requests
 import urllib3
 
-from src import calendario_nyse, catalogo, iex_tops
+from src import calendario_nyse, catalogo, iex_tops, rede
 from src.barras_intradiarias import (
     cobertura_por_simbolo,
     montar_barras,
@@ -105,7 +105,7 @@ def dias_que_faltam(hoje: date, pasta: Path = PASTA) -> list[date]:
     ]
 
 
-def endereco_do_tops(dia: date, buscar: Callable = requests.get) -> str | None:
+def endereco_do_tops(dia: date, buscar: Callable = rede.get_com_agente) -> str | None:
     """O link do TOPS do dia, ou None se a IEX não tem arquivo para a data."""
     resposta = buscar(
         LISTA_DO_HIST.format(data=dia.strftime("%Y%m%d")), timeout=TEMPO_LIMITE_S
@@ -153,7 +153,7 @@ def coletar_dia(
     dia: date,
     simbolos: set[str],
     pasta: Path = PASTA,
-    buscar: Callable = requests.get,
+    buscar: Callable = rede.get_com_agente,
 ) -> dict | str:
     """Baixa, lê e grava as barras de `dia`. Devolve o resumo, ou `SEM_ARQUIVO`.
 
@@ -339,7 +339,7 @@ def _coletar_e_contar(
 
 def main(
     argumentos: list[str] | None = None,
-    buscar: Callable = requests.get,
+    buscar: Callable = rede.get_com_agente,
     oficiais: Callable[[date, list[str]], pd.Series] | None = None,
 ) -> int:
     """0 = tudo certo (inclusive sem nada a coletar); 1 = algum dia falhou."""
