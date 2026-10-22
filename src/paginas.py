@@ -817,6 +817,8 @@ ROTAS_DA_SALA = frozenset(
         ("PATCH", "/v1/operacoes/{operacao_id}/contradicoes/{contradicao_id}"),
         ("GET", "/v1/operacoes/{operacao_id}/checklist"),
         ("PATCH", "/v1/operacoes/{operacao_id}/checklist/{codigo}"),
+        ("GET", "/v1/operacoes/{operacao_id}/garantias"),
+        ("GET", "/v1/operacoes/{operacao_id}/exposicoes"),
     }
 )
 
