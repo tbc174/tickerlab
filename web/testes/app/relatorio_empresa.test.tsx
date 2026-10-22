@@ -361,4 +361,20 @@ describe("a análise escrita no relatório", () => {
     expect(screen.queryByRole("heading", { name: "A análise" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Os dados" })).toBeNull();
   });
+
+  it("Baixar deck (PPT): pede a apresentação da ficha em pptx pelo ticker e entrega o arquivo", async () => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => "blob:ppt"), revokeObjectURL: vi.fn() });
+    const clicar = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { buscar } = abrirApp("/relatorio-empresa?ticker=PETR4.SA", {
+      rotas: (endereco) => {
+        if (endereco.startsWith("/api/v1/relatorio-empresa/apresentacao")) return new Response("PK", { status: 200 });
+        return endereco.startsWith("/api/v1/relatorio-empresa") ? respostaJson(200, relatorio(false)) : undefined;
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Baixar deck (PPT)" }));
+    await vi.waitFor(() => expect(clicar).toHaveBeenCalled());
+    const [[endereco]] = buscar.mock.calls.filter(([e]) => String(e).includes("/apresentacao"));
+    expect(String(endereco)).toBe("/api/v1/relatorio-empresa/apresentacao?ticker=PETR4.SA&formato=pptx");
+    clicar.mockRestore();
+  });
 });

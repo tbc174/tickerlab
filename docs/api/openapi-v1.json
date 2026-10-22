@@ -6627,6 +6627,54 @@
         "summary": "Relatorio Da Empresa"
       }
     },
+    "/v1/relatorio-empresa/apresentacao": {
+      "get": {
+        "description": "A ficha da empresa como deck (PDF ou PPT), com \"Limites e cuidados\" (mesmo acesso e plano\nda rota acima).",
+        "operationId": "relatorio_da_empresa_em_deck_v1_relatorio_empresa_apresentacao_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "formato",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Formato",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Da Empresa Em Deck"
+      }
+    },
     "/v1/relatorio-setor": {
       "get": {
         "description": "O relatório do setor, montado para o plano da conta: quem está no setor e o que não temos\nvêm sempre; os números da base vêm trancados sem o dossiê da base no plano.",
@@ -6666,6 +6714,53 @@
           }
         },
         "summary": "Relatorio Do Setor"
+      }
+    },
+    "/v1/relatorio-setor/apresentacao": {
+      "get": {
+        "description": "O relatório do setor como deck (PDF ou PPT), com \"Limites e cuidados\" (mesmo acesso e plano\nda rota do PDF).",
+        "operationId": "relatorio_do_setor_em_deck_v1_relatorio_setor_apresentacao_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "setor",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Setor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "formato",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Formato",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Do Setor Em Deck"
       }
     },
     "/v1/relatorio-setor/pdf": {

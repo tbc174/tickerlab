@@ -185,3 +185,16 @@ def test_plano_gratuito_ve_o_convite_sem_os_numeros(banco, tmp_path, monkeypatch
     )
     rotulos = [link.proto.label for link in app.get("page_link")]
     assert rotulos.count("Conhecer o plano Pro") == 1
+
+
+def test_no_modo_local_gera_e_baixa_o_deck_em_pdf_e_ppt(banco):
+    _coletar(banco)
+    app = _abrir("PETR4.SA")
+    assert not [b for b in app.get("download_button") if "deck" in b.proto.label]
+    app.button(key="empresa_gerar_deck").click().run()
+    assert not app.exception
+    rotulos = [b.proto.label for b in app.get("download_button")]
+    assert "Baixar o deck (PDF)" in rotulos
+    assert "Baixar o deck (PPT)" in rotulos
+    # o deck não conta como relatório do plano
+    assert "Baixar o PDF" not in rotulos

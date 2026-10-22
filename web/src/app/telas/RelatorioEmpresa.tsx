@@ -4,6 +4,8 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
+import { useConta } from "../conta";
+import { ErroDaApi, baixar } from "../api";
 import type {
   AnaliseDaEmpresaV1,
   ItemDoRelatorioV1,
@@ -270,10 +272,54 @@ export function fimDoPrimeiroBloco(secoes: SecaoDoRelatorioV1[]): number {
   return (depois < 0 ? secoes.length : depois) - 1;
 }
 
-function Resultado({ relatorio }: { relatorio: RelatorioDaEmpresaV1 }) {
+const DECKS: { rotulo: string; formato: "pdf" | "pptx" }[] = [
+  { rotulo: "Baixar deck (PDF)", formato: "pdf" },
+  { rotulo: "Baixar deck (PPT)", formato: "pptx" },
+];
+
+function BaixarDeck({ rota, ticker }: { rota: string; ticker: string }) {
+  const token = useConta()?.token ?? null;
+  const [baixando, setBaixando] = useState(false);
+  const [falha, setFalha] = useState<string | null>(null);
+  const baixarAgora = (formato: "pdf" | "pptx") => {
+    if (token === null) return;
+    setBaixando(true);
+    setFalha(null);
+    baixar(`${rota}/apresentacao`, token, undefined, { ticker, formato })
+      .then((arquivo) => {
+        const endereco = URL.createObjectURL(arquivo);
+        const ancora = document.createElement("a");
+        ancora.href = endereco;
+        ancora.download = `ficha-${ticker.replace(".SA", "")}-tickerlab.${formato}`;
+        ancora.click();
+        URL.revokeObjectURL(endereco);
+      })
+      .catch((erro: unknown) =>
+        setFalha(erro instanceof ErroDaApi ? erro.message : "Não deu agora. Tente de novo em instantes."),
+      )
+      .finally(() => setBaixando(false));
+  };
+  return (
+    <>
+      {DECKS.map(({ rotulo, formato }) => (
+        <button key={formato} type="button" className="botao" disabled={baixando} onClick={() => baixarAgora(formato)}>
+          {rotulo}
+        </button>
+      ))}
+      {falha ? (
+        <p className="erro-do-app" role="alert">
+          {falha}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function Resultado({ relatorio, rota }: { relatorio: RelatorioDaEmpresaV1; rota: string }) {
   const fimDoBloco = fimDoPrimeiroBloco(relatorio.secoes);
   return (
     <>
+      <BaixarDeck rota={rota} ticker={relatorio.ticker} />
       <p>
         <strong>{relatorio.empresa}</strong> ·{" "}
         {relatorio.setor || "setor não informado"} · CNPJ {relatorio.cnpj}
@@ -304,7 +350,7 @@ export function RelatorioEmpresa({ pagina }: { pagina: PaginaDoApp }) {
     <TelaDoContrato<RelatorioDaEmpresaV1>
       pagina={pagina}
       carregando="Montando o relatório…"
-      resultado={(relatorio) => <Resultado relatorio={relatorio} />}
+      resultado={(relatorio) => <Resultado relatorio={relatorio} rota={pagina.contrato?.rota ?? ""} />}
     />
   );
 }

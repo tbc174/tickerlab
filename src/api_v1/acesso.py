@@ -272,6 +272,8 @@ ROTAS_DA_CONTA = frozenset(
 ROTAS_DE_ARQUIVO = {
     "/v1/busca-por-cnpj/pdf": "/v1/busca-por-cnpj",
     "/v1/relatorio-setor/pdf": "/v1/relatorio-setor",
+    "/v1/relatorio-setor/apresentacao": "/v1/relatorio-setor",
+    "/v1/relatorio-empresa/apresentacao": "/v1/relatorio-empresa",
 }
 
 

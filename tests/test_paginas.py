@@ -296,6 +296,8 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     assert set(_openapi()["paths"]) - usadas == {
         "/v1/busca-por-cnpj/pdf",
         "/v1/relatorio-setor/pdf",
+        "/v1/relatorio-setor/apresentacao",
+        "/v1/relatorio-empresa/apresentacao",
         "/v1/eu",
         "/v1/conta",
         "/v1/sair",
