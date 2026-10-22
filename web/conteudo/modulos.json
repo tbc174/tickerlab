@@ -316,9 +316,9 @@
         "ticker": null
       },
       {
-        "descricao": "De onde veio cada número, quando foi conferido e o que está faltando.",
+        "descricao": "Reapresentações, troca de auditor e os números em conferência, cada um com a fonte e a data.",
         "disponivel": true,
-        "nome": "Qualidade dos dados",
+        "nome": "Qualidade do lucro",
         "pagina_do_app": "fundamentos",
         "pagina_do_site": null,
         "ticker": "PETR4.SA"
