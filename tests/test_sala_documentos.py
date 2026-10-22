@@ -28,6 +28,15 @@ from tests import ajudantes_da_sala as gerar
 HOJE = date(2026, 10, 21)
 NOME_SENSIVEL = "Laudo da Fulana de Tal 123.pdf"
 PASTA_DA_SALA = Path(__file__).resolve().parent.parent / "src" / "sala"
+_SRC = PASTA_DA_SALA.parent
+# a sala inteira: os documentos, a ficha de originação (B-33) e as garantias (B-17)
+ARQUIVOS_DA_SALA = (
+    *PASTA_DA_SALA.glob("*.py"),
+    _SRC / "banco" / "sala.py",
+    _SRC / "banco" / "originacao.py",
+    _SRC / "banco" / "garantias.py",
+    *(_SRC / "garantias").glob("*.py"),
+)
 
 
 @pytest.fixture(autouse=True)
@@ -465,7 +474,11 @@ def test_nome_do_arquivo_e_texto_nunca_vao_para_log_nem_auditoria(
 
 
 def test_a_sala_nao_importa_modelo_de_linguagem_nem_cliente_de_rede():
-    """D9: nenhum modelo lê o documento, e nada da sala fala com a internet."""
+    """D9: nenhum modelo lê o documento, e nada da sala fala com a internet.
+
+    Vale também para a ficha de originação e as garantias, que a política promete fora de
+    qualquer modelo de linguagem (texto 14).
+    """
     proibidos = {
         "anthropic",
         "httpx",
@@ -475,7 +488,7 @@ def test_a_sala_nao_importa_modelo_de_linguagem_nem_cliente_de_rede():
         "curl_cffi",
         "http",
     }
-    for arquivo in PASTA_DA_SALA.glob("*.py"):
+    for arquivo in ARQUIVOS_DA_SALA:
         for no in ast.walk(ast.parse(arquivo.read_text(encoding="utf-8"))):
             nomes = []
             if isinstance(no, ast.Import):
