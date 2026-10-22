@@ -111,6 +111,16 @@ LICENCAS = {
     "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
+    # lote EUA (termos lidos em 22/10/2026): obra do governo federal dos EUA é domínio público; citar
+    # a agência. O Fed e o NY Fed avisam que há séries de terceiros dentro de alguns conjuntos
+    "treasury": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+    "fed": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+    "bls": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+    "eia": "Domínio público (Energy Information Administration; citar a EIA)",
+    "ofr": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+    "nyfed": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+    "tic": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+    "census": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -204,6 +214,15 @@ REVENDA = {
     "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "ico": NAO_COMERCIAL,  # PDF sem termos lidos; coleta e uso com a fonte citada (ADR 0102)
     "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
+    # lote EUA: obra do governo dos EUA, domínio público; o dado do NY Fed leva a atribuição
+    "treasury": VENDAVEL_COM_ATRIBUICAO,
+    "fed": VENDAVEL_COM_ATRIBUICAO,
+    "bls": VENDAVEL_COM_ATRIBUICAO,
+    "eia": VENDAVEL_COM_ATRIBUICAO,
+    "ofr": VENDAVEL_COM_ATRIBUICAO,
+    "nyfed": VENDAVEL_COM_ATRIBUICAO,
+    "tic": VENDAVEL_COM_ATRIBUICAO,
+    "census": VENDAVEL_COM_ATRIBUICAO,
 }
 
 

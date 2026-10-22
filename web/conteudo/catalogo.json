@@ -437,6 +437,34 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-fed",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-bls",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-eia",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-nyfed",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-fnc-colombia",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -1009,6 +1037,356 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-indice-diario",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-indice-trimestral",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-form-d",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-13f",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-form-d-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-13f-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-busca-texto",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fed-ddp-h15",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h10",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h41",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h8",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h6",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-g19",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-z1",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-chgdel",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-divida-total",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-juros-medios",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-cambio-oficial",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-leiloes",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-resultado-mensal",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-receitas-e-despesas",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-vendas-de-titulos",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-curva-juros",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-curva-juros-historico",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-cu",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-cw",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ce",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-wp",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-pc",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-pr",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ip",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-jt",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ap",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ei",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-la",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eia-wpsr",
+      "licenca": "Domínio público (Energy Information Administration; citar a EIA)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ofr-estresse-financeiro",
+      "licenca": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ofr-monitor-de-funding",
+      "licenca": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ofr-monitor-de-hedge-funds",
+      "licenca": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nyfed-juros-referencia",
+      "licenca": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nyfed-juros-referencia-historico",
+      "licenca": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nyfed-dealers-primarios",
+      "licenca": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tic-detentores-estrangeiros",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tic-posicoes-de-longo-prazo",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tic-carteira-global",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "usda-psd-todas",
+      "licenca": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-18"
+    },
+    {
+      "id": "census-comercio-exterior",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "census-varejo",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "census-construcao",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "census-industria",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "contrapartes-cafe",
