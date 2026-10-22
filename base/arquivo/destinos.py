@@ -58,6 +58,85 @@ _B3_BDI_CONTRA_OS_TERMOS = (
     "18/10/2026 de guardar a cópia até a B3 autorizar por escrito; nada em tela, API ou tabela"
 )
 
+
+def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
+    return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
+
+
+_LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
+    "câmbio, juros, inflação e crédito da zona do euro nas séries do BCE": _ids(
+        "bce",
+        "cambio-dolar",
+        "cambio-real",
+        "curva-10a",
+        "juro-principal",
+        "inflacao-ipch",
+        "balanco-bancos",
+        "juro-credito",
+    ),
+    "indicador antecedente composto de 12 países na OCDE (Brasil primeiro)": (
+        "ocde-cli",
+    ),
+    "séries da União Europeia no Eurostat (só países da UE)": _ids(
+        "eurostat",
+        "confianca",
+        "desemprego",
+        "ipch",
+        "juro-longo",
+        "pib",
+        "producao-industrial",
+    ),
+    "câmbio, juros, crédito e imóveis nas séries do BIS (marca não comercial)": _ids(
+        "bis",
+        "cambio",
+        "cambio-efetivo-nominal",
+        "cambio-efetivo-real",
+        "inflacao-longa",
+        "juro-dos-bancos-centrais",
+        "lacuna-de-credito",
+        "preco-de-imoveis",
+    ),
+    "câmbio, inflação, reservas e perspectivas do FMI (marca não comercial)": _ids(
+        "fmi",
+        "cambio",
+        "inflacao",
+        "reservas-do-mundo",
+        "weo-bca_ngdpd",
+        "weo-ggxwdg_ngdp",
+        "weo-ngdp_rpch",
+        "weo-pcpipch",
+    ),
+    "indicadores do Banco Mundial para o Brasil e para o mundo": _ids(
+        "worldbank",
+        "brasil",
+        "mundo-fp-cpi-totl-zg",
+        "mundo-ny-gdp-mktp-kd-zg",
+        "mundo-sp-pop-totl",
+    ),
+    "emissores de LEI e autoridades de registro do GLEIF": _ids(
+        "gleif", "emissores", "autoridades-de-registro"
+    ),
+    "clima mensal por ponto de cada região cafeeira na NASA POWER": _ids(
+        "nasa-power",
+        "alta-paulista",
+        "bahia-atlantico",
+        "cerrado-mineiro",
+        "chapada-de-minas",
+        "es-montanhas",
+        "es-norte",
+        "matas-de-minas",
+        "mogiana",
+        "norte-do-parana",
+        "oeste-da-bahia",
+        "planalto-da-bahia",
+        "rondonia",
+        "sul-de-minas",
+    ),
+    "índices de teleconexão (NAO, AO, PNA) do NOAA CPC": _ids(
+        "noaa", "ao", "nao", "pna", "teleconexoes"
+    ),
+}
+
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
@@ -240,6 +319,12 @@ DESTINOS: dict[str, Destino] = {
     "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # área de café por município (plano do café, PR 8): `base/commodities/area_municipio.py`
     "mapbiomas-cafe": _tabela("area_cafe_municipio"),
+    # lote organismos (dados escondidos, rodada 1): guardado no acervo, tabelas ainda não escritas
+    **{
+        id_: _planejada("dados-escondidos/rodada-1", porque)
+        for porque, ids in _LOTE_ORGANISMOS.items()
+        for id_ in ids
+    },
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -262,6 +347,11 @@ DESTINOS: dict[str, Destino] = {
             "termos-cecafe-robots",
             "termos-inmet",
             "termos-cnpj-licenca",
+            "termos-bce",
+            "termos-eurostat",
+            "termos-bis",
+            "termos-nasa-power",
+            "termos-noaa",
             "termos-kraken",
             "termos-yahoo",
             "termos-gdelt",
