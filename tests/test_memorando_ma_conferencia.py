@@ -42,8 +42,7 @@ AUDITOR = ev.Evidencia(
 )
 SEM_INSOLVENCIA = ev.lacuna(
     "red_flags.desligado",
-    "Dívida com a União, insolvência, situação especial e atrasos de pagamento: esperam um "
-    "parecer jurídico.",
+    "Dívida com a União e atrasos de pagamento: esperam um parecer jurídico.",
 )
 EVIDENCIAS = (MEDIANA, PRECEDENTES, AUDITOR, SEM_INSOLVENCIA)
 

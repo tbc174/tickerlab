@@ -18,6 +18,7 @@ from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src import dossie
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
+from src.contestacao import com_a_contestacao
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
     CONVITE_DO_DOSSIE,
@@ -52,7 +53,7 @@ DESLIGADO = (
     "Empresas fechadas: o relatório delas espera a licença dos dados da Receita Federal e da PGFN.",
     "Natureza jurídica e MEI: vêm da Receita Federal e esperam a mesma licença.",
     "Situação, categoria e data de registro na CVM: ainda não estão no banco do app.",
-    "Dívida com a União, insolvência, situação especial e atrasos de pagamento: esperam um parecer jurídico.",
+    "Dívida com a União e atrasos de pagamento: esperam um parecer jurídico.",
     "Sanções e dívidas entre empresas da rede: esperam um parecer jurídico.",
     "Sócios, administradores e qualquer nome de pessoa: não aparecem.",
     "Ligações de 2 ou mais saltos e busca por nome ou ticker: depois de medir o uso da busca.",
@@ -217,7 +218,7 @@ def montar_relatorio_do_cnpj(
         como_era_em=dossie.dia_da_ficha(ficha),
         secoes=[*([cadastro] if cadastro else []), *secoes],
         fontes=fontes,
-        limites=[*LIMITES_DA_BUSCA, *do_dossie.limites],
+        limites=com_a_contestacao([*LIMITES_DA_BUSCA, *do_dossie.limites]),
         desligado=list(DESLIGADO),
         avisos=[aviso] if aviso else [],
     )
@@ -233,7 +234,7 @@ def relatorio_fora_da_base_aberta(cnpj: str) -> RelatorioDoCnpj:
         como_era_em=None,
         secoes=[],
         fontes=[],
-        limites=list(LIMITES_DA_BUSCA),
+        limites=com_a_contestacao(list(LIMITES_DA_BUSCA)),
         desligado=list(DESLIGADO),
         avisos=[FORA_DA_BASE_ABERTA],
     )

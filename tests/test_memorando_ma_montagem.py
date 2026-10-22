@@ -172,9 +172,7 @@ def test_gabarito_da_cpfl_conferido_a_mao(relatorio, ficha):
         "Troca de auditor. Sem achado. A última troca de auditor foi em 01/01/2022, há mais de 3 "
         "anos." in red_flags
     )
-    assert red_flags[-1].startswith(
-        "Dívida com a União, insolvência, situação especial"
-    )
+    assert red_flags[-1].startswith("Dívida com a União e atrasos de pagamento")
 
 
 def test_toda_frase_cita_evidencia_completa(relatorio, ficha):

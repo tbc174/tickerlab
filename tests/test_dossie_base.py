@@ -44,8 +44,6 @@ def test_tabela_sem_pessoa_e_fora_da_lista_proibida_pode_ser_mostrada(
     "tabela",
     [
         "pgfn_divida",  # a licença deixa, mas é crise com nome (P-44)
-        "cnpj_situacao_especial",  # idem
-        "insolvencia",  # vendável, mas é rótulo de crise com nome (P-44)
         "rotulos_atraso",
         "tabela_que_nao_existe",
     ],
@@ -54,12 +52,10 @@ def test_tabela_que_nao_pode_ser_mostrada(tabela: str) -> None:
     assert not dossie.pode_mostrar(tabela)
 
 
-def test_so_o_parecer_segura_a_situacao_especial(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A licença não barra (ADR 0102); o que segura é a lista do P-44."""
-    monkeypatch.setattr(dossie, "TABELAS_PROIBIDAS", frozenset())
-    assert dossie.pode_mostrar("cnpj_situacao_especial")
+@pytest.mark.parametrize("tabela", ["cnpj_situacao_especial", "insolvencia"])
+def test_a_d2_liberou_insolvencia_e_situacao_especial(tabela: str) -> None:
+    """A ADR 0103 (D2, só fatos) tirou as duas da lista do P-44; a pgfn_divida segue fora."""
+    assert dossie.pode_mostrar(tabela)
 
 
 def test_a_pgfn_tem_pessoa_e_a_lgpd_segura_mesmo_com_a_licenca_liberada(
@@ -98,8 +94,8 @@ def test_tabela_vendavel_com_pessoa_nao_pode_ser_mostrada(
 
 
 def test_registrar_tabela_proibida_da_erro() -> None:
-    with pytest.raises(dossie.TabelaProibidaError, match="insolvencia"):
-        dossie.exigir_que_pode_mostrar(["auditores", "insolvencia"])
+    with pytest.raises(dossie.TabelaProibidaError, match="pgfn_divida"):
+        dossie.exigir_que_pode_mostrar(["auditores", "pgfn_divida"])
 
 
 def test_todas_as_secoes_registradas_podem_ser_mostradas() -> None:
