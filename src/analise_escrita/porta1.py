@@ -63,9 +63,11 @@ _PROIBIDAS_SEM_NEGACAO = re.compile(
 )
 _NEGACAO = re.compile(r"\b(?:nao|nada|nem|nenhum|nenhuma|sem|nunca)\b")
 _RECORDE = re.compile(r"\brecordes?\b")
-# "vai de 1,7% a 27,7%" é uma faixa, não um futuro
+# "vai de 1,7% a 27,7%", "vai de R$ -455,1 mi a ...", "vão de 31/12/2023 a ..." e "vai até dez/2025"
+# são faixas, não futuro
+_FAIXA = r"(?! (?:de (?:r\$\s?)?[-−]?\d|ate (?:\d|(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/)))"
 _PREVISAO = re.compile(
-    r"\b(?:vai(?! de \d)|vao|irao|tende[m]? a|esperamos|espera-se|prevemos|preve-se|projetamos|"
+    rf"\b(?:vai{_FAIXA}|vao{_FAIXA}|irao|tende[m]? a|esperamos|espera-se|prevemos|preve-se|projetamos|"
     r"projeta-se|projecao|projecoes|(?:deve|devem|devera|deverao|deveria|deveriam)\s+"
     r"(?:subir|cair|crescer|aumentar|diminuir|melhorar|piorar|recuar|avancar|voltar|"
     r"continuar|seguir|manter|ficar|chegar))\b"

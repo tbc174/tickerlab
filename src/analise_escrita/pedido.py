@@ -15,7 +15,7 @@ from src import rotulos_ia as ri
 from src.analise_escrita import saida
 
 VERSAO_DO_GUIA = "v1"
-VERSAO_DO_GUIA_DO_SETOR = "setor_v1"
+VERSAO_DO_GUIA_DO_SETOR = "setor_v2"
 GUIA = (Path(__file__).parent / f"guia_{VERSAO_DO_GUIA}.md").read_text(encoding="utf-8")
 GUIA_DO_SETOR = (
     Path(__file__).parent / f"guia_{VERSAO_DO_GUIA_DO_SETOR}.md"

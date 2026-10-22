@@ -84,7 +84,13 @@ Uma conta tem `operacao`, `de` (os operandos) e `resultado`:
   `contagem`: quantas linhas citadas há em `de` (o resultado é o número de operandos).
 - Operando de uma linha: `{"id": "<id>", "valor": <o número da linha com todos os algarismos>,
   "conta": null}`. Uma linha de tabela tem vários números (uma célula por coluna): `valor` diz qual.
-- Constante: só o cem, para "de cada cem": `{"id": null, "valor": 100, "conta": null}`.
+- **Porcentagem vale a fração.** Uma célula ou um `texto` com "%" entra na conta dividido por cem: a
+  parte do mercado escrita "x%" é o operando x/100, nunca x. O mesmo vale para o resultado: a
+  diferença entre duas partes é uma fração.
+- **Ponto percentual são duas contas.** Primeiro a `diferenca` das duas frações; depois o `produto`
+  desse resultado (`"conta": 0`) pelo cem. O texto escreve o resultado do produto ("ponto percentual").
+- Constante: só o cem, para "de cada cem" e para o ponto percentual: `{"id": null, "valor": 100,
+  "conta": null}`.
 - Resultado de uma conta anterior da mesma frase: `{"id": null, "valor": null, "conta": <posição>}`.
 - `resultado` com todos os algarismos; o texto escreve o resultado arredondado.
 
@@ -107,7 +113,9 @@ parcial sem a lacuna reprova.
 # Datas
 
 Só datas que estão nas linhas citadas, nunca depois do `corte` do relatório. Ano sozinho só quando ele
-está nas linhas citadas ou é o ano do corte. Quando as companhias do lado a lado têm datas diferentes,
+está nas linhas citadas ou é o ano do corte: "de um ano para o outro" cita a linha de cada um dos dois
+anos, e um intervalo de anos cita a linha do primeiro e a do último. Dia e mês sem o ano não entram:
+escreva a data inteira, como a linha traz. Quando as companhias do lado a lado têm datas diferentes,
 diga quais estão em outra data.
 
 # Comparar sem dar nota
@@ -138,6 +146,9 @@ diga quais estão em outra data.
 
 # Estilo
 
-Português do Brasil, frases curtas e diretas, sem jargão solto: explique cada termo técnico na primeira
-vez que aparece (o que é HHI, o que é CR4, o que é capex). Quando os dados não explicam algo, deixe a
-pergunta em aberto em vez de responder.
+Português do Brasil, frases curtas e diretas, sem jargão solto: explique o termo técnico na primeira
+vez que aparece, **com a linha que o define e citando-a** (a `metodologia` define o HHI, a CR4 e as
+faixas do CADE). O termo que nenhuma linha define (um indicador do lado a lado) fica sem definição: não
+explique com o que você sabe de fora. Contagem pequena vai por extenso ("as quatro maiores"), a não ser
+que o número esteja numa linha citada. Quando os dados não explicam algo, deixe a pergunta em aberto em
+vez de responder.
