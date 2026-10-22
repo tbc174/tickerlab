@@ -1,14 +1,13 @@
 """As rotas da sala de dados por operação (B-20, PR 3): `/v1/operacoes` e os documentos delas.
 
-**Só admins por enquanto** (D13 do plano): a conta que não é admin recebe 404, como se a sala
-não existisse. Outra conta acertando o id de uma operação ou de um documento também recebe 404
+**Aberta a toda conta logada** (D13 do plano; antes era só admin). Outra conta acertando o id de uma operação ou de um documento também recebe 404
 (nunca 403: a resposta não confirma que o id existe, D11). Nem admin vê a sala de outra pessoa: não
 há rota de admin aqui.
 
 Fora do `rotas.py` de propósito, como o link compartilhado: a sala não entra no `openapi_v1`
-público. A página dela (`sala_de_dados`, só admin) está em `src/paginas.py`, e `ROTAS_DA_SALA` lá
+público. A página dela (`sala_de_dados`) está em `src/paginas.py`, e `ROTAS_DA_SALA` lá
 lista toda rota dos três arquivos da sala (há teste que pega rota sem página). As rotas, o limite de
-envios e o acesso só de admin ficam neste arquivo, com teste que percorre cada rota.
+envios e a conta logada ficam neste arquivo, com teste que percorre cada rota.
 
 Quem faz o trabalho é `src/banco/sala.py` (o banco) e `src/sala/documentos.py` (cifra, disco e
 leitura). Aqui só entram a conta, os limites do `src/planos.py` e o desenho das respostas. Nome do
@@ -84,14 +83,7 @@ MENSAGENS_DE_RECUSA = {
 assert set(MENSAGENS_DE_RECUSA) == set(arquivos.MOTIVOS_DE_RECUSA)
 
 
-def conta_da_sala(conta: Annotated[Usuario, Depends(conta_logada)]) -> Usuario:
-    """A conta logada, se for admin; para as outras a sala não existe (404)."""
-    if not conta.e_admin:
-        raise HTTPException(status_code=404, detail="Not Found")
-    return conta
-
-
-Conta = Annotated[Usuario, Depends(conta_da_sala)]
+Conta = Annotated[Usuario, Depends(conta_logada)]
 
 
 class OperacaoV1(BaseModel):

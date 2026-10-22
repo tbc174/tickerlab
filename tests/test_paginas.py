@@ -202,13 +202,13 @@ def test_area_sem_paginas_da_erro_claro():
 
 
 def _contratos():
-    """Os contratos do `openapi_v1` público; a sala (só admin) tem o dela em `test_api_v1_sala_painel`."""
+    """Os contratos do `openapi_v1` público; a sala tem o dela em `test_api_v1_sala_painel`."""
     from src.paginas import PAGINAS
 
     return {
         p.chave: p.contrato
         for p in PAGINAS
-        if p.contrato is not None and not p.somente_admin
+        if p.contrato is not None and not p.somente_admin and p.chave != "sala_de_dados"
     }
 
 

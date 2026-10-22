@@ -161,7 +161,7 @@ def _mostrar_secao(secao: Secao) -> None:
     else:
         for paragrafo in secao.paragrafos:
             st.markdown(paragrafo)
-    for chave, linhas in secao.tabelas.items():
+    for chave, linhas in secao.tabelas_a_mostrar().items():
         if not linhas:
             continue
         if chave in GRAFICOS:

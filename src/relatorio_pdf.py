@@ -361,6 +361,7 @@ class RelatorioPDF(FPDF):
         larguras: list[float] | None = None,
         cores: list[list[str | None]] | None = None,
         tickers: bool = False,
+        tamanho: float = 9,
     ) -> None:
         """Tabela simples: a primeira coluna à esquerda (nomes), as outras à direita (números).
 
@@ -369,7 +370,7 @@ class RelatorioPDF(FPDF):
         larguras = larguras or [self.epw / len(cabecalho)] * len(cabecalho)
         if self.get_y() + 8 * (len(linhas) + 1) > self.h - 24:
             self.add_page()
-        self.set_font("Manrope", "I", 8)
+        self.set_font("Manrope", "I", min(8, tamanho))
         self._cor_do_texto(apagado=True)
         for i, (texto, largura) in enumerate(zip(cabecalho, larguras, strict=True)):
             self.cell(largura, 7, texto, align="L" if i == 0 else "R")
@@ -385,9 +386,9 @@ class RelatorioPDF(FPDF):
                 cor = cores[n][i] if cores else None
                 self.set_text_color(*_rgb(cor or self.estilo.texto))
                 if i == 0:
-                    self.set_font("Mono" if tickers else "Manrope", "", 9)
+                    self.set_font("Mono" if tickers else "Manrope", "", tamanho)
                 else:
-                    self.set_font("Manrope", "B", 9)
+                    self.set_font("Manrope", "B", tamanho)
                 self.cell(largura, 7, texto, align="L" if i == 0 else "R")
             self.ln(7)
         self.line(MARGEM, self.get_y(), self.w - MARGEM, self.get_y())

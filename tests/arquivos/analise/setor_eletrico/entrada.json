@@ -1,5 +1,6 @@
 {
  "versao": "setor-1",
+ "tipo": "setor",
  "setor": "eletricas",
  "nome": "Elétricas",
  "corte": "2026-10-21",
@@ -511,7 +512,8 @@
    "unidade": "consumidores",
    "medido_em": "ago/2026",
    "fonte": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor, ODbL (dados abertos da CVM; citar a fonte)",
-   "sem_comparacao": "A ficha não traz com o quê comparar este número."
+   "sem_comparacao": "A ficha não traz com o quê comparar este número.",
+   "ano_parcial": "lacuna.ano_parcial.2026"
   },
   {
    "secao": "tamanho",
@@ -523,7 +525,8 @@
     "Mercado (consumidores)": "384.737",
     "Meses no ano": "8",
     "Até": "ago/2026"
-   }
+   },
+   "ano_parcial": "lacuna.ano_parcial.2026"
   },
   {
    "secao": "tamanho",
@@ -661,7 +664,8 @@
    "unidade": "pontos",
    "medido_em": "ago/2026",
    "fonte": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor, ODbL (dados abertos da CVM; citar a fonte)",
-   "sem_comparacao": "A ficha não traz com o quê comparar este número."
+   "sem_comparacao": "A ficha não traz com o quê comparar este número.",
+   "ano_parcial": "lacuna.ano_parcial.2026"
   },
   {
    "secao": "concentracao",
@@ -673,7 +677,8 @@
    "unidade": "fração",
    "medido_em": "ago/2026",
    "fonte": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor, ODbL (dados abertos da CVM; citar a fonte)",
-   "sem_comparacao": "A ficha não traz com o quê comparar este número."
+   "sem_comparacao": "A ficha não traz com o quê comparar este número.",
+   "ano_parcial": "lacuna.ano_parcial.2026"
   },
   {
    "secao": "concentracao",
@@ -691,7 +696,8 @@
     "Contado por entidade": "100,0%",
     "Meses no ano": "8",
     "Até": "ago/2026"
-   }
+   },
+   "ano_parcial": "lacuna.ano_parcial.2026"
   },
   {
    "secao": "concentracao",
@@ -3279,13 +3285,15 @@
    "secao": "o_que_os_dados_mostram",
    "id": "o_que_os_dados_mostram.paragrafos.1",
    "tipo": "paragrafo",
-   "texto": "Em 2026, o HHI de consumidores atendidos pelas distribuidoras (ANEEL) foi de 689 pontos, na faixa não concentrado do Guia H do CADE."
+   "texto": "Em 2026, o HHI de consumidores atendidos pelas distribuidoras (ANEEL) foi de 689 pontos, na faixa não concentrado do Guia H do CADE.",
+   "ano_parcial": "lacuna.ano_parcial.2026"
   },
   {
    "secao": "o_que_os_dados_mostram",
    "id": "o_que_os_dados_mostram.paragrafos.2",
    "tipo": "paragrafo",
-   "texto": "Os 4 maiores participantes somaram 43,7% de consumidores atendidos pelas distribuidoras (ANEEL) em 2026, entre 30 participantes."
+   "texto": "Os 4 maiores participantes somaram 43,7% de consumidores atendidos pelas distribuidoras (ANEEL) em 2026, entre 30 participantes.",
+   "ano_parcial": "lacuna.ano_parcial.2026"
   },
   {
    "secao": "o_que_os_dados_mostram",
@@ -3494,6 +3502,15 @@
    "id": "limites.paragrafos.2",
    "tipo": "paragrafo",
    "texto": "Nada aqui é recomendação de investimento, previsão do setor ou nota das empresas."
+  },
+  {
+   "secao": "lacuna",
+   "id": "lacuna.ano_parcial.2026",
+   "tipo": "lacuna",
+   "texto": "O ano de 2026 ainda está aberto na base: as linhas dele cobrem 8 meses, até ago/2026. Elas não se comparam com os anos inteiros, e o que sai delas (o número do topo e a frase por regra de 2026) não é o retrato do setor no ano."
   }
+ ],
+ "obrigatorias": [
+  "lacuna.ano_parcial.2026"
  ]
 }

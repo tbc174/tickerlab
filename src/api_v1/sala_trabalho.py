@@ -1,6 +1,6 @@
 """As rotas do trabalho na sala: evidências, contradições e checklist (B-20, PR 4).
 
-Mesmas regras de `src/api_v1/sala.py`: só admin (404 para as outras contas), 404 e não 403 para o
+Mesmas regras de `src/api_v1/sala.py`: conta logada, 404 e não 403 para o
 que é de outra conta, nada de rota de admin sobre a sala de outra pessoa. Nenhuma rota chama modelo:
 o trecho de uma evidência é conferido por código contra o texto da página (D10) e as contradições
 saem de uma regra fixa.

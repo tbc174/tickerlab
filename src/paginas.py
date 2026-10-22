@@ -722,13 +722,12 @@ PAGINAS = (
     Pagina(
         "sala_de_dados",
         "Sala de dados",
-        GRUPO_ADMIN,
+        GRUPO_CONTA,
         ":material/lock:",
         "Os documentos de cada operação num lugar cifrado, com a origem de cada número, as "
         "contradições entre documentos e o checklist do que falta.",
         area=AREA_CONTA,
         precisa_do_ativo=False,
-        somente_admin=True,
         contrato=Contrato("GET", "/v1/sala", (), "SalaV1"),
         so_no_app_novo=True,
     ),
@@ -793,8 +792,8 @@ POR_CHAVE = {p.chave: p for p in PAGINAS}
 PAGINA_INICIAL = "inicio"
 
 # As rotas que a página "Sala de dados" usa (a de leitura é o contrato dela; as outras mudam a sala).
-# Fora do `openapi_v1` de propósito (a sala só abre para administradores e não vai para o contrato
-# público); o teste da sala confere que toda rota dos três roteadores está aqui, e só elas.
+# Fora do `openapi_v1` de propósito (a sala não vai para o contrato público da v1; o contrato da
+# página dela é o `/v1/sala`, conferido em `test_api_v1_sala_painel`); o teste da sala confere que toda rota dos três roteadores está aqui, e só elas.
 ROTAS_DA_SALA = frozenset(
     {
         ("GET", "/v1/sala"),
@@ -818,6 +817,8 @@ ROTAS_DA_SALA = frozenset(
         ("PATCH", "/v1/operacoes/{operacao_id}/contradicoes/{contradicao_id}"),
         ("GET", "/v1/operacoes/{operacao_id}/checklist"),
         ("PATCH", "/v1/operacoes/{operacao_id}/checklist/{codigo}"),
+        ("GET", "/v1/operacoes/{operacao_id}/garantias"),
+        ("GET", "/v1/operacoes/{operacao_id}/exposicoes"),
     }
 )
 
