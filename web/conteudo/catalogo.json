@@ -798,21 +798,21 @@
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "anp-producao-poco",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "anp-concessionarios",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "ons-geracao-usina",
@@ -847,35 +847,35 @@
       "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
       "marca": "a_confirmar",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "anac-estatistico",
       "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ans-beneficiarios",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ans-beneficiarios-operadora",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "anatel-acessos",
       "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "bcb-pix-chaves",
@@ -889,7 +889,7 @@
       "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "susep-ses",
@@ -903,7 +903,7 @@
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "susep-cadastro",
@@ -1861,6 +1861,181 @@
       "id": "tesouro-br-siconfi-dca",
       "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ccee-pld-detalhe",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-consumo",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-geracao",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-contratos",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-mercado",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "epe-consumo-mensal",
+      "licenca": "CC BY 4.0 (dados abertos da EPE; citar a EPE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ons-carga",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-balanco",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-hidrologia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-custos",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-termica",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-fator-capacidade",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "aneel-tarifas",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-geracao",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-qualidade",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ans-demonstracoes",
+      "licenca": "Demonstrações da ANS: sem licença declarada; citar a ANS",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "anatel-acessos-telefonia-fixa",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anac-horas-voadas",
+      "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inep-censo-superior",
+      "licenca": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "senatran-frota",
+      "licenca": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "anp-precos-ultimas-semanas",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anp-precos-semestral",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anp-precos-mensal",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "inpi-patentes",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inpi-contratos",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     }

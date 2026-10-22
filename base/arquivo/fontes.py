@@ -24,6 +24,7 @@ from base.arquivo import (
     lote_bcb,
     lote_eua,
     lote_organismos,
+    lote_setoriais,
     wayback,
 )
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
@@ -1246,6 +1247,9 @@ FONTES: list[Fonte] = [
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),
+    # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
+    # ANP e INPI (linha 245 da fila)
+    *lote_setoriais.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
