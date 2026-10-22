@@ -34,8 +34,8 @@ export class ErroDaApi extends Error {
 export type Parametros = Record<string, string | number | string[] | undefined>;
 
 // só caminhos da v1, sem "..": o token nunca vai para outro endereço (cada pedaço só com letras,
-// números e hífen, como em /v1/commodities/cafe/mapa)
-const ROTA_DA_V1 = /^\/v1(\/[a-z0-9-]+)+$/;
+// números, hífen e sublinhado, como em /v1/commodities/cafe/mapa e /v1/operacoes/<id>/checklist/ma_dfs)
+const ROTA_DA_V1 = /^\/v1(\/[a-z0-9_-]+)+$/;
 const CAMPOS_FORA_DOS_LIMITES = "Algum campo está fora dos limites. Confira os valores e tente de novo.";
 const SEM_CORPO = 204;
 const SEM_CONEXAO = "Sem conexão com o TickerLab. Confira a internet e tente de novo.";
@@ -134,6 +134,36 @@ export async function pedir<T>(
   let resposta: Response;
   try {
     resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}${consulta(parametros)}`, pedido);
+  } catch {
+    throw new ErroDaApi("rede", SEM_CONEXAO);
+  }
+  if (!resposta.ok) throw await erroDaResposta(resposta);
+  if (resposta.status === SEM_CORPO) return undefined as T;
+  return (await resposta.json()) as T;
+}
+
+export type MetodoQueMuda = "POST" | "PATCH" | "DELETE";
+
+/** POST, PATCH ou DELETE numa rota da v1, com a sessão. `corpo` vai como JSON, ou como formulário
+ * (o envio de um arquivo: o navegador põe o cabeçalho do multipart). Resposta sem corpo vira `undefined`. */
+export async function mudar<T>(
+  metodo: MetodoQueMuda,
+  rota: string,
+  token: string,
+  corpo?: unknown,
+): Promise<T> {
+  if (!ROTA_DA_V1.test(rota)) throw new Error(`rota fora da API v1: ${rota}`);
+  const cabecalhos = cabecalhosPara(token);
+  const pedido: RequestInit = { method: metodo, credentials: "same-origin", headers: cabecalhos };
+  if (corpo instanceof FormData) {
+    pedido.body = corpo;
+  } else if (corpo !== undefined) {
+    pedido.headers = { ...cabecalhos, "Content-Type": "application/json" };
+    pedido.body = JSON.stringify(corpo);
+  }
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}`, pedido);
   } catch {
     throw new ErroDaApi("rede", SEM_CONEXAO);
   }

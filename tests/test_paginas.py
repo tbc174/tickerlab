@@ -184,7 +184,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "relatorio_do_setor",
             },
         ),
-        ("conta", {"simulacoes", "meus_dados", "planos", "admin"}),
+        ("conta", {"simulacoes", "meus_dados", "planos", "admin", "sala_de_dados"}),
         ("ajuda", {"guia", "termos", "privacidade", "trade"}),
     ],
 )
@@ -202,9 +202,14 @@ def test_area_sem_paginas_da_erro_claro():
 
 
 def _contratos():
+    """Os contratos do `openapi_v1` público; a sala (só admin) tem o dela em `test_api_v1_sala_painel`."""
     from src.paginas import PAGINAS
 
-    return {p.chave: p.contrato for p in PAGINAS if p.contrato is not None}
+    return {
+        p.chave: p.contrato
+        for p in PAGINAS
+        if p.contrato is not None and not p.somente_admin
+    }
 
 
 def _openapi():
