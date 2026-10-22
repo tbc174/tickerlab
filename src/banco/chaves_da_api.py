@@ -208,6 +208,14 @@ def buscar_organizacao(
     return None if linha is None else _organizacao(linha)
 
 
+def listar_organizacoes(conexao: sa.Connection) -> list[Organizacao]:
+    """Todas as organizações, da mais antiga para a mais nova (só o admin chama; ver `src/administracao_das_chaves.py`)."""
+    linhas = conexao.execute(
+        sa.select(organizacoes).order_by(organizacoes.c.criada_em, organizacoes.c.id)
+    )
+    return [_organizacao(linha) for linha in linhas]
+
+
 def _organizacao_ativa(
     conexao: sa.Connection, organizacao_id: uuid.UUID
 ) -> Organizacao:
