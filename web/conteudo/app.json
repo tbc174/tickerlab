@@ -87,8 +87,7 @@
       "paginas": [
         "simulacoes",
         "meus_dados",
-        "planos",
-        "sala_de_dados"
+        "planos"
       ],
       "rotulo": "Conta"
     },

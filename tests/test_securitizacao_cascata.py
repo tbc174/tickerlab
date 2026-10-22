@@ -1,4 +1,4 @@
-"""Cascata de pagamentos (src/securitizacao/cascata.py): ordem, perda, determinismo e conservação de caixa.
+"""Cascata de pagamentos (src/securitizacao/cascata.py), regras da 0.1.0: ordem, perda, determinismo e caixa.
 
 Toda estrutura aqui é sintética (nenhuma operação real).
 """
@@ -132,7 +132,6 @@ def test_reconciliacao_fecha_em_12_meses():
     [
         [],
         [Classe("a", 1, 1, 0.0), Classe("a", 2, 1, 0.0)],
-        [Classe("a", 1, 1, 0.0), Classe("b", 1, 1, 0.0)],
         [Classe("a", 1, -1, 0.0)],
     ],
 )

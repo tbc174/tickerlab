@@ -25,9 +25,11 @@ import json
 from dataclasses import asdict, dataclass
 
 from src.securitizacao.cascata import (
+    REGRAS_DA_0_1_0,
     Classe,
     Operacao,
     Periodo,
+    Regras,
     Resultado,
     reconciliar,
     rodar,
@@ -66,11 +68,12 @@ class Carteira:
 
 @dataclass(frozen=True)
 class Estrutura:
-    """As classes (da mais sênior à mais subordinada), a reserva mínima e a despesa mensal fixa."""
+    """As classes (da mais sênior à mais subordinada), a reserva mínima, a despesa mensal fixa e as regras."""
 
     classes: tuple[Classe, ...]
     reserva_minima: int
     despesas_mensais: int
+    regras: Regras = REGRAS_DA_0_1_0  # entra no hash da entrada
 
     def operacao(self, saldo_do_pool: int) -> Operacao:
         """Uma operação nova (a cascata guarda saldos enquanto roda: cada cenário usa a sua)."""
@@ -78,6 +81,7 @@ class Estrutura:
             classes=list(self.classes),
             saldo_do_pool=saldo_do_pool,
             reserva_minima=self.reserva_minima,
+            regras=self.regras,
         )
 
     @property
