@@ -89,8 +89,9 @@ LICENCAS = {
     "cecafe": "Cecafé: robots.txt veda PDF; coleta com ritmo, uso citando a fonte (ADR 0102)",
     # termos lidos em 18/10/2026: uso pessoal e não comercial, vedam robô; coleta pela ADR 0102
     "fnc": "FNC: só uso pessoal, veda robô; coleta com ritmo, cita a fonte (ADR 0102)",
-    # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
-    "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
+    # COTAHIST, arquivos públicos e carteiras dos índices: no produto com a fonte citada desde
+    # 22/10/2026 (ADR 0008, Emenda 6; risco assumido pelo Tiago); a marca segue "não comercial"
+    "b3": "Sem licença da B3; uso com a fonte citada, risco assumido (ADR 0008, Emenda 6)",
     # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
     "assessoria": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
     # termos lidos em 16/10/2026 (archive.org/about/terms); só a data das cópias entra na base
@@ -135,7 +136,8 @@ SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 # A resposta sobre revenda de cada fonte (ADR 0055, exigência 11; ADR 0008, Emenda 1: as quatro
 # marcas, com a resposta por escrito no `licencas-por-fonte.md`). Desde a ADR 0102 (18/10/2026) a
 # marca é **informação**, gravada por fonte no contrato, no catálogo e na página Dados: ela não barra
-# coleta, modelo, tela nem exportação (`pode_usar`); só a B3 fica fora (`FONTES_FORA_DOS_USOS`). Não é
+# coleta, modelo, tela nem exportação (`pode_usar`); a B3 entrou em 22/10/2026 (ADR 0008, Emenda 6) e
+# `FONTES_FORA_DOS_USOS` ficou vazia. Não é
 # parecer jurídico: antes de vender qualquer coisa, parecer e decisão nova.
 VENDAVEL_ODBL = (
     "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor "
@@ -207,7 +209,7 @@ REVENDA = {
     "comexstat": A_CONFIRMAR,
     "cecafe": NAO_COMERCIAL,  # o robots.txt veda PDF; coleta com ritmo e uso com a fonte citada (ADR 0102)
     "fnc": NAO_COMERCIAL,  # termos só para uso pessoal; coleta com ritmo e uso com a fonte citada (ADR 0102)
-    "b3": NAO_COMERCIAL,  # só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
+    "b3": NAO_COMERCIAL,  # informação, não trava: sem licença, uso com a fonte citada (ADR 0008, Emenda 6)
     "assessoria": A_CONFIRMAR,  # vender, mostrar ou treinar só com o parecer (ADRs 0063 e 0082)
     "wayback": NAO_COMERCIAL,  # "for scholarship and research purposes only"
     # a família vem do endereço ("tce-pr") e a fonte do arquivista tem o próprio id ("tce-pr-pit"):
@@ -306,10 +308,11 @@ class ColetaEGuarda(NamedTuple):
 COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {}
 MOSTRAR = "mostrar"  # em tela, relatório, PDF, API ou newsletter
 USOS = ("treinar", "rotular", "exportar", MOSTRAR)
-# ADR 0102: a única família fora dos quatro usos. Dado de mercado da B3 pede contrato (ADRs 0019 e
-# 0056); o que o arquivista guarda dela fica como cópia de pesquisa e análise interna, sem tela, API,
-# modelo nem exportação. Toda outra fonte entra em qualquer uso, com a fonte e a data citadas.
-FONTES_FORA_DOS_USOS = frozenset({"b3"})
+# As famílias fora dos quatro usos. Vazia desde 22/10/2026: a B3, a única que havia (ADR 0102; dado de
+# mercado pede contrato, ADRs 0019 e 0056), entrou com a fonte e a data citadas por decisão do Tiago
+# (ADR 0008, Emenda 6, risco assumido por ele). O mecanismo fica: pôr uma família aqui volta a barrá-la
+# em `pode_usar` e `exigir_licenca` (é o "como desfazer" da Emenda 6: pôr "b3" de volta).
+FONTES_FORA_DOS_USOS: frozenset[str] = frozenset()
 
 
 class UsoSemCobranca(NamedTuple):
@@ -323,7 +326,7 @@ class UsoSemCobranca(NamedTuple):
 
 # Emenda 3 da ADR 0008 (18/10/2026): os usos em tela das fontes "a confirmar" e "não comercial", cada
 # um com a frase de citação. Desde a ADR 0102 a lista **não decide** mais o que pode aparecer (tudo
-# pode, menos a B3): ela registra onde cada fonte restrita aparece, a frase que a tela, o relatório
+# pode): ela registra onde cada fonte restrita aparece, a frase que a tela, o relatório
 # e o PDF escrevem (`citacoes_das_fontes`) e o substituto, para o dia em que uma fonte tiver de sair.
 USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
     UsoSemCobranca(
@@ -379,6 +382,15 @@ USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
         "levantamento em cada número (CC BY-ND 3.0; mostrado com a fonte citada, ADR 0102)",
     ),
     UsoSemCobranca(
+        "b3",
+        "preço de fim de dia (COTAHIST), arquivos públicos e carteiras dos índices da B3, onde a "
+        "base os mostrar (dossiê, ficha, DY e múltiplos de mercado, PDFs)",
+        "licença da B3 (contrato, nível 1); sem ela ou se a B3 reclamar, voltar `FONTES_FORA_DOS_USOS` "
+        "ao estado da Emenda 4 e tirar o dado da B3 das telas",
+        "Fonte: B3, com a data de cada número (sem licença da B3; mostrado com a fonte citada, "
+        "risco assumido, ADR 0008 Emenda 6)",
+    ),
+    UsoSemCobranca(
         "gdelt",
         "contagem e tom de notícias por empresa (sem texto)",
         "resposta escrita do GDELT sobre uso comercial; sem ela, desligar",
@@ -406,7 +418,7 @@ FRASES_DAS_FONTES = {
 
 
 class LicencaNaoPermiteError(Exception):
-    """Treinar, rotular, exportar ou mostrar com fonte fora dos usos (só a B3: ADRs 0019, 0056 e 0102)."""
+    """Treinar, rotular, exportar ou mostrar com fonte fora dos usos (`FONTES_FORA_DOS_USOS`, hoje vazia)."""
 
 
 LIMITE_DO_DETALHE = 300
@@ -449,7 +461,7 @@ def uso_sem_cobranca(fonte: str) -> UsoSemCobranca | None:
 
 
 def fora_dos_usos(fonte: str) -> bool:
-    """A fonte ("b3-negocios") ou a família dela está fora dos quatro usos? Hoje, só a B3."""
+    """A fonte ("b3-negocios") ou a família dela está fora dos quatro usos? Hoje nenhuma (a B3 saiu em 22/10/2026)."""
     return _familia(fonte) in FONTES_FORA_DOS_USOS
 
 
@@ -462,7 +474,7 @@ def pode_usar(uso: str, fonte: str) -> bool:
     """A fonte pode `uso` ("treinar", "rotular", "exportar" ou "mostrar")? `exigir_licenca` sem o erro.
 
     Pela ADR 0102 a marca não decide: toda fonte entra em qualquer uso, com a fonte e a data citadas
-    (`citacoes_das_fontes`); só a B3 fica fora, até o contrato (ADRs 0019 e 0056). Vale para o app
+    (`citacoes_das_fontes`); só entra em `FONTES_FORA_DOS_USOS` o que uma decisão nova barrar. Vale para o app
     (tela, PDF, newsletter e a v1 interna); a API externa tem outra regra, que nega por padrão:
     `src/portao_externo.py` (ADR 0108).
     """
@@ -473,7 +485,7 @@ def pode_usar(uso: str, fonte: str) -> bool:
 def exigir_licenca(uso: str, fontes: Iterable[str], onde: str = "") -> None:
     """Erro (não aviso) se alguma fonte está fora de `uso` ("treinar", "rotular", "exportar" ou "mostrar").
 
-    Só a B3 barra (`FONTES_FORA_DOS_USOS`); a marca das outras fontes é informação (ADR 0102). `onde`
+    Só barra o que está em `FONTES_FORA_DOS_USOS` (hoje nada); a marca é informação (ADR 0102). `onde`
     (a tabela, o script, o relatório) entra na mensagem.
     """
     _conferir_uso(uso)
@@ -482,8 +494,8 @@ def exigir_licenca(uso: str, fontes: Iterable[str], onde: str = "") -> None:
         lista = ", ".join(f"{f} ({marca_da_fonte(f)})" for f in barradas)
         alvo = f" ({onde})" if onde else ""
         raise LicencaNaoPermiteError(
-            f"{uso}{alvo} com fonte fora dos usos: {lista} (ADR 0019: dado de mercado da B3 "
-            "pede contrato; a ADR 0102 não mudou a B3)"
+            f"{uso}{alvo} com fonte fora dos usos: {lista} (lista `FONTES_FORA_DOS_USOS` da "
+            "ADR 0008; Emenda 6 liberou a B3 em 22/10/2026)"
         )
 
 

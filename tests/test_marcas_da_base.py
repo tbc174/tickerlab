@@ -4,6 +4,7 @@ import pandas as pd
 
 from base.parquet import gravar_tabela
 from scripts import marcas_da_base
+from src.banco import coletas
 
 URL_CVM = "https://dados.cvm.gov.br/dados/x.zip"
 URL_WAYBACK = "https://web.archive.org/web/2025/x"
@@ -15,7 +16,9 @@ def _gravar(destino, url):
     return gravar_tabela(tabela, destino, [{"url": url, "sha256": "a" * 64}], ["chave"])
 
 
-def test_lista_as_barradas_primeiro_e_junta_os_anos(tmp_path, capsys):
+def test_lista_as_barradas_primeiro_e_junta_os_anos(tmp_path, capsys, monkeypatch):
+    # a B3 saiu da lista em 22/10/2026 (ADR 0008, Emenda 6); a lista segue valendo para quem entrar
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
     base = tmp_path / "base"
     _gravar(base / "demonstracoes" / "2023", URL_CVM)
     _gravar(base / "demonstracoes" / "2024", URL_CVM)
@@ -32,9 +35,17 @@ def test_lista_as_barradas_primeiro_e_junta_os_anos(tmp_path, capsys):
     assert linhas[2].startswith(
         "nao_comercial  ma/datas/negocios  [wayback=nao_comercial]"
     )
-    assert (
-        linhas[-1] == "3 tabelas; 1 fora dos usos (B3); a base inteira: nao_comercial"
-    )
+    assert linhas[-1] == "3 tabelas; 1 fora dos usos; a base inteira: nao_comercial"
+
+
+def test_a_b3_nao_vem_mais_como_barrada(tmp_path, capsys):
+    base = tmp_path / "base"
+    _gravar(base / "demonstracoes" / "2024", URL_CVM)
+    _gravar(base / "b3" / "negocios", URL_B3)
+    assert marcas_da_base.main(["--base", str(base)]) == 0
+    linhas = capsys.readouterr().out.splitlines()
+    assert linhas[0].startswith("nao_comercial  b3/negocios  [b3=nao_comercial]")
+    assert linhas[-1] == "2 tabelas; 0 fora dos usos; a base inteira: nao_comercial"
 
 
 def test_so_barradas(tmp_path):
@@ -43,4 +54,4 @@ def test_so_barradas(tmp_path):
     texto = marcas_da_base.em_texto(
         marcas_da_base.licencas_por_tabela(base), so_barradas=True
     )
-    assert texto == "1 tabelas; 0 fora dos usos (B3); a base inteira: vendavel"
+    assert texto == "1 tabelas; 0 fora dos usos; a base inteira: vendavel"
