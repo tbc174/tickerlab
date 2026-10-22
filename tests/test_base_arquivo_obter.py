@@ -381,3 +381,86 @@ def test_arquivo_do_google_drive_segue_a_pagina_de_confirmacao(tmp_path):
     sem_formulario = ServidorComTrechos({url: b"<html><body>Sem acesso</body></html>"})
     with pytest.raises(ValueError, match="formul"):
         obter.arquivo_do_google_drive(url)(sem_formulario, destino)
+
+
+FICHA_DO_CNPJ = {
+    "id": "d0e6983f-c44e-4317-9f0b-820ae8a09ae8",
+    "title": "Cadastro Nacional da Pessoa Jurídica - CNPJ",
+    "license_id": "cc-by",
+    "license_title": "Creative Commons Attribution",
+    "num_downloads": 800054,  # muda todo dia: não pode entrar no arquivo da vigia
+    "metadata_modified": "2026-02-09T10:00:00",
+}
+
+
+class PortalComChave:
+    """Responde a ficha só com a chave certa no cabeçalho (sem ela, o portal real dá 401)."""
+
+    def __init__(self, ficha: object):
+        self.ficha = ficha
+        self.cabecalhos_recebidos: dict = {}
+
+    def ler(self, url, *, metodo="GET", cabecalhos=None, corpo=None):
+        self.cabecalhos_recebidos = dict(cabecalhos or {})
+        return Resposta(url, json.dumps(self.ficha).encode(), {})
+
+
+def test_vigia_da_licenca_do_cnpj_guarda_so_a_licenca_e_manda_a_chave(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("CHAVE_DE_TESTE", "segredo-de-teste")
+    portal = PortalComChave(FICHA_DO_CNPJ)
+    destino = tmp_path / "ficha.json"
+    obter.licenca_da_ficha_do_dados_gov_br("https://x/ficha", "CHAVE_DE_TESTE")(
+        portal, destino
+    )
+    assert portal.cabecalhos_recebidos["chave-api-dados-abertos"] == "segredo-de-teste"
+    guardado = json.loads(destino.read_text(encoding="utf-8"))
+    assert guardado == {
+        "id": FICHA_DO_CNPJ["id"],
+        "title": FICHA_DO_CNPJ["title"],
+        "license_id": "cc-by",
+        "license_title": "Creative Commons Attribution",
+    }
+    assert "segredo-de-teste" not in destino.read_text(encoding="utf-8")
+
+
+def test_vigia_da_licenca_do_cnpj_sem_chave_falha_sem_gravar(tmp_path, monkeypatch):
+    monkeypatch.delenv("CHAVE_DE_TESTE", raising=False)
+    destino = tmp_path / "ficha.json"
+    with pytest.raises(obter.SemChaveDoPortal):
+        obter.licenca_da_ficha_do_dados_gov_br("https://x/ficha", "CHAVE_DE_TESTE")(
+            PortalComChave(FICHA_DO_CNPJ), destino
+        )
+    assert not destino.exists()
+
+
+@pytest.mark.parametrize("ficha", [{}, {"license_id": ""}, ["lista"], "texto"])
+def test_vigia_da_licenca_do_cnpj_falha_se_a_ficha_nao_traz_a_licenca(
+    tmp_path, monkeypatch, ficha
+):
+    monkeypatch.setenv("CHAVE_DE_TESTE", "segredo-de-teste")
+    destino = tmp_path / "ficha.json"
+    with pytest.raises(ValueError):
+        obter.licenca_da_ficha_do_dados_gov_br("https://x/ficha", "CHAVE_DE_TESTE")(
+            PortalComChave(ficha), destino
+        )
+    assert not destino.exists()
+
+
+def test_vigia_do_cnpj_avisa_quando_a_licenca_muda(tmp_path, monkeypatch):
+    """Ponta a ponta: a coleta da fonte registra a licença e, na rodada seguinte, avisa a troca."""
+    monkeypatch.setenv(fontes.VARIAVEL_DA_CHAVE_DO_DADOS_GOV_BR, "segredo-de-teste")
+    fonte = next(f for f in fontes.FONTES if f.id == "termos-cnpj-licenca")
+    assert fonte.vigia and fonte.tipo == "json"
+    [alvo] = fonte.descobrir(PortalComChave(FICHA_DO_CNPJ), AGORA)
+    assert alvo.obter is not None
+    destino = tmp_path / "a.json"
+    alvo.obter(PortalComChave(FICHA_DO_CNPJ), destino)
+    antes = coleta.texto_visivel(destino.read_bytes())
+    mudou = dict(FICHA_DO_CNPJ, license_id="cc-by-nd", license_title="CC BY-ND")
+    alvo.obter(PortalComChave(mudou), destino)
+    assert coleta.texto_visivel(destino.read_bytes()) != antes
+    # só os contadores mudam: o texto vigiado é o mesmo
+    alvo.obter(PortalComChave(dict(FICHA_DO_CNPJ, num_downloads=1)), destino)
+    assert coleta.texto_visivel(destino.read_bytes()) == antes

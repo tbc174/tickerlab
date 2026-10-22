@@ -479,6 +479,13 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-cnpj-licenca",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "cvm-fiagro",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
