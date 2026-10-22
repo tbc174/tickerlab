@@ -5,6 +5,7 @@ import io
 import pytest
 import requests
 
+from base.arquivo.agente import AGENTE
 from src import rede
 
 
@@ -58,7 +59,7 @@ def test_repassa_os_argumentos_e_poe_um_tempo_limite(monkeypatch, esperas):
         "headers": {"User-Agent": "T"},
         "timeout": rede.TEMPO_LIMITE,
     }
-    assert chamadas[1][2] == {"timeout": 5}
+    assert chamadas[1][2] == {"timeout": 5, "headers": {"User-Agent": AGENTE}}
 
 
 @pytest.mark.parametrize("status", [429, 500, 502, 503, 504])

@@ -26,6 +26,7 @@ import requests
 import sqlalchemy as sa
 
 from base.arquivo.cliente_http import AGENTE
+from src import rede
 from src.banco.series import SerieDoAcervo, garantir_serie, gravar
 
 log = logging.getLogger(__name__)
@@ -234,7 +235,9 @@ def _pedir(
     return resposta
 
 
-def baixar_pink_sheet(buscar: Callable[..., requests.Response] = requests.get) -> bytes:
+def baixar_pink_sheet(
+    buscar: Callable[..., requests.Response] = rede.get_com_agente,
+) -> bytes:
     pagina = _pedir(buscar, URL_DA_PAGINA_DO_PINK, headers=USER_AGENT)
     return _pedir(
         buscar, achar_endereco_do_pink(pagina.text), headers=USER_AGENT
@@ -242,7 +245,7 @@ def baixar_pink_sheet(buscar: Callable[..., requests.Response] = requests.get) -
 
 
 def baixar_fmi(
-    desde: date, buscar: Callable[..., requests.Response] = requests.get
+    desde: date, buscar: Callable[..., requests.Response] = rede.get_com_agente
 ) -> bytes:
     """O CSV do FMI com os itens de `ITENS`, de `desde` até o último mês publicado."""
     indicadores = "+".join(item.codigo_no_fmi for item in ITENS)

@@ -15,9 +15,8 @@ ferramenta "Quanto daria?" (`src/ferramentas/ponte_dados.py`).
 from datetime import date
 
 import pandas as pd
-import requests
 
-from src import bcb
+from src import bcb, rede
 
 INICIO_DO_REAL = date(1994, 7, 1)  # o Plano Real: antes disso, outra moeda
 POUPANCA = bcb.Serie(
@@ -41,12 +40,12 @@ def meses_fechados(serie: pd.Series, hoje: date) -> list[list]:
     ]
 
 
-def cdi_mensal(hoje: date, buscar: bcb.Buscar = requests.get) -> list[list]:
+def cdi_mensal(hoje: date, buscar: bcb.Buscar = rede.get_com_agente) -> list[list]:
     serie = bcb.baixar_sgs(CDI_NO_MES, INICIO_DO_REAL, hoje, hoje, buscar)
     return meses_fechados(serie, hoje)
 
 
-def poupanca_mensal(hoje: date, buscar: bcb.Buscar = requests.get) -> list[list]:
+def poupanca_mensal(hoje: date, buscar: bcb.Buscar = rede.get_com_agente) -> list[list]:
     """O rendimento de quem depositou no dia 1: regra antiga até mai/2012, regra nova depois."""
     antiga = bcb.baixar_sgs(
         POUPANCA_ANTIGA, INICIO_DO_REAL, FIM_DA_REGRA_ANTIGA, hoje, buscar
@@ -57,7 +56,7 @@ def poupanca_mensal(hoje: date, buscar: bcb.Buscar = requests.get) -> list[list]
     return meses
 
 
-def dolar_mensal(hoje: date, buscar: bcb.Buscar = requests.get) -> list[list]:
+def dolar_mensal(hoje: date, buscar: bcb.Buscar = rede.get_com_agente) -> list[list]:
     """[["AAAA-MM", reais por dólar], ...]: a PTAX de venda (SGS 1) do 1º dia útil de cada mês."""
     serie = bcb.baixar_sgs(bcb.SERIES["dolar"], INICIO_DO_REAL, hoje, hoje, buscar)
     meses: dict[str, float] = {}

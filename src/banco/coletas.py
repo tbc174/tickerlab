@@ -16,7 +16,7 @@ from typing import NamedTuple
 import requests
 import sqlalchemy as sa
 
-from src import acervo
+from src import acervo, rede
 from src.banco.conexao import obter_engine
 from src.banco.modelo import coletas
 from src.versao_do_codigo import versao_do_codigo
@@ -660,7 +660,7 @@ def com_registro[Conteudo: (bytes, bytes | None)](
 
 
 def buscar_com_registro(
-    fonte: str, buscar: Callable[..., requests.Response] = requests.get
+    fonte: str, buscar: Callable[..., requests.Response] = rede.get_com_agente
 ) -> Callable[..., requests.Response]:
     """Como `com_registro`, para os leitores que recebem um `buscar` no lugar do `requests.get`
     (Banco Central, Tesouro dos EUA): registra o endereço completo (com a consulta) e a resposta."""
