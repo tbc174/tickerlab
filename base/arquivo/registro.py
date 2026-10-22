@@ -44,6 +44,35 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "nasa": date(2026, 10, 22),
     "noaa": date(2026, 10, 22),
 }
+# releituras e primeiras leituras da auditoria N0 (21/10/2026; `auditoria-licitude-da-coleta-2026-10-21.md`);
+# vale o dia mais novo (FMI e GLEIF foram relidos em 22/10 pelo lote organismos). Família que a auditoria não conseguiu abrir ou não releu fica com a data antiga
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    (
+        "cvm",
+        "sec",
+        "bcb",
+        "chirps",
+        "mapbiomas",
+        "bm",
+        "tesouro",
+        "iex",
+        "yahoo",
+        "gdelt",
+        "kraken",
+        "ccee",
+        "antt",
+        "ons",
+        "cgu",
+        "pgfn",
+        "faostat",
+        "ico",
+        "inmet",
+        "fnc",
+        "b3",
+        "conab",
+    ),
+    date(2026, 10, 21),
+)
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")
