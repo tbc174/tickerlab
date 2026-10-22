@@ -80,6 +80,25 @@ def test_atributo_desconhecido_e_ignorado():
     assert lida["atributo"].tolist() == ["producao"]
 
 
+def test_mes_zero_do_arquivo_real_vale_o_dia_da_baixada():
+    """O CSV real traz `Month=00` no histórico até 2003 (sem mês de revisão): só a baixada é provável."""
+    cabecalho = (
+        "Commodity_Code,Commodity_Description,Country_Code,Country_Name,Market_Year,"
+        "Calendar_Year,Month,Attribute_ID,Attribute_Description,Unit_ID,Unit_Description,Value\n"
+    )
+    linha = '0711100,"Coffee, Green",BR,Brazil,{ano},{ano},{mes},028,Production,02,(1000 60 KG BAGS),{v}\n'
+    csv = (
+        cabecalho
+        + linha.format(ano=1960, mes="00", v="1.0")
+        + linha.format(ano=2024, mes="06", v="2.0")
+    )
+    lida = usda_psd.ler(csv.encode(), HOJE)
+    assert lida["divulgado_em"].tolist() == [
+        pd.Timestamp(HOJE),
+        pd.Timestamp("2024-06-30"),
+    ]
+
+
 def test_unidade_diferente_da_esperada_derruba_a_leitura():
     csv = (
         "Commodity_Code,Commodity_Description,Country_Code,Country_Name,Market_Year,"

@@ -37,8 +37,10 @@ ATRIBUTOS = {
 
 
 def _fim_do_mes(ano: pd.Series, mes: pd.Series) -> pd.Series:
+    """Fim do mês da revisão; `NaT` onde o arquivo traz `Month=00` (sem mês de revisão)."""
+    meses = mes.astype(int).where(lambda m: m > 0)
     inicio = pd.to_datetime(
-        pd.DataFrame({"year": ano.astype(int), "month": mes.astype(int), "day": 1})
+        pd.DataFrame({"year": ano.astype(int), "month": meses, "day": 1})
     )
     return inicio + pd.offsets.MonthEnd(0)
 
@@ -47,7 +49,8 @@ def ler(csv: bytes, disponivel_em: date) -> pd.DataFrame:
     """O balanço de um `psd_coffee.csv` baixado em `disponivel_em`.
 
     `divulgado_em` é o fim do mês da revisão da linha (folga: a USDA publica por volta do dia 10), e
-    nunca passa do dia da baixada.
+    nunca passa do dia da baixada. O histórico até 2003 vem com `Month=00` (sem mês de revisão): a
+    única data provada é a da baixada, então ela vale (sem olhar o futuro, ADR 0024).
     """
     bruto = pd.read_csv(io.BytesIO(csv), dtype=str, keep_default_na=False)
     bruto = bruto[bruto["Attribute_Description"].isin(ATRIBUTOS)]
@@ -66,7 +69,9 @@ def ler(csv: bytes, disponivel_em: date) -> pd.DataFrame:
             "tipo": traduzido.str[1],
             "valor": pd.to_numeric(bruto["Value"], errors="coerce"),
             "unidade": UNIDADE,
-            "divulgado_em": divulgado.clip(upper=pd.Timestamp(disponivel_em)),
+            "divulgado_em": divulgado.fillna(pd.Timestamp(disponivel_em)).clip(
+                upper=pd.Timestamp(disponivel_em)
+            ),
         }
     )
     return tabela.dropna(subset=["valor"]).reset_index(drop=True)[list(COLUNAS)]
