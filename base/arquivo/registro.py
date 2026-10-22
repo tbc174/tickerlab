@@ -33,6 +33,14 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "cecafe": date(2026, 10, 18),
     "fnc": date(2026, 10, 18),
     "contrapartes": date(2026, 10, 18),
+    # lote organismos: rodadas 1 e 4 da pesquisa de dados escondidos
+    "bce": date(2026, 10, 22),
+    "ocde": date(2026, 10, 22),
+    "eurostat": date(2026, 10, 22),
+    "worldbank": date(2026, 10, 22),
+    "bis": date(2026, 10, 22),
+    "nasa": date(2026, 10, 22),
+    "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
     "treasury": date(2026, 10, 22),
     "fed": date(2026, 10, 22),
