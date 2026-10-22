@@ -33,6 +33,9 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "cecafe": date(2026, 10, 18),
     "fnc": date(2026, 10, 18),
     "contrapartes": date(2026, 10, 18),
+    # rodada 1 da pesquisa de dados escondidos (licencas-por-fonte.md): todas lidas em 22/10/2026
+    "bcb": date(2026, 10, 22),
+    "tesouro": date(2026, 10, 22),
 }
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
