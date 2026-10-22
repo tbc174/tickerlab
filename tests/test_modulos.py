@@ -64,7 +64,7 @@ def test_o_que_ainda_nao_existe_nao_diz_que_existe():
     disponiveis = [
         f.nome for f in modulos.POR_CHAVE["mercado"].funcionalidades if f.disponivel
     ]
-    assert disponiveis == ["Juros e inflação", "Qualidade dos dados"]
+    assert disponiveis == ["Juros e inflação", "Qualidade do lucro"]
     research = [
         f.nome
         for f in modulos.POR_CHAVE["research"].funcionalidades
@@ -109,7 +109,7 @@ def test_comparacoes_em_pdf_levam_ao_report_studio():
 
 def test_qualidade_dos_dados_leva_a_uma_acao_da_b3_nos_fundamentos():
     """O selo "em conferência" aparece na tela Fundamentos, e só para documentos da CVM."""
-    f = _funcionalidade("mercado", "Qualidade dos dados")
+    f = _funcionalidade("mercado", "Qualidade do lucro")
     assert f.pagina_do_app == "fundamentos"
     assert f.ticker is not None and f.ticker.endswith(".SA")
 

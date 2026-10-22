@@ -252,8 +252,8 @@ MODULOS = (
                 "Cotações", "B3, EUA, câmbio e cripto, com o atraso de cada fonte."
             ),
             Funcionalidade(
-                "Qualidade dos dados",
-                "De onde veio cada número, quando foi conferido e o que está faltando.",
+                "Qualidade do lucro",
+                "Reapresentações, troca de auditor e os números em conferência, cada um com a fonte e a data.",
                 "fundamentos",  # o selo "em conferência" dos documentos da CVM
                 EXEMPLO,
             ),

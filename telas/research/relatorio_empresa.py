@@ -256,7 +256,7 @@ def _mostrar(relatorio: Relatorio) -> None:
     if relatorio.em_conferencia:
         st.warning(
             "Há números desta empresa em conferência pelas regras de qualidade: veja a seção "
-            "Qualidade dos dados.",
+            "Qualidade do lucro.",
             icon=":material/fact_check:",
         )
     if relatorio.analise:

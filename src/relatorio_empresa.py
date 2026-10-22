@@ -48,7 +48,7 @@ SECOES: dict[str, str] = {
     "retorno": "Retorno",
     "endividamento": "Endividamento",
     "caixa": "Caixa e capital de giro",
-    "qualidade": "Qualidade dos dados",
+    "qualidade_do_lucro": "Qualidade do lucro",
     "dividendos": "Dividendos e diluição",
     "pares": "Pares do mesmo setor",
     "eventos": "Acontecimentos recentes",
@@ -66,8 +66,7 @@ ORDEM_DAS_SECOES = (
     "credito",  # a dívida e o crédito
     "caixa",
     "geracao_de_caixa",  # EBITDA, capex e FCF da DFP (série T1)
-    "qualidade",
-    "qualidade_do_lucro",  # as contas e a qualidade delas
+    "qualidade_do_lucro",  # as contas e a qualidade delas (inclui os selos "em conferência")
     "dividendos",
     "ofertas_e_fundos",
     "capital_e_acionistas",  # capital e acionistas
@@ -910,18 +909,26 @@ def _eventos(e: Entradas) -> Secao:
     )
 
 
-def _qualidade(e: Entradas) -> Secao:
+def _selos(e: Entradas) -> list[str]:
+    """Os números em conferência (regras fixas), um parágrafo cada; vale para todos os planos."""
     if not e.achados:
-        return Secao(
-            "qualidade",
-            SECOES["qualidade"],
-            paragrafos=["Nenhum número em conferência."],
-        )
-    return Secao(
-        "qualidade",
-        SECOES["qualidade"],
-        paragrafos=[texto_do_selo(a) for a in e.achados],
-    )
+        return ["Nenhum número em conferência."]
+    return [texto_do_selo(a) for a in e.achados]
+
+
+def _qualidade_do_lucro(e: Entradas, do_dossie: list[Secao]) -> list[Secao]:
+    """Uma seção só, "Qualidade do lucro": os selos "em conferência" e, quando há, as tabelas da base.
+
+    A seção da base (reapresentações, release x oficial, troca de auditor) some quando a empresa não
+    tem esses dados, e trancada para quem não é Pro; os selos ficam em todos os casos.
+    """
+    chave = "qualidade_do_lucro"
+    selos = _selos(e)
+    achada = next((s for s in do_dossie if s.chave == chave), None)
+    if achada is None:
+        return [*do_dossie, Secao(chave, SECOES[chave], paragrafos=selos)]
+    unida = replace(achada, paragrafos=[*selos, *achada.paragrafos])
+    return [unida if s.chave == chave else s for s in do_dossie]
 
 
 Passo = tuple[str, float]
@@ -1534,8 +1541,7 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
         _dividendos(c),
         _historico(c),
         _eventos(entradas),
-        *do_dossie,
-        _qualidade(entradas),
+        *_qualidade_do_lucro(entradas, do_dossie),
         _o_que_mudou(entradas, c),
         _pares(entradas, c),
         _o_que_mudaria(c),

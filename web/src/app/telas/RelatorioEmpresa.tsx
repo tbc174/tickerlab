@@ -281,7 +281,7 @@ function Resultado({ relatorio }: { relatorio: RelatorioDaEmpresaV1 }) {
       {relatorio.em_conferencia ? (
         <p className="erro-do-app" role="note">
           Há números desta empresa em conferência pelas regras de qualidade:
-          veja a seção Qualidade dos dados.
+          veja a seção Qualidade do lucro.
         </p>
       ) : null}
       {relatorio.analise ? <Analise analise={relatorio.analise} /> : null}

@@ -18,7 +18,7 @@ const SUMARIO = [
   { id: ancora("Como os números são calculados"), texto: "Como os números são calculados" },
   { id: ancora("Testes de estratégia (backtest)"), texto: "Testes de estratégia (backtest)" },
   { id: ancora("Research: eventos e fundamentos"), texto: "Research: eventos e fundamentos" },
-  { id: qualidade.ancora, texto: "Qualidade dos dados" },
+  { id: qualidade.ancora, texto: "Qualidade do lucro" },
   { id: metodologia.ancora, texto: "Relatório da empresa" },
   { id: ancora("Carteira B3"), texto: "Carteira B3" },
   { id: ancora("Relatórios em PDF"), texto: "Relatórios em PDF" },
@@ -30,7 +30,7 @@ const SUMARIO = [
 function QualidadeDosDados() {
   return (
     <>
-      <h2 id={qualidade.ancora}>Qualidade dos dados: o selo "{qualidade.titulo_do_selo}"</h2>
+      <h2 id={qualidade.ancora}>Qualidade do lucro: o selo "{qualidade.titulo_do_selo}"</h2>
       <p>{qualidade.explicacao}</p>
       <p>
         Todo dia, depois da coleta, regras fixas conferem as demonstrações da CVM (DFP e ITR). Na

@@ -19,7 +19,7 @@
   "retorno": "Retorno",
   "endividamento": "Endividamento",
   "caixa": "Caixa e capital de giro",
-  "qualidade": "Qualidade dos dados",
+  "qualidade_do_lucro": "Qualidade do lucro",
   "dividendos": "Dividendos e diluição",
   "ofertas_e_fundos": "Ofertas e fundos",
   "auditor_e_controladas": "Auditor e controladas",
@@ -921,8 +921,8 @@
    "so_pro": false
   },
   {
-   "secao": "qualidade",
-   "id": "qualidade.paragrafos.0",
+   "secao": "qualidade_do_lucro",
+   "id": "qualidade_do_lucro.paragrafos.0",
    "tipo": "paragrafo",
    "texto": "Nenhum número em conferência.",
    "so_pro": false

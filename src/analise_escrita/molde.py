@@ -36,7 +36,7 @@ ROTEIRO = (
     ("endividamento", "o_que_os_numeros_mostram"),
     ("caixa", "o_que_os_numeros_mostram"),
     ("notas_classicas", "o_que_os_numeros_mostram"),
-    ("qualidade", "o_que_os_numeros_mostram"),
+    ("qualidade_do_lucro", "o_que_os_numeros_mostram"),
     ("historico", "o_que_os_numeros_mostram"),
     ("dividendos", "dinheiro"),
     ("ofertas_e_fundos", "dinheiro"),
@@ -53,7 +53,7 @@ SECOES_COM_TABELA = ("o_que_mudou", "o_que_mudaria")
 SECOES_COM_PARAGRAFO = (
     "o_que_mudou",
     "eventos",
-    "qualidade",
+    "qualidade_do_lucro",
     "historico",
     "pares",
     "o_que_mudaria",
