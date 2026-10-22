@@ -25,19 +25,23 @@ from pathlib import Path
 
 import pandas as pd
 
-from base.parquet import VERSAO_GUARDADA, gravar_atomico, regravar_por_lapide
+from base.parquet import (
+    VERSAO_GUARDADA,
+    gravar_atomico,
+    regravar_por_lapide,
+    tirar_por_lapide,
+)
 from base.pessoas import chave as chaves
-from base.pessoas.tabelas import COLUNAS_DE_OPOSICOES, sem_opostos
+from base.pessoas.tabelas import COLUNAS_DE_OPOSICOES
+from base.porta import pessoas as porta
 
 log = logging.getLogger(__name__)
 
 COLUNAS = COLUNAS_DE_OPOSICOES
 PRAZO = timedelta(days=15)  # política de privacidade e LIA: o nome sai em até 15 dias
-ARQUIVO = "pessoas_oposicoes.parquet"
-PASTA_DAS_PESSOAS = "pessoas"
+ARQUIVO = porta.ARQUIVO_DAS_OPOSICOES
 TABELAS_COM_PESSOA = ("qsa",)  # onde o `id_pessoa` aparece fora do restrito
 TAMANHO_DA_RAIZ = 8
-PREFIXO = 2  # a carga reparte pelos 2 primeiros caracteres da raiz
 MEIO = re.compile(r"^\d{6}$")
 
 
@@ -66,20 +70,9 @@ def meio_do_cpf(valor: str) -> str:
     return chaves.mascarar_cpf(texto)[3:9]
 
 
-def pessoas_da_raiz(restrita: Path, raiz: str) -> pd.DataFrame:
-    pasta = restrita / PASTA_DAS_PESSOAS / raiz[:PREFIXO]
-    arquivos = sorted(pasta.glob("*.parquet")) if pasta.is_dir() else []
-    if not arquivos:
-        return pd.DataFrame(
-            columns=["id_pessoa", "cnpj_basico", "nome", "cpf_mascarado"]
-        )
-    tabela = pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
-    return tabela[tabela["cnpj_basico"] == raiz]
-
-
 def achar_titular(restrita: Path, cnpj: str, nome: str, meio: str | None) -> list[str]:
     """Os `id_pessoa` de quem tem esse nome no quadro dessa empresa (com `meio`, só quem tem esse CPF)."""
-    pessoas = pessoas_da_raiz(restrita, raiz_do_cnpj(cnpj))
+    pessoas = porta.pessoas_da_raiz(restrita, raiz_do_cnpj(cnpj))
     alvo = chaves.normalizar_nome(nome)
     achados = pessoas[pessoas["nome"].map(chaves.normalizar_nome) == alvo]
     if meio is not None:
@@ -89,10 +82,7 @@ def achar_titular(restrita: Path, cnpj: str, nome: str, meio: str | None) -> lis
 
 def ler(restrita: Path) -> pd.DataFrame:
     """A tabela de oposições (vazia, com as colunas, antes do primeiro pedido)."""
-    arquivo = restrita / ARQUIVO
-    if not arquivo.is_file():
-        return pd.DataFrame(columns=list(COLUNAS))
-    return pd.read_parquet(arquivo)
+    return porta.oposicoes(restrita, COLUNAS)
 
 
 def _gravar(restrita: Path, tabela: pd.DataFrame) -> None:
@@ -141,28 +131,16 @@ def restos(restrita: Path) -> int:
     """Linhas no restrito de quem já teve a lápide: a carga que rodava durante o pedido trouxe de volta."""
     registro = ler(restrita)
     atendidos = set(registro.loc[registro["atendida_em"].notna(), "id_pessoa"])
-    pasta = restrita / PASTA_DAS_PESSOAS
-    arquivos = sorted(pasta.rglob("*.parquet")) if atendidos and pasta.is_dir() else []
-    return sum(
-        int(
-            pd.read_parquet(a, columns=["id_pessoa"])["id_pessoa"].isin(atendidos).sum()
-        )
-        for a in arquivos
-    )
+    if not atendidos:
+        return 0
+    return int(porta.ids_no_restrito(restrita).isin(atendidos).sum())
 
 
 def _tirar_do_restrito(restrita: Path, ids: set[str]) -> int:
-    tiradas = 0
-    for arquivo in sorted((restrita / PASTA_DAS_PESSOAS).rglob("*.parquet")):
-        tabela = pd.read_parquet(arquivo)
-        restante = sem_opostos(tabela, ids)
-        if len(restante) == len(tabela):
-            continue
-        tiradas += len(tabela) - len(restante)
-        gravar_atomico(
-            arquivo, lambda caminho, t=restante: t.to_parquet(caminho, index=False)
-        )
-    return tiradas
+    return sum(
+        tirar_por_lapide(arquivo, ids)
+        for arquivo in porta.arquivos_de_pessoas(restrita)
+    )
 
 
 def _regravar_tabelas(pasta: Path, ids: set[str], dia: date) -> int:

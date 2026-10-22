@@ -340,6 +340,20 @@ def sem_os_ids(tabela: pd.DataFrame, ids: set[str]) -> pd.DataFrame | None:
     return tabela
 
 
+def tirar_por_lapide(arquivo: Path, ids_pessoa: set[str]) -> int:
+    """Tira de `arquivo` as linhas desses `id_pessoa` (o restrito, onde a pessoa é a linha toda: nome e
+    CPF mascarado). Diferente de `regravar_por_lapide`, a linha sai: sem o id não sobra fato da empresa.
+    Devolve quantas saíram; sem nenhuma, não regrava."""
+    tabela = ler_tabela(arquivo)
+    restante = tabela[~tabela["id_pessoa"].isin(ids_pessoa)].reset_index(drop=True)
+    tiradas = len(tabela) - len(restante)
+    if tiradas:
+        gravar_atomico(
+            arquivo, lambda caminho: restante.to_parquet(caminho, index=False)
+        )
+    return tiradas
+
+
 def regravar_por_lapide(destino: Path, ids_pessoa: set[str], dia: str) -> list[Path]:
     """Regrava a vigente e as versões `.vN` de `destino` sem os `ids_pessoa` (a única exceção ao
     "nada é apagado"). Devolve os Parquets regravados.

@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 from base.pessoas import oposicoes, portao
+from base.porta import pessoas as porta
 
 FONTE = "rfb-cnpj"
 COLUNAS_DE_SAIDA = (
@@ -18,20 +19,10 @@ COLUNAS_DE_SAIDA = (
 )  # fmt: skip
 
 
-def _qsa_da_raiz(pasta: Path, raiz: str) -> pd.DataFrame:
-    arquivo = pasta / "vigente" / "qsa" / f"{raiz[: oposicoes.PREFIXO]}.parquet"
-    if not arquivo.is_file():
-        return pd.DataFrame(
-            columns=[*COLUNAS_DE_SAIDA[:-1], "cnpj_basico", "id_pessoa"]
-        )
-    tabela = pd.read_parquet(arquivo)
-    return tabela[tabela["cnpj_basico"] == raiz]
-
-
 def _nomes_que_podem_sair(restrita: Path, raiz: str) -> dict[str, str]:
     if not portao.nomes_liberados(FONTE, portao.PASTA_DAS_CONDICOES):
         return {}
-    pessoas = oposicoes.pessoas_da_raiz(restrita, raiz)
+    pessoas = porta.pessoas_da_raiz(restrita, raiz)
     pessoas = pessoas[~pessoas["id_pessoa"].isin(oposicoes.ids_opostos(restrita))]
     return dict(zip(pessoas["id_pessoa"], pessoas["nome"], strict=True))
 
@@ -39,7 +30,9 @@ def _nomes_que_podem_sair(restrita: Path, raiz: str) -> dict[str, str]:
 def socios_da_empresa(pasta: Path, restrita: Path, cnpj: str) -> pd.DataFrame:
     """O quadro de sócios da empresa, com o nome só onde o portão e as oposições deixam."""
     raiz = oposicoes.raiz_do_cnpj(cnpj)
-    socios = _qsa_da_raiz(pasta, raiz)
+    socios = porta.qsa_da_raiz(
+        pasta, raiz, [*COLUNAS_DE_SAIDA[:-1], "cnpj_basico", "id_pessoa"]
+    )
     nomes = _nomes_que_podem_sair(restrita, raiz)
     saida = socios.assign(nome=socios["id_pessoa"].map(nomes))
     saida["nome"] = saida["nome"].astype(object).where(saida["nome"].notna(), None)

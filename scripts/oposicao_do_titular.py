@@ -21,6 +21,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from base.pessoas import oposicoes
+from base.porta import pessoas as porta
 
 FUSO = ZoneInfo(
     "America/Sao_Paulo"
@@ -91,7 +92,7 @@ def _acesso(opcoes: argparse.Namespace) -> int:
     ids = _achar(opcoes)
     if ids is None:
         return 1
-    pessoas = oposicoes.pessoas_da_raiz(
+    pessoas = porta.pessoas_da_raiz(
         opcoes.restrita, oposicoes.raiz_do_cnpj(opcoes.cnpj)
     )
     papeis = pessoas[pessoas["id_pessoa"] == ids[0]]
