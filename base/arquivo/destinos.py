@@ -9,6 +9,8 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 
 from dataclasses import dataclass
 
+from base.arquivo import lote_eua
+
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
 SO_PESQUISA = "so_pesquisa"  # cópia de pesquisa fora do catálogo: só a B3 (ADR 0102)
@@ -52,6 +54,11 @@ _B3_BDI_CONTRA_OS_TERMOS = (
     "ferramentas de inteligência artificial, para quaisquer finalidades' "
     "(www.b3.com.br, Boletim diário do mercado, lida em 18/10/2026); decisão do Tiago em "
     "18/10/2026 de guardar a cópia até a B3 autorizar por escrito; nada em tela, API ou tabela"
+)
+
+_LOTE_EUA_SO_ARQUIVO = (
+    "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
+    "ainda não existe (sem pessoa física nas tabelas derivadas)"
 )
 
 DESTINOS: dict[str, Destino] = {
@@ -219,7 +226,14 @@ DESTINOS: dict[str, Destino] = {
             "termos-cecafe-robots",
             "termos-inmet",
             "termos-cnpj-licenca",
+            *lote_eua.termos(),
         )
+    },
+    # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
+    # publicam; a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria
+    **{
+        f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
+        for f in lote_eua.fontes()
     },
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),

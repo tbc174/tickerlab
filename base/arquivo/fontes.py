@@ -18,7 +18,7 @@ import requests
 import sqlalchemy as sa
 
 from base import intradiario_b3, tce_pr
-from base.arquivo import assessorias, contrapartes, wayback
+from base.arquivo import assessorias, contrapartes, lote_eua, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
@@ -117,6 +117,7 @@ TERMOS = {
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
     # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
     # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
@@ -1218,6 +1219,9 @@ FONTES: list[Fonte] = [
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
+    # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
+    # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
+    *lote_eua.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
