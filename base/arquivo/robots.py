@@ -6,7 +6,7 @@ agente (ou, na falta, o `*`), ganha a de padrão mais longo; em empate, a `Allow
 
 import re
 
-from base.arquivo.cliente_http import AGENTE
+from base.arquivo.agente import AGENTE
 
 _NOME_DO_AGENTE = AGENTE.split(" ", 1)[0].lower()
 
@@ -33,7 +33,7 @@ def _regras_do_grupo(robots: str) -> list[tuple[str, str]]:
             ultima_foi_agente = True
             continue
         ultima_foi_agente = False
-        if campo in ("allow", "disallow") and valor:
+        if campo in ("allow", "disallow", "crawl-delay") and valor:
             for agente in agentes:
                 grupos[agente].append((campo, valor))
     return grupos.get(_NOME_DO_AGENTE) or grupos.get("*") or []
@@ -43,9 +43,22 @@ def pode_buscar(robots: str, caminho: str) -> bool:
     """O robots.txt deixa o TickerLab buscar `caminho` (com a query, sem o domínio)?"""
     vencedora = ("allow", "")
     for tipo, regra in _regras_do_grupo(robots):
+        if tipo == "crawl-delay":
+            continue
         if _padrao(regra).match(caminho) and (
             len(regra) > len(vencedora[1])
             or (len(regra) == len(vencedora[1]) and tipo == "allow")
         ):
             vencedora = (tipo, regra)
     return vencedora[0] == "allow"
+
+
+def pausa_pedida(robots: str) -> float | None:
+    """O `Crawl-delay` (segundos entre pedidos) que o robots.txt pede ao nosso agente, ou None."""
+    for tipo, valor in _regras_do_grupo(robots):
+        if tipo == "crawl-delay":
+            try:
+                return max(float(valor), 0.0)
+            except ValueError:
+                return None
+    return None
