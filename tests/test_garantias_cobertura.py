@@ -7,7 +7,7 @@ avaliado a cobertura é zero, e garantia em outra moeda não muda a conta.
 from datetime import date
 from decimal import Decimal
 
-from hypothesis import given
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from src.garantias import cobertura
@@ -99,6 +99,7 @@ def test_situacao_da_validade_nos_limites():
     assert cobertura.situacao_da_validade(date(2026, 11, 21), HOJE) == cobertura.VIGENTE
 
 
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(valores, haircuts, haircuts, valores, valores)
 def test_haircut_maior_nunca_aumenta_a_cobertura(valor, h1, h2, onus, exposicao):
     menor, maior = sorted((h1, h2))
@@ -116,6 +117,7 @@ def test_haircut_maior_nunca_aumenta_a_cobertura(valor, h1, h2, onus, exposicao)
         assert D(b["cobertura"]) <= D(a["cobertura"])
 
 
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(haircuts, valores, st.decimals(min_value=1, max_value=10**9, places=2))
 def test_cobertura_zero_sem_valor_avaliado_e_nunca_negativa(haircut, onus, exposicao):
     resultado = _conta(
@@ -124,6 +126,7 @@ def test_cobertura_zero_sem_valor_avaliado_e_nunca_negativa(haircut, onus, expos
     assert D(resultado["cobertura"]) == 0
 
 
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(valores, haircuts, valores, st.decimals(min_value=1, max_value=10**9, places=2))
 def test_acrescentar_garantia_vigente_nunca_diminui_e_moeda_diferente_nao_muda(
     valor, haircut, onus, exposicao

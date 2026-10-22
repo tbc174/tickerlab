@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { linkDoClassico } from "./classico";
+import { useConta } from "./conta";
 import { AREAS, AREAS_DO_MENU, type ItemDoMenu, areaDoEndereco, itensDaArea, primeiraPronta } from "./areas";
 import { Icone } from "./Icone";
 
@@ -98,7 +99,13 @@ function ItemDaArea({ item, favorita, alternarFavorita }: PropriedadesDoItem) {
   );
 }
 
+/** O link da sala de dados: só para administradores (a API também responde 404 aos demais). */
+function useEhAdmin(): boolean {
+  return useConta()?.eu?.administrador === true;
+}
+
 export function MenuPorAreas() {
+  const admin = useEhAdmin();
   const atual = areaDoEndereco(useLocation().pathname);
   const trilho = useTrilho();
   const [favoritos, setFavoritos] = useListaGuardada(FAVORITOS);
@@ -169,6 +176,12 @@ export function MenuPorAreas() {
           </section>
         );
       })}
+      {admin ? (
+        <NavLink to="/sala-de-dados" className="inicio-do-menu" title="Sala de dados">
+          <Icone nome="conta" />
+          <span className="rotulo-do-menu">Sala de dados</span>
+        </NavLink>
+      ) : null}
     </nav>
   );
 }
@@ -183,6 +196,7 @@ const AREAS_DA_FOLHA = AREAS.filter((a) => [...AREAS_DO_MENU, "conta"].includes(
 
 /** Início, uma aba por área (abre a primeira tela pronta dela) e "Mais", que abre a folha com todas. */
 export function AbasDoCelular() {
+  const admin = useEhAdmin();
   const { pathname } = useLocation();
   const atual = areaDoEndereco(pathname);
   const folha = useRef<HTMLDialogElement>(null);
@@ -265,6 +279,14 @@ export function AbasDoCelular() {
             ))}
           </section>
         ))}
+        {admin ? (
+          <section>
+            <h3>Administração</h3>
+            <NavLink to="/sala-de-dados" onClick={fechar}>
+              Sala de dados
+            </NavLink>
+          </section>
+        ) : null}
         {/* no celular o "Versão clássica" não cabe no topo: fica aqui */}
         <a className="app-atual-na-folha" href={linkDoClassico()}>
           Versão clássica
