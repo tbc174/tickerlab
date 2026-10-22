@@ -2,7 +2,8 @@
 
     python -m scripts.chaves_da_api [--admin EMAIL] COMANDO ...
 
-No VPS, de dentro do contêiner do app (`docker exec -it ... python -m scripts.chaves_da_api ...`).
+No VPS, a pasta `scripts/` não entra na imagem: o arquivo vai pelo stdin para o contêiner do app,
+`docker exec -i tickerlab python - COMANDO ... < scripts/chaves_da_api.py` (em `/opt/stacks/tickerlab`).
 Comandos: `criar-organizacao`, `conceder-direito`, `suspender-direito`, `reativar-direito`,
 `emitir-chave`, `rotacionar-chave`, `revogar-chave`, `suspender-organizacao`,
 `reativar-organizacao` e `ver` (chaves pelo prefixo, direitos vigentes e consumo do mês).
@@ -242,7 +243,7 @@ Comando = Callable[[sa.Connection, argparse.Namespace, uuid.UUID], str]
 
 def _montar_argumentos() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m scripts.chaves_da_api",
+        prog="scripts/chaves_da_api.py",
         description="Administra as organizações, chaves e direitos da API externa.",
     )
     parser.add_argument(
