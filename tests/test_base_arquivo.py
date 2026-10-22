@@ -236,3 +236,23 @@ def test_pagina_de_bloqueio_com_xml_antes_do_html_tambem_e_html(banco, tmp_path)
     [linha] = _linhas(banco)
     assert resultado.falhas == [URL]
     assert "HTML" in linha.detalhe
+
+
+class _ClienteBloqueado(ClienteFalso):
+    def baixar(self, url, destino: Path):
+        raise coleta.BloqueioAntiRobo("desafio anti-robô (HTTP 403)")
+
+
+def test_vigia_no_desafio_anti_robo_fica_registrada_mas_nao_e_falha(banco, tmp_path):
+    # o IBGE pôs a Cloudflare na página de privacidade (19/10/2026): sem cópia, mas a tarefa não cai
+    fonte = _fonte(tipo="html", vigia=True, ident="termos-teste")
+    resultado = _rodar(fonte, _ClienteBloqueado({}), banco, tmp_path)
+    assert (resultado.falhas, resultado.bloqueadas) == ([], [URL])
+    [linha] = _linhas(banco)
+    assert (linha.situacao, linha.caminho_do_original) == ("falhou", None)
+    assert "BloqueioAntiRobo" in linha.detalhe
+
+
+def test_fonte_de_dados_no_desafio_anti_robo_continua_falha(banco, tmp_path):
+    resultado = _rodar(_fonte(), _ClienteBloqueado({}), banco, tmp_path)
+    assert (resultado.falhas, resultado.bloqueadas) == ([URL], [])

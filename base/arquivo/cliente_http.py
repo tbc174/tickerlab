@@ -9,7 +9,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from base.arquivo.coleta import Resposta, pacote_de_certificados
+from base.arquivo.coleta import BloqueioAntiRobo, Resposta, pacote_de_certificados
 
 AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
 TEMPO_LIMITE_EM_SEGUNDOS = 120
@@ -20,6 +20,16 @@ HTTP_TRECHO = 206  # resposta a um pedido de trecho (Range)
 TENTATIVAS_SE_A_CONEXAO_CAI = 3
 ESPERA_ENTRE_AS_TENTATIVAS = 2.0
 METODOS_QUE_PODEM_REPETIR = frozenset({"GET", "HEAD", "PROPFIND"})
+
+
+def _conferir(resposta: requests.Response) -> None:
+    """`raise_for_status`, mas o desafio da Cloudflare (cabeçalho `cf-mitigated: challenge`) é
+    `BloqueioAntiRobo`: um bloqueio do site, que não se contorna, e não um erro qualquer."""
+    if resposta.headers.get("cf-mitigated", "").lower() == "challenge":
+        raise BloqueioAntiRobo(
+            f"desafio anti-robô (HTTP {resposta.status_code}) em {resposta.url}"
+        )
+    resposta.raise_for_status()
 
 
 class ClienteHttp:
@@ -57,7 +67,7 @@ class ClienteHttp:
             timeout=TEMPO_LIMITE_EM_SEGUNDOS,
             data=corpo,
         )
-        resposta.raise_for_status()
+        _conferir(resposta)
         return Resposta(resposta.url, resposta.content, dict(resposta.headers))
 
     def cabecalhos(self, url: str) -> Mapping[str, str]:
@@ -71,7 +81,7 @@ class ClienteHttp:
         with self.sessao.get(
             url, stream=True, timeout=TEMPO_LIMITE_EM_SEGUNDOS
         ) as resposta:
-            resposta.raise_for_status()
+            _conferir(resposta)
             with destino.open("wb") as arquivo:
                 for parte in resposta.iter_content(chunk_size=1024 * 1024):
                     arquivo.write(parte)

@@ -9,7 +9,7 @@
 
 Cada arquivo vai para o acervo (`TICKERLAB_ACERVO`), para o registro de coletas e para o manifesto do
 dia. Saída: 0 tudo certo; 1 alguma falha (o Kuma avisa); 2 nada falhou, mas um termo de uso ou um
-catálogo mudou (aviso para alguém ler). Fonte desconhecida também sai com 2.
+catálogo mudou, ou uma página vigiada caiu no desafio anti-robô do site (aviso para alguém ler). Fonte desconhecida também sai com 2.
 
 Quando algo falha, a última linha da saída padrão é `FALHAS: fonte (motivo); ...`, curta, para o
 aviso do Kuma dizer o porquê (quem lê o e-mail nem sempre alcança o log do servidor).
@@ -144,6 +144,13 @@ def main(argv: list[str] | None = None) -> int:
             problemas.append(
                 f"{fonte.id} ({len(resultado.falhas)} arquivos; 1º: {resultado.falhas[0]})"
             )
+        for url in resultado.bloqueadas:
+            log.warning(
+                "%s: desafio anti-robô em %s (sem cópia; ver com uma pessoa)",
+                fonte.id,
+                url,
+            )
+            mudou = True
         for url in resultado.mudaram:
             log.warning("%s: o texto mudou em %s (ler de novo)", fonte.id, url)
             mudou = True

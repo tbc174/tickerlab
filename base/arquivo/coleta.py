@@ -19,7 +19,11 @@ Regras (testes em `tests/test_base_arquivo.py`):
 - alvo que já sabe a versão na descoberta (`Alvo.versao`: o CRC do ZIP interno do PIT, lido no
   índice do ZIP anual) nem pede nada à fonte quando a versão é a da última coleta, e não conta
   como pedido para a pausa;
-- fonte **vigia** (termos de uso, catálogos): avisa quando o texto visível muda.
+- fonte **vigia** (termos de uso, catálogos): avisa quando o texto visível muda;
+- vigia que cai no desafio anti-robô do site (`BloqueioAntiRobo`, Cloudflare; o IBGE, desde 19/10/2026): fica
+  registrada como "falhou" (sem cópia, a verdade), mas vai em `Resultado.bloqueadas` e não derruba a
+  tarefa: o aviso pede uma pessoa (outra fonte do texto ou contato com o dono), e as outras fontes
+  seguem visíveis. Nunca se tenta passar pelo desafio. Fonte que não é vigia bloqueada continua falha.
 """
 
 import hashlib
@@ -168,11 +172,16 @@ class Resultado:
     pulados: int = 0
     sem_arquivo: int = 0
     falhas: list[str] = field(default_factory=list)
+    bloqueadas: list[str] = field(default_factory=list)
     mudaram: list[str] = field(default_factory=list)
 
 
 class ErroDeDescoberta(Exception):
     """A fonte não mostrou nenhum arquivo, ou mudou de formato: tratar como falha."""
+
+
+class BloqueioAntiRobo(Exception):
+    """O site respondeu com um desafio anti-robô (Cloudflare) no lugar da página."""
 
 
 class SemArquivo(Exception):
@@ -396,7 +405,10 @@ def arquivar(
         except Exception as erro:  # noqa: BLE001 (cada arquivo falha sozinho, com registro)
             temporario.unlink(missing_ok=True)
             log.warning("%s: falhou %s (%s)", fonte.id, alvo.url, erro)
-            resultado.falhas.append(alvo.url)
+            if isinstance(erro, BloqueioAntiRobo) and fonte.vigia:
+                resultado.bloqueadas.append(alvo.url)
+            else:
+                resultado.falhas.append(alvo.url)
             detalhe = f"{type(erro).__name__}: {erro}"
             _registrar(fonte.id, alvo.url, None, None, "falhou", detalhe, agora)
     return resultado
