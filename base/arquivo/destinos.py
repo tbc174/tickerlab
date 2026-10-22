@@ -62,6 +62,8 @@ DESTINOS: dict[str, Destino] = {
         "fre_comites",
         "fre_conselho",
         "fre_diversidade",
+        "fre_capital_social",
+        "fre_empregados",
         "fre_eventos_de_capital",
         "fre_proventos",
         "fre_remuneracao",

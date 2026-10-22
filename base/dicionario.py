@@ -2115,6 +2115,108 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "fre_capital_social": Tabela(
+        descricao=(
+            "Capital social de cada FRE (integralizado, subscrito, emitido e autorizado), com as ações ordinárias e preferenciais, as classes e os títulos conversíveis em ação"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_capital_social/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "id_capital_social": ("Identificador da linha de capital na CVM", TEXTO),
+            "tipo_capital": (
+                'integralizado, subscrito, emitido ou autorizado (o "Capital ..." da CVM, sem acento)',
+                TEXTO,
+            ),
+            "autorizado_em": ("Data da autorização ou aprovação do capital", DATA),
+            "valor_capital": ("Valor do capital", REAIS),
+            "acoes_ordinarias": ("Quantidade de ações ordinárias", ACOES),
+            "acoes_preferenciais": ("Quantidade de ações preferenciais", ACOES),
+            "acoes_total": ("Quantidade total de ações", ACOES),
+            "acoes_por_classe": (
+                'Quantidade por classe, como "Preferencial Classe A=1000; Ordinária Classe A=500" (vazio sem classe declarada)',
+                TEXTO,
+            ),
+            "titulos_conversiveis": (
+                'Títulos conversíveis em ação, separados por "; " (sem as condições de conversão, texto livre; vazio quando a companhia diz que não há)',
+                TEXTO,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_empregados": Tabela(
+        descricao=(
+            "Empregados por região (recorte `local`) e por posição, liderança ou não (recorte `posicao`), com gênero, raça, faixa etária, PCD e região, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores)"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_empregados/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "recorte": ("`local` (por região) ou `posicao` (liderança ou não)", TEXTO),
+            "grupo": (
+                "A região (Norte, Nordeste, Centro-Oeste, Sudeste, Sul, Exterior) ou a posição (Liderança, Não-liderança), como a CVM escreve",
+                TEXTO,
+            ),
+            **{
+                coluna: (f"Como a CVM publica (`{coluna}`)", NUMERO_DECIMAL)
+                for coluna in (
+                    "genero_feminino",
+                    "genero_masculino",
+                    "genero_nao_binario",
+                    "genero_outros",
+                    "genero_sem_resposta",
+                    "raca_amarelo",
+                    "raca_branco",
+                    "raca_preto",
+                    "raca_pardo",
+                    "raca_indigena",
+                    "raca_outros",
+                    "raca_sem_resposta",
+                    "idade_ate_30",
+                    "idade_30_a_50",
+                    "idade_acima_50",
+                )
+            },
+            **{
+                coluna: (
+                    f"Só no recorte `posicao`: como a CVM publica (`{coluna}`)",
+                    NUMERO_DECIMAL,
+                )
+                for coluna in (
+                    "pcd_sim",
+                    "pcd_nao",
+                    "pcd_sem_resposta",
+                    "regiao_norte",
+                    "regiao_nordeste",
+                    "regiao_centro_oeste",
+                    "regiao_sudeste",
+                    "regiao_sul",
+                    "regiao_exterior",
+                )
+            },
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
     "ofertas_antigas": Tabela(
         descricao=(
             "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo (sem chave única: a ICVM 476 não tem número de processo). O nome do vendedor e o nome e o documento do ofertante sem CNPJ nunca entram"
@@ -5385,6 +5487,8 @@ _CONTRATO = {
     "fre_remuneracao": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'fim_do_exercicio', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_remuneracao_extremos": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'fim_do_exercicio', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_diversidade": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_capital_social": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_capital_social'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_empregados": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'recorte', 'grupo'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde="2023-01-01"),
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
