@@ -209,3 +209,52 @@ def test_resposta_de_erro_nao_e_repetida(servidor_que_derruba, tmp_path):
     with pytest.raises(requests.HTTPError):
         arquivar_fontes.ClienteHttp().baixar(servidor.url, tmp_path / "q.zip")
     assert servidor.pedidos == ["GET"]
+
+
+class _PaginaDaCloudflare:
+    status_code = 403
+    url = "https://exemplo.gov.br/termos"
+
+    def __init__(self):
+        self.headers = {"cf-mitigated": "challenge"}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *erro):
+        return False
+
+    def raise_for_status(self):
+        raise requests.HTTPError("403", response=self)
+
+
+def test_desafio_da_cloudflare_vira_bloqueio_e_erro_comum_continua_http(
+    monkeypatch, tmp_path
+):
+    from base.arquivo.coleta import BloqueioAntiRobo
+
+    cliente = arquivar_fontes.ClienteHttp()
+    monkeypatch.setattr(cliente.sessao, "get", lambda url, **o: _PaginaDaCloudflare())
+    with pytest.raises(BloqueioAntiRobo, match="403"):
+        cliente.baixar("https://exemplo.gov.br/termos", tmp_path / "q.html")
+    pagina = _PaginaDaCloudflare()
+    pagina.headers = {}
+    monkeypatch.setattr(cliente.sessao, "get", lambda url, **o: pagina)
+    with pytest.raises(requests.HTTPError):
+        cliente.baixar("https://exemplo.gov.br/termos", tmp_path / "q.html")
+
+
+def test_vigia_bloqueada_sai_com_2_sem_tentar_de_novo(monkeypatch, capsys):
+    from base.arquivo.coleta import Resultado
+
+    chamadas = []
+
+    def arquivar_falso(fonte, cliente, agora, pasta):
+        chamadas.append(fonte.id)
+        return Resultado(fonte.id, bloqueadas=["https://x/termos"])
+
+    monkeypatch.setattr(arquivar_fontes, "arquivar", arquivar_falso)
+    monkeypatch.setattr(arquivar_fontes, "esperar", lambda s: None)
+    assert arquivar_fontes.main(["termos-ibge"]) == 2
+    assert chamadas == ["termos-ibge"]
+    assert "FALHAS" not in capsys.readouterr().out
