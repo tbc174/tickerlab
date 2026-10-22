@@ -1,7 +1,6 @@
 """As rotas das garantias e exposições da operação (B-17, PR 2): só leitura.
 
-Mesmas regras de `src/api_v1/sala.py`: o guarda `Conta` (hoje só admin, 404 para as outras contas) e
-404, não 403, para a operação de outra conta ou que não existe. A conta da cobertura é a de
+Mesmas regras de `src/api_v1/sala.py`: o guarda `Conta` (conta logada) e 404, não 403, para a operação de outra conta ou que não existe. A conta da cobertura é a de
 `src/garantias/cobertura.py`, chamada por `src/banco/garantias.py`: aqui só entram a conta logada e
 o desenho das respostas. Valor em dinheiro, haircut e cobertura saem em texto, sem perder casa
 decimal. O titular só aparece como id opaco (`titular_ref`); o corpo do erro nunca traz dado da conta.

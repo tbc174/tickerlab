@@ -32,6 +32,7 @@
  "tests/test_api_v1_esquemas.py": 0.1,
  "tests/test_api_v1_ferramentas.py": 2.1,
  "tests/test_api_v1_rotas.py": 133.7,
+ "tests/test_api_v1_sala_garantias.py": 30.0,
  "tests/test_api_v1_workspace.py": 39.8,
  "tests/test_app_novo_mesmos_numeros.py": 4.2,
  "tests/test_aprendizado.py": 0.4,

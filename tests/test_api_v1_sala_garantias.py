@@ -134,4 +134,6 @@ def test_guarda_da_sala(banco, app, ana, fim):
     caminho = f"/v1/operacoes/{operacao_id}/{fim}"
     assert TestClient(app).get(caminho).status_code == 401
     comum, _ = _conta(banco, app, "carla", admin=False)
-    assert comum.get(caminho).status_code == 404
+    assert comum.get(caminho).status_code == 404  # a operação é da Ana, não da Carla
+    propria = comum.post("/v1/operacoes", json=OPERACAO).json()["id"]
+    assert comum.get(f"/v1/operacoes/{propria}/{fim}").json() == []
