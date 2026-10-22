@@ -14,20 +14,27 @@ import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
 import { ConviteDoPro, Secao, fimDoPrimeiroBloco } from "./RelatorioEmpresa";
 
-function BaixarPdf({ rota, setor }: { rota: string; setor: string }) {
+const ARQUIVOS: { rotulo: string; sufixo: string; nome: string }[] = [
+  { rotulo: "Baixar PDF", sufixo: "/pdf", nome: "relatorio-do-setor-{setor}-tickerlab.pdf" },
+  { rotulo: "Baixar deck (PDF)", sufixo: "/apresentacao", nome: "setor-{setor}-tickerlab.pdf" },
+  { rotulo: "Baixar deck (PPT)", sufixo: "/apresentacao", nome: "setor-{setor}-tickerlab.pptx" },
+];
+
+function BaixarArquivos({ rota, setor }: { rota: string; setor: string }) {
   const token = useConta()?.token ?? null;
   const [baixando, setBaixando] = useState(false);
   const [falha, setFalha] = useState<string | null>(null);
-  const baixarAgora = () => {
+  const baixarAgora = (sufixo: string, nome: string) => {
     if (token === null) return;
+    const formato = nome.endsWith(".pptx") ? "pptx" : "pdf";
     setBaixando(true);
     setFalha(null);
-    baixar(`${rota}/pdf`, token, undefined, { setor })
+    baixar(`${rota}${sufixo}`, token, undefined, sufixo === "/pdf" ? { setor } : { setor, formato })
       .then((arquivo) => {
         const endereco = URL.createObjectURL(arquivo);
         const ancora = document.createElement("a");
         ancora.href = endereco;
-        ancora.download = `relatorio-do-setor-${setor}-tickerlab.pdf`;
+        ancora.download = nome.replace("{setor}", setor);
         ancora.click();
         URL.revokeObjectURL(endereco);
       })
@@ -38,9 +45,17 @@ function BaixarPdf({ rota, setor }: { rota: string; setor: string }) {
   };
   return (
     <>
-      <button type="button" className="botao" disabled={baixando} onClick={baixarAgora}>
-        Baixar PDF
-      </button>
+      {ARQUIVOS.map(({ rotulo, sufixo, nome }) => (
+        <button
+          key={rotulo}
+          type="button"
+          className="botao"
+          disabled={baixando}
+          onClick={() => baixarAgora(sufixo, nome)}
+        >
+          {rotulo}
+        </button>
+      ))}
       {falha ? (
         <p className="erro-do-app" role="alert">
           {falha}
@@ -141,7 +156,7 @@ function Resultado({ rota, setor }: { rota: string; setor: string }) {
   if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
   return (
     <>
-      <BaixarPdf rota={rota} setor={setor} />
+      <BaixarArquivos rota={rota} setor={setor} />
       <Relatorio dados={pedido.dados} />
     </>
   );

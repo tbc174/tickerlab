@@ -9,15 +9,18 @@ título e o convite) para quem não é Pro.
 import logging
 import re
 from dataclasses import replace
+from datetime import datetime
 
 import pandas as pd
 import streamlit as st
 from sqlalchemy import exc as sa_exc
 
-from src import dossie, eventos_sec, graficos, relatorios
+from src import apresentacao, dossie, eventos_sec, graficos, relatorios
 from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.analise_escrita.exibicao import com_analise
 from src.analise_escrita.modelo_da_tela import AnaliseDaTela, ParteDaTela
+from src.apresentacao_pdf import apresentacao_em_pdf
+from src.apresentacao_pptx import apresentacao_em_pptx
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
@@ -38,7 +41,7 @@ from src.relatorio_empresa import (
     nome_da_tabela,
     rotulo_da_coluna,
 )
-from src.relatorio_empresa_pdf import relatorio_da_empresa
+from src.relatorio_empresa_pdf import FUSO, relatorio_da_empresa
 from telas.comum import (
     PAGINAS_DO_MENU,
     cabecalho_da_pagina,
@@ -53,6 +56,10 @@ COMO_FOI_CALCULADO = "Como foi calculado"
 MARCAS_DO_MARKDOWN = re.compile(r"[\\`*_\[\]$#<>|~]")
 GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
 CHAVE_DO_PDF = "relatorio_empresa_pdf"
+CHAVE_DO_DECK = "relatorio_empresa_deck"
+TIPO_DO_PPT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+)
 SO_B3 = (
     "O relatório completo por enquanto é só das empresas da B3 (os padrões por setor e os "
     "proventos do FRE vêm da CVM). Escolha um ticker da B3 no topo; para empresas dos EUA, "
@@ -345,6 +352,37 @@ def _oferecer_o_pdf(relatorio: Relatorio) -> None:
         )
 
 
+def _oferecer_o_deck(relatorio: Relatorio) -> None:
+    """O deck da ficha (PDF e PPT, os mesmos slides) para mandar sem editar. É o mesmo conteúdo
+    da página, então não conta como relatório do plano."""
+    if st.button(
+        "Gerar o deck (PDF e PPT)",
+        icon=":material/slideshow:",
+        key="empresa_gerar_deck",
+    ):
+        agora = datetime.now(FUSO)
+        deck = apresentacao.da_ficha(relatorio, agora)
+        with st.spinner("Montando os slides…"):
+            st.session_state[CHAVE_DO_DECK] = {
+                "ticker": relatorio.ticker,
+                "pdf": apresentacao_em_pdf(deck, agora),
+                "pptx": apresentacao_em_pptx(deck, agora),
+            }
+    gerado = st.session_state.get(CHAVE_DO_DECK)
+    if gerado and gerado["ticker"] == relatorio.ticker:
+        nome = f"tickerlab-ficha-{relatorio.ticker.removesuffix('.SA')}"
+        for formato, tipo in (("pdf", "application/pdf"), ("pptx", TIPO_DO_PPT)):
+            st.download_button(
+                f"Baixar o deck ({formato.upper() if formato == 'pdf' else 'PPT'})",
+                data=gerado[formato],
+                file_name=f"{nome}.{formato}",
+                mime=tipo,
+                icon=":material/download:",
+                key=f"empresa_baixar_deck_{formato}",
+                on_click="ignore",
+            )
+
+
 def pagina_relatorio_empresa():
     cabecalho_da_pagina("relatorio_empresa")
     c = carregar_contexto()
@@ -356,6 +394,7 @@ def pagina_relatorio_empresa():
     entradas = replace(entradas, premissas=_premissas())
     relatorio = com_analise(montar(entradas, plano_atual()), entradas, plano_atual())
     _oferecer_o_pdf(relatorio)
+    _oferecer_o_deck(relatorio)
     _mostrar(relatorio)
     st.page_link(
         PAGINAS_DO_MENU["fundamentos"],

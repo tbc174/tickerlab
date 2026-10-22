@@ -16,6 +16,7 @@ cryptography==50.0.2
 defusedxml==0.7.1
 fastapi==0.143.0
 fpdf2==2.8.9
+python-pptx==1.0.2
 pypdfium2==5.14.0
 # rapidocr + onnxruntime: OCR de reserva do leitor de fatos relevantes, só quando o PDF volta
 # vazio ou embaralhado (plano B leve, 18/10/2026); os modelos vêm dentro do pacote (sem download).

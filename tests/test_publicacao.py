@@ -6,7 +6,10 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-PACOTES_QUE_O_PIP_CHAMA_DIFERENTE: dict[str, str] = {"fpdf": "fpdf2"}
+PACOTES_QUE_O_PIP_CHAMA_DIFERENTE: dict[str, str] = {
+    "fpdf": "fpdf2",
+    "pptx": "python-pptx",
+}
 PACOTES_NOSSOS = {"src", "telas", "base"}  # pastas do próprio repositório, não do pip
 
 

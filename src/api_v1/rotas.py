@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from src import (
     analises,
+    apresentacao,
     catalogo,
     cobranca,
     conformidade,
@@ -43,6 +44,9 @@ from src.api_v1.contexto import (
     carregar_ativo,
     cdi_entre,
 )
+from src.apresentacao import Apresentacao
+from src.apresentacao_pdf import apresentacao_em_pdf
+from src.apresentacao_pptx import apresentacao_em_pptx
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import compartilhamentos as links
 from src.banco import leituras as repo_leituras
@@ -95,6 +99,7 @@ from src.planos import (
 )
 from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
 from src.relatorio_do_setor_pdf import relatorio_do_setor as pdf_do_setor
+from src.relatorio_empresa import Relatorio
 from src.relatorio_empresa import montar as montar_relatorio
 from src.simulacoes import (
     endereco_no_app_novo,
@@ -108,6 +113,11 @@ from src.validacao import parametros_numericos
 FORMATO_DO_TICKER = r"^[A-Za-z0-9^][A-Za-z0-9.^=\-]{0,19}$"
 CUSTO_MAXIMO = 0.05  # 5% por operação: acima disso é erro de digitação
 Ticker = Annotated[str, Query(pattern=FORMATO_DO_TICKER, max_length=20)]
+FormatoDoDeck = Annotated[Literal["pdf", "pptx"], Query()]
+TIPOS_DO_DECK = {
+    "pdf": "application/pdf",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
 Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
 SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o CDI à toa)
@@ -968,10 +978,26 @@ def _preco_e_fechamentos(ticker: str) -> tuple[float | None, pd.Series | None]:
     return float(fechamento.iloc[-1]), fechamento
 
 
-@router.get("/relatorio-empresa")
-def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEmpresaV1:
-    """O relatório da empresa do ticker, montado para o plano da conta: as seções da base de ML
-    só vêm com números para o Pro (as outras vêm trancadas, só com o título e o convite)."""
+def _resposta_do_deck(
+    montar_deck: Callable[[datetime], Apresentacao], formato: str, nome: str
+) -> Response:
+    """O deck como arquivo para baixar (o mesmo conteúdo nos dois formatos, com a mesma hora)."""
+    agora = datetime.now(FUSO)
+    deck = montar_deck(agora)
+    gerar = apresentacao_em_pdf if formato == "pdf" else apresentacao_em_pptx
+    return Response(
+        content=gerar(deck, agora),
+        media_type=TIPOS_DO_DECK[formato],
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome}.{formato}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+def _relatorio_da_empresa_do_ticker(conta: Usuario, ticker: str) -> Relatorio:
+    """O relatório da empresa montado para o plano da conta, com a análise escrita (a rota JSON e a
+    do deck respondem do mesmo objeto, com as mesmas regras)."""
     ticker = normalizar_ticker(ticker)
     preco, fechamentos = _preco_e_fechamentos(ticker)
     try:
@@ -988,8 +1014,30 @@ def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEm
     if entradas.dados.contas.empty:
         raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
     relatorio = montar_relatorio(entradas, conta.plano)
+    return com_analise(relatorio, entradas, conta.plano)
+
+
+@router.get("/relatorio-empresa")
+def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEmpresaV1:
+    """O relatório da empresa do ticker, montado para o plano da conta: as seções da base de ML
+    só vêm com números para o Pro (as outras vêm trancadas, só com o título e o convite)."""
     return esquemas.de_relatorio_da_empresa(
-        com_analise(relatorio, entradas, conta.plano)
+        _relatorio_da_empresa_do_ticker(conta, ticker)
+    )
+
+
+@router.get("/relatorio-empresa/apresentacao", response_class=Response)
+def relatorio_da_empresa_em_deck(
+    conta: Conta, ticker: Ticker, formato: FormatoDoDeck
+) -> Response:
+    """A ficha da empresa como deck (PDF ou PPT), com "Limites e cuidados" (mesmo acesso e plano
+    da rota acima)."""
+    relatorio = _relatorio_da_empresa_do_ticker(conta, ticker)
+    sigla = relatorio.ticker.removesuffix(".SA")
+    return _resposta_do_deck(
+        lambda agora: apresentacao.da_ficha(relatorio, agora),
+        formato,
+        f"ficha-{sigla}-tickerlab",
     )
 
 
@@ -1085,6 +1133,26 @@ def relatorio_do_setor_em_pdf(
             "Content-Disposition": f'attachment; filename="relatorio-do-setor-{relatorio.setor}-tickerlab.pdf"',
             "Cache-Control": "no-store",
         },
+    )
+
+
+@router.get("/relatorio-setor/apresentacao", response_class=Response)
+def relatorio_do_setor_em_deck(
+    conta: Conta,
+    setor: Annotated[str, Query(max_length=TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR)],
+    formato: FormatoDoDeck,
+) -> Response:
+    """O relatório do setor como deck (PDF ou PPT), com "Limites e cuidados" (mesmo acesso e plano
+    da rota do PDF)."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = relatorio_setor.relatorio_do_setor(conexao, setor, conta.plano)
+    except relatorio_setor.SetorDesconhecidoError as erro:
+        raise HTTPException(status_code=404, detail=SETOR_DESCONHECIDO) from erro
+    return _resposta_do_deck(
+        lambda agora: apresentacao.do_setor(relatorio, agora),
+        formato,
+        f"setor-{relatorio.setor}-tickerlab",
     )
 
 

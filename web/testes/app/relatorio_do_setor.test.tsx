@@ -140,6 +140,23 @@ describe("relatório do setor", () => {
     clicar.mockRestore();
   });
 
+  it("Baixar deck (PPT): pede a apresentação do setor em pptx e entrega o arquivo", async () => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => "blob:ppt"), revokeObjectURL: vi.fn() });
+    const clicar = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { buscar } = abrirApp("/relatorio-do-setor", {
+      rotas: (endereco) => {
+        if (endereco.startsWith("/api/v1/setores")) return respostaJson(200, SETORES);
+        if (endereco.startsWith("/api/v1/relatorio-setor/apresentacao")) return new Response("PK", { status: 200 });
+        return endereco.startsWith("/api/v1/relatorio-setor") ? respostaJson(200, RELATORIO) : undefined;
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Baixar deck (PPT)" }));
+    await waitFor(() => expect(clicar).toHaveBeenCalled());
+    const [[endereco]] = buscar.mock.calls.filter(([e]) => String(e).includes("/apresentacao"));
+    expect(String(endereco)).toBe("/api/v1/relatorio-setor/apresentacao?setor=eletricas&formato=pptx");
+    clicar.mockRestore();
+  });
+
   it("Baixar PDF: se a API recusar, mostra a mensagem e não baixa nada", async () => {
     const clicar = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     abrirApp("/relatorio-do-setor", {
