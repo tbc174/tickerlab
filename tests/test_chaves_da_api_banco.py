@@ -463,3 +463,58 @@ def test_apagar_a_conta_do_admin_deixa_organizacao_e_chaves(banco):
         assert isinstance(
             cb.conferir_chave(conexao, nova.valor, agora=AGORA), ch.ContextoDaChave
         )
+
+
+# ---------------------------------------------------------------- bordas da revisão de segurança
+
+
+def test_organizacao_inexistente_nao_ganha_chave_nem_direito(conexao, admin):
+    ninguem = ch.uuid.uuid4()
+    with pytest.raises(cb.OrganizacaoInvalidaError):
+        cb.emitir_chave(conexao, organizacao_id=ninguem, ator_id=admin.id, agora=AGORA)
+    with pytest.raises(cb.OrganizacaoInvalidaError):
+        cb.conceder_direito(
+            conexao,
+            organizacao_id=ninguem,
+            conjunto="cvm-dfp-itr",
+            finalidade="analise",
+            vigente_desde=HOJE,
+            ator_id=admin.id,
+        )
+    assert conexao.execute(sa.select(chaves_da_api)).all() == []
+
+
+@pytest.mark.parametrize("conjunto", ["", "   ", "x" * 81])
+def test_conjunto_invalido_recusado(conexao, admin, conjunto):
+    alfa = _organizacao(conexao, admin)
+    with pytest.raises(ValueError, match="conjunto"):
+        cb.conceder_direito(
+            conexao,
+            organizacao_id=alfa.id,
+            conjunto=conjunto,
+            finalidade="analise",
+            vigente_desde=HOJE,
+            ator_id=admin.id,
+        )
+
+
+def test_chave_em_rotacao_nao_gira_de_novo_nem_ganha_prazo(conexao, admin):
+    alfa = _organizacao(conexao, admin)
+    antiga = _emitir(conexao, admin, alfa)
+    cb.rotacionar_chave(
+        conexao,
+        organizacao_id=alfa.id,
+        chave_id=antiga.chave_id,
+        ator_id=admin.id,
+        agora=AGORA,
+    )
+    with pytest.raises(cb.ChaveInexistenteError):
+        cb.rotacionar_chave(
+            conexao,
+            organizacao_id=alfa.id,
+            chave_id=antiga.chave_id,
+            ator_id=admin.id,
+            agora=AGORA + timedelta(days=6),
+        )
+    dia_8 = AGORA + timedelta(days=8)
+    assert cb.conferir_chave(conexao, antiga.valor, agora=dia_8) is Recusa.VENCIDA
