@@ -1,6 +1,6 @@
 """O que a tela da sala mostra (B-20, PR 5): `/v1/sala` e `/v1/operacoes/{id}/painel`.
 
-Mesmas regras de `src/api_v1/sala.py`: só admin (404 para as outras contas) e 404, não 403, para o
+Mesmas regras de `src/api_v1/sala.py`: conta logada e 404, não 403, para o
 que é de outra conta. A tela não calcula nem escreve nada: os textos, os rótulos dos estados, os
 dias que faltam para a operação sumir, o aviso de prazo e a descrição de cada contradição (qual
 métrica, período, documentos e valores) saem daqui. Mudar algo (criar, enviar, marcar) usa as rotas
