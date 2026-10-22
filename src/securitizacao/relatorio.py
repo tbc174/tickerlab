@@ -13,7 +13,7 @@ from datetime import datetime
 from src.estilos_pdf import PADRAO, Estilo
 from src.relatorio_empresa_pdf import FUSO
 from src.relatorio_pdf import RelatorioPDF
-from src.securitizacao.cascata import VERSAO_DO_CALCULO
+from src.securitizacao.cascata import PRO_RATA, VERSAO_DO_CALCULO, Regras
 from src.securitizacao.cenarios import (
     CENTAVOS_POR_REAL,
     Carteira,
@@ -26,8 +26,9 @@ TITULO_DOS_LIMITES = "Limites e cuidados"
 AVISO_DO_RODAPE = "Protótipo com carteira sintética. Nada aqui é recomendação de investimento, oferta ou rating."
 LIMITES = [
     (
-        "Protótipo: o motor é a versão 0.1.0 da cascata e ainda não cobre pro rata, gatilhos que mudam o "
-        "regime, juros de mora, custo variável, indexador nem duas classes na mesma senioridade."
+        f"Protótipo: o motor é a {VERSAO_DO_CALCULO} e ainda não cobre juros de mora, custo variável, "
+        "indexador, gatilhos de caixa ou de inadimplência (só o de perda acumulada) nem recomposição de "
+        "perda já alocada."
     ),
     "A carteira é sintética: nenhum número representa operação, oferta, rating ou condição de mercado real.",
     (
@@ -51,6 +52,32 @@ def _reais(centavos: int) -> str:
     reais, resto = divmod(abs(centavos), CENTAVOS_POR_REAL)
     texto = f"{reais:,}".replace(",", ".") + f",{resto:02d}"
     return f"-{texto}" if centavos < 0 else texto
+
+
+def _percentual(fracao: float) -> str:
+    """Fração em percentual com vírgula decimal (0.05 → 5,0%)."""
+    return f"{fracao:.1%}".replace(".", ",")
+
+
+def descrever_regras(regras: Regras) -> str:
+    """As regras da cascata em uma frase, para quem audita saber com que regime o motor rodou."""
+    if regras.principal == PRO_RATA and regras.gatilho_de_perda is not None:
+        principal = (
+            "principal pro rata até a perda acumulada passar de "
+            f"{_percentual(regras.gatilho_de_perda)} do pool original, depois sequencial"
+        )
+    elif regras.principal == PRO_RATA:
+        principal = "principal pro rata, sem gatilho"
+    else:
+        principal = "principal sequencial"
+    meta = regras.meta_de_sobrecolateralizacao
+    turbo = (
+        "sem turbo"
+        if meta is None
+        else f"turbo até a sobrecolateralização de {_percentual(meta)} do pool"
+    )
+    acumulam = "sim" if regras.juros_acumulam else "não"
+    return f"Regras da cascata: juros não pagos acumulam: {acumulam}; {principal}; {turbo}."
 
 
 def _tabela_da_estrutura(estrutura: Estrutura) -> tuple[list[str], list[list[str]]]:
@@ -161,6 +188,7 @@ def relatorio_dos_cenarios(
         f"Reserva mínima de R$ {_reais(estrutura.reserva_minima)} e despesas de "
         f"R$ {_reais(estrutura.despesas_mensais)} por mês."
     )
+    pdf.paragrafo(descrever_regras(estrutura.regras))
     pdf.tabela_de_texto(*_tabela_da_estrutura(estrutura))
     pdf.secao(titulos[1], numerada=True, reservar=60)
     pdf.tabela_de_texto(*_tabela_dos_cenarios(estrutura, resultados))
