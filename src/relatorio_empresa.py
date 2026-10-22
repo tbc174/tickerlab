@@ -71,6 +71,7 @@ ORDEM_DAS_SECOES = (
     "ofertas_e_fundos",
     "capital_e_acionistas",  # capital e acionistas
     "auditor_e_controladas",
+    "cruzamentos",  # o que a ficha cruza (fundos, número refeito, auditor, insiders)
     "governanca",  # governança
     "pares",
     "setor_regulado",  # setor e pares

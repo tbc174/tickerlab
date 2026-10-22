@@ -24,6 +24,7 @@ from src.banco.modelo import (
 from src.banco.padroes import padroes_em
 from src.banco.qualidade import achados_de
 from src.configuracao import preco_no_relatorio_ligado
+from src.cruzamentos import com_os_cruzamentos
 from src.demonstracoes import EXERCICIO
 from src.dossie import caixa_do_par, dossie_da_ficha, ficha_do, ficha_do_molde_a
 from src.relatorio_empresa import QUANTOS_EVENTOS, Entradas
@@ -125,5 +126,9 @@ def entradas_do_relatorio(
         pares=pares_do_grupo(conexao, dados.setor),
         caixa_do_par=caixa_do_par,
         tickers=tickers_da_empresa(conexao, cnpj),
-        dossie=None if ficha is None else dossie_da_ficha(ficha, hoje),
+        dossie=(
+            None
+            if ficha is None
+            else com_os_cruzamentos(dossie_da_ficha(ficha, hoje), ficha, hoje)
+        ),
     )

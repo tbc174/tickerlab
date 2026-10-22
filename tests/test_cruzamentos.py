@@ -274,3 +274,46 @@ def test_cruzamentos_nao_mudam_a_ficha_recebida():
 @pytest.mark.parametrize("regra", cruzamentos.REGRAS)
 def test_cada_regra_aceita_ficha_vazia(regra):
     assert not regra(_ficha(), HOJE).achado
+
+
+# --- a seção da ficha ------------------------------------------------------------------------------
+def test_a_secao_traz_os_quatro_com_data_e_fonte_em_cada_frase():
+    ficha = _ficha(_capital(fundos=_janelas(900.0, 100.0, 500.0, 400.0)))
+    secao = cruzamentos.secao_dos_cruzamentos(ficha, HOJE)
+    assert secao.chave == "cruzamentos" and len(secao.paragrafos) == 4
+    fundos_ = secao.paragrafos[0]
+    assert "Fundos entrando." in fundos_
+    assert "Dado de 30/09/2026." in fundos_ and f"Fonte: {FONTE}." in fundos_
+    sem_dado = secao.paragrafos[
+        1
+    ]  # nada da qualidade na ficha: diz o que faltou, sem inventar
+    assert sem_dado.endswith(cruzamentos.SEM_FONTE)
+
+
+def test_a_secao_corta_o_futuro_como_os_cruzamentos():
+    janelas = _janelas(900.0, 100.0, 500.0, 400.0)
+    futuro = [{"janela": "x", "ate": "2027-09-30", "compras": 1.0, "vendas": 9e9}]
+    antes = cruzamentos.secao_dos_cruzamentos(_ficha(_capital(fundos=janelas)), HOJE)
+    depois = cruzamentos.secao_dos_cruzamentos(
+        _ficha(_capital(fundos=[*futuro, *janelas])), HOJE
+    )
+    assert antes.paragrafos == depois.paragrafos
+
+
+def test_o_dossie_ganha_a_secao_e_o_cuidado_sem_perder_o_que_tinha():
+    from src.dossie import dossie_da_ficha
+
+    ficha = _ficha(_capital(fundos=_janelas(900.0, 100.0, 500.0, 400.0)))
+    base = dossie_da_ficha(ficha, HOJE)
+    com = cruzamentos.com_os_cruzamentos(base, ficha, HOJE)
+    assert [s.chave for s in com.secoes][-1] == "cruzamentos"
+    assert com.secoes[:-1] == base.secoes
+    assert com.limites[-1] == cruzamentos.LIMITE_DOS_CRUZAMENTOS
+    assert "recomendação" in com.limites[-1]
+
+
+def test_a_secao_entra_depois_do_auditor_na_ordem_do_relatorio():
+    from src.relatorio_empresa import ORDEM_DAS_SECOES
+
+    ordem = list(ORDEM_DAS_SECOES)
+    assert ordem.index("cruzamentos") == ordem.index("auditor_e_controladas") + 1
