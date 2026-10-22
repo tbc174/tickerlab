@@ -784,3 +784,72 @@ def test_setor_cortar_o_futuro_nao_muda_o_passado_na_noite(tmp_path: Path) -> No
         linhas.append([linha for linha in tabela if linha["ano"] == 2025])
     assert linhas[0] == linhas[1]
     assert linhas[0]
+
+
+def _insolvencia_da_cpfl(pasta: Path) -> None:
+    """Um pedido de falência na CVM (entregue em duas versões) e uma situação especial na Receita
+    (repetida na matriz e na filial, em dois meses), mais um fato que ainda não é público."""
+    _gravar(
+        pasta,
+        "insolvencia/insolvencia.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL, CPFL, CPFL],
+                "rotulo": ["pedido_de_falencia", "pedido_de_falencia", "falencia"],
+                "evento": ["x", "x", "y"],
+                "assunto": ["a", "a", "b"],
+                "origem_coletada_em": [D("2026-10-01")] * 3,
+                "protocolo": ["P1", "P1", "P2"],
+                "versao": [1, 2, 1],
+                "referencia": [D("2026-03-10")] * 2 + [D("2026-12-01")],
+                "conhecido_em": [D("2026-03-12"), D("2026-04-01"), D("2026-12-02")],
+                "link": ["l1", "l2", "l3"],
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "cnpj_situacao_especial/2026-09.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL_DIGITOS, "02429144000274"],
+                "cnpj_basico": ["02429144"] * 2,
+                "matriz": [True, False],
+                "situacao_especial": ["RECUPERACAO JUDICIAL"] * 2,
+                "rotulo": ["recuperacao_judicial"] * 2,
+                "data_situacao_especial": [D("2026-08-20")] * 2,
+                "mes_do_retrato": [D("2026-09-01")] * 2,
+                "origem_coletada_em": [D("2026-10-01")] * 2,
+                "disponivel_em": [D("2026-09-15")] * 2,
+            }
+        ),
+    )
+
+
+def test_ficha_traz_a_d2_so_com_fatos_ja_publicos(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _insolvencia_da_cpfl(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    linhas = secoes["insolvencia"]["tabelas"]["registros_de_insolvencia"]
+    assert (
+        [(l["registro"], l["publico_em"]) for l in linhas]
+        == [
+            ("Recuperação judicial", "2026-09-15"),
+            ("Pedido de falência", "2026-03-12"),
+        ]
+    )  # a falência entregue depois de hoje fica fora; versão e filial não repetem o fato
+    assert all(l["situacao"] is None for l in linhas)
+    assert "não prova que não exista" in json.dumps(
+        secoes["insolvencia"], ensure_ascii=False
+    )
+
+
+def test_ficha_sem_as_tabelas_diz_que_nao_consultou(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    assert (
+        "insolvencia" not in secoes
+    )  # nenhuma das duas fontes lida: sem seção, sem promessa

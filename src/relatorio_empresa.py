@@ -78,6 +78,7 @@ ORDEM_DAS_SECOES = (
     "setor_regulado",  # setor e pares
     "eventos",
     "negocios",  # negócios e acontecimentos
+    "insolvencia",  # registros de insolvência e situação especial (ADR 0103, D2)
     *list(SECOES)[list(SECOES).index("notas_classicas") :],
 )
 # uma seção nova da base, que a ordem ainda não conhece, vai com os negócios e acontecimentos

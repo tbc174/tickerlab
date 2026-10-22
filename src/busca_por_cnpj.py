@@ -53,7 +53,7 @@ DESLIGADO = (
     "Empresas fechadas: o relatório delas espera a licença dos dados da Receita Federal e da PGFN.",
     "Natureza jurídica e MEI: vêm da Receita Federal e esperam a mesma licença.",
     "Situação, categoria e data de registro na CVM: ainda não estão no banco do app.",
-    "Dívida com a União, insolvência, situação especial e atrasos de pagamento: esperam um parecer jurídico.",
+    "Dívida com a União e atrasos de pagamento: esperam um parecer jurídico.",
     "Sanções e dívidas entre empresas da rede: esperam um parecer jurídico.",
     "Sócios, administradores e qualquer nome de pessoa: não aparecem.",
     "Ligações de 2 ou mais saltos e busca por nome ou ticker: depois de medir o uso da busca.",

@@ -99,6 +99,7 @@ TITULOS_DAS_TABELAS = {
     "negocios_por_ano": "Documentos de negócios por ano",
     "ma_por_ano": "Negócios de M&A por ano em que ficaram conhecidos",
     "ma_recentes": "Últimos negócios de M&A conhecidos",
+    "registros_de_insolvencia": "Registros de insolvência e situação especial",
     "ligacoes_da_rede": "Ligações da companhia na rede",
     "identificadores_da_empresa": "Identificadores públicos da companhia",
 } | {serie.nome: serie.medida for serie in dossie_da_base.SERIES_DAS_AGENCIAS}
@@ -788,6 +789,14 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("papel", "Papel da empresa", _papel_no_ma),
         ("tipo", "Tipo do negócio", _tipo_de_ma),
         ("confirmado", "Confirmado por fonte oficial", _sim_ou_nao),
+    ],
+    "registros_de_insolvencia": [
+        ("aconteceu_em", "Data do fato", dia),
+        ("publico_em", "Público desde", dia),
+        ("registro", "Registro", _texto),
+        ("veiculo", "Veículo", _texto),
+        ("situacao", "Situação", _texto),
+        ("contestacao", "Contestação da empresa", _texto),
     ],
     "ligacoes_da_rede": [
         ("relacao", "Relação", _texto),
