@@ -66,6 +66,8 @@ _SEM_VIGIA = {
     # a página de termos não abre com o nosso agente; não se contorna (fila)
     "fmi": "imf.org responde 403 (Akamai) ao nosso agente",
     "ccee": "dadosabertos.ccee.org.br responde 403 ao nosso agente",
+    "ocde": "oecd.org/termsandconditions responde 403 (Cloudflare) ao nosso agente; não se contorna",
+    "worldbank": "os termos do Banco Mundial já são vigiados por `termos-banco-mundial` (família bm)",
     "mb": "mercadobitcoin.com.br/termos-de-uso respondeu 403 ao leitor",
     "wayback": "a página de termos do Internet Archive veio vazia",
     "cftc": "a página de política da CFTC deu 404 (domínio público, obra do governo dos EUA)",

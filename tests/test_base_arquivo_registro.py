@@ -54,6 +54,7 @@ def test_a_data_da_leitura_dos_termos_e_uma_data_ou_nada():
     assert por_id["inmet-bdmep"].termos_lidos_em == date(2026, 10, 21)
     assert por_id["cvm-fidc"].termos_lidos_em == date(2026, 10, 21)
     assert por_id["anp-concessionarios"].termos_lidos_em is None
+    assert por_id["gleif-br"].termos_lidos_em == date(2026, 10, 21)
 
 
 def test_toda_data_de_leitura_aponta_para_uma_familia_que_existe():

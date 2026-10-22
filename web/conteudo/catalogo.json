@@ -437,6 +437,41 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-bce",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-eurostat",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-bis",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-nasa-power",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-noaa",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-fed",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -1037,6 +1072,363 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "bce-cambio-dolar",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-cambio-real",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-curva-10a",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-juro-principal",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-inflacao-ipch",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-balanco-bancos",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-juro-credito",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ocde-cli",
+      "licenca": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-confianca",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-ipch",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-desemprego",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-pib",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-juro-longo",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-producao-industrial",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-cambio-efetivo-nominal",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-cambio-efetivo-real",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-juro-dos-bancos-centrais",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-preco-de-imoveis",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-inflacao-longa",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-cambio",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-lacuna-de-credito",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fmi-cambio",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-inflacao",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-reservas-do-mundo",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-ngdp_rpch",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-pcpipch",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-bca_ngdpd",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-ggxwdg_ngdp",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "noaa-teleconexoes",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "noaa-nao",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "noaa-ao",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "noaa-pna",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-brasil",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-mundo-ny-gdp-mktp-kd-zg",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-mundo-fp-cpi-totl-zg",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-mundo-sp-pop-totl",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "gleif-emissores",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "gleif-autoridades-de-registro",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "nasa-power-sul-de-minas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-cerrado-mineiro",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-matas-de-minas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-chapada-de-minas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-mogiana",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-alta-paulista",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-norte-do-parana",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-oeste-da-bahia",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-planalto-da-bahia",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-es-montanhas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-es-norte",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-rondonia",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-bahia-atlantico",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "sec-edgar-indice-diario",
