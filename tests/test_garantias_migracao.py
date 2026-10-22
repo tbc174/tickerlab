@@ -208,7 +208,7 @@ def test_banco_recusa_laudo_de_outra_sala(motor):
         {"onus_anteriores": Decimal(-1)},
         {"prioridade": 0},
         {"tipo": "ouro"},
-        {"liquidez": "enorme"},
+        {"liquidez": "extra"},
         {"laudo_pagina": 3},  # página sem documento
     ],
 )
