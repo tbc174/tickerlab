@@ -18,6 +18,7 @@ from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src import dossie
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
+from src.contestacao import com_a_contestacao
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
     CONVITE_DO_DOSSIE,
@@ -217,7 +218,7 @@ def montar_relatorio_do_cnpj(
         como_era_em=dossie.dia_da_ficha(ficha),
         secoes=[*([cadastro] if cadastro else []), *secoes],
         fontes=fontes,
-        limites=[*LIMITES_DA_BUSCA, *do_dossie.limites],
+        limites=com_a_contestacao([*LIMITES_DA_BUSCA, *do_dossie.limites]),
         desligado=list(DESLIGADO),
         avisos=[aviso] if aviso else [],
     )
@@ -233,7 +234,7 @@ def relatorio_fora_da_base_aberta(cnpj: str) -> RelatorioDoCnpj:
         como_era_em=None,
         secoes=[],
         fontes=[],
-        limites=list(LIMITES_DA_BUSCA),
+        limites=com_a_contestacao(list(LIMITES_DA_BUSCA)),
         desligado=list(DESLIGADO),
         avisos=[FORA_DA_BASE_ABERTA],
     )

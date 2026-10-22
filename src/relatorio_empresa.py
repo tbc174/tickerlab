@@ -28,6 +28,7 @@ from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.demonstracoes import DadosDaEmpresa
+from src.contestacao import com_a_contestacao
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao, Numero
@@ -1607,7 +1608,11 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     secoes.append(_o_que_os_dados_mostram(secoes, c))
     em_aberto = perguntas_em_aberto(secoes, motivo_sem_acesso(plano, DOSSIE_DA_BASE))
     secoes.append(
-        Secao("limites", SECOES["limites"], paragrafos=[*limites, *em_aberto])
+        Secao(
+            "limites",
+            SECOES["limites"],
+            paragrafos=com_a_contestacao([*limites, *em_aberto]),
+        )
     )
     secoes = na_ordem(secoes)
     return Relatorio(
