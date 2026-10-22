@@ -9,7 +9,7 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 
 from dataclasses import dataclass
 
-from base.arquivo import lote_eua
+from base.arquivo import lote_eua, lote_setoriais
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
@@ -138,6 +138,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
+)
+
+_LOTE_SETORIAIS_SO_ARQUIVO = (
+    "dado aberto de órgão público brasileiro guardado como publicado; a tabela com contrato no "
+    "catálogo ainda não existe (INPI só com os arquivos sem pessoa física)"
 )
 
 DESTINOS: dict[str, Destino] = {
@@ -322,6 +327,11 @@ DESTINOS: dict[str, Destino] = {
         id_: _planejada("dados-escondidos/rodada-1", porque)
         for porque, ids in _LOTE_ORGANISMOS.items()
         for id_ in ids
+    },
+    # lote setoriais Brasil (linha 245 da fila, 22/10/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-1", _LOTE_SETORIAIS_SO_ARQUIVO)
+        for f in lote_setoriais.fontes()
     },
     # vigias (avisam quando o texto muda)
     **{

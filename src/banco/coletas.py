@@ -133,11 +133,11 @@ LICENCAS = {
     # INEP, Senatran e INPI só têm o rodapé CC BY-ND 3.0 do site gov.br, que vale para o conteúdo do
     # site e não para o conjunto: mostrar "como publicado" com a fonte citada (precedente da CONAB)
     "epe": "CC BY 4.0 (dados abertos da EPE; citar a EPE)",
-    "inep": "CC BY-ND 3.0 (rodapé do site do INEP): uso como publicado, citando o INEP (ADR 0102)",
-    "senatran": "CC BY-ND 3.0 (rodapé do site da Senatran): uso como publicado, citando a Senatran (ADR 0102)",
-    "inpi": "Dados abertos do INPI, licença do conjunto não achada (rodapé CC BY-ND 3.0 do site): uso como publicado, citando o INPI (ADR 0102)",
+    "inep": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
+    "senatran": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
+    "inpi": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
     # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
-    "ans-demonstracoes": "Demonstrações contábeis da ANS: sem licença declarada; uso citando a ANS (ADR 0102)",
+    "ans-demonstracoes": "Demonstrações da ANS: sem licença declarada; citar a ANS (ADR 0102)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
