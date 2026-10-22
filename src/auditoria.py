@@ -40,6 +40,17 @@ ACAO_NEGOCIO_FASE_MUDADA = "negocio_fase_mudada"
 ACAO_NEGOCIO_ATUALIZADO = "negocio_atualizado"
 ACAO_CONTATO_REGISTRADO = "contato_registrado"
 ACAO_CONTATO_APAGADO = "contato_apagado"
+# API externa (N7): só ids, prefixo da chave, plano, finalidade, conjunto e código do motivo; nunca a
+# chave, o hash dela nem o nome da organização.
+ACAO_ORGANIZACAO_CRIADA = "organizacao_criada"
+ACAO_ORGANIZACAO_SUSPENSA = "organizacao_suspensa"
+ACAO_ORGANIZACAO_REATIVADA = "organizacao_reativada"
+ACAO_CHAVE_EMITIDA = "chave_emitida"
+ACAO_CHAVE_ROTACIONADA = "chave_rotacionada"
+ACAO_CHAVE_REVOGADA = "chave_revogada"
+ACAO_DIREITO_CONCEDIDO = "direito_concedido"
+ACAO_DIREITO_SUSPENSO = "direito_suspenso"
+ACAO_DIREITO_REATIVADO = "direito_reativado"
 
 
 @dataclass(frozen=True)
