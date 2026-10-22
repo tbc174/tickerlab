@@ -29,6 +29,7 @@ from base.arquivo.obter import (
     extrair_do_zip_remoto,
     indice_do_zip_remoto,
     json_so_com_campos,
+    licenca_da_ficha_do_dados_gov_br,
     membro_regravado,
     membros_do_zip_remoto,
     parquet_sem_colunas,
@@ -121,6 +122,10 @@ TERMOS = {
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
     "termos-cecafe-robots": CECAFE_ROBOTS,  # proíbe PDF e /wp-*/ (lido em 18/10/2026)
 }
+# a ficha do CNPJ no dados.gov.br declara a licença CC BY em que a base do CNPJ se apoia (ADR 0106);
+# a rota pública da ficha pede a chave do portal (`DADOS_GOV_BR_CHAVE`, no `.env` do servidor)
+FICHA_DO_CNPJ_NO_DADOS_GOV_BR = "https://dados.gov.br/api/publico/conjuntos-dados/cadastro-nacional-da-pessoa-juridica---cnpj"
+VARIAVEL_DA_CHAVE_DO_DADOS_GOV_BR = "DADOS_GOV_BR_CHAVE"
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
     # o firewall do BC bloqueia por alguns minutos de vez em quando ("Requisição inválida"): a nova
@@ -976,6 +981,21 @@ FONTES: list[Fonte] = [
     *(
         Fonte(i, "diaria", _catalogo(p), "json", vigia=True)
         for i, p in CATALOGOS.items()
+    ),
+    Fonte(
+        "termos-cnpj-licenca",
+        "diaria",
+        lambda cliente, agora: [
+            Alvo(
+                FICHA_DO_CNPJ_NO_DADOS_GOV_BR,
+                ".json",
+                obter=licenca_da_ficha_do_dados_gov_br(
+                    FICHA_DO_CNPJ_NO_DADOS_GOV_BR, VARIAVEL_DA_CHAVE_DO_DADOS_GOV_BR
+                ),
+            )
+        ],
+        "json",
+        vigia=True,
     ),
     # semanais: a CVM só guarda os meses recentes do FIAGRO e reescreve o FIDC
     Fonte("cvm-fiagro", "semanal", _ckan(PORTAL_DA_CVM, "fiagro-doc-inf_mensal")),

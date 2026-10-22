@@ -218,6 +218,7 @@ DESTINOS: dict[str, Destino] = {
             "catalogo-ibama",
             "termos-cecafe-robots",
             "termos-inmet",
+            "termos-cnpj-licenca",
         )
     },
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)

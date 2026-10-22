@@ -24,6 +24,11 @@
 - **CSV do BDI da B3** (aluguel e posições em aberto): o site pede por POST (tabela e dia no corpo);
   sem pregão vem só o cabeçalho, e vira `SemArquivo`.
 
+- **Ficha do conjunto no dados.gov.br** (vigia da licença do CNPJ): a rota pública da ficha responde
+  401 sem a chave do portal (`chave-api-dados-abertos`, no `.env` do servidor). Guarda só o que decide a
+  licença (nome, `license_id`, `license_title`): o JSON inteiro traz contadores de downloads e datas que
+  mudam todo dia e fariam a vigia avisar à toa.
+
 Os dois primeiros devolvem os cabeçalhos do arquivo de origem, então as fontes pesadas continuam
 pulando o que não mudou (ETag do ZIP inteiro ou do Parquet).
 """
@@ -34,6 +39,7 @@ import hashlib
 import html
 import io
 import json
+import os
 import re
 import shutil
 import struct
@@ -56,6 +62,8 @@ from base.arquivo.coleta import (
     assinatura,
 )
 
+# o que a vigia da licença guarda da ficha: quem é o conjunto e qual licença ele declara
+CAMPOS_DA_LICENCA_DA_FICHA = ("id", "title", "license_id", "license_title")
 TAMANHO_DO_TRECHO = 8 * 1024 * 1024  # cada pedido de trecho lê até 8 MB
 HTTP_NAO_ENCONTRADO = 404
 # O CSV do BDI abre com 1 a 2 linhas de descrição (sem ";") e traz o cabeçalho; o de empréstimos
@@ -355,6 +363,36 @@ def json_so_com_campos(url: str, campos: tuple[str, ...]) -> Obter:
             json.dumps({"value": filtrados}, ensure_ascii=False), encoding="utf-8"
         )
         return cabecalhos
+
+    return obter
+
+
+class SemChaveDoPortal(ValueError):
+    """A variável com a chave do dados.gov.br não está no ambiente (vigia da licença)."""
+
+
+def licenca_da_ficha_do_dados_gov_br(url: str, variavel_da_chave: str) -> Obter:
+    """A licença declarada na ficha de um conjunto do dados.gov.br, sem os campos que mudam todo dia.
+
+    Falha (nunca grava um arquivo vazio) se a chave não existe, se a ficha não traz `license_id` ou
+    se o portal respondeu outra coisa: uma vigia que cala quando a página muda não serve."""
+
+    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        chave = os.environ.get(variavel_da_chave, "").strip()
+        if not chave:
+            raise SemChaveDoPortal(f"{variavel_da_chave} não está no ambiente")
+        resposta = cliente.ler(
+            url,
+            cabecalhos={"chave-api-dados-abertos": chave, "Accept": "application/json"},
+        )
+        ficha = json.loads(resposta.conteudo)
+        if not isinstance(ficha, dict) or not ficha.get("license_id"):
+            raise ValueError("a ficha do dados.gov.br não traz license_id")
+        enxuta = {c: ficha.get(c) for c in CAMPOS_DA_LICENCA_DA_FICHA}
+        destino.write_text(
+            json.dumps(enxuta, ensure_ascii=False, sort_keys=True), encoding="utf-8"
+        )
+        return {}
 
     return obter
 
