@@ -53,9 +53,9 @@ class Limites:
     pdfs_guardados: int = 10
     # links compartilhados ativos (onda 4): vencidos e revogados não contam
     links_ativos: int = 3
-    # sala de dados por operação (B-20, D6 do plano): só admins por enquanto, os mesmos números
-    # em todos os planos até a sala abrir para clientes (o tamanho de cada arquivo e as 300
-    # páginas ficam em src/sala/arquivos.py: são regra de segurança, não de plano)
+    # sala de dados por operação (B-20, D6 do plano): Plus e Pro com os números cheios; o Gratuito
+    # tem os menores (decisão do Tiago, 22/10/2026). O tamanho de cada arquivo e as 300 páginas
+    # ficam em src/sala/arquivos.py: são regra de segurança, não de plano
     operacoes_na_sala: int = 20
     documentos_por_operacao: int = 100
     bytes_por_operacao: int = 250 * 1024 * 1024
@@ -74,6 +74,9 @@ LIMITES_DOS_PLANOS = {
         ativos_com_parametros=0,
         watchlists=1,
         ativos_por_watchlist=10,
+        operacoes_na_sala=3,
+        documentos_por_operacao=30,
+        bytes_por_operacao=50 * 1024 * 1024,
     ),
     "plus": Limites(
         nome="Plus",

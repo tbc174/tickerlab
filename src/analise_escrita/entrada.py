@@ -18,7 +18,9 @@ from typing import Any
 from base import dossie as dossie_da_base
 from src.analise_escrita import numeros
 from src.relatorio_empresa import (
+    ANEXO_DE_ANOS,
     COMO_SAI_O_DY,
+    FONTE_DO_ANEXO,
     FONTE_DOS_MULTIPLOS,
     Relatorio,
     nome_da_tabela,
@@ -88,6 +90,10 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
         if not _usa_o_preco(item):
             yield {"secao": chave, **_linha_do_item(chave, item)}
     for tabela, linhas in secao["tabelas"].items():
+        if (
+            tabela == ANEXO_DE_ANOS
+        ):  # os mesmos números da tabela de anos nas linhas, já citada
+            continue
         for i, celulas in enumerate(linhas):
             yield {
                 "secao": chave,
@@ -97,7 +103,10 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
                 "celulas": celulas,
             }
     for i, texto in enumerate(secao["paragrafos"]):
-        if TRECHO_DO_PRECO not in texto and texto != COMO_SAI_O_DY:
+        if TRECHO_DO_PRECO not in texto and texto not in (
+            COMO_SAI_O_DY,
+            FONTE_DO_ANEXO,
+        ):
             linha = {
                 "id": f"{chave}.paragrafos.{i}",
                 "tipo": "paragrafo",

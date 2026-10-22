@@ -110,6 +110,23 @@ ROTULOS_DAS_COLUNAS = {  # o cabeçalho que a regra geral (`rotulo_da_coluna`) e
     "margem_ebitda": "Margem EBITDA",
     "fcf": "FCF",
     "exercicio_do_caixa": "Exercício da margem e do FCF",
+    # as contas da DFP, com o acento e o nome que a pessoa lê no anexo de anos
+    "ebit": "EBIT",
+    "fco": "Caixa operacional (FCO)",
+    "lpa_basico": "LPA básico",
+    "depreciacao": "Depreciação",
+    "aplicacoes": "Aplicações financeiras",
+    "intangivel": "Intangível",
+    "divida_cp": "Dívida de curto prazo",
+    "divida_lp": "Dívida de longo prazo",
+    "lucro_liquido": "Lucro líquido",
+    "lucro_controladores": "Lucro dos controladores",
+    "lucros_acumulados": "Lucros acumulados",
+    "patrimonio_liquido": "Patrimônio líquido",
+    "minoritarios": "Minoritários",
+    "despesas_com_vendas": "Despesas com vendas",
+    "despesas_administrativas": "Despesas administrativas",
+    "resultado_bruto": "Resultado bruto",
 }
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
@@ -119,6 +136,7 @@ NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "sensibilidade": "Valor por ação conforme o desconto e o crescimento",
     "historico": "Ano a ano",
     "contas": "Contas ano a ano",
+    "anexo_de_anos": "Anexo: as contas de até 10 anos",
     "vertical": "Análise vertical (cada conta sobre a receita ou o ativo)",
     "eventos": "Acontecimentos recentes",
     "indicadores": "Antes e agora",
@@ -242,6 +260,13 @@ class Secao:
     )  # o que os dados mostram
     trancada: bool = False  # só o título e o convite: o plano não inclui a seção
     recolhida: bool = False  # explicação: a tela mostra fechada (o PDF, por inteiro)
+
+    def tabelas_a_mostrar(self) -> dict[str, list[dict]]:
+        """As tabelas que a página, o PDF e a API mostram: o anexo de anos toma o lugar da tabela
+        de anos nas linhas, que fica na seção só porque a análise escrita cita as linhas dela."""
+        if ANEXO_DE_ANOS in self.tabelas:
+            return {k: v for k, v in self.tabelas.items() if k != TABELA_DE_ANOS}
+        return self.tabelas
 
 
 @dataclass(frozen=True)
@@ -879,6 +904,35 @@ def _dividendos(c: _Calculos) -> Secao:
     )
 
 
+UNIDADE_DAS_CONTAS = "R$"
+UNIDADES_DIFERENTES = {
+    "lpa_basico": "R$ por ação"
+}  # as demais contas da DFP vêm em reais
+ANEXO_DE_ANOS = "anexo_de_anos"
+TABELA_DE_ANOS = (
+    "contas"  # um ano por linha: a que a análise escrita cita (`historico.contas.N`)
+)
+FONTE_DO_ANEXO = (
+    "Fonte: demonstrações financeiras padronizadas (DFP) da CVM, um exercício por coluna, como "
+    "foram publicadas; sem estimativa e sem o ano em curso."
+)
+
+
+def anexo_de_anos(contas: pd.DataFrame) -> list[dict]:
+    """O histórico em tabela única: uma conta por linha, uma coluna por ano (do mais antigo ao mais
+    novo) e a unidade ao lado do nome. `contas` tem um ano por linha, como em `Historico.contas`."""
+    if contas.empty:
+        return []
+    return [
+        {
+            "conta": rotulo_da_coluna(conta),
+            "unidade": UNIDADES_DIFERENTES.get(conta, UNIDADE_DAS_CONTAS),
+            **{str(ano): para_json(valor) for ano, valor in serie.items()},
+        }
+        for conta, serie in contas.items()
+    ]
+
+
 def _historico(c: _Calculos) -> Secao:
     h = c.historico
     paragrafos = [
@@ -887,9 +941,10 @@ def _historico(c: _Calculos) -> Secao:
             f"do lucro: {escrever(h.crescimento.get('lucro'), fundamentos.FRACAO)}."
         ),
         f"Anos com lucro: {h.consistencia.get('anos_com_lucro', 0)} de {h.consistencia.get('anos_com_dado', 0)}.",
+        FONTE_DO_ANEXO,
     ]
     return Secao("historico", SECOES["historico"], paragrafos=paragrafos,
-                 tabelas={"contas": _tabela(h.contas), "vertical": _tabela(h.vertical)})  # fmt: skip
+                 tabelas={TABELA_DE_ANOS: _tabela(h.contas), ANEXO_DE_ANOS: anexo_de_anos(h.contas), "vertical": _tabela(h.vertical)})  # fmt: skip
 
 
 def _eventos(e: Entradas) -> Secao:

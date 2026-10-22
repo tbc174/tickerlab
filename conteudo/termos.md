@@ -1,6 +1,6 @@
 # Termos de uso do TickerLab
 
-Última atualização: 21/10/2026 (versão 8: a sala de dados, onde você guarda os documentos de uma operação sua; nos dados de terceiros que esses documentos trazem, você é o controlador e o TickerLab é o operador, com os prazos, o apagamento, as cópias de segurança e o aviso de incidente descritos na seção "Sala de dados". Versão 7, de 19/10: formas de entrar e sessão de 30 dias; pré-lançamento sem cobrança; relatórios escritos por modelo de linguagem com fonte em cada frase; a base de empresas e a área do café; as fontes dos dados).
+Última atualização: 22/10/2026 (a sala de dados deixou de ser só interna e está aberta a todas as contas; o resto do texto não mudou). Antes, em 21/10/2026 (versão 8: a sala de dados, onde você guarda os documentos de uma operação sua; nos dados de terceiros que esses documentos trazem, você é o controlador e o TickerLab é o operador, com os prazos, o apagamento, as cópias de segurança e o aviso de incidente descritos na seção "Sala de dados". Versão 7, de 19/10: formas de entrar e sessão de 30 dias; pré-lançamento sem cobrança; relatórios escritos por modelo de linguagem com fonte em cada frase; a base de empresas e a área do café; as fontes dos dados).
 
 ## O que é o TickerLab
 
@@ -50,7 +50,7 @@ Os relatórios sobre empresas são análises em texto escritas por um **modelo d
 
 ## Sala de dados: os documentos das suas operações
 
-A sala de dados é a área em que você guarda os documentos de uma **operação** sua (uma análise de crédito, a compra de uma empresa, uma diligência) para lê-los no app: PDF, planilha (XLSX e CSV) e texto (DOCX). Ela está em teste com contas internas; estas regras valem desde já e passam a valer para você quando a sala for oferecida ao seu plano.
+A sala de dados é a área em que você guarda os documentos de uma **operação** sua (uma análise de crédito, a compra de uma empresa, uma diligência) para lê-los no app: PDF, planilha (XLSX e CSV) e texto (DOCX). Ela está aberta a todas as contas, e estas regras valem para todas elas.
 
 - **Os documentos são seus, e os dados de outras pessoas neles são responsabilidade sua.** Um contrato, um laudo ou uma planilha de recebíveis traz nomes, CPFs e outros dados de terceiros (sacados, sócios, funcionários, clientes). Perante a LGPD, **você é o controlador** desses dados: é você quem decide por que os guarda e precisa ter base legal para isso. O TickerLab é o **operador** (LGPD, art. 39): só guarda, lê e mostra os documentos a você, seguindo as suas instruções, e não os usa para mais nada. Não envie documentos que você não tenha o direito de guardar; o TickerLab não é um arquivo de longo prazo, então mantenha os originais com você.
 - **Ninguém além de você vê os documentos.** Nem outras contas, nem os administradores do TickerLab pelo app, nem modelo de linguagem algum: os documentos da sala **nunca** vão a um modelo nem a outro serviço. Cada operação é cifrada com uma chave própria; o texto extraído para leitura, com os CPFs mascarados, fica guardado do mesmo jeito. Quem administra o servidor guarda a chave-mestra que protege as chaves das operações e a usa só para manter o serviço (restaurar uma cópia, trocar a chave), nunca para abrir documentos. Nos registros do sistema ficam só identificadores, tipo e tamanho de arquivo; nunca o nome do arquivo nem o conteúdo.

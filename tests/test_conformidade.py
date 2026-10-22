@@ -168,7 +168,7 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     assert "os links compartilhados e a assinatura" in texto
 
 
-def test_versao_11_dos_termos_pede_novo_aceite_e_cobre_a_sala_de_dados():
+def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais():
     """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal.
 
     Versão 9 (21/10): transferência internacional provedor por provedor (P-35): o Stripe tem
@@ -183,9 +183,15 @@ def test_versao_11_dos_termos_pede_novo_aceite_e_cobre_a_sala_de_dados():
     o cliente é o controlador e o TickerLab é o operador (LGPD, art. 39); os prazos e o apagamento
     batem com `src/sala/retencao.py`; nenhum modelo lê os documentos; cópias de 14 dias; aviso
     de incidente em 3 dias úteis. Termos e privacidade dizem a mesma coisa.
+
+    Versão 12 (22/10): as cópias de segurança do banco (linha 155 da fila): além das diárias,
+    apagadas em 14 dias, o recebedor guarda a primeira de cada mês por 12 meses e a primeira de
+    cada ano por 5 anos (antes o texto prometia só os 14 dias); o que foi apagado fica nelas sem
+    uso até vencerem e é apagado de novo numa restauração; a sala fica fora das cópias longas.
     """
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-21.11"
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.12"
     privacidade = conformidade.carregar_texto("privacidade")
+    assert "Cada cópia é apagada depois de **14 dias**" not in privacidade
     assert "não aparecem no app" not in privacidade
     for trecho in (
         "## A sala de dados",
@@ -196,6 +202,10 @@ def test_versao_11_dos_termos_pede_novo_aceite_e_cobre_a_sala_de_dados():
         "mais **30 dias** para baixar",
         "apagar a operação apaga a chave dela",
         "separadas das do resto do app e apagadas depois de **14 dias**",
+        "**primeira cópia de cada mês, por 12 meses**",
+        "**primeira cópia de cada ano, por 5 anos**",
+        "as contas apagadas depois dela são apagadas de novo",
+        "ficam fora das cópias mensais e anuais",
         "as operações e os documentos da sala de dados",
         "não consegue procurar documentos por nome nem por CPF",
         "no quadro de sócios da empresa que você consulta pelo CNPJ",

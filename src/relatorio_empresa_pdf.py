@@ -20,6 +20,7 @@ from src.graficos_pdf import grafico_de_cascata
 from src.rastro import DOCUMENTO as DOCUMENTO_DO_RASTRO
 from src.rastro import FONTE, FORMULA, PUBLICADO_EM, VERSAO, como_foi_calculado
 from src.relatorio_empresa import (
+    ANEXO_DE_ANOS,
     Item,
     Relatorio,
     Secao,
@@ -32,6 +33,11 @@ from src.relatorio_pdf import AVISO, RelatorioPDF
 FUSO = ZoneInfo("America/Sao_Paulo")
 ESPACO_MINIMO_DA_TABELA = 50  # mm: o título não fica sozinho no pé da página
 MAX_COLUNAS = 7  # mais que isso não cabe na largura de uma página A4
+LARGURA_DO_NOME_NO_ANEXO = 34.0
+LARGURA_DA_UNIDADE_NO_ANEXO = 10.0
+TAMANHO_DO_ANEXO = (
+    6.5  # corpo menor: até 10 anos e "R$ 12,3 bi" precisam caber na largura
+)
 GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
 LISTA = "lista"  # tabela de itens (título, texto, nota, link): os destaques da amostra
 TITULO_DO_ANEXO = "Como cada número foi calculado"
@@ -83,6 +89,19 @@ def _cabecalho_e_linhas(linhas: list[dict]) -> tuple[list[str], list[list[str]]]
     return cabecalho, corpo
 
 
+def _anexo_de_anos(
+    linhas: list[dict], largura: float
+) -> tuple[list[str], list[list[str]], list[float]]:
+    """O anexo de anos com todas as colunas (nenhum ano cortado): o nome da conta e a unidade
+    ficam largos, os anos dividem o resto em corpo menor."""
+    colunas = list(linhas[0])
+    cabecalho = [rotulo_da_coluna(c) for c in colunas]
+    corpo = [[escrever_celula(linha.get(c)) for c in colunas] for linha in linhas]
+    nome, unidade = LARGURA_DO_NOME_NO_ANEXO, LARGURA_DA_UNIDADE_NO_ANEXO
+    ano = (largura - nome - unidade) / max(len(colunas) - 2, 1)
+    return cabecalho, corpo, [nome, unidade, *[ano] * (len(colunas) - 2)]
+
+
 def _titulo_da_tabela(pdf: RelatorioPDF, titulo: str) -> None:
     if pdf.get_y() > pdf.h - ESPACO_MINIMO_DA_TABELA:
         pdf.add_page()
@@ -96,6 +115,10 @@ def _tabela_do_relatorio(pdf: RelatorioPDF, chave: str, linhas: list[dict]) -> N
         pdf.tabela_de_texto(list(linhas[0]), [list(linha.values()) for linha in linhas])
         return
     _titulo_da_tabela(pdf, nome_da_tabela(chave))
+    if chave == ANEXO_DE_ANOS:
+        cabecalho, corpo, larguras = _anexo_de_anos(linhas, pdf.epw)
+        pdf.tabela(cabecalho, corpo, larguras=larguras, tamanho=TAMANHO_DO_ANEXO)
+        return
     pdf.tabela(*_cabecalho_e_linhas(linhas))
 
 
@@ -117,7 +140,7 @@ def escrever_secao(
         pdf.lista([leitura_da_ficha.frase(p) for p in pontos])
     for paragrafo in secao.paragrafos:
         pdf.paragrafo(paragrafo)
-    for chave, linhas in secao.tabelas.items():
+    for chave, linhas in secao.tabelas_a_mostrar().items():
         if not linhas:
             continue
         if chave == LISTA:

@@ -139,15 +139,15 @@ def _chamadas(operacao_id, documento_id, evidencia_id, contradicao_id):
     ]
 
 
-def test_toda_rota_do_trabalho_exige_conta_de_admin():
+def test_toda_rota_do_trabalho_exige_conta_logada():
     rotas = rotas_do_trabalho.router.routes
     assert len(rotas) >= 8
     for rota in rotas:
         dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
-        assert rotas_da_sala.conta_da_sala in dependencias, rota.path  # type: ignore[attr-defined]
+        assert rotas_da_sala.conta_logada in dependencias, rota.path  # type: ignore[attr-defined]
 
 
-def test_quem_nao_e_admin_nao_ve_o_trabalho(carla, ana):
+def test_quem_nao_e_admin_nao_alcanca_o_trabalho_da_ana(carla, ana):
     operacao = _criar(ana)
     documento = _documento(ana, operacao)
     for metodo, endereco, corpo in _chamadas(
