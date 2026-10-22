@@ -143,10 +143,13 @@ def _trocar_a_origem_dos_tickers(base, url: str) -> None:
     gravar_tabela(tickers, base / "fca" / "tickers", origem, ["codigo"])
 
 
-def test_amostra_com_entrada_da_b3_da_erro_e_nao_grava(base):
+def test_amostra_com_entrada_da_b3_da_erro_e_nao_grava(base, monkeypatch):
     """A trava das licenças: a amostra é a entrada do treino; uma tabela com fonte fora dos usos
-    (a B3, ADRs 0019 e 0102) barra a montagem inteira."""
+    (`FONTES_FORA_DOS_USOS`, vazia desde a Emenda 6 da ADR 0008) barra a montagem inteira."""
+    from src.banco import coletas
     from src.banco.coletas import LicencaNaoPermiteError
+
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
 
     _trocar_a_origem_dos_tickers(
         base, "https://arquivos.b3.com.br/rapinegocios/tickercsv/2016-12-30"

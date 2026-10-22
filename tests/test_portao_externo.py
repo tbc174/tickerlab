@@ -514,10 +514,11 @@ def test_nos_canais_do_app_o_portao_so_repete_pode_usar(canal: Canal) -> None:
             )
 
 
-def test_pode_usar_continua_liberando_tudo_menos_a_b3() -> None:
+def test_pode_usar_libera_tudo_inclusive_a_b3() -> None:
+    """ADR 0008, Emenda 6 (22/10/2026): a B3 entrou no app; a API externa tem a regra própria."""
     for familia in coletas.LICENCAS:
         for uso in coletas.USOS:
-            assert coletas.pode_usar(uso, familia) is (familia != "b3"), (familia, uso)
+            assert coletas.pode_usar(uso, familia) is True, (familia, uso)
 
 
 def test_nenhuma_tela_nem_a_api_do_app_usa_o_portao_externo() -> None:
