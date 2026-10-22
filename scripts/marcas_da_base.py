@@ -4,7 +4,7 @@
 
 Para cada tabela (a pasta, ou a pasta e o nome quando a pasta guarda várias), a marca mais restrita
 dos arquivos dela, as fontes e os endereços sem fonte conhecida (`base/licenca.py`). As que ficam
-fora dos usos (fonte da B3, ADR 0102) vêm primeiro; a marca das outras é informação. Versões antigas
+fora dos usos (`FONTES_FORA_DOS_USOS`, hoje vazia) vêm primeiro; a marca das outras é informação. Versões antigas
 (`.vN`) ficam de fora.
 """
 
@@ -59,7 +59,7 @@ def em_texto(licencas: dict[str, Licenca], so_barradas: bool = False) -> str:
     marcas = [licenca.marca for licenca in licencas.values()]
     barradas = sum(barrada(licenca) for licenca in licencas.values())
     linhas.append(
-        f"{len(licencas)} tabelas; {barradas} fora dos usos (B3); "
+        f"{len(licencas)} tabelas; {barradas} fora dos usos; "
         f"a base inteira: {marca_mais_restrita(marcas).value}"
     )
     return "\n".join(linhas)

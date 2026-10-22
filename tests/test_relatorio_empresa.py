@@ -228,9 +228,21 @@ def test_relatorio_barra_fonte_fora_dos_usos(dados_da_weg, monkeypatch):
     """A trava segue no relatório: se o preço viesse da B3, ele não seria montado (ADR 0102)."""
     from src.banco import coletas
 
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
     monkeypatch.setattr(re_, "FONTE_DO_PRECO", "b3")
     with pytest.raises(coletas.LicencaNaoPermiteError, match="b3"):
         re_.montar(_entradas(dados_da_weg))
+
+
+def test_relatorio_com_preco_da_b3_cita_a_fonte(dados_da_weg, monkeypatch):
+    """Emenda 6 da ADR 0008: o preço da B3 sai com "Fonte: B3" na mesma função da tela e do PDF."""
+    from src.banco import coletas
+
+    monkeypatch.setattr(re_, "FONTE_DO_PRECO", "b3")
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "b3")
+    assert citacao in relatorio.fontes
+    assert relatorio.fontes.index(citacao) > 0  # a CVM vem primeiro
 
 
 def test_relatorio_monta_mesmo_sem_a_lista_dos_usos_sem_cobranca(

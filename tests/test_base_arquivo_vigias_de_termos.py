@@ -66,6 +66,8 @@ _SEM_VIGIA = {
     # a página de termos não abre com o nosso agente; não se contorna (fila)
     "fmi": "imf.org responde 403 (Akamai) ao nosso agente",
     "ccee": "dadosabertos.ccee.org.br responde 403 ao nosso agente",
+    "ocde": "oecd.org/termsandconditions responde 403 (Cloudflare) ao nosso agente; não se contorna",
+    "worldbank": "os termos do Banco Mundial já são vigiados por `termos-banco-mundial` (família bm)",
     "mb": "mercadobitcoin.com.br/termos-de-uso respondeu 403 ao leitor",
     "wayback": "a página de termos do Internet Archive veio vazia",
     "cftc": "a página de política da CFTC deu 404 (domínio público, obra do governo dos EUA)",
@@ -76,6 +78,13 @@ _SEM_VIGIA = {
         ("treasury", "tic", "ofr", "census"),
         "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
     ),
+    # lote setoriais Brasil (22/10/2026)
+    **dict.fromkeys(
+        ("inep", "senatran", "inpi"),
+        "a licença é o rodapé CC BY-ND do site gov.br, que vale para o site inteiro, não uma página de termos do conjunto",
+    ),
+    "ans-demonstracoes": "as demonstrações contábeis não declaram licença: não há texto de termos a vigiar",
+    "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
     # não há página de termos de terceiro a vigiar
     "btc": "nó próprio, sem terceiro",
     "rfb": "a página da Receita pede login",

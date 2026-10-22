@@ -128,9 +128,11 @@ def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas()
     assert coletas.revenda_da_fonte("termos-b3") == coletas.SO_USO_INTERNO
 
 
-def test_b3_cita_a_politica_de_consumo_e_e_nao_comercial():
-    # negócios do pregão: só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
-    assert "Política de Consumo" in licenca_da_fonte("b3-negocios")
+def test_b3_diz_que_esta_sem_licenca_e_e_nao_comercial():
+    # a marca segue como informação; desde 22/10/2026 a B3 entra no produto com a fonte citada
+    # (ADR 0008, Emenda 6)
+    assert "Sem licença da B3" in licenca_da_fonte("b3-negocios")
+    assert "Emenda 6" in licenca_da_fonte("b3-negocios")
     assert coletas.revenda_da_fonte("b3-negocios") == coletas.NAO_COMERCIAL
     assert coletas.revenda_da_fonte("b3-boletim-pr") == coletas.NAO_COMERCIAL
 

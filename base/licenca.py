@@ -15,7 +15,7 @@ em `sem_fonte` e vale como "a confirmar". O manifesto gravado antes desta trava 
 
 Desde a ADR 0102 a marca é informação: fica gravada e aparece no catálogo e na página Dados, mas
 não barra uso. `exigir_licenca_das_tabelas` e `exigir_licenca_das_origens` dão **erro** só com fonte
-fora dos usos (a B3; `coletas.exigir_licenca`).
+fora dos usos (`coletas.FONTES_FORA_DOS_USOS`, vazia desde a Emenda 6 da ADR 0008; `coletas.exigir_licenca`).
 """
 
 import csv

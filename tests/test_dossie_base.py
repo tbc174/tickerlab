@@ -77,11 +77,14 @@ def test_a_lista_dos_usos_sem_cobranca_nao_decide_mais(
     assert dossie.pode_mostrar("ma_negocios")
 
 
-def test_tabela_com_fonte_da_b3_nao_pode_ser_mostrada(
+def test_tabela_com_fonte_da_b3_pode_ser_mostrada_e_volta_a_barrar_se_a_lista_a_receber(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """ADR 0008, Emenda 6 (22/10/2026): a B3 entrou; pôr "b3" em `FONTES_FORA_DOS_USOS` desfaz."""
     da_b3 = replace(dossie.TABELAS["ma_datas"], familia_da_fonte="b3")
     monkeypatch.setitem(dossie.TABELAS, "ma_datas", da_b3)
+    assert dossie.pode_mostrar("ma_datas")
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
     assert not dossie.pode_mostrar("ma_datas")
 
 

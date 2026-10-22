@@ -9,11 +9,13 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 
 from dataclasses import dataclass
 
-from base.arquivo import lote_eua
+from base.arquivo import lote_eua, lote_setoriais
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
-SO_PESQUISA = "so_pesquisa"  # cópia de pesquisa fora do catálogo: só a B3 (ADR 0102)
+SO_PESQUISA = (
+    "so_pesquisa"  # cópia de pesquisa fora do catálogo: BDI e barras de 1 minuto da B3
+)
 VIGIA = "vigia"  # só avisa quando o texto (termos, catálogo) muda
 PLANEJADA = "planejada"  # guardada, com tabela prevista em um PR já nomeado
 
@@ -49,9 +51,93 @@ _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
 )
 
+
+def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
+    return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
+
+
+_LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
+    "câmbio, juros, inflação e crédito da zona do euro nas séries do BCE": _ids(
+        "bce",
+        "cambio-dolar",
+        "cambio-real",
+        "curva-10a",
+        "juro-principal",
+        "inflacao-ipch",
+        "balanco-bancos",
+        "juro-credito",
+    ),
+    "indicador antecedente composto de 12 países na OCDE (Brasil primeiro)": (
+        "ocde-cli",
+    ),
+    "séries da União Europeia no Eurostat (só países da UE)": _ids(
+        "eurostat",
+        "confianca",
+        "desemprego",
+        "ipch",
+        "juro-longo",
+        "pib",
+        "producao-industrial",
+    ),
+    "câmbio, juros, crédito e imóveis nas séries do BIS (marca não comercial)": _ids(
+        "bis",
+        "cambio",
+        "cambio-efetivo-nominal",
+        "cambio-efetivo-real",
+        "inflacao-longa",
+        "juro-dos-bancos-centrais",
+        "lacuna-de-credito",
+        "preco-de-imoveis",
+    ),
+    "câmbio, inflação, reservas e perspectivas do FMI (marca não comercial)": _ids(
+        "fmi",
+        "cambio",
+        "inflacao",
+        "reservas-do-mundo",
+        "weo-bca_ngdpd",
+        "weo-ggxwdg_ngdp",
+        "weo-ngdp_rpch",
+        "weo-pcpipch",
+    ),
+    "indicadores do Banco Mundial para o Brasil e para o mundo": _ids(
+        "worldbank",
+        "brasil",
+        "mundo-fp-cpi-totl-zg",
+        "mundo-ny-gdp-mktp-kd-zg",
+        "mundo-sp-pop-totl",
+    ),
+    "emissores de LEI e autoridades de registro do GLEIF": _ids(
+        "gleif", "emissores", "autoridades-de-registro"
+    ),
+    "clima mensal por ponto de cada região cafeeira na NASA POWER": _ids(
+        "nasa-power",
+        "alta-paulista",
+        "bahia-atlantico",
+        "cerrado-mineiro",
+        "chapada-de-minas",
+        "es-montanhas",
+        "es-norte",
+        "matas-de-minas",
+        "mogiana",
+        "norte-do-parana",
+        "oeste-da-bahia",
+        "planalto-da-bahia",
+        "rondonia",
+        "sul-de-minas",
+    ),
+    "índices de teleconexão (NAO, AO, PNA) do NOAA CPC": _ids(
+        "noaa", "ao", "nao", "pna", "teleconexoes"
+    ),
+}
+
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
+)
+
+_LOTE_SETORIAIS_SO_ARQUIVO = (
+    "dado aberto de órgão público brasileiro guardado como publicado; a tabela com contrato no "
+    "catálogo ainda não existe (INPI só com os arquivos sem pessoa física)"
 )
 
 DESTINOS: dict[str, Destino] = {
@@ -216,6 +302,17 @@ DESTINOS: dict[str, Destino] = {
     "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # área de café por município (plano do café, PR 8): `base/commodities/area_municipio.py`
     "mapbiomas-cafe": _tabela("area_cafe_municipio"),
+    # lote organismos (dados escondidos, rodada 1): guardado no acervo, tabelas ainda não escritas
+    **{
+        id_: _planejada("dados-escondidos/rodada-1", porque)
+        for porque, ids in _LOTE_ORGANISMOS.items()
+        for id_ in ids
+    },
+    # lote setoriais Brasil (linha 245 da fila, 22/10/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-1", _LOTE_SETORIAIS_SO_ARQUIVO)
+        for f in lote_setoriais.fontes()
+    },
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -238,6 +335,11 @@ DESTINOS: dict[str, Destino] = {
             "termos-cecafe-robots",
             "termos-inmet",
             "termos-cnpj-licenca",
+            "termos-bce",
+            "termos-eurostat",
+            "termos-bis",
+            "termos-nasa-power",
+            "termos-noaa",
             "termos-kraken",
             "termos-yahoo",
             "termos-gdelt",

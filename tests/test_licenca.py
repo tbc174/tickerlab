@@ -104,17 +104,37 @@ def test_a_mais_restrita_vence():
 # --- o erro: só a B3 (ADR 0102) ----------------------------------------------------------------
 
 
-def test_so_a_b3_fica_fora_dos_usos():
-    assert set(coletas.FONTES_FORA_DOS_USOS) == {"b3"}
-    assert fora_dos_usos("b3") and fora_dos_usos("b3-negocios")
+def test_nenhuma_fonte_fica_fora_dos_usos():
+    """ADR 0008, Emenda 6 (22/10/2026): a B3, a única da lista, entrou com a fonte citada."""
+    assert not coletas.FONTES_FORA_DOS_USOS
+    assert not fora_dos_usos("b3") and not fora_dos_usos("b3-negocios")
     assert not any(fora_dos_usos(f) for f in FONTES_COM_MARCA_RESTRITA)
 
 
 @pytest.mark.parametrize("uso", USOS)
-def test_b3_da_erro_em_todos_os_usos_e_diz_a_adr(uso):
+def test_b3_passa_em_todos_os_usos_com_a_marca_registrada(uso):
+    """A trava antes barrava a B3; agora a marca é só informação e a fonte é citada."""
+    exigir_licenca(uso, ["cvm-ipe", "b3-negocios", "b3-cotahist"], onde="teste")
+    assert pode_usar(uso, "b3-negocios")
+    assert marca_da_fonte("b3-negocios") == Marca.NAO_COMERCIAL
+
+
+def test_a_b3_sai_com_a_fonte_citada_e_a_data():
+    citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "b3")
+    assert citacao.startswith("Fonte: B3") and "data" in citacao
+    assert "Emenda 6" in citacao
+    assert coletas.citacoes_das_fontes(["b3-cotahist", "b3-negocios", "cvm-ipe"]) == [
+        citacao
+    ]
+
+
+@pytest.mark.parametrize("uso", USOS)
+def test_b3_volta_a_dar_erro_se_a_lista_a_receber_de_novo(uso, monkeypatch):
+    """Como desfazer a Emenda 6: pôr "b3" de volta em `FONTES_FORA_DOS_USOS`."""
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
     with pytest.raises(LicencaNaoPermiteError, match="b3-negocios") as erro:
         exigir_licenca(uso, ["cvm-ipe", "b3-negocios"], onde="teste")
-    assert "ADR 0019" in str(erro.value) and "(teste)" in str(erro.value)
+    assert "FONTES_FORA_DOS_USOS" in str(erro.value) and "(teste)" in str(erro.value)
     assert not pode_usar(uso, "b3-negocios")
 
 
@@ -265,7 +285,10 @@ def test_cripto_sem_origens_tem_a_fonte_pela_pasta(tmp_path):
 
 
 @pytest.mark.parametrize("uso", USOS)
-def test_tabela_da_b3_da_erro_e_diz_qual(uso, tmp_path):
+def test_tabela_da_b3_da_erro_e_diz_qual_se_ela_voltar_para_a_lista(
+    uso, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
     base = tmp_path / "base"
     boa = _gravar(base / "cadastro" / "cadastro", URL_CVM)
     restrita = _gravar(base / "ma_datas" / "ma_datas", URL_WAYBACK)
@@ -278,7 +301,8 @@ def test_tabela_da_b3_da_erro_e_diz_qual(uso, tmp_path):
         licenca.exigir_licenca_das_tabelas(uso, [boa, da_b3])
 
 
-def test_origens_da_b3_dao_erro_antes_de_gravar(tmp_path):
+def test_origens_da_b3_dao_erro_se_ela_voltar_para_a_lista(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
     base = tmp_path / "base"
     restrita = _gravar(base / "ma_datas" / "ma_datas", URL_WAYBACK)
     da_b3 = _gravar(base / "b3_negocios" / "b3_negocios", URL_B3)
@@ -352,7 +376,7 @@ def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
         assert uso.fonte in coletas.REVENDA, uso.fonte  # fonte conhecida, com marca
         assert marca_da_fonte(uso.fonte) != Marca.VENDAVEL, uso.fonte  # senão sobra
         assert uso.onde and uso.substituto and uso.citacao, uso.fonte
-    assert "b3" not in por_fonte  # opção (a): a B3 fica fora
+    assert "b3" in por_fonte  # Emenda 6 (22/10/2026): a B3 entrou, com a citação
 
 
 @pytest.mark.parametrize(
@@ -374,12 +398,14 @@ def test_mostrar_aceita_fonte_restrita_da_lista(fonte):
 
 
 def test_a_lista_nao_decide_mais_o_que_aparece(monkeypatch):
-    """ADR 0102: tirar a fonte da lista não barra; a B3 fica fora mesmo se alguém a puser lá."""
+    """ADR 0102: tirar a fonte da lista não barra; quem bloqueia é só `FONTES_FORA_DOS_USOS`."""
     monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
-    exigir_licenca("mostrar", ["yahoo-bvsp", "pgfn-divida"])
+    exigir_licenca("mostrar", ["yahoo-bvsp", "pgfn-divida", "b3-negocios"])
     com_b3 = (coletas.UsoSemCobranca("b3", "teste", "teste", "teste"),)
     monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", com_b3)
-    with pytest.raises(LicencaNaoPermiteError, match="ADR 0019"):
+    exigir_licenca("mostrar", ["b3-negocios"])
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
+    with pytest.raises(LicencaNaoPermiteError, match="b3-negocios"):
         exigir_licenca("mostrar", ["b3-negocios"])
 
 

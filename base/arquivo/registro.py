@@ -33,6 +33,14 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "cecafe": date(2026, 10, 18),
     "fnc": date(2026, 10, 18),
     "contrapartes": date(2026, 10, 18),
+    # lote organismos: rodadas 1 e 4 da pesquisa de dados escondidos
+    "bce": date(2026, 10, 22),
+    "ocde": date(2026, 10, 22),
+    "eurostat": date(2026, 10, 22),
+    "worldbank": date(2026, 10, 22),
+    "bis": date(2026, 10, 22),
+    "nasa": date(2026, 10, 22),
+    "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
     "treasury": date(2026, 10, 22),
     "fed": date(2026, 10, 22),
@@ -77,6 +85,14 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 # rodada 1 da pesquisa de dados escondidos (licencas-por-fonte.md): BCB e Tesouro Transparente
 # relidos em 22/10/2026, depois da auditoria; vale o dia mais novo
 TERMOS_LIDOS_EM |= dict.fromkeys(("bcb", "tesouro"), date(2026, 10, 22))
+# lote setoriais Brasil (licencas-por-fonte.md): as licenças lidas na rodada 3 (ANS, ANAC), na
+# rodada 1 (EPE, INEP, Senatran, INPI, ANEEL e Comex Stat); Anatel e ANP seguem o balanço prévio de
+# 14/10/2026 (licença declarada no conjunto do dados.gov.br)
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    ("epe", "inep", "senatran", "inpi", "aneel", "ans", "anac", "comexstat"),
+    date(2026, 10, 22),
+)
+TERMOS_LIDOS_EM |= dict.fromkeys(("anatel", "anp"), date(2026, 10, 14))
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")
