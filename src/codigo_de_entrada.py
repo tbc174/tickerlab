@@ -1,7 +1,11 @@
 """Código de entrada por e-mail: a pessoa recebe 6 dígitos e entra sem senha (plano do login, PR 2).
 
-Regras: o código vale 10 minutos, é de uso único e aceita 5 tentativas; pedir um novo invalida o
-anterior; no máximo 3 pedidos por e-mail a cada 15 minutos (o limite por IP fica na API). O banco
+Regras: o código vale 10 minutos, é de uso único e aceita 5 tentativas; no máximo 3 pedidos por
+e-mail a cada 15 minutos (o limite por IP fica na API). Pedir um novo **não** derruba o anterior que
+ainda vale: quem pede é quem digita o e-mail, não quem é dono dele, e um estranho que sabe o e-mail
+trancaria a dona (derrubando o código que ela acabou de receber e esgotando os pedidos). Assim, os
+códigos que o estranho pede caem na caixa da dona e qualquer um deles a deixa entrar; entrar gasta
+todos, e cada tentativa conta em todos os vivos (o limite de chutes não cresce). O banco
 guarda só o hash do e-mail e o do código (`codigos_de_entrada` não tem chave para a conta: no primeiro
 acesso ela ainda não existe). O hash do código leva o do e-mail junto, então o mesmo código em dois
 e-mails dá hashes diferentes.
@@ -66,8 +70,8 @@ def pedir_codigo(
     """Grava um código novo para o e-mail e o devolve para ser enviado; None se não deve enviar.
 
     Não envia (None) para e-mail inválido e quando o e-mail já pediu `PEDIDOS_POR_EMAIL` códigos na
-    janela. A tela responde igual nos dois casos: não revela nada. O código anterior só deixa de
-    valer quando um novo é de fato gerado."""
+    janela. A tela responde igual nos dois casos: não revela nada. Os códigos anteriores que ainda
+    valem continuam valendo (ver o docstring do módulo)."""
     if not email_valido(email):
         return None
     agora = agora or _agora()
@@ -82,14 +86,6 @@ def pedir_codigo(
     ).scalar_one()
     if pedidos >= PEDIDOS_POR_EMAIL:
         return None
-    conexao.execute(
-        sa.update(codigos_de_entrada)
-        .where(
-            codigos_de_entrada.c.hash_do_email == chave,
-            codigos_de_entrada.c.usado_em.is_(None),
-        )
-        .values(usado_em=agora)
-    )
     codigo = f"{secrets.randbelow(10**DIGITOS):0{DIGITOS}d}"
     conexao.execute(
         sa.insert(codigos_de_entrada).values(
@@ -111,22 +107,48 @@ def _com_fuso(momento: datetime) -> datetime:
 def conferir_codigo(
     conexao: sa.Connection, email: str, codigo: str, agora: datetime | None = None
 ) -> bool:
-    """O código certo, vigente e com tentativas sobrando? Se sim, ele é gasto (uso único).
+    """O código bate com um dos vivos do e-mail (vigente, não usado, com tentativas sobrando)? Se sim,
+    todos os vivos do e-mail são gastos (uso único).
 
-    Toda conferência conta uma tentativa antes de comparar, então um erro não devolve a tentativa."""
+    Toda conferência conta uma tentativa em cada código vivo antes de comparar, então um erro não
+    devolve a tentativa e ter vários códigos vivos não dá mais chutes."""
     agora = agora or _agora()
     chave = _hash_do_email(email)
-    linha = conexao.execute(
-        sa.select(codigos_de_entrada)
+    contados = [
+        linha
+        for linha in _codigos_vivos(conexao, chave, agora)
+        if _contar_tentativa(conexao, linha)
+    ]
+    procurado = _hash_do_codigo(email, codigo)
+    certo = next(
+        (c for c in contados if hmac.compare_digest(c.hash_do_codigo, procurado)), None
+    )
+    if certo is None or not _gastar(conexao, certo.id, agora):
+        return False
+    conexao.execute(
+        sa.update(codigos_de_entrada)
         .where(
             codigos_de_entrada.c.hash_do_email == chave,
             codigos_de_entrada.c.usado_em.is_(None),
         )
-        .order_by(codigos_de_entrada.c.criado_em.desc())
-        .limit(1)
-    ).first()
-    if linha is None or _com_fuso(linha.expira_em) <= agora:
-        return False
+        .values(usado_em=agora)
+    )
+    return True
+
+
+def _codigos_vivos(conexao: sa.Connection, chave: str, agora: datetime) -> list[sa.Row]:
+    linhas = conexao.execute(
+        sa.select(codigos_de_entrada).where(
+            codigos_de_entrada.c.hash_do_email == chave,
+            codigos_de_entrada.c.usado_em.is_(None),
+            codigos_de_entrada.c.tentativas < TENTATIVAS,
+        )
+    ).all()
+    return [linha for linha in linhas if _com_fuso(linha.expira_em) > agora]
+
+
+def _contar_tentativa(conexao: sa.Connection, linha: sa.Row) -> bool:
+    # o `tentativas == lido` faz duas conferências ao mesmo tempo não contarem a mesma tentativa
     contou = conexao.execute(
         sa.update(codigos_de_entrada)
         .where(
@@ -136,16 +158,20 @@ def conferir_codigo(
         )
         .values(tentativas=linha.tentativas + 1)
     )
-    if contou.rowcount != 1:
-        return False
-    if not hmac.compare_digest(linha.hash_do_codigo, _hash_do_codigo(email, codigo)):
-        return False
-    conexao.execute(
+    return contou.rowcount == 1
+
+
+def _gastar(conexao: sa.Connection, id_do_codigo: uuid.UUID, agora: datetime) -> bool:
+    # só uma de duas conferências certas ao mesmo tempo gasta o código (e abre a sessão)
+    gastou = conexao.execute(
         sa.update(codigos_de_entrada)
-        .where(codigos_de_entrada.c.id == linha.id)
+        .where(
+            codigos_de_entrada.c.id == id_do_codigo,
+            codigos_de_entrada.c.usado_em.is_(None),
+        )
         .values(usado_em=agora)
     )
-    return True
+    return gastou.rowcount == 1
 
 
 def montar_email(codigo: str) -> Email:
