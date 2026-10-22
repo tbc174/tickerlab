@@ -66,6 +66,11 @@ _SEM_VIGIA = {
     "cftc": "a página de política da CFTC deu 404 (domínio público, obra do governo dos EUA)",
     "usda": "usda.gov e fas.usda.gov respondem 403 (domínio público pela política do USDA)",
     "ico": "ico.org não publica termos, só o aviso de copyright",
+    # lote EUA (22/10/2026): obra do governo federal dos EUA, sem página de termos própria achada (fila)
+    **dict.fromkeys(
+        ("treasury", "tic", "ofr", "census"),
+        "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
+    ),
     # não há página de termos de terceiro a vigiar
     "btc": "nó próprio, sem terceiro",
     "rfb": "a página da Receita pede login",
