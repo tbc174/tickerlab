@@ -81,7 +81,8 @@ def _usa_o_preco(item: dict[str, Any]) -> bool:
     return item.get("fonte") == FONTE_DOS_MULTIPLOS
 
 
-def _linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
+def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    """As linhas de uma seção (itens, tabelas, parágrafos e pontos); o relatório do setor usa a mesma."""
     chave = secao["chave"]
     for item in secao["itens"]:
         if not _usa_o_preco(item):
@@ -112,7 +113,7 @@ def _linhas_da_ficha(ficha: dict[str, Any]) -> list[dict[str, Any]]:
         linha
         for secao in ficha["secoes"]
         if secao["chave"] not in SECOES_FORA and not secao["trancada"]
-        for linha in _linhas_da_secao(secao)
+        for linha in linhas_da_secao(secao)
     ]
 
 

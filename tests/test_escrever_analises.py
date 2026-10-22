@@ -16,12 +16,19 @@ import pytest
 from scripts import escrever_analises as ea
 from src.analise_escrita import pedido, porta2, porta3, saida
 from tests.ajudantes_da_analise import PAR_DA_CPFL
+from tests.ajudantes_da_analise_do_setor import PAR_DO_SETOR
 
 ARQUIVO_DA_ENTRADA = PAR_DA_CPFL / "entrada.json"
 ENTRADA = json.loads(ARQUIVO_DA_ENTRADA.read_text(encoding="utf-8"))
 RESPOSTA = json.loads((PAR_DA_CPFL / "gabarito.json").read_text(encoding="utf-8"))[
     "analise"
 ]
+ENTRADA_DO_SETOR = json.loads(
+    (PAR_DO_SETOR / "entrada.json").read_text(encoding="utf-8")
+)
+RESPOSTA_DO_SETOR = json.loads(
+    (PAR_DO_SETOR / "gabarito.json").read_text(encoding="utf-8")
+)["analise"]
 _ROTULO = re.compile(r"^\[([^\]]+)\] \(", re.MULTILINE)
 # A SDK recusa `create` acima disto e pede streaming (10 minutos a 128 mil tokens por hora).
 SEM_STREAMING_ATE = 21_333
@@ -40,8 +47,12 @@ class ClienteDeMentira:
     """Escreve o gabarito e, na porta 2, dá `sustentada` a tudo (menos às frases de `ruins`)."""
 
     def __init__(
-        self, ruins: frozenset[str] = frozenset(), quebra_na: int | None = None
+        self,
+        ruins: frozenset[str] = frozenset(),
+        quebra_na: int | None = None,
+        resposta: dict | None = None,
     ):
+        self.resposta = RESPOSTA if resposta is None else resposta
         self.criados: list[dict] = []
         self.lotes: list[list] = []
         self.estado = "in_progress"
@@ -66,7 +77,7 @@ class ClienteDeMentira:
                 for r in rotulos
             ]  # fmt: skip
             return json.dumps({"frases": frases})
-        return json.dumps(RESPOSTA, ensure_ascii=False)
+        return json.dumps(self.resposta, ensure_ascii=False)
 
     def _criar(self, **params):
         if params["max_tokens"] > SEM_STREAMING_ATE:
@@ -300,3 +311,46 @@ def test_d4_entrada_sem_pessoa_passa(tmp_path):
     arquivo = tmp_path / "entrada.json"
     arquivo.write_text(json.dumps(ENTRADA), encoding="utf-8")
     assert ea.ler_entradas([arquivo])[0] == ENTRADA
+
+
+# --- o setor (molde D) ------------------------------------------------------------------------------
+def test_setor_tem_chave_e_identidade_sem_cnpj():
+    assert ea.chave(ENTRADA_DO_SETOR) == "setor-eletricas"
+    assert ea.identidade(ENTRADA_DO_SETOR) == {
+        "setor": "eletricas",
+        "nome": "Elétricas",
+    }
+    assert ea.identidade(ENTRADA) == {
+        "cnpj": ENTRADA["cnpj"],
+        "empresa": ENTRADA["empresa"],
+    }
+
+
+def test_setor_escrito_conferido_e_montado_pelo_script(tmp_path):
+    cliente = ClienteDeMentira(resposta=RESPOSTA_DO_SETOR)
+    ea.piloto(cliente, [ENTRADA_DO_SETOR], tmp_path, [pedido.OPUS], teto=3)
+    ea.cegas(cliente, [ENTRADA_DO_SETOR], tmp_path, [pedido.OPUS], teto=3)
+    ea.conferir([ENTRADA_DO_SETOR], tmp_path, pedido.OPUS)
+    escrito, conferido = cliente.criados
+    assert escrito["system"][0]["text"] == pedido.GUIA_DO_SETOR
+    assert conferido["system"][0]["text"] == porta2.SISTEMA_DO_SETOR
+    destino = ea.arquivo_da_analise(tmp_path, ENTRADA_DO_SETOR)
+    analise = json.loads(destino.read_text(encoding="utf-8"))
+    assert destino.name == "setor-eletricas.json"
+    assert analise["setor"] == "eletricas" and "cnpj" not in analise
+    assert analise["linhagem"]["versao_do_guia"] == pedido.VERSAO_DO_GUIA_DO_SETOR
+    assert analise["linhagem"]["porta1"] == []
+    assert "setor" not in analise["linhagem"]
+    assert list(_origens(analise)) == list(saida.PARTES_DO_SETOR)
+    assert set(_origens(analise).values()) == {saida.ORIGEM_MODELO}
+
+
+def test_resposta_do_setor_com_outro_guia_e_escrita_de_novo(tmp_path):
+    cliente = ClienteDeMentira(resposta=RESPOSTA_DO_SETOR)
+    ea.piloto(cliente, [ENTRADA_DO_SETOR], tmp_path, [pedido.OPUS], teto=3)
+    arquivo = ea.arquivo_da_resposta(tmp_path, ENTRADA_DO_SETOR, pedido.OPUS)
+    registro = json.loads(arquivo.read_text(encoding="utf-8"))
+    assert ea.resposta_guardada(tmp_path, ENTRADA_DO_SETOR, pedido.OPUS) is not None
+    registro["versao_do_guia"] = pedido.VERSAO_DO_GUIA  # escrita com o guia da empresa
+    arquivo.write_text(json.dumps(registro), encoding="utf-8")
+    assert ea.resposta_guardada(tmp_path, ENTRADA_DO_SETOR, pedido.OPUS) is None

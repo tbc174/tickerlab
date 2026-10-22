@@ -110,7 +110,7 @@ def test_relatorio_lado_a_lado_mostra_as_partes_e_os_criterios():
     relatorio = avaliacao.relatorio(
         {"Modelo": texto, "Gabarito": GABARITO}, {"Modelo": criterios}
     )
-    for titulo in saida.TITULOS.values():
+    for titulo in (saida.TITULOS[c] for c in saida.PARTES):
         assert f"## {titulo}" in relatorio
     assert "| Modelo | Gabarito |" in relatorio
     assert "\\| sem marca" in relatorio  # a barra do texto não quebra a tabela

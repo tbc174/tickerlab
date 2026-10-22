@@ -1,8 +1,9 @@
-"""O formato da análise escrita: 8 partes, parágrafos de fato ou de leitura, frases com notas.
+"""O formato da análise escrita: as partes do roteiro, parágrafos de fato ou de leitura, frases com notas.
 
 Cada frase leva as notas (os ids da entrada de onde ela saiu) e, quando faz uma conta nossa
 ("a dívida subiu 6%"), a conta declarada: operação, operandos e resultado, que a porta 1 refaz.
-O mesmo formato vale para a resposta do modelo, o molde de reserva e o gabarito guardado.
+O mesmo formato vale para a resposta do modelo, o molde de reserva e o gabarito guardado. A
+análise de uma empresa tem 8 partes; a de um setor (molde D), 7: a entrada diz qual (`partes_de`).
 """
 
 import json
@@ -19,6 +20,19 @@ PARTES = (
     "o_que_mudaria",
     "limites",
 )
+# O roteiro do setor (molde D): não há controlador, caixa nem dividendos de um setor
+PARTES_DO_SETOR = (
+    "em_meia_pagina",
+    "quem_esta",
+    "tamanho_e_concentracao",
+    "participacao",
+    "lado_a_lado",
+    "o_que_mudaria",
+    "limites",
+)
+TIPO_SETOR = (
+    "setor"  # o `tipo` da entrada de um setor; sem ele, a entrada é de uma empresa
+)
 TITULOS = {
     "em_meia_pagina": "Em meia página",
     "o_que_e": "O que a empresa é e como ganha dinheiro",
@@ -28,11 +42,20 @@ TITULOS = {
     "dinheiro": "O dinheiro que sai e o que entra",
     "o_que_mudaria": "O que mudaria esta leitura",
     "limites": "Limites e perguntas em aberto",
+    "quem_esta": "Quem está no setor",
+    "tamanho_e_concentracao": "Tamanho e concentração",
+    "participacao": "A parte de cada companhia",
+    "lado_a_lado": "As companhias lado a lado",
 }
 FATO, LEITURA = "fato", "leitura"
 TIPOS = (FATO, LEITURA)
 OPERACOES = ("soma", "diferenca", "produto", "razao", "variacao", "contagem")
 ORIGEM_MODELO, ORIGEM_MOLDE = "modelo", "molde"
+
+
+def partes_de(entrada: dict[str, Any]) -> tuple[str, ...]:
+    """As partes que a análise desta entrada tem de ter, em ordem."""
+    return PARTES_DO_SETOR if entrada.get("tipo") == TIPO_SETOR else PARTES
 
 
 class RespostaInvalidaError(ValueError):
@@ -139,21 +162,21 @@ def _paragrafo(dado: dict[str, Any]) -> Paragrafo:
     return Paragrafo(dado["tipo"], tuple(_frase(f) for f in dado.get("frases") or []))
 
 
-def _parte(dado: dict[str, Any]) -> Parte:
-    if dado.get("chave") not in PARTES:
+def _parte(dado: dict[str, Any], partes: tuple[str, ...]) -> Parte:
+    if dado.get("chave") not in partes:
         raise RespostaInvalidaError(f"parte desconhecida: {dado.get('chave')}")
     paragrafos = tuple(_paragrafo(p) for p in dado.get("paragrafos") or [])
     return Parte(dado["chave"], paragrafos, dado.get("origem", ORIGEM_MODELO))
 
 
-def ler_analise(dado: dict[str, Any]) -> Analise:
+def ler_analise(dado: dict[str, Any], partes: tuple[str, ...] = PARTES) -> Analise:
     """A resposta (ou o JSON guardado) como `Analise`; `RespostaInvalidaError` se sair do formato.
 
     Parte faltando, repetida ou fora de ordem não é erro de formato: a porta 1 reprova a estrutura.
     """
     if not isinstance(dado, dict) or not isinstance(dado.get("partes"), list):
         raise RespostaInvalidaError("a resposta não tem a lista de partes")
-    return Analise(tuple(_parte(p) for p in dado["partes"]))
+    return Analise(tuple(_parte(p, partes) for p in dado["partes"]))
 
 
 def _objeto(propriedades: dict[str, Any]) -> dict[str, Any]:
@@ -197,10 +220,17 @@ _FRASE = _objeto(
 _PARAGRAFO = _objeto(
     {"tipo": {"type": "string", "enum": list(TIPOS)}, "frases": _lista(_FRASE)}
 )
-_PARTE = _objeto(
-    {
-        "chave": {"type": "string", "enum": list(PARTES)},
-        "paragrafos": _lista(_PARAGRAFO),
-    }
-)
-ESQUEMA: dict[str, Any] = _objeto({"partes": _lista(_PARTE)})
+
+
+def esquema(partes: tuple[str, ...] = PARTES) -> dict[str, Any]:
+    """A saída estruturada que o modelo devolve, com as chaves do roteiro."""
+    parte = _objeto(
+        {
+            "chave": {"type": "string", "enum": list(partes)},
+            "paragrafos": _lista(_PARAGRAFO),
+        }
+    )
+    return _objeto({"partes": _lista(parte)})
+
+
+ESQUEMA: dict[str, Any] = esquema()
