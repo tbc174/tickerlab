@@ -126,7 +126,7 @@ def receber_documento(
         conexao,
         usuario_id=usuario_id,
         operacao_id=operacao_id,
-        nome_original=nome_original,
+        nome_original=mascara.mascarar_cpfs(nome_original),
         tipo=tipo,
         tamanho_bytes=len(conteudo),
         sha256=hashlib.sha256(conteudo).hexdigest(),

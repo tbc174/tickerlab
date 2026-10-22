@@ -157,6 +157,37 @@ def zip_bomba() -> bytes:
     )
 
 
+def zip_que_declara_menos_do_que_tem(real: int = 20 * 1024 * 1024) -> bytes:
+    """Um XLSX cuja entrada `xl/zeros.xml` diz ter 10 bytes (no índice e no cabeçalho local) e tem
+    `real` bytes descomprimidos: a conta pelo tamanho declarado fica baixa e a razão, enganosa."""
+    bruto = _zip(
+        {
+            "[Content_Types].xml": _TIPOS_DO_XLSX.encode(),
+            "xl/workbook.xml": b"<workbook/>",
+            "xl/zeros.xml": b"\x00" * real,
+        }
+    )
+    return _declarar_tamanho(bruto, b"xl/zeros.xml", 10)
+
+
+def _declarar_tamanho(zip_bruto: bytes, nome: bytes, declarado: int) -> bytes:
+    """Troca o tamanho descomprimido de `nome` no índice (offset 24) e no cabeçalho local (22)."""
+    dados = bytearray(zip_bruto)
+    for assinatura, deslocamento, inicio_do_nome in (
+        (b"PK\x01\x02", 24, 46),
+        (b"PK\x03\x04", 22, 30),
+    ):
+        posicao = zip_bruto.index(nome) - inicio_do_nome
+        while zip_bruto[posicao : posicao + 4] != assinatura:
+            posicao = (
+                zip_bruto.index(nome, posicao + inicio_do_nome + 1) - inicio_do_nome
+            )
+        dados[posicao + deslocamento : posicao + deslocamento + 4] = declarado.to_bytes(
+            4, "little"
+        )
+    return bytes(dados)
+
+
 def zip_com_entradas_demais(quantas: int) -> bytes:
     entradas = {f"xl/{numero}.xml": b"" for numero in range(quantas)}
     entradas["[Content_Types].xml"] = _TIPOS_DO_XLSX.encode()
@@ -213,6 +244,56 @@ def docx(*paginas: list[str]) -> bytes:
             "word/document.xml": documento.encode(),
         }
     )
+
+
+def docx_com_ole() -> bytes:
+    """Um DOCX com um objeto OLE embutido (`word/embeddings/oleObject1.bin`, ligado por uma
+    relação do tipo `oleObject`)."""
+    return _com_ole_no_docx_ou_xlsx(docx(["contrato"]), "word", "document.xml")
+
+
+def xlsx_com_ole() -> bytes:
+    """Uma planilha com um objeto OLE embutido (`xl/embeddings/oleObject1.bin`)."""
+    return _com_ole_no_docx_ou_xlsx(xlsx(("a", 1)), "xl", "workbook.xml")
+
+
+def _com_ole_no_docx_ou_xlsx(original: bytes, pasta: str, parte: str) -> bytes:
+    with zipfile.ZipFile(io.BytesIO(original)) as aberto:
+        entradas = {nome: aberto.read(nome) for nome in aberto.namelist()}
+    entradas[f"{pasta}/embeddings/oleObject1.bin"] = OLE
+    entradas[f"{pasta}/_rels/{parte}.rels"] = (
+        b'<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/'
+        b'package/2006/relationships"><Relationship Id="rId9" Type="http://schemas.'
+        b'openxmlformats.org/officeDocument/2006/relationships/oleObject" '
+        b'Target="embeddings/oleObject1.bin"/></Relationships>'
+    )
+    return _zip(entradas)
+
+
+def docx_com_ole_ligado_por_fora() -> bytes:
+    """Um DOCX cuja relação `oleObject` aponta para um arquivo de fora (sem nada embutido)."""
+    with zipfile.ZipFile(io.BytesIO(docx(["x"]))) as aberto:
+        entradas = {nome: aberto.read(nome) for nome in aberto.namelist()}
+    entradas["word/_rels/document.xml.rels"] = (
+        b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        b'<Relationship Id="rId1" TargetMode="External" Type="http://schemas.openxmlformats.org/'
+        b'officeDocument/2006/relationships/oleObject" Target="file:///C:/x.exe"/></Relationships>'
+    )
+    return _zip(entradas)
+
+
+def docx_com_grafico_de_planilha() -> bytes:
+    """Um DOCX legítimo com gráfico: a planilha dele vai embutida, mas como `package`, não OLE."""
+    with zipfile.ZipFile(io.BytesIO(docx(["x"]))) as aberto:
+        entradas = {nome: aberto.read(nome) for nome in aberto.namelist()}
+    entradas["word/embeddings/Microsoft_Excel_Sheet1.xlsx"] = xlsx(("a", 1))
+    entradas["word/charts/_rels/chart1.xml.rels"] = (
+        b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        b'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+        b'relationships/package" Target="../embeddings/Microsoft_Excel_Sheet1.xlsx"/>'
+        b"</Relationships>"
+    )
+    return _zip(entradas)
 
 
 def docx_com_entidade_externa() -> bytes:

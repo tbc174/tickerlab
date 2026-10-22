@@ -76,6 +76,7 @@ MENSAGENS_DE_RECUSA = {
     arquivos.PAGINAS_DEMAIS: "O arquivo passa de 300 páginas.",
     arquivos.ZIP_CAMINHO_ESTRANHO: "O arquivo tem um caminho interno estranho.",
     arquivos.ZIP_GRANDE_DEMAIS: "O arquivo, descomprimido, é grande demais.",
+    arquivos.OBJETO_EMBUTIDO: "Arquivos com objeto embutido (OLE) não entram.",
     arquivos.CSV_BINARIO: "O CSV tem bytes que não são de texto.",
     arquivos.ARQUIVO_DANIFICADO: "O arquivo está danificado.",
 }
