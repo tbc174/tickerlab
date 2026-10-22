@@ -893,6 +893,23 @@
     "url": "planos"
   },
   {
+    "area": "conta",
+    "chave": "sala_de_dados",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "SalaV1",
+      "rota": "/v1/sala"
+    },
+    "descricao": "Os documentos de cada operação num lugar cifrado, com a origem de cada número, as contradições entre documentos e o checklist do que falta.",
+    "e_pro": false,
+    "grupo": "Minha conta",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Sala de dados",
+    "url": "sala-de-dados"
+  },
+  {
     "area": "acompanhar",
     "chave": "mapa_do_cafe",
     "contrato": {

@@ -4,10 +4,17 @@ página (a mesma estrutura de `src/relatorio_empresa.py`), com "Limites e pergun
 from datetime import date
 from io import BytesIO
 
+import pandas as pd
+import pytest
 from pypdf import PdfReader
 
 from src import relatorio_empresa as re_
-from src.relatorio_empresa_pdf import TITULO_DO_ANEXO, relatorio_da_empresa
+from src.relatorio_empresa import anexo_de_anos
+from src.relatorio_empresa_pdf import (
+    TITULO_DO_ANEXO,
+    _anexo_de_anos,
+    relatorio_da_empresa,
+)
 from tests.test_relatorio_empresa import _entradas, dados_da_weg  # noqa: F401
 
 
@@ -122,3 +129,15 @@ def test_pdf_cita_a_fonte_restrita_e_a_frase_da_iex(dados_da_weg):  # noqa: F811
     )
     texto = _sem_espacos(_texto(relatorio_da_empresa(com_iex)))
     assert _sem_espacos(FRASE_DA_IEX[:40]) in texto
+
+
+def test_anexo_de_anos_no_pdf_guarda_os_dez_anos_e_cabe_na_pagina():
+    contas = pd.DataFrame(
+        {"receita": range(10), "ebit": range(10)},
+        index=pd.Index(range(2016, 2026), name="ano"),
+    )
+    linhas = anexo_de_anos(contas)
+    cabecalho, corpo, larguras = _anexo_de_anos(linhas, 174.0)
+    assert cabecalho[2:] == [str(a) for a in range(2016, 2026)]
+    assert all(len(linha) == len(cabecalho) == len(larguras) for linha in corpo)
+    assert sum(larguras) == pytest.approx(174.0)

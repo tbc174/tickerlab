@@ -1,7 +1,6 @@
 """Os textos que a tela da sala mostra (B-20, PR 5): a tela não escreve nem calcula nada.
 
-Tudo aqui vai para a pessoa pela API da sala, que só abre para administradores (404 para as outras
-contas), então nenhuma frase daqui chega ao bundle público do app. Cada conceito da sala é
+Tudo aqui vai para a pessoa pela API da sala, que só abre para quem está logado, então nenhuma frase daqui chega ao bundle público do app. Cada conceito da sala é
 explicado uma vez, aqui; os rótulos dos estados também, para a tela não repetir a lista.
 """
 
@@ -40,8 +39,8 @@ ESTADOS_DA_CONTRADICAO = {
 CONCEITOS = {
     "sala": (
         "A sala reúne os documentos de uma operação (M&A, dívida, crédito, FIDC) num lugar só. "
-        "Cada arquivo fica cifrado no servidor e só a sua conta o abre; nem outros "
-        "administradores veem a sua sala."
+        "Cada arquivo fica cifrado no servidor e só a sua conta o abre; nem outras contas, "
+        "administradores incluídos, veem a sua sala."
     ),
     "evidencia": (
         "Uma evidência marca de onde vem um número: o documento, a página e o trecho. O "
@@ -70,8 +69,7 @@ CONCEITOS = {
     ),
     "dados_de_terceiros": (
         "Os documentos podem ter dados de outras pessoas (sócios, devedores). Você decide o que "
-        "sobe e responde por isso; o TickerLab só guarda e apaga no prazo. Esta sala é um teste "
-        "interno, só para administradores."
+        "sobe e responde por isso; o TickerLab só guarda e apaga no prazo, como dizem os termos de uso."
     ),
 }
 

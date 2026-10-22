@@ -1,7 +1,7 @@
 """A rota que alimenta a tela da sala (src/api_v1/sala_painel.py, B-20 PR 5).
 
-Mesmo ambiente de `test_api_v1_sala_trabalho.py`. O que estes testes travam: só admin entra (404
-para as outras contas, 401 sem login); outra conta não vê a sala alheia nem com o id certo; os
+Mesmo ambiente de `test_api_v1_sala_trabalho.py`. O que estes testes travam: toda conta logada entra (401
+sem login) e só na própria sala; outra conta não vê a sala alheia nem com o id certo; os
 textos e rótulos vêm da API e cobrem todos os estados do banco; a contradição já chega descrita; o
 aviso de prazo aparece nos últimos 14 dias; e toda rota da sala está no mapa de páginas.
 """
@@ -111,18 +111,21 @@ def _sala_com_contradicao(cliente):
 # --- quem entra ---------------------------------------------------------------------------
 
 
-def test_toda_rota_do_painel_exige_conta_de_admin():
+def test_toda_rota_do_painel_exige_conta_logada():
     rotas = rotas_do_painel.router.routes
     assert len(rotas) == 2
     for rota in rotas:
         dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
-        assert rotas_da_sala.conta_da_sala in dependencias, rota.path  # type: ignore[attr-defined]
+        assert rotas_da_sala.conta_logada in dependencias, rota.path  # type: ignore[attr-defined]
 
 
-def test_quem_nao_e_admin_nao_ve_a_sala(carla, ana):
-    operacao = _criar(ana)
-    assert carla.get("/v1/sala").status_code == 404
-    assert carla.get(f"/v1/operacoes/{operacao}/painel").status_code == 404
+def test_quem_nao_e_admin_ve_so_o_painel_da_propria_sala(carla, ana):
+    operacao_da_ana = _criar(ana)
+    propria = _criar(carla)
+    assert carla.get("/v1/sala").status_code == 200
+    assert [o["id"] for o in carla.get("/v1/sala").json()["operacoes"]] == [propria]
+    assert carla.get(f"/v1/operacoes/{propria}/painel").status_code == 200
+    assert carla.get(f"/v1/operacoes/{operacao_da_ana}/painel").status_code == 404
 
 
 def test_sem_login_a_sala_responde_401(app):
@@ -236,7 +239,7 @@ def test_toda_rota_da_sala_pertence_a_pagina_da_sala():
     from src.paginas import ROTAS_DA_SALA, pagina
 
     pagina_da_sala = pagina("sala_de_dados")
-    assert pagina_da_sala.somente_admin and pagina_da_sala.so_no_app_novo
+    assert pagina_da_sala.so_no_app_novo and not pagina_da_sala.somente_admin
     rotas = {
         (metodo, r.path)
         for roteador in (

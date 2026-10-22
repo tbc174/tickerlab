@@ -917,7 +917,7 @@ def de_relatorio_da_empresa(
     for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
         secao["tabelas"] = [
             _tabela_do_relatorio(chave, linhas).model_dump()
-            for chave, linhas in original.tabelas.items()
+            for chave, linhas in original.tabelas_a_mostrar().items()
             if linhas
         ]
     return RelatorioDaEmpresaV1.model_validate(dados)
@@ -945,7 +945,7 @@ def de_busca_por_cnpj(relatorio: busca_por_cnpj.RelatorioDoCnpj) -> BuscaPorCnpj
     for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
         secao["tabelas"] = [
             _tabela_do_relatorio(chave, linhas).model_dump()
-            for chave, linhas in original.tabelas.items()
+            for chave, linhas in original.tabelas_a_mostrar().items()
             if linhas
         ]
     return BuscaPorCnpjV1.model_validate(dados)
@@ -1034,7 +1034,7 @@ def de_relatorio_do_setor(
     for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
         secao["tabelas"] = [
             _tabela_ja_escrita(chave, linhas).model_dump()
-            for chave, linhas in original.tabelas.items()
+            for chave, linhas in original.tabelas_a_mostrar().items()
             if linhas
         ]
     return RelatorioDoSetorV1.model_validate(dados)
