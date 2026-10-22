@@ -97,6 +97,8 @@ TITULOS_DAS_TABELAS = {
     "assembleias_recentes": "Últimos documentos de assembleias de debenturistas",
     "negocios": "Últimos documentos de negócios",
     "negocios_por_ano": "Documentos de negócios por ano",
+    "ma_por_ano": "Negócios de M&A por ano em que ficaram conhecidos",
+    "ma_recentes": "Últimos negócios de M&A conhecidos",
     "ligacoes_da_rede": "Ligações da companhia na rede",
     "identificadores_da_empresa": "Identificadores públicos da companhia",
 } | {serie.nome: serie.medida for serie in dossie_da_base.SERIES_DAS_AGENCIAS}
@@ -498,6 +500,31 @@ def _texto(valor: object) -> str:
     return str(valor)
 
 
+PAPEIS_DO_MA = {
+    "comprou": "Comprou ou investiu",
+    "vendeu": "Vendeu",
+    "foi_comprada": "Foi comprada ou recebeu investimento",
+    "outro": "Outro papel",
+}
+TIPOS_DE_MA = {
+    "AQ_CONTROLE": "Compra de controle",
+    "AQ_MINORITARIA": "Compra de participação minoritária",
+    "VENDA_ATIVO": "Venda de ativo",
+    "PE_VC": "Investimento de private equity ou venture capital",
+    "FUSAO": "Fusão",
+    "JV": "Joint venture",
+    "DCM": "Emissão de dívida",
+}
+
+
+def _papel_no_ma(valor: object) -> str:
+    return PAPEIS_DO_MA.get(str(valor), str(valor))
+
+
+def _tipo_de_ma(valor: object) -> str:
+    return TIPOS_DE_MA.get(str(valor), "Tipo não identificado")
+
+
 def _sim_ou_nao(valor: object) -> str:
     return "sim" if valor else "não"
 
@@ -749,6 +776,19 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("ano", "Ano", _ano),
         ("documentos", "Documentos", inteiro),
     ],
+    "ma_por_ano": [
+        ("ano", "Ano", _ano),
+        ("comprou", "Comprou ou investiu", inteiro),
+        ("vendeu", "Vendeu", inteiro),
+        ("foi_comprada", "Foi comprada", inteiro),
+        ("outro", "Outro papel", inteiro),
+    ],
+    "ma_recentes": [
+        ("conhecido_em", "Conhecido desde", dia),
+        ("papel", "Papel da empresa", _papel_no_ma),
+        ("tipo", "Tipo do negócio", _tipo_de_ma),
+        ("confirmado", "Confirmado por fonte oficial", _sim_ou_nao),
+    ],
     "ligacoes_da_rede": [
         ("relacao", "Relação", _texto),
         ("entidade", "Entidade", _texto),
@@ -893,6 +933,7 @@ _DOS_INSIDERS = (
     "(VLMO, tabela negociacoes)"
 )
 _DA_DFP = "DFP entregue à CVM: DRE, DFC e DVA, como eram públicas no dia (tabela demonstracoes_como_era)"
+_DO_MA = "negócios de M&A publicados por assessorias independentes (tabelas ma_assessorias, ma_partes, ma_negocios e ma_datas)"
 _DOS_RATINGS = "relatórios das agências de rating e comunicados da companhia entregues à CVM (tabela ratings)"
 FONTES_DOS_ITENS = {
     "auditor_atual": f"{_DO_FRE} (tabela auditores)",
@@ -915,6 +956,9 @@ FONTES_DOS_ITENS = {
     "recompras_12m": _DOS_INSIDERS,
     "eventos_de_capital": f"{_DO_FRE} (tabela eventos_de_capital)",
     "negocios": "fatos relevantes e comunicados do IPE na CVM (tabela eventos)",
+    "ma_comprou": _DO_MA,
+    "ma_vendeu": _DO_MA,
+    "ma_foi_comprada": _DO_MA,
     "conselho_membros": f"{_DO_FRE} (tabela fre_conselho)",
     "conselho_independentes": f"{_DO_FRE} (tabela fre_conselho)",
     "conselho_eleitos_por_minoritarios": f"{_DO_FRE} (tabela fre_conselho)",

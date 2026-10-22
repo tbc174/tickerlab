@@ -244,7 +244,9 @@ def _negocios(ficha: Ficha) -> Destaque | None:
     return Destaque(
         "negocios",
         texto,
-        _fonte(secao),
+        dossie_da_base.fontes_das_tabelas(["eventos"])[
+            0
+        ],  # a da CVM, mesmo com o M&A das assessorias na seção
         dia(ultimo["publicado_em"]),
         secao.chave,
         str(ultimo.get("link") or ""),
