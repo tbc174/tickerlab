@@ -1,0 +1,2588 @@
+{
+ "setor": "eletricas",
+ "nome": "Elétricas",
+ "como_era_em": "2026-10-21",
+ "membros": [
+  {
+   "cnpj": "10338320000100",
+   "empresa": "AFLUENTE TRANSMISSÃO DE ENERGIA ELÉTRICA S/A",
+   "tickers": [
+    "AFLT3"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "08364948000138",
+   "empresa": "ALUPAR INVESTIMENTO S/A",
+   "tickers": [
+    "ALUP11"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "33050071000158",
+   "empresa": "AMPLA ENERGIA E SERVICOS S.A.",
+   "tickers": [
+    "CBEE3"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "00001180000126",
+   "empresa": "AXIA Energia S.A.",
+   "tickers": [
+    "AXIA3",
+    "AXIA7",
+    "ELET3",
+    "ELET5",
+    "ELET6"
+   ],
+   "motivo": "ligada à ANEEL por 4 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "28594234000123",
+   "empresa": "Auren Energia S.A.",
+   "tickers": [
+    "AURE3"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "00194724000113",
+   "empresa": "Auren Operações S.A.",
+   "tickers": [
+    "AESO3"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "37663076000107",
+   "empresa": "Auren Participações S.A.",
+   "tickers": [
+    "AESB3"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "83878892000155",
+   "empresa": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+   "tickers": [
+    "CLSC3",
+    "CLSC4"
+   ],
+   "motivo": "ligada à ANEEL por 2 entidades; setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "08560444000193",
+   "empresa": "CIA CELG DE PARTICIPACOES - CELGPAR",
+   "tickers": [
+    "GPAR3"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "15139629000194",
+   "empresa": "CIA ELETRICIDADE EST. DA BAHIA - COELBA",
+   "tickers": [
+    "CEEB3",
+    "CEEB5",
+    "CEEB6"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "17155730000164",
+   "empresa": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+   "tickers": [
+    "CMIG3",
+    "CMIG4"
+   ],
+   "motivo": "ligada à ANEEL por 2 entidades; setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "07047251000170",
+   "empresa": "CIA ENERGETICA DO CEARA - COELCE",
+   "tickers": [
+    "COCE3",
+    "COCE5",
+    "COCE6"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "08324196000181",
+   "empresa": "CIA ENERGETICA DO RIO GDE NORTE - COSERN",
+   "tickers": [
+    "CSRN3",
+    "CSRN5",
+    "CSRN6"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "08467115000100",
+   "empresa": "CIA ESTADUAL DE DISTRIB ENER ELET-CEEE-D",
+   "tickers": [
+    "CEED3",
+    "CEED4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "76483817000120",
+   "empresa": "CIA PARANAENSE DE ENERGIA - COPEL",
+   "tickers": [
+    "CPLE3",
+    "CPLE5",
+    "CPLE6"
+   ],
+   "motivo": "ligada à ANEEL por 1 entidade; setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "00272185000193",
+   "empresa": "CIMS S.A.",
+   "tickers": [
+    "CMFA3",
+    "CMFA4"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "00070698000111",
+   "empresa": "COMPANHIA ENERGÉTICA DE BRASÍLIA - CEB",
+   "tickers": [
+    "CEBR3",
+    "CEBR5",
+    "CEBR6"
+   ],
+   "motivo": "ligada à ANEEL por 1 entidade; setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "02429144000193",
+   "empresa": "CPFL ENERGIA S.A.",
+   "tickers": [
+    "CPFE3"
+   ],
+   "motivo": "ligada à ANEEL por 10 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "39881421000104",
+   "empresa": "Companhia Estadual de Geração de Energia Elétrica - CEEE-G",
+   "tickers": [
+    "CGEE3",
+    "CGEE4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "02328280000197",
+   "empresa": "ELEKTRO REDES S.A.",
+   "tickers": [
+    "EKTR3",
+    "EKTR4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "01104937000170",
+   "empresa": "ELETROBRÁS PARTICIPAÇÕES S.A. - ELETROPAR",
+   "tickers": [
+    "LIPR3"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "02302101000142",
+   "empresa": "EMAE - EMPRESA METROP. DE AGUAS E ENERGIA S.A.",
+   "tickers": [
+    "EMAE3",
+    "EMAE4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "03467321000199",
+   "empresa": "ENERGISA MATO GROSSO-DISTRIBUIDORA DE ENERGIA S/A",
+   "tickers": [
+    "ENMT3",
+    "ENMT4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "00864214000106",
+   "empresa": "ENERGISA S.A.",
+   "tickers": [
+    "ENGI11",
+    "ENGI3",
+    "ENGI4"
+   ],
+   "motivo": "ligada à ANEEL por 8 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "04423567000121",
+   "empresa": "ENEVA S.A",
+   "tickers": [
+    "ENEV3"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "02474103000119",
+   "empresa": "ENGIE BRASIL ENERGIA S.A.",
+   "tickers": [
+    "EGIE3"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "04895728000180",
+   "empresa": "EQUATORIAL PARÁ DISTRIBUIDORA DE ENERGIA S.A.",
+   "tickers": [
+    "CELP3",
+    "CELP5",
+    "CELP6",
+    "CELP7"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "03220438000173",
+   "empresa": "EQUATORIAL S.A.",
+   "tickers": [
+    "EQTL3"
+   ],
+   "motivo": "ligada à ANEEL por 7 entidades; setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "02998611000104",
+   "empresa": "ISA ENERGIA BRASIL",
+   "tickers": [
+    "ISAE3",
+    "ISAE4",
+    "TRPL3",
+    "TRPL4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "03378521000175",
+   "empresa": "LIGHT S.A. - Em Recuperação Judicial",
+   "tickers": [
+    "LIGT3"
+   ],
+   "motivo": "ligada à ANEEL por 1 entidade; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "01083200000118",
+   "empresa": "NEOENERGIA S.A.",
+   "tickers": [
+    "NEOE3"
+   ],
+   "motivo": "ligada à ANEEL por 5 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "61584140000149",
+   "empresa": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+   "tickers": [
+    "REDE3"
+   ],
+   "motivo": "ligada à ANEEL por 8 entidades; setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "08534605000174",
+   "empresa": "RENOVA ENERGIA S.A.",
+   "tickers": [
+    "RNEW11",
+    "RNEW3",
+    "RNEW4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "02998301000181",
+   "empresa": "RIO PARANAPANEMA ENERGIA S.A.",
+   "tickers": [
+    "GEPA3",
+    "GEPA4"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "42500384000151",
+   "empresa": "SERENA ENERGIA S.A.",
+   "tickers": [
+    "SRNA3"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "00622416000141",
+   "empresa": "STATKRAFT ENERGIAS RENOVAVEIS S.A.",
+   "tickers": [
+    "STKF3"
+   ],
+   "motivo": "setor da CVM: Energia Elétrica"
+  },
+  {
+   "cnpj": "07859971000130",
+   "empresa": "TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.",
+   "tickers": [
+    "TAEE11",
+    "TAEE3",
+    "TAEE4"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  },
+  {
+   "cnpj": "02162616000194",
+   "empresa": "UPTICK PARTICIPACOES S.A. - EM LIQUIDAÇÃO",
+   "tickers": [
+    "UPKP3"
+   ],
+   "motivo": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+  }
+ ],
+ "secoes": [
+  {
+   "chave": "membros",
+   "titulo": "Quem está no setor",
+   "itens": [
+    {
+     "chave": "membros",
+     "nome": "Companhias abertas no setor",
+     "texto": "38",
+     "valor": 38.0,
+     "unidade": "companhias",
+     "base": "cadastro atual da CVM",
+     "motivo": "",
+     "nota": null,
+     "nota_texto": "",
+     "fonte": "cadastro de companhias da CVM (setor de atividade) e ligações da base com a agência",
+     "comparacao": null,
+     "sem_comparacao": "Identificação: não há com o quê comparar.",
+     "rastro": null
+    }
+   ],
+   "paragrafos": [
+    "Entra a companhia aberta com ticker que a base liga a uma entidade da agência do setor (ANEEL) ou que tem o setor da CVM \"Energia Elétrica\" ou \"Emp. Adm. Part. - Energia Elétrica\". A coluna do motivo diz qual das duas regras valeu.",
+    "Fonte: cadastro de companhias da CVM (setor de atividade); FCA entregue à CVM (valores mobiliários negociados na B3)."
+   ],
+   "tabelas": {
+    "membros": [
+     {
+      "Companhia": "AFLUENTE TRANSMISSÃO DE ENERGIA ELÉTRICA S/A",
+      "CNPJ": "10.338.320/0001-00",
+      "Tickers": "AFLT3",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "ALUPAR INVESTIMENTO S/A",
+      "CNPJ": "08.364.948/0001-38",
+      "Tickers": "ALUP11",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "AMPLA ENERGIA E SERVICOS S.A.",
+      "CNPJ": "33.050.071/0001-58",
+      "Tickers": "CBEE3",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "CNPJ": "00.001.180/0001-26",
+      "Tickers": "AXIA3, AXIA7, ELET3, ELET5, ELET6",
+      "Por que está no setor": "ligada à ANEEL por 4 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "Auren Energia S.A.",
+      "CNPJ": "28.594.234/0001-23",
+      "Tickers": "AURE3",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "Auren Operações S.A.",
+      "CNPJ": "00.194.724/0001-13",
+      "Tickers": "AESO3",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "Auren Participações S.A.",
+      "CNPJ": "37.663.076/0001-07",
+      "Tickers": "AESB3",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "CNPJ": "83.878.892/0001-55",
+      "Tickers": "CLSC3, CLSC4",
+      "Por que está no setor": "ligada à ANEEL por 2 entidades; setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CIA CELG DE PARTICIPACOES - CELGPAR",
+      "CNPJ": "08.560.444/0001-93",
+      "Tickers": "GPAR3",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "CIA ELETRICIDADE EST. DA BAHIA - COELBA",
+      "CNPJ": "15.139.629/0001-94",
+      "Tickers": "CEEB3, CEEB5, CEEB6",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "CNPJ": "17.155.730/0001-64",
+      "Tickers": "CMIG3, CMIG4",
+      "Por que está no setor": "ligada à ANEEL por 2 entidades; setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DO CEARA - COELCE",
+      "CNPJ": "07.047.251/0001-70",
+      "Tickers": "COCE3, COCE5, COCE6",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DO RIO GDE NORTE - COSERN",
+      "CNPJ": "08.324.196/0001-81",
+      "Tickers": "CSRN3, CSRN5, CSRN6",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CIA ESTADUAL DE DISTRIB ENER ELET-CEEE-D",
+      "CNPJ": "08.467.115/0001-00",
+      "Tickers": "CEED3, CEED4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "CNPJ": "76.483.817/0001-20",
+      "Tickers": "CPLE3, CPLE5, CPLE6",
+      "Por que está no setor": "ligada à ANEEL por 1 entidade; setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CIMS S.A.",
+      "CNPJ": "00.272.185/0001-93",
+      "Tickers": "CMFA3, CMFA4",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "COMPANHIA ENERGÉTICA DE BRASÍLIA - CEB",
+      "CNPJ": "00.070.698/0001-11",
+      "Tickers": "CEBR3, CEBR5, CEBR6",
+      "Por que está no setor": "ligada à ANEEL por 1 entidade; setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "CNPJ": "02.429.144/0001-93",
+      "Tickers": "CPFE3",
+      "Por que está no setor": "ligada à ANEEL por 10 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "Companhia Estadual de Geração de Energia Elétrica - CEEE-G",
+      "CNPJ": "39.881.421/0001-04",
+      "Tickers": "CGEE3, CGEE4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "ELEKTRO REDES S.A.",
+      "CNPJ": "02.328.280/0001-97",
+      "Tickers": "EKTR3, EKTR4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "ELETROBRÁS PARTICIPAÇÕES S.A. - ELETROPAR",
+      "CNPJ": "01.104.937/0001-70",
+      "Tickers": "LIPR3",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "EMAE - EMPRESA METROP. DE AGUAS E ENERGIA S.A.",
+      "CNPJ": "02.302.101/0001-42",
+      "Tickers": "EMAE3, EMAE4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "ENERGISA MATO GROSSO-DISTRIBUIDORA DE ENERGIA S/A",
+      "CNPJ": "03.467.321/0001-99",
+      "Tickers": "ENMT3, ENMT4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "CNPJ": "00.864.214/0001-06",
+      "Tickers": "ENGI11, ENGI3, ENGI4",
+      "Por que está no setor": "ligada à ANEEL por 8 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "ENEVA S.A",
+      "CNPJ": "04.423.567/0001-21",
+      "Tickers": "ENEV3",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "ENGIE BRASIL ENERGIA S.A.",
+      "CNPJ": "02.474.103/0001-19",
+      "Tickers": "EGIE3",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "EQUATORIAL PARÁ DISTRIBUIDORA DE ENERGIA S.A.",
+      "CNPJ": "04.895.728/0001-80",
+      "Tickers": "CELP3, CELP5, CELP6, CELP7",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "CNPJ": "03.220.438/0001-73",
+      "Tickers": "EQTL3",
+      "Por que está no setor": "ligada à ANEEL por 7 entidades; setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "ISA ENERGIA BRASIL",
+      "CNPJ": "02.998.611/0001-04",
+      "Tickers": "ISAE3, ISAE4, TRPL3, TRPL4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "CNPJ": "03.378.521/0001-75",
+      "Tickers": "LIGT3",
+      "Por que está no setor": "ligada à ANEEL por 1 entidade; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "CNPJ": "01.083.200/0001-18",
+      "Tickers": "NEOE3",
+      "Por que está no setor": "ligada à ANEEL por 5 entidades; setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "CNPJ": "61.584.140/0001-49",
+      "Tickers": "REDE3",
+      "Por que está no setor": "ligada à ANEEL por 8 entidades; setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "RENOVA ENERGIA S.A.",
+      "CNPJ": "08.534.605/0001-74",
+      "Tickers": "RNEW11, RNEW3, RNEW4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "RIO PARANAPANEMA ENERGIA S.A.",
+      "CNPJ": "02.998.301/0001-81",
+      "Tickers": "GEPA3, GEPA4",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "SERENA ENERGIA S.A.",
+      "CNPJ": "42.500.384/0001-51",
+      "Tickers": "SRNA3",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "STATKRAFT ENERGIAS RENOVAVEIS S.A.",
+      "CNPJ": "00.622.416/0001-41",
+      "Tickers": "STKF3",
+      "Por que está no setor": "setor da CVM: Energia Elétrica"
+     },
+     {
+      "Companhia": "TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.",
+      "CNPJ": "07.859.971/0001-30",
+      "Tickers": "TAEE11, TAEE3, TAEE4",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     },
+     {
+      "Companhia": "UPTICK PARTICIPACOES S.A. - EM LIQUIDAÇÃO",
+      "CNPJ": "02.162.616/0001-94",
+      "Tickers": "UPKP3",
+      "Por que está no setor": "setor da CVM: Emp. Adm. Part. - Energia Elétrica"
+     }
+    ]
+   },
+   "pontos": [],
+   "trancada": false,
+   "recolhida": false
+  },
+  {
+   "chave": "tamanho",
+   "titulo": "Tamanho do setor",
+   "itens": [
+    {
+     "chave": "mercado_aneel_consumidores",
+     "nome": "Mercado: Consumidores atendidos pelas distribuidoras (ANEEL)",
+     "texto": "384.737",
+     "valor": 384737.0,
+     "unidade": "consumidores",
+     "base": "ago/2026",
+     "motivo": "",
+     "nota": null,
+     "nota_texto": "",
+     "fonte": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor, ODbL (dados abertos da CVM; citar a fonte)",
+     "comparacao": null,
+     "sem_comparacao": "A ficha não traz com o quê comparar este número.",
+     "rastro": null
+    }
+   ],
+   "paragrafos": [
+    "Dados da base do TickerLab de 21/10/2026.",
+    "Fonte: ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor.",
+    "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+   ],
+   "tabelas": {
+    "tamanho_aneel_consumidores": [
+     {
+      "Ano": "2026",
+      "Mercado (consumidores)": "384.737",
+      "Meses no ano": "8",
+      "Até": "ago/2026"
+     },
+     {
+      "Ano": "2025",
+      "Mercado (consumidores)": "87.543.053",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Ano": "2024",
+      "Mercado (consumidores)": "86.701.508",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Ano": "2023",
+      "Mercado (consumidores)": "86.997.936",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Ano": "2022",
+      "Mercado (consumidores)": "87.107.500",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Ano": "2021",
+      "Mercado (consumidores)": "86.230.223",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Ano": "2020",
+      "Mercado (consumidores)": "85.392.934",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Ano": "2019",
+      "Mercado (consumidores)": "84.100.825",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Ano": "2018",
+      "Mercado (consumidores)": "82.682.126",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Ano": "2017",
+      "Mercado (consumidores)": "81.408.429",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     }
+    ]
+   },
+   "pontos": [],
+   "trancada": false,
+   "recolhida": false
+  },
+  {
+   "chave": "concentracao",
+   "titulo": "Concentração",
+   "itens": [
+    {
+     "chave": "hhi_aneel_consumidores",
+     "nome": "HHI: Consumidores atendidos pelas distribuidoras (ANEEL)",
+     "texto": "689",
+     "valor": 688.9669241129967,
+     "unidade": "pontos",
+     "base": "ago/2026",
+     "motivo": "",
+     "nota": null,
+     "nota_texto": "",
+     "fonte": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor, ODbL (dados abertos da CVM; citar a fonte)",
+     "comparacao": null,
+     "sem_comparacao": "A ficha não traz com o quê comparar este número.",
+     "rastro": null
+    },
+    {
+     "chave": "cr4_aneel_consumidores",
+     "nome": "Participação das 4 maiores (CR4): Consumidores atendidos pelas distribuidoras (ANEEL)",
+     "texto": "43,7%",
+     "valor": 0.43737930066512964,
+     "unidade": "fração",
+     "base": "ago/2026",
+     "motivo": "",
+     "nota": null,
+     "nota_texto": "",
+     "fonte": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor, ODbL (dados abertos da CVM; citar a fonte)",
+     "comparacao": null,
+     "sem_comparacao": "A ficha não traz com o quê comparar este número.",
+     "rastro": null
+    }
+   ],
+   "paragrafos": [
+    "Dados da base do TickerLab de 21/10/2026.",
+    "Parte do mercado está contada por entidade: as que a base não liga a uma companhia aberta e de que a agência não informa o grupo. Um grupo fechado com várias entidades aparece partido, e elas parecem menores do que o grupo é: a concentração real é maior ou igual à mostrada.",
+    "Fonte: ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor.",
+    "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+   ],
+   "tabelas": {
+    "concentracao_aneel_consumidores": [
+     {
+      "Ano": "2026",
+      "Participantes": "30",
+      "Mercado (consumidores)": "384.737",
+      "CR4 (4 maiores)": "43,7%",
+      "HHI (pontos)": "689",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "—",
+      "Contado por entidade": "100,0%",
+      "Meses no ano": "8",
+      "Até": "ago/2026"
+     },
+     {
+      "Ano": "2025",
+      "Participantes": "81",
+      "Mercado (consumidores)": "87.543.053",
+      "CR4 (4 maiores)": "54,2%",
+      "HHI (pontos)": "1.015",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "-4",
+      "Contado por entidade": "5,2%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Ano": "2024",
+      "Participantes": "81",
+      "Mercado (consumidores)": "86.701.508",
+      "CR4 (4 maiores)": "54,6%",
+      "HHI (pontos)": "1.019",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "+4",
+      "Contado por entidade": "5,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Ano": "2023",
+      "Participantes": "81",
+      "Mercado (consumidores)": "86.997.936",
+      "CR4 (4 maiores)": "54,4%",
+      "HHI (pontos)": "1.014",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "-5",
+      "Contado por entidade": "5,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Ano": "2022",
+      "Participantes": "81",
+      "Mercado (consumidores)": "87.107.500",
+      "CR4 (4 maiores)": "54,6%",
+      "HHI (pontos)": "1.019",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "+10",
+      "Contado por entidade": "5,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Ano": "2021",
+      "Participantes": "81",
+      "Mercado (consumidores)": "86.230.223",
+      "CR4 (4 maiores)": "54,4%",
+      "HHI (pontos)": "1.010",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "+9",
+      "Contado por entidade": "5,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Ano": "2020",
+      "Participantes": "81",
+      "Mercado (consumidores)": "85.392.934",
+      "CR4 (4 maiores)": "54,1%",
+      "HHI (pontos)": "1.000",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "-2",
+      "Contado por entidade": "5,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Ano": "2019",
+      "Participantes": "80",
+      "Mercado (consumidores)": "84.100.825",
+      "CR4 (4 maiores)": "54,1%",
+      "HHI (pontos)": "1.002",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "-7",
+      "Contado por entidade": "5,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Ano": "2018",
+      "Participantes": "75",
+      "Mercado (consumidores)": "82.682.126",
+      "CR4 (4 maiores)": "54,4%",
+      "HHI (pontos)": "1.009",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "+3",
+      "Contado por entidade": "5,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Ano": "2017",
+      "Participantes": "67",
+      "Mercado (consumidores)": "81.408.429",
+      "CR4 (4 maiores)": "54,3%",
+      "HHI (pontos)": "1.006",
+      "Faixa do CADE": "não concentrado",
+      "Variação do HHI": "-1",
+      "Contado por entidade": "5,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     }
+    ]
+   },
+   "pontos": [],
+   "trancada": false,
+   "recolhida": false
+  },
+  {
+   "chave": "participacao",
+   "titulo": "Participação de cada companhia aberta",
+   "itens": [],
+   "paragrafos": [
+    "Dados da base do TickerLab de 21/10/2026.",
+    "Fonte: ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor.",
+    "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+   ],
+   "tabelas": {
+    "participacao_aneel_consumidores": [
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2025",
+      "Consumidores": "8.757.026",
+      "Parte do mercado": "10,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2024",
+      "Consumidores": "7.873.970",
+      "Parte do mercado": "9,1%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2023",
+      "Consumidores": "7.829.033",
+      "Parte do mercado": "9,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2022",
+      "Consumidores": "7.653.230",
+      "Parte do mercado": "8,8%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2021",
+      "Consumidores": "7.532.313",
+      "Parte do mercado": "8,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2020",
+      "Consumidores": "7.417.277",
+      "Parte do mercado": "8,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2019",
+      "Consumidores": "7.301.753",
+      "Parte do mercado": "8,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2018",
+      "Consumidores": "7.211.964",
+      "Parte do mercado": "8,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2017",
+      "Consumidores": "7.071.588",
+      "Parte do mercado": "8,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "AES ELPA S.A.",
+      "Ano": "2016",
+      "Consumidores": "6.922.461",
+      "Parte do mercado": "8,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2025",
+      "Consumidores": "3.689.314",
+      "Parte do mercado": "4,2%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2024",
+      "Consumidores": "3.675.173",
+      "Parte do mercado": "4,2%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2023",
+      "Consumidores": "3.755.960",
+      "Parte do mercado": "4,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2022",
+      "Consumidores": "3.628.682",
+      "Parte do mercado": "4,2%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2021",
+      "Consumidores": "3.687.123",
+      "Parte do mercado": "4,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2020",
+      "Consumidores": "3.704.254",
+      "Parte do mercado": "4,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2019",
+      "Consumidores": "3.722.525",
+      "Parte do mercado": "4,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2018",
+      "Consumidores": "3.539.079",
+      "Parte do mercado": "4,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2017",
+      "Consumidores": "3.637.934",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Ano": "2016",
+      "Consumidores": "3.574.192",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2025",
+      "Consumidores": "3.247.086",
+      "Parte do mercado": "3,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2024",
+      "Consumidores": "3.155.282",
+      "Parte do mercado": "3,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2023",
+      "Consumidores": "3.240.820",
+      "Parte do mercado": "3,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2022",
+      "Consumidores": "3.217.635",
+      "Parte do mercado": "3,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2021",
+      "Consumidores": "3.183.096",
+      "Parte do mercado": "3,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2020",
+      "Consumidores": "3.187.186",
+      "Parte do mercado": "3,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2019",
+      "Consumidores": "3.044.009",
+      "Parte do mercado": "3,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2018",
+      "Consumidores": "2.982.663",
+      "Parte do mercado": "3,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2017",
+      "Consumidores": "2.907.289",
+      "Parte do mercado": "3,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Ano": "2016",
+      "Consumidores": "2.842.161",
+      "Parte do mercado": "3,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2025",
+      "Consumidores": "8.459.031",
+      "Parte do mercado": "9,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2024",
+      "Consumidores": "8.458.589",
+      "Parte do mercado": "9,8%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2023",
+      "Consumidores": "8.452.221",
+      "Parte do mercado": "9,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2022",
+      "Consumidores": "8.520.680",
+      "Parte do mercado": "9,8%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2021",
+      "Consumidores": "8.584.651",
+      "Parte do mercado": "10,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2020",
+      "Consumidores": "8.578.381",
+      "Parte do mercado": "10,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2019",
+      "Consumidores": "8.483.060",
+      "Parte do mercado": "10,1%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2018",
+      "Consumidores": "8.388.814",
+      "Parte do mercado": "10,1%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2017",
+      "Consumidores": "8.338.043",
+      "Parte do mercado": "10,2%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Ano": "2016",
+      "Consumidores": "8.258.201",
+      "Parte do mercado": "10,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2025",
+      "Consumidores": "4.761.124",
+      "Parte do mercado": "5,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2024",
+      "Consumidores": "4.778.638",
+      "Parte do mercado": "5,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2023",
+      "Consumidores": "4.792.565",
+      "Parte do mercado": "5,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2022",
+      "Consumidores": "4.805.450",
+      "Parte do mercado": "5,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2021",
+      "Consumidores": "4.824.404",
+      "Parte do mercado": "5,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2020",
+      "Consumidores": "4.789.343",
+      "Parte do mercado": "5,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2019",
+      "Consumidores": "4.702.155",
+      "Parte do mercado": "5,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2018",
+      "Consumidores": "4.637.210",
+      "Parte do mercado": "5,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2017",
+      "Consumidores": "4.611.605",
+      "Parte do mercado": "5,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Ano": "2016",
+      "Consumidores": "4.524.912",
+      "Parte do mercado": "5,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "COMPANHIA ENERGÉTICA DE BRASÍLIA - CEB",
+      "Ano": "2005",
+      "Consumidores": "726.423",
+      "Parte do mercado": "1,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2005"
+     },
+     {
+      "Companhia": "COMPANHIA ENERGÉTICA DE BRASÍLIA - CEB",
+      "Ano": "2004",
+      "Consumidores": "701.720",
+      "Parte do mercado": "1,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2004"
+     },
+     {
+      "Companhia": "COMPANHIA ENERGÉTICA DE BRASÍLIA - CEB",
+      "Ano": "2003",
+      "Consumidores": "659.444",
+      "Parte do mercado": "1,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2003"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2025",
+      "Consumidores": "9.743.641",
+      "Parte do mercado": "11,1%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2024",
+      "Consumidores": "9.784.690",
+      "Parte do mercado": "11,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2023",
+      "Consumidores": "9.810.633",
+      "Parte do mercado": "11,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2022",
+      "Consumidores": "9.799.149",
+      "Parte do mercado": "11,2%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2021",
+      "Consumidores": "9.819.327",
+      "Parte do mercado": "11,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2020",
+      "Consumidores": "9.741.640",
+      "Parte do mercado": "11,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2019",
+      "Consumidores": "9.571.247",
+      "Parte do mercado": "11,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2018",
+      "Consumidores": "9.439.267",
+      "Parte do mercado": "11,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2017",
+      "Consumidores": "9.258.601",
+      "Parte do mercado": "11,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Ano": "2016",
+      "Consumidores": "9.095.518",
+      "Parte do mercado": "11,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2025",
+      "Consumidores": "4.031.891",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2024",
+      "Consumidores": "4.003.681",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2023",
+      "Consumidores": "3.979.095",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2022",
+      "Consumidores": "3.946.893",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2021",
+      "Consumidores": "3.908.900",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2020",
+      "Consumidores": "3.952.633",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2019",
+      "Consumidores": "3.778.718",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2018",
+      "Consumidores": "3.743.053",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2017",
+      "Consumidores": "3.685.848",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Ano": "2016",
+      "Consumidores": "3.611.613",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2025",
+      "Consumidores": "13.540.224",
+      "Parte do mercado": "15,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2024",
+      "Consumidores": "13.539.989",
+      "Parte do mercado": "15,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2023",
+      "Consumidores": "13.436.729",
+      "Parte do mercado": "15,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2022",
+      "Consumidores": "13.246.538",
+      "Parte do mercado": "15,2%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2021",
+      "Consumidores": "12.973.086",
+      "Parte do mercado": "15,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2020",
+      "Consumidores": "12.576.879",
+      "Parte do mercado": "14,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2019",
+      "Consumidores": "12.347.698",
+      "Parte do mercado": "14,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2018",
+      "Consumidores": "12.303.085",
+      "Parte do mercado": "14,9%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2017",
+      "Consumidores": "11.976.778",
+      "Parte do mercado": "14,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Ano": "2016",
+      "Consumidores": "11.705.510",
+      "Parte do mercado": "14,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2025",
+      "Consumidores": "3.924.878",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2024",
+      "Consumidores": "3.846.946",
+      "Parte do mercado": "4,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2023",
+      "Consumidores": "3.827.214",
+      "Parte do mercado": "4,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2022",
+      "Consumidores": "4.066.692",
+      "Parte do mercado": "4,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2021",
+      "Consumidores": "4.014.688",
+      "Parte do mercado": "4,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2020",
+      "Consumidores": "3.946.427",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2019",
+      "Consumidores": "4.119.237",
+      "Parte do mercado": "4,9%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2018",
+      "Consumidores": "3.872.560",
+      "Parte do mercado": "4,7%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2017",
+      "Consumidores": "3.909.208",
+      "Parte do mercado": "4,8%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Ano": "2016",
+      "Consumidores": "3.907.343",
+      "Parte do mercado": "4,9%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2025",
+      "Consumidores": "15.443.941",
+      "Parte do mercado": "17,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2024",
+      "Consumidores": "15.519.564",
+      "Parte do mercado": "17,9%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2023",
+      "Consumidores": "15.608.411",
+      "Parte do mercado": "17,9%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2022",
+      "Consumidores": "15.981.420",
+      "Parte do mercado": "18,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2021",
+      "Consumidores": "15.516.560",
+      "Parte do mercado": "18,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2020",
+      "Consumidores": "15.282.906",
+      "Parte do mercado": "17,9%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2019",
+      "Consumidores": "15.113.623",
+      "Parte do mercado": "18,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2018",
+      "Consumidores": "14.869.654",
+      "Parte do mercado": "18,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2017",
+      "Consumidores": "14.635.590",
+      "Parte do mercado": "18,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Ano": "2016",
+      "Consumidores": "14.405.490",
+      "Parte do mercado": "18,0%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2025",
+      "Consumidores": "3.572.158",
+      "Parte do mercado": "4,1%",
+      "Meses no ano": "12",
+      "Até": "dez/2025"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2024",
+      "Consumidores": "3.701.203",
+      "Parte do mercado": "4,3%",
+      "Meses no ano": "12",
+      "Até": "dez/2024"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2023",
+      "Consumidores": "3.831.956",
+      "Parte do mercado": "4,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2023"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2022",
+      "Consumidores": "3.909.065",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2022"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2021",
+      "Consumidores": "3.944.348",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2021"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2020",
+      "Consumidores": "3.931.901",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2020"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2019",
+      "Consumidores": "3.867.661",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2019"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2018",
+      "Consumidores": "3.790.300",
+      "Parte do mercado": "4,6%",
+      "Meses no ano": "12",
+      "Até": "dez/2018"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2017",
+      "Consumidores": "3.642.493",
+      "Parte do mercado": "4,5%",
+      "Meses no ano": "12",
+      "Até": "dez/2017"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Ano": "2016",
+      "Consumidores": "3.490.596",
+      "Parte do mercado": "4,4%",
+      "Meses no ano": "12",
+      "Até": "dez/2016"
+     }
+    ]
+   },
+   "pontos": [],
+   "trancada": false,
+   "recolhida": false
+  },
+  {
+   "chave": "lado_a_lado",
+   "titulo": "Empresas lado a lado",
+   "itens": [],
+   "paragrafos": [
+    "Dados da base do TickerLab de 21/10/2026.",
+    "Os indicadores são os mesmos do relatório da empresa, das DFP e dos ITR no banco do app. A margem EBITDA vem da ficha da noite de cada companhia e aparece como \"ainda sem dado\" até a ficha trazer a geração de caixa. A ordem das linhas é a do nome, não um ranking.",
+    "Fonte: DFP e ITR entregues à CVM (demonstrações consolidadas).",
+    "Fonte: ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor.",
+    "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+   ],
+   "tabelas": {
+    "lado_a_lado": [
+     {
+      "Companhia": "AFLUENTE TRANSMISSÃO DE ENERGIA ELÉTRICA S/A",
+      "Tickers": "AFLT3",
+      "Receita (12 meses)": "R$ 63,7 mi",
+      "Lucro dos acionistas (12 meses)": "R$ 35,7 mi",
+      "Margem líquida": "56,0%",
+      "ROE pelo DuPont": "14,6%",
+      "Dívida líquida": "R$ -28,6 mi",
+      "Capex (12 meses)": "R$ 1,0 mil",
+      "Caixa livre (12 meses)": "R$ 64,7 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "ALUPAR INVESTIMENTO S/A",
+      "Tickers": "ALUP11",
+      "Receita (12 meses)": "R$ 5,0 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 1,4 bi",
+      "Margem líquida": "40,2%",
+      "ROE pelo DuPont": "14,4%",
+      "Dívida líquida": "R$ 9,5 bi",
+      "Capex (12 meses)": "R$ 148,4 mi",
+      "Caixa livre (12 meses)": "R$ 1,6 bi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "AMPLA ENERGIA E SERVICOS S.A.",
+      "Tickers": "CBEE3",
+      "Receita (12 meses)": "R$ 10,4 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 56,8 mi",
+      "Margem líquida": "0,5%",
+      "ROE pelo DuPont": "0,6%",
+      "Dívida líquida": "R$ 5,0 bi",
+      "Capex (12 meses)": "R$ 178,2 mi",
+      "Caixa livre (12 meses)": "R$ -439,3 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "AXIA Energia S.A.",
+      "Tickers": "AXIA3, AXIA7, ELET3, ELET5, ELET6",
+      "Receita (12 meses)": "R$ 44,6 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 12,1 bi",
+      "Margem líquida": "27,1%",
+      "ROE pelo DuPont": "9,9%",
+      "Dívida líquida": "R$ 44,7 bi",
+      "Capex (12 meses)": "R$ 2,9 bi",
+      "Caixa livre (12 meses)": "R$ 13,8 bi",
+      "Margem EBITDA (último exercício)": "20,6%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "4,2%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "Auren Energia S.A.",
+      "Tickers": "AURE3",
+      "Receita (12 meses)": "R$ 13,5 bi",
+      "Lucro dos acionistas (12 meses)": "R$ -1,1 bi",
+      "Margem líquida": "-7,6%",
+      "ROE pelo DuPont": "-9,5%",
+      "Dívida líquida": "R$ 20,0 bi",
+      "Capex (12 meses)": "R$ 903,9 mi",
+      "Caixa livre (12 meses)": "R$ 191,6 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "Auren Operações S.A.",
+      "Tickers": "AESO3",
+      "Receita (12 meses)": "R$ 3,8 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 66,9 mi",
+      "Margem líquida": "4,8%",
+      "ROE pelo DuPont": "1,5%",
+      "Dívida líquida": "R$ 9,5 bi",
+      "Capex (12 meses)": "R$ 418,1 mi",
+      "Caixa livre (12 meses)": "R$ 1,0 bi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "Auren Participações S.A.",
+      "Tickers": "AESB3",
+      "Receita (12 meses)": "R$ 4,2 bi",
+      "Lucro dos acionistas (12 meses)": "R$ -398,2 mi",
+      "Margem líquida": "-7,1%",
+      "ROE pelo DuPont": "-8,7%",
+      "Dívida líquida": "R$ 9,8 bi",
+      "Capex (12 meses)": "R$ 850,8 mi",
+      "Caixa livre (12 meses)": "R$ 384,2 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 31/03/2026"
+     },
+     {
+      "Companhia": "CENTRAIS ELET DE SANTA CATARINA S.A.",
+      "Tickers": "CLSC3, CLSC4",
+      "Receita (12 meses)": "R$ 12,5 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 875,1 mi",
+      "Margem líquida": "7,0%",
+      "ROE pelo DuPont": "20,7%",
+      "Dívida líquida": "R$ 5,2 bi",
+      "Capex (12 meses)": "R$ 21,9 mi",
+      "Caixa livre (12 meses)": "R$ 304,0 mi",
+      "Margem EBITDA (último exercício)": "15,1%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "3,7%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "CIA CELG DE PARTICIPACOES - CELGPAR",
+      "Tickers": "GPAR3",
+      "Receita (12 meses)": "R$ -9,6 mi",
+      "Lucro dos acionistas (12 meses)": "R$ -20,9 mi",
+      "Margem líquida": "—",
+      "ROE pelo DuPont": "—",
+      "Dívida líquida": "R$ 0",
+      "Capex (12 meses)": "—",
+      "Caixa livre (12 meses)": "—",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "CIA ELETRICIDADE EST. DA BAHIA - COELBA",
+      "Tickers": "CEEB3, CEEB5, CEEB6",
+      "Receita (12 meses)": "R$ 19,4 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 1,5 bi",
+      "Margem líquida": "7,7%",
+      "ROE pelo DuPont": "17,9%",
+      "Dívida líquida": "R$ 19,5 bi",
+      "Capex (12 meses)": "R$ 0",
+      "Caixa livre (12 meses)": "R$ 771,0 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",
+      "Tickers": "CMIG3, CMIG4",
+      "Receita (12 meses)": "R$ 43,7 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 4,6 bi",
+      "Margem líquida": "10,5%",
+      "ROE pelo DuPont": "15,7%",
+      "Dívida líquida": "R$ 19,3 bi",
+      "Capex (12 meses)": "R$ 846,3 mi",
+      "Caixa livre (12 meses)": "R$ 2,6 bi",
+      "Margem EBITDA (último exercício)": "19,4%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "9,7%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DO CEARA - COELCE",
+      "Tickers": "COCE3, COCE5, COCE6",
+      "Receita (12 meses)": "R$ 9,7 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 422,5 mi",
+      "Margem líquida": "4,4%",
+      "ROE pelo DuPont": "7,5%",
+      "Dívida líquida": "R$ 6,7 bi",
+      "Capex (12 meses)": "R$ 2,3 bi",
+      "Caixa livre (12 meses)": "R$ -993,4 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "CIA ENERGETICA DO RIO GDE NORTE - COSERN",
+      "Tickers": "CSRN3, CSRN5, CSRN6",
+      "Receita (12 meses)": "R$ 4,3 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 652,0 mi",
+      "Margem líquida": "15,0%",
+      "ROE pelo DuPont": "36,7%",
+      "Dívida líquida": "R$ 3,0 bi",
+      "Capex (12 meses)": "R$ 0",
+      "Caixa livre (12 meses)": "R$ 645,0 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "CIA ESTADUAL DE DISTRIB ENER ELET-CEEE-D",
+      "Tickers": "CEED3, CEED4",
+      "Receita (12 meses)": "R$ 6,9 bi",
+      "Lucro dos acionistas (12 meses)": "R$ -433,3 mi",
+      "Margem líquida": "-6,3%",
+      "ROE pelo DuPont": "—",
+      "Dívida líquida": "R$ 7,8 bi",
+      "Capex (12 meses)": "R$ 0",
+      "Caixa livre (12 meses)": "R$ -1,2 bi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "CIA PARANAENSE DE ENERGIA - COPEL",
+      "Tickers": "CPLE3, CPLE5, CPLE6",
+      "Receita (12 meses)": "R$ 28,0 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 3,1 bi",
+      "Margem líquida": "11,4%",
+      "ROE pelo DuPont": "13,0%",
+      "Dívida líquida": "R$ 20,0 bi",
+      "Capex (12 meses)": "R$ 553,2 mi",
+      "Caixa livre (12 meses)": "R$ 1,4 bi",
+      "Margem EBITDA (último exercício)": "25,0%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "5,4%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "CIMS S.A.",
+      "Tickers": "CMFA3, CMFA4",
+      "Receita (12 meses)": "R$ 0",
+      "Lucro dos acionistas (12 meses)": "R$ -224,9 mil",
+      "Margem líquida": "—",
+      "ROE pelo DuPont": "—",
+      "Dívida líquida": "R$ -7,5 mil",
+      "Capex (12 meses)": "—",
+      "Caixa livre (12 meses)": "—",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "exercício encerrado em 31/12/2023"
+     },
+     {
+      "Companhia": "COMPANHIA ENERGÉTICA DE BRASÍLIA - CEB",
+      "Tickers": "CEBR3, CEBR5, CEBR6",
+      "Receita (12 meses)": "R$ 456,5 mi",
+      "Lucro dos acionistas (12 meses)": "R$ 159,9 mi",
+      "Margem líquida": "44,0%",
+      "ROE pelo DuPont": "16,8%",
+      "Dívida líquida": "R$ -287,3 mi",
+      "Capex (12 meses)": "R$ 83,9 mi",
+      "Caixa livre (12 meses)": "R$ 68,0 mi",
+      "Margem EBITDA (último exercício)": "46,3%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "1,3%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2005"
+     },
+     {
+      "Companhia": "CPFL ENERGIA S.A.",
+      "Tickers": "CPFE3",
+      "Receita (12 meses)": "R$ 45,6 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 6,0 bi",
+      "Margem líquida": "13,8%",
+      "ROE pelo DuPont": "26,4%",
+      "Dívida líquida": "R$ 27,6 bi",
+      "Capex (12 meses)": "R$ 414,2 mi",
+      "Caixa livre (12 meses)": "R$ 6,0 bi",
+      "Margem EBITDA (último exercício)": "29,6%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "11,1%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "Companhia Estadual de Geração de Energia Elétrica - CEEE-G",
+      "Tickers": "CGEE3, CGEE4",
+      "Receita (12 meses)": "R$ 430,1 mi",
+      "Lucro dos acionistas (12 meses)": "R$ 0",
+      "Margem líquida": "-20,6%",
+      "ROE pelo DuPont": "0,0%",
+      "Dívida líquida": "R$ 755,4 mi",
+      "Capex (12 meses)": "R$ 139,8 mi",
+      "Caixa livre (12 meses)": "R$ -61,7 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "ELEKTRO REDES S.A.",
+      "Tickers": "EKTR3, EKTR4",
+      "Receita (12 meses)": "R$ 10,3 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 765,0 mi",
+      "Margem líquida": "7,4%",
+      "ROE pelo DuPont": "35,1%",
+      "Dívida líquida": "R$ 8,1 bi",
+      "Capex (12 meses)": "R$ 0",
+      "Caixa livre (12 meses)": "R$ 634,0 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "ELETROBRÁS PARTICIPAÇÕES S.A. - ELETROPAR",
+      "Tickers": "LIPR3",
+      "Receita (12 meses)": "R$ 0",
+      "Lucro dos acionistas (12 meses)": "R$ 25,5 mi",
+      "Margem líquida": "—",
+      "ROE pelo DuPont": "—",
+      "Dívida líquida": "R$ -69,3 mi",
+      "Capex (12 meses)": "R$ 2,0 mil",
+      "Caixa livre (12 meses)": "R$ 16,6 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 31/03/2025"
+     },
+     {
+      "Companhia": "EMAE - EMPRESA METROP. DE AGUAS E ENERGIA S.A.",
+      "Tickers": "EMAE3, EMAE4",
+      "Receita (12 meses)": "R$ 483,4 mi",
+      "Lucro dos acionistas (12 meses)": "R$ -96,1 mi",
+      "Margem líquida": "-19,9%",
+      "ROE pelo DuPont": "-14,3%",
+      "Dívida líquida": "R$ -455,1 mi",
+      "Capex (12 meses)": "R$ 33,3 mi",
+      "Caixa livre (12 meses)": "R$ -53,4 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "ENERGISA MATO GROSSO-DISTRIBUIDORA DE ENERGIA S/A",
+      "Tickers": "ENMT3, ENMT4",
+      "Receita (12 meses)": "R$ 9,5 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 575,8 mi",
+      "Margem líquida": "6,0%",
+      "ROE pelo DuPont": "14,5%",
+      "Dívida líquida": "R$ 8,8 bi",
+      "Capex (12 meses)": "R$ 2,0 bi",
+      "Caixa livre (12 meses)": "R$ -1,2 bi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "ENERGISA S.A.",
+      "Tickers": "ENGI11, ENGI3, ENGI4",
+      "Receita (12 meses)": "R$ 36,7 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 1,5 bi",
+      "Margem líquida": "5,9%",
+      "ROE pelo DuPont": "7,8%",
+      "Dívida líquida": "R$ 33,2 bi",
+      "Capex (12 meses)": "R$ 5,5 bi",
+      "Caixa livre (12 meses)": "R$ 430,8 mi",
+      "Margem EBITDA (último exercício)": "25,0%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "4,6%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "ENEVA S.A",
+      "Tickers": "ENEV3",
+      "Receita (12 meses)": "R$ 19,1 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 962,7 mi",
+      "Margem líquida": "8,0%",
+      "ROE pelo DuPont": "4,7%",
+      "Dívida líquida": "R$ 19,8 bi",
+      "Capex (12 meses)": "R$ 7,0 bi",
+      "Caixa livre (12 meses)": "R$ -923,2 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "ENGIE BRASIL ENERGIA S.A.",
+      "Tickers": "EGIE3",
+      "Receita (12 meses)": "R$ 13,7 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 4,0 bi",
+      "Margem líquida": "30,8%",
+      "ROE pelo DuPont": "26,4%",
+      "Dívida líquida": "R$ 24,8 bi",
+      "Capex (12 meses)": "R$ 673,4 mi",
+      "Caixa livre (12 meses)": "R$ 3,6 bi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "EQUATORIAL PARÁ DISTRIBUIDORA DE ENERGIA S.A.",
+      "Tickers": "CELP3, CELP5, CELP6, CELP7",
+      "Receita (12 meses)": "R$ 12,8 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 1,6 bi",
+      "Margem líquida": "12,3%",
+      "ROE pelo DuPont": "29,9%",
+      "Dívida líquida": "R$ 6,4 bi",
+      "Capex (12 meses)": "—",
+      "Caixa livre (12 meses)": "—",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "EQUATORIAL S.A.",
+      "Tickers": "EQTL3",
+      "Receita (12 meses)": "R$ 54,7 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 958,4 mi",
+      "Margem líquida": "3,2%",
+      "ROE pelo DuPont": "3,7%",
+      "Dívida líquida": "R$ 54,1 bi",
+      "Capex (12 meses)": "R$ 8,1 bi",
+      "Caixa livre (12 meses)": "R$ -5,2 bi",
+      "Margem EBITDA (último exercício)": "20,9%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "15,5%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "ISA ENERGIA BRASIL",
+      "Tickers": "ISAE3, ISAE4, TRPL3, TRPL4",
+      "Receita (12 meses)": "R$ 10,7 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 2,8 bi",
+      "Margem líquida": "25,4%",
+      "ROE pelo DuPont": "12,7%",
+      "Dívida líquida": "R$ 16,0 bi",
+      "Capex (12 meses)": "R$ 47,3 mi",
+      "Caixa livre (12 meses)": "R$ -1,3 bi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "LIGHT S.A. - Em Recuperação Judicial",
+      "Tickers": "LIGT3",
+      "Receita (12 meses)": "R$ 15,6 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 0",
+      "Margem líquida": "15,4%",
+      "ROE pelo DuPont": "0,0%",
+      "Dívida líquida": "R$ 7,3 bi",
+      "Capex (12 meses)": "R$ 1,2 bi",
+      "Caixa livre (12 meses)": "R$ -1,8 bi",
+      "Margem EBITDA (último exercício)": "14,6%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "4,5%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "NEOENERGIA S.A.",
+      "Tickers": "NEOE3",
+      "Receita (12 meses)": "R$ 53,4 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 4,6 bi",
+      "Margem líquida": "8,6%",
+      "ROE pelo DuPont": "12,2%",
+      "Dívida líquida": "R$ 51,6 bi",
+      "Capex (12 meses)": "R$ 320,0 mi",
+      "Caixa livre (12 meses)": "R$ 1,0 bi",
+      "Margem EBITDA (último exercício)": "27,3%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "17,6%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "REDE ENERGIA PARTICIPAÇÕES S.A.",
+      "Tickers": "REDE3",
+      "Receita (12 meses)": "R$ 20,2 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 1,0 bi",
+      "Margem líquida": "6,5%",
+      "ROE pelo DuPont": "16,0%",
+      "Dívida líquida": "R$ 17,5 bi",
+      "Capex (12 meses)": "R$ 3,8 bi",
+      "Caixa livre (12 meses)": "R$ -744,6 mi",
+      "Margem EBITDA (último exercício)": "24,4%",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "4,1%",
+      "De quando": "12 meses até 30/06/2026; EBITDA: exercício 2025; Consumidores atendidos pelas distribuidoras: dez/2025"
+     },
+     {
+      "Companhia": "RENOVA ENERGIA S.A.",
+      "Tickers": "RNEW11, RNEW3, RNEW4",
+      "Receita (12 meses)": "R$ 522,3 mi",
+      "Lucro dos acionistas (12 meses)": "R$ 0",
+      "Margem líquida": "-27,6%",
+      "ROE pelo DuPont": "0,0%",
+      "Dívida líquida": "R$ 662,8 mi",
+      "Capex (12 meses)": "R$ 134,1 mi",
+      "Caixa livre (12 meses)": "R$ 10,7 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "RIO PARANAPANEMA ENERGIA S.A.",
+      "Tickers": "GEPA3, GEPA4",
+      "Receita (12 meses)": "R$ 118,9 mi",
+      "Lucro dos acionistas (12 meses)": "R$ -26,2 mi",
+      "Margem líquida": "-22,0%",
+      "ROE pelo DuPont": "-1,9%",
+      "Dívida líquida": "R$ 809,1 mi",
+      "Capex (12 meses)": "R$ 2,0 mi",
+      "Caixa livre (12 meses)": "R$ 73,0 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "SERENA ENERGIA S.A.",
+      "Tickers": "SRNA3",
+      "Receita (12 meses)": "R$ 7,4 bi",
+      "Lucro dos acionistas (12 meses)": "R$ -31,3 mi",
+      "Margem líquida": "-0,4%",
+      "ROE pelo DuPont": "-0,6%",
+      "Dívida líquida": "R$ 10,6 bi",
+      "Capex (12 meses)": "R$ 743,9 mi",
+      "Caixa livre (12 meses)": "R$ -556,7 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "STATKRAFT ENERGIAS RENOVAVEIS S.A.",
+      "Tickers": "STKF3",
+      "Receita (12 meses)": "R$ 944,6 mi",
+      "Lucro dos acionistas (12 meses)": "R$ 381,0 mi",
+      "Margem líquida": "40,3%",
+      "ROE pelo DuPont": "8,0%",
+      "Dívida líquida": "R$ 1,6 bi",
+      "Capex (12 meses)": "R$ 780,0 mi",
+      "Caixa livre (12 meses)": "R$ -309,2 mi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "exercício encerrado em 31/12/2023"
+     },
+     {
+      "Companhia": "TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.",
+      "Tickers": "TAEE11, TAEE3, TAEE4",
+      "Receita (12 meses)": "R$ 4,5 bi",
+      "Lucro dos acionistas (12 meses)": "R$ 1,6 bi",
+      "Margem líquida": "36,5%",
+      "ROE pelo DuPont": "20,3%",
+      "Dívida líquida": "R$ 10,4 bi",
+      "Capex (12 meses)": "R$ 49,9 mi",
+      "Caixa livre (12 meses)": "R$ 1,7 bi",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "12 meses até 30/06/2026"
+     },
+     {
+      "Companhia": "UPTICK PARTICIPACOES S.A. - EM LIQUIDAÇÃO",
+      "Tickers": "UPKP3",
+      "Receita (12 meses)": "R$ 0",
+      "Lucro dos acionistas (12 meses)": "R$ 33,4 mi",
+      "Margem líquida": "—",
+      "ROE pelo DuPont": "—",
+      "Dívida líquida": "R$ -2,6 mi",
+      "Capex (12 meses)": "—",
+      "Caixa livre (12 meses)": "—",
+      "Margem EBITDA (último exercício)": "ainda sem dado",
+      "Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)": "—",
+      "De quando": "exercício encerrado em 31/12/2023"
+     }
+    ]
+   },
+   "pontos": [],
+   "trancada": false,
+   "recolhida": false
+  },
+  {
+   "chave": "o_que_os_dados_mostram",
+   "titulo": "O que os dados mostram",
+   "itens": [],
+   "paragrafos": [
+    "Dados da base do TickerLab de 21/10/2026.",
+    "Em 2026, o HHI de consumidores atendidos pelas distribuidoras (ANEEL) foi de 689 pontos, na faixa não concentrado do Guia H do CADE.",
+    "Os 4 maiores participantes somaram 43,7% de consumidores atendidos pelas distribuidoras (ANEEL) em 2026, entre 30 participantes.",
+    "Em 2025, as 11 companhias abertas da base somavam 90,4% de consumidores atendidos pelas distribuidoras (ANEEL).",
+    "Entre as companhias abertas da base, a maior parte de consumidores atendidos pelas distribuidoras (ANEEL) em 2025 é a da NEOENERGIA S.A.: 17,6%.",
+    "De 2024 para 2025, a maior variação de parte de consumidores atendidos pelas distribuidoras (ANEEL) entre as companhias abertas da base foi a da AES ELPA S.A.: subiu 0,9 pontos percentuais, de 9,1% para 10,0%.",
+    "Frases montadas por regras fixas sobre os números acima (não por um modelo de linguagem): cada uma diz de qual número saiu. Não são previsão nem recomendação de investimento."
+   ],
+   "tabelas": {},
+   "pontos": [],
+   "trancada": false,
+   "recolhida": false
+  },
+  {
+   "chave": "nao_temos",
+   "titulo": "O que não temos",
+   "itens": [],
+   "paragrafos": [
+    "Cada KPI que um analista do setor procuraria e que o relatório não mostra, com o motivo e de onde viria. Os códigos: R, release ou ITR da empresa; P, pedido ou coleta pública nova; S e T, séries da mesa Dados; $, dado pago."
+   ],
+   "tabelas": {
+    "nao_temos": [
+     {
+      "KPI": "Energia vendida e mercado faturado",
+      "Motivo": "A base tem este número, mas o relatório do setor ainda não o traz.",
+      "De onde viria": "base do TickerLab (tabela aneel_samp)"
+     },
+     {
+      "KPI": "Geração por usina",
+      "Motivo": "A base tem este número, mas o relatório do setor ainda não o traz.",
+      "De onde viria": "base do TickerLab (tabela ons_geracao)"
+     },
+     {
+      "KPI": "Perdas de energia",
+      "Motivo": "Parcial: só o que a SAMP dá. A base tem este número, mas o relatório do setor ainda não o traz.",
+      "De onde viria": "base do TickerLab (tabela aneel_samp)"
+     },
+     {
+      "KPI": "PLD e CMO",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série T6 da mesa Dados"
+     },
+     {
+      "KPI": "Curtailment",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série T6 da mesa Dados"
+     },
+     {
+      "KPI": "Capacidade instalada",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série T6 da mesa Dados"
+     },
+     {
+      "KPI": "GSF",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série S8 da mesa Dados"
+     },
+     {
+      "KPI": "ENA e EAR",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série S8 da mesa Dados"
+     },
+     {
+      "KPI": "DEC e FEC",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série S8 da mesa Dados"
+     },
+     {
+      "KPI": "RAP",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série S8 da mesa Dados"
+     },
+     {
+      "KPI": "Reajuste tarifário",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série S8 da mesa Dados"
+     },
+     {
+      "KPI": "Mercado livre e geração distribuída",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "série S8 da mesa Dados"
+     },
+     {
+      "KPI": "Inadimplência dos consumidores",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "release ou ITR da empresa (R)"
+     },
+     {
+      "KPI": "EBITDA regulatório",
+      "Motivo": "A base ainda não tem este número.",
+      "De onde viria": "release ou ITR da empresa (R)"
+     }
+    ]
+   },
+   "pontos": [],
+   "trancada": false,
+   "recolhida": false
+  },
+  {
+   "chave": "metodologia",
+   "titulo": "Metodologia",
+   "itens": [],
+   "paragrafos": [
+    "Concentração pelo HHI (a soma dos quadrados das participações em %, de 0 a 10.000) e pela CR4 (a participação somada das 4 maiores), sobre o total nacional que a agência publica no ano (o estoque do último mês ou a soma dos meses). Faixas do Guia para Análise de Atos de Concentração Horizontal do CADE (2016): abaixo de 1.500 pontos, não concentrado; de 1.500 a 2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria entidade. A variação do HHI só compara dois anos seguidos e completos. Bancos: o IF.data do Banco Central, com todas as instituições do sistema financeiro e cada conglomerado prudencial como um participante (o BC já junta as instituições do grupo; a companhia aberta se liga ao conglomerado pela base), a mesma base do Relatório de Economia Bancária (REB). O estoque é o da última data-base do ano (são 4 por ano), que sai 120 dias depois dela. A carteira de crédito é a carteira classificada (desde 2025, a carteira de crédito da contabilidade nova) e o REB usa a carteira ativa: a participação de cada banco muda um pouco, mas a CR4 de crédito fica perto da publicada (2022: 58,7% contra 58,6%; 2023: 57,8% contra 57,8%; 2024: 57,3% contra 57,9%). O ativo é o total (o REB tira as aplicações interfinanceiras) e as captações são mais largas que os depósitos do REB. O REB mede com a régua do BC (o HHI normalizado); aqui, com a do CADE. Quando o BC revisa uma data-base, vale a revisão, com a data da primeira publicação: a base não guarda o dia da revisão. Basileia e carteira por modalidade são de cada conglomerado, sem somar; a carteira por modalidade só existe desde 2025."
+   ],
+   "tabelas": {},
+   "pontos": [],
+   "trancada": false,
+   "recolhida": true
+  }
+ ],
+ "frases": [
+  {
+   "texto": "Em 2026, o HHI de consumidores atendidos pelas distribuidoras (ANEEL) foi de 689 pontos, na faixa não concentrado do Guia H do CADE.",
+   "ids": [
+    "hhi_aneel_consumidores",
+    "concentracao_aneel_consumidores/2026"
+   ]
+  },
+  {
+   "texto": "Os 4 maiores participantes somaram 43,7% de consumidores atendidos pelas distribuidoras (ANEEL) em 2026, entre 30 participantes.",
+   "ids": [
+    "cr4_aneel_consumidores",
+    "concentracao_aneel_consumidores/2026"
+   ]
+  },
+  {
+   "texto": "Em 2025, as 11 companhias abertas da base somavam 90,4% de consumidores atendidos pelas distribuidoras (ANEEL).",
+   "ids": [
+    "membros",
+    "participacao_dos_membros/01917705000130/aneel_consumidores/2025",
+    "participacao_dos_membros/00001180000126/aneel_consumidores/2025",
+    "participacao_dos_membros/83878892000155/aneel_consumidores/2025",
+    "participacao_dos_membros/17155730000164/aneel_consumidores/2025",
+    "participacao_dos_membros/76483817000120/aneel_consumidores/2025",
+    "participacao_dos_membros/02429144000193/aneel_consumidores/2025",
+    "participacao_dos_membros/00864214000106/aneel_consumidores/2025",
+    "participacao_dos_membros/03220438000173/aneel_consumidores/2025",
+    "participacao_dos_membros/03378521000175/aneel_consumidores/2025",
+    "participacao_dos_membros/01083200000118/aneel_consumidores/2025",
+    "participacao_dos_membros/61584140000149/aneel_consumidores/2025"
+   ]
+  },
+  {
+   "texto": "Entre as companhias abertas da base, a maior parte de consumidores atendidos pelas distribuidoras (ANEEL) em 2025 é a da NEOENERGIA S.A.: 17,6%.",
+   "ids": [
+    "participacao_dos_membros/01083200000118/aneel_consumidores/2025"
+   ]
+  },
+  {
+   "texto": "De 2024 para 2025, a maior variação de parte de consumidores atendidos pelas distribuidoras (ANEEL) entre as companhias abertas da base foi a da AES ELPA S.A.: subiu 0,9 pontos percentuais, de 9,1% para 10,0%.",
+   "ids": [
+    "participacao_dos_membros/01917705000130/aneel_consumidores/2024",
+    "participacao_dos_membros/01917705000130/aneel_consumidores/2025"
+   ]
+  }
+ ],
+ "nao_temos": [
+  {
+   "kpi": "Energia vendida e mercado faturado",
+   "motivo": "A base tem este número, mas o relatório do setor ainda não o traz.",
+   "fonte": "base do TickerLab (tabela aneel_samp)"
+  },
+  {
+   "kpi": "Geração por usina",
+   "motivo": "A base tem este número, mas o relatório do setor ainda não o traz.",
+   "fonte": "base do TickerLab (tabela ons_geracao)"
+  },
+  {
+   "kpi": "Perdas de energia",
+   "motivo": "Parcial: só o que a SAMP dá. A base tem este número, mas o relatório do setor ainda não o traz.",
+   "fonte": "base do TickerLab (tabela aneel_samp)"
+  },
+  {
+   "kpi": "PLD e CMO",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série T6 da mesa Dados"
+  },
+  {
+   "kpi": "Curtailment",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série T6 da mesa Dados"
+  },
+  {
+   "kpi": "Capacidade instalada",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série T6 da mesa Dados"
+  },
+  {
+   "kpi": "GSF",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série S8 da mesa Dados"
+  },
+  {
+   "kpi": "ENA e EAR",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série S8 da mesa Dados"
+  },
+  {
+   "kpi": "DEC e FEC",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série S8 da mesa Dados"
+  },
+  {
+   "kpi": "RAP",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série S8 da mesa Dados"
+  },
+  {
+   "kpi": "Reajuste tarifário",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série S8 da mesa Dados"
+  },
+  {
+   "kpi": "Mercado livre e geração distribuída",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "série S8 da mesa Dados"
+  },
+  {
+   "kpi": "Inadimplência dos consumidores",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "release ou ITR da empresa (R)"
+  },
+  {
+   "kpi": "EBITDA regulatório",
+   "motivo": "A base ainda não tem este número.",
+   "fonte": "release ou ITR da empresa (R)"
+  }
+ ],
+ "fontes": [
+  "cadastro de companhias da CVM (setor de atividade)",
+  "FCA entregue à CVM (valores mobiliários negociados na B3)",
+  "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+  "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+  "ODbL (dados abertos da CVM; citar a fonte)"
+ ],
+ "limites": [
+  "A concentração é a do mercado nacional que a agência publica, não o mercado relevante do CADE (região e produto, caso a caso). A faixa é a do Guia H do CADE, não um juízo do TickerLab.",
+  "A participação e o lado a lado mostram só as companhias abertas da base.",
+  "Nada aqui é recomendação de investimento, previsão do setor ou nota das empresas."
+ ],
+ "avisos": []
+}
