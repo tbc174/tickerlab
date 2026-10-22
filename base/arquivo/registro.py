@@ -41,6 +41,15 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "bis": date(2026, 10, 22),
     "nasa": date(2026, 10, 22),
     "noaa": date(2026, 10, 22),
+    # lote EUA (rodada 1 da pesquisa de dados escondidos)
+    "treasury": date(2026, 10, 22),
+    "fed": date(2026, 10, 22),
+    "bls": date(2026, 10, 22),
+    "eia": date(2026, 10, 22),
+    "ofr": date(2026, 10, 22),
+    "nyfed": date(2026, 10, 22),
+    "tic": date(2026, 10, 22),
+    "census": date(2026, 10, 22),
 }
 # releituras e primeiras leituras da auditoria N0 (21/10/2026; `auditoria-licitude-da-coleta-2026-10-21.md`);
 # vale o dia mais novo. Família que a auditoria não conseguiu abrir ou não releu fica com a data antiga
