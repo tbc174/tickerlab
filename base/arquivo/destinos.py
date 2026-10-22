@@ -13,7 +13,9 @@ from base.arquivo import lote_eua, lote_setoriais
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
-SO_PESQUISA = "so_pesquisa"  # cópia de pesquisa fora do catálogo: só a B3 (ADR 0102)
+SO_PESQUISA = (
+    "so_pesquisa"  # cópia de pesquisa fora do catálogo: BDI e barras de 1 minuto da B3
+)
 VIGIA = "vigia"  # só avisa quando o texto (termos, catálogo) muda
 PLANEJADA = "planejada"  # guardada, com tabela prevista em um PR já nomeado
 

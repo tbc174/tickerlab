@@ -914,42 +914,42 @@
     },
     {
       "id": "b3-negocios",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "b3-boletim-pr",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "b3-cotahist-dia",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "b3-emprestimo-posicoes",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "b3-derivativos-posicoes",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "b3-emprestimo-resumo",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
@@ -1971,7 +1971,7 @@
     },
     {
       "id": "ans-demonstracoes",
-      "licenca": "Demonstrações contábeis da ANS: sem licença declarada; uso citando a ANS",
+      "licenca": "Demonstrações da ANS: sem licença declarada; citar a ANS",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
@@ -1992,14 +1992,14 @@
     },
     {
       "id": "inep-censo-superior",
-      "licenca": "CC BY-ND 3.0 (rodapé do site do INEP): uso como publicado, citando o INEP",
+      "licenca": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "senatran-frota",
-      "licenca": "CC BY-ND 3.0 (rodapé do site da Senatran): uso como publicado, citando a Senatran",
+      "licenca": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
@@ -2027,14 +2027,14 @@
     },
     {
       "id": "inpi-patentes",
-      "licenca": "Dados abertos do INPI, licença do conjunto não achada (rodapé CC BY-ND 3.0 do site): uso como publicado, citando o INPI",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "inpi-contratos",
-      "licenca": "Dados abertos do INPI, licença do conjunto não achada (rodapé CC BY-ND 3.0 do site): uso como publicado, citando o INPI",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
