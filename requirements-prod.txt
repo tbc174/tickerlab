@@ -27,6 +27,8 @@ matplotlib==3.11.2
 numpy==2.5.3
 openpyxl==3.1.5
 pandas==3.0.6
+# pillow: fixado para a imagem não voltar ao 12.x (8 CVEs; correção na 13.0.0); o fpdf2 e o streamlit puxam.
+pillow==13.0.0
 plotly==7.1.0
 pydantic==2.14.0
 psycopg-binary==3.3.6
@@ -35,7 +37,7 @@ requests==2.34.2
 SQLAlchemy==2.1.4
 # tenacity: as coletas tentam de novo quando a fonte falha por um instante (src/rede.py).
 tenacity==9.2.1
-streamlit==1.65.0
+streamlit==1.66.1
 stripe==16.0.0
 uvicorn==0.54.0
 yfinance==1.7.0
