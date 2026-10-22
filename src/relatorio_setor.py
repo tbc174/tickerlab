@@ -19,9 +19,10 @@ import sqlalchemy as sa
 
 from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
-from src import dossie, fundamentalista, fundamentos
+from src import cruzamentos, dossie, fundamentalista, fundamentos
 from src.banco.demonstracoes import dados_da_empresa
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
+from src.dossie import Ficha
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
     AINDA_SEM_DADO,
@@ -650,6 +651,7 @@ TITULOS = {
     "concentracao": "Concentração",
     "participacao": "Participação de cada companhia aberta",
     "lado_a_lado": "Empresas lado a lado",
+    "cruzamentos": "Cruzamentos",
     "o_que_os_dados_mostram": "O que os dados mostram",
     "nao_temos": "O que não temos",
     "metodologia": "Metodologia",
@@ -657,7 +659,14 @@ TITULOS = {
 ORDEM_DAS_SECOES = tuple(TITULOS)
 # as seções com números da base: trancadas sem o dossiê da base no plano
 DA_BASE = frozenset(
-    {"tamanho", "concentracao", "participacao", "lado_a_lado", "o_que_os_dados_mostram"}
+    {
+        "tamanho",
+        "concentracao",
+        "participacao",
+        "lado_a_lado",
+        "cruzamentos",
+        "o_que_os_dados_mostram",
+    }
 )
 TITULOS_DAS_TABELAS = {
     "membros": "Companhias abertas do setor",
@@ -685,6 +694,7 @@ SEM_A_NOITE = (
     "A ficha deste setor ainda não chegou da base do TickerLab: por enquanto só aparecem as "
     "companhias pelo setor da CVM e os números do banco do app."
 )
+SEM_FICHAS_PARA_CRUZAR = "Nenhuma companhia do setor tem a ficha da noite na base ainda: sem ela não há o que cruzar."
 SEM_FRASES = "Ainda não há números suficientes do setor para as frases desta seção."
 SOBRE_AS_FRASES = (
     "Frases montadas por regras fixas sobre os números acima (não por um modelo de linguagem): "
@@ -742,6 +752,8 @@ class EntradasDoSetor:
     da_noite: dossie.SecaoDoSetor | None
     indicadores: Mapping[str, Mapping[str, fundamentos.Indicador]]
     caixas: Mapping[str, Mapping[str, Any] | None]
+    # a ficha da noite de cada companhia (nome → ficha) para os cruzamentos; sem ficha, fora da conta
+    fichas: Mapping[str, Ficha] = field(default_factory=dict)
 
 
 def _item_dos_membros(membros: list[Membro]) -> Item:
@@ -866,6 +878,27 @@ def _secao_do_lado_a_lado(e: EntradasDoSetor) -> Secao:
     )
 
 
+def _paragrafo_do_cruzamento(c: cruzamentos.CruzamentoDoSetor) -> str:
+    """O "K de N" do cruzamento, quem tem achado e a fonte: nenhuma frase sem lastro (ADR 0100)."""
+    quem = f" Com achado: {', '.join(c.empresas)}." if c.empresas else ""
+    fonte = f" Fonte: {'; '.join(c.fontes)}." if c.fontes else ""
+    return f"{c.frase}{quem}{fonte}"
+
+
+def _secao_dos_cruzamentos(e: EntradasDoSetor, hoje: date) -> Secao:
+    paragrafos = [
+        _paragrafo_do_cruzamento(c)
+        for c in cruzamentos.cruzamentos_do_setor(e.fichas, hoje)
+    ]
+    if not e.fichas:
+        paragrafos = [SEM_FICHAS_PARA_CRUZAR]
+    return Secao(
+        "cruzamentos",
+        TITULOS["cruzamentos"],
+        paragrafos=[*paragrafos, cruzamentos.LIMITE_DOS_CRUZAMENTOS],
+    )
+
+
 def _secao_das_frases(frases: list[Frase]) -> Secao:
     paragrafos = [f.texto for f in frases] if frases else [SEM_FRASES]
     return Secao(
@@ -933,6 +966,7 @@ def montar_relatorio_do_setor(
         _secao_dos_membros(e),
         *_secoes_da_noite(e),
         _secao_do_lado_a_lado(e),
+        _secao_dos_cruzamentos(e, hoje),
         _secao_das_frases(frases),
         _secao_do_que_nao_temos(faltas),
         _secao_da_metodologia(),
@@ -972,6 +1006,11 @@ def _membros(
     return juntar_membros(da_noite, da_cvm, tickers_dos(conexao, cnpjs))
 
 
+def _fichas_dos_membros(membros: list[Membro], pasta: Path | None) -> dict[str, Ficha]:
+    fichas = ((m.empresa, dossie.ficha_do(m.cnpj, pasta)) for m in membros)
+    return {nome: ficha for nome, ficha in fichas if ficha is not None}
+
+
 def entradas_do_setor(
     conexao: sa.Connection, chave: str, pasta: Path | None = None
 ) -> EntradasDoSetor:
@@ -985,6 +1024,7 @@ def entradas_do_setor(
         da_noite=noite,
         indicadores={m.cnpj: indicadores_do_membro(conexao, m.cnpj) for m in membros},
         caixas={m.cnpj: dossie.caixa_do_par(m.cnpj, pasta) for m in membros},
+        fichas=_fichas_dos_membros(membros, pasta),
     )
 
 
