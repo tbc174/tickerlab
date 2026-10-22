@@ -188,3 +188,33 @@ def test_consumo_com_chave_de_outra_organizacao_recusado_pelo_banco(motor):
             finalidade="analise",
             conjunto="cvm-dfp-itr",
         )
+
+
+def test_consumo_soma_no_proprio_banco(motor):
+    # o INSERT ... ON CONFLICT DO UPDATE muda de dialeto: confere no PostgreSQL do CI também
+    from src.banco import chaves_da_api as cb
+    from src.chaves_da_api import ContextoDaChave
+
+    organizacao_id, chave_id = _organizacao_e_chave(motor)
+    contexto = ContextoDaChave(organizacao_id, chave_id, "abcdefgh", "piloto")
+    with motor.begin() as conexao:
+        for linhas, negado in [(10, False), (5, False), (99, True)]:
+            cb.registrar_consumo(
+                conexao,
+                contexto,
+                conjunto="cvm-dfp-itr",
+                finalidade="analise",
+                linhas=linhas,
+                negado=negado,
+                agora=AGORA,
+            )
+        consumo = cb.consumo_do_mes(conexao, organizacao_id, AGORA.date())
+        assert consumo == cb.ConsumoDoMes(pedidos=2, linhas=15, negados=1)
+        assert (
+            conexao.execute(
+                sa.select(sa.func.count()).select_from(
+                    metadata.tables["consumo_da_api"]
+                )
+            ).scalar_one()
+            == 1
+        )
