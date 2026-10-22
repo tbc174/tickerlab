@@ -39,13 +39,11 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "eurostat": date(2026, 10, 22),
     "worldbank": date(2026, 10, 22),
     "bis": date(2026, 10, 22),
-    "fmi": date(2026, 10, 22),
-    "gleif": date(2026, 10, 22),
     "nasa": date(2026, 10, 22),
     "noaa": date(2026, 10, 22),
 }
 # releituras e primeiras leituras da auditoria N0 (21/10/2026; `auditoria-licitude-da-coleta-2026-10-21.md`);
-# vale o dia mais novo (FMI e GLEIF foram relidos em 22/10 pelo lote organismos). Família que a auditoria não conseguiu abrir ou não releu fica com a data antiga
+# vale o dia mais novo. Família que a auditoria não conseguiu abrir ou não releu fica com a data antiga
 TERMOS_LIDOS_EM |= dict.fromkeys(
     (
         "cvm",
@@ -54,11 +52,13 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
         "chirps",
         "mapbiomas",
         "bm",
+        "fmi",
         "tesouro",
         "iex",
         "yahoo",
         "gdelt",
         "kraken",
+        "gleif",
         "ccee",
         "antt",
         "ons",
