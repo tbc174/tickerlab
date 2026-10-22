@@ -204,6 +204,11 @@ def _bytes_comprimidos(conteudo: bytes, entrada: zipfile.ZipInfo) -> memoryview:
     return memoryview(conteudo)[dados : dados + entrada.compress_size]
 
 
+def _saida_maxima(limite: int, total: int) -> int:
+    # nunca 0 (no zlib, 0 é "sem limite") e nunca mais que um bloco grande por chamada
+    return min(limite + 1 - total, MEGABYTE)
+
+
 def _tamanho_real(conteudo: bytes, entrada: zipfile.ZipInfo, limite: int) -> int:
     """Quantos bytes a entrada tem descomprimida **de verdade** (não o que o ZIP declara), contados
     até `limite` + 1: o declarado pode mentir para baixo e passar pelas contas de
@@ -219,11 +224,11 @@ def _tamanho_real(conteudo: bytes, entrada: zipfile.ZipInfo, limite: int) -> int
     while posicao < len(comprimido) and total <= limite:
         pedaco = comprimido[posicao : posicao + BLOCO_DA_CONTAGEM]
         posicao += len(pedaco)
-        total += len(descompressor.decompress(pedaco, limite + 1 - total))
+        total += len(descompressor.decompress(pedaco, _saida_maxima(limite, total)))
         while descompressor.unconsumed_tail and total <= limite:
             total += len(
                 descompressor.decompress(
-                    descompressor.unconsumed_tail, limite + 1 - total
+                    descompressor.unconsumed_tail, _saida_maxima(limite, total)
                 )
             )
     return total
