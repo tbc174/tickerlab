@@ -321,3 +321,17 @@ def test_sem_admin_e_lista_com_varios_pede_o_admin(banco, admin, capsys, monkeyp
     codigo, _, erro = _rodar(capsys, "criar-organizacao", "--nome", "Delta", admin=None)
     assert codigo == 2
     assert "--admin" in erro
+
+
+def test_ver_mostra_o_estado_de_cada_chave(banco, admin, capsys):
+    organizacao_id = _criar_organizacao(capsys)
+    girada, _, _ = _emitir(capsys, organizacao_id)
+    revogada, _, _ = _emitir(capsys, organizacao_id)
+    for comando, chave in (("rotacionar-chave", girada), ("revogar-chave", revogada)):
+        chave_id = _conferir(banco, chave).chave_id
+        assert _rodar(capsys, comando, str(organizacao_id), str(chave_id))[0] == 0
+    codigo, saida, _ = _rodar(capsys, "ver", str(organizacao_id))
+    assert codigo == 0
+    assert "de saída, vale até" in saida
+    assert "revogada em" in saida
+    assert "ativa" in saida  # a substituta da rotação
