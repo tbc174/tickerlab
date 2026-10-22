@@ -149,7 +149,7 @@ REVENDA = {
     "chirps": VENDAVEL_COM_ATRIBUICAO,  # domínio público
     "mapbiomas": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
-    "fmi": NAO_COMERCIAL,  # uso comercial pede permissão por escrito do FMI; sem pedir (Tiago, 22/10/2026)
+    "fmi": SO_USO_INTERNO,  # uso comercial pede permissão por escrito do FMI; preços de referência não se distribuem (ADR 0008)
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
     # treino de ML permitido por escrito (licencas-por-fonte.md, 13/10/2026); revenda ainda sem resposta
     "sec": SO_USO_INTERNO,  # os arquivos são escritos pelas empresas

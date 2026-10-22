@@ -23,7 +23,8 @@ AGORA = datetime(2026, 10, 22, 13, tzinfo=UTC)
 PASTA = Path(__file__).parent / "arquivos" / "organismos"
 PAGINA_DO_BANCO_MUNDIAL = (PASTA / "banco_mundial_pagina.json").read_bytes()
 EMISSORES_DO_GLEIF = (PASTA / "gleif_emissores.json").read_bytes()
-FAMILIAS_NAO_COMERCIAIS = {"fmi", "bis"}
+FAMILIAS_NAO_COMERCIAIS = {"bis"}
+FAMILIAS_SO_USO_INTERNO = {"fmi"}
 FAMILIAS = {"bce", "ocde", "eurostat", "worldbank", "bis", "fmi", "nasa", "noaa"}
 
 
@@ -60,14 +61,15 @@ def test_toda_fonte_do_lote_tem_licenca_marca_e_data_da_leitura():
         assert fonte.grupo in fontes.GRUPOS, fonte.id
 
 
-def test_fmi_e_bis_sao_nao_comercial_e_o_resto_e_vendavel():
+def test_bis_e_nao_comercial_fmi_so_uso_interno_e_o_resto_e_vendavel():
     for fonte in _fontes_do_lote():
         familia = fonte.id.split("-", 1)[0]
-        esperada = (
-            Marca.NAO_COMERCIAL
-            if familia in FAMILIAS_NAO_COMERCIAIS
-            else Marca.VENDAVEL
-        )
+        if familia in FAMILIAS_NAO_COMERCIAIS:
+            esperada = Marca.NAO_COMERCIAL
+        elif familia in FAMILIAS_SO_USO_INTERNO:
+            esperada = Marca.USO_INTERNO
+        else:
+            esperada = Marca.VENDAVEL
         assert marca_da_fonte(fonte.id) == esperada, fonte.id
 
 
