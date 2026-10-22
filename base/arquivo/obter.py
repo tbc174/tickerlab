@@ -21,9 +21,6 @@
   "200 com 0 bytes" (dia que já saiu da janela) viram `SemArquivo`; o zip é conferido inteiro (CRC de
   cada arquivo, como o `unzip -t`), porque um download cortado também começa com "PK".
 
-- **CSV do BDI da B3** (aluguel e posições em aberto): o site pede por POST (tabela e dia no corpo);
-  sem pregão vem só o cabeçalho, e vira `SemArquivo`.
-
 - **Ficha do conjunto no dados.gov.br** (vigia da licença do CNPJ): a rota pública da ficha responde
   401 sem a chave do portal (`chave-api-dados-abertos`, no `.env` do servidor). Guarda só o que decide a
   licença (nome, `license_id`, `license_title`): o JSON inteiro traz contadores de downloads e datas que
@@ -46,7 +43,6 @@ import struct
 import zipfile
 import zlib
 from collections.abc import Callable, Mapping
-from datetime import date
 from pathlib import Path
 from typing import IO
 from urllib.parse import urlencode
@@ -66,10 +62,6 @@ from base.arquivo.coleta import (
 CAMPOS_DA_LICENCA_DA_FICHA = ("id", "title", "license_id", "license_title")
 TAMANHO_DO_TRECHO = 8 * 1024 * 1024  # cada pedido de trecho lê até 8 MB
 HTTP_NAO_ENCONTRADO = 404
-# O CSV do BDI abre com 1 a 2 linhas de descrição (sem ";") e traz o cabeçalho; o de empréstimos
-# registrados tem dois cabeçalhos (grupos de taxa e colunas). Dia sem pregão: só os cabeçalhos
-# (verificado com um download real em 18/10/2026).
-LINHAS_DE_CABECALHO = {"BTBLoanBalance": 2}
 # cabeçalho local de cada arquivo dentro do ZIP: 30 bytes fixos, depois o nome e o campo extra
 TAMANHO_DO_CABECALHO_LOCAL = 30
 ASSINATURA_DO_CABECALHO_LOCAL = b"PK\x03\x04"
@@ -437,41 +429,6 @@ def arquivo_que_pode_faltar(url: str) -> Obter:
             raise
 
     return obter
-
-
-def csv_do_bdi_da_b3(url: str, tabela: str, dia: date) -> Obter:
-    """Pede ao BDI da B3 o CSV de `tabela` em `dia` (POST, o mesmo pedido do botão "Informações em
-    arquivo") e guarda o corpo como veio. Dia sem pregão responde só o cabeçalho, corpo vazio ou 404:
-    vira `SemArquivo`; HTML no lugar do CSV (manutenção, bloqueio) é erro."""
-    pedido = json.dumps(
-        {"Name": tabela, "Date": dia.isoformat(), "FinalDate": dia.isoformat()}
-    ).encode()
-
-    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
-        try:
-            resposta = cliente.ler(
-                url,
-                metodo="POST",
-                cabecalhos={"Content-Type": "application/json"},
-                corpo=pedido,
-            )
-        except requests.HTTPError as erro:
-            if (
-                erro.response is not None
-                and erro.response.status_code == HTTP_NAO_ENCONTRADO
-            ):
-                raise SemArquivo(
-                    "HTTP 404 (dia sem pregão ou que ainda não saiu)"
-                ) from erro
-            raise
-        texto = resposta.conteudo.decode("utf-8-sig", errors="replace")
-        if texto.lstrip().startswith("<"):
-            raise ValueError(f"{tabela} {dia}: veio HTML no lugar do CSV")
-        linhas_de_tabela = sum(1 for linha in texto.splitlines() if ";" in linha)
-        if linhas_de_tabela <= LINHAS_DE_CABECALHO.get(tabela, 1):
-            raise SemArquivo("só o cabeçalho (dia sem pregão ou que ainda não saiu)")
-        destino.write_bytes(resposta.conteudo)
-        return resposta.cabecalhos
 
     return obter
 
