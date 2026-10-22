@@ -347,6 +347,7 @@
  "tests/test_resultado_por_mes.py": 0.2,
  "tests/test_rotular_com_ia.py": 3.2,
  "tests/test_rotulos_ia.py": 0.5,
+ "tests/test_sala_aberta.py": 6.0,
  "tests/test_series_ibge.py": 39.3,
  "tests/test_series_macro.py": 13.9,
  "tests/test_setores.py": 0.1,

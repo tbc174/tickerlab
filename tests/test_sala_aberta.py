@@ -35,3 +35,12 @@ def test_o_site_publicado_tambem_perdeu_a_frase():
         assert FRASE_ANTIGA not in (raiz / "site" / nome).read_text(encoding="utf-8"), (
             nome
         )
+
+
+def test_gratuito_tem_os_menores_limites_da_sala():
+    from src.planos import limites_do
+
+    gratis, plus = limites_do("gratuito"), limites_do("plus")
+    assert (gratis.operacoes_na_sala, gratis.documentos_por_operacao) == (3, 30)
+    assert gratis.bytes_por_operacao == 50 * 1024 * 1024
+    assert plus.operacoes_na_sala > gratis.operacoes_na_sala
