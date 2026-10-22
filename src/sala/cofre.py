@@ -90,10 +90,25 @@ def nova_chave_da_operacao(operacao_id: uuid.UUID) -> tuple[bytes, bytes, int]:
     mestras = chaves_mestras()
     versao = max(mestras)
     chave = AESGCM.generate_key(bit_length=256)
-    embrulhada = _cifrar(
-        mestras[versao], chave, _PROPOSITO_DA_CHAVE + operacao_id.bytes
+    return (
+        chave,
+        embrulhar_chave_da_operacao(chave, operacao_id, mestras[versao]),
+        versao,
     )
-    return chave, embrulhada, versao
+
+
+def embrulhar_chave_da_operacao(
+    chave: bytes, operacao_id: uuid.UUID, mestra: bytes
+) -> bytes:
+    """A chave da operação embrulhada por uma chave-mestra (usada também na troca da mestra)."""
+    return _cifrar(mestra, chave, _PROPOSITO_DA_CHAVE + operacao_id.bytes)
+
+
+def abrir_chave_da_operacao_com(
+    mestra: bytes, embrulhada: bytes, operacao_id: uuid.UUID
+) -> bytes:
+    """A chave da operação, desembrulhada por uma chave-mestra já em mãos."""
+    return _decifrar(mestra, embrulhada, _PROPOSITO_DA_CHAVE + operacao_id.bytes)
 
 
 def abrir_chave_da_operacao(
@@ -103,7 +118,7 @@ def abrir_chave_da_operacao(
     mestra = chaves_mestras().get(versao)
     if mestra is None:
         raise ChaveDaSalaAusenteError(f"Falta a versão v{versao} da chave-mestra.")
-    return _decifrar(mestra, embrulhada, _PROPOSITO_DA_CHAVE + operacao_id.bytes)
+    return abrir_chave_da_operacao_com(mestra, embrulhada, operacao_id)
 
 
 def _associado_do_documento(
