@@ -720,6 +720,19 @@ PAGINAS = (
         somente_admin=True,
     ),
     Pagina(
+        "sala_de_dados",
+        "Sala de dados",
+        GRUPO_ADMIN,
+        ":material/lock:",
+        "Os documentos de cada operação num lugar cifrado, com a origem de cada número, as "
+        "contradições entre documentos e o checklist do que falta.",
+        area=AREA_CONTA,
+        precisa_do_ativo=False,
+        somente_admin=True,
+        contrato=Contrato("GET", "/v1/sala", (), "SalaV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "mapa_do_cafe",
         "Mapa do café",
         GRUPO_RESEARCH,
@@ -778,6 +791,35 @@ PAGINAS = (
 
 POR_CHAVE = {p.chave: p for p in PAGINAS}
 PAGINA_INICIAL = "inicio"
+
+# As rotas que a página "Sala de dados" usa (a de leitura é o contrato dela; as outras mudam a sala).
+# Fora do `openapi_v1` de propósito (a sala só abre para administradores e não vai para o contrato
+# público); o teste da sala confere que toda rota dos três roteadores está aqui, e só elas.
+ROTAS_DA_SALA = frozenset(
+    {
+        ("GET", "/v1/sala"),
+        ("GET", "/v1/operacoes"),
+        ("POST", "/v1/operacoes"),
+        ("GET", "/v1/operacoes/{operacao_id}"),
+        ("GET", "/v1/operacoes/{operacao_id}/painel"),
+        ("POST", "/v1/operacoes/{operacao_id}/encerrar"),
+        ("POST", "/v1/operacoes/{operacao_id}/prorrogar"),
+        ("DELETE", "/v1/operacoes/{operacao_id}"),
+        ("GET", "/v1/operacoes/{operacao_id}/documentos"),
+        ("POST", "/v1/operacoes/{operacao_id}/documentos"),
+        ("GET", "/v1/operacoes/{operacao_id}/documentos/{documento_id}/arquivo"),
+        ("DELETE", "/v1/operacoes/{operacao_id}/documentos/{documento_id}"),
+        ("GET", "/v1/operacoes/{operacao_id}/sala"),
+        ("POST", "/v1/operacoes/{operacao_id}/evidencias"),
+        ("GET", "/v1/operacoes/{operacao_id}/evidencias"),
+        ("PATCH", "/v1/operacoes/{operacao_id}/evidencias/{evidencia_id}"),
+        ("DELETE", "/v1/operacoes/{operacao_id}/evidencias/{evidencia_id}"),
+        ("GET", "/v1/operacoes/{operacao_id}/contradicoes"),
+        ("PATCH", "/v1/operacoes/{operacao_id}/contradicoes/{contradicao_id}"),
+        ("GET", "/v1/operacoes/{operacao_id}/checklist"),
+        ("PATCH", "/v1/operacoes/{operacao_id}/checklist/{codigo}"),
+    }
+)
 
 
 def paginas_do_classico() -> list[Pagina]:
