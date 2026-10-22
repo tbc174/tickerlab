@@ -391,7 +391,7 @@ describe("relatório de exemplo da base (plano do relatório-modelo, 17/10/2026)
       "auditor-e-controladas",
       "ofertas-e-fundos",
       "setor-regulado",
-      "negocios-m-a-pela-cvm",
+      "negocios-e-eventos",
     ]) {
       expect(html).toContain(`<h2 id="${id}">`);
       expect(html).toContain(`href="#${id}"`);
