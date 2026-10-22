@@ -317,9 +317,28 @@ def test_frases_permitidas(texto):
     assert _regras(saida.Frase(texto, notas)) == []
 
 
-def test_faixa_com_vai_de_nao_e_previsao():
-    frase = saida.Frase("A margem vai de 1,7% a 27,7% no período.")
-    assert "previsao" not in _regras(frase)
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "A margem vai de 1,7% a 27,7% no período.",
+        # a prova do setor (molde D PR 6): faixa com sinal, com R$ e de datas
+        "A margem líquida vai de -22,0% a 56,0%.",
+        "A receita vai de R$ 63,7 mi a R$ 54,7 bi.",
+        "A dívida líquida vai de R$ -455,1 mi a R$ 54,1 bi.",
+        "Hoje as datas vão de 31/12/2023 a 30/06/2026.",
+        "O último ano inteiro do mercado vai até dez/2025.",
+        "A maior parte dos balanços vai até 30/06/2026.",
+    ],
+)
+def test_faixa_com_vai_de_nao_e_previsao(texto):
+    assert "previsao" not in _regras(saida.Frase(texto))
+
+
+@pytest.mark.parametrize(
+    "texto", ["O setor vai de mal a pior.", "A concentração vai até o limite do CADE."]
+)
+def test_vai_sem_numero_nem_data_ainda_e_previsao(texto):
+    assert "previsao" in _regras(saida.Frase(texto))
 
 
 def test_lacuna_obrigatoria_omitida_reprova_os_limites():

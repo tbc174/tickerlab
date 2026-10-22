@@ -64,7 +64,7 @@ def _juntar(
     return saida.Analise(
         tuple(
             analise.parte(c) if c in chaves and c not in fora else reserva.parte(c)
-            for c in saida.PARTES
+            for c in (p.chave for p in reserva.partes)
         )
     )
 
@@ -97,7 +97,7 @@ def analise_final(
     reprovadas: Collection[str] = (),
     incluir_so_pro: bool = True,
 ) -> Montagem:
-    """Monta as 8 partes com a `origem` de cada uma.
+    """Monta as partes do roteiro (da empresa ou do setor) com a `origem` de cada uma.
 
     `hash_da_resposta` é o hash da entrada que o modelo recebeu; `reprovadas`, as partes que a
     porta 2 ou a 3 recusaram; `incluir_so_pro=False` é quem não é Pro (D4): a parte que cita o
@@ -106,7 +106,7 @@ def analise_final(
     if resposta is None:
         return Montagem(molde(entrada, incluir_so_pro), None, SEM_RESPOSTA)
     return _montar(
-        lambda: saida.ler_analise(resposta),
+        lambda: saida.ler_analise(resposta, saida.partes_de(entrada)),
         entrada,
         hash_da_resposta,
         reprovadas,
@@ -124,7 +124,9 @@ def da_resposta_bruta(
 ) -> Montagem:
     """A mesma montagem a partir do texto que a API devolveu (cortado ou fora do JSON vira molde)."""
     return _montar(
-        lambda: saida.ler_analise(pe.ler_resposta(stop_reason, texto)),
+        lambda: saida.ler_analise(
+            pe.ler_resposta(stop_reason, texto), saida.partes_de(entrada)
+        ),
         entrada,
         hash_da_resposta,
         reprovadas,

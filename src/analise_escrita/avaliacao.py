@@ -1,4 +1,5 @@
-"""Os 5 critérios que o gabarito da CPFL pede do texto do modelo (0087, regra 6), como código.
+"""Os 5 critérios que o gabarito pede do texto do modelo (0087, regra 6), como código. Valem para
+os dois gabaritos: o da CPFL (uma empresa) e o do setor elétrico (molde D).
 
 Os critérios 1 a 4 são as regras da porta 1 agrupadas. No 3, a marca da conta nossa é a conta
 declarada em `contas` (plano, decisão 5: a porta 1 refaz cada uma; o gabarito aprovado nem sempre
@@ -32,7 +33,7 @@ REGRAS_DA_PORTA1 = {
             porta1.ESTRUTURA,
         }
     ),
-    2: frozenset({porta1.LACUNA}),
+    2: frozenset({porta1.LACUNA, porta1.ANO_PARCIAL}),
     3: frozenset({porta1.CONTA}),
     4: frozenset({porta1.PALAVRA, porta1.PREVISAO, porta1.PESSOA}),
 }
@@ -193,6 +194,10 @@ def relatorio(
 ) -> str:
     """Markdown com os critérios de cada texto e as partes lado a lado, parágrafo por parágrafo."""
     linhas = _secao_dos_criterios(criterios) if criterios else []
-    for chave in saida.PARTES:
+    # as partes na ordem do roteiro dos textos (o da empresa ou o do setor)
+    chaves = dict.fromkeys(
+        p.chave for analise in textos.values() for p in analise.partes
+    )
+    for chave in chaves:
         linhas += ["", *_secao_da_parte(chave, textos)]
     return "\n".join(linhas).strip() + "\n"

@@ -3,7 +3,8 @@
 Todo número escrito tem de sair das linhas citadas nas notas da frase (ou do fato logo acima, numa
 leitura) ou de uma conta declarada que o código refaz; toda data, idem; todo nome próprio tem de
 estar na entrada; nada de pessoa, palavra proibida (0085, 0089) nem previsão (0077). Também
-reprova a parte que falta, sai de ordem ou vem vazia, e os limites que calam uma lacuna obrigatória.
+reprova a parte que falta, sai de ordem ou vem vazia, os limites que calam uma lacuna obrigatória e
+a frase que cita uma linha de ano parcial sem citar a lacuna dele (o relatório do setor).
 
 A parte reprovada vira o molde (sem nova tentativa no mesmo lote): a porta só diz onde e por quê.
 """
@@ -25,7 +26,7 @@ from src.rotulos_ia import mascarar_pessoas
 ID_INEXISTENTE = "id_inexistente"
 NUMERO, DATA, DATA_FUTURA, CONTA = "numero", "data", "data_futura", "conta"
 NOME, PESSOA, PALAVRA, PREVISAO = "nome", "pessoa", "palavra", "previsao"
-ESTRUTURA, LACUNA = "estrutura", "lacuna"
+ESTRUTURA, LACUNA, ANO_PARCIAL = "estrutura", "lacuna", "ano_parcial"
 CONTAGEM = "contagem"
 
 CONSTANTES_PERMITIDAS = frozenset({100.0})  # "de cada R$ 100"
@@ -35,7 +36,7 @@ PRECISAO_DO_OPERANDO = 0.005  # meia unidade do 3º algarismo, no máximo
 FOLGA_DA_CONTA = (
     0.01  # o resultado declarado pode diferir 1% do refeito (arredondamento)
 )
-CAMPOS_SEM_DADO = frozenset({"id", "secao", "tipo", "so_pro"})
+CAMPOS_SEM_DADO = frozenset({"id", "secao", "tipo", "so_pro", ANO_PARCIAL})
 # saída de dinheiro: a ficha guarda com sinal, o texto diz "gastou R$ 0,4 bi" sem o menos
 _SAIDA_DE_DINHEIRO = re.compile(
     r"custo|despesa|imposto|capex|dividendo|caixa operacional|\bfco\b|depreciac"
@@ -62,9 +63,11 @@ _PROIBIDAS_SEM_NEGACAO = re.compile(
 )
 _NEGACAO = re.compile(r"\b(?:nao|nada|nem|nenhum|nenhuma|sem|nunca)\b")
 _RECORDE = re.compile(r"\brecordes?\b")
-# "vai de 1,7% a 27,7%" é uma faixa, não um futuro
+# "vai de 1,7% a 27,7%", "vai de R$ -455,1 mi a ...", "vão de 31/12/2023 a ..." e "vai até dez/2025"
+# são faixas, não futuro
+_FAIXA = r"(?! (?:de (?:r\$\s?)?[-−]?\d|ate (?:\d|(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/)))"
 _PREVISAO = re.compile(
-    r"\b(?:vai(?! de \d)|vao|irao|tende[m]? a|esperamos|espera-se|prevemos|preve-se|projetamos|"
+    rf"\b(?:vai{_FAIXA}|vao{_FAIXA}|irao|tende[m]? a|esperamos|espera-se|prevemos|preve-se|projetamos|"
     r"projeta-se|projecao|projecoes|(?:deve|devem|devera|deverao|deveria|deveriam)\s+"
     r"(?:subir|cair|crescer|aumentar|diminuir|melhorar|piorar|recuar|avancar|voltar|"
     r"continuar|seguir|manter|ficar|chegar))\b"
@@ -461,9 +464,11 @@ def _conferir_parte(parte: saida.Parte, ficha: _Ficha) -> Iterator[Reprovacao]:
             do_fato = do_paragrafo
 
 
-def _conferir_estrutura(analise: saida.Analise) -> Iterator[Reprovacao]:
+def _conferir_estrutura(
+    analise: saida.Analise, partes: tuple[str, ...]
+) -> Iterator[Reprovacao]:
     chaves = [p.chave for p in analise.partes]
-    for chave in saida.PARTES:
+    for chave in partes:
         if chave not in chaves:
             yield Reprovacao(chave, None, None, ESTRUTURA, "parte faltando")
     vistas: list[str] = []
@@ -473,7 +478,7 @@ def _conferir_estrutura(analise: saida.Analise) -> Iterator[Reprovacao]:
         elif not any(p.frases for p in parte.paragrafos):
             yield Reprovacao(parte.chave, None, None, ESTRUTURA, "parte vazia")
         vistas.append(parte.chave)
-    esperada = [c for c in saida.PARTES if c in chaves]
+    esperada = [c for c in partes if c in chaves]
     unicas = list(dict.fromkeys(chaves))
     for chave, devia in zip(unicas, esperada, strict=True):
         if chave != devia:
@@ -498,10 +503,34 @@ def _conferir_lacunas(
             yield Reprovacao("limites", None, None, LACUNA, detalhe)
 
 
+def _conferir_ano_parcial(
+    analise: saida.Analise, entrada: dict[str, Any]
+) -> Iterator[Reprovacao]:
+    """A linha de um ano incompleto não é fato do ano inteiro: quem a cita cita também a lacuna
+    (`ano_parcial` da linha diz qual), que avisa que ela não se compara com os outros anos."""
+    lacuna_de = {
+        linha["id"]: linha[ANO_PARCIAL]
+        for linha in entrada["linhas"]
+        if linha.get(ANO_PARCIAL)
+    }
+    for parte in analise.partes:
+        for i, paragrafo in enumerate(parte.paragrafos):
+            for j, frase in enumerate(paragrafo.frases):
+                faltam = {lacuna_de[n] for n in frase.notas if n in lacuna_de}
+                faltam -= set(frase.notas)
+                if faltam:
+                    detalhe = f"{frase.texto} [cita o ano parcial sem {', '.join(sorted(faltam))}]"
+                    yield Reprovacao(parte.chave, i, j, ANO_PARCIAL, detalhe)
+
+
 def conferir(analise: saida.Analise, entrada: dict[str, Any]) -> Conferencia:
     """Todas as reprovações da análise contra a entrada (nenhuma: aprovada na porta 1)."""
     ficha = ler_ficha(entrada)
-    reprovacoes = [*_conferir_estrutura(analise), *_conferir_lacunas(analise, entrada)]
+    reprovacoes = [
+        *_conferir_estrutura(analise, saida.partes_de(entrada)),
+        *_conferir_lacunas(analise, entrada),
+        *_conferir_ano_parcial(analise, entrada),
+    ]
     for parte in analise.partes:
         reprovacoes += _conferir_parte(parte, ficha)
     return Conferencia(tuple(reprovacoes))
