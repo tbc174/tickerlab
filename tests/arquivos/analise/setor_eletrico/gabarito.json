@@ -1,0 +1,2301 @@
+{
+ "fonte": "projeto-acoes/passagens/2026-10-21-2245-produto-gabarito-do-setor-eletrico.md",
+ "aprovado": "Tiago, 22/10/2026",
+ "roteiro": [
+  "em_meia_pagina",
+  "quem_esta",
+  "tamanho_e_concentracao",
+  "participacao",
+  "lado_a_lado",
+  "o_que_mudaria",
+  "limites"
+ ],
+ "mudancas": [],
+ "analise": {
+  "partes": [
+   {
+    "chave": "em_meia_pagina",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "O setor elétrico do TickerLab reúne 38 companhias abertas: 11 entram porque a base as liga a entidades da ANEEL e 27 só porque a CVM as classifica no ramo de energia elétrica.",
+        "notas": [
+         "membros.membros",
+         "membros.paragrafos.0",
+         "membros.membros.0",
+         "membros.membros.1",
+         "membros.membros.2",
+         "membros.membros.3",
+         "membros.membros.4",
+         "membros.membros.5",
+         "membros.membros.6",
+         "membros.membros.7",
+         "membros.membros.8",
+         "membros.membros.9",
+         "membros.membros.10",
+         "membros.membros.11",
+         "membros.membros.12",
+         "membros.membros.13",
+         "membros.membros.14",
+         "membros.membros.15",
+         "membros.membros.16",
+         "membros.membros.17",
+         "membros.membros.18",
+         "membros.membros.19",
+         "membros.membros.20",
+         "membros.membros.21",
+         "membros.membros.22",
+         "membros.membros.23",
+         "membros.membros.24",
+         "membros.membros.25",
+         "membros.membros.26",
+         "membros.membros.27",
+         "membros.membros.28",
+         "membros.membros.29",
+         "membros.membros.30",
+         "membros.membros.31",
+         "membros.membros.32",
+         "membros.membros.33",
+         "membros.membros.34",
+         "membros.membros.35",
+         "membros.membros.36",
+         "membros.membros.37"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "membros.membros.3",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.7",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.10",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.14",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.16",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.17",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.23",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.27",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.29",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.30",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.31",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 11.0
+         },
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "membros.membros.0",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.1",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.2",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.4",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.5",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.6",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.8",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.9",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.11",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.12",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.13",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.15",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.18",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.19",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.20",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.21",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.22",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.24",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.25",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.26",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.28",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.32",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.33",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.34",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.35",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.36",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.37",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 27.0
+         }
+        ]
+       },
+       {
+        "texto": "O mercado que a base mede é o de consumidores atendidos pelas distribuidoras: 87.543.053 em 2025, 7,5% a mais que em 2017 (conta nossa).",
+        "notas": [
+         "tamanho.tamanho_aneel_consumidores.1",
+         "tamanho.tamanho_aneel_consumidores.9"
+        ],
+        "contas": [
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.9",
+            "valor": 81408429.0,
+            "conta": null
+           },
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.1",
+            "valor": 87543053.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.07535612804909908
+         }
+        ]
+       },
+       {
+        "texto": "Pela régua do CADE, esse mercado é não concentrado: de 2017 a 2025, o HHI ficou entre 1.000 e 1.019 pontos, e as quatro maiores somaram de 54,1% a 54,6% dos consumidores.",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.1",
+         "concentracao.concentracao_aneel_consumidores.2",
+         "concentracao.concentracao_aneel_consumidores.3",
+         "concentracao.concentracao_aneel_consumidores.4",
+         "concentracao.concentracao_aneel_consumidores.5",
+         "concentracao.concentracao_aneel_consumidores.6",
+         "concentracao.concentracao_aneel_consumidores.7",
+         "concentracao.concentracao_aneel_consumidores.8",
+         "concentracao.concentracao_aneel_consumidores.9"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Em 2025, as companhias abertas ligadas à ANEEL atendiam 90,4% desses consumidores, e quatro delas, mais da metade: a Neoenergia (17,6%), a Equatorial (15,5%), a CPFL (11,1%) e a AES ELPA (10,0%).",
+        "notas": [
+         "o_que_os_dados_mostram.paragrafos.3",
+         "participacao.participacao_aneel_consumidores.93",
+         "participacao.participacao_aneel_consumidores.73",
+         "participacao.participacao_aneel_consumidores.53",
+         "participacao.participacao_aneel_consumidores.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "No lado a lado, a maior receita de 12 meses é a da Equatorial (R$ 54,7 bilhões), e o maior lucro dos acionistas, o da AXIA (R$ 12,1 bilhões).",
+        "notas": [
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.3"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Com o HHI quase parado desde 2017, a forma do mercado mudou pouco; o que muda é quem cresce dentro dele, e o maior salto de 2024 para 2025 foi o da AES ELPA, com 883.056 consumidores a mais (conta nossa).",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.9",
+         "concentracao.concentracao_aneel_consumidores.1",
+         "participacao.participacao_aneel_consumidores.0",
+         "participacao.participacao_aneel_consumidores.1"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.0",
+            "valor": 8757026.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.1",
+            "valor": 7873970.0,
+            "conta": null
+           }
+          ],
+          "resultado": 883056.0
+         }
+        ]
+       },
+       {
+        "texto": "Três avisos pesam na leitura: a linha de 2026 está incompleta e fica de fora; a AES ELPA tem parte do mercado, mas não aparece no lado a lado; e alguns números do lado a lado não fecham entre si (lucro de R$ 0 com margem diferente de zero, capex de R$ 0 com receita de bilhões).",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.0",
+         "participacao.participacao_aneel_consumidores.0",
+         "membros.membros",
+         "lado_a_lado.lado_a_lado.29",
+         "lado_a_lado.lado_a_lado.9"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A pergunta que a análise deixa é o que está por trás da parte de cada grupo, e a base de hoje mostra o tamanho, não a qualidade do serviço nem a tarifa.",
+        "notas": [
+         "nao_temos.nao_temos.8",
+         "nao_temos.nao_temos.10"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "chave": "quem_esta",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "A lista junta duas regras: entra a companhia aberta com ticker que a base liga a uma entidade da ANEEL ou que a CVM classifica como \"Energia Elétrica\" ou \"Emp. Adm. Part. - Energia Elétrica\" (empresa de participações).",
+        "notas": [
+         "membros.paragrafos.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Pelas ligações com a ANEEL entram 11 companhias: a CPFL com 10 entidades, a Energisa e a Rede Energia com 8, a Equatorial com 7, a Neoenergia com 5, a AXIA com 4, a Cemig e as Centrais Elétricas de Santa Catarina com 2, e a Copel, a CEB e a Light com 1.",
+        "notas": [
+         "membros.membros.3",
+         "membros.membros.7",
+         "membros.membros.10",
+         "membros.membros.14",
+         "membros.membros.16",
+         "membros.membros.17",
+         "membros.membros.23",
+         "membros.membros.27",
+         "membros.membros.29",
+         "membros.membros.30",
+         "membros.membros.31"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "membros.membros.3",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.7",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.10",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.14",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.16",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.17",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.23",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.27",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.29",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.30",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.31",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 11.0
+         }
+        ]
+       },
+       {
+        "texto": "As outras 27 entram só pelo setor da CVM; pelo nome, três são distribuidoras (CEEE-D, Energisa Mato Grosso e Equatorial Pará), uma é geradora (CEEE-G) e duas são transmissoras (Afluente Transmissão e Transmissora Aliança).",
+        "notas": [
+         "membros.membros.13",
+         "membros.membros.22",
+         "membros.membros.26",
+         "membros.membros.18",
+         "membros.membros.0",
+         "membros.membros.36"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "membros.membros.0",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.1",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.2",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.4",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.5",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.6",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.8",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.9",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.11",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.12",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.13",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.15",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.18",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.19",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.20",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.21",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.22",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.24",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.25",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.26",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.28",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.32",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.33",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.34",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.35",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.36",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "membros.membros.37",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 27.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "As duas regras não medem a mesma coisa: a da ANEEL liga a companhia a consumidores, a da CVM só diz o ramo.",
+        "notas": [
+         "membros.paragrafos.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Por isso a parte do mercado do lado a lado existe para 11 das 38 companhias, e as distribuidoras que entram só pela CVM aparecem com um traço nessa coluna.",
+        "notas": [
+         "membros.membros",
+         "lado_a_lado.lado_a_lado.3",
+         "lado_a_lado.lado_a_lado.7",
+         "lado_a_lado.lado_a_lado.10",
+         "lado_a_lado.lado_a_lado.14",
+         "lado_a_lado.lado_a_lado.16",
+         "lado_a_lado.lado_a_lado.17",
+         "lado_a_lado.lado_a_lado.23",
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.29",
+         "lado_a_lado.lado_a_lado.30",
+         "lado_a_lado.lado_a_lado.31",
+         "lado_a_lado.lado_a_lado.13",
+         "lado_a_lado.lado_a_lado.22",
+         "lado_a_lado.lado_a_lado.26"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.3",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.7",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.10",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.14",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.16",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.17",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.23",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.27",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.29",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.30",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.31",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 11.0
+         }
+        ]
+       },
+       {
+        "texto": "Se forem controladas de outra companhia da lista, os consumidores delas podem estar contados na parte da controladora; o relatório não diz quem controla quem.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "A CEB entra pela ANEEL, mas a série da agência só a encontra de 2003 a 2005, e a parte de 1,3% que o lado a lado mostra é de dezembro de 2005.",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.50",
+         "participacao.participacao_aneel_consumidores.51",
+         "participacao.participacao_aneel_consumidores.52",
+         "lado_a_lado.lado_a_lado.16"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "A CEB fica fora das comparações de mercado desta análise: um número de 2005 ao lado de números de 2025 não diz nada sobre o setor de hoje.",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.50",
+         "lado_a_lado.lado_a_lado.16"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "chave": "tamanho_e_concentracao",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Tamanho.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Os consumidores atendidos pelas distribuidoras passaram de 81.408.429 em 2017 para 87.107.500 em 2022; em 2023 e 2024 o total ficou abaixo disso (86.997.936 e 86.701.508), e em 2025 chegou a 87.543.053.",
+        "notas": [
+         "tamanho.tamanho_aneel_consumidores.9",
+         "tamanho.tamanho_aneel_consumidores.4",
+         "tamanho.tamanho_aneel_consumidores.3",
+         "tamanho.tamanho_aneel_consumidores.2",
+         "tamanho.tamanho_aneel_consumidores.1"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "De 2022 para 2025, o crescimento foi de 0,5% (conta nossa).",
+        "notas": [
+         "tamanho.tamanho_aneel_consumidores.4",
+         "tamanho.tamanho_aneel_consumidores.1"
+        ],
+        "contas": [
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.4",
+            "valor": 87107500.0,
+            "conta": null
+           },
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.1",
+            "valor": 87543053.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.005000177941049788
+         }
+        ]
+       },
+       {
+        "texto": "O número de participantes foi de 67 em 2017 para 81 de 2020 a 2025.",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.9",
+         "concentracao.concentracao_aneel_consumidores.6",
+         "concentracao.concentracao_aneel_consumidores.5",
+         "concentracao.concentracao_aneel_consumidores.4",
+         "concentracao.concentracao_aneel_consumidores.3",
+         "concentracao.concentracao_aneel_consumidores.2",
+         "concentracao.concentracao_aneel_consumidores.1"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Concentração.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "O HHI (a soma dos quadrados das participações em %, de 0 a 10.000) ficou entre 1.000 pontos, em 2020, e 1.019, em 2022 e 2024; em 2025, foi de 1.015.",
+        "notas": [
+         "metodologia.paragrafos.0",
+         "concentracao.concentracao_aneel_consumidores.6",
+         "concentracao.concentracao_aneel_consumidores.4",
+         "concentracao.concentracao_aneel_consumidores.2",
+         "concentracao.concentracao_aneel_consumidores.1"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Todos os anos ficam na faixa não concentrado do Guia H do CADE, abaixo de 1.500 pontos.",
+        "notas": [
+         "metodologia.paragrafos.0",
+         "concentracao.concentracao_aneel_consumidores.1",
+         "concentracao.concentracao_aneel_consumidores.2",
+         "concentracao.concentracao_aneel_consumidores.3",
+         "concentracao.concentracao_aneel_consumidores.4",
+         "concentracao.concentracao_aneel_consumidores.5",
+         "concentracao.concentracao_aneel_consumidores.6",
+         "concentracao.concentracao_aneel_consumidores.7",
+         "concentracao.concentracao_aneel_consumidores.8",
+         "concentracao.concentracao_aneel_consumidores.9"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "De um ano para o outro, o HHI nunca andou mais de 10 pontos: de -7 em 2019 a +10 em 2022.",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.7",
+         "concentracao.concentracao_aneel_consumidores.4"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "As quatro maiores somaram entre 54,1% e 54,6% dos consumidores em todos os anos de 2017 a 2025.",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.1",
+         "concentracao.concentracao_aneel_consumidores.2",
+         "concentracao.concentracao_aneel_consumidores.3",
+         "concentracao.concentracao_aneel_consumidores.4",
+         "concentracao.concentracao_aneel_consumidores.5",
+         "concentracao.concentracao_aneel_consumidores.6",
+         "concentracao.concentracao_aneel_consumidores.7",
+         "concentracao.concentracao_aneel_consumidores.8",
+         "concentracao.concentracao_aneel_consumidores.9"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Em 2025, as quatro maiores companhias abertas da participação atendiam 47.484.832 consumidores, 54,2% do total do ano (conta nossa), o mesmo número da CR4.",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.1",
+         "tamanho.tamanho_aneel_consumidores.1",
+         "participacao.participacao_aneel_consumidores.93",
+         "participacao.participacao_aneel_consumidores.73",
+         "participacao.participacao_aneel_consumidores.53",
+         "participacao.participacao_aneel_consumidores.0"
+        ],
+        "contas": [
+         {
+          "operacao": "soma",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.93",
+            "valor": 15443941.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.73",
+            "valor": 13540224.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.53",
+            "valor": 9743641.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.0",
+            "valor": 8757026.0,
+            "conta": null
+           }
+          ],
+          "resultado": 47484832.0
+         },
+         {
+          "operacao": "razao",
+          "de": [
+           {
+            "id": null,
+            "valor": null,
+            "conta": 0
+           },
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.1",
+            "valor": 87543053.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.5424169065705305
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "A coincidência indica que os quatro maiores participantes do mercado são essas quatro companhias: a concentração da distribuição é, na prática, a de quatro grupos com ação na bolsa.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "O HHI quase parado diz que, no total, o mercado não ficou mais concentrado nem mais disperso desde 2017; as mudanças de parte entre os grupos se compensaram.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Dois cuidados com esses números.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Parte do mercado é contada por entidade, sem grupo (5,2% em 2025): um grupo fechado com várias entidades aparece partido, e a concentração real é maior ou igual à mostrada.",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.1",
+         "concentracao.paragrafos.1"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A medida é a do mercado nacional que a agência publica, não o mercado relevante do CADE, que é definido por região e produto, caso a caso.",
+        "notas": [
+         "limites.paragrafos.0"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**A linha de 2026 não entra nesta análise.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Ela cobre só até agosto, tem 30 participantes e conta 100,0% do mercado por entidade; o total, 384.737 consumidores, é 0,4% do de 2025 (conta nossa).",
+        "notas": [
+         "concentracao.concentracao_aneel_consumidores.0",
+         "tamanho.tamanho_aneel_consumidores.0",
+         "tamanho.tamanho_aneel_consumidores.1"
+        ],
+        "contas": [
+         {
+          "operacao": "razao",
+          "de": [
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.0",
+            "valor": 384737.0,
+            "conta": null
+           },
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.1",
+            "valor": 87543053.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.004394831877750483
+         }
+        ]
+       },
+       {
+        "texto": "O HHI de 689 pontos e a CR4 de 43,7% que o relatório mostra no topo e nas frases automáticas saem dessa linha incompleta e não se comparam com os anos anteriores.",
+        "notas": [
+         "concentracao.hhi_aneel_consumidores",
+         "concentracao.cr4_aneel_consumidores",
+         "o_que_os_dados_mostram.paragrafos.1",
+         "o_que_os_dados_mostram.paragrafos.2",
+         "concentracao.concentracao_aneel_consumidores.0"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "chave": "participacao",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Em 2025, as companhias abertas ligadas à ANEEL somavam 90,4% dos consumidores atendidos pelas distribuidoras.",
+        "notas": [
+         "o_que_os_dados_mostram.paragrafos.3"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A Neoenergia atendia 15.443.941 (17,6%); a Equatorial, 13.540.224 (15,5%); a CPFL, 9.743.641 (11,1%); a AES ELPA, 8.757.026 (10,0%); e a Cemig, 8.459.031 (9,7%).",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.93",
+         "participacao.participacao_aneel_consumidores.73",
+         "participacao.participacao_aneel_consumidores.53",
+         "participacao.participacao_aneel_consumidores.0",
+         "participacao.participacao_aneel_consumidores.30"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Depois vêm a Copel (5,4%), a Energisa (4,6%), a Light (4,5%), a AXIA (4,2%), a Rede Energia (4,1%) e as Centrais Elétricas de Santa Catarina (3,7%).",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.40",
+         "participacao.participacao_aneel_consumidores.63",
+         "participacao.participacao_aneel_consumidores.83",
+         "participacao.participacao_aneel_consumidores.10",
+         "participacao.participacao_aneel_consumidores.103",
+         "participacao.participacao_aneel_consumidores.20"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**De 2016 para 2025.**",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.9",
+         "participacao.participacao_aneel_consumidores.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Quem mais ganhou parte foi a AES ELPA, de 8,7% para 10,0% (1,3 ponto percentual, conta nossa), seguida da Equatorial, de 14,6% para 15,5%.",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.9",
+         "participacao.participacao_aneel_consumidores.0",
+         "participacao.participacao_aneel_consumidores.82",
+         "participacao.participacao_aneel_consumidores.73"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.0",
+            "valor": 0.1,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.9",
+            "valor": 0.087,
+            "conta": null
+           }
+          ],
+          "resultado": 0.013000000000000012
+         },
+         {
+          "operacao": "produto",
+          "de": [
+           {
+            "id": null,
+            "valor": null,
+            "conta": 0
+           },
+           {
+            "id": null,
+            "valor": 100.0,
+            "conta": null
+           }
+          ],
+          "resultado": 1.3000000000000012
+         }
+        ]
+       },
+       {
+        "texto": "Quem mais perdeu foi a Cemig, de 10,3% para 9,7%; a Neoenergia e a Light perderam 0,4 ponto cada (conta nossa).",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.39",
+         "participacao.participacao_aneel_consumidores.30",
+         "participacao.participacao_aneel_consumidores.102",
+         "participacao.participacao_aneel_consumidores.93",
+         "participacao.participacao_aneel_consumidores.92",
+         "participacao.participacao_aneel_consumidores.83"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.93",
+            "valor": 0.17600000000000002,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.102",
+            "valor": 0.18,
+            "conta": null
+           }
+          ],
+          "resultado": -0.003999999999999976
+         },
+         {
+          "operacao": "produto",
+          "de": [
+           {
+            "id": null,
+            "valor": null,
+            "conta": 0
+           },
+           {
+            "id": null,
+            "valor": 100.0,
+            "conta": null
+           }
+          ],
+          "resultado": -0.3999999999999976
+         }
+        ]
+       },
+       {
+        "texto": "Em consumidores, a AES ELPA ganhou 883.056 de 2024 para 2025, 11,2% em um ano (conta nossa); no mesmo ano, a Rede Energia perdeu 129.045.",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.1",
+         "participacao.participacao_aneel_consumidores.0",
+         "participacao.participacao_aneel_consumidores.104",
+         "participacao.participacao_aneel_consumidores.103"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.0",
+            "valor": 8757026.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.1",
+            "valor": 7873970.0,
+            "conta": null
+           }
+          ],
+          "resultado": 883056.0
+         },
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.1",
+            "valor": 7873970.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.0",
+            "valor": 8757026.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.11214876358431636
+         },
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.104",
+            "valor": 3701203.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.103",
+            "valor": 3572158.0,
+            "conta": null
+           }
+          ],
+          "resultado": 129045.0
+         }
+        ]
+       },
+       {
+        "texto": "No mesmo ano, o mercado inteiro cresceu 841.545 consumidores (conta nossa), menos que o ganho da AES ELPA sozinha.",
+        "notas": [
+         "tamanho.tamanho_aneel_consumidores.2",
+         "tamanho.tamanho_aneel_consumidores.1",
+         "participacao.participacao_aneel_consumidores.1",
+         "participacao.participacao_aneel_consumidores.0"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.1",
+            "valor": 87543053.0,
+            "conta": null
+           },
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.2",
+            "valor": 86701508.0,
+            "conta": null
+           }
+          ],
+          "resultado": 841545.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Um salto de 11,2% em um ano é grande para um mercado que cresceu 0,5% em três anos (conta nossa): ou a AES ELPA ganhou área, ou a base passou a ligar a ela uma entidade que antes contava em outro lugar.",
+        "notas": [
+         "tamanho.tamanho_aneel_consumidores.4",
+         "tamanho.tamanho_aneel_consumidores.1"
+        ],
+        "contas": [
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.4",
+            "valor": 87107500.0,
+            "conta": null
+           },
+           {
+            "id": "tamanho.tamanho_aneel_consumidores.1",
+            "valor": 87543053.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.005000177941049788
+         }
+        ]
+       },
+       {
+        "texto": "O relatório não traz as entidades de cada companhia nem desde quando cada ligação vale, e a pergunta fica em aberto.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**A AES ELPA não está no lado a lado.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Ela aparece na participação com 10,0% em 2025, mas não está entre as 38 companhias da lista, que só aceita companhia aberta com ticker.",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.0",
+         "membros.membros",
+         "membros.paragrafos.0",
+         "limites.paragrafos.1"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "A quarta maior do mercado fica, assim, sem receita, lucro e dívida neste relatório; pela regra da lista, o mais provável é que a base não tenha um ticker para ela, e o relatório não diz por quê.",
+        "notas": [
+         "membros.paragrafos.0"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "chave": "lado_a_lado",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "O lado a lado traz, para cada uma das 38 companhias, receita e lucro dos acionistas de 12 meses, margem líquida, ROE pelo DuPont, dívida líquida, capex, caixa livre, margem EBITDA e parte do mercado; a ordem das linhas é a do nome, não um ranking.",
+        "notas": [
+         "lado_a_lado.paragrafos.1",
+         "membros.membros"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Os números são das demonstrações consolidadas entregues à CVM (DFP e ITR) e, para 33 das companhias, dos 12 meses até 30/06/2026.",
+        "notas": [
+         "lado_a_lado.paragrafos.2",
+         "lado_a_lado.lado_a_lado.0",
+         "lado_a_lado.lado_a_lado.1",
+         "lado_a_lado.lado_a_lado.2",
+         "lado_a_lado.lado_a_lado.3",
+         "lado_a_lado.lado_a_lado.4",
+         "lado_a_lado.lado_a_lado.5",
+         "lado_a_lado.lado_a_lado.7",
+         "lado_a_lado.lado_a_lado.8",
+         "lado_a_lado.lado_a_lado.9",
+         "lado_a_lado.lado_a_lado.10",
+         "lado_a_lado.lado_a_lado.11",
+         "lado_a_lado.lado_a_lado.12",
+         "lado_a_lado.lado_a_lado.13",
+         "lado_a_lado.lado_a_lado.14",
+         "lado_a_lado.lado_a_lado.16",
+         "lado_a_lado.lado_a_lado.17",
+         "lado_a_lado.lado_a_lado.18",
+         "lado_a_lado.lado_a_lado.19",
+         "lado_a_lado.lado_a_lado.21",
+         "lado_a_lado.lado_a_lado.22",
+         "lado_a_lado.lado_a_lado.23",
+         "lado_a_lado.lado_a_lado.24",
+         "lado_a_lado.lado_a_lado.25",
+         "lado_a_lado.lado_a_lado.26",
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.28",
+         "lado_a_lado.lado_a_lado.29",
+         "lado_a_lado.lado_a_lado.30",
+         "lado_a_lado.lado_a_lado.31",
+         "lado_a_lado.lado_a_lado.32",
+         "lado_a_lado.lado_a_lado.33",
+         "lado_a_lado.lado_a_lado.34",
+         "lado_a_lado.lado_a_lado.36"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.0",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.1",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.2",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.3",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.4",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.5",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.7",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.8",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.9",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.10",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.11",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.12",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.13",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.14",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.16",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.17",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.18",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.19",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.21",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.22",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.23",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.24",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.25",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.26",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.27",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.28",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.29",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.30",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.31",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.32",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.33",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.34",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.36",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 33.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**As ligadas à ANEEL.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Sem contar a CEB, a receita de 12 meses fica entre R$ 12,5 bilhões, nas Centrais Elétricas de Santa Catarina, e R$ 54,7 bilhões, na Equatorial; a da CEB é de R$ 456,5 milhões.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.7",
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.16"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Também sem a CEB, a margem líquida vai de 3,2% (Equatorial) a 27,1% (AXIA), e a margem EBITDA do exercício de 2025, de 14,6% (Light) a 29,6% (CPFL).",
+        "notas": [
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.3",
+         "lado_a_lado.lado_a_lado.29",
+         "lado_a_lado.lado_a_lado.17"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O ROE vai de 3,7% na Equatorial a 26,4% na CPFL; a Light aparece com 0,0%.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.17",
+         "lado_a_lado.lado_a_lado.29"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A maior dívida líquida das 38 é a da Equatorial, R$ 54,1 bilhões, seguida da Neoenergia (R$ 51,6 bilhões) e da AXIA (R$ 44,7 bilhões).",
+        "notas": [
+         "membros.membros",
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.30",
+         "lado_a_lado.lado_a_lado.3"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Entre as maiores receitas, as margens são muito diferentes: a Equatorial fatura R$ 54,7 bilhões e fica com 3,2% como lucro; a Neoenergia, R$ 53,4 bilhões e 8,6%; a CPFL, R$ 45,6 bilhões e 13,8%.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.27",
+         "lado_a_lado.lado_a_lado.30",
+         "lado_a_lado.lado_a_lado.17"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A Equatorial tem a maior dívida líquida e caixa livre de R$ -5,2 bilhões em 12 meses; a dívida pode explicar parte da margem baixa, mas o lado a lado não traz as despesas financeiras para separar.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.27"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A Copel e a Energisa têm a mesma margem EBITDA, 25,0%, e margens líquidas de 11,4% e 5,9%: a diferença está no que fica entre as duas linhas (juros, depreciação e impostos), que o lado a lado não abre.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.14",
+         "lado_a_lado.lado_a_lado.23"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**As que entram só pela CVM.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Nos 12 meses até 30/06/2026, as maiores margens líquidas desse grupo são as da Afluente Transmissão (56,0%), da Alupar (40,2%) e da Transmissora Aliança (36,5%), e o maior lucro dos acionistas é o da Engie, R$ 4,0 bilhões.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.0",
+         "lado_a_lado.lado_a_lado.1",
+         "lado_a_lado.lado_a_lado.36",
+         "lado_a_lado.lado_a_lado.25"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Seis delas tiveram prejuízo dos acionistas nesses 12 meses: Auren Energia (R$ -1,1 bilhão), CEEE-D (R$ -433,3 milhões), EMAE (R$ -96,1 milhões), Serena (R$ -31,3 milhões), Rio Paranapanema (R$ -26,2 milhões) e Celgpar (R$ -20,9 milhões).",
+        "notas": [
+         "lado_a_lado.lado_a_lado.4",
+         "lado_a_lado.lado_a_lado.13",
+         "lado_a_lado.lado_a_lado.21",
+         "lado_a_lado.lado_a_lado.34",
+         "lado_a_lado.lado_a_lado.33",
+         "lado_a_lado.lado_a_lado.8"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.4",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.13",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.21",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.34",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.33",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.8",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 6.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "As margens mais altas da lista ficam com companhias que, pelo nome ou pelo setor da CVM, são de transmissão ou de participações, não distribuidoras; pôr a margem delas ao lado da de uma distribuidora compara negócios diferentes.",
+        "notas": [
+         "membros.membros.0",
+         "membros.membros.1",
+         "membros.membros.36"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**O que não fecha no lado a lado.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Em 3 linhas o lucro dos acionistas aparece como R$ 0 e a margem líquida não é zero: Light (15,4%), CEEE-G (-20,6%) e Renova (-27,6%); nas três, o ROE aparece como 0,0%.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.29",
+         "lado_a_lado.lado_a_lado.18",
+         "lado_a_lado.lado_a_lado.32"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.29",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.18",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.32",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 3.0
+         }
+        ]
+       },
+       {
+        "texto": "Quatro companhias com receita de bilhões têm capex de R$ 0 em 12 meses: Coelba (R$ 19,4 bilhões de receita), Cosern (R$ 4,3 bilhões), CEEE-D (R$ 6,9 bilhões) e Elektro (R$ 10,3 bilhões).",
+        "notas": [
+         "lado_a_lado.lado_a_lado.9",
+         "lado_a_lado.lado_a_lado.12",
+         "lado_a_lado.lado_a_lado.13",
+         "lado_a_lado.lado_a_lado.19"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.9",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.12",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.13",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.19",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 4.0
+         }
+        ]
+       },
+       {
+        "texto": "A Afluente Transmissão tem capex de R$ 1,0 mil para receita de R$ 63,7 milhões.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A Celgpar aparece com receita negativa em 12 meses, R$ -9,6 milhões.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.8"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Pela margem, o lucro da Light seria perto de R$ 2,4 bilhões (conta nossa: 15,4% de R$ 15,6 bilhões), não zero.",
+        "notas": [
+         "lado_a_lado.lado_a_lado.29"
+        ],
+        "contas": [
+         {
+          "operacao": "produto",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.29",
+            "valor": 0.154,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.29",
+            "valor": 15600000000.0,
+            "conta": null
+           }
+          ],
+          "resultado": 2402400000.0
+         }
+        ]
+       },
+       {
+        "texto": "Lucro zero com margem diferente de zero parece um campo vazio mostrado como zero, não um resultado: esta análise não usa esses três lucros nem esses três ROE.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Capex zero numa operação de rede também não fecha; uma hipótese é que o investimento esteja registrado fora da linha de capex, como ativo da concessão, e o relatório não permite conferir.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Até separar, o capex e o caixa livre não se comparam entre estas companhias.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Números velhos e números que faltam.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Para 5 companhias o número não é dos 12 meses até 30/06/2026: Auren Participações (12 meses até 31/03/2026), Eletropar (12 meses até 31/03/2025) e CIMS, Statkraft e Uptick (exercício encerrado em 31/12/2023).",
+        "notas": [
+         "lado_a_lado.lado_a_lado.6",
+         "lado_a_lado.lado_a_lado.15",
+         "lado_a_lado.lado_a_lado.20",
+         "lado_a_lado.lado_a_lado.35",
+         "lado_a_lado.lado_a_lado.37",
+         "lado_a_lado.lado_a_lado.17"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.6",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.15",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.20",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.35",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.37",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 5.0
+         }
+        ]
+       },
+       {
+        "texto": "A margem EBITDA está como \"ainda sem dado\" em 27 das 38 linhas, exatamente as das companhias que não estão ligadas à ANEEL.",
+        "notas": [
+         "lado_a_lado.paragrafos.1",
+         "membros.membros",
+         "lado_a_lado.lado_a_lado.0",
+         "lado_a_lado.lado_a_lado.1",
+         "lado_a_lado.lado_a_lado.2",
+         "lado_a_lado.lado_a_lado.4",
+         "lado_a_lado.lado_a_lado.5",
+         "lado_a_lado.lado_a_lado.6",
+         "lado_a_lado.lado_a_lado.8",
+         "lado_a_lado.lado_a_lado.9",
+         "lado_a_lado.lado_a_lado.11",
+         "lado_a_lado.lado_a_lado.12",
+         "lado_a_lado.lado_a_lado.13",
+         "lado_a_lado.lado_a_lado.15",
+         "lado_a_lado.lado_a_lado.18",
+         "lado_a_lado.lado_a_lado.19",
+         "lado_a_lado.lado_a_lado.20",
+         "lado_a_lado.lado_a_lado.21",
+         "lado_a_lado.lado_a_lado.22",
+         "lado_a_lado.lado_a_lado.24",
+         "lado_a_lado.lado_a_lado.25",
+         "lado_a_lado.lado_a_lado.26",
+         "lado_a_lado.lado_a_lado.28",
+         "lado_a_lado.lado_a_lado.32",
+         "lado_a_lado.lado_a_lado.33",
+         "lado_a_lado.lado_a_lado.34",
+         "lado_a_lado.lado_a_lado.35",
+         "lado_a_lado.lado_a_lado.36",
+         "lado_a_lado.lado_a_lado.37"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "lado_a_lado.lado_a_lado.0",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.1",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.2",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.4",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.5",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.6",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.8",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.9",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.11",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.12",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.13",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.15",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.18",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.19",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.20",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.21",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.22",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.24",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.25",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.26",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.28",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.32",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.33",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.34",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.35",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.36",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "lado_a_lado.lado_a_lado.37",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 27.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Comparar as 38 linhas pede cuidado: há empresas de participações e operadoras lado a lado, com números consolidados, e o relatório não diz quais companhias da lista estão dentro do consolidado de outra.",
+        "notas": [
+         "lado_a_lado.paragrafos.2",
+         "membros.paragrafos.0",
+         "membros.membros"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Somar as receitas das 38 não dá o tamanho do setor: a mesma receita pode estar contada duas vezes.",
+        "notas": [
+         "membros.membros"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "chave": "o_que_mudaria",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Não é previsão: são os dados que, se chegassem ao relatório, mudariam esta leitura.",
+        "notas": [
+         "nao_temos.paragrafos.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "**A base tem e o relatório ainda não traz:** energia vendida e mercado faturado, geração por usina e perdas de energia (estas só em parte, pelo que a SAMP dá).",
+        "notas": [
+         "nao_temos.nao_temos.0",
+         "nao_temos.nao_temos.1",
+         "nao_temos.nao_temos.2"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "**A base ainda não tem:** PLD e CMO, curtailment e capacidade instalada (série T6); GSF, ENA e EAR, DEC e FEC, RAP, reajuste tarifário, mercado livre e geração distribuída (série S8); inadimplência dos consumidores e EBITDA regulatório (do release ou do ITR de cada empresa).",
+        "notas": [
+         "nao_temos.nao_temos.3",
+         "nao_temos.nao_temos.4",
+         "nao_temos.nao_temos.5",
+         "nao_temos.nao_temos.6",
+         "nao_temos.nao_temos.7",
+         "nao_temos.nao_temos.8",
+         "nao_temos.nao_temos.9",
+         "nao_temos.nao_temos.10",
+         "nao_temos.nao_temos.11",
+         "nao_temos.nao_temos.12",
+         "nao_temos.nao_temos.13"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Quatro desses dados mudariam mais esta leitura: a energia vendida (o tamanho do mercado em energia, não em contas de luz), o DEC e o FEC (a qualidade do serviço de cada distribuidora), o reajuste tarifário e o EBITDA regulatório (o retorno que a agência reconhece, contra o que o balanço mostra).",
+        "notas": [
+         "nao_temos.nao_temos.0",
+         "nao_temos.nao_temos.8",
+         "nao_temos.nao_temos.10",
+         "nao_temos.nao_temos.13"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Sem eles, o relatório compara tamanho e balanço, não eficiência.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Fora da lista do relatório, três respostas mudariam esta análise mais que qualquer número novo: quem controla quem entre as 38 companhias, por que a AES ELPA está fora da lista e por que ela cresceu 11,2% em 2025 (conta nossa).",
+        "notas": [
+         "membros.membros",
+         "participacao.participacao_aneel_consumidores.0",
+         "participacao.participacao_aneel_consumidores.1"
+        ],
+        "contas": [
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.1",
+            "valor": 7873970.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.0",
+            "valor": 8757026.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.11214876358431636
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "chave": "limites",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Dados da base do TickerLab de 21/10/2026: o lado a lado usa as DFP e os ITR do banco do app, e a parte do mercado usa a série da ANEEL até dezembro de 2025.",
+        "notas": [
+         "tamanho.paragrafos.0",
+         "lado_a_lado.paragrafos.1",
+         "lado_a_lado.lado_a_lado.17"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A concentração é a do mercado nacional, não o mercado relevante do CADE, e a faixa é a do Guia H do CADE, não um juízo do TickerLab.",
+        "notas": [
+         "limites.paragrafos.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A participação e o lado a lado mostram só as companhias abertas da base; as entidades que a base não liga a uma companhia aberta entram no total do mercado, mas não na lista.",
+        "notas": [
+         "limites.paragrafos.1",
+         "concentracao.paragrafos.1"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Cada participante leva a estrutura de hoje também nos anos passados: uma entidade comprada depois pode aparecer num ano antigo como parte do grupo que a comprou.",
+        "notas": [
+         "metodologia.paragrafos.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Fontes: dados abertos da ANEEL e da CVM (ODbL), cadastro de companhias da CVM, FCA e DFP e ITR entregues à CVM.",
+        "notas": [
+         "membros.paragrafos.1",
+         "lado_a_lado.paragrafos.2",
+         "tamanho.paragrafos.1",
+         "tamanho.paragrafos.2"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Perguntas em aberto:** por que a AES ELPA está fora da lista; por que ela ganhou 883.056 consumidores em 2025; quem controla quem entre as 38 companhias; por que três lucros aparecem como R$ 0; onde está o investimento das companhias com capex de R$ 0; quando a linha de 2026 fica comparável.",
+        "notas": [
+         "participacao.participacao_aneel_consumidores.0",
+         "participacao.participacao_aneel_consumidores.1",
+         "membros.membros",
+         "lado_a_lado.lado_a_lado.29",
+         "lado_a_lado.lado_a_lado.18",
+         "lado_a_lado.lado_a_lado.32",
+         "lado_a_lado.lado_a_lado.9",
+         "concentracao.concentracao_aneel_consumidores.0"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "participacao.participacao_aneel_consumidores.0",
+            "valor": 8757026.0,
+            "conta": null
+           },
+           {
+            "id": "participacao.participacao_aneel_consumidores.1",
+            "valor": 7873970.0,
+            "conta": null
+           }
+          ],
+          "resultado": 883056.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Nenhum nome de pessoa aparece.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Nada aqui é recomendação de investimento, previsão do setor ou nota das empresas.",
+        "notas": [
+         "limites.paragrafos.2"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
