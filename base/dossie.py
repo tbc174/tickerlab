@@ -2360,7 +2360,10 @@ def negocios_de_ma_por_empresa(
         .merge(datas[[*chave, "conhecido_em_do_negocio", "confirmado_por"]], on=chave)
         .merge(assessorias[[*chave, "tipo"]], on=chave)
     )
-    juntas["conhecido_em"] = pd.to_datetime(juntas["conhecido_em_do_negocio"])
+    # a base traz o momento em UTC (com fuso); `hoje` é um dia sem fuso: compara-se pelo dia de UTC
+    juntas["conhecido_em"] = pd.to_datetime(
+        juntas["conhecido_em_do_negocio"], utc=True
+    ).dt.tz_localize(None)
     juntas = juntas[
         juntas["conhecido_em"].notna() & (juntas["conhecido_em"] <= pd.Timestamp(hoje))
     ].copy()
