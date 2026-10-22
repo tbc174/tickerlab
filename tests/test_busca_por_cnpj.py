@@ -127,6 +127,43 @@ def test_secao_cadastro_da_cvm(banco, com_a_petrobras) -> None:
     assert all(i.fonte and i.base for i in secao.itens)
 
 
+def test_secao_cadastro_traz_situacao_categoria_e_registro(
+    banco, com_a_petrobras
+) -> None:
+    """Linha 49 da fila: situação (com desde quando), categoria e data de registro, cada um datado."""
+    with banco.connect() as conexao:
+        secao = busca.secao_cadastro(conexao, PETROBRAS)
+    assert secao is not None
+    itens = {i.chave: i for i in secao.itens}
+    assert [i.chave for i in secao.itens] == [
+        "cnpj",
+        "razao_social",
+        "setor",
+        "situacao",
+        "categoria",
+        "registro",
+        "tickers",
+    ]
+    assert itens["situacao"].texto == "Ativo, desde 01/01/2000"
+    assert itens["categoria"].texto == "Categoria A"
+    assert itens["registro"].texto == "20/07/1977"
+    assert itens["situacao"].base.startswith("cadastro da CVM em ")
+    assert "banco do app" not in " ".join(busca.DESLIGADO)
+
+
+def test_secao_cadastro_sem_as_colunas_novas_fica_como_era(
+    banco, com_a_petrobras
+) -> None:
+    """Um banco onde a coleta ainda só gravou o setor (ou a SEC) não inventa situação nem categoria."""
+    with banco.begin() as conexao:
+        repo.gravar_setor(conexao, "33.000.167/0001-01", "Petróleo e Gás")
+    with banco.connect() as conexao:
+        secao = busca.secao_cadastro(conexao, PETROBRAS)
+    assert secao is not None
+    chaves = [i.chave for i in secao.itens]
+    assert "setor" in chaves and not {"situacao", "categoria", "registro"} & set(chaves)
+
+
 def test_secao_cadastro_sem_natureza_da_receita(banco, com_a_petrobras) -> None:
     with banco.connect() as conexao:
         secao = busca.secao_cadastro(conexao, PETROBRAS)
