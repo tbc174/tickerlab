@@ -162,6 +162,7 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
         from src.api_v1.ferramentas import router as router_das_ferramentas
         from src.api_v1.rotas import router as router_v1
         from src.api_v1.sala import router as router_da_sala
+        from src.api_v1.sala_painel import router as router_do_painel_da_sala
         from src.api_v1.sala_trabalho import router as router_do_trabalho_na_sala
         from src.planos import LimiteDoPlanoError
 
@@ -184,6 +185,7 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
             router_da_entrada,
             router_das_ferramentas,
             router_da_sala,
+            router_do_painel_da_sala,
             router_do_trabalho_na_sala,
         ):
             nova.include_router(rotas)

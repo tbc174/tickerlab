@@ -40,6 +40,11 @@ ACAO_NEGOCIO_FASE_MUDADA = "negocio_fase_mudada"
 ACAO_NEGOCIO_ATUALIZADO = "negocio_atualizado"
 ACAO_CONTATO_REGISTRADO = "contato_registrado"
 ACAO_CONTATO_APAGADO = "contato_apagado"
+# Garantias (B-17): só ids e o código do tipo; nunca rótulo, titular nem valor.
+ACAO_EXPOSICAO_REGISTRADA = "exposicao_registrada"
+ACAO_EXPOSICAO_APAGADA = "exposicao_apagada"
+ACAO_GARANTIA_REGISTRADA = "garantia_registrada"
+ACAO_GARANTIA_APAGADA = "garantia_apagada"
 # API externa (N7): só ids, prefixo da chave, plano, finalidade, conjunto e código do motivo; nunca a
 # chave, o hash dela nem o nome da organização.
 ACAO_ORGANIZACAO_CRIADA = "organizacao_criada"

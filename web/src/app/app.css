@@ -355,3 +355,14 @@
 .lista-do-cafe { padding-left: var(--e5); }
 .lista-do-cafe li { margin-bottom: var(--e1); overflow-wrap: anywhere; }
 .ficha-do-cafe + .ficha-do-cafe { margin-top: var(--e5); padding-top: var(--e4); border-top: 1px solid var(--linha); }
+
+/* sala de dados (admin) */
+.conceito-da-sala { margin: var(--e2) 0; }
+.conceito-da-sala summary { cursor: pointer; color: var(--apagado); }
+.lista-de-operacoes { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--e2); margin: var(--e4) 0; }
+.operacao-da-sala { margin-top: var(--e5); }
+.acoes-da-sala { display: flex; flex-wrap: wrap; gap: var(--e3); align-items: end; margin: var(--e3) 0; }
+.contradicao-da-sala { list-style: none; padding: var(--e3) 0; border-top: 1px solid var(--borda, rgba(128,128,128,.3)); }
+.nota-da-sala { display: flex; flex-direction: column; gap: var(--e1); }
+.nota-da-sala input { width: 100%; padding: var(--e2) var(--e3); border-radius: 8px; }
+.secao-do-relatorio ul { padding-left: var(--e4); }

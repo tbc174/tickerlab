@@ -5,9 +5,10 @@ não existisse. Outra conta acertando o id de uma operação ou de um documento 
 (nunca 403: a resposta não confirma que o id existe, D11). Nem admin vê a sala de outra pessoa: não
 há rota de admin aqui.
 
-Fora do `rotas.py` de propósito, como o link compartilhado: o contrato por página (`src/paginas.py`)
-não vale para a sala, que ainda não é página de plano nenhum. As rotas, o limite de envios e o
-acesso só de admin ficam todos neste arquivo, com teste que percorre cada rota.
+Fora do `rotas.py` de propósito, como o link compartilhado: a sala não entra no `openapi_v1`
+público. A página dela (`sala_de_dados`, só admin) está em `src/paginas.py`, e `ROTAS_DA_SALA` lá
+lista toda rota dos três arquivos da sala (há teste que pega rota sem página). As rotas, o limite de
+envios e o acesso só de admin ficam neste arquivo, com teste que percorre cada rota.
 
 Quem faz o trabalho é `src/banco/sala.py` (o banco) e `src/sala/documentos.py` (cifra, disco e
 leitura). Aqui só entram a conta, os limites do `src/planos.py` e o desenho das respostas. Nome do
@@ -76,6 +77,7 @@ MENSAGENS_DE_RECUSA = {
     arquivos.PAGINAS_DEMAIS: "O arquivo passa de 300 páginas.",
     arquivos.ZIP_CAMINHO_ESTRANHO: "O arquivo tem um caminho interno estranho.",
     arquivos.ZIP_GRANDE_DEMAIS: "O arquivo, descomprimido, é grande demais.",
+    arquivos.OBJETO_EMBUTIDO: "Arquivos com objeto embutido (OLE) não entram.",
     arquivos.CSV_BINARIO: "O CSV tem bytes que não são de texto.",
     arquivos.ARQUIVO_DANIFICADO: "O arquivo está danificado.",
 }

@@ -38,3 +38,13 @@ def prazo_prorrogado(atual: date, hoje: date, dias: int) -> date:
     if not 1 <= dias <= PRORROGACAO_MAXIMA_EM_DIAS:
         raise ValueError(f"Prorrogue de 1 a {PRORROGACAO_MAXIMA_EM_DIAS} dias por vez.")
     return max(atual, hoje + timedelta(days=dias))
+
+
+DIAS_DO_AVISO_DE_PRAZO = (
+    14  # o app avisa quando faltam 14 dias ou menos (D14; sem e-mail no v1)
+)
+
+
+def dias_ate_sumir(retencao_ate: date, hoje: date) -> int:
+    """Quantos dias faltam para a operação sumir (0 no próprio dia; nunca negativo)."""
+    return max((retencao_ate - hoje).days, 0)

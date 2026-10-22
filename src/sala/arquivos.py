@@ -25,6 +25,10 @@ DESCOMPRIMIDO_MAXIMO = 100 * MEGABYTE
 RAZAO_MAXIMA_DE_COMPRESSAO = 100
 ENTRADAS_MAXIMAS_NO_ZIP = 2000
 TAMANHO_MAXIMO_DO_INDICE_DO_OOXML = MEGABYTE  # o [Content_Types].xml
+TAMANHO_MAXIMO_DA_RELACAO = MEGABYTE  # cada arquivo `.rels`
+BLOCO_DA_CONTAGEM = 64 * 1024  # quanto se descomprime por vez ao contar o tamanho real
+CABECALHO_LOCAL_DO_ZIP = 30  # bytes fixos antes do nome da entrada
+METODOS_DO_ZIP = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)  # o Office só usa estes
 
 # PDF: quanto a conferência descomprime dos fluxos (FlateDecode) para procurar nomes escondidos
 DESCOMPRIMIDO_MAXIMO_DO_PDF = 100 * MEGABYTE
@@ -44,6 +48,7 @@ PDF_ATIVO = "pdf_ativo"  # JavaScript, ação de abrir programa ou arquivo anexa
 PAGINAS_DEMAIS = "paginas_demais"
 ZIP_CAMINHO_ESTRANHO = "zip_caminho_estranho"
 ZIP_GRANDE_DEMAIS = "zip_grande_demais"
+OBJETO_EMBUTIDO = "objeto_embutido"  # objeto OLE dentro do DOCX ou do XLSX
 CSV_BINARIO = "csv_binario"
 ARQUIVO_DANIFICADO = "arquivo_danificado"
 MOTIVOS_DE_RECUSA = (
@@ -57,6 +62,7 @@ MOTIVOS_DE_RECUSA = (
     PAGINAS_DEMAIS,
     ZIP_CAMINHO_ESTRANHO,
     ZIP_GRANDE_DEMAIS,
+    OBJETO_EMBUTIDO,
     CSV_BINARIO,
     ARQUIVO_DANIFICADO,
 )
@@ -186,6 +192,87 @@ def _caminho_estranho(nome: str) -> bool:
     )
 
 
+def _bytes_comprimidos(conteudo: bytes, entrada: zipfile.ZipInfo) -> memoryview:
+    """Os bytes da entrada como estão no arquivo, achados pelo cabeçalho local."""
+    inicio = entrada.header_offset
+    cabecalho = conteudo[inicio : inicio + CABECALHO_LOCAL_DO_ZIP]
+    if len(cabecalho) < CABECALHO_LOCAL_DO_ZIP or cabecalho[:4] != ASSINATURA_DO_ZIP:
+        raise ArquivoRecusado(ARQUIVO_DANIFICADO)
+    tamanho_do_nome = int.from_bytes(cabecalho[26:28], "little")
+    tamanho_do_extra = int.from_bytes(cabecalho[28:30], "little")
+    dados = inicio + CABECALHO_LOCAL_DO_ZIP + tamanho_do_nome + tamanho_do_extra
+    return memoryview(conteudo)[dados : dados + entrada.compress_size]
+
+
+def _saida_maxima(limite: int, total: int) -> int:
+    # nunca 0 (no zlib, 0 é "sem limite") e nunca mais que um bloco grande por chamada
+    return min(limite + 1 - total, MEGABYTE)
+
+
+def _tamanho_real(conteudo: bytes, entrada: zipfile.ZipInfo, limite: int) -> int:
+    """Quantos bytes a entrada tem descomprimida **de verdade** (não o que o ZIP declara), contados
+    até `limite` + 1: o declarado pode mentir para baixo e passar pelas contas de
+    `_conferir_entradas`. Descomprime aos poucos, sem guardar nada na memória."""
+    comprimido = _bytes_comprimidos(conteudo, entrada)
+    if entrada.compress_type == zipfile.ZIP_STORED:
+        return len(comprimido)
+    if entrada.compress_type != zipfile.ZIP_DEFLATED:
+        raise ArquivoRecusado(ARQUIVO_DANIFICADO)
+    descompressor = zlib.decompressobj(-zlib.MAX_WBITS)
+    total = 0
+    posicao = 0
+    while posicao < len(comprimido) and total <= limite:
+        pedaco = comprimido[posicao : posicao + BLOCO_DA_CONTAGEM]
+        posicao += len(pedaco)
+        total += len(descompressor.decompress(pedaco, _saida_maxima(limite, total)))
+        while descompressor.unconsumed_tail and total <= limite:
+            total += len(
+                descompressor.decompress(
+                    descompressor.unconsumed_tail, _saida_maxima(limite, total)
+                )
+            )
+    return total
+
+
+def _conferir_tamanhos_reais(conteudo: bytes, entradas: list[zipfile.ZipInfo]) -> None:
+    """Recusa o ZIP cujo tamanho descomprimido de verdade passa do declarado ou do limite."""
+    restante = DESCOMPRIMIDO_MAXIMO
+    for entrada in entradas:
+        if entrada.compress_type not in METODOS_DO_ZIP:
+            raise ArquivoRecusado(ARQUIVO_DANIFICADO)
+        real = _tamanho_real(conteudo, entrada, restante)
+        if real > restante or real > entrada.file_size:
+            raise ArquivoRecusado(ZIP_GRANDE_DEMAIS)
+        if real < entrada.file_size:  # diz ter mais do que tem: dado faltando
+            raise ArquivoRecusado(ARQUIVO_DANIFICADO)
+        restante -= real
+
+
+def _lido_ate_o_limite(arquivo: zipfile.ZipFile, nome: str, limite: int) -> bytes:
+    with arquivo.open(nome) as aberto:
+        texto = aberto.read(limite + 1)
+    if len(texto) > limite:
+        raise ArquivoRecusado(ZIP_GRANDE_DEMAIS)
+    return texto
+
+
+def _conferir_sem_objeto_ole(arquivo: zipfile.ZipFile, indice: str) -> None:
+    """Recusa objeto OLE (binário de outro programa, embutido ou ligado de fora).
+
+    O Office liga cada objeto por uma relação do tipo `.../relationships/oleObject`; o gráfico
+    com a planilha embutida usa `.../package` e segue aceito.
+    """
+    if "oleobject" in indice:  # o tipo de conteúdo de `embeddings/*.bin`
+        raise ArquivoRecusado(OBJETO_EMBUTIDO)
+    for entrada in arquivo.infolist():
+        if entrada.filename.lower().endswith(".rels"):
+            texto = _lido_ate_o_limite(
+                arquivo, entrada.filename, TAMANHO_MAXIMO_DA_RELACAO
+            )
+            if b"oleobject" in texto.lower():
+                raise ArquivoRecusado(OBJETO_EMBUTIDO)
+
+
 def _conferir_entradas(arquivo: zipfile.ZipFile, tamanho_comprimido: int) -> None:
     entradas = arquivo.infolist()
     if len(entradas) > ENTRADAS_MAXIMAS_NO_ZIP:
@@ -223,7 +310,9 @@ def conferir_ooxml(conteudo: bytes) -> str:
     try:
         with zipfile.ZipFile(io.BytesIO(conteudo)) as arquivo:
             _conferir_entradas(arquivo, len(conteudo))
+            _conferir_tamanhos_reais(conteudo, arquivo.infolist())
             indice = _indice_do_ooxml(arquivo)
+            _conferir_sem_objeto_ole(arquivo, indice)
             nomes = set(arquivo.namelist())
     except (zipfile.BadZipFile, zlib.error, EOFError, NotImplementedError):
         raise ArquivoRecusado(ARQUIVO_DANIFICADO) from None
