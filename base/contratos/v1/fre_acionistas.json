@@ -1,0 +1,129 @@
+{
+  "tabela": "fre_acionistas",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia (como a CVM escreve)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do FRE",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_documento": {
+      "descricao": "Identificador do documento na CVM",
+      "unidade": "texto"
+    },
+    "id_acionista": {
+      "descricao": "Identificador do acionista na CVM; nas pessoas somadas, \"pf:<grupo>:<controlador S/N>:<acordo S/N>\" (o grupo é o `id_acionista_relacionado` ou \"raiz\")",
+      "unidade": "texto"
+    },
+    "tipo_acionista": {
+      "descricao": "`pj` (empresa ou fundo), `pf_somada` (pessoas físicas do grupo, somadas), `outros` ou `tesouraria` (as linhas fixas da CVM)",
+      "unidade": "texto"
+    },
+    "acionista": {
+      "descricao": "Nome do acionista; só em `pj`",
+      "unidade": "texto"
+    },
+    "cnpj_acionista": {
+      "descricao": "CNPJ do acionista; só em `pj` (vazio quando a CVM traz só zeros)",
+      "unidade": "texto"
+    },
+    "id_acionista_relacionado": {
+      "descricao": "De quem a linha é acionista (o `id_acionista` do grupo); vazio na companhia e quando o grupo é pessoa física",
+      "unidade": "texto"
+    },
+    "tipo_relacionado": {
+      "descricao": "PJ ou PF: o tipo de quem a linha é acionista",
+      "unidade": "texto"
+    },
+    "cnpj_acionista_relacionado": {
+      "descricao": "CNPJ de quem a linha é acionista; vazio quando é pessoa física",
+      "unidade": "texto"
+    },
+    "acoes_ordinarias": {
+      "descricao": "Ações ordinárias",
+      "unidade": "ações"
+    },
+    "percentual_ordinarias": {
+      "descricao": "Percentual das ações ordinárias (0 a 100)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "acoes_preferenciais": {
+      "descricao": "Ações preferenciais",
+      "unidade": "ações"
+    },
+    "percentual_preferenciais": {
+      "descricao": "Percentual das ações preferenciais (0 a 100)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "acoes_total": {
+      "descricao": "Total de ações",
+      "unidade": "ações"
+    },
+    "percentual_total": {
+      "descricao": "Percentual do total de ações (0 a 100)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "controlador": {
+      "descricao": "O acionista é controlador?",
+      "unidade": "verdadeiro ou falso"
+    },
+    "acordo_de_acionistas": {
+      "descricao": "Participa de acordo de acionistas?",
+      "unidade": "verdadeiro ou falso"
+    },
+    "residente_exterior": {
+      "descricao": "Reside no exterior? Só em `pj`",
+      "unidade": "verdadeiro ou falso"
+    },
+    "nacionalidade": {
+      "descricao": "Nacionalidade; só em `pj`",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF; só em `pj`",
+      "unidade": "texto"
+    },
+    "composicao_em": {
+      "descricao": "Data da composição do capital informada",
+      "unidade": "data (dia)"
+    },
+    "ultima_alteracao_em": {
+      "descricao": "Data da última alteração da participação",
+      "unidade": "data (dia)"
+    },
+    "acionistas_no_grupo": {
+      "descricao": "Quantos acionistas a linha soma (1 fora das pessoas somadas)",
+      "unidade": "número inteiro"
+    },
+    "conhecido_em": {
+      "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "referencia",
+    "versao",
+    "id_acionista"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": true,
+  "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+  "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+}

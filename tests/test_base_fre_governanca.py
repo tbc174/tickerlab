@@ -1,7 +1,8 @@
-"""FRE completo para a governança (série T, T3): capital social e empregados lidos de um recorte real
+"""FRE completo para a governança (série T, T3): capital social, empregados, acionistas e partes
+relacionadas lidos de um recorte real
 do FRE 2024 (cinco documentos: Lifemed, Estrela e Petrobras em duas versões, mais uma versão antiga
 sem linhas; nome e CPF de pessoa trocados por valores fictícios ainda no servidor), com a data de
-entrega de cada versão e sem olhar o futuro."""
+entrega de cada versão, sem olhar o futuro e com pessoa física só somada (ADR 0075)."""
 
 import io
 import json
@@ -32,7 +33,11 @@ CPF = re.compile(r"\d{3}\.\d{3}\.\d{3}-\d{2}")
 LEITORES = {
     "fre_capital_social": governanca.ler_capital_social,
     "fre_empregados": governanca.ler_empregados,
+    "fre_acionistas": governanca.ler_acionistas,
+    "fre_partes_relacionadas": governanca.ler_partes_relacionadas,
 }
+ACIONISTAS = "fre_cia_aberta_posicao_acionaria_2024.csv"
+PARTES = "fre_cia_aberta_transacao_parte_relacionada_2024.csv"
 
 
 def _csv(conteudo_do_zip: bytes, nome: str) -> tuple[list[str], list[list[str]]]:
@@ -195,6 +200,165 @@ def test_fre_sem_as_tabelas_da_vazio_com_as_colunas():
         assert list(vazia.columns) == list(colunas)
 
 
+# --- acionistas -------------------------------------------------------------------------------------
+def test_acionistas_empresa_com_nome_e_cnpj_e_pessoa_so_somada():
+    acionistas = governanca.ler_acionistas(RECORTE)
+    lifemed = acionistas[acionistas["id_documento"] == LIFEMED].set_index(
+        "id_acionista"
+    )
+    assert lifemed.loc["7596991", "acionista"] == "Kumla SP Participações S.A."
+    assert lifemed.loc["7596991", "cnpj_acionista"] == "20.918.377/0001-31"
+    assert lifemed.loc["7596991", "controlador"]
+    # a pessoa que controla a Kumla: uma linha somada, sem nada que a identifique
+    pessoa = lifemed.loc["pf:7596991:S:S"]
+    assert pessoa["tipo_acionista"] == "pf_somada"
+    assert pessoa["percentual_total"] == pytest.approx(99.875)
+    assert pessoa["acionistas_no_grupo"] == 1
+    assert pd.isna(pessoa["acionista"]) and pd.isna(pessoa["cnpj_acionista"])
+    assert pd.isna(pessoa["uf"]) and pd.isna(pessoa["nacionalidade"])
+    assert set(acionistas["tipo_acionista"]) == {
+        "pj",
+        "pf_somada",
+        "outros",
+        "tesouraria",
+    }
+    petrobras = acionistas[acionistas["id_documento"] == PETROBRAS].set_index(
+        "id_acionista"
+    )
+    assert pd.isna(
+        petrobras.loc["7685020", "cnpj_acionista"]
+    )  # BlackRock: CNPJ só com zeros
+    assert petrobras.loc["7685033", "percentual_total"] == pytest.approx(
+        52.678
+    )  # "Outros"
+
+
+def test_pessoas_do_mesmo_grupo_viram_uma_linha_e_quem_e_acionista_de_pessoa_perde_o_id():
+    linhas = [
+        {**_documento(ESTRELA), "ID_Acionista": "1", "Acionista": "PESSOA FICTICIA A",
+         "Tipo_Pessoa_Acionista": "PF", "CPF_CNPJ_Acionista": "123.456.789-09",
+         "Quantidade_Total_Acoes_Circulacao": "100", "Percentual_Total_Acoes_Circulacao": "1.5",
+         "Acionista_Controlador": "N", "Participante_Acordo_Acionistas": "N",
+         "Representante_Legal": "REPRESENTANTE FICTICIA A"},
+        {**_documento(ESTRELA), "ID_Acionista": "2", "Acionista": "PESSOA FICTICIA B",
+         "Tipo_Pessoa_Acionista": "PJ", "CPF_CNPJ_Acionista": "98765432100",
+         "Quantidade_Total_Acoes_Circulacao": "50", "Percentual_Total_Acoes_Circulacao": "0.5",
+         "Acionista_Controlador": "N", "Participante_Acordo_Acionistas": "N"},
+        {**_documento(ESTRELA), "ID_Acionista": "3", "Acionista": "PESSOA FICTICIA C",
+         "Tipo_Pessoa_Acionista": "", "Percentual_Total_Acoes_Circulacao": "2",
+         "Acionista_Controlador": "N", "Participante_Acordo_Acionistas": "N"},
+        {**_documento(ESTRELA), "ID_Acionista": "4", "Acionista": "Holding Fictícia Ltda.",
+         "Tipo_Pessoa_Acionista": "PJ", "CPF_CNPJ_Acionista": "11.222.333/0001-81",
+         "ID_Acionista_Relacionado": "7657227", "Tipo_Pessoa_Acionista_Relacionado": "PF",
+         "CPF_CNPJ_Acionista_Relacionado": "123.456.789-09", "Percentual_Total_Acoes_Circulacao": "10",
+         "Acionista_Controlador": "N", "Participante_Acordo_Acionistas": "N"},
+    ]  # fmt: skip
+    acionistas = governanca.ler_acionistas(_acrescentar(RECORTE, ACIONISTAS, linhas))
+    estrela = acionistas[acionistas["id_documento"] == ESTRELA].set_index(
+        "id_acionista"
+    )
+    # PF declarada, "PJ" com CPF e sem tipo com nome de gente: as três somadas numa linha
+    somadas = estrela.loc["pf:raiz:N:N"]
+    assert somadas["acionistas_no_grupo"] == 3
+    assert somadas["percentual_total"] == pytest.approx(4.0)
+    assert somadas["acoes_total"] == 150
+    holding = estrela.loc["4"]
+    assert holding["acionista"] == "Holding Fictícia Ltda."
+    assert holding["tipo_relacionado"] == "PF"
+    assert pd.isna(holding["id_acionista_relacionado"])
+    assert pd.isna(holding["cnpj_acionista_relacionado"])
+    assert "REPRESENTANTE" not in acionistas.astype(str).to_string()
+
+
+def test_cpf_que_escapa_da_regra_para_a_carga():
+    for texto in ("Empresa Fictícia S.A. 123.456.789-09", "Empresa 12345678909"):
+        with pytest.raises(ValueError, match="CPF"):
+            governanca.conferir_sem_cpf(
+                pd.DataFrame({"acionista": [texto]}), ("acionista",)
+            )
+    empresa = pd.DataFrame(
+        {"acionista": ["Empresa Fictícia S.A."], "cnpj": ["11.222.333/0001-81"]}
+    )
+    assert governanca.conferir_sem_cpf(empresa, ("acionista", "cnpj")) is empresa
+
+
+@pytest.mark.parametrize(
+    ("nome", "empresa"),
+    [
+        ("Kumla SP Participações S.A.", True), ("Fundo BBI Financial I", True),
+        ("BlackRock Inc", True), ("União Federal", True), ("Banco do Brasil S.A.", True),
+        ("Editora Estrela Cultural Ltda", True), ("JOSE DA SILVA", False),
+        ("JOSE DA SILVA ME", False), ("MARIA SOUZA EIRELI", False),
+    ],
+)  # fmt: skip
+def test_nome_de_empresa(nome, empresa):
+    assert governanca.parece_empresa(nome) is empresa
+
+
+# --- partes relacionadas ----------------------------------------------------------------------------
+def test_partes_relacionadas_empresa_com_nome_e_pessoa_somada_por_relacao():
+    partes = governanca.ler_partes_relacionadas(RECORTE)
+    estrela = partes[partes["id_documento"] == ESTRELA]
+    assert set(estrela["relacao"]) == {"controlada"}
+    assert estrela["contraparte"].str.startswith(("Estrela", "Editora")).all()
+    assert estrela["transacoes"].eq(1).all()
+    lifemed = partes[partes["id_documento"] == LIFEMED].set_index("linha")
+    pessoas = lifemed.loc[
+        "pf:PF:controladora"
+    ]  # as duas pessoas controladoras, somadas
+    assert pessoas["transacoes"] == 2
+    assert pessoas["montante_envolvido"] == 19_200_000
+    assert pd.isna(pessoas["contraparte"]) and pd.isna(pessoas["data_transacao"])
+    assert (
+        lifemed.loc["3", "relacao"] == "acionista"
+    )  # o BNDES, sem tipo, fica com o nome
+    assert lifemed.loc["3", "taxa_de_juros"] == pytest.approx(7.34)
+    petrobras = partes[partes["id_documento"] == PETROBRAS]
+    assert set(petrobras["posicao_contratual"].dropna()) == {"credor", "devedor"}
+    assert petrobras["taxa_de_juros"].isna().any()  # "Meta atuarial", "N/A": vazio
+    assert (
+        len(partes) < 53 and partes["transacoes"].sum() == 53
+    )  # nenhuma transação some
+
+
+@pytest.mark.parametrize(
+    ("texto", "categoria"),
+    [
+        ("Sociedade sob controle comum", "controle_comum"),
+        ("Ambas são controladas pela Neoenergia", "controle_comum"),
+        ("Joint venture", "controle_conjunto"), ("Controladora", "controladora"),
+        ("Acionista controlador", "controladora"), ("Controlada Direta", "controlada"),
+        ("Coligada", "coligada"), ("Diretor estatutário", "administracao"),
+        ("Cônjuge de conselheiro", "administracao"), ("Filho do fundador", "familiar"),
+        ("Acionista", "acionista"), ("Fornecedor", "outra"), ("", "nao_informada"),
+    ],
+)  # fmt: skip
+def test_categoria_da_relacao(texto, categoria):
+    assert governanca.categoria_da_relacao(texto) == categoria
+
+
+def test_parte_pessoa_sem_tipo_e_cpf_no_documento_sao_somadas():
+    linhas = [
+        {**_documento(ESTRELA), "Parte_Relacionada": "PESSOA FICTICIA X", "Tipo_Pessoa": "",
+         "Relacao_Emissor": "Diretor", "Montante_Envolvido": "1000.00", "Taxa_Juros": "3,5%"},
+        {**_documento(ESTRELA), "Parte_Relacionada": "Outra Ficticia Ltda",
+         "Tipo_Pessoa": "PJ", "Documento_Parte_Relacionada": "123.456.789-09",
+         "Relacao_Emissor": "Diretor", "Montante_Envolvido": "500.00"},
+        {**_documento(ESTRELA), "Parte_Relacionada": "Fornecedora Fictícia S.A.",
+         "Tipo_Pessoa": "PJ", "Documento_Parte_Relacionada": "11.222.333/0001-81",
+         "Relacao_Emissor": "Controle comum", "Taxa_Juros": "3,5%", "Emprestimo_Divida": "S"},
+    ]  # fmt: skip
+    partes = governanca.ler_partes_relacionadas(_acrescentar(RECORTE, PARTES, linhas))
+    estrela = partes[partes["id_documento"] == ESTRELA].set_index("linha")
+    assert estrela.loc["pf:nao_informado:administracao", "montante_envolvido"] == 1000
+    assert estrela.loc["pf:PJ:administracao", "montante_envolvido"] == 500
+    empresa = estrela.loc["9"]
+    assert empresa["contraparte"] == "Fornecedora Fictícia S.A."
+    assert empresa["cnpj_contraparte"] == "11.222.333/0001-81"
+    assert empresa["taxa_de_juros"] == pytest.approx(3.5)
+    assert empresa["emprestimo"]
+
+
 # --- regras de toda tabela --------------------------------------------------------------------------
 @pytest.mark.parametrize("pasta", LEITORES)
 def test_nenhum_cpf_nem_nome_de_pessoa(pasta):
@@ -240,7 +404,7 @@ def ambiente(tmp_path, monkeypatch):
     return tmp_path / "acervo" / "base"
 
 
-def test_carga_grava_capital_e_empregados_com_manifesto(ambiente):
+def test_carga_grava_as_quatro_tabelas_com_manifesto(ambiente):
     assert carga.main(["--base", str(ambiente)]) == 0
     for pasta, ler in LEITORES.items():
         arquivo = ambiente / pasta / "2024.parquet"

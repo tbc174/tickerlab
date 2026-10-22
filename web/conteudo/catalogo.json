@@ -12,7 +12,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 55
+      "tabelas": 57
     },
     {
       "historico_desde": "2010-01-01",
@@ -274,7 +274,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 60
+      "tabelas": 62
     },
     {
       "chave": "credito_e_fidc",
@@ -1340,6 +1340,26 @@
       "tabela": "fre_empregados"
     },
     {
+      "atraso": null,
+      "frase": "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_acionistas"
+    },
+    {
+      "atraso": null,
+      "frase": "Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação, os montantes, a taxa e a posição da companhia.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_partes_relacionadas"
+    },
+    {
       "atraso": "Nenhum além das datas da própria oferta",
       "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo.",
       "frequencia": "Diária",
@@ -1854,6 +1874,6 @@
     "fontes": 24,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 90
+    "tabelas": 92
   }
 }
