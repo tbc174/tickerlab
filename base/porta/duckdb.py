@@ -19,6 +19,7 @@ Nada é copiado: cada view lê os Parquets vigentes da tabela no acervo (as vers
 
 import json
 import re
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -33,6 +34,9 @@ from base.rede.ligacoes import VIGENTE
 
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parents[2]
 APELIDOS = ("aconteceu_em", "publico_em", "coletado_em")
+# onde o DuckDB despeja o que não cabe na memória: sem isto ele usa `.tmp` na pasta atual, e o
+# usuário do contêiner da noite não escreve em `/app` ("Failed to create directory '.tmp'", 20 e 21/10)
+PASTA_TEMPORARIA = Path(tempfile.gettempdir()) / "tickerlab-duckdb"
 
 # tabela → arquivos dentro de `<acervo>/base` (o `onde` do dicionário diz o mesmo; um teste confere)
 ARQUIVOS: dict[str, str] = {
@@ -317,15 +321,20 @@ def conectar(
     conferidas: Mapping[str, str] = CONFERIDAS,
     contratos: Path = PASTA_DOS_CONTRATOS,
     extras: Mapping[str, pd.DataFrame] | None = None,
+    temporaria: Path | None = None,
 ) -> duckdb.DuckDBPyConnection:
     """Uma conexão do DuckDB na memória com as views da base em `pasta` (`<acervo>/base`).
 
     `memoria` ("2GB") e `threads` limitam o DuckDB (no VPS, constantes medidas; D10). `extras`:
-    tabelas que não moram no acervo (as do banco do app), como DataFrame.
+    tabelas que não moram no acervo (as do banco do app), como DataFrame. `temporaria`: pasta dos
+    arquivos temporários do DuckDB (padrão: a temporária do sistema, gravável de qualquer pasta atual).
     """
     con = duckdb.connect()
     try:
         con.execute("SET TimeZone = 'UTC'")
+        con.execute(
+            f"SET temp_directory = {_texto(str(temporaria or PASTA_TEMPORARIA))}"
+        )
         con.execute(
             "SET enable_progress_bar = false"
         )  # a barra encheria os logs da noite

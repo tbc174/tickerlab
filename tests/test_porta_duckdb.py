@@ -2,8 +2,10 @@
 vista (ADR 0077, itens 8 e 9; plano da rede, PR 4, tarefa 4.1, D9 e D12)."""
 
 import json
+import tempfile
 from dataclasses import replace
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -409,6 +411,31 @@ def test_memoria_e_threads(tmp_path):
     assert threads == (2,)
     assert fuso == ("UTC",)
     assert barra == (False,)
+
+
+def test_arquivos_temporarios_nao_dependem_da_pasta_atual(tmp_path, monkeypatch):
+    """Regressão de 20 e 21/10: na noite o DuckDB tentou criar `.tmp` na pasta atual (sem permissão)."""
+    atual = tmp_path / "atual"
+    atual.mkdir()
+    (atual / ".tmp").write_text("um arquivo no lugar da pasta: criar `.tmp` falharia")
+    monkeypatch.chdir(atual)
+    temporaria = tmp_path / "temporaria"
+    with conectar(tmp_path, memoria="200MB", threads=1, temporaria=temporaria) as con:
+        # ordena mais do que cabe na memória: o DuckDB precisa despejar em arquivo temporário
+        linhas = con.execute(
+            "SELECT count(*) FROM (SELECT i, md5(i::VARCHAR) AS h FROM range(12000000) t(i) ORDER BY h)"
+        ).fetchone()
+        pasta = con.execute("SELECT current_setting('temp_directory')").fetchone()
+    assert linhas == (12000000,)
+    assert pasta is not None and Path(pasta[0]) == temporaria
+    assert (atual / ".tmp").is_file()  # nada foi criado na pasta atual
+
+
+def test_pasta_temporaria_padrao_e_a_do_sistema(tmp_path):
+    with conectar(tmp_path) as con:
+        pasta = con.execute("SELECT current_setting('temp_directory')").fetchone()
+    assert pasta is not None
+    assert Path(pasta[0]) == Path(tempfile.gettempdir()) / "tickerlab-duckdb"
 
 
 # --- o mapa das tabelas: cada tabela do dicionário tem lugar na porta ou um motivo para não ter ---
