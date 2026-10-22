@@ -4,6 +4,7 @@
     <NomeRazaoSocialCompanhiaAberta>EMPRESA DE TESTE S.A.</NomeRazaoSocialCompanhiaAberta>
     <NumeroCnpjCompanhiaAberta>08493364000162</NumeroCnpjCompanhiaAberta>
   </CompanhiaAberta>
+  <CodigoTipoDocumento>4</CodigoTipoDocumento>
   <DataReferenciaDocumento>2015-03-31T00:00:00</DataReferenciaDocumento>
   <NumeroVersaoDocumento>2</NumeroVersaoDocumento>
   <CodigoEscalaMoeda>2</CodigoEscalaMoeda>

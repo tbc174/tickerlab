@@ -14,8 +14,9 @@ from base.enet_antigo import (
     FormatoNaoLido,
     eh_pacote_enxuto,
     enxugar,
-    ler_dfp_antigo,
+    ler_documento_antigo,
     tem_dfp_antigo,
+    tem_itr_antigo,
 )
 from base.enet_coleta import (
     ler_documento_guardado,
@@ -26,17 +27,20 @@ from tests.test_base_enet import _dfp
 from tests.test_base_enet_coleta import _pacote
 
 PASTA = Path(__file__).parent / "arquivos" / "enet_antigo"
+PASTA_ITR = Path(__file__).parent / "arquivos" / "enet_antigo_itr"
 
 
 def _dfp_interno(
-    sem: str | None = None, troca: dict[str, bytes] | None = None
+    sem: str | None = None,
+    troca: dict[str, bytes] | None = None,
+    pasta: Path = PASTA,
 ) -> bytes:
     saida = io.BytesIO()
     with zipfile.ZipFile(saida, "w") as z:
         for nome in (*ARQUIVOS_GUARDADOS, "ResponsavelEsclarecimentoDuvidas.xml"):
             if nome == sem:
                 continue
-            fonte = PASTA / nome
+            fonte = pasta / nome
             conteudo = (troca or {}).get(nome) or (
                 fonte.read_bytes()
                 if fonte.exists()
@@ -44,6 +48,10 @@ def _dfp_interno(
             )
             z.writestr(nome, conteudo)
     return saida.getvalue()
+
+
+def _pacote_itr(troca: dict[str, bytes] | None = None) -> bytes:
+    return _pacote_antigo(_dfp_interno(troca=troca, pasta=PASTA_ITR), "124062.itr")
 
 
 def _pacote_antigo(interno: bytes | None = None, nome: str = "124061.dfp") -> bytes:
@@ -55,7 +63,7 @@ def _pacote_antigo(interno: bytes | None = None, nome: str = "124061.dfp") -> by
 
 
 def test_pacote_antigo_da_os_totais_que_o_xml_mostra():
-    documento = ler_dfp_antigo(enxugar(_pacote_antigo()))
+    documento = ler_documento_antigo(enxugar(_pacote_antigo()))
     assert (documento.documento, documento.versao) == ("DFP", 2)
     assert documento.cnpj == "08.493.364/0001-62"
     assert documento.motivo == "Alterar o DFC"
@@ -65,12 +73,12 @@ def test_pacote_antigo_da_os_totais_que_o_xml_mostra():
     por_ordem = ativo.set_index("ordem")["valor"]
     assert por_ordem["ultimo"] == 85832.5 * 1000  # escala 2 = mil, ponto decimal real
     assert por_ordem["penultimo"] == 70000.0 * 1000
-    assert set(contas["demonstracao"]) == {"BPA", "BPP", "DRE"}  # a DMPL fica de fora
-    assert documento.dmpl.empty
+    assert set(contas["demonstracao"]) == {"BPA", "BPP", "DRE"}  # a DMPL vai à parte
+    assert not documento.dmpl.empty
 
 
 def test_datas_dos_exercicios_vem_do_arquivo_de_periodos():
-    contas = ler_dfp_antigo(enxugar(_pacote_antigo())).contas
+    contas = ler_documento_antigo(enxugar(_pacote_antigo())).contas
     balanco = contas[contas["demonstracao"] == "BPA"].set_index("ordem")
     assert balanco.loc["ultimo", "fim"] == pd.Timestamp("2015-03-31")
     assert balanco.loc["penultimo", "fim"] == pd.Timestamp("2014-03-31")
@@ -81,7 +89,7 @@ def test_datas_dos_exercicios_vem_do_arquivo_de_periodos():
 
 
 def test_sem_olhar_o_futuro_nenhuma_data_passa_da_referencia():
-    documento = ler_dfp_antigo(enxugar(_pacote_antigo()))
+    documento = ler_documento_antigo(enxugar(_pacote_antigo()))
     assert documento.contas["fim"].max() <= documento.referencia
 
 
@@ -90,7 +98,7 @@ def test_periodos_que_nao_batem_com_a_data_do_documento_sao_recusados():
     trocado = periodos.replace(b"2015-03-31", b"2015-06-30")
     pacote = _pacote_antigo(_dfp_interno(troca={ARQUIVOS_GUARDADOS[1]: trocado}))
     with pytest.raises(FormatoNaoLido, match="períodos"):
-        ler_dfp_antigo(enxugar(pacote))
+        ler_documento_antigo(enxugar(pacote))
 
 
 def test_enxugar_tira_o_pdf_e_os_dados_de_quem_entregou_e_e_deterministico():
@@ -136,9 +144,153 @@ def test_formato_desconhecido_da_erro_claro_e_continua_sendo_value_error():
         xml_do_pacote(saida.getvalue())
 
 
-def test_itr_antigo_tem_mensagem_propria():
-    saida = io.BytesIO()
-    with zipfile.ZipFile(saida, "w") as z:
-        z.writestr("555.itr", b"zip")
-    with pytest.raises(FormatoNaoLido, match=r"\.itr"):
-        original_do_pacote(saida.getvalue())
+def _texto_itr(nome: str) -> str:
+    return (PASTA_ITR / nome).read_text(encoding="utf8")
+
+
+def test_dmpl_do_dfp_antigo_ganha_o_nome_das_colunas_pela_posicao():
+    dmpl = ler_documento_antigo(enxugar(_pacote_antigo())).dmpl
+    ind = dmpl[dmpl["grupo"] == "ind"]
+    ultimo = ind[ind["ordem"] == "ultimo"].set_index("coluna")["valor"]
+    assert ultimo["capital_social"] == 203364 * 1000
+    assert ultimo["reservas_de_lucro"] == 4164 * 1000
+    assert ultimo["lucros_acumulados"] == -81818 * 1000
+    assert ultimo["patrimonio_liquido"] == 119919 * 1000
+    assert (
+        "patrimonio_liquido_consolidado" not in ultimo
+    )  # o individual tem seis colunas
+    assert set(ind["fim"]) == {pd.Timestamp("2015-03-31"), pd.Timestamp("2014-03-31")}
+    assert set(ind["inicio"]) == {
+        pd.Timestamp("2014-04-01"),
+        pd.Timestamp("2013-04-01"),
+    }
+    assert (dmpl["demonstracao"] == "DMPL").all()
+
+
+def test_dmpl_consolidada_traz_as_oito_colunas():
+    dmpl = ler_documento_antigo(enxugar(_pacote_antigo())).dmpl
+    con = dmpl[dmpl["grupo"] == "con"].set_index("coluna")["valor"]
+    assert con["reservas_de_capital"] == 4164 * 1000
+    assert con["nao_controladores"] == 10 * 1000
+    assert con["patrimonio_liquido_consolidado"] == 119929 * 1000
+    assert len(con) == 8
+
+
+def test_dmpl_sem_periodo_ou_do_antepenultimo_fica_de_fora():
+    dmpl = ler_documento_antigo(enxugar(_pacote_antigo())).dmpl
+    assert 7 * 1000 not in set(dmpl["valor"])  # o bloco de período 0
+    assert 1 * 1000 not in set(dmpl["valor"])  # o de período 3 (antepenúltimo)
+
+
+def test_itr_antigo_e_lido_e_marcado_como_itr():
+    documento = ler_documento_antigo(enxugar(_pacote_itr()))
+    assert (documento.documento, documento.versao) == ("ITR", 1)
+    assert documento.cnpj == "00.070.698/0001-11"
+    assert documento.referencia == pd.Timestamp("2016-06-30")
+
+
+def test_itr_balanco_tem_o_trimestre_e_o_fim_do_ano_anterior():
+    contas = ler_documento_antigo(enxugar(_pacote_itr())).contas
+    ativo = contas[contas["demonstracao"] == "BPA"].set_index("ordem")
+    assert ativo.loc["ultimo", "valor"] == 1000.5 * 1000
+    assert ativo.loc["ultimo", "fim"] == pd.Timestamp("2016-06-30")
+    assert ativo.loc["penultimo", "valor"] == 900 * 1000
+    assert ativo.loc["penultimo", "fim"] == pd.Timestamp("2015-12-31")
+    assert ativo["inicio"].isna().all()
+
+
+def test_itr_resultado_separa_trimestre_e_acumulado_com_as_datas_certas():
+    contas = ler_documento_antigo(enxugar(_pacote_itr())).contas
+    receita = contas[(contas["demonstracao"] == "DRE") & (contas["conta"] == "3.01")]
+    por_periodo = {
+        (r.ordem, str(r.inicio.date()), str(r.fim.date())): r.valor
+        for r in receita.itertuples()
+    }
+    assert por_periodo == {
+        ("ultimo", "2016-04-01", "2016-06-30"): 300 * 1000,
+        ("ultimo", "2016-01-01", "2016-06-30"): 700 * 1000,
+        ("penultimo", "2015-04-01", "2015-06-30"): 250 * 1000,
+        ("penultimo", "2015-01-01", "2015-06-30"): 650 * 1000,
+    }
+
+
+def test_itr_fluxo_de_caixa_so_tem_o_acumulado():
+    contas = ler_documento_antigo(enxugar(_pacote_itr())).contas
+    fluxo = contas[contas["demonstracao"] == "DFC_MD"]
+    assert sorted(fluxo["valor"]) == [40 * 1000, 50 * 1000]  # sem linha de trimestre
+
+
+def test_itr_sem_olhar_o_futuro_nenhuma_data_passa_da_referencia():
+    documento = ler_documento_antigo(enxugar(_pacote_itr()))
+    assert documento.contas["fim"].max() <= documento.referencia
+    assert documento.dmpl["fim"].max() <= documento.referencia
+
+
+def test_itr_dmpl_usa_o_periodo_do_bloco_e_as_posicoes_fixas():
+    dmpl = ler_documento_antigo(enxugar(_pacote_itr())).dmpl
+    ind = dmpl[dmpl["grupo"] == "ind"]
+    atual = ind[ind["ordem"] == "ultimo"].set_index("coluna")["valor"]
+    anterior = ind[ind["ordem"] == "penultimo"].set_index("coluna")["valor"]
+    assert atual["patrimonio_liquido"] == 95 * 1000
+    assert anterior["patrimonio_liquido"] == 75 * 1000
+    assert set(ind["inicio"]) == {
+        pd.Timestamp("2016-01-01"),
+        pd.Timestamp("2015-01-01"),
+    }
+    con = dmpl[(dmpl["grupo"] == "con") & (dmpl["ordem"] == "ultimo")]
+    assert con.set_index("coluna")["valor"]["patrimonio_liquido_consolidado"] == 115_000
+
+
+def test_primeiro_trimestre_vale_a_coluna_que_a_empresa_preencheu():
+    # no 1º trimestre o trimestre e o acumulado são o mesmo período; a empresa preenche um só
+    datas = (
+        _texto_itr("PeriodoDemonstracaoFinanceira.xml")
+        .replace("2016-04-01", "2016-01-01")
+        .replace("2016-06-30", "2016-03-31")
+        .replace("2015-04-01", "2015-01-01")
+        .replace("2015-06-30", "2015-03-31")
+    )
+    valores = (
+        _texto_itr("InfoFinaDFin.xml")
+        .replace("<ValorConta2>300</ValorConta2>", "<ValorConta2>0</ValorConta2>")
+        .replace("<ValorConta2>-100</ValorConta2>", "<ValorConta2>0</ValorConta2>")
+        .replace("<ValorConta5>250</ValorConta5>", "<ValorConta5>0</ValorConta5>")
+    )
+    pacote = _pacote_itr(
+        {
+            "Documento.xml": _texto_itr("Documento.xml")
+            .replace("2016-06-30", "2016-03-31")
+            .encode(),
+            ARQUIVOS_GUARDADOS[1]: datas.encode(),
+            ARQUIVOS_GUARDADOS[2]: valores.encode(),
+        }
+    )
+    contas = ler_documento_antigo(enxugar(pacote)).contas
+    receita = contas[(contas["demonstracao"] == "DRE") & (contas["conta"] == "3.01")]
+    assert sorted(receita["valor"]) == [650 * 1000, 700 * 1000]
+
+
+def test_dois_valores_diferentes_para_o_mesmo_periodo_sao_recusados():
+    datas = _texto_itr("PeriodoDemonstracaoFinanceira.xml").replace(
+        "2016-04-01", "2016-01-01"
+    )  # o trimestre vira o acumulado, mas a empresa preencheu os dois
+    pacote = _pacote_itr({ARQUIVOS_GUARDADOS[1]: datas.encode()})
+    with pytest.raises(FormatoNaoLido, match="valores diferentes"):
+        ler_documento_antigo(enxugar(pacote))
+
+
+def test_documento_de_tipo_desconhecido_e_recusado():
+    documento = _texto_itr("Documento.xml").replace(
+        "<CodigoTipoDocumento>3<", "<CodigoTipoDocumento>9<"
+    )
+    pacote = _pacote_itr({"Documento.xml": documento.encode()})
+    with pytest.raises(FormatoNaoLido, match="tipo de documento"):
+        ler_documento_antigo(enxugar(pacote))
+
+
+def test_pacote_com_itr_antigo_e_guardado_como_zip_enxuto():
+    pacote = _pacote_itr()
+    assert tem_itr_antigo(pacote) and not tem_dfp_antigo(pacote)
+    conteudo, extensao = original_do_pacote(pacote)
+    assert extensao == ".zip" and eh_pacote_enxuto(conteudo)
+    assert ler_documento_guardado(conteudo).documento == "ITR"
