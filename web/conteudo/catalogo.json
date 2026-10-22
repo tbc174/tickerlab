@@ -15,6 +15,17 @@
       "tabelas": 57
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Receita Federal",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 7
+    },
+    {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "modulos": [
@@ -227,17 +238,6 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Receita Federal",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
       "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
       "modulos": [
         "mercado_e_empresas"
@@ -282,6 +282,11 @@
       "tabelas": 11
     },
     {
+      "chave": "governo_e_sancoes",
+      "nome": "Governo e sanções",
+      "tabelas": 8
+    },
+    {
       "chave": "macro",
       "nome": "Macro",
       "tabelas": 8
@@ -295,11 +300,6 @@
       "chave": "rede",
       "nome": "Rede de entidades",
       "tabelas": 3
-    },
-    {
-      "chave": "governo_e_sancoes",
-      "nome": "Governo e sanções",
-      "tabelas": 2
     }
   ],
   "registro_de_fontes": [
@@ -1547,6 +1547,66 @@
       "tabela": "cnpj_situacao_especial"
     },
     {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "frase": "Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação cadastral, datas, atividade (CNAE), endereço e situação especial.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_estabelecimentos"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "frase": "O que mudou de um mês para o outro em cnpj_estabelecimentos: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_estabelecimentos_mudancas"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa do CNPJ aberto da Receita, o retrato mais recente, com as datas de opção e de exclusão.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_simples"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "frase": "O que mudou de um mês para o outro em cnpj_simples: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_simples_mudancas"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "frase": "Quadro de sócios e administradores das empresas do CNPJ aberto da Receita, o retrato mais recente.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_qsa"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "frase": "O que mudou de um mês para o outro em cnpj_qsa: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_qsa_mudancas"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
       "frequencia": "Trimestral",
@@ -1881,6 +1941,6 @@
     "fontes": 24,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 92
+    "tabelas": 98
   }
 }
