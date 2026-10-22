@@ -5,7 +5,9 @@ cada repartição compara-se o que já estava (`vigente/<tabela>/<xx>.parquet`) 
 que mudou (`mudancas/<tabela>/<AAAA-MM>.parquet`, `receita_diff`). O primeiro mês vira o retrato inicial.
 
 Os nomes dos sócios pessoa física vão só para `<restrita>/pessoas/<xx>.parquet` (o vigente do mês; quem
-saiu sai dali), nunca para `vigente/` nem para `mudancas/`, onde o sócio é só o `id_pessoa`. Tudo do mês é
+saiu sai dali), nunca para `vigente/` nem para `mudancas/`, onde o sócio é só o `id_pessoa`. Quem se opôs
+(`<restrita>/pessoas_oposicoes.parquet`) não volta: fica fora de `pessoas` e com o id vazio no QSA, como a
+lápide deixou (`base.pessoas.oposicoes`). Tudo do mês é
 montado numa pasta de trabalho e só então trocado pelo vigente: queda no meio não deixa mês pela metade.
 O `manifesto.json` guarda, por mês, o SHA-256 de cada ZIP lido.
 """
@@ -18,7 +20,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from base.pessoas.tabelas import montar_pessoas
+from base.parquet import sem_os_ids
+from base.pessoas.oposicoes import ids_opostos
+from base.pessoas.tabelas import montar_pessoas, sem_opostos
 from base.receita_diff import CHAVE_DO_QSA, diff, qsa_para_diff
 from base.receita_retrato import ParteDoQsa
 
@@ -145,6 +149,12 @@ def _trocar(novo: Path, atual: Path) -> None:
     novo.rename(atual)
 
 
+def _sem_os_opostos(socios: pd.DataFrame, opostos: set[str]) -> pd.DataFrame:
+    """O QSA do mês com o id de quem se opôs vazio, igual ao que a lápide deixou no vigente."""
+    sem = sem_os_ids(socios, opostos) if opostos else None
+    return socios if sem is None else sem
+
+
 def processar_mes(
     mes: str,
     pasta: Path,
@@ -166,17 +176,19 @@ def processar_mes(
     try:
         _repartir(estabelecimentos, "cnpj", trabalho / "estabelecimentos")
         _repartir(simples, "cnpj_basico", trabalho / "simples")
+        opostos = ids_opostos(restrita)
         for parte in qsa:
             if parte.socios.empty:
                 continue
             # as pessoas primeiro: CPF inteiro quebra aqui, antes de qualquer coisa ser gravada
-            pessoas = montar_pessoas(parte.pessoas_brutas, FONTE, chave_de_pessoas)
+            pessoas = sem_opostos(
+                montar_pessoas(parte.pessoas_brutas, FONTE, chave_de_pessoas), opostos
+            )
             if len(pessoas):
                 _repartir([pessoas], "cnpj_basico", trabalho_restrito / "pessoas")
+            socios = qsa_para_diff(parte, chave_de_pessoas)
             _repartir(
-                [qsa_para_diff(parte, chave_de_pessoas)],
-                "cnpj_basico",
-                trabalho / "qsa",
+                [_sem_os_opostos(socios, opostos)], "cnpj_basico", trabalho / "qsa"
             )
         vigente = pasta / "vigente"
         mudancas = {

@@ -323,7 +323,7 @@ def versoes_da_tabela(destino: Path) -> list[Path]:
     return [vigente, *guardadas] if vigente.exists() else guardadas
 
 
-def _sem_os_ids(tabela: pd.DataFrame, ids: set[str]) -> pd.DataFrame | None:
+def sem_os_ids(tabela: pd.DataFrame, ids: set[str]) -> pd.DataFrame | None:
     """A tabela com cada valor de `ids` trocado por vazio; None se nenhum aparece."""
     textos = [
         c
@@ -351,7 +351,7 @@ def regravar_por_lapide(destino: Path, ids_pessoa: set[str], dia: str) -> list[P
     """
     regravadas = []
     for arquivo in versoes_da_tabela(destino) if ids_pessoa else []:
-        tabela = _sem_os_ids(ler_tabela(arquivo), set(ids_pessoa))
+        tabela = sem_os_ids(ler_tabela(arquivo), set(ids_pessoa))
         if tabela is None:
             continue
         gravar_atomico(
