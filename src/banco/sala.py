@@ -27,6 +27,7 @@ from src.banco.modelo import (
     contradicoes_da_sala,
     documentos_da_sala,
     evidencias_da_sala,
+    garantias_da_operacao,
     operacoes,
 )
 from src.sala import retencao
@@ -471,6 +472,24 @@ def _soltar_do_checklist(
     )
 
 
+def _soltar_das_garantias(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    operacao_id: uuid.UUID,
+    documento_id: uuid.UUID,
+) -> None:
+    # a garantia fica (é dado da pessoa); só perde o laudo e a página citada
+    conexao.execute(
+        sa.update(garantias_da_operacao)
+        .where(
+            garantias_da_operacao.c.laudo_id == documento_id,
+            garantias_da_operacao.c.operacao_id == operacao_id,
+            garantias_da_operacao.c.usuario_id == usuario_id,
+        )
+        .values(laudo_id=None, laudo_pagina=None, atualizada_em=sa.func.now())
+    )
+
+
 def apagar_documento(
     conexao: sa.Connection,
     *,
@@ -482,6 +501,7 @@ def apagar_documento(
     if _buscar_documento(conexao, usuario_id, operacao_id, documento_id) is None:
         return False
     _soltar_do_checklist(conexao, usuario_id, operacao_id, documento_id)
+    _soltar_das_garantias(conexao, usuario_id, operacao_id, documento_id)
     conexao.execute(
         sa.delete(documentos_da_sala).where(
             _do_documento(usuario_id, operacao_id, documento_id)
