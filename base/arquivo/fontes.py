@@ -122,6 +122,18 @@ TERMOS = {
     # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
     "termos-cecafe-robots": CECAFE_ROBOTS,  # proíbe PDF e /wp-*/ (lido em 18/10/2026)
+    # páginas de termos lidas na auditoria N0 de 21/10/2026 (a Kraken mudou os dela em 19/10 sem ninguém ver)
+    "termos-kraken": "https://www.kraken.com/legal/global-terms",
+    "termos-yahoo": "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
+    "termos-gdelt": "https://www.gdeltproject.org/about.html",
+    "termos-gleif": "https://www.gleif.org/en/meta/lei-data-terms-of-use",
+    "termos-faostat": "https://www.fao.org/contact-us/terms/db-terms-of-use/en/",
+    "termos-chirps": "https://www.chc.ucsb.edu/data/chirps",
+    "termos-mapbiomas": "https://sites.mapbiomas.org/conheca-o-mapbiomas/termos-de-uso/",
+    "termos-iex": "https://iextrading.com/iex-historical-data-terms/",
+    "termos-banco-mundial": "https://www.worldbank.org/ext/en/legal/terms-conditions",
+    # FMI (Akamai: 403 "Access Denied") e CCEE (403): não abrem com o nosso agente; sem vigia, sem contornar
+    # (linhas na fila única)
 }
 # a ficha do CNPJ no dados.gov.br declara a licença CC BY em que a base do CNPJ se apoia (ADR 0106);
 # a rota pública da ficha pede a chave do portal (`DADOS_GOV_BR_CHAVE`, no `.env` do servidor)

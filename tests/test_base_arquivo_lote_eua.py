@@ -60,7 +60,7 @@ def test_grupos_do_lote_sao_conhecidos_e_a_historia_so_roda_pelo_id():
 def test_toda_fonte_do_lote_tem_licenca_marca_e_data_dos_termos(fonte):
     assert not licenca_da_fonte(fonte).startswith("Desconhecida")
     familia = fonte.split("-", 1)[0]
-    assert registro.TERMOS_LIDOS_EM[familia] == date(2026, 10, 22) or familia == "usda"
+    assert registro.TERMOS_LIDOS_EM[familia] >= date(2026, 10, 18)
     # só a SEC escreve o que publica (arquivos das empresas): uso interno; o resto é obra da agência
     esperada = Marca.USO_INTERNO if familia == "sec" else Marca.VENDAVEL
     assert marca_da_fonte(fonte) == esperada

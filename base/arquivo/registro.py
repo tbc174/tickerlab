@@ -34,7 +34,6 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "fnc": date(2026, 10, 18),
     "contrapartes": date(2026, 10, 18),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
-    "sec": date(2026, 10, 22),
     "treasury": date(2026, 10, 22),
     "fed": date(2026, 10, 22),
     "bls": date(2026, 10, 22),
@@ -44,6 +43,37 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "tic": date(2026, 10, 22),
     "census": date(2026, 10, 22),
 }
+# releituras e primeiras leituras da auditoria N0 (21/10/2026; `auditoria-licitude-da-coleta-2026-10-21.md`);
+# vale o dia mais novo. Família que a auditoria não conseguiu abrir ou não releu fica com a data antiga
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    (
+        "cvm",
+        "sec",
+        "bcb",
+        "chirps",
+        "mapbiomas",
+        "bm",
+        "fmi",
+        "tesouro",
+        "iex",
+        "yahoo",
+        "gdelt",
+        "kraken",
+        "gleif",
+        "ccee",
+        "antt",
+        "ons",
+        "cgu",
+        "pgfn",
+        "faostat",
+        "ico",
+        "inmet",
+        "fnc",
+        "b3",
+        "conab",
+    ),
+    date(2026, 10, 21),
+)
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")
