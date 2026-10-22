@@ -650,6 +650,16 @@ def reativar_direito(
     return mudou
 
 
+def _vigente(organizacao_id: uuid.UUID, dia: date) -> list[sa.ColumnElement[bool]]:
+    tabela = direitos_da_organizacao
+    return [
+        tabela.c.organizacao_id == organizacao_id,
+        tabela.c.suspenso_em.is_(None),
+        tabela.c.vigente_desde <= dia,
+        sa.or_(tabela.c.vigente_ate.is_(None), tabela.c.vigente_ate >= dia),
+    ]
+
+
 def direitos_vigentes(
     conexao: sa.Connection, organizacao_id: uuid.UUID, dia: date
 ) -> list[Direito]:
@@ -657,15 +667,31 @@ def direitos_vigentes(
     tabela = direitos_da_organizacao
     linhas = conexao.execute(
         sa.select(tabela)
-        .where(
-            tabela.c.organizacao_id == organizacao_id,
-            tabela.c.suspenso_em.is_(None),
-            tabela.c.vigente_desde <= dia,
-            sa.or_(tabela.c.vigente_ate.is_(None), tabela.c.vigente_ate >= dia),
-        )
+        .where(*_vigente(organizacao_id, dia))
         .order_by(tabela.c.conjunto, tabela.c.finalidade)
     )
     return [_direito(linha) for linha in linhas]
+
+
+def contrato_permite(
+    conexao: sa.Connection,
+    organizacao_id: uuid.UUID,
+    *,
+    conjunto: str,
+    finalidade: str,
+    dia: date,
+) -> bool:
+    """O contrato da organização tem linha vigente no dia para este conjunto e finalidade?"""
+    tabela = direitos_da_organizacao
+    return conexao.execute(
+        sa.select(
+            sa.exists().where(
+                *_vigente(organizacao_id, dia),
+                tabela.c.conjunto == conjunto,
+                tabela.c.finalidade == finalidade,
+            )
+        )
+    ).scalar_one()
 
 
 # ---------------------------------------------------------------- consumo (D10)
