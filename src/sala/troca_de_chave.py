@@ -6,7 +6,10 @@ O roteiro, em três passos (o script `scripts/trocar_chave_da_sala.py` roda cada
 2. **Reembrulhar** (`reembrulhar`): a chave de cada operação é aberta pela versão que a embrulha e
    embrulhada de novo pela mais nova. Não recifra nenhum arquivo.
 3. **Retirar** a versão antiga da variável só quando `pode_retirar` disser que nenhuma operação
-   a usa.
+   a usa. Atenção: os backups antigos (sala, 14 dias; geral, meses) ainda guardam as chaves
+   embrulhadas pela versão antiga. Retire-a do servidor, mas guarde a cópia dela na pasta de
+   segredos do Tiago até o último backup que a usa vencer; sem ela, restaurar esse backup deixa os
+   arquivos ilegíveis.
 
 Garantias: a chave nova é conferida (abre e dá a mesma chave) antes de gravar; a chave embrulhada e
 a versão mudam no mesmo `UPDATE`, então uma operação nunca fica sem chave válida; se alguma versão
