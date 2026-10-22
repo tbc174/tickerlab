@@ -59,7 +59,7 @@ from src.sala.documentos import apagar_arquivos_da_conta
 # só no quadro de sócios da empresa consultada (ADR 0106; portão com quatro condições)
 # Versão 11: a sala de dados (B-20, D13): nos dados de terceiros dentro dos documentos o cliente
 # é o controlador e o TickerLab é o operador; prazos, apagamento, cópias de 14 dias, incidente
-VERSAO_DOS_TERMOS = "2026-10-21.11"
+VERSAO_DOS_TERMOS = "2026-10-22.12"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
