@@ -1268,3 +1268,125 @@ sa.Index(
     garantias_da_operacao.c.operacao_id,
     garantias_da_operacao.c.usuario_id,
 )
+
+
+# API externa (N7, ADR 0108): quem entra. A organização é o cliente PJ, sem dado de pessoa (o contato
+# fica no CRM); a chave guarda só o prefixo (não é segredo) e o SHA-256 da chave inteira. Nada aqui
+# se apaga para suspender: suspender é preencher `suspensa_em` / `suspenso_em`.
+PLANOS_DA_API = ("piloto",)
+# `treino` é o modelo próprio do TickerLab: nunca vai para uma organização (plano N7, D6)
+FINALIDADES_DA_ORGANIZACAO = ("analise", "credito")
+CANAL_DA_CHAVE = "api_externa"  # a chave nunca abre `api_interna` (ADR 0108, linha 117)
+MOTIVOS_DA_SUSPENSAO = ("contrato", "pagamento", "abuso", "pedido_do_cliente", "fonte")
+TAMANHO_MAXIMO_DO_NOME_DA_ORGANIZACAO = 120
+TAMANHO_MAXIMO_DO_CONJUNTO = 80
+
+
+def _quem_fez(nome: str) -> sa.Column:
+    # o admin que fez; a linha fica quando a conta dele é apagada
+    return sa.Column(nome, sa.Uuid, sa.ForeignKey("usuarios.id", ondelete="SET NULL"))
+
+
+organizacoes = sa.Table(
+    "organizacoes",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("nome", sa.String(TAMANHO_MAXIMO_DO_NOME_DA_ORGANIZACAO), nullable=False),
+    sa.Column("cnpj", sa.String(14), unique=True),
+    sa.Column("plano_da_api", sa.String(20), nullable=False, server_default="piloto"),
+    sa.Column("suspensa_em", sa.DateTime(timezone=True)),
+    sa.Column("motivo_da_suspensao", sa.String(30)),
+    _momento("criada_em"),
+    _quem_fez("criada_por"),
+    sa.CheckConstraint(_entre("plano_da_api", PLANOS_DA_API), name="plano_da_api"),
+    sa.CheckConstraint(
+        "motivo_da_suspensao IS NULL OR "
+        + _entre("motivo_da_suspensao", MOTIVOS_DA_SUSPENSAO),
+        name="motivo_da_suspensao",
+    ),
+    sa.CheckConstraint(
+        "(suspensa_em IS NULL) = (motivo_da_suspensao IS NULL)", name="suspensao"
+    ),
+)
+
+chaves_da_api = sa.Table(
+    "chaves_da_api",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column(
+        "organizacao_id",
+        sa.Uuid,
+        sa.ForeignKey("organizacoes.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column("prefixo", sa.String(8), nullable=False, unique=True),
+    sa.Column("hash_da_chave", sa.String(64), nullable=False, unique=True),
+    _momento("criada_em"),
+    _quem_fez("criada_por"),
+    # preenchido na rotação: a chave antiga vale até aqui
+    sa.Column("expira_em", sa.DateTime(timezone=True)),
+    sa.Column("revogada_em", sa.DateTime(timezone=True)),
+    sa.Column("ultimo_uso", sa.DateTime(timezone=True)),
+    # para o consumo apontar para (chave, organização) e o banco recusar a chave de outra
+    sa.UniqueConstraint("id", "organizacao_id", name="uq_chaves_da_api_organizacao"),
+)
+sa.Index("ix_chaves_da_api_organizacao_id", chaves_da_api.c.organizacao_id)
+
+direitos_da_organizacao = sa.Table(
+    "direitos_da_organizacao",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column(
+        "organizacao_id",
+        sa.Uuid,
+        sa.ForeignKey("organizacoes.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column("conjunto", sa.String(TAMANHO_MAXIMO_DO_CONJUNTO), nullable=False),
+    sa.Column("finalidade", sa.String(12), nullable=False),
+    sa.Column("vigente_desde", sa.Date, nullable=False),
+    sa.Column("vigente_ate", sa.Date),
+    sa.Column("suspenso_em", sa.DateTime(timezone=True)),
+    _momento("criado_em"),
+    _quem_fez("criado_por"),
+    sa.UniqueConstraint(
+        "organizacao_id",
+        "conjunto",
+        "finalidade",
+        name="uq_direitos_da_organizacao_conjunto",
+    ),
+    sa.CheckConstraint(
+        _entre("finalidade", FINALIDADES_DA_ORGANIZACAO), name="finalidade"
+    ),
+    sa.CheckConstraint(
+        "vigente_ate IS NULL OR vigente_ate >= vigente_desde", name="vigencia"
+    ),
+)
+
+# Medição agregada por dia (D10): sem IP, sem o que foi buscado, sem resposta
+consumo_da_api = sa.Table(
+    "consumo_da_api",
+    metadata,
+    sa.Column("organizacao_id", sa.Uuid, nullable=False),
+    sa.Column("chave_id", sa.Uuid, nullable=False),
+    sa.Column("dia", sa.Date, nullable=False),
+    sa.Column("canal", sa.String(12), nullable=False),
+    sa.Column("finalidade", sa.String(12), nullable=False),
+    sa.Column("conjunto", sa.String(TAMANHO_MAXIMO_DO_CONJUNTO), nullable=False),
+    sa.Column("pedidos", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("linhas", sa.BigInteger, nullable=False, server_default="0"),
+    sa.Column("negados", sa.Integer, nullable=False, server_default="0"),
+    sa.PrimaryKeyConstraint(
+        "organizacao_id", "chave_id", "dia", "canal", "finalidade", "conjunto"
+    ),
+    sa.ForeignKeyConstraint(
+        ["chave_id", "organizacao_id"],
+        ["chaves_da_api.id", "chaves_da_api.organizacao_id"],
+        name="fk_consumo_da_api_chave",
+        ondelete="CASCADE",
+    ),
+    sa.CheckConstraint(f"canal = '{CANAL_DA_CHAVE}'", name="canal"),
+    sa.CheckConstraint(
+        _entre("finalidade", FINALIDADES_DA_ORGANIZACAO), name="finalidade"
+    ),
+)
