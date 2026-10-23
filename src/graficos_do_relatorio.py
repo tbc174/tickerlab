@@ -143,11 +143,34 @@ def _pdf_da_linha(pontos: PontosDoGrafico, escala: Escala, estilo: Estilo) -> Fi
     )
 
 
+def _plotly_das_barras(pontos: PontosDoGrafico, escala: Escala) -> go.Figure:
+    return graficos.criar_grafico_barras_do_relatorio(
+        list(pontos.rotulos),
+        series_na_escala(pontos, escala),
+        pontos.titulo,
+        escala.medida,
+        escala.casas,
+    )
+
+
+def _pdf_das_barras(pontos: PontosDoGrafico, escala: Escala, estilo: Estilo) -> Figure:
+    return graficos_pdf.figura_de_barras_do_relatorio(
+        list(pontos.rotulos),
+        series_na_escala(pontos, escala),
+        pontos.titulo,
+        escala.medida,
+        escala.casas,
+        estilo,
+    )
+
+
 _PLOTLY: dict[str, Callable[[PontosDoGrafico, Escala], go.Figure]] = {
     "linha_no_tempo": _plotly_da_linha,
+    "barras_no_tempo": _plotly_das_barras,
 }
 _PDF: dict[str, Callable[[PontosDoGrafico, Escala, Estilo], Figure]] = {
     "linha_no_tempo": _pdf_da_linha,
+    "barras_no_tempo": _pdf_das_barras,
 }
 
 

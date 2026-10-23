@@ -56,6 +56,10 @@ CASOS = {
             (5.1e9, 5.4e9, 3.9e9, 6e9, None),
         ),
     ),
+    "barras_no_tempo": (
+        _grafico("barras_no_tempo", "historico.contas", "ano", "receita"),
+        ((41e9, 43.5e9, 40.2e9, 44e9, 45.6e9),),
+    ),
 }
 COM_TEMPO = [t for t in CASOS if gr.CARDAPIO[t].eixo == gr.TEMPO]
 DE_BARRAS = [t for t in CASOS if t in ("barras_no_tempo", "barras_por_categoria", "antes_e_agora", "cascata")]  # fmt: skip
@@ -111,3 +115,19 @@ def test_linha_vai_para_a_escala_do_dinheiro_e_deixa_vao_onde_falta_numero():
     assert plotly.data[0].y[0] == pytest.approx(41.0)  # R$ bilhões
     assert plotly.data[1].y[-1] is None  # 2024 sem lucro: vão, não zero
     assert "R$ bilhões" in plotly.layout.title.text
+
+
+@pytest.mark.parametrize("tipo", DE_BARRAS)
+def test_barras_comecam_do_zero(tipo):
+    grafico, _ = CASOS[tipo]
+    ficha = _ficha()
+    # números todos altos e parecidos: sem o zero, a diferença parece enorme
+    for linha in ficha["linhas"]:
+        linha["celulas"]["receita"] = f"R$ {90 + linha['celulas']['ano'] % 10},0 bi"
+    pontos = gdr.pontos_do_grafico(grafico, ficha)
+
+    plotly = gdr.figura(pontos)
+    eixo_pdf = gdr.figura_do_pdf(pontos).axes[0]
+
+    assert plotly.layout.yaxis.rangemode == "tozero"
+    assert eixo_pdf.get_ylim()[0] <= 0

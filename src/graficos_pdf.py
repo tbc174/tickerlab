@@ -307,6 +307,50 @@ def _formatador(casas: int) -> FuncFormatter:
     return FuncFormatter(lambda v, _: numero_br(v, casas))
 
 
+def figura_de_barras_do_relatorio(
+    rotulos: list[str],
+    series: dict[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+    estilo: Estilo = PADRAO,
+) -> Figure:
+    """Barras lado a lado com o número em cima de cada uma; o eixo sempre começa no zero."""
+    figura, eixo = _figura(estilo, 2.8)
+    quantas = len(series)
+    largura = 0.7 / quantas
+    for i, (nome, valores) in enumerate(series.items()):
+        deslocamento = (i - (quantas - 1) / 2) * largura
+        for j, valor in enumerate(valores):
+            if valor is None:
+                continue
+            posicao = j + deslocamento
+            eixo.bar(
+                posicao, valor, width=largura * 0.92,
+                color=estilo.series[i % len(estilo.series)],
+                label=nome if j == next(k for k, v in enumerate(valores) if v is not None) else None,
+            )  # fmt: skip
+            eixo.annotate(
+                numero_br(valor, casas), (posicao, valor), ha="center",
+                va="bottom" if valor >= 0 else "top", fontsize=6.5, color=estilo.texto,
+            )  # fmt: skip
+    eixo.set_xticks(range(len(rotulos)), rotulos)
+    eixo.tick_params(axis="x", labelrotation=20, labelsize=7)
+    baixo, alto = eixo.get_ylim()
+    baixo, alto = min(baixo, 0.0), max(alto, 0.0)
+    eixo.set_ylim(
+        baixo, alto + (alto - baixo) * FOLGA_DOS_ROTULOS
+    )  # o número não bate no título
+    eixo.axhline(0, color=estilo.linha, linewidth=0.8)
+    eixo.yaxis.set_major_formatter(_formatador(casas))
+    eixo.grid(axis="x", visible=False)
+    _titulo(eixo, estilo, _titulo_com_medida(titulo, medida))
+    if quantas > 1:
+        _legenda(eixo, estilo, quantas)
+        figura.subplots_adjust(bottom=0.3)
+    return figura
+
+
 def figura_de_linha_do_relatorio(
     rotulos: list[str],
     series: dict[str, list[float | None]],

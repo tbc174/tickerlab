@@ -1295,6 +1295,36 @@ def criar_grafico_linha_do_relatorio(
     return figura
 
 
+def criar_grafico_barras_do_relatorio(
+    rotulos: list[str],
+    series: dict[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+) -> go.Figure:
+    """Barras lado a lado, uma cor por série; o eixo dos valores sempre inclui o zero, para a altura
+    da barra dizer o tamanho do número (barra que começa em outro valor exagera a diferença)."""
+    if not rotulos:
+        raise ValueError("Não há pontos para as barras.")
+    figura = _figura_do_relatorio(titulo, medida, casas)
+    for i, (nome, valores) in enumerate(series.items()):
+        figura.add_trace(
+            go.Bar(
+                x=rotulos,
+                y=valores,
+                name=nome,
+                marker={"color": marca.SERIES[i % len(marca.SERIES)]},
+                text=_textos_do_relatorio(valores, casas),
+                hovertemplate=f"{nome}: %{{text}}<extra></extra>",
+            )
+        )
+    figura.update_yaxes(rangemode="tozero")
+    figura.update_layout(
+        barmode="group", showlegend=len(series) > 1, hovermode="x unified"
+    )
+    return figura
+
+
 def criar_grafico_cascata(
     passos: list[tuple[str, float]],
     titulo: str,
