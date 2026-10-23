@@ -1030,7 +1030,8 @@ def cascata_do_lucro(contas: dict) -> list[Passo]:
     ]
 
 
-def _divida_liquida(contas: dict) -> float | None:
+def divida_liquida(contas: dict) -> float | None:
+    """Dívida de curto e longo prazo menos caixa e aplicações (a ponte e as séries dos gráficos)."""
     if _conta(contas, "divida_liquida") is not None:
         return _conta(contas, "divida_liquida")
     if _conta(contas, "divida_cp") is None and _conta(contas, "divida_lp") is None:
@@ -1043,7 +1044,7 @@ def _divida_liquida(contas: dict) -> float | None:
 def ponte_da_divida(anterior: dict, atual: dict) -> list[Passo]:
     """Da dívida líquida de um ano à do seguinte: o caixa gerado reduz, capex e dividendos
     aumentam; o resto (aquisições, juros, câmbio) fica em "outros", para a ponte fechar."""
-    comeco, fim = _divida_liquida(anterior), _divida_liquida(atual)
+    comeco, fim = divida_liquida(anterior), divida_liquida(atual)
     if comeco is None or fim is None:
         return []
     fluxos = [
