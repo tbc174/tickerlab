@@ -141,6 +141,16 @@ LICENCAS = {
     # INEP, Senatran e INPI só têm o rodapé CC BY-ND 3.0 do site gov.br, que vale para o conteúdo do
     # site e não para o conjunto: mostrar "como publicado" com a fonte citada (precedente da CONAB)
     "epe": "CC BY 4.0 (dados abertos da EPE; citar a EPE)",
+    # lote atenção e texto (termos lidos em 22/10/2026, licencas-por-fonte.md, rodada 4): o `wiki` e o
+    # `gdelt` já existiam (cripto); as fontes novas têm id próprio e a marca da rodada 4
+    "wiki-pageviews-empresas": "CC0 (acessos por artigo, Wikimedia; citar a Wikimedia)",
+    "gdelt-gkg": "GDELT: uso livre citando e linkando o GDELT; só empresa, tema e tom",
+    "querido": "CC BY 4.0 (Querido Diário, Open Knowledge Brasil; citar)",
+    "crossref": "Metadados sem direitos de autor (Crossref); só contagens por afiliação",
+    "openalex": "CC0 (OpenAlex); só afiliações e contagens, sem autores",
+    "ebc": "Texto de terceiros (EBC): só índice (data, título, link) do RSS",
+    "senado": "Texto de terceiros (Agência Senado): só índice (data, título, link) do RSS",
+    "camara": "Texto de terceiros (Agência Câmara): só índice (data, título, link)",
     "inep": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
     "senatran": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
     "inpi": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
@@ -265,6 +275,16 @@ REVENDA = {
     # lote setoriais Brasil: CC BY 4.0 (EPE); rodapé CC BY-ND do site gov.br e licença do conjunto
     # não achada (INEP, Senatran, INPI, demonstrações da ANS): a confirmar, coleta e uso com a fonte citada
     "epe": VENDAVEL_COM_ATRIBUICAO,
+    # lote atenção e texto: CC0, CC BY 4.0 e uso livre citando o GDELT (Emenda 5 da ADR 0008); o índice
+    # do RSS é texto de terceiros e fica a confirmar. `wiki` e `gdelt` (cripto) mantêm a marca antiga
+    "wiki-pageviews-empresas": VENDAVEL_COM_ATRIBUICAO,
+    "gdelt-gkg": VENDAVEL_COM_ATRIBUICAO,
+    "querido": VENDAVEL_COM_ATRIBUICAO,
+    "crossref": VENDAVEL_COM_ATRIBUICAO,
+    "openalex": VENDAVEL_COM_ATRIBUICAO,
+    "ebc": A_CONFIRMAR,
+    "senado": A_CONFIRMAR,
+    "camara": A_CONFIRMAR,
     "inep": A_CONFIRMAR,
     "senatran": A_CONFIRMAR,
     "inpi": A_CONFIRMAR,
