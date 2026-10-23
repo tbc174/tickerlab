@@ -30,11 +30,18 @@ TEXTO = json.loads((PAR_DA_CPFL / "gabarito.json").read_text(encoding="utf-8"))[
 _ROTULO = re.compile(r"^\[((?:grafico|destaque)\.\d+)\] ", re.MULTILINE)
 
 
+# o achado do modelo tem número da primeira linha da tabela (a porta 1 confere)
+ACHADOS = {
+    "ofertas_e_fundos.fundos_por_mes": "No primeiro mês, 436 fundos tinham a ação.",
+    "setor_regulado.aneel_consumidores": "No primeiro ano, a empresa tinha 11,1% dos consumidores.",
+}
+
+
 def _do_modelo(tabela: str, tipo: str, eixo: str, coluna: str, parte: str) -> dict:
     return {
         "tipo": tipo, "tabela": tabela, "eixo": eixo, "colunas": [coluna],
         "titulo": "Um gráfico", "parte": parte, "paragrafo": 0,
-        "por_que": {"texto": "A ficha traz a tabela.", "notas": [f"{tabela}.0"]},
+        "por_que": {"texto": ACHADOS[tabela], "notas": [f"{tabela}.0"]},
     }  # fmt: skip
 
 

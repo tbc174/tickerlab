@@ -28,7 +28,8 @@ ENTRADA = {
     "empresa": "CPFL ENERGIA S.A.",
     "setor": "Emp. Adm. Part. - Energia Elétrica",
     "corte": "2026-10-17",
-    "secoes": {"historico": "Histórico", "resultado": "Resultado", "ficha_tecnica": "Ficha"},
+    "secoes": {"historico": "Histórico", "resultado": "Resultado", "ficha_tecnica": "Ficha",
+               "series": "Séries"},
     "fontes": ["CVM: dados abertos (ODbL)"],
     "linhas": [
         _linha(0, 2023, 4.1e10, 5.1e9),
@@ -36,6 +37,8 @@ ENTRADA = {
         _linha(2, 2025, 4.5e10, None),
         {"id": "resultado.receita", "tipo": "numero", "texto": "R$ 44,4 bi", "valor": 4.44e10},
         {"id": "ficha_tecnica.nome", "tipo": "numero", "texto": "CPFL ENERGIA S.A."},
+        {"id": "series.margens.0", "tipo": "linha", "tabela": "Margens",
+         "celulas": {"Ano": 2023, "Margem líquida": "12,4%"}},
     ],
 }  # fmt: skip
 
@@ -103,11 +106,21 @@ def test_escolha_boa_passa():
         ({"por_que": saida.Frase("A receita chegou a R$ 99 bi.", ("historico.contas.2",))},
          porta1.NUMERO),
         ({"por_que": saida.Frase("Compre.", ("historico.contas.2",))}, porta1.PALAVRA),
+        # o achado do modelo tem número: o ano sozinho não diz o que o gráfico achou
+        ({"por_que": saida.Frase("A linha mostra a receita desde 2023.", ("historico.contas.0",))},
+         p1g.ACHADO_SEM_NUMERO),
     ],
 )  # fmt: skip
 def test_grafico_reprovado(mudanca, regra):
     regras = _regras(gr.Escolha((replace(BOM, **mudanca),)))
     assert (p1g.GRAFICO, 0, regra) in regras
+
+
+def test_grafico_da_reserva_pode_ficar_sem_numero():
+    """A reserva só diz o que o gráfico mostra; o achado com número é do modelo."""
+    neutro = saida.Frase("A linha mostra a receita ano a ano.", ("historico.contas.0",))
+    da_reserva = replace(BOM, por_que=neutro, origem="regras")
+    assert _regras(gr.Escolha((da_reserva,))) == []
 
 
 def test_grafico_repetido_reprova_o_segundo():
@@ -142,7 +155,7 @@ def test_unidades_misturadas_reprovam():
     grafico = replace(
         BOM, tipo="antes_e_agora", tabela="o_que_mudou.indicadores", eixo="indicador",
         colunas=("antes", "agora"),
-        por_que=saida.Frase("A receita e a margem.", ("o_que_mudou.indicadores.0",)),
+        por_que=saida.Frase("A receita foi de R$ 45,1 bi a R$ 45,6 bi.", ("o_que_mudou.indicadores.0",)),
     )  # fmt: skip
     assert (p1g.GRAFICO, 0, p1g.FORMA) in _regras(gr.Escolha((grafico,)), entrada)
     so_receita = {**entrada, "linhas": entrada["linhas"][:-1]}
@@ -171,9 +184,12 @@ def test_eixo_depois_do_corte_reprova():
     assert (p1g.GRAFICO, 0, porta1.DATA_FUTURA) in _regras(gr.Escolha((BOM,)), entrada)
 
 
-# o porquê sem data: os testes do tempo mudam os anos do eixo
+# o achado sem data: os testes do tempo mudam os anos do eixo
 SEM_DATA = replace(
-    BOM, por_que=saida.Frase("A receita ano a ano.", ("historico.contas.0",))
+    BOM,
+    por_que=saida.Frase(
+        "A receita foi de R$ 41,0 bi no primeiro ano.", ("historico.contas.0",)
+    ),
 )
 
 
@@ -221,6 +237,9 @@ def test_periodo_faltando_no_eixo_reprova():
         (replace(DESTAQUE, secao="ficha_tecnica",
                  por_que=saida.Frase("Ficha.", ("ficha_tecnica.nome",))), p1g.SECAO_SEM_DESTAQUE),
         (replace(DESTAQUE, parte="quem_manda"), p1g.ANCORA),
+        # as séries calculadas são tabelas para gráfico, não uma seção do relatório
+        (replace(DESTAQUE, secao="series",
+                 por_que=saida.Frase("As séries.", ("series.margens.0",))), p1g.SECAO_SEM_DESTAQUE),
         (replace(DESTAQUE, por_que=saida.Frase("Os anos.", ("historico.contas.0",))),
          p1g.POR_QUE_FORA),
     ],
@@ -261,7 +280,9 @@ def test_escolha_boa_na_ficha_da_cpfl():
         titulo="Da receita ao lucro no último ano",
         parte="o_que_os_numeros_mostram",
         paragrafo=0,
-        por_que=saida.Frase("A cascata parte da receita.", ("resultado.cascata.0",)),
+        por_que=saida.Frase(
+            "A cascata parte de R$ 44,4 bi de receita.", ("resultado.cascata.0",)
+        ),
     )
     conferencia = p1g.conferir(gr.Escolha((fundos, cascata)), entrada, analise)
     assert conferencia.reprovacoes == ()
