@@ -248,6 +248,7 @@
   }
 
   /* ---------- 4. revelar ao rolar (uma vez) ---------- */
+  var pendentes = [];
   if ("IntersectionObserver" in window) {
     raiz.classList.add("v2-anima");
     var titulos = document.querySelectorAll(".secao:not(.texto-longo):not(.v2-pagina-topo) > h2");
@@ -270,6 +271,7 @@
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
     alvos.forEach(function (el) { el.classList.add("v2-revelar"); vistos.observe(el); });
     titulos.forEach(function (el) { vistos.observe(el); });
+    pendentes = alvos.concat(Array.prototype.slice.call(titulos));
     var faixas = new IntersectionObserver(function (es) {
       es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("visivel"); faixas.unobserve(e.target); } });
     }, { threshold: 0.25 });
@@ -280,8 +282,20 @@
   var pilha = document.querySelector(".v2-painel-pilha");
   var texto = document.querySelector(".v2-heroi-fundo .heroi-texto");
   var agendado = false;
+  // o observador só avisa quando o estado muda entre dois quadros: o que um pulo (âncora, rolagem
+  // rápida) levou de baixo para cima da tela nunca "apareceu" e ficaria escondido lá em cima
+  function revelarOsPulados() {
+    pendentes = pendentes.filter(function (el) {
+      if (el.classList.contains("visivel")) return false;
+      if (el.getBoundingClientRect().bottom >= 0) return true;
+      el.classList.add("visivel");
+      vistos.unobserve(el);
+      return false;
+    });
+  }
   function aoRolar() {
     agendado = false;
+    revelarOsPulados();
     var y = window.scrollY;
     raiz.classList.toggle("v2-rolou", y > 40);
     if (heroi && y < heroi.offsetHeight + 200) {

@@ -245,8 +245,10 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%); }
 .linha-heroi polyline, .linha-heroi path { fill: none; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .linha-heroi .apoio { stroke: var(--texto); stroke-width: 2; opacity: .2; }
-.linha-heroi .principal { stroke: var(--azul); stroke-width: 4; stroke-dasharray: 1; stroke-dashoffset: 0;
-  animation: tl-desenhar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }
+/* revela da esquerda para a direita: o tracejado (stroke-dasharray) com o traço que não estica
+   (non-scaling-stroke) cortava a linha uns 15% antes do ponto, até parada */
+.linha-heroi .principal { stroke: var(--azul); stroke-width: 4;
+  animation: tl-revelar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }
 .ponto-heroi { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
   background: var(--texto); animation: tl-ponto 260ms ease-out 1200ms both; }
 /* "backwards", não "both": com "both" o transform da chegada fica para sempre, cada filho vira um
@@ -256,7 +258,8 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 .heroi-texto > :nth-child(3) { animation-delay: 120ms; }
 .heroi-texto > :nth-child(n+4) { animation-delay: 180ms; }
 .heroi-visual img { animation: tl-folha 700ms cubic-bezier(.2, .7, .2, 1) 200ms both; }
-@keyframes tl-desenhar { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+/* a margem negativa deixa a espessura do traço e a ponta redonda de fora do recorte */
+@keyframes tl-revelar { from { clip-path: inset(-12px 100% -12px -12px); } to { clip-path: inset(-12px -12px -12px -12px); } }
 @keyframes tl-ponto { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes tl-chegar { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes tl-folha { from { opacity: 0; transform: translateY(24px) rotate(4deg); } to { opacity: 1; transform: rotate(1.5deg); } }
