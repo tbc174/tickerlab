@@ -227,3 +227,29 @@ def momento_da_celula(celula: object) -> numeros.DataEscrita | None:
         lidas = numeros.datas(celula)
         return lidas[0] if len(lidas) == 1 else None
     return None
+
+
+@dataclass(frozen=True)
+class Ponto:
+    """Uma linha da tabela vista pelo gráfico: o rótulo do eixo, a data dele e os valores."""
+
+    id: str
+    rotulo: str
+    momento: numeros.DataEscrita | None
+    valores: tuple[float | None, ...]  # um por coluna, na ordem do gráfico
+
+
+def pontos(grafico: Grafico, linhas: list[LinhaDaTabela]) -> list[Ponto]:
+    """Os pontos do gráfico lidos da ficha, na ordem da tabela: é daqui, e só daqui, que saem os
+    números do desenho."""
+    return [
+        Ponto(
+            id=linha.id,
+            rotulo=str(linha.celulas.get(grafico.eixo) or "").strip(),
+            momento=momento_da_celula(linha.celulas.get(grafico.eixo)),
+            valores=tuple(
+                valor_da_celula(linha.celulas.get(c)) for c in grafico.colunas
+            ),
+        )
+        for linha in linhas
+    ]

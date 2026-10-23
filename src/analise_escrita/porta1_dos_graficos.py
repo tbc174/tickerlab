@@ -1,0 +1,219 @@
+"""Porta 1 dos gráficos (plano de 23/10/2026): a escolha do modelo conferida por código.
+
+O gráfico passa só se a tabela e as colunas existem na ficha, servem à forma escolhida no cardápio
+(eixo de datas para o tempo, colunas de número, pontos bastantes), nenhuma data passa do corte,
+nenhum rótulo traz pessoa, a âncora existe na análise e o título e o porquê passam nas mesmas regras
+das frases do texto (número, data, nome, palavra proibida, previsão). O porquê cita só linhas da
+própria tabela; o do destaque, só linhas da seção puxada.
+
+O item reprovado sai da escolha e a reserva por regras ocupa o lugar: a porta só diz qual e por quê.
+"""
+
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from typing import Any
+
+from src.analise_escrita import graficos as gr
+from src.analise_escrita import porta1, saida
+
+GRAFICO, DESTAQUE = "grafico", "destaque"
+TABELA_INEXISTENTE, COLUNA_INEXISTENTE = "tabela_inexistente", "coluna_inexistente"
+FORMA, REPETIDO, ALEM_DO_MAXIMO, ANCORA = (
+    "forma",
+    "repetido",
+    "alem_do_maximo",
+    "ancora",
+)
+POR_QUE_FORA = "por_que_fora"
+SECAO_INEXISTENTE, SECAO_SEM_DESTAQUE = "secao_inexistente", "secao_sem_destaque"
+# seções que já ficam no começo ou no fim de todo relatório: puxá-las para o texto não mostra nada
+SECOES_SEM_DESTAQUE = frozenset({"ficha_tecnica", "metodologia", "limites"})
+
+
+@dataclass(frozen=True)
+class Reprovacao:
+    item: str  # GRAFICO ou DESTAQUE
+    indice: int  # a posição na escolha
+    regra: str
+    detalhe: str
+
+
+@dataclass(frozen=True)
+class Conferencia:
+    reprovacoes: tuple[Reprovacao, ...]
+
+    @property
+    def aprovada(self) -> bool:
+        return not self.reprovacoes
+
+    @property
+    def graficos_reprovados(self) -> frozenset[int]:
+        return frozenset(r.indice for r in self.reprovacoes if r.item == GRAFICO)
+
+    @property
+    def destaques_reprovados(self) -> frozenset[int]:
+        return frozenset(r.indice for r in self.reprovacoes if r.item == DESTAQUE)
+
+
+def _falhas_de_forma(grafico: gr.Grafico, pontos: list[gr.Ponto]) -> Iterator[str]:
+    forma = gr.CARDAPIO[grafico.tipo]
+    minimo, maximo = forma.colunas
+    if not minimo <= len(grafico.colunas) <= maximo:
+        yield f"{grafico.tipo} pede de {minimo} a {maximo} colunas, não {len(grafico.colunas)}"
+    if (
+        len(set(grafico.colunas)) < len(grafico.colunas)
+        or grafico.eixo in grafico.colunas
+    ):
+        yield "coluna repetida ou o eixo usado como valor"
+    if forma.eixo == gr.TEMPO and any(p.momento is None for p in pontos):
+        yield f"{grafico.tipo} pede datas no eixo, e {grafico.eixo} tem linha sem data"
+    for i, coluna in enumerate(grafico.colunas):
+        com_valor = sum(p.valores[i] is not None for p in pontos)
+        if com_valor < forma.pontos:
+            yield f"{coluna} tem {com_valor} pontos com número; {grafico.tipo} pede {forma.pontos}"
+
+
+def _falhas_do_eixo(
+    pontos: list[gr.Ponto], ficha: porta1.Ficha
+) -> Iterator[tuple[str, str]]:
+    for ponto in pontos:
+        if ponto.momento is not None and ponto.momento.depois_de(ficha.corte):
+            yield porta1.DATA_FUTURA, ponto.rotulo
+        for regra, detalhe in porta1.falhas_de_pessoa(ponto.rotulo):
+            yield regra, f"{ponto.rotulo} [{detalhe}]"
+
+
+def _falhas_do_texto(
+    titulo: saida.Frase, por_que: saida.Frase, permitidos: set[str], ficha: porta1.Ficha
+) -> Iterator[tuple[str, str]]:
+    """O título (que pode usar os números da tabela inteira) e o porquê, com as regras das frases."""
+    for frase in (titulo, por_que):
+        for regra, detalhe in porta1.falhas_da_frase(frase, ficha):
+            yield regra, f"{frase.texto} [{detalhe}]"
+    fora = [n for n in por_que.notas if n not in permitidos]
+    if fora or not por_que.notas:
+        yield POR_QUE_FORA, f"{por_que.texto} [cita {fora or 'nada'}]"
+
+
+def _ancora(analise: saida.Analise, parte: str, paragrafo: int) -> str:
+    """O motivo de a âncora não existir na análise ("" se existe)."""
+    achada = next((p for p in analise.partes if p.chave == parte), None)
+    if achada is None:
+        return f"a análise não tem a parte {parte}"
+    if paragrafo >= len(achada.paragrafos):
+        return (
+            f"{parte} tem {len(achada.paragrafos)} parágrafos, não chega ao {paragrafo}"
+        )
+    return ""
+
+
+def _conferir_grafico(
+    grafico: gr.Grafico,
+    tabelas: dict[str, list[gr.LinhaDaTabela]],
+    analise: saida.Analise,
+    ficha: porta1.Ficha,
+) -> Iterator[tuple[str, str]]:
+    linhas = tabelas.get(grafico.tabela)
+    if linhas is None:
+        yield TABELA_INEXISTENTE, grafico.tabela
+        return
+    colunas = {coluna for linha in linhas for coluna in linha.celulas}
+    faltam = [c for c in (grafico.eixo, *grafico.colunas) if c not in colunas]
+    if faltam:
+        yield COLUNA_INEXISTENTE, f"{grafico.tabela} não tem {', '.join(faltam)}"
+        return
+    pontos = gr.pontos(grafico, linhas)
+    yield from ((FORMA, motivo) for motivo in _falhas_de_forma(grafico, pontos))
+    yield from _falhas_do_eixo(pontos, ficha)
+    ids = {linha.id for linha in linhas}
+    titulo = saida.Frase(grafico.titulo, tuple(sorted(ids)))
+    yield from _falhas_do_texto(titulo, grafico.por_que, ids, ficha)
+    ancora = _ancora(analise, grafico.parte, grafico.paragrafo)
+    if ancora:
+        yield ANCORA, ancora
+
+
+def _conferir_destaque(
+    destaque: gr.Destaque,
+    entrada: dict[str, Any],
+    analise: saida.Analise,
+    ficha: porta1.Ficha,
+) -> Iterator[tuple[str, str]]:
+    secoes = entrada.get("secoes", {})
+    if destaque.secao not in secoes:
+        yield SECAO_INEXISTENTE, destaque.secao
+        return
+    if destaque.secao in SECOES_SEM_DESTAQUE:
+        yield SECAO_SEM_DESTAQUE, destaque.secao
+    prefixo = f"{destaque.secao}."
+    da_secao = {li["id"] for li in entrada["linhas"] if li["id"].startswith(prefixo)}
+    titulo = saida.Frase(secoes[destaque.secao])
+    yield from _falhas_do_texto(titulo, destaque.por_que, da_secao, ficha)
+    ancora = _ancora(analise, destaque.parte, 0)
+    if ancora:
+        yield ANCORA, ancora
+
+
+def _chave(grafico: gr.Grafico) -> tuple[str, str, str, frozenset[str]]:
+    """O mesmo desenho com outro título ainda é o mesmo gráfico."""
+    return grafico.tipo, grafico.tabela, grafico.eixo, frozenset(grafico.colunas)
+
+
+def _uma_por_regra(
+    item: str, indice: int, falhas: Iterable[tuple[str, str]]
+) -> list[Reprovacao]:
+    por_regra: dict[str, list[str]] = {}
+    for regra, detalhe in falhas:
+        por_regra.setdefault(regra, []).append(detalhe)
+    return [
+        Reprovacao(item, indice, regra, "; ".join(detalhes))
+        for regra, detalhes in por_regra.items()
+    ]
+
+
+def _conferir_graficos(
+    graficos: tuple[gr.Grafico, ...],
+    entrada: dict[str, Any],
+    analise: saida.Analise,
+    ficha: porta1.Ficha,
+) -> Iterator[Reprovacao]:
+    tabelas = gr.tabelas_da_entrada(entrada)
+    vistos: set[tuple[str, str, str, frozenset[str]]] = set()
+    for i, grafico in enumerate(graficos):
+        if i >= gr.MAXIMO_DE_GRAFICOS:
+            yield Reprovacao(GRAFICO, i, ALEM_DO_MAXIMO, grafico.titulo)
+        elif _chave(grafico) in vistos:
+            yield Reprovacao(GRAFICO, i, REPETIDO, grafico.titulo)
+        else:
+            vistos.add(_chave(grafico))
+            falhas = _conferir_grafico(grafico, tabelas, analise, ficha)
+            yield from _uma_por_regra(GRAFICO, i, falhas)
+
+
+def _conferir_destaques(
+    destaques: tuple[gr.Destaque, ...], entrada: dict[str, Any], analise: saida.Analise,
+    ficha: porta1.Ficha,
+) -> Iterator[Reprovacao]:  # fmt: skip
+    vistas: set[str] = set()
+    for i, destaque in enumerate(destaques):
+        if i >= gr.MAXIMO_DE_DESTAQUES:
+            yield Reprovacao(DESTAQUE, i, ALEM_DO_MAXIMO, destaque.secao)
+        elif destaque.secao in vistas:
+            yield Reprovacao(DESTAQUE, i, REPETIDO, destaque.secao)
+        else:
+            vistas.add(destaque.secao)
+            falhas = _conferir_destaque(destaque, entrada, analise, ficha)
+            yield from _uma_por_regra(DESTAQUE, i, falhas)
+
+
+def conferir(
+    escolha: gr.Escolha, entrada: dict[str, Any], analise: saida.Analise
+) -> Conferencia:
+    """Todas as reprovações da escolha contra a ficha e a análise (nenhuma: aprovada na porta 1)."""
+    ficha = porta1.ler_ficha(entrada)
+    return Conferencia(
+        (
+            *_conferir_graficos(escolha.graficos, entrada, analise, ficha),
+            *_conferir_destaques(escolha.destaques, entrada, analise, ficha),
+        )
+    )

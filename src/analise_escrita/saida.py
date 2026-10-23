@@ -159,7 +159,9 @@ def _paragrafo(dado: dict[str, Any]) -> Paragrafo:
         raise RespostaInvalidaError(
             f"tipo de parágrafo fora de fato e leitura: {dado.get('tipo')}"
         )
-    return Paragrafo(dado["tipo"], tuple(ler_frase(f) for f in dado.get("frases") or []))
+    return Paragrafo(
+        dado["tipo"], tuple(ler_frase(f) for f in dado.get("frases") or [])
+    )
 
 
 def _parte(dado: dict[str, Any], partes: tuple[str, ...]) -> Parte:
@@ -218,7 +220,10 @@ ESQUEMA_DA_FRASE = objeto_fechado(
     }
 )
 _PARAGRAFO = objeto_fechado(
-    {"tipo": {"type": "string", "enum": list(TIPOS)}, "frases": lista_de(ESQUEMA_DA_FRASE)}
+    {
+        "tipo": {"type": "string", "enum": list(TIPOS)},
+        "frases": lista_de(ESQUEMA_DA_FRASE),
+    }
 )
 
 
