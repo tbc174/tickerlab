@@ -42,8 +42,8 @@ ESCOLHA = {
     "graficos": [
         _do_modelo("ofertas_e_fundos.fundos_por_mes", "linha_no_tempo", "Mês",
                    "Fundos", "quem_manda"),
-        _do_modelo("negocios.negocios_por_ano", "barras_no_tempo", "Ano",
-                   "Documentos", "o_que_mudou"),
+        _do_modelo("setor_regulado.aneel_consumidores", "linha_no_tempo", "Ano",
+                   "Consumidores", "o_que_e"),
     ],
     "destaques": [
         {"secao": "resultado", "parte": "o_que_os_numeros_mostram",

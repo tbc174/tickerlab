@@ -1,7 +1,9 @@
 """Porta 1 dos gráficos (plano de 23/10/2026): a escolha do modelo conferida por código.
 
 O gráfico passa só se a tabela e as colunas existem na ficha, servem à forma escolhida no cardápio
-(eixo de datas para o tempo, colunas de número, pontos bastantes), nenhuma data passa do corte,
+(eixo de datas para o tempo, colunas de número, pontos bastantes), nenhuma data passa do corte, o
+eixo do tempo não tem período ainda aberto no corte nem período faltando (a prova de 23/10 achou 2026
+pela metade ao lado de anos inteiros e os anos sem oferta sumidos do eixo),
 nenhum rótulo traz pessoa, a âncora existe na análise e o título e o porquê passam nas mesmas regras
 das frases do texto (número, data, nome, palavra proibida, previsão). O porquê cita só linhas da
 própria tabela; o do destaque, só linhas da seção puxada.
@@ -9,12 +11,15 @@ própria tabela; o do destaque, só linhas da seção puxada.
 O item reprovado sai da escolha e a reserva por regras ocupa o lugar: a porta só diz qual e por quê.
 """
 
+import calendar
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
+from datetime import date
+from itertools import pairwise
 from typing import Any
 
 from src.analise_escrita import graficos as gr
-from src.analise_escrita import porta1, saida
+from src.analise_escrita import numeros, porta1, saida
 
 GRAFICO, DESTAQUE = "grafico", "destaque"
 TABELA_INEXISTENTE, COLUNA_INEXISTENTE = "tabela_inexistente", "coluna_inexistente"
@@ -25,6 +30,7 @@ FORMA, REPETIDO, ALEM_DO_MAXIMO, ANCORA = (
     "ancora",
 )
 POR_QUE_FORA = "por_que_fora"
+PERIODO_ABERTO, PERIODO_FALTANDO = "periodo_aberto", "periodo_faltando"
 SECAO_INEXISTENTE, SECAO_SEM_DESTAQUE = "secao_inexistente", "secao_sem_destaque"
 # seções que já ficam no começo ou no fim de todo relatório: puxá-las para o texto não mostra nada
 SECOES_SEM_DESTAQUE = frozenset({"ficha_tecnica", "metodologia", "limites"})
@@ -97,6 +103,38 @@ def _falhas_do_eixo(
             yield regra, f"{ponto.rotulo} [{detalhe}]"
 
 
+def _aberto_no_corte(momento: numeros.DataEscrita, corte: date) -> bool:
+    """O ano (ou o mês) do corte que ainda não fechou: o ponto dele não se compara com os inteiros."""
+    if momento.dia is not None:
+        return False
+    if momento.mes is None:
+        return momento.ano == corte.year and corte < date(corte.year, 12, 31)
+    ultimo_dia = calendar.monthrange(momento.ano, momento.mes)[1]
+    return (momento.ano, momento.mes) == (
+        corte.year,
+        corte.month,
+    ) and corte.day < ultimo_dia
+
+
+def _posicao(momento: numeros.DataEscrita) -> int:
+    """O lugar do período na sequência: anos contam de 1 em 1, meses também."""
+    return momento.ano if momento.mes is None else momento.ano * 12 + momento.mes - 1
+
+
+def _falhas_do_tempo(pontos: list[gr.Ponto], corte: date) -> Iterator[tuple[str, str]]:
+    datados = [(p.rotulo, p.momento) for p in pontos if p.momento is not None]
+    for rotulo_, momento in datados:
+        if _aberto_no_corte(momento, corte):
+            yield PERIODO_ABERTO, f"{rotulo_} ainda não fechou em {corte:%d/%m/%Y}"
+    precisoes = {(m.mes is None, m.dia is None) for _, m in datados}
+    if len(precisoes) != 1 or (False, False) in precisoes:
+        return  # datas com dia ou precisões misturadas: sem sequência para conferir
+    em_ordem = sorted(datados, key=lambda d: _posicao(d[1]))
+    for (antes, de), (depois, ate) in pairwise(em_ordem):
+        if _posicao(ate) - _posicao(de) > 1:
+            yield PERIODO_FALTANDO, f"de {antes} pula para {depois}"
+
+
 def _falhas_do_texto(
     titulo: saida.Frase, por_que: saida.Frase, permitidos: set[str], ficha: porta1.Ficha
 ) -> Iterator[tuple[str, str]]:
@@ -139,6 +177,8 @@ def _conferir_grafico(
     pontos = gr.pontos(grafico, linhas)
     yield from ((FORMA, motivo) for motivo in _falhas_de_forma(grafico, linhas, pontos))
     yield from _falhas_do_eixo(pontos, ficha)
+    if gr.CARDAPIO[grafico.tipo].eixo == gr.TEMPO:
+        yield from _falhas_do_tempo(pontos, ficha.corte)
     ids = {linha.id for linha in linhas}
     titulo = saida.Frase(grafico.titulo, tuple(sorted(ids)))
     yield from _falhas_do_texto(titulo, grafico.por_que, ids, ficha)

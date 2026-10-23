@@ -40,8 +40,12 @@ def _do_modelo(
 FUNDOS = _do_modelo(
     "ofertas_e_fundos.fundos_por_mes", "linha_no_tempo", "Mês", "Fundos", "quem_manda"
 )
-NEGOCIOS = _do_modelo(
-    "negocios.negocios_por_ano", "barras_no_tempo", "Ano", "Documentos", "o_que_mudou"
+CONSUMIDORES = _do_modelo(
+    "setor_regulado.aneel_consumidores",
+    "linha_no_tempo",
+    "Ano",
+    "Consumidores",
+    "o_que_e",
 )
 ERRADO = replace(FUNDOS, tabela="historico.anos")
 DESTAQUE_BOM = gr.Destaque(
@@ -70,17 +74,17 @@ def test_reserva_pula_a_tabela_que_a_ficha_nao_tem(cpfl):
 
 def test_escolha_boa_do_modelo_fica_inteira(cpfl):
     entrada, analise = cpfl
-    escolha = gr.Escolha((FUNDOS, NEGOCIOS))
+    escolha = gr.Escolha((FUNDOS, CONSUMIDORES))
     finais = rg.graficos_finais(escolha, entrada, analise, frozenset())
-    assert finais.graficos == (FUNDOS, NEGOCIOS)
+    assert finais.graficos == (FUNDOS, CONSUMIDORES)
 
 
 def test_grafico_reprovado_sai_e_a_reserva_completa_o_minimo(cpfl):
     entrada, analise = cpfl
     finais = rg.graficos_finais(
-        gr.Escolha((ERRADO, NEGOCIOS)), entrada, analise, frozenset()
+        gr.Escolha((ERRADO, CONSUMIDORES)), entrada, analise, frozenset()
     )
-    assert finais.graficos[0] == NEGOCIOS
+    assert finais.graficos[0] == CONSUMIDORES
     assert len(finais.graficos) == gr.MINIMO_DE_GRAFICOS
     assert finais.graficos[1].origem == rg.ORIGEM_REGRAS
 
@@ -101,14 +105,14 @@ def test_reserva_nao_repete_o_que_o_modelo_escolheu(cpfl):
 def test_destaque_reprovado_sai(cpfl):
     entrada, analise = cpfl
     ruim = gr.Destaque("valuation", "quem_manda", saida.Frase("Nada.", ("x",)))
-    escolha = gr.Escolha((FUNDOS, NEGOCIOS), (ruim, DESTAQUE_BOM))
+    escolha = gr.Escolha((FUNDOS, CONSUMIDORES), (ruim, DESTAQUE_BOM))
     finais = rg.graficos_finais(escolha, entrada, analise, frozenset())
     assert finais.destaques == (DESTAQUE_BOM,)
 
 
 def test_sem_a_porta_2_nada_do_modelo_vai_ao_ar(cpfl):
     entrada, analise = cpfl
-    escolha = gr.Escolha((FUNDOS, NEGOCIOS), (DESTAQUE_BOM,))
+    escolha = gr.Escolha((FUNDOS, CONSUMIDORES), (DESTAQUE_BOM,))
     finais = rg.graficos_finais(escolha, entrada, analise, None)
     assert {g.origem for g in finais.graficos} == {rg.ORIGEM_REGRAS}
     assert finais.destaques == ()
@@ -116,7 +120,7 @@ def test_sem_a_porta_2_nada_do_modelo_vai_ao_ar(cpfl):
 
 def test_reprovado_na_porta_2_sai(cpfl):
     entrada, analise = cpfl
-    escolha = gr.Escolha((FUNDOS, NEGOCIOS), (DESTAQUE_BOM,))
+    escolha = gr.Escolha((FUNDOS, CONSUMIDORES), (DESTAQUE_BOM,))
     finais = rg.graficos_finais(
         escolha, entrada, analise, frozenset({"grafico.1", "destaque.0"})
     )

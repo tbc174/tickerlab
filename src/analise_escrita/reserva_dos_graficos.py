@@ -37,8 +37,10 @@ _FIXOS = (
     ),
     _Fixo(
         "endividamento.ponte", "cascata", "passo", "valor",
-        "Da dívida líquida do começo à de agora", "dinheiro",
-        "A ponte mostra o que aumentou e o que diminuiu a dívida líquida no período.",
+        # a ponte vai de um balanço anual ao seguinte: termina no último ano fechado, não no
+        # balanço mais recente (a porta 2 da prova de 23/10 pegou o "de agora" do título antigo)
+        "Da dívida líquida no último ano fechado", "dinheiro",
+        "A ponte mostra o que aumentou e o que diminuiu a dívida líquida no último ano fechado.",
     ),
     _Fixo(
         "ofertas_e_fundos.fundos_por_mes", "linha_no_tempo", "Mês", "Fundos",

@@ -171,6 +171,49 @@ def test_eixo_depois_do_corte_reprova():
     assert (p1g.GRAFICO, 0, porta1.DATA_FUTURA) in _regras(gr.Escolha((BOM,)), entrada)
 
 
+# o porquê sem data: os testes do tempo mudam os anos do eixo
+SEM_DATA = replace(
+    BOM, por_que=saida.Frase("A receita ano a ano.", ("historico.contas.0",))
+)
+
+
+def test_ano_do_corte_ainda_aberto_reprova():
+    """2026 até 17/10 ao lado de anos inteiros: a barra menor parece queda (achado da prova)."""
+    entrada = json.loads(json.dumps(ENTRADA))
+    entrada["linhas"][2]["celulas"]["ano"] = 2026
+    entrada["linhas"][1]["celulas"]["ano"] = 2025
+    entrada["linhas"][0]["celulas"]["ano"] = 2024
+    assert (p1g.GRAFICO, 0, p1g.PERIODO_ABERTO) in _regras(
+        gr.Escolha((SEM_DATA,)), entrada
+    )
+    entrada["corte"] = "2026-12-31"  # o ano fechou no corte: passa
+    assert _regras(gr.Escolha((SEM_DATA,)), entrada) == []
+
+
+def test_mes_do_corte_ainda_aberto_reprova():
+    entrada = json.loads(json.dumps(ENTRADA))
+    for i, mes in enumerate(("ago/2026", "set/2026", "out/2026")):
+        entrada["linhas"][i]["celulas"]["ano"] = mes
+    assert (p1g.GRAFICO, 0, p1g.PERIODO_ABERTO) in _regras(
+        gr.Escolha((SEM_DATA,)), entrada
+    )
+    entrada["linhas"][2]["celulas"]["ano"] = "jul/2026"  # fora de ordem também vale
+    assert _regras(gr.Escolha((SEM_DATA,)), entrada) == []
+
+
+def test_periodo_faltando_no_eixo_reprova():
+    """Ofertas por ano pula os anos sem oferta: o eixo esconde os zeros (achado da prova)."""
+    entrada = json.loads(json.dumps(ENTRADA))
+    entrada["linhas"][0]["celulas"]["ano"] = 2019
+    regras = _regras(gr.Escolha((BOM,)), entrada)
+    assert (p1g.GRAFICO, 0, p1g.PERIODO_FALTANDO) in regras
+    # a forma por categoria não tem tempo: nomes podem pular
+    por_nome = replace(BOM, tipo="barras_por_categoria")
+    assert p1g.PERIODO_FALTANDO not in {
+        r for *_, r in _regras(gr.Escolha((por_nome,)), entrada)
+    }
+
+
 @pytest.mark.parametrize(
     ("destaque", "regra"),
     [
