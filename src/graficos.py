@@ -1252,29 +1252,145 @@ def criar_grafico_fundamentos_anuais(
     return figura
 
 
+def _figura_do_relatorio(titulo: str, medida: str, casas: int) -> go.Figure:
+    """A base dos gráficos que a IA escolhe para o relatório: eixo de categorias (anos, meses ou
+    nomes, na ordem da ficha), sem botões de período e com o separador brasileiro."""
+    figura = go.Figure()
+    _estilo_base(figura, f"{titulo} ({medida})" if medida else titulo, ALTURA_PADRAO)
+    figura.update_layout(separators=",.")
+    figura.update_xaxes(type="category")
+    figura.update_yaxes(tickformat=f",.{casas}f")
+    return figura
+
+
+def _textos_do_relatorio(valores: list[float | None], casas: int) -> list[str]:
+    return ["" if v is None else _numero_br(v, casas) for v in valores]
+
+
+def criar_grafico_linha_do_relatorio(
+    rotulos: list[str],
+    series: dict[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+) -> go.Figure:
+    """Uma a três linhas no tempo, um ponto por período; o período sem número deixa um vão."""
+    if not rotulos:
+        raise ValueError("Não há pontos para a linha.")
+    figura = _figura_do_relatorio(titulo, medida, casas)
+    for i, (nome, valores) in enumerate(series.items()):
+        figura.add_trace(
+            go.Scatter(
+                x=rotulos,
+                y=valores,
+                name=nome,
+                mode="lines+markers",
+                line={"color": marca.SERIES[i % len(marca.SERIES)]},
+                text=_textos_do_relatorio(valores, casas),
+                hovertemplate=f"{nome}: %{{text}}<extra></extra>",
+                connectgaps=False,
+            )
+        )
+    figura.update_layout(showlegend=len(series) > 1, hovermode="x unified")
+    return figura
+
+
+def criar_grafico_barras_do_relatorio(
+    rotulos: list[str],
+    series: dict[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+) -> go.Figure:
+    """Barras lado a lado, uma cor por série; o eixo dos valores sempre inclui o zero, para a altura
+    da barra dizer o tamanho do número (barra que começa em outro valor exagera a diferença)."""
+    if not rotulos:
+        raise ValueError("Não há pontos para as barras.")
+    figura = _figura_do_relatorio(titulo, medida, casas)
+    for i, (nome, valores) in enumerate(series.items()):
+        figura.add_trace(
+            go.Bar(
+                x=rotulos,
+                y=valores,
+                name=nome,
+                marker={"color": marca.SERIES[i % len(marca.SERIES)]},
+                text=_textos_do_relatorio(valores, casas),
+                hovertemplate=f"{nome}: %{{text}}<extra></extra>",
+            )
+        )
+    figura.update_yaxes(rangemode="tozero")
+    figura.update_layout(
+        barmode="group", showlegend=len(series) > 1, hovermode="x unified"
+    )
+    return figura
+
+
+def criar_grafico_dispersao_do_relatorio(
+    rotulos: list[str],
+    x: tuple[str, list[float | None]],
+    y: tuple[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+) -> go.Figure:
+    """Um ponto por item (empresa, parcela), nomeado, com um indicador em cada eixo."""
+    if not rotulos:
+        raise ValueError("Não há pontos para a dispersão.")
+    figura = _figura_do_relatorio(titulo, medida, casas)
+    (nome_x, valores_x), (nome_y, valores_y) = x, y
+    figura.add_trace(
+        go.Scatter(
+            x=valores_x,
+            y=valores_y,
+            text=rotulos,
+            mode="markers+text",
+            textposition="top center",
+            marker={"color": marca.SERIES[0], "size": 9},
+            hovertemplate=(
+                "%{text}<br>"
+                + f"{nome_x}: %{{x:,.{casas}f}}<br>{nome_y}: %{{y:,.{casas}f}}<extra></extra>"
+            ),
+        )
+    )
+    figura.update_xaxes(type="linear", title=nome_x, tickformat=f",.{casas}f")
+    figura.update_yaxes(title=nome_y)
+    figura.update_layout(hovermode="closest")
+    return figura
+
+
 def criar_grafico_cascata(
     passos: list[tuple[str, float]],
     titulo: str,
     simbolo: str = "R$",
     subir_e_bom: bool = True,
+    divisor: float = 1e9,
+    medida: str | None = None,
 ) -> go.Figure:
     """Cascata (o primeiro passo é o ponto de partida; o último, o total), em bilhões.
 
     `subir_e_bom`: na ponte da dívida, um passo para cima (mais dívida) é ruim e fica vermelho.
+    `medida` ("R$ milhões", "%") com o `divisor` correspondente é a escala do relatório que a IA
+    escolhe: o eixo de categorias dele e o zero sempre dentro do eixo.
     """
     if not passos:
         raise ValueError("Não há passos para a cascata.")
-    figura = _figura_base(f"{titulo} ({simbolo} bilhões)")
-    figura.update_yaxes(tickformat=",.1f")
+    if medida is None:
+        figura = _figura_base(f"{titulo} ({simbolo} bilhões)")
+        figura.update_yaxes(tickformat=",.1f")
+        dica = f"%{{x}}: {simbolo} %{{text}} bi<extra></extra>"
+    else:
+        figura = _figura_do_relatorio(titulo, medida, 1)
+        dica = f"%{{x}}: %{{text}} ({medida})<extra></extra>"
+    figura.update_yaxes(rangemode="tozero")
     medidas = ["absolute"] + ["relative"] * (len(passos) - 2) + ["total"]
     subida, descida = (COR_ALTA, COR_QUEDA) if subir_e_bom else (COR_QUEDA, COR_ALTA)
     figura.add_trace(
         go.Waterfall(
             x=[nome for nome, _ in passos],
-            y=[valor / 1e9 for _, valor in passos],
+            y=[valor / divisor for _, valor in passos],
             measure=medidas,
-            text=[f"{_numero_br(v / 1e9, 1)}" for _, v in passos],
-            hovertemplate=f"%{{x}}: {simbolo} %{{text}} bi<extra></extra>",
+            text=[f"{_numero_br(v / divisor, 1)}" for _, v in passos],
+            hovertemplate=dica,
             increasing={"marker": {"color": subida}},
             decreasing={"marker": {"color": descida}},
             totals={"marker": {"color": COR_AZUL}},
