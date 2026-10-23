@@ -9,7 +9,7 @@ export const DADOS = {
   descricao:
     `O que a base do TickerLab mostra sobre a ${amostra.empresa}: fundos, ofertas, ` +
     "rodízio do auditor, setor regulado e negócios, cruzando a CVM e as agências.",
-  atual: "/relatorio-de-exemplo.html",
+  atual: "/relatorios.html",
 };
 
 const TITULO_DOS_DESTAQUES = "O que a base mostra";

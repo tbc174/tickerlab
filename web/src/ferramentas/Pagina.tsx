@@ -30,7 +30,12 @@ export function PaginaDeFerramenta({
 }) {
   return (
     <>
-      <TopoDaPagina olho="Ferramentas grátis" titulo={titulo} subtitulo={subtitulo} />
+      <TopoDaPagina
+        olho="Ferramentas grátis"
+        linkDoOlho="/ferramentas.html"
+        titulo={titulo}
+        subtitulo={subtitulo}
+      />
       <section className="faixa secao ferramenta-secao" aria-label={titulo}>
         {typeof ilha === "string" ? (
           <Ilha nome={ilha} />
