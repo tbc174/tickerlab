@@ -142,7 +142,7 @@ def _conta(dado: dict[str, Any], posicao: int) -> Conta:
     )
 
 
-def _frase(dado: dict[str, Any]) -> Frase:
+def ler_frase(dado: dict[str, Any]) -> Frase:
     texto = str(dado.get("texto", "")).strip()
     if not texto:
         raise RespostaInvalidaError("frase vazia")
@@ -159,7 +159,7 @@ def _paragrafo(dado: dict[str, Any]) -> Paragrafo:
         raise RespostaInvalidaError(
             f"tipo de parágrafo fora de fato e leitura: {dado.get('tipo')}"
         )
-    return Paragrafo(dado["tipo"], tuple(_frase(f) for f in dado.get("frases") or []))
+    return Paragrafo(dado["tipo"], tuple(ler_frase(f) for f in dado.get("frases") or []))
 
 
 def _parte(dado: dict[str, Any], partes: tuple[str, ...]) -> Parte:
@@ -179,7 +179,7 @@ def ler_analise(dado: dict[str, Any], partes: tuple[str, ...] = PARTES) -> Anali
     return Analise(tuple(_parte(p, partes) for p in dado["partes"]))
 
 
-def _objeto(propriedades: dict[str, Any]) -> dict[str, Any]:
+def objeto_fechado(propriedades: dict[str, Any]) -> dict[str, Any]:
     """Objeto fechado com todos os campos obrigatórios (o que a saída estruturada pede)."""
     return {
         "type": "object",
@@ -189,11 +189,11 @@ def _objeto(propriedades: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _lista(itens: dict[str, Any]) -> dict[str, Any]:
+def lista_de(itens: dict[str, Any]) -> dict[str, Any]:
     return {"type": "array", "items": itens}
 
 
-_OPERANDO = _objeto(
+_OPERANDO = objeto_fechado(
     {
         "id": {"type": ["string", "null"], "description": "id da linha da entrada"},
         "valor": {"type": ["number", "null"], "description": "constante (só 100)"},
@@ -203,34 +203,34 @@ _OPERANDO = _objeto(
         },
     }
 )
-_CONTA = _objeto(
+_CONTA = objeto_fechado(
     {
         "operacao": {"type": "string", "enum": list(OPERACOES)},
-        "de": _lista(_OPERANDO),
+        "de": lista_de(_OPERANDO),
         "resultado": {"type": "number"},
     }
 )
-_FRASE = _objeto(
+ESQUEMA_DA_FRASE = objeto_fechado(
     {
         "texto": {"type": "string"},
-        "notas": _lista({"type": "string"}),
-        "contas": _lista(_CONTA),
+        "notas": lista_de({"type": "string"}),
+        "contas": lista_de(_CONTA),
     }
 )
-_PARAGRAFO = _objeto(
-    {"tipo": {"type": "string", "enum": list(TIPOS)}, "frases": _lista(_FRASE)}
+_PARAGRAFO = objeto_fechado(
+    {"tipo": {"type": "string", "enum": list(TIPOS)}, "frases": lista_de(ESQUEMA_DA_FRASE)}
 )
 
 
 def esquema(partes: tuple[str, ...] = PARTES) -> dict[str, Any]:
     """A saída estruturada que o modelo devolve, com as chaves do roteiro."""
-    parte = _objeto(
+    parte = objeto_fechado(
         {
             "chave": {"type": "string", "enum": list(partes)},
-            "paragrafos": _lista(_PARAGRAFO),
+            "paragrafos": lista_de(_PARAGRAFO),
         }
     )
-    return _objeto({"partes": _lista(parte)})
+    return objeto_fechado({"partes": lista_de(parte)})
 
 
 ESQUEMA: dict[str, Any] = esquema()
