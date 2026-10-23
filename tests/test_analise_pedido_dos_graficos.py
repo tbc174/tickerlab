@@ -10,8 +10,9 @@ import pytest
 from src.analise_escrita import graficos as gr
 from src.analise_escrita import pedido as pe
 from src.analise_escrita import pedido_dos_graficos as pg
+from src.analise_escrita import porta1_dos_graficos as p1g
 from src.analise_escrita import porta2_dos_graficos as p2g
-from src.analise_escrita import saida
+from src.analise_escrita import saida, series
 from tests.ajudantes_da_analise import PAR_DA_CPFL
 from tests.ajudantes_da_analise_do_setor import PAR_DO_SETOR
 
@@ -43,6 +44,14 @@ def test_guia_traz_todo_o_cardapio_e_nenhuma_marca_sobrando():
     for tipo in gr.CARDAPIO:
         assert f"`{tipo}`" in pg.GUIA
     assert "{{" not in pg.GUIA
+
+
+def test_guia_apresenta_as_series_e_as_secoes_sem_destaque_da_porta1():
+    """O modelo lê as mesmas listas que a porta 1 confere: a seção das séries e as que não viram
+    destaque."""
+    assert f"`{series.SECAO}`" in pg.GUIA
+    for secao in p1g.SECOES_SEM_DESTAQUE:
+        assert f"`{secao}`" in pg.GUIA
 
 
 def test_pedido_leva_a_ficha_as_tabelas_e_os_paragrafos_com_rotulo():
