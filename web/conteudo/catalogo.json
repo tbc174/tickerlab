@@ -2054,6 +2054,125 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "transparencia-transferencias",
+      "licenca": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transparencia-compras",
+      "licenca": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transparencia-licitacoes",
+      "licenca": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transparencia-despesas",
+      "licenca": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transparencia-orcamento",
+      "licenca": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transparencia-emendas",
+      "licenca": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bndes-estatisticas",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bndes-desembolsos-mensais",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bndes-contas",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bndes-operacoes",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bndes-operacoes-indiretas",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bndes-compras",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inss-folha-agregada",
+      "licenca": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inss-acordos-internacionais",
+      "licenca": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inss-requerimentos-pendentes",
+      "licenca": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inss-requerimentos-solicitados",
+      "licenca": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "susep-ses-complementos",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-15"
+    },
+    {
       "id": "gleif-goldencopy-lei2",
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",

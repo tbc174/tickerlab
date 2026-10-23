@@ -51,6 +51,10 @@ LICENCAS = {
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
+    # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
+    "transparencia": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+    "bndes": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+    "inss": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
     "pgfn": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
     "ibama": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
     "mte": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
@@ -208,6 +212,9 @@ REVENDA = {
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
+    "transparencia": VENDAVEL_COM_ATRIBUICAO,
+    "bndes": VENDAVEL_ODBL,
+    "inss": VENDAVEL_COM_ATRIBUICAO,
     "ibama": SO_USO_INTERNO,
     "mte": SO_USO_INTERNO,
     "gleif": VENDAVEL_COM_ATRIBUICAO,

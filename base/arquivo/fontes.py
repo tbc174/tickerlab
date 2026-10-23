@@ -23,6 +23,7 @@ from base.arquivo import (
     contrapartes,
     lote_atencao,
     lote_bcb,
+    lote_brasil2,
     lote_cadastros,
     lote_eua,
     lote_organismos,
@@ -1165,6 +1166,9 @@ FONTES: list[Fonte] = [
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)
     *lote_setoriais.fontes(),
+    # lote Brasil, segunda camada (22/10/2026): Portal da Transparência, BNDES, INSS e SUSEP, só CNPJ
+    # e agregados (linhas 259, 260 e 262 da fila)
+    *lote_brasil2.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),
