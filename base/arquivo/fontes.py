@@ -22,6 +22,7 @@ from base.arquivo import (
     assessorias,
     contrapartes,
     lote_bcb,
+    lote_cadastros,
     lote_eua,
     lote_licitacoes,
     lote_organismos,
@@ -112,6 +113,7 @@ TERMOS = {
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
     **lote_licitacoes.termos(),  # sem vigia de termos neste lote (motivos em _SEM_VIGIA)
+    **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
     # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
     # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
@@ -1166,6 +1168,9 @@ FONTES: list[Fonte] = [
     # lote licitações e contratos (rodada 4, 22/10/2026): SEGES, compras.gov.br, Transferegov, PNCP,
     # TCU, MG e SC, só pessoa jurídica (linha 288 da fila)
     *lote_licitacoes.fontes(),
+    # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
+    # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
+    *lote_cadastros.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

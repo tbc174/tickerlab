@@ -98,6 +98,11 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
     ("seges", "comprasgov", "transferegov", "pncp", "tcu", "govmg", "govsc"),
     date(2026, 10, 22),
 )
+# lote cadastros globais (licencas-por-fonte.md, rodada 4): Wikidata, OFAC, UE e OFSI; o GLEIF e a SEC
+# já têm a data da auditoria de 21/10/2026
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    ("wikidata", "ofac", "eufsf", "ofsi"), date(2026, 10, 22)
+)
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")

@@ -63,6 +63,7 @@ _SEM_VIGIA = {
         "a licença está na ficha do catálogo ou no rodapé do portal, não numa página de termos",
     ),
     "bcb-sgs-189": "a licença é da FGV IBRE (IGP-M), sem página própria lida",
+    "sec-company-tickers": "a lista de tickers é obra da SEC (domínio público); `termos-sec` já vigia a página da SEC",
     # a página de termos não abre com o nosso agente; não se contorna (fila)
     "fmi": "imf.org responde 403 (Akamai) ao nosso agente",
     "ccee": "dadosabertos.ccee.org.br responde 403 ao nosso agente",
@@ -84,6 +85,8 @@ _SEM_VIGIA = {
         "a licença é o rodapé CC BY-ND do site gov.br, que vale para o site inteiro, não uma página de termos do conjunto",
     ),
     "ans-demonstracoes": "as demonstrações contábeis não declaram licença: não há texto de termos a vigiar",
+    # lote cadastros globais (22/10/2026): obra do governo dos EUA, sem página de termos própria
+    "ofac": "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
     "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
     # lote licitações e contratos (rodada 4, 22/10/2026)
     **dict.fromkeys(

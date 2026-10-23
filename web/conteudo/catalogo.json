@@ -500,6 +500,27 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-wikidata",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-eufsf",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-ofsi",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-fnc-colombia",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -2002,6 +2023,237 @@
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
       "marca": "a_confirmar",
       "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-pncp-compras",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-pncp-itens",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-pncp-resultados",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-arp-atas",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-arp-itens",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-licitacao",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-pregao",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-rdc",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-sem-licitacao",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-pesquisa-precos",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-propostas",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-catalogo",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-siconv",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "comprasgov-resultado-itens",
+      "licenca": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transferegov-especiais",
+      "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transferegov-ted",
+      "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transferegov-fundo-a-fundo",
+      "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratos",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tcu-inidoneos",
+      "licenca": "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "govmg-compras-contratos",
+      "licenca": "CC BY 4.0 (dados abertos de Minas Gerais; citar o Governo de MG)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "govsc-contratos",
+      "licenca": "CC BY (dados abertos de Santa Catarina; citar o Governo de SC)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "gleif-goldencopy-lei2",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "gleif-goldencopy-rr",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "gleif-goldencopy-repex",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "wikidata-lei",
+      "licenca": "CC0 (Wikidata; citar Wikidata)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "wikidata-isin",
+      "licenca": "CC0 (Wikidata; citar Wikidata)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "wikidata-cnpj",
+      "licenca": "CC0 (Wikidata; citar Wikidata)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "wikidata-cik",
+      "licenca": "CC0 (Wikidata; citar Wikidata)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "wikidata-b3",
+      "licenca": "CC0 (Wikidata; citar Wikidata)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "sec-company-tickers",
+      "licenca": "Domínio público (lista de tickers da SEC; citar a SEC)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ofac-sdn",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eufsf-sancoes",
+      "licenca": "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ofsi-conlist",
+      "licenca": "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades",
+      "marca": "vendavel",
+      "ritmo": "diaria",
       "termos_lidos_em": "2026-10-22"
     }
   ],
