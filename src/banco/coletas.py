@@ -130,6 +130,13 @@ LICENCAS = {
     "nyfed": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
     "tic": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
     "census": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+    # lote cadastros globais (termos lidos em 22/10/2026, licencas-por-fonte.md, rodada 4): só pessoa
+    # jurídica; o `gleif` e o `sec` já existiam (a lista de tickers da SEC é obra da agência)
+    "sec-company-tickers": "Domínio público (lista de tickers da SEC; citar a SEC)",
+    "wikidata": "CC0 (Wikidata; citar Wikidata)",
+    "ofac": "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades",
+    "eufsf": "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas",
+    "ofsi": "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades",
     # lote setoriais Brasil (termos lidos em 22/10/2026, licencas-por-fonte.md): EPE é CC BY 4.0;
     # INEP, Senatran e INPI só têm o rodapé CC BY-ND 3.0 do site gov.br, que vale para o conteúdo do
     # site e não para o conjunto: mostrar "como publicado" com a fonte citada (precedente da CONAB)
@@ -249,6 +256,12 @@ REVENDA = {
     "nyfed": VENDAVEL_COM_ATRIBUICAO,
     "tic": VENDAVEL_COM_ATRIBUICAO,
     "census": VENDAVEL_COM_ATRIBUICAO,
+    # lote cadastros globais: CC0, domínio público, reuso da UE e OGL v3 (rodada 4); só pessoa jurídica
+    "sec-company-tickers": VENDAVEL_COM_ATRIBUICAO,
+    "wikidata": VENDAVEL_COM_ATRIBUICAO,
+    "ofac": VENDAVEL_COM_ATRIBUICAO,
+    "eufsf": VENDAVEL_COM_ATRIBUICAO,
+    "ofsi": VENDAVEL_COM_ATRIBUICAO,
     # lote setoriais Brasil: CC BY 4.0 (EPE); rodapé CC BY-ND do site gov.br e licença do conjunto
     # não achada (INEP, Senatran, INPI, demonstrações da ANS): a confirmar, coleta e uso com a fonte citada
     "epe": VENDAVEL_COM_ATRIBUICAO,

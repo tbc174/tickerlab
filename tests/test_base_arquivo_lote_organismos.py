@@ -196,7 +196,12 @@ def test_gleif_emissores_cabem_em_uma_pagina():
 
 
 def test_gleif_br_continua_a_fonte_antiga_e_as_novas_so_acrescentam():
-    ids = [f.id for f in fontes.FONTES if f.id.startswith("gleif-")]
+    # as golden copies (cheias, sem pessoa física) são do lote cadastros globais (linha 287)
+    ids = [
+        f.id
+        for f in fontes.FONTES
+        if f.id.startswith("gleif-") and not f.id.startswith("gleif-goldencopy-")
+    ]
     assert sorted(ids) == sorted(["gleif-br", *lote.ENDPOINTS_DO_GLEIF])
 
 
