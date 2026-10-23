@@ -16,8 +16,8 @@ function variaveis(tema: string[][]): string {
 
 export function css(): string {
   return semCrlf(`${CABECALHO}
-@font-face { font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
 :root {
   ${variaveis(marca.site_claro)}
   --largura: 72rem; --raio: 14px;
@@ -81,6 +81,13 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .tema-opcoes [aria-checked="true"] { color: var(--azul-texto); }
 .tema-opcoes [aria-checked="true"] svg { color: var(--azul-texto); }
 .tema-opcoes [aria-checked="true"]::after { content: "✓"; margin-left: auto; font-weight: 800; }
+/* menu do celular: o botão só aparece com JavaScript e na tela estreita (sem JS, os itens quebram em linhas) */
+.menu-botao { display: none; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; padding: 0; flex: none;
+  border-radius: 10px; border: 1px solid var(--linha-forte); background: transparent; color: var(--texto); cursor: pointer; }
+.menu-botao:hover { border-color: var(--azul); }
+.menu-botao svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.menu-botao .aberto, .menu-botao[aria-expanded="true"] .fechado { display: none; }
+.menu-botao[aria-expanded="true"] .aberto { display: inline; }
 /* botões */
 .botao { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px;
   padding: .75rem 1.2rem; font: 700 1rem "Manrope", sans-serif; text-decoration: none; cursor: pointer;
@@ -238,8 +245,10 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%); }
 .linha-heroi polyline, .linha-heroi path { fill: none; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .linha-heroi .apoio { stroke: var(--texto); stroke-width: 2; opacity: .2; }
-.linha-heroi .principal { stroke: var(--azul); stroke-width: 4; stroke-dasharray: 1; stroke-dashoffset: 0;
-  animation: tl-desenhar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }
+/* revela da esquerda para a direita: o tracejado (stroke-dasharray) com o traço que não estica
+   (non-scaling-stroke) cortava a linha uns 15% antes do ponto, até parada */
+.linha-heroi .principal { stroke: var(--azul); stroke-width: 4;
+  animation: tl-revelar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }
 .ponto-heroi { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
   background: var(--texto); animation: tl-ponto 260ms ease-out 1200ms both; }
 /* "backwards", não "both": com "both" o transform da chegada fica para sempre, cada filho vira um
@@ -249,7 +258,8 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 .heroi-texto > :nth-child(3) { animation-delay: 120ms; }
 .heroi-texto > :nth-child(n+4) { animation-delay: 180ms; }
 .heroi-visual img { animation: tl-folha 700ms cubic-bezier(.2, .7, .2, 1) 200ms both; }
-@keyframes tl-desenhar { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+/* a margem negativa deixa a espessura do traço e a ponta redonda de fora do recorte */
+@keyframes tl-revelar { from { clip-path: inset(-12px 100% -12px -12px); } to { clip-path: inset(-12px -12px -12px -12px); } }
 @keyframes tl-ponto { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes tl-chegar { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes tl-folha { from { opacity: 0; transform: translateY(24px) rotate(4deg); } to { opacity: 1; transform: rotate(1.5deg); } }
@@ -259,10 +269,27 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
   .heroi-visual { display: none; }
   .grade.tres, .grade.quatro, .passos { grid-template-columns: 1fr; }
   .topo nav { display: none; }
+  .topo .faixa { position: relative; }
+  .com-js .menu-botao { display: inline-flex; }
+  .com-js .topo nav[data-aberto] { display: flex; flex-direction: column; gap: .1rem; position: absolute; left: 0; right: 0;
+    top: calc(100% + .45rem); margin: 0; padding: .35rem; background: var(--destaque); border: 1px solid var(--linha-forte);
+    border-radius: 12px; box-shadow: 0 16px 40px var(--sombra); transition: opacity 160ms ease, transform 160ms ease; }
+  .topo nav[data-aberto] a { padding: .75rem .8rem; border-radius: 8px; font-size: 1rem; color: var(--texto); }
+  .topo nav[data-aberto] a:hover, .topo nav[data-aberto] a[aria-current] { background: var(--superficie); }
+  .topo nav[data-aberto] a[aria-current] { color: var(--azul-texto); }
+  .topo nav[data-aberto] a::after { display: none; }
+  @starting-style { .com-js .topo nav[data-aberto] { opacity: 0; transform: translateY(-4px); } }
+  :root:not(.com-js) .topo nav { display: flex; flex-wrap: wrap; order: 9; flex-basis: 100%; margin-left: 0;
+    gap: .35rem 1rem; padding-bottom: .7rem; }
   .rodape .faixa { grid-template-columns: 1fr; }
   .vitrine .folhas { grid-template-columns: 1fr 1fr; gap: .6rem; }
 }
 @media (max-width: 520px) {
+  /* a comparação dos planos cabe na tela do celular: células mais justas */
+  table.planos { font-size: .82rem; }
+  table.planos th, table.planos td { padding: .6rem .4rem; hyphens: auto; }
+  table.planos th:first-child { padding-left: .7rem; }
+  table.planos thead th:not(:first-child) { font-size: .82rem; }
   .busca .campo { flex-direction: column; }
   #sugestoes .tipo { display: none; }
 }

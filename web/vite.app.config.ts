@@ -16,8 +16,8 @@ import { TEMA_SALVO } from "./src/site/tema";
 const BASE = "/";
 // as fontes do site (vêm do Python: scripts/gerar_site.py), com as licenças junto
 const FONTES = [
-  "Manrope-VariableFont_wght.ttf",
-  "JetBrainsMono-VariableFont_wght.ttf",
+  "Manrope-VariableFont_wght.woff2",
+  "JetBrainsMono-VariableFont_wght.woff2",
   "OFL-Manrope.txt",
   "OFL-JetBrainsMono.txt",
 ];

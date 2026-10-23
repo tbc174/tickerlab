@@ -115,6 +115,21 @@ def test_nada_vem_de_terceiros():
         assert '<script src="http' not in texto
 
 
+def test_fontes_do_site_sao_woff2_leves_e_existem():
+    """Os TTF inteiros eram ~350 KB da primeira visita; o WOFF2 recortado (scripts/gerar_fontes_web)."""
+    css = (SITE / "estilo.css").read_text(encoding="utf-8")
+    fontes = re.findall(r'url\("/fontes/([^"]+)"\) format\("([^"]+)"\)', css)
+    assert {formato for _, formato in fontes} == {"woff2"}
+    precarregada = re.findall(
+        r'<link rel="preload" href="/fontes/([^"]+)" as="font" type="font/woff2"',
+        (SITE / "index.html").read_text(encoding="utf-8"),
+    )
+    assert precarregada and precarregada[0] in {nome for nome, _ in fontes}
+    total = sum((SITE / "fontes" / nome).stat().st_size for nome, _ in fontes)
+    assert total < 120 * 1024
+    assert not list((SITE / "fontes").glob("*.ttf"))
+
+
 def test_planos_do_site_sao_os_do_app():
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
     tabela = texto[texto.index('<table class="planos') : texto.index("</table>")]
@@ -239,6 +254,15 @@ def test_menu_da_versao_a_em_todas_as_paginas():
         topo = arquivo.read_text(encoding="utf-8").split("</header>")[0]
         for rotulo in ("Produto", "Como funciona", "Relatórios", "Planos", "Aprender"):
             assert f">{rotulo}</a>" in topo, (arquivo.name, rotulo)
+
+
+def test_celular_tem_botao_que_abre_o_menu_em_todas_as_paginas():
+    """Sem ele, abaixo de 860 px o topo ficava só com a marca, o tema e "Abrir o app"."""
+    for arquivo in PAGINAS_HTML:
+        topo = arquivo.read_text(encoding="utf-8").split("</header>")[0]
+        assert 'data-menu-botao=""' in topo, arquivo.name
+        assert 'aria-controls="menu-principal"' in topo, arquivo.name
+        assert '<nav id="menu-principal" aria-label="Principal">' in topo, arquivo.name
 
 
 def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
