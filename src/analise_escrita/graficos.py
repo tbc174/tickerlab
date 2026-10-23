@@ -21,6 +21,7 @@ TEMPO, CATEGORIA = "tempo", "categoria"
 MAXIMO_DE_GRAFICOS = 5
 MINIMO_DE_GRAFICOS = 2  # menos que isso, a reserva por regras completa
 MAXIMO_DE_DESTAQUES = 2
+UNIDADES = ("R$", "US$", "%")
 
 
 @dataclass(frozen=True)
@@ -217,6 +218,15 @@ def valor_da_celula(celula: object) -> float | None:
         lidos = numeros.numeros(celula)
         return lidos[0].valor if len(lidos) == 1 else None
     return None
+
+
+def unidade_da_celula(celula: object) -> str | None:
+    """A unidade do número da célula ("R$", "%" ou "" para a contagem e o número cru); None sem
+    número. Duas unidades no mesmo eixo desenham R$ bilhões contra percentuais."""
+    if valor_da_celula(celula) is None:
+        return None
+    texto = celula if isinstance(celula, str) else ""
+    return next((u for u in UNIDADES if u in texto), "")
 
 
 def momento_da_celula(celula: object) -> numeros.DataEscrita | None:

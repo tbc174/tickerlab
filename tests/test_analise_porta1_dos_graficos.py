@@ -129,6 +129,35 @@ def test_grafico_alem_do_maximo_reprova():
     assert _regras(seis) == [(p1g.GRAFICO, 5, p1g.ALEM_DO_MAXIMO)]
 
 
+def test_unidades_misturadas_reprovam():
+    entrada = json.loads(json.dumps(ENTRADA))
+    linhas = [
+        {"id": f"o_que_mudou.indicadores.{i}", "tipo": "linha", "tabela": "Indicadores",
+         "celulas": {"indicador": nome, "antes": antes, "agora": agora}}
+        for i, (nome, antes, agora) in enumerate(
+            [("Receita", "R$ 45,1 bi", "R$ 45,6 bi"), ("Margem", "32,1%", "30,0%")]
+        )
+    ]  # fmt: skip
+    entrada["linhas"] += linhas
+    grafico = replace(
+        BOM, tipo="antes_e_agora", tabela="o_que_mudou.indicadores", eixo="indicador",
+        colunas=("antes", "agora"),
+        por_que=saida.Frase("A receita e a margem.", ("o_que_mudou.indicadores.0",)),
+    )  # fmt: skip
+    assert (p1g.GRAFICO, 0, p1g.FORMA) in _regras(gr.Escolha((grafico,)), entrada)
+    so_receita = {**entrada, "linhas": entrada["linhas"][:-1]}
+    grafico = replace(grafico, tipo="barras_por_categoria", colunas=("antes",))
+    assert (
+        _regras(
+            gr.Escolha(
+                (replace(grafico, tipo="antes_e_agora", colunas=("antes", "agora")),)
+            ),
+            so_receita,
+        )
+        == []
+    )
+
+
 def test_rotulo_com_pessoa_reprova():
     entrada = json.loads(json.dumps(ENTRADA))
     entrada["linhas"][0]["celulas"]["nome"] = "Maria Souza, Diretora-Presidente"

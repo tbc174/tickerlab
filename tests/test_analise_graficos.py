@@ -136,3 +136,12 @@ def test_momento_da_celula(celula, ano, mes):
         assert momento is None
     else:
         assert (momento.ano, momento.mes) == (ano, mes)
+
+
+@pytest.mark.parametrize(
+    ("celula", "unidade"),
+    [("R$ 655,8 mi", "R$"), ("11,1%", "%"), ("436", ""), (4.1e10, ""), (None, None),
+     ("sim", None)],
+)  # fmt: skip
+def test_unidade_da_celula(celula, unidade):
+    assert gr.unidade_da_celula(celula) == unidade

@@ -84,14 +84,24 @@ def graficos_de_reserva(
 
 
 def graficos_finais(
-    escolha: gr.Escolha, entrada: dict[str, Any], analise: saida.Analise
+    escolha: gr.Escolha,
+    entrada: dict[str, Any],
+    analise: saida.Analise,
+    reprovados_na_porta2: frozenset[str] | None,
 ) -> gr.Escolha:
-    """A escolha que vai para o relatório: o que o modelo acertou, completado pela reserva."""
+    """A escolha que vai para o relatório: o que o modelo acertou nas duas portas, completado pela
+    reserva. Sem a porta 2 (`None`), nada do modelo vai ao ar: fica só a reserva."""
     conferencia = p1g.conferir(escolha, entrada, analise)
+
+    def aprovado(item: str, indice: int, reprovados_na_porta1: frozenset[int]) -> bool:
+        if reprovados_na_porta2 is None or indice in reprovados_na_porta1:
+            return False
+        return p1g.rotulo(item, indice) not in reprovados_na_porta2
+
     graficos = [
         g
         for i, g in enumerate(escolha.graficos)
-        if i not in conferencia.graficos_reprovados
+        if aprovado(p1g.GRAFICO, i, conferencia.graficos_reprovados)
     ]
     if len(graficos) < gr.MINIMO_DE_GRAFICOS:
         escolhidos = {g.chave for g in graficos}
@@ -104,6 +114,6 @@ def graficos_finais(
     destaques = tuple(
         d
         for i, d in enumerate(escolha.destaques)
-        if i not in conferencia.destaques_reprovados
+        if aprovado(p1g.DESTAQUE, i, conferencia.destaques_reprovados)
     )
     return gr.Escolha(tuple(graficos), destaques)

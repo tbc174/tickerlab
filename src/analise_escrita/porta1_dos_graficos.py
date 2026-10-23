@@ -30,6 +30,11 @@ SECAO_INEXISTENTE, SECAO_SEM_DESTAQUE = "secao_inexistente", "secao_sem_destaque
 SECOES_SEM_DESTAQUE = frozenset({"ficha_tecnica", "metodologia", "limites"})
 
 
+def rotulo(item: str, indice: int) -> str:
+    """`grafico.0`, `destaque.1`: o nome do item na porta 2 e na linhagem."""
+    return f"{item}.{indice}"
+
+
 @dataclass(frozen=True)
 class Reprovacao:
     item: str  # GRAFICO ou DESTAQUE
@@ -55,7 +60,9 @@ class Conferencia:
         return frozenset(r.indice for r in self.reprovacoes if r.item == DESTAQUE)
 
 
-def _falhas_de_forma(grafico: gr.Grafico, pontos: list[gr.Ponto]) -> Iterator[str]:
+def _falhas_de_forma(
+    grafico: gr.Grafico, linhas: list[gr.LinhaDaTabela], pontos: list[gr.Ponto]
+) -> Iterator[str]:
     forma = gr.CARDAPIO[grafico.tipo]
     minimo, maximo = forma.colunas
     if not minimo <= len(grafico.colunas) <= maximo:
@@ -67,6 +74,13 @@ def _falhas_de_forma(grafico: gr.Grafico, pontos: list[gr.Ponto]) -> Iterator[st
         yield "coluna repetida ou o eixo usado como valor"
     if forma.eixo == gr.TEMPO and any(p.momento is None for p in pontos):
         yield f"{grafico.tipo} pede datas no eixo, e {grafico.eixo} tem linha sem data"
+    unidades = {
+        gr.unidade_da_celula(linha.celulas.get(c))
+        for linha in linhas
+        for c in grafico.colunas
+    }
+    if len(unidades - {None}) > 1:
+        yield f"unidades misturadas no mesmo eixo: {', '.join(sorted(u or 'número' for u in unidades - {None}))}"
     for i, coluna in enumerate(grafico.colunas):
         com_valor = sum(p.valores[i] is not None for p in pontos)
         if com_valor < forma.pontos:
@@ -123,7 +137,7 @@ def _conferir_grafico(
         yield COLUNA_INEXISTENTE, f"{grafico.tabela} não tem {', '.join(faltam)}"
         return
     pontos = gr.pontos(grafico, linhas)
-    yield from ((FORMA, motivo) for motivo in _falhas_de_forma(grafico, pontos))
+    yield from ((FORMA, motivo) for motivo in _falhas_de_forma(grafico, linhas, pontos))
     yield from _falhas_do_eixo(pontos, ficha)
     ids = {linha.id for linha in linhas}
     titulo = saida.Frase(grafico.titulo, tuple(sorted(ids)))
