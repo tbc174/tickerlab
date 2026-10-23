@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "result": {
+    "name": "fii-doc-inf_mensal",
+    "resources": [
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/META/meta_inf_mensal_fii.zip",
+        "name": "Dicionário de Dados"
+      },
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_2021.zip",
+        "name": "Informes Mensais Estruturados de Fundos de Investimento Imobiliário (2021)"
+      },
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_2022.zip",
+        "name": "Informes Mensais Estruturados de Fundos de Investimento Imobiliário (2022)"
+      }
+    ]
+  }
+}
