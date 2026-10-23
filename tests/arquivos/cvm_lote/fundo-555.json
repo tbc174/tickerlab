@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "result": {
+    "name": "fi-doc-inf_diario",
+    "resources": [
+      {
+        "format": "TXT",
+        "url": "https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/META/meta_inf_diario_fi.txt",
+        "name": "Dicionário de Dados"
+      },
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_202510.zip",
+        "name": "Informes Diários de Fundos de Investimento (Outubro/2025)"
+      },
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_202511.zip",
+        "name": "Informes Diários de Fundos de Investimento (Novembro/2025)"
+      }
+    ]
+  }
+}

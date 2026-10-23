@@ -13,6 +13,7 @@ from base.arquivo import (
     lote_atencao,
     lote_brasil2,
     lote_cadastros,
+    lote_cvm,
     lote_eua,
     lote_licitacoes,
     lote_setoriais,
@@ -164,6 +165,11 @@ _LOTE_LICITACOES_SO_ARQUIVO = (
 _LOTE_BRASIL2_SO_ARQUIVO = (
     "dado aberto de órgão público brasileiro guardado como publicado, só CNPJ e agregados (a pessoa "
     "física sai antes de guardar, ADR 0088); a tabela com contrato no catálogo ainda não existe"
+)
+
+_LOTE_CVM_SO_ARQUIVO = (
+    "dado aberto da CVM (ODbL) guardado como publicado, só fundo, CNPJ e agregado (sem cadastro de "
+    "pessoa, ADR 0088); a tabela com contrato no catálogo ainda não existe"
 )
 
 DESTINOS: dict[str, Destino] = {
@@ -359,6 +365,23 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_ATENCAO_SO_ARQUIVO)
         for f in lote_atencao.fontes()
     },
+    # lote CVM (linha 200 da fila, 23/10/2026): guardado no acervo; as tabelas são o lote 2
+    **{
+        f.id: _planejada("cvm-lote-2/tabelas", _LOTE_CVM_SO_ARQUIVO)
+        for f in lote_cvm.fontes()
+    },
+    "cvm-fundos-informe-diario": _planejada(
+        "cvm-lote-2/cota-por-fundo",
+        "cota, patrimônio e captação diária de cada fundo 555",
+    ),
+    "cvm-fii-mensal": _planejada("cvm-lote-2/tela-de-fii", "informe mensal dos FII"),
+    "cvm-fii-trimestral": _planejada(
+        "cvm-lote-2/tela-de-fii", "informe trimestral dos FII"
+    ),
+    "cvm-fii-anual": _planejada("cvm-lote-2/tela-de-fii", "informe anual dos FII"),
+    "cvm-fii-demonstracoes": _planejada(
+        "cvm-lote-2/tela-de-fii", "demonstrações dos FII"
+    ),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()

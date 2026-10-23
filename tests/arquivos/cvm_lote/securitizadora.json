@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "result": {
+    "name": "securit-doc-inf_mensal_ots",
+    "resources": [
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/SECURIT/DOC/INF_MENSAL_OTS/META/meta_inf_mensal_ots.zip",
+        "name": "Dicionário de Dados"
+      },
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/SECURIT/DOC/INF_MENSAL_OTS/DADOS/inf_mensal_ots_2023.zip",
+        "name": "Informes Mensais de OTS (2023)"
+      },
+      {
+        "format": "ZIP",
+        "url": "https://dados.cvm.gov.br/dados/SECURIT/DOC/INF_MENSAL_OTS/DADOS/inf_mensal_ots_2024.zip",
+        "name": "Informes Mensais de OTS (2024)"
+      }
+    ]
+  }
+}

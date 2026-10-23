@@ -25,6 +25,7 @@ from base.arquivo import (
     lote_bcb,
     lote_brasil2,
     lote_cadastros,
+    lote_cvm,
     lote_eua,
     lote_licitacoes,
     lote_organismos,
@@ -1177,6 +1178,9 @@ FONTES: list[Fonte] = [
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),
+    # lote CVM (linha 200 da fila, 23/10/2026): fundos 555, FII, FIP, securitizadoras, fundos
+    # estruturados e arrecadação do portal de dados abertos; sem cadastro com pessoa (ADR 0088)
+    *lote_cvm.fontes(),
     # lote atenção e texto (rodada 4, linha 289): acessos da Wikimedia, GDELT GKG sem Persons, Querido
     # Diário, Crossref, OpenAlex e RSS das agências (só índice); nunca pessoa nem texto de terceiros
     *lote_atencao.fontes(),
