@@ -93,6 +93,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
     date(2026, 10, 22),
 )
 TERMOS_LIDOS_EM |= dict.fromkeys(("anatel", "anp"), date(2026, 10, 14))
+# lote Brasil, segunda camada (licencas-por-fonte.md): Portal da Transparência, BNDES e INSS lidos
+# na rodada 3 da pesquisa (licença no CKAN/no portal)
+TERMOS_LIDOS_EM |= dict.fromkeys(("transparencia", "bndes", "inss"), date(2026, 10, 22))
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")

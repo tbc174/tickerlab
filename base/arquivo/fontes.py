@@ -22,6 +22,7 @@ from base.arquivo import (
     assessorias,
     contrapartes,
     lote_bcb,
+    lote_brasil2,
     lote_eua,
     lote_organismos,
     lote_setoriais,
@@ -1250,6 +1251,9 @@ FONTES: list[Fonte] = [
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)
     *lote_setoriais.fontes(),
+    # lote Brasil, segunda camada (22/10/2026): Portal da Transparência, BNDES, INSS e SUSEP, só CNPJ
+    # e agregados (linhas 259, 260 e 262 da fila)
+    *lote_brasil2.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

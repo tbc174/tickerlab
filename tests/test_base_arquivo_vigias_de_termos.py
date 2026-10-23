@@ -38,6 +38,8 @@ _SEM_VIGIA = {
             "ibama",
             "mte",
             "ons",
+            "bndes",
+            "inss",
             "cvm",
             "bcb",
             "tesouro",
@@ -62,6 +64,7 @@ _SEM_VIGIA = {
         ),
         "a licença está na ficha do catálogo ou no rodapé do portal, não numa página de termos",
     ),
+    "transparencia": "as páginas de termos do portaldatransparencia.gov.br respondem 405 ao nosso agente (WAF); não se contorna",
     "bcb-sgs-189": "a licença é da FGV IBRE (IGP-M), sem página própria lida",
     # a página de termos não abre com o nosso agente; não se contorna (fila)
     "fmi": "imf.org responde 403 (Akamai) ao nosso agente",
