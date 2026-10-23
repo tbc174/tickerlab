@@ -39,8 +39,8 @@ pontos com número em cada coluna.
 7. Nas formas no tempo, os pontos se comparam lado a lado: o ano (ou o mês) da data de corte que
    ainda não fechou não entra entre os inteiros, e o eixo não pula períodos (2019 e depois 2024).
    Uma tabela assim fica de fora ou vai numa forma que não é no tempo.
-8. O título diz o período que o gráfico cobre. Não chame de "agora" ou "atual" o fim de um
-   período que já fechou: a ponte da dívida, por exemplo, termina no último ano fechado.
+8. Não chame de "agora" ou "atual" o fim de um período que já fechou: a ponte da dívida, por
+   exemplo, termina no último ano fechado (diga assim, sem o ano, pela regra 4).
 
 ## Os destaques
 
