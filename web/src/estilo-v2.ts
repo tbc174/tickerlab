@@ -73,7 +73,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-pilula:hover .v2-pilula-seta { transform: translateX(3px); }
 
 /* painel do número principal (Ledger): vidro escuro, um número grande, o gráfico e três métricas */
-.v2-painel-pilha { position: relative; padding: 0 0 2.5rem 0; animation: tl-chegar 700ms cubic-bezier(.2, .7, .2, 1) 220ms both; }
+.v2-painel-pilha { position: relative; animation: tl-chegar 700ms cubic-bezier(.2, .7, .2, 1) 220ms both; }
 .v2-painel { position: relative; padding: 1.4rem 1.5rem 1.1rem; border-radius: 20px;
   background: linear-gradient(180deg, rgba(22, 49, 96, .72), rgba(10, 31, 68, .72));
   border: 1px solid rgba(232, 240, 255, .14); backdrop-filter: blur(16px);
@@ -93,7 +93,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-grafico { display: block; width: 100%; height: 110px; margin: 1rem 0 .4rem; overflow: visible; }
 .v2-grafico .area { fill: url(#v2-area); animation: tl-chegar 900ms ease 900ms both; }
 .v2-grafico .linha { fill: none; stroke: ${escuro.azul_texto}; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round;
-  vector-effect: non-scaling-stroke; stroke-dasharray: 1; animation: tl-desenhar 1400ms cubic-bezier(.3, .7, .2, 1) 450ms both; }
+  vector-effect: non-scaling-stroke; animation: tl-revelar 1400ms cubic-bezier(.3, .7, .2, 1) 450ms both; }
 .v2-metricas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: 0;
   padding: .9rem 0; border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); }
 .v2-metricas div { min-width: 0; }
@@ -101,7 +101,8 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-metricas dd { margin: 0; font: 700 1.05rem "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
 .v2-painel-rodape { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-top: .8rem;
   color: var(--apagado); font-size: .86rem; }
-.v2-flutuante { position: absolute; left: -2.2rem; bottom: .2rem; width: min(17rem, 70%); padding: .9rem 1rem;
+/* a ficha encosta só na borda de baixo do painel: antes, solta por cima, tapava as métricas */
+.v2-flutuante { position: relative; margin: -1rem 0 0 -2.2rem; width: min(17rem, 70%); padding: .9rem 1rem;
   border-radius: 16px; background: rgba(10, 31, 68, .88); border: 1px solid rgba(245, 184, 61, .3);
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5); backdrop-filter: blur(12px);
   animation: tl-chegar 600ms cubic-bezier(.2, .7, .2, 1) 1100ms both; }
@@ -445,10 +446,11 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-plano header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; }
 .v2-plano h3 { margin: 0; font-size: 1.5rem; letter-spacing: -0.03em; }
 .v2-plano-frase { margin: 0; color: var(--apagado); }
-.v2-plano ul { list-style: none; margin: 0 0 .4rem; padding: 0; display: grid; gap: .55rem; flex: 1; }
+/* align-content: a lista ocupa a sobra do cartão (o botão fica embaixo), mas os itens ficam juntos no topo */
+.v2-plano ul { list-style: none; margin: 0 0 .4rem; padding: 0; display: grid; gap: .55rem; flex: 1; align-content: start; }
 .v2-plano li { position: relative; padding-left: 1.6rem; max-width: none; }
 .v2-plano li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--azul-texto); font-weight: 800; }
-.v2-plano li b { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+.v2-plano li b { font-weight: 800; font-variant-numeric: tabular-nums; }
 .v2-plano .botao { width: 100%; }
 .v2-desligado { opacity: .55; cursor: not-allowed; }
 .v2-plano-destaque { color: var(--texto); background: linear-gradient(180deg, ${escuro.destaque}, ${marca.marinho}) !important; border-color: transparent;
@@ -515,7 +517,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   background: linear-gradient(180deg, #a9c1ff, ${marca.azul} 75%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .v2-queda { position: absolute; right: 0; bottom: 8%; width: min(46rem, 60%); height: 14rem; z-index: -1; opacity: .8; }
 .v2-queda path { fill: none; stroke: var(--queda); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke;
-  stroke-dasharray: 1; animation: tl-desenhar 1600ms cubic-bezier(.5, 0, .7, .4) 500ms both; }
+  animation: tl-revelar 1600ms cubic-bezier(.5, 0, .7, .4) 500ms both; }
 
 /* rodapé: uma linha de luz no topo */
 .rodape { position: relative; }

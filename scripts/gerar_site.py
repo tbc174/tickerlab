@@ -36,8 +36,8 @@ COPIADOS = (
     (
         "fontes",
         (
-            "Manrope-VariableFont_wght.ttf",
-            "JetBrainsMono-VariableFont_wght.ttf",
+            "Manrope-VariableFont_wght.woff2",
+            "JetBrainsMono-VariableFont_wght.woff2",
             "OFL-Manrope.txt",
             "OFL-JetBrainsMono.txt",
         ),

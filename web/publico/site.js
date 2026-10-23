@@ -71,6 +71,27 @@
     });
     document.addEventListener("click", (e) => { if (!menu.contains(e.target)) fechar(false); });
   }
+  // --- menu do celular: o botão abre e fecha a lista do topo ------------------------------------
+  const botaoDoMenu = document.querySelector("[data-menu-botao]");
+  const menuPrincipal = botaoDoMenu && document.getElementById(botaoDoMenu.getAttribute("aria-controls"));
+  if (menuPrincipal) {
+    const mostrarMenu = (aberto) => {
+      menuPrincipal.toggleAttribute("data-aberto", aberto);
+      botaoDoMenu.setAttribute("aria-expanded", String(aberto));
+      botaoDoMenu.setAttribute("aria-label", aberto ? "Fechar o menu" : "Abrir o menu");
+    };
+    const estaAberto = () => menuPrincipal.hasAttribute("data-aberto");
+    botaoDoMenu.addEventListener("click", () => mostrarMenu(!estaAberto()));
+    // "Relatórios" é uma âncora na inicial: sem fechar, o menu ficaria aberto sobre a seção
+    menuPrincipal.addEventListener("click", (e) => { if (e.target.closest("a")) mostrarMenu(false); });
+    document.addEventListener("click", (e) => {
+      if (estaAberto() && !menuPrincipal.contains(e.target) && !botaoDoMenu.contains(e.target)) mostrarMenu(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && estaAberto()) { mostrarMenu(false); botaoDoMenu.focus(); }
+    });
+  }
+
   const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
   // --- busca: filtra o catálogo enquanto a pessoa digita e abre a análise no app -----------

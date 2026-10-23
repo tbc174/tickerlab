@@ -52,7 +52,17 @@ export function cssFerramentas(): string {
 .ferramenta input[type="text"] { flex: 1; font-variant-numeric: tabular-nums; }
 .ferramenta input[type="text"]:focus, .ferramenta select:focus { border-color: var(--azul); outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul) 35%, transparent); }
-.ferramenta-deslizante { width: 100%; margin: .35rem 0 0; accent-color: var(--azul); cursor: pointer; }
+/* deslizante desenhado aqui: o nativo tem trilho branco no tema escuro; --p (0 a 1) vem do campo */
+.ferramenta-deslizante { --bolinha: 18px; width: 100%; height: 1.5rem; margin: .2rem 0 0; background: transparent; cursor: pointer;
+  -webkit-appearance: none; appearance: none; }
+.ferramenta-deslizante::-webkit-slider-runnable-track { height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--azul) calc(var(--bolinha) / 2 + var(--p, 0) * (100% - var(--bolinha))), var(--linha-forte) 0); }
+.ferramenta-deslizante::-moz-range-track { height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--azul) calc(var(--bolinha) / 2 + var(--p, 0) * (100% - var(--bolinha))), var(--linha-forte) 0); }
+.ferramenta-deslizante::-webkit-slider-thumb { -webkit-appearance: none; width: var(--bolinha); height: var(--bolinha); margin-top: -6px;
+  border-radius: 50%; background: var(--azul); border: 3px solid var(--destaque); box-shadow: 0 1px 4px var(--sombra); }
+.ferramenta-deslizante::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--azul);
+  border: 3px solid var(--destaque); box-shadow: 0 1px 4px var(--sombra); }
 .ferramenta-atalhos { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .3rem; }
 .ferramenta-atalhos button { padding: .25rem .65rem; border-radius: 999px; border: 1px solid var(--linha-forte);
   background: var(--fundo); color: var(--texto); font: 600 .8rem "Manrope", sans-serif; cursor: pointer; }
