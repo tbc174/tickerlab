@@ -36,7 +36,8 @@ PRECISAO_DO_OPERANDO = 0.005  # meia unidade do 3º algarismo, no máximo
 FOLGA_DA_CONTA = (
     0.01  # o resultado declarado pode diferir 1% do refeito (arredondamento)
 )
-CAMPOS_SEM_DADO = frozenset({"id", "secao", "tipo", "so_pro", ANO_PARCIAL})
+# "de": as linhas do histórico que uma série cita (ids, não números)
+CAMPOS_SEM_DADO = frozenset({"id", "secao", "tipo", "so_pro", "de", ANO_PARCIAL})
 # saída de dinheiro: a ficha guarda com sinal, o texto diz "gastou R$ 0,4 bi" sem o menos
 _SAIDA_DE_DINHEIRO = re.compile(
     r"custo|despesa|imposto|capex|dividendo|caixa operacional|\bfco\b|depreciac"
