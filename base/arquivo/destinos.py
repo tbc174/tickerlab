@@ -9,7 +9,7 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 
 from dataclasses import dataclass
 
-from base.arquivo import lote_eua, lote_setoriais
+from base.arquivo import lote_cadastros, lote_eua, lote_setoriais
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
@@ -133,6 +133,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
+)
+
+_LOTE_CADASTROS_SO_ARQUIVO = (
+    "cadastro ou lista de sanções guardado como publicado, só pessoa jurídica (a firma individual e a "
+    "pessoa física saem antes de guardar); a tabela com contrato no catálogo ainda não existe"
 )
 
 _LOTE_SETORIAIS_SO_ARQUIVO = (
@@ -313,6 +318,11 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-1", _LOTE_SETORIAIS_SO_ARQUIVO)
         for f in lote_setoriais.fontes()
     },
+    # lote cadastros globais (rodada 4, linha 287): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CADASTROS_SO_ARQUIVO)
+        for f in lote_cadastros.fontes()
+    },
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -350,6 +360,7 @@ DESTINOS: dict[str, Destino] = {
             "termos-iex",
             "termos-banco-mundial",
             *lote_eua.termos(),
+            *lote_cadastros.termos(),
         )
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
