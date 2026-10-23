@@ -36,14 +36,15 @@ describe("páginas das ferramentas", () => {
     }
   });
 
-  it("a vitrine, as ferramentas e o menu entram no site", () => {
+  it("a vitrine, as ferramentas e o rodapé entram no site", () => {
     const mapa = arquivosFixos()["sitemap.xml"];
     for (const arquivo of ["ferramentas.html", ...PAGINAS_DE_FERRAMENTA]) {
       expect(mapa).toContain(`https://tickerlab.com.br/${arquivo}`);
     }
     const vitrine = renderizar("ferramentas.html");
     for (const arquivo of PAGINAS_DE_FERRAMENTA) expect(vitrine).toContain(`href="/${arquivo}"`);
-    expect(renderizar("index.html")).toContain('<a href="/ferramentas.html">Ferramentas</a>');
+    // desde o menu do plano de 18/10, a vitrine fica no rodapé de toda página (não mais no topo)
+    expect(renderizar("index.html")).toContain('<a href="/ferramentas.html">Ferramentas grátis</a>');
   });
 
   it("o Produto leva às ferramentas que estão na vitrine (src/modulos.py)", () => {

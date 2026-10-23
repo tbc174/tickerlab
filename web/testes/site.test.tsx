@@ -15,6 +15,8 @@ import {
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
+import { DADOS as DADOS_DO_RELATORIO } from "../src/paginas/RelatorioExemplo";
+import { DADOS as DADOS_DO_SETOR } from "../src/paginas/RelatorioSemanalEletricas";
 import { ROTAS } from "../src/rotas";
 import { MODULOS_DO_PRODUTO, contagem, disponiveis } from "../src/site/comum";
 import { ASSINATURA } from "../src/site/textos";
@@ -445,5 +447,32 @@ describe("relatório de setor da semana: elétricas (ADR 0109, item 10)", () => 
     expect(texto).toContain("O que este relatório ainda não traz");
     expect(texto).toContain("Limites e cuidados");
     for (const l of relatorioSemanalEletricas.limites) expect(texto).toContain(l);
+  });
+});
+
+describe("página Relatórios (menu do plano de 18/10, pode do Tiago em 23/10)", () => {
+  const html = renderizar("relatorios.html");
+  const texto = semTags(html);
+
+  it("tem o título e a frase aprovados", () => {
+    expect(texto).toContain("Relatórios");
+    expect(texto).toContain(
+      "Dois relatórios de exemplo, feitos com a base: o de uma empresa e o de um setor.",
+    );
+  });
+
+  it("um cartão para cada relatório, com o título e a descrição da própria página", () => {
+    for (const dados of [DADOS_DO_RELATORIO, DADOS_DO_SETOR]) {
+      expect(html).toContain(`href="${dados.caminho}"`);
+      expect(html).toContain(esc(dados.titulo));
+      expect(html).toContain(esc(dados.descricao));
+    }
+  });
+
+  it("os dois relatórios marcam Relatórios no topo", () => {
+    for (const arquivo of ["relatorio-de-exemplo.html", "relatorio-de-setor-eletricas.html"]) {
+      const topo = renderizar(arquivo).split("</header>")[0];
+      expect(topo).toMatch(/<a href="\/relatorios.html" aria-current="[a-z]+">Relatórios<\/a>/);
+    }
   });
 });

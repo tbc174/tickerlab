@@ -248,12 +248,66 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
             )
 
 
-def test_menu_da_versao_a_em_todas_as_paginas():
-    """Organização escolhida pelo Tiago em 13/10/2026 (protótipo A, por assunto)."""
+MENU_DO_TOPO = [
+    ("/dados.html", "Dados"),
+    ("/relatorios.html", "Relatórios"),
+    ("/como-funciona.html", "Como funciona"),
+    ("/precos.html", "Planos"),
+    ("/sobre.html", "Sobre"),
+]
+
+
+def _menu_principal(texto: str) -> list[tuple[str, str]]:
+    nav = texto.split('<nav id="menu-principal"')[1].split("</nav>")[0]
+    return re.findall(r'<a href="([^"]+)"[^>]*>([^<]+)</a>', nav)
+
+
+def test_menu_do_topo_tem_os_cinco_itens_do_plano_em_todas_as_paginas():
+    """Plano do site para quem analisa (18/10/2026, ADR 0099); "pode" do Tiago em 23/10/2026."""
     for arquivo in PAGINAS_HTML:
-        topo = arquivo.read_text(encoding="utf-8").split("</header>")[0]
-        for rotulo in ("Produto", "Como funciona", "Relatórios", "Planos", "Aprender"):
-            assert f">{rotulo}</a>" in topo, (arquivo.name, rotulo)
+        assert _menu_principal(arquivo.read_text(encoding="utf-8")) == MENU_DO_TOPO, (
+            arquivo.name
+        )
+
+
+def test_o_que_saiu_do_topo_continua_no_rodape():
+    for arquivo in PAGINAS_HTML:
+        rodape = arquivo.read_text(encoding="utf-8").split('<footer class="rodape')[1]
+        for href, nome in (
+            ("/produto.html", "Produto"),
+            ("/dados.html", "Dados"),
+            ("/relatorios.html", "Relatórios"),
+            ("/ferramentas.html", "Ferramentas grátis"),
+            ("/aprender.html", "Aprender"),
+        ):
+            assert f'<a href="{href}">{nome}</a>' in rodape, (arquivo.name, nome)
+
+
+def test_toda_pagina_do_mapa_do_site_tem_link_de_outra_pagina():
+    """O dados.html e o relatório das elétricas ficaram sem link nenhum: só o Google chegava."""
+    linkadas = set()
+    for arquivo in PAGINAS_HTML:
+        for alvo in re.findall(
+            r'href="/([^"#?]*)', arquivo.read_text(encoding="utf-8")
+        ):
+            if (alvo or "index.html") != arquivo.name:
+                linkadas.add(alvo or "index.html")
+    mapa = (SITE / "sitemap.xml").read_text(encoding="utf-8")
+    for alvo in re.findall(r"<loc>https://tickerlab\.com\.br/([^<]*)</loc>", mapa):
+        assert (alvo or "index.html") in linkadas, alvo
+
+
+def test_olho_das_calculadoras_leva_a_vitrine():
+    """Ferramentas saiu do topo: quem chega numa calculadora pelo Google volta à vitrine por aqui."""
+    calculadoras = [
+        a for a in PAGINAS_HTML if "data-ferramenta=" in a.read_text(encoding="utf-8")
+    ]
+    assert len(calculadoras) >= 10
+    for arquivo in calculadoras:
+        texto = arquivo.read_text(encoding="utf-8")
+        assert (
+            '<a class="olho" href="/ferramentas.html">Ferramentas grátis</a>' in texto
+        ), arquivo.name
 
 
 def test_celular_tem_botao_que_abre_o_menu_em_todas_as_paginas():

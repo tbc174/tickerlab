@@ -43,6 +43,8 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .pular:focus { left: 1rem; }
 .faixa { width: 100%; max-width: var(--largura); margin-inline: auto; padding-inline: clamp(1rem, 4vw, 2rem); }
 .olho { margin: 0 0 .5rem; font-size: .74rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--azul-texto); }
+a.olho { display: inline-block; text-decoration: none; }
+a.olho:hover { text-decoration: underline; }
 .subtitulo { font-size: 1.12rem; color: var(--apagado); }
 .apagado { color: var(--apagado); }
 /* topo */
@@ -140,6 +142,13 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 /* faixas de largura total; a seção logo depois de uma faixa não precisa de linha em cima */
 .escura > .secao, .escura + .secao { border-top: 0; }
 .grade { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.grade.dois { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* o título leva ao relatório e o cartão inteiro responde ao toque (o ::after cobre o cartão) */
+.cartao-de-relatorio { position: relative; }
+.cartao-de-relatorio h2 { font-size: 1.3rem; margin: 0 0 .6rem; }
+.cartao-de-relatorio h2 a { color: inherit; text-decoration: none; }
+.cartao-de-relatorio h2 a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.cartao-de-relatorio:hover h2 a { text-decoration: underline; }
 .grade.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grade.quatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .cartao, .pilar { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: 1.4rem;
@@ -267,7 +276,7 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 @media (max-width: 860px) {
   .heroi { grid-template-columns: 1fr; }
   .heroi-visual { display: none; }
-  .grade.tres, .grade.quatro, .passos { grid-template-columns: 1fr; }
+  .grade.dois, .grade.tres, .grade.quatro, .passos { grid-template-columns: 1fr; }
   .topo nav { display: none; }
   .topo .faixa { position: relative; }
   .com-js .menu-botao { display: inline-flex; }
