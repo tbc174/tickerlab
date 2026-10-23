@@ -10,6 +10,8 @@ no SQLite a trava não existe e a migração segue igual.
 """
 
 import os
+import subprocess
+import sys
 import threading
 import time
 
@@ -22,8 +24,14 @@ from src.banco.conexao import (
     migrar_para,
     travar_migracoes,
 )
+from src.configuracao import PASTA_RAIZ
 
 URL_DE_TESTE = os.environ.get("TICKERLAB_TEST_DATABASE_URL")
+# o processo filho lê a URL do ambiente herdado (a senha não vai na linha de comando)
+MIGRAR_NUM_PROCESSO = (
+    "import os; from src.banco.conexao import migrar_para; "
+    "migrar_para('head', os.environ['TICKERLAB_TEST_DATABASE_URL'])"
+)
 SEGUNDOS_PARA_COMECAR_A_ESPERAR = 30
 SEGUNDOS_PARA_A_MIGRACAO = 120
 INTERVALO_DE_CONFERENCIA = 0.1
@@ -107,23 +115,29 @@ def test_migracao_espera_quem_segura_a_trava():
 
 @so_no_postgres
 def test_duas_tarefas_migrando_juntas_nao_quebram():
+    # Processos, não threads, como as tarefas do servidor: o Alembic guarda o contexto num objeto
+    # global do processo, e duas migrações em threads do mesmo processo se atrapalham.
     migrar_para("base", URL_DE_TESTE)
-    largada = threading.Barrier(2)
-    erros: list[Exception] = []
-
-    def tarefa() -> None:
-        largada.wait()
-        try:
-            migrar_para("head", URL_DE_TESTE)
-        except Exception as erro:  # noqa: BLE001
-            erros.append(erro)
-
-    linhas = [threading.Thread(target=tarefa) for _ in range(2)]
     try:
-        for linha in linhas:
-            linha.start()
-        for linha in linhas:
-            linha.join(SEGUNDOS_PARA_A_MIGRACAO)
-        assert not erros, f"uma das migrações quebrou: {erros!r}"
+        tarefas = [
+            subprocess.Popen(
+                [sys.executable, "-c", MIGRAR_NUM_PROCESSO],
+                cwd=PASTA_RAIZ,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            for _ in range(2)
+        ]
+        saidas = [
+            tarefa.communicate(timeout=SEGUNDOS_PARA_A_MIGRACAO)[0]
+            for tarefa in tarefas
+        ]
+        quebradas = [
+            saida
+            for tarefa, saida in zip(tarefas, saidas, strict=True)
+            if tarefa.returncode
+        ]
+        assert not quebradas, f"uma das migrações quebrou:\n{quebradas[0][-2000:]}"
     finally:
         migrar_para("base", URL_DE_TESTE)
