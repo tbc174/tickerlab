@@ -1,4 +1,4 @@
-# Guia dos gráficos do relatório (v1)
+# Guia dos gráficos do relatório (v2)
 
 Você escolhe os gráficos e os destaques de um relatório de uma companhia aberta brasileira. O texto
 do relatório já está escrito e aprovado; a ficha de dados públicos de onde ele saiu vem em JSON, com
@@ -20,7 +20,7 @@ pontos com número em cada coluna.
 
 {{CARDAPIO}}
 
-## As regras (o código confere todas; o gráfico que falha sai do relatório)
+## As regras (o código e um segundo leitor conferem todas; o gráfico que falha sai do relatório)
 
 1. `tabela` é o `id` da tabela na ficha: o `id` das linhas sem o número do fim
    (`ofertas_e_fundos.fundos_por_mes.3` é da tabela `ofertas_e_fundos.fundos_por_mes`). A lista
@@ -36,6 +36,11 @@ pontos com número em cada coluna.
    as linhas da própria tabela de onde tira o que diz; todo número ou data dela está nessas linhas.
    Nada de recomendação, previsão, juízo de valor nem nome de pessoa.
 6. Não repita o mesmo desenho (mesma forma, tabela, eixo e colunas) com outro título.
+7. Nas formas no tempo, os pontos se comparam lado a lado: o ano (ou o mês) da data de corte que
+   ainda não fechou não entra entre os inteiros, e o eixo não pula períodos (2019 e depois 2024).
+   Uma tabela assim fica de fora ou vai numa forma que não é no tempo.
+8. O título diz o período que o gráfico cobre. Não chame de "agora" ou "atual" o fim de um
+   período que já fechou: a ponte da dívida, por exemplo, termina no último ano fechado.
 
 ## Os destaques
 
