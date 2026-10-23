@@ -1,0 +1,113 @@
+"""Os desenhos dos gráficos que o modelo escolhe: pontos só da ficha, sem olhar o futuro, barras do zero.
+
+Cada tipo do cardápio entra em `CASOS` com a ficha pequena abaixo; os três testes do plano rodam
+para todos os tipos que o desenho já cobre.
+"""
+
+import copy
+from datetime import date
+
+import pytest
+
+from src import graficos_do_relatorio as gdr
+from src.analise_escrita import graficos as gr
+from src.analise_escrita import saida
+
+PNG = b"\x89PNG"
+
+
+def _linhas(tabela: str, celulas: list[dict]) -> list[dict]:
+    return [
+        {"id": f"{tabela}.{i}", "tipo": "linha", "tabela": tabela, "celulas": c}
+        for i, c in enumerate(celulas)
+    ]
+
+
+def _ficha() -> dict:
+    anos = [
+        {"ano": 2020, "receita": "R$ 41,0 bi", "lucro": "R$ 5,1 bi"},
+        {"ano": 2021, "receita": "R$ 43,5 bi", "lucro": "R$ 5,4 bi"},
+        {"ano": 2022, "receita": "R$ 40,2 bi", "lucro": "R$ 3,9 bi"},
+        {"ano": 2023, "receita": "R$ 44,0 bi", "lucro": "R$ 6,0 bi"},
+        {"ano": 2024, "receita": "R$ 45,6 bi", "lucro": None},
+    ]
+    return {
+        "empresa": "CPFL ENERGIA S.A.",
+        "corte": "2024-12-31",
+        "secoes": {"historico": "Histórico"},
+        "linhas": _linhas("historico.contas", anos),
+    }
+
+
+def _grafico(tipo: str, tabela: str, eixo: str, *colunas: str) -> gr.Grafico:
+    return gr.Grafico(
+        tipo=tipo, tabela=tabela, eixo=eixo, colunas=colunas, titulo="Título",
+        parte="o_que_os_numeros_mostram", paragrafo=0,
+        por_que=saida.Frase("O gráfico mostra a série.", ("historico.contas.0",)),
+    )  # fmt: skip
+
+
+# tipo → (gráfico, valores esperados por coluna lidos à mão da ficha acima, em unidades da ficha)
+CASOS = {
+    "linha_no_tempo": (
+        _grafico("linha_no_tempo", "historico.contas", "ano", "receita", "lucro"),
+        (
+            (41e9, 43.5e9, 40.2e9, 44e9, 45.6e9),
+            (5.1e9, 5.4e9, 3.9e9, 6e9, None),
+        ),
+    ),
+}
+COM_TEMPO = [t for t in CASOS if gr.CARDAPIO[t].eixo == gr.TEMPO]
+DE_BARRAS = [t for t in CASOS if t in ("barras_no_tempo", "barras_por_categoria", "antes_e_agora", "cascata")]  # fmt: skip
+
+
+@pytest.mark.parametrize("tipo", CASOS)
+def test_pontos_saem_so_da_ficha(tipo):
+    grafico, esperado = CASOS[tipo]
+    ficha = _ficha()
+
+    pontos = gdr.pontos_do_grafico(grafico, ficha)
+
+    assert pontos.valores == esperado
+    assert pontos.ids[0] == "historico.contas.0"
+    # trocar um número na ficha muda o ponto: o desenho não tem outra fonte de número
+    outra = copy.deepcopy(ficha)
+    outra["linhas"][0]["celulas"]["receita"] = "R$ 99,0 bi"
+    assert gdr.pontos_do_grafico(grafico, outra).valores[0][0] == 99e9
+
+
+@pytest.mark.parametrize("tipo", COM_TEMPO)
+def test_grafico_respeita_o_corte(tipo):
+    grafico, _ = CASOS[tipo]
+    ficha = _ficha()
+
+    inteiro = gdr.pontos_do_grafico(grafico, ficha)
+    cortado = gdr.pontos_do_grafico(grafico, ficha, corte=date(2022, 12, 31))
+
+    assert cortado.rotulos == ("2020", "2021", "2022")
+    assert "2023" in inteiro.rotulos
+    # cortar o futuro não muda o passado
+    n = len(cortado.rotulos)
+    assert cortado.rotulos == inteiro.rotulos[:n]
+    assert cortado.valores == tuple(coluna[:n] for coluna in inteiro.valores)
+
+
+@pytest.mark.parametrize("tipo", CASOS)
+def test_figuras_saem_nas_duas_saidas(tipo):
+    grafico, _ = CASOS[tipo]
+    pontos = gdr.pontos_do_grafico(grafico, _ficha())
+
+    plotly = gdr.figura(pontos)
+    imagem = gdr.png(pontos)
+
+    assert len(plotly.data[0].y) == len(pontos.rotulos)
+    assert imagem.startswith(PNG)
+
+
+def test_linha_vai_para_a_escala_do_dinheiro_e_deixa_vao_onde_falta_numero():
+    grafico, _ = CASOS["linha_no_tempo"]
+    plotly = gdr.figura(gdr.pontos_do_grafico(grafico, _ficha()))
+
+    assert plotly.data[0].y[0] == pytest.approx(41.0)  # R$ bilhões
+    assert plotly.data[1].y[-1] is None  # 2024 sem lucro: vão, não zero
+    assert "R$ bilhões" in plotly.layout.title.text

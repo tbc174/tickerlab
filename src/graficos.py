@@ -1252,6 +1252,49 @@ def criar_grafico_fundamentos_anuais(
     return figura
 
 
+def _figura_do_relatorio(titulo: str, medida: str, casas: int) -> go.Figure:
+    """A base dos gráficos que a IA escolhe para o relatório: eixo de categorias (anos, meses ou
+    nomes, na ordem da ficha), sem botões de período e com o separador brasileiro."""
+    figura = go.Figure()
+    _estilo_base(figura, f"{titulo} ({medida})" if medida else titulo, ALTURA_PADRAO)
+    figura.update_layout(separators=",.")
+    figura.update_xaxes(type="category")
+    figura.update_yaxes(tickformat=f",.{casas}f")
+    return figura
+
+
+def _textos_do_relatorio(valores: list[float | None], casas: int) -> list[str]:
+    return ["" if v is None else _numero_br(v, casas) for v in valores]
+
+
+def criar_grafico_linha_do_relatorio(
+    rotulos: list[str],
+    series: dict[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+) -> go.Figure:
+    """Uma a três linhas no tempo, um ponto por período; o período sem número deixa um vão."""
+    if not rotulos:
+        raise ValueError("Não há pontos para a linha.")
+    figura = _figura_do_relatorio(titulo, medida, casas)
+    for i, (nome, valores) in enumerate(series.items()):
+        figura.add_trace(
+            go.Scatter(
+                x=rotulos,
+                y=valores,
+                name=nome,
+                mode="lines+markers",
+                line={"color": marca.SERIES[i % len(marca.SERIES)]},
+                text=_textos_do_relatorio(valores, casas),
+                hovertemplate=f"{nome}: %{{text}}<extra></extra>",
+                connectgaps=False,
+            )
+        )
+    figura.update_layout(showlegend=len(series) > 1, hovermode="x unified")
+    return figura
+
+
 def criar_grafico_cascata(
     passos: list[tuple[str, float]],
     titulo: str,

@@ -292,3 +292,48 @@ def grafico_de_cascata(
     eixo.yaxis.set_major_formatter(FuncFormatter(lambda v, _: numero_br(v, 0)))
     _titulo(eixo, estilo, f"{titulo} (R$ bilhões)")
     return _png(figura)
+
+
+def figura_em_png(figura: Figure) -> bytes:
+    """Uma figura já montada (as do relatório escolhidas pela IA) como imagem PNG."""
+    return _png(figura)
+
+
+def _titulo_com_medida(titulo: str, medida: str) -> str:
+    return f"{titulo} ({medida})" if medida else titulo
+
+
+def _formatador(casas: int) -> FuncFormatter:
+    return FuncFormatter(lambda v, _: numero_br(v, casas))
+
+
+def figura_de_linha_do_relatorio(
+    rotulos: list[str],
+    series: dict[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+    estilo: Estilo = PADRAO,
+) -> Figure:
+    """Uma a três linhas no tempo, um ponto por período; o período sem número deixa um vão."""
+    figura, eixo = _figura(estilo, 2.8)
+    posicoes = list(range(len(rotulos)))
+    for i, (nome, valores) in enumerate(series.items()):
+        eixo.plot(
+            posicoes,
+            [np.nan if v is None else v for v in valores],
+            color=estilo.series[i % len(estilo.series)],
+            linestyle=TRACOS[i % len(TRACOS)],
+            linewidth=1.5,
+            marker="o",
+            markersize=3,
+            label=nome,
+        )
+    eixo.set_xticks(posicoes, rotulos)
+    eixo.tick_params(axis="x", labelrotation=20, labelsize=7)
+    eixo.yaxis.set_major_formatter(_formatador(casas))
+    _titulo(eixo, estilo, _titulo_com_medida(titulo, medida))
+    if len(series) > 1:
+        _legenda(eixo, estilo, len(series))
+        figura.subplots_adjust(bottom=0.3)
+    return figura
