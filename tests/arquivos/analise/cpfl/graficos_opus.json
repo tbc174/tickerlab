@@ -1,0 +1,69 @@
+{
+ "escolha": {
+  "cnpj": "02.429.144/0001-93",
+  "empresa": "CPFL ENERGIA S.A.",
+  "modelo": "claude-opus-5-5",
+  "versao_do_guia": "graficos_v1",
+  "hash_da_entrada": "0d671b02e3a48cfc4e50bbf95f0a75756a0d6cd3d3dea2b9884f11f36fcd4e39",
+  "hash_do_texto": "4986ec7b76621e99946ab21b43efe7aa9eef1f15272f8e74af77859341786a87",
+  "escolhido_em": "2026-10-23T02:14:17-03:00",
+  "stop_reason": "end_turn",
+  "resposta_bruta": "{\"graficos\":[{\"tipo\":\"linha_no_tempo\",\"tabela\":\"setor_regulado.aneel_consumidores\",\"eixo\":\"Ano\",\"colunas\":[\"Consumidores\"],\"titulo\":\"Consumidores das distribuidoras ligadas, por ano\",\"parte\":\"o_que_e\",\"paragrafo\":1,\"por_que\":{\"texto\":\"Mostra os consumidores das distribuidoras ligadas subindo de 2016 a 2021 e quase parados depois, como o texto descreve.\",\"notas\":[\"setor_regulado.aneel_consumidores.9\",\"setor_regulado.aneel_consumidores.4\",\"setor_regulado.aneel_consumidores.0\"],\"contas\":[]}},{\"tipo\":\"cascata\",\"tabela\":\"endividamento.ponte\",\"eixo\":\"passo\",\"colunas\":[\"valor\"],\"titulo\":\"Da dívida líquida do começo à do fim de 2025\",\"parte\":\"o_que_os_numeros_mostram\",\"paragrafo\":6,\"por_que\":{\"texto\":\"Mostra os passos da dívida líquida de R$ 25,2 bi a R$ 26,2 bi, com a linha Outros de R$ 4,2 bi que o texto deixa como pergunta.\",\"notas\":[\"endividamento.ponte.0\",\"endividamento.ponte.4\",\"endividamento.ponte.5\"],\"contas\":[]}},{\"tipo\":\"barras_no_tempo\",\"tabela\":\"ofertas_e_fundos.ofertas_por_ano\",\"eixo\":\"Ano\",\"colunas\":[\"Valor registrado\"],\"titulo\":\"Valor registrado em ofertas do grupo, por ano\",\"parte\":\"dinheiro\",\"paragrafo\":1,\"por_que\":{\"texto\":\"Mostra o valor registrado em ofertas por ano, concentrado de 2023 em diante, com R$ 9,8 bi em 2025, como o texto discute.\",\"notas\":[\"ofertas_e_fundos.ofertas_por_ano.0\",\"ofertas_e_fundos.ofertas_por_ano.1\",\"ofertas_e_fundos.ofertas_por_ano.2\",\"ofertas_e_fundos.ofertas_por_ano.3\"],\"contas\":[]}},{\"tipo\":\"linha_no_tempo\",\"tabela\":\"ofertas_e_fundos.fundos_por_mes\",\"eixo\":\"Mês\",\"colunas\":[\"Fundos\"],\"titulo\":\"Fundos com a ação na carteira, mês a mês\",\"parte\":\"dinheiro\",\"paragrafo\":3,\"por_que\":{\"texto\":\"Mostra o número de fundos com a ação mês a mês, do pico de 477 em jan/2025 aos 370 de mar/2026.\",\"notas\":[\"ofertas_e_fundos.fundos_por_mes.9\",\"ofertas_e_fundos.fundos_por_mes.23\"],\"contas\":[]}}],\"destaques\":[{\"secao\":\"negocios\",\"parte\":\"o_que_mudou\",\"por_que\":{\"texto\":\"Reúne os documentos de negócios que o texto narra, da compra da CEEE-T anunciada em 16/07/2021 à reorganização de 02/02/2026.\",\"notas\":[\"negocios.negocios.18\",\"negocios.negocios.0\"],\"contas\":[]}},{\"secao\":\"auditor_e_controladas\",\"parte\":\"o_que_e\",\"por_que\":{\"texto\":\"Lista as controladas e participações do FRE, incluindo a CPFL Transmissão com 30% marcada como não controlada, que o texto aponta.\",\"notas\":[\"auditor_e_controladas.controladas.18\"],\"contas\":[]}}]}",
+  "tokens": {
+   "entrada": 52565,
+   "saida": 2405,
+   "cache_escrito": 3772,
+   "cache_lido": 0
+  },
+  "custo_em_dolares": 0.27722
+ },
+ "cega": {
+  "conferente": "claude-sonnet-5-5",
+  "hash_da_resposta": "7dc4d8230fc25f3bf6b20e92db79e9b8cc9149e377e9694c5e5ae558813213ca",
+  "conferido_em": "2026-10-23T02:15:03-03:00",
+  "stop_reason": "end_turn",
+  "reprovados": [
+   "grafico.2"
+  ],
+  "motivo": null,
+  "itens": [
+   [
+    "grafico.0",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.1",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.2",
+    "engana",
+    "O ano de 2026 vai só até 09/09 e aparece ao lado de anos inteiros, e a série pula anos entre 2017 e 2023, o que torna as barras incomparáveis."
+   ],
+   [
+    "grafico.3",
+    "mostra",
+    ""
+   ],
+   [
+    "destaque.0",
+    "mostra",
+    ""
+   ],
+   [
+    "destaque.1",
+    "mostra",
+    ""
+   ]
+  ],
+  "tokens": {
+   "entrada": 17652,
+   "saida": 864,
+   "cache_escrito": 0,
+   "cache_lido": 914
+  },
+  "custo_em_dolares": 0.044126
+ }
+}

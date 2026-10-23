@@ -117,7 +117,7 @@ class _Linha:
 
 
 @dataclass(frozen=True)
-class _Ficha:
+class Ficha:
     """A entrada já lida: o que cada id oferece e as palavras de toda a entrada."""
 
     linhas: dict[str, _Linha]
@@ -204,12 +204,12 @@ def _palavras(texto: str) -> set[str]:
     return {normalizar(p).strip("'’") for p in _PALAVRA_COM_MAIUSCULA.findall(texto)}
 
 
-def ler_ficha(entrada: dict[str, Any]) -> _Ficha:
+def ler_ficha(entrada: dict[str, Any]) -> Ficha:
     linhas = {linha["id"]: _ler_linha(linha) for linha in entrada["linhas"]}
     palavras: set[str] = set()
     for texto in _textos(entrada):
         palavras |= _palavras(texto)
-    return _Ficha(
+    return Ficha(
         linhas,
         frozenset(palavras),
         date.fromisoformat(entrada["corte"]),
@@ -239,7 +239,7 @@ def _bate(valor: float, candidato: _Numero, tolerancia: float) -> bool:
 
 
 def _valor_do_operando(
-    operando: saida.Operando, resultados: list[float], ficha: _Ficha
+    operando: saida.Operando, resultados: list[float], ficha: Ficha
 ) -> tuple[float | None, str]:
     """O valor que entra na conta, ou None e o motivo de não valer."""
     if operando.conta is not None:
@@ -281,7 +281,7 @@ def refazer(operacao: str, valores: list[float]) -> float | None:
     return a / b if operacao == "razao" else (b - a) / a
 
 
-def _conferir_contagem(conta: saida.Conta, ficha: _Ficha) -> str:
+def _conferir_contagem(conta: saida.Conta, ficha: Ficha) -> str:
     """Contar linhas ("3 trocas de auditor"): cada operando é um id que existe, e a conta é quantos."""
     fora = [o.id for o in conta.de if o.id is None or o.id not in ficha.linhas]
     if fora:
@@ -292,7 +292,7 @@ def _conferir_contagem(conta: saida.Conta, ficha: _Ficha) -> str:
 
 
 def _conferir_conta(
-    conta: saida.Conta, resultados: list[float], ficha: _Ficha
+    conta: saida.Conta, resultados: list[float], ficha: Ficha
 ) -> tuple[list[float], str]:
     """Os operandos válidos e o motivo de reprovar ("" se a conta confere)."""
     if conta.operacao == CONTAGEM:
@@ -314,7 +314,7 @@ def _conferir_conta(
 
 # --- o que cada frase pode escrever ---------------------------------------------------------------
 def _permitido_pela_frase(
-    frase: saida.Frase, ficha: _Ficha
+    frase: saida.Frase, ficha: Ficha
 ) -> tuple[_Permitido, list[tuple[str, str]]]:
     permitido = _Permitido([], [])
     falhas: list[tuple[str, str]] = []
@@ -358,7 +358,7 @@ def _numero_confere(
     )
 
 
-def _ano_confere(ano: int, permitido: _Permitido, ficha: _Ficha) -> bool:
+def _ano_confere(ano: int, permitido: _Permitido, ficha: Ficha) -> bool:
     """Ano solto ("desde 2021") vale no ano do corte ou entre o menor e o maior ano das notas: a
     tabela das ofertas com 2017 e 2023 sustenta "nenhuma entre 2018 e 2022"."""
     anos = [d.ano for d in permitido.datas]
@@ -366,7 +366,7 @@ def _ano_confere(ano: int, permitido: _Permitido, ficha: _Ficha) -> bool:
 
 
 def _falhas_de_numero_e_data(
-    texto: str, permitido: _Permitido, ficha: _Ficha
+    texto: str, permitido: _Permitido, ficha: Ficha
 ) -> Iterator[tuple[str, str]]:
     escritos, datas = numeros.ler(_MARCACAO.sub("", texto))
     escalas = _escalas_da_frase(texto)
@@ -385,7 +385,7 @@ def _falhas_de_numero_e_data(
 
 
 # --- palavras, nomes e pessoas --------------------------------------------------------------------
-def _nomes_fora(texto: str, ficha: _Ficha) -> Iterator[str]:
+def _nomes_fora(texto: str, ficha: Ficha) -> Iterator[str]:
     """Palavras com maiúscula fora do começo de frase que a entrada não tem."""
     limpo = _MARCACAO.sub("", texto)
     for achado in _PALAVRA_COM_MAIUSCULA.finditer(limpo):
@@ -415,27 +415,27 @@ def _falhas_de_palavra(texto: str, tem_numero: bool) -> Iterator[tuple[str, str]
         yield PREVISAO, ", ".join(previsoes)
 
 
-def _falhas_de_pessoa(texto: str) -> Iterator[tuple[str, str]]:
+def falhas_de_pessoa(texto: str) -> Iterator[tuple[str, str]]:
     if mascarar_pessoas(texto) != texto or CPF.search(texto):
         yield PESSOA, "nome de pessoa ou CPF"
 
 
 # --- a análise ------------------------------------------------------------------------------------
 def _falhas_da_frase(
-    frase: saida.Frase, acima: _Permitido, ficha: _Ficha
+    frase: saida.Frase, acima: _Permitido, ficha: Ficha
 ) -> tuple[list[tuple[str, str]], _Permitido]:
     permitido, falhas = _permitido_pela_frase(frase, ficha)
     junto = _Permitido(permitido.numeros + acima.numeros, permitido.datas + acima.datas)
     falhas += _falhas_de_numero_e_data(frase.texto, junto, ficha)
     nomes = list(_nomes_fora(frase.texto, ficha))
     falhas += [(NOME, ", ".join(nomes))] if nomes else []
-    falhas += _falhas_de_pessoa(frase.texto)
+    falhas += falhas_de_pessoa(frase.texto)
     tem_numero = bool(numeros.numeros(frase.texto))
     falhas += _falhas_de_palavra(frase.texto, tem_numero)
     return falhas, permitido
 
 
-def falhas_da_frase(frase: saida.Frase, ficha: _Ficha) -> list[tuple[str, str]]:
+def falhas_da_frase(frase: saida.Frase, ficha: Ficha) -> list[tuple[str, str]]:
     """As (regra, trecho) que reprovam a frase sozinha, sem o fato acima: o molde usa para deixar
     de fora a frase da ficha que a porta reprovaria ("não dizem o que vai acontecer")."""
     return _falhas_da_frase(frase, _Permitido([], []), ficha)[0]
@@ -449,7 +449,7 @@ def _juntar(falhas: list[tuple[str, str]]) -> dict[str, str]:
     return {regra: "; ".join(trechos) for regra, trechos in por_regra.items()}
 
 
-def _conferir_parte(parte: saida.Parte, ficha: _Ficha) -> Iterator[Reprovacao]:
+def _conferir_parte(parte: saida.Parte, ficha: Ficha) -> Iterator[Reprovacao]:
     do_fato = _Permitido([], [])  # o que a leitura pode repetir: o fato logo acima
     for i, paragrafo in enumerate(parte.paragrafos):
         do_paragrafo = _Permitido([], [])

@@ -93,10 +93,20 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
     date(2026, 10, 22),
 )
 TERMOS_LIDOS_EM |= dict.fromkeys(("anatel", "anp"), date(2026, 10, 14))
+# lote Brasil, segunda camada (licencas-por-fonte.md): Portal da Transparência, BNDES e INSS lidos
+# na rodada 3 da pesquisa (licença no CKAN/no portal)
+TERMOS_LIDOS_EM |= dict.fromkeys(("transparencia", "bndes", "inss"), date(2026, 10, 22))
 # lote cadastros globais (licencas-por-fonte.md, rodada 4): Wikidata, OFAC, UE e OFSI; o GLEIF e a SEC
 # já têm a data da auditoria de 21/10/2026
 TERMOS_LIDOS_EM |= dict.fromkeys(
     ("wikidata", "ofac", "eufsf", "ofsi"), date(2026, 10, 22)
+)
+
+# lote atenção e texto (licencas-por-fonte.md, rodada 4): Wikimedia, Querido Diário, Crossref, OpenAlex e
+# as três agências; o GDELT já tem a data da auditoria de 21/10/2026
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    ("wiki", "querido", "crossref", "openalex", "ebc", "senado", "camara"),
+    date(2026, 10, 22),
 )
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
