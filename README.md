@@ -71,7 +71,7 @@ números como eles são**.
 **Ordem de leitura sugerida:**
 
 1. Este README, inteiro.
-2. `CLAUDE.md`: as regras de engenharia que valem para qualquer pessoa ou IA que programa aqui.
+2. `AGENTS.md`: as regras de engenharia que valem para qualquer pessoa ou IA que programa aqui (o `CLAUDE.md` só o importa).
 3. `docs/padroes-de-codigo.md`: o guia de estilo.
 4. `src/paginas.py` (o mapa do produto) e `src/planos.py` (o modelo de negócio em código).
 5. `docs/dicionario-da-base.md`, `docs/CHANGELOG-da-base.md` e `docs/ancoragem-da-base.md`: a base
