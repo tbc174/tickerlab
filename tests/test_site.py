@@ -241,6 +241,15 @@ def test_menu_da_versao_a_em_todas_as_paginas():
             assert f">{rotulo}</a>" in topo, (arquivo.name, rotulo)
 
 
+def test_celular_tem_botao_que_abre_o_menu_em_todas_as_paginas():
+    """Sem ele, abaixo de 860 px o topo ficava só com a marca, o tema e "Abrir o app"."""
+    for arquivo in PAGINAS_HTML:
+        topo = arquivo.read_text(encoding="utf-8").split("</header>")[0]
+        assert 'data-menu-botao=""' in topo, arquivo.name
+        assert 'aria-controls="menu-principal"' in topo, arquivo.name
+        assert '<nav id="menu-principal" aria-label="Principal">' in topo, arquivo.name
+
+
 def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
     from src import modulos
 

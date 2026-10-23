@@ -97,12 +97,31 @@ const ITENS_DO_TOPO: [string, string][] = [
   ["/sobre.html", "Sobre"],
 ];
 
+/** No celular os itens do topo não cabem: o botão abre a mesma lista (o site.js abre e fecha). */
+function BotaoDoMenu() {
+  return (
+    <button
+      className="menu-botao"
+      type="button"
+      data-menu-botao=""
+      aria-expanded="false"
+      aria-controls="menu-principal"
+      aria-label="Abrir o menu"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path className="fechado" d="M4 7h16M4 12h16M4 17h16" />
+        <path className="aberto" d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+  );
+}
+
 function Topo({ atual }: { atual: string }) {
   return (
     <header className="topo">
       <div className="faixa">
         <Logo />
-        <nav aria-label="Principal">
+        <nav id="menu-principal" aria-label="Principal">
           {ITENS_DO_TOPO.map(([href, nome]) => (
             <a key={href} href={href} aria-current={href === atual ? "page" : undefined}>
               {nome}
@@ -113,6 +132,7 @@ function Topo({ atual }: { atual: string }) {
         <a className="botao primario pequeno" href={linkDoApp()}>
           Abrir o app
         </a>
+        <BotaoDoMenu />
       </div>
     </header>
   );

@@ -81,6 +81,13 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .tema-opcoes [aria-checked="true"] { color: var(--azul-texto); }
 .tema-opcoes [aria-checked="true"] svg { color: var(--azul-texto); }
 .tema-opcoes [aria-checked="true"]::after { content: "✓"; margin-left: auto; font-weight: 800; }
+/* menu do celular: o botão só aparece com JavaScript e na tela estreita (sem JS, os itens quebram em linhas) */
+.menu-botao { display: none; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; padding: 0; flex: none;
+  border-radius: 10px; border: 1px solid var(--linha-forte); background: transparent; color: var(--texto); cursor: pointer; }
+.menu-botao:hover { border-color: var(--azul); }
+.menu-botao svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.menu-botao .aberto, .menu-botao[aria-expanded="true"] .fechado { display: none; }
+.menu-botao[aria-expanded="true"] .aberto { display: inline; }
 /* botões */
 .botao { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px;
   padding: .75rem 1.2rem; font: 700 1rem "Manrope", sans-serif; text-decoration: none; cursor: pointer;
@@ -259,10 +266,27 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
   .heroi-visual { display: none; }
   .grade.tres, .grade.quatro, .passos { grid-template-columns: 1fr; }
   .topo nav { display: none; }
+  .topo .faixa { position: relative; }
+  .com-js .menu-botao { display: inline-flex; }
+  .com-js .topo nav[data-aberto] { display: flex; flex-direction: column; gap: .1rem; position: absolute; left: 0; right: 0;
+    top: calc(100% + .45rem); margin: 0; padding: .35rem; background: var(--destaque); border: 1px solid var(--linha-forte);
+    border-radius: 12px; box-shadow: 0 16px 40px var(--sombra); transition: opacity 160ms ease, transform 160ms ease; }
+  .topo nav[data-aberto] a { padding: .75rem .8rem; border-radius: 8px; font-size: 1rem; color: var(--texto); }
+  .topo nav[data-aberto] a:hover, .topo nav[data-aberto] a[aria-current] { background: var(--superficie); }
+  .topo nav[data-aberto] a[aria-current] { color: var(--azul-texto); }
+  .topo nav[data-aberto] a::after { display: none; }
+  @starting-style { .com-js .topo nav[data-aberto] { opacity: 0; transform: translateY(-4px); } }
+  :root:not(.com-js) .topo nav { display: flex; flex-wrap: wrap; order: 9; flex-basis: 100%; margin-left: 0;
+    gap: .35rem 1rem; padding-bottom: .7rem; }
   .rodape .faixa { grid-template-columns: 1fr; }
   .vitrine .folhas { grid-template-columns: 1fr 1fr; gap: .6rem; }
 }
 @media (max-width: 520px) {
+  /* a comparação dos planos cabe na tela do celular: células mais justas */
+  table.planos { font-size: .82rem; }
+  table.planos th, table.planos td { padding: .6rem .4rem; hyphens: auto; }
+  table.planos th:first-child { padding-left: .7rem; }
+  table.planos thead th:not(:first-child) { font-size: .82rem; }
   .busca .campo { flex-direction: column; }
   #sugestoes .tipo { display: none; }
 }
