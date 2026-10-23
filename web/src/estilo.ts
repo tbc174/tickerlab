@@ -16,8 +16,8 @@ function variaveis(tema: string[][]): string {
 
 export function css(): string {
   return semCrlf(`${CABECALHO}
-@font-face { font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
 :root {
   ${variaveis(marca.site_claro)}
   --largura: 72rem; --raio: 14px;

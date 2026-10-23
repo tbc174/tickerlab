@@ -27,7 +27,7 @@ export const FERRAMENTAS_JS = () => lerTexto(join(RAIZ_DO_REPOSITORIO, "site", "
 const ICONES_E_FONTE =
   '<link rel="icon" href="/marca/simbolo.svg" type="image/svg+xml">' +
   '<link rel="icon" href="/marca/icone.png" type="image/png">' +
-  '<link rel="preload" href="/fontes/Manrope-VariableFont_wght.ttf" as="font" type="font/ttf" crossorigin>';
+  '<link rel="preload" href="/fontes/Manrope-VariableFont_wght.woff2" as="font" type="font/woff2" crossorigin>';
 
 function Icone({ classe, desenho }: { classe: string; desenho: string }) {
   return (
