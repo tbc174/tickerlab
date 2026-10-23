@@ -164,17 +164,69 @@ def _pdf_das_barras(pontos: PontosDoGrafico, escala: Escala, estilo: Estilo) -> 
     )
 
 
+def _eixos_da_dispersao(
+    pontos: PontosDoGrafico, escala: Escala
+) -> tuple[tuple[str, list[float | None]], tuple[str, list[float | None]]]:
+    series = list(series_na_escala(pontos, escala).items())
+    return series[0], series[1]
+
+
+def _plotly_da_dispersao(pontos: PontosDoGrafico, escala: Escala) -> go.Figure:
+    x, y = _eixos_da_dispersao(pontos, escala)
+    return graficos.criar_grafico_dispersao_do_relatorio(
+        list(pontos.rotulos), x, y, pontos.titulo, escala.medida, escala.casas
+    )
+
+
+def _pdf_da_dispersao(
+    pontos: PontosDoGrafico, escala: Escala, estilo: Estilo
+) -> Figure:
+    x, y = _eixos_da_dispersao(pontos, escala)
+    return graficos_pdf.figura_de_dispersao_do_relatorio(
+        list(pontos.rotulos), x, y, pontos.titulo, escala.medida, escala.casas, estilo
+    )
+
+
+def _passos(pontos: PontosDoGrafico) -> list[tuple[str, float]]:
+    """Os passos da cascata em unidades da ficha: o primeiro é o ponto de partida, o último o total."""
+    return [
+        (rotulo, float(valor))
+        for rotulo, valor in zip(pontos.rotulos, pontos.valores[0], strict=True)
+        if valor is not None
+    ]
+
+
+def _plotly_da_cascata(pontos: PontosDoGrafico, escala: Escala) -> go.Figure:
+    return graficos.criar_grafico_cascata(
+        _passos(pontos), pontos.titulo, divisor=escala.divisor, medida=escala.medida
+    )
+
+
+def _pdf_da_cascata(pontos: PontosDoGrafico, escala: Escala, estilo: Estilo) -> Figure:
+    return graficos_pdf.figura_de_cascata(
+        _passos(pontos),
+        pontos.titulo,
+        estilo,
+        divisor=escala.divisor,
+        medida=escala.medida,
+    )
+
+
 _PLOTLY: dict[str, Callable[[PontosDoGrafico, Escala], go.Figure]] = {
     "linha_no_tempo": _plotly_da_linha,
     "barras_no_tempo": _plotly_das_barras,
     "barras_por_categoria": _plotly_das_barras,
     "antes_e_agora": _plotly_das_barras,
+    "dispersao": _plotly_da_dispersao,
+    "cascata": _plotly_da_cascata,
 }
 _PDF: dict[str, Callable[[PontosDoGrafico, Escala, Estilo], Figure]] = {
     "linha_no_tempo": _pdf_da_linha,
     "barras_no_tempo": _pdf_das_barras,
     "barras_por_categoria": _pdf_das_barras,
     "antes_e_agora": _pdf_das_barras,
+    "dispersao": _pdf_da_dispersao,
+    "cascata": _pdf_da_cascata,
 }
 
 

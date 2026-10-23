@@ -263,8 +263,22 @@ def grafico_de_cascata(
     titulo: str,
     estilo: Estilo = PADRAO,
     subir_e_bom: bool = True,
+    divisor: float = 1e9,
+    medida: str | None = None,
 ) -> bytes:
     """Cascata em bilhões: barra cheia no começo e no total, flutuantes no meio."""
+    return _png(figura_de_cascata(passos, titulo, estilo, subir_e_bom, divisor, medida))
+
+
+def figura_de_cascata(
+    passos: list[tuple[str, float]],
+    titulo: str,
+    estilo: Estilo = PADRAO,
+    subir_e_bom: bool = True,
+    divisor: float = 1e9,
+    medida: str | None = None,
+) -> Figure:
+    """A figura da cascata (os testes olham os eixos dela antes de virar PNG)."""
     figura, eixo = _figura(
         estilo, 2.8, {"left": 0.08, "right": 0.98, "top": 0.86, "bottom": 0.28}
     )
@@ -273,7 +287,7 @@ def grafico_de_cascata(
     )
     nivel, ultimo = 0.0, len(passos) - 1
     for i, (nome, valor) in enumerate(passos):
-        bilhoes = valor / 1e9
+        bilhoes = valor / divisor
         if i in (0, ultimo):
             base, altura, cor = 0.0, bilhoes, estilo.series[0]
             nivel = bilhoes
@@ -289,9 +303,11 @@ def grafico_de_cascata(
     eixo.set_ylim(
         baixo, alto + (alto - baixo) * FOLGA_DOS_ROTULOS
     )  # o rótulo não bate no título
+    baixo, alto = eixo.get_ylim()
+    eixo.set_ylim(min(baixo, 0.0), max(alto, 0.0))  # o zero sempre dentro do eixo
     eixo.yaxis.set_major_formatter(FuncFormatter(lambda v, _: numero_br(v, 0)))
-    _titulo(eixo, estilo, f"{titulo} (R$ bilhões)")
-    return _png(figura)
+    _titulo(eixo, estilo, f"{titulo} ({medida or 'R$ bilhões'})")
+    return figura
 
 
 def figura_em_png(figura: Figure) -> bytes:
@@ -348,6 +364,31 @@ def figura_de_barras_do_relatorio(
     if quantas > 1:
         _legenda(eixo, estilo, quantas)
         figura.subplots_adjust(bottom=0.3)
+    return figura
+
+
+def figura_de_dispersao_do_relatorio(
+    rotulos: list[str],
+    x: tuple[str, list[float | None]],
+    y: tuple[str, list[float | None]],
+    titulo: str,
+    medida: str,
+    casas: int,
+    estilo: Estilo = PADRAO,
+) -> Figure:
+    """Um ponto por item, com o nome ao lado e um indicador em cada eixo."""
+    figura, eixo = _figura(estilo, 2.8)
+    (nome_x, valores_x), (nome_y, valores_y) = x, y
+    eixo.scatter(valores_x, valores_y, color=estilo.series[0], s=18, zorder=3)
+    for rotulo, vx, vy in zip(rotulos, valores_x, valores_y, strict=True):
+        eixo.annotate(rotulo, (vx, vy), xytext=(3, 4), textcoords="offset points",
+                      fontsize=6.5, color=estilo.texto)  # fmt: skip
+    eixo.set_xlabel(nome_x, color=estilo.apagado)
+    eixo.set_ylabel(nome_y, color=estilo.apagado)
+    eixo.xaxis.set_major_formatter(_formatador(casas))
+    eixo.yaxis.set_major_formatter(_formatador(casas))
+    figura.subplots_adjust(bottom=0.2)
+    _titulo(eixo, estilo, _titulo_com_medida(titulo, medida))
     return figura
 
 
