@@ -317,3 +317,55 @@ def test_ptax_de_moeda_sem_fechamento_no_periodo_da_erro_claro():
     so_abertura = {"value": PTAX_DO_EURO["value"][2:]}
     with pytest.raises(bcb.BcbIndisponivelError, match="PTAX"):
         bcb.montar_ptax_da_moeda(so_abertura, HOJE)
+
+
+def test_series_do_sgs_sem_codigo_nem_nome_repetido_e_com_unidade():
+    codigos = [s.codigo for s in bcb.SERIES.values()]
+    assert len(codigos) == len(set(codigos))
+    nomes = [s.nome for s in bcb.SERIES.values()]
+    assert len(nomes) == len(set(nomes))
+    assert all(s.nome and s.unidade for s in bcb.SERIES.values())
+
+
+def test_series_do_lote_1_estao_na_lista_e_as_encerradas_ficam_de_fora():
+    for chave, codigo in {
+        "credito_saldo": 20539,
+        "inadimplencia": 21082,
+        "juros_credito": 20714,
+        "transacoes_correntes": 22701,
+        "divida_bruta_pib": 13762,
+        "ipca_nucleo_aparadas_suavizado": 4466,
+        "ibc_br_dessazonalizado": 24364,
+        "inadimplencia_publicos": 13667,
+    }.items():
+        assert bcb.SERIES[chave].codigo == codigo
+    # param de ser divulgada (conferido em 23/10/2026): CDB/RDB pós-fixado parou em 2024
+    assert 28663 not in {s.codigo for s in bcb.SERIES.values()}
+
+
+def test_sgs_de_valor_negativo_ou_grande_e_lido_e_o_futuro_continua_cortado():
+    """Saldo de transações correntes é negativo e o crédito passa de 7 milhões (R$ milhões)."""
+    registros = [
+        {"data": "01/07/2026", "valor": "-5054.7"},
+        {"data": "01/08/2026", "valor": "7397669"},
+        {"data": "01/11/2026", "valor": "1"},  # depois de hoje
+    ]
+    serie = bcb.montar_serie_sgs(registros, "Saldo", HOJE)
+    assert serie.tolist() == [pytest.approx(-5054.7), pytest.approx(7397669.0)]
+
+
+def test_focus_de_indicador_novo_e_lido_pela_mesma_montagem():
+    resposta = {
+        "value": [
+            {"Indicador": "Dívida líquida do setor público", "IndicadorDetalhe": None,
+             "Data": "2026-10-13", "DataReferencia": "2026", "Mediana": 70, "Media": 70.1,
+             "Minimo": 66, "Maximo": 75, "numeroRespondentes": 30},
+        ]
+    }  # fmt: skip
+    pedidos: list = []
+    focus = bcb.baixar_focus(
+        "Dívida líquida do setor público", date(2026, 10, 1),
+        _buscar([RespostaFalsa(resposta)], pedidos),
+    )  # fmt: skip
+    assert focus["mediana"].tolist() == [70]
+    assert "D%C3%ADvida%20l%C3%ADquida%20do%20setor%20p%C3%BAblico" in pedidos[0][0]
