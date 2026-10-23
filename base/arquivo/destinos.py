@@ -9,7 +9,7 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 
 from dataclasses import dataclass
 
-from base.arquivo import lote_eua, lote_setoriais
+from base.arquivo import lote_cadastros, lote_eua, lote_setoriais
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
@@ -49,13 +49,6 @@ def _pesquisa(porque: str) -> Destino:
 _SO_LIGA_HOJE = "hoje só liga nomes na rede; a tabela própria está prevista"
 _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
-)
-
-_B3_BDI_CONTRA_OS_TERMOS = (
-    "só arquivo, só pesquisa: a página da B3 veda a 'coleta automatizada, inclusive por meio de "
-    "ferramentas de inteligência artificial, para quaisquer finalidades' "
-    "(www.b3.com.br, Boletim diário do mercado, lida em 18/10/2026); decisão do Tiago em "
-    "18/10/2026 de guardar a cópia até a B3 autorizar por escrito; nada em tela, API ou tabela"
 )
 
 
@@ -140,6 +133,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
+)
+
+_LOTE_CADASTROS_SO_ARQUIVO = (
+    "cadastro ou lista de sanções guardado como publicado, só pessoa jurídica (a firma individual e a "
+    "pessoa física saem antes de guardar); a tabela com contrato no catálogo ainda não existe"
 )
 
 _LOTE_SETORIAIS_SO_ARQUIVO = (
@@ -292,9 +290,6 @@ DESTINOS: dict[str, Destino] = {
     "b3-negocios": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-boletim-pr": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-cotahist-dia": _pesquisa(_B3_FORA_DO_CATALOGO),
-    "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
-    "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
-    "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "conab-cafe-safra": _tabela("conab_cafe"),
     "conab-cafe-publicacao": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
@@ -304,18 +299,6 @@ DESTINOS: dict[str, Destino] = {
         "cafe/PR4",
         "balanço mundial do café a partir do relatório mensal da ICO em PDF; marca 'não comercial' "
         "registrada, coleta e uso citando a ICO e a data (ADR 0102)",
-    ),
-    "fnc-estadisticas": _planejada(
-        "cafe/PR4",
-        "preço, área, produção e exportação de café da Colômbia nas planilhas da FNC; marca 'não "
-        "comercial' registrada (os termos vedam robô), coleta com ritmo e uso citando a FNC e a data "
-        "(ADR 0102)",
-    ),
-    "cecafe-relatorio-mensal": _planejada(
-        "cafe/PR6",
-        "exportações de café por tipo e destino no relatório mensal do Cecafé em PDF; marca 'não "
-        "comercial' registrada (o robots.txt veda PDF, lido em 18/10/2026 e vigiado), coleta com ritmo "
-        "e uso citando o Cecafé e a data (ADR 0102)",
     ),
     # clima por região cafeeira (plano do café, PR 8): `base/commodities/clima_regiao.py`
     "inmet-bdmep": _tabela("clima_regiao_cafe"),
@@ -334,6 +317,11 @@ DESTINOS: dict[str, Destino] = {
     **{
         f.id: _planejada("dados-escondidos/rodada-1", _LOTE_SETORIAIS_SO_ARQUIVO)
         for f in lote_setoriais.fontes()
+    },
+    # lote cadastros globais (rodada 4, linha 287): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CADASTROS_SO_ARQUIVO)
+        for f in lote_cadastros.fontes()
     },
     # vigias (avisam quando o texto muda)
     **{
@@ -372,6 +360,7 @@ DESTINOS: dict[str, Destino] = {
             "termos-iex",
             "termos-banco-mundial",
             *lote_eua.termos(),
+            *lote_cadastros.termos(),
         )
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
