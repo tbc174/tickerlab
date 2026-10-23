@@ -521,6 +521,34 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-querido",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-crossref",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-openalex",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-senado",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-fnc-colombia",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -2106,6 +2134,69 @@
       "id": "ofsi-conlist",
       "licenca": "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades",
       "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "wiki-pageviews-empresas",
+      "licenca": "CC0 (acessos por artigo, Wikimedia; citar a Wikimedia)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "gdelt-gkg",
+      "licenca": "GDELT: uso livre citando e linkando o GDELT; só empresa, tema e tom",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "querido-diario-empresas",
+      "licenca": "CC BY 4.0 (Querido Diário, Open Knowledge Brasil; citar)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "openalex-afiliacoes",
+      "licenca": "CC0 (OpenAlex); só afiliações e contagens, sem autores",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "crossref-afiliacoes",
+      "licenca": "Metadados sem direitos de autor (Crossref); só contagens por afiliação",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ebc-rss-ultimas",
+      "licenca": "Texto de terceiros (EBC): só índice (data, título, link) do RSS",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ebc-rss-economia",
+      "licenca": "Texto de terceiros (EBC): só índice (data, título, link) do RSS",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "senado-rss-noticias",
+      "licenca": "Texto de terceiros (Agência Senado): só índice (data, título, link) do RSS",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "camara-rss-noticias",
+      "licenca": "Texto de terceiros (Agência Câmara): só índice (data, título, link)",
+      "marca": "a_confirmar",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-22"
     }
