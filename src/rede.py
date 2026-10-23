@@ -26,6 +26,8 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
+from base.arquivo.agente import AGENTE
+
 TENTATIVAS = 4  # a primeira e mais 3
 ESPERA_INICIAL = (
     2  # segundos; dobra a cada tentativa (2, 4, 8), com um sorteio de até 1 s
@@ -91,9 +93,26 @@ def _ultimo_resultado(estado: RetryCallState) -> requests.Response:
     return estado.outcome.result()
 
 
+def _com_agente(kwargs: dict[str, object]) -> None:
+    """Põe o `User-Agent` do TickerLab nos cabeçalhos, a menos que quem chama já tenha posto o seu
+    (a SEC, por exemplo, pede o contato de quem baixa). ADR 0102: o coletor se identifica."""
+    cabecalhos = dict(kwargs.get("headers") or {})  # type: ignore[call-overload]
+    if not any(nome.lower() == "user-agent" for nome in cabecalhos):
+        cabecalhos["User-Agent"] = AGENTE
+    kwargs["headers"] = cabecalhos
+
+
+def get_com_agente(url: str, *args: object, **kwargs: object) -> requests.Response:
+    """Como `requests.get(url, ...)`, mas já com o `User-Agent` do TickerLab, para os leitores
+    que recebem o `buscar` por parâmetro (e os testes trocam por um dublê)."""
+    _com_agente(kwargs)
+    return requests.get(url, *args, **kwargs)  # type: ignore[arg-type]
+
+
 def obter(url: str, *args: object, **kwargs: object) -> requests.Response:
     """Como `requests.get(url, ...)`, com novas tentativas nas falhas passageiras."""
     kwargs.setdefault("timeout", TEMPO_LIMITE)
+    _com_agente(kwargs)
     tentativas = Retrying(
         stop=stop_after_attempt(TENTATIVAS),
         wait=_espera,

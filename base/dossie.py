@@ -8,7 +8,7 @@ no servidor de casa (`scripts/gerar_dossies.py`), uma ficha JSON por CNPJ, e só
 
 - a tabela está no dicionário da base e **não guarda pessoa** (ADR 0075: nomes esperam a LGPD);
 - a fonte pode ser **mostrada** pela trava das licenças (`coletas.pode_usar("mostrar", ...)`): toda
-  fonte, com a marca registrada e a fonte citada (ADR 0102), menos a B3 (ADR 0019);
+  fonte, com a marca registrada e a fonte citada (ADR 0102; a B3 entrou em 22/10/2026, ADR 0008 Emenda 6);
 - não é uma tabela de crise ou de risco com o nome da empresa (insolvência, atraso, situação especial,
   dívida com a União: esperam o parecer, P-44), nem das assessorias de M&A (licença a confirmar).
 
@@ -40,6 +40,7 @@ from base import concentracao
 from base import indicadores_de_caixa as t1
 from base.bcb_ifdata import DIAS_ATE_FICAR_PUBLICO, MESES_DA_DATA_BASE
 from base.cnpj import formatar, raiz
+from base.contrapartes.cafe import ENDERECO_DO_CNPJ, VEICULO_DO_CNPJ
 from base.dicionario import TABELAS
 from base.rede.ligacoes_das_fontes import (
     AUDITA,
@@ -59,10 +60,9 @@ VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
 VERSAO_DO_DOSSIE = "1"
 CALCULO_DO_DOSSIE = f"dossiê {VERSAO_DO_DOSSIE}"
 # fora do app até o parecer (crise ou risco com o nome da empresa, P-44), mesmo que a licença deixe
-# (a Emenda 3 da ADR 0008 liberou a da PGFN e a da situação especial; o P-44 ainda as segura)
-TABELAS_PROIBIDAS = frozenset(
-    {"insolvencia", "rotulos_atraso", "cnpj_situacao_especial", "pgfn_divida"}
-)
+# (a Emenda 3 da ADR 0008 liberou a da PGFN; o P-44 ainda a segura). A ADR 0103 (D2) tirou daqui a
+# insolvência e a situação especial: só como fato datado e com o direito de resposta (`base/contestacoes.py`)
+TABELAS_PROIBIDAS = frozenset({"rotulos_atraso", "pgfn_divida"})
 LINHAS_NAS_LISTAS = (
     20  # últimas ofertas, últimos negócios: o resto fica na contagem por ano
 )
@@ -481,6 +481,11 @@ SECOES = (
     ),
     SecaoDaBase("negocios", "Negócios e eventos", ("eventos", *TABELAS_DO_MA)),
     SecaoDaBase(
+        "insolvencia",
+        "Registros de insolvência e situação especial",
+        ("insolvencia", "cnpj_situacao_especial"),
+    ),
+    SecaoDaBase(
         "rede", "Ligações na rede", ("ligacoes", "entidades", "identificadores")
     ),
 )
@@ -582,6 +587,16 @@ LIMITES = {
         "dúvida fica de fora. Cobre as assessorias que a base lê (hoje uma), sobretudo o middle "
         "market: não é a lista de todas as operações do mercado, e a ausência de negócios aqui não "
         "quer dizer que a empresa não fez nenhum. Sem valores e sem a outra parte do negócio."
+    ),
+    "insolvencia": (
+        "Só fatos que fontes oficiais registram, copiados com a data do fato, a data em que ficaram "
+        "públicos, o veículo e o link; a ficha descreve o que as fontes dizem. CVM: documentos do IPE "
+        "que anunciam recuperação, pedido de falência, falência ou liquidação da própria companhia, "
+        "contados uma vez por entrega, na data da primeira versão; o documento que fala de outra "
+        "empresa fica de fora. Receita Federal: a situação especial do cadastro do CNPJ, publicada "
+        "por mês; filiais e meses repetidos contam um fato só. Cada fato vale a partir do dia em que "
+        "ficou público. Quando a empresa contesta um fato, a contestação aparece ao lado dele. "
+        "Sócios e administradores não aparecem."
     ),
     "rede": (
         "Ligações da rede de entidades do TickerLab, montada com o Formulário de Referência (FRE), o "
@@ -2465,6 +2480,174 @@ def secao_negocios(
     if not itens:
         return None
     return _secao("negocios", itens, tabelas, fontes=fontes)
+
+
+# --- insolvência e situação especial (ADR 0103, D2: só fatos, com o direito de resposta) --------------
+
+# o rótulo da base → como a ficha escreve; rótulo fora daqui (exposição a terceiro, espólio) não sai
+NOMES_DOS_REGISTROS = {
+    "recuperacao_judicial": "Recuperação judicial",
+    "recuperacao_extrajudicial": "Recuperação extrajudicial",
+    "recuperacao_judicial_ou_extrajudicial": "Recuperação judicial ou extrajudicial (a CVM não diz qual)",
+    "pedido_de_falencia": "Pedido de falência",
+    "falencia": "Falência",
+    "liquidacao": "Liquidação",
+    "liquidacao_judicial": "Liquidação judicial",
+    "liquidacao_extrajudicial": "Liquidação extrajudicial",
+    "intervencao": "Intervenção",
+}  # fmt: skip
+# o que cada fonte precisa ter: a empresa sem linha chega como quadro vazio, e as colunas vêm do reindex
+COLUNAS_DA_INSOLVENCIA = ("rotulo", "protocolo", "referencia", "conhecido_em", "link")
+COLUNAS_DA_SITUACAO_ESPECIAL = (
+    "rotulo", "data_situacao_especial", "disponivel_em",
+)  # fmt: skip
+VEICULO_DA_CVM = "CVM (IPE)"
+SITUACAO_CONTESTADA = "contestada"
+COLUNAS_DOS_FATOS = ["rotulo", "aconteceu_em", "publico_em", "veiculo", "link"]
+SEM_REGISTRO_NA_CVM = (
+    "Sem registro de recuperação, falência ou liquidação nos documentos da CVM (IPE), consultados "
+    "em {dia}."
+)
+SEM_REGISTRO_NA_RECEITA = "Sem registro de situação especial no cadastro do CNPJ da Receita Federal, consultado em {dia}."
+NAO_CONSULTADO_NA_CVM = (
+    "Não consultamos os documentos da CVM (IPE) sobre recuperação, falência e liquidação: a base "
+    "não tinha essa fonte no dia da ficha."
+)
+NAO_CONSULTADO_NA_RECEITA = (
+    "Não consultamos a situação especial do cadastro do CNPJ da Receita Federal: a base não tinha "
+    "essa fonte no dia da ficha."
+)
+O_QUE_NAO_SABEMOS_DA_INSOLVENCIA = (
+    "O que não sabemos: não lemos processos nos tribunais, diários oficiais, notícias nem a dívida "
+    "ativa da União; a falta de registro nas fontes lidas não prova que não exista."
+)
+
+
+def _fatos_da_cvm(insolvencia: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """Os documentos do IPE sobre a própria companhia, já públicos em `hoje`, uma vez por entrega
+    (a reapresentação não apaga a data da primeira versão)."""
+    insolvencia = insolvencia.reindex(columns=COLUNAS_DA_INSOLVENCIA)
+    publico = pd.to_datetime(insolvencia["conhecido_em"])
+    vale = insolvencia.assign(conhecido_em=publico)[
+        insolvencia["rotulo"].isin(NOMES_DOS_REGISTROS) & (publico <= hoje)
+    ]
+    primeiras = vale.sort_values("conhecido_em").drop_duplicates(
+        ["protocolo", "rotulo"]
+    )
+    return pd.DataFrame(
+        {
+            "rotulo": primeiras["rotulo"],
+            "aconteceu_em": pd.to_datetime(primeiras["referencia"]),
+            "publico_em": primeiras["conhecido_em"],
+            "veiculo": VEICULO_DA_CVM,
+            "link": primeiras["link"],
+        },
+        columns=COLUNAS_DOS_FATOS,
+    )
+
+
+def _fatos_da_receita(
+    situacao_especial: pd.DataFrame, hoje: pd.Timestamp
+) -> pd.DataFrame:
+    """As situações especiais do cadastro do CNPJ já públicas em `hoje`: um fato por rótulo e data,
+    na primeira vez que o retrato mensal o trouxe (a filial e os meses seguintes não o repetem)."""
+    situacao_especial = situacao_especial.reindex(columns=COLUNAS_DA_SITUACAO_ESPECIAL)
+    publico = pd.to_datetime(situacao_especial["disponivel_em"])
+    vale = situacao_especial.assign(disponivel_em=publico)[
+        situacao_especial["rotulo"].isin(NOMES_DOS_REGISTROS) & (publico <= hoje)
+    ]
+    primeiras = vale.sort_values("disponivel_em").drop_duplicates(
+        ["rotulo", "data_situacao_especial"]
+    )
+    return pd.DataFrame(
+        {
+            "rotulo": primeiras["rotulo"],
+            "aconteceu_em": pd.to_datetime(primeiras["data_situacao_especial"]),
+            "publico_em": primeiras["disponivel_em"],
+            "veiculo": VEICULO_DO_CNPJ,
+            "link": ENDERECO_DO_CNPJ,
+        },
+        columns=COLUNAS_DOS_FATOS,
+    )
+
+
+def _contestacao_do_fato(
+    fato: pd.Series, contestadas: pd.DataFrame
+) -> pd.Series | None:
+    """A contestação mais nova do fato: a do registro dele e, se disser o dia, a do mesmo dia."""
+    do_registro = contestadas[contestadas["registro"] == fato["rotulo"]]
+    do_dia = do_registro["aconteceu_em"].isna() | (
+        do_registro["aconteceu_em"] == fato["aconteceu_em"]
+    )
+    achadas = do_registro[do_dia].sort_values("recebida_em")
+    return None if achadas.empty else achadas.iloc[-1]
+
+
+def _linha_do_fato(fato: pd.Series, contestadas: pd.DataFrame) -> dict[str, Any]:
+    contestacao = _contestacao_do_fato(fato, contestadas)
+    return {
+        "aconteceu_em": _data(fato["aconteceu_em"]),
+        "publico_em": _data(fato["publico_em"]),
+        "registro": NOMES_DOS_REGISTROS[fato["rotulo"]],
+        "veiculo": fato["veiculo"],
+        "link": None if pd.isna(fato["link"]) else fato["link"],
+        "situacao": None if contestacao is None else SITUACAO_CONTESTADA,
+        "contestacao": None if contestacao is None else contestacao["texto"],
+        "contestada_em": (
+            None if contestacao is None else _data(contestacao["recebida_em"])
+        ),
+    }
+
+
+def _avisos_da_fonte(
+    fatos: pd.DataFrame | None, sem_registro: str, nao_consultado: str, dia: str
+) -> list[str]:
+    """A frase da fonte que não trouxe fato: "sem registro" com o dia, ou que não foi lida."""
+    if fatos is None:
+        return [nao_consultado]
+    return [] if len(fatos) else [sem_registro.format(dia=dia)]
+
+
+def secao_insolvencia(
+    insolvencia: pd.DataFrame | None,
+    situacao_especial: pd.DataFrame | None,
+    contestacoes: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> dict[str, Any] | None:
+    """Registros de insolvência e situação especial: só fatos, cada um com a data do fato, a data em
+    que ficou público, o veículo e o link (ADR 0103, D2). Sem fato, diz "sem registro" com o dia da
+    consulta; fonte que a base não leu (`None`) diz que não foi consultada. None: nenhuma das duas foi lida.
+
+    Os dois quadros já são só da empresa da ficha; `contestacoes` também (`base.contestacoes`). Um fato
+    contestado ganha `situacao: contestada` e o texto da empresa ao lado.
+    """
+    if insolvencia is None and situacao_especial is None:
+        return None
+    da_cvm = None if insolvencia is None else _fatos_da_cvm(insolvencia, hoje)
+    da_receita = (
+        None
+        if situacao_especial is None
+        else _fatos_da_receita(situacao_especial, hoje)
+    )
+    contestadas = contestacoes[contestacoes["recebida_em"] <= hoje]
+    fatos = pd.concat(
+        [f for f in (da_cvm, da_receita) if f is not None], ignore_index=True
+    )
+    fatos = fatos.sort_values(["publico_em", "rotulo"], ascending=[False, True])
+    linhas = pd.DataFrame([_linha_do_fato(f, contestadas) for _, f in fatos.iterrows()])
+    dia = f"{hoje:%d/%m/%Y}"
+    paragrafos = [
+        *_avisos_da_fonte(da_cvm, SEM_REGISTRO_NA_CVM, NAO_CONSULTADO_NA_CVM, dia),
+        *_avisos_da_fonte(
+            da_receita, SEM_REGISTRO_NA_RECEITA, NAO_CONSULTADO_NA_RECEITA, dia
+        ),
+        O_QUE_NAO_SABEMOS_DA_INSOLVENCIA,
+    ]
+    lidas = {"insolvencia": insolvencia, "cnpj_situacao_especial": situacao_especial}
+    fontes = fontes_das_tabelas(t for t, lida in lidas.items() if lida is not None)
+    return _secao(
+        "insolvencia", [], {"registros_de_insolvencia": linhas}, paragrafos, fontes
+    )
 
 
 # --- ligações na rede (molde B: a busca por CNPJ, plano de 19/10/2026) ---------------------------

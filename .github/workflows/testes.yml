@@ -31,6 +31,11 @@ jobs:
         with:
           fetch-depth: 0 # o passo abaixo compara com o commit anterior
 
+      # Chave da API externa (tld_...) num arquivo do repositório público: o GitHub só avisa de padrão
+      # que conhece; este passo cobre o resto (scripts/procurar_chaves_da_api.py, N7, linha 170).
+      - name: Procurar chaves da API
+        run: python3 scripts/procurar_chaves_da_api.py
+
       - name: O que mudou
         id: mudancas
         run: |

@@ -51,13 +51,15 @@ def test_marca_e_licenca_batem_com_as_funcoes_da_coleta():
 
 def test_a_data_da_leitura_dos_termos_e_uma_data_ou_nada():
     por_id = {r.id: r for r in registro.registro_de_fontes()}
-    assert por_id["inmet-bdmep"].termos_lidos_em == date(2026, 10, 18)
-    assert por_id["cvm-fidc"].termos_lidos_em == date(2026, 10, 12)
-    assert por_id["gleif-br"].termos_lidos_em is None
+    assert por_id["inmet-bdmep"].termos_lidos_em == date(2026, 10, 21)
+    assert por_id["cvm-fidc"].termos_lidos_em == date(2026, 10, 21)
+    assert por_id["ibama-autos"].termos_lidos_em is None
+    assert por_id["gleif-br"].termos_lidos_em == date(2026, 10, 21)
 
 
 def test_toda_data_de_leitura_aponta_para_uma_familia_que_existe():
-    familias = {f.id.split("-", 1)[0] for f in FONTES}
+    # família coletada pelo arquivista ou com licença registrada (Kraken, Yahoo e outras vêm de outro coletor)
+    familias = {f.id.split("-", 1)[0] for f in FONTES} | set(LICENCAS)
     assert set(registro.TERMOS_LIDOS_EM) <= familias
 
 

@@ -9,9 +9,13 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 
 from dataclasses import dataclass
 
+from base.arquivo import lote_eua, lote_setoriais
+
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
-SO_PESQUISA = "so_pesquisa"  # cópia de pesquisa fora do catálogo: só a B3 (ADR 0102)
+SO_PESQUISA = (
+    "so_pesquisa"  # cópia de pesquisa fora do catálogo: BDI e barras de 1 minuto da B3
+)
 VIGIA = "vigia"  # só avisa quando o texto (termos, catálogo) muda
 PLANEJADA = "planejada"  # guardada, com tabela prevista em um PR já nomeado
 
@@ -47,11 +51,93 @@ _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
 )
 
-_B3_BDI_CONTRA_OS_TERMOS = (
-    "só arquivo, só pesquisa: a página da B3 veda a 'coleta automatizada, inclusive por meio de "
-    "ferramentas de inteligência artificial, para quaisquer finalidades' "
-    "(www.b3.com.br, Boletim diário do mercado, lida em 18/10/2026); decisão do Tiago em "
-    "18/10/2026 de guardar a cópia até a B3 autorizar por escrito; nada em tela, API ou tabela"
+
+def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
+    return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
+
+
+_LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
+    "câmbio, juros, inflação e crédito da zona do euro nas séries do BCE": _ids(
+        "bce",
+        "cambio-dolar",
+        "cambio-real",
+        "curva-10a",
+        "juro-principal",
+        "inflacao-ipch",
+        "balanco-bancos",
+        "juro-credito",
+    ),
+    "indicador antecedente composto de 12 países na OCDE (Brasil primeiro)": (
+        "ocde-cli",
+    ),
+    "séries da União Europeia no Eurostat (só países da UE)": _ids(
+        "eurostat",
+        "confianca",
+        "desemprego",
+        "ipch",
+        "juro-longo",
+        "pib",
+        "producao-industrial",
+    ),
+    "câmbio, juros, crédito e imóveis nas séries do BIS (marca não comercial)": _ids(
+        "bis",
+        "cambio",
+        "cambio-efetivo-nominal",
+        "cambio-efetivo-real",
+        "inflacao-longa",
+        "juro-dos-bancos-centrais",
+        "lacuna-de-credito",
+        "preco-de-imoveis",
+    ),
+    "câmbio, inflação, reservas e perspectivas do FMI (marca não comercial)": _ids(
+        "fmi",
+        "cambio",
+        "inflacao",
+        "reservas-do-mundo",
+        "weo-bca_ngdpd",
+        "weo-ggxwdg_ngdp",
+        "weo-ngdp_rpch",
+        "weo-pcpipch",
+    ),
+    "indicadores do Banco Mundial para o Brasil e para o mundo": _ids(
+        "worldbank",
+        "brasil",
+        "mundo-fp-cpi-totl-zg",
+        "mundo-ny-gdp-mktp-kd-zg",
+        "mundo-sp-pop-totl",
+    ),
+    "emissores de LEI e autoridades de registro do GLEIF": _ids(
+        "gleif", "emissores", "autoridades-de-registro"
+    ),
+    "clima mensal por ponto de cada região cafeeira na NASA POWER": _ids(
+        "nasa-power",
+        "alta-paulista",
+        "bahia-atlantico",
+        "cerrado-mineiro",
+        "chapada-de-minas",
+        "es-montanhas",
+        "es-norte",
+        "matas-de-minas",
+        "mogiana",
+        "norte-do-parana",
+        "oeste-da-bahia",
+        "planalto-da-bahia",
+        "rondonia",
+        "sul-de-minas",
+    ),
+    "índices de teleconexão (NAO, AO, PNA) do NOAA CPC": _ids(
+        "noaa", "ao", "nao", "pna", "teleconexoes"
+    ),
+}
+
+_LOTE_EUA_SO_ARQUIVO = (
+    "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
+    "ainda não existe (sem pessoa física nas tabelas derivadas)"
+)
+
+_LOTE_SETORIAIS_SO_ARQUIVO = (
+    "dado aberto de órgão público brasileiro guardado como publicado; a tabela com contrato no "
+    "catálogo ainda não existe (INPI só com os arquivos sem pessoa física)"
 )
 
 DESTINOS: dict[str, Destino] = {
@@ -110,6 +196,40 @@ DESTINOS: dict[str, Destino] = {
     "bcb-pix-chaves": _planejada("serie-T/T9", _SO_LIGA_HOJE + " (ISPB ao banco)"),
     "tesouro-br-direto": _tabela("curva_juros"),
     "tesouro-br-leiloes": _tabela("curva_juros"),
+    # lote BCB e SICONFI da rodada 1 (linha 242 da fila): guardados; a carga na base é a linha seguinte
+    "bcb-mercado-imobiliario": _planejada(
+        "rodada-1/lote-bcb", "crédito imobiliário do Banco Central, por tipo e região"
+    ),
+    "bcb-str": _planejada(
+        "rodada-1/lote-bcb", "giro, TED e portabilidade de crédito no STR, por dia"
+    ),
+    "bcb-consorcios": _planejada(
+        "rodada-1/lote-bcb", "panorama trimestral dos consórcios, com o dicionário"
+    ),
+    "bcb-leiloes-selic": _planejada(
+        "rodada-1/lote-bcb", "leilões de títulos públicos e de swap cambial do BC"
+    ),
+    "bcb-tarifas-instituicao": _planejada(
+        "rodada-1/lote-bcb", "tarifas de cada banco listado"
+    ),
+    "bcb-cosif": _planejada(
+        "rodada-1/lote-bcb", "balancete mensal (4010) de cada banco listado"
+    ),
+    "tesouro-br-siconfi-entes": _planejada(
+        "rodada-1/lote-bcb", "estados e municípios do SICONFI, com o CNPJ do ente"
+    ),
+    "tesouro-br-siconfi-entregas": _planejada(
+        "rodada-1/lote-bcb", "o que cada estado e capital entregou ao SICONFI"
+    ),
+    "tesouro-br-siconfi-rreo": _planejada(
+        "rodada-1/lote-bcb", "RREO de estados e capitais, por bimestre"
+    ),
+    "tesouro-br-siconfi-rgf": _planejada(
+        "rodada-1/lote-bcb", "RGF do Executivo de estados e capitais, por quadrimestre"
+    ),
+    "tesouro-br-siconfi-dca": _planejada(
+        "rodada-1/lote-bcb", "balanço anual (DCA) de estados e capitais"
+    ),
     "tesouro-br-divida": _planejada(
         "serie-T/T7", "estoque e emissões da dívida federal, CAPAG e dívida dos estados"
     ),
@@ -165,9 +285,6 @@ DESTINOS: dict[str, Destino] = {
     "b3-negocios": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-boletim-pr": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-cotahist-dia": _pesquisa(_B3_FORA_DO_CATALOGO),
-    "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
-    "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
-    "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "conab-cafe-safra": _tabela("conab_cafe"),
     "conab-cafe-publicacao": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
@@ -178,18 +295,6 @@ DESTINOS: dict[str, Destino] = {
         "balanço mundial do café a partir do relatório mensal da ICO em PDF; marca 'não comercial' "
         "registrada, coleta e uso citando a ICO e a data (ADR 0102)",
     ),
-    "fnc-estadisticas": _planejada(
-        "cafe/PR4",
-        "preço, área, produção e exportação de café da Colômbia nas planilhas da FNC; marca 'não "
-        "comercial' registrada (os termos vedam robô), coleta com ritmo e uso citando a FNC e a data "
-        "(ADR 0102)",
-    ),
-    "cecafe-relatorio-mensal": _planejada(
-        "cafe/PR6",
-        "exportações de café por tipo e destino no relatório mensal do Cecafé em PDF; marca 'não "
-        "comercial' registrada (o robots.txt veda PDF, lido em 18/10/2026 e vigiado), coleta com ritmo "
-        "e uso citando o Cecafé e a data (ADR 0102)",
-    ),
     # clima por região cafeeira (plano do café, PR 8): `base/commodities/clima_regiao.py`
     "inmet-bdmep": _tabela("clima_regiao_cafe"),
     "chirps-mensal": _tabela("clima_regiao_cafe"),
@@ -197,6 +302,17 @@ DESTINOS: dict[str, Destino] = {
     "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # área de café por município (plano do café, PR 8): `base/commodities/area_municipio.py`
     "mapbiomas-cafe": _tabela("area_cafe_municipio"),
+    # lote organismos (dados escondidos, rodada 1): guardado no acervo, tabelas ainda não escritas
+    **{
+        id_: _planejada("dados-escondidos/rodada-1", porque)
+        for porque, ids in _LOTE_ORGANISMOS.items()
+        for id_ in ids
+    },
+    # lote setoriais Brasil (linha 245 da fila, 22/10/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-1", _LOTE_SETORIAIS_SO_ARQUIVO)
+        for f in lote_setoriais.fontes()
+    },
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -219,7 +335,28 @@ DESTINOS: dict[str, Destino] = {
             "termos-cecafe-robots",
             "termos-inmet",
             "termos-cnpj-licenca",
+            "termos-bce",
+            "termos-eurostat",
+            "termos-bis",
+            "termos-nasa-power",
+            "termos-noaa",
+            "termos-kraken",
+            "termos-yahoo",
+            "termos-gdelt",
+            "termos-gleif",
+            "termos-faostat",
+            "termos-chirps",
+            "termos-mapbiomas",
+            "termos-iex",
+            "termos-banco-mundial",
+            *lote_eua.termos(),
         )
+    },
+    # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
+    # publicam; a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria
+    **{
+        f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
+        for f in lote_eua.fontes()
     },
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),

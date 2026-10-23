@@ -17,6 +17,8 @@ from datetime import date, timedelta
 
 import requests
 
+from src import rede
+
 URL_DAS_TAXAS = (
     "https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/"
     "resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/precotaxatesourodireto.csv"
@@ -81,7 +83,7 @@ def ler_taxas_do_dia(conteudo: bytes) -> dict:
 Buscar = Callable[..., requests.Response]
 
 
-def baixar_taxas_do_dia(hoje: date, buscar: Buscar = requests.get) -> dict:
+def baixar_taxas_do_dia(hoje: date, buscar: Buscar = rede.get_com_agente) -> dict:
     """As taxas do dia mais novo, pedindo só o começo do arquivo; erro se o dia for velho demais."""
     try:
         resposta = buscar(

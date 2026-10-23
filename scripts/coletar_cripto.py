@@ -45,7 +45,6 @@ from src.bcb import baixar_ptax
 
 log = logging.getLogger("coletar_cripto")
 
-AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
 TEMPO_LIMITE_EM_SEGUNDOS = 120
 VARIAVEL_DO_COOKIE = "BITCOIN_COOKIE"
 # fonte da linha de comando: (nome no registro de coletas, função de coleta)
@@ -86,9 +85,7 @@ def pasta_da_base() -> Path:
 
 
 def _baixar_da_fonte(url: str) -> bytes:
-    resposta = rede.obter(
-        url, timeout=TEMPO_LIMITE_EM_SEGUNDOS, headers={"User-Agent": AGENTE}
-    )
+    resposta = rede.obter(url, timeout=TEMPO_LIMITE_EM_SEGUNDOS)
     resposta.raise_for_status()
     return resposta.content
 

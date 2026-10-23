@@ -25,9 +25,7 @@ from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-import requests
-
-from src import bcb, series_mensais, tesouro_direto
+from src import bcb, rede, series_mensais, tesouro_direto
 from src.cdi import SERIE_DO_CDI
 
 FONTE = (
@@ -180,7 +178,7 @@ COLETORES: dict[str, Coletor] = {
 }
 
 
-def coletar(hoje: date, buscar: Buscar = requests.get) -> tuple[dict, list[str]]:
+def coletar(hoje: date, buscar: Buscar = rede.get_com_agente) -> tuple[dict, list[str]]:
     """As partes que vieram e a lista das que falharam ("parte (motivo)")."""
     dados: dict = {}
     falhas: list[str] = []
@@ -237,7 +235,9 @@ def resumo_das_falhas(falhas: list[str]) -> str:
     return linha[: TAMANHO_MAXIMO_DO_RESUMO - 3] + "..."
 
 
-def main(argv: Sequence[str] | None = None, buscar: Buscar = requests.get) -> int:
+def main(
+    argv: Sequence[str] | None = None, buscar: Buscar = rede.get_com_agente
+) -> int:
     parser = argparse.ArgumentParser(
         description="Dados do Banco Central e do Tesouro para as ferramentas do site."
     )

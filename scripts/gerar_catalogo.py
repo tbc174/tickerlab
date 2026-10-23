@@ -22,6 +22,8 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
+from base.arquivo.agente import AGENTE
+
 URL_DA_B3 = "https://arquivos.b3.com.br/bdi/table/export/csv?lang=en-us"
 URL_DO_SP500 = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
 DESTINO = Path(__file__).resolve().parent.parent / "conteudo" / "catalogo_de_ativos.csv"
@@ -57,7 +59,7 @@ def _tabela_da_b3(nome: str, dia: date) -> pd.DataFrame:
         URL_DA_B3,
         json={"Name": nome, "Date": dia.isoformat(), "FinalDate": dia.isoformat()},
         timeout=120,
-        headers={"User-Agent": "Mozilla/5.0"},
+        headers={"User-Agent": AGENTE},
     )
     resposta.raise_for_status()
     linhas = resposta.content.decode("utf-8-sig", errors="replace").splitlines()

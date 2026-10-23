@@ -20,8 +20,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-import requests
-
+from src import rede
 from src.commodities.cafe.regioes import (
     AREA_MINIMA_HA,
     ARQUIVO_DOS_MUNICIPIOS,
@@ -52,7 +51,7 @@ COLUNAS = (
 def _baixar_json(url: str, cache: Path | None) -> list[dict]:
     if cache is not None and cache.exists():
         return json.loads(cache.read_text(encoding="utf-8"))
-    resposta = requests.get(url, timeout=TEMPO_LIMITE)
+    resposta = rede.obter(url, timeout=TEMPO_LIMITE)
     resposta.raise_for_status()
     if cache is not None:
         cache.write_text(resposta.text, encoding="utf-8")

@@ -118,7 +118,7 @@ def test_falha_do_banco_central_fica_no_log(monkeypatch, caplog):
     def cai(*a, **k):
         raise requests.ConnectionError("sem rede")
 
-    monkeypatch.setattr(cdi.requests, "get", cai)
+    monkeypatch.setattr("requests.get", cai)
     monkeypatch.setattr("src.bcb.esperar", lambda _: None)
     with caplog.at_level(logging.WARNING), pytest.raises(cdi.CDIIndisponivelError):
         cdi.baixar_cdi(pd.Timestamp("2026-01-01"), pd.Timestamp("2026-02-01"))

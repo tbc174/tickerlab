@@ -15,6 +15,7 @@ from datetime import datetime
 from base import dossie as dossie_da_base
 from src import destaques as destaques_da_base
 from src import dossie
+from src.contestacao import FRASE_DE_CONTESTACAO
 from src.relatorio_empresa import Relatorio, Secao
 from src.relatorio_empresa_pdf import LISTA, relatorio_da_empresa
 
@@ -41,6 +42,7 @@ def _limites(ficha: dossie.Ficha) -> list[str]:
             "os fundos e as agências entregaram; não dizem se é bom ou ruim nem o que vai acontecer."
         ),
         *dossie.limites_da_ficha(ficha),
+        FRASE_DE_CONTESTACAO,
     ]
 
 

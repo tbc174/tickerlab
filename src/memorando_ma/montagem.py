@@ -41,7 +41,7 @@ VEZES, FRACAO, REAIS = "vezes", "fração", "reais"
 SECOES_DO_PERFIL = ("cadastro", *SECOES_DO_GRUPO_E_DA_REDE)
 SECAO_DE_CREDITO = "credito"
 # a lacuna que o memorando repete da busca por CNPJ: as tabelas proibidas no app (base/dossie.py)
-PALAVRA_DO_DESLIGADO = "insolvência"
+PALAVRA_DO_DESLIGADO = "Dívida com a União"
 FORMULA_DO_CRESCIMENTO = (
     "o crescimento anual do caixa livre que faz o DCF (`src/valuation.py`) dar o preço do dia, com "
     "o desconto, a perpetuidade e os anos declarados"

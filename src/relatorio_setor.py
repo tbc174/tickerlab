@@ -22,6 +22,7 @@ from base import dossie as dossie_da_base
 from src import cruzamentos, dossie, fundamentalista, fundamentos
 from src.banco.demonstracoes import dados_da_empresa
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
+from src.contestacao import com_a_contestacao
 from src.dossie import Ficha
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
@@ -989,7 +990,7 @@ def montar_relatorio_do_setor(
         frases=frases,
         nao_temos=faltas,
         fontes=list(dict.fromkeys(fontes)),
-        limites=list(LIMITES_DO_SETOR),
+        limites=com_a_contestacao(list(LIMITES_DO_SETOR)),
         avisos=[] if noite else [SEM_A_NOITE],
     )
 

@@ -23,6 +23,7 @@ import pandas as pd
 import requests
 
 from src import dados as dados_de_mercado
+from src import rede
 from src.bcb import FUSO
 from src.ferramentas import inflacao
 
@@ -136,7 +137,7 @@ class CacheDoDia:
 CACHE = CacheDoDia()
 
 
-def baixar_arquivo(buscar: Buscar = requests.get) -> dict:
+def baixar_arquivo(buscar: Buscar = rede.get_com_agente) -> dict:
     try:
         resposta = buscar(ENDERECO_DOS_DADOS, timeout=TEMPO_LIMITE)
         resposta.raise_for_status()
@@ -153,7 +154,7 @@ def hora_agora() -> int:
     return datetime.now(FUSO).hour
 
 
-def obter_arquivo(hoje: date, buscar: Buscar = requests.get) -> dict:
+def obter_arquivo(hoje: date, buscar: Buscar = rede.get_com_agente) -> dict:
     """O arquivo de dados, buscado de novo a cada hora: o cron do VPS o atualiza duas vezes por dia
     (9h10 e 13h40), e guardar o do dia inteiro prenderia a rota nos dados da madrugada."""
     return CACHE.obter("arquivo", (hoje, hora_agora()), lambda: baixar_arquivo(buscar))

@@ -24,6 +24,8 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
+from src import rede
+
 URL_DO_SGS = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados"
 URL_DA_PTAX = (
     "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
@@ -156,7 +158,7 @@ def baixar_serie_sgs(
     inicio: date,
     fim: date,
     hoje: date | None = None,
-    buscar: Buscar = requests.get,
+    buscar: Buscar = rede.get_com_agente,
 ) -> pd.Series:
     """A série `chave` de `SERIES` entre `inicio` e `fim` (ver `baixar_sgs`)."""
     return baixar_sgs(SERIES[chave], inicio, fim, hoje, buscar)
@@ -167,7 +169,7 @@ def baixar_sgs(
     inicio: date,
     fim: date,
     hoje: date | None = None,
-    buscar: Buscar = requests.get,
+    buscar: Buscar = rede.get_com_agente,
 ) -> pd.Series:
     """Uma série do SGS entre `inicio` e `fim`, em consultas de até `ANOS_POR_CONSULTA` anos.
 
@@ -218,7 +220,10 @@ def montar_ptax(resposta: object, hoje: date) -> pd.DataFrame:
 
 
 def baixar_ptax(
-    inicio: date, fim: date, hoje: date | None = None, buscar: Buscar = requests.get
+    inicio: date,
+    fim: date,
+    hoje: date | None = None,
+    buscar: Buscar = rede.get_com_agente,
 ) -> pd.DataFrame:
     """A PTAX do dólar (compra e venda) entre `inicio` e `fim`."""
     params = {
@@ -247,7 +252,7 @@ def montar_moedas(resposta: object) -> list[Moeda]:
         raise BcbIndisponivelError("Resposta inesperada da lista de moedas.") from erro
 
 
-def baixar_moedas(buscar: Buscar = requests.get) -> list[Moeda]:
+def baixar_moedas(buscar: Buscar = rede.get_com_agente) -> list[Moeda]:
     """A lista de moedas da PTAX."""
     return montar_moedas(_pedir(buscar, URL_DAS_MOEDAS, {"$format": "json"}))
 
@@ -269,7 +274,7 @@ def baixar_ptax_da_moeda(
     inicio: date,
     fim: date,
     hoje: date | None = None,
-    buscar: Buscar = requests.get,
+    buscar: Buscar = rede.get_com_agente,
 ) -> pd.DataFrame:
     """A PTAX de `moeda` ("EUR", "GBP"...) entre `inicio` e `fim`, em reais."""
     params = {
@@ -302,7 +307,7 @@ def montar_focus(resposta: object) -> pd.DataFrame:
 def baixar_focus(
     indicador: str,
     desde: date,
-    buscar: Buscar = requests.get,
+    buscar: Buscar = rede.get_com_agente,
     base_de_calculo: int | None = None,
 ) -> pd.DataFrame:
     """O que o mercado espera para `indicador` ("IPCA", "Selic", "Câmbio", "PIB Total"...)

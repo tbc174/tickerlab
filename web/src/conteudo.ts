@@ -244,6 +244,19 @@ export const amostraRelatorio: {
   limites: string[];
   fontes: string[];
 } = amostraJson;
+import semanalEletricasJson from "../conteudo/relatorio_semanal_eletricas.json";
+
+/** O relatório de setor da semana (src/relatorio_semanal.py, para_o_site): elétricas. */
+export const relatorioSemanalEletricas: {
+  setor: string;
+  titulo: string;
+  dados_de: string; // DD/MM/AAAA
+  aviso: string;
+  destaques: { titulo: string; texto: string; fonte: string; data: string }[];
+  tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];
+  nao_temos: { kpi: string; motivo: string; fonte: string }[];
+  limites: string[];
+} = semanalEletricasJson;
 import catalogoJson from "../conteudo/catalogo.json";
 
 /** Uma fonte pública de dados (`Fonte` de base/vitrine.py): uma por texto de licença. */

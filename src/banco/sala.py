@@ -190,13 +190,18 @@ def encerrar_operacao(
     if operacao is None or operacao.situacao == "encerrada":
         return operacao
     hoje = hoje or retencao.hoje_em_brasilia()
-    return _mudar_operacao(
+    prazo = retencao.prazo_ao_encerrar(hoje)
+    encerrada = _mudar_operacao(
+        conexao, usuario_id, operacao_id, situacao="encerrada", retencao_ate=prazo
+    )
+    auditoria.registrar(
         conexao,
         usuario_id,
+        auditoria.ACAO_OPERACAO_ENCERRADA,
         operacao_id,
-        situacao="encerrada",
-        retencao_ate=retencao.prazo_ao_encerrar(hoje),
+        {"retencao_ate": prazo.isoformat()},
     )
+    return encerrada
 
 
 def prorrogar_operacao(
@@ -213,7 +218,15 @@ def prorrogar_operacao(
         return None
     hoje = hoje or retencao.hoje_em_brasilia()
     novo = retencao.prazo_prorrogado(operacao.retencao_ate, hoje, dias)
-    return _mudar_operacao(conexao, usuario_id, operacao_id, retencao_ate=novo)
+    prorrogada = _mudar_operacao(conexao, usuario_id, operacao_id, retencao_ate=novo)
+    auditoria.registrar(
+        conexao,
+        usuario_id,
+        auditoria.ACAO_OPERACAO_PRORROGADA,
+        operacao_id,
+        {"dias": dias, "retencao_ate": novo.isoformat()},
+    )
+    return prorrogada
 
 
 def apagar_operacao(

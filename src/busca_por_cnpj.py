@@ -18,6 +18,7 @@ from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src import dossie
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
+from src.contestacao import com_a_contestacao
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
     CONVITE_DO_DOSSIE,
@@ -39,7 +40,8 @@ FORA: Situacao = "fora_da_base_aberta"
 FILIAL_DA_MATRIZ = "0001"
 TITULO_DO_CADASTRO = "Cadastro"
 FONTE_DO_CADASTRO = (
-    "cadastro de companhias abertas da CVM (razão social, setor e valores mobiliários)"
+    "cadastro de companhias abertas da CVM (razão social, setor, situação, categoria, registro e "
+    "valores mobiliários)"
 )
 SECOES_DO_GRUPO_E_DA_REDE = ("auditor_e_controladas", "rede")
 
@@ -51,8 +53,7 @@ FORA_DA_BASE_ABERTA = (
 DESLIGADO = (
     "Empresas fechadas: o relatório delas espera a licença dos dados da Receita Federal e da PGFN.",
     "Natureza jurídica e MEI: vêm da Receita Federal e esperam a mesma licença.",
-    "Situação, categoria e data de registro na CVM: ainda não estão no banco do app.",
-    "Dívida com a União, insolvência, situação especial e atrasos de pagamento: esperam um parecer jurídico.",
+    "Dívida com a União e atrasos de pagamento: esperam um parecer jurídico.",
     "Sanções e dívidas entre empresas da rede: esperam um parecer jurídico.",
     "Sócios, administradores e qualquer nome de pessoa: não aparecem.",
     "Ligações de 2 ou mais saltos e busca por nome ou ticker: depois de medir o uso da busca.",
@@ -132,8 +133,64 @@ def _dia(valor: date | datetime) -> date:
     return valor
 
 
+def _base_do_cadastro(dia: date) -> str:
+    return f"cadastro da CVM em {dia:%d/%m/%Y}"
+
+
+def _situacao_por_extenso(situacao: str, desde: date | None) -> str:
+    """`ATIVO` + 2001-05-10 → "Ativo, desde 10/05/2001" (a situação muda: a data vai junto)."""
+    texto = situacao.capitalize()
+    return f"{texto}, desde {desde:%d/%m/%Y}" if desde else texto
+
+
+def _itens_do_registro(registro: sa.Row | None, base: str) -> list[Item]:
+    """Setor, situação, categoria e data de registro na CVM, cada um só quando o banco tem."""
+    if registro is None:
+        return []
+    dia = _dia(registro.atualizado_em) if registro.atualizado_em else None
+    base_do_registro = _base_do_cadastro(dia) if dia else base
+    itens = []
+    if registro.setor:
+        itens.append(
+            _item_do_cadastro("setor", "Setor", registro.setor, base, FONTE_DO_SETOR)
+        )
+    if registro.situacao:
+        texto = _situacao_por_extenso(registro.situacao, registro.situacao_desde)
+        itens.append(
+            _item_do_cadastro(
+                "situacao",
+                "Situação na CVM",
+                texto,
+                base_do_registro,
+                FONTE_DO_CADASTRO,
+            )
+        )
+    if registro.categoria:
+        itens.append(
+            _item_do_cadastro(
+                "categoria",
+                "Categoria de registro",
+                registro.categoria,
+                base_do_registro,
+                FONTE_DO_CADASTRO,
+            )
+        )
+    if registro.registro:
+        itens.append(
+            _item_do_cadastro(
+                "registro",
+                "Registro na CVM",
+                f"{registro.registro:%d/%m/%Y}",
+                base_do_registro,
+                FONTE_DO_CADASTRO,
+            )
+        )
+    return itens
+
+
 def secao_cadastro(conexao: sa.Connection, cnpj: str) -> Secao | None:
-    """O cadastro da CVM no banco do app (razão social, setor e tickers); None se o CNPJ não está lá.
+    """O cadastro da CVM no banco do app (razão social, setor, situação, categoria, registro e
+    tickers); None se o CNPJ não está lá.
 
     Não traz a natureza jurídica nem a situação da Receita: a licença desses dados ainda não existe.
     """
@@ -146,19 +203,18 @@ def secao_cadastro(conexao: sa.Connection, cnpj: str) -> Secao | None:
     ).all()
     if not emissor:
         return None
-    setor = conexao.execute(
-        sa.select(setores_cvm.c.setor).where(setores_cvm.c.cnpj == formatado)
-    ).scalar()
+    registro = conexao.execute(
+        sa.select(setores_cvm).where(setores_cvm.c.cnpj == formatado)
+    ).first()
     dia = _dia(max(linha.atualizado_em for linha in emissor))
-    base = f"cadastro da CVM em {dia:%d/%m/%Y}"
+    base = _base_do_cadastro(dia)
     itens = [
         _item_do_cadastro("cnpj", "CNPJ", formatado, base, FONTE_DO_CADASTRO),
         _item_do_cadastro(
             "razao_social", "Razão social", emissor[0].empresa, base, FONTE_DO_CADASTRO
         ),
+        *_itens_do_registro(registro, base),
     ]
-    if setor:
-        itens.append(_item_do_cadastro("setor", "Setor", setor, base, FONTE_DO_SETOR))
     codigos = ", ".join(sorted({linha.codigo for linha in emissor}))
     itens.append(
         _item_do_cadastro(
@@ -217,7 +273,7 @@ def montar_relatorio_do_cnpj(
         como_era_em=dossie.dia_da_ficha(ficha),
         secoes=[*([cadastro] if cadastro else []), *secoes],
         fontes=fontes,
-        limites=[*LIMITES_DA_BUSCA, *do_dossie.limites],
+        limites=com_a_contestacao([*LIMITES_DA_BUSCA, *do_dossie.limites]),
         desligado=list(DESLIGADO),
         avisos=[aviso] if aviso else [],
     )
@@ -233,7 +289,7 @@ def relatorio_fora_da_base_aberta(cnpj: str) -> RelatorioDoCnpj:
         como_era_em=None,
         secoes=[],
         fontes=[],
-        limites=list(LIMITES_DA_BUSCA),
+        limites=com_a_contestacao(list(LIMITES_DA_BUSCA)),
         desligado=list(DESLIGADO),
         avisos=[FORA_DA_BASE_ABERTA],
     )

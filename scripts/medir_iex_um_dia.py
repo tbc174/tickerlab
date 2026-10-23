@@ -21,10 +21,9 @@ from typing import BinaryIO
 
 import pandas as pd
 import psutil
-import requests
 import yfinance as yf
 
-from src import catalogo, iex_tops
+from src import catalogo, iex_tops, rede
 from src.barras_intradiarias import (
     cobertura_por_simbolo,
     conferir_fechamentos,
@@ -88,7 +87,7 @@ class MedidorDeMemoria(threading.Thread):
 
 def endereco_do_tops(data: date) -> tuple[str, int]:
     """O link do arquivo TOPS do dia e o tamanho dele em bytes (comprimido)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         LISTA_DO_HIST.format(data=data.strftime("%Y%m%d")), timeout=TEMPO_LIMITE_S
     )
     resposta.raise_for_status()
@@ -112,7 +111,7 @@ def ler_o_dia(link: str, simbolos: set[str], limite_gb: float | None) -> tuple:
     medidor = MedidorDeMemoria()
     medidor.start()
     inicio = time.perf_counter()
-    with requests.get(link, stream=True, timeout=TEMPO_LIMITE_S) as resposta:
+    with rede.obter(link, stream=True, timeout=TEMPO_LIMITE_S) as resposta:
         resposta.raise_for_status()
         contada = LeituraContada(resposta.raw)
         with gzip.GzipFile(fileobj=contada) as descomprimido:

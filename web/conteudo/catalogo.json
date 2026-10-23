@@ -308,56 +308,56 @@
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-recompra",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-ofertas",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-cadastros",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cgu-ceis",
       "licenca": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
       "marca": "uso_interno",
       "ritmo": "diaria",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cgu-cnep",
       "licenca": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
       "marca": "uso_interno",
       "ritmo": "diaria",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cgu-cepim",
       "licenca": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
       "marca": "uso_interno",
       "ritmo": "diaria",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cgu-leniencia",
       "licenca": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
       "marca": "uso_interno",
       "ritmo": "diaria",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "termos-b3-politica",
@@ -437,6 +437,69 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-bce",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-eurostat",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-bis",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-nasa-power",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-noaa",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-fed",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-bls",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-eia",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-nyfed",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-fnc-colombia",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -445,6 +508,69 @@
     },
     {
       "id": "termos-cecafe-robots",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-kraken",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-yahoo",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-gdelt",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-gleif",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-faostat",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-chirps",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-mapbiomas",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-iex",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-banco-mundial",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
       "ritmo": "diaria",
@@ -490,49 +616,49 @@
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-fidc",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-fidc-recente",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-cda-recente",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-cri",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-cra",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-cgvn",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "ibama-autos",
@@ -560,7 +686,7 @@
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "rfb-cnpj",
@@ -574,196 +700,196 @@
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
       "marca": "a_confirmar",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-hist-ipe",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-hist-itr",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-hist-dfp",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-hist-fre",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-hist-fca",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-hist-vlmo",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "cvm-hist-cda",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-12"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "bcb-scr",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ccee-pld",
       "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "antt-pedagio",
       "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "tesouro-br-divida",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-direto",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "diaria",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-leiloes",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "anp-vendas-distribuidora",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "anp-producao-poco",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "anp-concessionarios",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "ons-geracao-usina",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "ons-restricao-eolica-solar",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "ons-capacidade-geracao",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "antt-siade",
       "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "comexstat",
       "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
       "marca": "a_confirmar",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "anac-estatistico",
       "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ans-beneficiarios",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ans-beneficiarios-operadora",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "anatel-acessos",
       "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "bcb-pix-chaves",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "aneel-samp",
       "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "susep-ses",
@@ -777,7 +903,7 @@
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "susep-cadastro",
@@ -788,45 +914,24 @@
     },
     {
       "id": "b3-negocios",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "b3-boletim-pr",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "b3-cotahist-dia",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-18"
-    },
-    {
-      "id": "b3-emprestimo-posicoes",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
-      "marca": "nao_comercial",
-      "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-18"
-    },
-    {
-      "id": "b3-derivativos-posicoes",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
-      "marca": "nao_comercial",
-      "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-18"
-    },
-    {
-      "id": "b3-emprestimo-resumo",
-      "licenca": "Política de Consumo de Market Data B3 V1.1: só pesquisa",
-      "marca": "nao_comercial",
-      "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "tce-pr-pit",
@@ -868,14 +973,14 @@
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
       "marca": "a_confirmar",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "conab-cafe-publicacao",
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
       "marca": "a_confirmar",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "usda-psd-cafe",
@@ -889,49 +994,35 @@
       "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "ico-relatorio-mensal",
       "licenca": "ICO: relatório mensal sem termos achados; uso citando a fonte",
       "marca": "nao_comercial",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-18"
-    },
-    {
-      "id": "fnc-estadisticas",
-      "licenca": "FNC: só uso pessoal, veda robô; coleta com ritmo, cita a fonte",
-      "marca": "nao_comercial",
-      "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-18"
-    },
-    {
-      "id": "cecafe-relatorio-mensal",
-      "licenca": "Cecafé: robots.txt veda PDF; coleta com ritmo, uso citando a fonte",
-      "marca": "nao_comercial",
-      "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "inmet-bdmep",
       "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-18"
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "chirps-mensal",
       "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "chirps-historico",
       "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
       "marca": "vendavel",
       "ritmo": "carga-unica",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "ibge-malha-municipal",
@@ -945,7 +1036,714 @@
       "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "bce-cambio-dolar",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-cambio-real",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-curva-10a",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-juro-principal",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-inflacao-ipch",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-balanco-bancos",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bce-juro-credito",
+      "licenca": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ocde-cli",
+      "licenca": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-confianca",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-ipch",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-desemprego",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-pib",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-juro-longo",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-producao-industrial",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-cambio-efetivo-nominal",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-cambio-efetivo-real",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-juro-dos-bancos-centrais",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-preco-de-imoveis",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-inflacao-longa",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-cambio",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bis-lacuna-de-credito",
+      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+      "marca": "nao_comercial",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fmi-cambio",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-inflacao",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-reservas-do-mundo",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-ngdp_rpch",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-pcpipch",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-bca_ngdpd",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fmi-weo-ggxwdg_ngdp",
+      "licenca": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "noaa-teleconexoes",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "noaa-nao",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "noaa-ao",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "noaa-pna",
+      "licenca": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-brasil",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-mundo-ny-gdp-mktp-kd-zg",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-mundo-fp-cpi-totl-zg",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-mundo-sp-pop-totl",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "gleif-emissores",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "gleif-autoridades-de-registro",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "nasa-power-sul-de-minas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-cerrado-mineiro",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-matas-de-minas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-chapada-de-minas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-mogiana",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-alta-paulista",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-norte-do-parana",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-oeste-da-bahia",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-planalto-da-bahia",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-es-montanhas",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-es-norte",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-rondonia",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nasa-power-bahia-atlantico",
+      "licenca": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "sec-edgar-indice-diario",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-indice-trimestral",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-form-d",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-13f",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-form-d-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-13f-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-edgar-busca-texto",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "fed-ddp-h15",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h10",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h41",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h8",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-h6",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-g19",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-z1",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "fed-ddp-chgdel",
+      "licenca": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-divida-total",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-juros-medios",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-cambio-oficial",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-leiloes",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-resultado-mensal",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-receitas-e-despesas",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-fiscaldata-vendas-de-titulos",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-curva-juros",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "treasury-curva-juros-historico",
+      "licenca": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-cu",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-cw",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ce",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-wp",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-pc",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-pr",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ip",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-jt",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ap",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-ei",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bls-la",
+      "licenca": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eia-wpsr",
+      "licenca": "Domínio público (Energy Information Administration; citar a EIA)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ofr-estresse-financeiro",
+      "licenca": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ofr-monitor-de-funding",
+      "licenca": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ofr-monitor-de-hedge-funds",
+      "licenca": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nyfed-juros-referencia",
+      "licenca": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nyfed-juros-referencia-historico",
+      "licenca": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "nyfed-dealers-primarios",
+      "licenca": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tic-detentores-estrangeiros",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tic-posicoes-de-longo-prazo",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tic-carteira-global",
+      "licenca": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "usda-psd-todas",
+      "licenca": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-18"
+    },
+    {
+      "id": "census-comercio-exterior",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "census-varejo",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "census-construcao",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "census-industria",
+      "licenca": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "contrapartes-cafe",
@@ -953,6 +1751,258 @@
       "marca": "a_confirmar",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-18"
+    },
+    {
+      "id": "bcb-mercado-imobiliario",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-str",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-consorcios",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-leiloes-selic",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-tarifas-instituicao",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-cosif",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-entes",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-entregas",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-rreo",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-rgf",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-siconfi-dca",
+      "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ccee-pld-detalhe",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-consumo",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-geracao",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-contratos",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-mercado",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "epe-consumo-mensal",
+      "licenca": "CC BY 4.0 (dados abertos da EPE; citar a EPE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ons-carga",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-balanco",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-hidrologia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-custos",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-termica",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-fator-capacidade",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "aneel-tarifas",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-geracao",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-qualidade",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ans-demonstracoes",
+      "licenca": "Demonstrações da ANS: sem licença declarada; citar a ANS",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "anatel-acessos-telefonia-fixa",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anac-horas-voadas",
+      "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inep-censo-superior",
+      "licenca": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "senatran-frota",
+      "licenca": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "anp-precos-ultimas-semanas",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anp-precos-semestral",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anp-precos-mensal",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "inpi-patentes",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inpi-contratos",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
     }
   ],
   "tabelas": [

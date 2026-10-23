@@ -18,13 +18,20 @@ import requests
 import sqlalchemy as sa
 
 from base import intradiario_b3, tce_pr
-from base.arquivo import assessorias, contrapartes, wayback
+from base.arquivo import (
+    assessorias,
+    contrapartes,
+    lote_bcb,
+    lote_eua,
+    lote_organismos,
+    lote_setoriais,
+    wayback,
+)
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
     arquivo_do_google_drive,
     arquivo_que_pode_faltar,
-    csv_do_bdi_da_b3,
     csv_so_com_colunas,
     extrair_do_zip_remoto,
     indice_do_zip_remoto,
@@ -83,24 +90,8 @@ PRIMEIRO_ANO_DO_SCR = 2012
 MES_DO_PRIMEIRO_ARQUIVO_DO_SCR = 3
 
 # termos de uso que decidem o que o TickerLab pode fazer (vigia: avisa quando o texto muda)
-# relatório mensal do Cecafé (café, PR 6): coleta com ritmo e uso citando a fonte (ADR 0102); o
-# robots.txt do site, que proíbe PDF (lido em 18/10/2026), fica vigiado e registrado na marca
+# robots.txt do Cecafé (proíbe PDF, lido em 18/10/2026): a coleta saiu, a página segue vigiada (ADR 0102, Emenda 1)
 CECAFE_ROBOTS = "https://www.cecafe.com.br/robots.txt"
-CECAFE_RELATORIOS = "https://www.cecafe.com.br/publicacoes/relatorio-de-exportacoes/"
-PDF_DO_CECAFE = re.compile(
-    rb'href="(https://www\.cecafe\.com\.br/[^"]*Relatorio-Mensal[^"]*\.pdf)"',
-    re.IGNORECASE,
-)
-# estatísticas da FNC (Colômbia; café, PR 4): planilhas de preço, área, produção e exportação
-# linkadas na página; os termos só para uso pessoal ficam vigiados e registrados na marca (ADR 0102)
-FNC_ESTADISTICAS = "https://federaciondecafeteros.org/estadisticas-cafeteras/"
-PLANILHA_DA_FNC = re.compile(
-    rb'href="(https://federaciondecafeteros\.org/wp-content/uploads/[^"]*\.xlsx)"',
-    re.IGNORECASE,
-)
-# site pequeno de terceiros: um pedido por vez, com folga entre eles (como as assessorias, ADR 0082)
-PAUSA_ENTRE_PEDIDOS_A_TERCEIROS_EM_SEGUNDOS = 3.0
-
 TERMOS = {
     "termos-b3-politica": "https://www.b3.com.br/data/files/0D/97/1F/B7/4CCFF91094DCD8F9AC094EA8/"
     "Politica%20de%20Consumo%20de%20Market%20Data%20B3%20V1.1.pdf",
@@ -117,10 +108,24 @@ TERMOS = {
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
+    **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
     # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
     # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
     "termos-cecafe-robots": CECAFE_ROBOTS,  # proíbe PDF e /wp-*/ (lido em 18/10/2026)
+    # páginas de termos lidas na auditoria N0 de 21/10/2026 (a Kraken mudou os dela em 19/10 sem ninguém ver)
+    "termos-kraken": "https://www.kraken.com/legal/global-terms",
+    "termos-yahoo": "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
+    "termos-gdelt": "https://www.gdeltproject.org/about.html",
+    "termos-gleif": "https://www.gleif.org/en/meta/lei-data-terms-of-use",
+    "termos-faostat": "https://www.fao.org/contact-us/terms/db-terms-of-use/en/",
+    "termos-chirps": "https://www.chc.ucsb.edu/data/chirps",
+    "termos-mapbiomas": "https://sites.mapbiomas.org/conheca-o-mapbiomas/termos-de-uso/",
+    "termos-iex": "https://iextrading.com/iex-historical-data-terms/",
+    "termos-banco-mundial": "https://www.worldbank.org/ext/en/legal/terms-conditions",
+    # FMI (Akamai: 403 "Access Denied") e CCEE (403): não abrem com o nosso agente; sem vigia, sem contornar
+    # (linhas na fila única)
 }
 # a ficha do CNPJ no dados.gov.br declara a licença CC BY em que a base do CNPJ se apoia (ADR 0106);
 # a rota pública da ficha pede a chave do portal (`DADOS_GOV_BR_CHAVE`, no `.env` do servidor)
@@ -257,50 +262,6 @@ HORA_DO_BOLETIM_FINAL_DA_B3 = 22  # o PR do dia sai em versões até ~21h
 COTAHIST_DO_DIA = (
     "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{ddmmaaaa}.ZIP"
 )
-
-# arquivos diários do BDI (boletim diário do mercado, `arquivos.b3.com.br/bdi`): só pesquisa, e contra
-# a vedação de "coleta automatizada" das páginas da B3 (decisão do Tiago em 18/10/2026; ADR 0094,
-# Emenda 1). A página de onde vieram os nomes: Boletim diário do mercado, aba "Derivativos de bolsa"
-# (`OpenPositionsEquities`, inclui café ICF, boi BGI, etanol ETH) e "Empréstimos de ativos"
-# (`BTBLendingOpenPosition`, posições em aberto do aluguel; `BTBLoanBalance`, empréstimos
-# registrados), lidas em 18/10/2026. Janela D-21 (21 pregões); o pedido é o do botão "Informações
-# em arquivo" (POST com tabela e dia). Sem mostrar nada em tela, API ou tabela do catálogo.
-CSV_DO_BDI_DA_B3 = "https://arquivos.b3.com.br/bdi/table/export/csv?lang=en-us"
-PAUSA_ENTRE_PEDIDOS_DO_BDI = 1.0  # segundos: um pedido por vez
-
-
-def _alvo_do_bdi(tabela: str, dia: date) -> Alvo:
-    # o corpo do POST leva a tabela e o dia; o fragmento só dá a cada (tabela, dia) um endereço
-    # próprio no registro de coletas (o servidor nunca o recebe)
-    url = f"{CSV_DO_BDI_DA_B3}#tabela={tabela}&data={dia.isoformat()}"
-    return Alvo(url, ".csv", csv_do_bdi_da_b3(url.split("#")[0], tabela, dia))
-
-
-def _descobrir_bdi(tabela: str) -> Descobrir:
-    def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
-        return [_alvo_do_bdi(tabela, dia) for dia in _dias_da_janela_da_b3(agora)]
-
-    return descobrir
-
-
-def _dia_do_bdi_ja_guardado(anterior: sa.Row) -> bool:
-    """Baixado depois do dia do pregão: já é a versão final (o do próprio dia pode estar parcial)."""
-    baixado = anterior.baixado_em
-    if baixado.tzinfo is None:  # o SQLite dos testes devolve sem fuso
-        baixado = baixado.replace(tzinfo=UTC)
-    pregao = date.fromisoformat(anterior.url.rsplit("data=", 1)[-1])
-    return baixado.astimezone(FUSO_DA_B3).date() > pregao
-
-
-def _fonte_do_bdi(id_: str, tabela: str) -> Fonte:
-    return Fonte(
-        id_,
-        "diaria",
-        _descobrir_bdi(tabela),
-        guardado_vale=_dia_do_bdi_ja_guardado,
-        pausa_minima=PAUSA_ENTRE_PEDIDOS_DO_BDI,
-    )
-
 
 # PIT do TCE-PR (sinais de risco em compras públicas, ADR 0085): um ZIP por ano desde 2013, com um ZIP
 # por município e tema dentro (399 × 9). Só licitação, contrato e ligações (a `Despesa` é o PR 2);
@@ -513,16 +474,6 @@ def descobrir_links(
     if not links:
         raise ErroDeDescoberta(f"nenhum arquivo linkado em {pagina}")
     return [Alvo(link) for link in links]
-
-
-def descobrir_cecafe(cliente: Cliente, agora: datetime) -> list[Alvo]:
-    """Os PDFs do relatório mensal linkados na página (o robots.txt não decide mais; ADR 0102)."""
-    return descobrir_links(cliente, CECAFE_RELATORIOS, PDF_DO_CECAFE)
-
-
-def descobrir_fnc(cliente: Cliente, agora: datetime) -> list[Alvo]:
-    """As planilhas (.xlsx) de estatísticas cafeteiras linkadas na página da FNC; PDFs ficam de fora."""
-    return descobrir_links(cliente, FNC_ESTADISTICAS, PLANILHA_DA_FNC)
 
 
 def descobrir_comex(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -1162,10 +1113,6 @@ FONTES: list[Fonte] = [
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
     ),
-    # arquivos diários do BDI (aluguel e posições em aberto dos derivativos, só pesquisa)
-    _fonte_do_bdi("b3-emprestimo-posicoes", "BTBLendingOpenPosition"),
-    _fonte_do_bdi("b3-derivativos-posicoes", "OpenPositionsEquities"),
-    _fonte_do_bdi("b3-emprestimo-resumo", "BTBLoanBalance"),
     # PIT do TCE-PR, só com os atributos da lista (sem pessoas): `base/tce_pr.py`
     Fonte("tce-pr-pit", "semanal", descobrir_pit, "zip", pesada=True),
     Fonte("tce-pr-despesa", "semanal", descobrir_pit_despesa, "zip", pesada=True),
@@ -1191,20 +1138,6 @@ FONTES: list[Fonte] = [
         ),
         "pdf",
     ),
-    Fonte(
-        "fnc-estadisticas",
-        "mensal",
-        descobrir_fnc,
-        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_TERCEIROS_EM_SEGUNDOS,
-    ),
-    # relatório mensal do Cecafé (café, PR 6): um PDF por vez, com folga, citando a fonte (ADR 0102)
-    Fonte(
-        "cecafe-relatorio-mensal",
-        "mensal",
-        descobrir_cecafe,
-        "pdf",
-        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_TERCEIROS_EM_SEGUNDOS,
-    ),
     # clima por região cafeeira: estações do INMET, chuva do CHIRPS e a malha municipal do IBGE
     Fonte("inmet-bdmep", "mensal", _anos_do_inmet, "zip", pesada=True),
     Fonte("chirps-mensal", "mensal", _meses_do_chirps, pesada=True),
@@ -1215,9 +1148,19 @@ FONTES: list[Fonte] = [
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
+    *lote_organismos.fontes(),  # BCE, OCDE, Eurostat, BIS, FMI, Banco Mundial, NASA, NOAA, GLEIF
+    # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
+    # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
+    *lote_eua.fontes(),
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
+    # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
+    # bancos listados e as contas dos estados e capitais (linha 242 da fila)
+    *lote_bcb.fontes(),
+    # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
+    # ANP e INPI (linha 245 da fila)
+    *lote_setoriais.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

@@ -50,6 +50,7 @@ from opentimestamps.core.timestamp import DetachedTimestampFile, Timestamp
 
 from base import ancoragem as an
 from base.parquet import gravar_atomico
+from src import rede
 
 log = logging.getLogger("tickerlab.ancorar_base")
 
@@ -193,7 +194,7 @@ def atualizar(recibo: Path, buscar: Buscar = _buscar) -> bool:
 
 # --- conferir -------------------------------------------------------------------------------------
 def _buscar_texto(url: str) -> str:
-    resposta = requests.get(url, timeout=ESPERA)
+    resposta = rede.obter(url, timeout=ESPERA)
     resposta.raise_for_status()
     return resposta.text
 

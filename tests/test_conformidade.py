@@ -168,6 +168,32 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     assert "os links compartilhados e a assinatura" in texto
 
 
+def test_texto_14_descreve_a_ficha_de_originacao_e_as_garantias_da_sala():
+    """Texto 14 (22/10, linha 194): o que a sala guarda além dos documentos, sem novo aceite."""
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "versão 14" in privacidade
+    assert "**Ficha de originação e garantias:**" in privacidade
+    assert "a ficha **não envia nada**" in privacidade
+    assert "não são cifrados com a chave da operação" in privacidade
+    assert (
+        "e a ficha de originação, as exposições e as garantias de cada operação"
+        in privacidade
+    )
+    assert (
+        "as operações, os documentos, as fichas de originação e as garantias"
+        in privacidade
+    )
+
+
+def test_versao_13_dos_termos_diz_o_registro_de_acesso_ao_servidor_por_12_meses():
+    """Versão 13 (22/10): quem entra no servidor e usa sudo fica 12 meses, cifrado, em outro computador."""
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "usa privilégios de administrador" in privacidade
+    assert "guardado por **12 meses**, cifrado, em outro computador" in privacidade
+    assert "o comando executado" in privacidade
+
+
 def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais():
     """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal.
 
@@ -189,7 +215,7 @@ def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais(
     cada ano por 5 anos (antes o texto prometia só os 14 dias); o que foi apagado fica nelas sem
     uso até vencerem e é apagado de novo numa restauração; a sala fica fora das cópias longas.
     """
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.12"
+    assert conformidade.VERSAO_DOS_TERMOS >= "2026-10-22.12"
     privacidade = conformidade.carregar_texto("privacidade")
     assert "Cada cópia é apagada depois de **14 dias**" not in privacidade
     assert "não aparecem no app" not in privacidade
@@ -206,7 +232,7 @@ def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais(
         "**primeira cópia de cada ano, por 5 anos**",
         "as contas apagadas depois dela são apagadas de novo",
         "ficam fora das cópias mensais e anuais",
-        "as operações e os documentos da sala de dados",
+        "as operações, os documentos, as fichas de originação e as garantias da sala de dados",
         "não consegue procurar documentos por nome nem por CPF",
         "no quadro de sócios da empresa que você consulta pelo CNPJ",
         "CPF mascarado como a Receita publica",

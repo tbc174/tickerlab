@@ -29,6 +29,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from base import contestacoes as contestacoes_da_base
 from base import dossie
 from base import indicadores_de_caixa as t1
 from base.dicionario import TABELAS
@@ -134,6 +135,11 @@ class Entradas:
     hoje: pd.Timestamp  # o dia da ficha, sem fuso, para comparar com as datas da base
     # o M&A das assessorias de cada empresa (raiz do CNPJ), como era conhecido em `hoje`
     negocios_de_ma: dict[str, pd.DataFrame] = field(default_factory=dict)
+    # insolvência (CVM) e situação especial (Receita) por raiz de CNPJ; None: a base não tem a tabela
+    # (a ficha diz "não consultamos"). As contestações vêm do CSV conferido à mão, por raiz.
+    insolvencia: dict[str, pd.DataFrame] | None = None
+    situacao_especial: dict[str, pd.DataFrame] | None = None
+    contestacoes: pd.DataFrame = field(default_factory=contestacoes_da_base.vazia)
 
 
 # só as colunas que as seções de qualidade do lucro, de geração de caixa e de capital usam (a DRE de
@@ -180,6 +186,13 @@ COLUNAS_DA_GOVERNANCA = {  # tabela do FRE → as colunas que a seção usa (nun
     "fre_remuneracao_extremos": (*_DO_FRE, "fim_do_exercicio", "orgao", "maior", "media", "menor"),
     "fre_diversidade": (*_DO_FRE, "orgao", "genero_feminino"),
 }  # fmt: skip
+COLUNAS_DA_INSOLVENCIA = (
+    "cnpj", "rotulo", "evento", "protocolo", "versao", "referencia", "conhecido_em", "link",
+)  # fmt: skip
+COLUNAS_DA_SITUACAO_ESPECIAL = (
+    "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo", "data_situacao_especial",
+    "mes_do_retrato", "disponivel_em",
+)  # fmt: skip
 COLUNAS_DOS_RATINGS = (
     "cnpj", "agencia", "escala", "nota", "nota_original", "perspectiva", "acao", "data_acao",
     "publico_em", "protocolo", "link", "situacao_extracao",
@@ -419,7 +432,38 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         rede=_rede(leitor, hoje, entidades, controladas),
         hoje=_dia(hoje),
         negocios_de_ma=_negocios_de_ma(leitor, _dia(hoje)),
+        insolvencia=_por_raiz(
+            _ler_se_existe(leitor, "insolvencia", COLUNAS_DA_INSOLVENCIA), "cnpj"
+        ),
+        situacao_especial=_por_raiz(
+            _ler_se_existe(
+                leitor, "cnpj_situacao_especial", COLUNAS_DA_SITUACAO_ESPECIAL
+            ),
+            "cnpj_basico",
+        ),
+        contestacoes=contestacoes_da_base.ler(),
     )
+
+
+def _ler_se_existe(
+    leitor: Leitor, tabela: str, colunas: tuple[str, ...]
+) -> pd.DataFrame | None:
+    """A tabela lida, ou None quando a base não a tem (a ficha diz que não consultou a fonte)."""
+    if not leitor.tem_coluna(tabela, colunas[0]):
+        return None
+    return leitor.ler(tabela, [*colunas])
+
+
+def _por_raiz(
+    tabela: pd.DataFrame | None, coluna: str
+) -> dict[str, pd.DataFrame] | None:
+    """A tabela separada pela raiz do CNPJ (a filial e a matriz são a mesma empresa); None fica None."""
+    if tabela is None:
+        return None
+    if tabela.empty:
+        return {}
+    raizes = dossie.digitos(tabela[coluna]).str[:RAIZ_DO_CNPJ]
+    return {str(r): g for r, g in tabela.groupby(raizes)}
 
 
 def _negocios_de_ma(leitor: Leitor, hoje: pd.Timestamp) -> dict[str, pd.DataFrame]:
@@ -448,6 +492,11 @@ def _do_grupo(tabelas: dict[str, pd.DataFrame], cnpjs: set[str]) -> pd.DataFrame
 
 
 Secao = Callable[[str], dict | None]
+
+
+def _da_raiz(tabelas: dict[str, pd.DataFrame] | None, cnpj: str) -> pd.DataFrame | None:
+    """As linhas da empresa (raiz do CNPJ); None: a base não tem a tabela; vazia: sem linha dela."""
+    return None if tabelas is None else tabelas.get(cnpj[:RAIZ_DO_CNPJ], VAZIA)
 
 
 def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]:
@@ -527,6 +576,12 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
         "setor": setores.get,
         "negocios": lambda c: dossie.secao_negocios(
             eventos.get(c, VAZIA), de_ma.get(c[:RAIZ_DO_CNPJ])
+        ),
+        "insolvencia": lambda c: dossie.secao_insolvencia(
+            _da_raiz(entradas.insolvencia, c),
+            _da_raiz(entradas.situacao_especial, c),
+            contestacoes_da_base.da_empresa(entradas.contestacoes, c[:RAIZ_DO_CNPJ]),
+            hoje,
         ),
         "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }

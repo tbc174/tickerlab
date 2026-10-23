@@ -3687,6 +3687,13 @@
    "so_pro": false
   },
   {
+   "secao": "limites",
+   "id": "limites.paragrafos.11",
+   "tipo": "paragrafo",
+   "texto": "Representa esta empresa e viu um fato errado? Escreva para contato@tickerlab.com.br com o CNPJ e o fato. A contestação aparece ao lado do fato até a conferência.",
+   "so_pro": false
+  },
+  {
    "secao": "lacuna",
    "id": "lacuna.segmentos",
    "tipo": "lacuna",
