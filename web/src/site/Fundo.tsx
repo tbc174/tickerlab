@@ -58,6 +58,7 @@ export function Fundo({ classe = "", children }: { classe?: string; children: Re
 /** O topo das outras páginas: o mesmo fundo da inicial, mais baixo ("curto" nas de leitura). */
 export function TopoDaPagina({
   olho,
+  linkDoOlho,
   titulo,
   subtitulo,
   classe = "",
@@ -65,6 +66,7 @@ export function TopoDaPagina({
   children,
 }: {
   olho?: string;
+  linkDoOlho?: string; // o olho vira link (a vitrine, nas páginas de cada calculadora)
   titulo: string;
   subtitulo?: string;
   classe?: string;
@@ -74,7 +76,13 @@ export function TopoDaPagina({
   return (
     <Fundo classe={["v2-heroi-pagina", classe].filter(Boolean).join(" ")}>
       <section className="faixa secao v2-pagina-topo">
-        {olho ? <p className="olho">{olho}</p> : null}
+        {olho && linkDoOlho ? (
+          <a className="olho" href={linkDoOlho}>
+            {olho}
+          </a>
+        ) : olho ? (
+          <p className="olho">{olho}</p>
+        ) : null}
         {antesDoTitulo}
         <h1>{titulo}</h1>
         {subtitulo ? <p className="subtitulo">{subtitulo}</p> : null}
