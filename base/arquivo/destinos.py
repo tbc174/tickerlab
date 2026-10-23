@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from base.arquivo import (
     lote_atencao,
+    lote_brasil2,
     lote_cadastros,
     lote_eua,
     lote_licitacoes,
@@ -158,6 +159,11 @@ _LOTE_SETORIAIS_SO_ARQUIVO = (
 _LOTE_LICITACOES_SO_ARQUIVO = (
     "licitação e contrato públicos guardados só com pessoa jurídica (LGPD, ADR 0088); a tabela com "
     "contrato no catálogo ainda não existe"
+)
+
+_LOTE_BRASIL2_SO_ARQUIVO = (
+    "dado aberto de órgão público brasileiro guardado como publicado, só CNPJ e agregados (a pessoa "
+    "física sai antes de guardar, ADR 0088); a tabela com contrato no catálogo ainda não existe"
 )
 
 DESTINOS: dict[str, Destino] = {
@@ -337,6 +343,11 @@ DESTINOS: dict[str, Destino] = {
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_LICITACOES_SO_ARQUIVO)
         for f in lote_licitacoes.fontes()
+    },
+    # lote Brasil segunda camada (linhas 259, 260 e 262 da fila, 23/10/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/brasil-camada-2", _LOTE_BRASIL2_SO_ARQUIVO)
+        for f in lote_brasil2.fontes()
     },
     # lote cadastros globais (rodada 4, linha 287): guardado no acervo, tabelas ainda não escritas
     **{

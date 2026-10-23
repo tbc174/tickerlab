@@ -98,6 +98,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
     ("seges", "comprasgov", "transferegov", "pncp", "tcu", "govmg", "govsc"),
     date(2026, 10, 22),
 )
+# lote Brasil, segunda camada (licencas-por-fonte.md): Portal da Transparência, BNDES e INSS lidos
+# na rodada 3 da pesquisa (licença no CKAN/no portal)
+TERMOS_LIDOS_EM |= dict.fromkeys(("transparencia", "bndes", "inss"), date(2026, 10, 22))
 # lote cadastros globais (licencas-por-fonte.md, rodada 4): Wikidata, OFAC, UE e OFSI; o GLEIF e a SEC
 # já têm a data da auditoria de 21/10/2026
 TERMOS_LIDOS_EM |= dict.fromkeys(

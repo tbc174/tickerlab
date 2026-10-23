@@ -23,6 +23,7 @@ from base.arquivo import (
     contrapartes,
     lote_atencao,
     lote_bcb,
+    lote_brasil2,
     lote_cadastros,
     lote_eua,
     lote_licitacoes,
@@ -1170,6 +1171,9 @@ FONTES: list[Fonte] = [
     # lote licitações e contratos (rodada 4, 22/10/2026): SEGES, compras.gov.br, Transferegov, PNCP,
     # TCU, MG e SC, só pessoa jurídica (linha 288 da fila)
     *lote_licitacoes.fontes(),
+    # lote Brasil, segunda camada (22/10/2026): Portal da Transparência, BNDES, INSS e SUSEP, só CNPJ
+    # e agregados (linhas 259, 260 e 262 da fila)
+    *lote_brasil2.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),
