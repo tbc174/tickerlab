@@ -47,6 +47,7 @@ PROIBIDOS = (
     "CLAUDE.md",
     "*/CLAUDE.md",
     "AGENTS.md",
+    "*/AGENTS.md",
     "SECURITY.md",
     "docs/pre-registro-*",
     "src/autenticacao.py",
