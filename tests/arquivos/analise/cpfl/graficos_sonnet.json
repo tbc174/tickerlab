@@ -1,0 +1,69 @@
+{
+ "escolha": {
+  "cnpj": "02.429.144/0001-93",
+  "empresa": "CPFL ENERGIA S.A.",
+  "modelo": "claude-sonnet-5-5",
+  "versao_do_guia": "graficos_v1",
+  "hash_da_entrada": "0d671b02e3a48cfc4e50bbf95f0a75756a0d6cd3d3dea2b9884f11f36fcd4e39",
+  "hash_do_texto": "4986ec7b76621e99946ab21b43efe7aa9eef1f15272f8e74af77859341786a87",
+  "escolhido_em": "2026-10-23T02:13:54-03:00",
+  "stop_reason": "end_turn",
+  "resposta_bruta": "{\"graficos\":[{\"tipo\":\"cascata\",\"tabela\":\"endividamento.ponte\",\"eixo\":\"passo\",\"colunas\":[\"valor\"],\"titulo\":\"Da dívida líquida do ano anterior à de agora\",\"parte\":\"o_que_os_numeros_mostram\",\"paragrafo\":6,\"por_que\":{\"texto\":\"Mostra os passos que levam a dívida líquida do começo ao fim do último ano e deixa ver o peso da linha outros perto dos demais, ponto que o texto deixa em aberto.\",\"notas\":[\"endividamento.ponte.0\",\"endividamento.ponte.1\",\"endividamento.ponte.3\",\"endividamento.ponte.4\",\"endividamento.ponte.5\"],\"contas\":[]}},{\"tipo\":\"linha_no_tempo\",\"tabela\":\"setor_regulado.aneel_consumidores\",\"eixo\":\"Ano\",\"colunas\":[\"Consumidores\"],\"titulo\":\"Consumidores atendidos pelas distribuidoras, por ano\",\"parte\":\"o_que_e\",\"paragrafo\":1,\"por_que\":{\"texto\":\"Mostra a série de consumidores de 2016 a 2025 e deixa ver que o número quase não se move depois de 2021, o que o texto discute.\",\"notas\":[\"setor_regulado.aneel_consumidores.9\",\"setor_regulado.aneel_consumidores.4\",\"setor_regulado.aneel_consumidores.0\"],\"contas\":[]}},{\"tipo\":\"linha_no_tempo\",\"tabela\":\"ofertas_e_fundos.fundos_por_mes\",\"eixo\":\"Mês\",\"colunas\":[\"Fundos\"],\"titulo\":\"Fundos com a ação na carteira, mês a mês\",\"parte\":\"dinheiro\",\"paragrafo\":3,\"por_que\":{\"texto\":\"Mostra quantos fundos tinham a ação a cada mês, de abr/2024 a mar/2026, com o pico em jan/2025, para situar a queda de que o texto fala.\",\"notas\":[\"ofertas_e_fundos.fundos_por_mes.0\",\"ofertas_e_fundos.fundos_por_mes.9\",\"ofertas_e_fundos.fundos_por_mes.23\"],\"contas\":[]}},{\"tipo\":\"barras_no_tempo\",\"tabela\":\"ofertas_e_fundos.ofertas_por_ano\",\"eixo\":\"Ano\",\"colunas\":[\"Ofertas\"],\"titulo\":\"Ofertas registradas na CVM, por ano\",\"parte\":\"dinheiro\",\"paragrafo\":1,\"por_que\":{\"texto\":\"Mostra as ofertas registradas por ano, com 2024 e 2025 bem acima dos demais anos da série, que têm lacunas entre eles.\",\"notas\":[\"ofertas_e_fundos.ofertas_por_ano.1\",\"ofertas_e_fundos.ofertas_por_ano.2\",\"ofertas_e_fundos.ofertas_por_ano.3\",\"ofertas_e_fundos.ofertas_por_ano.4\"],\"contas\":[]}}],\"destaques\":[{\"secao\":\"endividamento\",\"parte\":\"o_que_os_numeros_mostram\",\"por_que\":{\"texto\":\"Reúne a dívida líquida e a razão sobre o patrimônio que o texto compara com o setor.\",\"notas\":[\"endividamento.divida_liquida\",\"endividamento.divida_sobre_pl\"],\"contas\":[]}},{\"secao\":\"o_que_mudaria\",\"parte\":\"o_que_mudaria\",\"por_que\":{\"texto\":\"Traz a tabela completa dos valores que mudariam cada nota, da qual o texto cita só alguns.\",\"notas\":[\"o_que_mudaria.gatilhos.5\"],\"contas\":[]}}]}",
+  "tokens": {
+   "entrada": 52565,
+   "saida": 3419,
+   "cache_escrito": 3772,
+   "cache_lido": 0
+  },
+  "custo_em_dolares": 0.14875
+ },
+ "cega": {
+  "conferente": "claude-opus-5-5",
+  "hash_da_resposta": "93c34ca667ee676f24ed7c8b4ea4197b6fa0a8b0bd2ca22eeb87a31acf71cc66",
+  "conferido_em": "2026-10-23T02:14:56-03:00",
+  "stop_reason": "end_turn",
+  "reprovados": [
+   "grafico.3"
+  ],
+  "motivo": null,
+  "itens": [
+   [
+    "grafico.0",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.1",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.2",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.3",
+    "engana",
+    "2026 vai só até setembro e aparece ao lado de anos inteiros; os anos sem oferta somem do eixo, o que esconde as lacunas."
+   ],
+   [
+    "destaque.0",
+    "mostra",
+    ""
+   ],
+   [
+    "destaque.1",
+    "mostra",
+    ""
+   ]
+  ],
+  "tokens": {
+   "entrada": 13822,
+   "saida": 864,
+   "cache_escrito": 914,
+   "cache_lido": 0
+  },
+  "custo_em_dolares": 0.077136
+ }
+}
