@@ -14,6 +14,7 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_eua,
+    lote_licitacoes,
     lote_setoriais,
 )
 
@@ -153,6 +154,11 @@ _LOTE_CADASTROS_SO_ARQUIVO = (
 _LOTE_SETORIAIS_SO_ARQUIVO = (
     "dado aberto de órgão público brasileiro guardado como publicado; a tabela com contrato no "
     "catálogo ainda não existe (INPI só com os arquivos sem pessoa física)"
+)
+
+_LOTE_LICITACOES_SO_ARQUIVO = (
+    "licitação e contrato públicos guardados só com pessoa jurídica (LGPD, ADR 0088); a tabela com "
+    "contrato no catálogo ainda não existe"
 )
 
 _LOTE_BRASIL2_SO_ARQUIVO = (
@@ -332,6 +338,11 @@ DESTINOS: dict[str, Destino] = {
     **{
         f.id: _planejada("dados-escondidos/rodada-1", _LOTE_SETORIAIS_SO_ARQUIVO)
         for f in lote_setoriais.fontes()
+    },
+    # lote licitações e contratos (linha 288 da fila, rodada 4): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-4", _LOTE_LICITACOES_SO_ARQUIVO)
+        for f in lote_licitacoes.fontes()
     },
     # lote Brasil segunda camada (linhas 259, 260 e 262 da fila, 23/10/2026): guardado no acervo, tabelas ainda não escritas
     **{

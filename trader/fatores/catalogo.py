@@ -2,7 +2,7 @@
 
 Inspirado na biblioteca de fatores do Vibe-Trading (plano de 20/10/2026, ideia 1), reescrito do zero.
 **Nenhum fator daqui foi medido.** Estar no catálogo não diz que funciona: medir um fator nos dados
-(Sharpe, IC, qualquer número) é uma tentativa da pesquisa (`trader/CLAUDE.md`), com critério escrito
+(Sharpe, IC, qualquer número) é uma tentativa da pesquisa (`trader/AGENTS.md`), com critério escrito
 antes no próximo pré-registro e contada no registro de tentativas. Por isso todo fator nasce com
 `medido=False`, e há teste que impede mudar isso sem o registro.
 

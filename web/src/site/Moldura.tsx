@@ -87,13 +87,13 @@ function Logo() {
   );
 }
 
+// o menu do plano do site para quem analisa (18/10/2026, ADR 0099); Produto, Ferramentas e Aprender
+// ficam no rodapé
 const ITENS_DO_TOPO: [string, string][] = [
-  ["/produto.html", "Produto"],
+  ["/dados.html", "Dados"],
+  ["/relatorios.html", "Relatórios"],
   ["/como-funciona.html", "Como funciona"],
-  ["/#relatorios", "Relatórios"],
   ["/precos.html", "Planos"],
-  ["/ferramentas.html", "Ferramentas"],
-  ["/aprender.html", "Aprender"],
   ["/sobre.html", "Sobre"],
 ];
 
@@ -148,9 +148,13 @@ function Rodape() {
         </div>
         <nav aria-label="Rodapé">
           <a href="/sobre.html">Sobre</a>
+          <a href="/produto.html">Produto</a>
+          <a href="/dados.html">Dados</a>
+          <a href="/relatorios.html">Relatórios</a>
           <a href="/metodologia.html">Fontes e metodologia</a>
-          <a href="/novidades.html">Novidades</a>
           <a href="/ferramentas.html">Ferramentas grátis</a>
+          <a href="/aprender.html">Aprender</a>
+          <a href="/novidades.html">Novidades</a>
           <a href="/precos.html">Planos</a>
           <a href="/termos.html">Termos de uso</a>
           <a href="/privacidade.html">Privacidade</a>

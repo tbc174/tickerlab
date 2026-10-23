@@ -16,6 +16,7 @@ SO_TEXTO = (
     "CLAUDE.md",
     "*/CLAUDE.md",
     "AGENTS.md",
+    "*/AGENTS.md",
     "SECURITY.md",
     "CONTRIBUTING.md",
     "notas/*.md",
