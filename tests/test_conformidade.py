@@ -185,6 +185,22 @@ def test_texto_14_descreve_a_ficha_de_originacao_e_as_garantias_da_sala():
     )
 
 
+def test_texto_15_diz_os_6_digitos_do_meio_do_cpf_so_com_homonimo():
+    """Texto 15 (23/10, linha 219): com homônimo no quadro da mesma empresa, só os 6 dígitos do meio.
+
+    O que o #586 faz (`base.pessoas.oposicoes.achar_titular`) a política passa a dizer: nunca o CPF
+    inteiro, só os dígitos que a Receita publica, só para casar o pedido com a linha certa. Sem novo
+    aceite: o parágrafo fala com o sócio da base, não com quem tem conta, e não cria uso novo.
+    """
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "versão 15" in privacidade
+    assert "dizendo qual empresa e o seu nome como a Receita o publica" in privacidade
+    assert "só os **6 dígitos do meio do seu CPF**" in privacidade
+    assert "**Nunca pedimos o CPF inteiro**" in privacidade
+    assert "guardamos com a nossa resposta por 5 anos" in privacidade
+
+
 def test_versao_13_dos_termos_diz_o_registro_de_acesso_ao_servidor_por_12_meses():
     """Versão 13 (22/10): quem entra no servidor e usa sudo fica 12 meses, cifrado, em outro computador."""
     assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
