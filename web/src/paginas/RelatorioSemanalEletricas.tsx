@@ -11,7 +11,7 @@ export const DADOS = {
   descricao:
     "Quem atende os consumidores de energia do país e quem audita as companhias abertas do setor, " +
     "com a fonte e a data de cada número e o que a base ainda não tem.",
-  atual: CAMINHO,
+  atual: "/relatorios.html",
 };
 
 const TITULO_DOS_DESTAQUES = "O que os dados mostram";

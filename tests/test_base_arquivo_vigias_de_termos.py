@@ -99,6 +99,17 @@ _SEM_VIGIA = {
         "a agência não publica página de termos (404 na sonda de 22/10/2026)",
     ),
     "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
+    # lote licitações e contratos (rodada 4, 22/10/2026)
+    **dict.fromkeys(
+        ("seges", "seges-pesquisa-precos", "comprasgov", "transferegov"),
+        "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
+    ),
+    "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",
+    "tcu": "a lista de inidôneos não declara licença: não há texto de termos a vigiar",
+    **dict.fromkeys(
+        ("govmg", "govsc"),
+        "a licença (CC BY) está na ficha do conjunto no portal CKAN, sem página de termos própria",
+    ),
     # não há página de termos de terceiro a vigiar
     "btc": "nó próprio, sem terceiro",
     "rfb": "a página da Receita pede login",

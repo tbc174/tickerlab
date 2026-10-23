@@ -26,6 +26,7 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_eua,
+    lote_licitacoes,
     lote_organismos,
     lote_setoriais,
     wayback,
@@ -113,6 +114,7 @@ TERMOS = {
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
+    **lote_licitacoes.termos(),  # sem vigia de termos neste lote (motivos em _SEM_VIGIA)
     **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
     **lote_atencao.termos(),  # Querido Diário, Crossref, OpenAlex e Senado (rodada 4)
     # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
@@ -1166,6 +1168,9 @@ FONTES: list[Fonte] = [
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)
     *lote_setoriais.fontes(),
+    # lote licitações e contratos (rodada 4, 22/10/2026): SEGES, compras.gov.br, Transferegov, PNCP,
+    # TCU, MG e SC, só pessoa jurídica (linha 288 da fila)
+    *lote_licitacoes.fontes(),
     # lote Brasil, segunda camada (22/10/2026): Portal da Transparência, BNDES, INSS e SUSEP, só CNPJ
     # e agregados (linhas 259, 260 e 262 da fila)
     *lote_brasil2.fontes(),

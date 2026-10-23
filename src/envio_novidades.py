@@ -32,7 +32,7 @@ RODAPE = (
     "Você recebe este e-mail porque pediu novidades e ofertas do TickerLab. "
     "Para não receber mais:"
 )
-# o CLAUDE.md: "nunca prometer rentabilidade". Conferido em minúsculas, no assunto e no corpo.
+# o AGENTS.md: "nunca prometer rentabilidade". Conferido em minúsculas, no assunto e no corpo.
 EXPRESSOES_PROIBIDAS = (
     "garantid",  # rentabilidade garantida, retorno garantido, lucro garantido...
     "lucro certo",

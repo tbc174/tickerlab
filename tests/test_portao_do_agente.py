@@ -84,6 +84,8 @@ def test_push_depois_do_rotulo_volta_a_pedir_revisao():
         "README.md",
         "CLAUDE.md",
         "trader/CLAUDE.md",
+        "AGENTS.md",
+        "trader/AGENTS.md",
         "docs/pre-registro-m2-v0.4.md",
         "scripts/portao_do_agente.py",  # o agente não mexe no próprio portão
         "tests/test_portao_do_agente.py",
