@@ -62,6 +62,7 @@ LICENCAS = {
     "ccee": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
     # licitações e contratos (lidos em 22/10/2026): só pessoa jurídica no acervo (LGPD, ADR 0088)
     "seges": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+    "seges-pesquisa-precos": "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)",
     "comprasgov": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
     "transferegov": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
     "pncp": "PNCP: licença não escrita (a confirmar; citar o PNCP)",

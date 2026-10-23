@@ -90,7 +90,7 @@ _SEM_VIGIA = {
     "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
     # lote licitações e contratos (rodada 4, 22/10/2026)
     **dict.fromkeys(
-        ("seges", "comprasgov", "transferegov"),
+        ("seges", "seges-pesquisa-precos", "comprasgov", "transferegov"),
         "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
     ),
     "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",
