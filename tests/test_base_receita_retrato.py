@@ -214,3 +214,17 @@ def test_datas_do_qsa_vazias_viram_nat():
     )
     (parte,) = list(rr.ler_qsa([_zip(texto)]))
     assert parte.socios["data_entrada"].isna().all()
+
+
+def test_todos_so_municipio_apaga_o_endereco_fino_de_todas_as_empresas():
+    texto = _estab() + _estab(basico="11222333")
+    tabela = _lido(rr.ler_estabelecimentos(_zip(texto), todos_so_municipio=True))
+    for coluna in rr.ENDERECO_FINO:
+        assert (tabela[coluna] == "").all()
+    assert tabela["municipio"].notna().all()
+
+
+def test_qsa_de_2023_estrangeiro_com_documento_vazio_vira_cpf_zerado():
+    texto = _socio("33000167", "3", "JOHN SMITH", "", qualif="37", pais="249")
+    (parte,) = list(rr.ler_qsa([_zip(texto)]))
+    assert list(parte.pessoas_brutas["cpf_mascarado"]) == ["00000000000"]

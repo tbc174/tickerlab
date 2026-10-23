@@ -115,7 +115,9 @@ def _datas(serie: pd.Series) -> pd.Series:
     )
 
 
-def _estabelecimentos(parte: pd.DataFrame, so_municipio: Raizes | None) -> pd.DataFrame:
+def _estabelecimentos(
+    parte: pd.DataFrame, so_municipio: Raizes | None, todos_so_municipio: bool
+) -> pd.DataFrame:
     parte = parte.rename(columns=ESTABELECIMENTO)
     completo = (parte["cnpj_basico"] + parte["ordem"] + parte["dv"]).str.upper()
     saida = parte.drop(columns=["ordem", "dv"])
@@ -124,23 +126,28 @@ def _estabelecimentos(parte: pd.DataFrame, so_municipio: Raizes | None) -> pd.Da
     saida["matriz"] = parte["matriz"] == MATRIZ
     for coluna in DATAS_DO_ESTABELECIMENTO:
         saida[coluna] = _datas(saida[coluna])
-    if so_municipio is not None and len(so_municipio):
+    if todos_so_municipio:
+        saida[list(ENDERECO_FINO)] = ""
+    elif so_municipio is not None and len(so_municipio):
         fino = _pedidas(saida["cnpj_basico"], so_municipio)
         saida.loc[fino, list(ENDERECO_FINO)] = ""
     return saida
 
 
 def ler_estabelecimentos(
-    arquivo_zip: Path | IO[bytes], so_municipio: Raizes | None = None
+    arquivo_zip: Path | IO[bytes],
+    so_municipio: Raizes | None = None,
+    todos_so_municipio: bool = False,
 ) -> Iterator[pd.DataFrame]:
     """Estabelecimentos de um `Estabelecimentos*.zip`, em partes, sem contato nem nome fantasia.
 
     `cnpj` tem os 14 caracteres (com letras no CNPJ novo); DV errado vira `dv_confere=False`, não
     descarte. `so_municipio` são as raízes de empresário individual e MEI: o endereço delas fica só em
-    município e UF.
+    município e UF. `todos_so_municipio` faz isso com todas as empresas, enquanto não há o leitor de
+    `Empresas*` que diz quem é empresário individual (a carga usa até a linha 233 da fila).
     """
     for parte in _partes(arquivo_zip, CAMPOS_DO_ESTABELECIMENTO, ESTABELECIMENTO):
-        yield _estabelecimentos(parte, so_municipio)
+        yield _estabelecimentos(parte, so_municipio, todos_so_municipio)
 
 
 def ler_simples(arquivo_zip: Path | IO[bytes]) -> Iterator[pd.DataFrame]:
@@ -159,6 +166,8 @@ def _separar_socios(parte: pd.DataFrame) -> ParteDoQsa:
     parte["data_entrada"] = _datas(parte["data_entrada"])
     documento = parte["documento"].str.strip().str.upper()
     juridica = parte["tipo_socio"] == TIPO_PESSOA_JURIDICA
+    # em 2023-05 o sócio estrangeiro vinha com o documento vazio: vira o mesmo CPF zerado de hoje
+    documento = documento.mask((documento == "") & ~juridica, "0" * 11)
     if documento[~juridica].str.fullmatch(CPF_INTEIRO).any():
         raise ErroDeCpfInteiro("arquivo de sócios com CPF sem máscara")
     socios = parte.drop(columns=["nome_socio", "documento"])

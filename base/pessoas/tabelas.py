@@ -18,10 +18,17 @@ FORMATO_PERMITIDO = rf"\*{{3}}\d{{6}}\*{{2}}|{SEM_CPF}"
 
 
 def ids_das_linhas(brutas: pd.DataFrame, chave: bytes) -> pd.Series:
-    """O `id_pessoa` de cada linha do quadro `pessoas_brutas` (nome e CPF mascarado)."""
+    """O `id_pessoa` de cada linha do quadro `pessoas_brutas` (nome e CPF mascarado).
+
+    Nome sem nenhuma letra (2.094 de 22 milhões de linhas em 2023-05) não identifica ninguém: o id fica
+    vazio, como o de quem se opôs, em vez de juntar pessoas diferentes que só repetem o meio do CPF.
+    """
 
     def uma(linha: pd.Series) -> str:
-        primeiro, ultimo = chaves.primeiro_e_ultimo(linha["nome_socio"])
+        try:
+            primeiro, ultimo = chaves.primeiro_e_ultimo(linha["nome_socio"])
+        except ValueError:
+            return ""
         return chaves.id_pessoa(linha["cpf_mascarado"], primeiro, ultimo, chave)
 
     return brutas.apply(uma, axis=1).astype(str)
@@ -45,6 +52,9 @@ def montar_pessoas(brutas: pd.DataFrame, fonte: str, chave: bytes) -> pd.DataFra
             "data_entrada": brutas["data_entrada"],
         }
     )
+    saida = saida[
+        saida["id_pessoa"] != ""
+    ]  # sem nome com letra não há pessoa a guardar
     return saida.drop_duplicates().reset_index(drop=True)
 
 
