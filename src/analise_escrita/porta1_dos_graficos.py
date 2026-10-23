@@ -154,11 +154,6 @@ def _conferir_destaque(
         yield ANCORA, ancora
 
 
-def _chave(grafico: gr.Grafico) -> tuple[str, str, str, frozenset[str]]:
-    """O mesmo desenho com outro título ainda é o mesmo gráfico."""
-    return grafico.tipo, grafico.tabela, grafico.eixo, frozenset(grafico.colunas)
-
-
 def _uma_por_regra(
     item: str, indice: int, falhas: Iterable[tuple[str, str]]
 ) -> list[Reprovacao]:
@@ -182,10 +177,10 @@ def _conferir_graficos(
     for i, grafico in enumerate(graficos):
         if i >= gr.MAXIMO_DE_GRAFICOS:
             yield Reprovacao(GRAFICO, i, ALEM_DO_MAXIMO, grafico.titulo)
-        elif _chave(grafico) in vistos:
+        elif grafico.chave in vistos:
             yield Reprovacao(GRAFICO, i, REPETIDO, grafico.titulo)
         else:
-            vistos.add(_chave(grafico))
+            vistos.add(grafico.chave)
             falhas = _conferir_grafico(grafico, tabelas, analise, ficha)
             yield from _uma_por_regra(GRAFICO, i, falhas)
 

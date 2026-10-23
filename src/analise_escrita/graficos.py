@@ -73,6 +73,11 @@ class Grafico:
     por_que: saida.Frase  # conferida como qualquer frase da análise
     origem: str = saida.ORIGEM_MODELO
 
+    @property
+    def chave(self) -> tuple[str, str, str, frozenset[str]]:
+        """O mesmo desenho com outro título ainda é o mesmo gráfico."""
+        return self.tipo, self.tabela, self.eixo, frozenset(self.colunas)
+
 
 @dataclass(frozen=True)
 class Destaque:
