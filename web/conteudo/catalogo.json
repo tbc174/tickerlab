@@ -2054,6 +2054,153 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "seges-pncp-compras",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-pncp-itens",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-pncp-resultados",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-arp-atas",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-arp-itens",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-licitacao",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-pregao",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-rdc",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-legado-sem-licitacao",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-pesquisa-precos",
+      "licenca": "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-propostas",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-catalogo",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "seges-siconv",
+      "licenca": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "comprasgov-resultado-itens",
+      "licenca": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transferegov-especiais",
+      "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transferegov-ted",
+      "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transferegov-fundo-a-fundo",
+      "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratos",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tcu-inidoneos",
+      "licenca": "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "govmg-compras-contratos",
+      "licenca": "CC BY 4.0 (dados abertos de Minas Gerais; citar o Governo de MG)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "govsc-contratos",
+      "licenca": "CC BY (dados abertos de Santa Catarina; citar o Governo de SC)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
       "id": "transparencia-transferencias",
       "licenca": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
       "marca": "vendavel",

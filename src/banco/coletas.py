@@ -64,6 +64,15 @@ LICENCAS = {
     # o SGS do BC repassa o IGP-M, mas a série é da FGV (termos do IBRE: comercial pede autorização)
     "bcb-sgs-189": "IGP-M da FGV IBRE (repassado pelo BC): uso comercial pede autorização da FGV",
     "ccee": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+    # licitações e contratos (lidos em 22/10/2026): só pessoa jurídica no acervo (LGPD, ADR 0088)
+    "seges": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+    "seges-pesquisa-precos": "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)",
+    "comprasgov": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+    "transferegov": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+    "pncp": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+    "tcu": "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)",
+    "govmg": "CC BY 4.0 (dados abertos de Minas Gerais; citar o Governo de MG)",
+    "govsc": "CC BY (dados abertos de Santa Catarina; citar o Governo de SC)",
     "antt": "CC BY (dados abertos da ANTT; citar a ANTT)",
     "tesouro-br": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-divida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
@@ -222,6 +231,14 @@ REVENDA = {
     "catalogo": SO_USO_INTERNO,
     "bcb-sgs-189": NAO_COMERCIAL,  # IGP-M da FGV: uso comercial pede autorização da FGV
     "ccee": VENDAVEL_COM_ATRIBUICAO,
+    "seges": VENDAVEL_COM_ATRIBUICAO,
+    "seges-pesquisa-precos": A_CONFIRMAR,  # preço de referência (ADR 0008)
+    "comprasgov": VENDAVEL_COM_ATRIBUICAO,
+    "transferegov": VENDAVEL_COM_ATRIBUICAO,
+    "pncp": A_CONFIRMAR,
+    "tcu": A_CONFIRMAR,
+    "govmg": VENDAVEL_COM_ATRIBUICAO,
+    "govsc": VENDAVEL_COM_ATRIBUICAO,
     "antt": VENDAVEL_COM_ATRIBUICAO,
     "tesouro-br": VENDAVEL_ODBL,
     "tesouro-br-divida": VENDAVEL_ODBL,
