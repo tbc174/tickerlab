@@ -51,13 +51,6 @@ _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
 )
 
-_B3_BDI_CONTRA_OS_TERMOS = (
-    "só arquivo, só pesquisa: a página da B3 veda a 'coleta automatizada, inclusive por meio de "
-    "ferramentas de inteligência artificial, para quaisquer finalidades' "
-    "(www.b3.com.br, Boletim diário do mercado, lida em 18/10/2026); decisão do Tiago em "
-    "18/10/2026 de guardar a cópia até a B3 autorizar por escrito; nada em tela, API ou tabela"
-)
-
 
 def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
     return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
@@ -292,9 +285,6 @@ DESTINOS: dict[str, Destino] = {
     "b3-negocios": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-boletim-pr": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-cotahist-dia": _pesquisa(_B3_FORA_DO_CATALOGO),
-    "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
-    "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
-    "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "conab-cafe-safra": _tabela("conab_cafe"),
     "conab-cafe-publicacao": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
@@ -304,18 +294,6 @@ DESTINOS: dict[str, Destino] = {
         "cafe/PR4",
         "balanço mundial do café a partir do relatório mensal da ICO em PDF; marca 'não comercial' "
         "registrada, coleta e uso citando a ICO e a data (ADR 0102)",
-    ),
-    "fnc-estadisticas": _planejada(
-        "cafe/PR4",
-        "preço, área, produção e exportação de café da Colômbia nas planilhas da FNC; marca 'não "
-        "comercial' registrada (os termos vedam robô), coleta com ritmo e uso citando a FNC e a data "
-        "(ADR 0102)",
-    ),
-    "cecafe-relatorio-mensal": _planejada(
-        "cafe/PR6",
-        "exportações de café por tipo e destino no relatório mensal do Cecafé em PDF; marca 'não "
-        "comercial' registrada (o robots.txt veda PDF, lido em 18/10/2026 e vigiado), coleta com ritmo "
-        "e uso citando o Cecafé e a data (ADR 0102)",
     ),
     # clima por região cafeeira (plano do café, PR 8): `base/commodities/clima_regiao.py`
     "inmet-bdmep": _tabela("clima_regiao_cafe"),

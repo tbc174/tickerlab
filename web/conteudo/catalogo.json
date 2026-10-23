@@ -934,27 +934,6 @@
       "termos_lidos_em": "2026-10-21"
     },
     {
-      "id": "b3-emprestimo-posicoes",
-      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
-      "marca": "nao_comercial",
-      "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-21"
-    },
-    {
-      "id": "b3-derivativos-posicoes",
-      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
-      "marca": "nao_comercial",
-      "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-21"
-    },
-    {
-      "id": "b3-emprestimo-resumo",
-      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
-      "marca": "nao_comercial",
-      "ritmo": "diaria",
-      "termos_lidos_em": "2026-10-21"
-    },
-    {
       "id": "tce-pr-pit",
       "licenca": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
       "marca": "vendavel",
@@ -1023,20 +1002,6 @@
       "marca": "nao_comercial",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
-    },
-    {
-      "id": "fnc-estadisticas",
-      "licenca": "FNC: só uso pessoal, veda robô; coleta com ritmo, cita a fonte",
-      "marca": "nao_comercial",
-      "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-21"
-    },
-    {
-      "id": "cecafe-relatorio-mensal",
-      "licenca": "Cecafé: robots.txt veda PDF; coleta com ritmo, uso citando a fonte",
-      "marca": "nao_comercial",
-      "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-18"
     },
     {
       "id": "inmet-bdmep",
