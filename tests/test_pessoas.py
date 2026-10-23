@@ -80,6 +80,15 @@ def test_nome_do_socio_so_no_esquema_pessoas():
     assert "nome" not in "".join(ids.astype(str))
 
 
+def test_nome_sem_letra_nao_vira_pessoa_e_o_id_fica_vazio():
+    sem_nome = pd.concat(
+        [_brutas(), _brutas().iloc[:1].assign(nome_socio="!")], ignore_index=True
+    )
+    assert list(tabelas.ids_das_linhas(sem_nome, CHAVE))[2] == ""
+    pessoas = tabelas.montar_pessoas(sem_nome, "rfb-cnpj", CHAVE)
+    assert len(pessoas) == 2 and (pessoas["id_pessoa"] != "").all()
+
+
 def test_cpf_so_mascarado():
     inteiro = _brutas().assign(cpf_mascarado=["52998224725", "00000000000"])
     with pytest.raises(ValueError):

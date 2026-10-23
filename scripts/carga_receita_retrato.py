@@ -16,12 +16,14 @@ import logging
 import shutil
 import sys
 import tempfile
+import time
+import zipfile
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
 from base.arquivo.cliente_http import ClienteHttp
-from base.arquivo.fontes import arquivos_do_mes, meses_do_cnpj
+from base.arquivo.fontes import Alvo, arquivos_do_mes, meses_do_cnpj
 from base.pessoas.chave import ErroSemChave, ler_chave
 from base.receita_retrato import (
     ErroDeCpfInteiro,
@@ -36,7 +38,51 @@ from src import acervo
 log = logging.getLogger("tickerlab.carga_receita_retrato")
 NOMES = ("Estabelecimentos", "Simples", "Socios")
 MESES_ANCORA = frozenset({"2023-05", "2024-01", "2025-01", "2026-01"})
+# Sem o leitor de `Empresas*` (linha 233 da fila) não se sabe quem é empresário individual: até lá
+# ninguém grava rua, número, bairro nem CEP (pode do Tiago, 22/10). Refazer os meses quando o leitor sair.
+ENDERECO_SO_ATE_O_MUNICIPIO = True
+TENTATIVAS_DO_ZIP = 4
+ESPERA_ENTRE_ZIPS_EM_SEGUNDOS = 60
 TAMANHO_MAXIMO_DO_RESUMO = 300  # a linha `FALHAS:` vai no endereço do push do Kuma
+
+
+def _baixar_zip_inteiro(cliente: ClienteHttp, url: str, destino: Path) -> None:
+    """Baixa um ZIP e repete se vier outra coisa (página de erro, arquivo cortado) no lugar dele.
+
+    A Receita às vezes devolve uma página no lugar do ZIP: sem esta conferência o erro só aparecia
+    horas depois, ao abrir o arquivo, e derrubava a carga de todos os meses seguintes.
+    """
+    for tentativa in range(1, TENTATIVAS_DO_ZIP + 1):
+        cabecalhos = cliente.baixar(url, destino)
+        esperado = int(
+            {k.lower(): v for k, v in cabecalhos.items()}.get("content-length", 0)
+        )
+        if zipfile.is_zipfile(destino) and esperado in (0, destino.stat().st_size):
+            return
+        log.warning(
+            "ZIP %s veio incompleto ou não é ZIP (%d bytes, tentativa %d de %d)",
+            destino.name,
+            destino.stat().st_size,
+            tentativa,
+            TENTATIVAS_DO_ZIP,
+        )
+        time.sleep(ESPERA_ENTRE_ZIPS_EM_SEGUNDOS * tentativa)
+    raise RuntimeError(f"a Receita não entregou um ZIP inteiro de {destino.name}")
+
+
+def _nome_do_zip(alvo: Alvo) -> str:
+    return alvo.url.rsplit("/", 1)[-1].split("?")[0]
+
+
+def _sem_os_cortados(alvos: list[Alvo]) -> list[Alvo]:
+    """Tira o `Estabelecimentos6.zip` quando a pasta também traz o `Estabelecimentos6-RF….zip`.
+
+    Em 2023-08 a Receita deixou as peças 6 e 7 cortadas (sem o fim do ZIP) ao lado de uma cópia
+    inteira com sufixo `-RF…` (o número do chamado); vale a cópia inteira.
+    """
+    nomes = {_nome_do_zip(a) for a in alvos}
+    reposicoes = {n.split("-", 1)[0] + ".zip" for n in nomes if "-" in n}
+    return [a for a in alvos if _nome_do_zip(a) not in reposicoes]
 
 
 def _baixar_do_mes(
@@ -44,9 +90,9 @@ def _baixar_do_mes(
 ) -> dict[str, list[Path]]:
     """Baixa os ZIPs do mês e devolve os caminhos por tipo (`Estabelecimentos`, `Simples`, `Socios`)."""
     por_tipo: dict[str, list[Path]] = {nome: [] for nome in NOMES}
-    for alvo in arquivos_do_mes(cliente, mes, NOMES):
+    for alvo in _sem_os_cortados(arquivos_do_mes(cliente, mes, NOMES)):
         destino = temporaria / alvo.url.rsplit("/", 1)[-1].split("?")[0]
-        cliente.baixar(alvo.url, destino)
+        _baixar_zip_inteiro(cliente, alvo.url, destino)
         for nome in NOMES:
             if destino.name.startswith(nome):
                 por_tipo[nome].append(destino)
@@ -84,7 +130,11 @@ def carregar_mes(
             pasta,
             restrita,
             estabelecimentos=(
-                p for z in zips["Estabelecimentos"] for p in ler_estabelecimentos(z)
+                p
+                for z in zips["Estabelecimentos"]
+                for p in ler_estabelecimentos(
+                    z, todos_so_municipio=ENDERECO_SO_ATE_O_MUNICIPIO
+                )
             ),
             simples=(p for z in zips["Simples"] for p in ler_simples(z)),
             qsa=ler_qsa(zips["Socios"]),

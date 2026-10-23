@@ -239,3 +239,25 @@ def test_cpf_inteiro_quebra_a_carga(pastas):
             socios,
         )
     assert rc.ultimo_mes(pasta) is None
+
+
+def test_vigente_e_mudancas_tem_manifesto_e_entram_na_raiz_de_merkle(pastas):
+    from base import ancoragem
+
+    pasta, restrita = pastas
+    for mes, situacao in (("2026-09", "ativa"), ("2026-10", "baixada")):
+        _mes(
+            pasta,
+            restrita,
+            mes,
+            _estabelecimentos(("11111111000191", situacao)),
+            _simples(("11111111", False)),
+            _qsa(("11111111", "1", "22222222", "22", None)),
+        )
+    assert not ancoragem.parquets_sem_manifesto(pasta)
+    folhas = ancoragem.folhas_da_base(pasta)
+    assert "vigente/estabelecimentos/11" in folhas
+    assert "mudancas/estabelecimentos/2026-10" in folhas
+    manifesto = ancoragem.manifestos_atuais(pasta)["vigente/estabelecimentos/11"]
+    assert manifesto["origens"][0]["url"].endswith("/2026-10/Simples.zip")
+    assert manifesto["licenca"]["fontes"] == {"rfb-cnpj": "vendavel"}
