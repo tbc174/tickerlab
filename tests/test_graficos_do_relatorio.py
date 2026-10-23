@@ -23,6 +23,17 @@ def _linhas(tabela: str, celulas: list[dict]) -> list[dict]:
     ]
 
 
+EMPRESAS = [
+    {"empresa": "CPFL", "receita": "R$ 45,6 bi", "lucro": "R$ 5,1 bi"},
+    {"empresa": "Equatorial", "receita": "R$ 29,0 bi", "lucro": "R$ 2,2 bi"},
+    {"empresa": "Eletrobras", "receita": "R$ 37,3 bi", "lucro": None},
+]
+INDICADORES = [
+    {"indicador": "Receita", "antes": "R$ 45,1 bi", "agora": "R$ 45,6 bi"},
+    {"indicador": "Lucro", "antes": "R$ 5,4 bi", "agora": "R$ 5,1 bi"},
+]
+
+
 def _ficha() -> dict:
     anos = [
         {"ano": 2020, "receita": "R$ 41,0 bi", "lucro": "R$ 5,1 bi"},
@@ -35,7 +46,11 @@ def _ficha() -> dict:
         "empresa": "CPFL ENERGIA S.A.",
         "corte": "2024-12-31",
         "secoes": {"historico": "Histórico"},
-        "linhas": _linhas("historico.contas", anos),
+        "linhas": [
+            *_linhas("historico.contas", anos),
+            *_linhas("setor.empresas", EMPRESAS),
+            *_linhas("o_que_mudou.indicadores", INDICADORES),
+        ],
     }
 
 
@@ -60,6 +75,16 @@ CASOS = {
         _grafico("barras_no_tempo", "historico.contas", "ano", "receita"),
         ((41e9, 43.5e9, 40.2e9, 44e9, 45.6e9),),
     ),
+    "barras_por_categoria": (
+        _grafico("barras_por_categoria", "setor.empresas", "empresa", "receita"),
+        ((45.6e9, 29e9, 37.3e9),),
+    ),
+    "antes_e_agora": (
+        _grafico(
+            "antes_e_agora", "o_que_mudou.indicadores", "indicador", "antes", "agora"
+        ),
+        ((45.1e9, 5.4e9), (45.6e9, 5.1e9)),
+    ),
 }
 COM_TEMPO = [t for t in CASOS if gr.CARDAPIO[t].eixo == gr.TEMPO]
 DE_BARRAS = [t for t in CASOS if t in ("barras_no_tempo", "barras_por_categoria", "antes_e_agora", "cascata")]  # fmt: skip
@@ -73,11 +98,21 @@ def test_pontos_saem_so_da_ficha(tipo):
     pontos = gdr.pontos_do_grafico(grafico, ficha)
 
     assert pontos.valores == esperado
-    assert pontos.ids[0] == "historico.contas.0"
+    assert pontos.ids[0] == f"{grafico.tabela}.0"
     # trocar um número na ficha muda o ponto: o desenho não tem outra fonte de número
     outra = copy.deepcopy(ficha)
-    outra["linhas"][0]["celulas"]["receita"] = "R$ 99,0 bi"
+    primeira = next(li for li in outra["linhas"] if li["id"] == f"{grafico.tabela}.0")
+    primeira["celulas"][grafico.colunas[0]] = "R$ 99,0 bi"
     assert gdr.pontos_do_grafico(grafico, outra).valores[0][0] == 99e9
+
+
+@pytest.mark.parametrize("tipo", [t for t in CASOS if t not in COM_TEMPO])
+def test_grafico_sem_datas_nao_perde_linha_no_corte(tipo):
+    grafico, _ = CASOS[tipo]
+
+    antigo = gdr.pontos_do_grafico(grafico, _ficha(), corte=date(2000, 1, 1))
+
+    assert antigo == gdr.pontos_do_grafico(grafico, _ficha())  # não há data para cortar
 
 
 @pytest.mark.parametrize("tipo", COM_TEMPO)
@@ -122,8 +157,11 @@ def test_barras_comecam_do_zero(tipo):
     grafico, _ = CASOS[tipo]
     ficha = _ficha()
     # números todos altos e parecidos: sem o zero, a diferença parece enorme
-    for linha in ficha["linhas"]:
-        linha["celulas"]["receita"] = f"R$ {90 + linha['celulas']['ano'] % 10},0 bi"
+    for i, linha in enumerate(
+        li for li in ficha["linhas"] if li["id"].startswith(grafico.tabela + ".")
+    ):
+        for coluna in grafico.colunas:
+            linha["celulas"][coluna] = f"R$ {90 + i},0 bi"
     pontos = gdr.pontos_do_grafico(grafico, ficha)
 
     plotly = gdr.figura(pontos)

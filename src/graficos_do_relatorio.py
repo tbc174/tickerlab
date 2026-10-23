@@ -167,10 +167,14 @@ def _pdf_das_barras(pontos: PontosDoGrafico, escala: Escala, estilo: Estilo) -> 
 _PLOTLY: dict[str, Callable[[PontosDoGrafico, Escala], go.Figure]] = {
     "linha_no_tempo": _plotly_da_linha,
     "barras_no_tempo": _plotly_das_barras,
+    "barras_por_categoria": _plotly_das_barras,
+    "antes_e_agora": _plotly_das_barras,
 }
 _PDF: dict[str, Callable[[PontosDoGrafico, Escala, Estilo], Figure]] = {
     "linha_no_tempo": _pdf_da_linha,
     "barras_no_tempo": _pdf_das_barras,
+    "barras_por_categoria": _pdf_das_barras,
+    "antes_e_agora": _pdf_das_barras,
 }
 
 
