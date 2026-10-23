@@ -21,6 +21,7 @@ from base import intradiario_b3, tce_pr
 from base.arquivo import (
     assessorias,
     contrapartes,
+    lote_atencao,
     lote_bcb,
     lote_brasil2,
     lote_cadastros,
@@ -113,6 +114,7 @@ TERMOS = {
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
     **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
+    **lote_atencao.termos(),  # Querido Diário, Crossref, OpenAlex e Senado (rodada 4)
     # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
     # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
@@ -1170,6 +1172,9 @@ FONTES: list[Fonte] = [
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),
+    # lote atenção e texto (rodada 4, linha 289): acessos da Wikimedia, GDELT GKG sem Persons, Querido
+    # Diário, Crossref, OpenAlex e RSS das agências (só índice); nunca pessoa nem texto de terceiros
+    *lote_atencao.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

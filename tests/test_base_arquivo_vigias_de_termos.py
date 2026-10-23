@@ -90,6 +90,14 @@ _SEM_VIGIA = {
     "ans-demonstracoes": "as demonstrações contábeis não declaram licença: não há texto de termos a vigiar",
     # lote cadastros globais (22/10/2026): obra do governo dos EUA, sem página de termos própria
     "ofac": "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
+    # lote atenção e texto (23/10/2026): a marca está no id inteiro; o termo é vigiado pela família do mesmo provedor
+    "gdelt-gkg": "o termo do GDELT é vigiado por `termos-gdelt` (família `gdelt`)",
+    "wiki-pageviews-empresas": "licença CC0 dita na documentação da API, sem página de termos própria a vigiar",
+    # lote atenção e texto (23/10/2026): as agências não publicam página de termos (404 na sonda)
+    **dict.fromkeys(
+        ("ebc", "camara"),
+        "a agência não publica página de termos (404 na sonda de 22/10/2026)",
+    ),
     "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
     # não há página de termos de terceiro a vigiar
     "btc": "nó próprio, sem terceiro",
