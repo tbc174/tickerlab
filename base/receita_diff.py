@@ -21,9 +21,11 @@ ENTROU, SAIU, MUDOU = "entrou", "saiu", "mudou"
 ORDEM = "ordem"
 CHAVE_DO_QSA = ["cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"]
 TIPO_PESSOA_JURIDICA = "1"
-# A Receita põe a pasta AAAA-MM no ar durante o mês. Valor provisório e prudente até a medida no servidor
-# (`getlastmodified` das pastas, plano de 20/10): dia 20 mais uma semana de folga.
-DIA_DA_PUBLICACAO = 20
+# A Receita põe a pasta AAAA-MM no ar na 2ª semana do próprio mês. Medido em 22/10/2026 (`getlastmodified` dos
+# arquivos de cada pasta): 2026-07 em 12/07, 2026-08 em 09/08, 2026-09 em 14/09 e 2026-10 em 13/10 (a mais
+# tardia, dia 14). As pastas de 2023-05 a 2026-06 foram recarregadas em bloco (20/05/2025 e 02/08/2026): a
+# data delas não diz quando saíram, então o piso vale também para elas. Mais uma semana de folga.
+DIA_DA_PUBLICACAO = 14
 FOLGA = 7
 MES = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 

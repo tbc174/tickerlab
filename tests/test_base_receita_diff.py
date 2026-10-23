@@ -152,6 +152,10 @@ def test_disponivel_em_respeita_o_prazo_da_fonte():
         2026, 10, rd.DIA_DA_PUBLICACAO + rd.FOLGA
     )
     assert rd.disponivel_em("2026-12") > date(2026, 12, 1)
+    # medida de 22/10/2026: o mês mais tardio saiu no dia 14; o piso fica pelo menos a uma semana depois
+    assert rd.DIA_DA_PUBLICACAO >= 14
+    assert rd.FOLGA >= 7
+    assert rd.disponivel_em("2026-10") == date(2026, 10, 21)
     with pytest.raises(ValueError):
         rd.disponivel_em("2026-13")
 

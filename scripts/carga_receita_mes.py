@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base.parquet import sem_os_ids
+from base.parquet import gravar_tabela, sem_os_ids
 from base.pessoas.oposicoes import ids_opostos
 from base.pessoas.tabelas import montar_pessoas, sem_opostos
 from base.receita_diff import CHAVE_DO_QSA, diff, qsa_para_diff
@@ -40,6 +40,7 @@ RAIZ_DA_PARTICAO = {
     "simples": "cnpj_basico",
     "qsa": "cnpj_basico",
 }
+ENDERECO_DOS_ZIPS = "https://arquivos.receitafederal.gov.br/Dados/Cadastros/CNPJ"
 MANIFESTO = "manifesto.json"
 TRABALHO = "_novo"
 
@@ -113,7 +114,12 @@ def _ler_prefixo(pasta: Path) -> pd.DataFrame | None:
 
 
 def _aplicar(
-    tabela: str, mes: str, trabalho: Path, vigente: Path, primeiro: bool
+    tabela: str,
+    mes: str,
+    trabalho: Path,
+    vigente: Path,
+    primeiro: bool,
+    origens: list[dict[str, str]],
 ) -> pd.DataFrame | None:
     """Passa o mês novo (repartido em `trabalho/<tabela>`) para o vigente e devolve as mudanças."""
     novo, antigo = trabalho / tabela, vigente / tabela
@@ -133,8 +139,16 @@ def _aplicar(
         if not primeiro:
             antes = antes if antes is not None else depois.iloc[0:0]
             mudancas.append(diff(antes, depois, CHAVES[tabela], mes))
-        depois.to_parquet(saida / f"{prefixo}.parquet")
+        gravar_tabela(depois, saida / prefixo, origens, CHAVES[tabela])
     return pd.concat(mudancas, ignore_index=True) if mudancas else None
+
+
+def _origens(mes: str, arquivos: dict[str, str]) -> list[dict[str, str]]:
+    """Os ZIPs do mês como origens do manifesto de cada tabela (o endereço dá a licença `rfb-cnpj`)."""
+    return [
+        {"url": f"{ENDERECO_DOS_ZIPS}/{mes}/{nome}", "sha256": sha256}
+        for nome, sha256 in sorted(arquivos.items())
+    ]
 
 
 def _ler_prefixo_vigente(antigo: Path, prefixo: str) -> pd.DataFrame | None:
@@ -191,8 +205,10 @@ def processar_mes(
                 [_sem_os_opostos(socios, opostos)], "cnpj_basico", trabalho / "qsa"
             )
         vigente = pasta / "vigente"
+        origens = _origens(mes, arquivos)
         mudancas = {
-            t: _aplicar(t, mes, trabalho, vigente, ultimo is None) for t in CHAVES
+            t: _aplicar(t, mes, trabalho, vigente, ultimo is None, origens)
+            for t in CHAVES
         }
     except BaseException:
         shutil.rmtree(trabalho, ignore_errors=True)
@@ -200,9 +216,9 @@ def processar_mes(
         raise
     for tabela, quadro in mudancas.items():
         if quadro is not None and not quadro.empty:
-            destino = pasta / "mudancas" / tabela / f"{mes}.parquet"
+            destino = pasta / "mudancas" / tabela / mes
             destino.parent.mkdir(parents=True, exist_ok=True)
-            quadro.to_parquet(destino)
+            gravar_tabela(quadro, destino, origens, ["mes", *CHAVES[tabela], "ordem"])
     (trabalho_restrito / "pessoas").mkdir(parents=True, exist_ok=True)
     _trocar(trabalho / "vigente", vigente)
     _trocar(trabalho_restrito / "pessoas", restrita / "pessoas")
