@@ -9,11 +9,13 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 
 from dataclasses import dataclass
 
-<<<<<<< HEAD
-from base.arquivo import lote_cadastros, lote_eua, lote_licitacoes, lote_setoriais
-=======
-from base.arquivo import lote_atencao, lote_cadastros, lote_eua, lote_setoriais
->>>>>>> origin/main
+from base.arquivo import (
+    lote_atencao,
+    lote_cadastros,
+    lote_eua,
+    lote_licitacoes,
+    lote_setoriais,
+)
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
