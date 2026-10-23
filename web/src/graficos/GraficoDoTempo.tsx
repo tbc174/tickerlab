@@ -2,7 +2,7 @@
 // você pôs" embaixo, "juros" em cima). Desenhado em pixels reais (useLargura), com grade discreta,
 // eixos redondos (escala.ts), mira com mouse, toque e teclado, dica, legenda a partir de duas séries
 // e um resumo para leitor de tela. Cores só das variáveis da marca; texto nunca na cor da série.
-import { useId } from "react";
+import { useIdUnico } from "../idUnico";
 import { limitesDoEixo, marcasDeMeses, rotuloDaDica, rotuloDoMes } from "./escala";
 import { useLargura } from "./useLargura";
 import { useMira } from "./useMira";
@@ -46,7 +46,7 @@ export function GraficoDoTempo({
   eixoX?: { marcas: number[]; rotulo: (x: number) => string; dica: (x: number) => string };
 }) {
   const [largura, medir] = useLargura(640);
-  const idDoResumo = useId();
+  const idDoResumo = useIdUnico();
   const celular = largura < CELULAR;
   const altura = celular ? ALTURA_NO_CELULAR : ALTURA;
   const ultimoMes = meses[meses.length - 1] || 1;

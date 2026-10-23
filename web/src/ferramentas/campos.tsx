@@ -1,7 +1,8 @@
 // Os campos das ferramentas: número em texto (aceita "1.000,50"), escolha entre opções e o bloco do
 // resultado. Saem prontos no HTML do build com os valores de exemplo e voltam a responder quando o
 // ferramentas.js liga a ferramenta no navegador.
-import { type CSSProperties, type ReactNode, useId } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useIdUnico } from "../idUnico";
 import { formatarNumero, lerNumero } from "./numeros";
 
 export function CampoDeNumero({
@@ -21,7 +22,7 @@ export function CampoDeNumero({
   dica?: string;
   children?: ReactNode; // o deslizante e os atalhos (CampoComDeslizante)
 }) {
-  const id = useId();
+  const id = useIdUnico();
   return (
     <div className="ferramenta-campo">
       <label htmlFor={id}>{rotulo}</label>
@@ -121,7 +122,7 @@ export function Alternativas<T extends string>({
   opcoes: [T, string][];
   aoMudar: (valor: T) => void;
 }) {
-  const nome = useId();
+  const nome = useIdUnico();
   return (
     <fieldset className="ferramenta-campo ferramenta-alternativas">
       <legend>{rotulo}</legend>
