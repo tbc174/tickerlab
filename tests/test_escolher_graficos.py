@@ -246,3 +246,22 @@ def test_main_conferir_nao_usa_a_api(analises, tmp_path, monkeypatch, capsys):
     ]
     assert eg.main([*argumentos, "--pasta", str(tmp_path / "g")]) == 0
     assert "1 escolhas montadas" in capsys.readouterr().out
+
+
+def test_o_modelo_ve_e_usa_as_series_calculadas(analises, tmp_path):
+    """O pedido leva as séries; o texto continua conferido contra a entrada original."""
+    escolha = copy.deepcopy(ESCOLHA)
+    escolha["graficos"][1] = {
+        "tipo": "barras_no_tempo", "tabela": "series.margens", "eixo": "Ano",
+        "colunas": ["Margem líquida"], "titulo": "Margem líquida ano a ano",
+        "parte": "o_que_os_numeros_mostram", "paragrafo": 0,
+        "por_que": {"texto": "A margem líquida foi de 12,9% em 2025.",
+                    "notas": ["series.margens.1"]},
+    }  # fmt: skip
+    cliente = ClienteDeMentira(resposta=json.dumps(escolha, ensure_ascii=False))
+    montado = _montado(cliente, analises, tmp_path / "g")
+    pedido_da_escolha = cliente.criados[0]["messages"][0]["content"]
+    assert "series.margens (2 linhas)" in pedido_da_escolha
+    assert montado["linhagem"]["porta1"] == []
+    assert montado["escolha"]["graficos"][1]["tabela"] == "series.margens"
+    assert _origens(montado) == [saida.ORIGEM_MODELO] * 2
