@@ -298,7 +298,15 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     """B13, parte 2: as tabelas da base histórica (servidor de casa) entram no dicionário. Onde o
     código não tem a lista de colunas numa constante, a lista é a das tabelas reais montadas em
     14/10/2026 (esquema lido dos Parquets)."""
-    from base import auditores, controladas, empresa_serie, fre, pareceres, rotulos
+    from base import (
+        auditores,
+        controladas,
+        empresa_serie,
+        enet_notas,
+        fre,
+        pareceres,
+        rotulos,
+    )
     from src.negociacoes import COLUNAS as COLUNAS_DAS_NEGOCIACOES
 
     origem = ["origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codigo"]
@@ -325,6 +333,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "auditores": [*auditores.COLUNAS, *da_historica],
         "pareceres_dfp": [*pareceres.COLUNAS, *da_historica],
         "pareceres_itr": [*pareceres.COLUNAS, *da_historica],
+        "notas_dfp": [*enet_notas.COLUNAS, *da_historica],
         "trocas_de_auditor": [
             *auditores.COLUNAS_DAS_TROCAS,
             "montado_em",

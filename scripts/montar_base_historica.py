@@ -7,6 +7,7 @@
     python -m scripts.montar_base_historica pareceres_dfp pareceres_itr (T2; parecer do auditor dos CSVs do DFP e do ITR)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
     python -m scripts.montar_base_historica controladas empresa_serie (B13; a ligação lê as controladas)
+    python -m scripts.montar_base_historica notas_dfp              (texto das notas da DFP, do ENET; linha 135)
     python -m scripts.montar_base_historica rotulos_atraso         (rótulo do modelo 8, de DFP, ITR e cadastro)
     python -m scripts.montar_base_historica --pasta /tmp/base     (outra pasta de saída)
 
@@ -21,7 +22,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import auditores, curva, empresa_serie, historico, rotulos
+from base import auditores, curva, empresa_serie, enet_notas, historico, rotulos
 from base.modelos.atraso import rotulo as rotulo_de_atraso
 from src import acervo
 from src.banco.conexao import obter_engine
@@ -39,7 +40,9 @@ CURVA = curva.TABELA
 EMPRESA_SERIE = empresa_serie.TABELA
 # rótulo do modelo de atraso (modelo 8): lê o índice de todos os anos da DFP e do ITR e o cadastro
 ATRASO = rotulo_de_atraso.TABELA
-TODAS = [*historico.TABELAS, CNPJ, TROCAS, CURVA, EMPRESA_SERIE, ATRASO]
+# texto das notas da DFP (linha 135): vem do ENET (`scripts/carga_enet_notas.py`), não dos arquivos anuais
+NOTAS = enet_notas.TABELA
+TODAS = [*historico.TABELAS, CNPJ, TROCAS, CURVA, EMPRESA_SERIE, ATRASO, NOTAS]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,6 +75,20 @@ def main(argv: list[str] | None = None) -> int:
             if nome == CURVA:
                 anos = curva.montar(conexao, pasta, agora)
                 log.info("%s: %d anos", CURVA, len(anos))
+                continue
+            if nome == NOTAS:
+                try:
+                    por_ano = enet_notas.montar(conexao, pasta, agora)
+                except enet_notas.SemOIndice as erro:
+                    log.error("%s", erro)
+                    falhou = True
+                    continue
+                log.info(
+                    "%s: %d anos (%s)",
+                    NOTAS,
+                    len(por_ano),
+                    por_ano or "nenhum texto guardado",
+                )
                 continue
             if nome == ATRASO:
                 linhas = rotulo_de_atraso.montar(conexao, pasta, agora)
