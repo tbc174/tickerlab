@@ -20,6 +20,7 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 from base.parquet import gravar_tabela, sem_os_ids
 from base.pessoas.oposicoes import ids_opostos
@@ -33,6 +34,9 @@ FONTE = "rfb-cnpj"
 LIVRE_MINIMO = 30 * 1024**3
 TAMANHO_DO_PEDACO = 1024 * 1024
 PREFIXO = 2
+# acima disto as mudanças do mês vão em um arquivo por prefixo (um só arquivo pede várias vezes o
+# seu tamanho em memória para gravar e conferir; em 2024-10 foram 8 milhões de linhas)
+LINHAS_NUM_ARQUIVO_SO = 2_000_000
 CHAVES = {
     "estabelecimentos": ["cnpj"],
     "simples": ["cnpj_basico"],
@@ -134,15 +138,18 @@ def _aplicar(
     vigente: Path,
     primeiro: bool,
     origens: list[dict[str, str]],
-) -> pd.DataFrame | None:
-    """Passa o mês novo (repartido em `trabalho/<tabela>`) para o vigente e devolve as mudanças."""
+) -> None:
+    """Passa o mês novo (repartido em `trabalho/<tabela>`) para o vigente.
+
+    As mudanças de cada prefixo vão para `trabalho/parciais/<tabela>/` na hora, para não segurar na
+    memória as do mês inteiro (`_guardar_mudancas` junta ou publica depois)."""
     novo, antigo = trabalho / tabela, vigente / tabela
     saida = trabalho / "vigente" / tabela
     saida.mkdir(parents=True, exist_ok=True)
     prefixos = {p.name for p in novo.iterdir()} if novo.is_dir() else set()
     if not primeiro:
         prefixos |= {a.stem for a in antigo.glob("*.parquet")}
-    mudancas = []
+    parciais = trabalho / "parciais" / tabela
     for prefixo in sorted(prefixos):
         depois = _ler_prefixo(novo / prefixo)
         antes = None if primeiro else _ler_prefixo_vigente(antigo, prefixo)
@@ -152,15 +159,12 @@ def _aplicar(
             depois = antes.iloc[0:0]
         if not primeiro:
             antes = antes if antes is not None else depois.iloc[0:0]
-            mudancas.append(diff(antes, depois, CHAVES[tabela], mes))
+            mudou = diff(antes, depois, CHAVES[tabela], mes)
+            if not mudou.empty:
+                parciais.mkdir(parents=True, exist_ok=True)
+                mudou.to_parquet(parciais / f"{prefixo}.parquet", index=False)
         gravar_tabela(depois, saida / prefixo, origens, CHAVES[tabela])
-    log.info(
-        "%s aplicado: %d linhas de mudança (pico %d MB)",
-        tabela,
-        sum(len(m) for m in mudancas),
-        _pico_de_memoria_mb(),
-    )
-    return pd.concat(mudancas, ignore_index=True) if mudancas else None
+    log.info("%s aplicado (pico %d MB)", tabela, _pico_de_memoria_mb())
 
 
 def _origens(mes: str, arquivos: dict[str, str]) -> list[dict[str, str]]:
@@ -177,32 +181,45 @@ def _ler_prefixo_vigente(antigo: Path, prefixo: str) -> pd.DataFrame | None:
 
 
 def _guardar_mudancas(
-    quadro: pd.DataFrame | None,
-    tabela: str,
-    mes: str,
-    pasta: Path,
-    origens: list[dict[str, str]],
+    tabela: str, mes: str, trabalho: Path, origens: list[dict[str, str]]
 ) -> int:
-    """Grava as mudanças do mês de uma tabela na pasta de trabalho e devolve quantas são.
+    """Grava as mudanças do mês de uma tabela em `trabalho/mudancas/<tabela>/` e devolve quantas são.
 
-    Uma tabela por vez, para não segurar na memória as mudanças das três (em 2024-10 foram 8 milhões
-    de linhas só nos estabelecimentos e a carga morreu por falta de memória).
+    Mês comum: um arquivo `<AAAA-MM>.parquet`. Mês grande (mais de `LINHAS_NUM_ARQUIVO_SO`): uma pasta
+    `<AAAA-MM>/` com um arquivo por prefixo, cada um com o seu manifesto.
     """
-    if quadro is None or quadro.empty:
-        return 0
-    gravar_tabela(
-        quadro, pasta / tabela / mes, origens, ["mes", *CHAVES[tabela], "ordem"]
+    parciais = trabalho / "parciais" / tabela
+    arquivos = sorted(parciais.glob("*.parquet")) if parciais.is_dir() else []
+    total = sum(pq.ParquetFile(a).metadata.num_rows for a in arquivos)
+    ordem = ["mes", *CHAVES[tabela], "ordem"]
+    destino = trabalho / "mudancas" / tabela
+    if 0 < total <= LINHAS_NUM_ARQUIVO_SO:
+        quadro = pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+        gravar_tabela(quadro, destino / mes, origens, ordem)
+    elif total:
+        for arquivo in arquivos:
+            gravar_tabela(
+                pd.read_parquet(arquivo), destino / mes / arquivo.stem, origens, ordem
+            )
+    shutil.rmtree(parciais, ignore_errors=True)
+    log.info(
+        "mudanças de %s: %d linhas (pico %d MB)", tabela, total, _pico_de_memoria_mb()
     )
-    log.info("mudanças de %s gravadas (pico %d MB)", tabela, _pico_de_memoria_mb())
-    return len(quadro)
+    return total
 
 
 def _publicar_mudancas(trabalho: Path, destino: Path) -> None:
-    """Passa as mudanças do mês da pasta de trabalho para `mudancas/<tabela>/`."""
-    for arquivo in sorted(trabalho.glob("*/*")):
-        pasta = destino / arquivo.parent.name
+    """Passa as mudanças do mês da pasta de trabalho para `mudancas/<tabela>/`, no lugar das de uma
+    carga anterior do mesmo mês (arquivo ou pasta)."""
+    for item in sorted(trabalho.glob("*/*")):
+        pasta = destino / item.parent.name
         pasta.mkdir(parents=True, exist_ok=True)
-        arquivo.replace(pasta / arquivo.name)
+        mes = item.name.removesuffix(".parquet").removesuffix(".json")
+        shutil.rmtree(pasta / mes, ignore_errors=True)
+        if item.is_dir():
+            for sufixo in (".parquet", ".json"):
+                (pasta / f"{mes}{sufixo}").unlink(missing_ok=True)
+        item.replace(pasta / item.name)
 
 
 def _trocar(novo: Path, atual: Path) -> None:
@@ -260,10 +277,8 @@ def processar_mes(
         origens = _origens(mes, arquivos)
         contagem = {}
         for tabela in CHAVES:
-            quadro = _aplicar(tabela, mes, trabalho, vigente, ultimo is None, origens)
-            contagem[tabela] = _guardar_mudancas(
-                quadro, tabela, mes, trabalho / "mudancas", origens
-            )
+            _aplicar(tabela, mes, trabalho, vigente, ultimo is None, origens)
+            contagem[tabela] = _guardar_mudancas(tabela, mes, trabalho, origens)
     except BaseException:
         shutil.rmtree(trabalho, ignore_errors=True)
         shutil.rmtree(trabalho_restrito, ignore_errors=True)
