@@ -4,7 +4,7 @@ anyio==4.15.1
 asttokens==3.0.2
 attrs==26.1.0
 beautifulsoup4==4.15.0
-certifi==2026.7.22
+certifi==2026.10.23
 cffi==2.1.1
 charset-normalizer==3.5.2
 click==8.5.0
@@ -116,7 +116,7 @@ contourpy==1.4.0
 cycler==0.12.1
 kiwisolver==1.5.1
 pyparsing==3.3.3
-pypdf==6.20.0
+pypdf==6.21.2
 # prévia do Report Studio: páginas do PDF viram imagens (PDFium; BSD-3 e Apache-2.0)
 pypdfium2==5.14.0
 # rapidocr + onnxruntime: OCR de reserva do leitor de fatos relevantes, só quando o PDF volta
