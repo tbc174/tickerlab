@@ -41,9 +41,8 @@ VALORES_POR_PEDIDO_NO_SIDRA = (
     50_000  # acima disso o SIDRA responde 400 (visto em 19/10/2026)
 )
 MUNICIPIOS_DE_MG = 853  # a maior UF cafeeira: ela decide o tamanho do pedido
-ANOS_POR_PEDIDO_MUNICIPAL = (
-    4  # 853 municípios x 4 variáveis x 3 classes x 4 anos = 40.944 valores
-)
+# quantas células cada território põe em um período do pedido (município: o pior caso, MG)
+CELULAS_POR_TERRITORIO = {"n1": 1, "n3": len(UFS), "n6": MUNICIPIOS_DE_MG}
 
 # café: as categorias de cada tabela → o tipo que vai no id (canephora é o conilon dos produtores)
 CAFE_ARABICA, CAFE_CONILON, CAFE_TOTAL = "arabica", "conilon", "total"
@@ -264,22 +263,54 @@ class Coleta:
     descarta_series_vazias: bool = False
 
     def urls(self, periodo: str) -> list[str]:
-        """Um pedido por território; o PAM municipal ainda divide o período em blocos."""
-        periodos = self._blocos(periodo) if self.descarta_series_vazias else [periodo]
+        """Um pedido por território; o período se divide em blocos que cabem no limite do SIDRA."""
         return [
             montar_url(self.tabela, self.variaveis, self.classificacoes, p, t)
             for t in self.territorios
-            for p in periodos
+            for p in self._blocos(periodo, t)
         ]
 
-    def _blocos(self, periodo: str) -> list[str]:
-        if "-" not in periodo:
+    def _celulas_por_periodo(self, territorio: str) -> int:
+        categorias = 1
+        for ids in self.classificacoes.values():
+            categorias *= len(ids)
+        return (
+            len(self.variaveis)
+            * categorias
+            * CELULAS_POR_TERRITORIO[territorio.split("/")[0]]
+        )
+
+    def blocos_de_periodos(self, territorio: str) -> int:
+        """Quantos períodos (meses ou anos) cabem em um pedido deste território."""
+        return max(
+            1, VALORES_POR_PEDIDO_NO_SIDRA // self._celulas_por_periodo(territorio)
+        )
+
+    def _blocos(self, periodo: str, territorio: str = "n1/all") -> list[str]:
+        """`AAAA-AAAA` ou `AAAAMM-AAAAMM` em blocos; outro formato ("last 3") vai inteiro."""
+        primeiro, _, ultimo = periodo.partition("-")
+        mensal = len(primeiro) == TAMANHO_DO_MES
+        if not (ultimo and primeiro.isdigit() and ultimo.isdigit()):
             return [periodo]
-        primeiro, ultimo = (int(p) for p in periodo.split("-"))
+        por_pedido = self.blocos_de_periodos(territorio)
+        de, ate = _indice(primeiro), _indice(ultimo)
         return [
-            f"{inicio}-{min(inicio + ANOS_POR_PEDIDO_MUNICIPAL - 1, ultimo)}"
-            for inicio in range(primeiro, ultimo + 1, ANOS_POR_PEDIDO_MUNICIPAL)
+            f"{_texto(inicio, mensal)}-{_texto(min(inicio + por_pedido - 1, ate), mensal)}"
+            for inicio in range(de, ate + 1, por_pedido)
         ]
+
+
+def _indice(periodo: str) -> int:
+    """AAAAMM → meses desde o ano 0; AAAA → o ano."""
+    if len(periodo) == TAMANHO_DO_MES:
+        return int(periodo[:4]) * 12 + int(periodo[4:]) - 1
+    return int(periodo)
+
+
+def _texto(indice: int, mensal: bool) -> str:
+    if mensal:
+        return f"{indice // 12}{indice % 12 + 1:02d}"
+    return str(indice)
 
 
 def _municipios_da_uf(uf: int) -> str:
@@ -312,6 +343,51 @@ IPCA_ITENS = (
 # bens de capital, intermediários, de consumo (duráveis e semi e não duráveis)
 CATEGORIAS_ECONOMICAS = {543: (129278, 129283, 129300, 129301, 129305)}
 
+# PMC por atividade (8882 restrito, 8883 ampliado): os tipos de índice mudam de id entre as duas tabelas
+PMC_ATIVIDADES_RESTRITO = (
+    90671, 90672, 103154, 90673, 2759, 31555, 31556, 103155, 103156, 103157, 103158,
+)  # fmt: skip
+PMC_ATIVIDADES_AMPLIADO = (*PMC_ATIVIDADES_RESTRITO, 103159, 2762, 56741)
+# PIM-PF por grupos e classes (8885): alimentos, papel e celulose, químicos, minerais e metais, veículos
+PIMPF_CLASSES_VARIAVEIS = (12606, 11602, 11603, 11604)
+PIMPF_CLASSES = (
+    129177, 129178, 129189, 129190, 31761, 129204, 129209, 129210, 129213, 129214,
+    129226, 129233, 129238, 129268, 129269, 129271,
+)  # fmt: skip
+# LSPA além do café (6588): algodão, arroz, feijão (3 safras), milho (2), soja, trigo, cacau, cana, laranja
+LSPA_OUTROS_PRODUTOS = (
+    39429, 39432, 39436, 39437, 39438, 39441, 39442, 39443, 39445, 39453, 39456, 39463,
+)  # fmt: skip
+# PMS (8688): total, alojamento, alimentação, telecom, TI, transporte de cargas e de passageiros
+PMS_VARIAVEIS = (7167, 7168, 11623, 11624, 11625, 11626)
+PMS_TIPOS = {11046: (56725, 56726)}  # receita nominal e volume
+PMS_ATIVIDADES = (107071, 56692, 56693, 39321, 39322, 56696, 56697)
+# IPP (6903): indústria geral, extrativas, transformação e as 23 divisões
+IPP_VARIAVEIS = (10008, 1396, 1394, 1395)
+IPP_ATIVIDADES = (
+    46608, 46609, 46610, 46611, 46618, 46619, 46620, 46621, 46622, 46625, 46626, 46627, 46628,
+    46633, 46629, 46634, 46635, 46638, 46641, 46643, 46644, 46647, 46650, 46653, 46655, 46656,
+)  # fmt: skip
+SINAPI_VARIAVEIS = (
+    48,
+    2119,
+    2120,
+    49,
+    1196,
+    1197,
+    1198,
+)  # custo do m², material, mão de obra, índice, variações
+IPCA15_VARIAVEIS = (355, 356, 1120, 357)  # mensal, no ano, 12 meses, peso
+INPC_VARIAVEIS = (44, 68, 2292, 45)
+# PAM lavouras temporárias (1612): algodão, arroz, cana, milho, soja, trigo; área, colhida, produção, rendimento, valor
+PAM_TEMPORARIAS = (2689, 2692, 2696, 2711, 2713, 2716)
+PAM_TEMPORARIAS_VARIAVEIS = (109, 216, 214, 112, 215)
+# silvicultura: madeira em tora para papel e celulose (eucalipto e pinus) e carvão vegetal; área por espécie
+PEVS_PRODUTOS = (0, 3455, 3458, 33253, 33254)
+PEVS_AREA_ESPECIES = (0, 39326, 39327)
+PPM_REBANHOS = (2670, 32794, 32796)  # bovino, suíno e galináceos
+PPM_PRODUTOS = (2682, 2685)  # leite e ovos de galinha
+
 COLETAS = (
     Coleta(
         "lspa", 6588, (35, 36, 109, 216), {48: (LSPA_CAFE_ARABICA, LSPA_CAFE_CANEPHORA)},
@@ -327,5 +403,20 @@ COLETAS = (
     Coleta("pimpf-atividades", 8888, PIMPF_VARIAVEIS, {544: PIMPF_ATIVIDADES}, ("n1/all",), "mensal"),
     Coleta("pimpf-categorias", 8887, PIMPF_VARIAVEIS, CATEGORIAS_ECONOMICAS, ("n1/all",), "mensal"),
     Coleta("ipca-itens", 7060, (63, 69, 2265, 66), {315: IPCA_ITENS}, ("n1/all",), "mensal"),
+    Coleta("pmc-atividades-restrito", 8882, PMC_VARIAVEIS, {11046: (56733, 56734), 85: PMC_ATIVIDADES_RESTRITO}, ("n1/all", "n3/all"), "mensal"),
+    Coleta("pmc-atividades-ampliado", 8883, PMC_VARIAVEIS, {11046: (56735, 56736), 85: PMC_ATIVIDADES_AMPLIADO}, ("n1/all", "n3/all"), "mensal"),
+    Coleta("pimpf-classes", 8885, PIMPF_CLASSES_VARIAVEIS, {542: PIMPF_CLASSES}, ("n1/all",), "mensal"),
+    Coleta("lspa-outros", 6588, (35, 36, 109, 216), {48: LSPA_OUTROS_PRODUTOS}, ("n1/all", "n3/all"), "mensal"),
+    Coleta("pms", 8688, PMS_VARIAVEIS, {**PMS_TIPOS, 12355: PMS_ATIVIDADES}, ("n1/all",), "mensal"),
+    Coleta("ipp", 6903, IPP_VARIAVEIS, {842: IPP_ATIVIDADES}, ("n1/all",), "mensal"),
+    Coleta("sinapi", 2296, SINAPI_VARIAVEIS, {}, ("n1/all", "n3/all"), "mensal"),
+    Coleta("ipca15-itens", 7062, IPCA15_VARIAVEIS, {315: IPCA_ITENS}, ("n1/all",), "mensal"),
+    Coleta("inpc-itens", 7063, INPC_VARIAVEIS, {315: IPCA_ITENS}, ("n1/all",), "mensal"),
+    Coleta("pam-temporarias", 1612, PAM_TEMPORARIAS_VARIAVEIS, {81: PAM_TEMPORARIAS}, ("n1/all", "n3/all"), "anual"),
+    Coleta("pevs-producao", 291, (142, 143), {194: PEVS_PRODUTOS}, ("n1/all", "n3/all"), "anual"),
+    Coleta("pevs-area", 5930, (6549,), {734: PEVS_AREA_ESPECIES}, ("n1/all", "n3/all"), "anual"),
+    Coleta("ppm-rebanhos", 3939, (105,), {79: PPM_REBANHOS}, ("n1/all", "n3/all"), "anual"),
+    Coleta("ppm-origem-animal", 74, (106, 215), {80: PPM_PRODUTOS}, ("n1/all", "n3/all"), "anual"),
+    Coleta("populacao", 6579, (9324,), {}, ("n1/all", "n3/all"), "anual"),
 )  # fmt: skip
 COLETAS_POR_NOME = {c.nome: c for c in COLETAS}
