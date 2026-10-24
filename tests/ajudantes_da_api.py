@@ -51,3 +51,17 @@ def da_sessao(banco, usuario) -> dict[str, str]:
         "X-TickerLab-Pedido": "1",
         "Origin": "http://testserver",
     }
+
+
+GATEWAY = "172.18.0.1"
+
+
+def cliente_do_gateway(ambiente: dict[str, str]):
+    """Cliente de teste que chega pelo túnel: a conexão vem do gateway e ele é o proxy confiável."""
+    from fastapi.testclient import TestClient
+
+    from src import api
+    from src.registro_de_acesso import VARIAVEL_DOS_PROXIES
+
+    app = api.criar_app({**ambiente, VARIAVEL_DOS_PROXIES: GATEWAY})
+    return TestClient(app, client=(GATEWAY, 50000))

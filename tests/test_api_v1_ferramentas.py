@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from src import api
 from src.api_v1 import VARIAVEL_DA_CHAVE, ferramentas
 from src.ferramentas import ponte_dados
+from tests.ajudantes_da_api import cliente_do_gateway
 
 HOJE = date(2026, 10, 15)
 MESES = [
@@ -65,7 +66,7 @@ def chamadas(monkeypatch):
 @pytest.fixture
 def cliente(chamadas, monkeypatch):
     monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
-    return TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
+    return cliente_do_gateway({VARIAVEL_DA_CHAVE: "1"})
 
 
 def _pedir(cliente, desde="2020-01-02", valor="1000", **kwargs):
@@ -263,3 +264,30 @@ def test_falha_do_yahoo_nao_fica_no_cache_do_resultado(cliente, monkeypatch):
     assert len(_pedir(cliente).json()["indisponiveis"]) == 2
     estado["fora"] = False  # o Yahoo voltou
     assert _pedir(cliente).json()["indisponiveis"] == []
+
+
+def test_cabecalho_forjado_de_fora_do_proxy_nao_escapa_do_limite(chamadas, monkeypatch):
+    """Quem chega sem passar pelo túnel (outro contêiner) não ganha um IP novo a cada pedido."""
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
+    ambiente = {VARIAVEL_DA_CHAVE: "1", "TICKERLAB_PROXIES_CONFIAVEIS": "172.18.0.1"}
+    de_fora = TestClient(api.criar_app(ambiente), client=("172.18.0.99", 50000))
+    for n in range(ferramentas.PEDIDOS_POR_MINUTO_POR_IP):
+        assert (
+            _pedir(de_fora, headers={"cf-connecting-ip": f"203.0.113.{n}"}).status_code
+            == 200
+        )
+    forjado = {"cf-connecting-ip": "198.51.100.77"}
+    assert _pedir(de_fora, headers=forjado).status_code == 429
+
+
+def test_sem_proxies_configurados_o_cabecalho_nao_vale(chamadas, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
+    sem_lista = TestClient(
+        api.criar_app({VARIAVEL_DA_CHAVE: "1"}), client=("172.18.0.1", 1)
+    )
+    for n in range(ferramentas.PEDIDOS_POR_MINUTO_POR_IP):
+        _pedir(sem_lista, headers={"cf-connecting-ip": f"203.0.113.{n}"})
+    assert (
+        _pedir(sem_lista, headers={"cf-connecting-ip": "198.51.100.1"}).status_code
+        == 429
+    )
