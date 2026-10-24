@@ -129,6 +129,10 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
     date(2026, 10, 23),
 )
 
+# lote patentes e marcas (licencas-por-fonte.md, rodada 4): EPO e WIPO lidos em 22/10/2026; o INPI já
+# tem a data da rodada 1
+TERMOS_LIDOS_EM |= dict.fromkeys(("epo", "wipo"), date(2026, 10, 22))
+
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")
 
