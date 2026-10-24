@@ -23,9 +23,13 @@ from datetime import UTC, date, datetime
 
 import sqlalchemy as sa
 
-from src.administracao import PermissaoNegadaError, exigir_admin
+from src.administracao import (
+    PermissaoNegadaError,
+    admin_do_servidor,
+    ator_do_servidor,
+)
 from src.administracao_das_chaves import ERROS_ESPERADOS
-from src.autenticacao import VARIAVEL_DOS_ADMINS, emails_de_admin
+from src.autenticacao import VARIAVEL_DOS_ADMINS
 from src.banco import chaves_da_api as cb
 from src.banco.conexao import criar_engine
 from src.banco.modelo import (
@@ -33,7 +37,6 @@ from src.banco.modelo import (
     MOTIVOS_DA_SUSPENSAO,
     PLANOS_DA_API,
 )
-from src.banco.usuarios import buscar_por_email
 from src.chaves_da_api import ChaveNova
 from src.configuracao import url_do_banco
 
@@ -47,34 +50,6 @@ class NadaMudouError(Exception):
 def _hoje() -> date:
     # o mesmo dia (UTC) que a medição do consumo usa
     return datetime.now(UTC).date()
-
-
-def _escolher_admin(pedido: str | None) -> str:
-    """O e-mail de quem pede: precisa estar em `TICKERLAB_ADMINS` (a lista do servidor)."""
-    lista = emails_de_admin()
-    if not lista:
-        raise PermissaoNegadaError(f"{VARIAVEL_DOS_ADMINS} está vazia neste servidor.")
-    if pedido is None:
-        if len(lista) > 1:
-            raise PermissaoNegadaError(
-                f"{VARIAVEL_DOS_ADMINS} tem mais de um e-mail: diga qual com --admin."
-            )
-        return lista[0]
-    email = pedido.strip().lower()
-    if email not in lista:
-        raise PermissaoNegadaError(f"Este e-mail não está em {VARIAVEL_DOS_ADMINS}.")
-    return email
-
-
-def _ator(conexao: sa.Connection, email: str) -> uuid.UUID:
-    """O id do administrador, conferido no banco (a lista sozinha não basta)."""
-    usuario = buscar_por_email(conexao, email)
-    if usuario is None:
-        raise PermissaoNegadaError(
-            "Nenhum administrador com este e-mail no banco: entre no app pelo Google antes."
-        )
-    exigir_admin(conexao, usuario.id)
-    return usuario.id
 
 
 def _mudou(mudou: bool, texto: str) -> str:
@@ -304,7 +279,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     motor = criar_engine(url_do_banco())
     try:
         with motor.begin() as conexao:
-            ator = _ator(conexao, _escolher_admin(args.admin))
+            ator = ator_do_servidor(conexao, admin_do_servidor(args.admin))
             texto = args.funcao(conexao, args, ator)
     except PermissaoNegadaError as erro:
         print(f"Recusado: {erro}", file=sys.stderr)

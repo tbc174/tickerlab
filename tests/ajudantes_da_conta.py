@@ -3,7 +3,7 @@
 from streamlit import user_info
 from streamlit.testing.v1 import AppTest
 
-from src.banco.usuarios import buscar_por_google_sub
+from src.banco.usuarios import buscar_por_google_sub, entrar
 from src.paginas import PAGINA_INICIAL, pagina
 from tests.test_autenticacao import AUTH_COMPLETO
 
@@ -57,3 +57,18 @@ def id_do_usuario(banco, sub):
 
 def botao(app, rotulo):
     return next(b for b in app.button if b.label == rotulo)
+
+
+def bloquear_pelo_admin(banco, alvo_id, motivo="acesso_de_terceiro"):
+    """Um administrador (criado aqui, se preciso) bloqueia a conta, como no incidente."""
+    from src.administracao import bloquear_conta
+
+    with banco.begin() as conexao:
+        chefe = entrar(
+            conexao,
+            "g-chefe-do-bloqueio",
+            "chefe-do-bloqueio@exemplo.com",
+            emails_de_admin=("chefe-do-bloqueio@exemplo.com",),
+            email_confirmado=True,
+        )[0]
+        return bloquear_conta(conexao, chefe.id, alvo_id, motivo)

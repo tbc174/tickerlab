@@ -60,6 +60,9 @@ ACAO_CHAVE_REVOGADA = "chave_revogada"
 ACAO_DIREITO_CONCEDIDO = "direito_concedido"
 ACAO_DIREITO_SUSPENSO = "direito_suspenso"
 ACAO_DIREITO_REATIVADO = "direito_reativado"
+# bloqueio de uma conta no incidente (0045): detalhes só com o motivo (código) e quantas sessões
+ACAO_CONTA_BLOQUEADA = "conta_bloqueada"
+ACAO_CONTA_DESBLOQUEADA = "conta_desbloqueada"
 
 
 @dataclass(frozen=True)

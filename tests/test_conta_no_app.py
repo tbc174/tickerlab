@@ -7,6 +7,7 @@ from src.banco import dados_do_usuario as repo
 from src.dados import baixar_dados
 from tests.ajudantes_da_conta import (
     abrir_app,
+    bloquear_pelo_admin,
     botao,
     entrar_como,
     id_do_usuario,
@@ -220,3 +221,25 @@ def test_sessao_aberta_nao_recria_a_conta_apagada(banco, monkeypatch):
     with banco.connect() as conexao:
         assert buscar_por_google_sub(conexao, "ana") is None
     assert any("não existe mais" in e.value for e in app.error)
+
+
+def test_sessao_aberta_para_na_conta_bloqueada_e_o_login_novo_tambem(
+    banco, monkeypatch
+):
+    """Bloqueio no incidente (linha 306): a versão clássica relê a conta e para em até 1 minuto,
+    com o texto aprovado e só o "Sair"; um login novo do mesmo Google também para ali."""
+    from src.banco.usuarios import TEXTO_DA_CONTA_BLOQUEADA
+
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app()
+    bloquear_pelo_admin(banco, id_do_usuario(banco, "ana"))
+    app.session_state["usuario_em"] = 0  # a próxima execução relê o usuário
+    app.run()
+    assert not app.exception
+    assert [e.value for e in app.error] == [TEXTO_DA_CONTA_BLOQUEADA]
+    assert [b.label for b in app.button] == ["Sair"]
+
+    outra_sessao = abrir_app(aceitar_termos=False)
+    assert not outra_sessao.exception
+    assert [e.value for e in outra_sessao.error] == [TEXTO_DA_CONTA_BLOQUEADA]
+    assert [b.label for b in outra_sessao.button] == ["Sair"]

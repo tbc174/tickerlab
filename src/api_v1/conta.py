@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
 from src.api_v1.acesso import (
+    CABECALHO_DO_MOTIVO,
     LIMITE,
     agora,
     conta_sem_o_aceite,
@@ -39,7 +40,7 @@ from src.autenticacao import (
 )
 from src.banco import sessoes
 from src.banco.conexao import obter_engine
-from src.banco.usuarios import Usuario, buscar_por_id
+from src.banco.usuarios import ContaBloqueadaError, Usuario, buscar_por_id
 from src.conformidade import VERSAO_DOS_TERMOS, aceitar_os_termos
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 from src.origem import NOME_DO_COOKIE, ler_origem
@@ -75,10 +76,21 @@ def entrar(
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
     try:
         usuario, primeira_vez = _registrar(identidade, tl_origem)
+    except ContaBloqueadaError as erro:
+        raise recusa_da_conta_bloqueada(erro) from erro
     except LoginInvalidoError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
     abrir_a_sessao(request, response, usuario)
     return ContaV1(**eu_da_conta(usuario).model_dump(), primeira_vez=primeira_vez)
+
+
+def recusa_da_conta_bloqueada(erro: ContaBloqueadaError) -> HTTPException:
+    """403 com o texto aprovado da conta bloqueada (o mesmo da versão clássica), sem abrir sessão."""
+    return HTTPException(
+        status_code=403,
+        detail=str(erro),
+        headers={CABECALHO_DO_MOTIVO: "conta-bloqueada"},
+    )
 
 
 def _registrar(
