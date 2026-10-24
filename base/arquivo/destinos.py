@@ -13,6 +13,7 @@ from base.arquivo import (
     lote_atencao,
     lote_brasil2,
     lote_cadastros,
+    lote_clima,
     lote_cvm,
     lote_eua,
     lote_licitacoes,
@@ -166,6 +167,11 @@ _LOTE_SETORIAIS_SO_ARQUIVO = (
 _LOTE_LICITACOES_SO_ARQUIVO = (
     "licitação e contrato públicos guardados só com pessoa jurídica (LGPD, ADR 0088); a tabela com "
     "contrato no catálogo ainda não existe"
+)
+
+_LOTE_CLIMA_SO_ARQUIVO = (
+    "clima, fogo e emissões guardados como o órgão publica (chave do FIRMS só no ambiente); a tabela "
+    "com contrato no catálogo ainda não existe"
 )
 
 _LOTE_BRASIL2_SO_ARQUIVO = (
@@ -371,6 +377,11 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_ATENCAO_SO_ARQUIVO)
         for f in lote_atencao.fontes()
     },
+    # lote clima e fogo (rodada 4, linha 290): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CLIMA_SO_ARQUIVO)
+        for f in lote_clima.fontes()
+    },
     # lote CVM (linha 200 da fila, 23/10/2026): guardado no acervo; as tabelas são o lote 2
     **{
         f.id: _planejada("cvm-lote-2/tabelas", _LOTE_CVM_SO_ARQUIVO)
@@ -427,6 +438,7 @@ DESTINOS: dict[str, Destino] = {
             *lote_eua.termos(),
             *lote_cadastros.termos(),
             *lote_atencao.termos(),
+            *lote_clima.termos(),
         )
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
