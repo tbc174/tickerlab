@@ -167,6 +167,15 @@ encontrar fora do pedido (sem refatorar a área de outra sessão sem combinar).
   recomendação de investimento.
 - Siga o estilo do código ao redor e o guia de padrões.
 
+## Análises de empresa e de grupo
+
+**Toda análise do TickerLab segue `docs/padrao-de-analise.md`** (pedido do Tiago em 24/10/2026): companhia
+aberta, empresa fechada ou grupo. Em resumo: uma frase no topo, o mapa societário completo a partir do quadro
+de sócios da Receita, linha do tempo, atividades com o ano de cada fonte, conferência nas bases oficiais
+(IBAMA, Lista Suja, sanções, dívida, terra) com a data de cada uma, fato separado de dedução, homônimos
+descartados à vista, o que não foi achado, comparação e fontes. Sem CPF, menor de idade, contato ou endereço
+residencial. O relatório de companhia aberta continua seguindo a análise completa da ADR 0100.
+
 ## `trader/` (pesquisa de trading)
 
 Regras próprias em `trader/AGENTS.md`. Resumo: só leitura (há teste que
