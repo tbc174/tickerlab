@@ -24,6 +24,7 @@ from src.banco import newsletter_por_email, novidades_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
 from src.logs import configurar_logs
+from src.registro_de_acesso import RegistroDeAcesso, registro_pelo_ambiente
 
 log = logging.getLogger(__name__)
 
@@ -153,6 +154,12 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     )
     nova.include_router(router)
     nova.include_router(router, prefix="/api")
+    registro = registro_pelo_ambiente(ambiente)
+    if registro is not None:
+        # Marco Civil, art. 15: IP real e hora em arquivo, por 6 meses (nunca no banco)
+        nova.add_middleware(
+            RegistroDeAcesso, escrever=registro[0], confiaveis=registro[1]
+        )
     if api_v1_ligada(ambiente):
         # só aqui: as contas da v1 carregam o pandas, e desligada a API continua leve
         from src.api_v1.acesso import CABECALHO_DO_MOTIVO
