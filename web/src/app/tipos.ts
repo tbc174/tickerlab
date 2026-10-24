@@ -494,12 +494,53 @@ export interface ParteDaAnaliseV1 {
   paragrafos: ParagrafoDaAnaliseV1[];
 }
 
+/** Os números do gráfico, lidos da ficha: uma lista de valores por coluna, na ordem dos rótulos. */
+export interface PontosDoGraficoV1 {
+  tipo: string;
+  titulo: string;
+  nome_do_eixo: string;
+  rotulos: string[];
+  colunas: string[];
+  valores: (number | null)[][];
+  ids: string[]; // as linhas da ficha de onde cada ponto saiu
+  unidade: string; // "R$", "US$", "%" ou "" (contagem e número cru)
+}
+
+export interface EscalaDoGraficoV1 {
+  divisor: number; // o valor desenhado é o valor dividido por este
+  medida: string; // "R$ bilhões", "%", ""...
+  casas: number;
+}
+
+/** Um gráfico da análise: entra depois do parágrafo `paragrafo` da parte `parte`. */
+export interface GraficoDaAnaliseV1 {
+  parte: string;
+  paragrafo: number;
+  tipo: string; // um tipo do cardápio (linha_no_tempo, barras_no_tempo, cascata...)
+  titulo: string;
+  por_que: FraseDaAnaliseV1; // o achado que o gráfico mostra, com as notas
+  origem: "modelo" | "regras"; // regras: a reserva
+  pontos: PontosDoGraficoV1;
+  escala: EscalaDoGraficoV1;
+}
+
+/** Uma seção da ficha puxada para perto de uma parte do texto. */
+export interface DestaqueDaAnaliseV1 {
+  parte: string;
+  secao: string;
+  titulo: string;
+  por_que: FraseDaAnaliseV1;
+  origem: string;
+}
+
 /** A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100). */
 export interface AnaliseDaEmpresaV1 {
   partes: ParteDaAnaliseV1[];
   notas: NotaDaAnaliseV1[];
   aviso: string;
   motivo?: string | null; // por que saiu o molde no lugar do texto do modelo, se saiu
+  graficos?: GraficoDaAnaliseV1[];
+  destaques?: DestaqueDaAnaliseV1[];
 }
 
 export interface RelatorioDaEmpresaV1 {

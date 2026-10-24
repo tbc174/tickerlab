@@ -272,3 +272,72 @@ def test_o_modelo_ve_e_usa_as_series_calculadas(analises, tmp_path):
     assert montado["linhagem"]["porta1"] == []
     assert montado["escolha"]["graficos"][1]["tabela"] == "series.margens"
     assert _origens(montado) == [saida.ORIGEM_MODELO] * 2
+
+
+def _publicado(analises, pasta) -> dict:
+    _montado(ClienteDeMentira(), analises, pasta, modelo=eg.MODELO_DOS_RELATORIOS)
+    assert eg.publicar([ENTRADA], analises, pasta) == 1
+    arquivo = ea.arquivo_da_analise(analises, ENTRADA)
+    return json.loads(arquivo.read_text(encoding="utf-8"))
+
+
+def test_publicar_grava_a_escolha_do_opus_junto_do_texto(analises, tmp_path):
+    """A porta 3 do Tiago (23/10): o Opus escolhe os gráficos dos relatórios."""
+    pasta = tmp_path / "g"
+    guardada = _publicado(analises, pasta)
+    assert guardada["analise"] == TEXTO  # o texto fica como estava
+    graficos = guardada[eg.CAMPO_DOS_GRAFICOS]
+    montado = json.loads(
+        eg.arquivo_dos_graficos(pasta, ENTRADA, pedido.OPUS).read_text(encoding="utf-8")
+    )
+    assert graficos["modelo"] == pedido.OPUS
+    assert graficos["escolha"] == montado["escolha"]
+    assert graficos["hash_da_entrada"] == montado["hash_da_entrada"]
+    assert graficos["hash_do_texto"] == gr.hash_do_texto(saida.ler_analise(TEXTO))
+
+
+def test_publicar_sem_a_montagem_nao_mexe_no_texto(analises, tmp_path):
+    arquivo = ea.arquivo_da_analise(analises, ENTRADA)
+    antes = arquivo.read_text(encoding="utf-8")
+    assert eg.publicar([ENTRADA], analises, tmp_path / "g") == 0
+    assert arquivo.read_text(encoding="utf-8") == antes
+
+
+def test_publicada_a_escolha_vai_para_o_relatorio(tmp_path):
+    """Do passo `publicar` à tela, com a ficha como o lote a exporta (sem o preço da ação)."""
+    from src import relatorio_empresa as re_
+    from src.analise_escrita.exibicao import com_analise
+    from tests.ajudantes_da_analise import CORTE, entradas_da_cpfl
+    from tests.test_analise_na_tela import entrada_do_lote
+
+    lote, analises, pasta = entrada_do_lote(), tmp_path / "texto", tmp_path / "g"
+    arquivo = ea.arquivo_da_analise(analises, lote)
+    ea._gravar(
+        arquivo, {"hash_da_entrada_atual": en.hash_da_entrada(lote), "analise": TEXTO}
+    )
+    cliente = ClienteDeMentira()
+    eg.piloto(cliente, [lote], analises, pasta, [pedido.OPUS], teto=2)
+    eg.cegas(cliente, [lote], analises, pasta, [pedido.OPUS], teto=2)
+    eg.conferir([lote], analises, pasta, [pedido.OPUS])
+    assert eg.publicar([lote], analises, pasta) == 1
+    guardada = json.loads(arquivo.read_text(encoding="utf-8"))
+    guardada |= {"cnpj": lote["cnpj"], "corte": CORTE.isoformat(), "publicavel": True}
+    app = tmp_path / "app"
+    ea._gravar(app / f"{ea.chave(lote)}.json", guardada)
+    entradas = entradas_da_cpfl()
+    analise = com_analise(re_.montar(entradas, "pro"), entradas, "pro", app).analise
+    assert analise is not None
+    assert [g.origem for g in analise.graficos] == [saida.ORIGEM_MODELO] * 2
+
+
+def test_main_publicar_usa_o_opus_sem_a_api(analises, tmp_path, monkeypatch, capsys):
+    pasta = tmp_path / "g"
+    _montado(ClienteDeMentira(), analises, pasta, modelo=pedido.OPUS)
+    monkeypatch.setattr(
+        eg.ri, "cliente", lambda: pytest.fail("publicar não chama a API")
+    )
+    argumentos = ["publicar", "--entradas", str(ARQUIVO_DA_ENTRADA)]
+    assert (
+        eg.main([*argumentos, "--analises", str(analises), "--pasta", str(pasta)]) == 0
+    )
+    assert "1 escolhas publicadas" in capsys.readouterr().out

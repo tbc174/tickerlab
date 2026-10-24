@@ -863,8 +863,51 @@ class ParteDaAnaliseV1(BaseModel):
     paragrafos: list[ParagrafoDaAnaliseV1]
 
 
+class PontosDoGraficoV1(BaseModel):
+    """Os números do gráfico, lidos da ficha: uma lista de valores por coluna, na ordem dos rótulos."""
+
+    tipo: str
+    titulo: str
+    nome_do_eixo: str
+    rotulos: list[str]
+    colunas: list[str]
+    valores: list[list[float | None]]
+    ids: list[str]  # as linhas da ficha de onde cada ponto saiu
+    unidade: str  # "R$", "US$", "%" ou "" (contagem e número cru)
+
+
+class EscalaDoGraficoV1(BaseModel):
+    divisor: float  # o valor desenhado é o valor dividido por este
+    medida: str  # "R$ bilhões", "%", ""...
+    casas: int
+
+
+class GraficoDaAnaliseV1(BaseModel):
+    """Um gráfico da análise: entra depois do parágrafo `paragrafo` da parte `parte`."""
+
+    parte: str
+    paragrafo: int
+    tipo: str  # um tipo do cardápio (linha_no_tempo, barras_no_tempo, cascata...)
+    titulo: str
+    por_que: FraseDaAnaliseV1  # o achado que o gráfico mostra, com as notas
+    origem: str  # "modelo" (escolhido pela IA) ou "regras" (a reserva)
+    pontos: PontosDoGraficoV1
+    escala: EscalaDoGraficoV1
+
+
+class DestaqueDaAnaliseV1(BaseModel):
+    """Uma seção da ficha puxada para perto de uma parte do texto."""
+
+    parte: str
+    secao: str  # a chave da seção em `secoes`
+    titulo: str
+    por_que: FraseDaAnaliseV1
+    origem: str
+
+
 class AnaliseDaEmpresaV1(BaseModel):
-    """A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100)."""
+    """A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100), e os
+    gráficos e destaques escolhidos para ela."""
 
     partes: list[ParteDaAnaliseV1]
     notas: list[NotaDaAnaliseV1]
@@ -872,6 +915,8 @@ class AnaliseDaEmpresaV1(BaseModel):
     motivo: str | None = (
         None  # por que saiu o molde no lugar do texto do modelo, se saiu
     )
+    graficos: list[GraficoDaAnaliseV1] = []
+    destaques: list[DestaqueDaAnaliseV1] = []
 
 
 class RelatorioDaEmpresaV1(BaseModel):

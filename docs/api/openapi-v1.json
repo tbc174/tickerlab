@@ -104,11 +104,27 @@
         "type": "object"
       },
       "AnaliseDaEmpresaV1": {
-        "description": "A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100).",
+        "description": "A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100), e os\ngráficos e destaques escolhidos para ela.",
         "properties": {
           "aviso": {
             "title": "Aviso",
             "type": "string"
+          },
+          "destaques": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DestaqueDaAnaliseV1"
+            },
+            "title": "Destaques",
+            "type": "array"
+          },
+          "graficos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraficoDaAnaliseV1"
+            },
+            "title": "Graficos",
+            "type": "array"
           },
           "motivo": {
             "anyOf": [
@@ -1660,6 +1676,39 @@
         "title": "CurvaV1",
         "type": "object"
       },
+      "DestaqueDaAnaliseV1": {
+        "description": "Uma seção da ficha puxada para perto de uma parte do texto.",
+        "properties": {
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "parte": {
+            "title": "Parte",
+            "type": "string"
+          },
+          "por_que": {
+            "$ref": "#/components/schemas/FraseDaAnaliseV1"
+          },
+          "secao": {
+            "title": "Secao",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parte",
+          "secao",
+          "titulo",
+          "por_que",
+          "origem"
+        ],
+        "title": "DestaqueDaAnaliseV1",
+        "type": "object"
+      },
       "DestinoDoCafeV1": {
         "properties": {
           "fob_usd": {
@@ -1768,6 +1817,29 @@
           "erro_mil_sacas"
         ],
         "title": "ErroDaSafraV1",
+        "type": "object"
+      },
+      "EscalaDoGraficoV1": {
+        "properties": {
+          "casas": {
+            "title": "Casas",
+            "type": "integer"
+          },
+          "divisor": {
+            "title": "Divisor",
+            "type": "number"
+          },
+          "medida": {
+            "title": "Medida",
+            "type": "string"
+          }
+        },
+        "required": [
+          "divisor",
+          "medida",
+          "casas"
+        ],
+        "title": "EscalaDoGraficoV1",
         "type": "object"
       },
       "EstrategiaAcompanhadaV1": {
@@ -2343,6 +2415,52 @@
           "legenda"
         ],
         "title": "FundosDoCafeV1",
+        "type": "object"
+      },
+      "GraficoDaAnaliseV1": {
+        "description": "Um gráfico da análise: entra depois do parágrafo `paragrafo` da parte `parte`.",
+        "properties": {
+          "escala": {
+            "$ref": "#/components/schemas/EscalaDoGraficoV1"
+          },
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "paragrafo": {
+            "title": "Paragrafo",
+            "type": "integer"
+          },
+          "parte": {
+            "title": "Parte",
+            "type": "string"
+          },
+          "pontos": {
+            "$ref": "#/components/schemas/PontosDoGraficoV1"
+          },
+          "por_que": {
+            "$ref": "#/components/schemas/FraseDaAnaliseV1"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parte",
+          "paragrafo",
+          "tipo",
+          "titulo",
+          "por_que",
+          "origem",
+          "pontos",
+          "escala"
+        ],
+        "title": "GraficoDaAnaliseV1",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -4497,6 +4615,77 @@
           "ipca_12_meses"
         ],
         "title": "PontoMensalV1",
+        "type": "object"
+      },
+      "PontosDoGraficoV1": {
+        "description": "Os números do gráfico, lidos da ficha: uma lista de valores por coluna, na ordem dos rótulos.",
+        "properties": {
+          "colunas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Colunas",
+            "type": "array"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "nome_do_eixo": {
+            "title": "Nome Do Eixo",
+            "type": "string"
+          },
+          "rotulos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rotulos",
+            "type": "array"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "valores": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "title": "Valores",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tipo",
+          "titulo",
+          "nome_do_eixo",
+          "rotulos",
+          "colunas",
+          "valores",
+          "ids",
+          "unidade"
+        ],
+        "title": "PontosDoGraficoV1",
         "type": "object"
       },
       "PrecoDeReferenciaDoCafeV1": {

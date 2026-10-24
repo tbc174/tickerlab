@@ -11,6 +11,7 @@ O cardápio é por forma, não por tabela: qualquer tabela da entrada que tenha 
 o relatório do setor usa o mesmo cardápio com as tabelas dele.
 """
 
+import hashlib
 import json
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -103,6 +104,12 @@ class LinhaDaTabela:
     id: str
     celulas: dict[str, Any]
     so_pro: bool
+
+
+def hash_do_texto(analise: saida.Analise) -> str:
+    """A escolha vale só para o texto de onde saiu: a âncora é um parágrafo dele."""
+    texto = json.dumps(analise.como_dict(), sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
 
 def _texto_obrigatorio(dado: dict[str, Any], campo: str) -> str:
