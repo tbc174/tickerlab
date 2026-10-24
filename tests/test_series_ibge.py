@@ -258,6 +258,6 @@ def test_pedido_da_pam_municipal_cabe_no_limite_do_sidra():
     coleta = ibge_sidra.COLETAS_POR_NOME["pam-municipal"]
     classes = sum(len(c) for c in coleta.classificacoes.values())
     por_ano = ibge_sidra.MUNICIPIOS_DE_MG * len(coleta.variaveis) * classes
-    blocos = coleta._blocos("2010-2026")
+    blocos = coleta._blocos("2010-2026", coleta.territorios[0])
     maior = max(int(b.split("-")[1]) - int(b.split("-")[0]) + 1 for b in blocos)
     assert maior * por_ano <= ibge_sidra.VALORES_POR_PEDIDO_NO_SIDRA

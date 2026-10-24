@@ -23,8 +23,8 @@
 
 - **Ficha do conjunto no dados.gov.br** (vigia da licença do CNPJ): a rota pública da ficha responde
   401 sem a chave do portal (`chave-api-dados-abertos`, no `.env` do servidor). Guarda só o que decide a
-  licença (nome, `license_id`, `license_title`): o JSON inteiro traz contadores de downloads e datas que
-  mudam todo dia e fariam a vigia avisar à toa.
+  licença (`id`, `nome`, `titulo`, `licenca`): o JSON inteiro traz datas que mudam a cada carga (e o
+  e-mail do responsável, dado de pessoa) e faria a vigia avisar à toa.
 
 Os dois primeiros devolvem os cabeçalhos do arquivo de origem, então as fontes pesadas continuam
 pulando o que não mudou (ETag do ZIP inteiro ou do Parquet).
@@ -59,7 +59,8 @@ from base.arquivo.coleta import (
 )
 
 # o que a vigia da licença guarda da ficha: quem é o conjunto e qual licença ele declara
-CAMPOS_DA_LICENCA_DA_FICHA = ("id", "title", "license_id", "license_title")
+CAMPOS_DA_LICENCA_DA_FICHA = ("id", "nome", "titulo", "licenca")
+CAMPO_DA_LICENCA = "licenca"
 TAMANHO_DO_TRECHO = 8 * 1024 * 1024  # cada pedido de trecho lê até 8 MB
 HTTP_NAO_ENCONTRADO = 404
 # cabeçalho local de cada arquivo dentro do ZIP: 30 bytes fixos, depois o nome e o campo extra
@@ -366,7 +367,7 @@ class SemChaveDoPortal(ValueError):
 def licenca_da_ficha_do_dados_gov_br(url: str, variavel_da_chave: str) -> Obter:
     """A licença declarada na ficha de um conjunto do dados.gov.br, sem os campos que mudam todo dia.
 
-    Falha (nunca grava um arquivo vazio) se a chave não existe, se a ficha não traz `license_id` ou
+    Falha (nunca grava um arquivo vazio) se a chave não existe, se a ficha não traz a `licenca` ou
     se o portal respondeu outra coisa: uma vigia que cala quando a página muda não serve."""
 
     def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
@@ -378,8 +379,8 @@ def licenca_da_ficha_do_dados_gov_br(url: str, variavel_da_chave: str) -> Obter:
             cabecalhos={"chave-api-dados-abertos": chave, "Accept": "application/json"},
         )
         ficha = json.loads(resposta.conteudo)
-        if not isinstance(ficha, dict) or not ficha.get("license_id"):
-            raise ValueError("a ficha do dados.gov.br não traz license_id")
+        if not isinstance(ficha, dict) or not ficha.get(CAMPO_DA_LICENCA):
+            raise ValueError(f"a ficha do dados.gov.br não traz {CAMPO_DA_LICENCA}")
         enxuta = {c: ficha.get(c) for c in CAMPOS_DA_LICENCA_DA_FICHA}
         destino.write_text(
             json.dumps(enxuta, ensure_ascii=False, sort_keys=True), encoding="utf-8"

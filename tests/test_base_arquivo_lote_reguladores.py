@@ -84,7 +84,14 @@ def test_nenhum_pacote_traz_dado_por_pessoa_nem_o_que_foi_barrado_por_volume():
 
 def test_id_comeca_pela_familia_que_ja_tem_licenca_e_revenda():
     for f in lote.fontes():
-        assert f.id.split("-", 1)[0] in {"aneel", "ons", "ccee"}
+        assert f.id.split("-", 1)[0] in {
+            "aneel",
+            "ons",
+            "ccee",
+            "ans",
+            "susep",
+            "comexstat",
+        }
         assert licenca_da_fonte(f.id) != SEM_LICENCA_CONHECIDA
         assert revenda_da_fonte(f.id) is not None
 
@@ -145,6 +152,9 @@ def test_ritmo_pelo_calendario_e_pesadas_so_as_grandes_do_ons_e_da_ccee():
         "ons-cmo-semi-horario",
         "ons-disponibilidade",
         "ccee-consumo-horario",
+        "ans-precos",
+        "ans-cobertura-e-produtos",
+        "susep-ses-grandes",
     }
 
 
@@ -155,3 +165,87 @@ def test_toda_fonte_nova_tem_destino_e_o_gsf_e_planejado():
     assert gsf.tipo == destinos.PLANEJADA
     assert gsf.onde == "hidreletricas/gsf"
     assert destinos.DESTINOS["ons-itaipu"].tipo == destinos.SO_PESQUISA
+
+
+class PastaDaAns:
+    """Responde à listagem de cada pasta do FTP da ANS com o HTML montado aqui."""
+
+    def __init__(self, arquivos: dict[str, list[str]]):
+        self.arquivos = arquivos
+        self.pedidos: list[str] = []
+
+    def ler(self, url, *, metodo="GET", cabecalhos=None, corpo=None):
+        self.pedidos.append(url)
+        pasta = url.removeprefix(lote.RAIZ_DA_ANS).rstrip("/")
+        nomes = self.arquivos.get(pasta, [])
+        links = "".join(f'<a href="{n}">{n}</a>' for n in nomes)
+        return Resposta(
+            url,
+            f'<a href="?C=N;O=D">Nome</a><a href="/FTP/">Pai</a>{links}'.encode(),
+            {},
+        )
+
+
+def test_ans_guarda_csv_zip_e_dicionario_da_pasta_e_ignora_o_resto_da_listagem():
+    portal = PastaDaAns(
+        {
+            "painel_de_glosas-057/dados": ["glosa.csv", "dicionario.ods", "leia.html"],
+        }
+    )
+    alvos = _fonte("ans-glosas").descobrir(portal, AGORA)
+    assert [a.url for a in alvos] == [
+        f"{lote.RAIZ_DA_ANS}painel_de_glosas-057/dados/glosa.csv",
+        f"{lote.RAIZ_DA_ANS}painel_de_glosas-057/dados/dicionario.ods",
+    ]
+
+
+def test_ans_pasta_vazia_e_erro_com_o_nome_dela():
+    portal = PastaDaAns({"peona_sus": ["PEONA_2026.csv"]})
+    with pytest.raises(ErroDeDescoberta, match="dados_ressarcimento_SUS_operadora"):
+        _fonte("ans-ressarcimento-sus").descobrir(portal, AGORA)
+
+
+def test_ans_nao_guarda_reclamacao_de_beneficiario_nem_o_que_ja_esta_em_outra_fonte():
+    pastas = {p for _, ps, _ in lote.PASTAS_DA_ANS.values() for p in ps}
+    assert (
+        not {
+            "demandas_dos_consumidores_nip",
+            "demandas_dos_consumidores_reclamacao_beneficiarios",
+            "dados_consolidados_da_saude_suplementar",
+            "demonstracoes_contabeis",
+        }
+        & pastas
+    )
+    assert len(pastas) == sum(len(ps) for _, ps, _ in lote.PASTAS_DA_ANS.values())
+
+
+def test_susep_grandes_pega_so_os_membros_da_lista_e_falha_se_o_zip_perder_um(
+    monkeypatch,
+):
+    membros = [*lote.MEMBROS_GRANDES_DA_SUSEP, "Ses_Administradores.csv"]
+    monkeypatch.setattr(lote, "membros_do_zip_remoto", lambda cliente, url: membros)
+    alvos = _fonte("susep-ses-grandes").descobrir(None, AGORA)
+    assert [a.url.split("#")[1] for a in alvos] == list(lote.MEMBROS_GRANDES_DA_SUSEP)
+    monkeypatch.setattr(lote, "membros_do_zip_remoto", lambda cliente, url: membros[1:])
+    with pytest.raises(ErroDeDescoberta, match="SES_UF2.csv"):
+        _fonte("susep-ses-grandes").descobrir(None, AGORA)
+
+
+def test_susep_grandes_nao_repete_membro_nem_pega_arquivo_de_pessoa():
+    from base.arquivo import lote_brasil2
+
+    ja_guardados = {
+        *lote_brasil2.CSVS_COMPLEMENTARES_DA_SUSEP,
+        *fontes.CSVS_DA_SUSEP,
+    }
+    novos = set(lote.MEMBROS_GRANDES_DA_SUSEP)
+    assert not novos & ja_guardados
+    assert not {m for m in novos if "dministradores" in m or "contatos" in m}
+
+
+def test_comex_tabelas_usa_os_nomes_que_devolvem_csv():
+    alvos = _fonte("comexstat-tabelas").descobrir(None, AGORA)
+    nomes = [a.url.rsplit("/", 1)[-1] for a in alvos]
+    assert "NCM_SH.csv" in nomes and "PAIS_BLOCO.csv" in nomes
+    assert not {"SH.csv", "CUCI.csv", "ISIC.csv", "CGCE.csv"} & set(nomes)
+    assert not set(nomes) & {f"{n}.csv" for n in fontes.TABELAS_DO_COMEX}

@@ -2,7 +2,7 @@
 
     python -m scripts.atualizar_series_ibge
 
-LSPA, PAM (por município), PMC, PIM-PF e IPCA por item (`src/ibge_sidra.py`). Na primeira vez de
+LSPA, PAM (por município e por UF), PMC e PMS, PIM-PF, IPP, SINAPI, IPCA, IPCA-15 e INPC por item, silvicultura, rebanhos e população (`src/ibge_sidra.py`). Na primeira vez de
 cada tabela busca desde 2010; depois, só uma janela recente, longa o bastante para pegar as
 revisões (a LSPA revisa a safra todo mês). Valor igual ao guardado não grava nada; valor revisto
 vira uma safra nova, sem apagar a anterior ("como estava em D" nunca traz revisão posterior a D).

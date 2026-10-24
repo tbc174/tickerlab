@@ -383,13 +383,15 @@ def test_arquivo_do_google_drive_segue_a_pagina_de_confirmacao(tmp_path):
         obter.arquivo_do_google_drive(url)(sem_formulario, destino)
 
 
+# a ficha como a rota `/dados/api/publico/conjuntos-dados/` responde desde 2026 (campos em português;
+# a antiga, do CKAN, trazia `license_id` e `license_title`)
 FICHA_DO_CNPJ = {
     "id": "d0e6983f-c44e-4317-9f0b-820ae8a09ae8",
-    "title": "Cadastro Nacional da Pessoa Jurídica - CNPJ",
-    "license_id": "cc-by",
-    "license_title": "Creative Commons Attribution",
-    "num_downloads": 800054,  # muda todo dia: não pode entrar no arquivo da vigia
-    "metadata_modified": "2026-02-09T10:00:00",
+    "nome": "cadastro-nacional-da-pessoa-juridica---cnpj",
+    "titulo": "Cadastro Nacional da Pessoa Jurídica - CNPJ",
+    "licenca": "cc-by",
+    "dataUltimaAtualizacaoArquivo": "23/10/2026 10:00:00",  # muda todo mês: fora da vigia
+    "emailResponsavel": "contato@exemplo.gov.br",  # dado de pessoa: não pode ser guardado
 }
 
 
@@ -418,9 +420,9 @@ def test_vigia_da_licenca_do_cnpj_guarda_so_a_licenca_e_manda_a_chave(
     guardado = json.loads(destino.read_text(encoding="utf-8"))
     assert guardado == {
         "id": FICHA_DO_CNPJ["id"],
-        "title": FICHA_DO_CNPJ["title"],
-        "license_id": "cc-by",
-        "license_title": "Creative Commons Attribution",
+        "nome": FICHA_DO_CNPJ["nome"],
+        "titulo": FICHA_DO_CNPJ["titulo"],
+        "licenca": "cc-by",
     }
     assert "segredo-de-teste" not in destino.read_text(encoding="utf-8")
 
@@ -435,7 +437,9 @@ def test_vigia_da_licenca_do_cnpj_sem_chave_falha_sem_gravar(tmp_path, monkeypat
     assert not destino.exists()
 
 
-@pytest.mark.parametrize("ficha", [{}, {"license_id": ""}, ["lista"], "texto"])
+@pytest.mark.parametrize(
+    "ficha", [{}, {"licenca": ""}, {"license_id": "cc-by"}, ["lista"], "texto"]
+)
 def test_vigia_da_licenca_do_cnpj_falha_se_a_ficha_nao_traz_a_licenca(
     tmp_path, monkeypatch, ficha
 ):
@@ -458,9 +462,17 @@ def test_vigia_do_cnpj_avisa_quando_a_licenca_muda(tmp_path, monkeypatch):
     destino = tmp_path / "a.json"
     alvo.obter(PortalComChave(FICHA_DO_CNPJ), destino)
     antes = coleta.texto_visivel(destino.read_bytes())
-    mudou = dict(FICHA_DO_CNPJ, license_id="cc-by-nd", license_title="CC BY-ND")
+    mudou = dict(FICHA_DO_CNPJ, licenca="cc-by-nd")
     alvo.obter(PortalComChave(mudou), destino)
     assert coleta.texto_visivel(destino.read_bytes()) != antes
-    # só os contadores mudam: o texto vigiado é o mesmo
-    alvo.obter(PortalComChave(dict(FICHA_DO_CNPJ, num_downloads=1)), destino)
+    # só as datas mudam: o texto vigiado é o mesmo
+    mexida = dict(FICHA_DO_CNPJ, dataUltimaAtualizacaoArquivo="24/11/2026 10:00:00")
+    alvo.obter(PortalComChave(mexida), destino)
     assert coleta.texto_visivel(destino.read_bytes()) == antes
+
+
+def test_vigia_do_cnpj_usa_a_rota_da_ficha_que_aceita_a_chave():
+    """Regressão (24/10/2026): sem o `/dados` no começo, a rota responde 401 mesmo com a chave."""
+    assert fontes.FICHA_DO_CNPJ_NO_DADOS_GOV_BR.startswith(
+        "https://dados.gov.br/dados/api/publico/conjuntos-dados/"
+    )

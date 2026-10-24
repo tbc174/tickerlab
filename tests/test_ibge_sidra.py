@@ -69,14 +69,68 @@ def test_cada_coleta_gera_url_com_a_tabela_e_as_variaveis(coleta):
 
 
 def test_as_tabelas_da_primeira_leva():
-    assert {c.tabela for c in ibge_sidra.COLETAS} == {
-        6588, 1613, 8880, 8881, 8888, 8887, 7060,
-    }  # fmt: skip
+    primeira = {6588, 1613, 8880, 8881, 8888, 8887, 7060}
+    assert primeira <= {c.tabela for c in ibge_sidra.COLETAS}
     por_nome = ibge_sidra.COLETAS_POR_NOME
     assert por_nome["lspa"].tabela == 6588
     assert por_nome["pam-municipal"].frequencia == "anual"
     assert por_nome["pmc-restrito"].tabela == 8880
     assert por_nome["pmc-ampliado"].tabela == 8881
+
+
+def test_lote_1_do_levantamento_de_22_10_esta_nas_coletas():
+    lote_1 = {
+        8882, 8883, 8885, 6588, 8688, 6903, 2296, 7062, 7063, 1612, 291, 5930, 3939, 74, 6579,
+    }  # fmt: skip
+    assert lote_1 <= {c.tabela for c in ibge_sidra.COLETAS}
+
+
+def test_nome_de_coleta_nao_se_repete():
+    nomes = [c.nome for c in ibge_sidra.COLETAS]
+    assert len(nomes) == len(set(nomes))
+
+
+def test_nenhuma_coleta_e_trimestral_nem_de_outra_frequencia():
+    """O leitor só entende AAAAMM e AAAA; o trimestral é o lote 2."""
+    assert {c.frequencia for c in ibge_sidra.COLETAS} <= {"mensal", "anual"}
+
+
+@pytest.mark.parametrize("coleta", ibge_sidra.COLETAS, ids=lambda c: c.nome)
+def test_nenhum_pedido_passa_do_limite_de_valores_do_sidra(coleta):
+    """Primeira carga (desde 2010): cada pedido, do menor ao maior território, cabe nos 50.000."""
+    periodo = "201001-202610" if coleta.frequencia == "mensal" else "2010-2026"
+    for territorio in coleta.territorios:
+        celulas = coleta._celulas_por_periodo(territorio)
+        for bloco in coleta._blocos(periodo, territorio):
+            de, ate = bloco.split("-")
+            periodos = ibge_sidra._indice(ate) - ibge_sidra._indice(de) + 1
+            assert periodos * celulas <= ibge_sidra.VALORES_POR_PEDIDO_NO_SIDRA
+
+
+def test_o_8885_e_as_tabelas_por_uf_vao_em_varios_pedidos_quando_nao_cabem():
+    ampliado = ibge_sidra.COLETAS_POR_NOME["pmc-atividades-ampliado"]
+    pedidos_por_uf = [u for u in ampliado.urls("201001-202610") if "/n3/" in u]
+    assert len(pedidos_por_uf) > 1
+    assert "/p/201001-" in pedidos_por_uf[0]
+    assert pedidos_por_uf[-1].split("/p/")[1].split("/")[0].endswith("-202610")
+
+
+def test_blocos_mensais_cobrem_o_periodo_sem_buraco_nem_repeticao():
+    coleta = ibge_sidra.COLETAS_POR_NOME["pmc-atividades-ampliado"]
+    blocos = coleta._blocos("201011-202603", "n3/all")
+    meses = []
+    for bloco in blocos:
+        de, ate = bloco.split("-")
+        meses += range(ibge_sidra._indice(de), ibge_sidra._indice(ate) + 1)
+    assert meses == list(
+        range(ibge_sidra._indice("201011"), ibge_sidra._indice("202603") + 1)
+    )
+
+
+def test_periodo_que_nao_e_intervalo_vai_inteiro():
+    coleta = ibge_sidra.COLETAS_POR_NOME["sinapi"]
+    assert coleta._blocos("last 3") == ["last 3"]
+    assert coleta._blocos("202601") == ["202601"]
 
 
 def test_pam_municipal_vai_uf_por_uf_para_caber_no_limite_do_sidra():
@@ -245,3 +299,66 @@ def test_serie_do_acervo_tem_nome_unidade_e_frequencia():
     assert serie.frequencia == "mensal"
     assert "Indústria geral" in serie.nome and "Brasil" in serie.nome
     assert not serie.uso_interno
+
+
+# --- séries novas do lote 1 (22/10/2026) -----------------------------------------------------------
+def test_pmc_por_atividade_usa_o_tipo_de_indice_de_cada_tabela():
+    por_nome = ibge_sidra.COLETAS_POR_NOME
+    assert por_nome["pmc-atividades-restrito"].classificacoes[11046] == (56733, 56734)
+    assert por_nome["pmc-atividades-ampliado"].classificacoes[11046] == (56735, 56736)
+    assert set(por_nome["pmc-atividades-restrito"].classificacoes[85]) <= set(
+        por_nome["pmc-atividades-ampliado"].classificacoes[85]
+    )
+
+
+def test_le_a_pmc_por_atividade_com_duas_classificacoes():
+    valores = ibge_sidra.ler_resposta(_resposta("pmc_atividades.json"))
+    assert valores
+    assert all(len(v.categorias) == 2 for v in valores)
+    codigo = ibge_sidra.codigo_da_serie(8882, valores[0])
+    tipo, atividade = valores[0].categorias
+    assert codigo == f"ibge-sidra-8882-{valores[0].variavel}-{tipo}-{atividade}-br"
+
+
+def test_le_o_pimpf_por_classes_e_nao_soma_cafe():
+    valores = ibge_sidra.ler_resposta(_resposta("pimpf_classes.json"))
+    assert {v.categorias for v in valores} <= {(c,) for c in ibge_sidra.PIMPF_CLASSES}
+    assert ibge_sidra.somar_total_do_cafe(valores) == valores  # só o café soma
+
+
+def test_silvicultura_total_em_sigilo_vira_vazio_e_o_resto_tem_numero():
+    valores = ibge_sidra.ler_resposta(_resposta("pevs_producao.json"))
+    por_categoria = {v.categorias[0]: v.valor for v in valores if v.periodo == "2024"}
+    assert por_categoria[0] is None
+    assert por_categoria[3458] == 122194270.0
+    assert {v.referencia for v in valores} == {date(2024, 12, 31), date(2025, 12, 31)}
+
+
+def test_ipp_le_indice_e_variacoes():
+    valores = ibge_sidra.ler_resposta(_resposta("ipp_atividades.json"))
+    assert {v.variavel for v in valores} <= set(ibge_sidra.IPP_VARIAVEIS)
+    assert all(v.referencia.day == 1 for v in valores)
+
+
+def test_ids_de_serie_das_coletas_novas_nao_se_repetem_entre_tabelas():
+    """O id leva a tabela, a variável, as categorias e o local: nenhuma combinação se repete."""
+    vistos = set()
+    for c in ibge_sidra.COLETAS:
+        for variavel in c.variaveis:
+            combinacoes = [()]
+            for ids in c.classificacoes.values():
+                combinacoes = [(*a, i) for a in combinacoes for i in ids]
+            for categorias in combinacoes:
+                chave = (c.tabela, variavel, categorias)
+                assert chave not in vistos
+                vistos.add(chave)
+
+
+def test_ipca15_e_inpc_reaproveitam_os_itens_do_ipca():
+    por_nome = ibge_sidra.COLETAS_POR_NOME
+    assert (
+        por_nome["ipca15-itens"].classificacoes == por_nome["ipca-itens"].classificacoes
+    )
+    assert (
+        por_nome["inpc-itens"].classificacoes == por_nome["ipca-itens"].classificacoes
+    )
