@@ -89,6 +89,17 @@ def test_sessao_aberta_depois_do_bloqueio_nao_vale(conexao, chefe, ana):
     assert sessoes.conta_da_sessao(conexao, atrasada) is None
 
 
+def test_conta_antiga_bloqueada_nao_entra_nem_ganha_a_identidade(conexao, chefe, ana):
+    """Conta da versão clássica achada só pelo `google_sub` (sem linha em `identidades`)."""
+    conexao.execute(sa.delete(identidades).where(identidades.c.usuario_id == ana.id))
+    _bloquear(conexao, chefe, ana)
+    with pytest.raises(ContaBloqueadaError):
+        entrar(conexao, "ana", "ana@exemplo.com", "Ana Souza", email_confirmado=True)
+    assert not conexao.execute(
+        sa.select(identidades).where(identidades.c.usuario_id == ana.id)
+    ).first()
+
+
 def test_conta_bloqueada_nao_entra_pelo_google(conexao, chefe, ana):
     _bloquear(conexao, chefe, ana)
     with pytest.raises(ContaBloqueadaError) as erro:
