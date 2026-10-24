@@ -1823,6 +1823,202 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "sec-bulk-submissions",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-bulk-companyfacts",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-demonstracoes-financeiras",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-demonstracoes-financeiras-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-notas-das-demonstracoes",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-notas-das-demonstracoes-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-insiders",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-insiders-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-nport",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-nport-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-ncen",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-ncen-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-nmfp",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-nmfp-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-reg-a",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-reg-a-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-crowdfunding",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-crowdfunding-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-bdc",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-bdc-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-form-adv",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-form-adv-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-consultores-municipais",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-consultores-municipais-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-corretoras",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-corretoras-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-foia-registros",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "sec-foia-registros-historico",
+      "licenca": "Acesso público (EDGAR, SEC)",
+      "marca": "uso_interno",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
       "id": "contrapartes-cafe",
       "licenca": "Página guardada só como prova; na ficha, fato e link",
       "marca": "a_confirmar",
@@ -2430,6 +2626,146 @@
       "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "cvm-fundos-informe-diario",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fundos-lamina",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fundos-perfil-mensal",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fundos-balancete",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fundos-extrato",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fundos-complementares",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fundos-eventuais",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fundos-entrega",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fii-mensal",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fii-trimestral",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fii-anual",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fii-demonstracoes",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fii-administradores",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-securitizadoras-ots",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fip-trimestral",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fip-quadrimestral",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fie-balancete",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fie-balanco",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-fie-medidas",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cvm-arrecadacao",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "wiki-pageviews-empresas",

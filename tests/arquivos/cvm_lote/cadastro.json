@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "result": {
+    "name": "adm_fii-cad",
+    "resources": [
+      {
+        "format": "TXT",
+        "url": "https://dados.cvm.gov.br/dados/ADM_FII/CAD/META/meta_cad_adm_fii.txt",
+        "name": "Dicionário de Dados"
+      },
+      {
+        "format": "CSV",
+        "url": "https://dados.cvm.gov.br/dados/ADM_FII/CAD/DADOS/cad_adm_fii.csv",
+        "name": "Administradores de FII"
+      }
+    ]
+  }
+}

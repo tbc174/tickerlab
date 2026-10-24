@@ -276,3 +276,28 @@ def test_focus_sem_base_de_calculo_nao_filtra():
 
     bcb.baixar_focus("IPCA", HOJE, buscar)
     assert "baseCalculo" not in pedidos[0]
+
+
+def test_toda_serie_do_sgs_tem_frequencia_codigo_e_o_futuro_nao_entra():
+    diarias = {c for c in bcb.SERIES if coletor.serie_sgs(c).frequencia == "diária"}
+    assert diarias == coletor.SGS_DIARIAS  # as de SGS_DIARIAS existem em SERIES
+    assert coletor.serie_sgs("credito_saldo").frequencia == "mensal"
+    assert coletor.serie_sgs("selic_acumulada_mes_anualizada").frequencia == "mensal"
+    assert coletor.serie_sgs("tr").frequencia == "diária"
+    codigos = [coletor.serie_sgs(c).codigo for c in bcb.SERIES]
+    assert len(codigos) == len(set(codigos))
+    # só o IGP-M da FGV é de terceiros: as séries novas do BC seguem a licença do BC
+    assert {"igpm"} == coletor.SGS_DE_TERCEIROS
+
+
+def test_focus_novos_tem_serie_propria_e_nome_da_api():
+    assert coletor.FOCUS["divida_liquida"] == "Dívida líquida do setor público"
+    assert (
+        coletor.serie_focus("resultado_primario").codigo
+        == "bcb-focus-resultado_primario"
+    )
+    assert coletor.serie_focus("igpm").frequencia == "anual"
+    assert len({coletor.serie_focus(c).codigo for c in coletor.FOCUS}) == len(
+        coletor.FOCUS
+    )
+    assert "'" not in "".join(coletor.FOCUS.values())  # a consulta recusa aspas

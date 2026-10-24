@@ -4,6 +4,10 @@ Cada arquivo `graficos_<modelo>.json` guarda a resposta do modelo (guia v1) e o 
 porta 2. O que importa: a resposta é desta ficha; a porta 1 de hoje barra o que barrava na prova
 (o ano no título) e o que só a porta 2 pegava (ofertas por ano com o ano aberto e anos faltando); e
 a montagem leva só o que passou nas duas.
+
+O guia v1 pedia um porquê neutro ("Mostra, passo a passo, como..."); o Tiago achou os gráficos pouco
+interessantes, e desde a emenda 1 do plano o porquê do modelo é o achado, com número. A porta 1 de
+hoje reprova esses porquês neutros (`achado_sem_numero`), e a reserva toma o lugar deles.
 """
 
 import hashlib
@@ -26,13 +30,31 @@ ANALISE = saida.ler_analise(
 MODELOS = ("haiku", "sonnet", "opus")
 TEMPO = {p1g.PERIODO_ABERTO, p1g.PERIODO_FALTANDO}
 
-# (índice, regra) que a porta 1 reprova; gráficos e destaques que vão ao ar
+SEM_NUMERO = p1g.ACHADO_SEM_NUMERO
+DO_MODELO, DA_RESERVA = saida.ORIGEM_MODELO, rg.ORIGEM_REGRAS
+
+# (índice, regra) que a porta 1 reprova; a origem dos gráficos e quantos destaques vão ao ar
 ESPERADO = {
-    "haiku": ({(3, p1g.PERIODO_ABERTO), (3, p1g.PERIODO_FALTANDO)}, 4, 1),
-    "sonnet": ({(3, p1g.PERIODO_ABERTO), (3, p1g.PERIODO_FALTANDO)}, 3, 2),
-    "opus": (
-        {(1, porta1.DATA), (2, p1g.PERIODO_ABERTO), (2, p1g.PERIODO_FALTANDO)},
+    "haiku": (
+        {(i, SEM_NUMERO) for i in range(5)}
+        | {(3, p1g.PERIODO_ABERTO), (3, p1g.PERIODO_FALTANDO)},
+        [DA_RESERVA, DA_RESERVA],
+        1,
+    ),
+    "sonnet": (
+        {(i, SEM_NUMERO) for i in range(4)}
+        | {(3, p1g.PERIODO_ABERTO), (3, p1g.PERIODO_FALTANDO)},
+        [DA_RESERVA, DA_RESERVA],
         2,
+    ),
+    "opus": (  # o único que já escrevia o achado com número em quase todos
+        {
+            (0, SEM_NUMERO),
+            (1, porta1.DATA),
+            (2, p1g.PERIODO_ABERTO),
+            (2, p1g.PERIODO_FALTANDO),
+        },
+        [DO_MODELO, DA_RESERVA],
         2,
     ),
 }
@@ -77,7 +99,7 @@ def test_porta1_pega_de_graca_o_que_a_porta2_pegou(modelo):
 def test_montagem_leva_so_o_que_passou_nas_duas_portas(modelo):
     reprovados = frozenset(_congelado(modelo)["cega"]["reprovados"])
     finais = rg.graficos_finais(_escolha(modelo), ENTRADA, ANALISE, reprovados)
-    _, graficos, destaques = ESPERADO[modelo]
-    assert [g.origem for g in finais.graficos] == [saida.ORIGEM_MODELO] * graficos
+    _, origens, destaques = ESPERADO[modelo]
+    assert [g.origem for g in finais.graficos] == origens
     assert len(finais.destaques) == destaques
     assert not p1g.conferir(finais, ENTRADA, ANALISE).reprovacoes

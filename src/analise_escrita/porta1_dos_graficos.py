@@ -30,10 +30,13 @@ FORMA, REPETIDO, ALEM_DO_MAXIMO, ANCORA = (
     "ancora",
 )
 POR_QUE_FORA = "por_que_fora"
+# o porquê do gráfico do modelo é o achado, com número (emenda 1 do plano); a reserva só descreve
+ACHADO_SEM_NUMERO = "achado_sem_numero"
 PERIODO_ABERTO, PERIODO_FALTANDO = "periodo_aberto", "periodo_faltando"
 SECAO_INEXISTENTE, SECAO_SEM_DESTAQUE = "secao_inexistente", "secao_sem_destaque"
 # seções que já ficam no começo ou no fim de todo relatório: puxá-las para o texto não mostra nada
-SECOES_SEM_DESTAQUE = frozenset({"ficha_tecnica", "metodologia", "limites"})
+# (e as séries calculadas, que são tabelas para gráfico, não uma seção do relatório)
+SECOES_SEM_DESTAQUE = frozenset({"ficha_tecnica", "metodologia", "limites", "series"})
 
 
 def rotulo(item: str, indice: int) -> str:
@@ -182,6 +185,9 @@ def _conferir_grafico(
     ids = {linha.id for linha in linhas}
     titulo = saida.Frase(grafico.titulo, tuple(sorted(ids)))
     yield from _falhas_do_texto(titulo, grafico.por_que, ids, ficha)
+    do_modelo = grafico.origem == saida.ORIGEM_MODELO
+    if do_modelo and not numeros.numeros(grafico.por_que.texto):
+        yield ACHADO_SEM_NUMERO, grafico.por_que.texto
     ancora = _ancora(analise, grafico.parte, grafico.paragrafo)
     if ancora:
         yield ANCORA, ancora

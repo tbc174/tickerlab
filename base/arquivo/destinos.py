@@ -14,8 +14,10 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_cvm,
     lote_eua,
     lote_licitacoes,
+    lote_sec,
     lote_setoriais,
 )
 
@@ -143,6 +145,11 @@ _LOTE_EUA_SO_ARQUIVO = (
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
 )
 
+_LOTE_SEC_SO_ARQUIVO = (
+    "dado público da SEC guardado como publicado; a tabela com contrato no catálogo ainda não existe "
+    "(sem pessoa física nas tabelas derivadas)"
+)
+
 _LOTE_ATENCAO_SO_ARQUIVO = (
     "atenção e texto guardados já filtrados (contagem, tema, tom e índice; nunca pessoa nem texto de "
     "terceiros); a tabela com contrato no catálogo ainda não existe"
@@ -170,6 +177,11 @@ _LOTE_CLIMA_SO_ARQUIVO = (
 _LOTE_BRASIL2_SO_ARQUIVO = (
     "dado aberto de órgão público brasileiro guardado como publicado, só CNPJ e agregados (a pessoa "
     "física sai antes de guardar, ADR 0088); a tabela com contrato no catálogo ainda não existe"
+)
+
+_LOTE_CVM_SO_ARQUIVO = (
+    "dado aberto da CVM (ODbL) guardado como publicado, só fundo, CNPJ e agregado (sem cadastro de "
+    "pessoa, ADR 0088); a tabela com contrato no catálogo ainda não existe"
 )
 
 DESTINOS: dict[str, Destino] = {
@@ -370,6 +382,23 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CLIMA_SO_ARQUIVO)
         for f in lote_clima.fontes()
     },
+    # lote CVM (linha 200 da fila, 23/10/2026): guardado no acervo; as tabelas são o lote 2
+    **{
+        f.id: _planejada("cvm-lote-2/tabelas", _LOTE_CVM_SO_ARQUIVO)
+        for f in lote_cvm.fontes()
+    },
+    "cvm-fundos-informe-diario": _planejada(
+        "cvm-lote-2/cota-por-fundo",
+        "cota, patrimônio e captação diária de cada fundo 555",
+    ),
+    "cvm-fii-mensal": _planejada("cvm-lote-2/tela-de-fii", "informe mensal dos FII"),
+    "cvm-fii-trimestral": _planejada(
+        "cvm-lote-2/tela-de-fii", "informe trimestral dos FII"
+    ),
+    "cvm-fii-anual": _planejada("cvm-lote-2/tela-de-fii", "informe anual dos FII"),
+    "cvm-fii-demonstracoes": _planejada(
+        "cvm-lote-2/tela-de-fii", "demonstrações dos FII"
+    ),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -417,6 +446,11 @@ DESTINOS: dict[str, Destino] = {
     **{
         f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
         for f in lote_eua.fontes()
+    },
+    # lote SEC (rodada 4, 23/10/2026): idem, a carga na base de ML é uma fila própria
+    **{
+        f.id: _planejada("lote-sec/carga", _LOTE_SEC_SO_ARQUIVO)
+        for f in lote_sec.fontes()
     },
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),

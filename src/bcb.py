@@ -77,6 +77,223 @@ SERIES = {
     # variações de novembro de 2024 divulgadas pelo BC (geral +3,90%; agropecuária +5,46%)
     "icbr": Serie(27574, "IC-Br (índice de commodities, geral)", "índice"),
     "icbr_agro": Serie(27575, "IC-Br agropecuária", "índice"),
+    # lote 1 de séries novas (linha 199 da fila, 23/10/2026): códigos e nomes do catálogo de dados
+    # abertos do BC; cada um respondeu com valor recente em 23/10/2026. Todas mensais, salvo as de
+    # `SGS_DIARIAS` em scripts/atualizar_series_macro.py
+    # crédito: saldo e concessões (R$ milhões)
+    "credito_saldo": Serie(20539, "Saldo da carteira de crédito (total)", "R$ milhões"),
+    "credito_saldo_pj": Serie(
+        20540, "Saldo da carteira de crédito (pessoas jurídicas)", "R$ milhões"
+    ),
+    "credito_saldo_pf": Serie(
+        20541, "Saldo da carteira de crédito (pessoas físicas)", "R$ milhões"
+    ),
+    "credito_saldo_livres": Serie(
+        20542, "Saldo da carteira de crédito com recursos livres", "R$ milhões"
+    ),
+    "credito_concessoes": Serie(20631, "Concessões de crédito (total)", "R$ milhões"),
+    "credito_concessoes_pf": Serie(
+        20633, "Concessões de crédito (pessoas físicas)", "R$ milhões"
+    ),
+    "credito_concessoes_livres": Serie(
+        20634, "Concessões de crédito com recursos livres", "R$ milhões"
+    ),
+    "credito_sobre_pib": Serie(
+        20622, "Saldo da carteira de crédito em relação ao PIB", "% do PIB"
+    ),
+    # inadimplência (% da carteira, atraso de mais de 90 dias)
+    "inadimplencia": Serie(
+        21082, "Inadimplência da carteira de crédito (total)", "% da carteira"
+    ),
+    "inadimplencia_pj": Serie(
+        21083,
+        "Inadimplência da carteira de crédito (pessoas jurídicas)",
+        "% da carteira",
+    ),
+    "inadimplencia_pf": Serie(
+        21084, "Inadimplência da carteira de crédito (pessoas físicas)", "% da carteira"
+    ),
+    "inadimplencia_livres": Serie(
+        21085, "Inadimplência do crédito com recursos livres", "% da carteira"
+    ),
+    "inadimplencia_livres_pf": Serie(
+        21112, "Inadimplência do crédito livre de pessoas físicas", "% da carteira"
+    ),
+    "inadimplencia_cartao_parcelado": Serie(
+        21128,
+        "Inadimplência do cartão de crédito parcelado (pessoas físicas)",
+        "% da carteira",
+    ),
+    "inadimplencia_cartao": Serie(
+        21129,
+        "Inadimplência do cartão de crédito total (pessoas físicas)",
+        "% da carteira",
+    ),
+    # juros médios das operações de crédito (% ao ano)
+    "juros_credito": Serie(20714, "Taxa média de juros do crédito (total)", "% ao ano"),
+    "juros_credito_pf": Serie(
+        20716, "Taxa média de juros do crédito (pessoas físicas)", "% ao ano"
+    ),
+    "juros_credito_livres": Serie(
+        20717, "Taxa média de juros do crédito com recursos livres", "% ao ano"
+    ),
+    "juros_credito_livres_pj": Serie(
+        20718, "Taxa média de juros do crédito livre (pessoas jurídicas)", "% ao ano"
+    ),
+    "juros_desconto_duplicatas": Serie(
+        20719,
+        "Taxa média de juros: desconto de duplicatas e recebíveis (pessoas jurídicas)",
+        "% ao ano",
+    ),
+    "juros_desconto_cheques": Serie(
+        20720,
+        "Taxa média de juros: desconto de cheques (pessoas jurídicas)",
+        "% ao ano",
+    ),
+    # famílias e crédito ampliado
+    "endividamento_familias": Serie(
+        29037,
+        "Endividamento das famílias com o sistema financeiro, sobre a renda dos últimos 12 meses",
+        "% da renda",
+    ),
+    "endividamento_familias_sem_habitacao": Serie(
+        29038,
+        "Endividamento das famílias sem o crédito habitacional, sobre a renda dos últimos 12 meses",
+        "% da renda",
+    ),
+    "credito_ampliado": Serie(
+        28183, "Saldo de crédito ampliado ao setor não financeiro", "R$ milhões"
+    ),
+    "emprestimos_setor_nao_financeiro": Serie(
+        28184,
+        "Saldo de empréstimos e financiamentos ao setor não financeiro",
+        "R$ milhões",
+    ),
+    # setor externo (balanço de pagamentos, US$ milhões)
+    "transacoes_correntes": Serie(
+        22701, "Transações correntes (saldo no mês)", "US$ milhões"
+    ),
+    "transacoes_correntes_receita": Serie(
+        22702, "Transações correntes (receita no mês)", "US$ milhões"
+    ),
+    "transacoes_correntes_despesa": Serie(
+        22703, "Transações correntes (despesa no mês)", "US$ milhões"
+    ),
+    "balanca_comercial": Serie(
+        22707,
+        "Balança comercial do balanço de pagamentos (saldo no mês)",
+        "US$ milhões",
+    ),
+    "exportacao_bens": Serie(
+        22708, "Exportação de bens do balanço de pagamentos (no mês)", "US$ milhões"
+    ),
+    "importacao_bens": Serie(
+        22709, "Importação de bens do balanço de pagamentos (no mês)", "US$ milhões"
+    ),
+    "reservas_internacionais": Serie(
+        3546, "Reservas internacionais (mensal)", "US$ milhões"
+    ),
+    # fiscal
+    "divida_bruta_pib": Serie(
+        13762, "Dívida bruta do governo geral (metodologia de 2008)", "% do PIB"
+    ),
+    "divida_liquida_pib": Serie(
+        4513, "Dívida líquida do setor público consolidado", "% do PIB"
+    ),
+    "divida_liquida_valor": Serie(
+        4468,
+        "Dívida líquida do setor público (governo federal e Banco Central)",
+        "R$ milhões",
+    ),
+    "resultado_primario_12m": Serie(
+        5793,
+        "Resultado primário do setor público em 12 meses (NFSP sem desvalorização cambial)",
+        "% do PIB",
+    ),
+    # juros de referência
+    "selic_acumulada_mes": Serie(4390, "Selic acumulada no mês", "% no mês"),
+    "selic_acumulada_mes_anualizada": Serie(
+        4189, "Selic acumulada no mês, anualizada (base 252)", "% ao ano"
+    ),
+    "selic_anualizada": Serie(1178, "Selic anualizada (base 252)", "% ao ano"),
+    "tr": Serie(226, "Taxa Referencial (TR)", "% no período"),
+    "tbf": Serie(
+        25, "Poupança até 03/05/2012: rentabilidade no período (TBF)", "% no período"
+    ),
+    # inflação: núcleos e 12 meses
+    "ipca_12m": Serie(13522, "IPCA acumulado em 12 meses", "% em 12 meses"),
+    "ipca_nucleo_aparadas_suavizado": Serie(
+        4466, "IPCA: núcleo por médias aparadas com suavização", "% no mês"
+    ),
+    "ipca_nucleo_aparadas": Serie(
+        11426, "IPCA: núcleo por médias aparadas sem suavização", "% no mês"
+    ),
+    "ipca_nucleo_exclusao": Serie(
+        11427,
+        "IPCA: núcleo por exclusão (sem monitorados e alimentos no domicílio)",
+        "% no mês",
+    ),
+    "ipca_livres": Serie(11428, "IPCA: itens livres", "% no mês"),
+    "ipca_nucleo_ex2": Serie(16121, "IPCA: núcleo por exclusão (ex2)", "% no mês"),
+    "ipca_nucleo_dupla_ponderacao": Serie(
+        16122, "IPCA: núcleo de dupla ponderação", "% no mês"
+    ),
+    # atividade
+    "ibc_br_dessazonalizado": Serie(24364, "IBC-Br com ajuste sazonal", "índice"),
+    "confianca_consumidor": Serie(4393, "Índice de Confiança do Consumidor", "índice"),
+    "autoveiculos_producao": Serie(1373, "Produção total de autoveículos", "unidades"),
+    "autoveiculos_vendas": Serie(1378, "Vendas de autoveículos (total)", "unidades"),
+    "autoveiculos_vendas_internas": Serie(
+        1379, "Vendas de autoveículos no mercado interno", "unidades"
+    ),
+    # cartões e crédito por controle do banco
+    "cartao_saldo_pf": Serie(
+        20590,
+        "Saldo do cartão de crédito total (pessoas físicas, recursos livres)",
+        "R$ milhões",
+    ),
+    "cartao_saldo_pj": Serie(
+        20564,
+        "Saldo do cartão de crédito total (pessoas jurídicas, recursos livres)",
+        "R$ milhões",
+    ),
+    "cartao_concessoes_pf": Serie(
+        20682,
+        "Concessões de cartão de crédito total (pessoas físicas, recursos livres)",
+        "R$ milhões",
+    ),
+    "provisoes_sistema": Serie(
+        13645,
+        "Provisões sobre a carteira de crédito do sistema financeiro",
+        "% da carteira",
+    ),
+    "provisoes_publicos": Serie(
+        13666,
+        "Provisões sobre a carteira dos bancos sob controle público",
+        "% da carteira",
+    ),
+    "provisoes_privados_nacionais": Serie(
+        13672,
+        "Provisões sobre a carteira dos bancos sob controle privado nacional",
+        "% da carteira",
+    ),
+    "provisoes_estrangeiros": Serie(
+        13678,
+        "Provisões sobre a carteira dos bancos sob controle estrangeiro",
+        "% da carteira",
+    ),
+    "provisoes_publicos_valor": Serie(
+        12976, "Provisões de crédito dos bancos sob controle público", "R$ milhões"
+    ),
+    "inadimplencia_publicos": Serie(
+        13667, "Inadimplência dos bancos sob controle público", "% da carteira"
+    ),
+    "inadimplencia_privados_nacionais": Serie(
+        13673, "Inadimplência dos bancos sob controle privado nacional", "% da carteira"
+    ),
+    "inadimplencia_estrangeiros": Serie(
+        13679, "Inadimplência dos bancos sob controle estrangeiro", "% da carteira"
+    ),
 }
 
 COLUNAS_DO_FOCUS = {

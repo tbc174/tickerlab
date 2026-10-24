@@ -36,7 +36,25 @@ DIAS_DO_FOCUS = 14  # a pesquisa é semanal; duas semanas cobrem um dia perdido
 DIAS_DO_YAHOO = 30
 FIM_DO_ANO = (12, 31)  # o Focus anual se refere ao ano inteiro: guardado em 31/12
 
-FOCUS = {"ipca": "IPCA", "selic": "Selic", "cambio": "Câmbio", "pib": "PIB Total"}
+# os nomes são os do campo `Indicador` da API (conferidos em 23/10/2026). Ficam de fora a "Balança
+# comercial" (três séries, uma por `IndicadorDetalhe`) e a produção industrial (só no Focus
+# mensal): pedem leitor próprio
+FOCUS = {
+    "ipca": "IPCA",
+    "selic": "Selic",
+    "cambio": "Câmbio",
+    "pib": "PIB Total",
+    "igpm": "IGP-M",
+    "conta_corrente": "Conta corrente",
+    "investimento_direto": "Investimento direto no país",
+    "divida_bruta": "Dívida bruta do governo geral",
+    "divida_liquida": "Dívida líquida do setor público",
+    "resultado_primario": "Resultado primário",
+    "resultado_nominal": "Resultado nominal",
+    "ipca_administrados": "IPCA Administrados",
+    "ipca_livres": "IPCA Livres",
+    "desocupacao": "Taxa de desocupação",
+}
 YAHOO = {
     "bvsp": ("^BVSP", "Ibovespa", "pontos"),
     "gspc": ("^GSPC", "S&P 500", "pontos"),
@@ -48,17 +66,20 @@ BuscarYahoo = Callable[[str, date], pd.Series | None]
 # séries de terceiros que o SGS só repassa: a licença continua a do dono (o IGP-M é da FGV IBRE,
 # cujos termos pedem autorização para uso comercial; licencas-por-fonte.md, 14/10/2026)
 SGS_DE_TERCEIROS = {"igpm"}
-SGS_MENSAIS_EM_INDICE = {
-    "ibc_br",
-    "icbr",
-    "icbr_agro",
-}  # mensais que não são "% no mês"
+SGS_DIARIAS = {  # as outras séries do SGS que guardamos são mensais
+    "selic_meta",
+    "selic_diaria",
+    "dolar",
+    "euro",
+    "selic_anualizada",
+    "tr",
+    "tbf",
+}
 
 
 def serie_sgs(chave: str) -> SerieDoAcervo:
     s = bcb.SERIES[chave]
-    mensal = s.unidade == "% no mês" or chave in SGS_MENSAIS_EM_INDICE
-    frequencia = "mensal" if mensal else "diária"
+    frequencia = "diária" if chave in SGS_DIARIAS else "mensal"
     return SerieDoAcervo(
         f"bcb-sgs-{s.codigo}",
         s.nome,

@@ -26,9 +26,11 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_cvm,
     lote_eua,
     lote_licitacoes,
     lote_organismos,
+    lote_sec,
     lote_setoriais,
     wayback,
 )
@@ -1161,6 +1163,9 @@ FONTES: list[Fonte] = [
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
     *lote_eua.fontes(),
+    # lote SEC (rodada 4, 23/10/2026): mais conjuntos da Data Library, corretoras, Form ADV e os
+    # pacotes diários do EDGAR (linha 201 da fila)
+    *lote_sec.fontes(),
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
@@ -1179,6 +1184,9 @@ FONTES: list[Fonte] = [
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),
+    # lote CVM (linha 200 da fila, 23/10/2026): fundos 555, FII, FIP, securitizadoras, fundos
+    # estruturados e arrecadação do portal de dados abertos; sem cadastro com pessoa (ADR 0088)
+    *lote_cvm.fontes(),
     # lote atenção e texto (rodada 4, linha 289): acessos da Wikimedia, GDELT GKG sem Persons, Querido
     # Diário, Crossref, OpenAlex e RSS das agências (só índice); nunca pessoa nem texto de terceiros
     *lote_atencao.fontes(),
