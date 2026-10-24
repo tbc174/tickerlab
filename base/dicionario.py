@@ -4116,6 +4116,42 @@ TABELAS: dict[str, Tabela] = {
     ),
     "pareceres_dfp": _pareceres("DFP", "relatório do auditor independente", "2010"),
     "pareceres_itr": _pareceres("ITR", "relatório da revisão especial", "2011"),
+    "notas_dfp": Tabela(
+        descricao=(
+            "Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por "
+            "página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila). Serve para "
+            "ler a dívida, as contingências e as partes relacionadas por documento "
+            "(`src/divida/nota_dfp.py`). Página só de imagem não tem linha (nada é inventado); cada "
+            "versão tem as próprias linhas e vale a partir da própria entrega. O texto traz nomes de "
+            "administradores e do auditor: a tabela e o original ficam em área restrita"
+        ),
+        fonte="CVM: ENET, PDF do pacote da DFP (`base/enet_notas.py`)",
+        familia_da_fonte="cvm",
+        frequencia="Sob demanda: a carga baixa um pacote por vez, de madrugada, e a montagem relê o acervo",
+        atraso=(
+            "A entrega à CVM (`DT_RECEB` do índice do DFP); documento enviado com a empresa fora do "
+            "registro vale a partir do registro seguinte"
+        ),
+        onde=_onde_da_historica("notas_dfp"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "referencia": ("Data a que a DFP se refere (fim do exercício)", DATA),
+            "versao": ("Versão da DFP (cada reapresentação é um documento)", NUMERO),
+            "pagina": ("Página do PDF, a partir de 1", NUMERO),
+            "texto": (
+                "Texto da página como o PDF o entrega, sem conta nem correção",
+                TEXTO,
+            ),
+            "disponivel_em": (
+                "Data em que a versão ficou pública (a entrega à CVM, ou o registro da empresa)",
+                DATA,
+            ),
+            "link": ("Endereço do pacote no ENET de onde o texto saiu", TEXTO),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
     "fca_geral": Tabela(
         descricao=(
             "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A "
@@ -5880,6 +5916,7 @@ _CONTRATO = {
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
     "pareceres_dfp": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "pareceres_itr": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2011-01-01"),
+    "notas_dfp": _contrato(modulo=_ME, pessoa=True, chaves=("cnpj", "referencia", "versao", "pagina"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "fca_geral": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),

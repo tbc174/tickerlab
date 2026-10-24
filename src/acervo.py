@@ -38,7 +38,14 @@ PASTA_PUBLICA = "bruto"
 PASTA_RESTRITA = "restrito"
 PASTAS_PUBLICAS = (PASTA_PUBLICA,)
 FONTES_COM_PESSOA = frozenset(
-    {"rfb-cnpj", "pgfn-divida", "mte-lista-suja", "ibama-autos", "ibama-embargos"}
+    {
+        "rfb-cnpj",
+        "pgfn-divida",
+        "mte-lista-suja",
+        "ibama-autos",
+        "ibama-embargos",
+        "cvm-enet-notas",  # o texto das notas da DFP traz nomes (administradores, auditor)
+    }
 )
 SEM_EXTENSAO = ".bin"
 JA_COMPRIMIDOS = {".zip", ".pdf"}  # o resto é texto (ou desconhecido) e vai em gzip

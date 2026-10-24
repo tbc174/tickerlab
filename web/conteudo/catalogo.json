@@ -12,7 +12,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 57
+      "tabelas": 58
     },
     {
       "historico_desde": "2026-10-14",
@@ -274,7 +274,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 62
+      "tabelas": 63
     },
     {
       "chave": "credito_e_fidc",
@@ -4208,6 +4208,16 @@
       "tabela": "pareceres_itr"
     },
     {
+      "atraso": "A entrega à CVM",
+      "frase": "Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "notas_dfp"
+    },
+    {
       "atraso": null,
       "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
       "frequencia": "Anual",
@@ -4482,6 +4492,6 @@
     "fontes": 24,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 98
+    "tabelas": 99
   }
 }

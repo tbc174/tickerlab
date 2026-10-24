@@ -102,6 +102,7 @@ ARQUIVOS: dict[str, str] = {
     "fca_geral": "fca_geral/*.parquet",
     "pareceres_dfp": "pareceres_dfp/*.parquet",
     "pareceres_itr": "pareceres_itr/*.parquet",
+    "notas_dfp": "notas_dfp/*.parquet",
     "trocas_de_auditor": "trocas_de_auditor/trocas.parquet",
     "curva_juros": "curva_juros/*.parquet",
     "bcb_selic_focus": "bcb_selic_focus/bcb_selic_focus.parquet",
