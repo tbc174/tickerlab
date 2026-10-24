@@ -2667,6 +2667,39 @@ Parecer do auditor de cada ITR desde 2011, lido do CSV de pareceres da CVM (rela
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `notas_dfp`
+
+Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila). Serve para ler a dívida, as contingências e as partes relacionadas por documento (`src/divida/nota_dfp.py`). Página só de imagem não tem linha (nada é inventado); cada versão tem as próprias linhas e vale a partir da própria entrega. O texto traz nomes de administradores e do auditor: a tabela e o original ficam em área restrita
+
+- **Fonte:** CVM: ENET, PDF do pacote da DFP (`base/enet_notas.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Sob demanda: a carga baixa um pacote por vez, de madrugada, e a montagem relê o acervo
+- **Atraso de divulgação:** A entrega à CVM (`DT_RECEB` do índice do DFP); documento enviado com a empresa fora do registro vale a partir do registro seguinte
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim
+- **Chaves:** `cnpj`, `referencia`, `versao`, `pagina`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/notas_dfp/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data a que a DFP se refere (fim do exercício) | data (dia) |
+| `versao` | Versão da DFP (cada reapresentação é um documento) | número inteiro |
+| `pagina` | Página do PDF, a partir de 1 | número inteiro |
+| `texto` | Texto da página como o PDF o entrega, sem conta nem correção | texto |
+| `disponivel_em` | Data em que a versão ficou pública (a entrega à CVM, ou o registro da empresa) | data (dia) |
+| `link` | Endereço do pacote no ENET de onde o texto saiu | texto |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `fca_geral`
 
 Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, como a companhia informou naquele formulário. É o cadastro "como era na data" do modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje
