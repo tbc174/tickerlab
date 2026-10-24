@@ -114,6 +114,21 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
     date(2026, 10, 22),
 )
 
+# lote clima e fogo (licencas-por-fonte.md, rodada 4): termos lidos em 23/10/2026; o INMET, o MapBiomas,
+# o NOAA e o ONS já têm data anterior
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    (
+        "inpe",
+        "firms",
+        "terrabrasilis",
+        "ecmwf",
+        "climatetrace",
+        "edgar",
+        "carbonmonitor",
+    ),
+    date(2026, 10, 23),
+)
+
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")
 

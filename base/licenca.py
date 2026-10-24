@@ -97,6 +97,17 @@ FAMILIA_DO_ENDERECO = {
     "www.fao.org/": "faostat",
     "www.ico.org/": "ico",
     "ico.org/": "ico",
+    "dataserver-coids.inpe.br/": "inpe",
+    "firms.modaps.eosdis.nasa.gov/": "firms",
+    "terrabrasilis.dpi.inpe.br/": "terrabrasilis",
+    "data.ecmwf.int/": "ecmwf",
+    "api.climatetrace.org/": "climatetrace",
+    "jeodpp.jrc.ec.europa.eu/": "edgar",
+    "datas.carbonmonitor.org/": "carbonmonitor",
+    "apitempo.inmet.gov.br/": "inmet",
+    "brasil.mapbiomas.org/": "mapbiomas",
+    "www.cpc.ncep.noaa.gov/": "noaa",
+    "www.ncei.noaa.gov/": "noaa",
 }
 # a base de cripto (`<acervo>/cripto/<pasta>/...`, `base/cripto/coleta.py`) grava sem origens
 PASTAS_DA_CRIPTO = {

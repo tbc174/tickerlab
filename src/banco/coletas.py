@@ -150,6 +150,14 @@ LICENCAS = {
     "bis": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+    # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
+    "inpe": "INPE Queimadas: sem licença escrita; uso citando o INPE (ADR 0102)",
+    "firms": "Dados abertos da NASA (FIRMS); citar NASA FIRMS, chave só no ambiente",
+    "terrabrasilis": "CC BY-SA 4.0 (INPE, TerraBrasilis); citar e compartilhar igual",
+    "ecmwf": "CC BY 4.0 (ECMWF open data); citar o ECMWF",
+    "climatetrace": "CC BY 4.0 (Climate TRACE); citar o Climate TRACE",
+    "edgar": "CC BY 4.0 (EDGAR, JRC); sem o IEA-EDGAR CO2, que é CC BY-NC-ND",
+    "carbonmonitor": "CC BY 4.0 (Carbon Monitor); citar o Carbon Monitor",
     # lote EUA (termos lidos em 22/10/2026): obra do governo federal dos EUA é domínio público; citar
     # a agência. O Fed e o NY Fed avisam que há séries de terceiros dentro de alguns conjuntos
     "treasury": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
@@ -314,6 +322,13 @@ REVENDA = {
     "bis": NAO_COMERCIAL,  # só uso não comercial sem permissão; sem pedir (Tiago, 22/10/2026)
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
+    "inpe": A_CONFIRMAR,  # sem licença escrita no INPE Queimadas
+    "firms": VENDAVEL_COM_ATRIBUICAO,  # dados abertos da NASA
+    "terrabrasilis": SO_USO_INTERNO,  # CC BY-SA 4.0 (compartilhar igual): revenda a confirmar
+    "ecmwf": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "climatetrace": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "edgar": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (JRC)
+    "carbonmonitor": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     # lote EUA: obra do governo dos EUA, domínio público; o dado do NY Fed leva a atribuição
     "treasury": VENDAVEL_COM_ATRIBUICAO,
     "fed": VENDAVEL_COM_ATRIBUICAO,
