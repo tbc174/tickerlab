@@ -192,3 +192,16 @@ def test_parquets_sem_manifesto_ficam_de_fora_e_sao_listados(base):
     )
     assert an.parquets_sem_manifesto(base) == ["cripto.parquet", "eventos/2024.parquet"]
     assert "eventos/2024" not in an.manifestos_atuais(base)
+
+
+def test_pasta_de_trabalho_de_uma_carga_fica_fora_da_ancora(base):
+    """Regressão (23/10/2026): a carga do CNPJ monta o mês em `cnpj/_novo/` e só no fim troca pelo
+    vigente; a âncora acusava 8.689 Parquets "sem manifesto" e ancoraria um mês pela metade."""
+    _gravar(base, "cnpj/_novo/qsa/32", [7])
+    (base / "cnpj" / "_novo" / "estabelecimentos" / "00").mkdir(parents=True)
+    pd.DataFrame({"a": [1]}).to_parquet(
+        base / "cnpj" / "_novo" / "estabelecimentos" / "00" / "00000-0.parquet",
+        index=False,
+    )
+    assert an.parquets_sem_manifesto(base) == []
+    assert not any(nome.startswith("cnpj/") for nome in an.manifestos_atuais(base))

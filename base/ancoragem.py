@@ -27,6 +27,9 @@ LINHAS_MINIMAS_PESSOAS = 50
 VERSAO_ANTIGA = re.compile(
     r"\.v\d+$"
 )  # `emissores.v1.json`: versão guardada por `base/parquet.py`
+# pasta de trabalho de uma carga (`cnpj/_novo/`, de `scripts/carga_receita_mes.py`): o mês é montado
+# ali e só no fim trocado pelo vigente, então o que está dentro ainda não é a base
+PREFIXO_DA_PASTA_DE_TRABALHO = "_"
 
 
 def hash_folha(dados: bytes) -> bytes:
@@ -108,12 +111,20 @@ def folha_de_arquivo(nome: str, conteudo: bytes) -> bytes:
     return _canonico({"arquivo": nome, "sha256": hashlib.sha256(conteudo).hexdigest()})
 
 
+def _da_versao_atual(arquivo: Path, pasta: Path) -> bool:
+    """Fora as versões antigas e o que uma carga ainda está montando."""
+    pastas = arquivo.relative_to(pasta).parts[:-1]
+    return not VERSAO_ANTIGA.search(arquivo.stem) and not any(
+        p.startswith(PREFIXO_DA_PASTA_DE_TRABALHO) for p in pastas
+    )
+
+
 def manifestos_atuais(pasta: Path) -> dict[str, dict[str, Any]]:
     """Manifestos da versão atual de cada tabela, por nome (`fca/emissores`), em ordem."""
     achados = {}
     for arquivo in pasta.rglob("*.json"):
         if (
-            VERSAO_ANTIGA.search(arquivo.stem)
+            not _da_versao_atual(arquivo, pasta)
             or not arquivo.with_suffix(".parquet").exists()
         ):
             continue
@@ -127,7 +138,7 @@ def parquets_sem_manifesto(pasta: Path) -> list[str]:
     return sorted(
         arquivo.relative_to(pasta).as_posix()
         for arquivo in pasta.rglob("*.parquet")
-        if not VERSAO_ANTIGA.search(arquivo.stem)
+        if _da_versao_atual(arquivo, pasta)
         and not arquivo.with_suffix(".json").exists()
     )
 

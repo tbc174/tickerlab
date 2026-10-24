@@ -18,6 +18,8 @@ LINK = "https://iex.exemplo/tops-20261009.pcap.gz"
 
 
 class _Resposta:
+    status_code = 200
+
     def __init__(self, json_=None, conteudo=b""):
         self._json = json_
         self.raw = io.BytesIO(conteudo)
@@ -174,6 +176,8 @@ def test_carga_para_quando_acaba_o_tempo(tmp_path, monkeypatch):
 
 # --- feriados dos EUA (14/10/2026: a carga travou no 404 do Labor Day, 07/09) ----------------------
 class _Resposta404(_Resposta):
+    status_code = 404
+
     def raise_for_status(self):
         raise coletor.requests.HTTPError("404 Client Error: Not Found")
 
@@ -217,6 +221,40 @@ def test_404_num_dia_de_pregao_continua_sendo_falha(tmp_path, monkeypatch):
     monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
     codigo = coletor.main(
         ["--data", "2026-09-08", "--pasta", str(tmp_path)],
+        lambda url, stream=False, timeout=None: _Resposta404(),
+    )
+    assert codigo == 1
+
+
+# --- pregão de ontem que a IEX ainda não publicou (23/10/2026: às 5h, a lista do dia 22 dava 404; o
+# arquivo saiu de tarde e a carga das 0h30 o pegou) ---------------------------------------------------
+def _so_falta_o_ultimo_pregao(pasta) -> date:
+    recentes = coletor.dias_uteis_recentes(coletor.datetime.now(coletor.FUSO_NY).date())
+    for d in recentes[:-1]:
+        coletor.arquivo_do_dia(d, pasta).write_bytes(b"x")
+    return recentes[-1]
+
+
+def test_404_no_ultimo_pregao_e_ainda_nao_publicado(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    ultimo = _so_falta_o_ultimo_pregao(tmp_path)
+    codigo = coletor.main(
+        ["--pasta", str(tmp_path)],
+        lambda url, stream=False, timeout=None: _Resposta404(),
+    )
+    assert codigo == 0
+    assert f"{ultimo}: a IEX ainda não tem arquivo" in capsys.readouterr().out
+    assert not coletor.arquivo_do_dia(ultimo, tmp_path).exists()
+
+
+def test_404_num_pregao_anterior_ao_ultimo_continua_sendo_falha(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    ultimo = _so_falta_o_ultimo_pregao(tmp_path)
+    penultimo = coletor.dias_uteis_recentes(ultimo, 1)[0]
+    coletor.arquivo_do_dia(penultimo, tmp_path).unlink()
+    coletor.arquivo_do_dia(ultimo, tmp_path).write_bytes(b"x")
+    codigo = coletor.main(
+        ["--pasta", str(tmp_path)],
         lambda url, stream=False, timeout=None: _Resposta404(),
     )
     assert codigo == 1

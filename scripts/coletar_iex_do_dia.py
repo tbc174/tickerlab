@@ -11,7 +11,9 @@ o SHA-256 do Parquet). Gravação atômica: o arquivo só aparece completo. Um a
 malformado (`ArquivoIexInvalidoError`) não grava nada e faz a tarefa falhar, para o alarme
 avisar. Olha os últimos pregões e coleta só os que faltam: um dia perdido é recuperado na
 madrugada seguinte. Fins de semana e feriados da NYSE (`src.calendario_nyse`) nem são pedidos: a
-IEX responde 404 neles, e um 404 num dia de pregão continua sendo falha, para o alarme avisar.
+IEX responde 404 neles, e um 404 num dia de pregão continua sendo falha, para o alarme avisar. A
+exceção é o último pregão: a IEX publica o dia só na tarde seguinte (23/10/2026: às 5h, a lista do
+dia 22 dava 404), então ali o 404 é "ainda não publicado"; se ele seguir no dia seguinte, falha.
 Conexão que cai no meio do arquivo: o dia é baixado de novo uma vez; se cair de novo, o dia falha
 (nada gravado, alarme avisa), mas a rodada segue com os outros dias e o selo.
 
@@ -67,6 +69,7 @@ TEMPO_LIMITE_S = 120
 TENTATIVAS_DO_ARQUIVO = 2
 CONEXAO_CAIU = (urllib3.exceptions.HTTPError, requests.ConnectionError)
 SEM_ARQUIVO = "sem arquivo"  # ainda não publicado
+HTTP_NAO_ENCONTRADO = 404
 MAXIMO_DE_SELOS_POR_RODADA = (
     40  # um pedido ao Yahoo por dia; a carga põe ~20 dias por noite
 )
@@ -105,11 +108,18 @@ def dias_que_faltam(hoje: date, pasta: Path = PASTA) -> list[date]:
     ]
 
 
-def endereco_do_tops(dia: date, buscar: Callable = rede.get_com_agente) -> str | None:
-    """O link do TOPS do dia, ou None se a IEX não tem arquivo para a data."""
+def endereco_do_tops(
+    dia: date, buscar: Callable = rede.get_com_agente, *, pode_faltar: bool = False
+) -> str | None:
+    """O link do TOPS do dia, ou None se a IEX não tem arquivo para a data.
+
+    Com `pode_faltar` (o último pregão, que a IEX publica só na tarde seguinte), o 404 da lista
+    também é None; nos outros dias ele levanta, para o alarme avisar."""
     resposta = buscar(
         LISTA_DO_HIST.format(data=dia.strftime("%Y%m%d")), timeout=TEMPO_LIMITE_S
     )
+    if pode_faltar and resposta.status_code == HTTP_NAO_ENCONTRADO:
+        return None
     resposta.raise_for_status()
     lista = resposta.json() or []
     tops = [item for item in lista if item.get("feed") == "TOPS"]
@@ -154,13 +164,15 @@ def coletar_dia(
     simbolos: set[str],
     pasta: Path = PASTA,
     buscar: Callable = rede.get_com_agente,
+    *,
+    pode_faltar: bool = False,
 ) -> dict | str:
     """Baixa, lê e grava as barras de `dia`. Devolve o resumo, ou `SEM_ARQUIVO`.
 
     Levanta `iex_tops.ArquivoIexInvalidoError` (arquivo malformado) ou o erro da conexão (se ela
     cair nas `TENTATIVAS_DO_ARQUIVO`) sem gravar nada.
     """
-    link = endereco_do_tops(dia, buscar)
+    link = endereco_do_tops(dia, buscar, pode_faltar=pode_faltar)
     if link is None:
         return SEM_ARQUIVO
     inicio = time.perf_counter()
@@ -314,11 +326,13 @@ def _dias_da_rodada(opcoes: argparse.Namespace, hoje: date) -> list[date]:
 
 
 def _coletar_e_contar(
-    dia: date, simbolos: set[str], pasta: Path, buscar: Callable
+    dia: date, simbolos: set[str], pasta: Path, buscar: Callable, ultimo_pregao: date
 ) -> tuple[bool, bool]:
     """Coleta um dia e conta a história. Devolve (contou no máximo, falhou)."""
     try:
-        resultado = coletar_dia(dia, simbolos, pasta, buscar)
+        resultado = coletar_dia(
+            dia, simbolos, pasta, buscar, pode_faltar=dia == ultimo_pregao
+        )
     except (
         iex_tops.ArquivoIexInvalidoError,
         requests.RequestException,
@@ -354,11 +368,13 @@ def main(
 
 
 def _coletar(opcoes: argparse.Namespace, buscar: Callable, prazo: float | None) -> int:
-    dias = _dias_da_rodada(opcoes, datetime.now(FUSO_NY).date())
+    hoje = datetime.now(FUSO_NY).date()
+    dias = _dias_da_rodada(opcoes, hoje)
     if not dias:
         print("Nada a coletar: os pregões pedidos já estão guardados.")
         return 0
     simbolos = simbolos_do_sp500()
+    [ultimo_pregao] = dias_uteis_recentes(hoje, 1)
     coletados, falhou = 0, False
     for dia in dias:
         if coletados >= opcoes.maximo:
@@ -368,7 +384,9 @@ def _coletar(opcoes: argparse.Namespace, buscar: Callable, prazo: float | None) 
                 f"Tempo da rodada acabou; {coletados} dias coletados, o resto fica para a próxima."
             )
             break
-        contou, deu_erro = _coletar_e_contar(dia, simbolos, opcoes.pasta, buscar)
+        contou, deu_erro = _coletar_e_contar(
+            dia, simbolos, opcoes.pasta, buscar, ultimo_pregao
+        )
         coletados += contou
         falhou = falhou or deu_erro
     print(f"Faltam {len(dias) - coletados} pregões.")
