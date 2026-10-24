@@ -23,7 +23,12 @@ COLUNAS_DE_PESSOAS = ("id_pessoa", "cnpj_basico", "nome", "cpf_mascarado")
 def _da_raiz(arquivos: list[Path], raiz: str, colunas: Sequence[str]) -> pd.DataFrame:
     if not arquivos:
         return pd.DataFrame(columns=list(colunas))
-    tabela = pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+    # o filtro vai ao Parquet: só os grupos de linhas que podem ter a raiz são lidos (a busca por CNPJ
+    # lê uma empresa por pedido; a vista é ordenada pela raiz, `base/vista_do_cnpj.py`)
+    filtro = [("cnpj_basico", "==", raiz)]
+    tabela = pd.concat(
+        [pd.read_parquet(a, filters=filtro) for a in arquivos], ignore_index=True
+    )
     return tabela[tabela["cnpj_basico"] == raiz].reset_index(drop=True)
 
 

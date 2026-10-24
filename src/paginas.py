@@ -570,8 +570,9 @@ PAGINAS = (
         "Busca por CNPJ",
         GRUPO_RESEARCH,
         ":material/manage_search:",
-        "Digite o CNPJ de uma companhia aberta e veja quem é, de que grupo faz parte, com quem a "
-        "rede de empresas a liga e os fatos públicos, com a data e a fonte de cada linha.",
+        "Digite o CNPJ de uma empresa e veja quem é: da companhia aberta, o grupo, a rede de empresas "
+        "e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que "
+        "mudou em 12 meses. Com a data e a fonte de cada linha.",
         area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
         contrato=Contrato(
