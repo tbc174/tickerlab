@@ -228,7 +228,8 @@ def test_chave_nunca_aparece_no_log(banco, admin, cliente, relogio, chave, caplo
     )
     assert "chave da API recusada" in do_servidor  # o log das recusas foi capturado
     for usada in [chave, *chaves]:
-        segredo = usada.valor.rsplit("_", 1)[1]
+        # tld_<prefixo>_<segredo>: o segredo (token_urlsafe) também pode ter "_", então corta no 2º
+        segredo = usada.valor.split("_", 2)[2]
         assert usada.valor not in do_servidor
         assert segredo not in do_servidor
 
