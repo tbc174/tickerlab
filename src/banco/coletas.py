@@ -194,7 +194,7 @@ LICENCAS = {
     "inpi": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
     "epo": "CC BY 4.0 (EPO Linked open EP data); citar o EPO; um pedido por vez",
     "wipo": "WIPO Statistics Database: não republicar nem revender; só uso interno, citando",
-    "ipea": "Sem termos publicados (IPEADATA); séries de terceiros herdam a fonte; citar o Ipea",
+    "ipea": "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea",
     # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
     "ans-demonstracoes": "Demonstrações da ANS: sem licença declarada; citar a ANS (ADR 0102)",
 }
