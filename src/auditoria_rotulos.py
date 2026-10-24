@@ -302,6 +302,49 @@ def comparar_modelos(
     return veredito
 
 
+FALTA_MAXIMA_DA_SEGUNDA_TENTATIVA = (
+    0.05  # Emenda 4: mais que isso sem par válido reprova
+)
+
+
+def conjunto_da_segunda_tentativa(
+    eventos: list[dict], rotulador: dict[str, dict]
+) -> list[str]:
+    """Os fatos relevantes que a API rotulou e que a rotina não viu na Emenda 3 (Emenda 4 da ADR
+    0072): rótulo válido com assunto, fora dos 300 primeiros, na ordem da fila."""
+    primeiros = set(conjunto_de_prova(eventos)[0])
+    return [
+        e["id"]
+        for e in eventos
+        if e["id"] not in primeiros
+        and valido(rotulador, e["id"])
+        and rotulador[e["id"]].get("assunto") is not None
+    ]
+
+
+def comparar_segunda_tentativa(
+    rotulador: dict[str, dict], rotina: dict[str, dict], conjunto: list[str]
+) -> tuple[Veredito, list[str]]:
+    """API × rotina no conjunto da Emenda 4: os quatro limites nos pares válidos. Os que faltam
+    ficam de fora da conta e voltam na lista; mais de 5% faltando reprova a tentativa."""
+    veredito = Veredito(n=len(conjunto))
+    if not conjunto:
+        veredito.incompleto = True
+        veredito.motivos.append("o conjunto da segunda tentativa está vazio")
+    faltantes = [
+        i for i in conjunto if not (valido(rotulador, i) and valido(rotina, i))
+    ]
+    if len(faltantes) > FALTA_MAXIMA_DA_SEGUNDA_TENTATIVA * len(conjunto):
+        veredito.incompleto = True
+        veredito.motivos.append(
+            f"{len(faltantes)} de {len(conjunto)} eventos sem par válido "
+            f"(máximo {FALTA_MAXIMA_DA_SEGUNDA_TENTATIVA:.0%}): a tentativa reprova"
+        )
+    if ids := [i for i in conjunto if i not in set(faltantes)]:
+        _medir(rotulador, rotina, ids, veredito)
+    return veredito, faltantes
+
+
 def referencia_do_leitor(
     rotulador: dict[str, dict], conferente: dict[str, dict], lote: list[str]
 ) -> list[dict]:

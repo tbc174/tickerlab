@@ -1281,3 +1281,90 @@ def test_equivalencia_compara_a_rotina_com_a_api_em_arquivo_proprio(tmp_path, tr
     assert not (
         pasta / "comparacao-modelos.json"
     ).exists()  # o Sonnet × Opus fica como está
+
+
+# --- segunda tentativa da rotina (Emenda 4): os fatos relevantes que ela não viu ---------------
+
+
+def _fila_com_fatos_fora_dos_300(tmp_path: Path) -> tuple[list[dict], Path, list[str]]:
+    """345 eventos rotulados pela API; fatos relevantes no E5 (dentro dos 300) e do E300 ao E344; o
+    conjunto da segunda tentativa vai do E300 ao E343 (o E344 não tem texto para montar o pedido)."""
+    fatos = {5, *range(300, 345)}
+    fila = [{**EVENTOS[0], "id": f"E{i}",
+             **({"categoria": ri.FATO_RELEVANTE} if i in fatos else {})} for i in range(345)]  # fmt: skip
+    arquivo = tmp_path / "eventos.json"
+    arquivo.write_text(json.dumps({"eventos": fila}), encoding="utf-8")
+    eventos = rc.ler_eventos(arquivo)
+    pasta = tmp_path / "v2"
+    (pasta / "textos").mkdir(parents=True)
+    linhas = []
+    for e in eventos:
+        texto = ""
+        if e["ordem"] in fatos and e["ordem"] != 344:  # o E344 fica sem texto baixado
+            texto = f"Fato relevante. {e['assunto']}."
+            (pasta / "textos" / f"{e['id']}.txt").write_text(texto, encoding="utf-8")
+        linhas.append(json.dumps({
+            "evento_id": e["id"], "por": "ia", "modelo": ri.MODELO, "texto_so_nos_fatos": True,
+            "hash_da_entrada": ri.hash_da_entrada(ri.pedido(e, texto, ri.MODELO)),
+            "nota": 3, "tema": "dividendos",
+            "assunto": "OUTROS" if e["ordem"] in fatos else None}))  # fmt: skip
+    rc.arquivo_dos_rotulos(pasta, ri.MODELO).write_text(
+        "\n".join(linhas) + "\n", encoding="utf-8"
+    )
+    return eventos, pasta, [f"E{i}" for i in range(300, 344)]
+
+
+def _responder_com_assunto(troca: Path, lote_id: str) -> None:
+    respostas = {}
+    for item in _lote(troca, lote_id):
+        bruta = json.loads(_resposta_para({"messages": [{"content": item["pedido"]}]}))
+        respostas[item["chave"]] = json.dumps(bruta | {"assunto": "OUTROS"})
+    _responder(troca, lote_id, respostas)
+
+
+def test_segunda_tentativa_manda_so_os_fatos_que_a_rotina_nao_viu(tmp_path, troca):
+    eventos, pasta, conjunto = _fila_com_fatos_fora_dos_300(tmp_path)
+    lote_id = rc.preparar(eventos, pasta, troca, HOJE, equivalencia=2)
+    assert lote_id == "2026-10-24-equivalencia2"
+    chaves = {rc.chave_da_rotina(i): i for i in conjunto}
+    assert [chaves[i["chave"]] for i in _lote(troca, lote_id)] == conjunto[
+        : rc.MAXIMO_DO_LOTE
+    ]
+    assert (
+        rc._proxima_parte(rc.ler_manifesto(pasta, ROTINA), "2026-10-24-equivalencia")
+        == 1
+    )
+
+
+def test_segunda_tentativa_compara_em_arquivo_proprio_com_os_faltantes(tmp_path, troca):
+    eventos, pasta, conjunto = _fila_com_fatos_fora_dos_300(tmp_path)
+    (pasta / "comparacao-rotina.json").write_text(
+        "{}", encoding="utf-8"
+    )  # o da Emenda 3
+    dia = HOJE
+    while lote_id := rc.preparar(eventos, pasta, troca, dia, maximo=40, equivalencia=2):
+        _responder_com_assunto(troca, lote_id)
+        rc.gravar(eventos, pasta, troca, dia)
+        dia += timedelta(days=1)
+    assert sorted(rc.ler_rotulos(pasta, ROTINA)) == sorted(conjunto)
+    veredito = rc.comparar(pasta, eventos, ri.MODELO, ROTINA, segunda_tentativa=True)
+    gravado = json.loads(
+        (pasta / "comparacao-rotina-2.json").read_text(encoding="utf-8")
+    )
+    assert veredito.n == len(conjunto) == gravado["conjunto"]["eventos"]
+    assert gravado["conjunto"]["faltantes"] == [] and veredito.acerto_assunto == 1
+    assert gravado["conjunto"]["sem_texto"] == ["E344"]
+    assert set(gravado["sha256"]) == {ri.MODELO, ROTINA}
+    assert (pasta / "comparacao-rotina.json").read_text(encoding="utf-8") == "{}"
+
+
+def test_main_compara_a_segunda_tentativa(tmp_path, capsys):
+    _, pasta, _ = _fila_com_fatos_fora_dos_300(tmp_path)
+    arquivo = tmp_path / "eventos.json"
+    codigo = rc.main(["comparar", "--eventos", str(arquivo), "--pasta", str(pasta),
+                      "--com-a-rotina", "--segunda-tentativa"])  # fmt: skip
+    assert (
+        codigo == 0
+    )  # como no `comparar` de sempre: o veredito sai no texto e no arquivo
+    assert (pasta / "comparacao-rotina-2.json").exists()
+    assert "NÃO PASSOU" in capsys.readouterr().out

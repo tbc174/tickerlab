@@ -317,3 +317,56 @@ def test_estabilidade_mede_a_concordancia_ia_x_ia_sem_limite():
     assert medida["assunto_igual"] == pytest.approx(1 / 2) and medida["n_assunto"] == 2
     assert "kappa_nota" in medida and "kappa_tema" in medida
     assert "passou" not in medida  # a emenda só pede publicar
+
+
+# --- segunda tentativa da rotina (Emenda 4 da ADR 0072) ---------------------------------------
+
+
+def _com_assunto(ids):
+    """Fatos relevantes com nota, tema e assunto que variam."""
+    assuntos = ("OUTROS", "AQUISICAO", "DIVIDA")
+    return {
+        i: r | {"assunto": assuntos[k % 3]}
+        for k, (i, r) in enumerate(_variados(ids).items())
+    }
+
+
+def test_conjunto_da_segunda_tentativa_sao_os_fatos_fora_dos_300():
+    eventos = _fila()
+    api = _variados([e["id"] for e in eventos])
+    for i in ("A5", "A301", "A303", "L1"):
+        api[i]["assunto"] = "OUTROS"
+    api["A303"] = {"erro": "x"}  # sem rótulo válido da API: não entra
+    assert ar.conjunto_da_segunda_tentativa(eventos, api) == ["A301", "L1"]
+
+
+def test_segunda_tentativa_passa_com_ate_5_por_cento_faltando():
+    ids = [f"F{i}" for i in range(100)]
+    rotina = _com_assunto(ids)
+    for i in ids[:5]:
+        rotina[i] = {"erro": "trecho não está no documento"}
+    veredito, faltantes = ar.comparar_segunda_tentativa(_com_assunto(ids), rotina, ids)
+    assert veredito.passou and veredito.n == 100 and veredito.n_assunto == 95
+    assert faltantes == ids[:5]
+
+
+def test_segunda_tentativa_reprova_com_mais_de_5_por_cento_faltando():
+    ids = [f"F{i}" for i in range(100)]
+    rotina = {i: r for i, r in _com_assunto(ids).items() if i not in ids[:6]}
+    veredito, faltantes = ar.comparar_segunda_tentativa(_com_assunto(ids), rotina, ids)
+    assert not veredito.passou and len(faltantes) == 6
+    assert any("6 de 100" in m for m in veredito.motivos)
+
+
+def test_segunda_tentativa_reprova_no_assunto_abaixo_de_80_por_cento():
+    ids = [f"F{i}" for i in range(100)]
+    api, rotina = _com_assunto(ids), _com_assunto(ids)
+    for i in ids[:21]:
+        rotina[i] = rotina[i] | {"assunto": "REORG"}
+    veredito, _ = ar.comparar_segunda_tentativa(api, rotina, ids)
+    assert veredito.acerto_assunto == pytest.approx(0.79) and not veredito.passou
+
+
+def test_segunda_tentativa_sem_conjunto_nao_passa():
+    veredito, faltantes = ar.comparar_segunda_tentativa({}, {}, [])
+    assert not veredito.passou and faltantes == []

@@ -11,8 +11,8 @@
     python -m scripts.rotular_com_ia auditar  --eventos ... --pasta ... --humanos tiago.json
     python -m scripts.rotular_com_ia estimar  --eventos ... --pasta ... --teto-dolares 10 \
         --modelo claude-opus-5-5 --so-prova
-    python -m scripts.rotular_com_ia comparar --eventos ... --pasta ... [--com-a-rotina]
-    python -m scripts.rotular_com_ia preparar --eventos ... --pasta ... --troca TROCA [--lotes 4] [--equivalencia]
+    python -m scripts.rotular_com_ia comparar --eventos ... --pasta ... [--com-a-rotina [--segunda-tentativa]]
+    python -m scripts.rotular_com_ia preparar --eventos ... --pasta ... --troca TROCA [--lotes 4]         [--equivalencia | --segunda-tentativa]
     python -m scripts.rotular_com_ia gravar   --eventos ... --pasta ... --troca TROCA
 
 Com `--texto-so-nos-fatos` (estimar, piloto, enviar, identificar), só os fatos relevantes vão com
@@ -55,7 +55,10 @@ assinatura e devolve `<troca>/respostas/<dia>.jsonl`; `gravar` confere cada resp
 da API (lista fechada, trecho literal, entrada igual à do lote) e grava em
 `<pasta>/rotulos.rotina.jsonl`. Uma via não repete o que a outra já rotulou. Com `--equivalencia`, o
 lote leva os 300 primeiros já rotulados pela API, com a mesma entrada, e `comparar --com-a-rotina`
-mede a rotina contra a API nos limites da Emenda 1, em `<pasta>/comparacao-rotina.json`.
+mede a rotina contra a API nos limites da Emenda 1, em `<pasta>/comparacao-rotina.json`. A segunda e
+última tentativa (Emenda 4) usa `--segunda-tentativa` nos dois passos: o lote leva os fatos relevantes
+que a API rotulou fora dos 300 e o `comparar` grava `<pasta>/comparacao-rotina-2.json` (mais de 5% sem
+par válido reprova).
 Com `--lotes N` (até 4), `preparar` faz N lotes na noite (`<dia>-01`, `<dia>-02`...): a rotina roda várias
 vezes por madrugada e faz um lote por rodada, cada um numa conversa nova (Tiago, 24/10/2026: acelerar).
 """
@@ -600,6 +603,9 @@ DIAS_DE_ESPERA_DA_ROTINA = (
 )
 CODIGO_DE_LOTE_ATRASADO = 4
 SUFIXO_DA_EQUIVALENCIA = "-equivalencia"
+SEGUNDA_TENTATIVA = (
+    2  # `equivalencia=2`: o conjunto da Emenda 4 (1 ou True é o da Emenda 3)
+)
 RODADAS_DA_ROTINA_POR_NOITE = 4  # a rotina faz um lote por rodada: lote além das rodadas ficaria sem resposta (atrasado)
 
 
@@ -632,11 +638,12 @@ def _em_lote_aberto(manifesto: dict) -> set[str]:
 
 
 def _candidatos(
-    eventos: list[dict], pasta: Path, so_fatos: bool, equivalencia: bool
+    eventos: list[dict], pasta: Path, so_fatos: bool, equivalencia: int
 ) -> list[tuple[dict, bool]]:
     """Os eventos que podem ir no lote, cada um com a regra de texto. No diário, os pendentes das duas
-    vias prontos pela regra; na equivalência, os 300 primeiros que a API rotulou e a rotina não, pela
-    regra que a API usou (a mesma entrada, para o `comparar`)."""
+    vias prontos pela regra; na equivalência, os que a API rotulou e a rotina não, pela regra que a
+    API usou (a mesma entrada, para o `comparar`): os 300 primeiros (Emenda 3) ou, na segunda
+    tentativa, os fatos relevantes fora deles (Emenda 4)."""
     if not equivalencia:
         return [
             (e, so_fatos)
@@ -644,11 +651,15 @@ def _candidatos(
             if texto_do_pedido(e, pasta, so_fatos) is not None
         ]
     api, feitos = ler_rotulos(pasta), _rotulados(pasta, ri.ROTINA)
-    primeiros = set(ar.conjunto_de_prova(eventos)[0])
+    conjunto = set(
+        ar.conjunto_da_segunda_tentativa(eventos, api)
+        if equivalencia == SEGUNDA_TENTATIVA
+        else ar.conjunto_de_prova(eventos)[0]
+    )
     escolhidos = [
         (e, bool(api[e["id"]].get("texto_so_nos_fatos", False)))
         for e in eventos
-        if e["id"] in primeiros and ar.valido(api, e["id"]) and e["id"] not in feitos
+        if e["id"] in conjunto and ar.valido(api, e["id"]) and e["id"] not in feitos
     ]
     return [
         (e, regra)
@@ -657,9 +668,13 @@ def _candidatos(
     ]
 
 
-def _id_base(hoje: date, equivalencia: bool) -> str:
-    """O id do lote do dia, antes do número da parte: `2026-10-24` ou `2026-10-24-equivalencia`."""
-    return hoje.isoformat() + (SUFIXO_DA_EQUIVALENCIA if equivalencia else "")
+def _id_base(hoje: date, equivalencia: int) -> str:
+    """O id do lote do dia, antes do número da parte: `2026-10-24`, `2026-10-24-equivalencia` ou,
+    na segunda tentativa, `2026-10-24-equivalencia2`."""
+    if not equivalencia:
+        return hoje.isoformat()
+    tentativa = "2" if equivalencia == SEGUNDA_TENTATIVA else ""
+    return hoje.isoformat() + SUFIXO_DA_EQUIVALENCIA + tentativa
 
 
 def _proxima_parte(manifesto: dict, base: str) -> int:
@@ -681,7 +696,7 @@ def preparar(
     hoje: date,
     maximo: int = MAXIMO_DO_LOTE,
     so_fatos: bool = False,
-    equivalencia: bool = False,
+    equivalencia: int = 0,
     parte: int | None = None,
 ) -> str | None:
     """Escreve o lote do dia para a rotina em `<troca>/lotes/<id>.jsonl` (sem nome, código nem CNPJ:
@@ -739,7 +754,7 @@ def preparar_a_noite(
     lotes: int = 1,
     maximo: int = MAXIMO_DO_LOTE,
     so_fatos: bool = False,
-    equivalencia: bool = False,
+    equivalencia: int = 0,
 ) -> list[str]:
     """Até `lotes` lotes para a noite, um por rodada da rotina (cada rodada é uma conversa nova, e
     nenhum item é julgado ao lado dos de outro lote). Um lote só fica com o id do dia, como antes.
@@ -1075,13 +1090,17 @@ def comparar(
     eventos: list[dict],
     modelo_a: str = ri.MODELO,
     modelo_b: str = ri.MODELO_CONFERENTE,
+    segunda_tentativa: bool = False,
 ) -> ar.Veredito:
     """Sonnet × Opus (Emenda 1 da ADR 0072): o veredito nos 300 primeiros e a referência do leitor
     (os eventos do lote em que os dois concordam no assunto), gravados em
     `<pasta>/comparacao-modelos.json` com o SHA-256 dos dois arquivos (passe ou não, conta como
     tentativa). API × rotina (Emenda 3) vai para `<pasta>/comparacao-rotina.json`, com os mesmos
     limites. Só contam os pares que leram o mesmo texto: o par com entrada diferente fica de fora
-    e deixa o veredito incompleto."""
+    e deixa o veredito incompleto. Com `segunda_tentativa`, API × rotina nos fatos relevantes da
+    Emenda 4, em `<pasta>/comparacao-rotina-2.json`."""
+    if segunda_tentativa:
+        return _comparar_a_segunda_tentativa(pasta, eventos, modelo_a, modelo_b)
     a, b = ler_rotulos(pasta, modelo_a), ler_rotulos(pasta, modelo_b)
     a, desvios = _com_o_desvio_do_trecho(a, eventos)
     primeiros, lote = ar.conjunto_de_prova(eventos)
@@ -1099,11 +1118,7 @@ def comparar(
             f"{len(fora)} eventos em que os dois modelos não leram o mesmo texto"
         )
     referencia = ar.referencia_do_leitor(a, b, lote)
-    sha256 = {
-        m: hashlib.sha256(arquivo_dos_rotulos(pasta, m).read_bytes()).hexdigest()
-        for m in (modelo_a, modelo_b)
-        if arquivo_dos_rotulos(pasta, m).exists()
-    }
+    sha256 = _sha256_dos_rotulos(pasta, (modelo_a, modelo_b))
     nome = (
         "comparacao-rotina.json" if modelo_b == ri.ROTINA else "comparacao-modelos.json"
     )
@@ -1116,6 +1131,53 @@ def comparar(
              "lote_do_leitor": {"eventos": len(lote), "concordam_no_assunto": len(referencia),
                                 "referencia": referencia},
              "sha256": sha256,
+             "comparado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+            ensure_ascii=False, indent=2,
+        ),
+        encoding="utf-8",
+    )  # fmt: skip
+    return veredito
+
+
+def _sha256_dos_rotulos(pasta: Path, modelos: tuple[str, ...]) -> dict[str, str]:
+    return {
+        m: hashlib.sha256(arquivo_dos_rotulos(pasta, m).read_bytes()).hexdigest()
+        for m in modelos
+        if arquivo_dos_rotulos(pasta, m).exists()
+    }
+
+
+def _comparar_a_segunda_tentativa(
+    pasta: Path, eventos: list[dict], modelo_a: str, modelo_b: str
+) -> ar.Veredito:
+    """A conta da Emenda 4: o conjunto (menos o que `texto_do_pedido` não monta pela regra da API,
+    contado à parte), os pares com a mesma entrada e a regra dos 5% faltando."""
+    a, b = ler_rotulos(pasta, modelo_a), ler_rotulos(pasta, modelo_b)
+    a, desvios = _com_o_desvio_do_trecho(a, eventos)
+    por_id = {e["id"]: e for e in eventos}
+    regra = {i: bool(a[i].get("texto_so_nos_fatos", False)) for i in a}
+    todos = ar.conjunto_da_segunda_tentativa(eventos, a)
+    sem_texto = [
+        i for i in todos if texto_do_pedido(por_id[i], pasta, regra[i]) is None
+    ]
+    conjunto = [i for i in todos if i not in set(sem_texto)]
+    diferentes = [
+        i
+        for i in conjunto
+        if ar.valido(b, i) and not _mesma_entrada(por_id[i], pasta, a[i], b[i])
+    ]
+    b = {i: r for i, r in b.items() if i not in set(diferentes)}
+    veredito, faltantes = ar.comparar_segunda_tentativa(a, b, conjunto)
+    (pasta / "comparacao-rotina-2.json").write_text(
+        json.dumps(
+            {"modelos": [modelo_a, modelo_b], "versao_do_prompt": ri.VERSAO_DO_PROMPT,
+             "emenda": "ADR 0072, Emenda 4 (segunda e última tentativa da rotina)",
+             "conjunto": {"eventos": len(conjunto), "sem_texto": sem_texto,
+                          "faltantes": faltantes, "entradas_diferentes": diferentes},
+             "veredito": asdict(veredito), "passou": veredito.passou,
+             "limites": ar.LIMITES_DA_COMPARACAO,
+             "falta_maxima": ar.FALTA_MAXIMA_DA_SEGUNDA_TENTATIVA, "desvios": desvios,
+             "sha256": _sha256_dos_rotulos(pasta, (modelo_a, modelo_b)),
              "comparado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
             ensure_ascii=False, indent=2,
         ),
@@ -1325,6 +1387,11 @@ def main(argv: list[str] | None = None) -> int:
         help="preparar: os 300 primeiros já rotulados pela API, com a mesma entrada",
     )
     argumentos.add_argument(
+        "--segunda-tentativa",
+        action="store_true",
+        help="preparar e comparar (com --com-a-rotina): os fatos relevantes da Emenda 4",
+    )
+    argumentos.add_argument(
         "--com-a-rotina",
         action="store_true",
         help="comparar: a API contra a rotina (Emenda 3), em vez do Sonnet contra o Opus",
@@ -1339,7 +1406,9 @@ def main(argv: list[str] | None = None) -> int:
     opcoes.pasta.mkdir(parents=True, exist_ok=True)
     if opcoes.passo == "comparar":
         outro = ri.ROTINA if opcoes.com_a_rotina else ri.MODELO_CONFERENTE
-        veredito = comparar(opcoes.pasta, eventos, ri.MODELO, outro)
+        veredito = comparar(
+            opcoes.pasta, eventos, ri.MODELO, outro, opcoes.segunda_tentativa
+        )
         print(
             "PASSOU" if veredito.passou else "NÃO PASSOU", *veredito.motivos, sep="\n- "
         )
@@ -1442,6 +1511,11 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _equivalencia(opcoes: argparse.Namespace) -> int:
+    """0 no lote comum, 1 na equivalência da Emenda 3, 2 na segunda tentativa (Emenda 4)."""
+    return SEGUNDA_TENTATIVA if opcoes.segunda_tentativa else int(opcoes.equivalencia)
+
+
 def _passo_da_rotina(eventos: list[dict], opcoes: argparse.Namespace) -> int:
     """`preparar` e `gravar` (Emenda 3): não usam a API nem a chave."""
     if opcoes.troca is None:
@@ -1456,7 +1530,7 @@ def _passo_da_rotina(eventos: list[dict], opcoes: argparse.Namespace) -> int:
         try:
             preparar_a_noite(eventos, opcoes.pasta, opcoes.troca, hoje, opcoes.lotes,
                              opcoes.maximo_do_lote, opcoes.texto_so_nos_fatos,
-                             opcoes.equivalencia)  # fmt: skip
+                             _equivalencia(opcoes))  # fmt: skip
         except RuntimeError as erro:
             log.error("%s", erro)
             return 1
