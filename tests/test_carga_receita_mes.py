@@ -261,3 +261,27 @@ def test_vigente_e_mudancas_tem_manifesto_e_entram_na_raiz_de_merkle(pastas):
     manifesto = ancoragem.manifestos_atuais(pasta)["vigente/estabelecimentos/11"]
     assert manifesto["origens"][0]["url"].endswith("/2026-10/Simples.zip")
     assert manifesto["licenca"]["fontes"] == {"rfb-cnpj": "vendavel"}
+
+
+def test_mes_grande_grava_as_mudancas_em_um_arquivo_por_prefixo(pastas, monkeypatch):
+    from base import ancoragem
+
+    monkeypatch.setattr(rc, "LINHAS_NUM_ARQUIVO_SO", 0)
+    pasta, restrita = pastas
+    for mes, situacao in (("2026-09", "ativa"), ("2026-10", "baixada")):
+        _mes(
+            pasta,
+            restrita,
+            mes,
+            _estabelecimentos(("11111111000191", situacao)),
+            _simples(("11111111", False)),
+            _qsa(("11111111", "1", "22222222", "22", None)),
+        )
+    assert not (pasta / "mudancas" / "estabelecimentos" / "2026-10.parquet").exists()
+    assert (
+        pasta / "mudancas" / "estabelecimentos" / "2026-10" / "11.parquet"
+    ).is_file()
+    assert not ancoragem.parquets_sem_manifesto(pasta)
+    assert "mudancas/estabelecimentos/2026-10/11" in ancoragem.folhas_da_base(pasta)
+    manifesto = rc._manifesto(pasta)["meses"]["2026-10"]["mudancas"]
+    assert manifesto["estabelecimentos"] == 1
