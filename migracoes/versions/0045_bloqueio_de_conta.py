@@ -13,6 +13,9 @@ Caminho de volta: o `downgrade` tira as duas colunas e as duas regras. Perde só
 (a conta volta a entrar); nenhum dado da conta sai.
 """
 
+from collections.abc import Generator
+from contextlib import contextmanager
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -31,8 +34,23 @@ REGRAS = {
 }
 
 
+@contextmanager
+def _sem_cascata_no_sqlite() -> Generator[None]:
+    """No SQLite o lote recria `usuarios` (copia, apaga a velha, renomeia): com as chaves
+    estrangeiras ligadas, apagar a velha levaria junto, em cascata, tudo o que é das contas.
+    Mesmo cuidado da 0039. No PostgreSQL o lote é um ALTER TABLE comum."""
+    sqlite = op.get_bind().dialect.name == "sqlite"
+    if sqlite:
+        op.execute("PRAGMA foreign_keys=OFF")
+    try:
+        yield
+    finally:
+        if sqlite:
+            op.execute("PRAGMA foreign_keys=ON")
+
+
 def upgrade() -> None:
-    with op.batch_alter_table(TABELA) as lote:
+    with _sem_cascata_no_sqlite(), op.batch_alter_table(TABELA) as lote:
         lote.add_column(sa.Column("bloqueada_em", sa.DateTime(timezone=True)))
         lote.add_column(sa.Column("motivo_do_bloqueio", sa.String(30)))
         for nome, regra in REGRAS.items():
@@ -40,7 +58,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    with op.batch_alter_table(TABELA) as lote:
+    with _sem_cascata_no_sqlite(), op.batch_alter_table(TABELA) as lote:
         for nome in reversed(REGRAS):
             lote.drop_constraint(op.f(f"ck_{TABELA}_{nome}"), type_="check")
         lote.drop_column("motivo_do_bloqueio")

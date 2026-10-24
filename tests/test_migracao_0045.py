@@ -13,7 +13,8 @@ import pytest
 import sqlalchemy as sa
 
 from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
-from src.banco.modelo import usuarios
+from src.banco.modelo import favoritos, usuarios
+from tests.test_identidades import _voltar_ao_zero
 
 URL_DE_TESTE = os.environ.get("TICKERLAB_TEST_DATABASE_URL")
 COLUNAS_NOVAS = {"bloqueada_em", "motivo_do_bloqueio"}
@@ -26,11 +27,11 @@ pytestmark = pytest.mark.xdist_group("postgres")
 def url(tmp_path):
     url = URL_DE_TESTE or f"sqlite:///{(tmp_path / 'bloqueio.sqlite').as_posix()}"
     if URL_DE_TESTE:
-        migrar_para("base", url)
+        _voltar_ao_zero(url)
     migrar_para("head", url)
     yield url
     if URL_DE_TESTE:
-        migrar_para("base", url)
+        _voltar_ao_zero(url)
 
 
 def _colunas(url: str) -> set[str]:
@@ -51,6 +52,7 @@ def _inserir(url: str, **bloqueio: object) -> uuid.UUID:
                 sa.insert(usuarios).values(
                     id=usuario_id,
                     email=f"{usuario_id.hex[:8]}@exemplo.com",
+                    google_sub=f"g-{usuario_id.hex[:8]}",  # a descida da 0039 pede
                     criado_em=AGORA,
                     **bloqueio,
                 )
@@ -75,6 +77,33 @@ def test_sobe_e_desce_sem_perder_a_conta(url) -> None:
         motor.dispose()
     migrar_para("head", url)
     assert _colunas(url) >= COLUNAS_NOVAS
+
+
+def _favoritos(url: str) -> int:
+    motor = criar_engine(url)
+    try:
+        with motor.connect() as conexao:
+            return conexao.execute(sa.text("SELECT count(*) FROM favoritos")).scalar()
+    finally:
+        motor.dispose()
+
+
+def test_sobe_e_desce_sem_apagar_os_dados_ligados_a_conta(url) -> None:
+    """No SQLite a 0045 recria `usuarios`: com as chaves estrangeiras ligadas, apagar a tabela
+    velha levaria junto, em cascata, tudo o que é da conta (favoritos, relatórios, simulações)."""
+    usuario_id = _inserir(url)
+    motor = criar_engine(url)
+    try:
+        with motor.begin() as conexao:
+            conexao.execute(
+                sa.insert(favoritos).values(usuario_id=usuario_id, ticker="PETR4.SA")
+            )
+    finally:
+        motor.dispose()
+    desfazer_ate("0044", url)
+    assert _favoritos(url) == 1
+    migrar_para("head", url)
+    assert _favoritos(url) == 1
 
 
 @pytest.mark.parametrize(
