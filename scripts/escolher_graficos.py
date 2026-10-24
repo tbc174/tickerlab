@@ -14,7 +14,8 @@ onde vem o texto já montado (`analises/<chave>.json`), que tem de ser da mesma 
 entrada confere). `estimar` conta os tokens pela API (não gasta); `piloto` escolhe na hora com cada
 modelo; `cegas` é a porta 2 (outro modelo julga cada item sem saber quem escolheu); `conferir` roda a
 porta 1 e monta a escolha final (sem API): item reprovado sai, a reserva por regras completa o
-mínimo, e sem a porta 2 nada do modelo vai ao ar.
+mínimo, e sem a porta 2 nada do modelo vai ao ar. `publicar` grava a escolha montada do modelo dos
+relatórios (`MODELO_DOS_RELATORIOS`) no arquivo do texto, em `graficos`, que é o que o app lê.
 
 **O teto vale para tudo:** nenhum passo gasta se o gasto já feito mais a estimativa passar do teto, e
 a resposta guardada (mesma ficha, mesmo texto, mesmo guia) nunca é paga de novo. Em `<pasta>`:
@@ -24,7 +25,6 @@ chave fica em `ANTHROPIC_API_KEY` (nunca no código).
 """
 
 import argparse
-import json
 import logging
 import sys
 from collections.abc import Iterator, Sequence
@@ -45,8 +45,12 @@ from src.analise_escrita import porta1_dos_graficos as p1g
 from src.analise_escrita import porta2, saida, series
 from src.analise_escrita import porta2_dos_graficos as p2g
 from src.analise_escrita import reserva_dos_graficos as rg
+from src.analise_escrita.exibicao import CAMPO_DOS_GRAFICOS
 
 log = logging.getLogger("tickerlab.analise_escrita")
+
+# a porta 3 do Tiago na 2ª prova (23/10/2026): o Opus escolhe os gráficos nas 3 empresas
+MODELO_DOS_RELATORIOS = pe.OPUS
 
 __all__ = ["TetoPassado"]
 
@@ -77,12 +81,6 @@ def analise_do_texto(analises: Path, entrada: dict[str, Any]) -> saida.Analise |
     return saida.ler_analise(guardada["analise"], saida.partes_de(entrada))
 
 
-def _hash_do_texto(analise: saida.Analise) -> str:
-    return ea._sha256(
-        json.dumps(analise.como_dict(), sort_keys=True, ensure_ascii=False)
-    )
-
-
 def ler_manifesto(pasta: Path) -> dict[str, Any]:
     return ea._ler(pasta / "manifesto.json") or {"gasto_em_dolares": 0.0}
 
@@ -103,7 +101,7 @@ def escolha_guardada(
         return None
     mesma = (
         registro["hash_da_entrada"] == en.hash_da_entrada(entrada)
-        and registro["hash_do_texto"] == _hash_do_texto(analise)
+        and registro["hash_do_texto"] == gr.hash_do_texto(analise)
         and registro["versao_do_guia"] == pg.VERSAO_DO_GUIA
     )
     return registro if mesma else None
@@ -168,7 +166,7 @@ def _registro(
         "modelo": modelo,
         "versao_do_guia": pg.VERSAO_DO_GUIA,
         "hash_da_entrada": en.hash_da_entrada(entrada),
-        "hash_do_texto": _hash_do_texto(analise),
+        "hash_do_texto": gr.hash_do_texto(analise),
         "escolhido_em": ea._agora(),
         "stop_reason": mensagem.stop_reason,
         "resposta_bruta": ea._texto_da_mensagem(mensagem),
@@ -320,8 +318,50 @@ def conferir(
     return montados
 
 
+def _publicavel(
+    pasta: Path, entrada: dict[str, Any], analise: saida.Analise, modelo: str
+) -> dict[str, Any] | None:
+    """A escolha montada para esta ficha e este texto (o registro da resposta confere os dois)."""
+    montado = ea._ler(arquivo_dos_graficos(pasta, entrada, modelo))
+    if montado is None or escolha_guardada(pasta, entrada, analise, modelo) is None:
+        return None
+    if montado["hash_da_entrada"] != en.hash_da_entrada(entrada):
+        return None
+    return montado
+
+
+def publicar(
+    entradas: list[dict[str, Any]],
+    analises: Path,
+    pasta: Path,
+    modelo: str = MODELO_DOS_RELATORIOS,
+) -> int:
+    """Grava em `analises/<chave>.json` a escolha montada do modelo, com os hashes que o app
+    confere (a ficha ampliada e o texto). Sem montagem que valha para a ficha e o texto de agora,
+    o arquivo fica como estava e o app mostra só a reserva."""
+    publicadas = 0
+    for entrada, analise in _com_texto(entradas, analises):
+        montado = _publicavel(pasta, entrada, analise, modelo)
+        if montado is None:
+            log.warning("%s: sem escolha montada de %s", ea.chave(entrada), modelo)
+            continue
+        arquivo = ea.arquivo_da_analise(analises, entrada)
+        guardada = ea._ler(arquivo) or {}
+        guardada[CAMPO_DOS_GRAFICOS] = {
+            "modelo": modelo,
+            "hash_da_entrada": montado["hash_da_entrada"],
+            "hash_do_texto": gr.hash_do_texto(analise),
+            "publicado_em": ea._agora(),
+            "escolha": montado["escolha"],
+            "linhagem": montado["linhagem"],
+        }
+        ea._gravar(arquivo, guardada)
+        publicadas += 1
+    return publicadas
+
+
 GASTAM = ("estimar", "piloto", "cegas")
-PASSOS = (*GASTAM, "conferir")
+PASSOS = (*GASTAM, "conferir", "publicar")
 
 
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
@@ -334,7 +374,8 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
         passo.add_argument("--pasta", type=Path, required=True)
         passo.add_argument("--analises", type=Path, required=True)
         passo.add_argument("--entradas", type=Path, nargs="+", default=[])
-        passo.add_argument("--modelos", default=pe.SONNET)
+        padrao = MODELO_DOS_RELATORIOS if nome == "publicar" else pe.SONNET
+        passo.add_argument("--modelos", default=padrao)
         passo.add_argument("--teto-dolares", type=float, required=nome in GASTAM)
     return analisador.parse_args(argv)
 
@@ -344,6 +385,12 @@ def _rodar(args: argparse.Namespace, entradas: list[dict[str, Any]]) -> None:
     if args.passo == "conferir":
         print(
             f"{conferir(entradas, args.analises, args.pasta, modelos)} escolhas montadas"
+        )
+        return
+    if args.passo == "publicar":
+        (modelo,) = modelos  # um modelo só escolhe os gráficos dos relatórios
+        print(
+            f"{publicar(entradas, args.analises, args.pasta, modelo)} escolhas publicadas"
         )
         return
     cliente = ri.cliente()

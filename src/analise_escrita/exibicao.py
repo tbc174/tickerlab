@@ -9,7 +9,13 @@ resolvida na linha da ficha de agora. Três travas, todas para nunca mostrar tex
   aviso de que a análise está sendo reescrita, nunca texto com número velho;
 - quem não é Pro (D4) não vê a parte que cita o dossiê: ela sai do molde montado sem o dossiê.
 
-Sem arquivo, ilegível ou fora do formato, o relatório fica como estava: sem análise e sem erro.
+Os gráficos escolhidos pelo modelo (plano de 23/10/2026) vêm no mesmo arquivo (`graficos`, gravado
+pelo passo `publicar` de `scripts/escolher_graficos.py`) e valem só para a mesma ficha e o mesmo
+texto; passam de novo pela porta 1 contra a ficha de agora, e a reserva por regras completa o mínimo.
+Quem não é Pro não vê gráfico nem destaque do dossiê, nem o que se ancora numa parte que virou molde.
+
+Sem arquivo, ilegível ou fora do formato, o relatório fica como estava: sem análise e sem erro. A
+escolha dos gráficos fora do formato nunca derruba o texto: fica só a reserva.
 """
 
 import dataclasses
@@ -21,11 +27,16 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from src import graficos_do_relatorio as gdr
 from src.analise_escrita import entrada as en
-from src.analise_escrita import montagem, saida
+from src.analise_escrita import graficos as gr
+from src.analise_escrita import montagem, saida, series
+from src.analise_escrita import reserva_dos_graficos as rg
 from src.analise_escrita.modelo_da_tela import (
     AnaliseDaTela,
+    DestaqueDaTela,
     FraseDaTela,
+    GraficoDaTela,
     NotaDaTela,
     ParagrafoDaTela,
     ParteDaTela,
@@ -52,6 +63,8 @@ PLANO_COMPLETO = (
 ROTULO_DA_LEITURA = "Leitura"
 NOME_DA_LACUNA = "O que a base não tem"
 CAMPOS_DO_LOTE = ("publicavel", "analise", "corte", "hash_da_entrada_atual")
+CAMPO_DOS_GRAFICOS = "graficos"
+SEM_ESCOLHA = gr.Escolha(())
 AVISO_DA_ANALISE = (
     "Análise escrita por modelo de linguagem a partir de dados públicos, com cada afirmação "
     "conferida por código contra a fonte. Não é recomendação de investimento. Partes dos dados "
@@ -132,48 +145,172 @@ def _nota(numero: int, linha: dict[str, Any], entrada: dict[str, Any]) -> NotaDa
     )
 
 
+def _frase(
+    frase: saida.Frase, linhas: dict[str, Any], numeros: dict[str, int]
+) -> FraseDaTela:
+    ids = [i for i in dict.fromkeys(frase.notas) if i in linhas]
+    for id_ in ids:
+        numeros.setdefault(id_, len(numeros) + 1)
+    return FraseDaTela(frase.texto, tuple(numeros[i] for i in ids))
+
+
 def _paragrafo(
     paragrafo: saida.Paragrafo, linhas: dict[str, Any], numeros: dict[str, int]
 ) -> ParagrafoDaTela:
-    frases = []
-    for frase in paragrafo.frases:
-        ids = [i for i in dict.fromkeys(frase.notas) if i in linhas]
-        for id_ in ids:
-            numeros.setdefault(id_, len(numeros) + 1)
-        frases.append(FraseDaTela(frase.texto, tuple(numeros[i] for i in ids)))
+    frases = tuple(_frase(frase, linhas, numeros) for frase in paragrafo.frases)
     rotulo = ROTULO_DA_LEITURA if paragrafo.tipo == saida.LEITURA else ""
-    return ParagrafoDaTela(paragrafo.tipo, rotulo, tuple(frases))
+    return ParagrafoDaTela(paragrafo.tipo, rotulo, frases)
+
+
+@dataclasses.dataclass
+class _Numeracao:
+    """As notas numeradas na ordem de leitura: o parágrafo, os gráficos que vêm depois dele e, no
+    fim da parte, os destaques dela. O mesmo id leva o mesmo número."""
+
+    entrada: dict[str, Any]  # a ampliada: as notas dos gráficos citam as séries
+    vista: dict[str, Any]  # a ficha que quem lê pode ver: os pontos saem só dela
+    escolha: gr.Escolha
+    numeros: dict[str, int] = dataclasses.field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.linhas = {linha["id"]: linha for linha in self.entrada["linhas"]}
+
+    def _grafico(self, grafico: gr.Grafico) -> GraficoDaTela:
+        pontos = gdr.pontos_do_grafico(grafico, self.vista)
+        return GraficoDaTela(
+            parte=grafico.parte,
+            paragrafo=grafico.paragrafo,
+            tipo=grafico.tipo,
+            titulo=grafico.titulo,
+            por_que=_frase(grafico.por_que, self.linhas, self.numeros),
+            origem=grafico.origem,
+            pontos=pontos,
+            escala=gdr.escala_para(pontos),
+        )
+
+    def _destaque(self, destaque: gr.Destaque) -> DestaqueDaTela:
+        return DestaqueDaTela(
+            parte=destaque.parte,
+            secao=destaque.secao,
+            titulo=self.vista["secoes"][destaque.secao],
+            por_que=_frase(destaque.por_que, self.linhas, self.numeros),
+            origem=destaque.origem,
+        )
+
+    def parte(
+        self, parte: saida.Parte
+    ) -> tuple[ParteDaTela, list[GraficoDaTela], list[DestaqueDaTela]]:
+        paragrafos, graficos = [], []
+        for i, paragrafo in enumerate(parte.paragrafos):
+            paragrafos.append(_paragrafo(paragrafo, self.linhas, self.numeros))
+            graficos += [
+                self._grafico(g)
+                for g in self.escolha.graficos
+                if (g.parte, g.paragrafo) == (parte.chave, i)
+            ]
+        destaques = [
+            self._destaque(d) for d in self.escolha.destaques if d.parte == parte.chave
+        ]
+        titulo = saida.TITULOS[parte.chave]
+        tela = ParteDaTela(parte.chave, titulo, parte.origem, tuple(paragrafos))
+        return tela, graficos, destaques
 
 
 def _para_a_tela(
-    analise: saida.Analise, entrada: dict[str, Any], motivo: str | None
+    analise: saida.Analise,
+    entrada: dict[str, Any],
+    motivo: str | None,
+    escolha: gr.Escolha = SEM_ESCOLHA,
+    vista: dict[str, Any] | None = None,
 ) -> AnaliseDaTela:
-    """Numera as notas na ordem em que aparecem (o mesmo id leva o mesmo número) e as resolve."""
-    linhas = {linha["id"]: linha for linha in entrada["linhas"]}
-    numeros: dict[str, int] = {}
-    partes = tuple(
-        ParteDaTela(
-            parte.chave,
-            saida.TITULOS[parte.chave],
-            parte.origem,
-            tuple(_paragrafo(p, linhas, numeros) for p in parte.paragrafos),
-        )
-        for parte in analise.partes
+    """Numera as notas na ordem de leitura e as resolve; põe gráficos e destaques nas partes."""
+    numeracao = _Numeracao(entrada, vista or entrada, escolha)
+    partes, graficos, destaques = [], [], []
+    for parte in analise.partes:
+        tela, da_parte, perto = numeracao.parte(parte)
+        partes.append(tela)
+        graficos += da_parte
+        destaques += perto
+    notas = tuple(
+        _nota(n, numeracao.linhas[i], entrada) for i, n in numeracao.numeros.items()
     )
-    notas = tuple(_nota(n, linhas[i], entrada) for i, n in numeros.items())
-    return AnaliseDaTela(partes, notas, AVISO_DA_ANALISE, motivo)
+    return AnaliseDaTela(
+        tuple(partes),
+        notas,
+        AVISO_DA_ANALISE,
+        motivo,
+        tuple(graficos),
+        tuple(destaques),
+    )
 
 
 def _analise_a_mostrar(
     guardada: dict[str, Any], entrada: dict[str, Any], e_pro: bool
-) -> tuple[saida.Analise, str | None]:
-    """O texto do modelo, o molde (ficha nova) ou o texto sem as partes do dossiê (quem não é Pro)."""
+) -> tuple[saida.Analise, saida.Analise | None, str | None]:
+    """O texto a mostrar e o publicado (None se a ficha mudou): o do modelo, o molde (ficha nova)
+    ou o texto sem as partes do dossiê (quem não é Pro)."""
     if guardada["hash_da_entrada_atual"] != en.hash_da_entrada(entrada):
-        return molde(entrada, e_pro), montagem.FICHA_NOVA
-    analise = saida.ler_analise(guardada["analise"])
-    if not e_pro:
-        analise = montagem.sem_o_dossie(analise, entrada)
-    return analise, None
+        return molde(entrada, e_pro), None, montagem.FICHA_NOVA
+    publicada = saida.ler_analise(guardada["analise"])
+    mostrada = publicada if e_pro else montagem.sem_o_dossie(publicada, entrada)
+    return mostrada, publicada, None
+
+
+def _escolha_publicada(
+    guardada: dict[str, Any], ampliada: dict[str, Any], publicada: saida.Analise
+) -> gr.Escolha:
+    """A escolha do modelo, se foi feita para esta ficha e este texto; senão, nenhuma."""
+    registro = guardada.get(CAMPO_DOS_GRAFICOS)
+    if not isinstance(registro, dict):
+        return SEM_ESCOLHA
+    if registro.get("hash_da_entrada") != en.hash_da_entrada(ampliada):
+        return (
+            SEM_ESCOLHA  # a ficha mudou desde a escolha: o achado do porquê seria velho
+        )
+    if registro.get("hash_do_texto") != gr.hash_do_texto(publicada):
+        return SEM_ESCOLHA  # outro texto: o parágrafo âncora pode ser outro
+    try:
+        return gr.ler_escolha(registro.get("escolha"))  # type: ignore[arg-type]
+    except (saida.RespostaInvalidaError, ValueError, KeyError, TypeError):
+        log.warning("gráficos de %s fora do formato", guardada.get("cnpj"))
+        return SEM_ESCOLHA
+
+
+def _sem_o_dossie(entrada: dict[str, Any]) -> dict[str, Any]:
+    """A ficha de quem não é Pro: sem as linhas do dossiê (gráfico delas não passa na porta 1)."""
+    return {**entrada, "linhas": [li for li in entrada["linhas"] if not li["so_pro"]]}
+
+
+def _ancorada_no_mesmo_texto(
+    escolha: gr.Escolha, publicada: saida.Analise, mostrada: saida.Analise
+) -> gr.Escolha:
+    """Só o que se ancora numa parte mostrada como foi escrita: a que virou molde tem outros
+    parágrafos."""
+    iguais = {p.chave for p in mostrada.partes if p in publicada.partes}
+    return gr.Escolha(
+        tuple(g for g in escolha.graficos if g.parte in iguais),
+        tuple(d for d in escolha.destaques if d.parte in iguais),
+    )
+
+
+def _graficos_a_mostrar(
+    guardada: dict[str, Any],
+    ampliada: dict[str, Any],
+    textos: tuple[saida.Analise, saida.Analise | None],
+    e_pro: bool,
+) -> tuple[gr.Escolha, dict[str, Any]]:
+    """A escolha que vai à tela (a do modelo conferida de novo, mais a reserva) e a ficha vista.
+
+    `textos` são o mostrado e o publicado (None quando saiu o molde: aí só a reserva)."""
+    mostrada, publicada = textos
+    vista = ampliada if e_pro else _sem_o_dossie(ampliada)
+    escolha = SEM_ESCOLHA
+    if publicada is not None:
+        escolha = _escolha_publicada(guardada, ampliada, publicada)
+        escolha = _ancorada_no_mesmo_texto(escolha, publicada, mostrada)
+    # a porta 2 julgou antes de publicar (o passo `publicar` só grava o que passou nela); a porta 1
+    # confere de novo, contra a ficha que quem lê pode ver
+    return rg.graficos_finais(escolha, vista, mostrada, frozenset()), vista
 
 
 def com_analise(
@@ -194,12 +331,14 @@ def com_analise(
         entrada = _entrada_de_hoje(entradas, date.fromisoformat(guardada["corte"]))
         if entrada is None:
             return relatorio
-        analise, motivo = _analise_a_mostrar(
-            guardada, entrada, pode_usar(plano, DOSSIE_DA_BASE)
-        )
+        e_pro = pode_usar(plano, DOSSIE_DA_BASE)
+        mostrada, publicada, motivo = _analise_a_mostrar(guardada, entrada, e_pro)
     except (saida.RespostaInvalidaError, ValueError, KeyError, TypeError):
         log.warning("análise de %s fora do formato", relatorio.cnpj)
         return relatorio
-    return dataclasses.replace(
-        relatorio, analise=_para_a_tela(analise, entrada, motivo)
+    ampliada = series.ampliar(entrada)
+    escolha, vista = _graficos_a_mostrar(
+        guardada, ampliada, (mostrada, publicada), e_pro
     )
+    tela = _para_a_tela(mostrada, ampliada, motivo, escolha, vista)
+    return dataclasses.replace(relatorio, analise=tela)

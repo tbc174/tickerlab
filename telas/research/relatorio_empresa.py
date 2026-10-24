@@ -16,9 +16,14 @@ import streamlit as st
 from sqlalchemy import exc as sa_exc
 
 from src import apresentacao, dossie, eventos_sec, graficos, relatorios
+from src import graficos_do_relatorio as gdr
 from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.analise_escrita.exibicao import com_analise
-from src.analise_escrita.modelo_da_tela import AnaliseDaTela, ParteDaTela
+from src.analise_escrita.modelo_da_tela import (
+    ROTULO_DO_DESTAQUE,
+    AnaliseDaTela,
+    ParteDaTela,
+)
 from src.apresentacao_pdf import apresentacao_em_pdf
 from src.apresentacao_pptx import apresentacao_em_pptx
 from src.banco.conexao import obter_engine, tabela_inexistente
@@ -198,10 +203,21 @@ def _texto_do_markdown(texto: str) -> str:
 
 def _mostrar_parte_da_analise(analise: AnaliseDaTela, parte: ParteDaTela) -> None:
     st.subheader(parte.titulo)
-    for paragrafo in parte.paragrafos:
+    for i, paragrafo in enumerate(parte.paragrafos):
         frases = " ".join(f.com_marcas() for f in paragrafo.frases)
         rotulo = f"**{paragrafo.rotulo}:** " if paragrafo.rotulo else ""
         st.markdown(_texto_do_markdown(rotulo + frases))
+        for grafico in analise.graficos_do_paragrafo(parte.chave, i):
+            mostrar_grafico(gdr.figura(grafico.pontos))
+            st.caption(_texto_do_markdown(grafico.por_que.com_marcas()))
+    for destaque in analise.destaques_da_parte(parte.chave):
+        st.info(
+            _texto_do_markdown(
+                f"{ROTULO_DO_DESTAQUE} **{destaque.titulo}**. "
+                f"{destaque.por_que.com_marcas()}"
+            ),
+            icon=":material/arrow_downward:",
+        )
     notas = analise.notas_da_parte(parte)
     if notas:
         with st.expander(f"Notas desta parte ({len(notas)})"):

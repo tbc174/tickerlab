@@ -7,7 +7,6 @@ da ficha (sem olhar o futuro) e põe tudo numa só escala. `figura` desenha para
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -16,35 +15,13 @@ from matplotlib.figure import Figure
 
 from src import graficos, graficos_pdf
 from src.analise_escrita import graficos as gr
+from src.analise_escrita.modelo_da_tela import Escala, PontosDoGrafico
 from src.estilos_pdf import PADRAO, Estilo
 
 DIVISORES = ((1e9, "bilhões"), (1e6, "milhões"), (1e3, "mil"))
 LIMITE_DAS_CASAS = 100  # de 100 para cima, os decimais só poluem o eixo
 TIPOS_QUE_PEDEM_TODAS_AS_COLUNAS = frozenset({"dispersao", "cascata", "antes_e_agora"})
 MOEDA_DA_CASCATA = "R$"  # as tabelas de cascata da ficha guardam reais sem o símbolo
-
-
-@dataclass(frozen=True)
-class PontosDoGrafico:
-    """Tudo o que o desenho precisa, lido da ficha: uma tupla de valores por coluna."""
-
-    tipo: str
-    titulo: str
-    nome_do_eixo: str
-    rotulos: tuple[str, ...]
-    colunas: tuple[str, ...]
-    valores: tuple[tuple[float | None, ...], ...]
-    ids: tuple[
-        str, ...
-    ]  # as linhas da ficha de onde cada ponto saiu, na ordem dos rótulos
-    unidade: str  # "R$", "US$", "%" ou "" (contagem e número cru)
-
-
-@dataclass(frozen=True)
-class Escala:
-    divisor: float
-    medida: str  # "R$ bilhões", "%", "" ...
-    casas: int
 
 
 def _chave_do_tempo(ponto: gr.Ponto) -> tuple[int, int, int]:

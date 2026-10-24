@@ -13,8 +13,9 @@ from zoneinfo import ZoneInfo
 from fpdf.enums import XPos, YPos
 
 from src import dossie
+from src import graficos_do_relatorio as gdr
 from src import o_que_os_dados_mostram as leitura_da_ficha
-from src.analise_escrita.modelo_da_tela import AnaliseDaTela
+from src.analise_escrita.modelo_da_tela import ROTULO_DO_DESTAQUE, AnaliseDaTela
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
 from src.rastro import DOCUMENTO as DOCUMENTO_DO_RASTRO
@@ -166,18 +167,26 @@ def _sem_marcas_de_markdown(texto: str) -> str:
     return texto.replace("*", "")
 
 
-def _analise(pdf: RelatorioPDF, analise: AnaliseDaTela) -> None:
-    """A análise escrita antes da ficha: cada parte com o texto e, embaixo, as notas dela."""
+def _analise(pdf: RelatorioPDF, analise: AnaliseDaTela, estilo: Estilo) -> None:
+    """A análise escrita antes da ficha: cada parte com o texto, os gráficos depois do parágrafo
+    a que se prendem (com o achado embaixo), os destaques e, no fim, as notas dela."""
     pdf.secao("A análise", reservar=40, numerada=True)
     pdf.aviso_destacado(analise.aviso)
     if analise.motivo:
         pdf.aviso_destacado(f"Texto de reserva por regras: {analise.motivo}.")
     for parte in analise.partes:
         _titulo_da_tabela(pdf, parte.titulo)
-        for paragrafo in parte.paragrafos:
+        for i, paragrafo in enumerate(parte.paragrafos):
             frases = " ".join(f.com_marcas() for f in paragrafo.frases)
             rotulo = f"{paragrafo.rotulo}: " if paragrafo.rotulo else ""
             pdf.paragrafo(_sem_marcas_de_markdown(rotulo + frases))
+            for grafico in analise.graficos_do_paragrafo(parte.chave, i):
+                pdf.imagem(gdr.png(grafico.pontos, estilo))
+                pdf.paragrafo(grafico.por_que.com_marcas(), apagado=True)
+        for destaque in analise.destaques_da_parte(parte.chave):
+            pdf.aviso_destacado(
+                f"{ROTULO_DO_DESTAQUE} {destaque.titulo}. {destaque.por_que.com_marcas()}"
+            )
         for nota in analise.notas_da_parte(parte):
             pdf.paragrafo(f"[{nota.numero}] {nota.legenda()}", apagado=True)
 
@@ -242,7 +251,7 @@ def relatorio_da_empresa(
         )
     pdf.aviso_destacado(relatorio.aviso_das_notas)
     if relatorio.analise:
-        _analise(pdf, relatorio.analise)
+        _analise(pdf, relatorio.analise, estilo)
     for secao in relatorio.secoes:
         escrever_secao(pdf, secao, estilo)
     if com_rastro:
