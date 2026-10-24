@@ -20,6 +20,7 @@ from src.analise_escrita import numeros
 from src.relatorio_empresa import (
     ANEXO_DE_ANOS,
     COMO_SAI_O_DY,
+    EM_ABERTO,
     FONTE_DO_ANEXO,
     FONTE_DOS_MULTIPLOS,
     Relatorio,
@@ -69,6 +70,28 @@ NOMES_CONGELADOS_NA_ENTRADA = {
     "ponte": "Da dívida líquida do ano anterior à de agora",
 }
 
+# Números que entraram na ficha depois de análises publicadas (os indicadores sem preço, linha 54 da
+# fila, 24/10): ficam fora da entrada pelo mesmo motivo do nome congelado acima, e entram na próxima
+# rodada de textos.
+ITENS_FORA_DA_ENTRADA = frozenset(
+    {
+        "margem_ebitda",
+        "roa",
+        "divida_liquida_sobre_ebitda",
+        "divida_liquida_sobre_ebit",
+        "passivos_sobre_ativos",
+        "pl_sobre_ativos",
+        "liquidez_corrente",
+        "dividendo_por_acao",
+        "payout",
+        "crescimento_do_dividendo",
+        "acoes_em_circulacao",
+    }
+)
+COLUNAS_FORA_DA_ENTRADA = frozenset(
+    {"dividendo_por_acao", "dividendos_fre_por_acao", "jcp_fre_por_acao"}
+)
+
 PessoaNaEntradaError = dossie_da_base.PessoaNaFichaError
 
 
@@ -98,7 +121,7 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
     """As linhas de uma seção (itens, tabelas, parágrafos e pontos); o relatório do setor usa a mesma."""
     chave = secao["chave"]
     for item in secao["itens"]:
-        if not _usa_o_preco(item):
+        if not _usa_o_preco(item) and item["chave"] not in ITENS_FORA_DA_ENTRADA:
             yield {"secao": chave, **_linha_do_item(chave, item)}
     for tabela, linhas in secao["tabelas"].items():
         if (
@@ -111,7 +134,9 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
                 "id": f"{chave}.{tabela}.{i}",
                 "tipo": "linha",
                 "tabela": _nome_na_entrada(tabela),
-                "celulas": celulas,
+                "celulas": {
+                    k: v for k, v in celulas.items() if k not in COLUNAS_FORA_DA_ENTRADA
+                },
             }
     for i, texto in enumerate(secao["paragrafos"]):
         if TRECHO_DO_PRECO not in texto and texto not in (
@@ -128,12 +153,44 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
         yield {"secao": chave, "id": f"{chave}.pontos.{i}", "tipo": "ponto", **ponto}
 
 
+def _perguntas_sem_os_numeros_fora(ficha: dict[str, Any]) -> dict[str, str | None]:
+    """Cada pergunta em aberto que cita um número de `ITENS_FORA_DA_ENTRADA`, como a ficha a escreveu,
+    e como ela fica sem ele (`None`: a pergunta era só dele e sai), na regra de `perguntas_em_aberto`."""
+    por_motivo: dict[str, list[tuple[str, bool]]] = {}
+    for secao in ficha["secoes"]:
+        if secao["trancada"]:
+            continue
+        for item in secao["itens"]:
+            if item["texto"] == "—" and item.get("motivo"):
+                fora = item["chave"] in ITENS_FORA_DA_ENTRADA
+                por_motivo.setdefault(item["motivo"], []).append((item["nome"], fora))
+    trocas: dict[str, str | None] = {}
+    for motivo, nomes in por_motivo.items():
+        if not any(fora for _, fora in nomes):
+            continue
+        todos = dict.fromkeys(nome for nome, _ in nomes)
+        ficam = dict.fromkeys(nome for nome, fora in nomes if not fora)
+        escrita = f"{EM_ABERTO} {' e '.join(todos)}. {motivo}"
+        trocas[escrita] = (
+            f"{EM_ABERTO} {' e '.join(ficam)}. {motivo}" if ficam else None
+        )
+    return trocas
+
+
+def _sem_os_numeros_fora(
+    secao: dict[str, Any], trocas: dict[str, str | None]
+) -> dict[str, Any]:
+    paragrafos = [trocas.get(texto, texto) for texto in secao["paragrafos"]]
+    return {**secao, "paragrafos": [texto for texto in paragrafos if texto is not None]}
+
+
 def _linhas_da_ficha(ficha: dict[str, Any]) -> list[dict[str, Any]]:
+    trocas = _perguntas_sem_os_numeros_fora(ficha)
     return [
         linha
         for secao in ficha["secoes"]
         if secao["chave"] not in SECOES_FORA and not secao["trancada"]
-        for linha in linhas_da_secao(secao)
+        for linha in linhas_da_secao(_sem_os_numeros_fora(secao, trocas))
     ]
 
 

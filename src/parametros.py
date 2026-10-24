@@ -196,6 +196,8 @@ PARAMETROS: tuple[ParametroConfiguravel, ...] = (
     _p("fundamentalista.pl_maximo", "P/L máximo do filtro", "decimal", 30.0,
        "Filtro educacional de valuation; P/L negativo é tratado como \"não se aplica\".",
        minimo=0, maximo=500),
+    # ainda sem leitor: o dividend yield de 12 meses e de 5 anos (linha 55 da fila, atrás da trava do
+    # preço) é quem vai usá-la; o dividendo por ação e o payout não dependem dela
     _p("fundamentalista.janela_proventos", "Janela dos proventos", "inteiro", 24,
        "Quantos meses de proventos entram no dividend yield. Yield passado não indica o futuro.",
        opcoes=(12, 24, 60), unidade="meses"),

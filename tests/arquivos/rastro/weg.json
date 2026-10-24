@@ -1,4 +1,15 @@
 {
+  "acoes_em_circulacao": {
+    "valor": 4195695973.0,
+    "formula": "ações do capital integralizado − em tesouraria, por espécie (ON e PN), no balanço mais recente; conferidas com o lucro por ação da DRE",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
   "altman": {
     "valor": 3.7310914438364096,
     "formula": "Z'' = 6,56·X1 + 3,26·X2 + 6,72·X3 + 1,05·X4",
@@ -111,6 +122,18 @@
       "DFP de 31/12/2025, versão 1"
     ]
   },
+  "crescimento_do_dividendo": {
+    "valor": null,
+    "formula": "(dividendo por ação do último exercício ÷ o de 5 anos antes) ^ (1 ÷ 5) − 1",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
   "crescimento_lucro": {
     "valor": null,
     "formula": "(lucro dos controladores (sem a divisão, o lucro consolidado) do último DFP ÷ o do DFP de 5 anos antes) ^ (1 ÷ 5) − 1",
@@ -169,6 +192,28 @@
       "DFP de 31/12/2025, versão 1"
     ]
   },
+  "divida_liquida_sobre_ebit": {
+    "valor": -0.3361832818439802,
+    "formula": "dívida líquida (balanço mais recente) ÷ EBIT (12 meses)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "divida_liquida_sobre_ebitda": {
+    "valor": -0.29878132723232137,
+    "formula": "dívida líquida (balanço mais recente) ÷ (EBIT + depreciação e amortização) (12 meses)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
   "divida_sobre_pl": {
     "valor": -0.15439021862602942,
     "formula": "dívida líquida ÷ (patrimônio líquido − participação dos minoritários)",
@@ -192,6 +237,18 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1",
       "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "dividendo_por_acao": {
+    "valor": 1.283403047945295,
+    "formula": "dividendos e JCP pagos no fluxo de caixa da DFP do último exercício ÷ ações em circulação do fim dele (ajustadas por desdobramentos, grupamentos e bonificações)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
     ]
   },
   "dupont_alavancagem": {
@@ -255,6 +312,17 @@
       "fechamento de WEGE3.SA (Yahoo Finance)"
     ]
   },
+  "liquidez_corrente": {
+    "valor": 1.5478099809155443,
+    "formula": "ativo circulante ÷ passivo circulante (balanço mais recente)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
   "lucro": {
     "valor": 6376219000.0,
     "formula": "lucro dos controladores (sem a divisão, o lucro consolidado) (12 meses: último DFP + acumulado do ano no último ITR − o mesmo período do ano anterior)",
@@ -281,6 +349,17 @@
     "valor": 0.1960278266086431,
     "formula": "EBIT ÷ receita (12 meses)",
     "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "margem_ebitda": {
+    "valor": 0.2205669232829732,
+    "formula": "(EBIT + depreciação e amortização) ÷ receita (12 meses)",
+    "versao_do_calculo": "fundamentalista 1",
     "fonte_id": "cvm",
     "outras_fontes": [],
     "publicado_em": "2026-02-25",
@@ -341,6 +420,29 @@
       "fechamento de WEGE3.SA (Yahoo Finance)"
     ]
   },
+  "passivos_sobre_ativos": {
+    "valor": 0.564934905661926,
+    "formula": "(ativo total − patrimônio líquido com os minoritários) ÷ ativo total (balanço mais recente)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "payout": {
+    "valor": 0.8445081638507084,
+    "formula": "dividendos e JCP pagos no fluxo de caixa da DFP do último exercício ÷ lucro dos controladores dele",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
   "piotroski": {
     "valor": 6.0,
     "formula": "um ponto por critério cumprido, de 0 a 9",
@@ -350,6 +452,17 @@
     "publicado_em": "2026-02-25",
     "documentos": [
       "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "pl_sobre_ativos": {
+    "valor": 0.4350650943380741,
+    "formula": "patrimônio líquido com os minoritários ÷ ativo total (balanço mais recente)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
       "DFP de 31/12/2025, versão 1"
     ]
   },
@@ -390,6 +503,17 @@
     "valor": 40804110000.0,
     "formula": "receita líquida (12 meses: último DFP + acumulado do ano no último ITR − o mesmo período do ano anterior)",
     "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "roa": {
+    "valor": 0.1588920912941086,
+    "formula": "lucro líquido consolidado (12 meses) ÷ ativo total (balanço mais recente)",
+    "versao_do_calculo": "fundamentalista 1",
     "fonte_id": "cvm",
     "outras_fontes": [],
     "publicado_em": "2026-02-25",

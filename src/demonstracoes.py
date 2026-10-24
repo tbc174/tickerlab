@@ -378,15 +378,26 @@ def _somar_as_divididas(contas: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([contas[~divididas], somadas], ignore_index=True)
 
 
+# Conta do TickerLab → coluna da composição do capital da CVM.
+COLUNAS_DAS_ACOES = (
+    ("acoes_total", "QT_ACAO_TOTAL_CAP_INTEGR"),
+    ("acoes_tesouraria", "QT_ACAO_TOTAL_TESOURO"),
+    ("acoes_ordinarias", "QT_ACAO_ORDIN_CAP_INTEGR"),
+    ("acoes_preferenciais", "QT_ACAO_PREF_CAP_INTEGR"),
+    ("acoes_ordinarias_tesouraria", "QT_ACAO_ORDIN_TESOURO"),
+    ("acoes_preferenciais_tesouraria", "QT_ACAO_PREF_TESOURO"),
+)
+
+
 def _acoes(capital: pd.DataFrame, documento: str) -> pd.DataFrame:
-    """Total de ações e ações em tesouraria (para lucro e patrimônio por ação)."""
+    """Ações do capital e em tesouraria, no total (lucro e patrimônio por ação) e por espécie
+    (ordinárias e preferenciais, para a ficha técnica)."""
     if capital.empty:
         return pd.DataFrame(columns=COLUNAS)
     partes = []
-    for conta, coluna in (
-        ("acoes_total", "QT_ACAO_TOTAL_CAP_INTEGR"),
-        ("acoes_tesouraria", "QT_ACAO_TOTAL_TESOURO"),
-    ):
+    for conta, coluna in COLUNAS_DAS_ACOES:
+        if coluna not in capital.columns:  # arquivo antigo ou amostra só com o total
+            continue
         referencia = pd.to_datetime(capital["DT_REFER"]).dt.date
         partes.append(
             pd.DataFrame(

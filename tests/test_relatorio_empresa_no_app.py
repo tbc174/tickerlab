@@ -198,3 +198,27 @@ def test_no_modo_local_gera_e_baixa_o_deck_em_pdf_e_ppt(banco):
     assert "Baixar o deck (PPT)" in rotulos
     # o deck não conta como relatório do plano
     assert "Baixar o PDF" not in rotulos
+
+
+def test_indicadores_sem_preco_aparecem_na_pagina(banco):
+    """Linha 54 da fila: os números novos chegam à tela, cada um com o valor escrito."""
+    _coletar(banco)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    metricas = {m.label: m.value for m in app.metric}
+    for nome in (
+        "Margem EBITDA",
+        "ROA (retorno sobre o ativo)",
+        "Dívida líquida / EBITDA",
+        "Dívida líquida / EBIT",
+        "Passivos / ativos",
+        "Patrimônio / ativos",
+        "Liquidez corrente",
+        "Dividendo por ação",
+        "Payout (pago sobre o lucro)",
+        "Crescimento do dividendo por ação",
+        "Ações em circulação",
+    ):
+        assert any(rotulo.startswith(nome) for rotulo in metricas), nome
+    acoes = next(v for k, v in metricas.items() if k.startswith("Ações em circulação"))
+    assert " ON e " in acoes and " PN)" in acoes

@@ -92,6 +92,22 @@ def test_dfp_traz_as_contas_das_notas_classicas():
     assert fluxos["despesas_administrativas"] == -1_513_882 * MIL
 
 
+def test_composicao_do_capital_traz_as_ordinarias_e_as_preferenciais():
+    """Linha 54 da fila: as ações por espécie para a ficha técnica (Petrobras tem ON e PN; a WEG,
+    só ON, com ações em tesouraria). Números do arquivo de composição do capital da CVM."""
+    contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
+    saldos = contas[contas["periodo"] == dm.POSICAO]
+    petr = saldos[saldos["cnpj"] == PETROBRAS].set_index("conta")["valor"]
+    weg = saldos[saldos["cnpj"] == WEG].set_index("conta")["valor"]
+    assert petr["acoes_ordinarias"] == 7_442_231_382
+    assert petr["acoes_preferenciais"] == 5_446_501_379
+    assert petr["acoes_ordinarias"] + petr["acoes_preferenciais"] == petr["acoes_total"]
+    assert weg["acoes_ordinarias_tesouraria"] == 1_622_025
+    assert (
+        weg["acoes_preferenciais"] == 0 and weg["acoes_preferenciais_tesouraria"] == 0
+    )
+
+
 def test_depreciacao_do_banco_nao_soma_juros_ao_custo_amortizado():
     """Regressão (fim da série 2): no Itaú, "Resultado de Juros ... ao Custo Amortizado" (−39,1 bi)
     entrava na depreciação, que saía −31,7 bi em vez dos 7,4 bi do PDF da DFP 2025."""

@@ -46,6 +46,8 @@ def test_todo_numero_da_ficha_vira_uma_linha_com_id(entrada):
             if item.fonte == re_.FONTE_DOS_MULTIPLOS:  # o DY: usa o preço
                 assert f"{secao.chave}.{item.chave}" not in _linhas(entrada)
                 continue
+            if item.chave in en.ITENS_FORA_DA_ENTRADA:  # até a próxima rodada de textos
+                continue
             assert f"{secao.chave}.{item.chave}" in _linhas(entrada)
 
 
@@ -148,6 +150,45 @@ def test_titulo_novo_da_ponte_nao_muda_a_entrada(entrada):
     assert ponte["tabela"] != re_.nome_da_tabela("ponte")
     congelada = json.loads((PAR_DA_CPFL / "entrada.json").read_text(encoding="utf-8"))
     assert en.hash_da_entrada(entrada) == en.hash_da_entrada(congelada)
+
+
+def test_numeros_novos_da_ficha_ficam_fora_da_entrada(entrada):
+    """Linha 54 da fila (24/10): os indicadores sem preço entram na ficha sem derrubar as análises
+    publicadas; a entrada só os recebe na próxima rodada de textos, como o título da ponte."""
+    com, _ = relatorios_da_cpfl()
+    chaves = {i.chave for s in com.secoes for i in s.itens}
+    assert chaves >= en.ITENS_FORA_DA_ENTRADA  # estão na ficha
+    ids = {linha["id"].rsplit(".", 1)[-1] for linha in entrada["linhas"]}
+    assert not en.ITENS_FORA_DA_ENTRADA & ids
+    for linha in entrada["linhas"]:
+        if linha["tipo"] == "linha":
+            assert not set(linha["celulas"]) & en.COLUNAS_FORA_DA_ENTRADA, linha["id"]
+
+
+def test_pergunta_em_aberto_dos_numeros_novos_fica_fora_da_entrada():
+    """A pergunta só de um número novo sai; a dividida com um número antigo perde só o nome novo."""
+
+    def item(chave, nome, motivo):
+        return {"chave": chave, "nome": nome, "texto": "—", "motivo": motivo}
+
+    ficha = {
+        "secoes": [
+            {"chave": "resultado", "trancada": False, "tabelas": {}, "pontos": [], "paragrafos": [],
+             "itens": [item("margem_bruta", "Margem bruta", "Sem receita."),
+                       item("margem_ebitda", "Margem EBITDA", "Sem receita."),
+                       item("payout", "Payout", "Sem lucro.")]},
+            {"chave": "limites", "trancada": False, "tabelas": {}, "pontos": [], "itens": [],
+             "paragrafos": ["Antes.", "Em aberto: Margem bruta e Margem EBITDA. Sem receita.",
+                            "Em aberto: Payout. Sem lucro.", "Depois."]},
+        ]
+    }  # fmt: skip
+    limites = [li for li in en._linhas_da_ficha(ficha) if li["secao"] == "limites"]
+    assert [li["texto"] for li in limites] == [
+        "Antes.",
+        "Em aberto: Margem bruta. Sem receita.",
+        "Depois.",
+    ]
+    assert [li["id"] for li in limites] == [f"limites.paragrafos.{i}" for i in range(3)]
 
 
 def test_entrada_cabe_no_pedido(entrada):
