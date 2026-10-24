@@ -915,6 +915,12 @@ def _lote(troca: Path, lote_id: str) -> list[dict]:
     ]
 
 
+def _ids(troca: Path, lote_id: str) -> list[str]:
+    """Os ids dos eventos do lote, na ordem, desfazendo a chave opaca."""
+    por_chave = {rc.chave_da_rotina(e["id"]): e["id"] for e in EVENTOS}
+    return [por_chave[i["chave"]] for i in _lote(troca, lote_id)]
+
+
 def _responder(
     troca: Path, lote_id: str, respostas: dict[str, str] | None = None
 ) -> None:
@@ -939,7 +945,7 @@ def troca(tmp_path: Path) -> Path:
 def test_preparar_grava_ate_o_maximo_de_prontos(pasta, troca):
     assert rc.preparar(EVENTOS, pasta, troca, HOJE, maximo=3) == "2026-10-24"
     itens = _lote(troca, "2026-10-24")
-    assert [i["chave"] for i in itens] == [e["id"] for e in EVENTOS[:3]]
+    assert _ids(troca, "2026-10-24") == [e["id"] for e in EVENTOS[:3]]
     campos = {"chave", "fato_relevante", "pedido", "esquema", "hash_da_entrada"}
     assert all(set(i) == campos for i in itens)
     lote = (troca / "lotes" / "2026-10-24.jsonl").read_text(encoding="utf-8")
@@ -951,11 +957,22 @@ def test_preparar_grava_ate_o_maximo_de_prontos(pasta, troca):
     assert not (pasta / "rotulos.jsonl").exists()
 
 
+def test_lote_da_rotina_nao_leva_o_id_do_evento(pasta, troca):
+    """O id do evento começa pelo código CVM da empresa, e a rotina lê a linha inteira: no lote vai
+    só uma chave opaca (24/10/2026). Pela API o id ia no `custom_id`, que o modelo não lê."""
+    rc.preparar(EVENTOS, pasta, troca, HOJE)
+    lote = (troca / "lotes" / "2026-10-24.jsonl").read_text(encoding="utf-8")
+    assert not any(e["id"] in lote for e in EVENTOS)
+    chaves = [rc.chave_da_rotina(e["id"]) for e in EVENTOS]
+    assert len(set(chaves)) == len(EVENTOS)
+    assert all(len(c) == 16 and int(c, 16) >= 0 for c in chaves)
+
+
 def test_preparar_nao_repete_evento_de_lote_aberto(pasta, troca):
     rc.preparar(EVENTOS, pasta, troca, HOJE, maximo=3)
     amanha = HOJE + timedelta(days=1)
     assert rc.preparar(EVENTOS, pasta, troca, amanha, maximo=3) == "2026-10-25"
-    assert [i["chave"] for i in _lote(troca, "2026-10-25")] == [EVENTOS[3]["id"]]
+    assert _ids(troca, "2026-10-25") == [EVENTOS[3]["id"]]
     assert rc.preparar(EVENTOS, pasta, troca, amanha + timedelta(days=1)) is None
 
 
@@ -968,14 +985,20 @@ def test_preparar_duas_vezes_no_mesmo_dia_recusa(pasta, troca):
 def test_preparar_so_manda_os_prontos_pela_regra_do_texto(pasta, troca):
     (pasta / "textos" / f"{EVENTOS[0]['id']}.txt").unlink()
     rc.preparar(EVENTOS, pasta, troca, HOJE)
-    assert EVENTOS[0]["id"] not in {i["chave"] for i in _lote(troca, "2026-10-24")}
+    assert EVENTOS[0]["id"] not in set(_ids(troca, "2026-10-24"))
     rc.preparar(EVENTOS, pasta, troca, HOJE + timedelta(days=1), so_fatos=True)
-    assert [i["chave"] for i in _lote(troca, "2026-10-25")] == [EVENTOS[0]["id"]]
+    assert _ids(troca, "2026-10-25") == [EVENTOS[0]["id"]]
 
 
 def test_gravar_resposta_valida_vira_rotulo_da_rotina(pasta, troca):
     rc.preparar(EVENTOS, pasta, troca, HOJE, maximo=3)
-    hashes = {i["chave"]: i["hash_da_entrada"] for i in _lote(troca, "2026-10-24")}
+    hashes = dict(
+        zip(
+            _ids(troca, "2026-10-24"),
+            (i["hash_da_entrada"] for i in _lote(troca, "2026-10-24")),
+            strict=True,
+        )
+    )
     _responder(troca, "2026-10-24")
     resultado = rc.gravar(EVENTOS, pasta, troca, HOJE + timedelta(days=1))
     assert (resultado.gravados, resultado.erros, resultado.ignorados) == (3, 0, 0)
@@ -1004,7 +1027,14 @@ def test_gravar_recusa_fora_da_lista_e_trecho_inventado(pasta, troca):
         "confianca": "alta",
         "trecho": "inventado",
     }
-    _responder(troca, "2026-10-24", {a: json.dumps(fora), b: json.dumps(inventado)})
+    _responder(
+        troca,
+        "2026-10-24",
+        {
+            rc.chave_da_rotina(a): json.dumps(fora),
+            rc.chave_da_rotina(b): json.dumps(inventado),
+        },
+    )
     resultado = rc.gravar(EVENTOS, pasta, troca, HOJE)
     assert (resultado.gravados, resultado.erros) == (0, 2)
     rotulos = rc.ler_rotulos(pasta, ROTINA)
@@ -1019,7 +1049,10 @@ def test_gravar_ignora_chave_que_nao_e_do_lote(pasta, troca):
     arquivo = troca / "respostas" / "2026-10-24.jsonl"
     with arquivo.open("a", encoding="utf-8") as saida:
         saida.write(
-            json.dumps({"chave": EVENTOS[3]["id"], "resposta_bruta": "{}"}) + "\n"
+            json.dumps(
+                {"chave": rc.chave_da_rotina(EVENTOS[3]["id"]), "resposta_bruta": "{}"}
+            )
+            + "\n"
         )
         saida.write("isto não é json\n")
     resultado = rc.gravar(EVENTOS, pasta, troca, HOJE)
@@ -1045,7 +1078,7 @@ def test_resposta_que_falta_volta_no_proximo_lote(pasta, troca):
     arquivo.write_text("\n".join(linhas[:2]) + "\n", encoding="utf-8")
     assert rc.gravar(EVENTOS, pasta, troca, HOJE).gravados == 2
     rc.preparar(EVENTOS, pasta, troca, HOJE + timedelta(days=1))
-    novo = [i["chave"] for i in _lote(troca, "2026-10-25")]
+    novo = _ids(troca, "2026-10-25")
     assert novo == [e["id"] for e in EVENTOS[2:]]
 
 
@@ -1121,7 +1154,7 @@ def test_main_preparar_exige_a_pasta_de_troca(tmp_path):
 def test_preparar_a_noite_faz_varios_lotes_sem_repetir_evento(pasta, troca):
     ids = rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=3, maximo=1)
     assert ids == ["2026-10-24-01", "2026-10-24-02", "2026-10-24-03"]
-    chaves = [i["chave"] for lote_id in ids for i in _lote(troca, lote_id)]
+    chaves = [i for lote_id in ids for i in _ids(troca, lote_id)]
     assert chaves == [e["id"] for e in EVENTOS[:3]]
     assert sorted(ids) == ids  # a rotina pega o menor id primeiro
 
@@ -1178,7 +1211,7 @@ def test_rotulo_da_rotina_conta_como_feito_para_a_api(pasta, troca):
 def test_rotulo_da_api_conta_como_feito_para_a_rotina(pasta, troca):
     rc.piloto(ClienteDeMentira(), EVENTOS, pasta, n=2, teto=60)
     rc.preparar(EVENTOS, pasta, troca, HOJE)
-    novo = [i["chave"] for i in _lote(troca, "2026-10-24")]
+    novo = _ids(troca, "2026-10-24")
     assert novo == [e["id"] for e in EVENTOS[2:]]
 
 
@@ -1204,7 +1237,7 @@ def test_equivalencia_manda_os_300_primeiros_com_a_entrada_da_api(tmp_path, troc
     assert lote_id == "2026-10-24-equivalencia"
     itens = _lote(troca, lote_id)
     assert len(itens) == rc.MAXIMO_DO_LOTE
-    api = rc.ler_rotulos(pasta)
+    api = {rc.chave_da_rotina(i): r for i, r in rc.ler_rotulos(pasta).items()}
     assert all(
         i["hash_da_entrada"] == api[i["chave"]]["hash_da_entrada"] for i in itens
     )

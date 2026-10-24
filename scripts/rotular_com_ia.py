@@ -93,6 +93,7 @@ PESO_DA_ESCRITA_NO_CACHE = 1.25
 SONDA_DO_PREFIXO = "."
 _CUSTOM_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _FORA_DA_CHAVE = re.compile(r"[^A-Za-z0-9_-]")
+CARACTERES_DA_CHAVE_DA_ROTINA = 16  # 64 bits do hash: sem colisão numa fila de milhares
 FUSO = ZoneInfo("America/Sao_Paulo")
 
 
@@ -107,6 +108,14 @@ def chave(evento_id: str) -> str:
     """O id como nome de arquivo e `custom_id` do lote: o que não for letra, número, `-` ou `_` vira `_`
     (um id do lote do leitor tem espaço). O id original continua em cada rótulo."""
     return _FORA_DA_CHAVE.sub("_", evento_id)
+
+
+def chave_da_rotina(evento_id: str) -> str:
+    """A chave do item no lote da rotina: um pedaço do sha256 do id. O id começa pelo código CVM da
+    empresa e a rotina lê a linha inteira (pela API ele ia no `custom_id`, que o modelo não lê)."""
+    return hashlib.sha256(evento_id.encode("utf-8")).hexdigest()[
+        :CARACTERES_DA_CHAVE_DA_ROTINA
+    ]
 
 
 def ler_eventos(caminho: Path) -> list[dict]:
@@ -685,7 +694,9 @@ def preparar(
             "hash_da_entrada": item["hash_da_entrada"],
         }
         linhas.append(
-            json.dumps({"chave": chave(evento["id"]), **item}, ensure_ascii=False)
+            json.dumps(
+                {"chave": chave_da_rotina(evento["id"]), **item}, ensure_ascii=False
+            )
         )
     _lotes_da_troca(troca).mkdir(parents=True, exist_ok=True)
     (_lotes_da_troca(troca) / f"{lote_id}.jsonl").write_text(
@@ -793,7 +804,7 @@ def gravar(eventos: list[dict], pasta: Path, troca: Path, hoje: date) -> Gravaca
     no próximo lote; o lote sem resposta passado o prazo é falha (a rotina não rodou)."""
     manifesto = ler_manifesto(pasta, ri.ROTINA)
     por_id = {e["id"]: e for e in eventos}
-    por_chave = {chave(i): i for i in por_id}
+    por_chave = {chave_da_rotina(i): i for i in por_id}
     feito = Gravacao()
     for lote in manifesto.get("lotes", []):
         if lote.get("estado") != "preparado":
