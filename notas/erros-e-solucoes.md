@@ -633,3 +633,27 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `tests/ajudantes_da_sala.pdf` (fpdf2) grava `/CreationDate` ao segundo (e o `/ID`, derivado dele) dentro do PDF. Duas chamadas que caem em segundos diferentes dão bytes diferentes, o SHA-256 muda e a sala não vê "repetido".
 - **Solução:** gerar o conteúdo uma vez e enviar os mesmos bytes nas duas chamadas. Regra geral: teste que compara dois PDFs gerados (igualdade, hash, "repetido") gera uma vez e reaproveita os bytes; nunca chama o gerador duas vezes esperando o mesmo resultado.
 - **Data:** 21/10/2026
+
+## Vigia da licença do CNPJ falha todo dia: rota e campos do dados.gov.br mudaram (`termos-cnpj-licenca`)
+- **Sintoma:** `arquivo-diaria` vermelha; a fonte `termos-cnpj-licenca` dava 401 mesmo com a chave do portal no `.env`.
+- **Causa:** a ficha do conjunto mudou de endereço: agora começa com `/dados/api/publico/...` (sem o `/dados`, o portal dá 401 para qualquer chave). A resposta também mudou de formato: saíram os campos do CKAN (`license_id`, `title`, `license_title`) e entraram campos em português (`licenca`, `nome`, `titulo`).
+- **Solução:** rota nova em `base/arquivo/fontes.py` e campos novos em `CAMPOS_DA_LICENCA_DA_FICHA` (`base/arquivo/obter.py`). O `emailResponsavel` fica de fora, porque é dado de pessoa. O teste prende a rota com `/dados`. Regra: quando uma API dá 401 mesmo com a chave certa, confira o endereço na documentação antes de culpar a chave.
+- **Data:** 24/10/2026
+
+## Coletor do IEX falha às 5h: o pregão de ontem ainda não saiu (`iex-intradiario`)
+- **Sintoma:** `2026-10-22: FALHOU, nada gravado (HTTPError: 404 ... hist?date=20261022)` às 5h de 23/10; a carga das 0h30 seguintes baixou o mesmo dia sem erro.
+- **Causa:** a IEX só publica o dia na tarde seguinte. Antes disso, a lista do HIST responde 404, e não lista vazia. O coletor tratava todo 404 de dia de pregão como falha.
+- **Solução:** `endereco_do_tops(..., pode_faltar=True)` só no último pregão: ali o 404 vira "ainda não publicado". Nos dias anteriores, o 404 continua sendo falha, então um dia que nunca sai ainda dispara o alarme, só que um dia depois.
+- **Data:** 24/10/2026
+
+## Âncora da base acusa milhares de Parquets "sem manifesto" durante a carga do CNPJ (`ancoras`)
+- **Sintoma:** `FALHAS: 8689 Parquet(s) sem manifesto, fora da âncora: cnpj/_novo/estabelecimentos/00/00000-0.parquet ...`
+- **Causa:** a carga do CNPJ (`scripts/carga_receita_mes.py`) monta o mês em `cnpj/_novo/` e só no fim troca pelo vigente. A âncora lia essa pasta de trabalho como se fosse a base, e ancoraria um mês pela metade.
+- **Solução:** `base/ancoragem.py` ignora as pastas que começam com `_` (`PREFIXO_DA_PASTA_DE_TRABALHO`), tanto nos manifestos quanto na lista dos soltos.
+- **Data:** 24/10/2026
+
+## Boletim da base sai calado desde 21/10: a lista `TAREFAS=` saiu do conferir-tarefas (`boletim-base`)
+- **Sintoma:** `boletim-base` com saída 1 e nenhuma linha no log.
+- **Causa:** o `~/bin/boletim-da-base.sh` tirava as tarefas diárias com `grep '^TAREFAS='` do `conferir-tarefas-casa.sh`. Desde o D1 do painel das coletas (21/10), esse arquivo lê o `estado.json` do vigia e não tem mais essa linha. Com `set -euo pipefail`, o `grep` vazio encerra o script antes de qualquer `echo`.
+- **Solução:** o script lê as diárias (prazo de até 26 h) do `~/painel-das-coletas/estado.json` e, se a lista vier vazia, sai com uma linha `FALHAS:`. A cópia antiga ficou em `~/bin/boletim-da-base.sh.antes-diarias-20261024`. Regra: ao mudar a origem de um dado no servidor, procure quem mais o lia (`grep -l` em `~/bin`).
+- **Data:** 24/10/2026

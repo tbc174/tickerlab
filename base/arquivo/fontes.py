@@ -144,7 +144,7 @@ TERMOS = {
 }
 # a ficha do CNPJ no dados.gov.br declara a licença CC BY em que a base do CNPJ se apoia (ADR 0106);
 # a rota pública da ficha pede a chave do portal (`DADOS_GOV_BR_CHAVE`, no `.env` do servidor)
-FICHA_DO_CNPJ_NO_DADOS_GOV_BR = "https://dados.gov.br/api/publico/conjuntos-dados/cadastro-nacional-da-pessoa-juridica---cnpj"
+FICHA_DO_CNPJ_NO_DADOS_GOV_BR = "https://dados.gov.br/dados/api/publico/conjuntos-dados/cadastro-nacional-da-pessoa-juridica---cnpj"
 VARIAVEL_DA_CHAVE_DO_DADOS_GOV_BR = "DADOS_GOV_BR_CHAVE"
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
