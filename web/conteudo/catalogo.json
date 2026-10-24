@@ -2138,6 +2138,139 @@
       "termos_lidos_em": "2026-10-21"
     },
     {
+      "id": "aneel-inadimplencia",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-empreendimentos",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-encargos",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-fiscalizacao",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ons-demanda-maxima",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-hidrologia-detalhe",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-cmo-semi-horario",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-disponibilidade",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-itaipu",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ons-chuva-estacao",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-consumo-horario",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-geracao-detalhe",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-garantia-fisica",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-contratos-leilao",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-preco-futuro",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-risco-hidrologico",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-liquidacao",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-itaipu",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ccee-mecanismos",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
       "id": "contrapartes-cafe",
       "licenca": "Página guardada só como prova; na ficha, fato e link",
       "marca": "a_confirmar",

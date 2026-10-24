@@ -1,0 +1,12 @@
+{
+ "success": true,
+ "result": {
+  "name": "indqual-inadimplencia",
+  "resources": [
+   {"format": "PDF", "url": "https://dadosabertos.aneel.gov.br/dataset/x/resource/a/download/dm-inadimplencia.pdf"},
+   {"format": "CSV", "url": "https://dadosabertos.aneel.gov.br/dataset/x/resource/b/download/inadimplencia.csv"},
+   {"format": "CSV", "url": "https://dadosabertos.aneel.gov.br/dataset/x/resource/c/download/dominio-indicadores.csv"},
+   {"format": "XML", "url": "https://dadosabertos.aneel.gov.br/dataset/x/resource/d/download/inadimplencia.xml"}
+  ]
+ }
+}

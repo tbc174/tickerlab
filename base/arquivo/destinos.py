@@ -17,6 +17,7 @@ from base.arquivo import (
     lote_cvm,
     lote_eua,
     lote_licitacoes,
+    lote_reguladores,
     lote_sec,
     lote_setoriais,
     lote_tesouro,
@@ -184,6 +185,24 @@ _LOTE_TESOURO_SO_ARQUIVO = (
     "dado aberto do Tesouro Nacional (ODbL) guardado como publicado, só União, entes e títulos (nada por "
     "investidor, ADR 0088); a tabela com contrato no catálogo ainda não existe"
 )
+
+_LOTE_REGULADORES_SO_ARQUIVO = (
+    "dado aberto de regulador ou operador do setor guardado como publicado, só pessoa jurídica e "
+    "agregados (nada por titular ou beneficiário, ADR 0088); a tabela com contrato no catálogo ainda "
+    "não existe"
+)
+
+# GSF e repasse do risco hidrológico: a linha que mais muda o resultado das hidrelétricas; DEC, FEC e
+# autos entram na ficha das distribuidoras
+_REGULADORES_PLANEJADAS = {
+    "ccee-risco-hidrologico": _planejada(
+        "hidreletricas/gsf", "GSF e repasse do risco hidrológico por usina e mês"
+    ),
+    "aneel-fiscalizacao": _planejada(
+        "distribuidoras/ficha",
+        "indicadores gerenciais e autos de infração por distribuidora",
+    ),
+}
 
 # o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
 _TESOURO_PLANEJADAS = {
@@ -487,6 +506,13 @@ DESTINOS: dict[str, Destino] = {
         "dívida ativa de todos os trimestres anteriores; `base/pgfn.py` lê só o último retrato, a tabela da "
         "evolução por CNPJ é uma linha da fila",
     ),
+    # lote reguladores (linha 203 da fila, 23/10/2026): guardado no acervo; as tabelas ficam para depois
+    **{
+        f.id: _pesquisa(_LOTE_REGULADORES_SO_ARQUIVO)
+        for f in lote_reguladores.fontes()
+        if f.id not in _REGULADORES_PLANEJADAS
+    },
+    **_REGULADORES_PLANEJADAS,
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`

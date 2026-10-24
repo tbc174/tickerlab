@@ -1,0 +1,9 @@
+{
+ "success": true,
+ "result": {
+  "name": "pldx_valor_anual",
+  "resources": [
+   {"format": "CSV", "url": "https://dadosabertos.ccee.org.br/dataset/x/resource/a/download/pldx_valor_anual.csv"}
+  ]
+ }
+}
