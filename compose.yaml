@@ -61,7 +61,15 @@ services:
       - .env.sala   # TICKERLAB_CHAVE_DA_SALA, a chave-mestra da sala de dados (só aqui)
     environment:
       TICKERLAB_LOG_FORMATO: json
+      # registro de acesso (Marco Civil, art. 15: IP real e hora por 6 meses; src/registro_de_acesso.py).
+      # O IP vem da Cloudflare (CF-Connecting-IP), mas só vale se o pedido chega do gateway da rede do
+      # Docker (a porta 8000 só está em 127.0.0.1, então quem chega é o túnel). Ajuste se a rede mudar.
+      TICKERLAB_REGISTRO_DE_ACESSO: /app/registros/acesso-api.log
+      TICKERLAB_PROXIES_CONFIAVEIS: 172.18.0.1
     volumes:
+      # onde fica o registro de acesso; sobrevive ao deploy. ANTES do primeiro "up":
+      #   mkdir -p registros && sudo chown 1000:1000 registros && sudo chmod 750 registros
+      - ./registros:/app/registros
       # a API v1 (leitura, desligada até a 1ª tela nova) calcula com o mesmo cache de preços do app
       - ./dados_locais:/app/dados_locais
       # os arquivos cifrados da sala de dados (src/sala/guarda.py); só a API tem a chave

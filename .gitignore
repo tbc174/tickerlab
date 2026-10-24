@@ -40,3 +40,4 @@ dados_juros/
 .coverage.*
 .hypothesis/
 htmlcov/
+registros/
