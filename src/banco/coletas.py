@@ -194,6 +194,7 @@ LICENCAS = {
     "inpi": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
     "epo": "CC BY 4.0 (EPO Linked open EP data); citar o EPO; um pedido por vez",
     "wipo": "WIPO Statistics Database: não republicar nem revender; só uso interno, citando",
+    "ipea": "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea",
     # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
     "ans-demonstracoes": "Demonstrações da ANS: sem licença declarada; citar a ANS (ADR 0102)",
 }
@@ -363,6 +364,7 @@ REVENDA = {
     "senatran": A_CONFIRMAR,
     "inpi": A_CONFIRMAR,
     "epo": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; "not designed to provide a backend database service"
+    "ipea": A_CONFIRMAR,  # sem termos; cada série herda a fonte de origem (BM&FBovespa, Bacen, IBGE)
     "wipo": SO_USO_INTERNO,  # "not republish or commercially re-sell"; citar "WIPO Statistics Database"
     "ans-demonstracoes": A_CONFIRMAR,
 }

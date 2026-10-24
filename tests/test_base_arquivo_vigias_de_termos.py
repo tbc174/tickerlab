@@ -110,6 +110,8 @@ _SEM_VIGIA = {
         "a licença é o rodapé CC BY-ND do site gov.br, que vale para o site inteiro, não uma página de termos do conjunto",
     ),
     "ans-demonstracoes": "as demonstrações contábeis não declaram licença: não há texto de termos a vigiar",
+    # lote acervos históricos (24/10/2026): o IPEADATA não publica termos; séries de terceiros herdam a fonte
+    "ipea": "o IPEADATA não publica página de termos (rodada 4, 22/10/2026); a série herda a fonte de origem",
     # lote cadastros globais (22/10/2026): obra do governo dos EUA, sem página de termos própria
     "ofac": "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
     # lote atenção e texto (23/10/2026): a marca está no id inteiro; o termo é vigiado pela família do mesmo provedor
