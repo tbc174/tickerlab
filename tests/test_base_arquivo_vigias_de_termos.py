@@ -110,6 +110,10 @@ _SEM_VIGIA = {
         ("govmg", "govsc"),
         "a licença (CC BY) está na ficha do conjunto no portal CKAN, sem página de termos própria",
     ),
+    # lote clima e fogo (rodada 4, 23/10/2026)
+    "inpe": "o INPE Queimadas não publica licença nem página de termos (a confirmar): nada a vigiar",
+    "terrabrasilis": "a licença (CC BY-SA 4.0) está na ficha dos conjuntos, sem página de termos própria",
+    "edgar": "a licença (CC BY 4.0) está na ficha de cada conjunto do JRC, sem página de termos própria",
     # não há página de termos de terceiro a vigiar
     "btc": "nó próprio, sem terceiro",
     "rfb": "a página da Receita pede login",

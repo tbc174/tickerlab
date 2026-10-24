@@ -14,6 +14,7 @@ O `manifesto.json` guarda, por mês, o SHA-256 de cada ZIP lido.
 
 import hashlib
 import json
+import logging
 import shutil
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -25,6 +26,8 @@ from base.pessoas.oposicoes import ids_opostos
 from base.pessoas.tabelas import montar_pessoas, sem_opostos
 from base.receita_diff import CHAVE_DO_QSA, diff, qsa_para_diff
 from base.receita_retrato import ParteDoQsa
+
+log = logging.getLogger("tickerlab.carga_receita_mes")
 
 FONTE = "rfb-cnpj"
 LIVRE_MINIMO = 30 * 1024**3
@@ -96,6 +99,17 @@ def pendentes(meses: Iterable[str], pasta: Path) -> list[str]:
     return sorted(m for m in meses if ultimo is None or m > ultimo)
 
 
+def _pico_de_memoria_mb() -> int:
+    """O maior uso de memória do processo até agora (0 fora do Linux); a carga é morta ao passar do limite."""
+    try:
+        for linha in Path("/proc/self/status").read_text().splitlines():
+            if linha.startswith("VmHWM:"):
+                return int(linha.split()[1]) // 1024
+    except OSError:
+        pass
+    return 0
+
+
 def _repartir(partes: Iterable[pd.DataFrame], raiz: str, destino: Path) -> None:
     for numero, parte in enumerate(partes):
         for prefixo, grupo in parte.groupby(parte[raiz].str[:PREFIXO]):
@@ -140,6 +154,12 @@ def _aplicar(
             antes = antes if antes is not None else depois.iloc[0:0]
             mudancas.append(diff(antes, depois, CHAVES[tabela], mes))
         gravar_tabela(depois, saida / prefixo, origens, CHAVES[tabela])
+    log.info(
+        "%s aplicado: %d linhas de mudança (pico %d MB)",
+        tabela,
+        sum(len(m) for m in mudancas),
+        _pico_de_memoria_mb(),
+    )
     return pd.concat(mudancas, ignore_index=True) if mudancas else None
 
 
@@ -154,6 +174,35 @@ def _origens(mes: str, arquivos: dict[str, str]) -> list[dict[str, str]]:
 def _ler_prefixo_vigente(antigo: Path, prefixo: str) -> pd.DataFrame | None:
     arquivo = antigo / f"{prefixo}.parquet"
     return pd.read_parquet(arquivo) if arquivo.is_file() else None
+
+
+def _guardar_mudancas(
+    quadro: pd.DataFrame | None,
+    tabela: str,
+    mes: str,
+    pasta: Path,
+    origens: list[dict[str, str]],
+) -> int:
+    """Grava as mudanças do mês de uma tabela na pasta de trabalho e devolve quantas são.
+
+    Uma tabela por vez, para não segurar na memória as mudanças das três (em 2024-10 foram 8 milhões
+    de linhas só nos estabelecimentos e a carga morreu por falta de memória).
+    """
+    if quadro is None or quadro.empty:
+        return 0
+    gravar_tabela(
+        quadro, pasta / tabela / mes, origens, ["mes", *CHAVES[tabela], "ordem"]
+    )
+    log.info("mudanças de %s gravadas (pico %d MB)", tabela, _pico_de_memoria_mb())
+    return len(quadro)
+
+
+def _publicar_mudancas(trabalho: Path, destino: Path) -> None:
+    """Passa as mudanças do mês da pasta de trabalho para `mudancas/<tabela>/`."""
+    for arquivo in sorted(trabalho.glob("*/*")):
+        pasta = destino / arquivo.parent.name
+        pasta.mkdir(parents=True, exist_ok=True)
+        arquivo.replace(pasta / arquivo.name)
 
 
 def _trocar(novo: Path, atual: Path) -> None:
@@ -189,7 +238,9 @@ def processar_mes(
         shutil.rmtree(pasta_de_trabalho, ignore_errors=True)
     try:
         _repartir(estabelecimentos, "cnpj", trabalho / "estabelecimentos")
+        log.info("estabelecimentos repartidos (pico %d MB)", _pico_de_memoria_mb())
         _repartir(simples, "cnpj_basico", trabalho / "simples")
+        log.info("simples repartido (pico %d MB)", _pico_de_memoria_mb())
         opostos = ids_opostos(restrita)
         for parte in qsa:
             if parte.socios.empty:
@@ -204,21 +255,20 @@ def processar_mes(
             _repartir(
                 [_sem_os_opostos(socios, opostos)], "cnpj_basico", trabalho / "qsa"
             )
+        log.info("qsa repartido (pico %d MB)", _pico_de_memoria_mb())
         vigente = pasta / "vigente"
         origens = _origens(mes, arquivos)
-        mudancas = {
-            t: _aplicar(t, mes, trabalho, vigente, ultimo is None, origens)
-            for t in CHAVES
-        }
+        contagem = {}
+        for tabela in CHAVES:
+            quadro = _aplicar(tabela, mes, trabalho, vigente, ultimo is None, origens)
+            contagem[tabela] = _guardar_mudancas(
+                quadro, tabela, mes, trabalho / "mudancas", origens
+            )
     except BaseException:
         shutil.rmtree(trabalho, ignore_errors=True)
         shutil.rmtree(trabalho_restrito, ignore_errors=True)
         raise
-    for tabela, quadro in mudancas.items():
-        if quadro is not None and not quadro.empty:
-            destino = pasta / "mudancas" / tabela / mes
-            destino.parent.mkdir(parents=True, exist_ok=True)
-            gravar_tabela(quadro, destino, origens, ["mes", *CHAVES[tabela], "ordem"])
+    _publicar_mudancas(trabalho / "mudancas", pasta / "mudancas")
     (trabalho_restrito / "pessoas").mkdir(parents=True, exist_ok=True)
     _trocar(trabalho / "vigente", vigente)
     _trocar(trabalho_restrito / "pessoas", restrita / "pessoas")
@@ -227,7 +277,7 @@ def processar_mes(
     manifesto = _manifesto(pasta)
     manifesto["meses"][mes] = {
         "arquivos": arquivos,
-        "mudancas": {t: 0 if q is None else len(q) for t, q in mudancas.items()},
+        "mudancas": contagem,
     }
     (pasta / MANIFESTO).write_text(
         json.dumps(manifesto, indent=2, sort_keys=True), encoding="utf-8"

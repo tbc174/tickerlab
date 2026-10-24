@@ -25,10 +25,12 @@ from base.arquivo import (
     lote_bcb,
     lote_brasil2,
     lote_cadastros,
+    lote_clima,
     lote_cvm,
     lote_eua,
     lote_licitacoes,
     lote_organismos,
+    lote_sec,
     lote_setoriais,
     wayback,
 )
@@ -118,6 +120,7 @@ TERMOS = {
     **lote_licitacoes.termos(),  # sem vigia de termos neste lote (motivos em _SEM_VIGIA)
     **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
     **lote_atencao.termos(),  # Querido Diário, Crossref, OpenAlex e Senado (rodada 4)
+    **lote_clima.termos(),  # NASA FIRMS, ECMWF, Climate TRACE e Carbon Monitor (rodada 4, linha 290)
     # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
     # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
@@ -1160,6 +1163,9 @@ FONTES: list[Fonte] = [
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
     *lote_eua.fontes(),
+    # lote SEC (rodada 4, 23/10/2026): mais conjuntos da Data Library, corretoras, Form ADV e os
+    # pacotes diários do EDGAR (linha 201 da fila)
+    *lote_sec.fontes(),
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
@@ -1184,6 +1190,9 @@ FONTES: list[Fonte] = [
     # lote atenção e texto (rodada 4, linha 289): acessos da Wikimedia, GDELT GKG sem Persons, Querido
     # Diário, Crossref, OpenAlex e RSS das agências (só índice); nunca pessoa nem texto de terceiros
     *lote_atencao.fontes(),
+    # lote clima e fogo (rodada 4, linha 290): INPE Queimadas, NASA FIRMS, TerraBrasilis (WFS), NOAA,
+    # ECMWF, MapBiomas, ONS, Climate TRACE, EDGAR e Carbon Monitor
+    *lote_clima.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
