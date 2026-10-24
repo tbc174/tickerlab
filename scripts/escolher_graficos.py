@@ -42,7 +42,7 @@ from src.analise_escrita import graficos as gr
 from src.analise_escrita import pedido as pe
 from src.analise_escrita import pedido_dos_graficos as pg
 from src.analise_escrita import porta1_dos_graficos as p1g
-from src.analise_escrita import porta2, saida
+from src.analise_escrita import porta2, saida, series
 from src.analise_escrita import porta2_dos_graficos as p2g
 from src.analise_escrita import reserva_dos_graficos as rg
 
@@ -109,13 +109,21 @@ def escolha_guardada(
     return registro if mesma else None
 
 
+def _com_texto(
+    entradas: list[dict[str, Any]], analises: Path
+) -> Iterator[tuple[dict[str, Any], saida.Analise]]:
+    """Cada ficha que tem texto, já ampliada com as séries calculadas: o texto confere com a
+    entrada original; o pedido, as portas e a reserva dos gráficos leem a ampliada."""
+    for entrada in entradas:
+        analise = analise_do_texto(analises, entrada)
+        if analise is not None:
+            yield series.ampliar(entrada), analise
+
+
 def _pendentes(
     entradas: list[dict[str, Any]], analises: Path, pasta: Path, modelos: Sequence[str]
 ) -> Iterator[tuple[dict[str, Any], saida.Analise, str]]:
-    for entrada in entradas:
-        analise = analise_do_texto(analises, entrada)
-        if analise is None:
-            continue
+    for entrada, analise in _com_texto(entradas, analises):
         for modelo in modelos:
             if escolha_guardada(pasta, entrada, analise, modelo) is None:
                 yield entrada, analise, modelo
@@ -214,9 +222,8 @@ def _cega_valida(
 def _a_julgar(
     entradas: list[dict[str, Any]], analises: Path, pasta: Path, modelos: Sequence[str]
 ) -> Iterator[tuple[dict[str, Any], saida.Analise, str, gr.Escolha, dict[str, Any]]]:
-    for entrada in entradas:
-        analise = analise_do_texto(analises, entrada)
-        for modelo in modelos if analise else ():
+    for entrada, analise in _com_texto(entradas, analises):
+        for modelo in modelos:
             registro = escolha_guardada(pasta, entrada, analise, modelo)
             if registro is None or _cega_valida(pasta, entrada, modelo, registro):
                 continue
@@ -305,9 +312,8 @@ def conferir(
 ) -> int:
     """Porta 1 e montagem de cada ficha com a escolha de cada modelo; grava `graficos/`."""
     montados = 0
-    for entrada in entradas:
-        analise = analise_do_texto(analises, entrada)
-        for modelo in modelos if analise else ():
+    for entrada, analise in _com_texto(entradas, analises):
+        for modelo in modelos:
             montado = _montar(entrada, analise, pasta, modelo)
             ea._gravar(arquivo_dos_graficos(pasta, entrada, modelo), montado)
             montados += 1

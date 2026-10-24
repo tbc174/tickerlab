@@ -22,6 +22,13 @@ def cpfl() -> tuple[dict, saida.Analise]:
     return entrada, saida.ler_analise(gabarito["analise"])
 
 
+# o achado do modelo tem número da primeira linha da tabela (a porta 1 confere)
+ACHADOS = {
+    "ofertas_e_fundos.fundos_por_mes": "No primeiro mês, 436 fundos tinham a ação.",
+    "setor_regulado.aneel_consumidores": "No primeiro ano, a empresa tinha 11,1% dos consumidores.",
+}
+
+
 def _do_modelo(
     tabela: str, tipo: str, eixo: str, coluna: str, parte: str
 ) -> gr.Grafico:
@@ -33,7 +40,7 @@ def _do_modelo(
         titulo="Um gráfico",
         parte=parte,
         paragrafo=0,
-        por_que=saida.Frase("A ficha traz a tabela.", (f"{tabela}.0",)),
+        por_que=saida.Frase(ACHADOS[tabela], (f"{tabela}.0",)),
     )
 
 

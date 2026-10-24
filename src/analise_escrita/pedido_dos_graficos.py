@@ -14,7 +14,7 @@ from src.analise_escrita import graficos as gr
 from src.analise_escrita import pedido as pe
 from src.analise_escrita import saida
 
-VERSAO_DO_GUIA = "graficos_v2"
+VERSAO_DO_GUIA = "graficos_v3"
 _MARCA_DO_CARDAPIO = "{{CARDAPIO}}"
 # A escolha tem uns 2 mil tokens; o resto é folga para o raciocínio, que conta aqui.
 MAX_TOKENS_DA_ESCOLHA = 16_000
