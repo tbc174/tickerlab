@@ -21,6 +21,7 @@ from src.banco.modelo import (
     simulacoes,
     usuarios,
 )
+from src.banco.usuarios import buscar_por_email
 
 
 class PermissaoNegadaError(PermissionError):
@@ -55,6 +56,36 @@ def exigir_admin(conexao: sa.Connection, ator_id: uuid.UUID | None) -> None:
     )
     if papel != "admin":
         raise PermissaoNegadaError("Só administradores podem fazer isso.")
+
+
+def admin_do_servidor(pedido: str | None) -> str:
+    """O e-mail de quem pede num script de administração: precisa estar em `TICKERLAB_ADMINS`.
+
+    Sem `pedido`, vale o único e-mail da lista (com mais de um, é preciso dizer qual)."""
+    lista = admins_do_servidor()
+    if not lista:
+        raise PermissaoNegadaError(f"{VARIAVEL_DOS_ADMINS} está vazia neste servidor.")
+    if pedido is None:
+        if len(lista) > 1:
+            raise PermissaoNegadaError(
+                f"{VARIAVEL_DOS_ADMINS} tem mais de um e-mail: diga qual com --admin."
+            )
+        return lista[0]
+    email = pedido.strip().lower()
+    if email not in lista:
+        raise PermissaoNegadaError(f"Este e-mail não está em {VARIAVEL_DOS_ADMINS}.")
+    return email
+
+
+def ator_do_servidor(conexao: sa.Connection, email: str) -> uuid.UUID:
+    """O id do administrador do script, conferido no banco (a lista sozinha não basta)."""
+    usuario = buscar_por_email(conexao, email)
+    if usuario is None:
+        raise PermissaoNegadaError(
+            "Nenhum administrador com este e-mail no banco: entre no app pelo Google antes."
+        )
+    exigir_admin(conexao, usuario.id)
+    return usuario.id
 
 
 def resumo_geral(conexao: sa.Connection, ator_id: uuid.UUID) -> dict:
