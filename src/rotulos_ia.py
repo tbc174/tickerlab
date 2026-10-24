@@ -518,10 +518,13 @@ _APELIDOS_GENERICOS = frozenset(
 )
 
 
-def _apelidos(texto: str, marcador: str) -> set[str]:
+def _apelidos(texto: str, marcador: str) -> list[str]:
     """Os termos definidos entre aspas e parênteses logo depois do marcador, fora os genéricos
-    ("Companhia", "Sociedade"): o nome pelo qual o documento chama a empresa dali em diante."""
-    apelidos = set()
+    ("Companhia", "Sociedade"): o nome pelo qual o documento chama a empresa dali em diante. Do
+    maior para o menor, como os nomes ("Vivenda Prime" antes de "Vivenda"), e em ordem fixa: a
+    ordem de um `set` muda com o PYTHONHASHSEED e o texto anonimizado (e o hash da entrada)
+    mudaria de um processo para outro."""
+    apelidos: set[str] = set()
     for janela in _JANELA_DO_APELIDO[marcador].finditer(texto):
         for definicao in _DEFINICAO.findall(janela.group(1)):
             for apelido in _ENTRE_ASPAS.findall(definicao):
@@ -533,7 +536,7 @@ def _apelidos(texto: str, marcador: str) -> set[str]:
                     and not palavras <= PALAVRAS_COMUNS
                 ):
                     apelidos.add(apelido)
-    return apelidos
+    return sorted(apelidos, key=lambda apelido: (-len(apelido), apelido))
 
 
 def _padrao_do_apelido(apelido: str) -> re.Pattern[str]:
