@@ -12,7 +12,7 @@
     python -m scripts.rotular_com_ia estimar  --eventos ... --pasta ... --teto-dolares 10 \
         --modelo claude-opus-5-5 --so-prova
     python -m scripts.rotular_com_ia comparar --eventos ... --pasta ... [--com-a-rotina]
-    python -m scripts.rotular_com_ia preparar --eventos ... --pasta ... --troca TROCA [--equivalencia]
+    python -m scripts.rotular_com_ia preparar --eventos ... --pasta ... --troca TROCA [--lotes 4] [--equivalencia]
     python -m scripts.rotular_com_ia gravar   --eventos ... --pasta ... --troca TROCA
 
 Com `--texto-so-nos-fatos` (estimar, piloto, enviar, identificar), só os fatos relevantes vão com
@@ -56,6 +56,8 @@ da API (lista fechada, trecho literal, entrada igual à do lote) e grava em
 `<pasta>/rotulos.rotina.jsonl`. Uma via não repete o que a outra já rotulou. Com `--equivalencia`, o
 lote leva os 300 primeiros já rotulados pela API, com a mesma entrada, e `comparar --com-a-rotina`
 mede a rotina contra a API nos limites da Emenda 1, em `<pasta>/comparacao-rotina.json`.
+Com `--lotes N` (até 4), `preparar` faz N lotes na noite (`<dia>-01`, `<dia>-02`...): a rotina roda várias
+vezes por madrugada e faz um lote por rodada, cada um numa conversa nova (Tiago, 24/10/2026: acelerar).
 """
 
 import argparse
@@ -589,6 +591,7 @@ DIAS_DE_ESPERA_DA_ROTINA = (
 )
 CODIGO_DE_LOTE_ATRASADO = 4
 SUFIXO_DA_EQUIVALENCIA = "-equivalencia"
+RODADAS_DA_ROTINA_POR_NOITE = 4  # a rotina faz um lote por rodada: lote além das rodadas ficaria sem resposta (atrasado)
 
 
 @dataclass
@@ -653,13 +656,19 @@ def preparar(
     maximo: int = MAXIMO_DO_LOTE,
     so_fatos: bool = False,
     equivalencia: bool = False,
+    parte: int | None = None,
 ) -> str | None:
     """Escreve o lote do dia para a rotina em `<troca>/lotes/<id>.jsonl` (sem nome, código nem CNPJ:
     o pedido já vai anonimizado) e o guia em `<troca>/GUIA.md`. O manifesto da rotina guarda, de cada
     evento, a regra de texto e o hash da entrada: é por ele, e não pelo arquivo que volta, que `gravar`
-    confere. Evento de lote ainda aberto não vai de novo. Devolve o id do lote (None: nada a mandar)."""
+    confere. Evento de lote ainda aberto não vai de novo. Com `parte`, o id ganha `-01`, `-02`... (vários
+    lotes na mesma noite). Devolve o id do lote (None: nada a mandar)."""
     manifesto = ler_manifesto(pasta, ri.ROTINA)
     lote_id = hoje.isoformat() + (SUFIXO_DA_EQUIVALENCIA if equivalencia else "")
+    if parte is not None:
+        lote_id += (
+            f"-{parte:02d}"  # dois dígitos: a ordem alfabética é a ordem das partes
+        )
     if any(lote["id"] == lote_id for lote in manifesto.get("lotes", [])):
         raise RuntimeError(f"O lote {lote_id} já foi preparado.")
     abertos = _em_lote_aberto(manifesto)
@@ -692,6 +701,33 @@ def preparar(
     gravar_manifesto(pasta, manifesto, eventos, ri.ROTINA)
     log.info("Lote %s preparado para a rotina: %s eventos", lote_id, len(itens))
     return lote_id
+
+
+def preparar_a_noite(
+    eventos: list[dict],
+    pasta: Path,
+    troca: Path,
+    hoje: date,
+    lotes: int = 1,
+    maximo: int = MAXIMO_DO_LOTE,
+    so_fatos: bool = False,
+    equivalencia: bool = False,
+) -> list[str]:
+    """Até `lotes` lotes para a noite, um por rodada da rotina (cada rodada é uma conversa nova, e
+    nenhum item é julgado ao lado dos de outro lote). Um lote só fica com o id do dia, como antes.
+    Para quando não há mais o que mandar. Devolve os ids preparados."""
+    if lotes == 1:
+        lote_id = preparar(eventos, pasta, troca, hoje, maximo, so_fatos, equivalencia)
+        return [lote_id] if lote_id else []
+    ids = []
+    for parte in range(1, lotes + 1):
+        lote_id = preparar(
+            eventos, pasta, troca, hoje, maximo, so_fatos, equivalencia, parte
+        )
+        if lote_id is None:
+            break
+        ids.append(lote_id)
+    return ids
 
 
 def _respostas(
@@ -1245,6 +1281,12 @@ def main(argv: list[str] | None = None) -> int:
         help="eventos por lote da rotina",
     )
     argumentos.add_argument(
+        "--lotes",
+        type=int,
+        default=1,
+        help=f"preparar: lotes da noite, um por rodada da rotina (até {RODADAS_DA_ROTINA_POR_NOITE})",
+    )
+    argumentos.add_argument(
         "--equivalencia",
         action="store_true",
         help="preparar: os 300 primeiros já rotulados pela API, com a mesma entrada",
@@ -1374,9 +1416,14 @@ def _passo_da_rotina(eventos: list[dict], opcoes: argparse.Namespace) -> int:
         return 2
     hoje = datetime.now(FUSO).date()
     if opcoes.passo == "preparar":
+        if not 1 <= opcoes.lotes <= RODADAS_DA_ROTINA_POR_NOITE:
+            log.error("--lotes vai de 1 a %s (as rodadas da rotina por noite).",
+                      RODADAS_DA_ROTINA_POR_NOITE)  # fmt: skip
+            return 2
         try:
-            preparar(eventos, opcoes.pasta, opcoes.troca, hoje, opcoes.maximo_do_lote,
-                     opcoes.texto_so_nos_fatos, opcoes.equivalencia)  # fmt: skip
+            preparar_a_noite(eventos, opcoes.pasta, opcoes.troca, hoje, opcoes.lotes,
+                             opcoes.maximo_do_lote, opcoes.texto_so_nos_fatos,
+                             opcoes.equivalencia)  # fmt: skip
         except RuntimeError as erro:
             log.error("%s", erro)
             return 1

@@ -1115,6 +1115,53 @@ def test_main_preparar_exige_a_pasta_de_troca(tmp_path):
     assert rc.main(["preparar", "--eventos", str(eventos), "--pasta", str(pasta)]) == 2
 
 
+# --- vários lotes por noite (Tiago, 24/10/2026: acelerar): a rotina faz um por rodada -----------
+
+
+def test_preparar_a_noite_faz_varios_lotes_sem_repetir_evento(pasta, troca):
+    ids = rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=3, maximo=1)
+    assert ids == ["2026-10-24-01", "2026-10-24-02", "2026-10-24-03"]
+    chaves = [i["chave"] for lote_id in ids for i in _lote(troca, lote_id)]
+    assert chaves == [e["id"] for e in EVENTOS[:3]]
+    assert sorted(ids) == ids  # a rotina pega o menor id primeiro
+
+
+def test_preparar_a_noite_para_quando_acabam_os_eventos(pasta, troca):
+    ids = rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=4, maximo=3)
+    assert ids == ["2026-10-24-01", "2026-10-24-02"]
+    amanha = HOJE + timedelta(days=1)
+    assert rc.preparar_a_noite(EVENTOS, pasta, troca, amanha, lotes=2) == []
+
+
+def test_preparar_a_noite_com_um_lote_fica_com_o_id_do_dia(pasta, troca):
+    assert rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=1) == ["2026-10-24"]
+
+
+def test_gravar_junta_os_lotes_da_noite(pasta, troca):
+    for lote_id in rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=2, maximo=2):
+        _responder(troca, lote_id)
+    feito = rc.gravar(EVENTOS, pasta, troca, HOJE)
+    assert feito.gravados == 4 and feito.atrasados == []
+
+
+def test_main_preparar_varios_lotes(tmp_path):
+    eventos, pasta = _fila_e_pasta(tmp_path)
+    troca = tmp_path / "troca"
+    base = ["--eventos", str(eventos), "--pasta", str(pasta), "--troca", str(troca)]
+    assert rc.main(["preparar", *base, "--maximo-do-lote", "2", "--lotes", "2"]) == 0
+    dia = datetime.now(rc.FUSO).date().isoformat()
+    assert len(_lote(troca, f"{dia}-01")) == 2 and len(_lote(troca, f"{dia}-02")) == 2
+
+
+@pytest.mark.parametrize("lotes", [0, rc.RODADAS_DA_ROTINA_POR_NOITE + 1])
+def test_main_recusa_mais_lotes_que_as_rodadas_da_rotina(tmp_path, lotes):
+    eventos, pasta = _fila_e_pasta(tmp_path)
+    troca = tmp_path / "troca"
+    base = ["--eventos", str(eventos), "--pasta", str(pasta), "--troca", str(troca)]
+    assert rc.main(["preparar", *base, "--lotes", str(lotes)]) == 2
+    assert not (troca / "lotes").exists()
+
+
 # --- Emenda 3: uma via não repete o que a outra já rotulou -----------------------------------
 
 
