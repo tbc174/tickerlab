@@ -10,6 +10,7 @@ Em `onde` vai só o nome da série e do PR (o repositório é público).
 from dataclasses import dataclass
 
 from base.arquivo import (
+    lote_acervos,
     lote_atencao,
     lote_brasil2,
     lote_cadastros,
@@ -177,6 +178,10 @@ _LOTE_CLIMA_SO_ARQUIVO = (
     "com contrato no catálogo ainda não existe"
 )
 
+_LOTE_ACERVOS_SO_ARQUIVO = (
+    "série histórica guardada como a fonte publica (COTAHIST anual, BCB, IBGE, Tesouro, IPEADATA); a "
+    "tabela com contrato no catálogo ainda não existe, é uma linha da fila"
+)
 _LOTE_PATENTES_SO_ARQUIVO = (
     "patentes, marcas e desenhos guardados como o órgão publica (INPI sem pessoa física: só titular "
     "CNPJ e contagens); a tabela com contrato no catálogo ainda não existe"
@@ -434,6 +439,11 @@ DESTINOS: dict[str, Destino] = {
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_PATENTES_SO_ARQUIVO)
         for f in lote_patentes.fontes()
+    },
+    # lote acervos históricos (rodada 4, linha 292): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/rodada-4", _LOTE_ACERVOS_SO_ARQUIVO)
+        for f in lote_acervos.fontes()
     },
     # lote CVM (linha 200 da fila, 23/10/2026): guardado no acervo; as tabelas são o lote 2
     **{

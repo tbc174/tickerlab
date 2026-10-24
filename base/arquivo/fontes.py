@@ -21,6 +21,7 @@ from base import intradiario_b3, tce_pr
 from base.arquivo import (
     assessorias,
     contrapartes,
+    lote_acervos,
     lote_atencao,
     lote_bcb,
     lote_brasil2,
@@ -1205,6 +1206,9 @@ FONTES: list[Fonte] = [
     # lote patentes e marcas (rodada 4, linha 291): INPI (marcas, desenhos, programas, partes de
     # patentes e contratos; pessoa física só como contagem), EPO Linked open EP data e WIPO IP Statistics
     *lote_patentes.fontes(),
+    # lote acervos históricos (rodada 4, linha 292): COTAHIST anual da B3, relatórios e SGS antigo do BCB,
+    # FTP do IBGE, pacotes de dívida do Tesouro e IPEADATA; nenhuma fonte com pessoa física
+    *lote_acervos.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

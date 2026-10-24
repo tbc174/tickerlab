@@ -3340,6 +3340,111 @@
       "marca": "uso_interno",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "b3-cotahist-anual",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
+      "marca": "nao_comercial",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "bcb-relatorio-anual",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-sgs-pre-2000",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ibge-precos-ftp",
+      "licenca": "Domínio público (citar o IBGE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-18"
+    },
+    {
+      "id": "ibge-contas-nacionais-ftp",
+      "licenca": "Domínio público (citar o IBGE)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-18"
+    },
+    {
+      "id": "tesouro-br-divida-execucao-por-fonte",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-divida-execucao-por-nd",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-divida-dotacao",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-divida-emissoes-diretas",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-divida-emissoes-soberanas",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-divida-estados-estoque",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-divida-estados-servico",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-divida-consolidada-liquida",
+      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ipea-odata-metadados",
+      "licenca": "Sem termos publicados (IPEADATA); séries de terceiros herdam a fonte; citar o Ipea",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ipea-odata-series",
+      "licenca": "Sem termos publicados (IPEADATA); séries de terceiros herdam a fonte; citar o Ipea",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
     }
   ],
   "tabelas": [
