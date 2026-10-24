@@ -5,11 +5,17 @@ vale dentro da lista fechada e com o trecho copiado do documento, e o custo é e
 """
 
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
 from src import rotulos_ia as ri
 from src import topicos
+
+SEMENTES_DE_HASH = 8  # com a ordem do `set`, 8 sementes já davam 3 textos diferentes
 
 FATO = {
     "id": "020702IPE030920240104553811-12",
@@ -439,6 +445,42 @@ def test_apelido_definido_depois_do_nome_e_trocado_no_texto_inteiro():
         ri.anonimizar(texto, [nome])
         == "A [EMPRESA] (“[EMPRESA]”) comunica que a [EMPRESA] concluiu."
     )
+
+
+TEXTO_COM_APELIDOS_ENCAIXADOS = (
+    'A Viver Incorporadora e Construtora S.A. ("Vivenda", "Vivenda Prime" ou "Prime Vivenda") '
+    "informa. A Vivenda Prime pagou; a Prime Vivenda segue; a Vivenda também."
+)
+
+
+def test_apelidos_trocam_do_maior_para_o_menor():
+    """Trocar "Vivenda" antes de "Vivenda Prime" deixaria "[EMPRESA] Prime" no texto."""
+    assert ri.anonimizar(TEXTO_COM_APELIDOS_ENCAIXADOS, [FATO["empresa"]]) == (
+        'A [EMPRESA] ("[EMPRESA]", "[EMPRESA]" ou "[EMPRESA]") informa. A [EMPRESA] pagou; '
+        "a [EMPRESA] segue; a [EMPRESA] também."
+    )
+
+
+def test_anonimizar_da_o_mesmo_texto_em_qualquer_processo():
+    """O hash da entrada é conferido em outro processo (`preparar` × `gravar`, `comparar`): a ordem
+    das trocas não pode depender do PYTHONHASHSEED, que muda a ordem de um `set` a cada processo."""
+    codigo = (
+        "import sys; from tests.test_rotulos_ia import FATO, TEXTO_COM_APELIDOS_ENCAIXADOS as T;"
+        "from src import rotulos_ia as ri;"
+        "sys.stdout.buffer.write(ri.anonimizar(T, [FATO['empresa']]).encode())"
+    )
+    raiz = Path(__file__).resolve().parents[1]
+    saidas = {
+        subprocess.run(
+            [sys.executable, "-c", codigo],
+            cwd=raiz,
+            env={**os.environ, "PYTHONHASHSEED": str(semente)},
+            capture_output=True,
+            check=True,
+        ).stdout
+        for semente in range(SEMENTES_DE_HASH)
+    }
+    assert len(saidas) == 1
 
 
 def test_enderecos_eletronicos_somem():
