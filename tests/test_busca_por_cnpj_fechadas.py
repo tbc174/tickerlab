@@ -296,3 +296,71 @@ def test_rota_da_fechada(cliente, banco, vista_no_servidor, caplog) -> None:
     todo = " ".join(r.getMessage() for r in caplog.records)
     assert exemplo.MEI not in todo and exemplo.LIMITADA not in todo
     assert "busca por cnpj: cadastro_da_receita" in todo
+
+
+# --- as frases das mudanças -------------------------------------------------------------------------
+
+
+def _linha(**campos):
+    return next(pd.DataFrame([campos]).itertuples())
+
+
+def test_mudancas_de_socio_nunca_dizem_o_nome() -> None:
+    from src import relatorio_da_receita as receita
+
+    pf = {"tipo_socio": "2", "raiz_socio_pj": ""}
+    saiu = _linha(tipo="saiu", qualificacao_antes="05", **pf)
+    assert (
+        receita._mudancas_de_socio(saiu) == "saiu: sócio pessoa física, administrador"
+    )
+    mudou = _linha(
+        tipo="mudou",
+        qualificacao_antes="22",
+        qualificacao_depois="05",
+        data_entrada_antes=pd.Timestamp("2019-03-15"),
+        data_entrada_depois=pd.Timestamp("2020-01-10"),
+        **pf,
+    )
+    assert receita._mudancas_de_socio(mudou) == (
+        "sócio pessoa física: qualificação sócio → administrador; "
+        "sócio pessoa física: entrada 03/2019 → 01/2020"
+    )
+    assert receita._quem("3", "", "105") == "sócio estrangeiro (BRASIL)"
+
+
+def test_mudancas_de_estabelecimento_e_do_simples() -> None:
+    from src import relatorio_da_receita as receita
+
+    comum = {
+        "situacao_cadastral_antes": "02",
+        "situacao_cadastral_depois": "02",
+        "uf_antes": "SP",
+        "uf_depois": "RJ",
+        "municipio_antes": "7107",
+        "municipio_depois": "6001",
+    }
+    mudou = _linha(
+        tipo="mudou",
+        cnae_principal_antes="6201501",
+        cnae_principal_depois="9602501",
+        **comum,
+    )
+    texto = receita._mudancas_de_estabelecimento(mudou)
+    assert texto.startswith("atividade: Desenvolvimento de programas")
+    assert texto.endswith("município: SAO PAULO/SP → RIO DE JANEIRO/RJ")
+    assert (
+        receita._mudancas_de_estabelecimento(_linha(tipo="entrou"))
+        == "entrou no cadastro"
+    )
+    assert (
+        receita._mudancas_do_simples(_linha(tipo="saiu"))
+        == "saiu do registro do Simples"
+    )
+    deixou = _linha(
+        tipo="mudou",
+        optante_simples_antes=True,
+        optante_simples_depois=True,
+        optante_mei_antes=True,
+        optante_mei_depois=False,
+    )
+    assert receita._mudancas_do_simples(deixou) == "deixou de ser MEI"
