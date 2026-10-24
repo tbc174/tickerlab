@@ -9,8 +9,9 @@ Como cada campo vira campo do tape (e o que se perde):
 
 - `recebivel_id` = `assetNumber` (o emissor já o entrega em hash: o devedor não é identificável).
 - `cedente_cnpj` = `originatorName` e `sacado_cnpj` = `assetNumber`: **o ABS-EE não tem CNPJ**, então o
-  texto do originador e o hash do devedor ocupam o lugar. As regras T07 e T08 do validador vão acusar todas
-  as linhas; é o resultado certo (tape de fora não é CNPJ), e não se inventa CNPJ para calar o achado.
+  texto do originador e o hash do devedor ocupam o lugar, marcados como `externo` (`cedente_tipo_id` e
+  `sacado_tipo_id`). O validador confere o id externo pela regra dele (texto, tamanho, sem quebra de linha) e
+  nunca o trata como CNPJ; não se inventa CNPJ para calar o achado.
 - `emissao` e `vencimento`: o XML traz só mês e ano (`10/2020`); entra o **último dia do mês**.
 - `valor_face` = `originalLoanAmount` e `saldo` = `reportingPeriodActualEndBalanceAmount`, em centavos.
   `valor_pago` = face - saldo (o XML não traz o acumulado pago); então a regra T06 não pega nada aqui e
@@ -32,6 +33,8 @@ from typing import IO, Any
 from xml.etree.ElementTree import Element  # só o tipo; a leitura é do defusedxml
 
 from defusedxml import ElementTree
+
+from src.securitizacao.tape import TIPO_EXTERNO
 
 ESQUEMA_AUTO = "http://www.sec.gov/edgar/document/absee/autoloan/assetdata"
 CENTAVOS = Decimal(100)
@@ -83,6 +86,8 @@ def _recebivel(ativo: Element) -> dict[str, Any]:
         "recebivel_id": _campo(ativo, "assetNumber"),
         "cedente_cnpj": _campo(ativo, "originatorName"),
         "sacado_cnpj": _campo(ativo, "assetNumber"),
+        "cedente_tipo_id": TIPO_EXTERNO,
+        "sacado_tipo_id": TIPO_EXTERNO,
         "emissao": _ultimo_dia_do_mes(_campo(ativo, "originationDate")),
         "vencimento": _ultimo_dia_do_mes(_campo(ativo, "loanMaturityDate")),
         "valor_face": face,

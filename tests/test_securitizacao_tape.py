@@ -279,3 +279,69 @@ def test_cada_erro_plantado_da_exatamente_o_achado_dele(caso):
         (regra, n + 1 if regra == DUPLICIDADE else linha) for regra, linha in plantas
     )
     assert sorted(_pares(validar_tape(sujo))) == esperado
+
+
+# --- tipo de identificador da contraparte (B-14b) ----------------------------------------------
+
+
+def _linha_com(**mudancas):
+    tape = deepcopy(gerar_tape(7, 3))
+    tape["recebiveis"][0].update(mudancas)
+    return validar_tape(tape)
+
+
+def test_cnpj_com_dv_errado_continua_dando_t07_t08_com_tipo_cnpj_explicito():
+    tape = gerar_tape(7, 3)
+    r = tape["recebiveis"][0]
+    errado = r["cedente_cnpj"][:-1] + ("0" if r["cedente_cnpj"][-1] != "0" else "1")
+    achados = _linha_com(
+        cedente_cnpj=errado,
+        sacado_cnpj=errado,
+        cedente_tipo_id="cnpj",
+        sacado_tipo_id="cnpj",
+    )
+    assert _pares(achados) == [(CEDENTE_INVALIDO, 1), (SACADO_INVALIDO, 1)]
+
+
+def test_tape_sem_tipo_de_id_vale_cnpj_como_antes():
+    achados = _linha_com(cedente_cnpj="123", sacado_cnpj="456")
+    assert _pares(achados) == [(CEDENTE_INVALIDO, 1), (SACADO_INVALIDO, 1)]
+
+
+def test_id_externo_que_nao_e_cnpj_nao_acusa():
+    achados = _linha_com(
+        cedente_cnpj="CarMax Auto Funding", sacado_cnpj="abc==",
+        cedente_tipo_id="externo", sacado_tipo_id="externo",
+    )  # fmt: skip
+    assert achados == []
+
+
+def test_id_externo_de_14_digitos_com_dv_errado_nao_vira_cnpj():
+    achados = _linha_com(
+        cedente_cnpj="12345678000100", sacado_cnpj="12345678000100",
+        cedente_tipo_id="externo", sacado_tipo_id="externo",
+    )  # fmt: skip
+    assert achados == []
+
+
+def test_id_externo_vazio_e_erro_de_esquema():
+    achados = _linha_com(cedente_cnpj="  ", cedente_tipo_id="externo")
+    assert [(a.regra, a.gravidade, a.campo) for a in achados] == [
+        (ESQUEMA, ERRO, "cedente_cnpj")
+    ]
+
+
+def test_id_externo_longo_ou_com_quebra_de_linha_acusa_com_a_gravidade_da_regra():
+    achados = _linha_com(
+        cedente_cnpj="x" * 500, sacado_cnpj="a\nb",
+        cedente_tipo_id="externo", sacado_tipo_id="externo",
+    )  # fmt: skip
+    assert [(a.regra, a.gravidade) for a in achados] == [
+        (CEDENTE_INVALIDO, ERRO),
+        (SACADO_INVALIDO, AVISO),
+    ]
+
+
+def test_tipo_de_id_desconhecido_e_erro_de_esquema():
+    achados = _linha_com(sacado_tipo_id="cpf")
+    assert [(a.regra, a.campo) for a in achados] == [(ESQUEMA, "sacado_tipo_id")]

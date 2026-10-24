@@ -11,7 +11,8 @@ import pytest
 
 from scripts.validar_abs_ee import main, resumo
 from src.securitizacao.abs_ee import ESQUEMA_AUTO, tape_de_abs_ee
-from src.securitizacao.tape import CEDENTE_INVALIDO, SACADO_INVALIDO, validar_tape
+from src.securitizacao.pool import montar_pool
+from src.securitizacao.tape import validar_tape
 
 AMOSTRA = Path("dados_de_exemplo/securitizacao/abs_ee_carmax_2026c_amostra.xml")
 
@@ -41,9 +42,22 @@ def test_amostra_real_passa_pelo_validador_sem_mexer_nele():
     achados = validar_tape(tape)
     assert tape["data_de_corte"] == "2026-09-30"
     assert len(tape["recebiveis"]) == 30
-    # o ABS-EE não tem CNPJ: só T07 e T08, uma vez por linha; nenhuma outra regra acusa
-    assert {a.regra for a in achados} == {CEDENTE_INVALIDO, SACADO_INVALIDO}
-    assert len(achados) == 60
+    # o ABS-EE não tem CNPJ: os ids vão como `externo` e o validador não acusa nada
+    assert achados == []
+
+
+def test_amostra_real_gera_pool_com_linhas_e_concentracao_por_id_externo():
+    with AMOSTRA.open("rb") as arquivo:
+        tape = tape_de_abs_ee(arquivo)
+    pool = montar_pool(tape)
+    assert pool.n_recebiveis == 30 and pool.linhas_excluidas == ()
+    assert 0 < pool.concentracao["sacado_top1"].valor <= 1
+    assert pool.concentracao["cedente_top1"].valor == 1  # um originador só na amostra
+
+
+def test_ids_do_abs_ee_vao_marcados_como_externos():
+    (r,) = tape_de_abs_ee(_xml(_ativo()))["recebiveis"]
+    assert r["cedente_tipo_id"] == r["sacado_tipo_id"] == "externo"
 
 
 def test_campos_viram_centavos_e_ultimo_dia_do_mes():
@@ -97,8 +111,8 @@ def test_script_resume_achados_por_regra(capsys):
     assert main([str(AMOSTRA), "--limite", "5"]) == 0
     saida = capsys.readouterr().out
     assert "5 ativos" in saida
-    assert "T07: 5" in saida and "T08: 5" in saida
-    assert "fora T07/T08 (CNPJ que o ABS-EE não tem): 0" in saida
+    assert "T07:" not in saida and "T08:" not in saida
+    assert "fora T07/T08 (identificador): 0" in saida
 
 
 def test_resumo_devolve_linhas():
