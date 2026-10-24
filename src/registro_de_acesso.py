@@ -163,6 +163,14 @@ class RegistroDeAcesso:
         )
 
 
+def proxies_pelo_ambiente(
+    ambiente: Mapping[str, str] | None = None,
+) -> tuple[Rede, ...]:
+    """Os proxies confiáveis da configuração (vazio = nenhum cabeçalho de IP vale)."""
+    ambiente = os.environ if ambiente is None else ambiente
+    return ler_proxies_confiaveis(ambiente.get(VARIAVEL_DOS_PROXIES))
+
+
 def registro_pelo_ambiente(
     ambiente: Mapping[str, str] | None = None,
 ) -> tuple[Callable[[str], None], tuple[Rede, ...]] | None:
@@ -171,6 +179,4 @@ def registro_pelo_ambiente(
     caminho = ambiente.get(VARIAVEL_DO_ARQUIVO, "").strip()
     if not caminho:
         return None
-    return escrever_no_arquivo(caminho), ler_proxies_confiaveis(
-        ambiente.get(VARIAVEL_DOS_PROXIES)
-    )
+    return escrever_no_arquivo(caminho), proxies_pelo_ambiente(ambiente)

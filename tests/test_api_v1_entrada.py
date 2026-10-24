@@ -9,14 +9,13 @@ import logging
 
 import pytest
 import sqlalchemy as sa
-from fastapi.testclient import TestClient
 
-from src import api
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, entrada, sessao
 from src.banco import sessoes
 from src.banco.modelo import identidades
 from src.banco.usuarios import buscar_por_identidade, entrar
 from src.conformidade import registrar_aceite
+from tests.ajudantes_da_api import cliente_do_gateway
 
 DO_SITE = {"X-TickerLab-Pedido": "1", "Origin": "http://testserver"}
 EMAIL = "carla@exemplo.com"
@@ -37,7 +36,7 @@ def cliente(banco, monkeypatch, enviados):
     monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
     acesso.LIMITE.zerar()
     entrada.LIMITE_POR_IP.zerar()
-    return TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
+    return cliente_do_gateway({VARIAVEL_DA_CHAVE: "1"})
 
 
 def _pedir(cliente, email=EMAIL, **extra):

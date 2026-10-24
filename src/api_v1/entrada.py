@@ -27,6 +27,7 @@ from src.api_v1.acesso import (
     agora,
     exigir_api_ligada,
 )
+from src.api_v1.compartilhados import ip_de_quem_pede
 from src.api_v1.conta import ContaV1, abrir_a_sessao
 from src.api_v1.rotas import eu_da_conta
 from src.api_v1.sessao import pedido_do_proprio_site
@@ -87,13 +88,6 @@ class ConfirmacaoV1(BaseModel):
     codigo: str = Field(max_length=20)
 
 
-def _ip_de(pedido: Request) -> str:
-    # o túnel da Cloudflare põe o IP de quem chegou nesse cabeçalho; sem ele, vale o da conexão
-    return pedido.headers.get("cf-connecting-ip") or (
-        pedido.client.host if pedido.client else "desconhecido"
-    )
-
-
 def _exigir_o_proprio_site(pedido: Request) -> None:
     if not pedido_do_proprio_site(pedido):
         raise HTTPException(
@@ -104,7 +98,7 @@ def _exigir_o_proprio_site(pedido: Request) -> None:
 
 
 def _barrar_excesso(limite: LimiteDePedidos, pedido: Request) -> None:
-    if not limite.permitir(_ip_de(pedido), agora()):
+    if not limite.permitir(ip_de_quem_pede(pedido), agora()):
         raise HTTPException(
             status_code=429, detail="Muitos pedidos: tente de novo mais tarde."
         )
