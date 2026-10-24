@@ -16,6 +16,7 @@ from base.arquivo import (
     lote_cvm,
     lote_eua,
     lote_licitacoes,
+    lote_sec,
     lote_setoriais,
 )
 
@@ -141,6 +142,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
+)
+
+_LOTE_SEC_SO_ARQUIVO = (
+    "dado público da SEC guardado como publicado; a tabela com contrato no catálogo ainda não existe "
+    "(sem pessoa física nas tabelas derivadas)"
 )
 
 _LOTE_ATENCAO_SO_ARQUIVO = (
@@ -428,6 +434,11 @@ DESTINOS: dict[str, Destino] = {
     **{
         f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
         for f in lote_eua.fontes()
+    },
+    # lote SEC (rodada 4, 23/10/2026): idem, a carga na base de ML é uma fila própria
+    **{
+        f.id: _planejada("lote-sec/carga", _LOTE_SEC_SO_ARQUIVO)
+        for f in lote_sec.fontes()
     },
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),

@@ -29,6 +29,7 @@ from base.arquivo import (
     lote_eua,
     lote_licitacoes,
     lote_organismos,
+    lote_sec,
     lote_setoriais,
     wayback,
 )
@@ -1160,6 +1161,9 @@ FONTES: list[Fonte] = [
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
     *lote_eua.fontes(),
+    # lote SEC (rodada 4, 23/10/2026): mais conjuntos da Data Library, corretoras, Form ADV e os
+    # pacotes diários do EDGAR (linha 201 da fila)
+    *lote_sec.fontes(),
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
