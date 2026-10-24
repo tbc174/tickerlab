@@ -84,13 +84,14 @@ ORDEM_DAS_SECOES = (
 # uma seção nova da base, que a ordem ainda não conhece, vai com os negócios e acontecimentos
 POSICAO_DA_SECAO_NOVA = ORDEM_DAS_SECOES.index("negocios") + 0.5
 CHAVES_DAS_SECOES = {
-    "resultado": ("receita", "lucro", "margem_bruta", "margem_ebit", "margem_liquida",
-                  "crescimento_receita", "crescimento_lucro"),
-    "retorno": ("roe", "roic", "dupont_margem", "dupont_giro", "dupont_alavancagem"),
+    "resultado": ("receita", "lucro", "margem_bruta", "margem_ebit", "margem_ebitda",
+                  "margem_liquida", "crescimento_receita", "crescimento_lucro"),
+    "retorno": ("roe", "roic", "roa", "dupont_margem", "dupont_giro", "dupont_alavancagem"),
     "endividamento": ("divida_bruta", "caixa", "divida_liquida", "divida_sobre_pl",
-                      "cobertura_de_juros"),
-    "caixa": ("conversao_de_caixa", "caixa_livre", "capex", "capex_sobre_depreciacao", "pmr",
-              "pme", "pmp", "ciclo_de_caixa"),
+                      "divida_liquida_sobre_ebitda", "divida_liquida_sobre_ebit",
+                      "passivos_sobre_ativos", "pl_sobre_ativos", "cobertura_de_juros"),
+    "caixa": ("conversao_de_caixa", "caixa_livre", "capex", "capex_sobre_depreciacao",
+              "liquidez_corrente", "pmr", "pme", "pmp", "ciclo_de_caixa"),
 }  # fmt: skip
 INDICADORES_DO_QUE_MUDOU = (
     "receita",
@@ -130,6 +131,10 @@ ROTULOS_DAS_COLUNAS = {  # o cabeçalho que a regra geral (`rotulo_da_coluna`) e
     "despesas_com_vendas": "Despesas com vendas",
     "despesas_administrativas": "Despesas administrativas",
     "resultado_bruto": "Resultado bruto",
+    # os dividendos por ação (linha 54 da fila)
+    "dividendo_por_acao": "Dividendo por ação (caixa)",
+    "dividendos_fre_por_acao": "Dividendos por ação (FRE)",
+    "jcp_fre_por_acao": "JCP por ação (FRE)",
 }
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
@@ -187,6 +192,7 @@ FONTE_DAS_DEMONSTRACOES = "DFP e ITR entregues à CVM (demonstrações consolida
 FONTE_DOS_MULTIPLOS = "preço da ação (Yahoo Finance) e DFP e ITR entregues à CVM"
 FONTE_DAS_ACOES = "DFP entregues à CVM (fluxo de caixa e composição do capital)"
 SEM_O_ANTERIOR = "O balanço anterior guardado não tem este número para comparar."
+SEM_O_ANO_ANTERIOR = "A DFP do ano anterior guardada não tem este número para comparar."
 # os múltiplos de mercado além de P/L e P/VP (D3 mudada em 20/10/2026); o DY fica nos dividendos
 MULTIPLOS_DE_MERCADO = tuple(m for m in fundamentos.DE_MERCADO if m != "dividend_yield")
 COMO_SAI_O_DY = (
@@ -371,6 +377,8 @@ def escrever(valor: float | None, unidade: str) -> str:
         return f"R$ {valor:.2f}".replace(".", ",")
     if unidade == fundamentalista.DIAS:
         return f"{valor:.0f} dias"
+    if unidade == fundamentalista.ACOES:
+        return _acoes(valor)
     return f"{valor:.2f}×".replace(".", ",")
 
 
@@ -864,6 +872,78 @@ def _acoes(quantidade: float) -> str:
     return f"{quantidade:,.0f}".replace(",", ".")
 
 
+def texto_das_acoes(
+    total: float, ordinarias: float | None, preferenciais: float | None
+) -> str:
+    """ "1.152.254.440 (1.152.254.440 ON e 0 PN)"; sem as espécies no documento, só o total."""
+    if ordinarias is None or preferenciais is None:
+        return _acoes(total)
+    return f"{_acoes(total)} ({_acoes(ordinarias)} ON e {_acoes(preferenciais)} PN)"
+
+
+def _contra_o_ano_anterior(
+    coluna: str, unidade: str, historico: pd.DataFrame
+) -> Comparacao | None:
+    """O número da DFP do ano anterior ao último, na tabela dos dividendos."""
+    if len(historico) < 2 or pd.isna(historico[coluna].iloc[-2]):
+        return None
+    ano, valor = int(historico.index[-2]), float(historico[coluna].iloc[-2])
+    return Comparacao(f"DFP de {ano}", f"era {escrever(valor, unidade)}", valor)
+
+
+def _contra_o_comeco(historico: pd.DataFrame) -> Comparacao | None:
+    """O dividendo por ação do começo e do fim da janela do crescimento."""
+    if historico.empty:
+        return None
+    ultimo = int(historico.index.max())
+    comeco = ultimo - fundamentalista.ANOS_DO_CRESCIMENTO_DO_DIVIDENDO
+    if comeco not in historico.index:
+        return None
+    dpa = historico["dividendo_por_acao"]
+    if pd.isna(dpa[comeco]) or pd.isna(dpa[ultimo]):
+        return None
+    porta = fundamentos.REAIS_POR_ACAO
+    return Comparacao(
+        f"dividendo por ação de {comeco}",
+        f"{escrever(float(dpa[comeco]), porta)} em {comeco} e "
+        f"{escrever(float(dpa[ultimo]), porta)} em {ultimo}",
+        float(dpa[comeco]),
+    )
+
+
+def _itens_por_acao(c: _Calculos, rastro: Callable[[str], Rastro]) -> list[Item]:
+    """Dividendo por ação, payout e crescimento do dividendo por ação (DFC da DFP)."""
+    historico = c.dividendos.historico
+    comparacoes = {
+        "dividendo_por_acao": _contra_o_ano_anterior(
+            "dividendo_por_acao", fundamentos.REAIS_POR_ACAO, historico
+        ),
+        "payout": _contra_o_ano_anterior("payout_caixa", fundamentos.FRACAO, historico),
+        "crescimento_do_dividendo": _contra_o_comeco(historico),
+    }
+    itens = []
+    for chave, indicador in fundamentalista.indicadores_dos_dividendos(
+        c.dividendos
+    ).items():
+        comparacao = comparacoes[chave]
+        itens.append(
+            Item(
+                chave,
+                indicador.nome,
+                escrever(indicador.valor, indicador.unidade),
+                indicador.valor,
+                indicador.unidade,
+                indicador.base,
+                indicador.motivo,
+                fonte=FONTE_DAS_ACOES,
+                comparacao=comparacao,
+                sem_comparacao="" if comparacao else SEM_O_ANO_ANTERIOR,
+                rastro=rastro(chave),
+            )
+        )
+    return itens
+
+
 def _dividendos(c: _Calculos) -> Secao:
     d = c.dividendos
     anos = [int(a) for a in d.historico.index] if not d.historico.empty else []
@@ -896,6 +976,7 @@ def _dividendos(c: _Calculos) -> Secao:
              fundamentos.FRACAO, base,
              "" if d.diluicao_anual is not None else SEM_DILUICAO,
              fonte=FONTE_DAS_ACOES, comparacao=diluicao, rastro=rastro("diluicao")),
+        *_itens_por_acao(c, rastro),
     ]  # fmt: skip
     return Secao(
         "dividendos",
@@ -1518,6 +1599,41 @@ def _datas_das_fontes(e: Entradas, do_dossie: list[Secao]) -> list[dict]:
     return [{"fonte": f, "data": f"{d:%d/%m/%Y}"} for f, d in datas if d is not None]
 
 
+def _acoes_em_circulacao(e: Entradas, c: _Calculos) -> Item:
+    """As ações em circulação do balanço mais recente, com as ON e as PN, contra o anterior."""
+    agora = fundamentalista.acoes_por_especie(e.dados)
+    total, comparacao = agora.total, None
+    if c.data_anterior is not None:
+        contas = e.dados.contas
+        cortadas = replace(
+            e.dados, contas=contas[contas["referencia"] < c.balancos[-1]]
+        )
+        antes = fundamentalista.acoes_por_especie(cortadas).total.valor
+        if antes is not None:
+            comparacao = Comparacao(
+                f"balanço de {c.data_anterior:%d/%m/%Y}", f"era {_acoes(antes)}", antes
+            )
+    texto = (
+        "—"
+        if total.valor is None
+        else texto_das_acoes(total.valor, agora.ordinarias, agora.preferenciais)
+    )
+    base = f"{total.base} ({agora.nota})" if agora.nota else total.base
+    return Item(
+        total.chave,
+        total.nome,
+        texto,
+        total.valor,
+        total.unidade,
+        base,
+        total.motivo,
+        fonte=FONTE_DAS_ACOES,
+        comparacao=comparacao,
+        sem_comparacao="" if comparacao else SEM_O_ANTERIOR,
+        rastro=_rastro(total.chave, c),
+    )
+
+
 def _ficha_tecnica(
     e: Entradas, c: _Calculos, do_dossie: list[Secao], plano: str | None
 ) -> Secao:
@@ -1526,6 +1642,7 @@ def _ficha_tecnica(
         _tickers(e),
         _setor(e, c),
         *_auditor_e_controlador(e, do_dossie, plano),
+        _acoes_em_circulacao(e, c),
         ultima_demonstracao(e.dados.documentos),
     ]
     return Secao(

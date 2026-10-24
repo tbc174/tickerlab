@@ -12,6 +12,9 @@ quando falta, por quê:
 - **Caixa livre:** caixa operacional − capex; **capex ÷ depreciação** (acima de 1, a empresa investe
   mais do que desgasta).
 - **Cobertura de juros:** EBIT ÷ despesas financeiras.
+- **Sem preço (linha 54 da fila):** margem EBITDA (EBIT + depreciação, como a série T1 da base),
+  dívida líquida sobre o EBITDA e sobre o EBIT, passivos e patrimônio sobre o ativo, ROA, liquidez
+  corrente, dividendo por ação, payout e crescimento do dividendo, e as ações por espécie (ON e PN).
 - **Histórico de até 10 anos** dos DFPs: a tabela, a análise vertical (resultado sobre a receita,
   balanço sobre o ativo), a horizontal (variação de um ano para o outro, só entre anos seguidos), o
   crescimento composto e a consistência. Ano que falta aparece como falta, nunca como zero.
@@ -33,14 +36,19 @@ from src.fundamentos import (
     FRACAO,
     NAO_SE_APLICA_A_FINANCEIRAS,
     REAIS,
+    REAIS_POR_ACAO,
     VEZES,
     Indicador,
+    acoes_em_circulacao,
     anuais,
     balanco_mais_recente,
+    divida_e_caixa,
     doze_meses,
 )
 
 DIAS = "dias"
+ACOES = "ações"
+ANOS_DO_CRESCIMENTO_DO_DIVIDENDO = 5
 DIAS_NO_ANO = 365
 ANOS_DO_HISTORICO = 10
 SEM_RECEITA = "Sem receita no período."
@@ -55,7 +63,13 @@ _PL = "(patrimônio líquido − participação dos minoritários)"
 DOS_DIVIDENDOS = (
     "anos_pagando",
     "diluicao",
+    "dividendo_por_acao",
+    "payout",
+    "crescimento_do_dividendo",
 )  # de `dividendos_e_diluicao`, não de `calcular`
+DA_COMPOSICAO_DO_CAPITAL = ("acoes_em_circulacao",)  # de `acoes_por_especie`
+_EBITDA = "(EBIT + depreciação e amortização)"
+_PAGOS = "dividendos e JCP pagos no fluxo de caixa da DFP"
 FORMULAS = {
     "dupont_margem": "lucro dos controladores ÷ receita (12 meses)",
     "dupont_giro": "receita (12 meses) ÷ ativo total (balanço mais recente)",
@@ -69,10 +83,32 @@ FORMULAS = {
     "capex": "capex do fluxo de caixa (12 meses), em valor absoluto",
     "capex_sobre_depreciacao": "capex ÷ depreciação e amortização (12 meses)",
     "cobertura_de_juros": "EBIT ÷ despesas financeiras (12 meses)",
+    "margem_ebitda": f"{_EBITDA} ÷ receita (12 meses)",
+    "divida_liquida_sobre_ebitda": f"dívida líquida (balanço mais recente) ÷ {_EBITDA} (12 meses)",
+    "divida_liquida_sobre_ebit": "dívida líquida (balanço mais recente) ÷ EBIT (12 meses)",
+    "passivos_sobre_ativos": (
+        "(ativo total − patrimônio líquido com os minoritários) ÷ ativo total (balanço mais recente)"
+    ),
+    "pl_sobre_ativos": "patrimônio líquido com os minoritários ÷ ativo total (balanço mais recente)",
+    "roa": "lucro líquido consolidado (12 meses) ÷ ativo total (balanço mais recente)",
+    "liquidez_corrente": "ativo circulante ÷ passivo circulante (balanço mais recente)",
     "anos_pagando": "anos com dividendos ou JCP pagos no fluxo de caixa da DFP (acima de zero)",
     "diluicao": (
         "(ações em circulação do último ano ÷ as do primeiro) ^ (1 ÷ anos) − 1, ajustadas por "
         "desdobramentos, grupamentos e bonificações do FRE"
+    ),
+    "dividendo_por_acao": (
+        f"{_PAGOS} do último exercício ÷ ações em circulação do fim dele (ajustadas por "
+        "desdobramentos, grupamentos e bonificações)"
+    ),
+    "payout": f"{_PAGOS} do último exercício ÷ lucro dos controladores dele",
+    "crescimento_do_dividendo": (
+        f"(dividendo por ação do último exercício ÷ o de {ANOS_DO_CRESCIMENTO_DO_DIVIDENDO} anos "
+        f"antes) ^ (1 ÷ {ANOS_DO_CRESCIMENTO_DO_DIVIDENDO}) − 1"
+    ),
+    "acoes_em_circulacao": (
+        "ações do capital integralizado − em tesouraria, por espécie (ON e PN), no balanço mais "
+        "recente; conferidas com o lucro por ação da DRE"
     ),
 }
 
@@ -249,6 +285,84 @@ def _cobertura(ttm: dict, base: str) -> Indicador:
     )
 
 
+def _margem_ebitda(ttm: dict, base: str) -> Indicador:
+    ebit, depreciacao, receita = (
+        ttm.get("ebit"),
+        ttm.get("depreciacao"),
+        ttm.get("receita"),
+    )
+    motivo = (
+        SEM_RECEITA if not receita or receita <= 0
+        else "EBIT indisponível." if ebit is None
+        else "Depreciação não informada." if depreciacao is None
+        else ""
+    )  # fmt: skip
+    valor = None if motivo else (ebit + depreciacao) / receita  # type: ignore[operator]
+    return _indicador("margem_ebitda", "Margem EBITDA", valor, FRACAO, base, motivo)
+
+
+def _sobre_o_resultado(
+    chave: str,
+    nome: str,
+    liquida: float | None,
+    resultado: float | None,
+    falta: str,
+    base: str,
+) -> Indicador:
+    """Dívida líquida ÷ um resultado positivo; caixa maior que a dívida dá a razão negativa."""
+    motivo = (
+        "Dívida ou caixa não informados no balanço." if liquida is None
+        else f"{falta} indisponível." if resultado is None
+        else f"{falta} negativo ou zero: a razão não tem sentido." if resultado <= 0
+        else ""
+    )  # fmt: skip
+    valor = None if motivo else liquida / resultado  # type: ignore[operator]
+    return _indicador(chave, nome, valor, VEZES, base, motivo)
+
+
+def _alavancagem(ttm: dict, saldo: dict, base: str) -> list[Indicador]:
+    divida, caixa = divida_e_caixa(saldo)
+    liquida = None if divida is None or caixa is None else divida - caixa
+    ebit, depreciacao = ttm.get("ebit"), ttm.get("depreciacao")
+    ebitda = None if ebit is None or depreciacao is None else ebit + depreciacao
+    return [
+        _sobre_o_resultado("divida_liquida_sobre_ebitda", "Dívida líquida / EBITDA", liquida,
+                           ebitda, "EBITDA", base),
+        _sobre_o_resultado("divida_liquida_sobre_ebit", "Dívida líquida / EBIT", liquida, ebit,
+                           "EBIT", base),
+    ]  # fmt: skip
+
+
+def _liquidez(saldo: dict, base: str) -> Indicador:
+    circulante, passivo = saldo.get("ativo_circulante"), saldo.get("passivo_circulante")
+    motivo = (
+        "Ativo circulante não informado." if circulante is None
+        else "Passivo circulante não informado ou zero." if not passivo or passivo <= 0
+        else ""
+    )  # fmt: skip
+    valor = None if motivo else circulante / passivo  # type: ignore[operator]
+    return _indicador(
+        "liquidez_corrente", "Liquidez corrente", valor, VEZES, base, motivo
+    )
+
+
+def _estrutura(ttm: dict, saldo: dict, base_balanco: str, base: str) -> list[Indicador]:
+    """ROA e o quanto do ativo é dos sócios e de terceiros: valem também para bancos e seguradoras."""
+    ativo, pl = saldo.get("ativo_total"), saldo.get("patrimonio_liquido")
+    lucro = ttm.get("lucro_liquido")
+    sem_ativo = "Ativo total indisponível." if not ativo or ativo <= 0 else ""
+    sem_pl = sem_ativo or ("Patrimônio líquido não informado." if pl is None else "")
+    sem_lucro = sem_ativo or ("Lucro indisponível." if lucro is None else "")
+    return [
+        _indicador("roa", "ROA (retorno sobre o ativo)",
+                   None if sem_lucro else lucro / ativo, FRACAO, base, sem_lucro),  # type: ignore[operator]
+        _indicador("passivos_sobre_ativos", "Passivos / ativos",
+                   None if sem_pl else (ativo - pl) / ativo, FRACAO, base_balanco, sem_pl),  # type: ignore[operator]
+        _indicador("pl_sobre_ativos", "Patrimônio / ativos",
+                   None if sem_pl else pl / ativo, FRACAO, base_balanco, sem_pl),  # type: ignore[operator]
+    ]  # fmt: skip
+
+
 def _nao_se_aplica(indicadores: list[Indicador]) -> list[Indicador]:
     return [
         Indicador(i.chave, i.nome, None, i.unidade, i.base, NAO_SE_APLICA_A_FINANCEIRAS)
@@ -264,9 +378,18 @@ def _cagr(serie: pd.Series) -> float | None:
     return float((validos.iloc[-1] / validos.iloc[0]) ** (1 / anos) - 1)
 
 
+# as ações por espécie vão para a ficha técnica (`acoes_por_especie`), não para o histórico
+CONTAS_SO_DA_FICHA = (
+    "acoes_ordinarias",
+    "acoes_preferenciais",
+    "acoes_ordinarias_tesouraria",
+    "acoes_preferenciais_tesouraria",
+)
+
+
 def historico(contas: pd.DataFrame, anos: int = ANOS_DO_HISTORICO) -> Historico:
     """Os últimos `anos` exercícios (DFP), com vertical, horizontal, crescimento e consistência."""
-    tabela = anuais(contas)
+    tabela = anuais(contas).drop(columns=list(CONTAS_SO_DA_FICHA), errors="ignore")
     if tabela.empty:
         vazio = pd.DataFrame()
         return Historico(vazio, vazio, vazio)
@@ -327,9 +450,12 @@ def calcular(dados: DadosDaEmpresa) -> Fundamentalista:
     )
     grupos = [_dupont(ttm, saldo, base), _ciclo(ttm, saldo, anterior, base_media)]
     grupos += [_caixa_livre(ttm, base_12m), [_cobertura(ttm, base_12m)]]
+    grupos += [[_margem_ebitda(ttm, base_12m)], _alavancagem(ttm, saldo, base)]
+    grupos += [[_liquidez(saldo, base_balanco)]]
     indicadores = [
         i for grupo in grupos for i in (_nao_se_aplica(grupo) if financeira else grupo)
     ]
+    indicadores += _estrutura(ttm, saldo, base_balanco, base)
     return Fundamentalista(
         indicadores={i.chave: i for i in indicadores}, historico=historico(contas)
     )
@@ -359,6 +485,8 @@ class DividendosEDiluicao:
     )  # crescimento composto das ações ajustadas (0,1 = 10% ao ano)
     anos_pagando: int
     avisos: list[str] = field(default_factory=list)
+    # as ações mudaram depois de 2022 sem evento conhecido: o "por ação" de antes pode estar errado
+    acoes_sem_evento: bool = False
 
 
 def _salto_redondo(razao: float) -> float | None:
@@ -509,10 +637,19 @@ def dividendos_e_diluicao(
             "payout_caixa": pagos / lucro.where(lucro > 0),
         }
     )
+    por_acao = historico["acoes_ajustadas"].where(historico["acoes_ajustadas"] > 0)
+    historico["dividendo_por_acao"] = pagos / por_acao
     if proventos is not None and not proventos.empty:
         do_fre = _proventos_por_ano(proventos)
         historico["dividendo_fre"] = do_fre["dividendo_total"].reindex(historico.index)
         historico["payout_fre"] = do_fre["payout"].reindex(historico.index)
+        for coluna in (
+            "dividendos",
+            "jcp",
+        ):  # o que foi dividendo e o que foi JCP (até 2022)
+            if coluna in do_fre:
+                fre = do_fre[coluna].reindex(historico.index)
+                historico[f"{coluna}_fre_por_acao"] = fre / por_acao
     ajustadas = historico["acoes_ajustadas"].dropna()
     ajustadas = ajustadas[ajustadas > 0]
     diluicao = (
@@ -525,5 +662,88 @@ def dividendos_e_diluicao(
         else None
     )
     return DividendosEDiluicao(
-        historico, diluicao, int((pagos > 0).sum()), [*avisos, *sem_evento]
+        historico,
+        diluicao,
+        int((pagos > 0).sum()),
+        [*avisos, *sem_evento],
+        bool(sem_evento),
+    )
+
+
+def _crescimento_do_dividendo(d: DividendosEDiluicao) -> Indicador:
+    anos = ANOS_DO_CRESCIMENTO_DO_DIVIDENDO
+    chave, nome = "crescimento_do_dividendo", "Crescimento do dividendo por ação"
+    dpa = d.historico.get("dividendo_por_acao")
+    ultimo = int(d.historico.index.max()) if dpa is not None else 0
+    if dpa is None or (ultimo - anos) not in dpa.index:
+        falta = (
+            f"O crescimento de {anos} anos pede {anos + 1} exercícios seguidos com DFP."
+        )
+        return _indicador(chave, nome, None, FRACAO, "", falta)
+    inicio, fim = dpa[ultimo - anos], dpa[ultimo]
+    motivo = (
+        "As ações mudaram sem evento conhecido: o dividendo por ação de antes pode estar errado."
+        if d.acoes_sem_evento
+        else "Sem dividendo pago no começo ou no fim: crescimento composto não tem sentido."
+        if pd.isna(inicio) or pd.isna(fim) or inicio <= 0 or fim <= 0
+        else ""
+    )
+    valor = None if motivo else float((fim / inicio) ** (1 / anos) - 1)
+    base = f"DFP de {ultimo - anos} e de {ultimo}"
+    return _indicador(chave, nome, valor, FRACAO, base, motivo)
+
+
+def indicadores_dos_dividendos(d: DividendosEDiluicao) -> dict[str, Indicador]:
+    """Dividendo por ação e payout do último exercício e o crescimento do dividendo por ação."""
+    dpa, payout, base = float("nan"), float("nan"), ""
+    if not d.historico.empty:
+        ultimo = int(d.historico.index.max())
+        linha, base = d.historico.loc[ultimo], f"DFP de {ultimo}"
+        dpa, payout = linha["dividendo_por_acao"], linha["payout_caixa"]
+    sem_dfp = "" if base else "Sem DFP guardada."
+    sem_dpa = sem_dfp or (
+        "Sem dividendos pagos ou sem ações no exercício." if pd.isna(dpa) else ""
+    )
+    sem_payout = sem_dfp or (
+        "Sem lucro positivo no exercício." if pd.isna(payout) else ""
+    )
+    lista = [
+        _indicador("dividendo_por_acao", "Dividendo por ação", None if sem_dpa else float(dpa),
+                   REAIS_POR_ACAO, base, sem_dpa),
+        _indicador("payout", "Payout (pago sobre o lucro)",
+                   None if sem_payout else float(payout), FRACAO, base, sem_payout),
+        _crescimento_do_dividendo(d),
+    ]  # fmt: skip
+    return {i.chave: i for i in lista}
+
+
+# --- ações por espécie (ON e PN), para a ficha técnica ---------------------------------------------
+@dataclass(frozen=True)
+class AcoesPorEspecie:
+    total: Indicador  # em circulação (total − tesouraria), com a correção de milhares da tela
+    ordinarias: float | None = None
+    preferenciais: float | None = None
+    nota: str = ""  # quando a quantidade veio em milhares e foi corrigida
+
+
+def acoes_por_especie(dados: DadosDaEmpresa) -> AcoesPorEspecie:
+    """As ações em circulação do balanço mais recente, e as ON e as PN quando o documento as traz."""
+    saldo, data, _ = balanco_mais_recente(dados.contas)
+    base = f"balanço de {_data(data)}" if data else ""
+    acoes, nota, motivo = acoes_em_circulacao(saldo, dados.contas)
+    total = _indicador(
+        "acoes_em_circulacao", "Ações em circulação", acoes, ACOES, base, motivo
+    )
+    if acoes is None:
+        return AcoesPorEspecie(total, nota=nota)
+    # o mesmo fator da tela: 1, ou mil quando a CVM recebeu a quantidade em milhares
+    fator = acoes / (saldo["acoes_total"] - saldo.get("acoes_tesouraria", 0.0))
+
+    def especie(conta: str) -> float | None:
+        if conta not in saldo:
+            return None
+        return (saldo[conta] - saldo.get(f"{conta}_tesouraria", 0.0)) * fator
+
+    return AcoesPorEspecie(
+        total, especie("acoes_ordinarias"), especie("acoes_preferenciais"), nota
     )

@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from src import demonstracoes as dm
 from src import fundamentalista as fa
@@ -284,3 +286,251 @@ def test_mudanca_pequena_depois_de_2022_continua_diluicao():
     resultado = fa.dividendos_e_diluicao(_com_acoes({2024: 100.0, 2025: 103.0}))
     assert resultado.diluicao_anual == pytest.approx(0.03)
     assert resultado.avisos == []
+
+
+# --- indicadores sem preço (linha 54 da fila: alavancagem, estrutura, ROA, liquidez, EBITDA) -------
+COM_DIVIDA = {
+    **SALDOS,
+    "patrimonio_liquido": 1200.0,
+    "divida_cp": 200.0,
+    "divida_lp": 800.0,
+    "caixa": 300.0,
+    "ativo_circulante": 900.0,
+    "passivo_circulante": 600.0,
+}
+
+
+def test_margem_ebitda_soma_a_depreciacao_ao_ebit():
+    resultado = fa.calcular(_empresa(saldos=COM_DIVIDA))
+    assert resultado["margem_ebitda"].valor == pytest.approx((500 + 125) / 3650)
+    assert resultado["margem_ebitda"].base == resultado["cobertura_de_juros"].base
+
+
+def test_divida_liquida_sobre_ebitda_e_sobre_ebit():
+    resultado = fa.calcular(_empresa(saldos=COM_DIVIDA))
+    assert resultado["divida_liquida_sobre_ebitda"].valor == pytest.approx(700 / 625)
+    assert resultado["divida_liquida_sobre_ebit"].valor == pytest.approx(700 / 500)
+    assert "balanço de 31/12/2025" in resultado["divida_liquida_sobre_ebitda"].base
+
+
+def test_caixa_maior_que_a_divida_da_razao_negativa():
+    saldos = {**COM_DIVIDA, "caixa": 1500.0}  # caixa líquido de 500
+    resultado = fa.calcular(_empresa(saldos=saldos))
+    assert resultado["divida_liquida_sobre_ebitda"].valor == pytest.approx(-500 / 625)
+
+
+def test_ebitda_negativo_fica_sem_numero_e_diz_por_que():
+    fluxos = {**FLUXOS, "ebit": -300.0, "depreciacao": 100.0}
+    resultado = fa.calcular(_empresa(fluxos=fluxos, saldos=COM_DIVIDA))
+    for chave, motivo in (
+        ("divida_liquida_sobre_ebitda", "EBITDA negativo ou zero"),
+        ("divida_liquida_sobre_ebit", "EBIT negativo ou zero"),
+    ):
+        assert resultado[chave].valor is None
+        assert motivo in resultado[chave].motivo
+
+
+def test_sem_divida_no_balanco_a_alavancagem_diz_por_que():
+    resultado = fa.calcular(_empresa())  # SALDOS não tem dívida nem caixa
+    alavancagem = resultado["divida_liquida_sobre_ebitda"]
+    assert alavancagem.valor is None and alavancagem.motivo
+
+
+def test_passivos_e_patrimonio_sobre_ativos_somam_um():
+    resultado = fa.calcular(_empresa(saldos=COM_DIVIDA))
+    assert resultado["passivos_sobre_ativos"].valor == pytest.approx(1800 / 3000)
+    assert resultado["pl_sobre_ativos"].valor == pytest.approx(1200 / 3000)
+
+
+def test_roa_e_o_lucro_consolidado_sobre_o_ativo():
+    resultado = fa.calcular(_empresa(saldos=COM_DIVIDA))
+    assert resultado["roa"].valor == pytest.approx(300 / 3000)
+
+
+def test_liquidez_corrente_e_sem_passivo_circulante():
+    liquidez = fa.calcular(_empresa(saldos=COM_DIVIDA))["liquidez_corrente"]
+    assert liquidez.valor == pytest.approx(1.5)
+    sem = {k: v for k, v in COM_DIVIDA.items() if k != "passivo_circulante"}
+    liquidez = fa.calcular(_empresa(saldos=sem))["liquidez_corrente"]
+    assert liquidez.valor is None and "circulante" in liquidez.motivo
+
+
+def test_banco_tem_roa_e_patrimonio_sobre_ativos_mas_nao_ebitda_nem_liquidez():
+    resultado = fa.calcular(_empresa(saldos=COM_DIVIDA, setor="Bancos"))
+    assert resultado["roa"].valor == pytest.approx(0.1)
+    assert resultado["pl_sobre_ativos"].valor == pytest.approx(0.4)
+    for chave in (
+        "margem_ebitda",
+        "divida_liquida_sobre_ebitda",
+        "divida_liquida_sobre_ebit",
+        "liquidez_corrente",
+    ):
+        assert resultado[chave].motivo == fu.NAO_SE_APLICA_A_FINANCEIRAS
+
+
+# --- dividendo por ação, payout e crescimento do dividendo (linha 54 da fila) ------------------------
+def _pagando(pagos_por_ano: dict[int, float], acoes: float = 100.0) -> DadosDaEmpresa:
+    linhas = []
+    for ano, pagos in pagos_por_ano.items():
+        fluxos = {**FLUXOS, "lucro_liquido": 100.0, "dividendos_pagos": -pagos}
+        linhas += _linhas(ano, fluxos, {**SALDOS, "acoes_total": acoes})
+    return DadosDaEmpresa(pd.DataFrame(linhas), pd.DataFrame(), "Máquinas")
+
+
+def test_dividendo_por_acao_de_cada_ano_pelo_fluxo_de_caixa():
+    resultado = fa.dividendos_e_diluicao(_com_acoes({2020: 100.0, 2021: 125.0}))
+    assert resultado.historico.loc[2020, "dividendo_por_acao"] == pytest.approx(0.5)
+    assert resultado.historico.loc[2021, "dividendo_por_acao"] == pytest.approx(0.4)
+
+
+def test_dividendo_por_acao_usa_as_acoes_ajustadas_pelo_desdobramento():
+    eventos = pd.DataFrame(
+        {
+            "tipo": ["desdobramento"],
+            "data": [pd.Timestamp("2020-08-03")],
+            "fator": [10.0],
+        }
+    )
+    resultado = fa.dividendos_e_diluicao(
+        _com_acoes({2019: 100.0, 2020: 1000.0}), eventos=eventos
+    )
+    # 50 pagos sobre as 100 ações de 2019, que são 1.000 de hoje: R$ 0,05 por ação de hoje
+    assert resultado.historico.loc[2019, "dividendo_por_acao"] == pytest.approx(0.05)
+
+
+def test_dividendos_e_jcp_por_acao_do_fre():
+    proventos = pd.DataFrame(
+        {
+            "exercicio": [pd.Timestamp("2021-12-31")],
+            "dividendo_total": [40.0],
+            "payout": [0.4],
+            "dividendos": [30.0],
+            "jcp": [10.0],
+        }
+    )
+    tabela = fa.dividendos_e_diluicao(
+        _com_acoes({2021: 100.0, 2022: 100.0}), proventos
+    ).historico
+    assert tabela.loc[2021, "dividendos_fre_por_acao"] == pytest.approx(0.3)
+    assert tabela.loc[2021, "jcp_fre_por_acao"] == pytest.approx(0.1)
+    assert pd.isna(tabela.loc[2022, "jcp_fre_por_acao"])  # sem o FRE daquele ano
+
+
+def test_indicadores_do_ultimo_ano_dos_dividendos():
+    dados = _pagando({ano: 50.0 * 1.1 ** (ano - 2020) for ano in range(2020, 2026)})
+    indicadores = fa.indicadores_dos_dividendos(fa.dividendos_e_diluicao(dados))
+    dpa = indicadores["dividendo_por_acao"]
+    assert dpa.valor == pytest.approx(0.5 * 1.1**5)
+    assert dpa.base == "DFP de 2025"
+    assert indicadores["payout"].valor == pytest.approx(0.5 * 1.1**5)
+    crescimento = indicadores["crescimento_do_dividendo"]
+    assert crescimento.valor == pytest.approx(0.1)
+    assert crescimento.base == "DFP de 2020 e de 2025"
+
+
+def test_crescimento_do_dividendo_pede_seis_exercicios():
+    dados = _pagando({2023: 50.0, 2024: 50.0, 2025: 50.0})
+    indicadores = fa.indicadores_dos_dividendos(fa.dividendos_e_diluicao(dados))
+    crescimento = indicadores["crescimento_do_dividendo"]
+    assert crescimento.valor is None and "6" in crescimento.motivo
+
+
+def test_crescimento_do_dividendo_sem_numero_com_salto_sem_evento():
+    acoes = {ano: 100.0 for ano in range(2020, 2025)} | {2025: 113.0}
+    resultado = fa.dividendos_e_diluicao(_com_acoes(acoes))
+    crescimento = fa.indicadores_dos_dividendos(resultado)["crescimento_do_dividendo"]
+    assert crescimento.valor is None and "sem evento" in crescimento.motivo
+
+
+def test_ano_sem_dividendo_no_inicio_fica_sem_crescimento():
+    dados = _pagando({ano: 0.0 if ano == 2020 else 50.0 for ano in range(2020, 2026)})
+    indicadores = fa.indicadores_dos_dividendos(fa.dividendos_e_diluicao(dados))
+    crescimento = indicadores["crescimento_do_dividendo"]
+    assert crescimento.valor is None and crescimento.motivo
+
+
+def test_sem_lucro_o_payout_diz_por_que():
+    linhas = _linhas(
+        2025,
+        {**FLUXOS, "lucro_liquido": -10.0, "dividendos_pagos": -5.0},
+        {**SALDOS, "acoes_total": 100.0},
+    )
+    dados = DadosDaEmpresa(pd.DataFrame(linhas), pd.DataFrame(), "Máquinas")
+    payout = fa.indicadores_dos_dividendos(fa.dividendos_e_diluicao(dados))["payout"]
+    assert payout.valor is None and "lucro" in payout.motivo
+
+
+def test_sem_demonstracoes_os_dividendos_dizem_por_que():
+    vazio = fa.DividendosEDiluicao(pd.DataFrame(), None, 0)  # o que sai sem DFP
+    indicadores = fa.indicadores_dos_dividendos(vazio)
+    assert set(indicadores) == {
+        "dividendo_por_acao",
+        "payout",
+        "crescimento_do_dividendo",
+    }
+    assert all(i.valor is None and i.motivo for i in indicadores.values())
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    mudancas=st.lists(st.floats(-0.04, 0.04), min_size=6, max_size=6),
+    pagos=st.lists(st.floats(1.0, 1e6), min_size=7, max_size=7),
+    corte=st.integers(2020, 2025),
+)
+def test_dividendo_por_acao_nao_olha_o_futuro(mudancas, pagos, corte):
+    """Cortar os anos depois de `corte` não muda o dividendo por ação nem o payout até ele (sem
+    desdobramento: um evento depois do corte reescreve o passado na unidade de hoje, de propósito)."""
+    acoes, linhas = 1_000.0, []
+    for i, ano in enumerate(range(2019, 2026)):
+        acoes *= 1 + (mudancas[i - 1] if i else 0.0)
+        fluxos = {**FLUXOS, "lucro_liquido": 100.0, "dividendos_pagos": -pagos[i]}
+        linhas += _linhas(ano, fluxos, {**SALDOS, "acoes_total": acoes})
+    tudo = pd.DataFrame(linhas)
+    cortado = tudo[tudo["referencia"] <= date(corte, 12, 31)]
+    colunas = ["dividendo_por_acao", "payout_caixa"]
+    completo = fa.dividendos_e_diluicao(
+        DadosDaEmpresa(tudo, pd.DataFrame(), "Máquinas")
+    )
+    ate_o_corte = fa.dividendos_e_diluicao(
+        DadosDaEmpresa(cortado, pd.DataFrame(), "Máquinas")
+    )
+    pd.testing.assert_frame_equal(
+        completo.historico.loc[:corte, colunas], ate_o_corte.historico[colunas]
+    )
+
+
+# --- ações por espécie (ON e PN) para a ficha técnica ----------------------------------------------
+def test_acoes_por_especie_tira_a_tesouraria():
+    saldos = {
+        **SALDOS,
+        "acoes_total": 300.0,
+        "acoes_tesouraria": 10.0,
+        "acoes_ordinarias": 100.0,
+        "acoes_preferenciais": 200.0,
+        "acoes_ordinarias_tesouraria": 4.0,
+        "acoes_preferenciais_tesouraria": 6.0,
+    }
+    acoes = fa.acoes_por_especie(_empresa(saldos=saldos))
+    assert acoes.total.valor == pytest.approx(290.0)
+    assert (acoes.ordinarias, acoes.preferenciais) == (96.0, 194.0)
+    assert acoes.total.base == "balanço de 31/12/2025"
+
+
+def test_acoes_por_especie_sem_as_especies_mostra_so_o_total():
+    acoes = fa.acoes_por_especie(_empresa(saldos={**SALDOS, "acoes_total": 300.0}))
+    assert acoes.total.valor == pytest.approx(300.0)
+    assert acoes.ordinarias is None and acoes.preferenciais is None
+
+
+def test_acoes_por_especie_em_milhares_corrige_como_a_tela():
+    fluxos = {**FLUXOS, "lpa_basico": 0.001}  # 300 de lucro ÷ 0,001 = 300 mil ações
+    saldos = {**SALDOS, "acoes_total": 300.0, "acoes_ordinarias": 300.0}
+    acoes = fa.acoes_por_especie(_empresa(fluxos=fluxos, saldos=saldos))
+    assert acoes.total.valor == pytest.approx(300_000.0)
+    assert acoes.ordinarias == pytest.approx(300_000.0)
+    assert "milhares" in acoes.nota
+
+
+def test_sem_acoes_no_documento_diz_por_que():
+    acoes = fa.acoes_por_especie(_empresa())
+    assert acoes.total.valor is None and acoes.total.motivo

@@ -285,6 +285,21 @@ def acoes_em_circulacao(
     )
 
 
+def divida_e_caixa(saldo: dict) -> tuple[float | None, float | None]:
+    """(dívida bruta, caixa e aplicações) de um balanço; sem nenhuma das contas, `None`."""
+    divida = (
+        saldo.get("divida_cp", 0.0) + saldo.get("divida_lp", 0.0)
+        if "divida_cp" in saldo or "divida_lp" in saldo
+        else None
+    )
+    caixa = (
+        saldo.get("caixa", 0.0) + saldo.get("aplicacoes", 0.0)
+        if "caixa" in saldo or "aplicacoes" in saldo
+        else None
+    )
+    return divida, caixa
+
+
 # --- indicadores ---------------------------------------------------------------------------------
 class _Lista:
     """Junta os indicadores, transformando ausência de dado em "indisponível com motivo"."""
@@ -366,16 +381,7 @@ def _retornos_e_divida(
                 chave, nome, None, unidade, base_balanco, NAO_SE_APLICA_A_FINANCEIRAS
             )
         return
-    divida = (
-        saldo.get("divida_cp", 0.0) + saldo.get("divida_lp", 0.0)
-        if "divida_cp" in saldo or "divida_lp" in saldo
-        else None
-    )
-    caixa = (
-        saldo.get("caixa", 0.0) + saldo.get("aplicacoes", 0.0)
-        if "caixa" in saldo or "aplicacoes" in saldo
-        else None
-    )
+    divida, caixa = divida_e_caixa(saldo)
     investido = (
         None
         if pl_total is None or divida is None or caixa is None

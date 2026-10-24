@@ -131,9 +131,10 @@ def test_todo_indicador_calculado_tem_formula(dados_da_weg):
     tela = fundamentos.calcular(dados_da_weg, 50.0).indicadores
     extra = fundamentalista.calcular(dados_da_weg).indicadores
     assert set(tela) == set(fundamentos.FORMULAS)
-    assert set(extra) == set(fundamentalista.FORMULAS) - set(
-        fundamentalista.DOS_DIVIDENDOS
-    )
+    assert set(extra) == set(fundamentalista.FORMULAS) - {
+        *fundamentalista.DOS_DIVIDENDOS,
+        *fundamentalista.DA_COMPOSICAO_DO_CAPITAL,
+    }
     assert all(fundamentos.FORMULAS.values()) and all(fundamentalista.FORMULAS.values())
 
 
