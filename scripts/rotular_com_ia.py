@@ -11,7 +11,9 @@
     python -m scripts.rotular_com_ia auditar  --eventos ... --pasta ... --humanos tiago.json
     python -m scripts.rotular_com_ia estimar  --eventos ... --pasta ... --teto-dolares 10 \
         --modelo claude-opus-5-5 --so-prova
-    python -m scripts.rotular_com_ia comparar --eventos ... --pasta ...
+    python -m scripts.rotular_com_ia comparar --eventos ... --pasta ... [--com-a-rotina]
+    python -m scripts.rotular_com_ia preparar --eventos ... --pasta ... --troca TROCA [--equivalencia]
+    python -m scripts.rotular_com_ia gravar   --eventos ... --pasta ... --troca TROCA
 
 Com `--texto-so-nos-fatos` (estimar, piloto, enviar, identificar), só os fatos relevantes vão com
 texto; os outros vão só com o assunto, como o guia manda a pessoa fazer (Tiago, 14/10/2026: vale se a
@@ -45,6 +47,15 @@ reprova); `estabilidade` sorteia 100 eventos com a semente fixa, grava o sorteio
 `<pasta>/estabilidade.jsonl`, nunca no `rotulos.jsonl`) e publica a concordância IA × IA em
 `<pasta>/estabilidade.json`. Os dois leem o mesmo pedido que o rótulo do Sonnet leu (a regra de texto
 gravada nele) e, com `--so-estimar`, só contam os tokens e mostram o custo (não gastam).
+
+**Rotulagem pela rotina na nuvem, sem a API (Emenda 3 da ADR 0072, 24/10/2026):** `preparar` escreve
+o lote do dia (até 40 eventos prontos, já anonimizados) em `<troca>/lotes/<dia>.jsonl` e o guia em
+`<troca>/GUIA.md`; a pasta de troca é o clone de um repositório privado. A rotina rotula pela
+assinatura e devolve `<troca>/respostas/<dia>.jsonl`; `gravar` confere cada resposta pela mesma regra
+da API (lista fechada, trecho literal, entrada igual à do lote) e grava em
+`<pasta>/rotulos.rotina.jsonl`. Uma via não repete o que a outra já rotulou. Com `--equivalencia`, o
+lote leva os 300 primeiros já rotulados pela API, com a mesma entrada, e `comparar --com-a-rotina`
+mede a rotina contra a API nos limites da Emenda 1, em `<pasta>/comparacao-rotina.json`.
 """
 
 import argparse
@@ -57,8 +68,8 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import asdict
-from datetime import datetime
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -188,8 +199,10 @@ def gravar_manifesto(
 ) -> None:
     registros = ler_rotulos(pasta, modelo)
     jsonl = arquivo_dos_rotulos(pasta, modelo)
+    if modelo == ri.ROTINA:
+        manifesto["via"] = ri.ROTINA
     manifesto |= {
-        "modelo": modelo,
+        "modelo": ri.MODELO_DA_ROTINA if modelo == ri.ROTINA else modelo,
         "versao_do_prompt": ri.VERSAO_DO_PROMPT,
         "guia": ri.GUIA,
         "eventos_na_fila": len(eventos),
@@ -273,8 +286,11 @@ def baixar(
 
 
 def pendentes(eventos: list[dict], pasta: Path, modelo: str = ri.MODELO) -> list[dict]:
-    """Os eventos ainda sem rótulo deste modelo (os com erro entram de novo)."""
+    """Os eventos ainda sem rótulo deste modelo (os com erro entram de novo). O Sonnet pela API e
+    a rotina são o mesmo rotulador por duas vias (Emenda 3): o que uma rotulou a outra não repete."""
     feitos = _rotulados(pasta, modelo)
+    if modelo in (ri.MODELO, ri.ROTINA):
+        feitos = _rotulados(pasta, ri.MODELO) | _rotulados(pasta, ri.ROTINA)
     return [e for e in eventos if e["id"] not in feitos]
 
 
@@ -562,6 +578,214 @@ def buscar(
     return gravados
 
 
+# --- rotina na nuvem (Emenda 3, 24/10/2026): o servidor prepara e grava; a rotina rotula --------
+
+MAXIMO_DO_LOTE = (
+    40  # o que a rotina rotula numa rodada sem passar da cota da assinatura
+)
+ARQUIVO_DO_GUIA = "GUIA.md"
+DIAS_DE_ESPERA_DA_ROTINA = (
+    1  # a rotina roda toda madrugada: mais que isso sem resposta é falha
+)
+CODIGO_DE_LOTE_ATRASADO = 4
+SUFIXO_DA_EQUIVALENCIA = "-equivalencia"
+
+
+@dataclass
+class Gravacao:
+    """O que `gravar` fez: rótulos válidos, erros (voltam no próximo lote), linhas ignoradas (chave
+    fora do lote ou linha ilegível) e os lotes que a rotina ainda não respondeu passado o prazo."""
+
+    gravados: int = 0
+    erros: int = 0
+    ignorados: int = 0
+    atrasados: list[str] = field(default_factory=list)
+
+
+def _lotes_da_troca(troca: Path) -> Path:
+    return troca / "lotes"
+
+
+def _respostas_da_troca(troca: Path) -> Path:
+    return troca / "respostas"
+
+
+def _em_lote_aberto(manifesto: dict) -> set[str]:
+    return {
+        evento_id
+        for lote in manifesto.get("lotes", [])
+        if lote.get("estado") == "preparado"
+        for evento_id in lote["itens"]
+    }
+
+
+def _candidatos(
+    eventos: list[dict], pasta: Path, so_fatos: bool, equivalencia: bool
+) -> list[tuple[dict, bool]]:
+    """Os eventos que podem ir no lote, cada um com a regra de texto. No diário, os pendentes das duas
+    vias prontos pela regra; na equivalência, os 300 primeiros que a API rotulou e a rotina não, pela
+    regra que a API usou (a mesma entrada, para o `comparar`)."""
+    if not equivalencia:
+        return [
+            (e, so_fatos)
+            for e in pendentes(eventos, pasta, ri.ROTINA)
+            if texto_do_pedido(e, pasta, so_fatos) is not None
+        ]
+    api, feitos = ler_rotulos(pasta), _rotulados(pasta, ri.ROTINA)
+    primeiros = set(ar.conjunto_de_prova(eventos)[0])
+    escolhidos = [
+        (e, bool(api[e["id"]].get("texto_so_nos_fatos", False)))
+        for e in eventos
+        if e["id"] in primeiros and ar.valido(api, e["id"]) and e["id"] not in feitos
+    ]
+    return [
+        (e, regra)
+        for e, regra in escolhidos
+        if texto_do_pedido(e, pasta, regra) is not None
+    ]
+
+
+def preparar(
+    eventos: list[dict],
+    pasta: Path,
+    troca: Path,
+    hoje: date,
+    maximo: int = MAXIMO_DO_LOTE,
+    so_fatos: bool = False,
+    equivalencia: bool = False,
+) -> str | None:
+    """Escreve o lote do dia para a rotina em `<troca>/lotes/<id>.jsonl` (sem nome, código nem CNPJ:
+    o pedido já vai anonimizado) e o guia em `<troca>/GUIA.md`. O manifesto da rotina guarda, de cada
+    evento, a regra de texto e o hash da entrada: é por ele, e não pelo arquivo que volta, que `gravar`
+    confere. Evento de lote ainda aberto não vai de novo. Devolve o id do lote (None: nada a mandar)."""
+    manifesto = ler_manifesto(pasta, ri.ROTINA)
+    lote_id = hoje.isoformat() + (SUFIXO_DA_EQUIVALENCIA if equivalencia else "")
+    if any(lote["id"] == lote_id for lote in manifesto.get("lotes", [])):
+        raise RuntimeError(f"O lote {lote_id} já foi preparado.")
+    abertos = _em_lote_aberto(manifesto)
+    candidatos = [(e, r) for e, r in _candidatos(eventos, pasta, so_fatos, equivalencia)
+                  if e["id"] not in abertos][:maximo]  # fmt: skip
+    if not candidatos:
+        log.info("Nada a mandar para a rotina.")
+        return None
+    itens, linhas = {}, []
+    for evento, regra in candidatos:
+        item = ri.item_do_lote(evento, texto_do_pedido(evento, pasta, regra) or "")
+        itens[evento["id"]] = {
+            "texto_so_nos_fatos": regra,
+            "hash_da_entrada": item["hash_da_entrada"],
+        }
+        linhas.append(
+            json.dumps({"chave": chave(evento["id"]), **item}, ensure_ascii=False)
+        )
+    _lotes_da_troca(troca).mkdir(parents=True, exist_ok=True)
+    (_lotes_da_troca(troca) / f"{lote_id}.jsonl").write_text(
+        "\n".join(linhas) + "\n", encoding="utf-8"
+    )
+    (troca / ARQUIVO_DO_GUIA).write_text(ri.guia_da_rotina(), encoding="utf-8")
+    manifesto["lotes"] = [
+        *manifesto.get("lotes", []),
+        {"id": lote_id, "dia": hoje.isoformat(), "itens": itens, "estado": "preparado",
+         "equivalencia": equivalencia,
+         "preparado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+    ]  # fmt: skip
+    gravar_manifesto(pasta, manifesto, eventos, ri.ROTINA)
+    log.info("Lote %s preparado para a rotina: %s eventos", lote_id, len(itens))
+    return lote_id
+
+
+def _respostas(
+    arquivo: Path, itens: dict, por_chave: dict[str, str]
+) -> tuple[dict[str, str], int]:
+    """As respostas do lote, pelo id do evento, e quantas linhas ficaram de fora: ilegível, sem
+    resposta em texto, chave que não é do lote ou repetida (vale a primeira)."""
+    respostas, ignorados = {}, 0
+    for linha in arquivo.read_text(encoding="utf-8").splitlines():
+        if not linha.strip():
+            continue
+        try:
+            dado = json.loads(linha)
+        except json.JSONDecodeError:
+            ignorados += 1
+            continue
+        evento_id = por_chave.get(dado.get("chave")) if isinstance(dado, dict) else None
+        bruta = dado.get("resposta_bruta") if isinstance(dado, dict) else None
+        if (
+            evento_id not in itens
+            or evento_id in respostas
+            or not isinstance(bruta, str)
+        ):
+            ignorados += 1
+            continue
+        respostas[evento_id] = bruta
+    return respostas, ignorados
+
+
+def _registro_da_rotina(
+    evento: dict, pasta: Path, item: dict, bruta: str, lote_id: str
+) -> dict:
+    """O rótulo (ou o erro) de uma resposta da rotina, conferido como o da API: o pedido é refeito com
+    o texto de hoje e tem de bater com o hash do lote; a resposta passa pela lista fechada e pelo
+    trecho literal."""
+    so_fatos = item["texto_so_nos_fatos"]
+    texto = texto_do_pedido(evento, pasta, so_fatos) or ""
+    base = {
+        "evento_id": evento["id"],
+        "origem": f"rotina {lote_id}",
+        "via": ri.ROTINA,
+        "rotulado_em": datetime.now(FUSO).isoformat(timespec="seconds"),
+        "tinha_texto": bool(texto),
+        "texto_so_nos_fatos": so_fatos,
+        "hash_da_entrada": item["hash_da_entrada"],
+        "resposta_bruta": bruta,
+    }
+    erro = {"por": "ia", "modelo": ri.MODELO_DA_ROTINA}
+    if (
+        ri.hash_da_entrada(ri.pedido(evento, texto, ri.MODELO_DA_ROTINA))
+        != item["hash_da_entrada"]
+    ):
+        return base | erro | {"erro": "entrada mudou depois do lote"}
+    resultado = ri.interpretar(bruta, evento, texto)
+    if isinstance(resultado, ri.ErroDeRotulo):
+        return base | erro | {"erro": resultado.motivo}
+    return base | resultado.para_guardar(ri.MODELO_DA_ROTINA)
+
+
+def gravar(eventos: list[dict], pasta: Path, troca: Path, hoje: date) -> Gravacao:
+    """Grava as respostas da rotina que chegaram em `<troca>/respostas/`. Vale o que o manifesto do
+    servidor diz que foi no lote: resposta a evento fora dele não entra. A resposta que falta volta
+    no próximo lote; o lote sem resposta passado o prazo é falha (a rotina não rodou)."""
+    manifesto = ler_manifesto(pasta, ri.ROTINA)
+    por_id = {e["id"]: e for e in eventos}
+    por_chave = {chave(i): i for i in por_id}
+    feito = Gravacao()
+    for lote in manifesto.get("lotes", []):
+        if lote.get("estado") != "preparado":
+            continue
+        arquivo = _respostas_da_troca(troca) / f"{lote['id']}.jsonl"
+        if not arquivo.exists():
+            if (hoje - date.fromisoformat(lote["dia"])).days > DIAS_DE_ESPERA_DA_ROTINA:
+                feito.atrasados.append(lote["id"])
+            continue
+        respostas, ignorados = _respostas(arquivo, lote["itens"], por_chave)
+        registros = [
+            _registro_da_rotina(por_id[i], pasta, lote["itens"][i], bruta, lote["id"])
+            for i, bruta in respostas.items()
+            if i in por_id
+        ]
+        _acrescentar(pasta, registros, ri.ROTINA)
+        erros = sum("erro" in r for r in registros)
+        lote |= {"estado": "gravado", "respondidos": len(registros), "erros": erros,
+                 "gravado_em": datetime.now(FUSO).isoformat(timespec="seconds")}  # fmt: skip
+        feito.gravados += len(registros) - erros
+        feito.erros += erros
+        feito.ignorados += ignorados
+    gravar_manifesto(pasta, manifesto, eventos, ri.ROTINA)
+    log.info("Rotina: %s rótulos, %s erros, %s linhas ignoradas", feito.gravados, feito.erros,
+             feito.ignorados)  # fmt: skip
+    return feito
+
+
 # --- auditoria: identificação da empresa e veredito (ADR 0072, item 3) -----------------------
 
 # tokens de saída por pergunta, para conferir o teto antes
@@ -786,7 +1010,8 @@ def comparar(
     """Sonnet × Opus (Emenda 1 da ADR 0072): o veredito nos 300 primeiros e a referência do leitor
     (os eventos do lote em que os dois concordam no assunto), gravados em
     `<pasta>/comparacao-modelos.json` com o SHA-256 dos dois arquivos (passe ou não, conta como
-    tentativa). Só contam os pares que leram o mesmo texto: o par com entrada diferente fica de fora
+    tentativa). API × rotina (Emenda 3) vai para `<pasta>/comparacao-rotina.json`, com os mesmos
+    limites. Só contam os pares que leram o mesmo texto: o par com entrada diferente fica de fora
     e deixa o veredito incompleto."""
     a, b = ler_rotulos(pasta, modelo_a), ler_rotulos(pasta, modelo_b)
     a, desvios = _com_o_desvio_do_trecho(a, eventos)
@@ -810,7 +1035,10 @@ def comparar(
         for m in (modelo_a, modelo_b)
         if arquivo_dos_rotulos(pasta, m).exists()
     }
-    (pasta / "comparacao-modelos.json").write_text(
+    nome = (
+        "comparacao-rotina.json" if modelo_b == ri.ROTINA else "comparacao-modelos.json"
+    )
+    (pasta / nome).write_text(
         json.dumps(
             {"modelos": [modelo_a, modelo_b], "versao_do_prompt": ri.VERSAO_DO_PROMPT,
              "primeiros": asdict(veredito), "passou": veredito.passou,
@@ -954,6 +1182,8 @@ def main(argv: list[str] | None = None) -> int:
             "comparar",
             "estabilidade",
             "vazamento",
+            "preparar",
+            "gravar",
         ),
     )
     argumentos.add_argument(
@@ -1003,6 +1233,27 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="identificar e estabilidade: só mostra o custo (não gasta)",
     )
+    argumentos.add_argument(
+        "--troca",
+        type=Path,
+        help="preparar e gravar: o clone do repositório de troca com a rotina",
+    )
+    argumentos.add_argument(
+        "--maximo-do-lote",
+        type=int,
+        default=MAXIMO_DO_LOTE,
+        help="eventos por lote da rotina",
+    )
+    argumentos.add_argument(
+        "--equivalencia",
+        action="store_true",
+        help="preparar: os 300 primeiros já rotulados pela API, com a mesma entrada",
+    )
+    argumentos.add_argument(
+        "--com-a-rotina",
+        action="store_true",
+        help="comparar: a API contra a rotina (Emenda 3), em vez do Sonnet contra o Opus",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -1012,7 +1263,8 @@ def main(argv: list[str] | None = None) -> int:
     ri.definir_outras_empresas(e.get("empresa") or "" for e in eventos)
     opcoes.pasta.mkdir(parents=True, exist_ok=True)
     if opcoes.passo == "comparar":
-        veredito = comparar(opcoes.pasta, eventos)
+        outro = ri.ROTINA if opcoes.com_a_rotina else ri.MODELO_CONFERENTE
+        veredito = comparar(opcoes.pasta, eventos, ri.MODELO, outro)
         print(
             "PASSOU" if veredito.passou else "NÃO PASSOU", *veredito.motivos, sep="\n- "
         )
@@ -1037,6 +1289,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         print("Documentos com cada marcador (v3):", r["documentos_com_marcador"])
         return 0
+    if opcoes.passo in ("preparar", "gravar"):
+        return _passo_da_rotina(eventos, opcoes)
     modelo = opcoes.modelo
     if (
         opcoes.passo in ("identificar", "auditar", "estabilidade")
@@ -1110,6 +1364,30 @@ def main(argv: list[str] | None = None) -> int:
     except TetoPassado as erro:
         log.error("%s Nada foi enviado.", erro)
         return 3
+    return 0
+
+
+def _passo_da_rotina(eventos: list[dict], opcoes: argparse.Namespace) -> int:
+    """`preparar` e `gravar` (Emenda 3): não usam a API nem a chave."""
+    if opcoes.troca is None:
+        log.error("Diga a pasta de troca com a rotina com --troca.")
+        return 2
+    hoje = datetime.now(FUSO).date()
+    if opcoes.passo == "preparar":
+        try:
+            preparar(eventos, opcoes.pasta, opcoes.troca, hoje, opcoes.maximo_do_lote,
+                     opcoes.texto_so_nos_fatos, opcoes.equivalencia)  # fmt: skip
+        except RuntimeError as erro:
+            log.error("%s", erro)
+            return 1
+        return 0
+    feito = gravar(eventos, opcoes.pasta, opcoes.troca, hoje)
+    print(
+        f"Rótulos: {feito.gravados}; erros: {feito.erros}; linhas ignoradas: {feito.ignorados}"
+    )
+    if feito.atrasados:
+        print(f"FALHAS: a rotina não respondeu o lote {', '.join(feito.atrasados)}")
+        return CODIGO_DE_LOTE_ATRASADO
     return 0
 
 

@@ -591,3 +591,31 @@ def test_prompts_explicam_os_marcadores_novos():
 def test_marcadores_do_documento_sao_contados():
     texto = f"A {ri.EMPRESA} e a {ri.OUTRA_EMPRESA} em {ri.LOCAL}; {ri.OUTRA_EMPRESA}."
     assert ri.marcadores(texto) == {ri.EMPRESA: 1, ri.OUTRA_EMPRESA: 2, ri.LOCAL: 1}
+
+
+# --- rotina na nuvem (Emenda 3, 24/10/2026): o mesmo pedido, sem a API ---------------------
+
+
+def test_item_do_lote_leva_o_mesmo_pedido_e_hash_da_api():
+    """A rotina lê o que a API leria: o mesmo texto do usuário, o mesmo esquema e o hash do pedido
+    do Sonnet, para a equivalência comparar só pares com a mesma entrada."""
+    item = ri.item_do_lote(FATO, TEXTO)
+    parametros = ri.pedido(FATO, TEXTO)
+    assert item["pedido"] == parametros["messages"][0]["content"]
+    assert item["esquema"] == parametros["output_config"]["format"]["schema"]
+    assert item["hash_da_entrada"] == ri.hash_da_entrada(parametros)
+    assert item["fato_relevante"] is True
+    assert "assunto" not in ri.item_do_lote(AVISO, TEXTO)["esquema"]["properties"]
+
+
+def test_item_do_lote_nao_leva_nome_codigo_nem_cnpj():
+    texto_do_item = json.dumps(ri.item_do_lote(FATO, TEXTO), ensure_ascii=False)
+    for revelador in ("Viver", "VIVER", "VIVR3", "67.571.414/0001-41"):
+        assert revelador not in texto_do_item
+
+
+def test_guia_da_rotina_leva_o_sistema_e_a_versao():
+    guia = ri.guia_da_rotina()
+    assert ri.SISTEMA in guia
+    assert f"versão do prompt: {ri.VERSAO_DO_PROMPT}" in guia
+    assert ri.MODELO_DA_ROTINA in guia

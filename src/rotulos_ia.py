@@ -15,6 +15,11 @@ O modelo foi escolhido pelo Tiago antes da auditoria (14/10/2026: Sonnet 5.5, te
 de modelo ou de prompt depois de ver a auditoria conta como uma tentativa nova (ADR 0006). Desde a
 Emenda 1 (17/10/2026), o **Opus 5.5** rotula às cegas o conjunto de prova com o mesmo pedido, para
 conferir o Sonnet no lugar do Tiago; os papéis ficam fixos (`MODELO` e `MODELO_CONFERENTE`).
+
+Desde a Emenda 3 (24/10/2026), o lote diário também pode ir por uma **rotina do Claude Code na nuvem**,
+sem a API: o servidor grava o pedido (`item_do_lote`) num repositório privado, a rotina devolve a
+resposta bruta e o servidor a confere com a mesma `interpretar`. Os rótulos dessa via ficam com a chave
+`ROTINA`, separados dos da API.
 """
 
 import functools
@@ -35,6 +40,8 @@ from src.auditoria_rotulos import GENERICAS
 
 MODELO = "claude-sonnet-5-5"  # o rotulador da fila inteira (14/10)
 MODELO_CONFERENTE = "claude-opus-5-5"  # o segundo modelo às cegas (Emenda 1, 17/10)
+ROTINA = "rotina"  # a chave dos rótulos feitos pela rotina na nuvem (Emenda 3, 24/10)
+MODELO_DA_ROTINA = MODELO  # a rotina roda o mesmo Sonnet, pela assinatura
 # chave criada fora de um workspace: a API pede o id do workspace em cada pedido (não é segredo)
 VARIAVEL_DO_WORKSPACE = "ANTHROPIC_WORKSPACE_ID"
 VERSAO_DO_PROMPT = (
@@ -721,6 +728,26 @@ def hash_da_entrada(parametros: dict) -> str:
     return hashlib.sha256(
         json.dumps(parametros, ensure_ascii=False, sort_keys=True).encode("utf-8")
     ).hexdigest()
+
+
+def item_do_lote(evento: dict, texto: str) -> dict:
+    """O que a rotina na nuvem recebe de um evento: o mesmo texto do usuário e o mesmo esquema que a
+    API receberia, e o hash desse pedido (o do Sonnet), para a resposta valer como a da API."""
+    parametros = pedido(evento, texto, MODELO_DA_ROTINA)
+    return {
+        "fato_relevante": e_fato_relevante(evento),
+        "pedido": parametros["messages"][0]["content"],
+        "esquema": parametros["output_config"]["format"]["schema"],
+        "hash_da_entrada": hash_da_entrada(parametros),
+    }
+
+
+def guia_da_rotina() -> str:
+    """O `SISTEMA` que a API recebe como prompt de sistema, escrito para a rotina ler como arquivo."""
+    return (
+        f"# Guia da rotulagem (versão do prompt: {VERSAO_DO_PROMPT}; guia {GUIA}; "
+        f"modelo: {MODELO_DA_ROTINA})\n\n{SISTEMA}\n"
+    )
 
 
 @dataclass(frozen=True)
