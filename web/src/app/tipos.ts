@@ -558,11 +558,11 @@ export interface RelatorioDaEmpresaV1 {
 
 /** O relatório do CNPJ (molde B): as seções no formato do relatório da empresa. */
 export interface BuscaPorCnpjV1 {
-  situacao: "encontrada" | "fora_da_base_aberta";
+  situacao: "encontrada" | "cadastro_da_receita" | "fora_da_base_aberta"; // cadastro_da_receita: sem ficha na CVM
   cnpj: string;
   empresa: string;
   tickers: string[];
-  como_era_em: string | null; // o dia da ficha da noite (AAAA-MM-DD)
+  como_era_em: string | null; // o dia da ficha da noite ou, no cadastro da Receita, da publicação (AAAA-MM-DD)
   secoes: SecaoDoRelatorioV1[];
   fontes: string[];
   limites: string[]; // "Limites e cuidados": sempre presentes

@@ -102,6 +102,8 @@ def banco_de_precos_isolado(tmp_path, monkeypatch):
     monkeypatch.setenv(VARIAVEL_DO_CAMINHO, str(tmp_path / "precos_de_teste.sqlite"))
     # o acervo do arquivo original (src/acervo.py) também fica na pasta do teste
     monkeypatch.setenv(VARIAVEL_DA_PASTA, str(tmp_path / "acervo"))
+    # a vista do CNPJ (src/cadastro_da_receita.py) só existe no teste que a monta
+    monkeypatch.setenv("TICKERLAB_CNPJ", str(tmp_path / "sem_vista_do_cnpj"))
     # e a memória do Pulse dos ativos sem preço começa vazia (um teste não herda a do outro)
     monkeypatch.setattr("src.api_v1.rotas._sem_preco", {})
 

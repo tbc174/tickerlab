@@ -1062,10 +1062,11 @@ def _relatorio_do_pedido(
 def busca_por_cnpj(
     conta: Conta, pedido: PedidoDeBuscaPorCnpjV1
 ) -> esquemas.BuscaPorCnpjV1:
-    """O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.
+    """O relatório do CNPJ: da companhia aberta (cadastro, grupo, rede e fatos públicos) ou, sem ficha na
+    CVM, o cadastro da Receita (Simples e MEI, sócios, estabelecimentos e mudanças), sempre com fonte.
 
     É POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log
-    de acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.
+    de acesso. O app também não o grava no log, só a contagem por situação.
     """
     return esquemas.de_busca_por_cnpj(_relatorio_do_pedido(conta, pedido))
 

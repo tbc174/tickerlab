@@ -135,6 +135,14 @@ ROTULOS_DAS_COLUNAS = {  # o cabeçalho que a regra geral (`rotulo_da_coluna`) e
     "dividendo_por_acao": "Dividendo por ação (caixa)",
     "dividendos_fre_por_acao": "Dividendos por ação (FRE)",
     "jcp_fre_por_acao": "JCP por ação (FRE)",
+    # o cadastro da Receita na busca por CNPJ (`src/relatorio_da_receita.py`)
+    "cnpj": "CNPJ",
+    "socio": "Sócio",
+    "qualificacao": "Qualificação",
+    "situacao": "Situação",
+    "inicio": "Início",
+    "mes": "Mês",
+    "mudanca": "Mudança",
 }
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
@@ -152,6 +160,8 @@ NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "piotroski": "Parcelas do Piotroski",
     "altman": "Parcelas do Altman Z''",
     "beneish": "Parcelas do Beneish",
+    "socios_da_receita": "Quadro de sócios",
+    "mudancas_da_receita": "O que mudou nos últimos 12 meses",
 }
 MIL = 1_000  # daqui para cima, a célula é dinheiro (R$ mil, mi, bi)
 QUANTOS_EVENTOS = 15
