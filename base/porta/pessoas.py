@@ -24,7 +24,7 @@ def _da_raiz(arquivos: list[Path], raiz: str, colunas: Sequence[str]) -> pd.Data
     if not arquivos:
         return pd.DataFrame(columns=list(colunas))
     # o filtro vai ao Parquet: só os grupos de linhas que podem ter a raiz são lidos (a busca por CNPJ
-    # lê uma empresa por pedido; a vista é ordenada pela raiz, `base/vista_do_cnpj.py`)
+    # lê uma empresa por pedido; a vista é ordenada pela raiz, `base/porta/vista_do_cnpj.py`)
     filtro = [("cnpj_basico", "==", raiz)]
     tabela = pd.concat(
         [pd.read_parquet(a, filters=filtro) for a in arquivos], ignore_index=True

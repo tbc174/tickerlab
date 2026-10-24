@@ -1,6 +1,6 @@
 """A busca por CNPJ com as empresas fechadas (PR 6 do plano da base de CNPJ com sócios, 20/10/2026).
 
-A vista publicada (`base.vista_do_cnpj`) leva da base de casa só o que a busca mostra: cadastro até o
+A vista publicada (`scripts.montar_vista_do_cnpj`) leva da base de casa só o que a busca mostra: cadastro até o
 município, Simples e MEI, o quadro de sócios sem o pseudônimo e as mudanças de 12 meses. O nome da pessoa
 física só sairia por `base.pessoas.consulta.socios_da_empresa`, com o portão aberto (aqui, fechado).
 """
@@ -13,8 +13,8 @@ import pandas as pd
 import pytest
 
 from base import cnpj as cnpj_da_base
-from base import vista_do_cnpj
 from base.pessoas import proibidas
+from scripts import montar_vista_do_cnpj
 from src import busca_por_cnpj as busca
 from src.banco.coletas import FRASE_DA_RECEITA
 from src.banco.usuarios import mudar_plano
@@ -43,7 +43,7 @@ SECOES_DA_FECHADA = [
 def vista(tmp_path):
     base = exemplo.gravar_base(tmp_path / "base")
     destino = tmp_path / "vista"
-    vista_do_cnpj.montar(base, destino)
+    montar_vista_do_cnpj.montar(base, destino)
     # o restrito ao lado da vista, com o nome: mesmo à mão, o portão fechado não deixa sair
     exemplo.gravar_restrito(destino / "restrito")
     return destino
