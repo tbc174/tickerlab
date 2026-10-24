@@ -657,6 +657,23 @@ def _candidatos(
     ]
 
 
+def _id_base(hoje: date, equivalencia: bool) -> str:
+    """O id do lote do dia, antes do número da parte: `2026-10-24` ou `2026-10-24-equivalencia`."""
+    return hoje.isoformat() + (SUFIXO_DA_EQUIVALENCIA if equivalencia else "")
+
+
+def _proxima_parte(manifesto: dict, base: str) -> int:
+    """O número da próxima parte livre de `base` (1 quando nenhuma foi preparada). Só conta
+    `<base>-NN`: as partes da equivalência não andam com as do lote comum do mesmo dia."""
+    padrao = re.compile(re.escape(base) + r"-(\d{2})")
+    partes = [
+        int(achado.group(1))
+        for lote in manifesto.get("lotes", [])
+        if (achado := padrao.fullmatch(lote["id"]))
+    ]
+    return max(partes, default=0) + 1
+
+
 def preparar(
     eventos: list[dict],
     pasta: Path,
@@ -673,7 +690,7 @@ def preparar(
     confere. Evento de lote ainda aberto não vai de novo. Com `parte`, o id ganha `-01`, `-02`... (vários
     lotes na mesma noite). Devolve o id do lote (None: nada a mandar)."""
     manifesto = ler_manifesto(pasta, ri.ROTINA)
-    lote_id = hoje.isoformat() + (SUFIXO_DA_EQUIVALENCIA if equivalencia else "")
+    lote_id = _id_base(hoje, equivalencia)
     if parte is not None:
         lote_id += (
             f"-{parte:02d}"  # dois dígitos: a ordem alfabética é a ordem das partes
@@ -726,12 +743,17 @@ def preparar_a_noite(
 ) -> list[str]:
     """Até `lotes` lotes para a noite, um por rodada da rotina (cada rodada é uma conversa nova, e
     nenhum item é julgado ao lado dos de outro lote). Um lote só fica com o id do dia, como antes.
-    Para quando não há mais o que mandar. Devolve os ids preparados."""
-    if lotes == 1:
+    Preparar de novo no mesmo dia (rodadas à mão, Tiago 24/10/2026) continua a numeração das partes,
+    em vez de colidir com o id já usado. Para quando não há mais o que mandar. Devolve os ids."""
+    manifesto = ler_manifesto(pasta, ri.ROTINA)
+    base = _id_base(hoje, equivalencia)
+    primeira = _proxima_parte(manifesto, base)
+    dia_livre = all(lote["id"] != base for lote in manifesto.get("lotes", []))
+    if lotes == 1 and primeira == 1 and dia_livre:
         lote_id = preparar(eventos, pasta, troca, hoje, maximo, so_fatos, equivalencia)
         return [lote_id] if lote_id else []
     ids = []
-    for parte in range(1, lotes + 1):
+    for parte in range(primeira, primeira + lotes):
         lote_id = preparar(
             eventos, pasta, troca, hoje, maximo, so_fatos, equivalencia, parte
         )

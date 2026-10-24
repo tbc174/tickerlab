@@ -1170,6 +1170,27 @@ def test_preparar_a_noite_com_um_lote_fica_com_o_id_do_dia(pasta, troca):
     assert rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=1) == ["2026-10-24"]
 
 
+def test_preparar_a_noite_de_novo_no_mesmo_dia_continua_a_numeracao(pasta, troca):
+    # Rodadas à mão no mesmo dia (Tiago, 24/10/2026): o 2º preparo não colide com o 1º
+    assert rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=1, maximo=1) == [
+        "2026-10-24"
+    ]
+    ids = rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=2, maximo=1)
+    assert ids == ["2026-10-24-01", "2026-10-24-02"]
+    assert rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=1, maximo=1) == [
+        "2026-10-24-03"
+    ]
+
+
+def test_proxima_parte_conta_cada_prefixo_a_parte():
+    manifesto = {"lotes": [{"id": i} for i in (
+        "2026-10-24", "2026-10-24-01", "2026-10-24-02", "2026-10-24-equivalencia-01",
+    )]}  # fmt: skip
+    assert rc._proxima_parte(manifesto, "2026-10-24") == 3
+    assert rc._proxima_parte(manifesto, "2026-10-24-equivalencia") == 2
+    assert rc._proxima_parte(manifesto, "2026-10-25") == 1
+
+
 def test_gravar_junta_os_lotes_da_noite(pasta, troca):
     for lote_id in rc.preparar_a_noite(EVENTOS, pasta, troca, HOJE, lotes=2, maximo=2):
         _responder(troca, lote_id)
