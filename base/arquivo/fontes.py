@@ -32,6 +32,7 @@ from base.arquivo import (
     lote_organismos,
     lote_sec,
     lote_setoriais,
+    lote_tesouro,
     wayback,
 )
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
@@ -1166,6 +1167,9 @@ FONTES: list[Fonte] = [
     # lote SEC (rodada 4, 23/10/2026): mais conjuntos da Data Library, corretoras, Form ADV e os
     # pacotes diários do EDGAR (linha 201 da fila)
     *lote_sec.fontes(),
+    # lote Tesouro (23/10/2026): mais pacotes do Tesouro Transparente e a PGFN de todos os trimestres
+    # (linha 202 da fila)
+    *lote_tesouro.fontes(),
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),

@@ -1,0 +1,23 @@
+{
+ "success": true,
+ "result": {
+  "name": "garantias-concedidas-em-operacoes-de-credito",
+  "resources": [
+   {
+    "format": "PDF",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/a/download/metadados---op-externas.pdf",
+    "size": 39623
+   },
+   {
+    "format": "CSV",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/b/download/concessao-de-garantias-externas.csv",
+    "size": 66379
+   },
+   {
+    "format": "PDF",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/c/download/concessao-de-garantias-externas.pdf",
+    "size": 600922
+   }
+  ]
+ }
+}
