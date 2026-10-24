@@ -28,6 +28,8 @@ matplotlib==3.11.2
 numpy==2.5.3
 openpyxl==3.1.5
 pandas==3.0.6
+# certifi: fixado para a imagem não usar a lista com as raízes emSign comprometidas (corrigida na 2026.10.19); o requests puxa.
+certifi==2026.10.23
 # pillow: fixado para a imagem não voltar ao 12.x (8 CVEs; correção na 13.0.0); o fpdf2 e o streamlit puxam.
 pillow==13.0.0
 plotly==7.1.0
