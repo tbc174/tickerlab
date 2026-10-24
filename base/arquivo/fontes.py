@@ -30,6 +30,7 @@ from base.arquivo import (
     lote_eua,
     lote_licitacoes,
     lote_organismos,
+    lote_patentes,
     lote_reguladores,
     lote_sec,
     lote_setoriais,
@@ -123,6 +124,7 @@ TERMOS = {
     **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
     **lote_atencao.termos(),  # Querido Diário, Crossref, OpenAlex e Senado (rodada 4)
     **lote_clima.termos(),  # NASA FIRMS, ECMWF, Climate TRACE e Carbon Monitor (rodada 4, linha 290)
+    **lote_patentes.termos(),  # EPO e WIPO (rodada 4, linha 291)
     # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
     # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
@@ -1200,6 +1202,9 @@ FONTES: list[Fonte] = [
     # lote clima e fogo (rodada 4, linha 290): INPE Queimadas, NASA FIRMS, TerraBrasilis (WFS), NOAA,
     # ECMWF, MapBiomas, ONS, Climate TRACE, EDGAR e Carbon Monitor
     *lote_clima.fontes(),
+    # lote patentes e marcas (rodada 4, linha 291): INPI (marcas, desenhos, programas, partes de
+    # patentes e contratos; pessoa física só como contagem), EPO Linked open EP data e WIPO IP Statistics
+    *lote_patentes.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

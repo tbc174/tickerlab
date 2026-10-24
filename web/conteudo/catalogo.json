@@ -577,6 +577,20 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-epo",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-wipo",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-fnc-colombia",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -3277,6 +3291,55 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-23"
+    },
+    {
+      "id": "inpi-patentes-partes",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inpi-marcas",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inpi-desenhos",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inpi-programas",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "inpi-contratos-partes",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "epo-linked-patentes",
+      "licenca": "CC BY 4.0 (EPO Linked open EP data); citar o EPO; um pedido por vez",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "wipo-estatisticas",
+      "licenca": "WIPO Statistics Database: não republicar nem revender; só uso interno, citando",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
     }
   ],
   "tabelas": [

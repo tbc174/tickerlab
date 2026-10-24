@@ -341,3 +341,138 @@ def test_main_publicar_usa_o_opus_sem_a_api(analises, tmp_path, monkeypatch, cap
         eg.main([*argumentos, "--analises", str(analises), "--pasta", str(pasta)]) == 0
     )
     assert "1 escolhas publicadas" in capsys.readouterr().out
+
+
+# o caminho sem a API (Tiago, 23/10/2026: "Roda nesta conversa"): a sessão do Claude Code lê o
+# mesmo pedido, escreve a resposta num arquivo e o passo `importar` a guarda como a da API
+
+
+def _responder(arquivo_do_pedido, arquivo_da_resposta, resposta: str) -> None:
+    assert arquivo_do_pedido.exists()
+    arquivo_da_resposta.parent.mkdir(parents=True, exist_ok=True)
+    arquivo_da_resposta.write_text(resposta, encoding="utf-8")
+
+
+def _veredito_de_tudo(pedido_cego: str, ruins: frozenset[str] = frozenset()) -> str:
+    itens = [
+        {"item": r, "motivo": "",
+         "veredito": p2g.NAO_MOSTRA if r in ruins else p2g.MOSTRA}
+        for r in _ROTULO.findall(pedido_cego)
+    ]  # fmt: skip
+    return json.dumps({"itens": itens})
+
+
+def _pela_sessao(analises, pasta, ruins: frozenset[str] = frozenset()) -> None:
+    """Pedido, escolha escrita na sessão, porta 2 escrita às cegas por outro modelo."""
+    modelo = pedido.OPUS
+    assert eg.pedidos([ENTRADA], analises, pasta, [modelo]) == 1
+    _responder(
+        eg.arquivo_do_pedido(pasta, ENTRADA, modelo),
+        eg.arquivo_da_resposta(pasta, ENTRADA, modelo),
+        json.dumps(ESCOLHA, ensure_ascii=False),
+    )
+    assert eg.importar([ENTRADA], analises, pasta, [modelo]) == 1
+    assert eg.pedidos([ENTRADA], analises, pasta, [modelo]) == 1  # agora o cego
+    cego = eg.arquivo_do_pedido_cego(pasta, ENTRADA, modelo)
+    _responder(
+        cego,
+        eg.arquivo_da_resposta_cega(pasta, ENTRADA, modelo),
+        _veredito_de_tudo(cego.read_text(encoding="utf-8"), ruins),
+    )
+    assert eg.importar([ENTRADA], analises, pasta, [modelo]) == 1
+
+
+def test_pedidos_escreve_o_pedido_da_api_sem_chamar_a_api(analises, tmp_path):
+    pasta = tmp_path / "g"
+    assert eg.pedidos([ENTRADA], analises, pasta, [pedido.OPUS]) == 1
+    texto = eg.arquivo_do_pedido(pasta, ENTRADA, pedido.OPUS).read_text(
+        encoding="utf-8"
+    )
+    parametros = eg.pg.pedido(
+        eg.series.ampliar(ENTRADA), saida.ler_analise(TEXTO), pedido.OPUS
+    )
+    assert parametros["system"][0]["text"] in texto  # o mesmo guia
+    assert (
+        parametros["messages"][0]["content"] in texto
+    )  # a mesma ficha e o mesmo texto
+    esquema = parametros["output_config"]["format"]["schema"]
+    assert json.dumps(esquema, ensure_ascii=False, indent=2) in texto
+    assert not eg.arquivo_do_pedido_cego(pasta, ENTRADA, pedido.OPUS).exists()
+
+
+def test_o_pedido_cego_nao_diz_quem_escolheu(analises, tmp_path):
+    pasta = tmp_path / "g"
+    _pela_sessao(analises, pasta)
+    cego = eg.arquivo_do_pedido_cego(pasta, ENTRADA, pedido.OPUS).read_text(
+        encoding="utf-8"
+    )
+    assert "opus" not in cego.lower() and "claude" not in cego.lower()
+    assert p2g.SISTEMA in cego
+
+
+def test_pela_sessao_a_escolha_vai_ao_ar_com_a_linhagem(analises, tmp_path):
+    pasta = tmp_path / "g"
+    _pela_sessao(analises, pasta)
+    escolha = json.loads(
+        eg.arquivo_da_escolha(pasta, ENTRADA, pedido.OPUS).read_text(encoding="utf-8")
+    )
+    assert escolha["via"] == eg.PELA_SESSAO
+    assert escolha["custo_em_dolares"] == 0.0
+    assert eg.conferir([ENTRADA], analises, pasta, [pedido.OPUS]) == 1
+    montado = json.loads(
+        eg.arquivo_dos_graficos(pasta, ENTRADA, pedido.OPUS).read_text(encoding="utf-8")
+    )
+    assert _origens(montado) == [saida.ORIGEM_MODELO] * 2
+    linhagem = montado["linhagem"]
+    assert linhagem["via"] == eg.PELA_SESSAO
+    assert linhagem["porta2"]["conferente"] == pedido.SONNET
+    assert linhagem["porta2"]["via"] == eg.PELA_SESSAO
+    assert eg.publicar([ENTRADA], analises, pasta) == 1
+
+
+def test_pela_sessao_reprovado_na_porta_2_da_lugar_a_reserva(analises, tmp_path):
+    pasta = tmp_path / "g"
+    _pela_sessao(analises, pasta, ruins=frozenset({"grafico.1"}))
+    eg.conferir([ENTRADA], analises, pasta, [pedido.OPUS])
+    montado = json.loads(
+        eg.arquivo_dos_graficos(pasta, ENTRADA, pedido.OPUS).read_text(encoding="utf-8")
+    )
+    assert _origens(montado)[0] == saida.ORIGEM_MODELO
+    assert saida.ORIGEM_MODELO not in _origens(montado)[1:]
+
+
+def test_resposta_de_um_pedido_que_mudou_nao_entra(analises, tmp_path):
+    """A resposta só vale para o pedido que está no arquivo: mudou o pedido, responde de novo."""
+    pasta = tmp_path / "g"
+    eg.pedidos([ENTRADA], analises, pasta, [pedido.OPUS])
+    arquivo = eg.arquivo_do_pedido(pasta, ENTRADA, pedido.OPUS)
+    arquivo.write_text(
+        arquivo.read_text(encoding="utf-8") + "\noutro", encoding="utf-8"
+    )
+    _responder(
+        arquivo,
+        eg.arquivo_da_resposta(pasta, ENTRADA, pedido.OPUS),
+        json.dumps(ESCOLHA, ensure_ascii=False),
+    )
+    assert eg.importar([ENTRADA], analises, pasta, [pedido.OPUS]) == 0
+    assert not eg.arquivo_da_escolha(pasta, ENTRADA, pedido.OPUS).exists()
+
+
+def test_escolha_pela_api_tem_a_via_da_api(analises, tmp_path):
+    montado = _montado(ClienteDeMentira(), analises, tmp_path / "g")
+    assert montado["linhagem"]["via"] == "api"
+
+
+def test_main_pedidos_e_importar_nao_usam_a_api(
+    analises, tmp_path, monkeypatch, capsys
+):
+    pasta = tmp_path / "g"
+    monkeypatch.setattr(eg.ri, "cliente", lambda: pytest.fail("sem a API"))
+    comum = ["--entradas", str(ARQUIVO_DA_ENTRADA), "--analises", str(analises)]
+    assert eg.main(["pedidos", *comum, "--pasta", str(pasta)]) == 0
+    assert "1 pedidos escritos" in capsys.readouterr().out
+    assert eg.arquivo_do_pedido(
+        pasta, ENTRADA, pedido.OPUS
+    ).exists()  # o Opus, por padrão
+    assert eg.main(["importar", *comum, "--pasta", str(pasta)]) == 0
+    assert "0 respostas importadas" in capsys.readouterr().out

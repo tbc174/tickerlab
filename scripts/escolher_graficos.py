@@ -17,6 +17,12 @@ porta 1 e monta a escolha final (sem API): item reprovado sai, a reserva por reg
 mínimo, e sem a porta 2 nada do modelo vai ao ar. `publicar` grava a escolha montada do modelo dos
 relatórios (`MODELO_DOS_RELATORIOS`) no arquivo do texto, em `graficos`, que é o que o app lê.
 
+**Sem a API** (Tiago, 23/10/2026: "Roda nesta conversa"): `pedidos` escreve cada pedido que falta
+(o mesmo guia, a mesma ficha, o mesmo esquema) em `pedidos/` e, para as escolhas já guardadas, o da
+porta 2 em `pedidos_cegos/` (sem dizer quem escolheu); a sessão do Claude Code responde em
+`respostas/` e `respostas_cegas/` (só o JSON), e `importar` guarda cada resposta como a da API, com
+custo zero e `via` na linhagem. A resposta só entra se o pedido no arquivo ainda é o de agora.
+
 **O teto vale para tudo:** nenhum passo gasta se o gasto já feito mais a estimativa passar do teto, e
 a resposta guardada (mesma ficha, mesmo texto, mesmo guia) nunca é paga de novo. Em `<pasta>`:
 `escolhas/` (a resposta bruta de cada modelo), `cegas/` (o veredito da porta 2), `graficos/` (a
@@ -25,6 +31,7 @@ chave fica em `ANTHROPIC_API_KEY` (nunca no código).
 """
 
 import argparse
+import json
 import logging
 import sys
 from collections.abc import Iterator, Sequence
@@ -52,6 +59,10 @@ log = logging.getLogger("tickerlab.analise_escrita")
 # a porta 3 do Tiago na 2ª prova (23/10/2026): o Opus escolhe os gráficos nas 3 empresas
 MODELO_DOS_RELATORIOS = pe.OPUS
 
+# de onde veio a resposta, na linhagem: a API ou a sessão do Claude Code (sem custo de API)
+PELA_API = "api"
+PELA_SESSAO = "sessão do Claude Code"
+
 __all__ = ["TetoPassado"]
 
 
@@ -65,6 +76,22 @@ def arquivo_da_cega(pasta: Path, entrada: dict[str, Any], modelo: str) -> Path:
 
 def arquivo_dos_graficos(pasta: Path, entrada: dict[str, Any], modelo: str) -> Path:
     return pasta / "graficos" / f"{ea.chave(entrada)}.{modelo}.json"
+
+
+def arquivo_do_pedido(pasta: Path, entrada: dict[str, Any], modelo: str) -> Path:
+    return pasta / "pedidos" / f"{ea.chave(entrada)}.{modelo}.md"
+
+
+def arquivo_da_resposta(pasta: Path, entrada: dict[str, Any], modelo: str) -> Path:
+    return pasta / "respostas" / f"{ea.chave(entrada)}.{modelo}.json"
+
+
+def arquivo_do_pedido_cego(pasta: Path, entrada: dict[str, Any], modelo: str) -> Path:
+    return pasta / "pedidos_cegos" / f"{ea.chave(entrada)}.{modelo}.md"
+
+
+def arquivo_da_resposta_cega(pasta: Path, entrada: dict[str, Any], modelo: str) -> Path:
+    return pasta / "respostas_cegas" / f"{ea.chave(entrada)}.{modelo}.json"
 
 
 def analise_do_texto(analises: Path, entrada: dict[str, Any]) -> saida.Analise | None:
@@ -154,6 +181,20 @@ def estimar(
     return custos
 
 
+def _cabecalho(
+    entrada: dict[str, Any], analise: saida.Analise, modelo: str
+) -> dict[str, Any]:
+    """Para que ficha, que texto e que guia a resposta vale (`escolha_guardada` confere)."""
+    return {
+        **ea.identidade(entrada),
+        "modelo": modelo,
+        "versao_do_guia": pg.VERSAO_DO_GUIA,
+        "hash_da_entrada": en.hash_da_entrada(entrada),
+        "hash_do_texto": gr.hash_do_texto(analise),
+        "escolhido_em": ea._agora(),
+    }
+
+
 def _registro(
     entrada: dict[str, Any],
     analise: saida.Analise,
@@ -162,12 +203,7 @@ def _registro(
 ) -> dict[str, Any]:
     tokens = ea._tokens(mensagem.usage)
     return {
-        **ea.identidade(entrada),
-        "modelo": modelo,
-        "versao_do_guia": pg.VERSAO_DO_GUIA,
-        "hash_da_entrada": en.hash_da_entrada(entrada),
-        "hash_do_texto": gr.hash_do_texto(analise),
-        "escolhido_em": ea._agora(),
+        **_cabecalho(entrada, analise, modelo),
         "stop_reason": mensagem.stop_reason,
         "resposta_bruta": ea._texto_da_mensagem(mensagem),
         "tokens": tokens,
@@ -230,6 +266,26 @@ def _a_julgar(
                 yield entrada, analise, modelo, escolha, registro
 
 
+def _registro_da_cega(
+    conferente: str,
+    registro: dict[str, Any],
+    escolha: gr.Escolha,
+    stop_reason: str | None,
+    bruta: str,
+) -> dict[str, Any]:
+    """O veredito da porta 2 preso à resposta que julgou (outra resposta: julga de novo)."""
+    veredito = p2g.ler_veredito(stop_reason, bruta, escolha)
+    return {
+        "conferente": conferente,
+        "hash_da_resposta": ea._sha256(registro["resposta_bruta"]),
+        "conferido_em": ea._agora(),
+        "stop_reason": stop_reason,
+        "reprovados": sorted(veredito.reprovados),
+        "motivo": veredito.motivo,
+        "itens": [list(i) for i in veredito.itens],
+    }
+
+
 def cegas(
     cliente: anthropic.Anthropic,
     entradas: list[dict[str, Any]],
@@ -250,17 +306,14 @@ def cegas(
         pendentes, pedidos, strict=True
     ):
         mensagem = ea._mensagem_completa(cliente, parametros)
-        bruta = ea._texto_da_mensagem(mensagem)
-        veredito = p2g.ler_veredito(mensagem.stop_reason, bruta, escolha)
         tokens = ea._tokens(mensagem.usage)
-        cega = {
-            "conferente": parametros["model"],
-            "hash_da_resposta": ea._sha256(registro["resposta_bruta"]),
-            "conferido_em": ea._agora(),
-            "stop_reason": mensagem.stop_reason,
-            "reprovados": sorted(veredito.reprovados),
-            "motivo": veredito.motivo,
-            "itens": [list(i) for i in veredito.itens],
+        cega = _registro_da_cega(
+            parametros["model"],
+            registro,
+            escolha,
+            mensagem.stop_reason,
+            ea._texto_da_mensagem(mensagem),
+        ) | {
             "tokens": tokens,
             "custo_em_dolares": ea.custo_da_resposta(
                 tokens, parametros["model"], False
@@ -294,6 +347,7 @@ def _montar(
         "escolha": finais.como_dict(),
         "linhagem": {
             "versao_do_guia": pg.VERSAO_DO_GUIA,
+            "via": (registro or {}).get("via", PELA_API),
             "motivo": motivo or (None if cega else "sem a porta 2: só a reserva"),
             "escolha_do_modelo": escolha.como_dict() if escolha else None,
             "porta1": [asdict(r) for r in porta1_],
@@ -316,6 +370,115 @@ def conferir(
             ea._gravar(arquivo_dos_graficos(pasta, entrada, modelo), montado)
             montados += 1
     return montados
+
+
+def texto_do_pedido(parametros: dict[str, Any]) -> str:
+    """O pedido da API em texto, para a sessão do Claude Code responder: o sistema, a mensagem e o
+    esquema da resposta, sem o nome do modelo (a porta 2 não sabe quem escolheu)."""
+    sistema = "\n\n".join(bloco["text"] for bloco in parametros["system"])
+    (mensagem,) = parametros["messages"]
+    esquema = parametros["output_config"]["format"]["schema"]
+    return (
+        f"# Sistema\n\n{sistema}\n\n# Pedido\n\n{mensagem['content']}\n\n"
+        "# Formato da resposta\n\nResponda só com um objeto JSON neste esquema:\n\n"
+        f"```json\n{json.dumps(esquema, ensure_ascii=False, indent=2)}\n```\n"
+    )
+
+
+def _escrever(arquivo: Path, texto: str) -> None:
+    arquivo.parent.mkdir(parents=True, exist_ok=True)
+    arquivo.write_text(texto, encoding="utf-8")
+
+
+def pedidos(
+    entradas: list[dict[str, Any]], analises: Path, pasta: Path, modelos: Sequence[str]
+) -> int:
+    """Escreve o pedido de cada escolha que falta e o da porta 2 de cada escolha guardada que
+    ainda não foi julgada. Não chama a API. Devolve quantos escreveu."""
+    escritos = 0
+    for entrada, analise, modelo in _pendentes(entradas, analises, pasta, modelos):
+        texto = texto_do_pedido(pg.pedido(entrada, analise, modelo))
+        _escrever(arquivo_do_pedido(pasta, entrada, modelo), texto)
+        escritos += 1
+    for entrada, analise, modelo, escolha, _ in _a_julgar(
+        entradas, analises, pasta, modelos
+    ):
+        cego = p2g.pedido(escolha, entrada, analise, porta2.conferente(modelo))
+        _escrever(arquivo_do_pedido_cego(pasta, entrada, modelo), texto_do_pedido(cego))
+        escritos += 1
+    return escritos
+
+
+def _resposta_da_sessao(
+    pedido_lido: Path, resposta: Path, parametros: dict[str, Any]
+) -> str | None:
+    """A resposta escrita na sessão, se o pedido que ela leu ainda é o de agora."""
+    if not resposta.exists():
+        return None
+    lido = pedido_lido.read_text(encoding="utf-8") if pedido_lido.exists() else None
+    if lido != texto_do_pedido(parametros):
+        log.warning("%s: respondida para outro pedido; fica de fora", resposta.name)
+        return None
+    return resposta.read_text(encoding="utf-8").strip()
+
+
+def _importar_escolhas(
+    entradas: list[dict[str, Any]], analises: Path, pasta: Path, modelos: Sequence[str]
+) -> int:
+    guardadas = 0
+    for entrada, analise, modelo in list(
+        _pendentes(entradas, analises, pasta, modelos)
+    ):
+        bruta = _resposta_da_sessao(
+            arquivo_do_pedido(pasta, entrada, modelo),
+            arquivo_da_resposta(pasta, entrada, modelo),
+            pg.pedido(entrada, analise, modelo),
+        )
+        if bruta is None:
+            continue
+        registro = {
+            **_cabecalho(entrada, analise, modelo),
+            "stop_reason": pe.FIM_NORMAL,
+            "resposta_bruta": bruta,
+            "tokens": {},
+            "custo_em_dolares": 0.0,
+            "via": PELA_SESSAO,
+        }
+        ea._gravar(arquivo_da_escolha(pasta, entrada, modelo), registro)
+        guardadas += 1
+    return guardadas
+
+
+def _importar_cegas(
+    entradas: list[dict[str, Any]], analises: Path, pasta: Path, modelos: Sequence[str]
+) -> int:
+    guardadas = 0
+    for entrada, analise, modelo, escolha, registro in list(
+        _a_julgar(entradas, analises, pasta, modelos)
+    ):
+        conferente = porta2.conferente(modelo)
+        bruta = _resposta_da_sessao(
+            arquivo_do_pedido_cego(pasta, entrada, modelo),
+            arquivo_da_resposta_cega(pasta, entrada, modelo),
+            p2g.pedido(escolha, entrada, analise, conferente),
+        )
+        if bruta is None:
+            continue
+        cega = _registro_da_cega(conferente, registro, escolha, pe.FIM_NORMAL, bruta)
+        cega |= {"tokens": {}, "custo_em_dolares": 0.0, "via": PELA_SESSAO}
+        ea._gravar(arquivo_da_cega(pasta, entrada, modelo), cega)
+        guardadas += 1
+    return guardadas
+
+
+def importar(
+    entradas: list[dict[str, Any]], analises: Path, pasta: Path, modelos: Sequence[str]
+) -> int:
+    """Guarda as respostas da sessão como as da API (a escolha e a porta 2), com custo zero e
+    `via` na linhagem. Devolve quantas guardou."""
+    return _importar_escolhas(entradas, analises, pasta, modelos) + _importar_cegas(
+        entradas, analises, pasta, modelos
+    )
 
 
 def _publicavel(
@@ -361,7 +524,8 @@ def publicar(
 
 
 GASTAM = ("estimar", "piloto", "cegas")
-PASSOS = (*GASTAM, "conferir", "publicar")
+SEM_A_API = ("pedidos", "importar")
+PASSOS = (*GASTAM, "conferir", "publicar", *SEM_A_API)
 
 
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
@@ -374,7 +538,8 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
         passo.add_argument("--pasta", type=Path, required=True)
         passo.add_argument("--analises", type=Path, required=True)
         passo.add_argument("--entradas", type=Path, nargs="+", default=[])
-        padrao = MODELO_DOS_RELATORIOS if nome == "publicar" else pe.SONNET
+        dos_relatorios = nome == "publicar" or nome in SEM_A_API
+        padrao = MODELO_DOS_RELATORIOS if dos_relatorios else pe.SONNET
         passo.add_argument("--modelos", default=padrao)
         passo.add_argument("--teto-dolares", type=float, required=nome in GASTAM)
     return analisador.parse_args(argv)
@@ -392,6 +557,14 @@ def _rodar(args: argparse.Namespace, entradas: list[dict[str, Any]]) -> None:
         print(
             f"{publicar(entradas, args.analises, args.pasta, modelo)} escolhas publicadas"
         )
+        return
+    if args.passo == "pedidos":
+        escritos = pedidos(entradas, args.analises, args.pasta, modelos)
+        print(f"{escritos} pedidos escritos")
+        return
+    if args.passo == "importar":
+        guardadas = importar(entradas, args.analises, args.pasta, modelos)
+        print(f"{guardadas} respostas importadas")
         return
     cliente = ri.cliente()
     if args.passo == "estimar":

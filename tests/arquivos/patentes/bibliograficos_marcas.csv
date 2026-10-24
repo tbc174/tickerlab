@@ -1,0 +1,3 @@
+codigo_interno,numero_inpi,data_deposito,data_publicacao,data_concessao,data_vigencia,descricao_apresentacao,descricao_natureza,elemento_nominativo,traducao,apostila,codigo_situacao,descricao_situacao
+20,800000001,2020-01-01,2020-06-01,2021-01-01,2031-01-01,Mista,Marca de Produto,TICKERLAB EXEMPLO,,Apostila com nome de FULANO EXEMPLO,1,Registro em vigor
+21,800000002,2020-02-01,,,,Nominativa,Marca de Serviço,SERVICOS 12345678901,,,2,Pedido

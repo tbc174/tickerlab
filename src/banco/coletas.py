@@ -192,6 +192,8 @@ LICENCAS = {
     "inep": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
     "senatran": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
     "inpi": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+    "epo": "CC BY 4.0 (EPO Linked open EP data); citar o EPO; um pedido por vez",
+    "wipo": "WIPO Statistics Database: não republicar nem revender; só uso interno, citando",
     # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
     "ans-demonstracoes": "Demonstrações da ANS: sem licença declarada; citar a ANS (ADR 0102)",
 }
@@ -360,6 +362,8 @@ REVENDA = {
     "inep": A_CONFIRMAR,
     "senatran": A_CONFIRMAR,
     "inpi": A_CONFIRMAR,
+    "epo": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; "not designed to provide a backend database service"
+    "wipo": SO_USO_INTERNO,  # "not republish or commercially re-sell"; citar "WIPO Statistics Database"
     "ans-demonstracoes": A_CONFIRMAR,
 }
 
