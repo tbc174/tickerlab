@@ -24,7 +24,11 @@ from src.banco import newsletter_por_email, novidades_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
 from src.logs import configurar_logs
-from src.registro_de_acesso import RegistroDeAcesso, registro_pelo_ambiente
+from src.registro_de_acesso import (
+    RegistroDeAcesso,
+    proxies_pelo_ambiente,
+    registro_pelo_ambiente,
+)
 
 log = logging.getLogger(__name__)
 
@@ -154,6 +158,8 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     )
     nova.include_router(router)
     nova.include_router(router, prefix="/api")
+    # os limites por IP da v1 leem daqui (src/api_v1/compartilhados.py: ip_de_quem_pede)
+    nova.state.proxies_confiaveis = proxies_pelo_ambiente(ambiente)
     registro = registro_pelo_ambiente(ambiente)
     if registro is not None:
         # Marco Civil, art. 15: IP real e hora em arquivo, por 6 meses (nunca no banco)

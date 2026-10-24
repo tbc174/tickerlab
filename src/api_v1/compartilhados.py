@@ -22,6 +22,7 @@ from src.api_v1.acesso import LimiteDePedidos, agora, exigir_api_ligada
 from src.banco import compartilhamentos as links
 from src.banco.conexao import obter_engine
 from src.ficha import AVISO
+from src.registro_de_acesso import ip_do_cliente
 
 PEDIDOS_POR_MINUTO_POR_IP = 30
 TAMANHO_MAXIMO_DO_CORPO = 1024  # bytes: o corpo é só {"codigo": "..."}
@@ -42,9 +43,13 @@ def _recusa(status: int, detalhe: str) -> HTTPException:
 
 
 def ip_de_quem_pede(request: Request) -> str:
-    """O IP que a Cloudflare viu; sem ele (testes, rede local), o da conexão."""
-    cloudflare = request.headers.get("cf-connecting-ip", "").strip()
-    return cloudflare or (request.client.host if request.client else "desconhecido")
+    """O IP de quem pede, para os limites: o cabeçalho da Cloudflare só vale se a conexão vem de um
+    proxy confiável (`TICKERLAB_PROXIES_CONFIAVEIS`); senão ele é forjável e vale o IP da conexão."""
+    return ip_do_cliente(
+        request.client.host if request.client else None,
+        request.headers,
+        getattr(request.app.state, "proxies_confiaveis", ()),
+    )
 
 
 def conferir_o_pedido(request: Request) -> None:
