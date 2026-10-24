@@ -45,6 +45,7 @@ CONTROLADA_DE, COLIGADA_DE, PARTICIPADA_DE = (
 OPERA_PARA, DO_CONGLOMERADO_DE = "opera_para", "do_conglomerado_de"
 AUDITA, EMITE, DETEM = "audita", "emite", "detem"
 TIPO_DO_FRE = {"controlada": CONTROLADA_DE, "coligada": COLIGADA_DE}
+_FORCA_DO_TIPO = {CONTROLADA_DE: 0, COLIGADA_DE: 1, PARTICIPADA_DE: 2}
 PRODUTO_DO_COMEX = "produto"
 PELA_REGRA, PELA_TABELA = "regra", "tabela"
 LIDER = "lider"
@@ -150,10 +151,15 @@ def das_controladas(controladas: pd.DataFrame, r: Resolvedor) -> pd.DataFrame:
         for c, ref in zip(tabela["cnpj_companhia"], tabela["referencia"], strict=True)
     ]
     tabela["fim"] = tabela["inicio"]
-    # duas filiais da mesma sociedade no mesmo FRE: fica a maior participação
-    tabela = tabela.sort_values(
-        ["participacao"], ascending=False, kind="stable"
-    ).drop_duplicates(["de", "para", "inicio"])
+    # duas linhas da mesma sociedade no mesmo FRE: vence o vínculo mais forte (controlada antes de
+    # coligada), e dentro do mesmo tipo a maior participação; a % maior de uma coligada não pode
+    # tirar a controladora da controlada
+    tabela = (
+        tabela.assign(forca=tabela["tipo"].map(_FORCA_DO_TIPO))
+        .sort_values(["forca", "participacao"], ascending=[True, False], kind="stable")
+        .drop_duplicates(["de", "para", "inicio"])
+        .drop(columns="forca")
+    )
     periodos = comprimir_periodos(
         tabela[["de", "para", "tipo", "participacao", "cnpj_companhia", "inicio", "fim",
                 "referencia", "conhecido_em", "origem_sha256"]],

@@ -497,6 +497,51 @@ def test_duas_filiais_no_mesmo_fre_ficam_uma_ligacao():
     assert ipiranga["participacao"].tolist() == [100.0]
 
 
+def _ipiranga_listada_duas_vezes(primeira: tuple, segunda: tuple) -> pd.DataFrame:
+    """O FRE de 2019 da Ultrapar lista a Ipiranga duas vezes: (tipo, participação) de cada linha."""
+    base = _controladas().head(1)
+    return pd.concat(
+        [
+            base.assign(tipo=primeira[0], participacao=primeira[1]),
+            base.assign(tipo=segunda[0], participacao=segunda[1]),
+        ],
+        ignore_index=True,
+    )
+
+
+def _ligacao_da_ipiranga(controladas: pd.DataFrame) -> pd.DataFrame:
+    r = ligacoes_das_fontes.Resolvedor(_identificadores(_entradas_com_tudo()))
+    tabela = ligacoes.normalizar(ligacoes_das_fontes.das_controladas(controladas, r))
+    return tabela[tabela["de"] == _id("33337122")]
+
+
+def test_controlada_vence_a_coligada_do_mesmo_fre_mesmo_com_menos_participacao():
+    # achado da B-03: a linha de coligada (maior %) levava a vaga e a controlada perdia a controladora
+    for ordem in (
+        [("coligada", 60.0), ("controlada", 30.0)],
+        [("controlada", 30.0), ("coligada", 60.0)],
+    ):
+        ipiranga = _ligacao_da_ipiranga(_ipiranga_listada_duas_vezes(*ordem))
+        assert ipiranga["tipo"].tolist() == [ligacoes_das_fontes.CONTROLADA_DE]
+        assert ipiranga["participacao"].tolist() == [30.0]
+
+
+def test_so_coligada_no_mesmo_fre_segue_a_maior_participacao():
+    ipiranga = _ligacao_da_ipiranga(
+        _ipiranga_listada_duas_vezes(("coligada", 20.0), ("coligada", 25.0))
+    )
+    assert ipiranga["tipo"].tolist() == [ligacoes_das_fontes.COLIGADA_DE]
+    assert ipiranga["participacao"].tolist() == [25.0]
+
+
+def test_controlada_do_mesmo_fre_mantem_a_data_do_fre():
+    # sem olhar o futuro: a ligação nasce na entrega do FRE, não numa linha de outro
+    ipiranga = _ligacao_da_ipiranga(
+        _ipiranga_listada_duas_vezes(("coligada", 60.0), ("controlada", 30.0))
+    )
+    assert ipiranga["publico_em"].dt.date.tolist() == [D("2020-05-29").date()]
+
+
 def test_fundo_que_so_esta_nas_carteiras_vira_entidade_e_detem():
     """Metade das linhas do CDA é de fundo fora do cadastro (classes da CVM 175): o CDA traz o CNPJ,
     o tipo e o nome, e o fundo vira entidade; o nome do cadastro, quando há, continua valendo."""
