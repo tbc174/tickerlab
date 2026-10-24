@@ -135,7 +135,7 @@ NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
     "gatilhos": "O valor que mudaria cada nota",
     "cascata": "Da receita ao lucro (último ano)",
-    "ponte": "Da dívida líquida do ano anterior à de agora",
+    "ponte": "Da dívida líquida do começo ao fim do último ano fechado",
     "sensibilidade": "Valor por ação conforme o desconto e o crescimento",
     "historico": "Ano a ano",
     "contas": "Contas ano a ano",

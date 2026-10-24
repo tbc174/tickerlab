@@ -14,7 +14,12 @@ from hypothesis import strategies as st
 from src import relatorio_empresa as re_
 from src.analise_escrita import entrada as en
 from src.analise_escrita import numeros
-from tests.ajudantes_da_analise import CORTE, entrada_da_cpfl, relatorios_da_cpfl
+from tests.ajudantes_da_analise import (
+    CORTE,
+    PAR_DA_CPFL,
+    entrada_da_cpfl,
+    relatorios_da_cpfl,
+)
 
 
 @pytest.fixture(scope="module")
@@ -133,6 +138,16 @@ def test_hash_estavel(entrada):
     assert en.hash_da_entrada(entrada) == en.hash_da_entrada(entrada_da_cpfl())
     mudada = {**entrada, "corte": "2026-10-16"}
     assert en.hash_da_entrada(mudada) != en.hash_da_entrada(entrada)
+
+
+def test_titulo_novo_da_ponte_nao_muda_a_entrada(entrada):
+    """O Tiago trocou o título da ponte na tela (23/10) sem derrubar as análises publicadas: a entrada
+    guarda o nome antigo até a próxima rodada de textos, e o hash delas continua batendo."""
+    ponte = _linhas(entrada)["endividamento.ponte.0"]
+    assert ponte["tabela"] == en.NOMES_CONGELADOS_NA_ENTRADA["ponte"]
+    assert ponte["tabela"] != re_.nome_da_tabela("ponte")
+    congelada = json.loads((PAR_DA_CPFL / "entrada.json").read_text(encoding="utf-8"))
+    assert en.hash_da_entrada(entrada) == en.hash_da_entrada(congelada)
 
 
 def test_entrada_cabe_no_pedido(entrada):

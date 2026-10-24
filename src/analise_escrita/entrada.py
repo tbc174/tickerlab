@@ -62,7 +62,18 @@ CAMPOS_DO_ITEM = {
     "nota_texto": "nota_texto",
 }
 
+# Título que mudou na ficha depois de análises publicadas: a entrada guarda o nome de quando elas foram
+# escritas, senão o hash muda e o texto delas sai do relatório. Volta para o nome da ficha na próxima
+# rodada de textos (o Tiago escolheu assim em 23/10, na troca do título da ponte).
+NOMES_CONGELADOS_NA_ENTRADA = {
+    "ponte": "Da dívida líquida do ano anterior à de agora",
+}
+
 PessoaNaEntradaError = dossie_da_base.PessoaNaFichaError
+
+
+def _nome_na_entrada(tabela: str) -> str:
+    return NOMES_CONGELADOS_NA_ENTRADA.get(tabela, nome_da_tabela(tabela))
 
 
 class DataDepoisDoCorteError(ValueError):
@@ -99,7 +110,7 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
                 "secao": chave,
                 "id": f"{chave}.{tabela}.{i}",
                 "tipo": "linha",
-                "tabela": nome_da_tabela(tabela),
+                "tabela": _nome_na_entrada(tabela),
                 "celulas": celulas,
             }
     for i, texto in enumerate(secao["paragrafos"]):
