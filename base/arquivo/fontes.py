@@ -31,6 +31,7 @@ from base.arquivo import (
     lote_licitacoes,
     lote_organismos,
     lote_patentes,
+    lote_reguladores,
     lote_sec,
     lote_setoriais,
     lote_tesouro,
@@ -1172,6 +1173,8 @@ FONTES: list[Fonte] = [
     # lote Tesouro (23/10/2026): mais pacotes do Tesouro Transparente e a PGFN de todos os trimestres
     # (linha 202 da fila)
     *lote_tesouro.fontes(),
+    # lote reguladores (23/10/2026): mais pacotes de energia da ANEEL, do ONS e da CCEE (linha 203 da fila)
+    *lote_reguladores.fontes(),
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
