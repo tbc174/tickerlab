@@ -77,6 +77,28 @@ _SEM_VIGIA = {
     "cftc": "a página de política da CFTC deu 404 (domínio público, obra do governo dos EUA)",
     "usda": "usda.gov e fas.usda.gov respondem 403 (domínio público pela política do USDA)",
     "ico": "ico.org não publica termos, só o aviso de copyright",
+    # lote Tesouro (23/10/2026): a licença ODbL está na ficha de cada pacote do CKAN; o catálogo já é vigiado
+    **dict.fromkeys(
+        (
+            "tesouro-br-rtn",
+            "tesouro-br-receitas",
+            "tesouro-br-despesas",
+            "tesouro-br-restos-a-pagar",
+            "tesouro-br-fatores-divida",
+            "tesouro-br-paf",
+            "tesouro-br-bspn",
+            "tesouro-br-limites-lrf",
+            "tesouro-br-dividendos-estatais",
+            "tesouro-br-subsidios-bndes",
+            "tesouro-br-garantias",
+            "tesouro-br-transferencias",
+            "tesouro-br-capag-municipios",
+            "tesouro-br-td-vendas",
+            "tesouro-br-td-resgates",
+            "tesouro-br-td-estoque",
+        ),
+        "a licença ODbL está na ficha do pacote no CKAN do Tesouro, sem página de termos própria; `catalogo-tesouro` vigia o catálogo",
+    ),
     # lote EUA (22/10/2026): obra do governo federal dos EUA, sem página de termos própria achada (fila)
     **dict.fromkeys(
         ("treasury", "tic", "ofr", "census"),

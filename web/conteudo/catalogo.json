@@ -1991,6 +1991,125 @@
       "termos_lidos_em": "2026-10-21"
     },
     {
+      "id": "tesouro-br-rtn",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-receitas",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-despesas",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-restos-a-pagar",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-fatores-divida",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-paf",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-bspn",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-limites-lrf",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-dividendos-estatais",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-subsidios-bndes",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-garantias",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-transferencias",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-capag-municipios",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-td-vendas",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-td-resgates",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "tesouro-br-td-estoque",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pgfn-divida-historico",
+      "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
+      "marca": "a_confirmar",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
       "id": "contrapartes-cafe",
       "licenca": "Página guardada só como prova; na ficha, fato e link",
       "marca": "a_confirmar",

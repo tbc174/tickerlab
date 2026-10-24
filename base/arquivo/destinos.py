@@ -18,6 +18,7 @@ from base.arquivo import (
     lote_licitacoes,
     lote_sec,
     lote_setoriais,
+    lote_tesouro,
 )
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
@@ -172,6 +173,28 @@ _LOTE_BRASIL2_SO_ARQUIVO = (
     "dado aberto de órgão público brasileiro guardado como publicado, só CNPJ e agregados (a pessoa "
     "física sai antes de guardar, ADR 0088); a tabela com contrato no catálogo ainda não existe"
 )
+
+_LOTE_TESOURO_SO_ARQUIVO = (
+    "dado aberto do Tesouro Nacional (ODbL) guardado como publicado, só União, entes e títulos (nada por "
+    "investidor, ADR 0088); a tabela com contrato no catálogo ainda não existe"
+)
+
+# o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
+_TESOURO_PLANEJADAS = {
+    "tesouro-br-rtn": _planejada(
+        "tesouro/macro-fiscal",
+        "resultado primário mensal, junto com a dívida/PIB do BCB",
+    ),
+    "tesouro-br-receitas": _planejada(
+        "tesouro/macro-fiscal", "receita orçamentária da União por natureza"
+    ),
+    "tesouro-br-despesas": _planejada(
+        "tesouro/macro-fiscal", "despesa paga mensal da União por órgão e função"
+    ),
+    "tesouro-br-dividendos-estatais": _planejada(
+        "tesouro/dividendos-estatais", "dividendos e JCP que cada estatal paga à União"
+    ),
+}
 
 _LOTE_CVM_SO_ARQUIVO = (
     "dado aberto da CVM (ODbL) guardado como publicado, só fundo, CNPJ e agregado (sem cadastro de "
@@ -440,6 +463,18 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("lote-sec/carga", _LOTE_SEC_SO_ARQUIVO)
         for f in lote_sec.fontes()
     },
+    # lote Tesouro (linha 202 da fila, 23/10/2026): guardado no acervo; as tabelas ficam para depois
+    **{
+        f.id: _pesquisa(_LOTE_TESOURO_SO_ARQUIVO)
+        for f in lote_tesouro.fontes()
+        if f.id not in _TESOURO_PLANEJADAS and f.id != "pgfn-divida-historico"
+    },
+    **_TESOURO_PLANEJADAS,
+    "pgfn-divida-historico": _planejada(
+        "pgfn/historico",
+        "dívida ativa de todos os trimestres anteriores; `base/pgfn.py` lê só o último retrato, a tabela da "
+        "evolução por CNPJ é uma linha da fila",
+    ),
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`

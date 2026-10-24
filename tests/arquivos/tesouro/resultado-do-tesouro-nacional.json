@@ -1,0 +1,33 @@
+{
+ "success": true,
+ "result": {
+  "name": "resultado-do-tesouro-nacional",
+  "resources": [
+   {
+    "format": "XLSX",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/a/download/seriehistoricajul26.xlsx",
+    "size": 4301280
+   },
+   {
+    "format": "XLSX",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/b/download/metadados---nfgc.xlsx",
+    "size": 139854
+   },
+   {
+    "format": "PDF",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/c/download/metadados-serie-rtn.pdf",
+    "size": 59929
+   },
+   {
+    "format": "API",
+    "url": "https://apidatalake.tesouro.gov.br/aria/v1/series-temporais/docs",
+    "size": 0
+   },
+   {
+    "format": "",
+    "url": "https://apidatalake.tesouro.gov.br/aria/v1/series-temporais/docs",
+    "size": 0
+   }
+  ]
+ }
+}
