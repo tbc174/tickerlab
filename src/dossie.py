@@ -28,6 +28,7 @@ from pydantic import BaseModel, ValidationError
 
 from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
+from base.pessoas.sem_cpf import tirar_cpf
 from src.configuracao import PASTA_RAIZ
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao
@@ -498,7 +499,7 @@ def _ano(valor: object) -> str:
 
 
 def _texto(valor: object) -> str:
-    return str(valor)
+    return tirar_cpf(str(valor))
 
 
 PAPEIS_DO_MA = {
