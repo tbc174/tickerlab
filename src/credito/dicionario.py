@@ -45,6 +45,12 @@ _DIARIA = "Diária (cada entrega à CVM)"
 _DEFASAGEM_DO_IPE = (
     "Nenhuma além da entrega: vale a partir do dia em que a CVM recebeu o documento"
 )
+_SCR = "Banco Central: SCR.data, carteira de crédito (tabela `scr_credito` da base)"
+_MENSAL_DO_SCR = "Mensal (uma data-base por mês, fim do mês)"
+_DEFASAGEM_DO_SCR = (
+    "O BC publica cerca de 30 dias depois do fim do mês; a base conta 60 dias (vale a partir da "
+    "data-base + 60 dias). O BC regrava meses antigos e a base guarda só a regravação mais nova"
+)
 _SEM_IPE = "sem nenhum documento do IPE até o dia (a companhia não entregava à CVM): não observado"
 
 
@@ -196,6 +202,25 @@ DICIONARIO: dict[str, EntradaDoDicionario] = {
             "quantidade de documentos de rating (tema risco do IPE) entregues nos 365 dias até o "
             f"dia; {_SEM_IPE}",
             _IPE, _DIARIA, _DEFASAGEM_DO_IPE,
+        ),
+        EntradaDoDicionario(
+            "inadimplencia_do_setor_no_scr",
+            "Inadimplência do setor da empresa no SCR",
+            FRACAO,
+            "carteira em inadimplência (atraso acima de 90 dias) ÷ carteira ativa, das pessoas "
+            "jurídicas da seção do CNAE da empresa, somadas todas as UF, segmentos, portes e "
+            "modalidades, na data-base mais nova que já era pública no dia; seção da empresa "
+            "desconhecida, ou nenhuma data-base pública no dia: não observado",
+            _SCR, _MENSAL_DO_SCR, _DEFASAGEM_DO_SCR,
+        ),
+        EntradaDoDicionario(
+            "carteira_do_setor_no_scr",
+            "Carteira de crédito do setor da empresa no SCR",
+            REAIS,
+            "carteira ativa das pessoas jurídicas da seção do CNAE da empresa, somadas todas as UF, "
+            "segmentos, portes e modalidades, na data-base mais nova que já era pública no dia; "
+            "seção da empresa desconhecida, ou nenhuma data-base pública no dia: não observado",
+            _SCR, _MENSAL_DO_SCR, _DEFASAGEM_DO_SCR,
         ),
     )
 }  # fmt: skip

@@ -5894,7 +5894,8 @@ _CONTRATO = {
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
     "ligacao_dos_bancos": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
-    "scr_credito": _contrato(modulo=_FIDC, chaves=("data_base", "uf", "segmento", "cliente", "cnae_ocupacao", "porte", "modalidade", "submodalidade", "origem", "indexador"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
+    # 1.1.0 (25/10/2026): declara `publico_em` = `disponivel_em` (data-base + 60 dias); a porta passa a aceitar `como_era_em`
+    "scr_credito": _contrato(modulo=_FIDC, chaves=("data_base", "uf", "segmento", "cliente", "cnae_ocupacao", "porte", "modalidade", "submodalidade", "origem", "indexador"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "padroes_setoriais": _contrato(modulo=_ME, chaves=("data_de_corte", "grupo", "indicador", "versao"), datas={"aconteceu_em": "data_de_corte", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "fre_proventos": _contrato(modulo=_ME, chaves=("cnpj", "exercicio", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "fre_eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "tipo", "data", "referencia", "versao"), datas={"aconteceu_em": "data", "coletado_em": "coletado_em"}, historico_desde=_CVM),
