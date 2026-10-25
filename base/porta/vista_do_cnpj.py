@@ -25,6 +25,7 @@ MUDANCAS = {
 PREFIXO = 2  # a base reparte pelos 2 primeiros caracteres da raiz
 TAMANHO_DA_RAIZ = 8
 MANIFESTO = "manifesto.json"
+MESES_DAS_MUDANCAS = 12  # a janela das mudanças: os últimos 12 meses publicados
 
 
 def manifesto(vista: Path) -> dict | None:

@@ -34,7 +34,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from base import receita_diff
-from base.porta.vista_do_cnpj import MANIFESTO, MUDANCAS, PREFIXO, TAMANHO_DA_RAIZ
+from base.porta.vista_do_cnpj import (
+    MANIFESTO,
+    MESES_DAS_MUDANCAS,
+    MUDANCAS,
+    PREFIXO,
+    TAMANHO_DA_RAIZ,
+)
 from src.cadastro_da_receita import cadastro_do_cnpj
 
 log = logging.getLogger("tickerlab.montar_vista_do_cnpj")
@@ -53,7 +59,6 @@ VIGENTE = {
     ),
 }  # fmt: skip
 VAZIAS = {"qsa": ("id_pessoa",)}  # colunas que a leitura espera e que não saem de casa
-MESES_DAS_MUDANCAS = 12
 LINHAS_POR_GRUPO = 20_000  # um grupo pequeno: a leitura filtrada pela raiz abre pouco
 ENTROU, SAIU, MUDOU = "entrou", "saiu", "mudou"
 PARTES = ".partes"  # as mudanças de cada mês, por prefixo, antes de juntar os meses
