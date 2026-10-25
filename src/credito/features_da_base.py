@@ -51,7 +51,9 @@ SEM_A_SECAO = (
     "não está na porta (carga do CNPJ, fila 120)."
 )
 SEM_MES_DO_SCR = "Nenhuma data-base do SCR com carteira nesta seção era pública no dia."
-CARTEIRA_NAO_POSITIVA = "Carteira ativa zerada ou sem valor na seção: a razão não tem sentido."
+CARTEIRA_NAO_POSITIVA = (
+    "Carteira ativa zerada ou sem valor na seção: a razão não tem sentido."
+)
 FONTE_DO_SCR = "bcb"
 SEM_IPE = (
     "Nenhum documento do IPE da companhia era público no dia: ela não entregava à CVM."
