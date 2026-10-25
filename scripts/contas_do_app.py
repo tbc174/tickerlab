@@ -40,7 +40,9 @@ Comando = Callable[[sa.Connection, argparse.Namespace, uuid.UUID], str]
 
 
 def _bloquear(conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID) -> str:
-    encerradas = bloquear_conta(conexao, ator, args.conta, args.motivo)
+    encerradas = bloquear_conta(
+        conexao, ator, args.conta, args.motivo, pelo_servidor=True
+    )
     sessoes = (
         "1 sessão encerrada" if encerradas == 1 else f"{encerradas} sessões encerradas"
     )

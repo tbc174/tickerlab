@@ -115,6 +115,25 @@ def test_motivo_fora_da_lista_e_recusado_pelos_argumentos(banco, admin, ana, cap
     assert _conta(banco, ana.id).bloqueada_em is None
 
 
+def test_pelo_servidor_bloqueia_outro_admin_da_lista(banco, admin, monkeypatch, capsys):
+    """O painel não bloqueia admin da lista; o script do servidor bloqueia."""
+    outro = "outro-admin@exemplo.com"
+    monkeypatch.setenv("TICKERLAB_ADMINS", f"{ADMIN},{outro}")
+    with banco.begin() as conexao:
+        vice = entrar(
+            conexao,
+            "g-outro-admin",
+            outro,
+            emails_de_admin=(ADMIN, outro),
+            email_confirmado=True,
+        )[0]
+    codigo, _, erro = _rodar(
+        capsys, "bloquear-conta", str(vice.id), "--motivo", "acesso_de_terceiro"
+    )
+    assert codigo == script.SAIDA_OK, erro
+    assert _conta(banco, vice.id).bloqueada_em is not None
+
+
 def test_o_admin_nao_bloqueia_a_si_mesmo(banco, admin, capsys):
     codigo, _, erro = _rodar(
         capsys, "bloquear-conta", str(admin.id), "--motivo", "incidente"

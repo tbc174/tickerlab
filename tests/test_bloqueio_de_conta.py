@@ -169,9 +169,12 @@ def test_a_conta_lida_diz_que_esta_bloqueada_e_por_que(conexao, chefe, ana):
 # --- administradores ---------------------------------------------------------------------
 
 
-def test_admin_bloqueado_nao_administra_nem_volta_pelo_login(conexao, chefe):
+def test_admin_bloqueado_nao_administra_nem_volta_pelo_login(
+    conexao, chefe, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_ADMINS", f"{CHEFE},{VICE}")
     vice = _admin(conexao, "vice", VICE)
-    _bloquear(conexao, chefe, vice)
+    adm.bloquear_conta(conexao, chefe.id, vice.id, "incidente", pelo_servidor=True)
     with pytest.raises(adm.PermissaoNegadaError):
         adm.exigir_admin(conexao, vice.id)
     with pytest.raises(adm.PermissaoNegadaError):
@@ -179,6 +182,36 @@ def test_admin_bloqueado_nao_administra_nem_volta_pelo_login(conexao, chefe):
     # o e-mail ainda está na lista do servidor: o login daria o papel de novo, mas não entra
     with pytest.raises(ContaBloqueadaError):
         _admin(conexao, "vice", VICE)
+
+
+def test_admin_da_lista_do_servidor_nao_se_bloqueia_pelo_painel(
+    conexao, chefe, monkeypatch
+):
+    """Uma sessão de admin roubada não tranca do lado de fora o admin da lista: pelo painel, ele
+    não se bloqueia (o login e o script recusariam conta bloqueada). Pelo servidor, sim: quem
+    tem o servidor já manda em tudo."""
+    monkeypatch.setenv("TICKERLAB_ADMINS", f"{CHEFE.upper()},{VICE}")
+    vice = _admin(conexao, "vice", VICE)
+    with pytest.raises(adm.OperacaoInvalidaError, match="servidor"):
+        adm.bloquear_conta(conexao, vice.id, chefe.id, "acesso_de_terceiro")
+    assert buscar_por_id(conexao, chefe.id).bloqueada_em is None
+    adm.exigir_admin(conexao, chefe.id)
+
+    adm.bloquear_conta(
+        conexao, chefe.id, vice.id, "acesso_de_terceiro", pelo_servidor=True
+    )
+    assert buscar_por_id(conexao, vice.id).bloqueada_em is not None
+
+
+def test_admin_fora_da_lista_se_bloqueia_pelo_painel(conexao, chefe, ana, monkeypatch):
+    """Admin promovido no painel (fora de `TICKERLAB_ADMINS`): o admin da lista o desbloqueia."""
+    monkeypatch.setenv("TICKERLAB_ADMINS", CHEFE)
+    conexao.execute(
+        sa.update(usuarios).where(usuarios.c.id == ana.id).values(papel="admin")
+    )
+    _bloquear(conexao, chefe, ana)
+    with pytest.raises(adm.PermissaoNegadaError):
+        adm.exigir_admin(conexao, ana.id)
 
 
 def test_so_administrador_bloqueia(conexao, ana, bia):

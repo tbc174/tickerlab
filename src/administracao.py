@@ -277,12 +277,17 @@ def bloquear_conta(
     alvo_id: uuid.UUID,
     motivo: str,
     agora: datetime | None = None,
+    pelo_servidor: bool = False,
 ) -> int:
     """Bloqueia uma conta no incidente: encerra as sessões dela na hora e para o login. Devolve
     quantas sessões encerrou.
 
     Não apaga nada (dados, links, assinatura). Ninguém bloqueia a si mesmo: assim quem bloqueia é
     sempre um administrador que continua desbloqueado, e o serviço nunca fica sem nenhum.
+
+    Conta em `TICKERLAB_ADMINS` só se bloqueia pelo script do servidor (`pelo_servidor`): pelo
+    painel, uma sessão de admin roubada trancaria do lado de fora o dono da lista, que não
+    entraria nem desbloquearia a si mesmo.
     """
     exigir_admin(conexao, ator_id)
     if motivo not in MOTIVOS_DO_BLOQUEIO:
@@ -291,6 +296,11 @@ def bloquear_conta(
         raise OperacaoInvalidaError("Você não pode bloquear a sua própria conta.")
     if _bloqueio_atual(conexao, alvo_id) is not None:
         raise OperacaoInvalidaError("Esta conta já está bloqueada.")
+    if not pelo_servidor and _esta_na_lista_do_servidor(conexao, alvo_id):
+        raise OperacaoInvalidaError(
+            "Esta conta está na lista de administradores do servidor: bloqueie pelo script do "
+            "servidor (scripts/contas_do_app.py)."
+        )
     agora = agora or datetime.now(UTC)
     conexao.execute(
         sa.update(usuarios)
@@ -342,6 +352,14 @@ def _bloqueio_atual(conexao: sa.Connection, alvo_id: uuid.UUID) -> str | None:
     if linha is None:
         raise OperacaoInvalidaError("Usuário não encontrado.")
     return linha.motivo_do_bloqueio
+
+
+def _esta_na_lista_do_servidor(conexao: sa.Connection, alvo_id: uuid.UUID) -> bool:
+    """Se o e-mail da conta está em `TICKERLAB_ADMINS` (sem diferença de maiúsculas)."""
+    email = conexao.execute(
+        sa.select(usuarios.c.email).where(usuarios.c.id == alvo_id)
+    ).scalar_one()
+    return email.strip().lower() in admins_do_servidor()
 
 
 def eventos_recentes_do_stripe(
