@@ -202,16 +202,21 @@ def anuais(contas: pd.DataFrame) -> pd.DataFrame:
     return tabela[~tabela.index.duplicated(keep="last")]
 
 
-def doze_meses(contas: pd.DataFrame) -> tuple[dict, str, list[tuple[str, date]]]:
-    """(contas dos últimos 12 meses, descrição da base, documentos usados)."""
+Parte = tuple[
+    str, date, str
+]  # (documento, referência, período): um pedaço da tabela de contas
+
+
+def janela_dos_doze_meses(contas: pd.DataFrame) -> tuple[tuple[Parte, ...], str]:
+    """(as partes que fazem os últimos 12 meses, descrição da base): a DFP sozinha, ou a DFP mais
+    o acumulado do ITR menos o acumulado do mesmo período do ano anterior."""
     dfp = contas[(contas["documento"] == "DFP") & (contas["periodo"] == EXERCICIO)]
     if dfp.empty:
-        return {}, "", []
+        return (), ""
     ultimo_dfp = max(dfp["referencia"])
     so_o_dfp = (
-        _contas_em(contas, "DFP", ultimo_dfp, EXERCICIO),
+        (("DFP", ultimo_dfp, EXERCICIO),),
         f"exercício encerrado em {_data(ultimo_dfp)}",
-        [("DFP", ultimo_dfp)],
     )
     itr = contas[(contas["documento"] == "ITR") & (contas["periodo"] == ACUMULADO)]
     mais_novo = max(itr["referencia"]) if not itr.empty else None
@@ -226,20 +231,30 @@ def doze_meses(contas: pd.DataFrame) -> tuple[dict, str, list[tuple[str, date]]]
     ]
     if not base:
         return so_o_dfp
-    base = [max(base)]
-    anual = _contas_em(contas, "DFP", base[0], EXERCICIO)
-    acumulado = _contas_em(contas, "ITR", mais_novo, ACUMULADO)
-    anterior = _contas_em(contas, "ITR", mais_novo, ACUMULADO_ANTERIOR)
+    partes = (
+        ("DFP", max(base), EXERCICIO),
+        ("ITR", mais_novo, ACUMULADO),
+        ("ITR", mais_novo, ACUMULADO_ANTERIOR),
+    )
+    return partes, f"12 meses até {_data(mais_novo)}"
+
+
+def doze_meses(contas: pd.DataFrame) -> tuple[dict, str, list[tuple[str, date]]]:
+    """(contas dos últimos 12 meses, descrição da base, documentos usados)."""
+    partes, base = janela_dos_doze_meses(contas)
+    usados = list(
+        dict.fromkeys((documento, referencia) for documento, referencia, _ in partes)
+    )
+    valores = [_contas_em(contas, *parte) for parte in partes]
+    if len(valores) <= 1:
+        return (valores[0] if valores else {}), base, usados
+    anual, acumulado, anterior = valores
     ttm = {
         conta: anual[conta] + acumulado[conta] - anterior[conta]
         for conta in anual
         if conta in acumulado and conta in anterior and conta != "lpa_basico"
     }
-    return (
-        ttm,
-        f"12 meses até {_data(mais_novo)}",
-        [("DFP", base[0]), ("ITR", mais_novo)],
-    )
+    return ttm, base, usados
 
 
 def balanco_mais_recente(contas: pd.DataFrame) -> tuple[dict, date | None, str]:
