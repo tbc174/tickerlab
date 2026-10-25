@@ -4634,7 +4634,7 @@
       "tabela": "scr_credito",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "data_base": {
           "descricao": "Fim do mês",
@@ -4750,7 +4750,8 @@
         "indexador"
       ],
       "datas": {
-        "aconteceu_em": "data_base"
+        "aconteceu_em": "data_base",
+        "publico_em": "disponivel_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
