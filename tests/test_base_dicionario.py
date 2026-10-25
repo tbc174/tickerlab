@@ -330,6 +330,11 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "eventos_de_capital": [*fre.COLUNAS_DOS_EVENTOS, *da_historica],
         "insolvencia": [*rotulos.COLUNAS, *da_historica],
         "cnpj_situacao_especial": [*situacao, *origem],
+        "cnpj_situacao_cadastral": [
+            "cnpj", "cnpj_basico", "matriz", "situacao_cadastral",
+            "data_situacao_cadastral", "motivo_situacao", "mes_do_retrato",
+            "disponivel_em", *origem,
+        ],
         "auditores": [*auditores.COLUNAS, *da_historica],
         "pareceres_dfp": [*pareceres.COLUNAS, *da_historica],
         "pareceres_itr": [*pareceres.COLUNAS, *da_historica],
