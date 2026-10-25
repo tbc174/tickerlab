@@ -99,6 +99,38 @@ def test_conta_bloqueada_nao_entra_pelo_google_nem_abre_sessao(cliente, banco, c
     assert "set-cookie" not in resposta.headers
 
 
+def test_cookie_do_login_na_corrida_com_o_bloqueio_nao_volta_no_desbloqueio(
+    cliente, banco, chave, monkeypatch
+):
+    """Achado P0 da revisão cruzada do Codex no #659: o bloqueio cai entre o registro do login e
+    a abertura da sessão. O cookie entregue não vale no bloqueio nem depois do desbloqueio."""
+    from src.administracao import desbloquear_conta
+    from src.api_v1.sessao import NOME_DO_COOKIE
+
+    _criar(cliente, chave)
+    carla = _da_carla(banco)
+    with banco.begin() as conexao:
+        registrar_aceite(conexao, carla.id)
+    original = conta._registrar
+
+    def registrar_e_bloquear(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        bloquear_pelo_admin(banco, carla.id)
+        return resultado
+
+    monkeypatch.setattr(conta, "_registrar", registrar_e_bloquear)
+    resposta = _criar(cliente, chave)
+    valor = resposta.cookies.get(NOME_DO_COOKIE) or cliente.cookies.get(NOME_DO_COOKIE)
+    cliente.cookies.clear()
+    cabecalhos = {"Cookie": f"{NOME_DO_COOKIE}={valor}"}
+    assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 401
+
+    with banco.begin() as conexao:
+        chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+        desbloquear_conta(conexao, chefe.id, carla.id)
+    assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 401
+
+
 def test_admin_pelo_email_da_lista(cliente, banco, chave, monkeypatch):
     monkeypatch.setenv(VARIAVEL_DOS_ADMINS, "outra@exemplo.com, CARLA@exemplo.com")
     assert _criar(cliente, chave).json()["administrador"] is True

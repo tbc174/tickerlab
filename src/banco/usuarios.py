@@ -114,6 +114,13 @@ def buscar_por_id(conexao: sa.Connection, usuario_id: uuid.UUID) -> Usuario | No
     return _de_linha(linha) if linha else None
 
 
+def esta_valendo(conexao: sa.Connection, usuario_id: uuid.UUID) -> bool:
+    """Se a conta existe, não foi apagada e não está bloqueada no incidente. É a conferência das
+    ações que apagam, exportam, publicam ou mexem na cobrança fora do login."""
+    conta = buscar_por_id(conexao, usuario_id)
+    return conta is not None and conta.bloqueada_em is None
+
+
 def buscar_por_google_sub(conexao: sa.Connection, google_sub: str) -> Usuario | None:
     linha = conexao.execute(
         sa.select(usuarios).where(

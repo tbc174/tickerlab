@@ -20,6 +20,7 @@ from src.banco.modelo import (
     PLANOS,
     assinaturas,
     eventos_stripe,
+    identidades,
     simulacoes,
     usuarios,
 )
@@ -321,11 +322,18 @@ def bloquear_conta(
 def desbloquear_conta(
     conexao: sa.Connection, ator_id: uuid.UUID, alvo_id: uuid.UUID
 ) -> None:
-    """Tira o bloqueio: o login volta. As sessões encerradas no bloqueio não voltam."""
+    """Tira o bloqueio: o login volta. As sessões encerradas no bloqueio não voltam.
+
+    Encerra também as que sobraram abertas: com o login recusado, uma sessão aberta durante o
+    bloqueio só nasce de um login de antes dele, numa corrida, e não pode valer depois (achado
+    P0 da revisão cruzada do Codex no #659). A pessoa entra de novo.
+    """
     exigir_admin(conexao, ator_id)
     motivo = _bloqueio_atual(conexao, alvo_id)
     if motivo is None:
         raise OperacaoInvalidaError("Esta conta não está bloqueada.")
+    agora = datetime.now(UTC)
+    encerradas = sessoes.encerrar_todas(conexao, alvo_id, agora)
     conexao.execute(
         sa.update(usuarios)
         .where(usuarios.c.id == alvo_id)
@@ -336,7 +344,7 @@ def desbloquear_conta(
         ator_id,
         registro_de_auditoria.ACAO_CONTA_DESBLOQUEADA,
         alvo_id,
-        {"motivo": motivo},
+        {"motivo": motivo, "sessoes_encerradas": encerradas},
     )
 
 
@@ -355,11 +363,17 @@ def _bloqueio_atual(conexao: sa.Connection, alvo_id: uuid.UUID) -> str | None:
 
 
 def _esta_na_lista_do_servidor(conexao: sa.Connection, alvo_id: uuid.UUID) -> bool:
-    """Se o e-mail da conta está em `TICKERLAB_ADMINS` (sem diferença de maiúsculas)."""
-    email = conexao.execute(
-        sa.select(usuarios.c.email).where(usuarios.c.id == alvo_id)
-    ).scalar_one()
-    return email.strip().lower() in admins_do_servidor()
+    """Se um e-mail da conta está em `TICKERLAB_ADMINS` (sem diferença de maiúsculas): o de
+    contato ou o confirmado de qualquer forma de entrar. O de contato segue a última forma
+    usada, e a do Google com o e-mail da lista continua na conta (achado P1 da revisão cruzada
+    do Codex no #659)."""
+    contato = sa.select(usuarios.c.email).where(usuarios.c.id == alvo_id)
+    confirmados = sa.select(identidades.c.email).where(
+        identidades.c.usuario_id == alvo_id, identidades.c.email_confirmado.is_(True)
+    )
+    emails = conexao.execute(sa.union(contato, confirmados)).scalars()
+    lista = set(admins_do_servidor())
+    return any(email.strip().lower() in lista for email in emails)
 
 
 def eventos_recentes_do_stripe(

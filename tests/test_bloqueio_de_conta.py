@@ -87,6 +87,10 @@ def test_sessao_aberta_depois_do_bloqueio_nao_vale(conexao, chefe, ana):
     _bloquear(conexao, chefe, ana)
     atrasada = sessoes.abrir(conexao, ana.id, "google")
     assert sessoes.conta_da_sessao(conexao, atrasada) is None
+    # nem depois do desbloqueio: a credencial nasceu de um login de antes da contenção
+    # (achado P0 da revisão cruzada do Codex no #659)
+    adm.desbloquear_conta(conexao, chefe.id, ana.id)
+    assert sessoes.conta_da_sessao(conexao, atrasada) is None
 
 
 def test_conta_antiga_bloqueada_nao_entra_nem_ganha_a_identidade(conexao, chefe, ana):
@@ -203,6 +207,51 @@ def test_admin_da_lista_do_servidor_nao_se_bloqueia_pelo_painel(
     assert buscar_por_id(conexao, vice.id).bloqueada_em is not None
 
 
+def test_email_de_contato_de_outra_identidade_nao_tira_a_protecao_da_lista(
+    conexao, ana, monkeypatch
+):
+    """Achado P1 da revisão cruzada do Codex no #659: o e-mail de contato segue a última forma
+    de entrar; a identidade do Google com o e-mail da lista continua na conta e a protege."""
+    raiz = "raiz@exemplo.com"
+    monkeypatch.setenv("TICKERLAB_ADMINS", raiz)
+
+    def pelo(provedor, sub, email, admins=()):
+        identidade = IdentidadeDoProvedor(provedor, sub, email, True)
+        return entrar_por_identidade(conexao, identidade, emails_de_admin=admins)[0]
+
+    dono = pelo("google", "g-dono", "antigo@exemplo.com")
+    pelo("email", "antigo@exemplo.com", "antigo@exemplo.com")
+    assert pelo("google", "g-dono", raiz, admins=(raiz,)).e_admin
+    pelo("email", "antigo@exemplo.com", "antigo@exemplo.com")
+    assert buscar_por_id(conexao, dono.id).email == "antigo@exemplo.com"
+
+    conexao.execute(
+        sa.update(usuarios).where(usuarios.c.id == ana.id).values(papel="admin")
+    )
+    with pytest.raises(adm.OperacaoInvalidaError, match="servidor"):
+        adm.bloquear_conta(conexao, ana.id, dono.id, "incidente")
+    assert buscar_por_id(conexao, dono.id).bloqueada_em is None
+
+
+def test_identidade_sem_email_confirmado_nao_protege_a_conta(
+    conexao, chefe, ana, monkeypatch
+):
+    """Só e-mail confirmado conta: ninguém se protege juntando um e-mail da lista não confirmado."""
+    monkeypatch.setenv("TICKERLAB_ADMINS", f"{CHEFE},raiz@exemplo.com")
+    entrar_por_identidade(
+        conexao, IdentidadeDoProvedor("microsoft", "m-ana", "ana@exemplo.com", True)
+    )
+    conexao.execute(
+        sa.update(identidades)
+        .where(
+            identidades.c.usuario_id == ana.id, identidades.c.provedor == "microsoft"
+        )
+        .values(email="raiz@exemplo.com", email_confirmado=False)
+    )
+    _bloquear(conexao, chefe, ana)
+    assert buscar_por_id(conexao, ana.id).bloqueada_em is not None
+
+
 def test_admin_fora_da_lista_se_bloqueia_pelo_painel(conexao, chefe, ana, monkeypatch):
     """Admin promovido no painel (fora de `TICKERLAB_ADMINS`): o admin da lista o desbloqueia."""
     monkeypatch.setenv("TICKERLAB_ADMINS", CHEFE)
@@ -283,7 +332,7 @@ def test_auditoria_do_bloqueio_leva_so_ids(conexao, chefe, ana):
     assert (bloqueio.ator_id, bloqueio.alvo_id) == (chefe.id, ana.id)
     assert bloqueio.detalhes == {"motivo": "abuso", "sessoes_encerradas": 1}
     assert (desbloqueio.ator_id, desbloqueio.alvo_id) == (chefe.id, ana.id)
-    assert desbloqueio.detalhes == {"motivo": "abuso"}
+    assert desbloqueio.detalhes == {"motivo": "abuso", "sessoes_encerradas": 0}
     for registro in (bloqueio, desbloqueio):
         assert "@" not in str(registro.detalhes)
         assert "Ana" not in str(registro.detalhes)

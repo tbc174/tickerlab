@@ -16,6 +16,7 @@ from src.banco import teses as repo_teses
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import listar_simulacoes
 from telas.comum import cabecalho_da_pagina
+from telas.conta.guarda import so_com_a_conta_valendo
 from telas.research.comum import _sem_banco_agora
 
 CHAVE_DO_ATIVO = "diario_ativo"
@@ -48,6 +49,7 @@ def _guardar(usuario):
     st.toast("Anotação guardada no seu diário.")
 
 
+@so_com_a_conta_valendo
 def _apagar(usuario, tese_id):
     try:
         with obter_engine().begin() as conexao:
