@@ -131,12 +131,14 @@ FORMULAS = {
 
 # As contas que entram em cada indicador, e de onde: os 12 meses, o balanço mais recente, a conferência
 # da quantidade de ações (o último exercício da DFP), o primeiro e o último ano do crescimento ou os
-# exercícios da média; no saldo médio do `fundamentalista`, também o balanço de um ano antes. É o que
+# exercícios da média; no `fundamentalista`, também o balanço de um ano antes (o saldo médio), todos os
+# exercícios (a diluição) e o último com o de N anos antes (o crescimento do dividendo). É o que
 # `entradas` cita no rastro; mudou uma conta acima, mude aqui (o teste de `tests/test_rastro.py` refaz
 # cada número só com as entradas).
 DOZE_MESES, BALANCO, CONFERENCIA, CRESCIMENTO, MEDIA_DOS_ANOS, UM_ANO_ANTES = (
     "doze_meses", "balanco", "conferencia", "crescimento", "media_dos_anos", "um_ano_antes",
 )  # fmt: skip
+TODOS_OS_ANOS, COMECO_E_FIM = "todos_os_anos", "comeco_e_fim"
 LUCRO = "lucro"  # o dos controladores; sem a divisão, o consolidado (como em `_lucro`)
 
 
@@ -146,10 +148,10 @@ def _em(onde: str, *contas: str) -> tuple[tuple[str, str], ...]:
 
 _DIVIDA_E_CAIXA = ("divida_cp", "divida_lp", "caixa", "aplicacoes")
 _PL_SEM_MINORITARIOS = ("patrimonio_liquido", "minoritarios")
-_DAS_ACOES = _em(BALANCO, "acoes_total", "acoes_tesouraria") + _em(
+DAS_ACOES = _em(BALANCO, "acoes_total", "acoes_tesouraria") + _em(
     CONFERENCIA, LUCRO, "lpa_basico", "acoes_total"
 )
-_DA_FIRMA = _em(BALANCO, *_DIVIDA_E_CAIXA) + _DAS_ACOES
+_DA_FIRMA = _em(BALANCO, *_DIVIDA_E_CAIXA) + DAS_ACOES
 _EBITDA = _em(DOZE_MESES, "ebit", "depreciacao")
 CONTAS_DOS_INDICADORES: dict[str, tuple[tuple[str, str], ...]] = {
     "receita": _em(DOZE_MESES, "receita"),
@@ -167,21 +169,21 @@ CONTAS_DOS_INDICADORES: dict[str, tuple[tuple[str, str], ...]] = {
     "conversao_de_caixa": _em(DOZE_MESES, "fco", "lucro_liquido"),
     "crescimento_receita": _em(CRESCIMENTO, "receita"),
     "crescimento_lucro": _em(CRESCIMENTO, LUCRO),
-    "lpa": _em(DOZE_MESES, LUCRO) + _DAS_ACOES,
-    "vpa": _em(BALANCO, *_PL_SEM_MINORITARIOS) + _DAS_ACOES,
-    "p_l": _em(DOZE_MESES, LUCRO) + _DAS_ACOES,
-    "p_vp": _em(BALANCO, *_PL_SEM_MINORITARIOS) + _DAS_ACOES,
-    "valor_de_mercado": _DAS_ACOES,
-    "dividend_yield": _em(DOZE_MESES, "dividendos_pagos") + _DAS_ACOES,
+    "lpa": _em(DOZE_MESES, LUCRO) + DAS_ACOES,
+    "vpa": _em(BALANCO, *_PL_SEM_MINORITARIOS) + DAS_ACOES,
+    "p_l": _em(DOZE_MESES, LUCRO) + DAS_ACOES,
+    "p_vp": _em(BALANCO, *_PL_SEM_MINORITARIOS) + DAS_ACOES,
+    "valor_de_mercado": DAS_ACOES,
+    "dividend_yield": _em(DOZE_MESES, "dividendos_pagos") + DAS_ACOES,
     "valor_da_firma": _DA_FIRMA,
     "ev_ebitda": _EBITDA + _DA_FIRMA,
     "ev_ebit": _em(DOZE_MESES, "ebit") + _DA_FIRMA,
-    "p_receita": _em(DOZE_MESES, "receita") + _DAS_ACOES,
-    "p_ebitda": _EBITDA + _DAS_ACOES,
-    "p_ebit": _em(DOZE_MESES, "ebit") + _DAS_ACOES,
-    "p_fcf": _em(DOZE_MESES, "fco", "capex") + _DAS_ACOES,
-    "p_ativo": _em(BALANCO, "ativo_total") + _DAS_ACOES,
-    "dividend_yield_medio": _em(MEDIA_DOS_ANOS, "dividendos_pagos") + _DAS_ACOES,
+    "p_receita": _em(DOZE_MESES, "receita") + DAS_ACOES,
+    "p_ebitda": _EBITDA + DAS_ACOES,
+    "p_ebit": _em(DOZE_MESES, "ebit") + DAS_ACOES,
+    "p_fcf": _em(DOZE_MESES, "fco", "capex") + DAS_ACOES,
+    "p_ativo": _em(BALANCO, "ativo_total") + DAS_ACOES,
+    "dividend_yield_medio": _em(MEDIA_DOS_ANOS, "dividendos_pagos") + DAS_ACOES,
 }
 
 
@@ -513,6 +515,25 @@ def _na_media(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
     ]
 
 
+def _em_todos_os_anos(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """A conta em cada exercício da DFP: a diluição e os fatores das ações leem a série inteira."""
+    return [
+        linha for ano in lugares.tabela.index for linha in _da_dfp(lugares, ano, conta)
+    ]
+
+
+def _no_comeco_e_no_fim(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O último exercício e o de `anos` antes, sem tirar os vazios (`_crescimento_do_dividendo`)."""
+    indice = lugares.tabela.index
+    if indice.empty or (indice.max() - anos) not in indice:
+        return []
+    ultimo = indice.max()
+    return [
+        *_da_dfp(lugares, ultimo - anos, conta),
+        *_da_dfp(lugares, ultimo, conta),
+    ]
+
+
 _ONDE = {
     DOZE_MESES: _nos_doze_meses,
     BALANCO: _no_balanco,
@@ -520,6 +541,8 @@ _ONDE = {
     CRESCIMENTO: _no_crescimento,
     MEDIA_DOS_ANOS: _na_media,
     UM_ANO_ANTES: _no_ano_antes,
+    TODOS_OS_ANOS: _em_todos_os_anos,
+    COMECO_E_FIM: _no_comeco_e_no_fim,
 }
 
 

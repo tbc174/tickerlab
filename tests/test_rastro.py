@@ -298,13 +298,22 @@ def test_as_entradas_refazem_cada_indicador_dos_fundamentos(com_o_itr, monkeypat
         assert refeito[chave].valor == pytest.approx(item.valor, rel=1e-12), chave
 
 
+# os dividendos e as ações em circulação saem de `dividendos_e_diluicao` e `acoes_por_especie`
+_FORA_DE_CALCULAR = (
+    *fundamentalista.DOS_DIVIDENDOS,
+    *fundamentalista.DA_COMPOSICAO_DO_CAPITAL,
+)
+
+
 @pytest.mark.parametrize("com_o_itr", [False, True], ids=["so_a_dfp", "com_o_itr"])
 def test_as_entradas_refazem_cada_indicador_do_fundamentalista(com_o_itr, monkeypatch):
     dados = _ler_a_weg(com_o_itr)
     numeros = {
         chave: item
         for chave, item in _numeros(re_.montar(_entradas(dados))).items()
-        if chave in fundamentalista.CONTAS_DOS_INDICADORES and item.valor is not None
+        if chave in fundamentalista.CONTAS_DOS_INDICADORES
+        and chave not in _FORA_DE_CALCULAR
+        and item.valor is not None
     }
     assert len(numeros) > 15
     monkeypatch.setattr(fundamentalista, "e_financeira", lambda *_: False)
@@ -329,6 +338,94 @@ def test_o_saldo_medio_sem_o_ano_antes_cita_so_o_fim():
         (e.documento, e.referencia) for e in pmr if e.conta == "contas_a_receber"
     ]
     assert receber == [("ITR", date(2026, 6, 30))]
+
+
+def _dos_dividendos_e_do_capital(dados: DadosDaEmpresa) -> dict[str, float | None]:
+    d = fundamentalista.dividendos_e_diluicao(dados)
+    return {
+        **{
+            chave: i.valor
+            for chave, i in fundamentalista.indicadores_dos_dividendos(d).items()
+        },
+        "anos_pagando": float(d.anos_pagando),
+        "diluicao": d.diluicao_anual,
+        "acoes_em_circulacao": fundamentalista.acoes_por_especie(dados).total.valor,
+    }
+
+
+def _seis_anos_de_dividendos() -> DadosDaEmpresa:
+    """Seis DFPs com dividendos pagos, lucro e ações que crescem 1% ao ano (sem desdobramento)."""
+    linhas = []
+    for ano in range(2020, 2026):
+        valores = {
+            "dividendos_pagos": -10.0 * (ano - 2019),
+            "lucro_controladores": 40.0 * (ano - 2019),
+            "lpa_basico": 40.0 * (ano - 2019) / (1_000.0 * 1.01 ** (ano - 2020)),
+            "acoes_total": 1_000.0 * 1.01 ** (ano - 2020) + 5.0,
+            "acoes_tesouraria": 5.0,
+        }
+        for conta, valor in valores.items():
+            periodo = dm.POSICAO if conta.startswith("acoes") else dm.EXERCICIO
+            linhas.append({"documento": "DFP", "referencia": date(ano, 12, 31), "versao": 1,
+                           "periodo": periodo, "inicio": None, "fim": date(ano, 12, 31),
+                           "conta": conta, "valor": valor})  # fmt: skip
+    documentos = pd.DataFrame(
+        [{"empresa": "X", "documento": "DFP", "referencia": date(ano, 12, 31), "versao": 1,
+          "recebido_em": date(ano + 1, 3, 1), "link": ""} for ano in range(2020, 2026)]
+    )  # fmt: skip
+    return DadosDaEmpresa(
+        contas=pd.DataFrame(linhas), documentos=documentos, setor="Comércio"
+    )
+
+
+@pytest.mark.parametrize("empresa", ["weg", "seis_anos"])
+def test_as_entradas_refazem_os_dividendos_e_as_acoes(empresa):
+    dados = _ler_a_weg() if empresa == "weg" else _seis_anos_de_dividendos()
+    todas = fundamentalista.todas_as_entradas(dados)
+    valores = {
+        chave: valor
+        for chave, valor in _dos_dividendos_e_do_capital(dados).items()
+        if valor is not None
+    }
+    assert {"anos_pagando", "diluicao", "payout", "acoes_em_circulacao"} <= set(valores)
+    if empresa == "seis_anos":
+        assert "crescimento_do_dividendo" in valores
+    for chave, valor in valores.items():
+        assert todas[chave], chave
+        refeito = _dos_dividendos_e_do_capital(
+            _com_um_exercicio(_so_as_entradas(dados, todas[chave]))
+        )
+        assert refeito[chave] == pytest.approx(valor, rel=1e-12), chave
+
+
+def _com_um_exercicio(dados: DadosDaEmpresa) -> DadosDaEmpresa:
+    """A diluição só lê saldos de ações, mas `anuais` só monta a tabela de uma DFP que tem algum
+    exercício (sem DRE, não há ano): uma linha de exercício de uma conta que nenhum número lê."""
+    if (dados.contas["periodo"] == dm.EXERCICIO).any():
+        return dados
+    ultima = dados.contas["referencia"].max()
+    linha = {"documento": "DFP", "referencia": ultima, "versao": 1, "periodo": dm.EXERCICIO,
+             "inicio": None, "fim": ultima, "conta": "conta_que_nenhum_numero_le", "valor": 1.0}  # fmt: skip
+    return replace(dados, contas=pd.concat([dados.contas, pd.DataFrame([linha])]))
+
+
+def test_o_crescimento_do_dividendo_cita_o_ultimo_ano_e_o_de_cinco_antes():
+    pagos = [
+        e.referencia.year
+        for e in fundamentalista.todas_as_entradas(_seis_anos_de_dividendos())[
+            "crescimento_do_dividendo"
+        ]
+        if e.conta == "dividendos_pagos"
+    ]
+    assert pagos == [2020, 2025]
+
+
+def test_os_dividendos_e_as_acoes_do_relatorio_tem_entradas(dados_da_weg):
+    numeros = _numeros(re_.montar(_entradas(dados_da_weg)))
+    for chave in ("anos_pagando", "diluicao", "payout", "acoes_em_circulacao"):
+        rastro = numeros[chave].rastro
+        assert rastro is not None and rastro.entradas, chave
+    assert numeros["crescimento_do_dividendo"].rastro.entradas == ()  # type: ignore[union-attr]
 
 
 def test_os_12_meses_com_o_itr_somam_a_dfp_e_o_acumulado_e_tiram_o_do_ano_antes():
@@ -427,12 +524,7 @@ def test_toda_conta_das_entradas_tem_codigo_e_nome_da_cvm():
     usadas = (usadas - {fundamentos.LUCRO}) | {"lucro_controladores", "lucro_liquido"}
     assert usadas <= set(dm.CONTAS_DA_CVM)
     assert set(fundamentos.CONTAS_DOS_INDICADORES) == set(fundamentos.FORMULAS)
-    assert (
-        set(fundamentalista.CONTAS_DOS_INDICADORES)
-        == set(fundamentalista.FORMULAS)
-        - set(fundamentalista.DOS_DIVIDENDOS)
-        - set(fundamentalista.DA_COMPOSICAO_DO_CAPITAL)
-    )  # os dividendos e as ações por espécie têm o FRE e os proventos: ficam para o PR 3
+    assert set(fundamentalista.CONTAS_DOS_INDICADORES) == set(fundamentalista.FORMULAS)
     assert all(codigo and nome for codigo, nome in dm.CONTAS_DA_CVM.values())
 
 

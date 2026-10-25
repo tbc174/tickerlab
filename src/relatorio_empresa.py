@@ -697,27 +697,46 @@ def _calcular(e: Entradas) -> _Calculos:
         and (nota := notas.nota_por_faixa(chave, indicadores[chave].valor)) is not None
     ]
     balancos = _balancos(e.dados.contas)
+    dividendos = fundamentalista.dividendos_e_diluicao(
+        e.dados, e.proventos, e.eventos_de_capital
+    )
+    valores = {chave: i.valor for chave, i in indicadores.items()}
     return _Calculos(
         indicadores,
         {n.indicador: n for n in [*lista, *por_faixa]},
         notas_classicas.calcular(e.dados),
         extra.historico,
-        fundamentalista.dividendos_e_diluicao(
-            e.dados, e.proventos, e.eventos_de_capital
-        ),
+        dividendos,
         grupo,
         balancos,
         _indicadores_de_antes(e, balancos),
         documentos_usados(tela.documentos),
         _dfps_por_ano(e.dados.documentos),
         _fechamento(e),
-        _entradas_com_valor(e.dados, indicadores),
+        _entradas_com_valor(
+            e.dados, {**valores, **_valores_dos_dividendos(dividendos, e.dados)}
+        ),
         {d.nome: d for d in documentos_usados(e.dados.documentos)},
     )
 
 
+def _valores_dos_dividendos(
+    d: fundamentalista.DividendosEDiluicao, dados: DadosDaEmpresa
+) -> dict[str, float | None]:
+    """Os números dos dividendos e das ações em circulação, que não saem de `calcular`."""
+    return {
+        **{
+            chave: i.valor
+            for chave, i in fundamentalista.indicadores_dos_dividendos(d).items()
+        },
+        "anos_pagando": float(d.anos_pagando),
+        "diluicao": d.diluicao_anual,
+        "acoes_em_circulacao": fundamentalista.acoes_por_especie(dados).total.valor,
+    }
+
+
 def _entradas_com_valor(
-    dados: DadosDaEmpresa, indicadores: dict[str, fundamentos.Indicador]
+    dados: DadosDaEmpresa, valores: dict[str, float | None]
 ) -> dict[str, tuple[Entrada, ...]]:
     """As entradas dos números calculados: o indisponível não cita conta (não houve conta)."""
     todas = {
@@ -726,8 +745,8 @@ def _entradas_com_valor(
     }
     return {
         chave: todas[chave]
-        for chave, item in indicadores.items()
-        if item.valor is not None and chave in todas
+        for chave, valor in valores.items()
+        if valor is not None and chave in todas
     }
 
 
@@ -1041,8 +1060,11 @@ def _dividendos(c: _Calculos) -> Secao:
     itens = [_item_com_o_preco(indicador, c) for indicador in dos_dy]
 
     def rastro(chave: str) -> Rastro:
+        documentos, entradas = _dfps(c, anos), c.entradas.get(chave, ())
         return Rastro.dos_documentos(fundamentalista.FORMULAS[chave], CALCULO_DO_FUNDAMENTALISTA,
-                                     FONTE_DA_CVM, _dfps(c, anos))  # fmt: skip
+                                     FONTE_DA_CVM,
+                                     (*documentos, *_os_que_faltam_citar(documentos, entradas, c)),
+                                     entradas=entradas)  # fmt: skip
 
     itens += [
         Item("anos_pagando", "Anos pagando dividendos", str(d.anos_pagando), float(d.anos_pagando),
