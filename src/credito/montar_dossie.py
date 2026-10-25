@@ -27,6 +27,7 @@ import pandas as pd
 
 from base import receita_codigos
 from base.cnpj import SEPARADORES, formatar
+from base.pessoas.sem_cpf import tirar_cpf
 from base.porta import Porta, vista_do_cnpj
 from base.porta.rede import Rede, views
 from base.rede.ids import PREFIXO_DE_PESSOA
@@ -382,7 +383,7 @@ def _razao_social(parte: _Parte, centro: pd.Series) -> None:
     documento = DocumentoUsado(f"cadastro da rede societária ({fonte})", publico_em)
     rastro = Rastro.dos_documentos("lido como publicado", VERSAO, fonte, [documento])
     parte.identificacao.append(
-        dc.Fato("razao_social", str(centro["nome"]), rastro, publico_em)
+        dc.Fato("razao_social", tirar_cpf(str(centro["nome"])), rastro, publico_em)
     )  # type: ignore[arg-type]
 
 
@@ -419,7 +420,7 @@ def _ler_ligacao(
             outra_parte=dc.ParteJuridica(
                 outra,
                 str(entidade["tipo"]),
-                _texto(entidade.get("nome")),
+                tirar_cpf(_texto(entidade.get("nome"))),
                 _identificador(rede, outra, "cnpj"),
             ),
             grau=_grau(ligacao),

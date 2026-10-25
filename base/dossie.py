@@ -42,6 +42,7 @@ from base.bcb_ifdata import DIAS_ATE_FICAR_PUBLICO, MESES_DA_DATA_BASE
 from base.cnpj import formatar, raiz
 from base.contrapartes.cafe import ENDERECO_DO_CNPJ, VEICULO_DO_CNPJ
 from base.dicionario import TABELAS
+from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 from base.rede.ligacoes_das_fontes import (
     AUDITA,
     COLIGADA_DE,
@@ -806,6 +807,7 @@ def _controladas_do_ultimo_fre(
         return ultimas, None
     tabela = (
         ultimas[["razao_social", "tipo", "participacao"]]
+        .assign(razao_social=lambda t: tirar_cpf_da_coluna(t["razao_social"]))
         .assign(controlada=_e_controlada(ultimas))
         .sort_values("participacao", ascending=False)
     )

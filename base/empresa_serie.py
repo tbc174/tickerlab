@@ -48,6 +48,7 @@ from base.parquet import (
     gravar_se_mudou,
     origem_de_tabela,
 )
+from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.versao_do_codigo import versao_do_codigo
@@ -325,7 +326,7 @@ def ligacoes_de_produto(
             "chave": produtos["chave"],
             "nome": produtos["nome_na_fonte"],
             "cnpj_companhia": produtos["cnpj"].map(cnpj14),
-            "companhia": produtos["razao_social"],
+            "companhia": tirar_cpf_da_coluna(produtos["razao_social"]),
             "via": PRODUTO,
             "por": PELA_TABELA,
             "participacao": float("nan"),
@@ -346,7 +347,7 @@ def _donos(controladas: pd.DataFrame) -> pd.DataFrame:
     propria["cnpj"] = propria["cnpj_companhia"]
     propria["nome"] = propria["companhia"]
     ligadas = controladas.assign(
-        nome=controladas["razao_social"],
+        nome=tirar_cpf_da_coluna(controladas["razao_social"]),
         via=controladas["tipo"].where(
             controladas["tipo"].isin(["controlada", "coligada"]), "sem_tipo"
         ),

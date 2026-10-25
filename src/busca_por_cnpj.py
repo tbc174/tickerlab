@@ -17,6 +17,7 @@ import sqlalchemy as sa
 
 from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
+from base.pessoas.sem_cpf import tirar_cpf
 from src import cadastro_da_receita, dossie
 from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
@@ -236,7 +237,11 @@ def secao_cadastro(conexao: sa.Connection, cnpj: str) -> Secao | None:
     itens = [
         _item_do_cadastro("cnpj", "CNPJ", formatado, base, FONTE_DO_CADASTRO),
         _item_do_cadastro(
-            "razao_social", "Razão social", emissor[0].empresa, base, FONTE_DO_CADASTRO
+            "razao_social",
+            "Razão social",
+            tirar_cpf(emissor[0].empresa),
+            base,
+            FONTE_DO_CADASTRO,
         ),
         *_itens_do_registro(registro, base),
     ]
