@@ -16,7 +16,9 @@ def _cpf_valido(base: str) -> str:
     """Completa 9 dígitos com os dois verificadores."""
     digitos = [int(d) for d in base]
     for peso_inicial in (10, 11):
-        soma = sum(d * p for d, p in zip(digitos, range(peso_inicial, 1, -1), strict=False))
+        soma = sum(
+            d * p for d, p in zip(digitos, range(peso_inicial, 1, -1), strict=False)
+        )
         resto = soma * 10 % 11
         digitos.append(0 if resto == 10 else resto)
     return "".join(map(str, digitos))
