@@ -3778,6 +3778,52 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    "cnpj_situacao_cadastral": Tabela(
+        descricao=(
+            "Situação cadastral de cada estabelecimento do CNPJ (nula, ativa, suspensa, inapta ou "
+            'baixada), um retrato por mês guardado: o histórico "como era na data" nasce da '
+            "sequência dos retratos. Só o CNPJ e os códigos da Receita entram; nome fantasia, razão "
+            "social, endereço e contatos nunca entram (ADR 0106)."
+        ),
+        fonte="Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos",
+        familia_da_fonte="rfb-cnpj",
+        frequencia="Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
+        atraso=(
+            "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde "
+            "`disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). "
+            "`data_situacao_cadastral` é a data que a Receita informa, que pode ser anterior ao "
+            "retrato em que a linha apareceu pela primeira vez"
+        ),
+        onde="Parquet em `<acervo>/base/cnpj_situacao_cadastral/<AAAA-MM>.parquet` (servidor de casa)",
+        linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "cnpj_basico": ("Raiz do CNPJ (8 dígitos): a empresa", TEXTO),
+            "matriz": ("Verdadeiro na matriz, falso na filial", SIM_OU_NAO),
+            "situacao_cadastral": (
+                "Código da situação cadastral: 01 nula, 02 ativa, 03 suspensa, 04 inapta, 08 baixada",
+                TEXTO,
+            ),
+            "data_situacao_cadastral": ("Data da situação cadastral informada", DATA),
+            "motivo_situacao": (
+                "Código do motivo da situação cadastral, como a Receita publica (tabela de motivos)",
+                TEXTO,
+            ),
+            "mes_do_retrato": (
+                "Mês do arquivo da Receita de onde a linha veio",
+                "AAAA-MM",
+            ),
+            "disponivel_em": (
+                (
+                    "Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em "
+                    "que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo "
+                    "baixado depois)"
+                ),
+                DATA,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     **_tabelas_do_cnpj(),
     "pgfn_divida": Tabela(
         descricao=(
@@ -5905,6 +5951,7 @@ _CONTRATO = {
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro; 3.0.0 (17/10/2026): uma linha por versão da entrega
     "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): público desde `disponivel_em`, não do mês do arquivo
+    "cnpj_situacao_cadastral": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_cadastral", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj",), datas={"aconteceu_em": "data_situacao_cadastral"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
