@@ -388,6 +388,65 @@ COLUNAS_DAS_ACOES = (
     ("acoes_preferenciais_tesouraria", "QT_ACAO_PREF_TESOURO"),
 )
 
+_NOMES_DAS_ACOES = {
+    "acoes_total": "ações do capital integralizado",
+    "acoes_tesouraria": "ações em tesouraria",
+    "acoes_ordinarias": "ações ordinárias do capital integralizado",
+    "acoes_preferenciais": "ações preferenciais do capital integralizado",
+    "acoes_ordinarias_tesouraria": "ações ordinárias em tesouraria",
+    "acoes_preferenciais_tesouraria": "ações preferenciais em tesouraria",
+}
+# Conta do TickerLab → (código, nome) na CVM, para o rastro dos números (`src/rastro.py`). O código
+# segue a escolha de `_contas_da_dre`, `_contas_do_balanco` e `_contas_do_fluxo`: onde ele muda com o
+# plano de contas (empresa, banco, seguradora), vão as opções; "xx" é a soma das linhas de um grupo
+# (medido nas DFPs de 2024 a 2026 e nos ITRs de 2024 e 2025). As ações vêm da composição do capital,
+# pela coluna do arquivo.
+CONTAS_DA_CVM: dict[str, tuple[str, str]] = {
+    "receita": ("3.01", "Receita de Venda de Bens e/ou Serviços"),
+    "custo": ("3.02", "Custo dos Bens e/ou Serviços Vendidos"),
+    "resultado_bruto": ("3.03", "Resultado Bruto"),
+    "despesas_com_vendas": ("3.04.01", "Despesas com Vendas"),
+    "despesas_administrativas": ("3.04.02", "Despesas Gerais e Administrativas"),
+    "ebit": ("3.05 ou 3.07", "Resultado Antes do Resultado Financeiro e dos Tributos"),
+    "despesas_financeiras": ("3.06.02", "Despesas Financeiras"),
+    "lucro_liquido": ("3.09, 3.11 ou 3.13", "Lucro/Prejuízo Consolidado do Período"),
+    "lucro_controladores": (
+        "3.09.01, 3.11.01 ou 3.13.01",
+        "Atribuído a Sócios da Empresa Controladora",
+    ),
+    "lpa_basico": ("3.99.01.xx", "Lucro Básico por Ação (a 1ª classe com valor)"),
+    "ativo_total": ("1", "Ativo Total"),
+    "ativo_circulante": ("1.01", "Ativo Circulante"),
+    "caixa": ("1.01.01 ou 1.01", "Caixa e Equivalentes de Caixa"),
+    "aplicacoes": ("1.01.02", "Aplicações Financeiras"),
+    "contas_a_receber": ("1.01.03", "Contas a Receber"),
+    "estoques": ("1.01.04", "Estoques"),
+    "imobilizado": ("1.02.03 ou 1.06", "Imobilizado"),
+    "intangivel": ("1.02.04 ou 1.07", "Intangível"),
+    "passivo_circulante": ("2.01", "Passivo Circulante"),
+    "fornecedores": ("2.01.02", "Fornecedores"),
+    "divida_cp": ("2.01.04", "Empréstimos e Financiamentos (circulante)"),
+    "divida_lp": ("2.02.01", "Empréstimos e Financiamentos (não circulante)"),
+    "patrimonio_liquido": (
+        "2.03, 2.05, 2.07 ou 2.08",
+        "Patrimônio Líquido Consolidado",
+    ),
+    "reservas_de_lucro": ("2.03.04", "Reservas de Lucros"),
+    "lucros_acumulados": ("2.03.05", "Lucros/Prejuízos Acumulados"),
+    "minoritarios": (
+        "2.03.09 ou 2.08.09",
+        "Participação dos Acionistas Não Controladores",
+    ),
+    "fco": ("6.01", "Caixa Líquido das Atividades Operacionais"),
+    "depreciacao": ("6.01.01.xx", "Depreciação e amortização (soma das linhas)"),
+    "capex": ("6.02.xx", "Compras de imobilizado e intangível (soma das linhas)"),
+    "dividendos_pagos": ("6.03.xx", "Dividendos e JCP pagos (soma das linhas)"),
+    **{
+        conta: (coluna, f"Composição do capital: {_NOMES_DAS_ACOES[conta]}")
+        for conta, coluna in COLUNAS_DAS_ACOES
+    },
+}
+
 
 def _acoes(capital: pd.DataFrame, documento: str) -> pd.DataFrame:
     """Ações do capital e em tesouraria, no total (lucro e patrimônio por ação) e por espécie

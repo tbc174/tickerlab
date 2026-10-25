@@ -754,6 +754,23 @@ class LinhaDoRastroV1(BaseModel):
     url: str  # o documento original ("" quando não há link)
 
 
+class EntradaDoNumeroV1(BaseModel):
+    """Uma conta da demonstração que entra no número (`src/rastro.py`, `Entrada`): só com as
+    entradas, quem confere refaz a conta."""
+
+    conta: str  # o nome no TickerLab ("receita")
+    codigo: (
+        str  # o código na CVM ("3.01"; com "xx" quando é a soma das linhas de um grupo)
+    )
+    nome: str  # o nome da conta na CVM
+    valor: float  # em reais (ações em unidades)
+    periodo: str  # "exercicio", "posicao", "acumulado" ou "acumulado_anterior"
+    documento: str  # "DFP" ou "ITR"
+    referencia: date  # a data da demonstração
+    versao: int
+    publicado_em: date | None  # quando a CVM recebeu o documento
+
+
 class RastroDoNumeroV1(BaseModel):
     """Como o número foi calculado e de onde veio (`src/rastro.py`): a conta, a versão dela, a
     fonte (o id da coleta, com a licença) e quando o insumo mais novo ficou público."""
@@ -764,6 +781,7 @@ class RastroDoNumeroV1(BaseModel):
     publicado_em: date | None
     documentos: list[DocumentoUsadoV1]
     outras_fontes: list[str]  # ["yahoo"] nos números que usam o preço
+    entradas: list[EntradaDoNumeroV1] = []  # vazia no número indisponível
     linhas: list[
         LinhaDoRastroV1
     ] = []  # o "como foi calculado" já escrito, como na página
