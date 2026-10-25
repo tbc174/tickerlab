@@ -3,6 +3,7 @@
     python -m scripts.montar_base_historica                       (todas as tabelas)
     python -m scripts.montar_base_historica eventos negociacoes   (só estas)
     python -m scripts.montar_base_historica cnpj_situacao_especial (retratos do CNPJ, B2)
+    python -m scripts.montar_base_historica cnpj_situacao_cadastral (situação cadastral mês a mês, B-30c)
     python -m scripts.montar_base_historica auditores trocas_de_auditor (B3; as trocas leem os auditores)
     python -m scripts.montar_base_historica pareceres_dfp pareceres_itr (T2; parecer do auditor dos CSVs do DFP e do ITR)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
@@ -22,7 +23,15 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import auditores, curva, empresa_serie, enet_notas, historico, rotulos
+from base import (
+    auditores,
+    curva,
+    empresa_serie,
+    enet_notas,
+    historico,
+    rotulos,
+    situacao_cadastral,
+)
 from base.modelos.atraso import rotulo as rotulo_de_atraso
 from src import acervo
 from src.banco.conexao import obter_engine
@@ -32,6 +41,8 @@ log = logging.getLogger("montar_base_historica")
 
 # retratos mensais da "situação especial" do CNPJ (B2, parte 2): não são arquivos anuais
 CNPJ = "cnpj_situacao_especial"
+# situação cadastral do CNPJ mês a mês (B-30c): os mesmos retratos, outra tabela
+CNPJ_CADASTRAL = situacao_cadastral.TABELA
 # trocas de auditor (B3): saem de todos os anos de `auditores`, por isso vêm depois deles
 TROCAS = "trocas_de_auditor"
 # curva de juros própria (B12): sai do CSV do Tesouro Direto, não dos arquivos anuais da CVM
@@ -42,7 +53,16 @@ EMPRESA_SERIE = empresa_serie.TABELA
 ATRASO = rotulo_de_atraso.TABELA
 # texto das notas da DFP (linha 135): vem do ENET (`scripts/carga_enet_notas.py`), não dos arquivos anuais
 NOTAS = enet_notas.TABELA
-TODAS = [*historico.TABELAS, CNPJ, TROCAS, CURVA, EMPRESA_SERIE, ATRASO, NOTAS]
+TODAS = [
+    *historico.TABELAS,
+    CNPJ,
+    CNPJ_CADASTRAL,
+    TROCAS,
+    CURVA,
+    EMPRESA_SERIE,
+    ATRASO,
+    NOTAS,
+]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,6 +87,12 @@ def main(argv: list[str] | None = None) -> int:
             if nome == CNPJ:
                 meses = rotulos.montar_situacao_especial(conexao, pasta, agora)
                 log.info("%s: %s", CNPJ, meses or "nenhum mês do CNPJ guardado")
+                continue
+            if nome == CNPJ_CADASTRAL:
+                meses = situacao_cadastral.montar(conexao, pasta, agora)
+                log.info(
+                    "%s: %s", CNPJ_CADASTRAL, meses or "nenhum mês do CNPJ guardado"
+                )
                 continue
             if nome == EMPRESA_SERIE:
                 ligadas = empresa_serie.montar(conexao, pasta, agora)

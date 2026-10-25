@@ -23,7 +23,7 @@
       "orgao": "Receita Federal",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 7
+      "tabelas": 8
     },
     {
       "historico_desde": "2010-01-01",
@@ -284,7 +284,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 8
+      "tabelas": 9
     },
     {
       "chave": "macro",
@@ -4088,6 +4088,16 @@
       "tabela": "cnpj_situacao_especial"
     },
     {
+      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
+      "frase": "Situação cadastral de cada estabelecimento do CNPJ (nula, ativa, suspensa, inapta ou baixada), um retrato por mês guardado: o histórico \"como era na data\" nasce da sequência dos retratos.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_situacao_cadastral"
+    },
+    {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
       "frase": "Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação cadastral, datas, atividade (CNAE), endereço e situação especial.",
       "frequencia": "Mensal",
@@ -4492,6 +4502,6 @@
     "fontes": 24,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 99
+    "tabelas": 100
   }
 }
