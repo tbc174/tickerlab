@@ -33,7 +33,7 @@ from src.demonstracoes import (
     e_financeira,
 )
 
-VERSAO_DOS_FUNDAMENTOS = "2"  # sobe quando uma fórmula abaixo mudar
+VERSAO_DOS_FUNDAMENTOS = "3"  # sobe quando uma fórmula abaixo mudar
 ALIQUOTA_DE_IR_CS = 0.34  # hipótese do ROIC (alíquota nominal de IR + CSLL no Brasil)
 ALIQUOTA_DOS_EUA = (
     0.21  # imposto federal sobre o lucro das empresas nos EUA (sem os estaduais)
@@ -60,11 +60,16 @@ DA_FIRMA = (
     ("ev_ebitda", "Valor da firma / EBITDA (12 meses)", VEZES),
     ("ev_ebit", "Valor da firma / EBIT (12 meses)", VEZES),
     ("p_receita", "Preço / receita (12 meses)", VEZES),
+    ("p_ebitda", "Preço / EBITDA (12 meses)", VEZES),
+    ("p_ebit", "Preço / EBIT (12 meses)", VEZES),
+    ("p_fcf", "Preço / caixa livre (12 meses)", VEZES),
 )
 # os que pedem o preço do ativo, além de P/L e P/VP (D3 mudada em 20/10/2026)
 DE_MERCADO = (
     "valor_de_mercado",
     "dividend_yield",
+    "dividend_yield_medio",
+    "p_ativo",
     *(chave for chave, _, _ in DA_FIRMA),
 )
 ANOS_DO_CRESCIMENTO = 5  # o horizonte padrão do crescimento composto
@@ -112,6 +117,14 @@ FORMULAS = {
     "ev_ebitda": "valor da firma ÷ (EBIT + depreciação e amortização) (12 meses)",
     "ev_ebit": "valor da firma ÷ EBIT (12 meses)",
     "p_receita": "valor de mercado ÷ receita (12 meses)",
+    "p_ebitda": "valor de mercado ÷ (EBIT + depreciação e amortização) (12 meses)",
+    "p_ebit": "valor de mercado ÷ EBIT (12 meses)",
+    "p_fcf": "valor de mercado ÷ (caixa operacional − capex) (12 meses, fluxo de caixa)",
+    "p_ativo": "valor de mercado ÷ ativo total (balanço mais recente)",
+    "dividend_yield_medio": (
+        f"média dos dividendos e JCP pagos em caixa nos {ANOS_DO_CRESCIMENTO} últimos exercícios "
+        "(DFP, fluxo de caixa) ÷ valor de mercado de hoje"
+    ),
 }
 
 
@@ -553,11 +566,16 @@ def _de_mercado(
     firma = None if mercado is None or liquida is None else mercado + liquida
     ebit, depreciacao = ttm.get("ebit"), ttm.get("depreciacao")
     ebitda = None if ebit is None or depreciacao is None else ebit + depreciacao
+    fco, capex = ttm.get("fco"), ttm.get("capex")
+    livre = None if fco is None or capex is None else fco - abs(capex)
     contas = (
         ("valor_da_firma", firma, ""),
         ("ev_ebitda", *_razao_positiva(firma, ebitda, "EBITDA negativo ou zero.")),
         ("ev_ebit", *_razao_positiva(firma, ebit, "EBIT negativo ou zero.")),
         ("p_receita", *_razao_positiva(mercado, ttm.get("receita"), SEM_RECEITA)),
+        ("p_ebitda", *_razao_positiva(mercado, ebitda, "EBITDA negativo ou zero.")),
+        ("p_ebit", *_razao_positiva(mercado, ebit, "EBIT negativo ou zero.")),
+        ("p_fcf", *_razao_positiva(mercado, livre, "Caixa livre negativo ou zero.")),
     )
     for (chave, nome, unidade), (_, valor, sem_conta) in zip(
         DA_FIRMA, contas, strict=True
@@ -566,6 +584,49 @@ def _de_mercado(
             base_balanco if chave == "valor_da_firma" else f"{base_12m}; {base_balanco}"
         )
         lista.add(chave, nome, valor, unidade, base, motivo or sem_conta)
+
+
+def _pagos_em_media(tabela: pd.DataFrame, anos: int) -> tuple[float | None, str, str]:
+    """(média dos dividendos e JCP pagos nos `anos` últimos exercícios, base, motivo). Só a DFP:
+    um exercício entra depois de publicado, então cortar o futuro não muda a média do passado."""
+    if tabela.empty or "dividendos_pagos" not in tabela:
+        return None, "", SEM_DIVIDENDOS_NO_CAIXA
+    if len(tabela) < anos:
+        return None, "", (
+            f"Só há {len(tabela)} exercícios de demonstrações guardados; a média pede {anos}."
+        )  # fmt: skip
+    ultimos = tabela["dividendos_pagos"].iloc[-anos:]
+    primeiro, ultimo = ultimos.index[0], ultimos.index[-1]
+    base = f"DFP de {primeiro}" if anos == 1 else f"DFP de {primeiro} a {ultimo}"
+    faltam = [str(ano) for ano, valor in ultimos.items() if pd.isna(valor)]
+    if faltam:
+        return None, base, (
+            f"O fluxo de caixa de {', '.join(faltam)} não traz a linha de dividendos ou JCP pagos."
+        )  # fmt: skip
+    return float(ultimos.abs().mean()), base, ""
+
+
+def _sobre_o_mercado(
+    lista: _Lista, saldo: dict, tabela: pd.DataFrame, anos: int, base_balanco: str
+) -> None:
+    """P/Ativo e dividend yield médio: o valor de mercado de hoje sobre o ativo do balanço e
+    sobre a média dos pagos nos exercícios (sem série de preço: o DY de cada ano pediria o preço
+    da época, e o do Yahoo vem ajustado pelos proventos)."""
+    mercado = lista.itens["valor_de_mercado"]
+    sem_mercado = mercado.motivo if mercado.valor is None else ""
+    ativo, sem_ativo = _razao_positiva(
+        mercado.valor, saldo.get("ativo_total"), "Sem o ativo total no balanço."
+    )
+    lista.add(
+        "p_ativo", "Preço / ativo total", ativo, VEZES, base_balanco,
+        sem_mercado or sem_ativo,
+    )  # fmt: skip
+    media, base, sem_media = _pagos_em_media(tabela, anos)
+    lista.add(
+        "dividend_yield_medio", f"Dividend yield médio ({anos} anos)",
+        None if mercado.valor is None or media is None else media / mercado.valor,
+        FRACAO, base, sem_mercado or sem_media,
+    )  # fmt: skip
 
 
 def _tabela_anual(tabela: pd.DataFrame) -> pd.DataFrame:
@@ -642,6 +703,7 @@ def calcular(
     _crescimento(lista, tabela, anos)
     _por_acao(lista, ttm, saldo, acoes, preco, (base_12m, base_balanco))
     _de_mercado(lista, ttm, acoes, preco, (base_12m, base_balanco), financeira)
+    _sobre_o_mercado(lista, saldo, tabela, anos, base_balanco)
     docs = dados.documentos
     if not docs.empty:
         usados_set = set(usados)

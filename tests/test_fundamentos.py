@@ -350,11 +350,73 @@ def test_dy_valor_de_mercado_e_multiplos_da_firma_pelas_formulas(banco):
     assert f["p_receita"].valor == pytest.approx(mercado / ttm["receita"])
 
 
+def test_multiplos_do_preco_sobre_resultado_caixa_e_ativo_pelas_formulas(banco):
+    """P/EBITDA, P/EBIT, P/FCF e P/Ativo: valor de mercado ÷ a conta (linha 55 da fila)."""
+    dados = _empresa(banco, PETROBRAS)
+    f = fu.calcular(dados, preco=37.5)
+    ttm, base_12m, _ = fu.doze_meses(dados.contas)
+    saldo, _, _ = fu.balanco_mais_recente(dados.contas)
+    mercado = f["valor_de_mercado"].valor
+    assert f["p_ebitda"].valor == pytest.approx(
+        mercado / (ttm["ebit"] + ttm["depreciacao"])
+    )
+    assert f["p_ebit"].valor == pytest.approx(mercado / ttm["ebit"])
+    assert f["p_fcf"].valor == pytest.approx(mercado / (ttm["fco"] - abs(ttm["capex"])))
+    assert f["p_ativo"].valor == pytest.approx(mercado / saldo["ativo_total"])
+    assert f["p_ativo"].base == f["valor_de_mercado"].base  # só o balanço
+    assert f["p_fcf"].base.startswith(base_12m)
+    for chave in ("p_ebitda", "p_ebit", "p_fcf", "p_ativo"):
+        assert f[chave].unidade == fu.VEZES and chave in fu.FORMULAS
+
+
+def test_dy_de_5_anos_e_a_media_dos_pagos_nos_exercicios_sobre_o_mercado_de_hoje(banco):
+    dados = _empresa(banco, WEG)
+    tabela = fu.anuais(dados.contas)
+    f = fu.calcular(dados, preco=50.0, anos=2)  # a amostra tem só 2 exercícios
+    media = tabela["dividendos_pagos"].abs().iloc[-2:].mean()
+    assert f["dividend_yield_medio"].valor == pytest.approx(
+        media / f["valor_de_mercado"].valor
+    )
+    assert f["dividend_yield_medio"].unidade == fu.FRACAO
+    assert f["dividend_yield_medio"].base == "DFP de 2024 a 2025"
+    curto = fu.calcular(dados, preco=50.0)["dividend_yield_medio"]
+    assert not curto.disponivel and "Só há 2 exercícios" in curto.motivo
+
+
+def test_dy_de_5_anos_sem_a_linha_num_ano_explica(banco):
+    dados = _empresa(banco, WEG)
+    contas = dados.contas
+    sem_2024 = ~(
+        (contas["conta"] == "dividendos_pagos")
+        & (contas["documento"] == "DFP")
+        & (contas["referencia"].map(lambda d: d.year) == 2024)
+    )
+    f = fu.calcular(replace(dados, contas=contas[sem_2024]), preco=50.0, anos=2)
+    medio = f["dividend_yield_medio"]
+    assert not medio.disponivel and "2024" in medio.motivo
+
+
+def test_dy_de_5_anos_nao_olha_o_futuro(banco):
+    """Cortar o último exercício não muda a média dos anteriores: só entram DFPs já publicadas."""
+    dados = _empresa(banco, WEG)
+    contas = dados.contas
+    ate_2024 = contas[contas["referencia"].map(lambda d: d.year) <= 2024]
+    f = fu.calcular(replace(dados, contas=ate_2024), preco=50.0, anos=1)
+    pagos_2024 = abs(fu.anuais(ate_2024)["dividendos_pagos"].iloc[-1])
+    assert f["dividend_yield_medio"].valor == pytest.approx(
+        pagos_2024 / f["valor_de_mercado"].valor
+    )
+    assert f["dividend_yield_medio"].base == "DFP de 2024"
+
+
 def test_banco_tem_dy_mas_nao_os_multiplos_da_firma(banco):
     f = fu.calcular(_empresa(banco, ITAU), preco=38.0)
     assert f["dividend_yield"].disponivel and f["valor_de_mercado"].disponivel
-    for chave in ("valor_da_firma", "ev_ebitda", "ev_ebit", "p_receita"):
+    for chave in (
+        "valor_da_firma", "ev_ebitda", "ev_ebit", "p_receita", "p_ebitda", "p_ebit", "p_fcf",
+    ):  # fmt: skip
         assert not f[chave].disponivel and "bancos" in f[chave].motivo
+    assert f["p_ativo"].disponivel  # o ativo total existe em qualquer balanço
 
 
 def test_sem_preco_os_de_mercado_explicam(banco):
@@ -371,9 +433,19 @@ def test_ebitda_negativo_ou_sem_dividendos_explicam(banco):
     f = fu.calcular(replace(dados, contas=contas), preco=50.0)
     assert not f["ev_ebitda"].disponivel and "EBITDA" in f["ev_ebitda"].motivo
     assert not f["ev_ebit"].disponivel and "EBIT" in f["ev_ebit"].motivo
+    assert not f["p_ebitda"].disponivel and "EBITDA" in f["p_ebitda"].motivo
+    assert not f["p_ebit"].disponivel and "EBIT" in f["p_ebit"].motivo
     # sem a linha no caixa não dá para saber se não pagou ou se a linha tem outro nome
     assert not f["dividend_yield"].disponivel
     assert "dividendos" in f["dividend_yield"].motivo
+
+
+def test_caixa_livre_negativo_explica_o_p_fcf(banco):
+    dados = _empresa(banco, WEG)
+    contas = dados.contas.copy()
+    contas.loc[contas["conta"] == "capex", "valor"] = -1e13
+    f = fu.calcular(replace(dados, contas=contas), preco=50.0)
+    assert not f["p_fcf"].disponivel and "Caixa livre" in f["p_fcf"].motivo
 
 
 def test_crescimento_pede_anos_suficientes(banco):

@@ -284,6 +284,27 @@ def test_valuation_traz_valor_de_mercado_ev_e_multiplos(dados_da_weg):
     assert itens["ev_ebitda"].texto.endswith("×")
 
 
+def test_dy_medio_fica_nos_dividendos_logo_depois_do_dy(dados_da_weg):
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    dividendos = relatorio.secao("dividendos")
+    medio = dividendos.itens[1]
+    assert medio.chave == "dividend_yield_medio"
+    assert medio.fonte == re_.FONTE_DOS_MULTIPLOS  # fora da análise escrita, como o DY
+    assert medio.motivo  # a amostra da WEG tem só 2 exercícios: o motivo explica
+    assert re_.COMO_SAI_O_DY_MEDIO in dividendos.paragrafos
+    valuation = {i.chave for i in relatorio.secao("valuation").itens}
+    assert {"p_ebitda", "p_ebit", "p_fcf", "p_ativo"} <= valuation
+    assert not {"dividend_yield", "dividend_yield_medio"} & valuation
+
+
+def test_limites_dizem_de_onde_vem_o_preco_so_quando_ha_preco(dados_da_weg):
+    com_preco = re_.montar(_entradas(dados_da_weg)).secao("limites").paragrafos
+    assert re_.LIMITE_DO_PRECO in com_preco
+    # sem o preço (a trava desligada), mesmo com os padrões setoriais
+    sem = re_.montar(_entradas(dados_da_weg, preco=None))
+    assert re_.LIMITE_DO_PRECO not in sem.secao("limites").paragrafos
+
+
 def test_sem_preco_dy_e_multiplos_ficam_com_o_motivo(dados_da_weg):
     relatorio = re_.montar(_entradas(dados_da_weg, preco=None))
     dy = relatorio.secao("dividendos").itens[0]
