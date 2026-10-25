@@ -4,7 +4,7 @@ licença) e quando o documento usado ficou público; o gabarito fixa cada indica
 amostras, para que mudar uma fórmula sem subir a versão quebre aqui."""
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date
 from pathlib import Path
 
@@ -23,8 +23,10 @@ from src.rastro import (
     PUBLICADO_EM,
     VERSAO,
     DocumentoUsado,
+    Entrada,
     Rastro,
     como_foi_calculado,
+    nome_do_documento,
 )
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "fundamentos"
@@ -41,10 +43,14 @@ def dados_da_weg():
     return _ler_a_weg()
 
 
-def _ler_a_weg() -> DadosDaEmpresa:
+def _ler_a_weg(com_o_itr: bool = False) -> DadosDaEmpresa:
+    """A WEG das DFPs de 2024 e 2025; com o ITR de 2026, os 12 meses passam a ir até 30/06/2026."""
     partes, documentos = [], []
-    for arquivo in ("dfp_cia_aberta_2024.zip", "dfp_cia_aberta_2025.zip"):
-        contas, docs = dm.ler_demonstracoes((PASTA / arquivo).read_bytes(), "DFP")
+    arquivos = [("dfp_cia_aberta_2024.zip", "DFP"), ("dfp_cia_aberta_2025.zip", "DFP")]
+    if com_o_itr:
+        arquivos.append(("itr_cia_aberta_2026.zip", "ITR"))
+    for arquivo, tipo in arquivos:
+        contas, docs = dm.ler_demonstracoes((PASTA / arquivo).read_bytes(), tipo)
         partes.append(contas[contas["cnpj"] == WEG])
         documentos.append(docs[docs["cnpj"] == WEG])
     return DadosDaEmpresa(
@@ -253,6 +259,159 @@ def test_secao_trancada_nao_devolve_metrica():
     assert relatorio.metricas() == []
 
 
+# --- as entradas: as contas da DFP e do ITR que entram em cada número ------------------------------
+def _documento_da(entrada: Entrada) -> str:
+    return nome_do_documento(entrada.documento, entrada.referencia, entrada.versao)
+
+
+def _so_as_entradas(
+    dados: DadosDaEmpresa, entradas: tuple[Entrada, ...]
+) -> DadosDaEmpresa:
+    """A empresa só com as linhas das entradas, como a tabela de contas guardada as teria."""
+    linhas = [
+        {"documento": e.documento, "referencia": e.referencia, "versao": e.versao,
+         "periodo": e.periodo, "inicio": None, "fim": e.referencia, "conta": e.conta,
+         "valor": e.valor}
+        for e in entradas
+    ]  # fmt: skip
+    contas = pd.DataFrame(linhas, columns=dados.contas.columns)
+    return replace(dados, contas=contas, documentos=dados.documentos.iloc[0:0])
+
+
+@pytest.mark.parametrize("com_o_itr", [False, True], ids=["so_a_dfp", "com_o_itr"])
+def test_as_entradas_refazem_cada_indicador_dos_fundamentos(com_o_itr, monkeypatch):
+    """Quem confere o número refaz a conta: só com as linhas das entradas, o cálculo dá o mesmo.
+    (Banco ou não sai do setor e da DRE inteira; aqui fica o da WEG, que não é banco.)"""
+    dados = _ler_a_weg(com_o_itr)
+    numeros = {
+        chave: item
+        for chave, item in _numeros(re_.montar(_entradas(dados))).items()
+        if chave in fundamentos.FORMULAS and item.valor is not None
+    }
+    assert len(numeros) > 20
+    monkeypatch.setattr(fundamentos, "e_financeira", lambda *_: False)
+    for chave, item in numeros.items():
+        assert item.rastro is not None and item.rastro.entradas, chave
+        refeito = fundamentos.calcular(
+            _so_as_entradas(dados, item.rastro.entradas), 50.0
+        )
+        assert refeito[chave].valor == pytest.approx(item.valor, rel=1e-12), chave
+
+
+def test_os_12_meses_com_o_itr_somam_a_dfp_e_o_acumulado_e_tiram_o_do_ano_antes():
+    receita = _numeros(re_.montar(_entradas(_ler_a_weg(com_o_itr=True))))["receita"]
+    assert receita.rastro is not None
+    partes = [(e.documento, e.referencia, e.periodo) for e in receita.rastro.entradas]
+    assert partes == [
+        ("DFP", date(2025, 12, 31), dm.EXERCICIO),
+        ("ITR", date(2026, 6, 30), dm.ACUMULADO),
+        ("ITR", date(2026, 6, 30), dm.ACUMULADO_ANTERIOR),
+    ]
+    dfp, acumulado, anterior = (e.valor for e in receita.rastro.entradas)
+    assert receita.valor == pytest.approx(dfp + acumulado - anterior)
+    assert {(e.codigo, e.nome) for e in receita.rastro.entradas} == {
+        dm.CONTAS_DA_CVM["receita"]
+    }
+
+
+def _seis_anos_de_receita() -> DadosDaEmpresa:
+    anos = range(2020, 2026)
+    contas = pd.DataFrame(
+        [{"documento": "DFP", "referencia": date(ano, 12, 31), "versao": 1,
+          "periodo": dm.EXERCICIO, "inicio": date(ano, 1, 1), "fim": date(ano, 12, 31),
+          "conta": "receita", "valor": 100.0 * (ano - 2019)} for ano in anos]
+    )  # fmt: skip
+    documentos = pd.DataFrame(
+        [{"empresa": "X", "documento": "DFP", "referencia": date(ano, 12, 31), "versao": 1,
+          "recebido_em": date(ano + 1, 3, 1), "link": ""} for ano in anos]
+    )  # fmt: skip
+    return DadosDaEmpresa(contas=contas, documentos=documentos, setor="Comércio")
+
+
+def test_o_crescimento_cita_o_primeiro_e_o_ultimo_ano():
+    dados = _seis_anos_de_receita()
+    primeira, ultima = fundamentos.entradas("crescimento_receita", dados)
+    assert (primeira.referencia.year, ultima.referencia.year) == (2020, 2025)
+    assert (primeira.publicado_em, ultima.publicado_em) == (
+        date(2021, 3, 1),
+        date(2026, 3, 1),
+    )
+    valor = fundamentos.calcular(dados, None)["crescimento_receita"].valor
+    assert valor == pytest.approx((ultima.valor / primeira.valor) ** (1 / 5) - 1)
+
+
+@pytest.mark.parametrize("com_o_itr", [False, True], ids=["so_a_dfp", "com_o_itr"])
+def test_nenhuma_entrada_e_de_documento_publicado_depois_do_numero(com_o_itr):
+    """Sem olhar o futuro: toda entrada vem de um documento do rastro, publicado até a data dele."""
+    dados = _ler_a_weg(com_o_itr)
+    for chave, item in _numeros(re_.montar(_entradas(dados))).items():
+        rastro = item.rastro
+        assert rastro is not None
+        documentos = {d.nome: d.publicado_em for d in rastro.documentos}
+        for entrada in rastro.entradas:
+            assert entrada.publicado_em is not None and rastro.publicado_em is not None
+            assert entrada.publicado_em <= rastro.publicado_em, chave
+            assert documentos[_documento_da(entrada)] == entrada.publicado_em, chave
+
+
+def test_cortar_o_futuro_nao_muda_as_entradas_do_passado():
+    """O ITR de 2026 ainda não existia em 31/12/2025: cortado, as entradas são as só das DFPs."""
+    com_o_itr, so_a_dfp = _ler_a_weg(com_o_itr=True), _ler_a_weg()
+    ate_2025 = date(2025, 12, 31)
+    cortada = replace(
+        com_o_itr,
+        contas=com_o_itr.contas[com_o_itr.contas["referencia"] <= ate_2025],
+        documentos=com_o_itr.documentos[com_o_itr.documentos["referencia"] <= ate_2025],
+    )
+    for chave in fundamentos.FORMULAS:
+        assert fundamentos.entradas(chave, cortada) == fundamentos.entradas(
+            chave, so_a_dfp
+        ), chave
+
+
+def test_numero_indisponivel_nao_tem_entradas(dados_da_weg):
+    sem_preco = _numeros(
+        re_.montar(_entradas(dados_da_weg, preco=None, fechamentos=None))
+    )
+    assert (
+        sem_preco["p_l"].rastro is not None and sem_preco["p_l"].rastro.entradas == ()
+    )
+    assert (
+        fundamentos.entradas("crescimento_receita", dados_da_weg) == ()
+    )  # só dois anos
+
+
+def test_toda_conta_das_entradas_tem_codigo_e_nome_da_cvm():
+    usadas = {
+        conta
+        for contas in fundamentos.CONTAS_DOS_INDICADORES.values()
+        for _, conta in contas
+    }
+    usadas = (usadas - {fundamentos.LUCRO}) | {"lucro_controladores", "lucro_liquido"}
+    assert usadas <= set(dm.CONTAS_DA_CVM)
+    assert set(fundamentos.CONTAS_DOS_INDICADORES) == set(fundamentos.FORMULAS)
+    assert all(codigo and nome for codigo, nome in dm.CONTAS_DA_CVM.values())
+
+
+def test_entradas_vao_no_json_e_na_api(dados_da_weg):
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    api = de_relatorio_da_empresa(relatorio)
+    receita = next(i for s in api.secoes for i in s.itens if i.chave == "receita")
+    assert receita.rastro is not None
+    (entrada,) = receita.rastro.entradas
+    assert (entrada.conta, entrada.codigo, entrada.periodo) == (
+        "receita",
+        "3.01",
+        dm.EXERCICIO,
+    )
+    assert (entrada.referencia, entrada.publicado_em) == (
+        date(2025, 12, 31),
+        DFP_DE_2025_RECEBIDA,
+    )
+    texto = json.dumps(relatorio.como_dict(), ensure_ascii=False)
+    assert '"conta": "receita"' in texto
+
+
 # --- o gabarito por indicador ----------------------------------------------------------------------
 def _como_no_gabarito(item: re_.Item) -> dict:
     assert item.rastro is not None
@@ -266,6 +425,10 @@ def _como_no_gabarito(item: re_.Item) -> dict:
         if item.rastro.publicado_em
         else None,
         "documentos": [d.nome for d in item.rastro.documentos],
+        "entradas": [
+            [e.conta, e.codigo, e.periodo, _documento_da(e), e.valor]
+            for e in item.rastro.entradas
+        ],
     }
 
 

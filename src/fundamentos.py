@@ -28,10 +28,12 @@ from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import (
     ACUMULADO,
     ACUMULADO_ANTERIOR,
+    CONTAS_DA_CVM,
     EXERCICIO,
     POSICAO,
     e_financeira,
 )
+from src.rastro import Entrada
 
 VERSAO_DOS_FUNDAMENTOS = "3"  # sobe quando uma fórmula abaixo mudar
 ALIQUOTA_DE_IR_CS = 0.34  # hipótese do ROIC (alíquota nominal de IR + CSLL no Brasil)
@@ -125,6 +127,60 @@ FORMULAS = {
         f"média dos dividendos e JCP pagos em caixa nos {ANOS_DO_CRESCIMENTO} últimos exercícios "
         "(DFP, fluxo de caixa) ÷ valor de mercado de hoje"
     ),
+}
+
+# As contas que entram em cada indicador, e de onde: os 12 meses, o balanço mais recente, a conferência
+# da quantidade de ações (o último exercício da DFP), o primeiro e o último ano do crescimento ou os
+# exercícios da média. É o que `entradas` cita no rastro; mudou uma conta acima, mude aqui (o teste
+# de `tests/test_rastro.py` refaz cada número só com as entradas).
+DOZE_MESES, BALANCO, CONFERENCIA, CRESCIMENTO, MEDIA_DOS_ANOS = (
+    "doze_meses", "balanco", "conferencia", "crescimento", "media_dos_anos",
+)  # fmt: skip
+LUCRO = "lucro"  # o dos controladores; sem a divisão, o consolidado (como em `_lucro`)
+
+
+def _em(onde: str, *contas: str) -> tuple[tuple[str, str], ...]:
+    return tuple((onde, conta) for conta in contas)
+
+
+_DIVIDA_E_CAIXA = ("divida_cp", "divida_lp", "caixa", "aplicacoes")
+_PL_SEM_MINORITARIOS = ("patrimonio_liquido", "minoritarios")
+_DAS_ACOES = _em(BALANCO, "acoes_total", "acoes_tesouraria") + _em(
+    CONFERENCIA, LUCRO, "lpa_basico", "acoes_total"
+)
+_DA_FIRMA = _em(BALANCO, *_DIVIDA_E_CAIXA) + _DAS_ACOES
+_EBITDA = _em(DOZE_MESES, "ebit", "depreciacao")
+CONTAS_DOS_INDICADORES: dict[str, tuple[tuple[str, str], ...]] = {
+    "receita": _em(DOZE_MESES, "receita"),
+    "lucro": _em(DOZE_MESES, LUCRO),
+    "margem_bruta": _em(DOZE_MESES, "resultado_bruto", "receita"),
+    "margem_ebit": _em(DOZE_MESES, "ebit", "receita"),
+    "margem_liquida": _em(DOZE_MESES, "lucro_liquido", "receita"),
+    "roe": _em(DOZE_MESES, LUCRO) + _em(BALANCO, *_PL_SEM_MINORITARIOS),
+    "roic": _em(DOZE_MESES, "ebit")
+    + _em(BALANCO, "patrimonio_liquido", *_DIVIDA_E_CAIXA),
+    "divida_bruta": _em(BALANCO, "divida_cp", "divida_lp"),
+    "caixa": _em(BALANCO, "caixa", "aplicacoes"),
+    "divida_liquida": _em(BALANCO, *_DIVIDA_E_CAIXA),
+    "divida_sobre_pl": _em(BALANCO, *_DIVIDA_E_CAIXA, *_PL_SEM_MINORITARIOS),
+    "conversao_de_caixa": _em(DOZE_MESES, "fco", "lucro_liquido"),
+    "crescimento_receita": _em(CRESCIMENTO, "receita"),
+    "crescimento_lucro": _em(CRESCIMENTO, LUCRO),
+    "lpa": _em(DOZE_MESES, LUCRO) + _DAS_ACOES,
+    "vpa": _em(BALANCO, *_PL_SEM_MINORITARIOS) + _DAS_ACOES,
+    "p_l": _em(DOZE_MESES, LUCRO) + _DAS_ACOES,
+    "p_vp": _em(BALANCO, *_PL_SEM_MINORITARIOS) + _DAS_ACOES,
+    "valor_de_mercado": _DAS_ACOES,
+    "dividend_yield": _em(DOZE_MESES, "dividendos_pagos") + _DAS_ACOES,
+    "valor_da_firma": _DA_FIRMA,
+    "ev_ebitda": _EBITDA + _DA_FIRMA,
+    "ev_ebit": _em(DOZE_MESES, "ebit") + _DA_FIRMA,
+    "p_receita": _em(DOZE_MESES, "receita") + _DAS_ACOES,
+    "p_ebitda": _EBITDA + _DAS_ACOES,
+    "p_ebit": _em(DOZE_MESES, "ebit") + _DAS_ACOES,
+    "p_fcf": _em(DOZE_MESES, "fco", "capex") + _DAS_ACOES,
+    "p_ativo": _em(BALANCO, "ativo_total") + _DAS_ACOES,
+    "dividend_yield_medio": _em(MEDIA_DOS_ANOS, "dividendos_pagos") + _DAS_ACOES,
 }
 
 
@@ -326,6 +382,181 @@ def divida_e_caixa(saldo: dict) -> tuple[float | None, float | None]:
         else None
     )
     return divida, caixa
+
+
+# --- as entradas do rastro -----------------------------------------------------------------------
+_Linha = tuple[str, date, str, str]  # (documento, referência, período, conta)
+
+
+@dataclass(frozen=True)
+class _Lugares:
+    """Onde cada indicador lê as contas: as mesmas escolhas de `calcular`."""
+
+    guardadas: dict[
+        _Linha, tuple[float, int]
+    ]  # a linha da tabela de contas → (valor, versão)
+    doze_meses: tuple[Parte, ...]
+    balanco: Parte | None
+    tabela: pd.DataFrame  # a de `anuais`
+    referencia_do_ano: dict[int, date]  # a data da DFP de cada linha de `tabela`
+
+
+def _lugares(contas: pd.DataFrame) -> _Lugares:
+    colunas = ("documento", "referencia", "periodo", "conta", "valor", "versao")
+    guardadas = {
+        (documento, referencia, periodo, conta): (float(valor), int(versao))
+        for documento, referencia, periodo, conta, valor, versao in zip(
+            *(contas[c] for c in colunas), strict=True
+        )
+    }
+    _, referencia, documento = balanco_mais_recente(contas)
+    dfp = contas[
+        (contas["documento"] == "DFP") & contas["periodo"].isin([EXERCICIO, POSICAO])
+    ]
+    return _Lugares(
+        guardadas,
+        janela_dos_doze_meses(contas)[0],
+        (documento, referencia, POSICAO) if referencia else None,
+        anuais(contas),
+        {
+            r.year: r for r in sorted(dfp["referencia"].unique())
+        },  # como `anuais`: a última do ano
+    )
+
+
+def _nos_doze_meses(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """A conta em cada parte dos 12 meses; se falta numa delas, a soma não a tem (nem o número)."""
+    partes = lugares.doze_meses
+
+    def em_todas(nome: str) -> bool:
+        return bool(partes) and all((*p, nome) in lugares.guardadas for p in partes)
+
+    if conta == LUCRO:
+        conta = (
+            "lucro_controladores"
+            if em_todas("lucro_controladores")
+            else "lucro_liquido"
+        )
+    return [(*p, conta) for p in partes] if em_todas(conta) else []
+
+
+def _no_balanco(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    linha = None if lugares.balanco is None else (*lugares.balanco, conta)
+    return [linha] if linha in lugares.guardadas else []
+
+
+def _da_dfp(lugares: _Lugares, ano: int, conta: str) -> list[_Linha]:
+    referencia = lugares.referencia_do_ano[int(ano)]
+    linhas = [("DFP", referencia, periodo, conta) for periodo in (EXERCICIO, POSICAO)]
+    return [linha for linha in linhas if linha in lugares.guardadas][:1]
+
+
+def _na_conferencia(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O lucro, o lucro por ação e as ações do último exercício (`acoes_em_circulacao`)."""
+    if lugares.tabela.empty:
+        return []
+    ultimo = lugares.tabela.iloc[-1]
+    if conta == LUCRO:
+        tem = pd.notna(ultimo.get("lucro_controladores"))
+        conta = "lucro_controladores" if tem else "lucro_liquido"
+    return _da_dfp(lugares, lugares.tabela.index[-1], conta)
+
+
+def _no_crescimento(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O primeiro e o último ano do crescimento composto (`_cagr`)."""
+    tabela = lugares.tabela
+    if conta == LUCRO:
+        conta = (
+            "lucro_controladores"
+            if "lucro_controladores" in tabela
+            else "lucro_liquido"
+        )
+    serie = tabela[conta].dropna() if conta in tabela else pd.Series(dtype=float)
+    if len(serie) < anos + 1:
+        return []
+    return [
+        *_da_dfp(lugares, serie.index[-(anos + 1)], conta),
+        *_da_dfp(lugares, serie.index[-1], conta),
+    ]
+
+
+def _na_media(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """Os exercícios da média (`_pagos_em_media`); com um ano sem a conta, não há média."""
+    tabela = lugares.tabela
+    if (
+        conta not in tabela
+        or len(tabela) < anos
+        or tabela[conta].iloc[-anos:].isna().any()
+    ):
+        return []
+    return [
+        linha for ano in tabela.index[-anos:] for linha in _da_dfp(lugares, ano, conta)
+    ]
+
+
+_ONDE = {
+    DOZE_MESES: _nos_doze_meses,
+    BALANCO: _no_balanco,
+    CONFERENCIA: _na_conferencia,
+    CRESCIMENTO: _no_crescimento,
+    MEDIA_DOS_ANOS: _na_media,
+}
+
+
+def _publicados_em(
+    documentos: pd.DataFrame,
+) -> dict[tuple[str, date, int], date | None]:
+    """(documento, referência, versão) → o dia em que a CVM recebeu o documento."""
+    if documentos.empty:
+        return {}
+    colunas = ("documento", "referencia", "versao", "recebido_em")
+    return {
+        (documento, referencia, int(versao)): None
+        if pd.isna(dia)
+        else pd.Timestamp(dia).date()
+        for documento, referencia, versao, dia in zip(
+            *(documentos[c] for c in colunas), strict=True
+        )
+    }
+
+
+def _entrada(linha: _Linha, guardada: tuple[float, int], publicados: dict) -> Entrada:
+    documento, referencia, periodo, conta = linha
+    (codigo, nome), (valor, versao) = CONTAS_DA_CVM[conta], guardada
+    publicado_em = publicados.get((documento, referencia, versao))
+    return Entrada(
+        conta, codigo, nome, valor, periodo, documento, referencia, versao, publicado_em
+    )
+
+
+def todas_as_entradas(
+    dados: DadosDaEmpresa, anos: int = ANOS_DO_CRESCIMENTO
+) -> dict[str, tuple[Entrada, ...]]:
+    """As entradas de cada indicador de `FORMULAS`: as contas guardadas que entram nele, com o
+    valor, o código e o nome na CVM e o documento de onde vieram. Só com elas, `calcular` refaz o
+    número; a conta que o documento não traz fica de fora (e o número sai indisponível)."""
+    if dados.contas.empty:
+        return {chave: () for chave in CONTAS_DOS_INDICADORES}
+    lugares, publicados = _lugares(dados.contas), _publicados_em(dados.documentos)
+    saida = {}
+    for chave, contas in CONTAS_DOS_INDICADORES.items():
+        linhas = [
+            linha
+            for onde, conta in contas
+            for linha in _ONDE[onde](lugares, conta, anos)
+        ]
+        saida[chave] = tuple(
+            _entrada(linha, lugares.guardadas[linha], publicados)
+            for linha in dict.fromkeys(linhas)
+        )
+    return saida
+
+
+def entradas(
+    chave: str, dados: DadosDaEmpresa, anos: int = ANOS_DO_CRESCIMENTO
+) -> tuple[Entrada, ...]:
+    """As entradas de um indicador (ver `todas_as_entradas`)."""
+    return todas_as_entradas(dados, anos)[chave]
 
 
 # --- indicadores ---------------------------------------------------------------------------------

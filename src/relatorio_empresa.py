@@ -35,7 +35,7 @@ from src.numero import Comparacao, Numero
 from src.padroes import INDICADORES, MULTIPLOS
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.qualidade_texto import texto_do_selo
-from src.rastro import DocumentoUsado, Metrica, Rastro
+from src.rastro import DocumentoUsado, Entrada, Metrica, Rastro, nome_do_documento
 from src.setores import NOMES, SEM_GRUPO, grupo_do_setor, grupo_para_comparar
 
 # as seções na ordem do molde A (relatórios v2): quem é, o que os dados mostram e o que mudou no
@@ -478,6 +478,7 @@ CALCULO_DAS_NOTAS_CLASSICAS = (
     f"notas clássicas {notas_classicas.VERSAO_DAS_NOTAS_CLASSICAS}"
 )
 CRESCIMENTOS = ("crescimento_receita", "crescimento_lucro")
+MEDIA_DOS_DIVIDENDOS = "dividend_yield_medio"
 # quantos exercícios cada nota clássica lê: o Altman só o último; as outras comparam com o anterior
 ANOS_DAS_NOTAS_CLASSICAS = {"piotroski": 2, "altman": 1, "beneish": 2}
 
@@ -495,8 +496,9 @@ def _ultimas_versoes(documentos: pd.DataFrame) -> list[pd.Series]:
 def _documento(linha: pd.Series) -> DocumentoUsado:  # uma linha de `_ultimas_versoes`
     link = linha["link"]
     return DocumentoUsado(
-        f"{linha['documento']} de {_dia(linha['referencia']):%d/%m/%Y}, "
-        f"versão {int(linha['versao'])}",
+        nome_do_documento(
+            linha["documento"], _dia(linha["referencia"]), linha["versao"]
+        ),
         _dia(linha["recebido_em"]),
         link if isinstance(link, str) else "",
     )
@@ -544,12 +546,18 @@ def _rastro(chave: str, c: "_Calculos") -> Rastro:
         formula, versao = fundamentos.FORMULAS[chave], CALCULO_DOS_FUNDAMENTOS
     else:
         formula, versao = fundamentalista.FORMULAS[chave], CALCULO_DO_FUNDAMENTALISTA
-    documentos = (
-        _dfps(c, _ultimos_anos(c, fundamentos.ANOS_DO_CRESCIMENTO + 1))
-        if chave in CRESCIMENTOS
-        else c.documentos
+    if chave in CRESCIMENTOS:
+        documentos = _dfps(c, _ultimos_anos(c, fundamentos.ANOS_DO_CRESCIMENTO + 1))
+    elif (
+        chave == MEDIA_DOS_DIVIDENDOS
+    ):  # as DFPs dos exercícios da média, além das do mercado
+        dos_anos = _dfps(c, _ultimos_anos(c, fundamentos.ANOS_DO_CRESCIMENTO))
+        documentos = (*dos_anos, *(d for d in c.documentos if d not in dos_anos))
+    else:
+        documentos = c.documentos
+    return Rastro.dos_documentos(
+        formula, versao, FONTE_DA_CVM, documentos, entradas=c.entradas.get(chave, ())
     )
-    return Rastro.dos_documentos(formula, versao, FONTE_DA_CVM, documentos)
 
 
 def _com_o_preco(rastro: Rastro, c: "_Calculos") -> Rastro:
@@ -559,6 +567,7 @@ def _com_o_preco(rastro: Rastro, c: "_Calculos") -> Rastro:
         rastro.fonte_id,
         (*rastro.documentos, c.fechamento),
         (FONTE_DO_PRECO,),
+        rastro.entradas,
     )
 
 
@@ -614,6 +623,8 @@ class _Calculos:
         int, DocumentoUsado
     ]  # a DFP de cada exercício (crescimento, notas, dividendos)
     fechamento: DocumentoUsado  # o preço usado nos múltiplos
+    # as contas que entram em cada indicador dos fundamentos (só os que têm valor)
+    entradas: dict[str, tuple[Entrada, ...]] = field(default_factory=dict)
 
     @property
     def data_anterior(self) -> date | None:
@@ -677,7 +688,20 @@ def _calcular(e: Entradas) -> _Calculos:
         documentos_usados(tela.documentos),
         _dfps_por_ano(e.dados.documentos),
         _fechamento(e),
+        _entradas_com_valor(e.dados, tela.indicadores),
     )
+
+
+def _entradas_com_valor(
+    dados: DadosDaEmpresa, indicadores: dict[str, fundamentos.Indicador]
+) -> dict[str, tuple[Entrada, ...]]:
+    """As entradas dos números calculados: o indisponível não cita conta (não houve conta)."""
+    todas = fundamentos.todas_as_entradas(dados)
+    return {
+        chave: todas[chave]
+        for chave, item in indicadores.items()
+        if item.valor is not None
+    }
 
 
 def _secao_de_itens(chave: str, c: _Calculos) -> Secao:

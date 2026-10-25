@@ -1796,6 +1796,69 @@
         "title": "EnderecoDoStripeV1",
         "type": "object"
       },
+      "EntradaDoNumeroV1": {
+        "description": "Uma conta da demonstração que entra no número (`src/rastro.py`, `Entrada`): só com as\nentradas, quem confere refaz a conta.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "conta": {
+            "title": "Conta",
+            "type": "string"
+          },
+          "documento": {
+            "title": "Documento",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "title": "Periodo",
+            "type": "string"
+          },
+          "publicado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicado Em"
+          },
+          "referencia": {
+            "format": "date",
+            "title": "Referencia",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          },
+          "versao": {
+            "title": "Versao",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conta",
+          "codigo",
+          "nome",
+          "valor",
+          "periodo",
+          "documento",
+          "referencia",
+          "versao",
+          "publicado_em"
+        ],
+        "title": "EntradaDoNumeroV1",
+        "type": "object"
+      },
       "ErroDaSafraV1": {
         "properties": {
           "erro_mil_sacas": {
@@ -5034,6 +5097,14 @@
               "$ref": "#/components/schemas/DocumentoUsadoV1"
             },
             "title": "Documentos",
+            "type": "array"
+          },
+          "entradas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EntradaDoNumeroV1"
+            },
+            "title": "Entradas",
             "type": "array"
           },
           "fonte_id": {

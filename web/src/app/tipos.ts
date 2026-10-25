@@ -419,6 +419,19 @@ export interface LinhaDoRastroV1 {
 }
 
 /** Como o número foi calculado e de onde veio: a conta, a versão, a fonte e a publicação. */
+/** Uma conta da demonstração que entra no número: só com as entradas, quem confere refaz a conta. */
+export interface EntradaDoNumeroV1 {
+  conta: string; // o nome no TickerLab ("receita")
+  codigo: string; // o código na CVM ("3.01"; com "xx" quando é a soma das linhas de um grupo)
+  nome: string; // o nome da conta na CVM
+  valor: number; // em reais (ações em unidades)
+  periodo: string; // "exercicio", "posicao", "acumulado" ou "acumulado_anterior"
+  documento: string; // "DFP" ou "ITR"
+  referencia: string; // ISO: a data da demonstração
+  versao: number;
+  publicado_em: string | null; // ISO: quando a CVM recebeu o documento
+}
+
 export interface RastroDoNumeroV1 {
   formula: string;
   versao_do_calculo: string;
@@ -426,6 +439,7 @@ export interface RastroDoNumeroV1 {
   publicado_em: string | null;
   documentos: DocumentoUsadoV1[];
   outras_fontes: string[];
+  entradas: EntradaDoNumeroV1[]; // vazia no número indisponível
   linhas: LinhaDoRastroV1[];
 }
 
