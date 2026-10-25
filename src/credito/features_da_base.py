@@ -51,7 +51,7 @@ SEM_A_SECAO = (
     "não está na porta (carga do CNPJ, fila 120)."
 )
 SEM_MES_DO_SCR = "Nenhuma data-base do SCR com carteira nesta seção era pública no dia."
-CARTEIRA_NAO_POSITIVA = "Carteira ativa zerada na seção: a razão não tem sentido."
+CARTEIRA_NAO_POSITIVA = "Carteira ativa zerada ou sem valor na seção: a razão não tem sentido."
 FONTE_DO_SCR = "bcb"
 SEM_IPE = (
     "Nenhum documento do IPE da companhia era público no dia: ela não entregava à CVM."
@@ -292,7 +292,7 @@ def _scr(porta: Porta, secao: str | None, dia: date) -> list[Feature]:
     periodo = f"data-base de {data_base:%d/%m/%Y}"
     nome = f"Banco Central: SCR.data, pessoas jurídicas em «{secao}», {periodo}"
     documentos = [DocumentoUsado(nome, publico)]
-    motivo = CARTEIRA_NAO_POSITIVA if ativa <= 0 else ""
+    motivo = CARTEIRA_NAO_POSITIVA if not ativa > 0 else ""
     return [
         nova_feature(
             DO_SCR[0], None if motivo else inadimplente / ativa, periodo, documentos,
