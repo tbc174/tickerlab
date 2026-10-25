@@ -65,6 +65,7 @@ def test_entrada_sem_valuation_nem_preco(entrada):
     texto = json.dumps(entrada, ensure_ascii=False)
     assert not any(linha["secao"] == "valuation" for linha in entrada["linhas"])
     assert "Yahoo" not in texto  # o preço do app é de uso interno
+    assert re_.COMO_SAI_O_DY_MEDIO not in texto and re_.LIMITE_DO_PRECO not in texto
 
 
 def test_lacunas_da_cpfl(entrada):

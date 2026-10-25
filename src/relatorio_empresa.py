@@ -203,13 +203,28 @@ FONTE_DOS_MULTIPLOS = "preço da ação (Yahoo Finance) e DFP e ITR entregues à
 FONTE_DAS_ACOES = "DFP entregues à CVM (fluxo de caixa e composição do capital)"
 SEM_O_ANTERIOR = "O balanço anterior guardado não tem este número para comparar."
 SEM_O_ANO_ANTERIOR = "A DFP do ano anterior guardada não tem este número para comparar."
-# os múltiplos de mercado além de P/L e P/VP (D3 mudada em 20/10/2026); o DY fica nos dividendos
-MULTIPLOS_DE_MERCADO = tuple(m for m in fundamentos.DE_MERCADO if m != "dividend_yield")
+# os múltiplos de mercado além de P/L e P/VP (D3 mudada em 20/10/2026); os DY ficam nos dividendos
+DOS_DIVIDENDOS = ("dividend_yield", "dividend_yield_medio")
+MULTIPLOS_DE_MERCADO = tuple(
+    m for m in fundamentos.DE_MERCADO if m not in DOS_DIVIDENDOS
+)
 COMO_SAI_O_DY = (
     "Dividend yield: dividendos e JCP pagos em caixa nos últimos 12 meses (fluxo de caixa da "
     "DFP e do ITR), divididos pelo valor de mercado de hoje. O caixa pago pode incluir o que as "
     "controladas pagaram aos acionistas minoritários delas, e o mesmo preço vale para todas as "
     "classes de ação."
+)
+COMO_SAI_O_DY_MEDIO = (
+    f"Dividend yield médio: a média dos dividendos e JCP pagos em caixa nos "
+    f"{fundamentos.ANOS_DO_CRESCIMENTO} últimos exercícios (fluxo de caixa da DFP), dividida pelo "
+    "mesmo valor de mercado de hoje. Não usa o preço de cada ano: mostra quanto a empresa costuma "
+    "pagar perto do preço atual, não o que rendeu a quem comprou em cada ano."
+)
+# nos limites só quando a ficha usa o preço; começa como o trecho que a análise escrita deixa de fora
+LIMITE_DO_PRECO = (
+    "Preço da ação: vem do Yahoo Finance, um serviço para uso pessoal, e pode chegar atrasado, "
+    "falhar ou mudar depois. Sem ele, o valor de mercado, o dividend yield e os múltiplos ficam em "
+    "branco."
 )
 SEM_DILUICAO = (
     "Sem dois anos de ações em circulação, ou com um salto sem desdobramento explicado."
@@ -971,7 +986,8 @@ def _dividendos(c: _Calculos) -> Secao:
         else None
     )
     dy = c.indicadores.get("dividend_yield")
-    itens = [] if dy is None else [_item_com_o_preco(dy, c)]
+    dos_dy = [c.indicadores[k] for k in DOS_DIVIDENDOS if k in c.indicadores]
+    itens = [_item_com_o_preco(indicador, c) for indicador in dos_dy]
 
     def rastro(chave: str) -> Rastro:
         return Rastro.dos_documentos(fundamentalista.FORMULAS[chave], CALCULO_DO_FUNDAMENTALISTA,
@@ -993,7 +1009,7 @@ def _dividendos(c: _Calculos) -> Secao:
         SECOES["dividendos"],
         itens,
         # no fim: os avisos guardam a posição (o id deles na análise escrita)
-        [*d.avisos, *([COMO_SAI_O_DY] if dy is not None else [])],
+        [*d.avisos, *([COMO_SAI_O_DY, COMO_SAI_O_DY_MEDIO] if dy is not None else [])],
         {"historico": _tabela(d.historico)},
     )
 
@@ -1709,7 +1725,11 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     c = _calcular(entradas)
     do_dossie = _secoes_do_dossie(entradas, plano)
     mostrado = entradas.dossie if any(not s.trancada for s in do_dossie) else None
-    limites = [*LIMITES, *(mostrado.limites if mostrado else [])]
+    limites = [
+        *LIMITES,
+        *([LIMITE_DO_PRECO] if entradas.preco is not None else []),
+        *(mostrado.limites if mostrado else []),
+    ]
     fontes = (
         *FONTES,
         *citacoes_das_fontes(usadas),

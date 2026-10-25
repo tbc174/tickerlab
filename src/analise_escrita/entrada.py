@@ -20,9 +20,11 @@ from src.analise_escrita import numeros
 from src.relatorio_empresa import (
     ANEXO_DE_ANOS,
     COMO_SAI_O_DY,
+    COMO_SAI_O_DY_MEDIO,
     EM_ABERTO,
     FONTE_DO_ANEXO,
     FONTE_DOS_MULTIPLOS,
+    LIMITE_DO_PRECO,
     Relatorio,
     nome_da_tabela,
 )
@@ -86,6 +88,13 @@ ITENS_FORA_DA_ENTRADA = frozenset(
         "payout",
         "crescimento_do_dividendo",
         "acoes_em_circulacao",
+        # os de preço da linha 55 (25/10): fora como todo número com o preço, e fora também das
+        # perguntas em aberto dos limites
+        "dividend_yield_medio",
+        "p_ebitda",
+        "p_ebit",
+        "p_fcf",
+        "p_ativo",
     }
 )
 COLUNAS_FORA_DA_ENTRADA = frozenset(
@@ -141,6 +150,7 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
     for i, texto in enumerate(secao["paragrafos"]):
         if TRECHO_DO_PRECO not in texto and texto not in (
             COMO_SAI_O_DY,
+            COMO_SAI_O_DY_MEDIO,
             FONTE_DO_ANEXO,
         ):
             linha = {
@@ -185,7 +195,8 @@ def _sem_os_numeros_fora(
 
 
 def _linhas_da_ficha(ficha: dict[str, Any]) -> list[dict[str, Any]]:
-    trocas = _perguntas_sem_os_numeros_fora(ficha)
+    # a frase do preço nos limites sai antes da numeração: os ids dos parágrafos seguintes não mudam
+    trocas = {**_perguntas_sem_os_numeros_fora(ficha), LIMITE_DO_PRECO: None}
     return [
         linha
         for secao in ficha["secoes"]

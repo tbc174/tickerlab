@@ -121,6 +121,34 @@ def test_trava_desligada_tira_o_preco_do_relatorio(conexao, monkeypatch):
     assert ligada.fechamentos is fechamentos
 
 
+def test_trava_desligada_e_a_ficha_sem_preco_dy_multiplos_nem_a_frase(
+    conexao, monkeypatch
+):
+    """Linha 55 da fila: com a trava desligada, a ficha é a mesma de quando o Yahoo falha (nenhum
+    DY, múltiplo ou frase do preço), e nada do resto muda."""
+    from dataclasses import replace
+
+    from src import relatorio_empresa as re_
+
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    ligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, hoje=AGORA.date()
+    )
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, hoje=AGORA.date()
+    )
+    assert ligada is not None and desligada is not None
+    ficha = re_.montar(desligada)
+    assert ficha == re_.montar(replace(ligada, preco=None, fechamentos=None))
+    assert re_.LIMITE_DO_PRECO in re_.montar(ligada).secao("limites").paragrafos
+    assert re_.LIMITE_DO_PRECO not in ficha.secao("limites").paragrafos
+    for secao in ("valuation", "dividendos"):
+        for item in ficha.secao(secao).itens:
+            if item.fonte == re_.FONTE_DOS_MULTIPLOS:
+                assert item.valor is None and "preço" in item.motivo, item.chave
+
+
 def test_relatorio_le_a_ficha_sem_as_secoes_do_molde_b(conexao, monkeypatch):
     """Uma ficha só com a seção da rede (molde B) não vira dossiê no relatório da empresa."""
     from src import dossie
