@@ -300,5 +300,9 @@ jobs:
         # inteiro (_IncludedRouter, sem .path), então listar app.routes quebrava a verificação
         run: docker run --rm tickerlab:ci python -c "from src.api import app; p = sorted(app.openapi()['paths']); print(p); assert '/saude' in p and '/api/saude' in p"
 
+      - name: A busca por CNPJ abre dentro da imagem
+        # a busca lê a vista do CNPJ pela porta da base (DuckDB e Parquet), que a API só importa no pedido
+        run: docker run --rm tickerlab:ci python -c "import src.busca_por_cnpj, src.api_v1.rotas; print('busca ok')"
+
       - name: O login com o Google tem o que precisa dentro da imagem
         run: docker run --rm tickerlab:ci python -c "from authlib.integrations.starlette_client import OAuth; print('login ok')"

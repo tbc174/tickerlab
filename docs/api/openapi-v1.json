@@ -6059,7 +6059,7 @@
     },
     "/v1/busca-por-cnpj": {
       "post": {
-        "description": "O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.\n\nÉ POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log\nde acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.",
+        "description": "O relatório do CNPJ: da companhia aberta (cadastro, grupo, rede e fatos públicos) ou, sem ficha na\nCVM, o cadastro da Receita (Simples e MEI, sócios, estabelecimentos e mudanças), sempre com fonte.\n\nÉ POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log\nde acesso. O app também não o grava no log, só a contagem por situação.",
         "operationId": "busca_por_cnpj_v1_busca_por_cnpj_post",
         "requestBody": {
           "content": {

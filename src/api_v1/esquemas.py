@@ -971,11 +971,13 @@ def de_relatorio_da_empresa(
 class BuscaPorCnpjV1(BaseModel):
     """O relatório do CNPJ (molde B): as seções no formato do relatório da empresa."""
 
-    situacao: str  # "encontrada" ou "fora_da_base_aberta"
+    situacao: str  # "encontrada", "cadastro_da_receita" (sem ficha na CVM) ou "fora_da_base_aberta"
     cnpj: str
     empresa: str
     tickers: list[str]
-    como_era_em: date | None  # o dia da ficha da noite
+    como_era_em: (
+        date | None
+    )  # o dia da ficha da noite ou da publicação do cadastro da Receita
     secoes: list[SecaoDoRelatorioV1]
     fontes: list[str]
     limites: list[str]
