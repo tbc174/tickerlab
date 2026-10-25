@@ -131,10 +131,11 @@ FORMULAS = {
 
 # As contas que entram em cada indicador, e de onde: os 12 meses, o balanço mais recente, a conferência
 # da quantidade de ações (o último exercício da DFP), o primeiro e o último ano do crescimento ou os
-# exercícios da média. É o que `entradas` cita no rastro; mudou uma conta acima, mude aqui (o teste
-# de `tests/test_rastro.py` refaz cada número só com as entradas).
-DOZE_MESES, BALANCO, CONFERENCIA, CRESCIMENTO, MEDIA_DOS_ANOS = (
-    "doze_meses", "balanco", "conferencia", "crescimento", "media_dos_anos",
+# exercícios da média; no saldo médio do `fundamentalista`, também o balanço de um ano antes. É o que
+# `entradas` cita no rastro; mudou uma conta acima, mude aqui (o teste de `tests/test_rastro.py` refaz
+# cada número só com as entradas).
+DOZE_MESES, BALANCO, CONFERENCIA, CRESCIMENTO, MEDIA_DOS_ANOS, UM_ANO_ANTES = (
+    "doze_meses", "balanco", "conferencia", "crescimento", "media_dos_anos", "um_ano_antes",
 )  # fmt: skip
 LUCRO = "lucro"  # o dos controladores; sem a divisão, o consolidado (como em `_lucro`)
 
@@ -222,6 +223,11 @@ class Fundamentos:
 
 def _data(d: date) -> str:
     return f"{d:%d/%m/%Y}"
+
+
+def um_ano_antes(d: date) -> date:
+    """O mesmo dia um ano antes (29/02 vira 28/02)."""
+    return d.replace(year=d.year - 1, day=28 if (d.month, d.day) == (2, 29) else d.day)
 
 
 def _contas_em(
@@ -399,16 +405,20 @@ class _Lugares:
     balanco: Parte | None
     tabela: pd.DataFrame  # a de `anuais`
     referencia_do_ano: dict[int, date]  # a data da DFP de cada linha de `tabela`
+    # (dia, conta) → a linha do saldo naquele dia; com dois documentos no mesmo dia, o último da
+    # tabela, como no `_saldos_em` do `fundamentalista`
+    saldos: dict[tuple[date, str], _Linha]
 
 
 def _lugares(contas: pd.DataFrame) -> _Lugares:
     colunas = ("documento", "referencia", "periodo", "conta", "valor", "versao")
-    guardadas = {
-        (documento, referencia, periodo, conta): (float(valor), int(versao))
-        for documento, referencia, periodo, conta, valor, versao in zip(
-            *(contas[c] for c in colunas), strict=True
-        )
-    }
+    guardadas, saldos = {}, {}
+    for documento, referencia, periodo, conta, valor, versao in zip(
+        *(contas[c] for c in colunas), strict=True
+    ):
+        guardadas[(documento, referencia, periodo, conta)] = (float(valor), int(versao))
+        if periodo == POSICAO:
+            saldos[(referencia, conta)] = (documento, referencia, periodo, conta)
     _, referencia, documento = balanco_mais_recente(contas)
     dfp = contas[
         (contas["documento"] == "DFP") & contas["periodo"].isin([EXERCICIO, POSICAO])
@@ -421,6 +431,7 @@ def _lugares(contas: pd.DataFrame) -> _Lugares:
         {
             r.year: r for r in sorted(dfp["referencia"].unique())
         },  # como `anuais`: a última do ano
+        saldos,
     )
 
 
@@ -443,6 +454,14 @@ def _nos_doze_meses(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
 def _no_balanco(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
     linha = None if lugares.balanco is None else (*lugares.balanco, conta)
     return [linha] if linha in lugares.guardadas else []
+
+
+def _no_ano_antes(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O saldo de um ano antes do balanço mais recente, que o saldo médio usa quando existe."""
+    if lugares.balanco is None or not _no_balanco(lugares, conta, anos):
+        return []
+    linha = lugares.saldos.get((um_ano_antes(lugares.balanco[1]), conta))
+    return [] if linha is None else [linha]
 
 
 def _da_dfp(lugares: _Lugares, ano: int, conta: str) -> list[_Linha]:
@@ -500,6 +519,7 @@ _ONDE = {
     CONFERENCIA: _na_conferencia,
     CRESCIMENTO: _no_crescimento,
     MEDIA_DOS_ANOS: _na_media,
+    UM_ANO_ANTES: _no_ano_antes,
 }
 
 
@@ -530,16 +550,21 @@ def _entrada(linha: _Linha, guardada: tuple[float, int], publicados: dict) -> En
 
 
 def todas_as_entradas(
-    dados: DadosDaEmpresa, anos: int = ANOS_DO_CRESCIMENTO
+    dados: DadosDaEmpresa,
+    anos: int = ANOS_DO_CRESCIMENTO,
+    contas_dos_indicadores: dict[
+        str, tuple[tuple[str, str], ...]
+    ] = CONTAS_DOS_INDICADORES,
 ) -> dict[str, tuple[Entrada, ...]]:
-    """As entradas de cada indicador de `FORMULAS`: as contas guardadas que entram nele, com o
-    valor, o código e o nome na CVM e o documento de onde vieram. Só com elas, `calcular` refaz o
-    número; a conta que o documento não traz fica de fora (e o número sai indisponível)."""
+    """As entradas de cada indicador de `FORMULAS` (ou de outro módulo, pelas contas dele): as contas
+    guardadas que entram nele, com o valor, o código e o nome na CVM e o documento de onde vieram.
+    Só com elas, `calcular` refaz o número; a conta que o documento não traz fica de fora (e o
+    número sai indisponível)."""
     if dados.contas.empty:
-        return {chave: () for chave in CONTAS_DOS_INDICADORES}
+        return {chave: () for chave in contas_dos_indicadores}
     lugares, publicados = _lugares(dados.contas), _publicados_em(dados.documentos)
     saida = {}
-    for chave, contas in CONTAS_DOS_INDICADORES.items():
+    for chave, contas in contas_dos_indicadores.items():
         linhas = [
             linha
             for onde, conta in contas

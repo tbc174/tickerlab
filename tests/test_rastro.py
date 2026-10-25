@@ -298,6 +298,39 @@ def test_as_entradas_refazem_cada_indicador_dos_fundamentos(com_o_itr, monkeypat
         assert refeito[chave].valor == pytest.approx(item.valor, rel=1e-12), chave
 
 
+@pytest.mark.parametrize("com_o_itr", [False, True], ids=["so_a_dfp", "com_o_itr"])
+def test_as_entradas_refazem_cada_indicador_do_fundamentalista(com_o_itr, monkeypatch):
+    dados = _ler_a_weg(com_o_itr)
+    numeros = {
+        chave: item
+        for chave, item in _numeros(re_.montar(_entradas(dados))).items()
+        if chave in fundamentalista.CONTAS_DOS_INDICADORES and item.valor is not None
+    }
+    assert len(numeros) > 15
+    monkeypatch.setattr(fundamentalista, "e_financeira", lambda *_: False)
+    for chave, item in numeros.items():
+        assert item.rastro is not None and item.rastro.entradas, chave
+        refeito = fundamentalista.calcular(_so_as_entradas(dados, item.rastro.entradas))
+        assert refeito[chave].valor == pytest.approx(item.valor, rel=1e-12), chave
+
+
+def test_o_saldo_medio_cita_o_balanco_e_o_de_um_ano_antes(dados_da_weg):
+    """O prazo de recebimento usa a média entre 31/12/2025 e 31/12/2024: as duas DFPs entram."""
+    pmr = fundamentalista.todas_as_entradas(dados_da_weg)["pmr"]
+    receber = [e.referencia for e in pmr if e.conta == "contas_a_receber"]
+    assert receber == [date(2025, 12, 31), date(2024, 12, 31)]
+    assert {e.conta for e in pmr} == {"contas_a_receber", "receita"}
+
+
+def test_o_saldo_medio_sem_o_ano_antes_cita_so_o_fim():
+    """Com o ITR de 30/06/2026 e sem o de 30/06/2025, o prazo usa o saldo do fim (como o texto diz)."""
+    pmr = fundamentalista.todas_as_entradas(_ler_a_weg(com_o_itr=True))["pmr"]
+    receber = [
+        (e.documento, e.referencia) for e in pmr if e.conta == "contas_a_receber"
+    ]
+    assert receber == [("ITR", date(2026, 6, 30))]
+
+
 def test_os_12_meses_com_o_itr_somam_a_dfp_e_o_acumulado_e_tiram_o_do_ano_antes():
     receita = _numeros(re_.montar(_entradas(_ler_a_weg(com_o_itr=True))))["receita"]
     assert receita.rastro is not None
@@ -367,6 +400,9 @@ def test_cortar_o_futuro_nao_muda_as_entradas_do_passado():
         assert fundamentos.entradas(chave, cortada) == fundamentos.entradas(
             chave, so_a_dfp
         ), chave
+    assert fundamentalista.todas_as_entradas(
+        cortada
+    ) == fundamentalista.todas_as_entradas(so_a_dfp)
 
 
 def test_numero_indisponivel_nao_tem_entradas(dados_da_weg):
@@ -384,12 +420,19 @@ def test_numero_indisponivel_nao_tem_entradas(dados_da_weg):
 def test_toda_conta_das_entradas_tem_codigo_e_nome_da_cvm():
     usadas = {
         conta
-        for contas in fundamentos.CONTAS_DOS_INDICADORES.values()
+        for modulo in (fundamentos, fundamentalista)
+        for contas in modulo.CONTAS_DOS_INDICADORES.values()
         for _, conta in contas
     }
     usadas = (usadas - {fundamentos.LUCRO}) | {"lucro_controladores", "lucro_liquido"}
     assert usadas <= set(dm.CONTAS_DA_CVM)
     assert set(fundamentos.CONTAS_DOS_INDICADORES) == set(fundamentos.FORMULAS)
+    assert (
+        set(fundamentalista.CONTAS_DOS_INDICADORES)
+        == set(fundamentalista.FORMULAS)
+        - set(fundamentalista.DOS_DIVIDENDOS)
+        - set(fundamentalista.DA_COMPOSICAO_DO_CAPITAL)
+    )  # os dividendos e as ações por espécie têm o FRE e os proventos: ficam para o PR 3
     assert all(codigo and nome for codigo, nome in dm.CONTAS_DA_CVM.values())
 
 

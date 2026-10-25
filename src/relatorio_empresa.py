@@ -555,8 +555,28 @@ def _rastro(chave: str, c: "_Calculos") -> Rastro:
         documentos = (*dos_anos, *(d for d in c.documentos if d not in dos_anos))
     else:
         documentos = c.documentos
+    entradas = c.entradas.get(chave, ())
     return Rastro.dos_documentos(
-        formula, versao, FONTE_DA_CVM, documentos, entradas=c.entradas.get(chave, ())
+        formula,
+        versao,
+        FONTE_DA_CVM,
+        (*documentos, *_os_que_faltam_citar(documentos, entradas, c)),
+        entradas=entradas,
+    )
+
+
+def _os_que_faltam_citar(
+    documentos: tuple[DocumentoUsado, ...],
+    entradas: tuple[Entrada, ...],
+    c: "_Calculos",
+) -> tuple[DocumentoUsado, ...]:
+    """Os documentos das entradas que ainda não estão no rastro, para que toda conta cite o seu."""
+    citados = {d.nome for d in documentos}
+    nomes = (nome_do_documento(e.documento, e.referencia, e.versao) for e in entradas)
+    return tuple(
+        c.guardados[nome]
+        for nome in dict.fromkeys(nomes)
+        if nome not in citados and nome in c.guardados
     )
 
 
@@ -623,8 +643,11 @@ class _Calculos:
         int, DocumentoUsado
     ]  # a DFP de cada exercício (crescimento, notas, dividendos)
     fechamento: DocumentoUsado  # o preço usado nos múltiplos
-    # as contas que entram em cada indicador dos fundamentos (só os que têm valor)
+    # as contas que entram em cada indicador (só os que têm valor)
     entradas: dict[str, tuple[Entrada, ...]] = field(default_factory=dict)
+    # todo documento da CVM guardado, pelo nome: o rastro cita o de cada entrada (o saldo de um ano
+    # antes, no saldo médio, não está nos documentos dos 12 meses e do balanço)
+    guardados: dict[str, DocumentoUsado] = field(default_factory=dict)
 
     @property
     def data_anterior(self) -> date | None:
@@ -688,7 +711,8 @@ def _calcular(e: Entradas) -> _Calculos:
         documentos_usados(tela.documentos),
         _dfps_por_ano(e.dados.documentos),
         _fechamento(e),
-        _entradas_com_valor(e.dados, tela.indicadores),
+        _entradas_com_valor(e.dados, indicadores),
+        {d.nome: d for d in documentos_usados(e.dados.documentos)},
     )
 
 
@@ -696,11 +720,14 @@ def _entradas_com_valor(
     dados: DadosDaEmpresa, indicadores: dict[str, fundamentos.Indicador]
 ) -> dict[str, tuple[Entrada, ...]]:
     """As entradas dos números calculados: o indisponível não cita conta (não houve conta)."""
-    todas = fundamentos.todas_as_entradas(dados)
+    todas = {
+        **fundamentos.todas_as_entradas(dados),
+        **fundamentalista.todas_as_entradas(dados),
+    }
     return {
         chave: todas[chave]
         for chave, item in indicadores.items()
-        if item.valor is not None
+        if item.valor is not None and chave in todas
     }
 
 

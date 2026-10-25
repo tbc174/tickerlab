@@ -86,7 +86,22 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "fco",
+        "6.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        6451033000.0
+      ],
+      [
+        "capex",
+        "6.02.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -2691321000.0
+      ]
+    ]
   },
   "capex": {
     "valor": 2691321000.0,
@@ -98,7 +113,15 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "capex",
+        "6.02.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -2691321000.0
+      ]
+    ]
   },
   "capex_sobre_depreciacao": {
     "valor": 2.6878375625189754,
@@ -110,7 +133,22 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "capex",
+        "6.02.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -2691321000.0
+      ],
+      [
+        "depreciacao",
+        "6.01.01.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        1001296000.0
+      ]
+    ]
   },
   "ciclo_de_caixa": {
     "valor": 157.263135666786,
@@ -120,9 +158,67 @@
     "outras_fontes": [],
     "publicado_em": "2026-02-25",
     "documentos": [
-      "DFP de 31/12/2025, versão 1"
+      "DFP de 31/12/2025, versão 1",
+      "DFP de 31/12/2024, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "receita",
+        "3.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        40804110000.0
+      ],
+      [
+        "contas_a_receber",
+        "1.01.03",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        7837018000.0
+      ],
+      [
+        "contas_a_receber",
+        "1.01.03",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        7394411000.0
+      ],
+      [
+        "custo",
+        "3.02",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -27122477000.0
+      ],
+      [
+        "estoques",
+        "1.01.04",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        9911053000.0
+      ],
+      [
+        "estoques",
+        "1.01.04",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        9903951000.0
+      ],
+      [
+        "fornecedores",
+        "2.01.02",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        2789346000.0
+      ],
+      [
+        "fornecedores",
+        "2.01.02",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        3778116000.0
+      ]
+    ]
   },
   "cobertura_de_juros": {
     "valor": 3.680326661998051,
@@ -134,7 +230,22 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "ebit",
+        "3.05 ou 3.07",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        7998741000.0
+      ],
+      [
+        "despesas_financeiras",
+        "3.06.02",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -2173378000.0
+      ]
+    ]
   },
   "conversao_de_caixa": {
     "valor": 0.9520473710138109,
@@ -293,7 +404,43 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "divida_cp",
+        "2.01.04",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        3549314000.0
+      ],
+      [
+        "divida_lp",
+        "2.02.01",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1041508000.0
+      ],
+      [
+        "caixa",
+        "1.01.01 ou 1.01",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        6296498000.0
+      ],
+      [
+        "aplicacoes",
+        "1.01.02",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        983367000.0
+      ],
+      [
+        "ebit",
+        "3.05 ou 3.07",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        7998741000.0
+      ]
+    ]
   },
   "divida_liquida_sobre_ebitda": {
     "valor": -0.29878132723232137,
@@ -305,7 +452,50 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "divida_cp",
+        "2.01.04",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        3549314000.0
+      ],
+      [
+        "divida_lp",
+        "2.02.01",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1041508000.0
+      ],
+      [
+        "caixa",
+        "1.01.01 ou 1.01",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        6296498000.0
+      ],
+      [
+        "aplicacoes",
+        "1.01.02",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        983367000.0
+      ],
+      [
+        "ebit",
+        "3.05 ou 3.07",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        7998741000.0
+      ],
+      [
+        "depreciacao",
+        "6.01.01.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        1001296000.0
+      ]
+    ]
   },
   "divida_sobre_pl": {
     "valor": -0.15439021862602942,
@@ -452,7 +642,43 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "lucro_controladores",
+        "3.09.01, 3.11.01 ou 3.13.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        6376219000.0
+      ],
+      [
+        "receita",
+        "3.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        40804110000.0
+      ],
+      [
+        "ativo_total",
+        "1",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        42645030000.0
+      ],
+      [
+        "patrimonio_liquido",
+        "2.03, 2.05, 2.07 ou 2.08",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        18553364000.0
+      ],
+      [
+        "minoritarios",
+        "2.03.09 ou 2.08.09",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1136179000.0
+      ]
+    ]
   },
   "dupont_giro": {
     "valor": 0.9568315463724613,
@@ -464,7 +690,43 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "lucro_controladores",
+        "3.09.01, 3.11.01 ou 3.13.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        6376219000.0
+      ],
+      [
+        "receita",
+        "3.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        40804110000.0
+      ],
+      [
+        "ativo_total",
+        "1",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        42645030000.0
+      ],
+      [
+        "patrimonio_liquido",
+        "2.03, 2.05, 2.07 ou 2.08",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        18553364000.0
+      ],
+      [
+        "minoritarios",
+        "2.03.09 ou 2.08.09",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1136179000.0
+      ]
+    ]
   },
   "dupont_margem": {
     "valor": 0.15626413613726656,
@@ -476,7 +738,43 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "lucro_controladores",
+        "3.09.01, 3.11.01 ou 3.13.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        6376219000.0
+      ],
+      [
+        "receita",
+        "3.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        40804110000.0
+      ],
+      [
+        "ativo_total",
+        "1",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        42645030000.0
+      ],
+      [
+        "patrimonio_liquido",
+        "2.03, 2.05, 2.07 ou 2.08",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        18553364000.0
+      ],
+      [
+        "minoritarios",
+        "2.03.09 ou 2.08.09",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1136179000.0
+      ]
+    ]
   },
   "ev_ebit": {
     "valor": 25.891044059308832,
@@ -653,7 +951,22 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "ativo_circulante",
+        "1.01",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        26910845000.0
+      ],
+      [
+        "passivo_circulante",
+        "2.01",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        17386401000.0
+      ]
+    ]
   },
   "lucro": {
     "valor": 6376219000.0,
@@ -739,7 +1052,29 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "ebit",
+        "3.05 ou 3.07",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        7998741000.0
+      ],
+      [
+        "depreciacao",
+        "6.01.01.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        1001296000.0
+      ],
+      [
+        "receita",
+        "3.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        40804110000.0
+      ]
+    ]
   },
   "margem_liquida": {
     "valor": 0.1660606737899687,
@@ -1149,7 +1484,22 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "ativo_total",
+        "1",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        42645030000.0
+      ],
+      [
+        "patrimonio_liquido",
+        "2.03, 2.05, 2.07 ou 2.08",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        18553364000.0
+      ]
+    ]
   },
   "payout": {
     "valor": 0.8445081638507084,
@@ -1187,7 +1537,22 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "ativo_total",
+        "1",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        42645030000.0
+      ],
+      [
+        "patrimonio_liquido",
+        "2.03, 2.05, 2.07 ou 2.08",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        18553364000.0
+      ]
+    ]
   },
   "pme": {
     "valor": 133.32993996086714,
@@ -1197,9 +1562,32 @@
     "outras_fontes": [],
     "publicado_em": "2026-02-25",
     "documentos": [
-      "DFP de 31/12/2025, versão 1"
+      "DFP de 31/12/2025, versão 1",
+      "DFP de 31/12/2024, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "custo",
+        "3.02",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -27122477000.0
+      ],
+      [
+        "estoques",
+        "1.01.04",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        9911053000.0
+      ],
+      [
+        "estoques",
+        "1.01.04",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        9903951000.0
+      ]
+    ]
   },
   "pmp": {
     "valor": 44.190721039232514,
@@ -1209,9 +1597,32 @@
     "outras_fontes": [],
     "publicado_em": "2026-02-25",
     "documentos": [
-      "DFP de 31/12/2025, versão 1"
+      "DFP de 31/12/2025, versão 1",
+      "DFP de 31/12/2024, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "custo",
+        "3.02",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -27122477000.0
+      ],
+      [
+        "fornecedores",
+        "2.01.02",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        2789346000.0
+      ],
+      [
+        "fornecedores",
+        "2.01.02",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        3778116000.0
+      ]
+    ]
   },
   "pmr": {
     "valor": 68.1239167451514,
@@ -1221,9 +1632,32 @@
     "outras_fontes": [],
     "publicado_em": "2026-02-25",
     "documentos": [
-      "DFP de 31/12/2025, versão 1"
+      "DFP de 31/12/2025, versão 1",
+      "DFP de 31/12/2024, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "receita",
+        "3.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        40804110000.0
+      ],
+      [
+        "contas_a_receber",
+        "1.01.03",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        7837018000.0
+      ],
+      [
+        "contas_a_receber",
+        "1.01.03",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        7394411000.0
+      ]
+    ]
   },
   "receita": {
     "valor": 40804110000.0,
@@ -1255,7 +1689,22 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "lucro_liquido",
+        "3.09, 3.11 ou 3.13",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        6775958000.0
+      ],
+      [
+        "ativo_total",
+        "1",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        42645030000.0
+      ]
+    ]
   },
   "roe": {
     "valor": 0.3660878035113022,
