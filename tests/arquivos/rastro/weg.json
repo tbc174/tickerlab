@@ -9,7 +9,64 @@
     "documentos": [
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "acoes_total",
+        "QT_ACAO_TOTAL_CAP_INTEGR",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        4197317998.0
+      ],
+      [
+        "acoes_tesouraria",
+        "QT_ACAO_TOTAL_TESOURO",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1622025.0
+      ],
+      [
+        "lucro_controladores",
+        "3.09.01, 3.11.01 ou 3.13.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        6376219000.0
+      ],
+      [
+        "lpa_basico",
+        "3.99.01.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        1.51971
+      ],
+      [
+        "acoes_ordinarias",
+        "QT_ACAO_ORDIN_CAP_INTEGR",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        4197317998.0
+      ],
+      [
+        "acoes_ordinarias_tesouraria",
+        "QT_ACAO_ORDIN_TESOURO",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1622025.0
+      ],
+      [
+        "acoes_preferenciais",
+        "QT_ACAO_PREF_CAP_INTEGR",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        0.0
+      ],
+      [
+        "acoes_preferenciais_tesouraria",
+        "QT_ACAO_PREF_TESOURO",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        0.0
+      ]
+    ]
   },
   "altman": {
     "valor": 3.7310914438364096,
@@ -34,7 +91,22 @@
       "DFP de 31/12/2024, versão 1",
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "dividendos_pagos",
+        "6.03.xx",
+        "exercicio",
+        "DFP de 31/12/2024, versão 1",
+        -2934611000.0
+      ],
+      [
+        "dividendos_pagos",
+        "6.03.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -5384769000.0
+      ]
+    ]
   },
   "beneish": {
     "valor": -2.45947230360491,
@@ -324,7 +396,36 @@
       "DFP de 31/12/2024, versão 1",
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "acoes_total",
+        "QT_ACAO_TOTAL_CAP_INTEGR",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        4197317998.0
+      ],
+      [
+        "acoes_total",
+        "QT_ACAO_TOTAL_CAP_INTEGR",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        4197317998.0
+      ],
+      [
+        "acoes_tesouraria",
+        "QT_ACAO_TOTAL_TESOURO",
+        "posicao",
+        "DFP de 31/12/2024, versão 1",
+        1780620.0
+      ],
+      [
+        "acoes_tesouraria",
+        "QT_ACAO_TOTAL_TESOURO",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1622025.0
+      ]
+    ]
   },
   "divida_bruta": {
     "valor": 4590822000.0,
@@ -630,7 +731,29 @@
       "DFP de 31/12/2024, versão 1",
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "dividendos_pagos",
+        "6.03.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -5384769000.0
+      ],
+      [
+        "acoes_total",
+        "QT_ACAO_TOTAL_CAP_INTEGR",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        4197317998.0
+      ],
+      [
+        "acoes_tesouraria",
+        "QT_ACAO_TOTAL_TESOURO",
+        "posicao",
+        "DFP de 31/12/2025, versão 1",
+        1622025.0
+      ]
+    ]
   },
   "dupont_alavancagem": {
     "valor": 2.448445601284019,
@@ -1512,7 +1635,22 @@
       "DFP de 31/12/2024, versão 1",
       "DFP de 31/12/2025, versão 1"
     ],
-    "entradas": []
+    "entradas": [
+      [
+        "dividendos_pagos",
+        "6.03.xx",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        -5384769000.0
+      ],
+      [
+        "lucro_controladores",
+        "3.09.01, 3.11.01 ou 3.13.01",
+        "exercicio",
+        "DFP de 31/12/2025, versão 1",
+        6376219000.0
+      ]
+    ]
   },
   "piotroski": {
     "valor": 6.0,
