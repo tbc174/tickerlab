@@ -25,8 +25,9 @@ fundo-mês, a versão mais recente até então. Cortar o futuro não muda o pass
 
 Limite honesto: fundo sem cota subordinada (ou com a classe zerada) tem subordinação 0 e gera o evento,
 que diz só o que o informe mostra, não que o regulamento exija subordinação. O informe é entregue em até 15 dias e a CVM regrava meses passados; um fundo que não
-entregou o mês não gera evento (ausência de informe não é sinal de calma). Não há ainda o estado
-"fonte falhou" (N5).
+entregou o mês não gera evento aqui (ausência de informe não é sinal de calma): o "não observado" e o
+"fonte falhou" estão no evento de PJ (`src/eventos_de_pj/fidc.py`, N5), de que este evento é o caso
+"mudou" (`como_evento_de_pj`).
 """
 
 from __future__ import annotations
@@ -39,11 +40,17 @@ from typing import Any, Literal
 
 import pandas as pd
 
+from src.eventos_de_pj.evento import MUDOU, EventoDePJ, cnpj_do_objeto
+from src.eventos_de_pj.evento import Evidencia as EvidenciaDePJ
 from src.rastro import Rastro
 
 VERSAO_DO_CALCULO = "monitoramento_fidc 1"
 FONTE = "cvm"
 OBJETO_TIPO = "entidade"
+FONTE_DO_INFORME = (
+    "cvm-fidc"  # o id da coleta do informe mensal (`base/arquivo/fontes.py`)
+)
+ONDE_DA_REGRA = "regra"  # a evidência que não vem do informe: o valor, o limite e a gravidade da regra
 CASAS_DA_RAZAO = 10
 TAMANHO_DO_ID = 16  # caracteres do hash que viram o id do evento
 
@@ -145,6 +152,30 @@ class EventoDeMonitoramento:
 
     def como_dict(self) -> dict[str, Any]:
         return _em_dicionario(self)  # type: ignore[return-value]
+
+    def como_evento_de_pj(self) -> EventoDePJ:
+        """O mesmo fato como evento de PJ no estado "mudou" (o assunto é a regra; o nome do fundo fica de fora)."""
+        return EventoDePJ(
+            evento_id=self.evento_id,
+            usuario_id=None,
+            objeto_tipo="fundo",
+            objeto_id=cnpj_do_objeto(self.objeto_id),
+            estado=MUDOU,
+            fonte=FONTE_DO_INFORME,
+            assunto=self.regra_id,
+            ocorrido_em=self.ocorrido_em,
+            publico_em=self.publico_em,
+            evidencia=(
+                *(
+                    EvidenciaDePJ(e.quadro, e.campo, None, e.valor)
+                    for e in self.evidencia
+                ),
+                EvidenciaDePJ(ONDE_DA_REGRA, "valor", None, self.valor),
+                EvidenciaDePJ(ONDE_DA_REGRA, "limite", None, self.limite),
+                EvidenciaDePJ(ONDE_DA_REGRA, "gravidade", None, self.gravidade),
+            ),
+            rastro=self.rastro,
+        )
 
 
 def _em_dicionario(objeto: object) -> object:
