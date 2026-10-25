@@ -3294,7 +3294,14 @@ TABELAS: dict[str, Tabela] = {
         fonte="Banco Central: IF.data (API Olinda, `IfDataCadastro`)",
         familia_da_fonte="bcb",
         frequencia="Trimestral, junto com os valores",
-        atraso="O dos valores (o cadastro sai com a data-base)",
+        atraso=(
+            "O dos valores (o cadastro sai com a data-base): `disponivel_em` usa data-base + 120 "
+            "dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada "
+            "revisão vira linha nova da mesma chave, que só vale desde o dia em que foi vista "
+            "(`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica "
+            "guardada como `<AAAAMM>.v<N>`. O que o BC revisou antes da 1ª coleta guardada "
+            "(10/2026) não aparece"
+        ),
         onde="Parquet em `<acervo>/base/bcb/ifdata/cadastro/<AAAAMM>.parquet` (servidor de casa)",
         linhagem="Como `ifdata_valores`: o manifesto guarda o endereço e o SHA-256 da resposta.",
         colunas={
@@ -3326,6 +3333,20 @@ TABELAS: dict[str, Tabela] = {
             "cnpj_raiz": (
                 "Raiz do CNPJ usada na ligação: a do líder ou o próprio código, se for CNPJ",
                 TEXTO,
+            ),
+            "disponivel_em": (
+                (
+                    "Desde quando o cadastro era público (como era na data): o prazo, ou o dia em "
+                    "que a revisão do BC foi vista, se for depois"
+                ),
+                DATA,
+            ),
+            "visto_em": (
+                (
+                    "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe esta linha; "
+                    "vazio se não havia o dia (acervo desligado)"
+                ),
+                DATA,
             ),
         },
     ),
@@ -3379,7 +3400,10 @@ TABELAS: dict[str, Tabela] = {
         atraso=(
             "Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); "
             "`disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais "
-            "novos são baixados de novo a cada carga e cada regravação vira versão `<ano>.v<N>`"
+            "novos são baixados de novo a cada carga e cada regravação que muda um número vira "
+            "linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; "
+            "`base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como "
+            "`<ano>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece"
         ),
         onde="Parquet em `<acervo>/base/bcb/scr/<ano>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)",
         linhagem=(
@@ -3424,7 +3448,24 @@ TABELAS: dict[str, Tabela] = {
                 REAIS,
             ),
             "disponivel_em": (
-                "Desde quando o mês era público (como era na data)",
+                (
+                    "Desde quando o mês era público (como era na data): o prazo, ou o dia em que "
+                    "a revisão do BC foi vista, se for depois"
+                ),
+                DATA,
+            ),
+            "ocorrencia": (
+                (
+                    "Ordem da linha entre as de mesma chave no arquivo do BC (0, 1...): o BC publica "
+                    "mais de uma linha por chave e a base soma todas"
+                ),
+                NUMERO,
+            ),
+            "visto_em": (
+                (
+                    "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe esta linha; "
+                    "vazio se não havia o dia (acervo desligado)"
+                ),
                 DATA,
             ),
         },
@@ -5938,10 +5979,12 @@ _CONTRATO = {
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     # 2.0.0 (21/10/2026): a revisão do BC é linha nova da mesma chave (`visto_em`), que vale só desde o dia em que foi vista
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
-    "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
+    # 2.0.0 (25/10/2026): a revisão do BC é linha nova da mesma chave (`visto_em`), que vale só desde o dia em que foi vista
+    "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
     "ligacao_dos_bancos": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
     # 1.1.0 (25/10/2026): declara `publico_em` = `disponivel_em` (data-base + 60 dias); a porta passa a aceitar `como_era_em`
-    "scr_credito": _contrato(modulo=_FIDC, chaves=("data_base", "uf", "segmento", "cliente", "cnae_ocupacao", "porte", "modalidade", "submodalidade", "origem", "indexador"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    # 2.0.0 (25/10/2026): a regravação do BC que muda um número é linha nova da mesma chave (`visto_em`)
+    "scr_credito": _contrato(modulo=_FIDC, chaves=("data_base", "uf", "segmento", "cliente", "cnae_ocupacao", "porte", "modalidade", "submodalidade", "origem", "indexador", "ocorrencia", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
     "padroes_setoriais": _contrato(modulo=_ME, chaves=("data_de_corte", "grupo", "indicador", "versao"), datas={"aconteceu_em": "data_de_corte", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "fre_proventos": _contrato(modulo=_ME, chaves=("cnpj", "exercicio", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "fre_eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "tipo", "data", "referencia", "versao"), datas={"aconteceu_em": "data", "coletado_em": "coletado_em"}, historico_desde=_CVM),

@@ -1,0 +1,100 @@
+{
+  "tabela": "ifdata_cadastro",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "2.0.0",
+  "colunas": {
+    "data_base": {
+      "descricao": "Data-base do cadastro",
+      "unidade": "data (dia)"
+    },
+    "cod_inst": {
+      "descricao": "Código da instituição no BC",
+      "unidade": "texto"
+    },
+    "instituicao": {
+      "descricao": "Nome da instituição",
+      "unidade": "texto"
+    },
+    "tipo_controle": {
+      "descricao": "Tc: 1 público, 2 privado nacional, 3 estrangeiro",
+      "unidade": "texto"
+    },
+    "tipo_consolidado": {
+      "descricao": "Tcb: tipo de consolidado bancário (b1, b2...)",
+      "unidade": "texto"
+    },
+    "tipo_documento": {
+      "descricao": "Td: tipo de documento contábil",
+      "unidade": "texto"
+    },
+    "segmento_prudencial": {
+      "descricao": "Sr: segmento da regulação prudencial (S1 a S5)",
+      "unidade": "texto"
+    },
+    "segmento": {
+      "descricao": "Segmento da instituição, quando informado",
+      "unidade": "texto"
+    },
+    "atividade": {
+      "descricao": "Atividade principal, quando informada",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da sede",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município da sede",
+      "unidade": "texto"
+    },
+    "conglomerado_financeiro": {
+      "descricao": "Código do conglomerado financeiro",
+      "unidade": "texto"
+    },
+    "conglomerado_prudencial": {
+      "descricao": "Código do conglomerado prudencial",
+      "unidade": "texto"
+    },
+    "cnpj_lider": {
+      "descricao": "Raiz do CNPJ da instituição líder (8 dígitos)",
+      "unidade": "texto"
+    },
+    "inicio_atividade": {
+      "descricao": "Mês de início da atividade (AAAAMM)",
+      "unidade": "número inteiro"
+    },
+    "situacao": {
+      "descricao": "A = ativa",
+      "unidade": "texto"
+    },
+    "cnpj_raiz": {
+      "descricao": "Raiz do CNPJ usada na ligação: a do líder ou o próprio código, se for CNPJ",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o cadastro era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe esta linha; vazio se não havia o dia (acervo desligado)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "data_base",
+    "cod_inst",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "data_base",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Trimestral, junto com os valores",
+  "atraso": "O dos valores (o cadastro sai com a data-base): `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como `<AAAAMM>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece"
+}

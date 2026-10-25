@@ -1783,12 +1783,12 @@ O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidad
 - **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Trimestral, junto com os valores
-- **Atraso de divulgação:** O dos valores (o cadastro sai com a data-base)
+- **Atraso de divulgação:** O dos valores (o cadastro sai com a data-base): `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como `<AAAAMM>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
-- **Chaves:** `data_base`, `cod_inst`
-- **Três datas:** aconteceu_em = `data_base`
+- **Chaves:** `data_base`, `cod_inst`, `visto_em`
+- **Três datas:** aconteceu_em = `data_base`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/cadastro/<AAAAMM>.parquet` (servidor de casa)
 - **Linhagem:** Como `ifdata_valores`: o manifesto guarda o endereço e o SHA-256 da resposta.
 
@@ -1811,6 +1811,8 @@ O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidad
 | `inicio_atividade` | Mês de início da atividade (AAAAMM) | número inteiro |
 | `situacao` | A = ativa | texto |
 | `cnpj_raiz` | Raiz do CNPJ usada na ligação: a do líder ou o próprio código, se for CNPJ | texto |
+| `disponivel_em` | Desde quando o cadastro era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois | data (dia) |
+| `visto_em` | Dia (São Paulo) em que o arquivista baixou a resposta que trouxe esta linha; vazio se não havia o dia (acervo desligado) | data (dia) |
 
 ## `ligacao_dos_bancos`
 
@@ -1847,12 +1849,12 @@ Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data ver
 - **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Mensal, um arquivo por ano
-- **Atraso de divulgação:** Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); `disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais novos são baixados de novo a cada carga e cada regravação vira versão `<ano>.v<N>`
+- **Atraso de divulgação:** Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); `disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais novos são baixados de novo a cada carga e cada regravação que muda um número vira linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como `<ano>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece
 - **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
-- **Chaves:** `data_base`, `uf`, `segmento`, `cliente`, `cnae_ocupacao`, `porte`, `modalidade`, `submodalidade`, `origem`, `indexador`
+- **Chaves:** `data_base`, `uf`, `segmento`, `cliente`, `cnae_ocupacao`, `porte`, `modalidade`, `submodalidade`, `origem`, `indexador`, `ocorrencia`, `visto_em`
 - **Três datas:** aconteceu_em = `data_base`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.1.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/bcb/scr/<ano>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)
 - **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 do arquivo do BC (no acervo e no registro de coletas, fonte `bcb-scr-base`) e a versão do código.
 
@@ -1882,7 +1884,9 @@ Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data ver
 | `carteira_ativa` | Carteira ativa, como o BC informa | reais (R$), já multiplicado pela escala informada |
 | `carteira_inadimplencia` | Carteira em inadimplência (atraso acima de 90 dias) | reais (R$), já multiplicado pela escala informada |
 | `ativo_problematico` | Ativo problemático (atraso ou reestruturação) | reais (R$), já multiplicado pela escala informada |
-| `disponivel_em` | Desde quando o mês era público (como era na data) | data (dia) |
+| `disponivel_em` | Desde quando o mês era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois | data (dia) |
+| `ocorrencia` | Ordem da linha entre as de mesma chave no arquivo do BC (0, 1...): o BC publica mais de uma linha por chave e a base soma todas | número inteiro |
+| `visto_em` | Dia (São Paulo) em que o arquivista baixou a resposta que trouxe esta linha; vazio se não havia o dia (acervo desligado) | data (dia) |
 
 ## `padroes_setoriais`
 

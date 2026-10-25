@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from base.bcb_ifdata import disponivel_em
+from base.bcb_ifdata import cadastro_mais_novo, disponivel_em
 from base.cnpj import completo, dv_confere, normalizar_cnpj
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 from base.rede import ids, ligacoes_das_fontes
@@ -375,6 +375,7 @@ def _do_ifdata(cadastro: pd.DataFrame) -> list[pd.DataFrame]:
     """Só a instituição individual (código = raiz); público 120 dias depois da data-base."""
     if cadastro.empty:
         return []
+    cadastro = cadastro_mais_novo(cadastro)  # a revisão do BC não repete a instituição
     individuais = cadastro[
         cadastro["cod_inst"].astype(str).str.fullmatch(INSTITUICAO_INDIVIDUAL)
     ]
