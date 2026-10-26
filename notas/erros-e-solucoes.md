@@ -657,3 +657,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o `~/bin/boletim-da-base.sh` tirava as tarefas diárias com `grep '^TAREFAS='` do `conferir-tarefas-casa.sh`. Desde o D1 do painel das coletas (21/10), esse arquivo lê o `estado.json` do vigia e não tem mais essa linha. Com `set -euo pipefail`, o `grep` vazio encerra o script antes de qualquer `echo`.
 - **Solução:** o script lê as diárias (prazo de até 26 h) do `~/painel-das-coletas/estado.json` e, se a lista vier vazia, sai com uma linha `FALHAS:`. A cópia antiga ficou em `~/bin/boletim-da-base.sh.antes-diarias-20261024`. Regra: ao mudar a origem de um dado no servidor, procure quem mais o lia (`grep -l` em `~/bin`).
 - **Data:** 24/10/2026
+
+### Carga histórica do CNPJ: ZIP cortado da Receita e memória estourada no mês grande
+- **Erro:** `BadZipFile` em 2023-08 e OOM (kill do contêiner de 4 GB) em 2024-10, o mês com 8,4 milhões de mudanças nos estabelecimentos e 9,7 milhões nos sócios.
+- **Causa:** a Receita publica `Estabelecimentos6/7.zip` cortados em 2023-08 (a cópia inteira vem com sufixo `-RF…`); e as mudanças do mês eram montadas todas de uma vez na memória.
+- **Solução:** o download confere `zipfile.is_zipfile` e o `Content-Length`, repete e usa a cópia `-RF…` (#619); as mudanças saem uma tabela por vez (#634) e um arquivo por prefixo, com pasta `<AAAA-MM>/<xx>.parquet` quando o mês passa de 2 milhões de linhas (#644). Pico medido: 3,8 GB no pior mês; contêiner com 5 GB e swap.
+- **Data:** 25/10/2026
