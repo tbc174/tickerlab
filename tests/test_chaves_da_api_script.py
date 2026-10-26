@@ -16,7 +16,7 @@ from scripts import chaves_da_api as script
 from src.banco import chaves_da_api as cb
 from src.banco.modelo import auditoria, chaves_da_api, organizacoes
 from src.banco.usuarios import entrar
-from src.chaves_da_api import FORMATO, MotivoDaRecusa, hash_da_chave
+from src.chaves_da_api import FORMATO, MotivoDaRecusa, gerar_chave, hash_da_chave
 
 ADMIN = "admin-n7@exemplo.com"
 HOJE = datetime.now(UTC).date()
@@ -71,6 +71,18 @@ def _emitir(capsys, organizacao_id):
     return _chave_na_saida(saida), saida, erro
 
 
+def _segredo_da_chave(chave):
+    """O segredo é tudo depois de `tld_<prefixo>_`; ele mesmo pode ter `_` (base64 para URL)."""
+    return chave.split("_", 2)[2]
+
+
+def test_segredo_da_chave_e_inteiro_mesmo_com_sublinhado_nele():
+    for _ in range(500):
+        prefixo, chave = gerar_chave()
+        assert _segredo_da_chave(chave) == chave.removeprefix(f"tld_{prefixo}_")
+        assert len(_segredo_da_chave(chave)) == 43
+
+
 def _conferir(banco, chave):
     with banco.begin() as conexao:
         return cb.conferir_chave(conexao, chave)
@@ -96,7 +108,8 @@ def test_chave_nova_sai_uma_vez_no_stdout_e_em_nenhum_outro_lugar(
     caplog.set_level(logging.DEBUG)
     organizacao_id = _criar_organizacao(capsys)
     chave, _, erro = _emitir(capsys, organizacao_id)
-    segredo = chave.rsplit("_", 1)[1]
+    segredo = _segredo_da_chave(chave)
+    assert len(segredo) == 43
     assert chave not in erro and segredo not in erro
     assert chave not in caplog.text and segredo not in caplog.text
     auditado = _auditoria_em_texto(banco)
