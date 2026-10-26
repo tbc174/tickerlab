@@ -6,6 +6,7 @@ acesso e abre a sessão de 30 dias. `POST /v1/sair-de-todos` encerra as sessões
 """
 
 import logging
+from datetime import datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
@@ -409,3 +410,39 @@ def test_codigo_conferido_antes_do_bloqueio_nao_abre_sessao_depois_do_desbloquei
         ).status_code
         == 200
     )
+
+
+class _RelogioAtrasado(datetime):
+    """O relógio de quem bloqueia, 2 s atrás do da API."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return datetime.now(tz) - timedelta(seconds=2)
+
+
+def test_relogio_atrasado_de_quem_bloqueia_nao_deixa_o_codigo_abrir_sessao(
+    cliente, banco, enviados, monkeypatch
+):
+    """3ª revisão cruzada do Codex no #659, pelo código por e-mail: o bloqueio e o desbloqueio
+    caem entre a entrada na conta e a abertura da sessão, com o relógio do admin atrasado."""
+    from src import auditoria as registro_de_auditoria
+    from src.administracao import desbloquear_conta
+    from src.banco.usuarios import buscar_por_google_sub
+
+    ana = _conta_google(banco)
+    original = entrada._entrar_pelo_email
+
+    def entrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        bloquear_pelo_admin(banco, ana.id)
+        with banco.begin() as conexao:
+            chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+            desbloquear_conta(conexao, chefe.id, ana.id)
+        return resultado
+
+    monkeypatch.setattr(entrada, "_entrar_pelo_email", entrar_e_pausar)
+    monkeypatch.setattr(registro_de_auditoria, "datetime", _RelogioAtrasado)
+    _pedir(cliente, "ana@exemplo.com")
+    ((_, codigo),) = enviados
+    resposta = _confirmar(cliente, "ana@exemplo.com", codigo)
+    assert resposta.status_code == 409

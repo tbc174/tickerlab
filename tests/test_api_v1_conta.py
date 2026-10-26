@@ -5,6 +5,8 @@ Até aqui, quem nunca tinha entrado recebia 401 "conta-nova" e precisava passar 
 (`src/autenticacao.registrar_login`): admin só pelo e-mail confirmado, origem do cookie só na primeira vez.
 """
 
+from datetime import datetime, timedelta
+
 import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
@@ -187,6 +189,38 @@ def test_login_de_antes_do_bloqueio_nao_abre_sessao_depois_do_desbloqueio(
     cliente.cookies.clear()
     cabecalhos = {"Cookie": f"{NOME_DO_COOKIE}={valor}"}
     assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 200
+
+
+class _RelogioAtrasado(datetime):
+    """O relógio de quem bloqueia (painel do admin, script do servidor), 2 s atrás do da API."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return datetime.now(tz) - timedelta(seconds=2)
+
+
+def test_relogio_atrasado_de_quem_bloqueia_nao_deixa_o_login_passar(
+    cliente, banco, chave, monkeypatch
+):
+    """3ª revisão cruzada do Codex no #659: com o relógio do admin atrás do da API, o bloqueio e o
+    desbloqueio ficavam com hora anterior ao começo do login, e a conferência pela hora os
+    perdia. O login que leu a conta antes do bloqueio continua sem valer."""
+    from src import auditoria as registro_de_auditoria
+
+    _criar(cliente, chave)
+    carla = _da_carla(banco)
+    original = conta._registrar
+
+    def registrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        _bloquear_e_desbloquear(banco, carla.id)
+        return resultado
+
+    monkeypatch.setattr(conta, "_registrar", registrar_e_pausar)
+    monkeypatch.setattr(registro_de_auditoria, "datetime", _RelogioAtrasado)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 409
+    assert resposta.headers[conta.CABECALHO_DO_MOTIVO] == "login-interrompido"
 
 
 def test_admin_pelo_email_da_lista(cliente, banco, chave, monkeypatch):
