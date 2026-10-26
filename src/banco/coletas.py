@@ -430,9 +430,190 @@ class ColetaEGuarda(NamedTuple):
     respeita_ritmo_e_se_identifica: bool = False
 
 
-# A linha 159 da fila (Dados) preenche cada família a partir da auditoria N0; até lá, vazio: o portão
-# da API externa (`src/portao_externo.py`) nega toda família sem resposta. O app não lê isto (ADR 0102).
-COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {}
+# Coleta e guarda de cada família do `LICENCAS` (linha 159 da fila; ADR 0108, D3 e D5.3). As respostas
+# são as da auditoria N0 de 21/10/2026 (`auditoria-licitude-da-coleta-2026-10-21.md`, na pasta privada),
+# copiadas sem decidir de novo: "sim" é `aberta` e `sem_prazo`; "não" é `termo_veda` e `nao_guardar`;
+# "não diz" e "não lido" são `nao_lida` e `nao_diz`, que seguem negadas pelo portão externo (`src/
+# portao_externo.py`). Família que a N0 não cobriu (lotes de 22 e 23/10) também fica sem resposta.
+# `ROBOTS_FECHA` leva as duas condições do D5.3 pelo que a N0 e o código dizem: (a) a licença escrita
+# do órgão permite reuso comercial; (b) o arquivista lê o `Crawl-delay` e manda o `User-Agent` do
+# TickerLab (`base/arquivo/ritmo.py` e `agente.py`, PR 600). A data da leitura dos termos está em
+# `TERMOS_LIDOS_EM`; o app não lê esta tabela (ADR 0102).
+_NAO_RESPONDIDA = ColetaEGuarda(Coleta.NAO_LIDA, Guarda.NAO_DIZ)
+_ABERTA_SEM_PRAZO = ColetaEGuarda(Coleta.ABERTA, Guarda.SEM_PRAZO)
+_ABERTA_GUARDA_NAO_DIZ = ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ)
+_TERMO_VEDA_NAO_GUARDAR = ColetaEGuarda(Coleta.TERMO_VEDA, Guarda.NAO_GUARDAR)
+# o robots.txt fecha o portal (`Disallow: /api/` ou `/`), a licença escrita do órgão permite reuso
+# comercial e o arquivista respeita o ritmo e se identifica
+_ROBOTS_FECHA_COM_LICENCA = ColetaEGuarda(
+    Coleta.ROBOTS_FECHA,
+    Guarda.SEM_PRAZO,
+    licenca_permite_reuso_comercial=True,
+    respeita_ritmo_e_se_identifica=True,
+)
+
+COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
+    # a N0 diz: coleta sim, retenção sim
+    **dict.fromkeys(
+        (
+            "bm",
+            "tesouro",
+            "cftc",
+            "gdelt",
+            "btc",
+            "cgu",
+            "ibama",
+            "gleif",
+            "anp",
+            "anac",
+            "ans",
+            "anatel",
+            "susep",
+            "assessoria",
+            "conab",
+            "usda",
+            "faostat",
+            "tce-pr",
+            "tce-pr-pit",
+            "tce-pr-despesa",
+            "tesouro-br",
+            "tesouro-br-divida",
+            "tesouro-br-direto",
+            "tesouro-br-leiloes",
+        ),
+        _ABERTA_SEM_PRAZO,
+    ),
+    # robots.txt fecha o portal; licença ODbL, CC BY ou domínio público (D5.3)
+    **dict.fromkeys(
+        (
+            "cvm",
+            "bcb",
+            "ccee",
+            "antt",
+            "aneel",
+            "tce-rs-empenhos",
+            "chirps",  # Disallow: / ; domínio público
+            "rfb-cnpj",  # Disallow: / ; CC BY na ficha do dados.gov.br
+        ),
+        _ROBOTS_FECHA_COM_LICENCA,
+    ),
+    # a N0 diz coleta sim e retenção "não diz"
+    **dict.fromkeys(("sec", "bcb-sgs-189", "iex"), _ABERTA_GUARDA_NAO_DIZ),
+    # o termo veda a coleta e a cópia
+    **dict.fromkeys(("yahoo", "kraken", "fnc"), _TERMO_VEDA_NAO_GUARDAR),
+    "fmi": ColetaEGuarda(
+        Coleta.TERMO_VEDA, Guarda.NAO_DIZ
+    ),  # veda coleta em massa sem permissão
+    "b3": ColetaEGuarda(
+        Coleta.TERMO_VEDA, Guarda.NAO_DIZ
+    ),  # BDI veda; VPS 90 dias, casa sem prazo
+    "contrapartes": ColetaEGuarda(Coleta.TERMO_VEDA, Guarda.SO_PROVA),
+    # robots.txt fecha o portal e a N0 não achou licença escrita que dê reuso comercial (ONS: "reuso e
+    # redistribuição" sem nome de licença; catálogo: só metadados; Cecafé: `Disallow: /*.pdf$`)
+    "ons": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
+    "catalogo": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
+    "cecafe": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.NAO_DIZ),
+    # a N0 diz retenção sim, coleta "não diz" ou não lida
+    "mapbiomas": ColetaEGuarda(
+        Coleta.NAO_LIDA, Guarda.SEM_PRAZO
+    ),  # CC BY-SA hoje, CC BY em 18/10
+    "termos": ColetaEGuarda(
+        Coleta.NAO_LIDA, Guarda.SO_PROVA
+    ),  # cópias de termos; três são da B3
+    # a N0 não respondeu a coleta nem a guarda
+    **dict.fromkeys(
+        (
+            "ibge",
+            "inmet",
+            "rfb",
+            "wiki",
+            "mb",
+            "pgfn",
+            "mte",
+            "comexstat",
+            "wayback",
+            "tce-rs",
+            "ico",
+            # famílias que a N0 não cobriu (lotes de 22 e 23/10)
+            "transparencia",
+            "bndes",
+            "inss",
+            "seges",
+            "seges-pesquisa-precos",
+            "comprasgov",
+            "transferegov",
+            "pncp",
+            "tcu",
+            "govmg",
+            "govsc",
+            "tesouro-br-siconfi-entes",
+            "tesouro-br-siconfi-entregas",
+            "tesouro-br-siconfi-rreo",
+            "tesouro-br-siconfi-rgf",
+            "tesouro-br-siconfi-dca",
+            "tesouro-br-rtn",
+            "tesouro-br-receitas",
+            "tesouro-br-despesas",
+            "tesouro-br-restos-a-pagar",
+            "tesouro-br-fatores-divida",
+            "tesouro-br-paf",
+            "tesouro-br-bspn",
+            "tesouro-br-limites-lrf",
+            "tesouro-br-dividendos-estatais",
+            "tesouro-br-subsidios-bndes",
+            "tesouro-br-garantias",
+            "tesouro-br-transferencias",
+            "tesouro-br-capag-municipios",
+            "tesouro-br-td-vendas",
+            "tesouro-br-td-resgates",
+            "tesouro-br-td-estoque",
+            "bce",
+            "ocde",
+            "eurostat",
+            "worldbank",
+            "bis",
+            "nasa",
+            "noaa",
+            "inpe",
+            "firms",
+            "terrabrasilis",
+            "ecmwf",
+            "climatetrace",
+            "edgar",
+            "carbonmonitor",
+            "treasury",
+            "fed",
+            "bls",
+            "eia",
+            "ofr",
+            "nyfed",
+            "tic",
+            "census",
+            "sec-company-tickers",
+            "wikidata",
+            "ofac",
+            "eufsf",
+            "ofsi",
+            "epe",
+            "wiki-pageviews-empresas",
+            "gdelt-gkg",
+            "querido",
+            "crossref",
+            "openalex",
+            "ebc",
+            "senado",
+            "camara",
+            "inep",
+            "senatran",
+            "inpi",
+            "epo",
+            "wipo",
+            "ipea",
+            "ans-demonstracoes",
+        ),
+        _NAO_RESPONDIDA,
+    ),
+}
 MOSTRAR = "mostrar"  # em tela, relatório, PDF, API ou newsletter
 USOS = ("treinar", "rotular", "exportar", MOSTRAR)
 # As famílias fora dos quatro usos. Vazia desde 22/10/2026: a B3, a única que havia (ADR 0102; dado de
