@@ -3968,7 +3968,7 @@
       "tabela": "ifdata_valores"
     },
     {
-      "atraso": "O dos valores",
+      "atraso": null,
       "frase": "O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidade, conglomerados e CNPJ do líder de cada instituição e conglomerado, com a raiz do CNPJ que liga à bolsa.",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
