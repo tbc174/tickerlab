@@ -27,6 +27,7 @@ from src.configuracao import preco_no_relatorio_ligado
 from src.cruzamentos import com_os_cruzamentos
 from src.demonstracoes import EXERCICIO
 from src.dossie import caixa_do_par, dossie_da_ficha, ficha_do, ficha_do_molde_a
+from src.padroes import MULTIPLOS
 from src.relatorio_empresa import QUANTOS_EVENTOS, Entradas
 from src.setores import SEM_GRUPO, grupo_do_setor
 
@@ -89,6 +90,13 @@ def pares_do_grupo(conexao: sa.Connection, setor: str) -> pd.DataFrame:
     return ultimas[["cnpj", "empresa", "receita"]].reset_index(drop=True)
 
 
+def _sem_os_multiplos(padroes: pd.DataFrame) -> pd.DataFrame | None:
+    """Os padrões sem P/L e P/VP, que vêm do preço do Yahoo no corte (linha 413, Y1 a, "pode" do
+    Tiago em 25/10/2026); None se não sobra nenhum."""
+    restantes = padroes[~padroes["indicador"].isin(MULTIPLOS)].reset_index(drop=True)
+    return None if restantes.empty else restantes
+
+
 def entradas_do_relatorio(
     conexao: sa.Connection,
     ticker: str,
@@ -98,16 +106,20 @@ def entradas_do_relatorio(
     hoje: date | None = None,
 ) -> Entradas | None:
     """Tudo o que o relatório do ticker usa; None se o ticker não tem empresa cadastrada. Com a
-    trava do preço desligada, o preço e os fechamentos ficam de fora (tela, PDF e API leem daqui)."""
+    trava do preço desligada, o preço, os fechamentos e os múltiplos dos padrões ficam de fora
+    (tela, PDF e API leem daqui)."""
     empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
     if empresa is None:
         return None
-    if not preco_no_relatorio_ligado():
+    com_preco = preco_no_relatorio_ligado()
+    if not com_preco:
         preco, fechamentos = None, None
     cnpj, nome = empresa
     dados = dados_da_empresa(conexao, cnpj)
     hoje = hoje or datetime.now(FUSO).date()
     corte, padroes = padroes_em(conexao, hoje)
+    if padroes is not None and not com_preco:
+        padroes = _sem_os_multiplos(padroes)
     ficha = ficha_do_molde_a(
         ficha_do(cnpj)
     )  # o plano tranca na montagem (`montar`), não aqui

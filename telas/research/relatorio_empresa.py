@@ -30,6 +30,7 @@ from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
 from src.banco.relatorio_empresa import entradas_do_relatorio
+from src.configuracao import preco_no_relatorio_ligado
 from src.dados import normalizar_ticker
 from src.fundamentos import VERSAO_DOS_FUNDAMENTOS
 from src.moedas import moeda_do_ticker
@@ -51,6 +52,8 @@ from telas.comum import (
     PAGINAS_DO_MENU,
     cabecalho_da_pagina,
     carregar_contexto,
+    lembrar_recente,
+    mostrar_controles,
     mostrar_grafico,
     plano_atual,
 )
@@ -399,12 +402,24 @@ def _oferecer_o_deck(relatorio: Relatorio) -> None:
             )
 
 
-def pagina_relatorio_empresa():
-    cabecalho_da_pagina("relatorio_empresa")
+def _ticker_e_preco() -> tuple[str, float | None, pd.Series | None]:
+    """O ticker do topo e, com a trava do preço ligada, o último preço e a série (do Yahoo). Com
+    ela desligada, a página nem carrega a série (linha 413, Y1 a, "pode" do Tiago em 25/10/2026)."""
+    if not preco_no_relatorio_ligado():
+        ticker = normalizar_ticker(mostrar_controles()[0])
+        lembrar_recente(ticker)
+        return ticker, None, None
     c = carregar_contexto()
     ticker = normalizar_ticker(c.ticker)
-    preco = float(c.fechamento.iloc[-1]) if moeda_do_ticker(ticker) == "BRL" else None
-    entradas = _ler(ticker, preco, c.fechamento if preco is not None else None)
+    if moeda_do_ticker(ticker) != "BRL":
+        return ticker, None, None
+    return ticker, float(c.fechamento.iloc[-1]), c.fechamento
+
+
+def pagina_relatorio_empresa():
+    cabecalho_da_pagina("relatorio_empresa")
+    ticker, preco, fechamentos = _ticker_e_preco()
+    entradas = _ler(ticker, preco, fechamentos)
     if entradas is None:
         return
     entradas = replace(entradas, premissas=_premissas())
