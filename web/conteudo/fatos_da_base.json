@@ -1,0 +1,41 @@
+{
+  "fatos": [
+    {
+      "chave": "lucros",
+      "como_foi_calculado": "O lucro do período de cada balanço anual, na primeira versão que a base guarda, comparado com o número que o balanço do ano seguinte mostra para o mesmo ano (a coluna do ano anterior). A mudança pode vir de uma nova versão do próprio balanço ou do seguinte. Conta como mudado quando a diferença passa de 1% e de R$ 1 mil. Usa o consolidado e, na companhia que não o publica, o individual. Só entram os balanços que já têm o do ano seguinte. Mudar não quer dizer erro: entram reclassificação, norma contábil nova e operação descontinuada.",
+      "data": "2026-10-26",
+      "fonte": "CVM: demonstrações financeiras padronizadas (DFP)",
+      "numero": "6,3%",
+      "tabelas": [
+        "demonstracoes_como_era"
+      ],
+      "texto": "dos 7.959 balanços anuais de 2010 a 2025 tiveram o lucro do ano mudado em mais de 1% até o balanço do ano seguinte: 498 balanços, de 335 de 1.051 companhias."
+    },
+    {
+      "chave": "auditor",
+      "como_foi_calculado": "Cada troca de firma de auditoria olha o primeiro balanço anual publicado depois dela e compara o lucro do ano anterior com a mesma regra do número dos balanços refeitos. 569 das 2.129 trocas ficam de fora: ainda não têm esse balanço, ou a base não tem o do ano anterior. A comparação com os balanços sem troca mostra uma frequência, não uma causa.",
+      "data": "2026-10-26",
+      "fonte": "CVM: formulário cadastral (FCA) e demonstrações financeiras (DFP)",
+      "numero": "7,9%",
+      "tabelas": [
+        "trocas_de_auditor",
+        "demonstracoes_como_era"
+      ],
+      "texto": "das 1.560 trocas de auditor vieram com o lucro do ano anterior mudado em mais de 1% no primeiro balanço depois da troca (123 trocas). Nos balanços sem troca, foram 5,9%."
+    },
+    {
+      "chave": "ofertas",
+      "como_foi_calculado": "As ofertas da Resolução CVM 160 com registro em 2025, encerradas ou com registro concedido (as caducadas, revogadas e suspensas ficam de fora), de ações, debêntures, notas comerciais e promissórias e CPR financeira. Cotas de fundo e títulos de securitização (CRI, CRA) ficam de fora: não são captação da empresa que aparece como emissora. O grupo é a companhia aberta com as controladas que ela declara no formulário de referência, como ele era em 31/12/2025; coligadas e ligações sem o tipo não entram. O valor é o registrado na oferta; as 862 ofertas desses títulos somam R$ 531,7 bilhões.",
+      "data": "2026-10-26",
+      "fonte": "CVM: ofertas da Resolução 160, formulário de referência (FRE) e DFP",
+      "numero": "424",
+      "tabelas": [
+        "ofertas_resolucao_160",
+        "controladas",
+        "demonstracoes_como_era"
+      ],
+      "texto": "das 862 ofertas de ações, debêntures e notas registradas na CVM em 2025 vieram de 254 grupos de companhias abertas, com R$ 407,0 bilhões. Em 60 delas, quem emitiu foi uma controlada, não a companhia."
+    }
+  ],
+  "medido_em_curto": "26/10"
+}

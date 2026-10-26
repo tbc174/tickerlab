@@ -332,3 +332,18 @@ export interface VagaDaVitrine {
 }
 
 export const vitrine: VagaDaVitrine[] = vitrineJson as never;
+import fatosJson from "../conteudo/fatos_da_base.json";
+
+/** Um fato agregado da página inicial (`Fato` de base/vitrine.py): só contagens, com a fonte e a data. */
+export interface FatoDaBase {
+  chave: string;
+  numero: string;
+  texto: string;
+  fonte: string;
+  tabelas: string[];
+  data: string;
+  como_foi_calculado: string;
+}
+
+/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão. */
+export const fatosDaBase: { fatos: FatoDaBase[]; medido_em_curto: string } = fatosJson as never;

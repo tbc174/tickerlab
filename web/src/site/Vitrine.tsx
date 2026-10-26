@@ -24,6 +24,12 @@ function Vaga({ vaga }: { vaga: VagaDaVitrine }) {
   );
 }
 
+// as prontas em cima e as em breve embaixo, cada grupo na ordem do plano
+const prontasPrimeiro = [
+  ...vitrine.filter((v) => v.estado === "pronta"),
+  ...vitrine.filter((v) => v.estado !== "pronta"),
+];
+
 export function Vitrine() {
   return (
     <section className="faixa secao v2-vitrine" aria-labelledby="titulo-vitrine">
@@ -34,7 +40,7 @@ export function Vitrine() {
         data prometida.
       </p>
       <div className="grade v2-vagas">
-        {vitrine.map((vaga) => (
+        {prontasPrimeiro.map((vaga) => (
           <Vaga key={vaga.chave} vaga={vaga} />
         ))}
       </div>
