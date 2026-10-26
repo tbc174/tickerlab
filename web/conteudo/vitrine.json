@@ -1,0 +1,37 @@
+[
+  {
+    "chave": "setor",
+    "estado": "pronta",
+    "link": "/relatorio-de-setor-eletricas.html",
+    "para_que_serve": "As elétricas: quem atende os consumidores do país e quem audita as companhias abertas, com a fonte e a data de cada número.",
+    "titulo": "Relatório do setor"
+  },
+  {
+    "chave": "ficha",
+    "estado": "pronta",
+    "link": "/relatorio-de-exemplo.html",
+    "para_que_serve": "A CPFL Energia lida na base: ofertas, rodízio do auditor, setor regulado e negócios, cruzando a CVM e as agências.",
+    "titulo": "Ficha da empresa"
+  },
+  {
+    "chave": "cnpj",
+    "estado": "em_breve",
+    "link": null,
+    "para_que_serve": "Um CNPJ vira o grupo inteiro, a partir do quadro de sócios da Receita Federal, com as bases públicas conferidas.",
+    "titulo": "Busca por CNPJ"
+  },
+  {
+    "chave": "ma",
+    "estado": "em_breve",
+    "link": null,
+    "para_que_serve": "Compras e vendas de empresas no Brasil, com o valor pago e o documento público de onde ele saiu.",
+    "titulo": "Precedentes de M&A"
+  },
+  {
+    "chave": "cruzamentos",
+    "estado": "em_breve",
+    "link": null,
+    "para_que_serve": "O que só aparece juntando fontes: um balanço refeito depois da troca de auditor, por exemplo.",
+    "titulo": "Cruzamentos da base"
+  }
+]

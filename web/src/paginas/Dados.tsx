@@ -11,6 +11,7 @@ import {
 } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
+import { REGRAS_DA_BASE } from "../site/textos";
 
 export const DADOS = {
   caminho: "/dados.html",
@@ -29,28 +30,6 @@ const SECOES = [
   "Cada fonte que coletamos, uma a uma",
   "O que ainda não está na base",
   "Como auditar um número",
-];
-
-const REGRAS: [string, string][] = [
-  [
-    "Como era na data",
-    "Guardamos o que estava público em cada dia, não só o valor de hoje. Uma consulta a uma data " +
-      "nunca enxerga o que só ficou público depois dela.",
-  ],
-  [
-    "Linhagem",
-    "Cada tabela diz de qual fonte vem, qual versão do contrato a descreve e desde quando há histórico.",
-  ],
-  [
-    "Licença por tabela",
-    "Cada tabela leva a licença da sua fonte e diz o que pode ser repassado. Onde ainda não há " +
-      "resposta escrita da fonte, a página avisa.",
-  ],
-  [
-    "Explicação",
-    "O que cada dado é e como foi calculado vem escrito em português e recolhido: quem quer " +
-      "conferir abre, quem só quer o resultado não é atrapalhado.",
-  ],
 ];
 
 const MARCAS: Record<RegistroDeFonte["marca"], string> = {
@@ -218,7 +197,7 @@ export function Dados() {
 
       <h2 id={ancora(SECOES[1])}>{SECOES[1]}</h2>
       <div className="grade dados-regras">
-        {REGRAS.map(([titulo, texto]) => (
+        {REGRAS_DA_BASE.map(([titulo, texto]) => (
           <article key={titulo} className="cartao">
             <h3>{titulo}</h3>
             <p>{texto}</p>

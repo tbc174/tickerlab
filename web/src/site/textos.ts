@@ -106,34 +106,25 @@ export const PERGUNTAS: [string, string][] = [
   ],
 ];
 
-// --- página inicial v2 (ADR 0065) ----------------------------------------------------------
-// de onde vem cada dado, como nas Fontes e metodologia (o nome e o que vem de lá)
-export const FONTES_DOS_DADOS: [string, string][] = [
-  ["CVM", "documentos e demonstrações"],
-  ["SEC", "empresas dos EUA"],
-  ["Banco Central", "juros, inflação e câmbio"],
-  ["Tesouro dos EUA", "curva de juros"],
-  ["Yahoo Finance", "preços, com atraso possível"],
-];
-
-// a frase da diferença, em duas partes (a segunda em destaque); o texto final é do Tiago
-// (tarefa marketing-frase-diferenca na Central)
-export const FRASE_DA_DIFERENCA: [string, string] = [
-  "Outros sites mostram os números.",
-  "O TickerLab testa se a ideia funciona.",
-];
-
-export const PRINCIPIOS: [string, string][] = [
+// --- as quatro regras que valem para toda tabela da base (página inicial e Dados) -----------
+export const REGRAS_DA_BASE: [string, string][] = [
   [
-    "Sem olhar o futuro",
-    "Cada teste usa só o que se sabia naquele dia, com custos de operação na conta.",
+    "Como era na data",
+    "Guardamos o que estava público em cada dia, não só o valor de hoje. Uma consulta a uma data " +
+      "nunca enxerga o que só ficou público depois dela.",
   ],
   [
-    "Desconta a sorte",
-    "A ficha “Foi sorte?” mostra se um bom resultado resiste quando tiramos o acaso da conta.",
+    "Linhagem",
+    "Cada tabela diz de qual fonte vem, qual versão do contrato a descreve e desde quando há histórico.",
   ],
   [
-    "Cada número explicado",
-    "Em português, com a fonte, a data e os limites de cada análise. Nada é recomendação.",
+    "Licença por tabela",
+    "Cada tabela leva a licença da sua fonte e diz o que pode ser repassado. Onde ainda não há " +
+      "resposta escrita da fonte, a página avisa.",
+  ],
+  [
+    "Explicação",
+    "O que cada dado é e como foi calculado vem escrito em português e recolhido: quem quer " +
+      "conferir abre, quem só quer o resultado não é atrapalhado.",
   ],
 ];

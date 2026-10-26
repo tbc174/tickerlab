@@ -55,26 +55,6 @@ RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
 # pontos do desenho do painel da página inicial (cinco anos: um ponto a cada ~4 semanas)
 PONTOS_DO_PAINEL = 64
-# a fita da página inicial: só o código (do catálogo) e um nome curto, nenhum preço
-ATIVOS_DA_FITA = (
-    ("PETR4.SA", "Petrobras"),
-    ("VALE3.SA", "Vale"),
-    ("ITUB4.SA", "Itaú Unibanco"),
-    ("WEGE3.SA", "WEG"),
-    ("BBAS3.SA", "Banco do Brasil"),
-    ("TAEE11.SA", "Taesa"),
-    ("HGLG11.SA", "Pátria Log · FII"),
-    ("IVVB11.SA", "iShares S&P 500 · ETF"),
-    ("^BVSP", "Ibovespa"),
-    ("^GSPC", "S&P 500"),
-    ("AAPL", "Apple"),
-    ("MSFT", "Microsoft"),
-    ("NVDA", "Nvidia"),
-    ("GOOGL", "Alphabet"),
-    ("BTC-USD", "Bitcoin"),
-    ("ETH-USD", "Ethereum"),
-    ("BRL=X", "Dólar em reais"),
-)
 
 
 def _modulos() -> list[dict]:
@@ -176,20 +156,10 @@ def _planos() -> dict:
 
 
 def _site() -> dict:
-    """O que só o site usa e vem do app: os estilos do Report Studio, os ativos de exemplo e a fita
-    e o total de ativos da busca da página inicial."""
-    tabela = catalogo.carregar()
+    """O que só o site usa e vem do app: os estilos do Report Studio."""
     return {
-        "total_de_ativos": len(tabela),
-        "fita": [
-            {"simbolo": s, "codigo": tabela.loc[s, "codigo"], "nome": nome}
-            for s, nome in ATIVOS_DA_FITA
-        ],
         "estilos_do_relatorio": [
             {"chave": chave, "nome": estilo.nome} for chave, estilo in ESTILOS.items()
-        ],
-        "exemplos": [
-            {"simbolo": s, "rotulo": catalogo.codigo(s)} for s in catalogo.EXEMPLOS
         ],
     }
 
@@ -438,6 +408,7 @@ def conteudo() -> dict[str, object]:
         "relatorio_semanal_eletricas": relatorio_semanal.para_o_site(),
         "catalogo": _catalogo(),
         "base": _base(),
+        "vitrine": [asdict(v) for v in vitrine.VAGAS_DA_VITRINE],
         "ativos": _ativos(),
     }
 

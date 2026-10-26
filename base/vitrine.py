@@ -341,3 +341,71 @@ def base_em_numeros(fotografia: Path = FOTOGRAFIA) -> dict:
     """O `web/conteudo/base.json`: a fotografia como está e a data curta que a página mostra."""
     numeros = numeros_da_fotografia(json.loads(fotografia.read_text(encoding="utf-8")))
     return {"numeros": asdict(numeros), "medido_em_curto": dia_e_mes(numeros.medido_em)}
+
+
+# --- vagas da vitrine da página inicial (plano do site para quem analisa, PR 5, tarefa 8) --------
+
+PRONTA = "pronta"
+EM_BREVE = "em_breve"
+
+
+@dataclass(frozen=True)
+class Vaga:
+    """Um lugar da vitrine da página inicial: pronta (com link para a página que existe) ou em breve.
+
+    Em breve não tem link nem data: a vaga só acende no PR que entrega a página, para o site nunca
+    prometer prazo nem apontar para o vazio.
+    """
+
+    chave: str
+    titulo: str
+    para_que_serve: str
+    estado: str
+    link: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.estado == PRONTA and not self.link:
+            raise ValueError(f"vaga pronta sem link: {self.chave}")
+        if self.estado == EM_BREVE and self.link is not None:
+            raise ValueError(f"vaga em breve com link: {self.chave}")
+        if self.estado not in (PRONTA, EM_BREVE):
+            raise ValueError(f"estado desconhecido na vaga {self.chave}: {self.estado}")
+
+
+VAGAS_DA_VITRINE: tuple[Vaga, ...] = (
+    Vaga(
+        "setor",
+        "Relatório do setor",
+        "As elétricas: quem atende os consumidores do país e quem audita as companhias abertas, "
+        "com a fonte e a data de cada número.",
+        PRONTA,
+        "/relatorio-de-setor-eletricas.html",
+    ),
+    Vaga(
+        "ficha",
+        "Ficha da empresa",
+        "A CPFL Energia lida na base: ofertas, rodízio do auditor, setor regulado e negócios, "
+        "cruzando a CVM e as agências.",
+        PRONTA,
+        "/relatorio-de-exemplo.html",
+    ),
+    Vaga(
+        "cnpj",
+        "Busca por CNPJ",
+        "Um CNPJ vira o grupo inteiro, a partir do quadro de sócios da Receita Federal, "
+        "com as bases públicas conferidas.",
+        EM_BREVE,
+    ),
+    Vaga(
+        "ma",
+        "Precedentes de M&A",
+        "Compras e vendas de empresas no Brasil, com o valor pago e o documento público de onde ele saiu.",
+        EM_BREVE,
+    ),
+    Vaga(
+        "cruzamentos",
+        "Cruzamentos da base",
+        "O que só aparece juntando fontes: um balanço refeito depois da troca de auditor, por exemplo.",
+        EM_BREVE,
+    ),
+)

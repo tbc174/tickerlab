@@ -61,7 +61,7 @@ export const paginasDoApp: PaginaDoApp[] = paginasJson;
 export const planos = planosJson;
 import siteJson from "../conteudo/site.json";
 
-// o que só o site usa e vem do app: estilos do Report Studio, ativos de exemplo e a fita da inicial
+// o que só o site usa e vem do app: os estilos do Report Studio
 export const site = siteJson;
 import exemploJson from "../conteudo/exemplo.json";
 
@@ -320,3 +320,15 @@ export const baseEmNumeros: {
   };
   medido_em_curto: string;
 } = baseJson as never;
+import vitrineJson from "../conteudo/vitrine.json";
+
+/** Uma vaga da vitrine da página inicial (`Vaga` de base/vitrine.py): pronta tem link, em breve não. */
+export interface VagaDaVitrine {
+  chave: string;
+  titulo: string;
+  para_que_serve: string;
+  estado: "pronta" | "em_breve";
+  link: string | null;
+}
+
+export const vitrine: VagaDaVitrine[] = vitrineJson as never;

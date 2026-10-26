@@ -6,11 +6,9 @@ import { describe, expect, it } from "vitest";
 import {
   type Modulo,
   amostraRelatorio,
-  exemplo,
   marca,
   planos,
   relatorioSemanalEletricas,
-  site,
 } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
@@ -153,46 +151,6 @@ describe("página inicial v2", () => {
     expect(semTags(trecho(html, '<h1 id="titulo-heroi">', "</h1>"))).toBe(ASSINATURA);
   });
 
-  it("o painel mostra os números do relatório de exemplo, com a seta junto da cor", () => {
-    const painel = trecho(html, '<article class="v2-painel"', "</article>");
-    expect(painel).toContain('<p class="v2-numero alta"><span aria-hidden="true">▲</span> +545,8%</p>');
-    const texto = semTags(painel);
-    for (const numero of [
-      exemplo.retorno_total,
-      exemplo.retorno_ao_ano,
-      exemplo.maior_queda,
-      exemplo.volatilidade,
-      exemplo.sharpe,
-    ])
-      expect(texto).toContain(numero.texto);
-    expect(texto).toContain("▼ −39,1%");
-    expect(texto).toContain("11/10/2021 a 09/10/2026");
-    expect(texto).toContain(exemplo.codigo);
-    expect(painel).toContain(`href="/relatorio/exemplo-${exemplo.ticker}.pdf"`);
-  });
-
-  it("o desenho do painel tem um ponto para cada valor da série", () => {
-    const linha = trecho(html, '<polyline class="linha"', "/>");
-    const pontos = linha.match(/points="([^"]+)"/)![1].trim().split(" ");
-    expect(pontos).toHaveLength(exemplo.serie.length);
-    for (const ponto of pontos) expect(ponto).toMatch(/^\d+(\.\d)?,\d+(\.\d)?$/);
-  });
-
-  it("a fita mostra o total de ativos da busca e só códigos e nomes, sem preço", () => {
-    const fita = trecho(html, '<section class="v2-fita"', "</section>");
-    expect(fita).toContain(`${site.total_de_ativos.toLocaleString("pt-BR")} ativos na busca`);
-    expect(fita).toContain("1.693 ativos na busca");
-    for (const ativo of site.fita) expect(fita).toContain(`<li><b>${esc(ativo.codigo)}</b>`);
-    // a segunda volta da fita (para emendar sem pulo) não é lida duas vezes
-    expect(fita.match(/<ul aria-hidden="true">/g)).toHaveLength(1);
-  });
-
-  it("diz de onde vêm os dados", () => {
-    const fontes = semTags(trecho(html, '<section class="faixa v2-fontes"', "</section>"));
-    for (const fonte of ["CVM", "SEC", "Banco Central", "Tesouro dos EUA", "Yahoo Finance"])
-      expect(fontes).toContain(fonte);
-  });
-
   it("o bento das frentes saiu da inicial: backtest e carteira vivem em Ferramentas", () => {
     expect(html).not.toContain('<div class="v2-bento">');
     const ferramentas = renderizar("ferramentas.html");
@@ -203,16 +161,6 @@ describe("página inicial v2", () => {
       expect(bento).toContain(`href="/produto.html#${modulo.chave}"`);
       expect(bento).toContain(`<p class="contagem">${contagem(modulo)}</p>`);
     }
-  });
-
-  it("a faixa 'Por que o TickerLab' com a frase da diferença", () => {
-    const faixa = semTags(trecho(html, '<div class="escura v2-diferenca">', "</section>"));
-    expect(faixa).toContain("Outros sites mostram os números. O TickerLab testa se a ideia funciona.");
-    expect(faixa).toContain("Sem olhar o futuro");
-  });
-
-  it("o relatório de exemplo também está a um toque no celular (o painel some lá)", () => {
-    expect(html).toContain(`href="/relatorio/exemplo-${exemplo.ticker}.pdf">Ver um relatório de exemplo (PDF)`);
   });
 });
 
@@ -318,7 +266,7 @@ describe("estilo v2 (ADR 0065)", () => {
   const menosMovimento = estilo.split("@media (prefers-reduced-motion: reduce)").slice(1).join("");
 
   it("traz as peças do visual novo", () => {
-    for (const classe of [".v2-heroi-fundo", ".v2-painel", ".v2-bento", ".v2-pausa", ".v2-fita"])
+    for (const classe of [".v2-heroi-fundo", ".v2-painel", ".v2-bento", ".v2-pausa"])
       expect(estilo).toContain(classe);
   });
 
@@ -331,7 +279,7 @@ describe("estilo v2 (ADR 0065)", () => {
 
   it("com 'reduzir movimento', o que roda sem parar para e o botão de pausa some", () => {
     expect(menosMovimento).toContain(".v2-pausa { display: none; }");
-    for (const peca of [".v2-aurora span", ".v2-painel::before", ".v2-fita-faixa"])
+    for (const peca of [".v2-aurora span", ".v2-painel::before"])
       expect(menosMovimento).toContain(`${peca} { animation: none !important; }`);
   });
 

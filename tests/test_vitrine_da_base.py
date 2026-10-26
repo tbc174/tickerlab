@@ -370,3 +370,59 @@ def test_base_json_vem_da_fotografia():
 def test_fotografia_com_campo_a_menos_nao_passa():
     with pytest.raises(TypeError):
         vitrine.numeros_da_fotografia({"empresas": 1})
+
+
+# --- vagas da vitrine (plano do site para quem analisa, PR 5, tarefa 8) ---------------------------
+
+SITE = PASTA.parent.parent / "site"
+
+
+def test_vagas_na_ordem_do_plano():
+    assert [v.chave for v in vitrine.VAGAS_DA_VITRINE] == [
+        "setor",
+        "ficha",
+        "cnpj",
+        "ma",
+        "cruzamentos",
+    ]
+
+
+def test_vaga_pronta_aponta_para_pagina_que_existe():
+    prontas = [v for v in vitrine.VAGAS_DA_VITRINE if v.estado == "pronta"]
+    assert prontas, "a vitrine precisa de ao menos uma vaga pronta"
+    for vaga in prontas:
+        assert vaga.link and vaga.link.startswith("/")
+        assert (SITE / vaga.link.lstrip("/")).is_file(), vaga.link
+
+
+def test_vaga_em_breve_nao_tem_link_nem_data():
+    for vaga in vitrine.VAGAS_DA_VITRINE:
+        assert vaga.estado in {"pronta", "em_breve"}
+        if vaga.estado == "em_breve":
+            assert vaga.link is None
+            # "em breve" sem prazo: nenhuma data prometida no texto
+            assert not re.search(r"\d{1,2}/\d{1,2}|20\d\d", vaga.para_que_serve)
+
+
+def test_toda_vaga_diz_para_que_serve_em_uma_linha():
+    for vaga in vitrine.VAGAS_DA_VITRINE:
+        assert vaga.titulo and vaga.para_que_serve
+        assert "\n" not in vaga.para_que_serve
+        assert len(vaga.para_que_serve) <= 160, vaga.chave
+
+
+@pytest.mark.parametrize(
+    ("estado", "link"),
+    [("pronta", None), ("em_breve", "/dados.html"), ("talvez", None)],
+)
+def test_vaga_mal_formada_nao_passa(estado, link):
+    with pytest.raises(ValueError):
+        vitrine.Vaga("x", "X", "Serve para x.", estado, link)
+
+
+def test_vitrine_json_leva_as_vagas():
+    from dataclasses import asdict
+
+    from scripts import exportar_conteudo as exp
+
+    assert exp.conteudo()["vitrine"] == [asdict(v) for v in vitrine.VAGAS_DA_VITRINE]
