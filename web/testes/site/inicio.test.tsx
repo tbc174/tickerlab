@@ -1,8 +1,8 @@
 // A página inicial para quem analisa empresas (plano do site para quem analisa, PR 5, tarefa 9):
 // a assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
-// Raio-X aberta, as cinco vagas da vitrine, as quatro regras, as fontes com licença e os planos.
+// Raio-X aberta, as cinco vagas da vitrine, os cruzamentos da base (PR 6), as quatro regras, as fontes com licença e os planos.
 import { describe, expect, it } from "vitest";
-import { baseEmNumeros, catalogo, vitrine } from "../../src/conteudo";
+import { baseEmNumeros, catalogo, fatosDaBase, vitrine } from "../../src/conteudo";
 import { renderizar } from "../../src/entry-server";
 import { css } from "../../src/estilo";
 import { DADOS } from "../../src/paginas/Inicio";
@@ -84,12 +84,16 @@ describe("página inicial para quem analisa", () => {
     expect(html.indexOf("v2-estudo")).toBeLessThan(html.indexOf('class="faixa secao v2-vitrine"'));
   });
 
-  it("as cinco vagas na ordem: as prontas com link, as outras em breve, sem link", () => {
+  it("as cinco vagas: as prontas em cima com link, as em breve embaixo, sem link", () => {
     const secao = trecho('<section class="faixa secao v2-vitrine"', "</section>");
     const cartoes = secao.split('<article class="cartao v2-vaga').slice(1);
     expect(cartoes).toHaveLength(vitrine.length);
     expect(vitrine.map((v) => v.chave)).toEqual(["setor", "ficha", "cnpj", "ma", "cruzamentos"]);
-    vitrine.forEach((vaga, i) => {
+    const naTela = [
+      ...vitrine.filter((v) => v.estado === "pronta"),
+      ...vitrine.filter((v) => v.estado !== "pronta"),
+    ];
+    naTela.forEach((vaga, i) => {
       const cartao = cartoes[i];
       expect(semTags(cartao), vaga.chave).toContain(esc(vaga.titulo));
       expect(semTags(cartao), vaga.chave).toContain(esc(vaga.para_que_serve));
@@ -100,6 +104,24 @@ describe("página inicial para quem analisa", () => {
         expect(cartao, vaga.chave).not.toContain("href=");
       }
     });
+  });
+
+  it("os cruzamentos: cada fato com o número, a fonte e a conta recolhida, sem nome de empresa", () => {
+    const secao = trecho('<section class="faixa secao v2-cruzamentos" id="cruzamentos"', "</section>");
+    expect(semTags(secao)).toContain(`medidas em ${fatosDaBase.medido_em_curto}`);
+    const cartoes = secao.split('<article class="cartao v2-fato"').slice(1);
+    expect(fatosDaBase.fatos.map((f) => f.chave)).toEqual(["lucros", "auditor", "ofertas"]);
+    expect(cartoes).toHaveLength(fatosDaBase.fatos.length);
+    fatosDaBase.fatos.forEach((fato, i) => {
+      const texto = semTags(cartoes[i]);
+      expect(texto, fato.chave).toContain(fato.numero);
+      expect(texto, fato.chave).toContain(esc(fato.texto));
+      expect(texto, fato.chave).toContain(`Fonte: ${esc(fato.fonte)}`);
+      expect(cartoes[i], fato.chave).toContain("<summary>Como foi calculado</summary>");
+      expect(texto, fato.chave).toContain(esc(fato.como_foi_calculado));
+    });
+    // a vaga "cruzamentos" da vitrine leva até aqui
+    expect(vitrine.find((v) => v.chave === "cruzamentos")?.link).toBe("/#cruzamentos");
   });
 
   it("as quatro regras da base, cada uma recolhida", () => {

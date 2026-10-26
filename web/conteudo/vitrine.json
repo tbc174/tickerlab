@@ -29,8 +29,8 @@
   },
   {
     "chave": "cruzamentos",
-    "estado": "em_breve",
-    "link": null,
+    "estado": "pronta",
+    "link": "/#cruzamentos",
     "para_que_serve": "O que só aparece juntando fontes: um balanço refeito depois da troca de auditor, por exemplo.",
     "titulo": "Cruzamentos da base"
   }
