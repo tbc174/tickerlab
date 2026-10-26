@@ -15,6 +15,7 @@ from src import dossie
 from src import relatorio_empresa as re_
 from src.analise_escrita import entrada as en
 from tests import test_relatorio_empresa_v2 as ficha_v2
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
 CORTE = date(2026, 10, 17)  # o dia da ficha do dossiê de exemplo
 PAR_DA_CPFL = Path(__file__).parent / "arquivos" / "analise" / "cpfl"
@@ -22,7 +23,7 @@ PAR_DA_CPFL = Path(__file__).parent / "arquivos" / "analise" / "cpfl"
 
 @cache
 def entradas_da_cpfl() -> re_.Entradas:
-    ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    ficha = dossie.ler_ficha(FICHA_DE_17_10)
     assert ficha is not None
     return re_.Entradas(
         dados=ficha_v2._dados(),

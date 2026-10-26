@@ -15,6 +15,7 @@ from pypdf import PdfReader
 from src import dossie
 from src import relatorio_empresa as re_
 from src.relatorio_empresa_pdf import relatorio_da_empresa
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 from tests.test_relatorio_empresa import _entradas, dados_da_weg  # noqa: F401
 
 CHAVES_DA_BASE = [  # na ordem do molde A: capital, governança, setor, negócios
@@ -27,9 +28,7 @@ DEPOIS_DE_DIAS = date(2026, 10, 18)
 
 
 def _dossie(hoje: date = DEPOIS_DE_DIAS) -> re_.Dossie:
-    return dossie.dossie_da_ficha(
-        dossie.cortar(dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)), hoje
-    )
+    return dossie.dossie_da_ficha(dossie.cortar(dossie.ler_ficha(FICHA_DE_17_10)), hoje)
 
 
 @pytest.fixture

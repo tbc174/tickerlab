@@ -37,9 +37,16 @@ def test_le_a_ficha_de_exemplo() -> None:
     assert ficha.empresa == "CPFL ENERGIA S.A."
     assert [s.chave for s in ficha.secoes] == [
         "auditor_e_controladas",
+        "qualidade_do_lucro",
+        "geracao_de_caixa",
         "ofertas_e_fundos",
+        "capital_e_acionistas",
+        "governanca",
+        "credito",
         "setor_regulado",
         "negocios",
+        "insolvencia",
+        "rede",
     ]
 
 
