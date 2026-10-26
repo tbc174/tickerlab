@@ -501,14 +501,11 @@
         dos últimos 12 meses: cobre a janela do beta, mas não 2017, então a variação do Joesley Day não desconta provento
         (num dia só, o efeito é pequeno).</li>
       <li><b>Beta e volatilidade</b> usam os retornos diários de 12 meses até 23/10/2026, contra o Ibovespa da B3.</li>
-      <li><b>Variação do dia</b> = fechamento de 26/10 sobre o de 23/10, os dois da B3. Nenhuma empresa da amostra teve
-        data-com em 23/10, então nenhum provento entra no meio dessa conta.</li>
+      <li><b>Variação parcial do dia</b> = cotação de 26/10 às 12h59 sobre o fechamento de 23/10, ambos do Yahoo Finance, sem ajuste. Não é o fechamento oficial da B3 e as cotações podem ter atraso.</li>
       <li><b>Valor de mercado na véspera</b> = ações ordinárias e preferenciais do cadastro de cada empresa na B3 (com as
         da tesouraria) vezes o fechamento de 23/10; as preferenciais usam o preço da classe mais negociada. É uma
         aproximação. A fatia dos fundos usa o informe CDA mais novo da CVM e pode estar defasada alguns meses.</li>
-      <li><b>Amostra:</b> ações e units com mais de R$ 20 milhões negociados em 23/10 e com cadastro na CVM; um papel por
-        empresa (o mais negociado). Papel sem negócio no lote padrão da B3 em 23 ou 26/10 fica fora. Bancos, seguradoras e
-        financeiras ficam fora da conta de dívida.</li>
+      <li><b>Amostra parcial:</b> ações e units com cadastro na CVM e volume estimado acima de R$ 20 milhões em 23/10 (quantidade negociada vezes preço de fechamento, pelo Yahoo Finance); um papel por empresa, o mais negociado. Cotações sem variação na fotografia parcial foram excluídas por possível atraso. Bancos, seguradoras e financeiras ficam fora da conta de dívida.</li>
       <li><b>Outros choques:</b> poucos episódios em 25 anos não fazem estatística; as tabelas são contexto. A conta
         por faixa de queda usa preços sem ajuste: ação com salto de mais de 50% dentro da janela (provável desdobramento ou
         grupamento) sai daquele prazo, dividendos ficam de fora e empresas que saíram da bolsa no caminho também, o que
@@ -523,9 +520,8 @@
   <section>
     <div class="rx-cab"><span class="rx-rotulo">Fontes</span><h2>De onde vem cada número</h2></div>
     <ul class="rx-fontes">
-      <li>Preços e volumes: Fonte: B3, série histórica de cotações (COTAHIST) de 2017 e de 2024 a 2026, até o
-        fechamento de 26/10/2026.</li>
-      <li>Ibovespa: Fonte: B3, estatísticas diárias do índice, de 2000 até 26/10/2026.</li>
+      <li>Fotografia do dia e seleção por liquidez: Yahoo Finance, preços parciais de 26/10/2026 às 12h59 e fechamento e quantidade negociada de 23/10. Séries históricas para os fatores: B3, COTAHIST de 2017 e de 2024 a 2026, até 23/10/2026.</li>
+      <li>Ibovespa: Yahoo Finance para a variação parcial de 26/10 às 12h59; B3 para as estatísticas históricas usadas nos fatores e nas comparações de choques e eleições anteriores.</li>
       <li>Proventos, desdobramentos, grupamentos, bonificações e número de ações: Fonte: B3, cadastro das empresas
         listadas, consultado em 26/10/2026.</li>
       <li>Dívida, caixa e aplicações: CVM, ITR consolidado de 30/06/2026 (Dados Abertos), entregues até 23/10/2026.</li>
