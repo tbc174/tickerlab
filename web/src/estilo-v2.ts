@@ -540,5 +540,21 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 @media (prefers-reduced-motion: reduce) {
   .v2-plano-destaque::before { animation: none !important; }
 }
+/* o estudo do dia (Raio-X do choque): a chamada logo abaixo do herói e o botão do PDF no fim dele */
+.v2-estudo { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.5rem 2.5rem; align-items: center;
+  margin-block: 2.5rem; padding-block: 1.75rem; border-block: 1px solid var(--linha); }
+.v2-estudo h2 { font-size: clamp(1.35rem, 2.6vw, 1.9rem); margin-bottom: .5rem; }
+.v2-estudo h2 a { color: inherit; text-decoration: none; }
+.v2-estudo h2 a:hover { color: var(--azul-texto); }
+.v2-estudo .acoes { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.v2-estudo-numeros { display: grid; gap: .9rem; margin: 0; }
+.v2-estudo-numeros div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  padding-bottom: .6rem; border-bottom: 1px solid var(--linha); }
+.v2-estudo-numeros dt { color: var(--apagado); font-size: .92rem; }
+.v2-estudo-numeros dd { margin: 0; font: 700 1.6rem/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: -0.02em; }
+.rx-baixar { max-width: 920px; padding-bottom: 2.5rem; }
+@media (max-width: 860px) {
+  .v2-estudo { grid-template-columns: minmax(0, 1fr); }
+}
 `;
 }

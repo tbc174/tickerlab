@@ -5,6 +5,12 @@
 import { type NumeroDoPainel, amostraRelatorio, exemplo, marca, site } from "../conteudo";
 import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
 import { Fundo } from "../site/Fundo";
+import {
+  DADOS as RAIO_X_DO_CHOQUE,
+  MOMENTO_DO_RAIO_X,
+  PDF_DO_RAIO_X,
+  RAIO_X,
+} from "./RaioXDoChoque";
 import { DADOS as RELATORIO_DE_EXEMPLO } from "./RelatorioExemplo";
 import {
   ASSINATURA,
@@ -185,9 +191,9 @@ function Heroi() {
     <Fundo>
       <section className="heroi faixa" aria-labelledby="titulo-heroi">
         <div className="heroi-texto">
-          <a className="v2-pilula" href="/produto.html#estrategias">
+          <a className="v2-pilula" href={RAIO_X_DO_CHOQUE.caminho}>
             <span className="v2-ponto" aria-hidden="true" />
-            Novo · ficha “Foi sorte?”
+            Novo · Raio-X do circuit breaker de 26/10
             <span className="v2-pilula-seta" aria-hidden="true">
               →
             </span>
@@ -225,6 +231,48 @@ function Heroi() {
         <PainelDoExemplo />
       </section>
     </Fundo>
+  );
+}
+
+/** A chamada do estudo do dia, logo abaixo do herói: os números vêm do próprio estudo (dados.json). */
+function EstudoDoDia() {
+  return (
+    <section className="faixa v2-estudo" aria-labelledby="titulo-estudo-do-dia">
+      <div className="v2-estudo-texto">
+        <p className="olho">
+          Estudo do dia · {MOMENTO_DO_RAIO_X}
+        </p>
+        <h2 id="titulo-estudo-do-dia">
+          <a href={RAIO_X_DO_CHOQUE.caminho}>{RAIO_X.titulo}</a>
+        </h2>
+        <p>
+          Quem caiu mais no circuit breaker de 26/10, e por quê: beta, alta entre os turnos, dívida,
+          tamanho, fundos, elétricas, bancos e a comparação com o Joesley Day.
+        </p>
+        <div className="acoes">
+          <a className="botao primario" href={RAIO_X_DO_CHOQUE.caminho}>
+            Ler o Raio-X
+          </a>
+          <a className="botao secundario" href={PDF_DO_RAIO_X}>
+            Baixar o PDF
+          </a>
+        </div>
+      </div>
+      <dl className="v2-estudo-numeros">
+        <div>
+          <dt>Ibovespa no dia</dt>
+          <dd className="queda">{RAIO_X.ibovespa}</dd>
+        </div>
+        <div>
+          <dt>Mediana de {RAIO_X.empresas} empresas</dt>
+          <dd className="queda">{RAIO_X.mediana}</dd>
+        </div>
+        <div>
+          <dt>Caíram 30% ou mais</dt>
+          <dd>{RAIO_X.cairam_30}</dd>
+        </div>
+      </dl>
+    </section>
   );
 }
 
@@ -302,6 +350,7 @@ export function Inicio() {
   return (
     <>
       <Heroi />
+      <EstudoDoDia />
       <FitaDeAtivos />
       <FontesDosDados />
       <PorQueOTickerLab />

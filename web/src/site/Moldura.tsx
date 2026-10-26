@@ -175,6 +175,7 @@ export interface DadosDaPagina {
   descricao: string;
   atual?: string; // o item do topo marcado como página atual
   ferramenta?: boolean; // a página tem uma calculadora: carrega o ferramentas.js
+  imagem?: string; // imagem própria para compartilhar (1200 × 630, descrita pelo título); sem ela, a da marca
 }
 
 export function Documento({
@@ -183,10 +184,13 @@ export function Documento({
   descricao,
   atual = "",
   ferramenta = false,
+  imagem,
   children,
 }: DadosDaPagina & { children: ReactNode }) {
   const tituloCompleto = caminho === "/" ? "TickerLab" : `${titulo} · TickerLab`;
   const endereco = `${URL_DO_SITE}${caminho}`;
+  const compartilhamento = imagem ?? "/marca/compartilhamento.png";
+  const descricaoDaImagem = imagem ? titulo : `TickerLab: ${ASSINATURA}`;
   return (
     <html lang="pt-BR">
       <head>
@@ -199,10 +203,10 @@ export function Documento({
         <meta property="og:description" content={descricao} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={endereco} />
-        <meta property="og:image" content={`${URL_DO_SITE}/marca/compartilhamento.png`} />
+        <meta property="og:image" content={`${URL_DO_SITE}${compartilhamento}`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content={`TickerLab: ${ASSINATURA}`} />
+        <meta property="og:image:alt" content={descricaoDaImagem} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="theme-color" content={marca.claro} />
         <script src={`/tema/sol.js?v=${versao(SOL_JS)}`} />

@@ -44,9 +44,14 @@ COPIADOS = (
     ),
     ("marca", ("simbolo.svg", "icone.png", "compartilhamento.png")),
     ("tema", ("sol.js",)),
+    # os estudos de um dia de mercado: o PDF e a imagem de compartilhar, feitos pela análise do dia
+    (
+        "estudos",
+        ("raio-x-do-choque-2026-10-26.pdf", "raio-x-do-choque-2026-10-26.png"),
+    ),
 )
 # pastas e arquivos de site/ que são deste script (o resto é do React)
-PASTAS_DO_PYTHON = ("fontes", "marca", "tema", "relatorio")
+PASTAS_DO_PYTHON = ("fontes", "marca", "tema", "relatorio", "estudos")
 ARQUIVOS_DO_PYTHON = ("catalogo.json",)
 
 
