@@ -5799,7 +5799,7 @@ TABELAS: dict[str, Tabela] = {
         familia_da_fonte="mapbiomas",
         ressalva_de_revenda=(
             "As colunas da PAM são do IBGE (domínio público; citar o IBGE); a coluna do MapBiomas é "
-            "CC BY 4.0 (citar o projeto MapBiomas, Souza et al. 2020)"
+            "CC BY-SA (citar o projeto MapBiomas, Souza et al. 2020; revenda a confirmar)"
         ),
         frequencia="Anual",
         atraso=(

@@ -150,7 +150,7 @@
     },
     {
       "historico_desde": "2006-06-13",
-      "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
       "modulos": [
         "mercado_e_empresas"
       ],
@@ -216,13 +216,13 @@
     },
     {
       "historico_desde": "1985-12-31",
-      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
         "macro"
       ],
       "orgao": "MapBiomas",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -1054,8 +1054,8 @@
     },
     {
       "id": "cftc-cot-disaggregated",
-      "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
-      "marca": "uso_interno",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": null
     },
@@ -1124,8 +1124,8 @@
     },
     {
       "id": "mapbiomas-cafe",
-      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
-      "marca": "vendavel",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
+      "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
     },
@@ -3259,8 +3259,8 @@
     },
     {
       "id": "mapbiomas-estatisticas",
-      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
-      "marca": "vendavel",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
+      "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
     },
@@ -4484,7 +4484,7 @@
       "historico_desde": "1985-12-31",
       "modulo": "macro",
       "orgao": "MapBiomas",
-      "situacao": "licenciada",
+      "situacao": "em consulta",
       "tabela": "area_cafe_municipio"
     },
     {
@@ -4500,7 +4500,7 @@
   ],
   "totais": {
     "fontes": 24,
-    "fontes_em_consulta": 6,
+    "fontes_em_consulta": 7,
     "modulos": 6,
     "tabelas": 100
   }

@@ -113,7 +113,11 @@ def test_as_familias_do_lote_estao_todas_representadas():
 
 
 def test_marcas_inpe_a_confirmar_terrabrasilis_so_uso_interno_e_o_resto_vendavel():
-    especiais = {"inpe": Marca.A_CONFIRMAR, "terrabrasilis": Marca.USO_INTERNO}
+    especiais = {
+        "inpe": Marca.A_CONFIRMAR,
+        "mapbiomas": Marca.A_CONFIRMAR,
+        "terrabrasilis": Marca.USO_INTERNO,
+    }
     for fonte in _fontes_do_lote():
         familia = fonte.id.split("-", 1)[0]
         esperada = especiais.get(familia, Marca.VENDAVEL)

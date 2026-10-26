@@ -42,7 +42,7 @@
   ],
   "fontes": [
    "IBGE, Produção Agrícola Municipal (PAM), tabela 1613 do SIDRA, ano 2025",
-   "MapBiomas, Coleção 11 (CC BY 4.0; Souza et al. 2020), ano 2025",
+   "MapBiomas, Coleção 11 (CC BY-SA; Souza et al. 2020), ano 2025",
    "CHIRPS v2.0 (satélite e pluviômetros, UCSB; Funk et al. 2015)",
    "estações automáticas do INMET (BDMEP), média ponderada pela área de café da PAM",
    "IBGE, malha municipal (API de malhas), simplificada para o navegador",

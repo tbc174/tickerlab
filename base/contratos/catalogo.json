@@ -9170,8 +9170,8 @@
       },
       "historico_desde": "2006-06-13",
       "granularidade_do_publico_em": "dia",
-      "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
-      "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "revenda": "vendável com atribuição à fonte",
       "pessoa": false,
       "frequencia": "Semanal (posição de terça-feira)",
       "atraso": "Divulgado na sexta-feira; a base conta a segunda-feira seguinte, 15h30 de Nova York (regra conservadora do `base/commodities/cftc_cot.py`, com as exceções das paralisações do governo dos EUA em 2018-19 e 2025). `disponivel_em` é o dia seguinte à divulgação"
@@ -9534,8 +9534,8 @@
       },
       "historico_desde": "1985-12-31",
       "granularidade_do_publico_em": "dia",
-      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
-      "revenda": "vendável com atribuição à fonte",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Anual",
       "atraso": "Anual; a regra de \"como era na data\" usa 31/10 do ano seguinte, quando a PAM já saiu (setembro ou outubro); a coleção do MapBiomas sai uma vez por ano com todos os anos refeitos"

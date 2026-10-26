@@ -1161,7 +1161,7 @@ FONTES: list[Fonte] = [
     # (`python -m scripts.arquivar_fontes chirps-historico`); depois o `chirps-mensal` segue sozinho
     Fonte("chirps-historico", "carga-unica", _meses_do_chirps_historico, pesada=True),
     Fonte("ibge-malha-municipal", "mensal", _malhas_do_ibge, "json"),
-    # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
+    # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY-SA, termos do site de 21/10/2026, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
     *lote_organismos.fontes(),  # BCE, OCDE, Eurostat, BIS, FMI, Banco Mundial, NASA, NOAA, GLEIF

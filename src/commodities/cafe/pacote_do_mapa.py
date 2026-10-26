@@ -69,7 +69,7 @@ NOME_DA_FONTE_DO_CLIMA = {
     FONTE_INMET: "estações automáticas do INMET (BDMEP)",
 }
 FONTE_DA_PAM = "IBGE, Produção Agrícola Municipal (PAM), tabela 1613 do SIDRA"
-FONTE_DO_MAPBIOMAS = "MapBiomas, Coleção 11 (CC BY 4.0; Souza et al. 2020)"
+FONTE_DO_MAPBIOMAS = "MapBiomas, Coleção 11 (CC BY-SA; Souza et al. 2020)"
 FONTE_DA_GEADA = (
     "estações automáticas do INMET (BDMEP), média ponderada pela área de café da PAM"
 )

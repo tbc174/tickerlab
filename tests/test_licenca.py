@@ -101,6 +101,36 @@ def test_a_mais_restrita_vence():
     assert marca_mais_restrita([]) == Marca.A_CONFIRMAR  # sem fonte conhecida
 
 
+# --- Emenda 5 da ADR 0008 (21/10/2026): Kraken, MapBiomas, GDELT e CFTC ---------------------------
+
+
+@pytest.mark.parametrize(
+    ("fonte", "marca"),
+    [
+        ("kraken", Marca.NAO_COMERCIAL),  # termo de 19/10/2026: só uso próprio
+        ("mapbiomas", Marca.A_CONFIRMAR),  # CC BY-SA; revenda a confirmar até a P-52
+        ("gdelt", Marca.VENDAVEL),  # uso livre citando e linkando o GDELT
+        ("cftc", Marca.VENDAVEL),  # obra do governo dos EUA, 17 U.S.C. §105
+    ],
+)
+def test_emenda_5_as_quatro_marcas(fonte, marca):
+    assert marca_da_fonte(fonte) == marca
+
+
+def test_emenda_5_os_textos_das_licencas():
+    assert "19/10/2026" in coletas.LICENCAS["kraken"]
+    assert "robôs" in coletas.LICENCAS["kraken"]
+    assert "CC BY-SA" in coletas.LICENCAS["mapbiomas"]
+    assert "GDELT Project" in coletas.LICENCAS["gdelt"]
+    assert "§105" in coletas.LICENCAS["cftc"]
+
+
+def test_emenda_5_gdelt_sai_dos_usos_sem_cobranca_e_a_kraken_segue_coletando():
+    assert coletas.uso_sem_cobranca("gdelt") is None
+    # parar a coleta (1b) e apagar o guardado (1c) foram negados: a Kraken continua no arquivo
+    assert "kraken" in coletas.REVENDA and "kraken" in coletas.COLETA_E_GUARDA
+
+
 # --- o erro: só a B3 (ADR 0102) ----------------------------------------------------------------
 
 
@@ -277,7 +307,7 @@ def test_cripto_sem_origens_tem_a_fonte_pela_pasta(tmp_path):
     for arquivo in (kraken, cftc):
         gravar_se_mudou(_tabela(), arquivo, [], [], versoes=False)
     assert _manifesto(kraken)["licenca"]["fontes"] == {"kraken": "nao_comercial"}
-    assert _manifesto(cftc)["licenca"]["fontes"] == {"cftc": "uso_interno"}
+    assert _manifesto(cftc)["licenca"]["fontes"] == {"cftc": "vendavel"}
     licenca.exigir_licenca_das_tabelas("treinar", [kraken, cftc])  # ADR 0102: só marca
 
 
@@ -365,7 +395,6 @@ FONTES_DA_EMENDA_3 = (
     "assessoria",  # negócios de M&A (só fatos, ADR 0082)
     "bcb-sgs-189",  # IGP-M da FGV
     "wayback",  # datas das cópias
-    "gdelt",
 )
 
 
@@ -388,7 +417,6 @@ def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
         "assessoria-igc",
         "bcb-sgs-189",
         "wayback-igc",
-        "gdelt",
     ],
 )
 def test_mostrar_aceita_fonte_restrita_da_lista(fonte):

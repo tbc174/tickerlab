@@ -32,7 +32,7 @@ LICENCAS = {
     # clima e geografia do café (lidos em 18/10/2026): o INMET não publica licença escrita
     "inmet": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
     "chirps": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
-    "mapbiomas": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+    "mapbiomas": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
     # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
     # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
     "bm": "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles",
@@ -41,12 +41,12 @@ LICENCAS = {
     "iex": "Termos do IEX HIST (com atribuição)",
     "yahoo": "Uso pessoal: só interno, nunca exportar",
     # base de cripto (ADRs 0041 e 0045 do autor)
-    "cftc": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+    "cftc": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
     "rfb": "Dados abertos da Receita Federal (Decreto 8.777/2016; citar a Receita)",
     "wiki": "CC0 (acessos às páginas da Wikimedia)",
-    "gdelt": "GDELT (uso livre com citação; só contagem e tom, sem texto)",
+    "gdelt": "GDELT Project (citar e linkar gdeltproject.org); só contagem e tom",
     "btc": "Blockchain pública lida por nó próprio (Bitcoin Core, MIT)",
-    "kraken": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
+    "kraken": "Termo da Kraken (19/10/2026): só uso próprio; veda cópia, comércio e robôs",
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
@@ -226,22 +226,22 @@ REVENDA = {
     "ibge": VENDAVEL_COM_ATRIBUICAO,
     "inmet": VENDAVEL_COM_ATRIBUICAO,  # sem licença escrita: confirmar por escrito antes de vender
     "chirps": VENDAVEL_COM_ATRIBUICAO,  # domínio público
-    "mapbiomas": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "mapbiomas": A_CONFIRMAR,  # CC BY-SA (termos do site, 21/10/2026): revenda a confirmar até a P-52
     "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
     "fmi": SO_USO_INTERNO,  # uso comercial pede permissão por escrito do FMI; preços de referência não se distribuem (ADR 0008)
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
     # treino de ML permitido por escrito (licencas-por-fonte.md, 13/10/2026); revenda ainda sem resposta
     "sec": SO_USO_INTERNO,  # os arquivos são escritos pelas empresas
     "iex": SO_USO_INTERNO,  # com a atribuição "Data provided for free by IEX"
-    "cftc": SO_USO_INTERNO,  # obra do governo dos EUA
+    "cftc": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA (17 U.S.C. §105), Emenda 5
     "wiki": SO_USO_INTERNO,  # CC0
     "btc": SO_USO_INTERNO,  # blockchain pública lida por nó próprio
     "rfb": A_CONFIRMAR,  # planilha de cripto da Receita: perguntar a licença
-    "gdelt": A_CONFIRMAR,  # sem termo lido sobre treino de ML
+    "gdelt": VENDAVEL_COM_ATRIBUICAO,  # uso livre citando e linkando o GDELT, Emenda 5
     "yahoo": NAO_COMERCIAL,  # termos do Yahoo: uso pessoal
     # sem termo de dados: não comercial (a exceção da ADR 0045 ao clima de risco do Bitcoin perdeu
     # o sentido com a ADR 0102: a marca não barra mais)
-    "kraken": NAO_COMERCIAL,
+    "kraken": NAO_COMERCIAL,  # termo de 19/10/2026: só uso próprio; a coleta segue (Emenda 5)
     "mb": NAO_COMERCIAL,
     # a ficha do conjunto no dados.gov.br declara CC BY (o CC BY-ND é do rodapé do site gov.br
     # inteiro); Tiago, "Pode", 20/10/2026 (ADR 0106, item 2). Sócio pessoa física segue fora do app.
@@ -516,7 +516,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # a N0 diz retenção sim, coleta "não diz" ou não lida
     "mapbiomas": ColetaEGuarda(
         Coleta.NAO_LIDA, Guarda.SEM_PRAZO
-    ),  # CC BY-SA hoje, CC BY em 18/10
+    ),  # CC BY-SA (termos do site, 21/10/2026)
     "termos": ColetaEGuarda(
         Coleta.NAO_LIDA, Guarda.SO_PROVA
     ),  # cópias de termos; três são da B3
@@ -782,13 +782,6 @@ USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
         "ao estado da Emenda 4 e tirar o dado da B3 das telas",
         "Fonte: B3, com a data de cada número (sem licença da B3; mostrado com a fonte citada, "
         "risco assumido, ADR 0008 Emenda 6)",
-    ),
-    UsoSemCobranca(
-        "gdelt",
-        "contagem e tom de notícias por empresa (sem texto)",
-        "resposta escrita do GDELT sobre uso comercial; sem ela, desligar",
-        "Notícias: GDELT, só contagem e tom (licença a confirmar; mostrado com a fonte citada "
-        "enquanto o TickerLab não cobra)",
     ),
 )
 # Emenda 2 da ADR 0008, item 6: em toda tela ou PDF com dado da IEX
