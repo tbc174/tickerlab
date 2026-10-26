@@ -4494,7 +4494,7 @@
       "tabela": "ifdata_cadastro",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "data_base": {
           "descricao": "Data-base do cadastro",
@@ -4563,14 +4563,24 @@
         "cnpj_raiz": {
           "descricao": "Raiz do CNPJ usada na ligação: a do líder ou o próprio código, se for CNPJ",
           "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o cadastro era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe esta linha; vazio se não havia o dia (acervo desligado)",
+          "unidade": "data (dia)"
         }
       },
       "chaves": [
         "data_base",
-        "cod_inst"
+        "cod_inst",
+        "visto_em"
       ],
       "datas": {
-        "aconteceu_em": "data_base"
+        "aconteceu_em": "data_base",
+        "publico_em": "disponivel_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -4578,7 +4588,7 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Trimestral, junto com os valores",
-      "atraso": "O dos valores (o cadastro sai com a data-base)"
+      "atraso": "O dos valores (o cadastro sai com a data-base): `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como `<AAAAMM>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece"
     },
     "ligacao_dos_bancos": {
       "tabela": "ligacao_dos_bancos",
@@ -4634,7 +4644,7 @@
       "tabela": "scr_credito",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.1.0",
+      "versao": "2.0.0",
       "colunas": {
         "data_base": {
           "descricao": "Fim do mês",
@@ -4733,7 +4743,15 @@
           "unidade": "reais (R$), já multiplicado pela escala informada"
         },
         "disponivel_em": {
-          "descricao": "Desde quando o mês era público (como era na data)",
+          "descricao": "Desde quando o mês era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois",
+          "unidade": "data (dia)"
+        },
+        "ocorrencia": {
+          "descricao": "Ordem da linha entre as de mesma chave no arquivo do BC (0, 1...): o BC publica mais de uma linha por chave e a base soma todas",
+          "unidade": "número inteiro"
+        },
+        "visto_em": {
+          "descricao": "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe esta linha; vazio se não havia o dia (acervo desligado)",
           "unidade": "data (dia)"
         }
       },
@@ -4747,7 +4765,9 @@
         "modalidade",
         "submodalidade",
         "origem",
-        "indexador"
+        "indexador",
+        "ocorrencia",
+        "visto_em"
       ],
       "datas": {
         "aconteceu_em": "data_base",
@@ -4759,7 +4779,7 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Mensal, um arquivo por ano",
-      "atraso": "Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); `disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais novos são baixados de novo a cada carga e cada regravação vira versão `<ano>.v<N>`"
+      "atraso": "Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); `disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais novos são baixados de novo a cada carga e cada regravação que muda um número vira linha nova da mesma chave, que só vale desde o dia em que foi vista (`visto_em`; `base/setoriais/revisoes.py::como_era_em`), e a tabela anterior fica guardada como `<ano>.v<N>`. O que o BC revisou antes da 1ª coleta guardada (10/2026) não aparece"
     },
     "padroes_setoriais": {
       "tabela": "padroes_setoriais",

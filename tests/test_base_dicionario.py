@@ -242,13 +242,15 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
             "disponivel_em",
             "visto_em",
         ],
-        "ifdata_cadastro": list(cadastro.columns),
+        "ifdata_cadastro": [*cadastro.columns, "disponivel_em", "visto_em"],
         "ligacao_dos_bancos": list(
             bcb_ifdata.ligacao_dos_bancos(cadastro, *_empresas_e_tickers()).columns
         ),
         "scr_credito": [
             *bcb_scr.ler_ano(_scr("scrdata_2012.zip")).columns,
             "disponivel_em",
+            "ocorrencia",
+            "visto_em",
         ],
     }
     for tabela, esperadas in colunas.items():
@@ -411,7 +413,8 @@ def test_contrato_comeca_na_versao_1():
     `demonstracoes_como_era` 2.0.0 (19/10/2026, série T1), a tabela ganhou a DFC, a DVA e a DRA
     (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas), e
     `ifdata_valores` 2.0.0 (21/10/2026), a chave ganhou o `visto_em` (a revisão do BC é linha nova da
-    mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado)."""
+    mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado), e `ifdata_cadastro` e
+    `scr_credito` 2.0.0 (25/10/2026), o mesmo: a chave ganhou o `visto_em`."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
@@ -419,4 +422,6 @@ def test_contrato_comeca_na_versao_1():
     assert maiores.pop("cnpj_situacao_especial") == "2"
     assert maiores.pop("demonstracoes_como_era") == "2"
     assert maiores.pop("ifdata_valores") == "2"
+    assert maiores.pop("ifdata_cadastro") == "2"
+    assert maiores.pop("scr_credito") == "2"
     assert set(maiores.values()) == {"1"}
