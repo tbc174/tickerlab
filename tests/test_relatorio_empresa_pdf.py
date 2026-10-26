@@ -17,6 +17,7 @@ from src.relatorio_empresa_pdf import (
     _anexo_de_anos,
     relatorio_da_empresa,
 )
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 from tests.test_relatorio_empresa import _entradas, dados_da_weg  # noqa: F401
 
 
@@ -103,7 +104,7 @@ def test_amostra_publica_leva_o_anexo_quando_a_ficha_tem_rastro():
     ficha congelada da CPFL é de antes do rastro: aqui ela ganha o rastro de um item."""
     from src import amostra_do_relatorio, dossie
 
-    ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    ficha = dossie.ler_ficha(FICHA_DE_17_10)
     assert ficha is not None
     item = next(i for s in ficha.secoes for i in s.itens if i.valor is not None)
     item.rastro = dossie.RastroDaFicha(

@@ -19,6 +19,7 @@ from src import o_que_os_dados_mostram as leitura_da_ficha
 from src import relatorio_empresa as re_
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.padroes import INDICADORES
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "cpfl"
 CPFL = "02.429.144/0001-93"
@@ -66,7 +67,7 @@ def _padroes() -> tuple[date, pd.DataFrame]:
 
 @pytest.fixture(scope="module")
 def entradas_da_cpfl() -> re_.Entradas:
-    ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    ficha = dossie.ler_ficha(FICHA_DE_17_10)
     assert ficha is not None
     return re_.Entradas(
         dados=_dados(),

@@ -17,6 +17,7 @@ from src import relatorio_empresa as re_
 from src.analise_escrita import entrada as en
 from tests import test_dossie_lucro_e_capital as ficha_nova
 from tests.ajudantes_da_analise import CORTE, entradas_da_cpfl
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
 NOVAS = ("qualidade_do_lucro", "capital_e_acionistas")
 LIMITE_DE_CARACTERES = (
@@ -25,7 +26,7 @@ LIMITE_DE_CARACTERES = (
 
 
 def _ficha_com_as_secoes_novas() -> dossie.Ficha:
-    base = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    base = dossie.ler_ficha(FICHA_DE_17_10)
     assert base is not None
     novas = [
         ficha_nova._qualidade(

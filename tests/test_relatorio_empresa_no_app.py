@@ -9,6 +9,7 @@ from src.banco import pdfs_originais as pdfs
 from src.banco.usuarios import mudar_plano
 from src.relatorio_empresa import SECOES
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario, ir_para
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 from tests.test_fundamentos_no_app import _coletar
 
 
@@ -151,9 +152,7 @@ def _ficha_da_petrobras(tmp_path, monkeypatch):
     """A ficha de exemplo (CPFL) gravada como se fosse a da Petrobras, na pasta das fichas."""
     import json
 
-    from src import dossie
-
-    bruta = json.loads(dossie.FICHA_DE_EXEMPLO.read_text(encoding="utf-8"))
+    bruta = json.loads(FICHA_DE_17_10.read_text(encoding="utf-8"))
     atual = tmp_path / "atual"
     atual.mkdir()
     (atual / "33000167000101.json").write_text(
