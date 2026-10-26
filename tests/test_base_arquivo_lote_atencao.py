@@ -125,7 +125,7 @@ def test_marcas_contagem_cc0_e_cc_by_sao_vendaveis_e_indice_de_rss_fica_a_confir
 def test_as_marcas_antigas_da_cripto_nao_mudaram():
     # `wiki-acessos` e `gdelt-cripto` seguem com a marca de antes (a lista de usos sem cobrança depende)
     assert marca_da_fonte("wiki-acessos") == Marca.USO_INTERNO
-    assert marca_da_fonte("gdelt-cripto") == Marca.A_CONFIRMAR
+    assert marca_da_fonte("gdelt-cripto") == Marca.VENDAVEL  # Emenda 5 (26/10/2026)
 
 
 def test_o_agente_com_contato_e_a_pausa_do_querido_diario():

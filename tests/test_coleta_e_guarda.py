@@ -21,6 +21,7 @@ PASSAM_AS_MARCAS = {
     "bcb",
     "ccee",
     "chirps",
+    "gdelt",
     "cvm",
     "tce-rs-empenhos",
     "aneel",
@@ -89,8 +90,8 @@ def test_familias_que_passam_o_portao_externo_pelas_marcas() -> None:
 
 
 def test_nenhuma_marca_de_revenda_mudou() -> None:
-    """A linha 159 só preenche coleta e guarda; a revenda é da linha 125."""
-    assert coletas.marca_da_fonte("mapbiomas") is coletas.Marca.VENDAVEL
+    """A linha 159 só preenche coleta e guarda; a revenda é da Emenda 5 (linha 161)."""
+    assert coletas.marca_da_fonte("mapbiomas") is coletas.Marca.A_CONFIRMAR
     assert coletas.marca_da_fonte("kraken") is coletas.Marca.NAO_COMERCIAL
-    assert coletas.marca_da_fonte("gdelt") is coletas.Marca.A_CONFIRMAR
-    assert coletas.marca_da_fonte("cftc") is coletas.Marca.USO_INTERNO
+    assert coletas.marca_da_fonte("gdelt") is coletas.Marca.VENDAVEL
+    assert coletas.marca_da_fonte("cftc") is coletas.Marca.VENDAVEL
