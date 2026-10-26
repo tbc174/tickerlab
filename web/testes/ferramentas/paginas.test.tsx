@@ -68,7 +68,7 @@ describe("páginas das ferramentas", () => {
       "Sorte ou habilidade",
     ]);
     const vitrine = renderizar("ferramentas.html");
-    for (const grupo of GRUPOS_DA_VITRINE) expect(vitrine).toContain(`>${grupo.nome}</h2>`);
+    for (const grupo of GRUPOS_DA_VITRINE) expect(vitrine).toContain(`>${grupo.nome}</h3>`);
   });
 
   it("cada cartão da vitrine tem a prévia em SVG, feita no build e escondida do leitor de tela", () => {
@@ -77,6 +77,31 @@ describe("páginas das ferramentas", () => {
     const previas = vitrine.match(/<svg class="previa"[^>]*aria-hidden="true"/g) ?? [];
     expect(previas).toHaveLength(PAGINAS_DE_FERRAMENTA.length);
     expect(vitrine).not.toMatch(/NaN|Infinity/);
-    expect(vitrine).not.toContain("<img");
+    // as únicas imagens da página são as folhas do Report Studio
+    const fora = vitrine.replace(/<div class="vitrine" data-vitrine="">.*?<\/div><p class="legenda">/s, "");
+    expect(fora).not.toContain("<img");
+  });
+
+  it("'No app' leva o backtest, a carteira e o Report Studio; 'Calculadoras' leva os grupos (plano do site, Tarefa 3)", () => {
+    const vitrine = renderizar("ferramentas.html");
+    const noApp = vitrine.indexOf(">No app</h2>");
+    const calculadoras = vitrine.indexOf(">Calculadoras</h2>");
+    expect(noApp).toBeGreaterThan(-1);
+    expect(calculadoras).toBeGreaterThan(noApp);
+    const trechoNoApp = vitrine.slice(noApp, calculadoras);
+    for (const chave of ["estrategias", "carteira"]) {
+      expect(trechoNoApp).toContain(`href="/produto.html#${chave}"`);
+    }
+    expect(trechoNoApp).toContain("Report Studio");
+    expect(trechoNoApp).toContain("data-vitrine=");
+    expect(vitrine.slice(calculadoras)).toContain(`>${GRUPOS_DA_VITRINE[0].nome}</h3>`);
+  });
+
+  it("a página inicial não tem mais o bento das seis frentes nem o Report Studio", () => {
+    const inicio = renderizar("index.html");
+    expect(inicio).not.toContain("Sua pesquisa merece mais que uma tela");
+    expect(inicio).not.toContain("v2-bento");
+    expect(inicio).not.toContain("Seis frentes, uma plataforma");
+    expect(inicio).not.toContain("data-vitrine=");
   });
 });

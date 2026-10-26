@@ -1,6 +1,8 @@
 // As páginas das ferramentas grátis e a vitrine delas. Os números dos exemplos do texto saem das
 // mesmas contas da calculadora (nada digitado à mão que possa ficar diferente).
-import { regrasDeImposto } from "../conteudo";
+import type { ReactNode } from "react";
+import { type Modulo, exemplo, regrasDeImposto, site } from "../conteudo";
+import { contagem, disponiveis, moduloPelaChave } from "../site/comum";
 import { TopoDaPagina } from "../site/Fundo";
 import { AnuncioDaCasa } from "./AnuncioDaCasa";
 import { altaParaRecuperar, custoDaTaxa } from "./contas/custos";
@@ -685,6 +687,123 @@ export const DADOS_DA_VITRINE = {
   atual: "/ferramentas.html",
 };
 
+const ESTILOS = site.estilos_do_relatorio;
+
+// ilustrações dos cartões largos do bento (enfeite: escondidas dos leitores de tela)
+const ILUSTRACOES: Record<string, ReactNode> = {
+  research: (
+    <div className="v2-mini v2-mini-doc" aria-hidden="true">
+      <span className="v2-doc-titulo">Fato relevante · CVM</span>
+      <i />
+      <i />
+      <i className="curta" />
+      <span className="v2-doc-selo">Explicado em português</span>
+    </div>
+  ),
+  estrategias: (
+    <svg className="v2-mini" viewBox="0 0 200 90" aria-hidden="true">
+      <polyline className="ref" points="0,70 30,66 60,68 90,58 120,62 150,50 180,54 200,48" />
+      <polyline
+        className="est"
+        pathLength={1}
+        points="0,74 30,64 60,60 90,46 120,50 150,34 180,30 200,20"
+      />
+      <text x="200" y="14" textAnchor="end">
+        estratégia
+      </text>
+      <text x="200" y="64" textAnchor="end" className="ref-t">
+        comprar e segurar
+      </text>
+    </svg>
+  ),
+};
+
+function CartaoDoBento({ modulo }: { modulo: Modulo }) {
+  const destino = `/produto.html#${modulo.chave}`;
+  if (disponiveis(modulo) === 0) {
+    return (
+      <article className="cartao v2-faixa-cartao breve">
+        <div>
+          <p className="olho">{modulo.objetivo}</p>
+          <h3>
+            {modulo.nome} <span className="selo breve">em breve</span>
+          </h3>
+          <p>{modulo.frase}</p>
+        </div>
+        <a className="seta" href={destino}>
+          Ver o que vem
+        </a>
+      </article>
+    );
+  }
+  const texto = (
+    <>
+      <p className="olho">{modulo.objetivo}</p>
+      <h3>{modulo.nome}</h3>
+      <p>{modulo.frase}</p>
+      <p className="contagem">{contagem(modulo)}</p>
+      <a className="seta" href={destino}>
+        Ver o que tem
+      </a>
+    </>
+  );
+  const ilustracao = ILUSTRACOES[modulo.chave];
+  return ilustracao ? (
+    <article className="cartao v2-larga">
+      <div>{texto}</div>
+      {ilustracao}
+    </article>
+  ) : (
+    <article className="cartao">{texto}</article>
+  );
+}
+
+/** O Report Studio: imagens do PDF de verdade, trocando estilo e página (o site.js troca). */
+export function EstudioDeRelatorios() {
+  const primeiro = ESTILOS[0].chave;
+  return (
+    <div className="vitrine" data-vitrine="">
+      <div className="controles" role="group" aria-label="Estilo do relatório">
+        {ESTILOS.map((e, i) => (
+          <button
+            key={e.chave}
+            type="button"
+            data-estilo={e.chave}
+            aria-pressed={i === 0 ? "true" : "false"}
+          >
+            {e.nome}
+          </button>
+        ))}
+      </div>
+      <div className="folhas">
+        <img
+          src={`/relatorio/${primeiro}-1.webp`}
+          width={560}
+          height={792}
+          loading="lazy"
+          alt={`Capa do relatório de exemplo de ${exemplo.ticker}`}
+          data-pagina="1"
+        />
+        <img
+          src={`/relatorio/${primeiro}-2.webp`}
+          width={560}
+          height={792}
+          loading="lazy"
+          alt="Segunda página do relatório de exemplo, com o resumo executivo e os números-chave"
+          data-pagina="2"
+        />
+      </div>
+      <p className="legenda">
+        Imagens do PDF real gerado pelo app, com dados de exemplo guardados no projeto. Só as
+        cores mudam entre os estilos: os números são os mesmos.
+      </p>
+    </div>
+  );
+}
+
+/** O que a vitrine mostra do app: as frentes de backtest e carteira e o Report Studio. */
+const FRENTES_NO_APP = ["estrategias", "carteira"];
+
 export function Vitrine() {
   const porArquivo = new Map(FERRAMENTAS_DO_SITE.map((f) => [f.arquivo, f]));
   return (
@@ -694,9 +813,28 @@ export function Vitrine() {
         titulo="Ferramentas grátis"
         subtitulo="Calculadoras abertas para todos, sem cadastro, com cada conta explicada."
       />
+      <section className="faixa secao" aria-labelledby="titulo-no-app">
+        <h2 id="titulo-no-app">No app</h2>
+        <div className="v2-bento">
+          {FRENTES_NO_APP.map((chave) => (
+            <CartaoDoBento key={chave} modulo={moduloPelaChave(chave)} />
+          ))}
+        </div>
+        <p className="olho">Report Studio</p>
+        <h3 id="titulo-estudio">Sua pesquisa merece mais que uma tela</h3>
+        <p className="subtitulo">
+          Modelo Executivo ou Pesquisa completa, seções na ordem que você quiser, três estilos e
+          a prévia do PDF de verdade antes de baixar. Toda versão tem resumo, metodologia e os
+          limites da análise.
+        </p>
+        <EstudioDeRelatorios />
+      </section>
+      <section className="faixa secao" aria-labelledby="titulo-calculadoras">
+        <h2 id="titulo-calculadoras">Calculadoras</h2>
+      </section>
       {GRUPOS_DA_VITRINE.map((grupo, k) => (
         <section className="faixa secao vitrine-grupo" aria-labelledby={`grupo-${k}`} key={grupo.nome}>
-          <h2 id={`grupo-${k}`}>{grupo.nome}</h2>
+          <h3 id={`grupo-${k}`}>{grupo.nome}</h3>
           <p className="apagado">{grupo.descricao}</p>
           <div className={`grade ${grupo.arquivos.length === 4 ? "quatro" : "tres"}`}>
             {grupo.arquivos.map((arquivo) => {
