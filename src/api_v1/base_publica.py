@@ -104,7 +104,13 @@ def _companhias(
                 )
             )
         )
-    pedido = pedido.distinct().order_by("empresa", "cnpj").limit(MAXIMO_DE_RESULTADOS)
+    # O nome "cnpj" também existe na tabela associada; ordene as colunas selecionadas.
+    # PostgreSQL exige que toda ordenação do DISTINCT apareça na seleção.
+    pedido = (
+        pedido.distinct()
+        .order_by(pedido.selected_columns.empresa, pedido.selected_columns.cnpj)
+        .limit(MAXIMO_DE_RESULTADOS)
+    )
     with obter_engine().connect() as conexao:
         return tuple((str(l.cnpj), str(l.empresa)) for l in conexao.execute(pedido))
 

@@ -634,3 +634,40 @@ def test_pulse_no_banco_de_verdade_nao_volta_o_relogio_e_some_com_a_conta(motor)
     with motor.connect() as conexao:
         assert pulse.ultima_visita(conexao, ana.id) is None
         assert pulse.ultima_visita(conexao, bia.id) == agora + timedelta(days=1)
+
+
+@pytest.mark.parametrize("consulta", ["02429144000193", "CPFE3", "CPFL"])
+def test_busca_publica_por_cnpj_nome_e_ticker_no_banco(motor, monkeypatch, consulta):
+    """A busca também roda no PostgreSQL do CI, que exige ORDER BY no SELECT DISTINCT."""
+    from src.api_v1 import base_publica
+    from src.banco.modelo import setores_cvm, tickers_dos_emissores
+
+    cnpj = "02429144000193"
+    empresa = "CPFL ENERGIA S.A."
+    with motor.begin() as conexao:
+        conexao.execute(
+            sa.insert(setores_cvm).values(cnpj=cnpj, setor="Energia", situacao="ATIVO")
+        )
+        # Duas ações da mesma companhia não podem duplicar a candidata por nome.
+        conexao.execute(
+            sa.insert(tickers_dos_emissores),
+            [
+                {
+                    "ticker": f"CPFE{i}.SA",
+                    "codigo": f"CPFE{i}",
+                    "cnpj": cnpj,
+                    "empresa": empresa,
+                    "atualizado_em": datetime.now(UTC),
+                }
+                for i in (3, 4)
+            ],
+        )
+    monkeypatch.setattr(base_publica, "obter_engine", lambda: motor)
+    base_publica.limpar_cache()
+    try:
+        consulta, por_cnpj = base_publica._consulta(consulta)
+        assert base_publica._companhias(consulta, por_cnpj, base_publica.hoje()) == (
+            (cnpj, "" if por_cnpj else empresa),
+        )
+    finally:
+        base_publica.limpar_cache()
