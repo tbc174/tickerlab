@@ -305,7 +305,7 @@ def descobrir_ecmwf(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return [Alvo(url, ".grib2", obter=recorte_do_ecmwf(url)) for url in urls]
 
 
-# ---- MapBiomas (CC BY 4.0): estatísticas da Coleção 11 por município e por bioma e estado -------
+# ---- MapBiomas (CC BY-SA): estatísticas da Coleção 11 por município e por bioma e estado -------
 PAGINA_DAS_ESTATISTICAS_DO_MAPBIOMAS = "https://brasil.mapbiomas.org/estatisticas/"
 PLANILHAS_DO_MAPBIOMAS = re.compile(
     r'href="([^"]*(?:MUNICIPALITY[^"/]*|COL\.11-BIOME_STATE)\.xlsx)"', re.IGNORECASE
