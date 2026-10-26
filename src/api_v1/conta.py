@@ -15,7 +15,6 @@ Fora do `rotas.py` de propósito: as rotas de lá exigem uma conta que já exist
 estas são justamente as que criam a conta e registram o aceite. Sem o aceite, nenhuma página abre.
 """
 
-from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
@@ -47,6 +46,7 @@ from src.banco.usuarios import (
     Usuario,
     buscar_por_id,
     esta_valendo,
+    travar,
 )
 from src.conformidade import VERSAO_DOS_TERMOS, aceitar_os_termos
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
@@ -86,14 +86,14 @@ def entrar(
     # a conta ainda pode não existir: o limite fica pelo identificador do Google
     if not LIMITE.permitir(f"google:{identidade.sub}", agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
-    inicio = inicio_do_login()
+    marca = marca_do_login()
     try:
         usuario, primeira_vez = _registrar(identidade, tl_origem)
     except ContaBloqueadaError as erro:
         raise recusa_da_conta_bloqueada(erro) from erro
     except LoginInvalidoError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
-    abrir_a_sessao(request, response, usuario, inicio=inicio)
+    abrir_a_sessao(request, response, usuario, marca=marca)
     return ContaV1(**eu_da_conta(usuario).model_dump(), primeira_vez=primeira_vez)
 
 
@@ -115,10 +115,12 @@ def recusa_do_login_interrompido() -> HTTPException:
     )
 
 
-def inicio_do_login() -> datetime:
-    """A hora em que o login começou, antes de ler a conta: no relógio da auditoria (a hora de
-    verdade do servidor), não no `agora()` das rotas."""
-    return datetime.now(UTC)
+def marca_do_login() -> int:
+    """A marca do começo do login, lida antes de ler a conta: quantos bloqueios e desbloqueios a
+    auditoria tem (de todas as contas). Uma contagem, não a hora: o relógio de quem bloqueia
+    pode estar atrás do da API (achado P0 da 3ª revisão cruzada do Codex no #659)."""
+    with obter_engine().connect() as conexao:
+        return registro_de_auditoria.contar(conexao, ACOES_DO_BLOQUEIO)
 
 
 def _registrar(
@@ -139,28 +141,29 @@ def abrir_a_sessao(
     usuario: Usuario,
     provedor: str = "google",
     *,
-    inicio: datetime,
+    marca: int,
 ) -> None:
     """Abre a sessão nova e põe o cookie; a sessão que o navegador ainda tinha é encerrada.
 
-    `inicio` é a hora em que o login começou (`inicio_do_login`, antes de ler a conta). Um login
-    que leu a conta antes de um bloqueio e só chega aqui depois do desbloqueio não abre sessão: o
-    desbloqueio encerrou as sessões abertas, mas esta ainda não existia (achado P0 da 2ª revisão
-    cruzada do Codex no #659). A conferência vem depois de gravar a sessão, na mesma transação:
-    um bloqueio que grava antes dela aparece aqui; um que grava depois já encontra a sessão e a
-    encerra no desbloqueio.
+    `marca` é a de `marca_do_login`, tomada antes de ler a conta. Um login que leu a conta antes
+    de um bloqueio e só chega aqui depois do desbloqueio não abre sessão: o desbloqueio encerrou
+    as sessões abertas, mas esta ainda não existia (achado P0 da 2ª revisão cruzada do Codex no
+    #659).
+
+    A conta fica travada da conferência ao commit (`travar`), e o bloqueio e o desbloqueio travam
+    a mesma linha: um bloqueio que veio antes aparece aqui; um que vem depois espera este commit,
+    encontra a sessão e a encerra (achado P0 da 3ª revisão).
     """
     antiga = token_do_cookie(request)
     with obter_engine().begin() as conexao:
         if antiga:
             sessoes.encerrar(conexao, antiga)
-        token = sessoes.abrir(conexao, usuario.id, provedor)
+        travar(conexao, usuario.id)
         if not esta_valendo(conexao, usuario.id):
             raise recusa_da_conta_bloqueada(ContaBloqueadaError())
-        if registro_de_auditoria.houve_desde(
-            conexao, usuario.id, ACOES_DO_BLOQUEIO, inicio
-        ):
+        if registro_de_auditoria.contar(conexao, ACOES_DO_BLOQUEIO) != marca:
             raise recusa_do_login_interrompido()
+        token = sessoes.abrir(conexao, usuario.id, provedor)
     por_o_cookie(response, token)
 
 

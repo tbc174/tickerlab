@@ -94,24 +94,17 @@ def registrar(
     )
 
 
-def houve_desde(
-    conexao: sa.Connection,
-    alvo_id: uuid.UUID,
-    acoes: tuple[str, ...],
-    desde: datetime,
-) -> bool:
-    """Se alguma dessas ações foi registrada para o alvo a partir de `desde` (o mesmo relógio do
-    `registrar`, a hora do servidor em UTC)."""
-    linha = conexao.execute(
-        sa.select(auditoria.c.id)
-        .where(
-            auditoria.c.alvo_id == alvo_id,
-            auditoria.c.acao.in_(acoes),
-            auditoria.c.criado_em >= desde,
-        )
-        .limit(1)
-    ).first()
-    return linha is not None
+def contar(conexao: sa.Connection, acoes: tuple[str, ...]) -> int:
+    """Quantos registros dessas ações a auditoria tem, de todas as contas.
+
+    Serve de marca que só cresce: a auditoria não apaga registro (nem a exclusão da conta). Duas
+    leituras diferentes dizem que uma dessas ações aconteceu entre elas, sem depender do relógio
+    de quem a registrou."""
+    return conexao.execute(
+        sa.select(sa.func.count())
+        .select_from(auditoria)
+        .where(auditoria.c.acao.in_(acoes))
+    ).scalar_one()
 
 
 def listar_recentes(conexao: sa.Connection, limite: int = 50) -> list[Registro]:

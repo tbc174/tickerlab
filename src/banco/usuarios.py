@@ -114,6 +114,19 @@ def buscar_por_id(conexao: sa.Connection, usuario_id: uuid.UUID) -> Usuario | No
     return _de_linha(linha) if linha else None
 
 
+def travar(conexao: sa.Connection, usuario_id: uuid.UUID) -> None:
+    """Trava a linha da conta até o fim da transação (`SELECT ... FOR UPDATE`).
+
+    O login que abre sessão e o bloqueio e o desbloqueio travam a mesma linha, então um espera o
+    commit do outro: o bloqueio vê a sessão gravada e a encerra, ou o login vê o bloqueio. Sem a
+    trava, a sessão de um login ainda sem commit fica invisível para o bloqueio (achado P0 da 3ª
+    revisão cruzada do Codex no #659). No SQLite não faz nada: lá o banco inteiro já tem um
+    escritor por vez."""
+    conexao.execute(
+        sa.select(usuarios.c.id).where(usuarios.c.id == usuario_id).with_for_update()
+    )
+
+
 def esta_valendo(conexao: sa.Connection, usuario_id: uuid.UUID) -> bool:
     """Se a conta existe, não foi apagada e não está bloqueada no incidente. É a conferência das
     ações que apagam, exportam, publicam ou mexem na cobrança fora do login."""

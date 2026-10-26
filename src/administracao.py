@@ -24,7 +24,7 @@ from src.banco.modelo import (
     simulacoes,
     usuarios,
 )
-from src.banco.usuarios import buscar_por_email
+from src.banco.usuarios import buscar_por_email, travar
 
 
 class PermissaoNegadaError(PermissionError):
@@ -291,6 +291,8 @@ def bloquear_conta(
     entraria nem desbloquearia a si mesmo.
     """
     exigir_admin(conexao, ator_id)
+    # a mesma trava do login que abre sessão (`usuarios.travar`): um espera o commit do outro
+    travar(conexao, alvo_id)
     if motivo not in MOTIVOS_DO_BLOQUEIO:
         raise OperacaoInvalidaError(f"Motivo desconhecido: {motivo}.")
     if alvo_id == ator_id:
@@ -329,6 +331,9 @@ def desbloquear_conta(
     P0 da revisão cruzada do Codex no #659). A pessoa entra de novo.
     """
     exigir_admin(conexao, ator_id)
+    travar(
+        conexao, alvo_id
+    )  # antes de encerrar as sessões: nenhuma nasce depois sem ser vista
     motivo = _bloqueio_atual(conexao, alvo_id)
     if motivo is None:
         raise OperacaoInvalidaError("Esta conta não está bloqueada.")
