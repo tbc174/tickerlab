@@ -1,5 +1,6 @@
-"""A conta ainda vale? Conferida no próprio callback das ações que apagam, exportam, publicam ou
-mexem na cobrança (linha 306; achado P0 da revisão cruzada do Codex no #659).
+"""A conta ainda vale? Conferida no próprio callback de toda ação que grava na conta: apagar,
+trocar, revogar, exportar, publicar, mexer na cobrança ou nas preferências (linha 306; achados das
+revisões cruzadas do Codex no #659).
 
 O Streamlit roda os callbacks antes do corpo do app, e é no corpo que a sessão relê a conta (a cada
 minuto) e para na conta bloqueada ou apagada. Sem esta conferência, uma aba aberta antes do bloqueio
@@ -16,7 +17,7 @@ from collections.abc import Callable
 import streamlit as st
 
 from src.banco.conexao import obter_engine
-from src.banco.usuarios import esta_valendo
+from src.banco.usuarios import Usuario, esta_valendo
 
 log = logging.getLogger(__name__)
 
@@ -31,15 +32,22 @@ def conta_valendo(usuario_id: uuid.UUID) -> bool:
         return False
 
 
+def conta_da_sessao_valendo(usuario: Usuario | None) -> bool:
+    """Para o callback que também roda sem login (modo local, que guarda só na sessão): só segue
+    para o banco com a conta da sessão valendo; senão pede a releitura já nesta execução."""
+    if usuario is not None and conta_valendo(usuario.id):
+        return True
+    st.session_state["usuario_em"] = 0
+    return False
+
+
 def so_com_a_conta_valendo[**P](callback: Callable[P, None]) -> Callable[P, None]:
     """Envolve o callback: sem a conta da sessão valendo, ele não roda, e o corpo do app relê a
     conta já nesta execução (e para na tela da conta bloqueada ou apagada)."""
 
     @functools.wraps(callback)
     def conferido(*args: P.args, **kwargs: P.kwargs) -> None:
-        usuario = st.session_state.get("usuario")
-        if usuario is None or not conta_valendo(usuario.id):
-            st.session_state["usuario_em"] = 0
+        if not conta_da_sessao_valendo(st.session_state.get("usuario")):
             return
         callback(*args, **kwargs)
 

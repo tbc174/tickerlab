@@ -27,7 +27,7 @@ from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 from telas.compartilhar import mostrar_links_da_conta
 from telas.comum import cabecalho_da_pagina
-from telas.conta.guarda import so_com_a_conta_valendo
+from telas.conta.guarda import conta_da_sessao_valendo, so_com_a_conta_valendo
 
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
 log_da_conta = logging.getLogger("tickerlab.conta")
@@ -83,7 +83,7 @@ def _guardar_tema(usuario):
     escolha = tema_do_app.normalizar(st.session_state.get("escolha_do_tema"))
     st.session_state["tema_do_app"] = escolha
     st.session_state["tema_escolhido"] = True
-    if usuario is None:
+    if usuario is None or not conta_da_sessao_valendo(usuario):
         return
     try:
         with obter_engine().begin() as conexao:
@@ -117,6 +117,7 @@ def _mostrar_aparencia(usuario):
     )
 
 
+@so_com_a_conta_valendo
 def _mudar_novidades(usuario, receber):
     try:
         with obter_engine().begin() as conexao:

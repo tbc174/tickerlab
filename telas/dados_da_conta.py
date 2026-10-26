@@ -116,6 +116,7 @@ def _campo_ainda_vale(chave, valor):
     return not chave.startswith("parametro_")  # parâmetro desconhecido: não volta
 
 
+@so_com_a_conta_valendo
 def _salvar_simulacao(usuario, tipo, nome_sugerido, resumo, chave_da_ficha=None):
     nome = st.session_state.get(f"salvar_nome_{tipo}", "").strip() or nome_sugerido
     guardada = st.session_state.get(chave_da_ficha) if chave_da_ficha else None

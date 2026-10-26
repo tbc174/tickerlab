@@ -26,6 +26,7 @@ CHAVE_DAS_ESTRATEGIAS = "diario_estrategias"
 log = logging.getLogger(__name__)
 
 
+@so_com_a_conta_valendo
 def _guardar(usuario):
     estado = st.session_state
     try:

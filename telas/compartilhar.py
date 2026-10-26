@@ -151,6 +151,7 @@ def compartilhar_pdf(
     mostrar_link_criado(alvo, onde=abaixo)
 
 
+@so_com_a_conta_valendo
 def _revogar(usuario_id: uuid.UUID, link_id: uuid.UUID) -> None:
     try:
         with obter_engine().begin() as conexao:

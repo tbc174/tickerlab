@@ -37,6 +37,7 @@ from telas.comum import (
     marcar_feito,
     plano_atual,
 )
+from telas.conta.guarda import so_com_a_conta_valendo
 from telas.estrategias.ficha import contar_esta_tentativa, tolerancia_escolhida
 from telas.research.comum import _carteira_da_lista, _listas_do_research
 from telas.research.newsletter import JANELAS_DA_NEWSLETTER, _edicao
@@ -595,6 +596,7 @@ def _previa(pedido, config):
     return guardadas[chave]
 
 
+@so_com_a_conta_valendo
 def _salvar_configuracao(usuario, tipo):
     config = {
         "modelo": st.session_state.get("relatorio_modelo", relatorios.COMPLETO),

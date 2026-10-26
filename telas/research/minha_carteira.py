@@ -40,6 +40,7 @@ def guardar_fotografia(usuario, conteudo, nome_do_arquivo):
     )
 
 
+@so_com_a_conta_valendo
 def _guardar_da_tela(usuario):
     arquivo = st.session_state.get("minha_carteira_arquivo")
     if arquivo is None:

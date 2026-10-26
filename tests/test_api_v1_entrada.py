@@ -365,3 +365,47 @@ def test_o_cookie_da_conta_bloqueada_para_de_valer_e_o_da_outra_continua(
     assert cliente.get("/api/v1/eu", headers=_com_cookie(do_pc)).status_code == 401
     assert cliente.get("/api/v1/eu", headers=_com_cookie(do_celular)).status_code == 401
     assert cliente.get("/api/v1/eu", headers=_com_cookie(da_bia)).status_code == 200
+
+
+def test_codigo_conferido_antes_do_bloqueio_nao_abre_sessao_depois_do_desbloqueio(
+    cliente, banco, enviados, monkeypatch
+):
+    """2ª revisão cruzada do Codex no #659, pelo código por e-mail: a conta é bloqueada e
+    desbloqueada entre a entrada na conta e a abertura da sessão. Essa entrada não vale; a
+    seguinte, toda depois do desbloqueio, entra."""
+    from src.administracao import desbloquear_conta
+    from src.banco.usuarios import buscar_por_google_sub
+
+    ana = _conta_google(banco)
+    original = entrada._entrar_pelo_email
+
+    def entrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        bloquear_pelo_admin(banco, ana.id)
+        with banco.begin() as conexao:
+            chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+            desbloquear_conta(conexao, chefe.id, ana.id)
+        return resultado
+
+    monkeypatch.setattr(entrada, "_entrar_pelo_email", entrar_e_pausar)
+    _pedir(cliente, "ana@exemplo.com")
+    ((_, codigo),) = enviados
+    resposta = _confirmar(cliente, "ana@exemplo.com", codigo)
+    assert resposta.status_code == 409
+    assert not [
+        c
+        for c in resposta.headers.get_list("set-cookie")
+        if c.startswith(sessao.NOME_DO_COOKIE) and "max-age=0" not in c.lower()
+    ]
+
+    monkeypatch.setattr(entrada, "_entrar_pelo_email", original)
+    _pedir(cliente, "ana@exemplo.com")
+    (_, (_, codigo)) = enviados
+    resposta = _confirmar(cliente, "ana@exemplo.com", codigo)
+    assert resposta.status_code == 200
+    assert (
+        cliente.get(
+            "/api/v1/eu", headers=_com_cookie(_cookie_da_sessao(resposta))
+        ).status_code
+        == 200
+    )

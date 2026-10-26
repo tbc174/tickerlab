@@ -16,6 +16,7 @@ from src.auditoria import ACAO_TERMOS_ACEITOS
 from src.autenticacao import VARIAVEL_DOS_ADMINS
 from src.banco import novidades_por_email
 from src.banco.modelo import auditoria as auditoria_tabela
+from src.banco.modelo import sessoes_de_login as sessoes_tabela
 from src.banco.origens import buscar_origem
 from src.banco.usuarios import TEXTO_DA_CONTA_BLOQUEADA, buscar_por_google_sub, entrar
 from src.conformidade import VERSAO_DOS_TERMOS, registrar_aceite
@@ -120,6 +121,9 @@ def test_cookie_do_login_na_corrida_com_o_bloqueio_nao_volta_no_desbloqueio(
 
     monkeypatch.setattr(conta, "_registrar", registrar_e_bloquear)
     resposta = _criar(cliente, chave)
+    assert (
+        resposta.status_code == 403
+    )  # a conferência depois de gravar a sessão já vê o bloqueio
     valor = resposta.cookies.get(NOME_DO_COOKIE) or cliente.cookies.get(NOME_DO_COOKIE)
     cliente.cookies.clear()
     cabecalhos = {"Cookie": f"{NOME_DO_COOKIE}={valor}"}
@@ -129,6 +133,60 @@ def test_cookie_do_login_na_corrida_com_o_bloqueio_nao_volta_no_desbloqueio(
         chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
         desbloquear_conta(conexao, chefe.id, carla.id)
     assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 401
+
+
+def _bloquear_e_desbloquear(banco, alvo_id):
+    from src.administracao import desbloquear_conta
+
+    bloquear_pelo_admin(banco, alvo_id)
+    with banco.begin() as conexao:
+        chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+        desbloquear_conta(conexao, chefe.id, alvo_id)
+
+
+def test_login_de_antes_do_bloqueio_nao_abre_sessao_depois_do_desbloqueio(
+    cliente, banco, chave, monkeypatch
+):
+    """2ª revisão cruzada do Codex no #659: o login passa por `_registrar` antes do bloqueio e só
+    abre a sessão depois do desbloqueio, quando a marca do bloqueio já foi limpa. Esse login não
+    vale; o seguinte, todo depois do desbloqueio, entra."""
+    from src.api_v1.sessao import NOME_DO_COOKIE
+
+    _criar(cliente, chave)
+    carla = _da_carla(banco)
+    with banco.begin() as conexao:
+        registrar_aceite(conexao, carla.id)
+    original = conta._registrar
+
+    def registrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        _bloquear_e_desbloquear(
+            banco, carla.id
+        )  # tudo enquanto o pedido está parado aqui
+        return resultado
+
+    monkeypatch.setattr(conta, "_registrar", registrar_e_pausar)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 409
+    assert not resposta.cookies.get(NOME_DO_COOKIE)
+    with banco.connect() as conexao:
+        abertas = conexao.execute(
+            sa.select(sa.func.count())
+            .select_from(sessoes_tabela)
+            .where(
+                sessoes_tabela.c.usuario_id == carla.id,
+                sessoes_tabela.c.encerrada_em.is_(None),
+            )
+        ).scalar_one()
+    assert abertas == 0
+
+    monkeypatch.setattr(conta, "_registrar", original)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 200
+    valor = resposta.cookies.get(NOME_DO_COOKIE) or cliente.cookies.get(NOME_DO_COOKIE)
+    cliente.cookies.clear()
+    cabecalhos = {"Cookie": f"{NOME_DO_COOKIE}={valor}"}
+    assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 200
 
 
 def test_admin_pelo_email_da_lista(cliente, banco, chave, monkeypatch):

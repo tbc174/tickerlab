@@ -94,6 +94,26 @@ def registrar(
     )
 
 
+def houve_desde(
+    conexao: sa.Connection,
+    alvo_id: uuid.UUID,
+    acoes: tuple[str, ...],
+    desde: datetime,
+) -> bool:
+    """Se alguma dessas ações foi registrada para o alvo a partir de `desde` (o mesmo relógio do
+    `registrar`, a hora do servidor em UTC)."""
+    linha = conexao.execute(
+        sa.select(auditoria.c.id)
+        .where(
+            auditoria.c.alvo_id == alvo_id,
+            auditoria.c.acao.in_(acoes),
+            auditoria.c.criado_em >= desde,
+        )
+        .limit(1)
+    ).first()
+    return linha is not None
+
+
 def listar_recentes(conexao: sa.Connection, limite: int = 50) -> list[Registro]:
     linhas = conexao.execute(
         sa.select(auditoria).order_by(auditoria.c.criado_em.desc()).limit(limite)

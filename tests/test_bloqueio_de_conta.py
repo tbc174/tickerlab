@@ -163,6 +163,17 @@ def test_bloquear_nao_apaga_nada_e_desbloquear_devolve_o_login(conexao, chefe, a
     assert sessoes.conta_da_sessao(conexao, antiga) is None
 
 
+def test_sessao_gravada_durante_o_bloqueio_nao_vale_depois_do_desbloqueio(
+    conexao, chefe, ana
+):
+    """No PostgreSQL, a sessão de um login em corrida pode ser gravada sem que o bloqueio a veja
+    (a transação dela ainda não tinha terminado). O desbloqueio encerra essa sessão também."""
+    _bloquear(conexao, chefe, ana)
+    da_corrida = sessoes.abrir(conexao, ana.id, "google")
+    adm.desbloquear_conta(conexao, chefe.id, ana.id)
+    assert sessoes.conta_da_sessao(conexao, da_corrida) is None
+
+
 def test_a_conta_lida_diz_que_esta_bloqueada_e_por_que(conexao, chefe, ana):
     _bloquear(conexao, chefe, ana, "abuso")
     lida = buscar_por_id(conexao, ana.id)

@@ -40,6 +40,7 @@ from src.origem import NOME_DO_COOKIE, ler_origem
 from telas.comum import paleta_da_sessao
 from telas.conta import meus_dados
 from telas.conta.assinatura import _recarregar_o_plano
+from telas.conta.guarda import so_com_a_conta_valendo
 from telas.conta.textos_legais import _corpo_do_texto
 
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
@@ -183,6 +184,7 @@ def _segredos():
         return None
 
 
+@so_com_a_conta_valendo
 def _registrar_aceite(usuario):
     """O aceite dos termos e, se a caixa opcional foi marcada, a inscrição nas Novidades (na
     mesma transação). A caixa desmarcada não tira ninguém: quem já recebe sai em Meus dados."""

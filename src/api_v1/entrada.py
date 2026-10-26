@@ -28,7 +28,12 @@ from src.api_v1.acesso import (
     exigir_api_ligada,
 )
 from src.api_v1.compartilhados import ip_de_quem_pede
-from src.api_v1.conta import ContaV1, abrir_a_sessao, recusa_da_conta_bloqueada
+from src.api_v1.conta import (
+    ContaV1,
+    abrir_a_sessao,
+    inicio_do_login,
+    recusa_da_conta_bloqueada,
+)
 from src.api_v1.rotas import eu_da_conta
 from src.api_v1.sessao import pedido_do_proprio_site
 from src.banco.conexao import obter_engine
@@ -159,9 +164,10 @@ def confirmar_o_codigo(
             detail="Código incorreto ou vencido. Peça um novo.",
             headers={CABECALHO_DO_MOTIVO: "codigo"},
         )
+    inicio = inicio_do_login()
     try:
         usuario, primeira_vez = _entrar_pelo_email(email, tl_origem)
     except ContaBloqueadaError as erro:
         raise recusa_da_conta_bloqueada(erro) from erro
-    abrir_a_sessao(pedido, resposta, usuario, "email")
+    abrir_a_sessao(pedido, resposta, usuario, "email", inicio=inicio)
     return ContaV1(**eu_da_conta(usuario).model_dump(), primeira_vez=primeira_vez)
