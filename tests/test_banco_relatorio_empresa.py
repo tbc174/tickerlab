@@ -202,3 +202,34 @@ def test_gratuito_nao_gera_o_pdf_da_empresa_e_o_plus_gera():
     with pytest.raises(LimiteDoPlanoError):
         conferir_relatorio("gratuito", relatorios.EMPRESA, 0)
     conferir_relatorio("plus", relatorios.EMPRESA, 0)
+
+
+def test_trava_desligada_tira_os_multiplos_dos_padroes(conexao, monkeypatch):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026: P/L e P/VP dos padrões vêm do preço do Yahoo
+    no corte; com a trava desligada, a régua do setor sai sem eles e o resto fica."""
+    tabela = pd.DataFrame(
+        [{"grupo": "bens_de_capital", "indicador": i, "empresas": 9,
+          "percentis": {"50": 0.15}} for i in ("roe", "p_l", "p_vp")]
+    )  # fmt: skip
+    gravar_padroes(conexao, tabela, date(2025, 12, 31), AGORA)
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    ligada = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=AGORA.date())
+    assert ligada is not None and ligada.padroes is not None
+    assert set(ligada.padroes[1]["indicador"]) == {"roe", "p_l", "p_vp"}
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=AGORA.date())
+    assert desligada is not None and desligada.padroes is not None
+    assert list(desligada.padroes[1]["indicador"]) == ["roe"]
+
+
+def test_trava_desligada_e_padroes_so_de_multiplos_ficam_sem_padroes(
+    conexao, monkeypatch
+):
+    tabela = pd.DataFrame(
+        [{"grupo": "bens_de_capital", "indicador": "p_l", "empresas": 9,
+          "percentis": {"50": 12.0}}]
+    )  # fmt: skip
+    gravar_padroes(conexao, tabela, date(2025, 12, 31), AGORA)
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=AGORA.date())
+    assert desligada is not None and desligada.padroes is None

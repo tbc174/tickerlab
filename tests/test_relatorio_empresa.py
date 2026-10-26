@@ -338,3 +338,19 @@ def test_historico_traz_o_anexo_com_fonte_e_sem_ano_alem_do_publicado(dados_da_w
     assert "contas" in secao.tabelas
     assert list(secao.tabelas_a_mostrar()) == ["anexo_de_anos", "vertical"]
     assert any("DFP" in p and "CVM" in p for p in secao.paragrafos)
+
+
+def test_yahoo_so_nas_fontes_quando_um_numero_vem_do_preco(dados_da_weg):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026 (achado b da passagem): padrões do setor sem
+    P/L nem P/VP são só da CVM; a ficha não cita o Yahoo que não usou."""
+    sem_multiplos = pd.DataFrame(
+        [{"grupo": "bens_de_capital", "indicador": "roe", "empresas": 27,
+          "percentis": PERCENTIS}]
+    )  # fmt: skip
+    so_cvm = _entradas(
+        dados_da_weg, preco=None, padroes=(date(2025, 12, 31), sem_multiplos)
+    )
+    assert re_.fontes_do_relatorio(so_cvm) == ("cvm",)
+    assert not any("Yahoo" in f for f in re_.montar(so_cvm).fontes)
+    com_p_l = _entradas(dados_da_weg, preco=None)  # os padrões do teste trazem o P/L
+    assert re_.fontes_do_relatorio(com_p_l) == ("cvm", "yahoo")
