@@ -79,6 +79,7 @@ from src.commodities import painel_de_precos
 from src.commodities.cafe import pacote_do_mapa
 from src.commodities.cafe import painel as painel_do_cafe
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
+from src.configuracao import preco_no_relatorio_ligado
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
@@ -965,9 +966,10 @@ PERIODO_DO_PRECO_NO_RELATORIO = "2y"
 
 
 def _preco_e_fechamentos(ticker: str) -> tuple[float | None, pd.Series | None]:
-    """O último preço e a série que o valuation e os múltiplos usam; vazios fora da B3 ou sem
-    cotação (o relatório então deixa esses números em branco)."""
-    if moeda_do_ticker(ticker) != "BRL":
+    """O último preço e a série que o valuation e os múltiplos usam; vazios fora da B3, sem cotação
+    ou com a trava do preço desligada, que nem pergunta ao Yahoo (linha 413, Y1 a, "pode" do Tiago
+    em 25/10/2026). O relatório então deixa esses números em branco."""
+    if moeda_do_ticker(ticker) != "BRL" or not preco_no_relatorio_ligado():
         return None, None
     try:
         fechamento = contexto.carregar_dados(ticker, PERIODO_DO_PRECO_NO_RELATORIO)[

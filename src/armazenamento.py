@@ -27,6 +27,9 @@ CAMINHO_PADRAO = PASTA_RAIZ / "dados_locais" / "precos.sqlite"
 VARIAVEL_DO_CAMINHO = "TICKERLAB_BANCO"
 COLUNAS = ["Open", "High", "Low", "Close", "Volume"]
 HORAS_DE_VALIDADE = 4  # depois disso, o app pergunta ao Yahoo se há dias novos
+# ticker sem consulta ao Yahoo há mais que isso sai do guardado (linha 413, Y3 b, "pode" do Tiago em
+# 25/10/2026): o cache não guarda a série de quem ninguém abre; quem é aberto se consulta a cada 4 horas
+DIAS_SEM_CONSULTA = 7
 DIAS_DE_SOBREPOSICAO = (
     7  # dias já guardados que o pedido incremental repete, para conferir
 )
@@ -163,6 +166,32 @@ def consulta_recente(
     if linha is None:
         return False
     return agora - datetime.fromisoformat(linha[0]) < timedelta(hours=horas)
+
+
+def apagar_tickers_esquecidos(
+    agora: datetime | None = None,
+    dias: float = DIAS_SEM_CONSULTA,
+    caminho: Path | None = None,
+) -> int:
+    """Apaga os preços (e a consulta) dos tickers sem consulta ao Yahoo há mais de `dias` dias, e
+    os que nunca tiveram consulta registrada. Devolve quantos tickers saíram."""
+    limite = _instante((agora or agora_utc()) - timedelta(days=dias))
+    with closing(_conectar(caminho)) as conexao, conexao:
+        esquecidos = [
+            linha[0]
+            for linha in conexao.execute(
+                "SELECT DISTINCT p.ticker FROM precos p LEFT JOIN consultas c "
+                "ON c.ticker = p.ticker WHERE c.ticker IS NULL OR c.consultado_em < ?",
+                (limite,),
+            )
+        ]
+        conexao.execute("DELETE FROM consultas WHERE consultado_em < ?", (limite,))
+        conexao.executemany(
+            "DELETE FROM precos WHERE ticker = ?", [(t,) for t in esquecidos]
+        )
+    if esquecidos:
+        log.info("Saíram do guardado %d tickers sem consulta.", len(esquecidos))
+    return len(esquecidos)
 
 
 def precos_foram_reajustados(guardado: pd.DataFrame, novo: pd.DataFrame) -> bool:

@@ -222,3 +222,18 @@ def test_indicadores_sem_preco_aparecem_na_pagina(banco):
         assert any(rotulo.startswith(nome) for rotulo in metricas), nome
     acoes = next(v for k, v in metricas.items() if k.startswith("Ações em circulação"))
     assert " ON e " in acoes and " PN)" in acoes
+
+
+def test_trava_desligada_a_pagina_nem_pede_o_preco(banco, monkeypatch):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026: com a trava desligada, a ficha mostra as
+    seções sem carregar a série do ticker do topo (que vem do Yahoo)."""
+
+    def nao_pode():
+        raise AssertionError("a ficha pediu o preço com a trava desligada")
+
+    _coletar(banco)
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    monkeypatch.setattr("telas.research.relatorio_empresa.carregar_contexto", nao_pode)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    assert [s.value for s in app.subheader] == list(SECOES.values())

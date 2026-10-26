@@ -289,3 +289,37 @@ def test_ultimo_dia_guardado_pode_ter_sido_parcial():
     assert not ar.precos_foram_reajustados(base, novo)
     # só o último dia em comum: ainda é o que há para comparar
     assert ar.precos_foram_reajustados(base, novo.iloc[-1:])
+
+
+# --- prazo do guardado (linha 413, Y3 b: "pode" do Tiago em 25/10/2026) ---------------------------
+
+
+def test_ticker_que_ninguem_abriu_em_7_dias_sai_do_guardado():
+    """O cache não guarda a série de quem ninguém abriu em 7 dias (nem a de quem nunca teve
+    consulta registrada); o resto fica como estava."""
+    for ticker in ("VELHO", "NOVO", "SEM_CONSULTA"):
+        ar.salvar_precos(ticker, _precos("2026-01-05", "2026-01-30"))
+    ar.registrar_consulta("VELHO", HOJE - timedelta(days=7, minutes=1))
+    ar.registrar_consulta("NOVO", HOJE - timedelta(days=6, hours=23))
+    assert ar.apagar_tickers_esquecidos(HOJE) == 2
+    assert ar.ler_precos("VELHO").empty and ar.ler_precos("SEM_CONSULTA").empty
+    assert len(ar.ler_precos("NOVO")) == 20
+    assert not ar.consulta_recente(
+        "VELHO", HOJE, horas=24 * 365
+    )  # a consulta saiu junto
+    assert ar.apagar_tickers_esquecidos(HOJE) == 0
+
+
+def test_ticker_esquecido_volta_inteiro_do_yahoo(yahoo):
+    baixar_dados("PETR4", "2y", agora=HOJE)
+    baixar_dados("PETR4", "2y", agora=HOJE + timedelta(days=ar.DIAS_SEM_CONSULTA + 1))
+    # sem o prazo, o 2º pedido seria só dos dias que faltam ({"start": ...})
+    assert yahoo.pedidos == [{"period": "2y"}, {"period": "2y"}]
+
+
+def test_ticker_aberto_toda_semana_continua_guardado(yahoo):
+    baixar_dados("PETR4", "2y", agora=HOJE)
+    baixar_dados("PETR4", "2y", agora=HOJE + timedelta(days=ar.DIAS_SEM_CONSULTA - 1))
+    assert yahoo.pedidos[1].keys() == {
+        "start"
+    }  # o guardado ficou: pediu só o que falta

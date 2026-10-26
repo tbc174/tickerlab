@@ -1780,9 +1780,13 @@ def perguntas_em_aberto(secoes: list[Secao], tranca: str | None) -> list[str]:
 
 
 def fontes_do_relatorio(e: Entradas) -> tuple[str, ...]:
-    """As fontes (de `coletas.REVENDA`) que a ficha vai mostrar com estas entradas."""
+    """As fontes (de `coletas.REVENDA`) que a ficha vai mostrar com estas entradas. O preço só
+    entra com um número que vem dele: o preço, a série ou P/L e P/VP nos padrões (linha 413, Y1 a)."""
+    multiplos_nos_padroes = (
+        e.padroes is not None and e.padroes[1]["indicador"].isin(MULTIPLOS).any()
+    )
     com_preco = (
-        e.preco is not None or e.fechamentos is not None or e.padroes is not None
+        e.preco is not None or e.fechamentos is not None or multiplos_nos_padroes
     )
     return (FONTE_DA_CVM, *([FONTE_DO_PRECO] if com_preco else []))
 

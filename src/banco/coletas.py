@@ -451,6 +451,89 @@ class UsoSemCobranca(NamedTuple):
     citacao: str  # a frase que a tela, o relatório e o PDF escrevem como fonte
 
 
+class CaminhoDoYahoo(NamedTuple):
+    """Módulos que leem o preço do Yahoo, com o que entra no lugar quando ele sair (linha 413, Y2)."""
+
+    modulos: tuple[str, ...]  # caminho do arquivo a partir da raiz do repositório
+    onde: str
+    substituto: str
+
+
+_BASE_PROPRIA = (
+    "base própria de preços pelo COTAHIST da B3 (ações, FIIs e ETFs); EUA, índices e cripto "
+    "ficam sem preço ou com outra fonte"
+)
+# Emenda 3 da ADR 0008, item 4, completa ("pode" do Tiago em 25/10/2026, linha 413, Y2): todo módulo
+# que chega ao Yahoo, para o dia de trocar ou desligar a fonte (antes da 1ª cobrança, Y4 b). O teste
+# `tests/test_caminhos_do_yahoo.py` lê o código e falha se um módulo novo chegar ao Yahoo fora daqui.
+CAMINHOS_DO_YAHOO: tuple[CaminhoDoYahoo, ...] = (
+    CaminhoDoYahoo(
+        ("src/dados.py", "telas/comum.py", "src/api_v1/contexto.py"),
+        "a porta do preço: baixa do Yahoo, guarda no cache em SQLite (7 dias sem consulta e sai) e "
+        "serve as telas e a API",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        (
+            "telas/analise.py",
+            "telas/carteira_b3.py",
+            "telas/momentum.py",
+            "telas/estrategias/aprendizado.py",
+            "telas/estrategias/backtest.py",
+            "telas/estrategias/carteira.py",
+            "telas/estrategias/experimentos.py",
+            "telas/estrategias/pares.py",
+            "telas/estrategias/ranking.py",
+            "telas/estrategias/regimes.py",
+            "telas/relatorios/estudio.py",
+            "telas/relatorios/pagina.py",
+            "telas/research/alertas.py",
+            "telas/research/donos.py",
+            "telas/research/fundamentos.py",
+            "telas/research/linha_do_tempo.py",
+            "telas/research/parametros.py",
+            "telas/research/por_dentro.py",
+            "telas/research/pulse.py",
+        ),
+        "telas do app: a série do ticker do topo nos gráficos, no risco, no backtest, na carteira, "
+        "no momentum, no Research e no PDF do Estúdio",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        ("telas/research/relatorio_empresa.py",),
+        "ficha da empresa: DY, valor de mercado e múltiplos (atrás da trava "
+        "TICKERLAB_PRECO_NO_RELATORIO, que com =0 nem carrega a série)",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        ("src/api_v1/rotas.py",),
+        "API do app: /visao-geral, /risco, /retorno-mensal, /comparacao, /backtest e "
+        "/relatorio-empresa (este atrás da trava)",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        ("src/ferramentas/ponte_dados.py",),
+        "site: 'Quanto daria? Foi sorte?' com ^BVSP e BTC-USD; só o resultado sai (ADR 0070)",
+        "Ibovespa pelo arquivo de índices da B3; bitcoin pelas corretoras da ADR 0045",
+    ),
+    CaminhoDoYahoo(
+        ("scripts/atualizar_series_macro.py",),
+        "séries macro yahoo-bvsp e yahoo-gspc no banco, só de uso interno (nunca exportadas)",
+        "Ibovespa pelo arquivo de índices da B3; S&P 500 desligado",
+    ),
+    CaminhoDoYahoo(
+        ("scripts/atualizar_padroes.py",),
+        "P/L e P/VP nos padrões setoriais (só com --com-precos; a trava tira da ficha)",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        ("scripts/coletar_iex_do_dia.py", "scripts/medir_iex_um_dia.py"),
+        "conferência do fechamento da IEX contra o Yahoo; nada é guardado",
+        "conferir contra outra fonte dos EUA, ou sem conferência",
+    ),
+)
+
+
 # Emenda 3 da ADR 0008 (18/10/2026): os usos em tela das fontes "a confirmar" e "não comercial", cada
 # um com a frase de citação. Desde a ADR 0102 a lista **não decide** mais o que pode aparecer (tudo
 # pode): ela registra onde cada fonte restrita aparece, a frase que a tela, o relatório
@@ -458,9 +541,11 @@ class UsoSemCobranca(NamedTuple):
 USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
     UsoSemCobranca(
         "yahoo",
-        "múltiplos com preço (P/L, P/VP) na ficha da empresa, nos padrões setoriais e no "
-        "'Quanto daria?' (ADR 0070)",
-        "licença direto da B3; preços dos EUA desligados na 1ª cobrança (ADR 0008, Emenda 4)",
+        "todo preço do app: ficha da empresa (DY e múltiplos), padrões setoriais, gráficos, "
+        "backtest, comparação, carteira, Estúdio de PDF, API e 'Quanto daria?' (ADR 0070); "
+        "caminho a caminho em CAMINHOS_DO_YAHOO",
+        "base própria de preços pelo COTAHIST da B3 (ADR 0008, Emenda 6); preços dos EUA "
+        "desligados na 1ª cobrança (Emenda 4)",
         "Preço da ação: Yahoo Finance (uso pessoal; mostrado com a fonte citada enquanto o "
         "TickerLab não cobra, ADR 0008 Emenda 3)",
     ),

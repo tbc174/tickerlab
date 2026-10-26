@@ -149,6 +149,7 @@ def _trocar_historico_reajustado(
 
 
 def _dados_com_banco(ticker: str, periodo: str, agora: datetime) -> pd.DataFrame:
+    armazenamento.apagar_tickers_esquecidos(agora)
     guardado = armazenamento.ler_precos(ticker)
     if not _cobre_o_periodo(guardado, periodo):
         return _baixar_tudo(ticker, periodo, guardado, True, agora)
