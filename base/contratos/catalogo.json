@@ -84,6 +84,13 @@
         "aconteceu_em": "referencia",
         "publico_em": "divulgado_em"
       },
+      "sinonimos_de_tempo": {
+        "inicio": "referencia",
+        "fim": "referencia",
+        "referencia": "referencia",
+        "divulgado_em": "publico_em",
+        "ate": "ate"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -180,6 +187,13 @@
         "aconteceu_em": "referencia",
         "publico_em": "divulgado_em"
       },
+      "sinonimos_de_tempo": {
+        "inicio": "referencia",
+        "fim": "referencia",
+        "referencia": "referencia",
+        "divulgado_em": "publico_em",
+        "ate": "ate"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -259,6 +273,12 @@
         "publico_em": "valido_desde",
         "coletado_em": "calculado_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "valido_desde": "aconteceu_em",
+        "calculado_em": "a_conferir",
+        "fechado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -311,6 +331,10 @@
       ],
       "datas": {
         "aconteceu_em": "registro"
+      },
+      "sinonimos_de_tempo": {
+        "registro": "aconteceu_em",
+        "cancelamento": "ate"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -374,6 +398,13 @@
       "datas": {
         "aconteceu_em": "inicio_negociacao",
         "publico_em": "primeiro_visto"
+      },
+      "sinonimos_de_tempo": {
+        "primeiro_visto": "publico_em",
+        "ultimo_visto": "a_conferir",
+        "valido_ate": "ate",
+        "inicio_negociacao": "aconteceu_em",
+        "fim_negociacao": "ate"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -476,6 +507,14 @@
         "aconteceu_em": "referencia",
         "publico_em": "recebido_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "recebido_em": "publico_em",
+        "inicio_negociacao": "aconteceu_em",
+        "fim_negociacao": "ate",
+        "inicio_listagem": "aconteceu_em",
+        "fim_listagem": "ate"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -530,6 +569,9 @@
       "datas": {
         "publico_em": "primeiro_recebido_em"
       },
+      "sinonimos_de_tempo": {
+        "primeiro_recebido_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -577,6 +619,10 @@
       "datas": {
         "aconteceu_em": "referencia",
         "publico_em": "recebido_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "recebido_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -667,6 +713,12 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "confidencial_ate": "a_conferir",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -756,6 +808,12 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "confidencial_ate": "a_conferir",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -837,6 +895,12 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "confidencial_ate": "a_conferir",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2005-01-31",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -875,6 +939,11 @@
       "datas": {
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -1057,6 +1126,17 @@
       "datas": {
         "aconteceu_em": "DT_REG"
       },
+      "sinonimos_de_tempo": {
+        "DT_REG": "aconteceu_em",
+        "DT_CONST": "aconteceu_em",
+        "DT_CANCEL": "ate",
+        "DT_INI_SIT": "aconteceu_em",
+        "DT_INI_ATIV": "aconteceu_em",
+        "DT_INI_EXERC": "referencia",
+        "DT_FIM_EXERC": "referencia",
+        "DT_INI_CLASSE": "aconteceu_em",
+        "DT_PATRIM_LIQ": "referencia"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -1133,6 +1213,10 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -1169,6 +1253,9 @@
       ],
       "datas": {
         "aconteceu_em": "competencia"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -1213,6 +1300,10 @@
         "emissor"
       ],
       "datas": {},
+      "sinonimos_de_tempo": {
+        "primeira": "a_conferir",
+        "ultima": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -1257,6 +1348,9 @@
       ],
       "datas": {
         "coletado_em": "conferido_em"
+      },
+      "sinonimos_de_tempo": {
+        "conferido_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -1323,6 +1417,11 @@
       "datas": {
         "coletado_em": "conferido_em"
       },
+      "sinonimos_de_tempo": {
+        "registro": "aconteceu_em",
+        "cancelamento": "ate",
+        "conferido_em": "coletado_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -1387,6 +1486,11 @@
       ],
       "datas": {
         "coletado_em": "conferido_em"
+      },
+      "sinonimos_de_tempo": {
+        "primeiro_no_cda": "a_conferir",
+        "ultimo_no_cda": "a_conferir",
+        "conferido_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -1571,6 +1675,11 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "atualizado_em": "a_conferir",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
@@ -1663,6 +1772,10 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
@@ -1732,6 +1845,10 @@
       "datas": {
         "aconteceu_em": "competencia",
         "publico_em": "divulgado_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "divulgado_em": "publico_em"
       },
       "historico_desde": "2026-10-18",
       "granularidade_do_publico_em": "dia",
@@ -1804,6 +1921,10 @@
         "aconteceu_em": "instante",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "instante": "aconteceu_em",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
@@ -1860,6 +1981,11 @@
       "datas": {
         "aconteceu_em": "referencia",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "competencia": "referencia",
+        "disponivel_em": "publico_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -1962,6 +2088,11 @@
         "aconteceu_em": "instante",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "instante": "aconteceu_em",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
@@ -2057,6 +2188,13 @@
         "aconteceu_em": "entrada_em_operacao",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "entrada_em_teste": "aconteceu_em",
+        "entrada_em_operacao": "aconteceu_em",
+        "desativada_em": "ate",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
@@ -2129,6 +2267,10 @@
         "aconteceu_em": "disponivel_em",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
@@ -2200,6 +2342,11 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
@@ -2261,6 +2408,11 @@
       "datas": {
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -2371,6 +2523,12 @@
       "datas": {
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "gerado_em": "a_conferir",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -2497,6 +2655,11 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
@@ -2569,6 +2732,12 @@
       "datas": {
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "base_de": "a_conferir",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -2651,6 +2820,10 @@
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -2707,6 +2880,10 @@
       "datas": {
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -2830,6 +3007,12 @@
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "inicio_do_exercicio": "referencia",
+        "fim_do_exercicio": "referencia",
+        "conhecido_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -2907,6 +3090,12 @@
       "datas": {
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "inicio_do_exercicio": "referencia",
+        "fim_do_exercicio": "referencia",
+        "conhecido_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -3029,6 +3218,10 @@
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -3109,6 +3302,11 @@
       "datas": {
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "autorizado_em": "aconteceu_em",
+        "conhecido_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -3260,6 +3458,10 @@
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em"
+      },
       "historico_desde": "2023-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -3389,6 +3591,12 @@
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "composicao_em": "referencia",
+        "ultima_alteracao_em": "aconteceu_em",
+        "conhecido_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -3485,6 +3693,11 @@
       "datas": {
         "aconteceu_em": "referencia",
         "publico_em": "conhecido_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "data_transacao": "aconteceu_em",
+        "conhecido_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -3822,6 +4035,19 @@
         "aconteceu_em": "anunciada_em",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "data_abertura_processo": "aconteceu_em",
+        "data_protocolo": "aconteceu_em",
+        "data_dispensa_oferta": "aconteceu_em",
+        "data_registro_oferta": "aconteceu_em",
+        "data_inicio_oferta": "aconteceu_em",
+        "data_encerramento_oferta": "ate",
+        "data_emissao": "aconteceu_em",
+        "data_vencimento": "a_conferir",
+        "data_comunicado": "aconteceu_em",
+        "anunciada_em": "aconteceu_em",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -4121,6 +4347,14 @@
         "aconteceu_em": "anunciada_em",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "data_requerimento": "aconteceu_em",
+        "data_registro": "aconteceu_em",
+        "data_encerramento": "ate",
+        "data_deliberacao_aprovou_oferta": "aconteceu_em",
+        "anunciada_em": "aconteceu_em",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -4238,6 +4472,11 @@
       "datas": {
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -4365,6 +4604,18 @@
       "datas": {
         "aconteceu_em": "data"
       },
+      "sinonimos_de_tempo": {
+        "data": "a_conferir",
+        "registrada_desde": "aconteceu_em",
+        "primeira_entrega": "publico_em",
+        "balanco_fim": "referencia",
+        "balanco_publico_em": "publico_em",
+        "acumulado_inicio": "referencia",
+        "acumulado_fim": "referencia",
+        "acumulado_publico_em": "publico_em",
+        "anual_fim": "referencia",
+        "anual_publico_em": "publico_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -4405,6 +4656,10 @@
         "chave"
       ],
       "datas": {},
+      "sinonimos_de_tempo": {
+        "primeira": "a_conferir",
+        "ultima": "a_conferir"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
@@ -4481,6 +4736,11 @@
       "datas": {
         "aconteceu_em": "data_base",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "data_base": "referencia",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -4582,6 +4842,11 @@
         "aconteceu_em": "data_base",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "data_base": "referencia",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
@@ -4631,6 +4896,9 @@
       ],
       "datas": {
         "aconteceu_em": "data_base"
+      },
+      "sinonimos_de_tempo": {
+        "data_base": "referencia"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -4773,6 +5041,11 @@
         "aconteceu_em": "data_base",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "data_base": "referencia",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
@@ -4825,6 +5098,10 @@
       "datas": {
         "aconteceu_em": "data_de_corte",
         "coletado_em": "calculado_em"
+      },
+      "sinonimos_de_tempo": {
+        "data_de_corte": "a_conferir",
+        "calculado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -4889,6 +5166,11 @@
       ],
       "datas": {
         "aconteceu_em": "referencia",
+        "coletado_em": "coletado_em"
+      },
+      "sinonimos_de_tempo": {
+        "exercicio": "referencia",
+        "referencia": "referencia",
         "coletado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
@@ -4963,6 +5245,11 @@
       ],
       "datas": {
         "aconteceu_em": "data",
+        "coletado_em": "coletado_em"
+      },
+      "sinonimos_de_tempo": {
+        "data": "a_conferir",
+        "referencia": "referencia",
         "coletado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
@@ -5060,6 +5347,12 @@
         "aconteceu_em": "referencia",
         "publico_em": "publicado_em",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "publicado_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5183,6 +5476,13 @@
         "publico_em": "entregue_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "data": "a_conferir",
+        "referencia": "referencia",
+        "entregue_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -5262,6 +5562,12 @@
       "datas": {
         "aconteceu_em": "referencia",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "exercicio": "referencia",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5348,6 +5654,12 @@
       "datas": {
         "aconteceu_em": "data",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "data": "a_conferir",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5451,6 +5763,12 @@
         "publico_em": "conhecido_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "conhecido_em": "publico_em",
+        "referencia": "referencia",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -5523,6 +5841,12 @@
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "data_situacao_especial": "aconteceu_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
@@ -5594,6 +5918,12 @@
         "aconteceu_em": "data_situacao_cadastral",
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "data_situacao_cadastral": "aconteceu_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -5699,6 +6029,11 @@
       ],
       "datas": {
         "aconteceu_em": "data_situacao_cadastral"
+      },
+      "sinonimos_de_tempo": {
+        "data_situacao_cadastral": "aconteceu_em",
+        "data_inicio_atividade": "aconteceu_em",
+        "data_situacao_especial": "aconteceu_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -5899,6 +6234,15 @@
       "datas": {
         "publico_em": "mes"
       },
+      "sinonimos_de_tempo": {
+        "mes": "a_conferir",
+        "data_situacao_cadastral_antes": "aconteceu_em",
+        "data_situacao_cadastral_depois": "aconteceu_em",
+        "data_inicio_atividade_antes": "aconteceu_em",
+        "data_inicio_atividade_depois": "aconteceu_em",
+        "data_situacao_especial_antes": "aconteceu_em",
+        "data_situacao_especial_depois": "aconteceu_em"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
@@ -5946,6 +6290,12 @@
         "cnpj_basico"
       ],
       "datas": {},
+      "sinonimos_de_tempo": {
+        "data_opcao_simples": "aconteceu_em",
+        "data_exclusao_simples": "ate",
+        "data_opcao_mei": "aconteceu_em",
+        "data_exclusao_mei": "ate"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
@@ -6033,6 +6383,17 @@
       "datas": {
         "publico_em": "mes"
       },
+      "sinonimos_de_tempo": {
+        "mes": "a_conferir",
+        "data_opcao_simples_antes": "aconteceu_em",
+        "data_opcao_simples_depois": "aconteceu_em",
+        "data_exclusao_simples_antes": "ate",
+        "data_exclusao_simples_depois": "ate",
+        "data_opcao_mei_antes": "aconteceu_em",
+        "data_opcao_mei_depois": "aconteceu_em",
+        "data_exclusao_mei_antes": "ate",
+        "data_exclusao_mei_depois": "ate"
+      },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
@@ -6084,6 +6445,9 @@
       ],
       "datas": {
         "aconteceu_em": "data_entrada"
+      },
+      "sinonimos_de_tempo": {
+        "data_entrada": "aconteceu_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6162,6 +6526,11 @@
       ],
       "datas": {
         "publico_em": "mes"
+      },
+      "sinonimos_de_tempo": {
+        "mes": "a_conferir",
+        "data_entrada_antes": "aconteceu_em",
+        "data_entrada_depois": "aconteceu_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6272,6 +6641,15 @@
         "aconteceu_em": "data_do_retrato",
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "primeira_inscricao": "aconteceu_em",
+        "ultima_inscricao": "aconteceu_em",
+        "data_do_retrato": "referencia",
+        "gerado_em": "a_conferir",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6404,6 +6782,12 @@
         "publico_em": "publico_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "publico_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -6521,6 +6905,12 @@
         "publico_em": "publico_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "data_acao": "aconteceu_em",
+        "publico_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -6620,6 +7010,14 @@
         "publico_em": "conhecido_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em",
+        "inicio": "referencia",
+        "fim": "referencia",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -6704,6 +7102,12 @@
         "aconteceu_em": "referencia",
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -6790,6 +7194,12 @@
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2011-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -6867,6 +7277,12 @@
         "aconteceu_em": "referencia",
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -6953,6 +7369,12 @@
         "publico_em": "conhecido_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -7025,6 +7447,11 @@
         "aconteceu_em": "efetiva_em",
         "publico_em": "conhecido_em"
       },
+      "sinonimos_de_tempo": {
+        "conhecido_em": "publico_em",
+        "efetiva_em": "aconteceu_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -7094,6 +7521,12 @@
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "data_base": "referencia",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
@@ -7154,6 +7587,13 @@
         "aconteceu_em": "referencia",
         "publico_em": "publico_em",
         "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "divulgado_em": "publico_em",
+        "publico_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7293,6 +7733,14 @@
         "publico_em": "publico_em",
         "coletado_em": "montado_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "data_entrega": "publico_em",
+        "documento_entregue_em": "publico_em",
+        "disponivel_em": "publico_em",
+        "publico_em": "publico_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -7400,6 +7848,11 @@
         "publico_em": "publico_em",
         "coletado_em": "coletado_em"
       },
+      "sinonimos_de_tempo": {
+        "aconteceu_em": "aconteceu_em",
+        "publico_em": "publico_em",
+        "coletado_em": "coletado_em"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -7461,6 +7914,9 @@
       ],
       "datas": {
         "publico_em": "origem_divulgado_em"
+      },
+      "sinonimos_de_tempo": {
+        "origem_divulgado_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7548,6 +8004,12 @@
         "publico_em": "conhecido_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -7632,6 +8094,13 @@
         "aconteceu_em": "prazo",
         "publico_em": "primeira_entrega",
         "coletado_em": "montado_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "data_da_previsao": "a_conferir",
+        "prazo": "a_conferir",
+        "primeira_entrega": "publico_em",
+        "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7781,6 +8250,11 @@
         "aconteceu_em": "data_da_previsao",
         "coletado_em": "montado_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "data_da_previsao": "a_conferir",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -7869,6 +8343,11 @@
         "aconteceu_em": "desde",
         "coletado_em": "montado_em"
       },
+      "sinonimos_de_tempo": {
+        "desde": "aconteceu_em",
+        "ultima_referencia": "referencia",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -7924,6 +8403,9 @@
         "id_entidade"
       ],
       "datas": {
+        "publico_em": "publico_em"
+      },
+      "sinonimos_de_tempo": {
         "publico_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
@@ -7985,6 +8467,11 @@
       ],
       "datas": {
         "aconteceu_em": "desde",
+        "publico_em": "publico_em"
+      },
+      "sinonimos_de_tempo": {
+        "desde": "aconteceu_em",
+        "ate": "ate",
         "publico_em": "publico_em"
       },
       "historico_desde": "2010-01-01",
@@ -8078,6 +8565,14 @@
         "aconteceu_em": "aconteceu_em",
         "publico_em": "publico_em",
         "coletado_em": "coletado_em"
+      },
+      "sinonimos_de_tempo": {
+        "aconteceu_em": "aconteceu_em",
+        "infracao_em": "aconteceu_em",
+        "publico_em": "publico_em",
+        "coletado_em": "coletado_em",
+        "ate": "ate",
+        "ate_publico_em": "ate_publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -8177,6 +8672,9 @@
       "datas": {
         "coletado_em": "coletado_em"
       },
+      "sinonimos_de_tempo": {
+        "coletado_em": "coletado_em"
+      },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
@@ -8268,6 +8766,12 @@
         "publico_em": "publico_em",
         "coletado_em": "origem_coletada_em"
       },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "publico_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -8333,6 +8837,7 @@
         "nome"
       ],
       "datas": {},
+      "sinonimos_de_tempo": {},
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
@@ -8377,6 +8882,7 @@
         "url"
       ],
       "datas": {},
+      "sinonimos_de_tempo": {},
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
@@ -8477,6 +8983,14 @@
         "publico_em": "conhecido_em",
         "coletado_em": "coletado_em"
       },
+      "sinonimos_de_tempo": {
+        "coletado_em": "coletado_em",
+        "wayback_em": "coletado_em",
+        "confirmacao_em": "coletado_em",
+        "fechamento_em": "aconteceu_em",
+        "conhecido_em": "publico_em",
+        "conhecido_em_do_negocio": "publico_em"
+      },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
@@ -8572,6 +9086,13 @@
         "aconteceu_em": "fechamento_em",
         "publico_em": "conhecido_em_do_negocio"
       },
+      "sinonimos_de_tempo": {
+        "conhecido_em_do_negocio": "publico_em",
+        "fechamento_em": "aconteceu_em",
+        "receita_exercicio_fim": "referencia",
+        "receita_publico_em": "publico_em",
+        "porte_publico_em": "a_conferir"
+      },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
@@ -8643,6 +9164,10 @@
         "aconteceu_em": "relatorio",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "relatorio": "referencia",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "2006-06-13",
       "granularidade_do_publico_em": "dia",
       "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
@@ -8708,6 +9233,9 @@
       "datas": {
         "publico_em": "divulgado_em"
       },
+      "sinonimos_de_tempo": {
+        "divulgado_em": "publico_em"
+      },
       "historico_desde": "2026-02-05",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento (ADR 0102)",
@@ -8765,6 +9293,9 @@
       "datas": {
         "aconteceu_em": "divulgado_em",
         "publico_em": "divulgado_em"
+      },
+      "sinonimos_de_tempo": {
+        "divulgado_em": "publico_em"
       },
       "historico_desde": "2026-10-18",
       "granularidade_do_publico_em": "dia",
@@ -8826,6 +9357,9 @@
       "datas": {
         "aconteceu_em": "divulgado_em",
         "publico_em": "divulgado_em"
+      },
+      "sinonimos_de_tempo": {
+        "divulgado_em": "publico_em"
       },
       "historico_desde": "2026-10-19",
       "granularidade_do_publico_em": "dia",
@@ -8915,6 +9449,10 @@
         "aconteceu_em": "competencia",
         "publico_em": "disponivel_em"
       },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em"
+      },
       "historico_desde": "1981-01-31",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
@@ -8989,6 +9527,10 @@
       "datas": {
         "aconteceu_em": "referencia",
         "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "disponivel_em": "publico_em"
       },
       "historico_desde": "1985-12-31",
       "granularidade_do_publico_em": "dia",
@@ -9074,6 +9616,11 @@
         "aconteceu_em": "data",
         "publico_em": "divulgado_em",
         "coletado_em": "conferido_em"
+      },
+      "sinonimos_de_tempo": {
+        "data": "a_conferir",
+        "divulgado_em": "publico_em",
+        "conferido_em": "coletado_em"
       },
       "historico_desde": "2004-07-01",
       "granularidade_do_publico_em": "dia",
