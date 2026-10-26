@@ -700,11 +700,15 @@ def _calcular(e: Entradas) -> _Calculos:
     dividendos = fundamentalista.dividendos_e_diluicao(
         e.dados, e.proventos, e.eventos_de_capital
     )
-    valores = {chave: i.valor for chave, i in indicadores.items()}
+    classicas = notas_classicas.calcular(e.dados)
+    valores = {
+        **{chave: i.valor for chave, i in indicadores.items()},
+        **{chave: nota.valor for chave, nota in classicas.items()},
+    }
     return _Calculos(
         indicadores,
         {n.indicador: n for n in [*lista, *por_faixa]},
-        notas_classicas.calcular(e.dados),
+        classicas,
         extra.historico,
         dividendos,
         grupo,
@@ -742,6 +746,7 @@ def _entradas_com_valor(
     todas = {
         **fundamentos.todas_as_entradas(dados),
         **fundamentalista.todas_as_entradas(dados),
+        **notas_classicas.todas_as_entradas(dados),
     }
     return {
         chave: todas[chave]
@@ -763,6 +768,8 @@ def _notas_classicas(c: _Calculos) -> Secao:
     itens, tabelas = [], {}
     for nota in c.classicas.values():
         texto = "—" if nota.valor is None else f"{nota.valor:.2f}".replace(".", ",")
+        documentos = _dfps(c, _ultimos_anos(c, ANOS_DAS_NOTAS_CLASSICAS[nota.chave]))
+        entradas = c.entradas.get(nota.chave, ())
         itens.append(
             Item(
                 nota.chave,
@@ -781,7 +788,8 @@ def _notas_classicas(c: _Calculos) -> Secao:
                     nota.formula,
                     CALCULO_DAS_NOTAS_CLASSICAS,
                     FONTE_DA_CVM,
-                    _dfps(c, _ultimos_anos(c, ANOS_DAS_NOTAS_CLASSICAS[nota.chave])),
+                    (*documentos, *_os_que_faltam_citar(documentos, entradas, c)),
+                    entradas=entradas,
                 ),
             )
         )

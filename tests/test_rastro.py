@@ -323,6 +323,76 @@ def test_as_entradas_refazem_cada_indicador_do_fundamentalista(com_o_itr, monkey
         assert refeito[chave].valor == pytest.approx(item.valor, rel=1e-12), chave
 
 
+_NOTAS_CLASSICAS = ("piotroski", "altman", "beneish")
+
+
+def _refazer_as_notas(dados: DadosDaEmpresa) -> None:
+    """Cada nota clássica, só com as linhas das entradas, sai com o mesmo valor e as mesmas parcelas
+    (o valor e o critério cumprido de cada uma)."""
+    numeros = _numeros(re_.montar(_entradas(dados)))
+    originais = notas_classicas.calcular(dados)
+    for chave in _NOTAS_CLASSICAS:
+        item = numeros[chave]
+        assert item.valor is not None and item.rastro is not None, chave
+        assert item.rastro.entradas, chave
+        refeita = notas_classicas.calcular(
+            _so_as_entradas(dados, item.rastro.entradas)
+        )[chave]
+        assert refeita.valor == pytest.approx(item.valor, rel=1e-12), chave
+        assert [(p.nome, p.passou) for p in refeita.parcelas] == [
+            (p.nome, p.passou) for p in originais[chave].parcelas
+        ], chave
+        assert [p.valor for p in refeita.parcelas] == pytest.approx(
+            [p.valor for p in originais[chave].parcelas], rel=1e-12
+        ), chave
+
+
+@pytest.mark.parametrize("com_o_itr", [False, True], ids=["so_a_dfp", "com_o_itr"])
+def test_as_entradas_refazem_as_notas_classicas(com_o_itr, monkeypatch):
+    """As notas comparam a DFP mais recente com a anterior (o Altman só lê a mais recente): as
+    entradas trazem as contas dos dois anos, e com elas a nota sai igual."""
+    monkeypatch.setattr(notas_classicas, "e_financeira", lambda *_: False)
+    _refazer_as_notas(_ler_a_weg(com_o_itr))
+
+
+def test_o_lucro_do_ano_anterior_segue_a_regra_daquele_ano(monkeypatch):
+    """Sem o lucro dos controladores em 2024, o Piotroski usa o consolidado de 2024 e o dos
+    controladores de 2025, e as entradas citam cada um no seu ano."""
+    monkeypatch.setattr(notas_classicas, "e_financeira", lambda *_: False)
+    dados = _ler_a_weg()
+    contas = dados.contas
+    sem_2024 = (contas["conta"] == "lucro_controladores") & (
+        contas["referencia"] == date(2024, 12, 31)
+    )
+    dados = replace(dados, contas=contas[~sem_2024])
+    _refazer_as_notas(dados)
+    piotroski = _numeros(re_.montar(_entradas(dados)))["piotroski"].rastro
+    assert piotroski is not None
+    lucros = {
+        (e.referencia.year, e.conta)
+        for e in piotroski.entradas
+        if e.conta.startswith("lucro_")
+    }
+    assert lucros == {(2024, "lucro_liquido"), (2025, "lucro_controladores")}
+
+
+def test_sem_o_ano_anterior_so_o_altman_cita_contas(dados_da_weg):
+    """Só com a DFP de 2025, o Piotroski e o Beneish não saem (comparam com o ano anterior) e não
+    citam conta; o Altman, que só lê o último ano, cita as dele, todas da DFP de 2025."""
+    contas = dados_da_weg.contas
+    so_2025 = replace(
+        dados_da_weg, contas=contas[contas["referencia"] == date(2025, 12, 31)]
+    )
+    numeros = _numeros(re_.montar(_entradas(so_2025)))
+    for chave in ("piotroski", "beneish"):
+        rastro = numeros[chave].rastro
+        assert numeros[chave].valor is None and rastro is not None, chave
+        assert rastro.entradas == (), chave
+    altman = numeros["altman"].rastro
+    assert altman is not None and altman.entradas
+    assert {e.referencia for e in altman.entradas} == {date(2025, 12, 31)}
+
+
 def test_o_saldo_medio_cita_o_balanco_e_o_de_um_ano_antes(dados_da_weg):
     """O prazo de recebimento usa a média entre 31/12/2025 e 31/12/2024: as duas DFPs entram."""
     pmr = fundamentalista.todas_as_entradas(dados_da_weg)["pmr"]
@@ -500,6 +570,9 @@ def test_cortar_o_futuro_nao_muda_as_entradas_do_passado():
     assert fundamentalista.todas_as_entradas(
         cortada
     ) == fundamentalista.todas_as_entradas(so_a_dfp)
+    assert notas_classicas.todas_as_entradas(
+        cortada
+    ) == notas_classicas.todas_as_entradas(so_a_dfp)
 
 
 def test_numero_indisponivel_nao_tem_entradas(dados_da_weg):
