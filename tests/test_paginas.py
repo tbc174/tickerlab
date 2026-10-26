@@ -184,7 +184,17 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "relatorio_do_setor",
             },
         ),
-        ("conta", {"simulacoes", "meus_dados", "planos", "admin", "sala_de_dados"}),
+        (
+            "conta",
+            {
+                "simulacoes",
+                "meus_dados",
+                "planos",
+                "admin",
+                "sala_de_dados",
+                "boas_vindas_beta",
+            },
+        ),
         ("ajuda", {"guia", "termos", "privacidade", "trade"}),
     ],
 )
@@ -265,6 +275,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "pulse",
         "mapa_do_cafe",
         "painel_do_cafe",
+        "boas_vindas_beta",
     }
 
 

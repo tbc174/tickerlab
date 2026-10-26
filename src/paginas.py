@@ -733,6 +733,18 @@ PAGINAS = (
         so_no_app_novo=True,
     ),
     Pagina(
+        "boas_vindas_beta",
+        "Boas-vindas ao beta",
+        GRUPO_CONTA,
+        ":material/waving_hand:",
+        "O roteiro dos 10 minutos para conhecer o TickerLab: o relatório do setor, o de uma empresa e a "
+        "busca por CNPJ, com a fonte de cada número.",
+        area=AREA_CONTA,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/beta/boas-vindas", (), "BoasVindasDoBetaV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "mapa_do_cafe",
         "Mapa do café",
         GRUPO_RESEARCH,

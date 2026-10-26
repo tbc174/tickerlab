@@ -253,6 +253,24 @@ export interface MeusLinksV1 {
   links: LinkV1[];
 }
 
+// --- Boas-vindas do beta (src/api_v1/esquemas.py, BoasVindasDoBetaV1) ---
+export interface PassoDoBetaV1 {
+  ordem: number;
+  minutos: number;
+  titulo: string;
+  o_que_fazer: string;
+  url: string; // o endereço da página no app, sem a barra
+}
+
+export interface BoasVindasDoBetaV1 {
+  titulo: string;
+  abertura: string;
+  sobre_o_beta: string;
+  como_responder: string;
+  total_de_minutos: number;
+  roteiro: PassoDoBetaV1[];
+}
+
 export interface MeuPlanoV1 {
   plano: string;
   nome_do_plano: string;

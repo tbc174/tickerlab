@@ -1465,3 +1465,9 @@ def painel_do_cafe_v1(
     with obter_engine().connect() as conexao:
         painel = painel_do_cafe.montar_painel(conexao, tipo, hoje_no_brasil(), regiao)
     return esquemas.de_painel_do_cafe(painel)
+
+
+@router.get("/beta/boas-vindas")
+def boas_vindas_do_beta(_conta: Conta) -> esquemas.BoasVindasDoBetaV1:
+    """O texto da página de boas-vindas do beta e o roteiro dos 10 minutos (src/beta.py)."""
+    return esquemas.de_boas_vindas_do_beta()

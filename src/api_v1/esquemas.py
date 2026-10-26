@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from src import (
     analises,
+    beta,
     busca_por_cnpj,
     catalogo,
     dossie,
@@ -1486,3 +1487,33 @@ class PainelDoCafeV1(BaseModel):
 def de_painel_do_cafe(painel: painel_do_cafe.PainelDoCafe) -> PainelDoCafeV1:
     """O painel montado no formato da API (os campos têm os mesmos nomes das dataclasses)."""
     return PainelDoCafeV1.model_validate(painel_do_cafe.em_dicionario(painel))
+
+
+class PassoDoBetaV1(BaseModel):
+    ordem: int
+    minutos: int
+    titulo: str
+    o_que_fazer: str
+    url: str  # o endereço da página no app, sem a barra
+
+
+class BoasVindasDoBetaV1(BaseModel):
+    """A página de boas-vindas do beta: o texto e o roteiro dos 10 minutos (src/beta.py)."""
+
+    titulo: str
+    abertura: str
+    sobre_o_beta: str
+    como_responder: str
+    total_de_minutos: int
+    roteiro: list[PassoDoBetaV1]
+
+
+def de_boas_vindas_do_beta() -> BoasVindasDoBetaV1:
+    return BoasVindasDoBetaV1(
+        titulo=beta.TITULO,
+        abertura=beta.ABERTURA,
+        sobre_o_beta=beta.SOBRE_O_BETA,
+        como_responder=beta.COMO_RESPONDER,
+        total_de_minutos=beta.TOTAL_DE_MINUTOS,
+        roteiro=[PassoDoBetaV1(**asdict(passo)) for passo in beta.ROTEIRO],
+    )
