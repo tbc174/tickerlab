@@ -15,11 +15,17 @@ import {
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
+import {
+  DADOS as DADOS_DO_RAIO_X,
+  MOMENTO_DO_RAIO_X,
+  PDF_DO_RAIO_X,
+  RAIO_X,
+} from "../src/paginas/RaioXDoChoque";
 import { DADOS as DADOS_DO_RELATORIO } from "../src/paginas/RelatorioExemplo";
 import { DADOS as DADOS_DO_SETOR } from "../src/paginas/RelatorioSemanalEletricas";
 import { ROTAS } from "../src/rotas";
 import { MODULOS_DO_PRODUTO, contagem, disponiveis, moduloPelaChave } from "../src/site/comum";
-import { ASSINATURA } from "../src/site/textos";
+import { ASSINATURA, URL_DO_SITE } from "../src/site/textos";
 
 const SITE = join(process.cwd(), "..", "site");
 // LF sempre: o Git no Windows pode tirar os arquivos com CRLF
@@ -465,9 +471,65 @@ describe("página Relatórios (menu do plano de 18/10, pode do Tiago em 23/10)",
   });
 
   it("os dois relatórios marcam Relatórios no topo", () => {
-    for (const arquivo of ["relatorio-de-exemplo.html", "relatorio-de-setor-eletricas.html"]) {
+    for (const arquivo of [
+      "relatorio-de-exemplo.html",
+      "relatorio-de-setor-eletricas.html",
+      "raio-x-do-choque.html",
+    ]) {
       const topo = renderizar(arquivo).split("</header>")[0];
       expect(topo).toMatch(/<a href="\/relatorios.html" aria-current="[a-z]+">Relatórios<\/a>/);
     }
+  });
+
+  it("o estudo do dia vem antes dos exemplos, com o momento dos preços", () => {
+    expect(html).toContain(`href="${DADOS_DO_RAIO_X.caminho}"`);
+    expect(texto).toContain("Estudo do dia");
+    expect(texto).toContain(MOMENTO_DO_RAIO_X);
+    expect(html.indexOf(DADOS_DO_RAIO_X.caminho)).toBeLessThan(
+      html.indexOf(DADOS_DO_RELATORIO.caminho),
+    );
+  });
+});
+
+describe("Raio-X do choque de 26/10/2026 (pode do Tiago para publicar, 26/10)", () => {
+  const html = renderizar("raio-x-do-choque.html");
+  const texto = semTags(html);
+
+  it("abre sem login, com o título do estudo e o momento dos preços", () => {
+    expect(texto).toContain(RAIO_X.titulo);
+    expect(texto).not.toMatch(/Entrar para ler|faça login/i);
+    if (RAIO_X.parcial) expect(texto).toContain(`26/10 às ${RAIO_X.hora}`);
+  });
+
+  it("traz os limites, as fontes e o aviso de que não é recomendação", () => {
+    expect(texto).toContain("Limites e cuidados");
+    expect(texto).toContain("De onde vem cada número");
+    expect(texto).toContain("Nada aqui é recomendação de investimento");
+  });
+
+  it("o estilo do estudo fica preso dentro dele (classes rx-)", () => {
+    const corpo = readFileSync(join("src", "paginas", "raio-x", "corpo.html"), "utf8");
+    const estilo = trecho(corpo, "<style>", "</style>").slice("<style>".length, -"</style>".length);
+    for (const regra of estilo.split("}").filter((r) => r.includes("{"))) {
+      const seletor = regra.split("{")[0].trim();
+      if (seletor.startsWith("@") || seletor === "") continue;
+      expect(seletor, seletor).toMatch(/\.rx/);
+    }
+  });
+
+  it("tem a própria imagem de compartilhar e o PDF, e os dois existem em site/", () => {
+    expect(html).toContain(
+      `<meta property="og:image" content="${URL_DO_SITE}${DADOS_DO_RAIO_X.imagem}"`,
+    );
+    expect(html).toContain(`href="${PDF_DO_RAIO_X}"`);
+    for (const arquivo of [DADOS_DO_RAIO_X.imagem, PDF_DO_RAIO_X])
+      expect(() => readFileSync(join(SITE, arquivo))).not.toThrow();
+  });
+
+  it("a página inicial chama para o estudo, no selo do topo e na faixa logo abaixo", () => {
+    const inicio = renderizar("index.html");
+    expect(inicio.split(DADOS_DO_RAIO_X.caminho).length - 1).toBeGreaterThanOrEqual(3);
+    expect(semTags(inicio)).toContain("Estudo do dia");
+    expect(inicio).toContain(`href="${PDF_DO_RAIO_X}"`);
   });
 });

@@ -43,6 +43,7 @@ import { DADOS as DADOS_DA_404, NaoEncontrada } from "./paginas/NaoEncontrada";
 import { DADOS as DADOS_DAS_NOVIDADES, Novidades } from "./paginas/Novidades";
 import { DADOS as DADOS_DOS_PLANOS, Precos } from "./paginas/Precos";
 import { DADOS as DADOS_DO_PRODUTO, Produto } from "./paginas/Produto";
+import { DADOS as DADOS_DO_RAIO_X, RaioXDoChoque } from "./paginas/RaioXDoChoque";
 import { DADOS as DADOS_DO_RELATORIO, RelatorioExemplo } from "./paginas/RelatorioExemplo";
 import { DADOS as DADOS_DOS_RELATORIOS, Relatorios } from "./paginas/Relatorios";
 import {
@@ -123,6 +124,7 @@ export const ROTAS: Rota[] = [
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
   { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },
   { arquivo: "relatorios.html", dados: DADOS_DOS_RELATORIOS, conteudo: () => <Relatorios /> },
+  { arquivo: "raio-x-do-choque.html", dados: DADOS_DO_RAIO_X, conteudo: () => <RaioXDoChoque /> },
   {
     arquivo: "relatorio-de-exemplo.html",
     dados: DADOS_DO_RELATORIO,
