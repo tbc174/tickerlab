@@ -6,13 +6,38 @@ UTF-8 (BOM), para o Excel mostrar os acentos certos.
 
 import pandas as pd
 
+# O Excel lê como fórmula o texto que começa com um destes caracteres (injeção de CSV).
+INICIOS_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _proteger_texto_de_formula(tabela: pd.DataFrame) -> pd.DataFrame:
+    """Cópia da tabela com um apóstrofo na frente do texto que viraria fórmula no Excel.
+
+    Só as colunas de texto: número (inclusive negativo) continua número.
+    """
+    protegida = tabela.copy()
+    for coluna in protegida.columns:
+        if not (
+            pd.api.types.is_object_dtype(protegida[coluna])
+            or pd.api.types.is_string_dtype(protegida[coluna])
+        ):
+            continue
+        protegida[coluna] = protegida[coluna].map(
+            lambda valor: (
+                "'" + valor
+                if isinstance(valor, str) and valor.startswith(INICIOS_DE_FORMULA)
+                else valor
+            )
+        )
+    return protegida
+
 
 def converter_para_csv(tabela: pd.DataFrame, formato_brasileiro: bool = True) -> bytes:
     """Texto CSV da tabela (com o índice). Brasileiro: ";" entre colunas e "," nos decimais."""
     if tabela.empty:
         raise ValueError("Não há dados para exportar.")
     separador, decimal = (";", ",") if formato_brasileiro else (",", ".")
-    texto = tabela.to_csv(
+    texto = _proteger_texto_de_formula(tabela).to_csv(
         sep=separador,
         decimal=decimal,
         date_format="%Y-%m-%d",
