@@ -8,8 +8,14 @@ tabela fixa (licença nova que não casa **dá erro**, em vez de sumir), a frequ
 e a frase da tabela e o atraso perdem o que é conversa interna (código, ADR, servidor).
 """
 
+import json
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import date
+from pathlib import Path
+from typing import Protocol
+
+from base.dossie import exigir_que_pode_mostrar
 
 # o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
 ORGAOS: tuple[tuple[str, str], ...] = (
@@ -263,3 +269,75 @@ def atraso_do_site(texto: str) -> str | None:
     if curto.split()[-1].lower() in _FIM_PENDURADO:
         return None
     return curto
+
+
+# --- a base em números (plano do site para quem analisa, PR 4) ------------------------------------
+# a fotografia é medida no servidor de casa (`scripts/medir_base_para_o_site.py`, só leitura pela porta)
+FOTOGRAFIA = (
+    Path(__file__).resolve().parent.parent
+    / "dados_de_exemplo"
+    / "base"
+    / "numeros.json"
+)
+DEMONSTRACOES = "demonstracoes_como_era"
+EVENTOS = "eventos"
+# só estas tabelas entram na faixa de números; cada uma tem de estar no catálogo e poder ser mostrada
+TABELAS_DOS_NUMEROS = (DEMONSTRACOES, EVENTOS)
+
+
+class PortaQueConta(Protocol):
+    """O que `numeros_da_base` pede da porta (`base.porta.Porta` e as portas falsas dos testes)."""
+
+    def distintos(self, tabela: str, coluna: str) -> set[object]: ...
+
+    def contar(self, tabela: str, ao_menos: dict[str, float] | None = None) -> int: ...
+
+
+@dataclass(frozen=True)
+class NumerosDaBase:
+    """Os números da faixa da página Dados, todos medidos na base em `medido_em` (AAAA-MM-DD)."""
+
+    empresas: int  # companhias com demonstrações
+    linhas_de_demonstracoes: int
+    versoes: int  # linhas de demonstrações reapresentadas (a versão 2 em diante): a primeira não se apaga
+    eventos: int  # documentos de eventos (fatos relevantes, comunicados...)
+    originais_com_hash: (
+        int  # arquivos originais dos eventos, cada um com o SHA-256 guardado
+    )
+    medido_em: str
+
+
+def numeros_da_base(porta: PortaQueConta, catalogo: dict, hoje: date) -> NumerosDaBase:
+    """Mede a base pela porta. Tabela fora do catálogo ou que a licença não deixa mostrar dá erro: o
+    número público nunca sai de uma tabela interna."""
+    ausentes = [t for t in TABELAS_DOS_NUMEROS if t not in catalogo["tabelas"]]
+    if ausentes:
+        raise ValueError(
+            f"fora do catálogo, não vira número público: {', '.join(ausentes)}"
+        )
+    exigir_que_pode_mostrar(TABELAS_DOS_NUMEROS)
+    return NumerosDaBase(
+        empresas=len(porta.distintos(DEMONSTRACOES, "cnpj")),
+        linhas_de_demonstracoes=porta.contar(DEMONSTRACOES),
+        versoes=porta.contar(DEMONSTRACOES, ao_menos={"versao": 2}),
+        eventos=porta.contar(EVENTOS),
+        originais_com_hash=len(porta.distintos(EVENTOS, "origem_sha256")),
+        medido_em=hoje.isoformat(),
+    )
+
+
+def numeros_da_fotografia(dados: dict) -> NumerosDaBase:
+    """A fotografia gravada de volta em números; campo a mais ou a menos é erro, não número escondido."""
+    return NumerosDaBase(**dados)
+
+
+def dia_e_mes(iso: str) -> str:
+    """'2026-10-26' → '26/10' (o "medido em" da página)."""
+    _, mes, dia = iso.split("-")
+    return f"{dia}/{mes}"
+
+
+def base_em_numeros(fotografia: Path = FOTOGRAFIA) -> dict:
+    """O `web/conteudo/base.json`: a fotografia como está e a data curta que a página mostra."""
+    numeros = numeros_da_fotografia(json.loads(fotografia.read_text(encoding="utf-8")))
+    return {"numeros": asdict(numeros), "medido_em_curto": dia_e_mes(numeros.medido_em)}

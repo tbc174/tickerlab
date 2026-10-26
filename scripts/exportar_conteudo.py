@@ -413,6 +413,11 @@ def _catalogo() -> dict:
     }
 
 
+def _base() -> dict:
+    """A faixa de números da página Dados: a fotografia medida no servidor de casa, com o "medido em"."""
+    return vitrine.base_em_numeros()
+
+
 def conteudo() -> dict[str, object]:
     """{nome do arquivo: dados}."""
     return {
@@ -432,6 +437,7 @@ def conteudo() -> dict[str, object]:
         "regras_de_imposto": regras_de_imposto.para_o_site(),
         "relatorio_semanal_eletricas": relatorio_semanal.para_o_site(),
         "catalogo": _catalogo(),
+        "base": _base(),
         "ativos": _ativos(),
     }
 

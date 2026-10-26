@@ -2,7 +2,13 @@
 // Nenhum número é digitado aqui: tabelas, fontes e módulos vêm de `catalogo` (ADRs 0048, 0065 e 0099).
 // A comparação com qualquer outra base é só pelo rigor: linhagem, "como era na data", licença por
 // tabela e explicação recolhida. Nada aqui é recomendação de investimento.
-import { type FonteDaBase, type RegistroDeFonte, type TabelaDaBase, catalogo } from "../conteudo";
+import {
+  type FonteDaBase,
+  type RegistroDeFonte,
+  type TabelaDaBase,
+  baseEmNumeros,
+  catalogo,
+} from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
 
@@ -162,6 +168,33 @@ function LinhaDaFonte({ r }: { r: RegistroDeFonte }) {
   );
 }
 
+const milhares = (n: number) => n.toLocaleString("pt-BR");
+
+/** Os números da base, medidos de verdade e com a data da medição ao lado. */
+function NumerosDaBase() {
+  const { numeros: n, medido_em_curto } = baseEmNumeros;
+  const itens: [number, string][] = [
+    [n.empresas, "companhias com demonstrações"],
+    [n.linhas_de_demonstracoes, "linhas de demonstrações"],
+    [n.versoes, "linhas reapresentadas (versão 2 em diante)"],
+    [n.eventos, "eventos e comunicados"],
+    [n.originais_com_hash, "arquivos originais com SHA-256 guardado"],
+  ];
+  return (
+    <>
+      <dl className="grade dados-numeros" data-numeros-da-base="">
+        {itens.map(([valor, rotulo]) => (
+          <div key={rotulo} className="cartao">
+            <dt>{milhares(valor)}</dt>
+            <dd>{rotulo}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="dados-frase">{`Medido em ${medido_em_curto}.`}</p>
+    </>
+  );
+}
+
 export function Dados() {
   const { totais, fontes, modulos } = catalogo;
   const emConsulta = fontes.filter((f) => f.situacao === "em consulta");
@@ -176,6 +209,7 @@ export function Dados() {
       <p className="dados-resumo">
         {`${totais.tabelas} tabelas, de ${totais.fontes} fontes públicas, em ${totais.modulos} módulos.`}
       </p>
+      <NumerosDaBase />
       <p>
         Toda tabela tem um contrato: quem cuida dela, a versão, as chaves, as datas, a licença e a
         frequência de atualização. A lista abaixo é gerada desse contrato; tabela ou fonte nova

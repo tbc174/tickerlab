@@ -2,7 +2,7 @@
 // (ADR 0099 itens 4 e 7; plano do site para quem analisa, PR 3).
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { catalogo } from "../../src/conteudo";
+import { baseEmNumeros, catalogo } from "../../src/conteudo";
 import { arquivosFixos, renderizar } from "../../src/entry-server";
 import { ROTAS } from "../../src/rotas";
 import { ComoFoiCalculado } from "../../src/site/ComoFoiCalculado";
@@ -31,6 +31,14 @@ describe("página Dados", () => {
   it("tem rota própria e entra no mapa do site", () => {
     expect(ROTAS.map((r) => r.arquivo)).toContain("dados.html");
     expect(arquivosFixos()["sitemap.xml"]).toContain("/dados.html</loc>");
+  });
+
+  it("mostra os números medidos da base, com o 'medido em'", () => {
+    const texto = semTags(pagina());
+    const { numeros } = baseEmNumeros;
+    expect(texto).toContain(numeros.empresas.toLocaleString("pt-BR"));
+    expect(texto).toContain(numeros.linhas_de_demonstracoes.toLocaleString("pt-BR"));
+    expect(texto).toContain(`Medido em ${baseEmNumeros.medido_em_curto}.`);
   });
 
   it("mostra os totais do catálogo, não números digitados", () => {

@@ -268,6 +268,22 @@ class Porta:
         ).fetchall()
         return {linha[0] for linha in linhas}
 
+    def contar(self, tabela: str, ao_menos: Mapping[str, float] | None = None) -> int:
+        """Quantas linhas a tabela tem (todas as vigentes), no DuckDB; `ao_menos` só conta as de
+        `coluna >= valor` (a coluna precisa existir)."""
+        view = self._view(tabela, None)
+        existentes = self.colunas(tabela)
+        desconhecida = [c for c in ao_menos or {} if c not in existentes]
+        if desconhecida:
+            raise ValueError(f"{tabela}: coluna {desconhecida[0]!r} não existe")
+        condicoes = [f"{_nome(c)} >= ?" for c in ao_menos or {}]
+        onde = " AND ".join(["true", *condicoes])
+        parametros = list((ao_menos or {}).values())
+        linha = self.con.execute(
+            f"SELECT count(*) FROM {_nome(view)} WHERE {onde}", parametros
+        ).fetchone()
+        return int(linha[0]) if linha else 0
+
     # --- rede, linhagem e carteira --------------------------------------------------------------
     def rede(
         self,
