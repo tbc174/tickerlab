@@ -9,12 +9,17 @@ e a frase da tabela e o atraso perdem o que é conversa interna (código, ADR, s
 """
 
 import json
+import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from src.destaques import Destaque
+    from src.dossie import Ficha
 
 import pandas as pd
 
@@ -397,9 +402,9 @@ VAGAS_DA_VITRINE: tuple[Vaga, ...] = (
     Vaga(
         "cnpj",
         "Busca por CNPJ",
-        "Um CNPJ vira o grupo inteiro, a partir do quadro de sócios da Receita Federal, "
-        "com as bases públicas conferidas.",
-        EM_BREVE,
+        "Busque uma companhia aberta por CNPJ, nome ou ticker: até três destaques, com a fonte e a data.",
+        PRONTA,
+        "/#busca-base",
     ),
     Vaga(
         "ma",
@@ -870,3 +875,110 @@ def fatos_da_base(fotografia: Path = FOTOGRAFIA_DOS_CRUZAMENTOS) -> dict:
         "fatos": [asdict(f) for f in fatos_agregados(cruzamentos)],
         "medido_em_curto": dia_e_mes(cruzamentos.medido_em),
     }
+
+
+# --- busca aberta: três agregados; nenhum nome de auditor, texto livre ou preço ------------------
+
+
+def _tabela_publica(nome: str) -> bool:
+    from base import dossie
+    from base.dicionario import TABELAS
+    from src.banco.coletas import licenca_da_fonte, revenda_da_fonte
+
+    tabela = TABELAS.get(nome)
+    return bool(
+        tabela
+        and dossie.pode_mostrar(nome)
+        and revenda_da_fonte(tabela.familia_da_fonte).startswith("vendável")
+        and situacao_da_licenca(
+            licenca_da_fonte(tabela.familia_da_fonte),
+            revenda_da_fonte(tabela.familia_da_fonte),
+        )
+        == LICENCIADA
+    )
+
+
+def _linhas_numericas(
+    linhas: list[dict], numeros: tuple[str, ...], datas: tuple[str, ...]
+) -> list[dict]:
+    """Só os campos usados pelo molde, com números finitos e datas válidas."""
+    saida = []
+    for linha in linhas:
+        try:
+            limpa = {c: float(linha[c]) for c in numeros}
+            if not all(math.isfinite(v) for v in limpa.values()):
+                continue
+            for coluna in datas:
+                limpa[coluna] = date.fromisoformat(str(linha[coluna])[:10]).isoformat()
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+        saida.append(limpa)
+    return saida
+
+
+def destaques_publicos(ficha: "Ficha") -> list["Destaque"]:
+    """Até três agregados licenciados da ficha; a resposta nunca contém uma seção completa."""
+    from base import dossie as regras
+    from src.destaques import destaques_da_ficha
+    from src.dossie import SecaoDaFicha
+
+    secoes = []
+    for secao in ficha.secoes:
+        tabelas = {}
+        fontes = set()
+        if secao.chave == "ofertas_e_fundos":
+            campos = (
+                (
+                    "fundos_por_mes",
+                    ("fundos", "valor"),
+                    ("competencia",),
+                    ("painel_dos_fundos",),
+                ),
+                (
+                    "ofertas_por_ano",
+                    ("ano", "ofertas", "valor_total"),
+                    (),
+                    ("ofertas_antigas", "ofertas_resolucao_160"),
+                ),
+            )
+        elif secao.chave == "setor_regulado":
+            campos = tuple(
+                (s.nome, ("ano", "valor", "participacao"), ("ultimo_mes",), (s.tabela,))
+                for s in regras.SERIES_DAS_AGENCIAS
+            )
+        else:
+            continue
+        for nome, numeros, datas, origens in campos:
+            if not all(_tabela_publica(o) for o in origens):
+                continue
+            linhas = _linhas_numericas(secao.tabelas.get(nome, []), numeros, datas)
+            if linhas:
+                tabelas[nome] = linhas
+                fontes.update(regras.fontes_das_tabelas(origens))
+        if tabelas:
+            secoes.append(
+                SecaoDaFicha(
+                    chave=secao.chave, titulo="", tabelas=tabelas, fontes=sorted(fontes)
+                )
+            )
+    limpa = ficha.model_copy(update={"secoes": secoes})
+    saida = destaques_da_ficha(limpa)[:3]
+    regras.conferir_sem_pessoas({"destaques": [asdict(d) for d in saida]}, set())
+    return saida
+
+
+def empresas_da_base() -> list[dict[str, str]]:
+    """Fichas de exemplo verificadas, disponíveis mesmo quando a API não responde."""
+    from src import amostra_do_relatorio, dossie
+
+    ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    if ficha is None or not destaques_publicos(ficha):
+        return []
+    return [
+        {
+            "cnpj": ficha.cnpj,
+            "empresa": amostra_do_relatorio.NOME,
+            "ticker": amostra_do_relatorio.TICKER,
+            "link": "/relatorio-de-exemplo.html",
+        }
+    ]

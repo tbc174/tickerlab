@@ -15,9 +15,9 @@
   },
   {
     "chave": "cnpj",
-    "estado": "em_breve",
-    "link": null,
-    "para_que_serve": "Um CNPJ vira o grupo inteiro, a partir do quadro de sócios da Receita Federal, com as bases públicas conferidas.",
+    "estado": "pronta",
+    "link": "/#busca-base",
+    "para_que_serve": "Busque uma companhia aberta por CNPJ, nome ou ticker: até três destaques, com a fonte e a data.",
     "titulo": "Busca por CNPJ"
   },
   {

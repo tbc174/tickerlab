@@ -18,10 +18,10 @@ describe("páginas das ferramentas", () => {
     }
   });
 
-  it("só as páginas com calculadora carregam o ferramentas.js", () => {
+  it("as calculadoras e a busca aberta carregam o ferramentas.js", () => {
     for (const arquivo of arquivos) {
       const carrega = /<script src="\/ferramentas\.js\?v=[0-9a-f]{12}" defer="">/.test(renderizar(arquivo));
-      expect(carrega, arquivo).toBe(PAGINAS_DE_FERRAMENTA.includes(arquivo));
+      expect(carrega, arquivo).toBe(arquivo === "index.html" || PAGINAS_DE_FERRAMENTA.includes(arquivo));
     }
   });
 
