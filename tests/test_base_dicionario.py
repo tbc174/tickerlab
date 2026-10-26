@@ -308,6 +308,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         fre,
         pareceres,
         rotulos,
+        securitizacao,
     )
     from src.negociacoes import COLUNAS as COLUNAS_DAS_NEGOCIACOES
 
@@ -347,6 +348,14 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "pareceres_dfp": [*pareceres.COLUNAS, *da_historica],
         "pareceres_itr": [*pareceres.COLUNAS, *da_historica],
         "notas_dfp": [*enet_notas.COLUNAS, *da_historica],
+        "securitizacao_certificados": [
+            *securitizacao.COLUNAS_DOS_CERTIFICADOS,
+            *da_historica,
+        ],
+        "securitizacao_cedente_devedor": [
+            *securitizacao.COLUNAS_DO_CEDENTE_DEVEDOR,
+            *da_historica,
+        ],
         "trocas_de_auditor": [
             *auditores.COLUNAS_DAS_TROCAS,
             "montado_em",

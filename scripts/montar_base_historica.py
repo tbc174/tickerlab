@@ -6,6 +6,7 @@
     python -m scripts.montar_base_historica cnpj_situacao_cadastral (situação cadastral mês a mês, B-30c)
     python -m scripts.montar_base_historica auditores trocas_de_auditor (B3; as trocas leem os auditores)
     python -m scripts.montar_base_historica pareceres_dfp pareceres_itr (T2; parecer do auditor dos CSVs do DFP e do ITR)
+    python -m scripts.montar_base_historica securitizacao_certificados securitizacao_cedente_devedor (B-16; informe mensal de CRI, CRA e OTS)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
     python -m scripts.montar_base_historica controladas empresa_serie (B13; a ligação lê as controladas)
     python -m scripts.montar_base_historica notas_dfp              (texto das notas da DFP, do ENET; linha 135)

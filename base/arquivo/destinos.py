@@ -237,6 +237,12 @@ _LOTE_CVM_SO_ARQUIVO = (
     "pessoa, ADR 0088); a tabela com contrato no catálogo ainda não existe"
 )
 
+# informe mensal de CRI, CRA e OTS (série 6, PR 1): as três fontes juntas nas mesmas duas tabelas
+_INFORME_DE_SECURITIZACAO = (
+    "securitizacao_certificados",
+    "securitizacao_cedente_devedor",
+)
+
 DESTINOS: dict[str, Destino] = {
     # CVM
     "cvm-hist-dfp": _tabela("demonstracoes_como_era", "dmpl_como_era", "pareceres_dfp"),
@@ -276,8 +282,8 @@ DESTINOS: dict[str, Destino] = {
     "cvm-fidc-recente": _tabela("fidc_informe"),
     "cvm-ofertas": _tabela("ofertas_antigas", "ofertas_resolucao_160"),
     "cvm-cadastros": _tabela("cadastro_das_companhias", "cadastro_de_fundos"),
-    "cvm-cri": _planejada("serie-6/PR1", "certificados de recebíveis imobiliários"),
-    "cvm-cra": _planejada("serie-6/PR1", "certificados de recebíveis do agronegócio"),
+    "cvm-cri": _tabela(*_INFORME_DE_SECURITIZACAO),
+    "cvm-cra": _tabela(*_INFORME_DE_SECURITIZACAO),
     "cvm-fiagro": _planejada(
         "serie-T/T4", "informe mensal do FIAGRO; a CVM só guarda os meses recentes"
     ),
@@ -450,6 +456,7 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("cvm-lote-2/tabelas", _LOTE_CVM_SO_ARQUIVO)
         for f in lote_cvm.fontes()
     },
+    "cvm-securitizadoras-ots": _tabela(*_INFORME_DE_SECURITIZACAO),
     "cvm-fundos-informe-diario": _planejada(
         "cvm-lote-2/cota-por-fundo",
         "cota, patrimônio e captação diária de cada fundo 555",

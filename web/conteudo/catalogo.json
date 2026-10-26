@@ -12,7 +12,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 58
+      "tabelas": 60
     },
     {
       "historico_desde": "2026-10-14",
@@ -279,7 +279,7 @@
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 11
+      "tabelas": 13
     },
     {
       "chave": "governo_e_sancoes",
@@ -4218,6 +4218,26 @@
       "tabela": "pareceres_itr"
     },
     {
+      "atraso": "A entrega do informe à CVM",
+      "frase": "Um certificado de recebíveis (CRI, CRA ou outro título de securitização, OTS) por mês, lido do informe mensal da CVM (quadro geral): a securitizadora, o código do certificado, a emissão.",
+      "frequencia": "Semanal",
+      "historico_desde": "2019-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "securitizacao_certificados"
+    },
+    {
+      "atraso": "A entrega do informe à CVM",
+      "frase": "Cedente e devedor de cada certificado (CRI, CRA e OTS) por mês, do quadro cedente_devedor do informe mensal da CVM.",
+      "frequencia": "Semanal",
+      "historico_desde": "2019-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "securitizacao_cedente_devedor"
+    },
+    {
       "atraso": "A entrega à CVM",
       "frase": "Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila).",
       "frequencia": "Sem calendário fixo",
@@ -4502,6 +4522,6 @@
     "fontes": 24,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 100
+    "tabelas": 102
   }
 }
