@@ -58,6 +58,14 @@ def test_cada_numero_diz_como_foi_calculado(banco):
         linha.startswith("**Documento:** DFP") and "abrir o original" in linha
         for linha in linhas
     )
+    assert any(
+        linha.startswith("**Contas usadas:** as linhas da demonstração")
+        for linha in linhas
+    )
+    assert any(
+        linha.startswith("**Conta:** ") and "na CVM): R\\$ " in linha
+        for linha in linhas
+    )  # o valor guardado, com o cifrão que não vira LaTeX
 
 
 def test_formula_com_cifrao_nao_vira_latex():

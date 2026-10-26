@@ -9,8 +9,10 @@ import pytest
 from pypdf import PdfReader
 
 from src import relatorio_empresa as re_
+from src.rastro import CONTA, como_foi_calculado
 from src.relatorio_empresa import anexo_de_anos
 from src.relatorio_empresa_pdf import (
+    TITULO_DAS_CONTAS,
     TITULO_DO_ANEXO,
     _anexo_de_anos,
     relatorio_da_empresa,
@@ -69,6 +71,25 @@ def test_pdf_fecha_com_o_anexo_de_como_cada_numero_foi_calculado(dados_da_weg): 
     assert _sem_espacos(margem.rastro.versao_do_calculo) in texto
     urls = {d.url for d in margem.rastro.documentos if d.url}
     assert urls and urls <= set(_links(pdf))  # o documento original, clicável
+
+
+def test_o_anexo_lista_as_contas_usadas_em_cada_numero(dados_da_weg):  # noqa: F811
+    """As mesmas linhas "Conta" da página, embaixo do nome de cada número."""
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio)))
+    assert _sem_espacos(TITULO_DAS_CONTAS) in texto
+    margem = next(
+        i for s in relatorio.secoes for i in s.itens if i.chave == "margem_ebit"
+    )
+    assert margem.rastro is not None and margem.rastro.entradas
+    contas = [
+        linha.texto
+        for linha in como_foi_calculado(margem.rastro)
+        if linha.rotulo == CONTA.capitalize()
+    ]
+    assert len(contas) == len(margem.rastro.entradas)
+    for conta in contas:
+        assert _sem_espacos(conta) in texto
 
 
 def test_pdf_sem_rastro_nao_tem_o_anexo(dados_da_weg):  # noqa: F811

@@ -24,6 +24,14 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import date
 
+from src.demonstracoes import (
+    ACUMULADO,
+    ACUMULADO_ANTERIOR,
+    COLUNAS_DAS_ACOES,
+    EXERCICIO,
+    POSICAO,
+)
+
 FORMULA, VERSAO, FONTE, PUBLICADO_EM = (
     "fórmula",
     "versão do cálculo",
@@ -114,7 +122,7 @@ SEM_DIA = "dia não conhecido"
 class LinhaDoRastro:
     """Uma linha do "como foi calculado": o rótulo, o texto e o link do documento original."""
 
-    rotulo: str  # "Fórmula", "Versão do cálculo", "Fonte", "Publicado em", "Documento"
+    rotulo: str  # "Fórmula", "Versão do cálculo", "Fonte", "Publicado em", "Documento", "Conta"
     texto: str
     url: str = ""
 
@@ -135,9 +143,16 @@ def como_foi_calculado(rastro: Rastro) -> list[LinhaDoRastro]:
         LinhaDoRastro(FONTE.capitalize(), fontes),
         LinhaDoRastro(PUBLICADO_EM.capitalize(), _dia(rastro.publicado_em)),
     ]
-    return linhas + [
+    linhas += [
         LinhaDoRastro(DOCUMENTO.capitalize(), _documento(d), d.url)
         for d in rastro.documentos
+    ]
+    if not rastro.entradas:
+        return linhas
+    return [
+        *linhas,
+        LinhaDoRastro(CONTAS_USADAS.capitalize(), O_QUE_SAO_AS_CONTAS),
+        *(LinhaDoRastro(CONTA.capitalize(), _conta(e)) for e in rastro.entradas),
     ]
 
 
@@ -145,6 +160,40 @@ def _documento(documento: DocumentoUsado) -> str:
     if documento.publicado_em is None:
         return f"{documento.nome} (dia da publicação não conhecido)"
     return f"{documento.nome}, publicado em {_dia(documento.publicado_em)}"
+
+
+CONTAS_USADAS, CONTA = "contas usadas", "conta"
+O_QUE_SAO_AS_CONTAS = (
+    "as linhas da demonstração que entram no número, com o valor guardado: com elas, dá para "
+    "refazer a conta."
+)
+PERIODO_EM_TEXTO = {
+    EXERCICIO: "no exercício",
+    POSICAO: "no saldo do balanço",
+    ACUMULADO: "no acumulado do ano",
+    ACUMULADO_ANTERIOR: "no acumulado do mesmo período do ano anterior",
+}
+_EM_ACOES = {conta for conta, _ in COLUNAS_DAS_ACOES}
+_POR_ACAO = {"lpa_basico"}
+
+
+def _conta(entrada: Entrada) -> str:
+    """'Receita de Venda (código 3.01 na CVM): R$ 40.804.110.000 no exercício (DFP de ...)'."""
+    # as ações vêm de uma coluna do arquivo da composição do capital, não de um código do plano
+    tipo = "campo" if entrada.codigo[:1].isalpha() else "código"
+    documento = nome_do_documento(entrada.documento, entrada.referencia, entrada.versao)
+    return (
+        f"{entrada.nome} ({tipo} {entrada.codigo} na CVM): {_valor(entrada)} "
+        f"{PERIODO_EM_TEXTO[entrada.periodo]} ({documento})"
+    )
+
+
+def _valor(entrada: Entrada) -> str:
+    """O valor guardado: reais inteiros, ações em unidades, o lucro por ação com centavos."""
+    if entrada.conta in _POR_ACAO:
+        return f"R$ {entrada.valor:.2f} por ação".replace(".", ",")
+    inteiro = f"{entrada.valor:,.0f}".replace(",", ".")
+    return f"{inteiro} ações" if entrada.conta in _EM_ACOES else f"R$ {inteiro}"
 
 
 @dataclass(frozen=True)
