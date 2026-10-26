@@ -1501,7 +1501,7 @@ class BoasVindasDoBetaV1(BaseModel):
     """A página de boas-vindas do beta: o texto e o roteiro dos 10 minutos (src/beta.py)."""
 
     titulo: str
-    abertura: str
+    texto_de_boas_vindas: str
     sobre_o_beta: str
     como_responder: str
     total_de_minutos: int
@@ -1511,7 +1511,7 @@ class BoasVindasDoBetaV1(BaseModel):
 def de_boas_vindas_do_beta() -> BoasVindasDoBetaV1:
     return BoasVindasDoBetaV1(
         titulo=beta.TITULO,
-        abertura=beta.ABERTURA,
+        texto_de_boas_vindas=beta.ABERTURA,
         sobre_o_beta=beta.SOBRE_O_BETA,
         como_responder=beta.COMO_RESPONDER,
         total_de_minutos=beta.TOTAL_DE_MINUTOS,

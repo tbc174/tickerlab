@@ -6,7 +6,7 @@ import { abrirApp, respostaJson } from "./ajudantes";
 
 const BOAS_VINDAS = {
   titulo: "Boas-vindas ao beta do TickerLab",
-  abertura: "Você foi convidado para usar o TickerLab antes do lançamento.",
+  texto_de_boas_vindas: "Você foi convidado para usar o TickerLab antes do lançamento.",
   sobre_o_beta: "O beta é grátis e pode mudar. Nada aqui é recomendação de investimento.",
   como_responder: "Responda ao e-mail do convite.",
   total_de_minutos: 10,

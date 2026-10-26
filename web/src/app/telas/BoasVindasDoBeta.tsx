@@ -22,7 +22,7 @@ export function BoasVindasDoBeta({ pagina }: { pagina: PaginaDoApp }) {
   return (
     <section>
       <h1>{dados.titulo}</h1>
-      <p>{dados.abertura}</p>
+      <p>{dados.texto_de_boas_vindas}</p>
       <h2>O roteiro de {dados.total_de_minutos} minutos</h2>
       <ol className="telas-do-app" aria-label="Roteiro do beta">
         {dados.roteiro.map((passo) => (

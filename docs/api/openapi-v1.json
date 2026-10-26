@@ -1174,10 +1174,6 @@
       "BoasVindasDoBetaV1": {
         "description": "A página de boas-vindas do beta: o texto e o roteiro dos 10 minutos (src/beta.py).",
         "properties": {
-          "abertura": {
-            "title": "Abertura",
-            "type": "string"
-          },
           "como_responder": {
             "title": "Como Responder",
             "type": "string"
@@ -1193,6 +1189,10 @@
             "title": "Sobre O Beta",
             "type": "string"
           },
+          "texto_de_boas_vindas": {
+            "title": "Texto De Boas Vindas",
+            "type": "string"
+          },
           "titulo": {
             "title": "Titulo",
             "type": "string"
@@ -1204,7 +1204,7 @@
         },
         "required": [
           "titulo",
-          "abertura",
+          "texto_de_boas_vindas",
           "sobre_o_beta",
           "como_responder",
           "total_de_minutos",

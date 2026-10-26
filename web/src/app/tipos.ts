@@ -264,7 +264,7 @@ export interface PassoDoBetaV1 {
 
 export interface BoasVindasDoBetaV1 {
   titulo: string;
-  abertura: string;
+  texto_de_boas_vindas: string;
   sobre_o_beta: string;
   como_responder: string;
   total_de_minutos: number;
