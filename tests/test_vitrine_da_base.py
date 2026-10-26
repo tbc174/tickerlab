@@ -6,12 +6,15 @@ Funções puras sobre o dicionário do `catalogo.json`; nenhum número da págin
 
 import json
 import re
+from dataclasses import asdict
 from datetime import date
 
+import pandas as pd
 import pytest
 
 from base import vitrine
 from base.contrato import PASTA
+from base.dossie import conferir_sem_pessoas, normalizar_nome
 
 CVM = "ODbL (dados abertos da CVM; citar a fonte)"
 BCB = "ODbL (dados abertos do Banco Central; citar a fonte)"
@@ -392,7 +395,12 @@ def test_vaga_pronta_aponta_para_pagina_que_existe():
     assert prontas, "a vitrine precisa de ao menos uma vaga pronta"
     for vaga in prontas:
         assert vaga.link and vaga.link.startswith("/")
-        assert (SITE / vaga.link.lstrip("/")).is_file(), vaga.link
+        caminho, _, ancora = vaga.link.partition("#")
+        pagina = SITE / (caminho.lstrip("/") or "index.html")
+        assert pagina.is_file(), vaga.link
+        # a vaga que leva a uma seção da própria página aponta para um id que existe
+        if ancora:
+            assert f'id="{ancora}"' in pagina.read_text(encoding="utf-8"), vaga.link
 
 
 def test_vaga_em_breve_nao_tem_link_nem_data():
@@ -421,8 +429,277 @@ def test_vaga_mal_formada_nao_passa(estado, link):
 
 
 def test_vitrine_json_leva_as_vagas():
-    from dataclasses import asdict
-
     from scripts import exportar_conteudo as exp
 
     assert exp.conteudo()["vitrine"] == [asdict(v) for v in vitrine.VAGAS_DA_VITRINE]
+
+
+# --- cruzamentos da base (plano do site para quem analisa, PR 6, tarefa 10) -----------------------
+
+ALFA, BETA, GAMA_CONTROLADA, DELTA = (
+    "11.111.111/0001-11",
+    "22.222.222/0001-22",
+    "33.333.333/0001-33",
+    "44.444.444/0001-44",
+)
+NOMES_DO_MUNDO_FALSO = (
+    "ALFA ENERGIA S.A.",
+    "BETA SANEAMENTO S.A.",
+    "GAMA TRANSMISSORA S.A.",
+    "DELTA PAPEL S.A.",
+    "AUDITORES UM",
+    "AUDITORES DOIS",
+    "JOAO DA SILVA",
+)
+LUCRO = "Lucro/Prejuízo Consolidado do Período"
+MILHAO = 1e6
+
+
+def _lucro(
+    cnpj: str,
+    fim: str,
+    milhoes: float,
+    referencia: str,
+    ordem: str = "ultimo",
+    publico_em: str | None = None,
+) -> dict:
+    divulgado = pd.Timestamp(referencia) + pd.Timedelta(days=89)
+    return {
+        "cnpj": cnpj,
+        "grupo": "con",
+        "demonstracao": "DRE",
+        "documento": "DFP",
+        "conta": "3.11",
+        "descricao": LUCRO,
+        "fim": pd.Timestamp(fim),
+        "referencia": pd.Timestamp(referencia),
+        "valor": milhoes * MILHAO,
+        "versao": 1,
+        "ordem": ordem,
+        "divulgado_em": divulgado,
+        "publico_em": pd.Timestamp(publico_em) if publico_em else divulgado,
+    }
+
+
+def _mundo_falso() -> dict[str, pd.DataFrame]:
+    """Alfa troca de auditor e refaz o lucro de 2020 no balanço de 2021 (de 100 para 90 milhões); Beta
+    troca também e não refaz nada. Gama é controlada da Alfa e emite uma oferta em 2025; Delta é só
+    coligada."""
+    demonstracoes = pd.DataFrame(
+        [
+            _lucro(ALFA, "2020-12-31", 100, "2020-12-31"),
+            _lucro(ALFA, "2021-12-31", 200, "2021-12-31"),
+            _lucro(ALFA, "2020-12-31", 90, "2021-12-31", ordem="penultimo"),
+            _lucro(ALFA, "2022-12-31", 300, "2022-12-31"),
+            _lucro(BETA, "2020-12-31", 50, "2020-12-31"),
+            _lucro(BETA, "2021-12-31", 60, "2021-12-31"),
+            # o balanço de 2022 da Beta ainda não era público no dia da medição
+            _lucro(BETA, "2022-12-31", 70, "2022-12-31", publico_em="2027-01-01"),
+        ]
+    )
+    trocas = pd.DataFrame(
+        {
+            "cnpj": [ALFA, BETA],
+            "empresa": ["ALFA ENERGIA S.A.", "BETA SANEAMENTO S.A."],
+            "anterior": ["AUDITORES UM", "AUDITORES DOIS"],
+            "novo": ["AUDITORES DOIS", "AUDITORES UM"],
+            "publico_em": pd.to_datetime(["2021-06-01", "2021-06-01"]),
+        }
+    )
+    registros = pd.to_datetime(
+        [
+            "2025-05-01",
+            "2025-08-01",
+            "2025-09-01",
+            "2025-10-01",
+            "2024-03-01",
+            "2025-11-01",
+        ]
+    )
+    ofertas = pd.DataFrame(
+        {
+            "cnpj_emissor": [ALFA, GAMA_CONTROLADA, DELTA, ALFA, ALFA, ALFA],
+            "nome_emissor": [
+                "ALFA ENERGIA S.A.",
+                "GAMA TRANSMISSORA S.A.",
+                "DELTA PAPEL S.A.",
+                "ALFA ENERGIA S.A.",
+                "ALFA ENERGIA S.A.",
+                "ALFA ENERGIA S.A.",
+            ],
+            "administrador": ["JOAO DA SILVA"] * 6,
+            "valor_mobiliario": ["Debêntures"] * 5
+            + ["Certificados de Recebíveis Imobiliários"],
+            "data_registro": registros,
+            "status_requerimento": [
+                "Oferta Encerrada",
+                "Registro Concedido",
+                "Oferta Encerrada",
+                "Oferta Revogada",
+                "Oferta Encerrada",
+                "Oferta Encerrada",
+            ],
+            "valor_total_registrado": [500e6, 200e6, 100e6, 999e6, 300e6, 50e6],
+            "publico_em": registros,
+        }
+    )
+    controladas = pd.DataFrame(
+        {
+            "cnpj_companhia": ["11111111000111", "11111111000111"],
+            "companhia": ["ALFA ENERGIA S.A.", "ALFA ENERGIA S.A."],
+            "cnpj": ["33333333000133", "44444444000144"],
+            "razao_social": ["GAMA TRANSMISSORA S.A.", "DELTA PAPEL S.A."],
+            "tipo": ["controlada", "coligada"],
+            "publico_em": pd.to_datetime(["2025-06-01", "2025-06-01"]),
+        }
+    )
+    return {
+        vitrine.DEMONSTRACOES: demonstracoes,
+        vitrine.TROCAS_DE_AUDITOR: trocas,
+        vitrine.OFERTAS: ofertas,
+        vitrine.CONTROLADAS: controladas,
+    }
+
+
+class _PortaQueLe:
+    """O que `medir_cruzamentos` pede da porta: ler com filtros de igualdade, colunas e "como era"."""
+
+    def __init__(self, tabelas: dict[str, pd.DataFrame]):
+        self.tabelas = tabelas
+
+    def ler(
+        self,
+        tabela: str,
+        versao: str | None = None,
+        como_era_em: object = None,
+        filtros: dict[str, object] | None = None,
+        colunas: list[str] | None = None,
+    ) -> pd.DataFrame:
+        linhas = self.tabelas[tabela]
+        for coluna, valor in (filtros or {}).items():
+            valores = valor if isinstance(valor, (list, tuple, set)) else [valor]
+            linhas = linhas[linhas[coluna].isin(valores)]
+        if como_era_em is not None:
+            linhas = linhas[linhas["publico_em"] <= pd.Timestamp(como_era_em)]
+        if colunas is not None:
+            linhas = linhas[list(colunas)]
+        return linhas.reset_index(drop=True)
+
+    def distintos(self, tabela: str, coluna: str) -> set[object]:
+        return set(self.tabelas[tabela][coluna].dropna())
+
+
+DIA_DA_MEDICAO = date(2026, 10, 26)
+
+
+def _cruzamentos() -> vitrine.Cruzamentos:
+    catalogo = _catalogo_com(*vitrine.TABELAS_DOS_CRUZAMENTOS)
+    return vitrine.medir_cruzamentos(
+        _PortaQueLe(_mundo_falso()), catalogo, DIA_DA_MEDICAO
+    )
+
+
+def test_lucros_refeitos_no_balanco_seguinte():
+    """Só conta o balanço que já tem o do ano seguinte; lucro sem linha "penúltimo" não mudou."""
+    assert (
+        _cruzamentos().lucros
+        == vitrine.LucrosRefeitos(
+            balancos=3,  # Alfa 2020 e 2021, Beta 2020 (o de 2022 da Beta ainda não era público)
+            refeitos=1,
+            companhias_refeitas=1,
+            companhias=2,
+            primeiro_exercicio=2020,
+            ultimo_exercicio=2021,
+        )
+    )
+
+
+def test_troca_de_auditor_olha_o_primeiro_balanco_depois_dela():
+    """A troca de junho de 2021 vale para o balanço de 2021, que refaz (ou não) o lucro de 2020."""
+    assert _cruzamentos().auditor == vitrine.TrocasDeAuditor(
+        trocas=2,
+        trocas_com_balanco=2,
+        trocas_refeitas=1,
+        balancos_sem_troca=1,  # Alfa 2021
+        refeitos_sem_troca=0,
+    )
+
+
+def test_ofertas_do_grupo_no_ultimo_ano_completo():
+    assert _cruzamentos().ofertas == vitrine.OfertasDoGrupo(
+        ano=2025,
+        ofertas=3,  # a revogada, a de 2024 e o CRI (da securitização) ficam de fora
+        valor=800e6,
+        do_grupo=2,  # Alfa e a controlada Gama; a Delta é só coligada
+        valor_do_grupo=700e6,
+        grupos=1,
+        por_controlada=1,
+        valor_por_controlada=200e6,
+    )
+
+
+def test_cruzamentos_recusam_tabela_fora_do_catalogo():
+    catalogo = _catalogo_com(
+        vitrine.DEMONSTRACOES, vitrine.TROCAS_DE_AUDITOR, vitrine.OFERTAS
+    )
+    with pytest.raises(ValueError, match="controladas"):
+        vitrine.medir_cruzamentos(_PortaQueLe(_mundo_falso()), catalogo, DIA_DA_MEDICAO)
+
+
+def test_fatos_agregados_tem_fonte_e_data():
+    fatos = vitrine.fatos_agregados(_cruzamentos())
+    assert [f.chave for f in fatos] == ["lucros", "auditor", "ofertas"]
+    for fato in fatos:
+        assert fato.texto and fato.numero and fato.como_foi_calculado
+        assert fato.fonte.startswith("CVM")
+        assert fato.tabelas and set(fato.tabelas) <= set(
+            vitrine.TABELAS_DOS_CRUZAMENTOS
+        )
+        assert fato.data == "2026-10-26"
+    assert fatos[0].numero == "33,3%"
+    assert "1 de 2 companhias" in fatos[0].texto
+
+
+def test_fatos_sem_pessoas():
+    """Nenhum nome do que entrou na conta (companhia, auditor, administrador) sai no fato: só contagens."""
+    nomes = {normalizar_nome(n) for n in NOMES_DO_MUNDO_FALSO}
+    for fato in vitrine.fatos_agregados(_cruzamentos()):
+        conferir_sem_pessoas(asdict(fato), nomes)
+        palavras = normalizar_nome(
+            f"{fato.texto} {fato.fonte} {fato.como_foi_calculado}"
+        ).split()
+        for nome in nomes:
+            assert nome.split()[0] not in palavras, (fato.chave, nome)
+
+
+# o que o site não diz (as mesmas da página inicial) e o que insinuaria culpa num fato agregado
+PROIBIDAS_NOS_FATOS = re.compile(
+    r"recomend|vai subir|vai cair|oportunidade|mais dados que|maior base|fraude|manipul|suspeit"
+    r"|escond|maquia|Bloomberg|FactSet|Refinitiv|Economatica|brapi|Status ?Invest",
+    re.IGNORECASE,
+)
+
+
+def test_fatos_passam_pela_lista_proibida():
+    for fato in vitrine.fatos_agregados(_cruzamentos()):
+        for texto in (fato.texto, fato.como_foi_calculado):
+            assert not PROIBIDAS_NOS_FATOS.search(texto), (fato.chave, texto)
+        assert len(fato.texto) <= vitrine.LIMITE_DO_FATO, fato.chave
+
+
+def test_fatos_da_base_vem_da_fotografia():
+    from scripts import exportar_conteudo as exp
+
+    fotografia = json.loads(
+        vitrine.FOTOGRAFIA_DOS_CRUZAMENTOS.read_text(encoding="utf-8")
+    )
+    fatos = exp.conteudo()["fatos_da_base"]
+
+    cruzamentos = vitrine.cruzamentos_da_fotografia(fotografia)
+    assert fatos["fatos"] == [asdict(f) for f in vitrine.fatos_agregados(cruzamentos)]
+    assert fatos["medido_em_curto"] == vitrine.dia_e_mes(fotografia["medido_em"])
+
+
+def test_fotografia_dos_cruzamentos_volta_igual():
+    cruzamentos = _cruzamentos()
+    assert vitrine.cruzamentos_da_fotografia(asdict(cruzamentos)) == cruzamentos

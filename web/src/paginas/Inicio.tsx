@@ -1,9 +1,10 @@
 // Página inicial para quem analisa empresas (plano do site para quem analisa, 18/10/2026, PR 5): a
 // assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
-// estudo do dia, a vitrine das análises abertas, as quatro regras da base, as fontes com licença e
+// estudo do dia, a vitrine das análises abertas, os cruzamentos da base (PR 6), as quatro regras da base, as fontes com licença e
 // os planos. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
 import { baseEmNumeros, catalogo } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
+import { Cruzamentos } from "../site/Cruzamentos";
 import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
 import { Fundo } from "../site/Fundo";
 import { ancora } from "../site/Leitura";
@@ -222,6 +223,7 @@ export function Inicio() {
       <Heroi />
       <EstudoDoDia />
       <Vitrine />
+      <Cruzamentos />
       <RegrasDaBase />
       <FontesDaBase />
       <ChamadaFinal

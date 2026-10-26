@@ -409,6 +409,7 @@ def conteudo() -> dict[str, object]:
         "catalogo": _catalogo(),
         "base": _base(),
         "vitrine": [asdict(v) for v in vitrine.VAGAS_DA_VITRINE],
+        "fatos_da_base": vitrine.fatos_da_base(),
         "ativos": _ativos(),
     }
 

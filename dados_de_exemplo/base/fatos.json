@@ -1,0 +1,28 @@
+{
+  "auditor": {
+    "balancos_sem_troca": 6413,
+    "refeitos_sem_troca": 378,
+    "trocas": 2129,
+    "trocas_com_balanco": 1560,
+    "trocas_refeitas": 123
+  },
+  "lucros": {
+    "balancos": 7959,
+    "companhias": 1051,
+    "companhias_refeitas": 335,
+    "primeiro_exercicio": 2010,
+    "refeitos": 498,
+    "ultimo_exercicio": 2025
+  },
+  "medido_em": "2026-10-26",
+  "ofertas": {
+    "ano": 2025,
+    "do_grupo": 424,
+    "grupos": 254,
+    "ofertas": 862,
+    "por_controlada": 60,
+    "valor": 531732266446.34,
+    "valor_do_grupo": 406969379469.8,
+    "valor_por_controlada": 35149500000.0
+  }
+}
