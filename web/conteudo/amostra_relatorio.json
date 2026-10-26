@@ -1,7 +1,7 @@
 {
   "aviso": "Amostra aberta do relatório da base do TickerLab. Nada aqui é recomendação de investimento: os números descrevem o que a empresa e as agências entregaram, sem dizer o que vai acontecer.",
   "cnpj": "02.429.144/0001-93",
-  "dados_de": "17/10/2026",
+  "dados_de": "26/10/2026",
   "destaques": [
     {
       "chave": "fundos",
@@ -61,11 +61,13 @@
   "empresa": "CPFL Energia",
   "fontes": [
     "ODbL (dados abertos da CVM; citar a fonte)",
-    "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor"
+    "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+    "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+    "CC0 (GLEIF, Global LEI Index)"
   ],
   "limites": [
     "Nada aqui é recomendação de investimento. Os destaques descrevem o que a companhia, os fundos e as agências entregaram; não dizem se é bom ou ruim nem o que vai acontecer.",
-    "Os números são da base do TickerLab em 17/10/2026 e mudam quando a companhia reapresenta um documento ou um fundo entrega uma carteira atrasada.",
+    "Os números são da base do TickerLab em 26/10/2026 e mudam quando a companhia reapresenta um documento ou um fundo entrega uma carteira atrasada.",
     "As ofertas estão pelo valor registrado na CVM, não pelo colocado. O assunto dos documentos é escrito pela própria companhia, e os documentos de negócios são escolhidos pelas palavras do assunto: pode faltar algum ou sobrar algum.",
     "O setor regulado soma as entidades que o FRE liga à companhia hoje, também nos anos anteriores: um ano antigo pode contar uma distribuidora comprada depois.",
     "Nomes de pessoas (administradores, conselheiros, sócios) não aparecem.",
@@ -248,6 +250,187 @@
         }
       ],
       "titulo": "Auditor e controladas"
+    },
+    {
+      "chave": "qualidade_do_lucro",
+      "itens": [
+        {
+          "base": "05/03/2026",
+          "nome": "Exercícios com o lucro ou a receita refeitos depois de publicados",
+          "texto": "0"
+        },
+        {
+          "base": "05/03/2026",
+          "nome": "Exercícios olhados (DFP)",
+          "texto": "10"
+        },
+        {
+          "base": "01/01/2022",
+          "nome": "Trocas de auditor nos últimos 10 anos",
+          "texto": "2"
+        }
+      ],
+      "paragrafos": [
+        "Reapresentação: o lucro do período ou a receita de um dos últimos 10 exercícios que mudou mais de R$ 1 mil (o arredondamento da CVM) depois de publicado na DFP, pela própria DFP reapresentada ou pela do ano seguinte; no consolidado, quando a empresa o publica. O release é o que a empresa disse no press-release de resultado contra o ITR ou a DFP do mesmo período (receita, lucro dos controladores e resultado operacional): o número do release foi lido por um modelo de IA e conferido no texto do PDF, e diferença não é erro, pode ser outro critério da empresa. O atraso de entrega está na ficha técnica (o prazo da CVM contra a entrega).",
+        "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+      ],
+      "tabelas": [],
+      "titulo": "Qualidade do lucro"
+    },
+    {
+      "chave": "geracao_de_caixa",
+      "itens": [
+        {
+          "base": "31/12/2025",
+          "nome": "EBITDA do último exercício",
+          "texto": "R$ 13,1 bi"
+        },
+        {
+          "base": "31/12/2025",
+          "nome": "Capex do último exercício",
+          "texto": "R$ 390,5 mi"
+        },
+        {
+          "base": "31/12/2025",
+          "nome": "Fluxo de caixa livre (FCF) do último exercício",
+          "texto": "R$ 6,8 bi"
+        }
+      ],
+      "paragrafos": [
+        "Contas da DFP de cada exercício, como eram públicas no dia da ficha (uma reapresentação entra a partir do dia em que saiu). EBITDA = resultado antes do resultado financeiro (DRE 3.05) + depreciação e amortização (DVA 7.04.01; sem DVA, as linhas de depreciação da DFC). Capex = compras de imobilizado e intangível na DFC de investimento. FCF = caixa operacional (DFC 6.01) − capex. No consolidado, quando a empresa o publica. Sem a linha, o número fica vazio: em bancos e seguradoras a DRE 3.05 não é o EBIT, e o EBITDA não sai.",
+        "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+      ],
+      "tabelas": [
+        {
+          "chave": "caixa_por_exercicio",
+          "colunas": [
+            "Exercício",
+            "Receita",
+            "EBITDA",
+            "Margem EBITDA",
+            "Depreciação e amortização",
+            "Caixa operacional",
+            "Capex",
+            "FCF",
+            "Público desde"
+          ],
+          "linhas": [
+            [
+              "2025",
+              "R$ 44,4 bi",
+              "R$ 13,1 bi",
+              "29,6%",
+              "R$ 2,1 bi",
+              "R$ 7,2 bi",
+              "R$ 390,5 mi",
+              "R$ 6,8 bi",
+              "05/03/2026"
+            ],
+            [
+              "2024",
+              "R$ 42,6 bi",
+              "R$ 12,8 bi",
+              "30,0%",
+              "R$ 2,0 bi",
+              "R$ 6,8 bi",
+              "R$ 531,0 mi",
+              "R$ 6,3 bi",
+              "26/02/2025"
+            ],
+            [
+              "2023",
+              "R$ 39,7 bi",
+              "R$ 12,5 bi",
+              "31,4%",
+              "R$ 1,9 bi",
+              "R$ 8,9 bi",
+              "R$ 698,3 mi",
+              "R$ 8,2 bi",
+              "21/03/2024"
+            ],
+            [
+              "2022",
+              "R$ 39,4 bi",
+              "R$ 12,0 bi",
+              "30,4%",
+              "R$ 1,7 bi",
+              "R$ 9,0 bi",
+              "R$ 395,7 mi",
+              "R$ 8,6 bi",
+              "16/03/2023"
+            ],
+            [
+              "2021",
+              "R$ 39,2 bi",
+              "R$ 8,9 bi",
+              "22,6%",
+              "R$ 1,5 bi",
+              "R$ 3,9 bi",
+              "R$ 575,5 mi",
+              "R$ 3,3 bi",
+              "17/03/2022"
+            ],
+            [
+              "2020",
+              "R$ 30,9 bi",
+              "R$ 6,5 bi",
+              "21,0%",
+              "R$ 1,4 bi",
+              "R$ 6,4 bi",
+              "R$ 357,1 mi",
+              "R$ 6,0 bi",
+              "31/03/2021"
+            ],
+            [
+              "2019",
+              "R$ 29,9 bi",
+              "R$ 6,1 bi",
+              "20,4%",
+              "R$ 1,4 bi",
+              "R$ 5,8 bi",
+              "R$ 208,1 mi",
+              "R$ 5,6 bi",
+              "31/03/2021"
+            ],
+            [
+              "2018",
+              "R$ 28,1 bi",
+              "R$ 5,4 bi",
+              "19,0%",
+              "R$ 1,3 bi",
+              "R$ 856,7 mi",
+              "R$ 292,9 mi",
+              "R$ 563,8 mi",
+              "09/03/2020"
+            ],
+            [
+              "2017",
+              "R$ 26,7 bi",
+              "R$ 4,6 bi",
+              "17,1%",
+              "R$ 1,2 bi",
+              "R$ 2,0 bi",
+              "R$ 2,6 bi",
+              "R$ -536,4 mi",
+              "28/03/2019"
+            ],
+            [
+              "2016",
+              "R$ 19,1 bi",
+              "R$ 3,9 bi",
+              "20,3%",
+              "R$ 1,0 bi",
+              "R$ 4,6 bi",
+              "R$ 2,2 bi",
+              "R$ 2,4 bi",
+              "23/03/2017"
+            ]
+          ],
+          "links": [],
+          "titulo": "EBITDA, capex e FCF de cada exercício (DFP)"
+        }
+      ],
+      "titulo": "Geração de caixa (EBITDA, capex e FCF)"
     },
     {
       "chave": "ofertas_e_fundos",
@@ -646,6 +829,481 @@
       "titulo": "Ofertas e fundos"
     },
     {
+      "chave": "capital_e_acionistas",
+      "itens": [
+        {
+          "base": "26/10/2026",
+          "nome": "Compras de insiders em 12 meses",
+          "texto": "R$ 0"
+        },
+        {
+          "base": "26/10/2026",
+          "nome": "Vendas de insiders em 12 meses",
+          "texto": "R$ 0"
+        },
+        {
+          "base": "26/10/2026",
+          "nome": "Recompras da própria empresa em 12 meses",
+          "texto": "R$ 0"
+        },
+        {
+          "base": "27/06/2019",
+          "nome": "Eventos de capital nos últimos 10 anos",
+          "texto": "2"
+        },
+        {
+          "base": "31/03/2026",
+          "nome": "Compras dos fundos em 12 meses",
+          "texto": "R$ 2,3 bi"
+        },
+        {
+          "base": "31/03/2026",
+          "nome": "Vendas dos fundos em 12 meses",
+          "texto": "R$ 2,0 bi"
+        }
+      ],
+      "paragrafos": [
+        "Insiders: compras e vendas de ações declaradas à CVM (VLMO) por controladores, diretores, conselheiros e acionistas com 10% ou mais, somadas por tipo de cargo nos 12 meses até a data da ficha, só com as declarações já entregues; sem nomes. A recompra é a própria empresa comprando (tesouraria), à parte. Eventos de capital (desdobramentos, grupamentos, bonificações e aumentos) vêm do Formulário de Referência (FRE). Compras e vendas dos fundos: o que as carteiras entregues à CVM (CDA) informam no mês, até o último mês completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos.",
+        "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+      ],
+      "tabelas": [
+        {
+          "chave": "insiders_janelas",
+          "colunas": [
+            "Período",
+            "Até",
+            "Compras de insiders",
+            "Vendas de insiders",
+            "Recompras"
+          ],
+          "linhas": [
+            [
+              "últimos 12 meses",
+              "26/10/2026",
+              "R$ 0",
+              "R$ 0",
+              "R$ 0"
+            ],
+            [
+              "12 meses anteriores",
+              "26/10/2025",
+              "R$ 0",
+              "R$ 0",
+              "R$ 0"
+            ]
+          ],
+          "links": [],
+          "titulo": "Insiders: 12 meses contra os 12 anteriores"
+        },
+        {
+          "chave": "eventos_de_capital",
+          "colunas": [
+            "Data",
+            "Evento",
+            "Fator",
+            "Ações novas",
+            "Valor"
+          ],
+          "linhas": [
+            [
+              "27/06/2019",
+              "Aumento",
+              "—",
+              "17.522.568",
+              "R$ 481,9 mi"
+            ],
+            [
+              "12/06/2019",
+              "Aumento",
+              "—",
+              "116.817.126",
+              "R$ 3,2 bi"
+            ]
+          ],
+          "links": [],
+          "titulo": "Eventos de capital dos últimos 10 anos"
+        },
+        {
+          "chave": "fundos_janelas",
+          "colunas": [
+            "Período",
+            "Até",
+            "Compras dos fundos",
+            "Vendas dos fundos"
+          ],
+          "linhas": [
+            [
+              "últimos 12 meses",
+              "31/03/2026",
+              "R$ 2,3 bi",
+              "R$ 2,0 bi"
+            ],
+            [
+              "12 meses anteriores",
+              "31/03/2025",
+              "R$ 2,4 bi",
+              "R$ 2,4 bi"
+            ]
+          ],
+          "links": [],
+          "titulo": "Compras e vendas dos fundos: 12 meses contra os 12 anteriores"
+        }
+      ],
+      "titulo": "Capital e acionistas"
+    },
+    {
+      "chave": "governanca",
+      "itens": [
+        {
+          "base": "31/08/2026",
+          "nome": "Membros do conselho de administração",
+          "texto": "7"
+        },
+        {
+          "base": "31/08/2026",
+          "nome": "Conselheiros independentes",
+          "texto": "2"
+        },
+        {
+          "base": "31/08/2026",
+          "nome": "Conselheiros eleitos por minoritários",
+          "texto": "0"
+        },
+        {
+          "base": "31/08/2026",
+          "nome": "Comitês informados no FRE",
+          "texto": "2"
+        },
+        {
+          "base": "31/08/2026",
+          "nome": "Mulheres no conselho de administração",
+          "texto": "2"
+        },
+        {
+          "base": "31/12/2025",
+          "nome": "Remuneração da administração no último exercício",
+          "texto": "R$ 78,4 mi"
+        }
+      ],
+      "paragrafos": [
+        "Do Formulário de Referência (FRE) entregue à CVM, na versão mais nova já entregue na data da ficha; só contagens e somas, sem nomes. O conselho conta quem está só nele e quem é também diretor; independente e eleito por minoritários seguem o cargo que a empresa informa. A remuneração é a do último exercício encerrado, como a empresa a informa por órgão (o total e a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. Diversidade só existe no FRE de 2023 em diante.",
+        "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+      ],
+      "tabelas": [
+        {
+          "chave": "governanca_por_ano",
+          "colunas": [
+            "FRE",
+            "Entregue em",
+            "Conselho",
+            "Independentes",
+            "Eleitos por minoritários",
+            "Comitês",
+            "Mulheres no conselho"
+          ],
+          "linhas": [
+            [
+              "2026",
+              "31/08/2026",
+              "7",
+              "2",
+              "0",
+              "2",
+              "2"
+            ],
+            [
+              "2025",
+              "06/05/2026",
+              "7",
+              "2",
+              "0",
+              "2",
+              "2"
+            ],
+            [
+              "2024",
+              "20/05/2025",
+              "7",
+              "2",
+              "0",
+              "1",
+              "1"
+            ],
+            [
+              "2023",
+              "17/05/2024",
+              "7",
+              "2",
+              "0",
+              "1",
+              "1"
+            ],
+            [
+              "2022",
+              "25/05/2023",
+              "7",
+              "1",
+              "0",
+              "1",
+              "—"
+            ]
+          ],
+          "links": [],
+          "titulo": "Conselho, comitês e diversidade em cada FRE"
+        },
+        {
+          "chave": "comites",
+          "colunas": [
+            "Comitê",
+            "Membros"
+          ],
+          "linhas": [
+            [
+              "Comitê de Auditoria",
+              "3"
+            ],
+            [
+              "Outros Comitês",
+              "19"
+            ]
+          ],
+          "links": [],
+          "titulo": "Comitês no FRE mais recente"
+        },
+        {
+          "chave": "remuneracao_por_exercicio",
+          "colunas": [
+            "Exercício",
+            "Total pago"
+          ],
+          "linhas": [
+            [
+              "2025",
+              "R$ 78,4 mi"
+            ],
+            [
+              "2024",
+              "R$ 72,9 mi"
+            ],
+            [
+              "2023",
+              "R$ 83,8 mi"
+            ],
+            [
+              "2022",
+              "R$ 83,0 mi"
+            ],
+            [
+              "2021",
+              "R$ 57,5 mi"
+            ]
+          ],
+          "links": [],
+          "titulo": "Remuneração da administração por exercício"
+        },
+        {
+          "chave": "remuneracao_por_orgao",
+          "colunas": [
+            "Órgão",
+            "Membros remunerados",
+            "Total",
+            "Maior individual",
+            "Média",
+            "Menor individual"
+          ],
+          "linhas": [
+            [
+              "Conselho de Administração",
+              "2,0",
+              "R$ 26,1 mi",
+              "R$ 447,6 mil",
+              "R$ 447,6 mil",
+              "R$ 447,6 mil"
+            ],
+            [
+              "Diretoria Estatutária",
+              "5,8",
+              "R$ 26,1 mi",
+              "R$ 9,4 mi",
+              "R$ 4,1 mi",
+              "R$ 297,2 mil"
+            ],
+            [
+              "Conselho Fiscal",
+              "2,0",
+              "R$ 26,1 mi",
+              "R$ 213,4 mil",
+              "R$ 188,7 mil",
+              "R$ 163,9 mil"
+            ]
+          ],
+          "links": [],
+          "titulo": "Remuneração no último exercício, por órgão"
+        }
+      ],
+      "titulo": "Governança"
+    },
+    {
+      "chave": "credito",
+      "itens": [
+        {
+          "base": "26/10/2026",
+          "nome": "Rebaixamentos de rating em 12 meses",
+          "texto": "0"
+        },
+        {
+          "base": "26/10/2026",
+          "nome": "Elevações de rating em 12 meses",
+          "texto": "0"
+        },
+        {
+          "base": "26/10/2026",
+          "nome": "Documentos de assembleias de debenturistas em 12 meses",
+          "texto": "0"
+        }
+      ],
+      "paragrafos": [
+        "Ratings: os relatórios das agências e os comunicados da companhia entregues à CVM, lidos pelo TickerLab (documento que não deu para ler fica de fora); o mesmo rating em dois documentos conta uma vez, na data do primeiro. Assembleias de debenturistas: editais, atas e propostas entregues à CVM, na versão mais nova; o tema sai das palavras do assunto, que a empresa escreve, e pode deixar escapar ou incluir algum. Assembleia não quer dizer problema: muitas só aprovam mudanças de rotina.",
+        "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+      ],
+      "tabelas": [
+        {
+          "chave": "ratings",
+          "colunas": [
+            "Agência",
+            "Escala",
+            "Nota",
+            "Perspectiva",
+            "Ação",
+            "Publicado em"
+          ],
+          "linhas": [
+            [
+              "Fitch",
+              "Global",
+              "BBB",
+              "—",
+              "Atribuição",
+              "01/10/2025"
+            ],
+            [
+              "Moody's",
+              "Global",
+              "Baa2",
+              "Estável",
+              "Atribuição",
+              "25/07/2025"
+            ]
+          ],
+          "links": [
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1428322&numSequencia=953034&numVersao=1",
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1404124&numSequencia=928836&numVersao=1"
+          ],
+          "titulo": "Último rating de cada agência"
+        },
+        {
+          "chave": "ratings_janelas",
+          "colunas": [
+            "Período",
+            "Até",
+            "Ações das agências",
+            "Rebaixamentos",
+            "Elevações"
+          ],
+          "linhas": [
+            [
+              "últimos 12 meses",
+              "26/10/2026",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "12 meses anteriores",
+              "26/10/2025",
+              "2",
+              "0",
+              "0"
+            ]
+          ],
+          "links": [],
+          "titulo": "Ações de rating: 12 meses contra os 12 anteriores"
+        },
+        {
+          "chave": "assembleias_janelas",
+          "colunas": [
+            "Período",
+            "Até",
+            "Documentos"
+          ],
+          "linhas": [
+            [
+              "últimos 12 meses",
+              "26/10/2026",
+              "0"
+            ],
+            [
+              "12 meses anteriores",
+              "26/10/2025",
+              "0"
+            ]
+          ],
+          "links": [],
+          "titulo": "Assembleias de debenturistas: 12 meses contra os 12 anteriores"
+        },
+        {
+          "chave": "assembleias_recentes",
+          "colunas": [
+            "Data",
+            "Documento",
+            "Assunto, como a empresa escreveu"
+          ],
+          "linhas": [
+            [
+              "08/01/2014",
+              "Ata",
+              "Alteração da Cláusula \"4.10. - Repactuação e Resgate\" do \"Instrumento Particular de Escritura da 3ª Emissão Pública de Debêntures Simples, da Espécie Quirografária, da CPFL Energia S.A.\""
+            ],
+            [
+              "26/11/2013",
+              "Edital de Convocação",
+              "Alteração da Cláusula \"4.10. - Repactuação e Resgate\" do \"Instrumento Particular de Escritura da 3ª Emissão Pública de Debêntures Simples, da Espécie Quirografária, da CPFL Energia S.A.\""
+            ],
+            [
+              "01/02/2013",
+              "Ata",
+              "Alteração da Cláusula 4.13.1., alínea \"(l)\", do \"Instrumento Particular de Escritura da 3ª Emissão Pública de Debêntures Simples"
+            ],
+            [
+              "30/11/2012",
+              "Edital de Convocação",
+              "Alteração da Cláusula 4.13.1., alínea \"(l)\", do \"Instrumento Particular de Escritura da 3ª Emissão Pública de Debêntures Simples\""
+            ],
+            [
+              "30/11/2012",
+              "Proposta da Administração",
+              "Alteração da Cláusula 4.13.1., alínea \"(l)\", do \"Instrumento Particular de Escritura da 3ª Emissão Pública de Debêntures Simples\""
+            ],
+            [
+              "10/02/2003",
+              "Edital de Convocação",
+              "Proposta relativa à emissão de debêntures"
+            ]
+          ],
+          "links": [
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=406757&numSequencia=0&numVersao=0",
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=402113&numSequencia=0&numVersao=0",
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=364786&numSequencia=0&numVersao=0",
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=358870&numSequencia=0&numVersao=0",
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=358935&numSequencia=0&numVersao=0",
+            "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1277&numSequencia=0&numVersao=0"
+          ],
+          "titulo": "Últimos documentos de assembleias de debenturistas"
+        }
+      ],
+      "titulo": "Crédito"
+    },
+    {
       "chave": "setor_regulado",
       "itens": [
         {
@@ -808,7 +1466,7 @@
         }
       ],
       "paragrafos": [
-        "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. O assunto é escrito pela empresa.",
+        "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. O assunto é escrito pela empresa. M&A das assessorias: negócios de compra, venda e investimento que as assessorias de M&A independentes publicam nos sites delas, nos quais a empresa aparece com o papel dito no título (comprou, vendeu ou foi comprada), contados uma vez por negócio mesmo que as duas pontas o publiquem. A data é a da primeira prova de que o negócio já era público (a primeira cópia da página no arquivo da web ou a nossa primeira coleta), não a do fechamento. Só entram empresas ligadas por nome exato ao CNPJ; nome em dúvida fica de fora. Cobre as assessorias que a base lê (hoje uma), sobretudo o middle market: não é a lista de todas as operações do mercado, e a ausência de negócios aqui não quer dizer que a empresa não fez nenhum. Sem valores e sem a outra parte do negócio.",
         "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
       ],
       "tabelas": [
@@ -998,6 +1656,270 @@
         }
       ],
       "titulo": "Negócios e eventos"
+    },
+    {
+      "chave": "insolvencia",
+      "itens": [],
+      "paragrafos": [
+        "Sem registro de recuperação, falência ou liquidação nos documentos da CVM (IPE), consultados em 26/10/2026.",
+        "Sem registro de situação especial no cadastro do CNPJ da Receita Federal, consultado em 26/10/2026.",
+        "O que não sabemos: não lemos processos nos tribunais, diários oficiais, notícias nem a dívida ativa da União; a falta de registro nas fontes lidas não prova que não exista.",
+        "Só fatos que fontes oficiais registram, copiados com a data do fato, a data em que ficaram públicos, o veículo e o link; a ficha descreve o que as fontes dizem. CVM: documentos do IPE que anunciam recuperação, pedido de falência, falência ou liquidação da própria companhia, contados uma vez por entrega, na data da primeira versão; o documento que fala de outra empresa fica de fora. Receita Federal: a situação especial do cadastro do CNPJ, publicada por mês; filiais e meses repetidos contam um fato só. Cada fato vale a partir do dia em que ficou público. Quando a empresa contesta um fato, a contestação aparece ao lado dele. Sócios e administradores não aparecem.",
+        "Fonte: CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita).",
+        "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+      ],
+      "tabelas": [],
+      "titulo": "Registros de insolvência e situação especial"
+    },
+    {
+      "chave": "rede",
+      "itens": [
+        {
+          "base": "",
+          "nome": "Ligações na rede",
+          "texto": "20"
+        },
+        {
+          "base": "",
+          "nome": "Controlada",
+          "texto": "15"
+        },
+        {
+          "base": "",
+          "nome": "Coligada",
+          "texto": "3"
+        },
+        {
+          "base": "",
+          "nome": "Participação da companhia",
+          "texto": "1"
+        },
+        {
+          "base": "",
+          "nome": "Auditor",
+          "texto": "1"
+        },
+        {
+          "base": "",
+          "nome": "Valores mobiliários nas carteiras dos fundos",
+          "texto": "1"
+        }
+      ],
+      "paragrafos": [
+        "Ligações da rede de entidades do TickerLab, montada com o Formulário de Referência (FRE), o Formulário Cadastral e as carteiras dos fundos entregues à CVM e com o IF.data do Banco Central. Uma ligação do FRE só aparece quando o FRE mais recente da companhia que a informa é dos últimos 2 anos e ainda a lista. A data é a do primeiro documento que mostrou a ligação. Pessoas (sócios, administradores) e sinais negativos (sanções, dívidas) não aparecem.",
+        "Fonte: CC0 (GLEIF, Global LEI Index).",
+        "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
+      ],
+      "tabelas": [
+        {
+          "chave": "ligacoes_da_rede",
+          "colunas": [
+            "Relação",
+            "Entidade",
+            "CNPJ",
+            "Participação",
+            "Desde",
+            "Documento"
+          ],
+          "linhas": [
+            [
+              "Controlada",
+              "ALESTA SOCIEDADE DE CREDITO DIRETO S.A.",
+              "38.316.293/0001-93",
+              "100%",
+              "01/01/2021",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "COMPANHIA JAGUARI GERAÇÃO DE ENERGIA (\"CPFL JAGUARI GERAÇÃO\")",
+              "07.137.154/0001-79",
+              "100%",
+              "01/01/2011",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+              "33.050.196/0001-88",
+              "100%",
+              "01/01/2010",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "CPFL ATENDE CENTRO DE CONTATOS E ATENDIMENTOS LTDA. (\"CPFL ATENDE\")",
+              "09.606.475/0001-09",
+              "100%",
+              "01/01/2010",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "CPFL COMERCIALIZAÇÃO BRASIL S.A. (\"CPFL BRASIL\")",
+              "04.973.790/0001-42",
+              "100%",
+              "01/01/2010",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "CPFL Infra",
+              "08.971.542/0001-13",
+              "100%",
+              "01/01/2010",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "CPFL PLANALTO LTDA. (\"CPFL PLANALTO\")",
+              "02.150.562/0001-47",
+              "100%",
+              "01/01/2010",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "CPFL SERVIÇOS, EQUIPAMENTOS, INDÚSTRIA E COMÉRCIO S.A. (\"CPFL SERVIÇOS\")",
+              "58.635.517/0001-37",
+              "100%",
+              "01/01/2011",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "CPFL Supri",
+              "34.049.289/0001-55",
+              "100%",
+              "01/01/2020",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "Clion Assessoria e Comercialização de Energia Elétrica Ltda. (\"Clion\")",
+              "04.785.914/0001-66",
+              "100%",
+              "01/01/2022",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "Companhia Jaguari de Energia (\"CPFL Santa Cruz\")",
+              "53.859.112/0001-69",
+              "100%",
+              "01/01/2011",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "Nect Serviços Administrativos de Recursos Humanos Ltda. (\"CPFL Pessoas\")",
+              "34.050.376/0001-22",
+              "100%",
+              "01/01/2020",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "TI NECT SERVIÇOS DE INFORMÁTICA (\"TI NECT\")",
+              "21.114.494/0001-05",
+              "100%",
+              "01/01/2016",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "RGE SUL DISTRIBUIDORA DE ENERGIA S.A.",
+              "02.016.440/0001-62",
+              "89,01%",
+              "01/01/2019",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Controlada",
+              "CPFL ENERGIAS RENOVÁVEIS S.A.",
+              "08.439.659/0001-50",
+              "51%",
+              "31/12/2024",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Coligada",
+              "CIA PIRATININGA DE FORÇA E LUZ",
+              "04.172.213/0001-51",
+              "100%",
+              "01/01/2021",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Coligada",
+              "CPFL Finanças",
+              "34.047.930/0001-12",
+              "100%",
+              "01/01/2022",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Coligada",
+              "CPFL Telecom S.A. (\"CPFL Telecom\")",
+              "12.116.119/0001-03",
+              "100%",
+              "01/01/2021",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Participação da companhia",
+              "CPFL TRANSMISSÃO S.A.",
+              "92.715.812/0001-31",
+              "30%",
+              "31/12/2026",
+              "Formulário de Referência (CVM)"
+            ],
+            [
+              "Auditor",
+              "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA",
+              "—",
+              "—",
+              "01/01/2022",
+              "Formulário Cadastral (CVM)"
+            ]
+          ],
+          "links": [],
+          "titulo": "Ligações da companhia na rede"
+        },
+        {
+          "chave": "identificadores_da_empresa",
+          "colunas": [
+            "Identificador",
+            "Valor",
+            "Desde"
+          ],
+          "linhas": [
+            [
+              "CNPJ",
+              "02.429.144/0001-93",
+              "—"
+            ],
+            [
+              "Ticker",
+              "CPFE3",
+              "24/01/2018"
+            ],
+            [
+              "Código do emissor",
+              "CPFE",
+              "24/01/2018"
+            ],
+            [
+              "LEI (GLEIF)",
+              "529900GBWSBDXN8GGM28",
+              "—"
+            ]
+          ],
+          "links": [],
+          "titulo": "Identificadores públicos da companhia"
+        }
+      ],
+      "titulo": "Ligações na rede"
     }
   ],
   "setor": "Energia elétrica",

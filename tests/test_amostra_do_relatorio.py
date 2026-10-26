@@ -75,14 +75,21 @@ def test_json_do_site_tem_destaques_secoes_limites_e_a_data() -> None:
     site = amostra.para_o_site()
     assert site["empresa"] == "CPFL Energia"
     assert site["cnpj"] == "02.429.144/0001-93"
-    assert site["dados_de"] == "17/10/2026"
+    assert site["dados_de"] == "26/10/2026"
     assert site["pdf"] == "/relatorio/exemplo-CPFE3.pdf"
     assert len(site["destaques"]) == 6
     assert [s["chave"] for s in site["secoes"]] == [
         "auditor_e_controladas",
+        "qualidade_do_lucro",
+        "geracao_de_caixa",
         "ofertas_e_fundos",
+        "capital_e_acionistas",
+        "governanca",
+        "credito",
         "setor_regulado",
         "negocios",
+        "insolvencia",
+        "rede",
     ]
     assert "nada aqui é recomendação de investimento" in site["aviso"].lower()
     assert site["limites"][0].startswith("Nada aqui é recomendação")
