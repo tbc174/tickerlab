@@ -108,9 +108,16 @@ def test_as_grandes_sao_pesadas_e_o_resto_nao():
     assert {f.grupo for f in lote.fontes()} <= {"semanal", "mensal"}
 
 
+# fontes do lote que já viraram tabela na base (informe mensal de CRI/CRA/OTS, B-16)
+JA_NA_BASE = {"cvm-securitizadoras-ots"}
+
+
 def test_toda_fonte_nova_tem_licenca_conhecida_e_destino_planejado():
     for f in lote.fontes():
         assert licenca_da_fonte(f.id) != SEM_LICENCA_CONHECIDA
+        if f.id in JA_NA_BASE:
+            assert destinos.DESTINOS[f.id].tipo == destinos.TABELA
+            continue
         assert destinos.DESTINOS[f.id].tipo == destinos.PLANEJADA
         assert destinos.DESTINOS[f.id].porque
 

@@ -234,3 +234,150 @@ def test_gestor_pessoa_fisica_vira_lacuna_sem_nome(tmp_path):
         mapa = mapa_de_operacoes(porta, FUNDO)
     assert "gestor" not in set(mapa.vinculos["papel"])
     assert any("pessoa física" in lacuna for lacuna in mapa.lacunas)
+
+
+# --- cedente e devedor de CRI, CRA e OTS pelo informe mensal da CVM (B-16) ---------------------
+
+CEDENTE_CRI = "77.777.777/0001-91"
+DEVEDOR_CRI = "88.888.888/0001-91"
+CERTIFICADO_CRI = "BRCERTCRI001"
+CERTIFICADO_OTS = "BRCERTOTS001"
+
+
+def _cedente_devedor() -> pd.DataFrame:
+    linhas = [
+        # (competência, disponível em, certificado, produto, papel, CNPJ)
+        ("2026-01-01", "2026-02-27", CERTIFICADO_CRI, "CRI", "cedente", CEDENTE_CRI),
+        ("2026-01-01", "2026-02-27", CERTIFICADO_CRI, "CRI", "devedor", DEVEDOR_CRI),
+        ("2026-02-01", "2026-03-26", CERTIFICADO_CRI, "CRI", "cedente", CEDENTE_CRI),
+        ("2026-02-01", "2026-03-26", CERTIFICADO_CRI, "CRI", "devedor", DEVEDOR_CRI),
+        ("2026-02-01", "2026-03-26", CERTIFICADO_OTS, "OTS", "cedente", CEDENTE_CRI),
+    ]
+    return pd.DataFrame(
+        {
+            "competencia": pd.to_datetime([c[0] for c in linhas]),
+            "cnpj_securitizadora": SECURITIZADORA,
+            "codigo_certificado": [c[2] for c in linhas],
+            "produto": [c[3] for c in linhas],
+            "versao": 1,
+            "data_entrega": pd.to_datetime([c[1] for c in linhas]),
+            "disponivel_em": pd.to_datetime([c[1] for c in linhas]),
+            "papel": [c[4] for c in linhas],
+            "cnpj": [c[5] for c in linhas],
+            "percentual": 1.0,
+        }
+    )
+
+
+def _certificados() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "competencia": pd.to_datetime(["2026-01-01", "2026-02-01"]),
+            "cnpj_securitizadora": SECURITIZADORA,
+            "codigo_certificado": [CERTIFICADO_CRI, CERTIFICADO_CRI],
+            "produto": "CRI",
+            "disponivel_em": pd.to_datetime(["2026-02-27", "2026-03-26"]),
+            "nome_emissao": ["Série única da 7ª Emissão"] * 2,
+        }
+    )
+
+
+def _gravar_informes(pasta, ate=None) -> None:
+    cedentes, certificados = _cedente_devedor(), _certificados()
+    if ate is not None:
+        cedentes = cedentes[cedentes["disponivel_em"] <= pd.Timestamp(ate)]
+        certificados = certificados[certificados["disponivel_em"] <= pd.Timestamp(ate)]
+    _gravar(pasta, "securitizacao_cedente_devedor/2026.parquet", cedentes)
+    _gravar(pasta, "securitizacao_certificados/2026.parquet", certificados)
+
+
+@pytest.fixture
+def base_com_informes(tmp_path):
+    _gravar_informes(tmp_path)
+    with Porta(tmp_path) as porta:
+        yield porta
+
+
+def test_a_securitizadora_mostra_cedente_e_devedor_dos_certificados_dela(
+    base_com_informes,
+):
+    vinculos = mapa_de_operacoes(base_com_informes, SECURITIZADORA).vinculos
+    assert _papeis_do(vinculos, "securitizacao_cedente_devedor") == {
+        ("CRI", "cedente", CEDENTE_CRI),
+        ("CRI", "devedor", DEVEDOR_CRI),
+        ("OTS", "cedente", CEDENTE_CRI),
+    }
+    devedor = vinculos[vinculos["papel"] == "devedor"].iloc[0]
+    assert devedor["operacao"] == f"certificado:{CERTIFICADO_CRI}"
+    assert devedor["cnpj_operacao"] == SECURITIZADORA
+    assert devedor["nome_operacao"] == "Série única da 7ª Emissão"
+    assert pd.isna(devedor["nome_papel"])  # a CVM só dá o CNPJ
+    assert (devedor["referencia_desde"], devedor["referencia_ate"]) == (
+        pd.Timestamp("2026-01-01"),
+        pd.Timestamp("2026-02-01"),
+    )
+    assert devedor["publico_em"] == pd.Timestamp("2026-02-27")  # a entrega do 1º mês
+    assert devedor["campo"] == "CNPJ"
+
+
+def _papeis_do(vinculos, fonte: str) -> set[tuple[str, str, str]]:
+    so_da_fonte = vinculos[vinculos["fonte"] == fonte]
+    return set(
+        zip(
+            so_da_fonte["tipo"],
+            so_da_fonte["papel"],
+            so_da_fonte["cnpj_papel"],
+            strict=True,
+        )
+    )
+
+
+def test_o_cedente_acha_os_certificados_onde_ele_cede(base_com_informes):
+    vinculos = mapa_de_operacoes(base_com_informes, CEDENTE_CRI).vinculos
+    assert set(
+        zip(vinculos["tipo"], vinculos["papel"], vinculos["operacao"], strict=True)
+    ) == {
+        ("CRI", "cedente", f"certificado:{CERTIFICADO_CRI}"),
+        ("OTS", "cedente", f"certificado:{CERTIFICADO_OTS}"),
+    }
+    assert set(vinculos["cnpj_operacao"]) == {SECURITIZADORA}
+
+
+def test_o_devedor_acha_o_certificado_dele(base_com_informes):
+    vinculos = mapa_de_operacoes(base_com_informes, DEVEDOR_CRI).vinculos
+    assert _papeis_do(vinculos, "securitizacao_cedente_devedor") == {
+        ("CRI", "devedor", DEVEDOR_CRI)
+    }
+
+
+def test_como_era_em_so_mostra_o_informe_ja_entregue(base_com_informes):
+    mapa = mapa_de_operacoes(
+        base_com_informes, SECURITIZADORA, como_era_em="2026-03-01"
+    )
+    vinculos = mapa.vinculos[mapa.vinculos["papel"].isin(["cedente", "devedor"])]
+    assert set(vinculos["referencia_ate"]) == {pd.Timestamp("2026-01-01")}
+    assert not (vinculos["operacao"] == f"certificado:{CERTIFICADO_OTS}").any()
+
+
+@pytest.mark.parametrize("dia", ["2026-01-31", "2026-03-01", "2026-12-31"])
+def test_informe_de_cri_sem_olhar_o_futuro(base_com_informes, tmp_path, dia):
+    """O mapa em D com a base inteira é igual ao montado só com o que foi entregue até D."""
+    pasta = tmp_path / f"corte-{dia}"
+    _gravar_informes(pasta, ate=dia)
+    for cnpj in (SECURITIZADORA, CEDENTE_CRI, DEVEDOR_CRI):
+        inteiro = mapa_de_operacoes(base_com_informes, cnpj, como_era_em=dia).vinculos
+        with Porta(pasta) as so_ate_d:
+            cortado = mapa_de_operacoes(so_ate_d, cnpj, como_era_em=dia).vinculos
+        pd.testing.assert_frame_equal(inteiro, cortado)
+
+
+def test_com_informe_na_base_a_lacuna_diz_o_que_a_cvm_nao_da(base_com_informes):
+    lacunas = " ".join(mapa_de_operacoes(base_com_informes, SECURITIZADORA).lacunas)
+    assert "pessoa jurídica" in lacunas and "não observável" in lacunas
+    assert "ainda não está na porta" not in lacunas
+    assert "ANBIMA" in lacunas
+
+
+def test_base_sem_o_informe_de_securitizacao_diz_que_falta(base):
+    lacunas = mapa_de_operacoes(base, SECURITIZADORA).lacunas
+    assert any("informe mensal dos certificados" in lacuna for lacuna in lacunas)

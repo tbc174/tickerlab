@@ -4203,6 +4203,112 @@ TABELAS: dict[str, Tabela] = {
     ),
     "pareceres_dfp": _pareceres("DFP", "relatório do auditor independente", "2010"),
     "pareceres_itr": _pareceres("ITR", "relatório da revisão especial", "2011"),
+    "securitizacao_certificados": Tabela(
+        descricao=(
+            "Um certificado de recebíveis (CRI, CRA ou outro título de securitização, OTS) por mês, lido "
+            "do informe mensal da CVM (quadro `geral`): a securitizadora, o código do certificado, a "
+            "emissão, o tipo de lastro e a data em que o informe foi entregue. Só o que o informe "
+            "traz de identificação: garantias, contingências e outros textos livres ficam de fora. "
+            "A chave é (`competencia`, `cnpj_securitizadora`, `codigo_certificado`)"
+        ),
+        fonte="CVM: dados abertos do informe mensal de CRI, CRA e OTS (`base/securitizacao.py`)",
+        familia_da_fonte="cvm",
+        frequencia="Semanal: a carga relê os arquivos anuais (a CVM reescreve os meses com reapresentações)",
+        atraso=(
+            "A entrega do informe à CVM (`Data_Entrega`); sem ela, a competência mais 120 dias, e nunca "
+            "antes de o mês informado acabar. A mediana da entrega é de 58 dias no CRI e no CRA e de "
+            "29 no OTS, mas há entrega com anos de atraso: o prazo fixo olharia o futuro"
+        ),
+        onde=_onde_da_historica("securitizacao_certificados"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "competencia": ("Primeiro dia do mês a que o informe se refere", DATA),
+            "cnpj_securitizadora": (
+                "CNPJ da securitizadora (emissora), no formato 00.000.000/0000-00",
+                TEXTO,
+            ),
+            "codigo_certificado": (
+                "Código de identificação do certificado na CVM",
+                TEXTO,
+            ),
+            "produto": (
+                "`CRI`, `CRA` ou `OTS` (outros títulos de securitização)",
+                TEXTO,
+            ),
+            "versao": (
+                "Versão do informe; fica a maior de cada certificado e mês",
+                NUMERO,
+            ),
+            "data_entrega": ("Dia em que o informe foi entregue à CVM", DATA),
+            "disponivel_em": (
+                "Dia em que o informe ficou público: a entrega, ou o piso quando ela falta",
+                DATA,
+            ),
+            "nome_securitizadora": (
+                "Nome da securitizadora como o informe traz",
+                TEXTO,
+            ),
+            "numero_emissao": ("Número da emissão", NUMERO),
+            "nome_emissao": ("Nome da emissão (séries) como o informe traz", TEXTO),
+            "data_emissao": ("Dia da emissão", DATA),
+            "quantidade_series": ("Quantidade de séries da emissão", NUMERO),
+            "tipo_lastro": ("Tipo de lastro como a CVM classifica", TEXTO),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "securitizacao_cedente_devedor": Tabela(
+        descricao=(
+            "Cedente e devedor de cada certificado (CRI, CRA e OTS) por mês, do quadro "
+            "`cedente_devedor` do informe mensal da CVM. **Cedente e devedor só entram quando são "
+            "pessoa jurídica com CNPJ válido**: a linha com CPF, com documento que não fecha ou em "
+            "branco fica de fora inteira (nunca nome nem CPF de pessoa física). A CVM não dá o nome: "
+            "só o CNPJ; o nome vem do cadastro. Onde o informe não preenche, cedente e devedor "
+            "continuam não observáveis. Sem juízo de qualidade sobre o cedente"
+        ),
+        fonte="CVM: dados abertos do informe mensal de CRI, CRA e OTS (`base/securitizacao.py`)",
+        familia_da_fonte="cvm",
+        frequencia="Semanal: a carga relê os arquivos anuais (a CVM reescreve os meses com reapresentações)",
+        atraso=(
+            "A entrega do informe à CVM (`Data_Entrega`); sem ela, a competência mais 120 dias, e nunca "
+            "antes de o mês informado acabar"
+        ),
+        onde=_onde_da_historica("securitizacao_cedente_devedor"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "competencia": ("Primeiro dia do mês a que o informe se refere", DATA),
+            "cnpj_securitizadora": (
+                "CNPJ da securitizadora (emissora), no formato 00.000.000/0000-00",
+                TEXTO,
+            ),
+            "codigo_certificado": (
+                "Código de identificação do certificado na CVM",
+                TEXTO,
+            ),
+            "produto": (
+                "`CRI`, `CRA` ou `OTS` (outros títulos de securitização)",
+                TEXTO,
+            ),
+            "versao": (
+                "Versão do informe; fica a maior de cada certificado e mês",
+                NUMERO,
+            ),
+            "data_entrega": ("Dia em que o informe foi entregue à CVM", DATA),
+            "disponivel_em": (
+                "Dia em que o informe ficou público: a entrega, ou o piso quando ela falta",
+                DATA,
+            ),
+            "papel": ("`cedente` ou `devedor`", TEXTO),
+            "cnpj": (
+                "CNPJ do cedente ou do devedor, no formato 00.000.000/0000-00",
+                TEXTO,
+            ),
+            "percentual": (
+                "Percentual informado pela CVM (nos informes lidos, de 0 a 1; a CVM não define a base)",
+                NUMERO_DECIMAL,
+            ),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
     "notas_dfp": Tabela(
         descricao=(
             "Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por "
@@ -6007,6 +6113,8 @@ _CONTRATO = {
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
     "pareceres_dfp": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "pareceres_itr": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2011-01-01"),
+    "securitizacao_certificados": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_securitizadora", "codigo_certificado"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2019-01-01"),
+    "securitizacao_cedente_devedor": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_securitizadora", "codigo_certificado", "papel", "cnpj", "versao"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2019-01-01"),
     "notas_dfp": _contrato(modulo=_ME, pessoa=True, chaves=("cnpj", "referencia", "versao", "pagina"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "fca_geral": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),

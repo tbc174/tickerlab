@@ -2703,6 +2703,79 @@ Parecer do auditor de cada ITR desde 2011, lido do CSV de pareceres da CVM (rela
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `securitizacao_certificados`
+
+Um certificado de recebíveis (CRI, CRA ou outro título de securitização, OTS) por mês, lido do informe mensal da CVM (quadro `geral`): a securitizadora, o código do certificado, a emissão, o tipo de lastro e a data em que o informe foi entregue. Só o que o informe traz de identificação: garantias, contingências e outros textos livres ficam de fora. A chave é (`competencia`, `cnpj_securitizadora`, `codigo_certificado`)
+
+- **Fonte:** CVM: dados abertos do informe mensal de CRI, CRA e OTS (`base/securitizacao.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Semanal: a carga relê os arquivos anuais (a CVM reescreve os meses com reapresentações)
+- **Atraso de divulgação:** A entrega do informe à CVM (`Data_Entrega`); sem ela, a competência mais 120 dias, e nunca antes de o mês informado acabar. A mediana da entrega é de 58 dias no CRI e no CRA e de 29 no OTS, mas há entrega com anos de atraso: o prazo fixo olharia o futuro
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `cnpj_securitizadora`, `codigo_certificado`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2019-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/securitizacao_certificados/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Primeiro dia do mês a que o informe se refere | data (dia) |
+| `cnpj_securitizadora` | CNPJ da securitizadora (emissora), no formato 00.000.000/0000-00 | texto |
+| `codigo_certificado` | Código de identificação do certificado na CVM | texto |
+| `produto` | `CRI`, `CRA` ou `OTS` (outros títulos de securitização) | texto |
+| `versao` | Versão do informe; fica a maior de cada certificado e mês | número inteiro |
+| `data_entrega` | Dia em que o informe foi entregue à CVM | data (dia) |
+| `disponivel_em` | Dia em que o informe ficou público: a entrega, ou o piso quando ela falta | data (dia) |
+| `nome_securitizadora` | Nome da securitizadora como o informe traz | texto |
+| `numero_emissao` | Número da emissão | número inteiro |
+| `nome_emissao` | Nome da emissão (séries) como o informe traz | texto |
+| `data_emissao` | Dia da emissão | data (dia) |
+| `quantidade_series` | Quantidade de séries da emissão | número inteiro |
+| `tipo_lastro` | Tipo de lastro como a CVM classifica | texto |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `securitizacao_cedente_devedor`
+
+Cedente e devedor de cada certificado (CRI, CRA e OTS) por mês, do quadro `cedente_devedor` do informe mensal da CVM. **Cedente e devedor só entram quando são pessoa jurídica com CNPJ válido**: a linha com CPF, com documento que não fecha ou em branco fica de fora inteira (nunca nome nem CPF de pessoa física). A CVM não dá o nome: só o CNPJ; o nome vem do cadastro. Onde o informe não preenche, cedente e devedor continuam não observáveis. Sem juízo de qualidade sobre o cedente
+
+- **Fonte:** CVM: dados abertos do informe mensal de CRI, CRA e OTS (`base/securitizacao.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Semanal: a carga relê os arquivos anuais (a CVM reescreve os meses com reapresentações)
+- **Atraso de divulgação:** A entrega do informe à CVM (`Data_Entrega`); sem ela, a competência mais 120 dias, e nunca antes de o mês informado acabar
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `cnpj_securitizadora`, `codigo_certificado`, `papel`, `cnpj`, `versao`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2019-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/securitizacao_cedente_devedor/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Primeiro dia do mês a que o informe se refere | data (dia) |
+| `cnpj_securitizadora` | CNPJ da securitizadora (emissora), no formato 00.000.000/0000-00 | texto |
+| `codigo_certificado` | Código de identificação do certificado na CVM | texto |
+| `produto` | `CRI`, `CRA` ou `OTS` (outros títulos de securitização) | texto |
+| `versao` | Versão do informe; fica a maior de cada certificado e mês | número inteiro |
+| `data_entrega` | Dia em que o informe foi entregue à CVM | data (dia) |
+| `disponivel_em` | Dia em que o informe ficou público: a entrega, ou o piso quando ela falta | data (dia) |
+| `papel` | `cedente` ou `devedor` | texto |
+| `cnpj` | CNPJ do cedente ou do devedor, no formato 00.000.000/0000-00 | texto |
+| `percentual` | Percentual informado pela CVM (nos informes lidos, de 0 a 1; a CVM não define a base) | número com decimais, na unidade da fonte |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `notas_dfp`
 
 Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila). Serve para ler a dívida, as contingências e as partes relacionadas por documento (`src/divida/nota_dfp.py`). Página só de imagem não tem linha (nada é inventado); cada versão tem as próprias linhas e vale a partir da própria entrega. O texto traz nomes de administradores e do auditor: a tabela e o original ficam em área restrita
