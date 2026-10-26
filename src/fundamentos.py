@@ -132,13 +132,17 @@ FORMULAS = {
 # As contas que entram em cada indicador, e de onde: os 12 meses, o balanço mais recente, a conferência
 # da quantidade de ações (o último exercício da DFP), o primeiro e o último ano do crescimento ou os
 # exercícios da média; no `fundamentalista`, também o balanço de um ano antes (o saldo médio), todos os
-# exercícios (a diluição) e o último com o de N anos antes (o crescimento do dividendo). É o que
-# `entradas` cita no rastro; mudou uma conta acima, mude aqui (o teste de `tests/test_rastro.py` refaz
-# cada número só com as entradas).
+# exercícios (a diluição) e o último com o de N anos antes (o crescimento do dividendo); nas
+# `notas_classicas`, o último exercício e o anterior. É o que `entradas` cita no rastro; mudou uma
+# conta acima, mude aqui (o teste de `tests/test_rastro.py` refaz cada número só com as entradas).
 DOZE_MESES, BALANCO, CONFERENCIA, CRESCIMENTO, MEDIA_DOS_ANOS, UM_ANO_ANTES = (
     "doze_meses", "balanco", "conferencia", "crescimento", "media_dos_anos", "um_ano_antes",
 )  # fmt: skip
-TODOS_OS_ANOS, COMECO_E_FIM = "todos_os_anos", "comeco_e_fim"
+TODOS_OS_ANOS, COMECO_E_FIM, ANO_ANTERIOR = (
+    "todos_os_anos",
+    "comeco_e_fim",
+    "ano_anterior",
+)
 LUCRO = "lucro"  # o dos controladores; sem a divisão, o consolidado (como em `_lucro`)
 
 
@@ -472,15 +476,28 @@ def _da_dfp(lugares: _Lugares, ano: int, conta: str) -> list[_Linha]:
     return [linha for linha in linhas if linha in lugares.guardadas][:1]
 
 
+def _no_exercicio(lugares: _Lugares, ano: int, conta: str) -> list[_Linha]:
+    """A conta no exercício `ano`; o lucro, o dos controladores se aquele ano o tem (`_lucro`)."""
+    if conta == LUCRO:
+        tem = pd.notna(lugares.tabela.loc[ano].get("lucro_controladores"))
+        conta = "lucro_controladores" if tem else "lucro_liquido"
+    return _da_dfp(lugares, ano, conta)
+
+
 def _na_conferencia(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
-    """O lucro, o lucro por ação e as ações do último exercício (`acoes_em_circulacao`)."""
+    """O lucro, o lucro por ação e as ações do último exercício (`acoes_em_circulacao`); é também o
+    ano que as notas clássicas leem."""
     if lugares.tabela.empty:
         return []
-    ultimo = lugares.tabela.iloc[-1]
-    if conta == LUCRO:
-        tem = pd.notna(ultimo.get("lucro_controladores"))
-        conta = "lucro_controladores" if tem else "lucro_liquido"
-    return _da_dfp(lugares, lugares.tabela.index[-1], conta)
+    return _no_exercicio(lugares, lugares.tabela.index[-1], conta)
+
+
+def _no_ano_anterior(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O exercício antes do último, com que as notas clássicas comparam; sem ele, nenhuma linha."""
+    indice = lugares.tabela.index
+    if indice.empty or (indice.max() - 1) not in indice:
+        return []
+    return _no_exercicio(lugares, indice.max() - 1, conta)
 
 
 def _no_crescimento(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
@@ -543,6 +560,7 @@ _ONDE = {
     UM_ANO_ANTES: _no_ano_antes,
     TODOS_OS_ANOS: _em_todos_os_anos,
     COMECO_E_FIM: _no_comeco_e_no_fim,
+    ANO_ANTERIOR: _no_ano_anterior,
 }
 
 
