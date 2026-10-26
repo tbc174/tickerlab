@@ -1,0 +1,95 @@
+{
+  "tabela": "securitizacao_cedente_devedor",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Primeiro dia do mês a que o informe se refere",
+      "unidade": "data (dia)"
+    },
+    "cnpj_securitizadora": {
+      "descricao": "CNPJ da securitizadora (emissora), no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "codigo_certificado": {
+      "descricao": "Código de identificação do certificado na CVM",
+      "unidade": "texto"
+    },
+    "produto": {
+      "descricao": "`CRI`, `CRA` ou `OTS` (outros títulos de securitização)",
+      "unidade": "texto"
+    },
+    "versao": {
+      "descricao": "Versão do informe; fica a maior de cada certificado e mês",
+      "unidade": "número inteiro"
+    },
+    "data_entrega": {
+      "descricao": "Dia em que o informe foi entregue à CVM",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que o informe ficou público: a entrega, ou o piso quando ela falta",
+      "unidade": "data (dia)"
+    },
+    "papel": {
+      "descricao": "`cedente` ou `devedor`",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do cedente ou do devedor, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "percentual": {
+      "descricao": "Percentual informado pela CVM (nos informes lidos, de 0 a 1; a CVM não define a base)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "ano_do_arquivo": {
+      "descricao": "Ano do arquivo da CVM de onde a linha veio",
+      "unidade": "ano"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "cnpj_securitizadora",
+    "codigo_certificado",
+    "papel",
+    "cnpj",
+    "versao"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "competencia": "referencia",
+    "data_entrega": "publico_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2019-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Semanal: a carga relê os arquivos anuais (a CVM reescreve os meses com reapresentações)",
+  "atraso": "A entrega do informe à CVM (`Data_Entrega`); sem ela, a competência mais 120 dias, e nunca antes de o mês informado acabar"
+}

@@ -18,7 +18,15 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base import auditores, controladas, fca_geral, fre, pareceres, rotulos
+from base import (
+    auditores,
+    controladas,
+    fca_geral,
+    fre,
+    pareceres,
+    rotulos,
+    securitizacao,
+)
 from base.cadastro import cadastro_do_acervo
 from base.parquet import LINHAGEM, gravar_se_mudou
 from base.ponto_no_tempo import divulgacao_publica
@@ -44,8 +52,12 @@ class Tabela:
     e_rotulo: bool = (
         False  # rótulo de modelo: a fonte precisa poder rotular (ADR 0008, Emenda 1)
     )
+    # outras fontes do arquivista que entram na mesma tabela (CRI, CRA e OTS são três fontes); os
+    # arquivos de todas as fontes do mesmo ano vão juntos para o `<ano>.parquet`
+    outras_fontes: tuple[str, ...] = ()
 
 
+FONTES_DE_SECURITIZACAO = ("cvm-cra", "cvm-securitizadoras-ots")
 TABELAS = {
     "eventos": Tabela("cvm-hist-ipe", ler_ipe),  # desde 2003
     "negociacoes": Tabela("cvm-hist-vlmo", ler_vlmo),  # desde 2018
@@ -75,6 +87,17 @@ TABELAS = {
     # modelo 8 (nota i do critério de pronto): setor, categoria e controle como eram em cada FCA
     "fca_geral": Tabela(  # desde 2010
         "cvm-hist-fca", fca_geral.ler_geral_do_fca, data_publica="conhecido_em"
+    ),
+    # série 6, PR 1 (B-16): informe mensal de CRI, CRA e OTS; o leitor vê o produto pelo nome dos CSVs
+    "securitizacao_certificados": Tabela(
+        "cvm-cri",
+        securitizacao.ler_certificados,
+        outras_fontes=FONTES_DE_SECURITIZACAO,
+    ),
+    "securitizacao_cedente_devedor": Tabela(
+        "cvm-cri",
+        securitizacao.ler_cedentes_e_devedores,
+        outras_fontes=FONTES_DE_SECURITIZACAO,
     ),
     # série B13: controladas e coligadas pelo FRE (base/controladas.py), desde 2010
     "controladas": Tabela("cvm-hist-fre", controladas.ler_controladas_do_fre),
@@ -126,43 +149,48 @@ def montar(
             raise ArquivoIlegivel(
                 f"{nome}: sem o cadastro de companhias no acervo para a data pública"
             )
+    # só a tabela que olha todos os anos, ou junta fontes, guarda os anos na memória
+    junta_antes_de_gravar = tabela.com_todos_os_anos is not None or bool(
+        tabela.outras_fontes
+    )
     lidos: list[tuple[int, pd.DataFrame, list[dict[str, str]]]] = []
-    for original in originais_mais_recentes(conexao, tabela.fonte):
-        ano = ano_do_arquivo(original.url)
-        conteudo = acervo.ler_original(original.caminho_do_original)
-        if ano is None or conteudo is None:
-            continue
-        try:
-            dados = tabela.ler(conteudo)
-        except Exception as erro:  # zip quebrado, CSV com formato novo
-            raise ArquivoIlegivel(
-                f"{nome} {ano}: {type(erro).__name__}: {erro}"
-            ) from erro
-        if dados.empty:
-            linhas_por_ano[ano] = 0
-            continue
-        origens = [{"url": original.url, "sha256": original.sha256}]
-        if tabela.data_publica and cadastro is not None:
-            dados = _com_data_publica(dados, tabela.data_publica, cadastro[0])
-            origens.append(cadastro[1])
-        dados = dados.assign(
-            ano_do_arquivo=ano,
-            origem_sha256=original.sha256,
-            origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
-            montado_em=agora.isoformat(),
-            versao_do_codigo=versao_do_codigo(),
-        )
-        # só a tabela que olha todos os anos guarda os anos na memória
-        if tabela.com_todos_os_anos is None:
-            _gravar(dados, pasta / nome / f"{ano}.parquet", origens)
-        else:
-            lidos.append((ano, dados, origens))
-        linhas_por_ano[ano] = len(dados)
-    if tabela.com_todos_os_anos is not None and lidos:
-        juntos = tabela.com_todos_os_anos(
-            pd.concat([dados for _, dados, _ in lidos], ignore_index=True)
-        )
-        for ano, _, origens in lidos:
+    for fonte in (tabela.fonte, *tabela.outras_fontes):
+        for original in originais_mais_recentes(conexao, fonte):
+            ano = ano_do_arquivo(original.url)
+            conteudo = acervo.ler_original(original.caminho_do_original)
+            if ano is None or conteudo is None:
+                continue
+            try:
+                dados = tabela.ler(conteudo)
+            except Exception as erro:  # zip quebrado, CSV com formato novo
+                raise ArquivoIlegivel(
+                    f"{nome} {ano}: {type(erro).__name__}: {erro}"
+                ) from erro
+            if dados.empty:
+                linhas_por_ano.setdefault(ano, 0)
+                continue
+            origens = [{"url": original.url, "sha256": original.sha256}]
+            if tabela.data_publica and cadastro is not None:
+                dados = _com_data_publica(dados, tabela.data_publica, cadastro[0])
+                origens.append(cadastro[1])
+            dados = dados.assign(
+                ano_do_arquivo=ano,
+                origem_sha256=original.sha256,
+                origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
+                montado_em=agora.isoformat(),
+                versao_do_codigo=versao_do_codigo(),
+            )
+            if junta_antes_de_gravar:
+                lidos.append((ano, dados, origens))
+            else:
+                _gravar(dados, pasta / nome / f"{ano}.parquet", origens)
+            linhas_por_ano[ano] = linhas_por_ano.get(ano, 0) + len(dados)
+    if junta_antes_de_gravar and lidos:
+        juntos = pd.concat([dados for _, dados, _ in lidos], ignore_index=True)
+        if tabela.com_todos_os_anos is not None:
+            juntos = tabela.com_todos_os_anos(juntos)
+        for ano in sorted({ano for ano, _, _ in lidos}):
             do_ano = juntos[juntos["ano_do_arquivo"] == ano].reset_index(drop=True)
-            _gravar(do_ano, pasta / nome / f"{ano}.parquet", origens)
+            origens_do_ano = [o for a, _, os in lidos if a == ano for o in os]
+            _gravar(do_ano, pasta / nome / f"{ano}.parquet", origens_do_ano)
     return linhas_por_ano

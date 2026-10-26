@@ -213,3 +213,117 @@ def disponivel_em(tabela: pd.DataFrame) -> pd.Series:
     fim_do_mes = competencia + pd.DateOffset(months=1)
     entrega = tabela["data_entrega"].fillna(piso)
     return entrega.where(entrega >= fim_do_mes, fim_do_mes)
+
+
+# --- carga na base (B-16, série 6, PR 1): duas tabelas, CRI, CRA e OTS juntos, só PJ ---------------
+
+SIGLAS = {"cri": "CRI", "cra": "CRA", "ots": "OTS"}
+PRODUTO_NO_NOME = re.compile(r"inf_mensal_(cri|cra|ots)_[a-z_]+?_\d{4,6}\.csv$")
+PAPEIS = {"cedente": "cedente", "devedor": "devedor"}  # o `Tipo` da CVM, em minúsculas
+COLUNAS_DOS_CERTIFICADOS = (
+    "competencia", "cnpj_securitizadora", "codigo_certificado", "produto", "versao",
+    "data_entrega", "disponivel_em", "nome_securitizadora", "numero_emissao", "nome_emissao",
+    "data_emissao", "quantidade_series", "tipo_lastro",
+)  # fmt: skip
+COLUNAS_DO_CEDENTE_DEVEDOR = (
+    "competencia", "cnpj_securitizadora", "codigo_certificado", "produto", "versao",
+    "data_entrega", "disponivel_em", "papel", "cnpj", "percentual",
+)  # fmt: skip
+
+
+def _produto_do_arquivo(conteudo_do_zip: bytes) -> str | None:
+    """`cri`, `cra` ou `ots`, pelo nome dos CSVs do zip; None se não for o informe mensal (a CVM guarda
+    no mesmo pacote as demonstrações financeiras, `dfin_*`)."""
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        for nome in sorted(arquivo.namelist()):
+            if achado := PRODUTO_NO_NOME.search(nome):
+                return achado.group(1)
+    return None
+
+
+def _quadro_do_informe(
+    conteudo_do_zip: bytes, quadro: str
+) -> tuple[str, pd.DataFrame] | None:
+    """(sigla do produto, tabela do quadro) de um arquivo do informe, ou None se não traz o quadro."""
+    produto = _produto_do_arquivo(conteudo_do_zip)
+    if produto is None:
+        return None
+    tabela = ler_informe(conteudo_do_zip, produto).tabelas.get(quadro)
+    return None if tabela is None else (SIGLAS[produto], tabela)
+
+
+def _primeira_coluna(tabela: pd.DataFrame, *nomes: str) -> pd.Series:
+    """A 1ª das colunas que existe (a CVM muda o nome de um produto para o outro); vazia se nenhuma."""
+    for nome in nomes:
+        if nome in tabela.columns:
+            return tabela[nome]
+    return pd.Series(None, index=tabela.index, dtype="object")
+
+
+def _numero(serie: pd.Series) -> pd.Series:
+    return pd.to_numeric(serie, errors="coerce")
+
+
+def _do_certificado(
+    tabela: pd.DataFrame, sigla: str, resto: dict[str, pd.Series]
+) -> pd.DataFrame:
+    base = {
+        "competencia": tabela["competencia"],
+        "cnpj_securitizadora": tabela["cnpj_securitizadora"],
+        "codigo_certificado": tabela["codigo_certificado"],
+        "produto": sigla,
+        "versao": _numero(tabela["Versao"]),
+        "data_entrega": tabela["data_entrega"],
+        "disponivel_em": disponivel_em(tabela),
+    }
+    return pd.DataFrame({**base, **resto})
+
+
+def ler_certificados(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Um certificado por mês (quadro `geral`) de um arquivo do informe: a chave, o produto, a entrega
+    e o que o identifica. Entregue duas vezes, vale a entrega mais tardia."""
+    achado = _quadro_do_informe(conteudo_do_zip, QUADRO_DA_ENTREGA)
+    if achado is None:
+        return pd.DataFrame(columns=list(COLUNAS_DOS_CERTIFICADOS))
+    sigla, geral = achado
+    resto = {
+        "nome_securitizadora": _primeira_coluna(
+            geral, "Companhia_Emissora", "Companhia_Securitizadora"
+        ),
+        "numero_emissao": _numero(_primeira_coluna(geral, "Numero_Emissao")),
+        "nome_emissao": _primeira_coluna(geral, "Nome_Emissao"),
+        "data_emissao": pd.to_datetime(
+            _primeira_coluna(geral, "Data_Emissao"), errors="coerce"
+        ),
+        "quantidade_series": _numero(_primeira_coluna(geral, "Quantidade_Series")),
+        "tipo_lastro": _primeira_coluna(geral, "Tipo_Lastro"),
+    }
+    tabela = _do_certificado(geral, sigla, resto)[list(COLUNAS_DOS_CERTIFICADOS)]
+    tabela = tabela.sort_values(
+        ["data_entrega", "versao"], kind="stable", na_position="first"
+    )
+    return tabela.drop_duplicates(list(CHAVE), keep="last").reset_index(drop=True)
+
+
+def ler_cedentes_e_devedores(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Cedente e devedor de cada certificado e mês (quadro `cedente_devedor`), **só pessoa jurídica**:
+    linha sem CNPJ válido (a CVM informa CPF, ou deixa em branco) fica de fora inteira."""
+    achado = _quadro_do_informe(conteudo_do_zip, "cedente_devedor")
+    if achado is None:
+        return pd.DataFrame(columns=list(COLUNAS_DO_CEDENTE_DEVEDOR))
+    sigla, quadro = achado
+    papel = quadro["Tipo"].str.strip().str.lower().map(PAPEIS)
+    com_cnpj = quadro[papel.notna() & quadro["CNPJ"].notna()]
+    resto = {
+        "papel": papel[com_cnpj.index],
+        "cnpj": com_cnpj["CNPJ"],
+        "percentual": _numero(com_cnpj["Percentual"]),
+    }
+    tabela = _do_certificado(com_cnpj, sigla, resto)[list(COLUNAS_DO_CEDENTE_DEVEDOR)]
+    return tabela.drop_duplicates().reset_index(drop=True)
+
+
+def entregues_ate(tabela: pd.DataFrame, data: pd.Timestamp) -> pd.DataFrame:
+    """O que se sabia em `data`: cada linha só depende do próprio informe, então cortar antes ou depois
+    dá o mesmo."""
+    return tabela[tabela["disponivel_em"] <= data].reset_index(drop=True)
