@@ -1,23 +1,9 @@
 // Página inicial v2 (ADR 0065), a partir do protótipo aprovado em 14/10/2026: hero escuro com a
-// busca e o painel do relatório de exemplo, a fita de ativos, as fontes dos dados, o bento das seis
-// frentes, o "Por que o TickerLab", o Report Studio e a chamada final. Os números do painel vêm do
+// busca e o painel do relatório de exemplo, a fita de ativos, as fontes dos dados, o "Por que o
+// TickerLab" e a chamada final (o bento das frentes e o Report Studio foram para a página Ferramentas). Os números do painel vêm do
 // Python (exemplo.json), os mesmos do PDF de exemplo: nunca escritos à mão.
-import type { ReactNode } from "react";
-import {
-  type Modulo,
-  type NumeroDoPainel,
-  amostraRelatorio,
-  exemplo,
-  marca,
-  site,
-} from "../conteudo";
-import {
-  AvisoDeAcesso,
-  ChamadaFinal,
-  MODULOS_DO_PRODUTO,
-  contagem,
-  disponiveis,
-} from "../site/comum";
+import { type NumeroDoPainel, amostraRelatorio, exemplo, marca, site } from "../conteudo";
+import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
 import { Fundo } from "../site/Fundo";
 import { DADOS as RELATORIO_DE_EXEMPLO } from "./RelatorioExemplo";
 import {
@@ -37,7 +23,6 @@ export const DADOS = {
     "e gere relatórios em PDF. Nada é recomendação de investimento.",
 };
 
-const ESTILOS = site.estilos_do_relatorio;
 const PDF_DE_EXEMPLO = `/relatorio/exemplo-${exemplo.ticker}.pdf`;
 // o pedaço da assinatura em destaque no título
 const DESTAQUE_DO_TITULO = "auditáveis";
@@ -290,80 +275,6 @@ function FontesDosDados() {
   );
 }
 
-// ilustrações dos cartões largos do bento (enfeite: escondidas dos leitores de tela)
-const ILUSTRACOES: Record<string, ReactNode> = {
-  research: (
-    <div className="v2-mini v2-mini-doc" aria-hidden="true">
-      <span className="v2-doc-titulo">Fato relevante · CVM</span>
-      <i />
-      <i />
-      <i className="curta" />
-      <span className="v2-doc-selo">Explicado em português</span>
-    </div>
-  ),
-  estrategias: (
-    <svg className="v2-mini" viewBox="0 0 200 90" aria-hidden="true">
-      <polyline className="ref" points="0,70 30,66 60,68 90,58 120,62 150,50 180,54 200,48" />
-      <polyline
-        className="est"
-        pathLength={1}
-        points="0,74 30,64 60,60 90,46 120,50 150,34 180,30 200,20"
-      />
-      <text x="200" y="14" textAnchor="end">
-        estratégia
-      </text>
-      <text x="200" y="64" textAnchor="end" className="ref-t">
-        comprar e segurar
-      </text>
-    </svg>
-  ),
-};
-
-function CartaoDoBento({ modulo }: { modulo: Modulo }) {
-  const destino = `/produto.html#${modulo.chave}`;
-  if (disponiveis(modulo) === 0) {
-    return (
-      <article className="cartao v2-faixa-cartao breve">
-        <div>
-          <p className="olho">{modulo.objetivo}</p>
-          <h3>
-            {modulo.nome} <span className="selo breve">em breve</span>
-          </h3>
-          <p>{modulo.frase}</p>
-        </div>
-        <a className="seta" href={destino}>
-          Ver o que vem
-        </a>
-      </article>
-    );
-  }
-  const texto = (
-    <>
-      <p className="olho">{modulo.objetivo}</p>
-      <h3>{modulo.nome}</h3>
-      <p>{modulo.frase}</p>
-      <p className="contagem">{contagem(modulo)}</p>
-      <a className="seta" href={destino}>
-        Ver o que tem
-      </a>
-    </>
-  );
-  const ilustracao = ILUSTRACOES[modulo.chave];
-  return ilustracao ? (
-    <article className="cartao v2-larga">
-      <div>{texto}</div>
-      {ilustracao}
-    </article>
-  ) : (
-    <article className="cartao">{texto}</article>
-  );
-}
-
-/** As frentes com ilustração abrem o bento, largas; a ordem das outras é a do Produto. */
-const FRENTES_NO_BENTO = [...MODULOS_DO_PRODUTO].sort(
-  (a, b) => Number(b.chave in ILUSTRACOES) - Number(a.chave in ILUSTRACOES),
-);
-
 function PorQueOTickerLab() {
   const [comeco, destaque] = FRASE_DA_DIFERENCA;
   return (
@@ -387,80 +298,13 @@ function PorQueOTickerLab() {
   );
 }
 
-/** O Report Studio: imagens do PDF de verdade, trocando estilo e página (o site.js troca). */
-function Vitrine() {
-  const primeiro = ESTILOS[0].chave;
-  return (
-    <div className="vitrine" data-vitrine="">
-      <div className="controles" role="group" aria-label="Estilo do relatório">
-        {ESTILOS.map((e, i) => (
-          <button
-            key={e.chave}
-            type="button"
-            data-estilo={e.chave}
-            aria-pressed={i === 0 ? "true" : "false"}
-          >
-            {e.nome}
-          </button>
-        ))}
-      </div>
-      <div className="folhas">
-        <img
-          src={`/relatorio/${primeiro}-1.webp`}
-          width={560}
-          height={792}
-          loading="lazy"
-          alt={`Capa do relatório de exemplo de ${exemplo.ticker}`}
-          data-pagina="1"
-        />
-        <img
-          src={`/relatorio/${primeiro}-2.webp`}
-          width={560}
-          height={792}
-          loading="lazy"
-          alt="Segunda página do relatório de exemplo, com o resumo executivo e os números-chave"
-          data-pagina="2"
-        />
-      </div>
-      <p className="legenda">
-        Imagens do PDF real gerado pelo app, com dados de exemplo guardados no projeto. Só as
-        cores mudam entre os estilos: os números são os mesmos.
-      </p>
-    </div>
-  );
-}
-
 export function Inicio() {
   return (
     <>
       <Heroi />
       <FitaDeAtivos />
       <FontesDosDados />
-      <section className="faixa secao" aria-labelledby="titulo-frentes">
-        <p className="olho">O que você leva</p>
-        <h2 id="titulo-frentes">Seis frentes, uma plataforma</h2>
-        <div className="v2-bento">
-          {FRENTES_NO_BENTO.map((m) => (
-            <CartaoDoBento key={m.chave} modulo={m} />
-          ))}
-        </div>
-        <p>
-          <a className="seta" href="/produto.html">
-            Tudo o que o TickerLab faz, e o que vem por aí
-          </a>
-        </p>
-      </section>
       <PorQueOTickerLab />
-      <section id="relatorios" className="faixa secao" aria-labelledby="titulo-estudio">
-        <p className="olho">Report Studio</p>
-        <h2 id="titulo-estudio">Sua pesquisa merece mais que uma tela</h2>
-        <p className="subtitulo">
-          Modelo Executivo ou Pesquisa completa, seções na ordem que você quiser, três estilos e
-          a prévia do PDF de verdade antes de baixar. Toda versão tem resumo, metodologia e os
-          limites da análise.
-        </p>
-        <Vitrine />
-      </section>
       <ChamadaFinal />
     </>
   );

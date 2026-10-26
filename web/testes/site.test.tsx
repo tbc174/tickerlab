@@ -18,7 +18,7 @@ import { dataPorExtenso } from "../src/paginas/Novidades";
 import { DADOS as DADOS_DO_RELATORIO } from "../src/paginas/RelatorioExemplo";
 import { DADOS as DADOS_DO_SETOR } from "../src/paginas/RelatorioSemanalEletricas";
 import { ROTAS } from "../src/rotas";
-import { MODULOS_DO_PRODUTO, contagem, disponiveis } from "../src/site/comum";
+import { MODULOS_DO_PRODUTO, contagem, disponiveis, moduloPelaChave } from "../src/site/comum";
 import { ASSINATURA } from "../src/site/textos";
 
 const SITE = join(process.cwd(), "..", "site");
@@ -187,20 +187,15 @@ describe("página inicial v2", () => {
       expect(fontes).toContain(fonte);
   });
 
-  it("o bento tem as seis frentes: o que já existe e o que vem", () => {
-    const bento = trecho(html, '<div class="v2-bento">', '<p><a class="seta" href="/produto.html">');
-    for (const modulo of MODULOS_DO_PRODUTO) {
+  it("o bento das frentes saiu da inicial: backtest e carteira vivem em Ferramentas", () => {
+    expect(html).not.toContain('<div class="v2-bento">');
+    const ferramentas = renderizar("ferramentas.html");
+    const bento = trecho(ferramentas, '<div class="v2-bento">', "</div></section>");
+    for (const chave of ["estrategias", "carteira"]) {
+      const modulo = moduloPelaChave(chave);
       expect(bento).toContain(`<h3>${esc(modulo.nome)}`);
       expect(bento).toContain(`href="/produto.html#${modulo.chave}"`);
-    }
-    // a frente sem nada pronto aparece como "em breve", com o tracejado; as outras, com a contagem
-    for (const modulo of MODULOS_DO_PRODUTO) {
-      const vazia = new RegExp(
-        `class="cartao v2-faixa-cartao breve"><div><p class="olho">[^<]*</p><h3>${esc(modulo.nome)} ` +
-          '<span class="selo breve">em breve</span>',
-      );
-      if (disponiveis(modulo) === 0) expect(bento).toMatch(vazia);
-      else expect(bento).toContain(`<p class="contagem">${contagem(modulo)}</p>`);
+      expect(bento).toContain(`<p class="contagem">${contagem(modulo)}</p>`);
     }
   });
 
