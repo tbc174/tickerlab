@@ -1171,6 +1171,48 @@
         "title": "BlocoDosFundosV1",
         "type": "object"
       },
+      "BoasVindasDoBetaV1": {
+        "description": "A página de boas-vindas do beta: o texto e o roteiro dos 10 minutos (src/beta.py).",
+        "properties": {
+          "como_responder": {
+            "title": "Como Responder",
+            "type": "string"
+          },
+          "roteiro": {
+            "items": {
+              "$ref": "#/components/schemas/PassoDoBetaV1"
+            },
+            "title": "Roteiro",
+            "type": "array"
+          },
+          "sobre_o_beta": {
+            "title": "Sobre O Beta",
+            "type": "string"
+          },
+          "texto_de_boas_vindas": {
+            "title": "Texto De Boas Vindas",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "total_de_minutos": {
+            "title": "Total De Minutos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "titulo",
+          "texto_de_boas_vindas",
+          "sobre_o_beta",
+          "como_responder",
+          "total_de_minutos",
+          "roteiro"
+        ],
+        "title": "BoasVindasDoBetaV1",
+        "type": "object"
+      },
       "BuscaPorCnpjV1": {
         "description": "O relatório do CNPJ (molde B): as seções no formato do relatório da empresa.",
         "properties": {
@@ -4095,6 +4137,39 @@
         "title": "ParteDaAnaliseV1",
         "type": "object"
       },
+      "PassoDoBetaV1": {
+        "properties": {
+          "minutos": {
+            "title": "Minutos",
+            "type": "integer"
+          },
+          "o_que_fazer": {
+            "title": "O Que Fazer",
+            "type": "string"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ordem",
+          "minutos",
+          "titulo",
+          "o_que_fazer",
+          "url"
+        ],
+        "title": "PassoDoBetaV1",
+        "type": "object"
+      },
       "PedidoDeBacktestV1": {
         "properties": {
           "capital_inicial": {
@@ -6126,6 +6201,25 @@
           }
         },
         "summary": "Backtest"
+      }
+    },
+    "/v1/beta/boas-vindas": {
+      "get": {
+        "description": "O texto da página de boas-vindas do beta e o roteiro dos 10 minutos (src/beta.py).",
+        "operationId": "boas_vindas_do_beta_v1_beta_boas_vindas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoasVindasDoBetaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Boas Vindas Do Beta"
       }
     },
     "/v1/busca-por-cnpj": {

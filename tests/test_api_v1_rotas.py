@@ -819,6 +819,21 @@ def _id_da_ana_no(banco):
     return ana.id
 
 
+def test_boas_vindas_do_beta_trazem_o_roteiro_da_pagina(cliente):
+    resposta = cliente.get("/api/v1/beta/boas-vindas")
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert [p["url"] for p in dados["roteiro"]][:3] == [
+        "relatorio-do-setor",
+        "relatorio-empresa",
+        "busca-por-cnpj",
+    ]
+    assert (
+        dados["total_de_minutos"] == sum(p["minutos"] for p in dados["roteiro"]) == 10
+    )
+    assert "recomendação de investimento" in dados["sobre_o_beta"]
+
+
 def test_meu_plano_mostra_o_plano_e_o_uso(cliente, banco):
     ana = _id_da_ana_no(banco)
     with banco.begin() as conexao:
