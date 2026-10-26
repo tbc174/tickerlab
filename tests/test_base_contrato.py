@@ -12,6 +12,7 @@ from base.dicionario import TABELAS, Tabela
 CAMPOS_DA_P6 = {
     "tabela", "modulo", "dono", "versao", "colunas", "chaves", "datas", "historico_desde",
     "granularidade_do_publico_em", "licenca", "revenda", "pessoa", "frequencia", "atraso",
+    "sinonimos_de_tempo",
 }  # fmt: skip
 
 

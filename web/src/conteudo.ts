@@ -257,6 +257,7 @@ export const relatorioSemanalEletricas: {
   nao_temos: { kpi: string; motivo: string; fonte: string }[];
   limites: string[];
 } = semanalEletricasJson;
+import baseJson from "../conteudo/base.json";
 import catalogoJson from "../conteudo/catalogo.json";
 
 /** Uma fonte pública de dados (`Fonte` de base/vitrine.py): uma por texto de licença. */
@@ -306,3 +307,16 @@ export const catalogo: {
   modulos: ModuloDaBase[];
   tabelas: TabelaDaBase[];
 } = catalogoJson as never;
+
+/** Os números medidos na base (`base/vitrine.py`, fotografia do servidor de casa): a página Dados não digita número. */
+export const baseEmNumeros: {
+  numeros: {
+    empresas: number;
+    linhas_de_demonstracoes: number;
+    versoes: number;
+    eventos: number;
+    originais_com_hash: number;
+    medido_em: string;
+  };
+  medido_em_curto: string;
+} = baseJson as never;

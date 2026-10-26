@@ -6,6 +6,7 @@ Funções puras sobre o dicionário do `catalogo.json`; nenhum número da págin
 
 import json
 import re
+from datetime import date
 
 import pytest
 
@@ -294,3 +295,78 @@ def test_atraso_do_site_descarta_o_que_e_conversa_interna():
 def test_atraso_que_termina_sem_o_fim_da_frase_nao_sai():
     """O código entre crases some do texto e deixa a frase pendurada ("a partir de desde")."""
     assert vitrine.atraso_do_site("A ligação vale a partir de `desde`") is None
+
+
+# --- a base em números (plano do site para quem analisa, PR 4) ---------------------------------------
+
+
+class _PortaFalsa:
+    """Só o que `numeros_da_base` pede da porta: contar linhas e listar valores diferentes."""
+
+    def __init__(
+        self,
+        cnpjs: set[str],
+        linhas: int,
+        reapresentadas: int,
+        eventos: int,
+        hashes: set[str],
+    ):
+        self.cnpjs, self.linhas, self.reapresentadas = cnpjs, linhas, reapresentadas
+        self.eventos, self.hashes = eventos, hashes
+
+    def distintos(self, tabela: str, coluna: str) -> set[object]:
+        return (
+            self.cnpjs
+            if (tabela, coluna) == ("demonstracoes_como_era", "cnpj")
+            else self.hashes
+        )
+
+    def contar(self, tabela: str, ao_menos: dict[str, float] | None = None) -> int:
+        if tabela == "eventos":
+            return self.eventos
+        return self.reapresentadas if ao_menos else self.linhas
+
+
+def _catalogo_com(*tabelas: str) -> dict:
+    return {"tabelas": {nome: {"tabela": nome} for nome in tabelas}}
+
+
+def test_numeros_da_base():
+    porta = _PortaFalsa({"1", "2", "3"}, 1_000, 120, 40, {"a", "b"})
+    catalogo = _catalogo_com("demonstracoes_como_era", "eventos")
+
+    numeros = vitrine.numeros_da_base(porta, catalogo, date(2026, 10, 26))
+
+    assert numeros == vitrine.NumerosDaBase(
+        empresas=3,
+        linhas_de_demonstracoes=1_000,
+        versoes=120,
+        eventos=40,
+        originais_com_hash=2,
+        medido_em="2026-10-26",
+    )
+
+
+def test_numeros_recusa_tabela_interna():
+    """Tabela que o catálogo não tem (ou que a licença não deixa mostrar) nunca vira número público."""
+    porta = _PortaFalsa(set(), 0, 0, 0, set())
+    with pytest.raises(ValueError, match="eventos"):
+        vitrine.numeros_da_base(
+            porta, _catalogo_com("demonstracoes_como_era"), date(2026, 10, 26)
+        )
+
+
+def test_base_json_vem_da_fotografia():
+    from scripts import exportar_conteudo as exp
+
+    fotografia = json.loads(vitrine.FOTOGRAFIA.read_text(encoding="utf-8"))
+    base = exp.conteudo()["base"]
+
+    assert base["numeros"] == fotografia
+    assert base["medido_em_curto"] == vitrine.dia_e_mes(fotografia["medido_em"])
+    assert vitrine.dia_e_mes("2026-10-26") == "26/10"
+
+
+def test_fotografia_com_campo_a_menos_nao_passa():
+    with pytest.raises(TypeError):
+        vitrine.numeros_da_fotografia({"empresas": 1})

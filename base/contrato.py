@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 
 from base.dicionario import TABELAS, Tabela
+from base.tempo import sinonimos_de_tempo
 from src.banco.coletas import licenca_da_fonte, revenda_da_fonte
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -47,6 +48,7 @@ def contrato_da_tabela(nome: str, tabela: Tabela) -> dict:
         },
         "chaves": list(tabela.chaves),
         "datas": dict(tabela.datas),
+        "sinonimos_de_tempo": sinonimos_de_tempo(tabela),
         "historico_desde": tabela.historico_desde,
         "granularidade_do_publico_em": tabela.granularidade_do_publico_em,
         "licenca": licenca_da_fonte(tabela.familia_da_fonte),
