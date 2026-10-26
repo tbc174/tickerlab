@@ -132,6 +132,60 @@ def test_como_foi_calculado_diz_quando_o_dia_nao_e_conhecido():
     )
 
 
+def _entrada(conta: str, codigo: str, nome: str, valor: float, periodo: str) -> Entrada:
+    return Entrada(conta, codigo, nome, valor, periodo, "DFP", date(2025, 12, 31), 1,
+                   DFP_DE_2025_RECEBIDA)  # fmt: skip
+
+
+def test_como_foi_calculado_mostra_as_contas_usadas_com_o_valor_e_o_documento():
+    entradas = (
+        _entrada("receita", "3.01", "Receita de Venda de Bens e/ou Serviços",
+                 40_804_110_000.0, "exercicio"),
+        _entrada("caixa", "1.01.01 ou 1.01", "Caixa e Equivalentes de Caixa", 1_500.4, "posicao"),
+        _entrada("acoes_total", "QT_ACAO_TOTAL_CAP_INTEGR",
+                 "Composição do capital: ações do capital integralizado", 4_197_317_998.0, "posicao"),
+        _entrada("lpa_basico", "3.99.01.xx", "Lucro Básico por Ação (a 1ª classe com valor)",
+                 1.5234, "acumulado"),
+        _entrada("fco", "6.01", "Caixa Líquido das Atividades Operacionais", -2_000.0,
+                 "acumulado_anterior"),
+    )  # fmt: skip
+    linhas = como_foi_calculado(_completo(entradas=entradas))
+    abertura, *contas = linhas[5:]
+    assert abertura.rotulo == "Contas usadas"
+    assert abertura.texto == (
+        "as linhas da demonstração que entram no número, com o valor guardado: com elas, "
+        "dá para refazer a conta."
+    )
+    assert {linha.rotulo for linha in contas} == {"Conta"}
+    doc = "(DFP de 31/12/2025, versão 1)"
+    assert [linha.texto for linha in contas] == [
+        ("Receita de Venda de Bens e/ou Serviços (código 3.01 na CVM): "
+         f"R$ 40.804.110.000 no exercício {doc}"),
+        ("Caixa e Equivalentes de Caixa (código 1.01.01 ou 1.01 na CVM): R$ 1.500 "
+         f"no saldo do balanço {doc}"),
+        ("Composição do capital: ações do capital integralizado (campo "
+         f"QT_ACAO_TOTAL_CAP_INTEGR na CVM): 4.197.317.998 ações no saldo do balanço {doc}"),
+        ("Lucro Básico por Ação (a 1ª classe com valor) (código 3.99.01.xx na CVM): "
+         f"R$ 1,52 por ação no acumulado do ano {doc}"),
+        ("Caixa Líquido das Atividades Operacionais (código 6.01 na CVM): R$ -2.000 "
+         f"no acumulado do mesmo período do ano anterior {doc}"),
+    ]  # fmt: skip
+
+
+def test_sem_entradas_o_como_foi_calculado_nao_fala_de_contas():
+    rotulos = [linha.rotulo for linha in como_foi_calculado(_completo())]
+    assert "Contas usadas" not in rotulos and "Conta" not in rotulos
+
+
+def test_toda_conta_guardada_e_todo_periodo_tem_texto():
+    """Conta nova em `CONTAS_DA_CVM` ou período novo de `src/demonstracoes.py` sem texto quebra aqui."""
+    for conta, (codigo, nome) in dm.CONTAS_DA_CVM.items():
+        for periodo in (dm.EXERCICIO, dm.POSICAO, dm.ACUMULADO, dm.ACUMULADO_ANTERIOR):
+            entrada = _entrada(conta, codigo, nome, 1.0, periodo)
+            texto = como_foi_calculado(_completo(entradas=(entrada,)))[-1].texto
+            assert texto.startswith(f"{nome} (") and "None" not in texto
+
+
 # --- as fórmulas ficam ao lado do código que calcula -----------------------------------------------
 def test_todo_indicador_calculado_tem_formula(dados_da_weg):
     tela = fundamentos.calcular(dados_da_weg, 50.0).indicadores
