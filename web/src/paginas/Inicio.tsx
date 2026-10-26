@@ -1,187 +1,95 @@
-// Página inicial v2 (ADR 0065), a partir do protótipo aprovado em 14/10/2026: hero escuro com a
-// busca e o painel do relatório de exemplo, a fita de ativos, as fontes dos dados, o "Por que o
-// TickerLab" e a chamada final (o bento das frentes e o Report Studio foram para a página Ferramentas). Os números do painel vêm do
-// Python (exemplo.json), os mesmos do PDF de exemplo: nunca escritos à mão.
-import { type NumeroDoPainel, amostraRelatorio, exemplo, marca, site } from "../conteudo";
+// Página inicial para quem analisa empresas (plano do site para quem analisa, 18/10/2026, PR 5): a
+// assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
+// estudo do dia, a vitrine das análises abertas, as quatro regras da base, as fontes com licença e
+// os planos. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
+import { baseEmNumeros, catalogo } from "../conteudo";
+import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
 import { Fundo } from "../site/Fundo";
+import { ancora } from "../site/Leitura";
+import { ASSINATURA, REGRAS_DA_BASE, linkDoApp } from "../site/textos";
+import { Vitrine } from "../site/Vitrine";
 import {
   DADOS as RAIO_X_DO_CHOQUE,
   MOMENTO_DO_RAIO_X,
   PDF_DO_RAIO_X,
   RAIO_X,
 } from "./RaioXDoChoque";
-import { DADOS as RELATORIO_DE_EXEMPLO } from "./RelatorioExemplo";
-import {
-  ASSINATURA,
-  FONTES_DOS_DADOS,
-  FRASE_DA_DIFERENCA,
-  PRINCIPIOS,
-  URL_DO_APP,
-  linkDoApp,
-} from "../site/textos";
 
 export const DADOS = {
   caminho: "/",
   titulo: "TickerLab",
   descricao:
-    "Pesquise ativos da B3 e dos EUA, entenda retorno e risco com cada número explicado " +
-    "e gere relatórios em PDF. Nada é recomendação de investimento.",
+    "Coleta segura e auditável das fontes públicas brasileiras para quem analisa empresas: cada " +
+    "número com data, fonte e caminho até o original.",
 };
 
-const PDF_DE_EXEMPLO = `/relatorio/exemplo-${exemplo.ticker}.pdf`;
 // o pedaço da assinatura em destaque no título
 const DESTAQUE_DO_TITULO = "auditáveis";
+const SUBTITULO =
+  "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +
+  "caminho até o original.";
+const SEM_RESPOSTA = "licença em consulta";
+const milhares = (n: number) => n.toLocaleString("pt-BR");
 
-/** "2021-10-11" → "11/10/2021" (sem Date: nada de fuso mudando o dia). */
-const dataBr = (iso: string) => iso.split("-").reverse().join("/");
-const corDoSinal = (valor: number) => (valor > 0 ? "alta" : valor < 0 ? "queda" : "");
-
-/** "▲ +545,8%" com a seta escondida do leitor de tela (o sinal já diz se subiu ou caiu). */
-function Variacao({ numero }: { numero: NumeroDoPainel }) {
-  const [seta, ...resto] = numero.texto.split(" ");
-  return (
-    <>
-      <span aria-hidden="true">{seta}</span>
-      {` ${resto.join(" ")}`}
-    </>
-  );
-}
-
-// o desenho do painel: a série em base 100 numa caixa de 320 × 96, com folga em cima e embaixo
-const LARGURA_DO_GRAFICO = 320;
-const ALTURA_DO_GRAFICO = 96;
-const FOLGA_DO_GRAFICO = 4;
-
-function pontosDoGrafico(serie: number[]): string {
-  const menor = Math.min(...serie);
-  const faixa = Math.max(...serie) - menor || 1;
-  const util = ALTURA_DO_GRAFICO - 2 * FOLGA_DO_GRAFICO;
-  return serie
-    .map((valor, i) => {
-      const x = (i * LARGURA_DO_GRAFICO) / (serie.length - 1);
-      const y = FOLGA_DO_GRAFICO + ((menor + faixa - valor) / faixa) * util;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
-
-function GraficoDoPainel() {
-  const pontos = pontosDoGrafico(exemplo.serie);
-  const base = `${LARGURA_DO_GRAFICO},${ALTURA_DO_GRAFICO}`;
-  return (
-    <svg
-      className="v2-grafico"
-      viewBox={`0 0 ${LARGURA_DO_GRAFICO} ${ALTURA_DO_GRAFICO}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label={`Preço de fechamento de ${exemplo.codigo} no período, em base 100`}
-    >
-      <defs>
-        <linearGradient id="v2-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={marca.azul} stopOpacity=".45" />
-          <stop offset="1" stopColor={marca.azul} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon className="area" points={`0,${ALTURA_DO_GRAFICO} ${pontos} ${base}`} />
-      <polyline className="linha" pathLength={1} points={pontos} />
-    </svg>
-  );
-}
-
-/** O número principal (Ledger): o retorno total do relatório de exemplo, o desenho e três métricas. */
-function PainelDoExemplo() {
-  const periodo = `${dataBr(exemplo.inicio)} a ${dataBr(exemplo.fim)}`;
+/** Os três números da abertura, cada um com a conta recolhida ao lado. */
+function PainelDaBase() {
+  const { totais } = catalogo;
+  const { numeros, medido_em_curto } = baseEmNumeros;
   return (
     <div className="v2-painel-pilha">
-      <article
-        className="v2-painel"
-        aria-label={`Números-chave do relatório de exemplo de ${exemplo.codigo}`}
-      >
+      <article className="v2-painel v2-painel-base" aria-labelledby="titulo-da-base">
         <header className="v2-painel-topo">
-          <span className="v2-etiqueta">Relatório de exemplo</span>
-          <span className="ticker">{exemplo.codigo}</span>
+          <span className="v2-etiqueta" id="titulo-da-base">
+            O que a base tem
+          </span>
+          <span className="ticker">Medido em {medido_em_curto}</span>
         </header>
-        <p className="v2-rotulo">Retorno total · {periodo}</p>
-        <p className={`v2-numero ${corDoSinal(exemplo.retorno_total.valor)}`}>
-          <Variacao numero={exemplo.retorno_total} />
-        </p>
-        <p className="v2-apoio">
-          <span className={corDoSinal(exemplo.retorno_ao_ano.valor)}>
-            <Variacao numero={exemplo.retorno_ao_ano} />
-          </span>{" "}
-          ao ano
-        </p>
-        <GraficoDoPainel />
-        <dl className="v2-metricas">
+        <dl className="v2-base-numeros">
           <div>
-            <dt>Maior queda</dt>
-            {/* a maior queda nunca é positiva: a seta é sempre para baixo */}
-            <dd className="queda">
-              <span aria-hidden="true">▼</span>
-              {` ${exemplo.maior_queda.texto}`}
+            <dt>tabelas, cada uma com contrato</dt>
+            <dd className="v2-numero">{milhares(totais.tabelas)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  Contamos as tabelas do catálogo de contratos da base. Cada contrato diz a fonte,
+                  a licença, as datas e a frequência de atualização; tabela nova entra na conta
+                  sozinha.
+                </p>
+              </ComoFoiCalculado>
             </dd>
           </div>
           <div>
-            <dt>Volatilidade</dt>
-            <dd>{exemplo.volatilidade.texto} a.a.</dd>
+            <dt>fontes públicas, cada uma com a sua licença</dt>
+            <dd className="v2-numero">{milhares(totais.fontes)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  {`Uma fonte é um órgão ou publicação com a licença que ela mesma publica. ${totais.fontes_em_consulta} delas ainda não responderam por escrito sobre uso comercial: até a resposta, tratamos o dado delas como não comercial.`}
+                </p>
+              </ComoFoiCalculado>
+            </dd>
           </div>
           <div>
-            <dt>Sharpe</dt>
-            <dd>{exemplo.sharpe.texto}</dd>
+            <dt>companhias abertas com demonstrações</dt>
+            <dd className="v2-numero">{milhares(numeros.empresas)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  {`CNPJs distintos com ao menos uma demonstração financeira guardada, contados na base em ${medido_em_curto}. São ${milhares(numeros.linhas_de_demonstracoes)} linhas, cada uma com o dia em que o valor ficou público.`}
+                </p>
+              </ComoFoiCalculado>
+            </dd>
           </div>
         </dl>
         <footer className="v2-painel-rodape">
-          <span>Cada número explicado em português</span>
-          <a className="seta" href={PDF_DE_EXEMPLO}>
-            Abrir o PDF
+          <span>Cada tabela com fonte, licença e data</span>
+          <a className="seta" href="/dados.html">
+            A base inteira
           </a>
         </footer>
       </article>
-      <aside className="v2-flutuante" aria-label="Ficha Foi sorte?">
-        <span className="v2-etiqueta v2-etiqueta-ambar">Foi sorte?</span>
-        <p>
-          Um bom resultado no passado pode ser acaso. A ficha mostra se ele resiste quando
-          tiramos a sorte da conta.
-        </p>
-      </aside>
-      <p className="v2-nota">
-        Dados de exemplo do relatório (Yahoo Finance, até {dataBr(exemplo.fim)}). Não é
-        recomendação de investimento.
-      </p>
     </div>
-  );
-}
-
-function Busca() {
-  return (
-    <form
-      className="busca"
-      action={`${URL_DO_APP}/visao-geral`}
-      method="get"
-      role="search"
-      data-busca=""
-      data-app={URL_DO_APP}
-    >
-      <label htmlFor="busca-ticker">Busque um ativo</label>
-      <div className="campo">
-        <input
-          id="busca-ticker"
-          name="ticker"
-          type="text"
-          autoComplete="off"
-          placeholder="PETR4, Petrobras, AAPL, Ibovespa…"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded="false"
-          aria-controls="sugestoes"
-        />
-        <button className="botao primario" type="submit">
-          Analisar
-        </button>
-      </div>
-      <ul id="sugestoes" role="listbox" hidden />
-    </form>
   );
 }
 
@@ -203,32 +111,18 @@ function Heroi() {
             <span className="v2-degrade">{DESTAQUE_DO_TITULO}</span>
             {depois}
           </h1>
-          <p className="subtitulo">
-            Pesquise empresas, entenda resultado, risco e os documentos oficiais, e transforme o
-            estudo em relatórios, com cada número explicado em português e ligado à fonte.
-          </p>
-          <Busca />
-          <p className="exemplos">
-            <span>Experimente:</span>{" "}
-            {site.exemplos.map((e) => (
-              <a
-                key={e.simbolo}
-                className="ticker"
-                href={linkDoApp("visao-geral", { ticker: e.simbolo })}
-              >
-                {e.rotulo}
-              </a>
-            ))}
-          </p>
-          {/* no celular o painel não aparece: o PDF de exemplo fica a um toque por aqui */}
-          <div className="acoes v2-so-no-celular">
-            <a className="botao secundario" href={PDF_DE_EXEMPLO}>
-              Ver um relatório de exemplo (PDF)
+          <p className="subtitulo">{SUBTITULO}</p>
+          <div className="acoes">
+            <a className="botao primario" href="/dados.html">
+              Ver os dados
+            </a>
+            <a className="botao secundario" href={linkDoApp()}>
+              Abrir o app
             </a>
           </div>
           <AvisoDeAcesso />
         </div>
-        <PainelDoExemplo />
+        <PainelDaBase />
       </section>
     </Fundo>
   );
@@ -276,73 +170,49 @@ function EstudoDoDia() {
   );
 }
 
-/** Só códigos e nomes, nenhum preço; a segunda volta existe para a fita emendar sem pulo. */
-function FitaDeAtivos() {
+function RegrasDaBase() {
   return (
-    <section className="v2-fita" aria-label="Alguns dos ativos da busca">
-      <p className="v2-fita-rotulo">
-        {site.total_de_ativos.toLocaleString("pt-BR")} ativos na busca
+    <section className="faixa secao v2-regras" aria-labelledby="titulo-regras">
+      <p className="olho">Método</p>
+      <h2 id="titulo-regras">Por que confiar num número daqui</h2>
+      <p className="subtitulo">
+        Quatro regras valem para toda tabela da base. Abra cada uma para ler como funciona.
       </p>
-      <div className="v2-fita-trilho">
-        <div className="v2-fita-faixa">
-          {[false, true].map((repeticao) => (
-            <ul key={String(repeticao)} aria-hidden={repeticao ? "true" : undefined}>
-              {site.fita.map((ativo) => (
-                <li key={ativo.simbolo}>
-                  <b>{ativo.codigo}</b>
-                  {ativo.nome}
-                </li>
-              ))}
-            </ul>
-          ))}
-        </div>
+      <div className="grade v2-regras-lista">
+        {REGRAS_DA_BASE.map(([titulo, texto]) => (
+          <ComoFoiCalculado key={titulo} resumo={titulo}>
+            <p>{texto}</p>
+          </ComoFoiCalculado>
+        ))}
       </div>
     </section>
   );
 }
 
-function FontesDosDados() {
+function FontesDaBase() {
+  const { totais, fontes } = catalogo;
   return (
-    <section className="faixa v2-fontes" aria-label="De onde vêm os dados">
+    <section className="faixa secao v2-fontes-da-base" aria-labelledby="titulo-fontes">
       <p className="olho">De onde vêm os dados</p>
-      <ul>
-        {FONTES_DOS_DADOS.map(([nome, oQueVem]) => (
-          <li key={nome}>
-            <strong>{nome}</strong>
-            <span>{oQueVem}</span>
+      <h2 id="titulo-fontes">{`${totais.fontes} fontes públicas, cada uma com a sua licença`}</h2>
+      <p className="subtitulo">
+        {`${totais.fontes_em_consulta} delas ainda não responderam por escrito sobre uso comercial e levam o selo de consulta: até a resposta, tratamos o dado delas como não comercial.`}
+      </p>
+      <ul className="v2-lista-de-fontes">
+        {fontes.map((f) => (
+          <li key={f.licenca}>
+            <strong>{f.orgao}</strong>
+            <span>{f.tabelas === 1 ? "1 tabela" : `${f.tabelas} tabelas`}</span>
+            {f.situacao === "em consulta" ? (
+              <span className="selo breve">{SEM_RESPOSTA}</span>
+            ) : null}
           </li>
         ))}
       </ul>
-      <a className="seta" href="/metodologia.html">
-        Fontes e metodologia
-      </a>{" "}
-      <a className="seta" href={RELATORIO_DE_EXEMPLO.caminho}>
-        O que a base cruza: {amostraRelatorio.empresa}
+      <a className="seta" href={`/dados.html#${ancora("De onde vêm os dados")}`}>
+        Cada licença, uma a uma
       </a>
     </section>
-  );
-}
-
-function PorQueOTickerLab() {
-  const [comeco, destaque] = FRASE_DA_DIFERENCA;
-  return (
-    <div className="escura v2-diferenca">
-      <section className="faixa secao" aria-labelledby="titulo-diferenca">
-        <p className="olho">Por que o TickerLab</p>
-        <h2 id="titulo-diferenca">
-          {comeco} <span className="v2-degrade">{destaque}</span>
-        </h2>
-        <div className="grade tres">
-          {PRINCIPIOS.map(([titulo, texto], i) => (
-            <article key={titulo} className="v2-principio">
-              <span className="numero">{String(i + 1).padStart(2, "0")}</span>
-              <h3>{titulo}</h3>
-              <p>{texto}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    </div>
   );
 }
 
@@ -351,10 +221,26 @@ export function Inicio() {
     <>
       <Heroi />
       <EstudoDoDia />
-      <FitaDeAtivos />
-      <FontesDosDados />
-      <PorQueOTickerLab />
-      <ChamadaFinal />
+      <Vitrine />
+      <RegrasDaBase />
+      <FontesDaBase />
+      <ChamadaFinal
+        titulo="Comece pelo Gratuito"
+        subtitulo="O plano Gratuito não pede cartão. O que cada plano inclui está na página de planos."
+      >
+        <div className="acoes">
+          <a className="botao primario" href={linkDoApp()}>
+            Abrir o app
+          </a>
+          <a className="botao secundario" href="/precos.html">
+            Ver os planos
+          </a>
+        </div>
+        <p className="v2-aviso-final">
+          Os dados vêm de fontes públicas e podem ter atraso ou erros. Nada aqui é recomendação de
+          investimento.
+        </p>
+      </ChamadaFinal>
     </>
   );
 }

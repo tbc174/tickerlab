@@ -366,37 +366,46 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-etiqueta { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .72rem; font-weight: 700;
   letter-spacing: .04em; color: var(--azul-texto); background: rgba(41, 98, 255, .14); border: 1px solid rgba(110, 149, 255, .35); }
 .v2-etiqueta-ambar { color: #f5b83d; background: rgba(245, 184, 61, .12); border-color: rgba(245, 184, 61, .4); }
-.v2-rotulo { margin: 0; color: var(--apagado); font-size: .85rem; }
 .v2-numero { margin: .1rem 0 0; font: 800 clamp(2.4rem, 4.6vw, 3.4rem)/1.05 "Manrope", sans-serif; letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums; }
-.v2-apoio { margin: .3rem 0 0; color: var(--apagado); font-size: .92rem; font-variant-numeric: tabular-nums; }
-.v2-grafico { display: block; width: 100%; height: 110px; margin: 1rem 0 .4rem; overflow: visible; }
-.v2-grafico .area { fill: url(#v2-area); animation: tl-chegar 900ms ease 900ms both; }
-.v2-grafico .linha { fill: none; stroke: #6e95ff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round;
-  vector-effect: non-scaling-stroke; animation: tl-revelar 1400ms cubic-bezier(.3, .7, .2, 1) 450ms both; }
-.v2-metricas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: 0;
-  padding: .9rem 0; border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); }
-.v2-metricas div { min-width: 0; }
-.v2-metricas dt { color: var(--sutil); font-size: .76rem; }
-.v2-metricas dd { margin: 0; font: 700 1.05rem "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
 .v2-painel-rodape { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-top: .8rem;
   color: var(--apagado); font-size: .86rem; }
-/* a ficha encosta só na borda de baixo do painel: antes, solta por cima, tapava as métricas */
-.v2-flutuante { position: relative; margin: -1rem 0 0 -2.2rem; width: min(17rem, 70%); padding: .9rem 1rem;
-  border-radius: 16px; background: rgba(10, 31, 68, .88); border: 1px solid rgba(245, 184, 61, .3);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .5); backdrop-filter: blur(12px);
-  animation: tl-chegar 600ms cubic-bezier(.2, .7, .2, 1) 1100ms both; }
-.v2-flutuante p { margin: .5rem 0 0; color: var(--texto); font-size: .88rem; line-height: 1.45; }
-/* abaixo da pilha inteira, para não encostar na ficha "Foi sorte?" quando quebra em duas linhas */
-.v2-nota { position: absolute; right: 0; top: calc(100% + .3rem); margin: 0; color: var(--sutil); font-size: .75rem; text-align: right; max-width: 22rem; }
+/* o painel da base: três números grandes, cada um com a conta recolhida embaixo */
+.v2-base-numeros { display: grid; grid-template-columns: auto 1fr; column-gap: 1rem; margin: 0; }
+/* subgrid: os três números dividem a mesma coluna, e os rótulos começam na mesma linha vertical */
+.v2-base-numeros > div { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
+  padding: .75rem 0; border-top: 1px solid var(--linha); }
+.v2-base-numeros dt { grid-column: 2; grid-row: 1; color: var(--apagado); font-size: .92rem; }
+.v2-base-numeros .v2-numero { grid-column: 1; grid-row: 1; margin: 0; font-size: clamp(2rem, 3.6vw, 2.6rem); }
+.v2-base-numeros dd:last-child { grid-column: 1 / -1; margin: .4rem 0 0; }
+.v2-painel.v2-painel-base .como-foi-calculado { margin: 0; padding: .4rem .8rem; font-size: .84rem; background: rgba(10, 31, 68, .5); }
+.v2-painel-base .como-foi-calculado summary { font-weight: 600; color: var(--apagado); }
+.v2-painel-base .como-foi-calculado-texto { margin-top: .4rem; }
 
-/* faixa das fontes (o que aprendemos com o Fundamentei e o Fiscal.ai: mostrar de onde vem cada dado) */
-.v2-fontes { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 2rem; padding-block: 1.6rem; }
-.v2-fontes .olho { margin: 0; }
-.v2-fontes ul { display: flex; flex-wrap: wrap; gap: .5rem 1.6rem; list-style: none; margin: 0; padding: 0; flex: 1; }
-.v2-fontes li { display: grid; max-width: none; }
-.v2-fontes strong { font-size: .98rem; letter-spacing: -0.01em; }
-.v2-fontes span { color: var(--sutil); font-size: .78rem; }
+/* vitrine: as vagas prontas levam à análise; as em breve ficam tracejadas, sem link */
+.v2-vagas { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+/* as prontas em cima, meia linha cada; as em breve embaixo, um terço cada */
+.v2-vaga { display: flex; flex-direction: column; grid-column: span 3; }
+.v2-vaga.breve { grid-column: span 2; }
+.v2-vaga .v2-vaga-topo { margin: 0 0 .6rem; }
+.v2-vaga h3 { margin: 0 0 .4rem; font-size: 1.12rem; }
+.v2-vaga .seta { margin-top: auto; }
+.v2-vaga.breve h3 { color: var(--apagado); }
+
+/* as quatro regras da base, recolhidas, em duas colunas */
+.v2-regras-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .8rem; }
+.v2-regras-lista .como-foi-calculado { margin: 0; }
+
+/* as fontes com licença: uma pílula por fonte, com o selo nas que estão em consulta */
+.v2-lista-de-fontes { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: .6rem;
+  list-style: none; margin: 1.4rem 0 1.4rem; padding: 0; }
+.v2-lista-de-fontes li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .5rem; max-width: none;
+  padding: .7rem .9rem; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--destaque); }
+:root[data-tema="escuro"] .v2-lista-de-fontes li { background: var(--superficie); }
+.v2-lista-de-fontes strong { font-size: .98rem; letter-spacing: -0.01em; }
+.v2-lista-de-fontes span:not(.selo) { color: var(--sutil); font-size: .8rem; }
+.final .acoes { justify-content: center; }
+.v2-aviso-final { margin: 1.6rem auto 0; color: var(--apagado); font-size: .86rem; }
 
 /* bento das seis frentes */
 .v2-bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem; margin: 1.5rem 0 1.25rem; }
@@ -435,8 +444,6 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-horizonte-alto { bottom: -70%; animation: none; opacity: .9; }
 .v2-final-fundo .final h2 { font-size: clamp(1.9rem, 4vw, 2.8rem); }
 
-/* no celular o painel some; o botão do PDF de exemplo aparece no lugar dele */
-.acoes.v2-so-no-celular { display: none; }
 /* Dados: a lista de tabelas, as fontes e o "como foi calculado" recolhido */
 .dados-resumo { font-size: 1.35rem; font-weight: 700; margin: .4rem 0 1rem; }
 .dados-numeros { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); margin: 1rem 0 .4rem; }
@@ -467,14 +474,16 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .como-foi-calculado-texto p { margin: 0 0 .6rem; }
 
 @media (max-width: 860px) {
-  .v2-painel-pilha { display: none; }
+  /* no celular o painel da base fica embaixo do texto, sem a profundidade ao rolar */
+  .v2-painel-pilha { translate: none !important; }
   .heroi { grid-template-columns: 1fr; }
-  .acoes.v2-so-no-celular { display: flex; }
   .v2-bento { grid-template-columns: 1fr; }
   .v2-bento .cartao, .v2-bento .v2-larga, .v2-bento .v2-faixa-cartao { grid-column: auto; }
   .v2-bento .v2-larga { grid-template-columns: 1fr; }
   .v2-bento .v2-faixa-cartao { flex-direction: column; align-items: start; }
-  .v2-fontes { gap: .75rem; }
+  .v2-regras-lista { grid-template-columns: 1fr; }
+  .v2-vagas { grid-template-columns: 1fr; }
+  .v2-vaga, .v2-vaga.breve { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .vitrine .folhas img { transform: none !important; }
@@ -560,22 +569,6 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 @keyframes v2-girar { to { --v2-angulo: 360deg; } }
 .v2-pausado .v2-painel::before { animation-play-state: paused; }
 
-/* fita de ativos: só nomes, nenhum preço; para ao passar o mouse e com a pausa */
-.v2-fita { position: relative; display: flex; align-items: center; gap: 1.25rem; overflow: hidden; padding-block: .9rem;
-  border-bottom: 1px solid var(--linha); background: color-mix(in srgb, var(--destaque) 60%, transparent); }
-.v2-fita-rotulo { flex: none; padding-left: clamp(1rem, 4vw, 2rem); font-size: .74rem; font-weight: 700; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--azul-texto); white-space: nowrap; }
-.v2-fita-trilho { flex: 1; overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.v2-fita-faixa { display: flex; width: max-content; animation: v2-correr 55s linear infinite; }
-.v2-fita-faixa ul { display: flex; gap: .6rem; margin: 0; padding: 0 .6rem 0 0; list-style: none; }
-.v2-fita-faixa li { display: inline-flex; align-items: baseline; gap: .45rem; max-width: none; padding: .3rem .75rem; border-radius: 999px;
-  border: 1px solid var(--linha); background: var(--destaque); white-space: nowrap; font-size: .86rem; color: var(--apagado); }
-.v2-fita-faixa li b { font: 700 .84rem "JetBrains Mono", monospace; color: var(--texto); }
-.v2-fita:hover .v2-fita-faixa, .v2-pausado .v2-fita-faixa { animation-play-state: paused; }
-@keyframes v2-correr { to { transform: translateX(-50%); } }
-
 /* o número principal: cada dígito sobe de baixo, um depois do outro */
 .v2-digito { display: inline-block; overflow: hidden; vertical-align: bottom; line-height: 1.05; }
 .v2-digito > span { display: inline-block; animation: v2-subir 620ms cubic-bezier(.2, .8, .2, 1) both; }
@@ -614,12 +607,8 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 /* botões magnéticos voltam com suavidade */
 .botao.primario { transition: translate 220ms cubic-bezier(.2, .7, .2, 1), transform 120ms ease, background 150ms ease; }
 
-@media (max-width: 860px) { .v2-fita-rotulo { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .v2-painel::before { animation: none !important; }
-  .v2-fita-trilho { overflow-x: auto; }
-  .v2-fita-faixa { animation: none !important; }
-  .v2-fita-faixa ul[aria-hidden] { display: none; }
 }
 /* o hover dos cartões continua valendo depois de revelados */
 .v2-anima .v2-revelar.visivel.cartao:hover, .v2-anima .v2-revelar.visivel.v2-principio:hover { transform: translateY(-2px); }

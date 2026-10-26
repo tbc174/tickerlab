@@ -1,5 +1,5 @@
 // Peças que aparecem em mais de uma página do site.
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Funcionalidade, Modulo } from "../conteudo";
 import { modulos } from "../conteudo";
 import { BETA_FECHADO, TICKER_DO_EXEMPLO, linkDoApp } from "./textos";
@@ -170,22 +170,31 @@ export function LinhaDoHeroi() {
   );
 }
 
-export function ChamadaFinal() {
+/** A chamada do fim da página; sem nada, convida para a primeira análise com PETR4. */
+export function ChamadaFinal({
+  titulo = "Comece pela sua primeira análise",
+  subtitulo = "O tutorial do app guia você em 2 minutos, com dados de verdade.",
+  children,
+}: {
+  titulo?: string;
+  subtitulo?: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="escura v2-final-fundo">
       {/* o horizonte azul do topo, que sobe quando a chamada aparece (movimento.js) */}
       <div className="v2-horizonte v2-horizonte-alto" aria-hidden="true" />
       <section className="faixa secao final" aria-labelledby="titulo-final">
-        <h2 id="titulo-final">Comece pela sua primeira análise</h2>
-        <p className="subtitulo">
-          O tutorial do app guia você em 2 minutos, com dados de verdade.
-        </p>
-        <a
-          className="botao primario"
-          href={linkDoApp("visao-geral", { ticker: TICKER_DO_EXEMPLO })}
-        >
-          Experimentar com PETR4
-        </a>
+        <h2 id="titulo-final">{titulo}</h2>
+        <p className="subtitulo">{subtitulo}</p>
+        {children ?? (
+          <a
+            className="botao primario"
+            href={linkDoApp("visao-geral", { ticker: TICKER_DO_EXEMPLO })}
+          >
+            Experimentar com PETR4
+          </a>
+        )}
       </section>
     </div>
   );
