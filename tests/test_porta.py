@@ -204,6 +204,16 @@ def test_distintos_traz_os_valores_sem_a_tabela_inteira(base):
             p.distintos("eventos", "cnpj")  # no dicionário, mas sem arquivo nesta base
 
 
+def test_contar_conta_no_duckdb_com_filtro_de_minimo(base):
+    with Porta(base) as p:
+        assert p.contar("ligacoes") == 6
+        assert p.contar("ligacoes", ao_menos={"publico_em": "2019-01-01"}) == 2
+        with pytest.raises(ValueError, match="coluna"):
+            p.contar("ligacoes", ao_menos={"nao_existe": 1})
+        with pytest.raises(KeyError, match="eventos"):
+            p.contar("eventos")
+
+
 def test_ler_so_as_colunas_pedidas(base):
     """Tabela grande lida só nas colunas que o leitor usa; a data `como_era_em` filtra mesmo assim."""
     with Porta(base) as p:
