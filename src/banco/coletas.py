@@ -32,7 +32,7 @@ LICENCAS = {
     # clima e geografia do café (lidos em 18/10/2026): o INMET não publica licença escrita
     "inmet": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
     "chirps": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
-    "mapbiomas": "MapBiomas Coleção 11: CC BY-SA (termos do site, 21/10/2026; citar Souza et al. 2020)",
+    "mapbiomas": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
     # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
     # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
     "bm": "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles",
@@ -41,12 +41,12 @@ LICENCAS = {
     "iex": "Termos do IEX HIST (com atribuição)",
     "yahoo": "Uso pessoal: só interno, nunca exportar",
     # base de cripto (ADRs 0041 e 0045 do autor)
-    "cftc": "Obra do governo dos EUA (domínio público, 17 U.S.C. §105; citar a CFTC)",
+    "cftc": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
     "rfb": "Dados abertos da Receita Federal (Decreto 8.777/2016; citar a Receita)",
     "wiki": "CC0 (acessos às páginas da Wikimedia)",
-    "gdelt": "GDELT (uso livre citando o GDELT Project e linkando gdeltproject.org; só contagem e tom, sem texto)",
+    "gdelt": "GDELT Project (citar e linkar gdeltproject.org); só contagem e tom",
     "btc": "Blockchain pública lida por nó próprio (Bitcoin Core, MIT)",
-    "kraken": "Termos da Kraken de 19/10/2026: só uso próprio; veda cópia, uso comercial e robôs; só pesquisa na casa",
+    "kraken": "Termo da Kraken (19/10/2026): só uso próprio; veda cópia, comércio e robôs",
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",

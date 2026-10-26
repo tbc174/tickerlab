@@ -3454,7 +3454,7 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 Posição dos fundos e dos produtores nos futuros de café (Coffee C), açúcar, soja, milho, boi gordo e algodão, por semana, desde 2006, no formato do relatório Disaggregated da CFTC
 
 - **Fonte:** CFTC: Commitments of Traders, Disaggregated Futures Only (fut_disagg_txt)
-- **Licença:** Obra do governo dos EUA (domínio público, 17 U.S.C. §105; citar a CFTC)
+- **Licença:** Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)
 - **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Semanal (posição de terça-feira)
 - **Atraso de divulgação:** Divulgado na sexta-feira; a base conta a segunda-feira seguinte, 15h30 de Nova York (regra conservadora do `base/commodities/cftc_cot.py`, com as exceções das paralisações do governo dos EUA em 2018-19 e 2025). `disponivel_em` é o dia seguinte à divulgação
@@ -3610,7 +3610,7 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 Área e produção de café por município e ano, pela PAM do IBGE e pela cobertura de café do MapBiomas, lado a lado. A PAM traz a área colhida (hectares) e a quantidade produzida (toneladas) por tipo: arábica, conilon e o total quando os dois têm número. O MapBiomas traz os hectares de lavoura de café vistos por satélite (classe 46, soma dos biomas do município). Medem coisas diferentes (colhida contra plantada visível) e nunca se somam; coluna sem número fica vazia, nunca zero
 
 - **Fonte:** IBGE: PAM, tabela 1613 do SIDRA (variáveis 216 e 214, café arábica e canephora, por município); MapBiomas: Coleção 11, planilha de cobertura por bioma, estado e município
-- **Licença:** MapBiomas Coleção 11: CC BY-SA (termos do site, 21/10/2026; citar Souza et al. 2020)
+- **Licença:** MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Ressalva de revenda:** As colunas da PAM são do IBGE (domínio público; citar o IBGE); a coluna do MapBiomas é CC BY-SA (citar o projeto MapBiomas, Souza et al. 2020; revenda a confirmar)
 - **Frequência:** Anual

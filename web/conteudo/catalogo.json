@@ -150,7 +150,7 @@
     },
     {
       "historico_desde": "2006-06-13",
-      "licenca": "Obra do governo dos EUA (domínio público, 17 U.S.C. §105; citar a CFTC)",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
       "modulos": [
         "mercado_e_empresas"
       ],
@@ -216,7 +216,7 @@
     },
     {
       "historico_desde": "1985-12-31",
-      "licenca": "MapBiomas Coleção 11: CC BY-SA (termos do site, 21/10/2026; citar Souza et al. 2020)",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
         "macro"
       ],
@@ -1054,7 +1054,7 @@
     },
     {
       "id": "cftc-cot-disaggregated",
-      "licenca": "Obra do governo dos EUA (domínio público, 17 U.S.C. §105; citar a CFTC)",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": null
@@ -1124,7 +1124,7 @@
     },
     {
       "id": "mapbiomas-cafe",
-      "licenca": "MapBiomas Coleção 11: CC BY-SA (termos do site, 21/10/2026; citar Souza et al. 2020)",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
@@ -3259,7 +3259,7 @@
     },
     {
       "id": "mapbiomas-estatisticas",
-      "licenca": "MapBiomas Coleção 11: CC BY-SA (termos do site, 21/10/2026; citar Souza et al. 2020)",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
