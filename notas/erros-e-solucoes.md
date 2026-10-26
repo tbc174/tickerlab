@@ -663,3 +663,10 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a Receita publica `Estabelecimentos6/7.zip` cortados em 2023-08 (a cópia inteira vem com sufixo `-RF…`); e as mudanças do mês eram montadas todas de uma vez na memória.
 - **Solução:** o download confere `zipfile.is_zipfile` e o `Content-Length`, repete e usa a cópia `-RF…` (#619); as mudanças saem uma tabela por vez (#634) e um arquivo por prefixo, com pasta `<AAAA-MM>/<xx>.parquet` quando o mês passa de 2 milhões de linhas (#644). Pico medido: 3,8 GB no pior mês; contêiner com 5 GB e swap.
 - **Data:** 25/10/2026
+
+
+## Busca aberta por nome ou ticker devolvia 503 no PostgreSQL
+- **Sintoma:** CNPJ funcionava, mas nome e ticker devolviam 503 após a publicação.
+- **Causa:** `order_by("cnpj")` resolveu o nome para a tabela associada (`setores_cvm`), embora o `SELECT DISTINCT` retornasse o CNPJ de `tickers_dos_emissores`. PostgreSQL exige que a expressão ordenada esteja na seleção; SQLite aceita essa consulta e ocultou o erro nos testes locais.
+- **Solução:** ordenar pelas próprias `selected_columns` da consulta. Os três modos de busca e a eliminação de duplicatas passaram a ser exercitados também pelo PostgreSQL no conjunto `test_banco.py` do CI. A falha foi reproduzida por consulta de leitura antes da correção.
+- **Data:** 26/10/2026
