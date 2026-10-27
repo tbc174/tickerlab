@@ -148,7 +148,7 @@ describe("página inicial para quem analisa", () => {
   });
 
   it("sem fita de cotações, sem busca de ativos e sem o painel de PETR4", () => {
-    for (const peca of ["v2-fita", "data-busca", "v2-grafico", "exemplo-PETR4", "Por que o TickerLab"])
+    for (const peca of ["v2-fita", "data-busca=", "v2-grafico", "exemplo-PETR4", "Por que o TickerLab"])
       expect(html, peca).not.toContain(peca);
   });
 

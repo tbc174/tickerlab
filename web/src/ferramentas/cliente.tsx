@@ -2,6 +2,7 @@
 // aos campos. Só as páginas de ferramentas carregam este script (vite.ferramentas.config.ts).
 // Não usa hydrateRoot: o HTML do site sai de renderToStaticMarkup, sem as marcas que o React usa
 // para religar; montar por cima dá o mesmo desenho (o estado começa nos mesmos valores de exemplo).
+import { BuscaDaBase } from "../site/BuscaDaBase";
 import { createRoot } from "react-dom/client";
 import { PrefixoDoId } from "../idUnico";
 import { ligarContinuacoes } from "./continuar";
@@ -21,6 +22,12 @@ export function ligarFerramentas(raiz: ParentNode = document): number {
         <Componente />
       </PrefixoDoId.Provider>,
     );
+  }
+  for (const lugar of raiz.querySelectorAll<HTMLElement>("[data-busca-base]")) {
+    if (lugar.dataset.ligada) continue;
+    lugar.dataset.ligada = "sim";
+    createRoot(lugar).render(<BuscaDaBase />);
+    ligadas++;
   }
   return ligadas;
 }

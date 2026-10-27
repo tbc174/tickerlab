@@ -2,6 +2,7 @@
 // assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
 // estudo do dia, a vitrine das análises abertas, os cruzamentos da base (PR 6), as quatro regras da base, as fontes com licença e
 // os planos. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
+import { BuscaDaBase } from "../site/BuscaDaBase";
 import { baseEmNumeros, catalogo } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { Cruzamentos } from "../site/Cruzamentos";
@@ -19,6 +20,7 @@ import {
 
 export const DADOS = {
   caminho: "/",
+  ferramenta: true,
   titulo: "TickerLab",
   descricao:
     "Coleta segura e auditável das fontes públicas brasileiras para quem analisa empresas: cada " +
@@ -122,6 +124,7 @@ function Heroi() {
             </a>
           </div>
           <AvisoDeAcesso />
+          <div data-busca-base><BuscaDaBase /></div>
         </div>
         <PainelDaBase />
       </section>
