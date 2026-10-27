@@ -56,16 +56,29 @@ def _validar(nome: str, valor: dict[str, Any]) -> None:
     date.fromisoformat(valor.get("corte", ""))
     if not isinstance(valor.get("analise", {}).get("partes"), list):
         raise ValueError("texto fora do formato")  # noqa: TRY004 — conteúdo externo inválido
+    if "entrada_aprovada" in valor:
+        entrada = valor["entrada_aprovada"]
+        if (
+            not isinstance(entrada, dict)
+            or _hash(_json(entrada)) != valor["hash_da_entrada_atual"]
+        ):
+            raise ValueError("hash da entrada original não confere")
+        if entrada.get("corte") != valor["corte"] or re.sub(
+            r"\D", "", entrada.get("cnpj", "")
+        ) != nome.removesuffix(".json"):
+            raise ValueError("entrada original de outro CNPJ ou corte")
 
 
-def _com_corte(valor: dict[str, Any], nome: str, entradas: Path) -> dict[str, Any]:
-    if "corte" in valor:
-        return valor
-    # Lote anterior ao PR B: recuperar o metadado só da entrada exata, sem remontar texto.
+def _com_entrada(valor: dict[str, Any], nome: str, entradas: Path) -> dict[str, Any]:
+    # Entregar a fotografia exata permite ler o texto depois que o cadastro mudar.
     for caminho in sorted(entradas.rglob(nome)):
         entrada = _ler(caminho)
         if _hash(_json(entrada)) == valor.get("hash_da_entrada_atual"):
-            return {**valor, "corte": entrada["corte"]}
+            return {
+                **valor,
+                "corte": valor.get("corte", entrada["corte"]),
+                "entrada_aprovada": entrada,
+            }
     raise ValueError(f"sem entrada original compatível: {nome}")
 
 
@@ -81,7 +94,7 @@ def empacotar(origem: Path, entradas: Path) -> bytes:
         valor = _ler(caminho)
         if valor.get("publicavel") is not True:
             continue
-        valor = _com_corte(valor, caminho.name, entradas)
+        valor = _com_entrada(valor, caminho.name, entradas)
         _validar(caminho.name, valor)
         conteudos[caminho.name] = _json(valor)
     manifesto = {"versao": 1, "arquivos": {n: _hash(c) for n, c in conteudos.items()}}

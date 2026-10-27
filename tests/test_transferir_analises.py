@@ -57,7 +57,8 @@ def test_entrega_so_aprovada_recupera_corte_pelo_hash_e_preserva_original(tmp_pa
     conteudos = arquivos(entrega.empacotar(origem, entradas))
     assert set(conteudos) == {f"{CNPJ}.json", "manifesto.json"}
     publicada = json.loads(conteudos[f"{CNPJ}.json"])
-    assert publicada == {**analise, "corte": "2026-10-18"}
+    entrada = json.loads((entradas / "leva-1" / f"{CNPJ}.json").read_text())
+    assert publicada == {**analise, "corte": "2026-10-18", "entrada_aprovada": entrada}
     assert "corte" not in json.loads((origem / f"{CNPJ}.json").read_text())
 
 
@@ -66,6 +67,43 @@ def test_nao_adivinha_corte_quando_hash_nao_bate(tmp_path):
     gravar(entradas / "leva-1", f"{CNPJ}.json", {"corte": "2026-10-19"})
     with pytest.raises(ValueError, match="entrada original"):
         entrega.empacotar(origem, entradas)
+
+
+def test_mesmo_com_corte_exige_a_entrada_original(tmp_path):
+    origem, entradas, analise = preparar(tmp_path)
+    analise["corte"] = "2026-10-18"
+    gravar(origem, f"{CNPJ}.json", analise)
+    gravar(entradas / "leva-1", f"{CNPJ}.json", {"corte": "2026-10-19"})
+    with pytest.raises(ValueError, match="entrada original"):
+        entrega.empacotar(origem, entradas)
+
+
+@pytest.mark.parametrize("defeito", ["hash", "cnpj", "corte"])
+def test_recebedor_recusa_fotografia_incompativel_mesmo_com_manifesto_valido(
+    tmp_path, defeito
+):
+    origem, entradas, _ = preparar(tmp_path)
+    conteudos = arquivos(entrega.empacotar(origem, entradas))
+    nome = f"{CNPJ}.json"
+    analise = json.loads(conteudos[nome])
+    entrada = analise["entrada_aprovada"]
+    if defeito == "corte":
+        analise["corte"] = "2026-10-19"
+    else:
+        entrada["cnpj"] = "99.887.766/0001-10"
+        if defeito == "cnpj":
+            bruto = json.dumps(
+                entrada, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+            ).encode()
+            analise["hash_da_entrada_atual"] = hashlib.sha256(bruto).hexdigest()
+    conteudos[nome] = json.dumps(analise).encode()
+    manifesto = json.loads(conteudos["manifesto.json"])
+    manifesto["arquivos"][nome] = hashlib.sha256(conteudos[nome]).hexdigest()
+    conteudos["manifesto.json"] = json.dumps(manifesto).encode()
+    dados = tmp_path / "dados"
+    with pytest.raises(ValueError, match="entrada original"):
+        entrega.instalar(tar_de(conteudos), dados)
+    assert not dados.exists()
 
 
 def test_nao_aceita_marca_publicavel_sem_aprovacao(tmp_path):

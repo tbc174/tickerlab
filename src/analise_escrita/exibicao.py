@@ -2,16 +2,16 @@
 
 O lote (`scripts/escrever_analises.py`) deixa `analises/<cnpj>.json` na pasta das análises, que chega
 ao app como as fichas do dossiê. Aqui a análise guardada vira `Relatorio.analise`, com cada nota
-resolvida na linha da ficha de agora. Três travas, todas para nunca mostrar texto errado:
+resolvida na entrada que deu origem ao texto. As travas para nunca mostrar texto errado:
 
 - só o texto aprovado na porta 3 (`publicavel`) vai ao ar;
-- a ficha mudou desde que o texto foi escrito (o hash da entrada não bate): sai o molde, com o
-  aviso de que a análise está sendo reescrita, nunca texto com número velho;
+- com entrada aprovada preservada e hash idêntico, mostra o texto como análise histórica datada;
+- sem essa entrada, remonta a ficha e mantém a trava anterior: se mudou, sai o molde;
 - quem não é Pro (D4) não vê a parte que cita o dossiê: ela sai do molde montado sem o dossiê.
 
 Os gráficos escolhidos pelo modelo (plano de 23/10/2026) vêm no mesmo arquivo (`graficos`, gravado
 pelo passo `publicar` de `scripts/escolher_graficos.py`) e valem só para a mesma ficha e o mesmo
-texto; passam de novo pela porta 1 contra a ficha de agora, e a reserva por regras completa o mínimo.
+texto; passam de novo pela porta 1 contra a mesma entrada, e a reserva por regras completa o mínimo.
 Quem não é Pro não vê gráfico nem destaque do dossiê, nem o que se ancora numa parte que virou molde.
 
 Sem arquivo, ilegível ou fora do formato, o relatório fica como estava: sem análise e sem erro. A
@@ -27,6 +27,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from base.dossie import conferir_sem_pessoas
 from src import graficos_do_relatorio as gdr
 from src.analise_escrita import entrada as en
 from src.analise_escrita import graficos as gr
@@ -106,6 +107,39 @@ def _entrada_de_hoje(entradas: Entradas, corte: date) -> dict[str, Any] | None:
         return en.entrada_da_ficha(com, corte, sem_dossie=sem)
     except (en.DataDepoisDoCorteError, en.PessoaNaEntradaError):
         return None
+
+
+def _entrada_aprovada(guardada: dict[str, Any], cnpj: str) -> dict[str, Any]:
+    """Confere a fotografia histórica sem alterar data, hash, dados ou aprovação."""
+    entrada = guardada["entrada_aprovada"]
+    if (
+        not isinstance(entrada, dict)
+        or en.hash_da_entrada(entrada) != guardada["hash_da_entrada_atual"]
+    ):
+        raise ValueError("entrada histórica incompatível")
+    for identificador in (entrada["cnpj"], guardada["cnpj"]):
+        if re.sub(r"\D", "", identificador) != re.sub(r"\D", "", cnpj):
+            raise ValueError("entrada histórica de outro CNPJ")
+    if entrada["corte"] != guardada["corte"] or entrada["versao"] != en.VERSAO:
+        raise ValueError("corte ou versão da entrada incompatível")
+    if guardada["linhagem"]["porta3"]["veredito"] != "aprovado":
+        raise ValueError("entrada sem aprovação humana")
+    linhas = entrada["linhas"]
+    if not isinstance(linhas, list) or not all(isinstance(li, dict) for li in linhas):
+        raise ValueError("linhas fora do formato")
+    ids = [li["id"] for li in linhas]
+    if len(set(ids)) != len(ids) or any(
+        type(li["so_pro"]) is not bool for li in linhas
+    ):
+        raise ValueError("ids ou restrição de plano inválidos")
+    if not isinstance(entrada["secoes"], dict) or not isinstance(
+        entrada["obrigatorias"], list
+    ):
+        raise TypeError("seções ou lacunas fora do formato")
+    en.conferir_corte(linhas, date.fromisoformat(entrada["corte"]))
+    conferir_sem_pessoas(entrada, set())
+    en.conferir_sem_nome_com_cargo(entrada)
+    return entrada
 
 
 def _nota(numero: int, linha: dict[str, Any], entrada: dict[str, Any]) -> NotaDaTela:
@@ -321,24 +355,37 @@ def com_analise(
 ) -> Relatorio:
     """O relatório com a análise escrita, se há texto aprovado; senão, o mesmo relatório.
 
-    `entradas` são as do relatório (para montar a ficha de agora e conferir o hash); `plano`, o de
+    `entradas` são as do relatório (usadas se não há fotografia histórica); `plano`, o de
     quem vê. A página, o PDF e a API chamam esta função e leem `relatorio.analise`.
     """
     guardada = _ler_guardada(relatorio.cnpj, pasta or pasta_das_analises())
     if guardada is None or guardada["publicavel"] is not True:
         return relatorio  # enquanto a porta 3 for total, só texto aprovado vai ao ar
     try:
-        entrada = _entrada_de_hoje(entradas, date.fromisoformat(guardada["corte"]))
+        historica = "entrada_aprovada" in guardada
+        entrada = (
+            _entrada_aprovada(guardada, relatorio.cnpj)
+            if historica
+            else _entrada_de_hoje(entradas, date.fromisoformat(guardada["corte"]))
+        )
         if entrada is None:
             return relatorio
         e_pro = pode_usar(plano, DOSSIE_DA_BASE)
         mostrada, publicada, motivo = _analise_a_mostrar(guardada, entrada, e_pro)
+        ampliada = series.ampliar(entrada)
+        escolha, vista = _graficos_a_mostrar(
+            guardada, ampliada, (mostrada, publicada), e_pro
+        )
+        tela = _para_a_tela(mostrada, ampliada, motivo, escolha, vista)
+        if historica:
+            corte = date.fromisoformat(entrada["corte"])
+            aviso = (
+                f"Análise histórica com dados até {corte:%d/%m/%Y}. Texto, notas e gráficos "
+                "usam a entrada original dessa data; os dados atuais estão na ficha abaixo. "
+                f"{tela.aviso}"
+            )
+            tela = dataclasses.replace(tela, aviso=aviso)
     except (saida.RespostaInvalidaError, ValueError, KeyError, TypeError):
         log.warning("análise de %s fora do formato", relatorio.cnpj)
         return relatorio
-    ampliada = series.ampliar(entrada)
-    escolha, vista = _graficos_a_mostrar(
-        guardada, ampliada, (mostrada, publicada), e_pro
-    )
-    tela = _para_a_tela(mostrada, ampliada, motivo, escolha, vista)
     return dataclasses.replace(relatorio, analise=tela)
