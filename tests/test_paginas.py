@@ -180,6 +180,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "parametros",
                 "mapa_do_cafe",
                 "painel_do_cafe",
+                "radar_imobiliario",
                 "busca_por_cnpj",
                 "relatorio_do_setor",
             },
@@ -275,6 +276,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "pulse",
         "mapa_do_cafe",
         "painel_do_cafe",
+        "radar_imobiliario",
         "boas_vindas_beta",
     }
 

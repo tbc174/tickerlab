@@ -23,6 +23,7 @@ from src import (
     conformidade,
     ficha,
     pulse,
+    radar_imobiliario,
     relatorio_setor,
     research,
     topicos,
@@ -142,6 +143,22 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
 # a conta logada cujo plano abre a página da rota (403 com o motivo, se não abre)
 Conta = Annotated[Usuario, Depends(conta_com_acesso)]
+
+
+@router.get("/radar-imobiliario")
+def radar_imobiliario_v1(
+    _conta: Conta,
+    cidade: radar_imobiliario.Cidade = "SP",
+    recorte: radar_imobiliario.Recorte = "todos",
+) -> radar_imobiliario.RadarImobiliarioV1:
+    """Lê o pacote agregado instalado; não consulta as prefeituras durante o pedido."""
+    pacote = radar_imobiliario.ler_pacote()
+    if pacote is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Os dados do radar imobiliário ainda não estão disponíveis neste servidor.",
+        )
+    return radar_imobiliario.montar_vista(pacote, cidade, recorte)
 
 
 class LimitesV1(BaseModel):

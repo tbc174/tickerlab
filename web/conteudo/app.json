@@ -76,7 +76,8 @@
         "parametros",
         "momentum",
         "mapa_do_cafe",
-        "painel_do_cafe"
+        "painel_do_cafe",
+        "radar_imobiliario"
       ],
       "rotulo": "Acompanhar"
     },

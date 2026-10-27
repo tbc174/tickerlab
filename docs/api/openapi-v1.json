@@ -4421,6 +4421,77 @@
         "title": "PiorQuedaV1",
         "type": "object"
       },
+      "Ponto": {
+        "additionalProperties": false,
+        "description": "Uma competência, com cobertura territorial e comparação anual disponível.",
+        "properties": {
+          "cidade": {
+            "enum": [
+              "SP",
+              "RIO"
+            ],
+            "title": "Cidade",
+            "type": "string"
+          },
+          "localizadas": {
+            "minimum": 0.0,
+            "title": "Localizadas",
+            "type": "integer"
+          },
+          "mes": {
+            "pattern": "^20\\d{2}-(0[1-9]|1[0-2])$",
+            "title": "Mes",
+            "type": "string"
+          },
+          "quantidade": {
+            "minimum": 0.0,
+            "title": "Quantidade",
+            "type": "integer"
+          },
+          "recorte": {
+            "enum": [
+              "todos",
+              "residencial"
+            ],
+            "title": "Recorte",
+            "type": "string"
+          },
+          "valor_medio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Medio"
+          },
+          "variacao_anual_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao Anual Pct"
+          }
+        },
+        "required": [
+          "cidade",
+          "recorte",
+          "mes",
+          "quantidade",
+          "valor_medio",
+          "localizadas",
+          "variacao_anual_pct"
+        ],
+        "title": "Ponto",
+        "type": "object"
+      },
       "PontoAnualDoCafeV1": {
         "properties": {
           "ano_safra": {
@@ -5164,6 +5235,94 @@
         "title": "PulseV1",
         "type": "object"
       },
+      "RadarImobiliarioV1": {
+        "description": "Resposta da página do radar, só com o recorte solicitado.",
+        "properties": {
+          "apurado_em": {
+            "format": "date",
+            "title": "Apurado Em",
+            "type": "string"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "cidade": {
+            "enum": [
+              "SP",
+              "RIO"
+            ],
+            "title": "Cidade",
+            "type": "string"
+          },
+          "definicao": {
+            "title": "Definicao",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "fonte_geografica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonte Geografica"
+          },
+          "recorte": {
+            "enum": [
+              "todos",
+              "residencial"
+            ],
+            "title": "Recorte",
+            "type": "string"
+          },
+          "regioes": {
+            "items": {
+              "$ref": "#/components/schemas/Regiao"
+            },
+            "title": "Regioes",
+            "type": "array"
+          },
+          "serie": {
+            "items": {
+              "$ref": "#/components/schemas/Ponto"
+            },
+            "title": "Serie",
+            "type": "array"
+          },
+          "tipo_regiao": {
+            "enum": [
+              "distrito",
+              "bairro"
+            ],
+            "title": "Tipo Regiao",
+            "type": "string"
+          }
+        },
+        "required": [
+          "apurado_em",
+          "cidade",
+          "recorte",
+          "definicao",
+          "tipo_regiao",
+          "fonte",
+          "fonte_geografica",
+          "serie",
+          "regioes",
+          "avisos"
+        ],
+        "title": "RadarImobiliarioV1",
+        "type": "object"
+      },
       "RastroDoNumeroV1": {
         "description": "Como o número foi calculado e de onde veio (`src/rastro.py`): a conta, a versão dela, a\nfonte (o id da coleta, com a licença) e quando o insumo mais novo ficou público.",
         "properties": {
@@ -5231,6 +5390,75 @@
           "outras_fontes"
         ],
         "title": "RastroDoNumeroV1",
+        "type": "object"
+      },
+      "Regiao": {
+        "additionalProperties": false,
+        "description": "Quantidade e média por região; SP usa distrito, Rio usa bairro.",
+        "properties": {
+          "cidade": {
+            "enum": [
+              "SP",
+              "RIO"
+            ],
+            "title": "Cidade",
+            "type": "string"
+          },
+          "mes": {
+            "pattern": "^20\\d{2}-(0[1-9]|1[0-2])$",
+            "title": "Mes",
+            "type": "string"
+          },
+          "nome": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "quantidade": {
+            "minimum": 0.0,
+            "title": "Quantidade",
+            "type": "integer"
+          },
+          "recorte": {
+            "enum": [
+              "todos",
+              "residencial"
+            ],
+            "title": "Recorte",
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "distrito",
+              "bairro"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "valor_medio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Medio"
+          }
+        },
+        "required": [
+          "cidade",
+          "recorte",
+          "mes",
+          "quantidade",
+          "valor_medio",
+          "tipo",
+          "nome"
+        ],
+        "title": "Regiao",
         "type": "object"
       },
       "RegiaoDoMapaV1": {
@@ -6937,6 +7165,65 @@
           }
         },
         "summary": "Pulse Da Conta"
+      }
+    },
+    "/v1/radar-imobiliario": {
+      "get": {
+        "description": "Lê o pacote agregado instalado; não consulta as prefeituras durante o pedido.",
+        "operationId": "radar_imobiliario_v1_v1_radar_imobiliario_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cidade",
+            "required": false,
+            "schema": {
+              "default": "SP",
+              "enum": [
+                "SP",
+                "RIO"
+              ],
+              "title": "Cidade",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recorte",
+            "required": false,
+            "schema": {
+              "default": "todos",
+              "enum": [
+                "todos",
+                "residencial"
+              ],
+              "title": "Recorte",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarImobiliarioV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Radar Imobiliario V1"
       }
     },
     "/v1/relatorio-empresa": {
