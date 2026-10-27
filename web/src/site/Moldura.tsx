@@ -138,7 +138,7 @@ function Topo({ atual }: { atual: string }) {
   );
 }
 
-function Rodape() {
+function Rodape({ aviso }: { aviso: string }) {
   return (
     <footer className="rodape escura">
       <div className="faixa">
@@ -163,7 +163,7 @@ function Rodape() {
           </a>
           <a href={`mailto:${EMAIL_DE_CONTATO}`}>{EMAIL_DE_CONTATO}</a>
         </nav>
-        <p className="aviso">{AVISO}</p>
+        <p className="aviso">{aviso}</p>
       </div>
     </footer>
   );
@@ -174,6 +174,7 @@ export interface DadosDaPagina {
   titulo: string;
   descricao: string;
   atual?: string; // o item do topo marcado como página atual
+  avisoRodape?: string; // permite atribuir a fonte própria de um estudo
   ferramenta?: boolean; // a página tem uma calculadora: carrega o ferramentas.js
   imagem?: string; // imagem própria para compartilhar (1200 × 630, descrita pelo título); sem ela, a da marca
 }
@@ -184,6 +185,7 @@ export function Documento({
   descricao,
   atual = "",
   ferramenta = false,
+  avisoRodape = AVISO,
   imagem,
   children,
 }: DadosDaPagina & { children: ReactNode }) {
@@ -224,7 +226,7 @@ export function Documento({
         </a>
         <Topo atual={atual} />
         <main id="conteudo">{children}</main>
-        <Rodape />
+        <Rodape aviso={avisoRodape} />
       </body>
     </html>
   );

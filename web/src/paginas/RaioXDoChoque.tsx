@@ -19,6 +19,9 @@ export const DADOS = {
     "Quem caiu mais no circuit breaker de 26/10/2026 e por quê: beta, a alta entre os turnos, " +
     "dívida, setores e o Joesley Day, com fonte em cada número.",
   atual: "/relatorios.html",
+  avisoRodape:
+    "Nada aqui é recomendação de investimento. Os preços deste estudo são da B3; as demais " +
+    "fontes e datas estão descritas no estudo. Rentabilidade passada não garante resultado futuro.",
   imagem: "/estudos/raio-x-do-choque-2026-10-26.png",
 };
 
