@@ -44,6 +44,8 @@ def test_limite_preserva_destino(tmp_path, monkeypatch):
 def test_cli_instala_em_destino_explicito(dados_radar, tmp_path, monkeypatch):
     origem, destino = tmp_path / "origem.json", tmp_path / "instalado.json"
     origem.write_text(json.dumps(dados_radar), encoding="utf-8")
-    monkeypatch.setattr("sys.argv", ["importar", str(origem), "--destino", str(destino)])
+    monkeypatch.setattr(
+        "sys.argv", ["importar", str(origem), "--destino", str(destino)]
+    )
     importador.main()
     assert destino.is_file()

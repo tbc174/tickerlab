@@ -178,7 +178,9 @@ def montar_vista(
         fonte=FONTES[cidade],
         fonte_geografica=FONTE_GEOGRAFICA if cidade == "SP" else None,
         atribuicao=ATRIBUICOES[cidade],
-        licenca="https://creativecommons.org/licenses/by/4.0/" if cidade == "RIO" else None,
+        licenca="https://creativecommons.org/licenses/by/4.0/"
+        if cidade == "RIO"
+        else None,
         serie=pontos,
         regioes=regioes,
         avisos=avisos,
