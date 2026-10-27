@@ -1,10 +1,10 @@
 {
   "titulo": "O dia do circuit breaker: o mercado devolveu a aposta feita entre os turnos",
-  "subtitulo": "Preços de 26/10/2026 às 12h59, com o pregão ainda aberto, contra o fechamento de sexta, 23/10. Balanços, preços passados e carteiras dos fundos como estavam públicos até 23/10: nada do que saiu depois entra na conta.",
-  "parcial": true,
-  "hora": "12h59",
-  "ibovespa": "−14,4%",
-  "mediana": "−21,2%",
+  "subtitulo": "Preços de fechamento de 26/10/2026, contra o fechamento de sexta, 23/10. Balanços, preços passados e carteiras dos fundos como estavam públicos até 23/10. A variação e o volume de 26/10 descrevem o resultado do dia.",
+  "parcial": false,
+  "hora": null,
+  "ibovespa": "−13,9%",
+  "mediana": "−22,7%",
   "empresas": 120,
-  "cairam_30": 34
+  "cairam_30": 35
 }
