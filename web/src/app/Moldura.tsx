@@ -9,7 +9,7 @@ import { Logo } from "./Logo";
 import { MenuDoTema } from "./MenuDoTema";
 import { AbasDoCelular, MenuPorAreas } from "./MenuPorAreas";
 
-export function Moldura({ comMenu, children }: { comMenu: boolean; children: ReactNode }) {
+export function Moldura({ comMenu, children, aviso = AVISO }: { comMenu: boolean; children: ReactNode; aviso?: string }) {
   return (
     <>
       <a className="pular" href="#conteudo">
@@ -32,7 +32,7 @@ export function Moldura({ comMenu, children }: { comMenu: boolean; children: Rea
       </div>
       {comMenu ? <AbasDoCelular /> : null}
       <footer className="rodape-do-app faixa">
-        <p className="apagado">{AVISO}</p>
+        <p className="apagado">{aviso}</p>
       </footer>
     </>
   );

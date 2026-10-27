@@ -20,6 +20,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 it("abre pelo menu com fonte, cobertura e regiões; muda mês sem inventar cobertura", async () => {
   abrirApp("/radar-imobiliario", { rotas: (url) => url.startsWith("/api/v1/radar-imobiliario") ? respostaJson(200, resposta) : undefined });
   expect(await screen.findByText("Distrito oficial não é bairro informado.")).toBeTruthy();
+  expect(screen.queryByText(/Os dados vêm do Yahoo/)).toBeNull();
   expect(screen.getByText(/12 de 15/)).toBeTruthy();
   const tabela = screen.getByRole("table", { name: /Distritos/ });
   expect(within(tabela).getByText("CENTRO")).toBeTruthy();

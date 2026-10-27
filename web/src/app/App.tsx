@@ -59,7 +59,7 @@ export function App() {
     <ProvedorDaConta clientId={api.googleClientId}>
       {/* a moldura (menu, topo e rodapé) só depois de entrar: antes, a página de entrada */}
       <ExigeLogin>
-        <Moldura comMenu>
+        <Moldura comMenu aviso={pathname.replace(/\/$/, "") === "/radar-imobiliario" ? "Nada aqui é recomendação de investimento. O radar usa dados das prefeituras, sujeitos a revisões. Consulte as fontes, o método e os limites na própria tela." : undefined}>
           <Routes>
             <Route index element={<Inicio />} />
             {TELAS_DO_APP.map((pagina) => (
