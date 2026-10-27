@@ -455,6 +455,13 @@ describe("Raio-X do choque de 26/10/2026 (pode do Tiago para publicar, 26/10)", 
     expect(texto).toContain("Nada aqui é recomendação de investimento");
   });
 
+  it("o rodapé atribui os preços do estudo à B3, sem trocar a fonte das outras páginas", () => {
+    const rodape = trecho(html, '<footer class="rodape escura">', "</footer>");
+    expect(semTags(rodape)).toContain("Os preços deste estudo são da B3");
+    expect(semTags(rodape)).not.toContain("Yahoo");
+    expect(semTags(renderizar("index.html"))).toContain("Os dados vêm do Yahoo Finance");
+  });
+
   it("o estilo do estudo fica preso dentro dele (classes rx-)", () => {
     const corpo = readFileSync(join("src", "paginas", "raio-x", "corpo.html"), "utf8");
     const estilo = trecho(corpo, "<style>", "</style>").slice("<style>".length, -"</style>".length);
