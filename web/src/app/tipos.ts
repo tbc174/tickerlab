@@ -13,6 +13,8 @@ export interface RadarImobiliarioV1 {
   tipo_regiao: "distrito" | "bairro";
   fonte: string;
   fonte_geografica: string | null;
+  atribuicao: string;
+  licenca: string | null;
   serie: (PontoDoRadar & { localizadas: number; variacao_anual_pct: number | null })[];
   regioes: (PontoDoRadar & { tipo: "distrito" | "bairro"; nome: string })[];
   avisos: string[];

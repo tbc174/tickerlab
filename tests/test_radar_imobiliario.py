@@ -126,3 +126,14 @@ def test_limita_tamanho_da_leitura(tmp_path, monkeypatch):
     monkeypatch.setattr(radar, "MAX_BYTES", 20)
     monkeypatch.setenv(radar.VARIAVEL_DO_ARQUIVO, str(arquivo))
     assert radar.ler_pacote() is None
+
+
+def test_preserva_atribuicao_e_licenca_da_fonte(dados_radar):
+    pacote = radar.validar_pacote(dados_radar)
+    rio = radar.montar_vista(pacote, "RIO", "todos")
+    assert "Instituto Pereira Passos" in rio.atribuicao
+    assert "TickerLab" in rio.atribuicao
+    assert rio.licenca == "https://creativecommons.org/licenses/by/4.0/"
+    sp = radar.montar_vista(pacote, "SP", "todos")
+    assert "GeoSampa" in sp.atribuicao
+    assert sp.licenca is None

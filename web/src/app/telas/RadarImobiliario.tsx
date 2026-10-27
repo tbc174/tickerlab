@@ -52,6 +52,7 @@ function Resultado({ dados }: { dados: RadarImobiliarioV1 }) {
         ) : <p>Sem recorte territorial neste mês.</p>}
       </section>
       <details><summary>Fontes, método e limites</summary>
+        <p>{dados.atribuicao}{dados.licenca ? <> <a href={dados.licenca} target="_blank" rel="noreferrer">Licença CC BY 4.0</a>.</> : null}</p>
         <p><a href={dados.fonte} target="_blank" rel="noreferrer">Fonte oficial do ITBI</a>{dados.fonte_geografica ? <> · <a href={dados.fonte_geografica} target="_blank" rel="noreferrer">Limites territoriais do GeoSampa</a></> : null}</p>
         {dados.avisos.map((aviso) => <p key={aviso}>{aviso}</p>)}
       </details>

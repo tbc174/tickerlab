@@ -5243,6 +5243,10 @@
             "title": "Apurado Em",
             "type": "string"
           },
+          "atribuicao": {
+            "title": "Atribuicao",
+            "type": "string"
+          },
           "avisos": {
             "items": {
               "type": "string"
@@ -5276,6 +5280,17 @@
               }
             ],
             "title": "Fonte Geografica"
+          },
+          "licenca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Licenca"
           },
           "recorte": {
             "enum": [
@@ -5316,6 +5331,8 @@
           "tipo_regiao",
           "fonte",
           "fonte_geografica",
+          "atribuicao",
+          "licenca",
           "serie",
           "regioes",
           "avisos"

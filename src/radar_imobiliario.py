@@ -23,6 +23,10 @@ FONTES = {
     "RIO": "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Fazenda/ITBI/MapServer/5",
 }
 FONTE_GEOGRAFICA = "https://geoinfo-smdu.github.io/tutorial-GeoSampa/"
+ATRIBUICOES = {
+    "SP": "Fontes: Prefeitura de São Paulo, Secretaria Municipal da Fazenda e GeoSampa. Cruzamentos e agregação: TickerLab.",
+    "RIO": "ITBI — Prefeitura do Rio de Janeiro, Secretaria Municipal de Fazenda, elaborado pelo Instituto Pereira Passos. Recortes e agregação: TickerLab.",
+}
 DEFINICOES = {
     "SP": "DTIs pagas de compra e venda, no mês do pagamento; não são imóveis únicos.",
     "RIO": "Operações agregadas de compra e promessa de compra e venda, no mês informado pela fonte.",
@@ -100,6 +104,8 @@ class RadarImobiliarioV1(BaseModel):
     tipo_regiao: Literal["distrito", "bairro"]
     fonte: str
     fonte_geografica: str | None
+    atribuicao: str
+    licenca: str | None
     serie: list[Ponto]
     regioes: list[Regiao]
     avisos: list[str]
@@ -171,6 +177,8 @@ def montar_vista(
         tipo_regiao="distrito" if cidade == "SP" else "bairro",
         fonte=FONTES[cidade],
         fonte_geografica=FONTE_GEOGRAFICA if cidade == "SP" else None,
+        atribuicao=ATRIBUICOES[cidade],
+        licenca="https://creativecommons.org/licenses/by/4.0/" if cidade == "RIO" else None,
         serie=pontos,
         regioes=regioes,
         avisos=avisos,

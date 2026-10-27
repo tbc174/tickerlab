@@ -26,4 +26,12 @@ O destino padrão é `dados_locais/radar_imobiliario.json`; `TICKERLAB_RADAR_IMO
 - [Fazenda/IPP do Rio — tabela 5](https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Fazenda/ITBI/MapServer/5).
 - [GeoSampa — serviços e referência cartográfica](https://geoinfo-smdu.github.io/tutorial-GeoSampa/).
 
-A apuração inicial cobre janeiro/2025 a agosto/2026. Atualização é uma nova extração, reconciliação de totais e instalação do agregado; não foi criado agendamento nesta entrega. Antes de distribuir um novo pacote em produção, registrar as condições de uso das fontes no inventário de dados. Acesso público não é um registro de licença por si só.
+A apuração inicial cobre janeiro/2025 a agosto/2026. Atualização é uma nova extração, reconciliação de totais e instalação do agregado; não foi criado agendamento nesta entrega.
+
+## Créditos e condições conferidas em 26/10/2026
+
+- Rio: o [item oficial do serviço ITBI](https://siurb.rio/portal/sharing/rest/content/items/9ffd6eddd51343fe9de72f37be5618b3?f=pjson) declara [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Crédito: Prefeitura do Rio de Janeiro, Secretaria Municipal de Fazenda, elaborado pelo Instituto Pereira Passos. A tela informa os recortes e a agregação feitos pelo TickerLab.
+- São Paulo: fonte Prefeitura de São Paulo, Secretaria Municipal da Fazenda; licença específica da planilha não localizada. Marca informativa: a confirmar.
+- GeoSampa: fonte Prefeitura de São Paulo, SF/SMUL. O [metadado de quadras](https://metadados.geosampa.prefeitura.sp.gov.br/geonetwork/srv/api/records/4ca0d339-8510-4f4d-aac4-a5f6ee570c0b) informa acesso sem restrições e uso sujeito a licença, mas não identifica seus termos. Marca informativa: a confirmar. A [Lei municipal 17.901/2023](https://legislacao.prefeitura.sp.gov.br/lei-17901-de-11-de-janeiro-de-2023) prevê reúso e participação universal; não foi atribuída uma licença Creative Commons por inferência.
+
+O piloto exibe agregados com fonte, data e método. Acesso público não é tratado como comprovação de licença específica.

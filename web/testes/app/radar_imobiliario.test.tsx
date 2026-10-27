@@ -7,6 +7,7 @@ const resposta = {
   apurado_em: "2026-10-26", cidade: "SP", recorte: "todos",
   definicao: "DTIs no mês do pagamento.", tipo_regiao: "distrito",
   fonte: "https://prefeitura.sp.gov.br/", fonte_geografica: null,
+  atribuicao: "Prefeitura de São Paulo. Agregação: TickerLab.", licenca: null,
   avisos: ["Distrito oficial não é bairro informado."],
   serie: [
     { cidade: "SP", recorte: "todos", mes: "2025-08", quantidade: 10, valor_medio: 100, localizadas: 0, variacao_anual_pct: null },
