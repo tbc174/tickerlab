@@ -150,6 +150,28 @@ def test_entidades_da_mesma_companhia_viram_um_participante() -> None:
     assert de_2025.loc["entidade:900", "por"] == "entidade"
 
 
+def test_entidade_com_ligacao_encerrada_volta_a_ser_solta_nos_anos_seguintes() -> None:
+    """A 101 (GNDI) foi da Hapvida até 2024: em 2025 a base não sabe de dono e ela conta sozinha."""
+    ligacoes = _empresa_serie().assign(
+        vigente=True,
+        ultima_referencia=D("2026-01-01"),
+        ate=pd.NaT,
+        ate_publico_em=pd.NaT,
+    )
+    ligacoes.loc[ligacoes["chave"] == "101", ["vigente", "ultima_referencia"]] = [
+        False,
+        D("2024-01-01"),
+    ]
+    participantes = dossie.participantes(
+        _serie("ans_beneficiarios"), _beneficiarios(), ligacoes, None
+    )
+    de_2024 = participantes[participantes["ano"] == 2024].set_index("participante")
+    de_2025 = participantes[participantes["ano"] == 2025].set_index("participante")
+    assert de_2024.loc[f"companhia:{HAPVIDA}", "valor"] == 30.0  # 100 + 101
+    assert de_2025.loc[f"companhia:{HAPVIDA}", "valor"] == 25.0  # só a 100
+    assert de_2025.loc["entidade:101", "valor"] == 15.0
+
+
 def test_entidade_ligada_a_duas_companhias_fica_com_a_de_mais_entidades() -> None:
     # a holding e a controlada aberta: a 101 conta uma vez só, na que junta mais operadoras
     dupla = pd.concat(

@@ -58,9 +58,16 @@ TABELA_CONFERIDA = Path(__file__).resolve().parent / "conferidas" / "empresa_ser
 COLUNAS_DAS_ENTIDADES = ("fonte", "chave", "nome", "raiz")
 COLUNAS = (
     "fonte", "chave", "nome", "raiz", "cnpj_companhia", "companhia", "via", "por",
-    "participacao", "desde", "ultima_referencia", "principal", "tickers", "origem_sha256",
+    "participacao", "desde", "ultima_referencia", "ate", "ate_publico_em", "vigente",
+    "principal", "tickers", "origem_sha256",
 )  # fmt: skip
 ORDEM_DAS_VIAS = {"propria": 0, "controlada": 1, "coligada": 2, "sem_tipo": 3}
+ANEEL = "aneel-samp"
+# a ANEEL atribui o mercado a quem controla: participação minoritária não é vínculo principal
+CONTROLE_MINIMO_NA_ANEEL = 50.0
+ANOS_DE_FOLGA_NO_FRE = (
+    1  # a companhia que não entrega há mais anos que isso parou de entregar
+)
 PRODUTO = "produto"  # via do Comex: exposição ao produto, não posse
 PELA_TABELA = "tabela"
 COMEX = "comexstat"
@@ -356,7 +363,7 @@ def _donos(controladas: pd.DataFrame) -> pd.DataFrame:
     todos["raiz"] = todos["cnpj"].map(_raiz)
     todos["nome_normalizado"] = todos["nome"].map(nome_normalizado)
     chave = ["raiz", "nome_normalizado", "cnpj_companhia", "via"]
-    return (
+    donos = (
         todos.dropna(subset=["cnpj_companhia"])
         .groupby(chave, dropna=False)
         .agg(
@@ -367,6 +374,44 @@ def _donos(controladas: pd.DataFrame) -> pd.DataFrame:
         )
         .reset_index()
     )
+    return _com_a_vigencia(donos, controladas)
+
+
+def _com_a_vigencia(donos: pd.DataFrame, controladas: pd.DataFrame) -> pd.DataFrame:
+    """Até quando cada ligação aparece nas entregas do FRE, como na tabela `rede`.
+
+    `ate` é a 1ª referência da companhia que não mostra mais a ligação e `ate_publico_em` o dia em
+    que essa entrega ficou pública (sem olhar o futuro: antes dele não se sabia do fim). Se a
+    companhia parou de entregar o FRE não há 1ª entrega sem a ligação: `ate` fica vazio e `vigente`
+    é falso (a última evidência é a `ultima_referencia`). A própria companhia é sempre vigente.
+    """
+    entregas = controladas.assign(referencia=pd.to_datetime(controladas["referencia"]))
+    entregas = (
+        entregas.groupby(["cnpj_companhia", "referencia"], as_index=False)
+        .agg(conhecido_em=("conhecido_em", "min"))
+        .rename(columns={"referencia": "ate", "conhecido_em": "ate_publico_em"})
+    )
+    donos = donos.assign(_ultima=pd.to_datetime(donos["ultima_referencia"]))
+    depois = (
+        donos[["cnpj_companhia", "_ultima"]]
+        .drop_duplicates()
+        .merge(entregas, on="cnpj_companhia")
+    )
+    primeira_depois = (
+        depois[depois["ate"] > depois["_ultima"]]
+        .sort_values("ate")
+        .drop_duplicates(["cnpj_companhia", "_ultima"])
+    )
+    donos = donos.merge(primeira_depois, on=["cnpj_companhia", "_ultima"], how="left")
+    ano_mais_novo = entregas["ate"].dt.year.max()
+    ultima_da_companhia = entregas.groupby("cnpj_companhia")["ate"].max().dt.year
+    parou = donos["cnpj_companhia"].map(ultima_da_companhia) < (
+        ano_mais_novo - ANOS_DE_FOLGA_NO_FRE
+    )
+    donos["vigente"] = (donos["via"] == "propria") | (donos["ate"].isna() & ~parou)
+    # datas como `desde` e `ultima_referencia`: dia, não instante
+    donos["ate"] = donos["ate"].map(lambda d: None if pd.isna(d) else d.date())
+    return donos.drop(columns="_ultima")
 
 
 def ligar(entidades: pd.DataFrame, controladas: pd.DataFrame) -> pd.DataFrame:
@@ -379,6 +424,9 @@ def ligar(entidades: pd.DataFrame, controladas: pd.DataFrame) -> pd.DataFrame:
         "participacao",
         "desde",
         "ultima_referencia",
+        "ate",
+        "ate_publico_em",
+        "vigente",
     ]
     com_raiz = donos.dropna(subset=["raiz"])[["raiz", *campos]].drop_duplicates()
     por_cnpj = entidades.dropna(subset=["raiz"]).merge(com_raiz, on="raiz")
@@ -411,38 +459,61 @@ def ligar(entidades: pd.DataFrame, controladas: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+def _minoritaria_na_aneel(ligacoes: pd.DataFrame) -> pd.Series:
+    """Ligação da ANEEL por participação que não é de controle (a própria companhia e a controlada
+    declarada valem): a Eletrobras tem 6,4% da Coelce e 0,11% da Bragantina, mas não é a dona."""
+    controla = ligacoes["via"].isin(["propria", "controlada"]) | (
+        ligacoes["participacao"] > CONTROLE_MINIMO_NA_ANEEL
+    )
+    return (ligacoes["fonte"] == ANEEL) & ~controla
+
+
 def _principal(ligacoes: pd.DataFrame) -> pd.Series:
     """A ligação a usar de cada entidade: uma companhia com ticker hoje (quando os tickers já vieram
     do FCA; o Banco Inter S.A. saiu da bolsa e a Inter & Co ficou); depois a própria companhia;
-    senão a do FRE mais recente, com
-    controlada antes de coligada e, no empate, a maior participação. As outras ficam como histórico
-    (uma distribuidora que já foi coligada da Eletrobras continua aparecendo, mas não é a principal)."""
-    tickers = (
-        ligacoes["tickers"]
-        if "tickers" in ligacoes
-        else pd.Series(None, index=ligacoes.index, dtype=object)
+    depois a que ainda vale (uma ligação que acabou perde para a que segue); senão a do FRE mais
+    recente, com controlada antes de coligada e, no empate, a maior participação. As outras ficam
+    como histórico (uma distribuidora que já foi coligada da Eletrobras continua aparecendo, mas não
+    é a principal). Na ANEEL, participação minoritária nunca é a principal."""
+    tickers = ligacoes.reindex(columns=["tickers"])[
+        "tickers"
+    ]  # sem a coluna: nenhum ticker
+    vigente = (
+        ligacoes["vigente"]
+        if "vigente" in ligacoes
+        else pd.Series(True, index=ligacoes.index)
     )
-    ordem = ligacoes.assign(
-        _sem_ticker=tickers.isna().astype(int),
-        _propria=(ligacoes["via"] != "propria").astype(int),
-        _recente=pd.to_datetime(ligacoes["ultima_referencia"], errors="coerce"),
-        _via=ligacoes["via"].map(ORDEM_DAS_VIAS).fillna(len(ORDEM_DAS_VIAS)),
-    ).sort_values(
-        [
-            "fonte",
-            "chave",
-            "_sem_ticker",
-            "_propria",
-            "_recente",
-            "_via",
-            "participacao",
-        ],
-        ascending=[True, True, True, True, False, True, False],
-        na_position="last",
+    valida = (
+        ligacoes["cnpj_companhia"].notna()
+        & (ligacoes["via"] != PRODUTO)
+        & ~_minoritaria_na_aneel(ligacoes)
     )
-    primeira = ~ordem.duplicated(subset=["fonte", "chave"])
-    valida = ordem["cnpj_companhia"].notna() & (ordem["via"] != PRODUTO)
-    return (primeira & valida).reindex(ligacoes.index)
+    ordem = (
+        ligacoes[valida]
+        .assign(
+            _sem_ticker=tickers.isna().astype(int),
+            _propria=(ligacoes["via"] != "propria").astype(int),
+            _encerrada=(~vigente.fillna(True).astype(bool)).astype(int),
+            _recente=pd.to_datetime(ligacoes["ultima_referencia"], errors="coerce"),
+            _via=ligacoes["via"].map(ORDEM_DAS_VIAS).fillna(len(ORDEM_DAS_VIAS)),
+        )
+        .sort_values(
+            [
+                "fonte",
+                "chave",
+                "_sem_ticker",
+                "_propria",
+                "_encerrada",
+                "_recente",
+                "_via",
+                "participacao",
+            ],
+            ascending=[True, True, True, True, True, False, True, False],
+            na_position="last",
+        )
+    )
+    escolhida = ordem.index[~ordem.duplicated(subset=["fonte", "chave"])]
+    return pd.Series(ligacoes.index.isin(escolhida), index=ligacoes.index)
 
 
 def tickers_por_cnpj(conteudo_do_fca: bytes) -> dict[str, str]:

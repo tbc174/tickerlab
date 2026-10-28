@@ -4977,10 +4977,31 @@ TABELAS: dict[str, Tabela] = {
                 "Referência do FRE mais novo que mostra a ligação",
                 DATA,
             ),
+            "ate": (
+                (
+                    "1ª referência do FRE da companhia que já não mostra a ligação (vazia: ainda "
+                    "aparece, ou a companhia parou de entregar o FRE)"
+                ),
+                DATA,
+            ),
+            "ate_publico_em": (
+                (
+                    "Dia em que essa entrega ficou pública: antes dele não se sabia que a ligação "
+                    "acabou"
+                ),
+                DATA,
+            ),
+            "vigente": (
+                (
+                    "A ligação aparece no FRE mais novo da companhia; falso quando acabou ou a "
+                    "companhia parou de entregar (a última evidência é a `ultima_referencia`)"
+                ),
+                SIM_OU_NAO,
+            ),
             "principal": (
                 (
-                    "A ligação a usar da entidade (ticker hoje, própria, FRE mais recente; nunca no "
-                    "produto)"
+                    "A ligação a usar da entidade (ticker hoje, própria, a que ainda vale, FRE mais "
+                    "recente; nunca no produto; na ANEEL, nunca participação minoritária)"
                 ),
                 SIM_OU_NAO,
             ),
@@ -6126,7 +6147,7 @@ _CONTRATO = {
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "colunas_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "data_da_previsao", "coletado_em": "montado_em"}, historico_desde=_CVM),
-    "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
+    "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "entidades": _contrato(modulo="rede", chaves=("id_entidade",), datas={"publico_em": "publico_em"}, historico_desde=_CVM),
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
     "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),

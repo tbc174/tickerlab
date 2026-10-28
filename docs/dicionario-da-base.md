@@ -3192,7 +3192,7 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 - **Chaves:** `fonte`, `chave`, `cnpj_companhia`
 - **Três datas:** aconteceu_em = `desde`; coletado_em = `montado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/empresa_serie/empresa_serie.parquet` (servidor de casa)
 - **Linhagem:** `origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -3209,7 +3209,10 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 | `participacao` | Participação informada no FRE (vazia no produto) | pontos percentuais (66,25 = 66,25%) |
 | `desde` | 1ª entrega à CVM de um FRE que mostrava a ligação | data (dia) |
 | `ultima_referencia` | Referência do FRE mais novo que mostra a ligação | data (dia) |
-| `principal` | A ligação a usar da entidade (ticker hoje, própria, FRE mais recente; nunca no produto) | verdadeiro ou falso |
+| `ate` | 1ª referência do FRE da companhia que já não mostra a ligação (vazia: ainda aparece, ou a companhia parou de entregar o FRE) | data (dia) |
+| `ate_publico_em` | Dia em que essa entrega ficou pública: antes dele não se sabia que a ligação acabou | data (dia) |
+| `vigente` | A ligação aparece no FRE mais novo da companhia; falso quando acabou ou a companhia parou de entregar (a última evidência é a `ultima_referencia`) | verdadeiro ou falso |
+| `principal` | A ligação a usar da entidade (ticker hoje, própria, a que ainda vale, FRE mais recente; nunca no produto; na ANEEL, nunca participação minoritária) | verdadeiro ou falso |
 | `tickers` | Tickers da companhia no FCA mais recente | texto |
 | `origem_sha256` | SHA-256 do arquivo de onde a entidade saiu | texto |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |

@@ -1895,18 +1895,63 @@ def serie_anual(
     return somada.merge(meses.rename_axis("ano").reset_index(), on="ano")
 
 
-def _chaves(ligacoes: pd.DataFrame, serie: SerieDaAgencia) -> set[str]:
+SEM_FIM = float("inf")
+
+
+def _ultimo_ano_da_ligacao(ligacoes: pd.DataFrame) -> pd.Series:
+    """Até que ano a ligação conta a entidade para a companhia.
+
+    A B13 diz se a ligação ainda aparece nas entregas do FRE (`vigente`). Quando acabou, ou a
+    companhia parou de entregar, vale até o ano da última entrega que a mostrou
+    (`ultima_referencia`): o dono do momento, não o de hoje (decisão de 28/10/2026). Sem as colunas
+    (a ligação dos bancos, por exemplo) ou vigente, não há fim. Quando a ligação começou não entra:
+    a estrutura que o FRE mostra vale também para os anos anteriores à primeira entrega.
+    """
+    sem_fim = pd.Series(SEM_FIM, index=ligacoes.index)
+    if "vigente" not in ligacoes or "ultima_referencia" not in ligacoes:
+        return sem_fim
+    ano = pd.to_datetime(ligacoes["ultima_referencia"], errors="coerce").dt.year
+    acabou = ~ligacoes["vigente"].fillna(True).astype(bool)
+    return sem_fim.mask(acabou & ano.notna(), ano)
+
+
+def _vigentes_no_ano(ligacoes: pd.DataFrame, ano: int) -> pd.DataFrame:
+    return ligacoes[_ultimo_ano_da_ligacao(ligacoes) >= ano]
+
+
+def _chaves(
+    ligacoes: pd.DataFrame, serie: SerieDaAgencia, ano: int | None = None
+) -> set[str]:
     principais = ligacoes[
         (ligacoes["fonte"] == serie.fonte_b13) & ligacoes["principal"]
     ]
+    if ano is not None:
+        principais = _vigentes_no_ano(principais, ano)
     valores = principais["chave"].astype(str).str.strip()
     return set(digitos(valores) if serie.chave_em_digitos else valores)
 
 
-def _participacao_por_ano(dados: pd.DataFrame, chaves: set[str]) -> pd.DataFrame:
+def _chaves_por_ano(
+    ligacoes: pd.DataFrame, serie: SerieDaAgencia, anos: Iterable[int]
+) -> dict[int, set[str]]:
+    """As entidades que contam para a companhia em cada ano (só os anos que têm alguma)."""
+    por_ano = {int(ano): _chaves(ligacoes, serie, int(ano)) for ano in anos}
+    return {ano: chaves for ano, chaves in por_ano.items() if chaves}
+
+
+def _participacao_por_ano(
+    dados: pd.DataFrame, chaves: set[str] | Mapping[int, set[str]]
+) -> pd.DataFrame:
     dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
     total = dados.groupby("ano")["valor"].sum()
-    da_empresa = dados[dados["chave"].isin(chaves)].groupby("ano")["valor"].sum()
+    if isinstance(chaves, Mapping):
+        da_empresa_no_ano = [
+            c in chaves.get(a, ())
+            for a, c in zip(dados["ano"], dados["chave"], strict=True)
+        ]
+        da_empresa = dados[da_empresa_no_ano].groupby("ano")["valor"].sum()
+    else:
+        da_empresa = dados[dados["chave"].isin(chaves)].groupby("ano")["valor"].sum()
     # só os anos em que a empresa tem número: a divisão alinharia com todos os anos do mercado
     tabela = pd.DataFrame(
         {"valor": da_empresa, "participacao": da_empresa / total}
@@ -1918,9 +1963,21 @@ def _participacao_por_ano(dados: pd.DataFrame, chaves: set[str]) -> pd.DataFrame
     )
 
 
+COLUNAS_DAS_ENTIDADES_LIGADAS = [
+    "fonte",
+    "nome",
+    "via",
+    "desde",
+    "ate",
+    "ate_publico_em",
+    "vigente",
+]
+
+
 def _entidades_ligadas(ligacoes: pd.DataFrame) -> pd.DataFrame:
     principais = ligacoes[ligacoes["principal"]]
-    return principais[["fonte", "nome", "via", "desde"]].sort_values(["fonte", "nome"])
+    colunas = [c for c in COLUNAS_DAS_ENTIDADES_LIGADAS if c in principais]
+    return principais[colunas].sort_values(["fonte", "nome"])
 
 
 def _linha_do_item(
@@ -1969,9 +2026,11 @@ def secao_setor_regulado(
         return None
     itens, tabelas = [], {}
     for serie in SERIES_DAS_AGENCIAS:
-        chaves = _chaves(ligacoes_b13, serie)
         dados = series.get(serie.nome)
-        if not chaves or dados is None or dados.empty:
+        if dados is None or dados.empty:
+            continue
+        chaves = _chaves_por_ano(ligacoes_b13, serie, dados["ano"].unique())
+        if not chaves:
             continue
         tabela = _participacao_por_ano(dados, chaves)
         if tabela.empty:
@@ -2137,6 +2196,24 @@ def _grupo_da_agencia(dados: pd.DataFrame, grupos: pd.DataFrame | None) -> pd.Se
     return grupo.where(grupo.astype(str).str.strip() != "")
 
 
+def _companhia_em_cada_ano(
+    serie: SerieDaAgencia, dados: pd.DataFrame, empresa_serie: pd.DataFrame
+) -> pd.Series:
+    """A companhia a que cada linha (ano, entidade) pertence: a do dono do momento, e sem companhia
+    (entidade solta) quando a ligação já tinha acabado naquele ano."""
+    por_ano = {
+        int(ano): _companhia_de_cada_entidade(
+            serie, _vigentes_no_ano(empresa_serie, int(ano))
+        )
+        for ano in dados["ano"].unique()
+    }
+    companhias = [
+        por_ano[int(a)].get(c)
+        for a, c in zip(dados["ano"], dados["chave"], strict=True)
+    ]
+    return pd.Series(companhias, index=dados.index, dtype=object)
+
+
 def participantes(
     serie: SerieDaAgencia,
     dados: pd.DataFrame,
@@ -2147,7 +2224,7 @@ def participantes(
     meses, ultimo_mes): o grupo da agência, senão a companhia aberta, senão a própria entidade. No
     IF.data a entidade já é o grupo (o conglomerado prudencial): cada uma é um participante."""
     dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
-    companhia = dados["chave"].map(_companhia_de_cada_entidade(serie, empresa_serie))
+    companhia = _companhia_em_cada_ano(serie, dados, empresa_serie)
     grupo = (
         dados["chave"] if serie.chave_e_o_grupo else _grupo_da_agencia(dados, grupos)
     )
@@ -2203,7 +2280,9 @@ def _participacao_dos_membros(
     ligacoes = empresa_serie.assign(cnpj=digitos(empresa_serie["cnpj_companhia"]))
     partes = []
     for membro in membros.itertuples(index=False):
-        chaves = _chaves(ligacoes[ligacoes["cnpj"] == membro.cnpj], serie)
+        chaves = _chaves_por_ano(
+            ligacoes[ligacoes["cnpj"] == membro.cnpj], serie, dados["ano"].unique()
+        )
         tabela = _participacao_por_ano(dados, chaves) if chaves else pd.DataFrame()
         if not tabela.empty:
             partes.append(
@@ -2235,12 +2314,17 @@ def _lado_a_lado(
     """O número de cada membro por entidade e ano, sem somar as entidades (um índice não se soma) nem
     dividir pelo mercado, nos últimos anos; a modalidade (`abertura`) continua separada."""
     ligacoes = _ligacoes_principais(empresa_serie, (serie.fonte_b13,))
-    entidades = ligacoes.merge(membros[["cnpj", "empresa"]], on="cnpj")[
-        ["cnpj", "empresa", "chave", "nome"]
-    ].rename(columns={"nome": "entidade"})
+    entidades = (
+        ligacoes.assign(_ate=_ultimo_ano_da_ligacao(ligacoes))
+        .merge(membros[["cnpj", "empresa"]], on="cnpj")[
+            ["cnpj", "empresa", "chave", "nome", "_ate"]
+        ]
+        .rename(columns={"nome": "entidade"})
+    )
     tabela = dados.assign(chave=dados["chave"].astype(str).str.strip()).merge(
         entidades, on="chave"
     )
+    tabela = tabela[tabela["ano"] <= tabela["_ate"]].drop(columns="_ate")
     if tabela.empty:
         return pd.DataFrame()
     anos = sorted(tabela["ano"].unique(), reverse=True)[:ANOS_NAS_SERIES]
