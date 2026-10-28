@@ -68,7 +68,7 @@ def test_o_rastro_diz_o_dia_em_que_o_relatorio_ficou_publico() -> None:
 
 
 def test_toda_chave_do_parecer_tem_origem_na_tabela_certa() -> None:
-    for chave, _, _ in dossie.CAMPOS_DO_PARECER:
+    for chave, *_ in dossie.CAMPOS_DO_PARECER:
         origem = dossie.ORIGEM_DOS_ITENS[chave]
         assert origem.tabela == "pareceres_dfp"
         assert TABELAS[origem.tabela].familia_da_fonte in LICENCAS

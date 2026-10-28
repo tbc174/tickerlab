@@ -421,6 +421,7 @@ SECOES = (
         (
             "auditores",
             "trocas_de_auditor",
+            "pareceres_dfp",
             "controladas",
             "ligacoes",
             "entidades",
@@ -494,6 +495,12 @@ _SECAO_POR_CHAVE = {secao.chave: secao for secao in SECOES}
 
 LIMITES = {
     "auditor_e_controladas": (
+        "Parecer: o relatório do auditor independente sobre a DFP, como a CVM o publica; vale a partir do "
+        "dia em que a companhia o entregou, e a reapresentação vale a partir do dia dela. A opinião é o "
+        "campo da CVM. A ênfase e a incerteza sobre a continuidade operacional não têm campo: são lidas dos "
+        "títulos que o auditor escreve no texto, e ficam de fora quando o relatório é curto demais ou o "
+        "título é ambíguo, porque a ficha prefere não dizer a dizer no chute. O texto do relatório não é "
+        "guardado nem citado. "
         "Controladas e coligadas vêm do Formulário de Referência (FRE) mais recente entregue à CVM. "
         "Quando o FRE não informa o tipo, conta como controlada a sociedade com mais da metade do "
         "capital. A controladora aparece só quando ela também entrega o FRE, com o dos últimos 2 anos ainda listando a "
@@ -820,9 +827,21 @@ def secao_auditor_e_controladas(
     controladas: pd.DataFrame,
     controladoras_da_empresa: pd.DataFrame,
     pessoas: set[str],
+    pareceres: pd.DataFrame | None = None,
+    hoje: pd.Timestamp | None = None,
 ) -> dict[str, Any] | None:
-    """Quem audita, as trocas de auditor, as controladas e coligadas e quem controla (None: nada)."""
+    """Quem audita, o parecer, as trocas de auditor, as controladas e coligadas e quem controla (None: nada).
+
+    `pareceres` (e o dia da ficha, `hoje`) trazem o relatório do auditor sobre a DFP; sem eles a seção sai
+    como antes.
+    """
     itens = _itens_do_auditor(auditores, pessoas)
+    itens_do_parecer, tabela_do_parecer = (
+        parecer_do_auditor(pareceres, hoje)
+        if pareceres is not None and hoje is not None
+        else ([], pd.DataFrame())
+    )
+    itens += itens_do_parecer
     tabela_de_controladas, base = _controladas_do_ultimo_fre(controladas)
     if not tabela_de_controladas.empty:
         sao_controladas = int(tabela_de_controladas["controlada"].sum())
@@ -841,6 +860,7 @@ def secao_auditor_e_controladas(
             ),
         ]  # fmt: skip
     tabelas = {
+        "pareceres_do_auditor": tabela_do_parecer,
         "trocas_de_auditor": _trocas_sem_pessoas(trocas, pessoas),
         "controladas": tabela_de_controladas,
         "controladoras": controladoras_da_empresa.drop(columns="cnpj", errors="ignore"),
@@ -854,13 +874,22 @@ def secao_auditor_e_controladas(
 
 EXERCICIOS_DO_PARECER = 5  # quantos exercícios a tabela do parecer mostra
 NAO_CLASSIFICADO = "nao_classificado"  # o que a base escreve quando não deu para decidir (nunca no chute)
-CAMPOS_DO_PARECER = (  # (chave do item, nome, coluna de `pareceres_dfp`)
-    ("parecer_opiniao", "Opinião do auditor", "opiniao"),
-    ("parecer_enfase", "Parágrafo de ênfase no parecer", "enfase"),
+# a unidade diz à tela como escrever o código da base ("sem_ressalva" → "Sem ressalva", `src/dossie.py`)
+UNIDADE_DA_OPINIAO = "opiniao_do_auditor"
+UNIDADE_SIM_OU_NAO = "sim_ou_nao"
+CAMPOS_DO_PARECER = (  # (chave do item, nome, coluna de `pareceres_dfp`, unidade)
+    (
+        "parecer_opiniao",
+        "Opinião do auditor sobre a última DFP",
+        "opiniao",
+        UNIDADE_DA_OPINIAO,
+    ),
+    ("parecer_enfase", "Parágrafo de ênfase no parecer", "enfase", UNIDADE_SIM_OU_NAO),
     (
         "parecer_continuidade",
         "Incerteza sobre a continuidade operacional",
         "continuidade_operacional",
+        UNIDADE_SIM_OU_NAO,
     ),
 )
 
@@ -895,15 +924,15 @@ def parecer_do_auditor(
     base = _data(ultimo["referencia"].iloc[0])
     publicado = _publicado(ultimo, "pareceres_dfp")
     itens = [
-        _item(chave, nome, valor, "texto", base, publicado_em=publicado)
-        for chave, nome, coluna in CAMPOS_DO_PARECER
+        _item(chave, nome, valor, unidade, base, publicado_em=publicado)
+        for chave, nome, coluna, unidade in CAMPOS_DO_PARECER
         if (valor := ultimo[coluna].iloc[0]) != NAO_CLASSIFICADO
     ]
     colunas = [
         "referencia",
         "versao",
         "disponivel_em",
-        *(c for _, _, c in CAMPOS_DO_PARECER),
+        *(c for _, _, c, _ in CAMPOS_DO_PARECER),
     ]
     return itens, em_vigor.head(EXERCICIOS_DO_PARECER)[colunas]
 

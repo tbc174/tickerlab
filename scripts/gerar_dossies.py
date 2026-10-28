@@ -140,6 +140,8 @@ class Entradas:
     insolvencia: dict[str, pd.DataFrame] | None = None
     situacao_especial: dict[str, pd.DataFrame] | None = None
     contestacoes: pd.DataFrame = field(default_factory=contestacoes_da_base.vazia)
+    # o relatório do auditor sobre a DFP (`pareceres_dfp`); vazio: a base ainda não tem a tabela
+    pareceres: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 # só as colunas que as seções de qualidade do lucro, de geração de caixa e de capital usam (a DRE de
@@ -188,6 +190,9 @@ COLUNAS_DA_GOVERNANCA = {  # tabela do FRE → as colunas que a seção usa (nun
 }  # fmt: skip
 COLUNAS_DA_INSOLVENCIA = (
     "cnpj", "rotulo", "evento", "protocolo", "versao", "referencia", "conhecido_em", "link",
+)  # fmt: skip
+COLUNAS_DOS_PARECERES = (
+    "cnpj", "referencia", "versao", "disponivel_em", "opiniao", "enfase", "continuidade_operacional",
 )  # fmt: skip
 COLUNAS_DA_SITUACAO_ESPECIAL = (
     "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo", "data_situacao_especial",
@@ -442,7 +447,14 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             "cnpj_basico",
         ),
         contestacoes=contestacoes_da_base.ler(),
+        pareceres=_pareceres(leitor),
     )
+
+
+def _pareceres(leitor: Leitor) -> pd.DataFrame:
+    """Os pareceres do auditor (todas as versões, com o dia em que ficaram públicos); vazio sem a tabela."""
+    pareceres = _ler_se_existe(leitor, "pareceres_dfp", COLUNAS_DOS_PARECERES)
+    return VAZIA if pareceres is None else pareceres
 
 
 def _ler_se_existe(
@@ -506,6 +518,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     """
     auditores = _por_cnpj(entradas.auditores, "cnpj")
     trocas = _por_cnpj(entradas.trocas, "cnpj")
+    pareceres = _por_cnpj(entradas.pareceres, "cnpj")
     controladas = _por_cnpj(entradas.controladas, "cnpj_companhia")
     controladoras = _por_cnpj(entradas.controladoras, "cnpj")
     ofertas_160 = _por_cnpj(entradas.ofertas_160, "cnpj_emissor")
@@ -551,6 +564,8 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             controladas.get(c, VAZIA),
             controladoras.get(c, VAZIA),
             entradas.pessoas,
+            pareceres.get(c, VAZIA),
+            hoje,
         ),
         "qualidade_do_lucro": lambda c: dossie.secao_qualidade_do_lucro(
             como_era.get(c, VAZIA), releases.get(c, VAZIA), trocas.get(c, VAZIA), hoje
