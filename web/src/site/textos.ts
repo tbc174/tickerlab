@@ -25,40 +25,60 @@ export function linkDoApp(pagina = "", parametros: Record<string, string> = {}):
 }
 
 // --- textos que aparecem em mais de uma página ---------------------------------------------
-export const PASSOS: [string, string][] = [
-  ["Escolha o que investigar", "Busque por código ou empresa: B3, EUA, índices e cripto."],
-  ["Explore os dados", "Gráficos, risco e testes de estratégia no passado, com custos."],
-  ["Guarde e compartilhe", "Monte um PDF com as seções que importam e baixe."],
+// O caminho de um número até o relatório (página "Como funciona"): fonte, original com hash, versões,
+// porta e relatório. O terceiro item de cada passo é a explicação técnica, que vai recolhida em
+// "Como foi calculado" (ADR 0099, item 7).
+export const PASSOS: [string, string, string][] = [
+  [
+    "A fonte",
+    "Coletamos de órgãos públicos, como a CVM, a B3, o Banco Central e a SEC. Cada tabela da base diz de qual fonte vem e com que licença.",
+    "A coleta lê o que o órgão publica e anota a hora em que leu. A licença é a que a própria fonte publica; onde ela ainda não respondeu por escrito sobre uso comercial, a página Dados avisa.",
+  ],
+  [
+    "O original, com hash",
+    "Guardamos o arquivo exatamente como veio e registramos o SHA-256 dele: quem quiser confere que nada foi mexido.",
+    "O hash SHA-256 é calculado sobre os bytes do arquivo no momento da coleta. O mesmo arquivo dá sempre o mesmo hash, e qualquer alteração, mesmo de uma vírgula, muda o resultado.",
+  ],
+  [
+    "As versões",
+    "Quando a fonte corrige um dado, a correção entra como versão nova, com a data em que a vimos. A anterior não é apagada.",
+    "Cada versão guarda a data em que o dado ficou público e a data em que o TickerLab o viu. Por isso é possível perguntar “como era em tal dia”, com o que se sabia então.",
+  ],
+  [
+    "A porta",
+    "Os dados da base são consultados por data: a consulta só enxerga o que já era público naquele dia. A API aberta, para consultar de fora, está em construção.",
+    "Um dado só é usado a partir do dia em que ficou público. Cortar o futuro não muda o passado: há teste automático que confere isso em cada versão do código.",
+  ],
+  [
+    "O relatório",
+    "O PDF junta os números, cada um com a fonte e a data, e diz o que não foi achado. A seção “Limites e cuidados” é obrigatória.",
+    "As contas ficam recolhidas em “Como foi calculado”: quem quer conferir abre, quem só quer o resultado não é atrapalhado. Os mesmos cálculos valem para a tela e para o PDF.",
+  ],
 ];
 
 export const PUBLICOS: [string, string][] = [
   [
-    "Quem está começando",
-    "Quer entender uma ação antes de investir, sem jargão. O tutorial guia a primeira " +
-      "análise em 2 minutos.",
+    "Quem analisa empresas",
+    "Analistas e equipes de análise que conferem o que uma empresa e o grupo dela dizem contra as bases públicas, com a data de cada fonte e o que não foi achado.",
   ],
   [
-    "Quem estuda estratégias",
-    "Testa regras de compra e venda com custos, validação fora da amostra e teste " +
-      "contra o acaso, e vê quando a estratégia não funciona.",
+    "Estudantes e pesquisadores",
+    "Querem um número que possam citar: fonte, data e versão em cada um, e o teste de estratégia mostra também quando a estratégia não funciona.",
   ],
   [
-    "Quem quer organizar a carteira",
-    "Vê concentração, número efetivo de ativos e o comportamento da carteira de hoje no " +
-      "passado, comparada ao Ibovespa.",
+    "Equipes",
+    "O plano Casa, por assento, para quem analisa junto. Ainda está em construção: conte para a gente o que a sua equipe precisa.",
   ],
 ];
 
 export const CONFIANCA: [string, string][] = [
   [
     "Dados",
-    "Preços diários do Yahoo Finance, ajustados por dividendos e desdobramentos. Não é " +
-      "tempo real: os dados podem ter atraso, falhas e ajustes posteriores.",
+    "Documentos oficiais da CVM, da B3, do Banco Central e da SEC, cada um com fonte, data e licença. Os preços diários vêm do Yahoo Finance, ajustados por dividendos e desdobramentos; não são tempo real e podem ter atraso, falhas e ajustes posteriores.",
   ],
   [
-    "Carteira B3",
-    "A API da Área do Investidor só atende empresas credenciadas. Por isso o caminho é " +
-      "a planilha que você mesmo baixa; ela é lida só na memória.",
+    "Original e versões",
+    "O arquivo da fonte é guardado como veio, com o hash. Quando a fonte corrige um dado, a correção vira versão nova: nada é sobrescrito.",
   ],
   [
     "Privacidade",
@@ -74,8 +94,8 @@ export const CONFIANCA: [string, string][] = [
 
 export const PERGUNTAS: [string, string][] = [
   [
-    "O TickerLab recomenda o que comprar?",
-    "Não. O TickerLab mostra o que aconteceu no passado e explica cada " +
+    "O TickerLab diz o que comprar?",
+    "Não. O TickerLab mostra o que aconteceu e explica cada " +
       "número. Nada aqui é recomendação de investimento.",
   ],
   [
