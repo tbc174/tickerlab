@@ -191,6 +191,7 @@ thead th { background: var(--superficie); color: var(--apagado); font-size: .82r
 tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 table.planos td { text-align: center; }
 table.planos thead th:not(:first-child) { text-align: center; color: var(--texto); font-size: .95rem; text-transform: none; letter-spacing: 0; }
+table.planos thead tr + tr th { text-align: center; color: var(--texto); font-size: .95rem; text-transform: none; letter-spacing: 0; }
 /* perguntas */
 .faq details { border-bottom: 1px solid var(--linha); padding: 1rem 0; max-width: 52rem; }
 .faq summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; list-style: none; }
@@ -717,8 +718,14 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-anima .v2-acreditamos:not(.visivel) .centro { opacity: 0; }
 .v2-lema { margin-top: 1.5rem; font-weight: 700; letter-spacing: .02em; }
 
-/* Planos: três cartões, o Pro com a borda viva */
-.v2-planos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; align-items: stretch; }
+/* Planos: a faixa grátis e dois cartões (o Pessoa com a borda viva e o Casa) */
+.v2-planos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.1rem; align-items: stretch; }
+.v2-gratis { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.2rem; padding: 1.6rem;
+  border-radius: 20px; background: var(--destaque); border: 1px solid var(--linha); }
+:root[data-tema="escuro"] .v2-gratis { background: var(--superficie); }
+.v2-gratis h2 { margin: 0 0 .4rem; }
+.v2-gratis-limites { list-style: none; margin: .6rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; }
+.v2-gratis-limites li { max-width: none; font-variant-numeric: tabular-nums; }
 .v2-plano { display: flex; flex-direction: column; gap: .8rem; padding: 1.6rem; border-radius: 20px; background: var(--destaque);
   border: 1px solid var(--linha); box-shadow: 0 1px 2px var(--linha), 0 18px 40px -22px var(--sombra);
   transition: transform 200ms ease, border-color 200ms ease; }

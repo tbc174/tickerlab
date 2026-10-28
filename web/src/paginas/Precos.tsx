@@ -1,16 +1,19 @@
 // Planos: a mesma tabela de limites que o app aplica (src/planos.py) e a cobrança. Era `precos()`.
-// Os cartões e a tabela saem do mesmo planos.json: nenhum número é escrito à mão aqui.
+// Os cartões e a tabela saem do mesmo planos.json: nenhum número é escrito à mão aqui. O site fala de
+// duas colunas, Pessoa e Casa, e de uma faixa "Para conhecer, de graça", sem preço (plano do site para
+// quem analisa, D1; ADR 0029, Emenda 1): o Pessoa mostra os limites do plano mais completo de hoje e o
+// Casa é o mesmo, por assento, ainda em construção. `src/planos.py` e o Stripe não mudam.
 import { planos } from "../conteudo";
 import { AvisoDeAcesso, ListaDeCartoes } from "../site/comum";
 import { TopoDaPagina } from "../site/Fundo";
-import { linkDoApp } from "../site/textos";
+import { EMAIL_DE_CONTATO, linkDoApp } from "../site/textos";
 
 export const DADOS = {
   caminho: "/precos.html",
   titulo: "Planos",
   descricao:
-    "Gratuito, Plus e Pro: o que cada plano do TickerLab inclui, com os mesmos limites do " +
-    "app. Assinatura mensal, sem fidelidade. Cobrança em modo de teste.",
+    "Para conhecer, de graça; Pessoa e Casa para quem analisa empresas. Os limites são os do " +
+    "app. Preço definido antes do lançamento; até lá, toda conta usa tudo.",
   atual: "/precos.html",
 };
 
@@ -20,11 +23,8 @@ const LINHAS = planos.tabela as Linha[];
 // as linhas que todo cartão mostra; o resto fica na tabela completa
 const RESUMO = ["Simulações salvas", "Favoritos", "Ativos na carteira", "Relatórios em PDF"];
 
-const FRASES: Record<string, string> = {
-  Gratuito: "Para conhecer o app e fazer as primeiras análises.",
-  Plus: "Para quem estuda com frequência e guarda o que faz.",
-  Pro: "Para quem quer tudo, inclusive aprendizado de máquina.",
-};
+// o plano mais completo de hoje (o último da tabela) é o que o Pessoa mostra
+const COMPLETO = planos.nomes[planos.nomes.length - 1];
 
 /** O que só alguns planos têm (um "Sim" que não é de todos) entra no cartão de quem tem. */
 function exclusivos(nome: string): string[] {
@@ -39,50 +39,86 @@ function selo(nome: string): string {
   return "Sem cartão";
 }
 
-function Botao({ nome }: { nome: string }) {
-  if (planos.nomes_em_breve.includes(nome))
-    return (
-      <span className="botao secundario v2-desligado" aria-disabled="true">
-        Em breve
-      </span>
-    );
-  if (planos.nomes_com_cobranca.includes(nome))
-    return (
-      <a className="botao primario" href={linkDoApp("planos")}>
-        Ver no app
-      </a>
-    );
+function Gratuito() {
+  const gratis = planos.nomes[0];
   return (
-    <a className="botao secundario" href={linkDoApp()}>
-      Começar grátis
-    </a>
+    <section className="faixa secao v2-depois-do-topo" aria-labelledby="titulo-gratis">
+      <div className="v2-gratis">
+        <div>
+          <p className="olho">Para conhecer, de graça</p>
+          <h2 id="titulo-gratis">O {gratis} não pede cartão</h2>
+          <p className="subtitulo">
+            Para conhecer o app e fazer as primeiras análises. Quando chegar a um limite, nada do
+            que você fez é perdido.
+          </p>
+          <ul className="v2-gratis-limites">
+            {RESUMO.map((recurso) => {
+              const linha = LINHAS.find((l) => l.Recurso === recurso);
+              return linha ? (
+                <li key={recurso}>
+                  {recurso}: <b>{linha[gratis]}</b>
+                </li>
+              ) : null;
+            })}
+          </ul>
+        </div>
+        <a className="botao secundario" href={linkDoApp()}>
+          Começar grátis
+        </a>
+      </div>
+    </section>
   );
 }
 
-function CartaoDoPlano({ nome, destaque }: { nome: string; destaque: boolean }) {
+function CartaoPessoa() {
   return (
-    <article className={destaque ? "v2-plano v2-plano-destaque" : "v2-plano"}>
+    <article className="v2-plano v2-plano-destaque">
       <header>
-        <h3>{nome}</h3>
-        <span className={destaque ? "v2-etiqueta v2-etiqueta-ambar" : "v2-etiqueta"}>
-          {selo(nome)}
-        </span>
+        <h3>Pessoa</h3>
+        <span className="v2-etiqueta v2-etiqueta-ambar">{selo(COMPLETO)}</span>
       </header>
-      {FRASES[nome] ? <p className="v2-plano-frase">{FRASES[nome]}</p> : null}
+      <p className="v2-plano-frase">
+        Para quem analisa por conta própria: analistas, estudantes e pesquisadores. Hoje mostra os
+        limites do nível {COMPLETO}, o mais completo.
+      </p>
       <ul>
         {RESUMO.map((recurso) => {
           const linha = LINHAS.find((l) => l.Recurso === recurso);
           return linha ? (
             <li key={recurso}>
-              {recurso}: <b>{linha[nome]}</b>
+              {recurso}: <b>{linha[COMPLETO]}</b>
             </li>
           ) : null;
         })}
-        {exclusivos(nome).map((recurso) => (
+        {exclusivos(COMPLETO).map((recurso) => (
           <li key={recurso}>{recurso}</li>
         ))}
       </ul>
-      <Botao nome={nome} />
+      <a className="botao primario" href={linkDoApp("planos")}>
+        Ver no app
+      </a>
+    </article>
+  );
+}
+
+function CartaoCasa() {
+  return (
+    <article className="v2-plano">
+      <header>
+        <h3>Casa</h3>
+        <span className="v2-etiqueta">Ainda não está à venda</span>
+      </header>
+      <p className="v2-plano-frase">
+        Para equipes e escritórios que analisam juntos. Cobrança por assento, ainda em construção.
+      </p>
+      <ul>
+        <li>Tudo o que o plano Pessoa inclui, para cada pessoa da equipe</li>
+        <li>Cobrança por assento: cada pessoa tem a própria conta</li>
+        <li>Em construção: conte para a gente o que a sua equipe precisa</li>
+      </ul>
+      <a className="botao secundario" href={`mailto:${EMAIL_DE_CONTATO}`}>
+        Fale com a gente
+      </a>
     </article>
   );
 }
@@ -110,7 +146,15 @@ function TabelaDePlanos() {
       <table className="planos v2-comparativo">
         <thead>
           <tr>
-            <th scope="col">Recurso</th>
+            <th scope="col" rowSpan={2}>
+              Recurso
+            </th>
+            <th scope="colgroup">Para conhecer, de graça</th>
+            <th scope="colgroup" colSpan={planos.nomes.length - 1}>
+              Pessoa
+            </th>
+          </tr>
+          <tr>
             {planos.nomes.map((nome) => (
               <th key={nome} scope="col">
                 {nome}
@@ -139,11 +183,11 @@ function Cobranca() {
   const emBreve = planos.nomes_em_breve;
   return (
     <p className="subtitulo">
-      O plano Gratuito não pede cartão. A assinatura do {planos.nomes_com_cobranca.join(" e do ")}{" "}
-      funciona em <strong>modo de teste</strong> do Stripe: nenhum dinheiro real é cobrado
-      enquanto o projeto estiver em demonstração.{" "}
+      O Gratuito não pede cartão. A assinatura do Pessoa ({planos.nomes_com_cobranca.join(" e ")}{" "}
+      na tabela) funciona em <strong>modo de teste</strong> do Stripe: nenhum dinheiro real é
+      cobrado enquanto o projeto estiver em demonstração.{" "}
       {emBreve.length
-        ? `O ${emBreve.join(" e o ")} já tem os limites definidos; a assinatura dele chega em breve.`
+        ? `O nível ${emBreve.join(" e o ")} já tem os limites definidos; a assinatura dele chega em breve.`
         : null}
     </p>
   );
@@ -199,7 +243,7 @@ export function Precos() {
     <>
       <TopoDaPagina
         olho="Planos"
-        titulo="Escolha o nível de pesquisa que faz sentido para você"
+        titulo="Comece de graça; escolha o plano quando precisar"
         subtitulo={
           "Os limites abaixo são os mesmos que o app aplica. Ao chegar a um limite, nada do " +
           "que você já fez é perdido."
@@ -208,11 +252,18 @@ export function Precos() {
         <AvisoDeAcesso />
       </TopoDaPagina>
 
-      <section className="faixa secao v2-depois-do-topo" aria-label="Os planos">
+      <Gratuito />
+
+      <section className="faixa secao" aria-labelledby="titulo-pessoa-casa">
+        <p className="olho">Pessoa e Casa</p>
+        <h2 id="titulo-pessoa-casa">Um plano para você, um para a sua equipe</h2>
+        <p className="subtitulo">
+          O preço dos planos é definido antes do lançamento. Até lá, toda conta usa os limites do
+          Pro, de graça: você conhece o app inteiro sem pagar nada.
+        </p>
         <div className="v2-planos">
-          {planos.nomes.map((nome, i) => (
-            <CartaoDoPlano key={nome} nome={nome} destaque={i === planos.nomes.length - 1} />
-          ))}
+          <CartaoPessoa />
+          <CartaoCasa />
         </div>
       </section>
 
@@ -222,6 +273,9 @@ export function Precos() {
         <p className="olho">Lado a lado</p>
         <h2 id="titulo-comparar">Tudo o que cada plano inclui</h2>
         <TabelaDePlanos />
+        <p className="subtitulo">
+          O Casa tem os mesmos limites do Pessoa, por assento, e está em construção.
+        </p>
       </section>
 
       <section className="faixa secao" aria-labelledby="titulo-contam">
