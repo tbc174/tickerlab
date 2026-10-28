@@ -464,7 +464,7 @@ def curva_juros(ctx: Contexto) -> Secao:
         linhas=linhas,
         achado=achado,
         limites="Curva ajustada aos títulos públicos do dia; prazos fixos interpolados.",
-        fonte="Tesouro Nacional e ANBIMA (curva_juros da base)",
+        fonte="Tesouro Nacional, títulos do Tesouro Direto (curva_juros da base)",
         numeros=numeros,
     )
 
