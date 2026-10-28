@@ -74,6 +74,7 @@ TAMANHO_DO_DIA = 10  # "2025-12-31" (ou "2025-12-31T00:00:00", que perde a hora)
 FRACAO = "fração"  # a unidade de um número entre 0 e 1 (o índice de Basileia, a CR4)
 
 TITULOS_DAS_TABELAS = {
+    "pareceres_do_auditor": "Parecer do auditor nos últimos exercícios",
     "trocas_de_auditor": "Trocas de auditor",
     "controladas": "Controladas e coligadas no FRE mais recente",
     "controladoras": "Quem controla a companhia",
@@ -533,6 +534,26 @@ def _sim_ou_nao(valor: object) -> str:
     return "sim" if valor else "não"
 
 
+# os códigos de `pareceres_dfp` (`base/pareceres.py`) como a ficha os escreve; o que a base não classificou
+# aparece na tabela como "Não classificado" (nos itens ele nem aparece)
+_OPINIAO_DO_AUDITOR = {
+    "sem_ressalva": "Sem ressalva",
+    "com_ressalva": "Com ressalva",
+    "adversa": "Adversa",
+    "abstencao": "Abstenção de opinião",
+}
+_SIM_OU_NAO_DO_PARECER = {"sim": "Sim", "nao": "Não"}
+_NAO_CLASSIFICADO = "Não classificado"
+
+
+def _opiniao_do_auditor(valor: object) -> str:
+    return _OPINIAO_DO_AUDITOR.get(str(valor), _NAO_CLASSIFICADO)
+
+
+def _sim_ou_nao_do_parecer(valor: object) -> str:
+    return _SIM_OU_NAO_DO_PARECER.get(str(valor), _NAO_CLASSIFICADO)
+
+
 def _agencia(valor: object) -> str:
     return _NOME_DA_AGENCIA.get(str(valor), str(valor))
 
@@ -598,6 +619,10 @@ def _escrever_valor(valor: str | float | None, unidade: str) -> str:
         return dia(valor)
     if unidade == FRACAO:
         return fracao(valor)
+    if unidade == dossie_da_base.UNIDADE_DA_OPINIAO:
+        return _opiniao_do_auditor(valor)
+    if unidade == dossie_da_base.UNIDADE_SIM_OU_NAO:
+        return _sim_ou_nao_do_parecer(valor)
     if isinstance(valor, int | float):
         return inteiro(valor)
     return str(valor)
@@ -630,6 +655,14 @@ def _dia_ate_a_ficha(valor: object, gerado_em: datetime | None = None) -> str:
 # cada coluna de cada tabela da ficha: (coluna, rótulo, como escrever); o que não está aqui não sai
 Coluna = tuple[str, str, Any]
 COLUNAS: dict[str, list[Coluna]] = {
+    "pareceres_do_auditor": [
+        ("referencia", "Exercício", dia),
+        ("versao", "Versão", inteiro),
+        ("opiniao", "Opinião", _opiniao_do_auditor),
+        ("enfase", "Ênfase", _sim_ou_nao_do_parecer),
+        ("continuidade_operacional", "Continuidade", _sim_ou_nao_do_parecer),
+        ("disponivel_em", "Publicado em", dia),
+    ],
     "trocas_de_auditor": [
         ("efetiva_em", "Desde", dia),
         ("anterior", "Auditor anterior", _texto),
@@ -972,7 +1005,11 @@ _DOS_INSIDERS = (
 _DA_DFP = "DFP entregue à CVM: DRE, DFC e DVA, como eram públicas no dia (tabela demonstracoes_como_era)"
 _DO_MA = "negócios de M&A publicados por assessorias independentes (tabelas ma_assessorias, ma_partes, ma_negocios e ma_datas)"
 _DOS_RATINGS = "relatórios das agências de rating e comunicados da companhia entregues à CVM (tabela ratings)"
+_DO_PARECER = "relatório do auditor independente sobre a DFP entregue à CVM (tabela pareceres_dfp)"
 FONTES_DOS_ITENS = {
+    "parecer_opiniao": _DO_PARECER,
+    "parecer_enfase": _DO_PARECER,
+    "parecer_continuidade": _DO_PARECER,
     "auditor_atual": f"{_DO_FRE} (tabela auditores)",
     "auditor_desde": f"{_DO_FRE} (tabela trocas_de_auditor)",
     "sociedades": f"{_DO_FRE} (tabela controladas)",
