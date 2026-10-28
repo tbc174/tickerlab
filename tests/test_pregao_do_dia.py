@@ -285,6 +285,12 @@ def test_resumo_tem_fonte_e_data_em_cada_bloco(tabela: pd.DataFrame) -> None:
     assert resumo["pregao"] == "2026-10-26"
     assert resumo["vespera"] == "2026-10-23"
     assert [a["simbolo"] for a in resumo["a_conferir"]] == ["DESD3"]
+    # o texto diz os cortes usados; eles vêm do resumo, não repetidos no molde
+    assert resumo["amplitude"]["liquidez_minima"] == pregao.LIQUIDEZ_MINIMA
+    assert (
+        resumo["setores"]["empresas_por_setor_minimo"]
+        == pregao.EMPRESAS_POR_SETOR_MINIMO
+    )
 
 
 def test_resumo_vira_json(tabela: pd.DataFrame) -> None:
