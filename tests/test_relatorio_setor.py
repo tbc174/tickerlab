@@ -57,7 +57,21 @@ def _consumidores() -> pd.DataFrame:
     )
 
 
-def secao_da_noite() -> dict:
+def _consumidores_com_2026_pela_metade() -> pd.DataFrame:
+    """2024 e 2025 inteiros e 2026 com 8 meses: poucos participantes, a CPFL e a outra sozinhas."""
+    parcial = pd.DataFrame(
+        {
+            "ano": [2026] * 2,
+            "chave": ["33050196000188", "44555666000177"],
+            "valor": [5.0, 7.0],
+            "meses": [8] * 2,
+            "ultimo_mes": [pd.Timestamp("2026-08-31")] * 2,
+        }
+    )
+    return pd.concat([_consumidores(), parcial], ignore_index=True)
+
+
+def secao_da_noite(consumidores: pd.DataFrame | None = None) -> dict:
     """A seção `setor` das elétricas como a noite a grava (molde D, PR 1)."""
     setor = rs.setor_do_relatorio("eletricas")
     membros = dossie_da_base.membros_do_setor(
@@ -71,7 +85,15 @@ def secao_da_noite() -> dict:
         _ligacoes(),
     )
     secao = dossie_da_base.secao_setor(
-        setor, membros, {"aneel_consumidores": _consumidores()}, _ligacoes(), {}
+        setor,
+        membros,
+        {
+            "aneel_consumidores": _consumidores()
+            if consumidores is None
+            else consumidores
+        },
+        _ligacoes(),
+        {},
     )
     assert secao is not None
     return json.loads(json.dumps(secao, allow_nan=False))
@@ -318,6 +340,54 @@ def test_frase_sem_previsao_nem_ordem_por_juizo(noite) -> None:
         assert not porta1._PROIBIDAS.search(normal), texto
         assert not porta1._PREVISAO.search(normal), texto
         assert not juizo.search(normal), texto
+
+
+@pytest.fixture
+def noite_com_2026_pela_metade(tmp_path: Path) -> dossie.SecaoDoSetor:
+    secao = secao_da_noite(_consumidores_com_2026_pela_metade())
+    noite = dossie.secao_do_setor("eletricas", gravar_noite(tmp_path, secao))
+    assert noite is not None
+    return noite
+
+
+def test_frases_usam_o_ultimo_ano_completo_e_nao_o_parcial(
+    noite_com_2026_pela_metade,
+) -> None:
+    """2026 tem 8 meses e 2 participantes: as frases do ano (HHI, CR4, soma, maior parte) são de 2025."""
+    secao = noite_com_2026_pela_metade.secao
+    frases = rs.frases_por_regra(rs.setor_do_relatorio("eletricas"), secao)
+    por_id = {f.ids[0]: f.texto for f in frases}
+    assert por_id["hhi_aneel_consumidores"].startswith("Em 2025, o HHI")
+    assert "em 2025, entre 3 participantes" in por_id["cr4_aneel_consumidores"]
+    assert all("2026" not in f.texto for f in frases), [f.texto for f in frases]
+    assert any(f.texto.startswith("Em 2025, as 2 companhias abertas") for f in frases)
+
+
+def test_sem_ano_completo_a_frase_diz_os_meses(tmp_path: Path) -> None:
+    so_parcial = _consumidores_com_2026_pela_metade().query("ano == 2026")
+    secao = secao_da_noite(so_parcial.reset_index(drop=True))
+    noite = dossie.secao_do_setor("eletricas", gravar_noite(tmp_path, secao))
+    assert noite is not None
+    frases = rs.frases_por_regra(rs.setor_do_relatorio("eletricas"), noite.secao)
+    assert frases
+    for frase in frases:
+        assert "2026 (só 8 meses, até ago/2026)" in frase.texto, frase.texto
+
+
+def test_tamanho_e_concentracao_declaram_o_ano_parcial(
+    noite_com_2026_pela_metade,
+) -> None:
+    relatorio = rs.montar_relatorio_do_setor(
+        _entradas(noite_com_2026_pela_metade), "pro", HOJE
+    )
+    por_chave = {s.chave: s for s in relatorio.secoes}
+    for chave in ("tamanho", "concentracao"):
+        avisos = [p for p in por_chave[chave].paragrafos if "2026 tem 8 meses" in p]
+        assert len(avisos) == 1, chave
+        assert "ano inteiro de 2025" in avisos[0]
+    itens = {i.chave: i for s in relatorio.secoes for i in s.itens}
+    assert itens["hhi_aneel_consumidores"].base == "dez/2025"
+    assert itens["mercado_aneel_consumidores"].valor == pytest.approx(1000.0)
 
 
 def test_sem_numeros_bastantes_nao_ha_frase() -> None:

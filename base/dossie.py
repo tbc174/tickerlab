@@ -2251,10 +2251,57 @@ def _concentracao_da_serie(quem: pd.DataFrame) -> pd.DataFrame:
     return tabela.head(ANOS_NAS_SERIES)
 
 
+MARCA_DO_ANO_PARCIAL = (
+    "Ano parcial:"  # o app acha o aviso na seção pelo começo do parágrafo
+)
+MESES_ABREVIADOS = (
+    "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez",
+)  # fmt: skip
+
+
+def _linha_do_topo(
+    serie: SerieDaAgencia, tabela: pd.DataFrame
+) -> tuple[pd.Series, str]:
+    """A linha do topo da seção (mercado, HHI e CR4) e a base: o último ano completo, também para o
+    estoque, porque o ano pela metade tem menos meses (e, às vezes, menos participantes) e não se
+    compara com a série. Sem nenhum ano completo, a mais nova (e o aviso diz que é parcial)."""
+    completos = tabela[tabela["meses"] == MESES_NO_ANO]
+    linha = completos.iloc[0] if not completos.empty else tabela.iloc[0]
+    if serie.modo == ULTIMO_MES:
+        return linha, pd.Timestamp(linha["ultimo_mes"]).strftime("%Y-%m")
+    return linha, str(int(linha["ano"]))
+
+
+def _mes_e_ano(valor: object) -> str:
+    quando = pd.Timestamp(valor)  # type: ignore[arg-type]
+    return f"{MESES_ABREVIADOS[quando.month - 1]}/{quando.year}"
+
+
+def _aviso_do_ano_parcial(serie: SerieDaAgencia, tabela: pd.DataFrame) -> str | None:
+    """A lacuna declarada: o ano mais novo da série tem menos de 12 meses (None: está inteiro)."""
+    novo = tabela.iloc[0]
+    if novo["meses"] == MESES_NO_ANO:
+        return None
+    ano, meses = int(novo["ano"]), int(novo["meses"])
+    ate = _mes_e_ano(novo["ultimo_mes"])
+    completos = tabela[tabela["meses"] == MESES_NO_ANO]
+    if completos.empty:
+        return (
+            f"{MARCA_DO_ANO_PARCIAL} em {serie.medida}, a base só tem {ano}, com {meses} meses de "
+            f"dados (até {ate}): os números do topo são desses meses, não de um ano inteiro."
+        )
+    inteiro = int(completos.iloc[0]["ano"])
+    return (
+        f"{MARCA_DO_ANO_PARCIAL} em {serie.medida}, {ano} tem {meses} meses de dados (até {ate}); "
+        f"os números do topo são do ano inteiro de {inteiro}, o último completo. O ano pela metade "
+        f"aparece na tabela, mas não se compara com os anos inteiros."
+    )
+
+
 def _itens_da_concentracao(
     serie: SerieDaAgencia, tabela: pd.DataFrame, dados: pd.DataFrame
 ) -> list[dict[str, Any]]:
-    linha, base = _linha_do_item(serie, tabela)
+    linha, base = _linha_do_topo(serie, tabela)
     nome, publicado = serie.nome, _publicado_no_ano(dados, linha["ano"])
     return [
         _item(f"mercado_{nome}", f"Mercado: {serie.medida}", float(linha["total"]), serie.unidade, base, publicado_em=publicado),
@@ -2387,6 +2434,7 @@ def secao_setor(
     ]
     tabelas: dict[str, pd.DataFrame] = {}
     participacoes, usadas, tem_entidade_solta = [], [], False
+    avisos_de_ano_parcial: list[str] = []
     for nome in setor.series:
         dados = series.get(nome)
         if dados is None or dados.empty:
@@ -2395,8 +2443,11 @@ def secao_setor(
         quem = participantes(serie, dados, empresa_serie, grupos.get(nome))
         tabela = _concentracao_da_serie(quem)
         tabelas[f"concentracao_{nome}"] = tabela
-        tem_entidade_solta |= bool(tabela["por_entidade"].iloc[0] > 0)
+        topo = _linha_do_topo(serie, tabela)[0]
+        tem_entidade_solta |= bool(topo["por_entidade"] > 0)
         itens += _itens_da_concentracao(serie, tabela, dados)
+        if (aviso := _aviso_do_ano_parcial(serie, tabela)) is not None:
+            avisos_de_ano_parcial.append(aviso)
         participacoes.append(
             _participacao_dos_membros(serie, dados, membros, empresa_serie)
         )
@@ -2409,6 +2460,7 @@ def secao_setor(
     tabelas |= lado_a_lado
     usadas += [nome.removeprefix("lado_a_lado_") for nome in lado_a_lado]
     paragrafos = [
+        *avisos_de_ano_parcial,
         *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
         *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),
     ]
