@@ -154,6 +154,27 @@ def test_planos_do_site_sao_os_do_app():
     assert "modo de teste" in texto
 
 
+def test_precos_pessoa_e_casa_sem_preco():
+    """Plano do site para quem analisa (D1): Pessoa e Casa, uma faixa grátis, nenhum preço."""
+    texto = (SITE / "precos.html").read_text(encoding="utf-8")
+    sem_tags = html.unescape(re.sub(r"<[^>]+>", " ", texto))
+    for frase in (
+        "Para conhecer, de graça",
+        "Pessoa",
+        "Casa",
+        "por assento",
+        "em construção",
+        "definido antes do lançamento",  # ADR 0029, Emenda 1
+        "toda conta usa",
+    ):
+        assert frase in sem_tags, frase
+    assert "R$" not in texto
+    # nenhum valor em dinheiro: número seguido de "reais", "/mês", "por mês" ou "/ano"
+    assert not re.search(
+        r"\d\s*(reais|/\s*m[eê]s|por m[eê]s|/\s*ano|por ano)", sem_tags
+    )
+
+
 def test_precos_anunciam_mensal_de_verdade():
     """ADR 0054: mensal cobrado um mês por vez, sem fidelidade, e o cancelamento no próprio app."""
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
