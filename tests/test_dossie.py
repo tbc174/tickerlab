@@ -5,6 +5,7 @@ Usa a ficha de exemplo da CPFL guardada em `dados_de_exemplo/dossie/` e cópias 
 """
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -204,6 +205,29 @@ def test_data_do_fre_no_futuro_vira_ano_de_referencia() -> None:
     itens = {i.chave: i for i in _secoes()["auditor_e_controladas"].itens}
     assert itens["controladas"].base == "FRE de 2026"
     assert itens["auditor_desde"].texto == "01/01/2022"
+
+
+def test_data_da_rede_depois_da_ficha_vira_ano_do_fre(tmp_path: Path) -> None:
+    # regressão (28/10/2026): a ficha de 26/10 mostrava "Desde 31/12/2026" (a referência nominal do
+    # FRE de 2026) na participação na CPFL Transmissão; a página pública não mostra o futuro
+    bruta = _bruta()
+    rede = next(s for s in bruta["secoes"] if s["chave"] == "rede")
+    rede["tabelas"]["ligacoes_da_rede"][0]["desde"] = "2026-12-31"
+    ficha = dossie.ler_ficha(_gravar(tmp_path, bruta))
+    assert ficha is not None
+    secoes = {s.chave: s for s in dossie.secoes_da_ficha(dossie.cortar(ficha))}
+    assert secoes["rede"].tabelas["ligacoes_da_rede"][0]["Desde"] == "FRE de 2026"
+
+
+def test_rede_da_ficha_de_exemplo_nao_mostra_data_depois_da_ficha() -> None:
+    ficha = dossie.ler_ficha(EXEMPLO)
+    assert ficha is not None
+    dia_da_ficha = dossie.dia_da_ficha(ficha)
+    for linha in _secoes()["rede"].tabelas["ligacoes_da_rede"]:
+        desde = linha["Desde"]
+        if desde != "—" and not desde.startswith("FRE de "):
+            dia, mes, ano = (int(parte) for parte in desde.split("/"))
+            assert date(ano, mes, dia) <= dia_da_ficha
 
 
 def test_tabelas_saem_escritas_com_rotulos() -> None:

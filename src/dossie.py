@@ -20,6 +20,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -69,6 +70,7 @@ TAMANHO_DO_ANO = (
     4  # "2025": a série de agência somada no ano (base/dossie.py, `_item_da_serie`)
 )
 TAMANHO_DO_MES = 7  # "2025-12"
+TAMANHO_DO_DIA = 10  # "2025-12-31" (ou "2025-12-31T00:00:00", que perde a hora)
 FRACAO = "fração"  # a unidade de um número entre 0 e 1 (o índice de Basileia, a CR4)
 
 TITULOS_DAS_TABELAS = {
@@ -616,6 +618,15 @@ def _escrever_base(base: str | None, gerado_em: datetime) -> str:
     return dia(quando)
 
 
+def _dia_ate_a_ficha(valor: object, gerado_em: datetime | None = None) -> str:
+    """O dia, salvo quando vem depois da ficha: aí só "FRE de AAAA". Fichas geradas antes de
+    28/10/2026 trazem na rede a referência nominal do FRE (31/12/2026) como "desde"; a ficha não
+    mostra o futuro. Sem a data da ficha (tabela escrita fora dela), escreve o dia."""
+    if gerado_em is None:
+        return dia(valor)
+    return _escrever_base(str(valor)[:TAMANHO_DO_DIA], gerado_em)
+
+
 # cada coluna de cada tabela da ficha: (coluna, rótulo, como escrever); o que não está aqui não sai
 Coluna = tuple[str, str, Any]
 COLUNAS: dict[str, list[Coluna]] = {
@@ -804,7 +815,7 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("entidade", "Entidade", _texto),
         ("cnpj", "CNPJ", _texto),
         ("participacao", "Participação", _porcentagem),
-        ("desde", "Desde", dia),
+        ("desde", "Desde", _dia_ate_a_ficha),
         ("documento", "Documento", _texto),
     ],
     "identificadores_da_empresa": [
@@ -916,11 +927,27 @@ def titulo_da_tabela(chave: str) -> str:
     return TITULOS_DAS_TABELAS.get(chave, chave.replace("_", " ").capitalize())
 
 
-def _escrever_tabela(chave: str, linhas: list[dict[str, Any]]) -> list[dict[str, str]]:
+def _escrever_tabela(
+    chave: str, linhas: list[dict[str, Any]], gerado_em: datetime
+) -> list[dict[str, str]]:
     colunas = colunas_da_tabela(chave)
     if colunas is None:
         raise KeyError(f"tabela do dossiê sem colunas declaradas: {chave}")
-    return escrever_linhas(colunas, linhas)
+    return escrever_linhas(_com_o_dia_da_ficha(colunas, gerado_em), linhas)
+
+
+def _com_o_dia_da_ficha(colunas: list[Coluna], gerado_em: datetime) -> list[Coluna]:
+    """As colunas de data que não podem passar do dia da ficha recebem esse dia."""
+    return [
+        (
+            coluna,
+            rotulo,
+            partial(escrever, gerado_em=gerado_em)
+            if escrever is _dia_ate_a_ficha
+            else escrever,
+        )
+        for coluna, rotulo, escrever in colunas
+    ]
 
 
 def links_da_tabela(ficha: Ficha, secao: str, tabela: str) -> list[str]:
@@ -1240,7 +1267,7 @@ def secoes_da_ficha(ficha: Ficha) -> list[Secao]:
         itens = [_item_da_ficha(ficha, secao, item) for item in secao.itens]
         fontes = [f"Fonte: {fonte}." for fonte in secao.fontes]
         tabelas = {
-            chave: _escrever_tabela(chave, linhas)
+            chave: _escrever_tabela(chave, linhas, ficha.gerado_em)
             for chave, linhas in secao.tabelas.items()
             if linhas
         }
