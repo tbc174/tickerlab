@@ -23,19 +23,20 @@
   <a href="#tickerlab-trade-a-pesquisa-de-trading-quantitativo"><b>TickerLab Trade</b></a>
 </p>
 
-O **TickerLab** é uma **plataforma brasileira de inteligência financeira**, em fase de testes,
-para quem investe na bolsa brasileira (B3) e na americana. Ele junta quatro coisas que costumam
-estar separadas:
+O **TickerLab** é uma **ferramenta de dados auditáveis para quem analisa empresas** no Brasil, em
+fase de testes: coleta fontes públicas (CVM, Banco Central, Tesouro, B3 e outros órgãos), guarda
+cada original com o hash dele e entrega cada número com a fonte, a data em que ficou público e o
+caminho até o arquivo de origem. Em volta dessa base ficam quatro partes:
 
-1. **Análise e teste de estratégias com dados do passado**, num motor de backtest escrito à mão
-   (sem biblioteca pronta de backtest), que desconta custos, imposto e a sorte de escolher a
-   melhor entre muitas ideias.
-2. **Research das empresas**: fatos relevantes da CVM e da SEC lidos e classificados, fundamentos
-   tirados dos balanços oficiais, relatório completo da empresa, alertas e a carteira real da
-   pessoa, lida das planilhas da B3.
-3. **Uma base de dados própria e auditável**, montada a partir dos arquivos oficiais (CVM, BCB,
-   Tesouro, B3 e outros órgãos), com cada original guardado, cada valor datado do dia em que ficou
-   público e cada versão ancorada no Bitcoin.
+1. **Uma base de dados própria e auditável**, montada a partir dos arquivos oficiais, com cada
+   original guardado, cada valor datado do dia em que ficou público (uma consulta a um dia nunca
+   enxerga o que só foi publicado depois) e cada versão ancorada no Bitcoin.
+2. **Relatórios e Research das empresas**: fatos relevantes da CVM e da SEC lidos e classificados,
+   fundamentos tirados dos balanços oficiais, relatório completo da empresa em PDF, alertas e a
+   carteira real da pessoa, lida das planilhas da B3.
+3. **Teste de estratégias com dados do passado**, num motor de backtest escrito à mão (sem
+   biblioteca pronta de backtest), que desconta custos, imposto e a sorte de escolher a melhor
+   entre muitas ideias.
 4. **Ferramentas grátis no site** (14 calculadoras e simuladores) que trazem gente para o produto.
 
 Cada número vem explicado em português, e o produto mostra também o que **não** funciona.
