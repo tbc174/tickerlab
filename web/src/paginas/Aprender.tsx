@@ -5,7 +5,7 @@ import { TopoDaPagina } from "../site/Fundo";
 export const DADOS = {
   caminho: "/aprender.html",
   titulo: "Aprender",
-  descricao: "Tutorial, guia e glossário do TickerLab, e as calculadoras que vêm por aí.",
+  descricao: "Tutorial, guia e glossário do TickerLab, e as calculadoras abertas, sem cadastro.",
   atual: "/aprender.html",
 };
 
@@ -14,7 +14,7 @@ export function Aprender() {
     <>
       <TopoDaPagina
         olho="Aprender"
-        titulo="Do primeiro ativo ao primeiro relatório"
+        titulo="Da primeira empresa ao primeiro relatório"
         subtitulo={
           "Cada explicação leva a uma ação no produto. As calculadoras abertas ficam aqui " +
           "também."
