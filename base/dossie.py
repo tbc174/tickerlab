@@ -2970,6 +2970,7 @@ def _linhas_da_rede(
         if relacao is None or outra == centro:
             continue
         familia, documento = FONTES_DA_REDE[str(ligacao.fonte)]
+        publicado_em = getattr(ligacao, _PUBLICO_EM_DAS_LIGACOES, None)
         linhas.append(
             {
                 "ordem": RELACOES.index(relacao),
@@ -2978,13 +2979,20 @@ def _linhas_da_rede(
                 "entidade": rede.nomes[outra],
                 "cnpj": _cnpj_formatado(rede.cnpjs.get(outra)),
                 "participacao": ligacao.participacao,
-                "desde": ligacao.aconteceu_em,
+                "desde": _desde_quando(ligacao.aconteceu_em, publicado_em),
                 "documento": documento,
                 "familia": familia,
-                "publicado_em": getattr(ligacao, _PUBLICO_EM_DAS_LIGACOES, None),
+                "publicado_em": publicado_em,
             }
         )
     return pd.DataFrame(linhas, columns=list(_COLUNAS_DAS_LIGACOES))
+
+
+def _desde_quando(aconteceu_em: object, publicado_em: object) -> object:
+    """O dia em que a ligação ficou pública, não o dia nominal em que "aconteceu": a CVM dá ao FRE
+    a referência de 31/12 do ano (o FRE de 2026, entregue em agosto, diz 31/12/2026), e a ficha
+    não mostra o futuro. Sem a data de publicação (fonte sem ela), fica a do acontecimento."""
+    return aconteceu_em if pd.isna(publicado_em) else publicado_em
 
 
 def _mostradas(linhas: pd.DataFrame) -> pd.DataFrame:
