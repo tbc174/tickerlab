@@ -489,17 +489,27 @@ def _nome_curto(medida: str) -> str:
     return medida[:1].lower() + medida[1:]
 
 
-def _mais_nova(linhas: list[dict[str, Any]]) -> dict[str, Any]:
-    return max(linhas, key=lambda linha: linha["ano"])
+def _ano_de_referencia(linhas: list[dict[str, Any]]) -> dict[str, Any]:
+    """A linha do último ano completo (12 meses); sem nenhum, a mais nova. O ano pela metade tem
+    menos meses e, às vezes, menos participantes: não é o retrato do setor no ano."""
+    completas = [l for l in linhas if l["meses"] == MESES_DO_ANO_COMPLETO]
+    return max(completas or linhas, key=lambda linha: linha["ano"])
+
+
+def _ano_escrito(linha: Mapping[str, Any]) -> str:
+    """ "2025"; o ano pela metade leva os meses ("2026 (só 8 meses, até ago/2026)")."""
+    if linha["meses"] == MESES_DO_ANO_COMPLETO:
+        return str(linha["ano"])
+    return f"{linha['ano']} (só {linha['meses']} meses, até {dossie.mes(linha['ultimo_mes'])})"
 
 
 def _frase_do_hhi(nome: str, concentracao: list[dict[str, Any]]) -> Frase | None:
     if not concentracao:
         return None
-    linha = _mais_nova(concentracao)
+    linha = _ano_de_referencia(concentracao)
     medida = _nome_curto(dossie.SERIES_DO_SETOR[nome].medida)
     texto = (
-        f"Em {linha['ano']}, o HHI de {medida} foi de {dossie.inteiro(linha['hhi'])} pontos, "
+        f"Em {_ano_escrito(linha)}, o HHI de {medida} foi de {dossie.inteiro(linha['hhi'])} pontos, "
         f"na faixa {linha['faixa']} do Guia H do CADE"
     )
     delta = linha.get("delta_hhi")
@@ -517,24 +527,26 @@ def _frase_do_hhi(nome: str, concentracao: list[dict[str, Any]]) -> Frase | None
 def _frase_da_cr4(nome: str, concentracao: list[dict[str, Any]]) -> Frase | None:
     if not concentracao:
         return None
-    linha = _mais_nova(concentracao)
+    linha = _ano_de_referencia(concentracao)
     medida = _nome_curto(dossie.SERIES_DO_SETOR[nome].medida)
     texto = (
         f"Os 4 maiores participantes somaram {dossie.fracao(linha['cr4'])} de {medida} em "
-        f"{linha['ano']}, entre {dossie.inteiro(linha['participantes'])} participantes."
+        f"{_ano_escrito(linha)}, entre {dossie.inteiro(linha['participantes'])} participantes."
     )
     return Frase(texto, (f"cr4_{nome}", f"concentracao_{nome}/{linha['ano']}"))
 
 
 def _do_ano(
     participacao: list[dict[str, Any]], nome: str
-) -> tuple[int, list[dict[str, Any]]]:
-    """O ano mais recente da série na participação e as linhas dele."""
+) -> tuple[str, list[dict[str, Any]]]:
+    """O ano de referência da série na participação (escrito) e as linhas dele: o último ano
+    completo; sem nenhum, o mais novo."""
     da_serie = [l for l in participacao if l["serie"] == nome]
     if not da_serie:
-        return 0, []
-    ano = max(l["ano"] for l in da_serie)
-    return ano, [l for l in da_serie if l["ano"] == ano]
+        return "", []
+    ano = _ano_de_referencia(da_serie)["ano"]
+    linhas = [l for l in da_serie if l["ano"] == ano]
+    return _ano_escrito(linhas[0]), linhas
 
 
 def _id_da_participacao(linha: Mapping[str, Any]) -> str:
@@ -814,11 +826,12 @@ def _secao_do_tamanho(e: EntradasDoSetor, noite: dossie.SecaoDoSetor) -> Secao:
         colunas = [c for c in dossie.colunas_da_tabela(f"concentracao_{nome}") or [] if c[0] in ("ano", "total", "meses", "ultimo_mes")]  # fmt: skip
         if linhas:
             tabelas[f"tamanho_{nome}"] = dossie.escrever_linhas(colunas, linhas)
+    avisos = [p for p in noite.secao.paragrafos if p.startswith(dossie_da_base.MARCA_DO_ANO_PARCIAL)]  # fmt: skip
     return Secao(
         "tamanho",
         TITULOS["tamanho"],
         _itens(noite, "mercado_", e.setor.series),
-        _fontes_da_noite(noite),
+        [*avisos, *_fontes_da_noite(noite)],
         tabelas,
     )
 

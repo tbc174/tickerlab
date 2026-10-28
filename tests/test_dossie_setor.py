@@ -244,17 +244,51 @@ def test_secao_setor_traz_a_concentracao_por_ano() -> None:
     assert linhas[2026]["meses"] == 8
 
 
-def test_itens_do_setor_vem_do_ultimo_ano_da_serie() -> None:
+def test_itens_do_setor_vem_do_ultimo_ano_completo_da_serie() -> None:
     itens = {item["chave"]: item for item in _secao()["itens"]}
     assert itens["setor"]["valor"] == "Saúde suplementar"
     assert itens["membros"]["valor"] == 2
-    # beneficiários é estoque: o último mês que a fonte tem (como no setor regulado da empresa)
-    assert itens["hhi_ans_beneficiarios"]["base"] == "2026-08"
+    # 2026 tem 8 meses: o topo da seção é do último ano inteiro, o de 2025 (o ano pela metade não
+    # entra na conta, nem para um estoque como os beneficiários)
+    assert itens["hhi_ans_beneficiarios"]["base"] == "2025-12"
     assert itens["hhi_ans_beneficiarios"]["valor"] == pytest.approx(
-        45**2 + 25**2 + 20**2 + 10**2
+        40**2 + 30**2 + 20**2 + 10**2
     )
     assert itens["cr4_ans_beneficiarios"]["valor"] == pytest.approx(1.0)
     assert itens["mercado_ans_beneficiarios"]["valor"] == pytest.approx(100.0)
+
+
+def test_ano_parcial_vira_lacuna_declarada_na_secao() -> None:
+    paragrafos = _secao()["paragrafos"]
+    avisos = [p for p in paragrafos if p.startswith(dossie.MARCA_DO_ANO_PARCIAL)]
+    assert len(avisos) == 1
+    assert "2026 tem 8 meses de dados (até ago/2026)" in avisos[0]
+    assert "ano inteiro de 2025" in avisos[0]
+    assert "Beneficiários de planos de saúde" in avisos[0]
+
+
+def test_sem_ano_parcial_nao_ha_lacuna() -> None:
+    beneficiarios = _beneficiarios()
+    inteiros = beneficiarios[beneficiarios["ano"] != 2026]
+    secao = dossie.secao_setor(
+        SAUDE, _membros(), {"ans_beneficiarios": inteiros}, _empresa_serie(), {}
+    )
+    assert secao is not None
+    assert not [p for p in secao["paragrafos"] if p.startswith(dossie.MARCA_DO_ANO_PARCIAL)]  # fmt: skip
+
+
+def test_so_com_ano_parcial_o_topo_diz_que_nao_e_ano_inteiro() -> None:
+    beneficiarios = _beneficiarios()
+    so_2026 = beneficiarios[beneficiarios["ano"] == 2026]
+    secao = dossie.secao_setor(
+        SAUDE, _membros(), {"ans_beneficiarios": so_2026}, _empresa_serie(), {}
+    )
+    assert secao is not None
+    itens = {item["chave"]: item for item in secao["itens"]}
+    assert itens["hhi_ans_beneficiarios"]["base"] == "2026-08"
+    aviso = next(p for p in secao["paragrafos"] if p.startswith(dossie.MARCA_DO_ANO_PARCIAL))  # fmt: skip
+    assert "só tem 2026, com 8 meses" in aviso
+    assert "não de um ano inteiro" in aviso
 
 
 def test_participacao_do_setor_bate_com_a_da_ficha_da_empresa() -> None:
