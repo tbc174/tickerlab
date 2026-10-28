@@ -17,8 +17,9 @@ uma linha `FALHAS:` (saída 1) para recibo pendente há mais de 2 dias.
 **O que sai da máquina:** no `carimbar`, só um hash de 32 bytes por calendário: o SHA-256 da âncora
 com 16 bytes aleatórios no fim (o "sal"), passado de novo pelo SHA-256. Nem o hash da âncora sai. No
 `atualizar`, o mesmo hash volta ao calendário que o recebeu (só os da lista oficial do OpenTimestamps).
-No `conferir`, só a altura do bloco vai a dois exploradores públicos do Bitcoin, que precisam
-concordar; quem tiver um nó do Bitcoin pode conferir com o `ots verify` oficial.
+No `conferir`, só a altura do bloco vai ao nó do Bitcoin de casa (`BITCOIN_COOKIE`, `BITCOIN_RPC_ENDERECO`);
+se ele não está ligado ou não responde, vai a dois exploradores públicos, que precisam concordar. Quem
+tiver um nó do Bitcoin também pode conferir com o `ots verify` oficial.
 
 Usa a biblioteca `opentimestamps` (LGPL-3.0) e não o programa `ots`, que não abre no Windows (a
 `python-bitcoinlib` procura o OpenSSL por `ctypes`); o recibo é o mesmo formato `.ots` de sempre.
@@ -49,6 +50,7 @@ from opentimestamps.core.serialize import (
 from opentimestamps.core.timestamp import DetachedTimestampFile, Timestamp
 
 from base import ancoragem as an
+from base.cripto.no_bitcoin import ENDERECO_PADRAO, ClienteRPC, ErroDoNo
 from base.parquet import gravar_atomico
 from src import rede
 
@@ -64,6 +66,11 @@ CALENDARIOS = [
 MINIMO_DE_CALENDARIOS = 2
 EXPLORADORES = ["https://mempool.space/api", "https://blockstream.info/api"]
 ESPERA = 15  # segundos por pedido
+# O nó do Bitcoin do servidor de casa: o cookie do RPC (o mesmo da coleta de cripto) e o endereço
+# vêm do ambiente (`.env`); sem o cookie, o nó fica de fora e valem só os exploradores.
+VARIAVEL_DO_COOKIE = "BITCOIN_COOKIE"
+VARIAVEL_DO_ENDERECO = "BITCOIN_RPC_ENDERECO"
+ESPERA_DO_NO = 10  # segundos por pedido: nó parado não pode segurar a rotina da noite
 BRASILIA = ZoneInfo("America/Sao_Paulo")
 
 Enviar = Callable[[str, bytes], Timestamp]
@@ -199,12 +206,51 @@ def _buscar_texto(url: str) -> str:
     return resposta.text
 
 
+def _cliente_do_no() -> ClienteRPC | None:
+    cookie = os.environ.get(VARIAVEL_DO_COOKIE)
+    if not cookie:
+        return None
+    return ClienteRPC(
+        Path(cookie),
+        os.environ.get(VARIAVEL_DO_ENDERECO) or ENDERECO_PADRAO,
+        tempo_limite=ESPERA_DO_NO,
+    )
+
+
+def raiz_do_bloco_no_no(altura: int, no: ClienteRPC) -> tuple[str, int]:
+    """A raiz de Merkle e a hora do bloco, direto do nó do Bitcoin (cabeçalho, que o nó podado guarda)."""
+    cabecalho = no.cabecalho(no.hash_na_altura(altura))
+    return cabecalho["merkleroot"], int(cabecalho["time"])
+
+
 def raiz_do_bloco(
     altura: int,
     buscar_texto: Callable[[str], str] = _buscar_texto,
     exploradores: list[str] = EXPLORADORES,
+    no: ClienteRPC | None = None,
 ) -> tuple[str, int]:
-    """A raiz de Merkle (como os exploradores mostram) e a hora do bloco; todos precisam concordar."""
+    """A raiz de Merkle (como o Bitcoin Core e os exploradores mostram) e a hora do bloco.
+
+    Pergunta primeiro ao nó do Bitcoin de casa (`no`, ou o do ambiente). Se ele não está configurado,
+    não responde ou não conhece a altura, cai para os exploradores, que precisam concordar entre si.
+    """
+    no = no or _cliente_do_no()
+    if no is not None:
+        try:
+            return raiz_do_bloco_no_no(altura, no)
+        except (
+            requests.RequestException,
+            ErroDoNo,
+            OSError,
+            KeyError,
+            ValueError,
+        ) as erro:
+            # o texto do erro não leva o cookie (o cliente o esconde); a mensagem vai ao log
+            log.warning(
+                "nó do Bitcoin sem resposta para o bloco %s (%s): usando os exploradores",
+                altura,
+                type(erro).__name__,
+            )
     respostas = set()
     for explorador in exploradores:
         hash_do_bloco = buscar_texto(f"{explorador}/block-height/{altura}").strip()

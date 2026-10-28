@@ -31,10 +31,14 @@ class ClienteRPC:
     """Fala com o Bitcoin Core; tem o mesmo contrato que a leitura espera (`FonteDeBlocos`)."""
 
     def __init__(
-        self, arquivo_do_cookie: Path, endereco: str = ENDERECO_PADRAO
+        self,
+        arquivo_do_cookie: Path,
+        endereco: str = ENDERECO_PADRAO,
+        tempo_limite: float = TEMPO_LIMITE_EM_SEGUNDOS,
     ) -> None:
         self.arquivo_do_cookie = arquivo_do_cookie
         self.endereco = endereco
+        self.tempo_limite = tempo_limite
 
     def altura_do_topo(self) -> int:
         """A altura do bloco mais novo que o nó conhece."""
@@ -47,6 +51,10 @@ class ClienteRPC:
     def bloco(self, hash_do_bloco: str) -> dict:
         """O bloco inteiro, com o `prevout` de cada entrada."""
         return self._chamar("getblock", hash_do_bloco, DETALHE_COM_PREVOUT)
+
+    def cabecalho(self, hash_do_bloco: str) -> dict:
+        """O cabeçalho do bloco (`merkleroot`, `time`...); o nó podado o guarda mesmo sem o bloco."""
+        return self._chamar("getblockheader", hash_do_bloco)
 
     def liberar_ate(self, altura: int) -> None:
         """Deixa o nó apagar os arquivos de blocos até esta altura (poda manual, `prune=1`)."""
@@ -79,7 +87,7 @@ class ClienteRPC:
             self.endereco,
             json=pedido,
             auth=(usuario, senha),
-            timeout=TEMPO_LIMITE_EM_SEGUNDOS,
+            timeout=self.tempo_limite,
         )
         try:
             corpo = json.loads(resposta.text, parse_float=Decimal)
