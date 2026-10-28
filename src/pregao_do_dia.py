@@ -264,6 +264,7 @@ def resumo_do_pregao(entradas: EntradasDoPregao) -> dict[str, object]:
         },
         "setores": {
             "lista": setores_contra_o_indice(tabela, historia["variacao"]),
+            "empresas_por_setor_minimo": EMPRESAS_POR_SETOR_MINIMO,
             "fonte": FONTE_DOS_SETORES,
             "data": data,
         },
