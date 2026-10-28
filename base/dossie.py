@@ -850,6 +850,64 @@ def secao_auditor_e_controladas(
     return _secao("auditor_e_controladas", itens, tabelas)
 
 
+# --- parecer do auditor ----------------------------------------------------------------------------
+
+EXERCICIOS_DO_PARECER = 5  # quantos exercícios a tabela do parecer mostra
+NAO_CLASSIFICADO = "nao_classificado"  # o que a base escreve quando não deu para decidir (nunca no chute)
+CAMPOS_DO_PARECER = (  # (chave do item, nome, coluna de `pareceres_dfp`)
+    ("parecer_opiniao", "Opinião do auditor", "opiniao"),
+    ("parecer_enfase", "Parágrafo de ênfase no parecer", "enfase"),
+    (
+        "parecer_continuidade",
+        "Incerteza sobre a continuidade operacional",
+        "continuidade_operacional",
+    ),
+)
+
+
+def _pareceres_em_vigor(pareceres: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """O relatório que valia em `hoje` para cada exercício: só o já entregue, na maior versão entregue."""
+    entregues = pareceres[pd.to_datetime(pareceres["disponivel_em"]) <= hoje]
+    return (
+        entregues.sort_values(["referencia", "versao"])
+        .drop_duplicates("referencia", keep="last")
+        .sort_values("referencia", ascending=False)
+        .reset_index(drop=True)
+    )
+
+
+def parecer_do_auditor(
+    pareceres: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """O parecer do auditor sobre a DFP mais nova já entregue e os últimos exercícios (tabela da empresa).
+
+    Os valores são os da base (`sem_ressalva`, `sim`, `nao`...), sem o texto que a tela mostra. O que a
+    base não conseguiu decidir (`nao_classificado`) não vira item: a ficha não diz `nao` no chute.
+    `publicado_em` é o dia em que o relatório usado foi entregue; um relatório ou uma versão entregue
+    depois de `hoje` não existe para a ficha.
+    """
+    if pareceres.empty:
+        return [], pd.DataFrame()
+    em_vigor = _pareceres_em_vigor(pareceres, hoje)
+    if em_vigor.empty:
+        return [], pd.DataFrame()
+    ultimo = em_vigor.iloc[[0]]
+    base = _data(ultimo["referencia"].iloc[0])
+    publicado = _publicado(ultimo, "pareceres_dfp")
+    itens = [
+        _item(chave, nome, valor, "texto", base, publicado_em=publicado)
+        for chave, nome, coluna in CAMPOS_DO_PARECER
+        if (valor := ultimo[coluna].iloc[0]) != NAO_CLASSIFICADO
+    ]
+    colunas = [
+        "referencia",
+        "versao",
+        "disponivel_em",
+        *(c for _, _, c in CAMPOS_DO_PARECER),
+    ]
+    return itens, em_vigor.head(EXERCICIOS_DO_PARECER)[colunas]
+
+
 def controladoras(
     ligacoes: pd.DataFrame, entidades: pd.DataFrame, identificadores: pd.DataFrame
 ) -> pd.DataFrame:
@@ -3181,9 +3239,22 @@ class Origem(NamedTuple):
 
 
 _DO_FRE_MAIS_RECENTE = "no FRE mais recente"
+_DA_DFP_MAIS_NOVA = "sobre a DFP mais nova já entregue, na versão mais nova já entregue"
 _ORIGENS_FIXAS = {
     "auditor_atual": Origem("auditores", f"a firma do mandato sem fim {_DO_FRE_MAIS_RECENTE}"),
     "auditor_desde": Origem("auditores", f"o início do mandato sem fim {_DO_FRE_MAIS_RECENTE}"),
+    "parecer_opiniao": Origem(
+        "pareceres_dfp", f"opinião do relatório do auditor independente {_DA_DFP_MAIS_NOVA}"
+    ),
+    "parecer_enfase": Origem(
+        "pareceres_dfp",
+        f"parágrafo de ênfase, lido dos títulos do relatório do auditor independente {_DA_DFP_MAIS_NOVA}",
+    ),
+    "parecer_continuidade": Origem(
+        "pareceres_dfp",
+        "incerteza relevante sobre a continuidade operacional, lida dos títulos do relatório do auditor "
+        f"independente {_DA_DFP_MAIS_NOVA}",
+    ),
     "sociedades": Origem("controladas", f"número de sociedades listadas {_DO_FRE_MAIS_RECENTE}"),
     "controladas": Origem(
         "controladas",
