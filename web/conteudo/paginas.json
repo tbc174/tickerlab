@@ -997,5 +997,49 @@
     "somente_admin": false,
     "titulo": "Painel do café",
     "url": "painel-do-cafe"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "radar_imobiliario",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "Município.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "cidade",
+          "obrigatoria": false,
+          "opcoes": [
+            "SP",
+            "RIO"
+          ],
+          "padrao": "SP",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "Uso do imóvel.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "recorte",
+          "obrigatoria": false,
+          "opcoes": [
+            "todos",
+            "residencial"
+          ],
+          "padrao": "todos",
+          "tipo": "opcao"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "RadarImobiliarioV1",
+      "rota": "/v1/radar-imobiliario"
+    },
+    "descricao": "Atividade imobiliária em São Paulo e no Rio: ITBI, valores declarados e cobertura territorial, com fonte e data.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Radar imobiliário",
+    "url": "radar-imobiliario"
   }
 ]

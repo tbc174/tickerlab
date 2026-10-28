@@ -1,3 +1,25 @@
+export interface PontoDoRadar {
+  cidade: "SP" | "RIO";
+  recorte: "todos" | "residencial";
+  mes: string;
+  quantidade: number;
+  valor_medio: number | null;
+}
+export interface RadarImobiliarioV1 {
+  apurado_em: string;
+  cidade: "SP" | "RIO";
+  recorte: "todos" | "residencial";
+  definicao: string;
+  tipo_regiao: "distrito" | "bairro";
+  fonte: string;
+  fonte_geografica: string | null;
+  atribuicao: string;
+  licenca: string | null;
+  serie: (PontoDoRadar & { localizadas: number; variacao_anual_pct: number | null })[];
+  regioes: (PontoDoRadar & { tipo: "distrito" | "bairro"; nome: string })[];
+  avisos: string[];
+}
+
 // O formato das respostas da API (src/api_v1/esquemas.py e rotas.py). Escritos à mão, com teste que
 // confere cada um contra docs/api/openapi-v1.json (testes/app/api.test.ts).
 

@@ -801,6 +801,36 @@ PAGINAS = (
     ),
 )
 
+PAGINAS += (
+    Pagina(
+        "radar_imobiliario",
+        "Radar imobiliário",
+        GRUPO_RESEARCH,
+        ":material/apartment:",
+        "Atividade imobiliária em São Paulo e no Rio: ITBI, valores declarados e cobertura territorial, com fonte e data.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET",
+            "/v1/radar-imobiliario",
+            (
+                Entrada(
+                    "cidade", "opcao", "Município.", padrao="SP", opcoes=("SP", "RIO")
+                ),
+                Entrada(
+                    "recorte",
+                    "opcao",
+                    "Uso do imóvel.",
+                    padrao="todos",
+                    opcoes=("todos", "residencial"),
+                ),
+            ),
+            "RadarImobiliarioV1",
+        ),
+        so_no_app_novo=True,
+    ),
+)
+
 POR_CHAVE = {p.chave: p for p in PAGINAS}
 PAGINA_INICIAL = "inicio"
 
