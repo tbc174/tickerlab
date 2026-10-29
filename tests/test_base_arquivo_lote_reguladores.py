@@ -30,7 +30,8 @@ PACOTES_DE_PESSOA = {
 
 
 class Portal:
-    """Um cliente de mentira: responde ao `package_show` com o gravado."""
+    """Um cliente de mentira: responde com o gravado do pacote, pelo `package_show?id=<pacote>` (ANEEL e
+    ONS) ou pela página `/dataset/<pacote>` (CCEE)."""
 
     def __init__(self, respostas: dict[str, bytes]):
         self.respostas = respostas
@@ -38,7 +39,8 @@ class Portal:
 
     def ler(self, url, *, metodo="GET", cabecalhos=None, corpo=None):
         self.pedidos.append(url)
-        return Resposta(url, self.respostas[url.rsplit("=", 1)[-1]], {})
+        pacote = url.rsplit("/", 1)[-1].rsplit("=", 1)[-1]
+        return Resposta(url, self.respostas[pacote], {})
 
 
 def _gravado(nome: str) -> bytes:
@@ -118,23 +120,28 @@ def test_ons_pega_o_csv_do_ano_e_deixa_parquet_e_xlsx():
     ]
 
 
-def test_ccee_pede_ao_portal_da_ccee_e_leva_todo_arquivo():
+def test_ccee_le_a_pagina_de_cada_pacote_e_leva_todo_arquivo():
     portal = Portal(
         {
-            p: _gravado("ccee_pldx_valor_anual.json")
+            p: _gravado("ccee_pldx_valor_anual.html")
             for p in ("pldx_valor_anual", "pld_sombra")
         }
     )
     alvos = _fonte("ccee-preco-futuro").descobrir(portal, AGORA)
-    assert all(p.startswith(setoriais.PORTAL_DA_CCEE) for p in portal.pedidos)
-    assert len(alvos) == 2
+    assert portal.pedidos == [
+        f"{setoriais.PORTAL_DA_CCEE}/dataset/{p}"
+        for p in ("pldx_valor_anual", "pld_sombra")
+    ]
+    assert [a.url for a in alvos] == [
+        "https://pda-download.ccee.org.br/f0XoqvKpQGyTE_eXw1LJvw/content"
+    ] * 2
 
 
 def test_pacote_sem_arquivo_e_erro_com_o_nome_dele():
     portal = Portal(
         {
-            "pldx_valor_anual": _gravado("ccee_pldx_valor_anual.json"),
-            "pld_sombra": _gravado("ccee_sem_arquivo.json"),
+            "pldx_valor_anual": _gravado("ccee_pldx_valor_anual.html"),
+            "pld_sombra": _gravado("ccee_sem_arquivo.html"),
         }
     )
     with pytest.raises(ErroDeDescoberta, match="pld_sombra"):

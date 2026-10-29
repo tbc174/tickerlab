@@ -18,8 +18,9 @@ Escolhas (testes em `tests/test_base_arquivo_lote_reguladores.py`):
   `programacao_diaria` do ONS (um arquivo por dia desde 2024, mais de 2.000 arquivos); os `*_horaria_*`
   e `*_horario` da CCEE por usina ou agente (volume), e o EAR/ENA por REE (o ONS não tem o pacote com
   esse nome);
-- **CCEE:** o portal recusa o `curl` simples (HTTP 403) e responde ao cliente do arquivista, o mesmo que
-  já baixa o `ccee-pld`: as fontes usam o mesmo `_ckan`, sem caminho próprio;
+- **CCEE:** o portal recusa o `curl` simples (HTTP 403) e responde ao cliente do arquivista; o robots.txt
+  dela proíbe a `/api/`, então as fontes leem a página de cada pacote (`_ckan_pela_pagina`, 28/10/2026),
+  como o `ccee-pld`;
 - **ritmo pelo calendário do pacote:** o que o portal regrava todo dia (demanda máxima e CMO
   semi-horário do ONS) roda `diaria`; carga e hidrologia, `semanal`; tarifa, qualidade, encargos,
   liquidação e risco hidrológico, `mensal`. Os arquivos grandes do ONS (um por ano ou mês) são `pesada`: o
@@ -55,6 +56,7 @@ from base.arquivo.lote_setoriais import (
     PORTAL_DA_CCEE,
     PORTAL_DO_ONS,
     _ckan,
+    _ckan_pela_pagina,
 )
 from base.arquivo.obter import extrair_do_zip_remoto, membros_do_zip_remoto
 
@@ -324,7 +326,9 @@ def fontes() -> list[Fonte]:
             for id_, (ritmo, pacotes, pesada) in PACOTES_DO_ONS.items()
         ),
         *(
-            Fonte(id_, ritmo, _ckan(PORTAL_DA_CCEE, *pacotes), pesada=pesada)
+            Fonte(
+                id_, ritmo, _ckan_pela_pagina(PORTAL_DA_CCEE, *pacotes), pesada=pesada
+            )
             for id_, (ritmo, pacotes, pesada) in PACOTES_DA_CCEE.items()
         ),
         *(
