@@ -11,6 +11,7 @@ A vista é montada em casa por `scripts.montar_vista_do_cnpj` e publicada no ser
 """
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 import pandas as pd
@@ -52,6 +53,12 @@ def da_raiz(vista: Path, grupo: str, tabela: str, raiz: str) -> pd.DataFrame:
         return pd.DataFrame()
     filtro = [("cnpj_basico", "==", raiz)]
     return pq.read_table(arquivo, filters=filtro).to_pandas()
+
+
+def participacoes(vista: Path) -> Iterator[pd.DataFrame]:
+    """O QSA virado inteiro, um prefixo da raiz da sócia por vez (quem exporta o grupo para o portal)."""
+    for arquivo in sorted((vista / "vigente" / PARTICIPACOES).glob("*.parquet")):
+        yield pq.read_table(arquivo).to_pandas()
 
 
 def participacoes_da_raiz(vista: Path, raiz: str) -> pd.DataFrame:
