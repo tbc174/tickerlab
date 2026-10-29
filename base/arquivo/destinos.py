@@ -374,28 +374,14 @@ DESTINOS: dict[str, Destino] = {
     "antt-autos-de-transito": _planejada(
         "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
     ),
-    # Ficha Clara, licenças e registros: as tabelas por CNPJ vêm na etapa 2b
-    "anvisa-empresas": _planejada(
-        "ficha-clara/licencas", "autorização de funcionamento e boas práticas (Anvisa)"
-    ),
-    "anvisa-produtos": _planejada(
-        "ficha-clara/licencas", "produtos registrados por CNPJ (Anvisa)"
-    ),
-    "antt-rntrc": _planejada(
-        "ficha-clara/licencas", "transportadores de carga (RNTRC)"
-    ),
-    "mapa-sipeagro": _planejada(
-        "ficha-clara/licencas", "estabelecimentos registrados no MAPA (SIPEAGRO)"
-    ),
-    "anatel-outorgas": _planejada(
-        "ficha-clara/licencas", "outorgas de telecomunicações (Anatel)"
-    ),
-    "anm-cadastro-mineiro": _planejada(
-        "ficha-clara/licencas", "títulos minerários por titular (ANM)"
-    ),
-    "ancine-agentes": _planejada(
-        "ficha-clara/licencas", "agentes econômicos registrados (Ancine)"
-    ),
+    # Ficha Clara, licenças e registros (`base/licencas.py`)
+    "anvisa-empresas": _tabela("anvisa_registros"),
+    "anvisa-produtos": _tabela("anvisa_registros"),
+    "antt-rntrc": _tabela("antt_rntrc"),
+    "mapa-sipeagro": _tabela("mapa_sipeagro"),
+    "anatel-outorgas": _tabela("anatel_outorgas"),
+    "anm-cadastro-mineiro": _tabela("anm_titulos"),
+    "ancine-agentes": _tabela("ancine_agentes"),
     # Ficha Clara, incentivos: as tabelas por CNPJ vêm na etapa 4b
     "mme-reidi": _planejada(
         "ficha-clara/incentivos", "projetos de energia enquadrados no REIDI (MME)"

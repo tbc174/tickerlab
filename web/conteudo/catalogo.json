@@ -85,6 +85,30 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANTT",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "Anatel",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
       "modulos": [
         "mercado_e_empresas"
@@ -117,23 +141,34 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
       "modulos": [
-        "mercado_e_empresas"
+        "governo_e_sancoes"
       ],
-      "orgao": "ANTT",
+      "orgao": "ANM",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
       "modulos": [
-        "mercado_e_empresas"
+        "governo_e_sancoes"
       ],
-      "orgao": "Anatel",
+      "orgao": "Ancine",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Anvisa",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -227,6 +262,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MAPA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
@@ -289,14 +335,14 @@
       "tabelas": 63
     },
     {
+      "chave": "governo_e_sancoes",
+      "nome": "Governo e sanções",
+      "tabelas": 17
+    },
+    {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
       "tabelas": 13
-    },
-    {
-      "chave": "governo_e_sancoes",
-      "nome": "Governo e sanções",
-      "tabelas": 11
     },
     {
       "chave": "macro",
@@ -4299,6 +4345,66 @@
     },
     {
       "atraso": null,
+      "frase": "Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Anvisa",
+      "situacao": "licenciada",
+      "tabela": "anvisa_registros"
+    },
+    {
+      "atraso": null,
+      "frase": "Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANTT",
+      "situacao": "licenciada",
+      "tabela": "antt_rntrc"
+    },
+    {
+      "atraso": null,
+      "frase": "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MAPA",
+      "situacao": "licenciada",
+      "tabela": "mapa_sipeagro"
+    },
+    {
+      "atraso": null,
+      "frase": "Prestadoras de telecomunicações com outorga da Anatel, por CNPJ e serviço notificado.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Anatel",
+      "situacao": "licenciada",
+      "tabela": "anatel_outorgas"
+    },
+    {
+      "atraso": null,
+      "frase": "Títulos e requerimentos minerários da ANM por CNPJ do titular (Cadastro Mineiro, um arquivo por tipo de título).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_titulos"
+    },
+    {
+      "atraso": null,
+      "frase": "Agentes econômicos registrados na Ancine, por CNPJ.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ancine",
+      "situacao": "licenciada",
+      "tabela": "ancine_agentes"
+    },
+    {
+      "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -4649,9 +4755,9 @@
     }
   ],
   "totais": {
-    "fontes": 25,
+    "fontes": 29,
     "fontes_em_consulta": 8,
     "modulos": 6,
-    "tabelas": 104
+    "tabelas": 110
   }
 }

@@ -2601,6 +2601,276 @@ Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tip
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `anvisa_registros`
+
+Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados (medicamentos, saneantes, cosméticos, produtos para saúde e alimentos). Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
+
+- **Fonte:** Anvisa: dados abertos, consultas de empresas e de produtos (`base/licencas.py`)
+- **Licença:** CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `concedido_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anvisa_registros/<cadastro>.parquet` (servidor de casa, `scripts/carga_licencas.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
+| `processo` | Número do processo no órgão | texto |
+| `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
+| `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
+| `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
+| `municipio` | Município, quando a fonte informa | texto |
+| `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
+| `publicado_em` | Publicação da licença (Diário Oficial), quando a fonte informa | data (dia) |
+| `vence_em` | Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, o 1º dia do mês) | data (dia) |
+| `cancelado_em` | Cancelamento, quando a fonte informa | data (dia) |
+| `situacao_desde` | Desde quando vale a situação (só o RNTRC informa) | data (dia) |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte publica o estado de hoje sem dizer desde quando) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `antt_rntrc`
+
+Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ. Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
+
+- **Fonte:** ANTT: dados abertos, RNTRC (um arquivo por mês, cada um com o cadastro inteiro) (`base/licencas.py`)
+- **Licença:** CC BY (dados abertos da ANTT; citar a ANTT)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `concedido_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/antt_rntrc/<cadastro>.parquet` (servidor de casa, `scripts/carga_licencas.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
+| `processo` | Número do processo no órgão | texto |
+| `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
+| `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
+| `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
+| `municipio` | Município, quando a fonte informa | texto |
+| `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
+| `publicado_em` | Publicação da licença (Diário Oficial), quando a fonte informa | data (dia) |
+| `vence_em` | Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, o 1º dia do mês) | data (dia) |
+| `cancelado_em` | Cancelamento, quando a fonte informa | data (dia) |
+| `situacao_desde` | Desde quando vale a situação (só o RNTRC informa) | data (dia) |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte publica o estado de hoje sem dizer desde quando) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `mapa_sipeagro`
+
+Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola. Os outros arquivos do SIPEAGRO mascaram o CNPJ e ficam de fora (nunca se cruza pelo nome). Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
+
+- **Fonte:** MAPA: dados abertos do SIPEAGRO (`base/licencas.py`)
+- **Licença:** CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `concedido_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/mapa_sipeagro/<cadastro>.parquet` (servidor de casa, `scripts/carga_licencas.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
+| `processo` | Número do processo no órgão | texto |
+| `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
+| `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
+| `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
+| `municipio` | Município, quando a fonte informa | texto |
+| `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
+| `publicado_em` | Publicação da licença (Diário Oficial), quando a fonte informa | data (dia) |
+| `vence_em` | Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, o 1º dia do mês) | data (dia) |
+| `cancelado_em` | Cancelamento, quando a fonte informa | data (dia) |
+| `situacao_desde` | Desde quando vale a situação (só o RNTRC informa) | data (dia) |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte publica o estado de hoje sem dizer desde quando) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anatel_outorgas`
+
+Prestadoras de telecomunicações com outorga da Anatel, por CNPJ e serviço notificado. Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
+
+- **Fonte:** Anatel: dados abertos, prestadoras de serviços de telecomunicações (`base/licencas.py`)
+- **Licença:** CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `concedido_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anatel_outorgas/<cadastro>.parquet` (servidor de casa, `scripts/carga_licencas.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
+| `processo` | Número do processo no órgão | texto |
+| `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
+| `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
+| `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
+| `municipio` | Município, quando a fonte informa | texto |
+| `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
+| `publicado_em` | Publicação da licença (Diário Oficial), quando a fonte informa | data (dia) |
+| `vence_em` | Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, o 1º dia do mês) | data (dia) |
+| `cancelado_em` | Cancelamento, quando a fonte informa | data (dia) |
+| `situacao_desde` | Desde quando vale a situação (só o RNTRC informa) | data (dia) |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte publica o estado de hoje sem dizer desde quando) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anm_titulos`
+
+Títulos e requerimentos minerários da ANM por CNPJ do titular (Cadastro Mineiro, um arquivo por tipo de título). A coluna "Situação" (Sim/Não) da ANM fica de fora: o sentido não está no dicionário dela. Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
+
+- **Fonte:** ANM: dados abertos do Cadastro Mineiro (`base/licencas.py`)
+- **Licença:** CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `concedido_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anm_titulos/<cadastro>.parquet` (servidor de casa, `scripts/carga_licencas.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
+| `processo` | Número do processo no órgão | texto |
+| `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
+| `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
+| `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
+| `municipio` | Município, quando a fonte informa | texto |
+| `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
+| `publicado_em` | Publicação da licença (Diário Oficial), quando a fonte informa | data (dia) |
+| `vence_em` | Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, o 1º dia do mês) | data (dia) |
+| `cancelado_em` | Cancelamento, quando a fonte informa | data (dia) |
+| `situacao_desde` | Desde quando vale a situação (só o RNTRC informa) | data (dia) |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte publica o estado de hoje sem dizer desde quando) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ancine_agentes`
+
+Agentes econômicos registrados na Ancine, por CNPJ. Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
+
+- **Fonte:** Ancine: dados abertos, agentes econômicos regulares (`base/licencas.py`)
+- **Licença:** CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `concedido_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ancine_agentes/<cadastro>.parquet` (servidor de casa, `scripts/carga_licencas.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
+| `processo` | Número do processo no órgão | texto |
+| `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
+| `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
+| `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
+| `municipio` | Município, quando a fonte informa | texto |
+| `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
+| `publicado_em` | Publicação da licença (Diário Oficial), quando a fonte informa | data (dia) |
+| `vence_em` | Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, o 1º dia do mês) | data (dia) |
+| `cancelado_em` | Cancelamento, quando a fonte informa | data (dia) |
+| `situacao_desde` | Desde quando vale a situação (só o RNTRC informa) | data (dia) |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte publica o estado de hoje sem dizer desde quando) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `debentures_assembleias`
 
 Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora (`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): `estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF

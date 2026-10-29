@@ -595,6 +595,199 @@ def _tabelas_das_sancoes() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_das_licencas() -> dict[str, Tabela]:
+    """As licenças e registros por CNPJ (`base/licencas.py`, Ficha Clara): uma tabela por órgão, com
+    as mesmas colunas, para a ficha da empresa ler todas do mesmo jeito."""
+    colunas = {
+        "cadastro": (
+            (
+                "De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, "
+                "cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, "
+                "aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine)"
+            ),
+            TEXTO,
+        ),
+        "id_na_fonte": (
+            (
+                "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o "
+                "identificam juntas por `|`)"
+            ),
+            TEXTO,
+        ),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "registro": (
+            (
+                "Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do "
+                "produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na "
+                "Ancine"
+            ),
+            TEXTO,
+        ),
+        "processo": ("Número do processo no órgão", TEXTO),
+        "categoria": (
+            (
+                "O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, "
+                "categoria regulatória, categoria do transportador, atividade (MAPA), tipo de "
+                "outorga, tipo de requerimento (ANM), classificação do agente (Ancine)"
+            ),
+            TEXTO,
+        ),
+        "descricao": (
+            (
+                "O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, "
+                "classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza "
+                "jurídica (Ancine)"
+            ),
+            TEXTO,
+        ),
+        "complemento": (
+            (
+                "Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada "
+                "(CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), "
+                "Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine)"
+            ),
+            TEXTO,
+        ),
+        "situacao": (
+            (
+                "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do "
+                "título...): vale desde o dia do arquivo, nunca antes"
+            ),
+            TEXTO,
+        ),
+        "uf": ("UF da empresa ou do estabelecimento, quando a fonte informa", TEXTO),
+        "municipio": ("Município, quando a fonte informa", TEXTO),
+        "concedido_em": (
+            "Data da concessão, autorização, inclusão ou registro, quando a fonte informa",
+            DATA,
+        ),
+        "publicado_em": (
+            "Publicação da licença (Diário Oficial), quando a fonte informa",
+            DATA,
+        ),
+        "vence_em": (
+            (
+                "Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, "
+                "o 1º dia do mês)"
+            ),
+            DATA,
+        ),
+        "cancelado_em": ("Cancelamento, quando a fonte informa", DATA),
+        "situacao_desde": ("Desde quando vale a situação (só o RNTRC informa)", DATA),
+        "consta": (
+            (
+                "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu "
+                "dele"
+            ),
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075)"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que esta versão da linha foi vista", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também "
+                "no 1º (a fonte publica o estado de hoje sem dizer desde quando)"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    comum = (
+        "Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, "
+        "cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que "
+        "some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::"
+        "como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras "
+        "ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, "
+        "contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam "
+        "com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado."
+    )
+    atraso = (
+        "A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em "
+        "que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam "
+        "nas colunas delas"
+    )
+    frequencia = "Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)"
+
+    def tabela(
+        nome: str,
+        descricao: str,
+        fonte: str,
+        familia: str,
+        frequencia: str = frequencia,
+    ) -> Tabela:
+        return Tabela(
+            descricao=descricao + " " + comum,
+            fonte=fonte + " (`base/licencas.py`)",
+            familia_da_fonte=familia,
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                f"Parquet em `<acervo>/base/{nome}/<cadastro>.parquet` (servidor de casa, "
+                "`scripts/carga_licencas.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=colunas,
+        )
+
+    return {
+        "anvisa_registros": tabela(
+            "anvisa_registros",
+            (
+                "Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de "
+                "boas práticas de fabricação (CBPF) e os produtos registrados (medicamentos, "
+                "saneantes, cosméticos, produtos para saúde e alimentos)."
+            ),
+            "Anvisa: dados abertos, consultas de empresas e de produtos",
+            "anvisa",
+        ),
+        "antt_rntrc": tabela(
+            "antt_rntrc",
+            "Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ.",
+            "ANTT: dados abertos, RNTRC (um arquivo por mês, cada um com o cadastro inteiro)",
+            "antt",
+        ),
+        "mapa_sipeagro": tabela(
+            "mapa_sipeagro",
+            (
+                "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e "
+                "aviação agrícola. Os outros arquivos do SIPEAGRO mascaram o CNPJ e ficam de fora "
+                "(nunca se cruza pelo nome)."
+            ),
+            "MAPA: dados abertos do SIPEAGRO",
+            "mapa",
+        ),
+        "anatel_outorgas": tabela(
+            "anatel_outorgas",
+            "Prestadoras de telecomunicações com outorga da Anatel, por CNPJ e serviço notificado.",
+            "Anatel: dados abertos, prestadoras de serviços de telecomunicações",
+            "anatel",
+        ),
+        "anm_titulos": tabela(
+            "anm_titulos",
+            (
+                "Títulos e requerimentos minerários da ANM por CNPJ do titular (Cadastro Mineiro, "
+                'um arquivo por tipo de título). A coluna "Situação" (Sim/Não) da ANM fica de fora: '
+                "o sentido não está no dicionário dela."
+            ),
+            "ANM: dados abertos do Cadastro Mineiro",
+            "anm",
+        ),
+        "ancine_agentes": tabela(
+            "ancine_agentes",
+            "Agentes econômicos registrados na Ancine, por CNPJ.",
+            "Ancine: dados abertos, agentes econômicos regulares",
+            "ancine",
+        ),
+    }
+
+
 TABELAS: dict[str, Tabela] = {
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -4082,6 +4275,7 @@ TABELAS: dict[str, Tabela] = {
         },
     ),
     **_tabelas_das_sancoes(),
+    **_tabelas_das_licencas(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -6188,6 +6382,7 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -6275,6 +6470,12 @@ _CONTRATO = {
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "anm_titulos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "ancine_agentes": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
@@ -6346,6 +6547,30 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "faixas": {"valor_multa": _SEM_NEGATIVO},
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "anuncia_o_futuro": True,  # a sanção publicada pode começar a valer depois
+    },
+    "anvisa_registros": {
+        "pasta": "anvisa_registros",
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "antt_rntrc": {
+        "pasta": "antt_rntrc",
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "mapa_sipeagro": {
+        "pasta": "mapa_sipeagro",
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "anatel_outorgas": {
+        "pasta": "anatel_outorgas",
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "anm_titulos": {
+        "pasta": "anm_titulos",
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "ancine_agentes": {
+        "pasta": "ancine_agentes",
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "ans_penalidades": {
         "pasta": "ans_penalidades",
