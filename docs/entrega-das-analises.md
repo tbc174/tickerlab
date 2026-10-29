@@ -12,7 +12,9 @@ python3 transferir_analises.py empacotar --origem analises/v1/analises --entrada
 O pacote contém só análises com `publicavel: true` e veredito humano `aprovado`.
 Textos do primeiro lote não tinham `corte`: esse metadado só é recuperado de uma
 entrada original cujo SHA-256 seja igual a `hash_da_entrada_atual`. O texto, os
-gráficos, a aprovação e o original permanecem iguais. Nenhuma chamada de IA ocorre.
+gráficos, a aprovação e o original permanecem iguais. Toda entrega inclui essa
+entrada exata em `entrada_aprovada`, inclusive quando o texto já tem `corte`.
+Não encontrar a entrada original aborta a entrega. Nenhuma chamada de IA ocorre.
 
 No recebedor, sob trava exclusiva (`flock`) e comando SSH restrito:
 
@@ -38,5 +40,10 @@ Envio deve usar a mesma trava do lote, para não ler durante uma gravação.
 
 Conferência depois da entrega: contar arquivos dentro dos dois contêineres e chamar
 o mesmo montador usado pela API. Arquivo entregue não significa texto atualizado:
-o leitor mantém as travas de aprovação, plano e hash da ficha. Se a ficha mudou,
-revalidar/reescrever a análise; nunca trocar o hash só para liberar a exibição.
+o leitor mantém as travas de aprovação, plano e hash da ficha. Com a entrada
+aprovada preservada, mostra uma **análise histórica**, datada pelo corte original,
+usando seus números nas notas e gráficos. O restante da ficha continua atual.
+O aviso é o mesmo na página, API e PDF. Entrada histórica incompatível, com datas
+depois do corte ou dados pessoais barrados pelas regras da entrada não é exibida.
+Arquivos antigos sem a fotografia mantêm a remontagem e a trava de hash anteriores.
+Nunca trocar o hash ou o corte só para liberar a exibição.
