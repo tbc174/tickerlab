@@ -10,6 +10,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -237,6 +238,98 @@ CAMPOS_DO_CADASTRO_DA_SUSEP = (
     "entcgc",
     "dataautorizacao",
 )
+
+# Ficha Clara, licenças e registros (etapa 2, 29/10/2026; todos CC BY no dados.gov.br): os cadastros
+# guardam a linha só quando o documento é um CNPJ inteiro (CPF de pessoa física e CNPJ mascarado
+# saem) e só as colunas da lista: razão social (pode ser o nome de um MEI ou do titular), nome de
+# fantasia, endereço, CEP, telefone, e-mail, representante e responsável técnico nunca entram
+CONSULTAS_DA_ANVISA = "https://dados.anvisa.gov.br/dados/CONSULTAS/"
+# autorização de funcionamento (AFE): as datas vêm em MM/DD/AAAA; o arquivo das internacionais fica
+# de fora (empresa estrangeira, sem CNPJ)
+COLUNAS_DA_AFE_DA_ANVISA = (
+    "NU_CNPJ", "NU_AUTORIZACAO", "NU_AUTORIZACAO_NOVO", "NU_PROCESSO", "DT_AUTORIZACAO", "ATIVO",
+    "TIPO_PRODUTO", "CO_TIPO_ATIVIDADES", "ST_AUTORIZACAO_ESPECIAL", "DT_CANCELAMENTO",
+    "DT_PUBLICACAO", "CIDADE", "UF", "CO_MUNICIPIO_IBGE", "ATIVIDADES", "DT_CARGA_ETL",
+)  # fmt: skip
+# certificado de boas práticas de fabricação (CBPF): o CNPJ é o de quem pediu; a fábrica inspecionada
+# pode ser estrangeira
+COLUNAS_DO_CBPF_DA_ANVISA = (
+    "CO_DOCUMENTO_PETICAO", "NU_CNPJ_SOLICITANTE", "CODIGOUNICO_INSPECIONADA",
+    "NU_CNPJ_EMPRESA_INSPECIONADA", "NO_PAIS_INSPECIONADA", "NO_TIPO_CERTIFICADO", "ASSUNTO",
+    "DT_PUBLICACAO", "DT_VALIDADE", "DS_TP_EMISSAO_CERTIFICADO", "SITUACAO", "NU_PROCESSO",
+    "STATUS", "DT_CARGA_ETL",
+)  # fmt: skip
+# produtos registrados (um arquivo por tipo; cada um traz as colunas dele, e fica a interseção com
+# esta lista); sai a razão social, e o texto longo da bula (indicações, sinônimos) também
+ARQUIVOS_DE_PRODUTOS_DA_ANVISA = (
+    "MEDICAMENTOS", "SANEANTES", "COSMETICOS", "PRODUTOS_SAUDE", "ALIMENTOS",
+)  # fmt: skip
+COLUNAS_DOS_PRODUTOS_DA_ANVISA = (
+    "NU_PROCESSO", "NU_CNPJ_EMPRESA", "NO_PRODUTO", "CO_TIPO_PRODUTO", "NU_REGISTRO_PRODUTO",
+    "NU_REGISTRO", "NU_REGISTRO_NOTIFICACAO_PRODUTO", "CO_SEQ_PRODUTO", "ST_PRODUTO_ATIVO",
+    "ST_SITUACAO_PRODUTO", "IS_REGISTRADO", "ST_REGISTRADO", "TP_SITUACAO_PRODUTO",
+    "SITUACAO_REGISTRO", "SITUACAO_ASSUNTO", "DS_SITUACAO_ASSUNTO_DOC", "TIPO_AUTORIZACAO",
+    "TIPO_REGULARIZACAO", "DS_TIPO_PETICAO", "DS_TIPO_CATEGORIA_REGULATORIA",
+    "DS_CATEGORIA_PRODUTO", "SG_RISCO_PRODUTO", "CO_ATC", "SUBSTANCIAS_MEDICAMENTOS", "MARCAS",
+    "DATA_PUBLICACAO", "DT_PUBLICACAO", "DT_REGULARIZACAO", "DT_VENCIMENTO",
+    "DT_VENCIMENTO_PRODUTO", "DT_VENCIMENTO_REGISTRO", "VALIDADE_SITUACAO", "DATA_CANCELAMENTO",
+    "DT_CANCELAMENTO", "CANCELAMENTO", "DT_ATUALIZACAO", "DATA_ULTIMA_ATUALIZACAO", "DT_CARGA_ETL",
+)  # fmt: skip
+# RNTRC (transportadores de carga): um CSV por mês (~160 MB), e cada um é o cadastro inteiro daquele
+# mês; basta o mais novo (o arquivista guarda o histórico a partir daqui)
+COLUNAS_DO_RNTRC = (
+    "numero_rntrc", "data_primeiro_cadastro", "situacao_rntrc", "cpfcnpjtransportador",
+    "categoria_transportador", "municipio", "uf", "equiparado", "data_situacao_rntrc",
+)  # fmt: skip
+# SIPEAGRO (MAPA): só os dois arquivos com o CNPJ inteiro; fertilizantes, qualidade vegetal, vinhos e
+# bebidas e alimentação animal mascaram o CNPJ, e nunca se cruza pelo nome (homônimos)
+SIPEAGRO = "https://dados.agricultura.gov.br/dataset/52a01565-72d6-410e-b21b-64035831a7be/resource/"
+PRODUTO_VETERINARIO_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "7ce5fac0-9c8f-4e14-82d9-6deab9b5e2e9/download/sipeagroprodutoveterinario.csv"
+)
+AVIACAO_AGRICOLA_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "fac50de6-d4c4-4b47-bac9-5b144de448c9/download/sipeagroaviacaoagricolaregistro.csv"
+)
+COLUNAS_DO_SIPEAGRO = (
+    "UNIDADE_DA_FEDERACAO", "MUNICIPIO", "NUMERO_REGISTRO_ESTABELECIMENTO", "STATUS_DO_REGISTRO",
+    "STATUS_REGISTRO_ESTABELECIMENTO", "CNPJ", "CPF_CNPJ", "AREA_ATUACAO", "ATIVIDADE",
+    "CLASSIFICACAO", "CARACTERISTICA_ADICIONAL", "ESPECIE", "NUMERO_REGISTRO_AERONAVE",
+    "STATUS_AERONAVE",
+)  # fmt: skip
+# Anatel, prestadoras com outorga: um ZIP com um CSV só (UTF-8 com BOM)
+OUTORGAS_DA_ANATEL = "https://www.anatel.gov.br/dadosabertos/paineis_de_dados/outorga_e_licenciamento/prestadoras_servicos_telecomunicacoes.zip"
+COLUNAS_DAS_OUTORGAS_DA_ANATEL = (
+    "Tipo de Identificação", "CNPJ ou CPF", "Tipo de Entidade", "Tipo de Outorga",
+    "Fistel da Outorga", "Processo SEI da Outorga", "Data Inclusão da Outorga",
+    "Serviço da Notificação", "Código e Nome do Serviço da Notificação", "Fistel da Notificação",
+    "Processo SEI da Notificação", "Data Inclusão da Notificação",
+    "Código IBGE do Munícipio do Endereço Sede", "Nome do Munícipio do Endereço Sede",
+    "UF do Endereço Sede",
+)  # fmt: skip
+# ANM, Cadastro Mineiro: um CSV por tipo de título, separado por "," (os microdados, um ZIP de
+# 181 MB, ficam para depois)
+CADASTRO_MINEIRO_DA_ANM = "https://dadosabertos.anm.gov.br/SCM/{nome}.csv"
+ARQUIVOS_DO_CADASTRO_MINEIRO = (
+    "Alvara_de_Pesquisa", "Cessoes_de_Direitos", "Guia_de_Utilizacao_Autorizada", "Licenciamento",
+    "PLG", "Portaria_de_Lavra", "Registro_de_Extracao_Publicado", "Relatorio_de_Pesquisa_Aprovado",
+    "Requerimento_de_Lavra", "Requerimento_de_Licenciamento", "Requerimento_de_Pesquisa",
+    "Requerimento_de_PLG", "Requerimento_de_Registro_de_Extracao_Protocolizado",
+)  # fmt: skip
+COLUNAS_DO_CADASTRO_MINEIRO = (
+    "Superintendência", "Processo", "Tipo de requerimento", "Fase Atual", "CPF/CNPJ do titular",
+    "Municipio(s)", "Substância(s)", "Tipo(s) de Uso", "Situação",
+)  # fmt: skip
+# Ancine, agentes econômicos registrados
+AGENTES_DA_ANCINE = (
+    "https://dados.ancine.gov.br/dados-abertos/agentes-economicos-regulares.csv"
+)
+COLUNAS_DOS_AGENTES_DA_ANCINE = (
+    "REGISTRO_ANCINE", "DATA_REGISTRO", "CNPJ", "DATA_CONSTITUICAO", "UF", "MUNICIPIO",
+    "CODIGO_MUNICIPIO_IBGE", "CLASSIFICACAO_AGENTE_ECONOMICO", "NATUREZA_JURIDICA",
+    "BRASILEIRO_INDEPENDENTE",
+)  # fmt: skip
 # 2ª leva (14/10/2026)
 # Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
 # dentro dos ZIPs (o de telefonia móvel tem 3,2 GB; os "_Colunas" somam ~70 MB comprimidos)
@@ -690,6 +783,99 @@ def descobrir_cadastro_da_susep(cliente: Cliente, agora: datetime) -> list[Alvo]
     ]
 
 
+@dataclass(frozen=True)
+class CsvDeCadastro:
+    """Um CSV de cadastro (licenças e registros) e o que dele chega ao acervo."""
+
+    url: str
+    colunas: tuple[str, ...]
+    cnpj_em: str  # a coluna do documento: fica só a linha com CNPJ inteiro
+    codificacao: str = "latin-1"
+    separador: str = ";"
+    dentro_do_zip: bool = False
+
+    def alvo(self) -> Alvo:
+        obter = csv_so_com_colunas(
+            self.url, self.colunas, self.codificacao, separador=self.separador,
+            so_com_cnpj_em=self.cnpj_em, dentro_do_zip=self.dentro_do_zip,
+        )  # fmt: skip
+        return Alvo(self.url, ".csv", obter)
+
+
+def _cadastros(*arquivos: CsvDeCadastro) -> Descobrir:
+    return lambda cliente, agora: [arquivo.alvo() for arquivo in arquivos]
+
+
+CADASTROS_DE_EMPRESAS_DA_ANVISA = (
+    CsvDeCadastro(
+        CONSULTAS_DA_ANVISA
+        + "EMPRESA_FISCALIZACAO_PRODUTO/TA_CONSULTA_FUNCIONAMENTO_EMPRESA_NACIONAL.CSV",
+        COLUNAS_DA_AFE_DA_ANVISA,
+        "NU_CNPJ",
+    ),
+    *(
+        CsvDeCadastro(
+            CONSULTAS_DA_ANVISA + f"EMPRESA_FISCALIZACAO_PRODUTO/{nome}.CSV",
+            COLUNAS_DO_CBPF_DA_ANVISA,
+            "NU_CNPJ_SOLICITANTE",
+        )
+        for nome in ("TA_CONSULTA_CBPF", "TA_CONSULTA_CBPF_MEDICAMENTO")
+    ),
+)
+CADASTROS_DE_PRODUTOS_DA_ANVISA = tuple(
+    CsvDeCadastro(
+        CONSULTAS_DA_ANVISA + f"PRODUTOS/TA_CONSULTA_{nome}.CSV",
+        COLUNAS_DOS_PRODUTOS_DA_ANVISA,
+        "NU_CNPJ_EMPRESA",
+    )
+    for nome in ARQUIVOS_DE_PRODUTOS_DA_ANVISA
+)
+CADASTROS_DO_SIPEAGRO = (
+    CsvDeCadastro(
+        PRODUTO_VETERINARIO_DO_SIPEAGRO, COLUNAS_DO_SIPEAGRO, "CNPJ", "utf-8"
+    ),
+    CsvDeCadastro(
+        AVIACAO_AGRICOLA_DO_SIPEAGRO, COLUNAS_DO_SIPEAGRO, "CPF_CNPJ", "utf-8"
+    ),
+)
+OUTORGAS_DA_ANATEL_FILTRADAS = CsvDeCadastro(
+    OUTORGAS_DA_ANATEL,
+    COLUNAS_DAS_OUTORGAS_DA_ANATEL,
+    "CNPJ ou CPF",
+    "utf-8-sig",
+    dentro_do_zip=True,
+)
+CADASTRO_MINEIRO_FILTRADO = tuple(
+    CsvDeCadastro(
+        CADASTRO_MINEIRO_DA_ANM.format(nome=nome),
+        COLUNAS_DO_CADASTRO_MINEIRO,
+        "CPF/CNPJ do titular",
+        separador=",",
+    )
+    for nome in ARQUIVOS_DO_CADASTRO_MINEIRO
+)
+AGENTES_DA_ANCINE_FILTRADOS = CsvDeCadastro(
+    AGENTES_DA_ANCINE, COLUNAS_DOS_AGENTES_DA_ANCINE, "CNPJ", "utf-8"
+)
+
+
+def descobrir_rntrc(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """O CSV mais novo do RNTRC na ANTT (cada mês é o cadastro inteiro), só com os transportadores
+    de CNPJ inteiro e sem o nome nem o CEP."""
+    resposta = _json(cliente, f"{PORTAL_DA_ANTT}/api/3/action/package_show?id=rntrc")
+    csvs = [
+        r
+        for r in resposta.get("result", {}).get("resources", [])
+        if _e_arquivo(r) and (r.get("format") or "").lower() == "csv"
+    ]
+    if not csvs:
+        raise ErroDeDescoberta("rntrc: pacote sem CSV na ANTT")
+    mais_novo = max(csvs, key=lambda r: r.get("created") or "")
+    return [
+        CsvDeCadastro(mais_novo["url"], COLUNAS_DO_RNTRC, "cpfcnpjtransportador").alvo()
+    ]
+
+
 def _fim_dos_meses(agora: datetime, quantos: int) -> list[date]:
     """O último dia de cada um dos `quantos` meses fechados antes de `agora`."""
     dias: list[date] = []
@@ -1139,6 +1325,29 @@ FONTES: list[Fonte] = [
     Fonte("susep-ses", "mensal", descobrir_susep, pesada=True),
     Fonte("ans-operadoras", "mensal", descobrir_cadastro_da_ans),
     Fonte("susep-cadastro", "mensal", descobrir_cadastro_da_susep),
+    # Ficha Clara, licenças e registros (etapa 2): cadastros filtrados na coleta (`CsvDeCadastro`)
+    Fonte(
+        "anvisa-empresas",
+        "mensal",
+        _cadastros(*CADASTROS_DE_EMPRESAS_DA_ANVISA),
+        pesada=True,
+    ),
+    Fonte(
+        "anvisa-produtos",
+        "mensal",
+        _cadastros(*CADASTROS_DE_PRODUTOS_DA_ANVISA),
+        pesada=True,
+    ),
+    Fonte("antt-rntrc", "mensal", descobrir_rntrc, pesada=True),
+    Fonte("mapa-sipeagro", "mensal", _cadastros(*CADASTROS_DO_SIPEAGRO)),
+    Fonte(
+        "anatel-outorgas",
+        "mensal",
+        _cadastros(OUTORGAS_DA_ANATEL_FILTRADAS),
+        pesada=True,
+    ),
+    Fonte("anm-cadastro-mineiro", "mensal", _cadastros(*CADASTRO_MINEIRO_FILTRADO)),
+    Fonte("ancine-agentes", "mensal", _cadastros(AGENTES_DA_ANCINE_FILTRADOS)),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",

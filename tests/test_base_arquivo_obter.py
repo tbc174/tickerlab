@@ -243,6 +243,125 @@ def test_cadastro_da_ans_e_guardado_sem_representante_nem_contato(tmp_path):
     assert not list(tmp_path.glob("*.bruto"))
 
 
+def test_filtro_por_cnpj_tira_cpf_e_cnpj_mascarado(tmp_path):
+    """Linha de pessoa física (CPF) ou com CNPJ mascarado não chega ao acervo; o separador "," vira ";"."""
+    bruto = (
+        '"Processo","CPF/CNPJ do titular","Titular","Situação"\n'
+        '"1/2020","12.345.678/0001-95","EMPRESA FICTICIA","Ativo"\n'
+        '"2/2020","123.456.789-09","PESSOA FICTICIA","Ativo"\n'
+        '"3/2020","**.***.678/0001-**","OUTRA","Ativo"\n'
+    ).encode("latin-1")
+    url = "https://exemplo/scm.csv"
+    obter_ = obter.csv_so_com_colunas(
+        url, ("Processo", "CPF/CNPJ do titular", "Situação"), "latin-1",
+        separador=",", so_com_cnpj_em="CPF/CNPJ do titular",
+    )  # fmt: skip
+    destino = tmp_path / "scm.csv"
+    obter_(ServidorComTrechos({url: bruto}), destino)
+    linhas = destino.read_text(encoding="latin-1").splitlines()
+    assert linhas == [
+        "Processo;CPF/CNPJ do titular;Situação",
+        "1/2020;12.345.678/0001-95;Ativo",
+    ]
+
+
+def test_filtro_le_o_csv_dentro_do_zip_e_grava_sem_bom(tmp_path):
+    csv_ = "﻿CNPJ ou CPF;Nome Entidade;Tipo de Outorga\n12345678000195;FICTICIA;Autorização\n"
+    url = "https://exemplo/prestadoras.zip"
+    obter_ = obter.csv_so_com_colunas(
+        url, ("CNPJ ou CPF", "Tipo de Outorga"), "utf-8-sig",
+        so_com_cnpj_em="CNPJ ou CPF", dentro_do_zip=True,
+    )  # fmt: skip
+    destino = tmp_path / "anatel.csv"
+    obter_(ServidorComTrechos({url: _zip({"p.csv": csv_.encode("utf-8")})}), destino)
+    esperado = "CNPJ ou CPF;Tipo de Outorga\r\n12345678000195;Autorização\r\n"
+    assert destino.read_bytes() == esperado.encode()
+    assert not list(tmp_path.glob("*.bruto"))
+
+
+def test_filtro_sem_a_coluna_do_documento_falha(tmp_path):
+    """Se a fonte renomear a coluna do CNPJ, a coleta para em vez de gravar CPF sem filtro."""
+    url = "https://exemplo/x.csv"
+    obter_ = obter.csv_so_com_colunas(url, ("A", "DOC"), "utf-8", so_com_cnpj_em="DOC")
+    with pytest.raises(ValueError, match="DOC"):
+        obter_(ServidorComTrechos({url: b"A;DOCUMENTO\n1;123\n"}), tmp_path / "x.csv")
+    assert not list(tmp_path.glob("*.bruto"))
+
+
+CADASTROS_DE_LICENCAS = (
+    *fontes.CADASTROS_DE_EMPRESAS_DA_ANVISA,
+    *fontes.CADASTROS_DE_PRODUTOS_DA_ANVISA,
+    *fontes.CADASTROS_DO_SIPEAGRO,
+    fontes.OUTORGAS_DA_ANATEL_FILTRADAS,
+    *fontes.CADASTRO_MINEIRO_FILTRADO,
+    fontes.AGENTES_DA_ANCINE_FILTRADOS,
+)
+# pedaços de nome de coluna que trazem pessoa, contato ou endereço (Ficha Clara: sem pessoa física)
+COLUNA_DE_PESSOA = (
+    "RAZAO", "FANTASIA", "TITULAR", "NOME_TRANSPORTADOR", "NOME ENTIDADE", "REPRESENTANTE",
+    "RESPONSAVEL", "EMAIL", "ELETRÔNICO", "TELEFONE", "CEP", "ENDERECO", "LOGRADOURO", "BAIRRO",
+    "HOMEPAGE", "SAC",
+)  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    "colunas",
+    [c.colunas for c in CADASTROS_DE_LICENCAS] + [fontes.COLUNAS_DO_RNTRC],
+)
+def test_cadastros_de_licencas_nao_guardam_coluna_de_pessoa(colunas):
+    for coluna in colunas:
+        nome = coluna.upper().replace(" DO ", " ").replace(" DA ", " ")
+        if nome == "CPF/CNPJ TITULAR":
+            continue  # o documento, que só fica quando é CNPJ
+        assert not any(p in nome for p in COLUNA_DE_PESSOA), coluna
+
+
+def test_cadastros_de_licencas_guardam_a_coluna_do_cnpj():
+    for cadastro in CADASTROS_DE_LICENCAS:
+        assert cadastro.cnpj_em in cadastro.colunas, cadastro.url
+
+
+def test_rntrc_pega_so_o_csv_mais_novo_e_tira_o_nome(tmp_path):
+    pacote = {
+        "result": {
+            "resources": [
+                {
+                    "url": "https://x/ago.csv",
+                    "format": "CSV",
+                    "created": "2026-09-10T00:00",
+                },
+                {
+                    "url": "https://x/set.csv",
+                    "format": "CSV",
+                    "created": "2026-10-10T00:00",
+                },
+                {
+                    "url": "https://x/painel",
+                    "format": "HTML",
+                    "created": "2026-10-20T00:00",
+                },
+            ]
+        }
+    }
+    bruto = (
+        "nome_transportador;numero_rntrc;cpfcnpjtransportador;cep;uf\n"
+        "EMPRESA FICTICIA;1;12345678000195;01000000;SP\n"
+        "PESSOA FICTICIA;2;12345678909;02000000;RJ\n"
+    ).encode("latin-1")
+    url_do_pacote = f"{fontes.PORTAL_DA_ANTT}/api/3/action/package_show?id=rntrc"
+    servidor = ServidorComTrechos(
+        {url_do_pacote: json.dumps(pacote).encode(), "https://x/set.csv": bruto}
+    )
+    (alvo,) = fontes.descobrir_rntrc(servidor, AGORA)
+    assert alvo.url == "https://x/set.csv" and alvo.obter is not None
+    destino = tmp_path / "rntrc.csv"
+    alvo.obter(servidor, destino)
+    assert destino.read_text(encoding="latin-1").splitlines() == [
+        "numero_rntrc;cpfcnpjtransportador;uf",
+        "1;12345678000195;SP",
+    ]
+
+
 def test_cadastro_da_susep_e_guardado_so_com_codigo_nome_e_cnpj(tmp_path):
     bruto = json.dumps(
         {"value": [{"entcodigofip": "05886", "entnome": "PORTO", "entcgc": "61198164000160",

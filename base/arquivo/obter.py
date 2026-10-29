@@ -42,7 +42,8 @@ import shutil
 import struct
 import zipfile
 import zlib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Generator, Mapping
+from contextlib import contextmanager
 from pathlib import Path
 from typing import IO
 from urllib.parse import urlencode
@@ -57,6 +58,7 @@ from base.arquivo.coleta import (
     SemArquivo,
     assinatura,
 )
+from base.arquivo.obter_pj import DIGITOS_DO_CNPJ, NAO_DIGITO
 
 # o que a vigia da licença guarda da ficha: quem é o conjunto e qual licença ele declara
 CAMPOS_DA_LICENCA_DA_FICHA = ("id", "nome", "titulo", "licenca")
@@ -315,25 +317,78 @@ def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:
     return obter
 
 
-def csv_so_com_colunas(url: str, colunas: tuple[str, ...], codificacao: str) -> Obter:
-    """Baixa o CSV (";") e grava em `destino` só as `colunas` da lista, na ordem da fonte."""
+def tem_cnpj_inteiro(documento: str | None) -> bool:
+    """O documento tem os 14 dígitos de um CNPJ (não é CPF nem CNPJ mascarado `**.***.101/***-**`).
+
+    Mais estrito que `obter_pj.e_pessoa_juridica`: aqui o documento em branco também sai, porque a
+    linha de um cadastro sem o CNPJ não serve para nada."""
+    return len(NAO_DIGITO.sub("", documento or "")) == DIGITOS_DO_CNPJ
+
+
+@contextmanager
+def _texto_do_csv(
+    bruto: Path, codificacao: str, dentro_do_zip: bool
+) -> Generator[IO[str]]:
+    if not dentro_do_zip:
+        with bruto.open(encoding=codificacao, newline="") as texto:
+            yield texto
+        return
+    with zipfile.ZipFile(bruto) as arquivo:
+        csvs = [n for n in arquivo.namelist() if n.lower().endswith(".csv")]
+        if len(csvs) != 1:
+            raise ValueError(
+                f"{bruto.name}: o ZIP devia ter um CSV só, tem {len(csvs)}"
+            )
+        with io.TextIOWrapper(
+            arquivo.open(csvs[0]), encoding=codificacao, newline=""
+        ) as texto:
+            yield texto
+
+
+def csv_so_com_colunas(
+    url: str,
+    colunas: tuple[str, ...],
+    codificacao: str,
+    *,
+    separador: str = ";",
+    so_com_cnpj_em: str | None = None,
+    dentro_do_zip: bool = False,
+) -> Obter:
+    """Baixa o CSV e grava em `destino` só as `colunas` da lista, na ordem da fonte (sempre com ";").
+
+    Lista de colunas que ficam, e não de colunas que saem (como `obter_pj.csv_so_pj`): o nome do
+    titular vem em colunas como "Titular" ou "NO_RAZAO_SOCIAL", que nenhum filtro de nome pegaria.
+    `so_com_cnpj_em`: a coluna do documento; a linha sem um CNPJ inteiro (CPF de pessoa física, CNPJ
+    mascarado) não é gravada, então o CPF nem chega ao acervo. `dentro_do_zip`: o endereço é um ZIP
+    com um CSV só (Anatel). O "utf-8-sig" da leitura tira o BOM; a gravação sai sem ele.
+    """
 
     def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
         bruto = destino.with_name(destino.name + ".bruto")
         try:
             cabecalhos = cliente.baixar(url, bruto)
-            with bruto.open(encoding=codificacao, newline="") as entrada:
-                leitor = csv.DictReader(entrada, delimiter=";")
+            with _texto_do_csv(bruto, codificacao, dentro_do_zip) as entrada:
+                leitor = csv.DictReader(entrada, delimiter=separador)
                 campos = [c for c in (leitor.fieldnames or []) if c in colunas]
                 if not campos:
                     raise ValueError(f"{url}: nenhuma das colunas pedidas no cabeçalho")
-                with destino.open("w", encoding=codificacao, newline="") as saida:
+                if so_com_cnpj_em is not None and so_com_cnpj_em not in campos:
+                    raise ValueError(
+                        f"{url}: sem a coluna do documento {so_com_cnpj_em!r}"
+                    )
+                linhas = (
+                    leitor
+                    if so_com_cnpj_em is None
+                    else (l for l in leitor if tem_cnpj_inteiro(l[so_com_cnpj_em]))
+                )
+                saida_codificacao = codificacao.removesuffix("-sig")
+                with destino.open("w", encoding=saida_codificacao, newline="") as saida:
                     escritor = csv.DictWriter(
                         saida, campos, delimiter=";", extrasaction="ignore",
                         quoting=csv.QUOTE_MINIMAL,
                     )  # fmt: skip
                     escritor.writeheader()
-                    escritor.writerows(leitor)
+                    escritor.writerows(linhas)
         finally:
             bruto.unlink(missing_ok=True)
         return cabecalhos
