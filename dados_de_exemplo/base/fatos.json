@@ -1,10 +1,27 @@
 {
+  "atraso": {
+    "atrasados": 410,
+    "atrasados_refeitos": 49,
+    "graves": 172,
+    "graves_refeitos": 23,
+    "no_prazo": 7102,
+    "no_prazo_refeitos": 411
+  },
   "auditor": {
     "balancos_sem_troca": 6413,
     "refeitos_sem_troca": 378,
     "trocas": 2129,
     "trocas_com_balanco": 1560,
     "trocas_refeitas": 123
+  },
+  "dividendo": {
+    "acima_do_lucro": 255,
+    "com_prejuizo": 72,
+    "companhias": 573,
+    "companhias_acima": 149,
+    "exercicios": 2979,
+    "primeiro_exercicio": 2010,
+    "ultimo_exercicio": 2022
   },
   "lucros": {
     "balancos": 7959,
@@ -14,15 +31,25 @@
     "refeitos": 498,
     "ultimo_exercicio": 2025
   },
-  "medido_em": "2026-10-26",
-  "ofertas": {
-    "ano": 2025,
-    "do_grupo": 424,
-    "grupos": 254,
-    "ofertas": 862,
-    "por_controlada": 60,
-    "valor": 531732266446.34,
-    "valor_do_grupo": 406969379469.8,
-    "valor_por_controlada": 35149500000.0
+  "medido_em": "2026-10-29",
+  "parecer": {
+    "com_duvida": 455,
+    "com_duvida_e_insolvencia": 24,
+    "companhias_com_duvida": 134,
+    "primeiro_exercicio": 2010,
+    "sem_duvida": 8421,
+    "sem_duvida_e_insolvencia": 125,
+    "ultimo_exercicio": 2024
+  },
+  "remuneracao": {
+    "companhias": 803,
+    "lucro_caiu": 1579,
+    "lucro_caiu_e_remuneracao_subiu": 938,
+    "lucro_subiu": 1609,
+    "lucro_subiu_e_remuneracao_subiu": 1097,
+    "pares": 6256,
+    "primeiro_exercicio": 2011,
+    "remuneracao_subiu": 3840,
+    "ultimo_exercicio": 2026
   }
 }

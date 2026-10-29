@@ -483,10 +483,54 @@ def _lucro(
     }
 
 
+def _remuneracao(
+    cnpj: str,
+    ano: str,
+    milhoes: float,
+    referencia: str,
+    versao: int = 1,
+    orgao: str = vitrine.DIRETORIA,
+) -> dict:
+    """Uma linha do FRE de `referencia` sobre o exercício `ano`, entregue 150 dias depois (fim de maio)."""
+    return {
+        "cnpj": cnpj,
+        "referencia": pd.Timestamp(referencia),
+        "versao": versao,
+        "inicio_do_exercicio": pd.Timestamp(f"{ano}-01-01"),
+        "fim_do_exercicio": pd.Timestamp(f"{ano}-12-31"),
+        "orgao": orgao,
+        "total_do_orgao": milhoes * MILHAO,
+        "publico_em": pd.Timestamp(referencia) + pd.Timedelta(days=150),
+    }
+
+
+def _provento(cnpj: str, ano: str, milhoes: float, referencia: str) -> dict:
+    return {
+        "cnpj": cnpj,
+        "referencia": pd.Timestamp(referencia),
+        "versao": 1,
+        "exercicio": pd.Timestamp(f"{ano}-12-31"),
+        "dividendo_total": milhoes * MILHAO,
+    }
+
+
+def _parecer(
+    cnpj: str, ano: str, continuidade: str, publico_em: str, versao: int = 1
+) -> dict:
+    return {
+        "cnpj": cnpj,
+        "referencia": pd.Timestamp(f"{ano}-12-31"),
+        "versao": versao,
+        "continuidade_operacional": continuidade,
+        "publico_em": pd.Timestamp(publico_em),
+    }
+
+
 def _mundo_falso() -> dict[str, pd.DataFrame]:
-    """Alfa troca de auditor e refaz o lucro de 2020 no balanço de 2021 (de 100 para 90 milhões); Beta
-    troca também e não refaz nada. Gama é controlada da Alfa e emite uma oferta em 2025; Delta é só
-    coligada."""
+    """Alfa troca de auditor e refaz o lucro de 2020 no balanço de 2021 (de 100 para 90 milhões), que
+    saiu atrasado; Beta troca também e não refaz nada, mas vira prejuízo em 2021, paga dividendo mesmo
+    assim, ouve o auditor duvidar da continuidade e pede recuperação em 2022. Gama ouve a dúvida e nada
+    acontece; Delta já estava falida."""
     demonstracoes = pd.DataFrame(
         [
             _lucro(ALFA, "2020-12-31", 100, "2020-12-31"),
@@ -494,7 +538,7 @@ def _mundo_falso() -> dict[str, pd.DataFrame]:
             _lucro(ALFA, "2020-12-31", 90, "2021-12-31", ordem="penultimo"),
             _lucro(ALFA, "2022-12-31", 300, "2022-12-31"),
             _lucro(BETA, "2020-12-31", 50, "2020-12-31"),
-            _lucro(BETA, "2021-12-31", 60, "2021-12-31"),
+            _lucro(BETA, "2021-12-31", -30, "2021-12-31"),
             # o balanço de 2022 da Beta ainda não era público no dia da medição
             _lucro(BETA, "2022-12-31", 70, "2022-12-31", publico_em="2027-01-01"),
         ]
@@ -508,58 +552,89 @@ def _mundo_falso() -> dict[str, pd.DataFrame]:
             "publico_em": pd.to_datetime(["2021-06-01", "2021-06-01"]),
         }
     )
-    registros = pd.to_datetime(
-        [
-            "2025-05-01",
-            "2025-08-01",
-            "2025-09-01",
-            "2025-10-01",
-            "2024-03-01",
-            "2025-11-01",
-        ]
-    )
-    ofertas = pd.DataFrame(
+    # a DFP de 2020 da Alfa saiu em maio, depois do prazo (e grave); as outras, no prazo; o ITR não conta
+    atrasos = pd.DataFrame(
         {
-            "cnpj_emissor": [ALFA, GAMA_CONTROLADA, DELTA, ALFA, ALFA, ALFA],
-            "nome_emissor": [
-                "ALFA ENERGIA S.A.",
-                "GAMA TRANSMISSORA S.A.",
-                "DELTA PAPEL S.A.",
-                "ALFA ENERGIA S.A.",
-                "ALFA ENERGIA S.A.",
-                "ALFA ENERGIA S.A.",
-            ],
-            "administrador": ["JOAO DA SILVA"] * 6,
-            "valor_mobiliario": ["Debêntures"] * 5
-            + ["Certificados de Recebíveis Imobiliários"],
-            "data_registro": registros,
-            "status_requerimento": [
-                "Oferta Encerrada",
-                "Registro Concedido",
-                "Oferta Encerrada",
-                "Oferta Revogada",
-                "Oferta Encerrada",
-                "Oferta Encerrada",
-            ],
-            "valor_total_registrado": [500e6, 200e6, 100e6, 999e6, 300e6, 50e6],
-            "publico_em": registros,
+            "cnpj": [ALFA, ALFA, BETA, ALFA],
+            "empresa": ["ALFA ENERGIA S.A."] * 2
+            + ["BETA SANEAMENTO S.A.", "ALFA ENERGIA S.A."],
+            "documento": ["DFP", "DFP", "DFP", "ITR"],
+            "referencia": pd.to_datetime(
+                ["2020-12-31", "2021-12-31", "2020-12-31", "2021-03-31"]
+            ),
+            "atrasou": [True, False, False, True],
+            "atraso_grave": [True, False, False, True],
+            "publico_em": pd.to_datetime(
+                ["2021-05-13", "2022-03-30", "2021-03-30", "2021-06-01"]
+            ),
         }
     )
-    controladas = pd.DataFrame(
+    remuneracao = pd.DataFrame(
+        [
+            # Alfa: 10, 12 e 11 milhões; a versão 2 do FRE de 2022 corrige o exercício de 2021 (11 → 12)
+            _remuneracao(ALFA, "2020", 10, "2021-01-01"),
+            _remuneracao(ALFA, "2021", 11, "2022-01-01"),
+            _remuneracao(ALFA, "2021", 12, "2022-01-01", versao=2),
+            _remuneracao(ALFA, "2022", 11, "2023-01-01"),
+            # o valor previsto para o ano em curso (o FRE sai em maio) não é remuneração paga
+            _remuneracao(ALFA, "2023", 99, "2023-01-01"),
+            # o conselho não entra
+            _remuneracao(
+                ALFA, "2021", 1, "2022-01-01", orgao="Conselho de Administração"
+            ),
+            _remuneracao(BETA, "2020", 5, "2021-01-01"),
+            _remuneracao(BETA, "2021", 6, "2022-01-01"),
+        ]
+    )
+    proventos = pd.DataFrame(
+        [
+            _provento(ALFA, "2020", 150, "2021-01-01"),  # acima do lucro de 100 milhões
+            _provento(ALFA, "2021", 50, "2022-01-01"),
+            # o FRE cujo prazo ainda não passou no dia da medição não entra (ele mudaria o de 2021)
+            _provento(ALFA, "2021", 999, "2026-08-01"),
+            _provento(BETA, "2020", 0, "2021-01-01"),  # sem dividendo
+            _provento(BETA, "2021", 10, "2022-01-01"),  # com prejuízo de 30 milhões
+        ]
+    )
+    pareceres = pd.DataFrame(
+        [
+            _parecer(ALFA, "2020", "nao", "2021-03-30"),
+            _parecer(ALFA, "2021", "nao", "2022-03-30"),
+            _parecer(BETA, "2020", "nao", "2021-03-30"),
+            _parecer(
+                BETA, "2020", "sim", "2021-06-01", versao=2
+            ),  # a reapresentação é a que vale
+            _parecer(BETA, "2021", "sim", "2022-03-30"),
+            _parecer(GAMA_CONTROLADA, "2022", "sim", "2023-03-30"),
+            _parecer(DELTA, "2020", "sim", "2021-03-30"),  # a Delta já estava falida
+            _parecer(
+                ALFA, "2022", "nao_classificado", "2023-03-30"
+            ),  # relatório curto: nem sim nem não
+            _parecer(
+                GAMA_CONTROLADA, "2024", "sim", "2025-03-30"
+            ),  # ainda não fez 24 meses
+        ]
+    )
+    insolvencia = pd.DataFrame(
         {
-            "cnpj_companhia": ["11111111000111", "11111111000111"],
-            "companhia": ["ALFA ENERGIA S.A.", "ALFA ENERGIA S.A."],
-            "cnpj": ["33333333000133", "44444444000144"],
-            "razao_social": ["GAMA TRANSMISSORA S.A.", "DELTA PAPEL S.A."],
-            "tipo": ["controlada", "coligada"],
-            "publico_em": pd.to_datetime(["2025-06-01", "2025-06-01"]),
+            "cnpj": [BETA, DELTA, ALFA],
+            "empresa": [
+                "BETA SANEAMENTO S.A.",
+                "DELTA PAPEL S.A.",
+                "ALFA ENERGIA S.A.",
+            ],
+            "rotulo": ["recuperacao_judicial", "falencia", "exposicao_a_terceiro"],
+            "publico_em": pd.to_datetime(["2022-09-01", "2019-05-01", "2021-01-01"]),
         }
     )
     return {
         vitrine.DEMONSTRACOES: demonstracoes,
         vitrine.TROCAS_DE_AUDITOR: trocas,
-        vitrine.OFERTAS: ofertas,
-        vitrine.CONTROLADAS: controladas,
+        vitrine.ROTULOS_DE_ATRASO: atrasos,
+        vitrine.REMUNERACAO: remuneracao,
+        vitrine.PROVENTOS: proventos,
+        vitrine.PARECERES: pareceres,
+        vitrine.INSOLVENCIA: insolvencia,
     }
 
 
@@ -586,9 +661,6 @@ class _PortaQueLe:
         if colunas is not None:
             linhas = linhas[list(colunas)]
         return linhas.reset_index(drop=True)
-
-    def distintos(self, tabela: str, coluna: str) -> set[object]:
-        return set(self.tabelas[tabela][coluna].dropna())
 
 
 DIA_DA_MEDICAO = date(2026, 10, 26)
@@ -627,39 +699,103 @@ def test_troca_de_auditor_olha_o_primeiro_balanco_depois_dela():
     )
 
 
-def test_ofertas_do_grupo_no_ultimo_ano_completo():
-    assert _cruzamentos().ofertas == vitrine.OfertasDoGrupo(
-        ano=2025,
-        ofertas=3,  # a revogada, a de 2024 e o CRI (da securitização) ficam de fora
-        valor=800e6,
-        do_grupo=2,  # Alfa e a controlada Gama; a Delta é só coligada
-        valor_do_grupo=700e6,
-        grupos=1,
-        por_controlada=1,
-        valor_por_controlada=200e6,
+def test_atraso_na_dfp_e_lucro_refeito():
+    """Só a DFP (o ITR não é balanço anual) e só os balanços que já têm o seguinte."""
+    assert _cruzamentos().atraso == vitrine.AtrasoERefeito(
+        atrasados=1,  # Alfa 2020, que refez
+        atrasados_refeitos=1,
+        graves=1,
+        graves_refeitos=1,
+        no_prazo=2,  # Alfa 2021 e Beta 2020
+        no_prazo_refeitos=0,
     )
+
+
+def test_remuneracao_da_diretoria_e_lucro_em_pares_de_anos():
+    """A última versão do FRE vale; o ano em curso (previsto) e o conselho ficam de fora."""
+    assert _cruzamentos().remuneracao == vitrine.RemuneracaoELucro(
+        pares=3,  # Alfa 2021 e 2022, Beta 2021
+        remuneracao_subiu=2,  # Alfa 2021 (10 → 12) e Beta 2021 (5 → 6)
+        lucro_caiu=1,  # Beta 2021 virou prejuízo
+        lucro_caiu_e_remuneracao_subiu=1,
+        lucro_subiu=2,  # Alfa 2021 e 2022
+        lucro_subiu_e_remuneracao_subiu=1,
+        companhias=2,
+        primeiro_exercicio=2021,
+        ultimo_exercicio=2022,
+    )
+
+
+def test_dividendo_acima_do_lucro_do_ano():
+    """O FRE cujo prazo não passou não entra; exercício sem dividendo não conta."""
+    assert _cruzamentos().dividendo == vitrine.DividendoELucro(
+        exercicios=3,  # Alfa 2020 e 2021, Beta 2021
+        companhias=2,
+        acima_do_lucro=2,  # Alfa 2020 (150 > 100) e Beta 2021 (10 > -30)
+        companhias_acima=2,
+        com_prejuizo=1,
+        primeiro_exercicio=2020,
+        ultimo_exercicio=2021,
+    )
+
+
+def test_parecer_com_duvida_e_insolvencia_em_24_meses():
+    """A reapresentação é a que vale; parecer novo demais, companhia já insolvente e relatório não
+    classificado ficam de fora; a exposição a terceiro não é insolvência da companhia."""
+    assert _cruzamentos().parecer == vitrine.ParecerEInsolvencia(
+        com_duvida=3,  # Beta 2020 (versão 2), Beta 2021, Gama 2022
+        com_duvida_e_insolvencia=2,  # a Beta pediu recuperação em setembro de 2022
+        sem_duvida=2,  # Alfa 2020 e 2021
+        sem_duvida_e_insolvencia=0,
+        companhias_com_duvida=2,
+        primeiro_exercicio=2020,
+        ultimo_exercicio=2022,
+    )
+
+
+def test_o_atraso_so_entra_como_contagem():
+    """O rótulo de atraso não pode aparecer na ficha de uma companhia (`base/dossie.py`), mas pode ser
+    contado no site; as outras tabelas dos cruzamentos podem ser mostradas."""
+    from base import dossie
+
+    assert vitrine.ROTULOS_DE_ATRASO in vitrine.TABELAS_SO_EM_CONTAGEM
+    for tabela in vitrine.TABELAS_DOS_CRUZAMENTOS:
+        if tabela in vitrine.TABELAS_SO_EM_CONTAGEM:
+            assert not dossie.pode_mostrar(tabela) and dossie.pode_contar(tabela)
+        else:
+            assert dossie.pode_mostrar(tabela)
 
 
 def test_cruzamentos_recusam_tabela_fora_do_catalogo():
     catalogo = _catalogo_com(
-        vitrine.DEMONSTRACOES, vitrine.TROCAS_DE_AUDITOR, vitrine.OFERTAS
+        *[t for t in vitrine.TABELAS_DOS_CRUZAMENTOS if t != vitrine.INSOLVENCIA]
     )
-    with pytest.raises(ValueError, match="controladas"):
+    with pytest.raises(ValueError, match="insolvencia"):
         vitrine.medir_cruzamentos(_PortaQueLe(_mundo_falso()), catalogo, DIA_DA_MEDICAO)
 
 
 def test_fatos_agregados_tem_fonte_e_data():
     fatos = vitrine.fatos_agregados(_cruzamentos())
-    assert [f.chave for f in fatos] == ["lucros", "auditor", "ofertas"]
+    assert [f.chave for f in fatos] == [
+        "lucros",
+        "auditor",
+        "atraso",
+        "remuneracao",
+        "dividendo",
+        "parecer",
+    ]
     for fato in fatos:
         assert fato.texto and fato.numero and fato.como_foi_calculado
         assert fato.fonte.startswith("CVM")
-        assert fato.tabelas and set(fato.tabelas) <= set(
-            vitrine.TABELAS_DOS_CRUZAMENTOS
-        )
+        assert len(fato.tabelas) >= 2 or fato.chave == "lucros"
+        assert set(fato.tabelas) <= set(vitrine.TABELAS_DOS_CRUZAMENTOS)
         assert fato.data == "2026-10-26"
     assert fatos[0].numero == "33,3%"
     assert "1 de 2 companhias" in fatos[0].texto
+    assert fatos[2].numero == "100,0%" and "no prazo, foram 0,0%" in fatos[2].texto
+    assert fatos[3].numero == "100,0%" and "subiu em 50,0% dos 2" in fatos[3].texto
+    assert fatos[4].numero == "2" and "Em 1 deles" in fatos[4].texto
+    assert fatos[5].numero == "66,7%" and "foram 0,0%" in fatos[5].texto
 
 
 def test_fatos_sem_pessoas():
@@ -699,6 +835,8 @@ def test_fatos_da_base_vem_da_fotografia():
 
     cruzamentos = vitrine.cruzamentos_da_fotografia(fotografia)
     assert fatos["fatos"] == [asdict(f) for f in vitrine.fatos_agregados(cruzamentos)]
+    for fato in vitrine.fatos_agregados(cruzamentos):
+        assert len(fato.texto) <= vitrine.LIMITE_DO_FATO, fato.chave
     assert fatos["medido_em_curto"] == vitrine.dia_e_mes(fotografia["medido_em"])
 
 
