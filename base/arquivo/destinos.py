@@ -382,17 +382,10 @@ DESTINOS: dict[str, Destino] = {
     "anatel-outorgas": _tabela("anatel_outorgas"),
     "anm-cadastro-mineiro": _tabela("anm_titulos"),
     "ancine-agentes": _tabela("ancine_agentes"),
-    # Ficha Clara, incentivos: as tabelas por CNPJ vêm na etapa 4b
-    "mme-reidi": _planejada(
-        "ficha-clara/incentivos", "projetos de energia enquadrados no REIDI (MME)"
-    ),
-    "aneel-cde": _planejada(
-        "ficha-clara/incentivos", "descontos tarifários pagos pela CDE (ANEEL)"
-    ),
-    "bcb-rde-ied": _planejada(
-        "ficha-clara/incentivos",
-        "investimento estrangeiro direto registrado (BC, RDE-IED)",
-    ),
+    # Ficha Clara, incentivos (`base/incentivos.py`)
+    "mme-reidi": _tabela("mme_reidi"),
+    "aneel-cde": _tabela("aneel_cde"),
+    "bcb-rde-ied": _tabela("bcb_rde_ied"),
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),
