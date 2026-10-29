@@ -103,7 +103,7 @@ def test_limiares_sao_os_do_pre_registro():
     assert criterio.PARTICIPACAO_MAXIMA_DO_GRUPO == 0.50
     assert criterio.DSR_MINIMO_NO_ESTRESSE == 0.90
     assert criterio.P_VALOR_MAXIMO_DO_ACASO == 0.05
-    assert criterio.INICIO_DA_AVALIACAO == pd.Timestamp("1980-01-01")
+    assert pd.Timestamp("1980-01-01") == criterio.INICIO_DA_AVALIACAO
 
 
 # --- A10 --------------------------------------------------------------------------------------

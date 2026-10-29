@@ -35,7 +35,7 @@ def test_as_duas_moedas_de_cada_par_tem_juros_curtos():
 
 def test_regra_de_entrada_exige_15_anos_antes_do_holdout():
     m = mercados.por_codigo("EURUSD")
-    assert mercados.INICIO_MAXIMO == pd.Timestamp("2008-10-10")
+    assert pd.Timestamp("2008-10-10") == mercados.INICIO_MAXIMO
     assert entra_no_universo(m, pd.Timestamp("1999-01-04"))
     assert entra_no_universo(m, pd.Timestamp("2008-10-10"))
     assert not entra_no_universo(m, pd.Timestamp("2008-10-13"))
