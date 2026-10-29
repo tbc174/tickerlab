@@ -142,6 +142,8 @@ class Entradas:
     contestacoes: pd.DataFrame = field(default_factory=contestacoes_da_base.vazia)
     # o relatório do auditor sobre a DFP (`pareceres_dfp`); vazio: a base ainda não tem a tabela
     pareceres: pd.DataFrame = field(default_factory=pd.DataFrame)
+    # o lucro ajustado e o dividendo de cada exercício (`proventos`, do FRE), já com a entrega do FRE
+    proventos: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 # só as colunas que as seções de qualidade do lucro, de geração de caixa e de capital usam (a DRE de
@@ -184,6 +186,7 @@ COLUNAS_DA_GOVERNANCA = {  # tabela do FRE → as colunas que a seção usa (nun
     "fre_comites": (*_DO_FRE, "tipo_de_comite", "membros"),
     "fre_remuneracao": (
         *_DO_FRE, "fim_do_exercicio", "orgao", "membros_remunerados", "total_remuneracao",
+        "total_do_orgao",
     ),
     "fre_remuneracao_extremos": (*_DO_FRE, "fim_do_exercicio", "orgao", "maior", "media", "menor"),
     "fre_diversidade": (*_DO_FRE, "orgao", "genero_feminino"),
@@ -199,13 +202,16 @@ COLUNAS_DA_SITUACAO_ESPECIAL = (
     "mes_do_retrato", "disponivel_em",
 )  # fmt: skip
 COLUNAS_DOS_RATINGS = (
-    "cnpj", "agencia", "escala", "nota", "nota_original", "perspectiva", "acao", "data_acao",
-    "publico_em", "protocolo", "link", "situacao_extracao",
+    "cnpj", "agencia", "escala", "nota", "nota_original", "nivel", "perspectiva", "acao",
+    "data_acao", "publico_em", "protocolo", "link", "situacao_extracao",
 )  # fmt: skip
-# sem a coluna `estresse`: é um rótulo nosso, e a ficha mostra só os fatos (os temas do assunto)
+# `estresse` é um rótulo nosso: a ficha o usa só para escolher as assembleias de aperto e não o mostra
 COLUNAS_DAS_ASSEMBLEIAS = (
     "cnpj", "documento", "especie", "assunto", "publico_em", "protocolo", "versao", "link",
-    *(f"tema_{tema}" for tema in dossie.TEMAS_DAS_ASSEMBLEIAS),
+    dossie.APERTO, *(f"tema_{tema}" for tema in dossie.TEMAS_DAS_ASSEMBLEIAS),
+)  # fmt: skip
+COLUNAS_DOS_PROVENTOS = (
+    "cnpj", "referencia", "versao", "exercicio", "lucro_ajustado", "dividendo_total", "payout",
 )  # fmt: skip
 
 
@@ -385,6 +391,10 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         s.nome: ler_serie(leitor, s, hoje)
         for s in (*dossie.SERIES_DAS_AGENCIAS, *dossie.SERIES_DOS_BANCOS)
     }
+    fre = {
+        tabela: leitor.ler(tabela, [*colunas])
+        for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
+    }
     return Entradas(
         empresas=_empresas(
             leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
@@ -422,10 +432,7 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         releases=leitor.ler("release_x_oficial", [*COLUNAS_DO_RELEASE]),
         negociacoes=leitor.ler("negociacoes", [*COLUNAS_DAS_NEGOCIACOES]),
         eventos_de_capital=leitor.ler("eventos_de_capital", [*COLUNAS_DOS_EVENTOS]),
-        fre={
-            tabela: leitor.ler(tabela, [*colunas])
-            for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
-        },
+        fre=fre,
         ratings=leitor.ler("ratings", [*COLUNAS_DOS_RATINGS]),
         assembleias=leitor.ler("debentures_assembleias", [*COLUNAS_DAS_ASSEMBLEIAS]),
         series=series,
@@ -448,7 +455,41 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         ),
         contestacoes=contestacoes_da_base.ler(),
         pareceres=_pareceres(leitor),
+        proventos=_proventos(leitor, fre["fre_remuneracao"]),
     )
+
+
+def _proventos(leitor: Leitor, fre_remuneracao: pd.DataFrame) -> pd.DataFrame:
+    """Os proventos de cada exercício com a data em que o FRE que os informou foi entregue.
+
+    A tabela `proventos` só tem a data da coleta: para cortar o futuro, a ficha precisa do dia em que o
+    FRE ficou público, que vem de `fre_remuneracao` pela mesma chave (cnpj, referencia, versao). Linha
+    de FRE que a base não conhece fica de fora. Vazio quando a base não tem a tabela.
+    """
+    proventos = _ler_se_existe(leitor, "proventos", COLUNAS_DOS_PROVENTOS)
+    if proventos is None or proventos.empty:
+        return VAZIA
+    return com_a_entrega_do_fre(proventos, fre_remuneracao)
+
+
+def com_a_entrega_do_fre(proventos: pd.DataFrame, do_fre: pd.DataFrame) -> pd.DataFrame:
+    """`proventos` com a coluna `conhecido_em` de `do_fre` (uma tabela fre_*), pela chave do FRE."""
+    chave = ["cnpj", "referencia", "versao"]
+    if do_fre.empty or not set(chave) <= set(do_fre.columns):
+        return proventos.iloc[0:0]
+    entregas = do_fre[[*chave, "conhecido_em"]].drop_duplicates(chave)
+    juntos = proventos.assign(
+        cnpj=dossie.digitos(proventos["cnpj"]),
+        referencia=pd.to_datetime(proventos["referencia"]),
+    ).merge(
+        entregas.assign(
+            cnpj=dossie.digitos(entregas["cnpj"]),
+            referencia=pd.to_datetime(entregas["referencia"]),
+        ),
+        on=chave,
+        how="inner",
+    )
+    return juntos.reset_index(drop=True)
 
 
 def _pareceres(leitor: Leitor) -> pd.DataFrame:
@@ -534,6 +575,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     fre = {nome: _por_cnpj(tabela, "cnpj") for nome, tabela in entradas.fre.items()}
     ratings = _por_cnpj(entradas.ratings, "cnpj")
     assembleias = _por_cnpj(entradas.assembleias, "cnpj")
+    proventos = _por_cnpj(entradas.proventos, "cnpj")
     hoje = entradas.hoje
     de_ma = entradas.negocios_de_ma
 
@@ -580,6 +622,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             painel.get(c, VAZIA),
             hoje,
             entradas.ultimo_mes_do_cda,
+            proventos=proventos.get(c, VAZIA),
         ),
         "governanca": governanca,
         "credito": lambda c: dossie.secao_credito(
