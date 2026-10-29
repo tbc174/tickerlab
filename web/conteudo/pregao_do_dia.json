@@ -1,0 +1,314 @@
+{
+  "molde_aprovado": "9a43bd03fa765f8c5704de9b831706a3d9c16f97323b6a2f1239cf90e5e099cc",
+  "pregao": {
+    "fontes": [
+      "B3, estatísticas do índice Ibovespa",
+      "B3, série histórica de cotações (COTAHIST), fechamento oficial",
+      "B3, série histórica de cotações (COTAHIST), fechamento oficial; setor do Formulário Cadastral (FCA) da CVM",
+      "B3, boletim de preços de referência (BVBG.086), taxa de ajuste do DI1",
+      "B3, boletim de preços de referência (BVBG.086), ajuste do dólar futuro"
+    ],
+    "frases": [
+      {
+        "grupo": "abertura",
+        "lacunas": {
+          "pontos": "175.710",
+          "pregao": "27/10/2026",
+          "variacao": "0,5%"
+        },
+        "texto": "O Ibovespa caiu 0,5% em 27/10/2026, para 175.710 pontos.",
+        "variante": "queda"
+      },
+      {
+        "grupo": "amplitude",
+        "lacunas": {
+          "cairam": "31",
+          "empresas": "60",
+          "estaveis": "1",
+          "liquidez": "20",
+          "subiram": "28"
+        },
+        "texto": "Das 60 empresas com R$ 20 milhões ou mais negociados na véspera: 28 em alta, 31 em queda e 1 sem variação.",
+        "variante": "contagem"
+      },
+      {
+        "grupo": "setores",
+        "lacunas": {
+          "contra": "+2,8",
+          "empresas": "9",
+          "mediana": "+2,2%",
+          "setor": "Comércio (Atacado e Varejo)"
+        },
+        "texto": "Na ponta de cima dos setores, Comércio (Atacado e Varejo): mediana de +2,2% em 9 empresas (+2,8 pontos percentuais em relação ao Ibovespa).",
+        "variante": "ponta_de_cima"
+      },
+      {
+        "grupo": "setores",
+        "lacunas": {
+          "contra": "−3,4",
+          "empresas": "3",
+          "mediana": "−3,9%",
+          "setor": "Metalurgia e Siderurgia"
+        },
+        "texto": "Na ponta de baixo, Metalurgia e Siderurgia: mediana de −3,9% em 3 empresas (−3,4 pontos percentuais em relação ao Ibovespa).",
+        "variante": "ponta_de_baixo"
+      },
+      {
+        "grupo": "maiores",
+        "lacunas": {
+          "empresa": "EcoRodovias",
+          "simbolo": "ECOR3",
+          "variacao": "+12,1%"
+        },
+        "texto": "Maior alta: EcoRodovias (ECOR3), +12,1%.",
+        "variante": "alta"
+      },
+      {
+        "grupo": "maiores",
+        "lacunas": {
+          "empresa": "Natura",
+          "simbolo": "NATU3",
+          "variacao": "−6,9%"
+        },
+        "texto": "Maior queda: Natura (NATU3), −6,9%.",
+        "variante": "queda"
+      },
+      {
+        "grupo": "juros",
+        "lacunas": {
+          "ano": "2029",
+          "pontos_base": "46,3",
+          "simbolo": "DI1F29",
+          "taxa": "14,76%"
+        },
+        "texto": "A taxa do DI de janeiro de 2029 (DI1F29) caiu 46,3 pontos-base, para 14,76% ao ano.",
+        "variante": "queda"
+      },
+      {
+        "grupo": "dolar",
+        "lacunas": {
+          "cotacao": "5,3504",
+          "simbolo": "DOLX26",
+          "variacao": "1,3%"
+        },
+        "texto": "O dólar futuro (DOLX26) caiu 1,3%, para R$ 5,3504.",
+        "variante": "queda"
+      }
+    ],
+    "grafico": {
+      "barras": [
+        {
+          "nome": "Comércio (Atacado e Varejo)",
+          "texto": "+2,8",
+          "valor": 2.755763007003098
+        },
+        {
+          "nome": "Energia Elétrica",
+          "texto": "+1,5",
+          "valor": 1.527925959500387
+        },
+        {
+          "nome": "Serviços Transporte e Logística",
+          "texto": "+1,5",
+          "valor": 1.4570814808619992
+        },
+        {
+          "nome": "Bancos",
+          "texto": "−0,4",
+          "valor": -0.3605232260519786
+        },
+        {
+          "nome": "Máquinas, Equipamentos, Veículos e Peças",
+          "texto": "−1,2",
+          "valor": -1.202919446775652
+        },
+        {
+          "nome": "Petróleo e Gás",
+          "texto": "−1,5",
+          "valor": -1.5144421096523142
+        },
+        {
+          "nome": "Construção Civil, Mat. Constr. e Decoração",
+          "texto": "−2,0",
+          "valor": -1.979734399824018
+        },
+        {
+          "nome": "Metalurgia e Siderurgia",
+          "texto": "−3,4",
+          "valor": -3.376563139367994
+        }
+      ],
+      "titulo": "Mediana do dia em cada setor menos a variação do Ibovespa, em pontos percentuais"
+    },
+    "impressao_digital": "9a43bd03fa765f8c5704de9b831706a3d9c16f97323b6a2f1239cf90e5e099cc",
+    "limites": [
+      "É um dia. A variação de um dia mostra o movimento do preço, não o valor da empresa.",
+      "O texto descreve o que os preços fizeram; não diz por quê.",
+      "Variação do dia = fechamento do pregão sobre o da véspera, os dois da B3, sem ajuste por proventos.",
+      "Só entram as empresas com R$ 20 milhões ou mais negociados na véspera, uma linha por empresa (o papel mais negociado dela).",
+      "Setor: o do cadastro da empresa na CVM; setores com menos de 3 empresas ficam de fora.",
+      "Dólar: o contrato futuro de 1º vencimento da B3 (preço de ajuste), não a PTAX do Banco Central.",
+      "Juros: a taxa de ajuste do contrato DI1 da B3 com vencimento em janeiro mais perto de dois anos.",
+      "Nada aqui é recomendação de investimento."
+    ],
+    "pregao": "2026-10-27",
+    "tabelas": [
+      {
+        "chave": "setores",
+        "colunas": [
+          "Setor",
+          "Empresas",
+          "Mediana do dia",
+          "Contra o Ibovespa (p.p.)"
+        ],
+        "linhas": [
+          [
+            "Comércio (Atacado e Varejo)",
+            "9",
+            "+2,2%",
+            "+2,8"
+          ],
+          [
+            "Energia Elétrica",
+            "6",
+            "+1,0%",
+            "+1,5"
+          ],
+          [
+            "Serviços Transporte e Logística",
+            "7",
+            "+0,9%",
+            "+1,5"
+          ],
+          [
+            "Bancos",
+            "4",
+            "−0,9%",
+            "−0,4"
+          ],
+          [
+            "Máquinas, Equipamentos, Veículos e Peças",
+            "3",
+            "−1,7%",
+            "−1,2"
+          ],
+          [
+            "Petróleo e Gás",
+            "3",
+            "−2,0%",
+            "−1,5"
+          ],
+          [
+            "Construção Civil, Mat. Constr. e Decoração",
+            "4",
+            "−2,5%",
+            "−2,0"
+          ],
+          [
+            "Metalurgia e Siderurgia",
+            "3",
+            "−3,9%",
+            "−3,4"
+          ]
+        ],
+        "titulo": "Os setores contra o Ibovespa"
+      },
+      {
+        "chave": "altas",
+        "colunas": [
+          "Empresa",
+          "Código",
+          "Setor",
+          "Variação",
+          "Fechamento (R$)"
+        ],
+        "linhas": [
+          [
+            "EcoRodovias",
+            "ECOR3",
+            "Serviços Transporte e Logística",
+            "+12,1%",
+            "5,82"
+          ],
+          [
+            "Magazine Luiza",
+            "MGLU3",
+            "Comércio (Atacado e Varejo)",
+            "+8,5%",
+            "5,75"
+          ],
+          [
+            "Direcional",
+            "DIRR3",
+            "Construção Civil, Mat. Constr. e Decoração",
+            "+5,4%",
+            "9,25"
+          ],
+          [
+            "Vamos",
+            "VAMO3",
+            "Serviços Transporte e Logística",
+            "+5,1%",
+            "2,91"
+          ],
+          [
+            "Hapvida",
+            "HAPV3",
+            "Serviços médicos",
+            "+5,0%",
+            "4,18"
+          ]
+        ],
+        "titulo": "Maiores altas"
+      },
+      {
+        "chave": "quedas",
+        "colunas": [
+          "Empresa",
+          "Código",
+          "Setor",
+          "Variação",
+          "Fechamento (R$)"
+        ],
+        "linhas": [
+          [
+            "Natura",
+            "NATU3",
+            "Farmacêutico e Higiene",
+            "−6,9%",
+            "5,50"
+          ],
+          [
+            "Totvs",
+            "TOTS3",
+            "Comunicação e Informática",
+            "−6,8%",
+            "35,35"
+          ],
+          [
+            "MRV",
+            "MRVE3",
+            "Construção Civil, Mat. Constr. e Decoração",
+            "−5,7%",
+            "4,46"
+          ],
+          [
+            "GPS",
+            "GGPS3",
+            "Sem Setor Principal",
+            "−5,3%",
+            "11,41"
+          ],
+          [
+            "Metalúrgica Gerdau",
+            "GOAU4",
+            "Metalurgia e Siderurgia",
+            "−4,5%",
+            "11,00"
+          ]
+        ],
+        "titulo": "Maiores quedas"
+      }
+    ]
+  }
+}

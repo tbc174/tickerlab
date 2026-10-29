@@ -1,0 +1,171 @@
+{
+  "pregao": "2026-10-27",
+  "vespera": "2026-10-26",
+  "ibovespa": {
+    "pontos": 175710.05,
+    "variacao": -0.005085719957671375,
+    "pregoes_comparados": 6647,
+    "pregoes_tao_extremos": 2186,
+    "ultima_vez": "2026-10-26",
+    "desde": "2000-01-04",
+    "fonte": "B3, estatísticas do índice Ibovespa",
+    "data": "2026-10-27"
+  },
+  "amplitude": {
+    "subiram": 28,
+    "cairam": 31,
+    "estaveis": 1,
+    "liquidez_minima": 20000000,
+    "fonte": "B3, série histórica de cotações (COTAHIST), fechamento oficial",
+    "data": "2026-10-27"
+  },
+  "setores": {
+    "lista": [
+      {
+        "setor": "Comércio (Atacado e Varejo)",
+        "empresas": 9,
+        "mediana": 0.022471910112359605,
+        "contra_o_indice": 0.02755763007003098
+      },
+      {
+        "setor": "Energia Elétrica",
+        "empresas": 6,
+        "mediana": 0.010193539637332494,
+        "contra_o_indice": 0.015279259595003869
+      },
+      {
+        "setor": "Serviços Transporte e Logística",
+        "empresas": 7,
+        "mediana": 0.009485094850948617,
+        "contra_o_indice": 0.014570814808619992
+      },
+      {
+        "setor": "Bancos",
+        "empresas": 4,
+        "mediana": -0.008690952218191161,
+        "contra_o_indice": -0.003605232260519786
+      },
+      {
+        "setor": "Máquinas, Equipamentos, Veículos e Peças",
+        "empresas": 3,
+        "mediana": -0.017114914425427896,
+        "contra_o_indice": -0.012029194467756521
+      },
+      {
+        "setor": "Petróleo e Gás",
+        "empresas": 3,
+        "mediana": -0.020230141054194517,
+        "contra_o_indice": -0.015144421096523142
+      },
+      {
+        "setor": "Construção Civil, Mat. Constr. e Decoração",
+        "empresas": 4,
+        "mediana": -0.024883063955911555,
+        "contra_o_indice": -0.01979734399824018
+      },
+      {
+        "setor": "Metalurgia e Siderurgia",
+        "empresas": 3,
+        "mediana": -0.038851351351351315,
+        "contra_o_indice": -0.03376563139367994
+      }
+    ],
+    "empresas_por_setor_minimo": 3,
+    "fonte": "B3, série histórica de cotações (COTAHIST), fechamento oficial; setor do Formulário Cadastral (FCA) da CVM",
+    "data": "2026-10-27"
+  },
+  "maiores": {
+    "altas": [
+      {
+        "simbolo": "ECOR3",
+        "empresa": "EcoRodovias",
+        "setor": "Serviços Transporte e Logística",
+        "variacao": 0.12138728323699421,
+        "fechamento": 5.82
+      },
+      {
+        "simbolo": "MGLU3",
+        "empresa": "Magazine Luiza",
+        "setor": "Comércio (Atacado e Varejo)",
+        "variacao": 0.08490566037735858,
+        "fechamento": 5.75
+      },
+      {
+        "simbolo": "DIRR3",
+        "empresa": "Direcional",
+        "setor": "Construção Civil, Mat. Constr. e Decoração",
+        "variacao": 0.05353075170842825,
+        "fechamento": 9.25
+      },
+      {
+        "simbolo": "VAMO3",
+        "empresa": "Vamos",
+        "setor": "Serviços Transporte e Logística",
+        "variacao": 0.05054151624548742,
+        "fechamento": 2.91
+      },
+      {
+        "simbolo": "HAPV3",
+        "empresa": "Hapvida",
+        "setor": "Serviços médicos",
+        "variacao": 0.05025125628140703,
+        "fechamento": 4.18
+      }
+    ],
+    "quedas": [
+      {
+        "simbolo": "NATU3",
+        "empresa": "Natura",
+        "setor": "Farmacêutico e Higiene",
+        "variacao": -0.0693739424703892,
+        "fechamento": 5.5
+      },
+      {
+        "simbolo": "TOTS3",
+        "empresa": "Totvs",
+        "setor": "Comunicação e Informática",
+        "variacao": -0.06777426160337552,
+        "fechamento": 35.35
+      },
+      {
+        "simbolo": "MRVE3",
+        "empresa": "MRV",
+        "setor": "Construção Civil, Mat. Constr. e Decoração",
+        "variacao": -0.05708245243128973,
+        "fechamento": 4.46
+      },
+      {
+        "simbolo": "GGPS3",
+        "empresa": "GPS",
+        "setor": "Sem Setor Principal",
+        "variacao": -0.05311203319502078,
+        "fechamento": 11.41
+      },
+      {
+        "simbolo": "GOAU4",
+        "empresa": "Metalúrgica Gerdau",
+        "setor": "Metalurgia e Siderurgia",
+        "variacao": -0.04513888888888884,
+        "fechamento": 11.0
+      }
+    ],
+    "fonte": "B3, série histórica de cotações (COTAHIST), fechamento oficial",
+    "data": "2026-10-27"
+  },
+  "juros": {
+    "simbolo": "DI1F29",
+    "taxa": 14.76,
+    "taxa_vespera": 15.223,
+    "variacao_em_pontos_base": -46.3000000000001,
+    "fonte": "B3, boletim de preços de referência (BVBG.086), taxa de ajuste do DI1",
+    "data": "2026-10-27"
+  },
+  "dolar": {
+    "simbolo": "DOLX26",
+    "reais_por_dolar": 5.350365,
+    "variacao": -0.013377322024028082,
+    "fonte": "B3, boletim de preços de referência (BVBG.086), ajuste do dólar futuro",
+    "data": "2026-10-27"
+  },
+  "a_conferir": []
+}

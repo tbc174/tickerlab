@@ -16,16 +16,28 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-CAMINHO_DO_MOLDE = (
-    Path(__file__).resolve().parent.parent / "conteudo" / "molde_do_pregao.json"
+CONTEUDO = Path(__file__).resolve().parent.parent / "conteudo"
+CAMINHO_DO_MOLDE = CONTEUDO / "molde_do_pregao.json"
+# um resumo por pregão (`AAAA-MM-DD.json`, saída de `src.pregao_do_dia.resumo_do_pregao`)
+PASTA_DOS_PREGOES = CONTEUDO / "pregao"
+
+# A impressão digital do molde que o Tiago aprovou. Mudar uma letra do molde muda a impressão; a
+# página do site recusa o texto de outro molde, e o teste exige trocar este valor no mesmo PR (texto
+# público novo, que só entra com o "pode").
+IMPRESSAO_DO_MOLDE_APROVADO = (
+    "9a43bd03fa765f8c5704de9b831706a3d9c16f97323b6a2f1239cf90e5e099cc"
 )
 
 # Abaixo disto, para cima ou para baixo, o Ibovespa "variou pouco" e o dia não ganha a frase da
 # história (metade dos pregões desde 2000 variou mais que isso).
 VARIACAO_DE_LADO = 0.005
+# A frase da história só sai em dia raro: no máximo 5% dos pregões desde 2000 foram tão longe. Em
+# 27/10/2026 (−0,5%), 2.186 de 6.647 tinham caído tanto: verdade, mas não informa nada.
+FRACAO_DE_DIA_RARO = 0.05
 CASAS_DA_VARIACAO = 1
 CASAS_DA_TAXA = 2
 CASAS_DO_DOLAR = 4
+CASAS_DO_PRECO = 2
 REAIS_POR_MILHAO = 1_000_000
 MENOS = "−"  # o sinal de menos tipográfico, como no Raio-X
 
@@ -80,6 +92,11 @@ def _percentual(fracao: float) -> str:
     return f"{_com_sinal(fracao * 100, CASAS_DA_VARIACAO)}%"
 
 
+def _tamanho_do_percentual(fracao: float) -> str:
+    """−0.13879 → "13,9%": para depois de "subiu" ou "caiu", que já dizem o sentido."""
+    return f"{_numero(abs(fracao) * 100, CASAS_DA_VARIACAO)}%"
+
+
 def _sem_mudanca_visivel(fracao: float) -> bool:
     """Variação que some na casa mostrada: o texto não diz "subiu 0,0%"."""
     return round(fracao * 100, CASAS_DA_VARIACAO) == 0
@@ -115,16 +132,14 @@ def _sentido(fracao: float) -> str:
 
 def _abertura(resumo: dict[str, Any], molde: dict[str, Any]) -> dict[str, Any]:
     indice = resumo["ibovespa"]
-    variante = (
-        "de_lado"
-        if abs(indice["variacao"]) < VARIACAO_DE_LADO
-        else _sentido(indice["variacao"])
-    )
+    de_lado = abs(indice["variacao"]) < VARIACAO_DE_LADO
+    variante = "de_lado" if de_lado else _sentido(indice["variacao"])
+    escrever = _percentual if de_lado else _tamanho_do_percentual
     return _frase(
         molde,
         "abertura",
         variante,
-        variacao=_percentual(indice["variacao"]),
+        variacao=escrever(indice["variacao"]),
         pregao=_data(resumo["pregao"]),
         pontos=_numero(indice["pontos"], 0),
     )
@@ -132,9 +147,14 @@ def _abertura(resumo: dict[str, Any], molde: dict[str, Any]) -> dict[str, Any]:
 
 def _historia(resumo: dict[str, Any], molde: dict[str, Any]) -> list[dict[str, Any]]:
     indice = resumo["ibovespa"]
-    if abs(indice["variacao"]) < VARIACAO_DE_LADO or indice["desde"] is None:
-        return []
     quantos = indice["pregoes_tao_extremos"]
+    raro = quantos <= round(indice["pregoes_comparados"] * FRACAO_DE_DIA_RARO)
+    if (
+        abs(indice["variacao"]) < VARIACAO_DE_LADO
+        or indice["desde"] is None
+        or not raro
+    ):
+        return []
     contagem = "nenhum" if quantos == 0 else "um" if quantos == 1 else "varios"
     lacunas = {
         "comparados": _numero(indice["pregoes_comparados"], 0),
@@ -242,7 +262,7 @@ def _dolar(resumo: dict[str, Any], molde: dict[str, Any]) -> dict[str, Any]:
         "dolar",
         variante,
         simbolo=bloco["simbolo"],
-        variacao=_percentual(bloco["variacao"]),
+        variacao=_tamanho_do_percentual(bloco["variacao"]),
         cotacao=_numero(bloco["reais_por_dolar"], CASAS_DO_DOLAR),
     )
 
@@ -262,6 +282,63 @@ def _limites(resumo: dict[str, Any], molde: dict[str, Any]) -> list[str]:
     return [limite.format_map(lacunas) for limite in molde["limites"]]
 
 
+def _tabela(
+    molde: dict[str, Any], chave: str, linhas: list[list[str]]
+) -> dict[str, Any]:
+    cabecalho = molde["tabelas"][chave]
+    return {
+        "chave": chave,
+        "titulo": cabecalho["titulo"],
+        "colunas": cabecalho["colunas"],
+        "linhas": linhas,
+    }
+
+
+def _linha_do_papel(papel: dict[str, Any]) -> list[str]:
+    return [
+        papel["empresa"],
+        papel["simbolo"],
+        papel["setor"],
+        _percentual(papel["variacao"]),
+        _numero(papel["fechamento"], CASAS_DO_PRECO),
+    ]
+
+
+def _tabelas(resumo: dict[str, Any], molde: dict[str, Any]) -> list[dict[str, Any]]:
+    """Os setores e as maiores altas e quedas, com os títulos e as colunas do molde e os números já
+    escritos do jeito brasileiro (a página só mostra)."""
+    setores = [
+        [
+            s["setor"],
+            _numero(s["empresas"], 0),
+            _percentual(s["mediana"]),
+            _com_sinal(s["contra_o_indice"] * 100, CASAS_DA_VARIACAO),
+        ]
+        for s in resumo["setores"]["lista"]
+    ]
+    maiores = resumo["maiores"]
+    return [
+        _tabela(molde, "setores", setores),
+        _tabela(molde, "altas", [_linha_do_papel(p) for p in maiores["altas"]]),
+        _tabela(molde, "quedas", [_linha_do_papel(p) for p in maiores["quedas"]]),
+    ]
+
+
+def _grafico(resumo: dict[str, Any], molde: dict[str, Any]) -> dict[str, Any]:
+    """Cada setor contra o Ibovespa, em pontos percentuais, na ordem do resumo (do maior ao menor)."""
+    return {
+        "titulo": molde["grafico_dos_setores"],
+        "barras": [
+            {
+                "nome": s["setor"],
+                "valor": s["contra_o_indice"] * 100,
+                "texto": _com_sinal(s["contra_o_indice"] * 100, CASAS_DA_VARIACAO),
+            }
+            for s in resumo["setores"]["lista"]
+        ],
+    }
+
+
 def _fontes(resumo: dict[str, Any]) -> list[str]:
     """As fontes dos blocos, sem repetir, na ordem do texto."""
     blocos = ("ibovespa", "amplitude", "setores", "maiores", "juros", "dolar")
@@ -269,10 +346,21 @@ def _fontes(resumo: dict[str, Any]) -> list[str]:
 
 
 def conferir_molde(molde: dict[str, Any]) -> None:
-    """Levanta erro se alguma frase do molde tem palavra proibida. Confere o molde, não o texto
-    pronto: as lacunas trazem nomes de empresa e de setor, que podem coincidir com a lista."""
+    """Levanta erro se alguma frase, título ou coluna do molde tem palavra proibida. Confere o molde,
+    não o texto pronto: as lacunas trazem nomes de empresa e de setor, que podem coincidir com a
+    lista."""
     modelos = [m for grupo in molde["frases"].values() for m in grupo.values()]
-    for modelo in [*modelos, *molde["limites"]]:
+    cabecalhos = [
+        texto
+        for tabela in molde["tabelas"].values()
+        for texto in (tabela["titulo"], *tabela["colunas"])
+    ]
+    for modelo in [
+        *modelos,
+        *molde["limites"],
+        molde["grafico_dos_setores"],
+        *cabecalhos,
+    ]:
         if achadas := palavras_proibidas(modelo):
             raise ValueError(
                 f"palavra proibida no molde do pregão: {achadas} em {modelo!r}"
@@ -297,7 +385,26 @@ def texto_do_pregao(resumo: dict[str, Any], molde: dict[str, Any]) -> dict[str, 
     return {
         "pregao": resumo["pregao"],
         "frases": frases,
+        "grafico": _grafico(resumo, molde),
+        "tabelas": _tabelas(resumo, molde),
         "limites": limites,
         "fontes": _fontes(resumo),
         "impressao_digital": impressao_digital(molde),
+    }
+
+
+def ultimo_resumo(pasta: Path | None = None) -> dict[str, Any]:
+    """O resumo do pregão mais novo guardado na pasta (o nome do arquivo é a data)."""
+    arquivos = sorted((pasta or PASTA_DOS_PREGOES).glob("????-??-??.json"))
+    if not arquivos:
+        raise FileNotFoundError("nenhum pregão guardado")
+    return json.loads(arquivos[-1].read_text(encoding="utf-8"))
+
+
+def para_o_site(pasta: Path | None = None) -> dict[str, Any]:
+    """O JSON da página `pregao-do-dia.html` (`web/conteudo/pregao_do_dia.json`): o texto do último
+    pregão pelo molde do arquivo e, à parte, a impressão do molde aprovado, que a página confere."""
+    return {
+        "molde_aprovado": IMPRESSAO_DO_MOLDE_APROVADO,
+        "pregao": texto_do_pregao(ultimo_resumo(pasta), ler_molde()),
     }
