@@ -244,12 +244,15 @@ def test_cadastro_da_ans_e_guardado_sem_representante_nem_contato(tmp_path):
 
 
 def test_filtro_por_cnpj_tira_cpf_e_cnpj_mascarado(tmp_path):
-    """Linha de pessoa física (CPF) ou com CNPJ mascarado não chega ao acervo; o separador "," vira ";"."""
+    """Linha de pessoa física (CPF, também completado com zeros) ou com CNPJ mascarado não chega ao
+    acervo; o CNPJ com letras (julho de 2026) fica; o separador "," vira ";"."""
     bruto = (
         '"Processo","CPF/CNPJ do titular","Titular","Situação"\n'
         '"1/2020","12.345.678/0001-95","EMPRESA FICTICIA","Ativo"\n'
         '"2/2020","123.456.789-09","PESSOA FICTICIA","Ativo"\n'
         '"3/2020","**.***.678/0001-**","OUTRA","Ativo"\n'
+        '"4/2020","00012345678909","PESSOA COM ZEROS","Ativo"\n'
+        '"5/2020","12.ABC.345/01DE-35","EMPRESA NOVA","Ativo"\n'
     ).encode("latin-1")
     url = "https://exemplo/scm.csv"
     obter_ = obter.csv_so_com_colunas(
@@ -262,6 +265,7 @@ def test_filtro_por_cnpj_tira_cpf_e_cnpj_mascarado(tmp_path):
     assert linhas == [
         "Processo;CPF/CNPJ do titular;Situação",
         "1/2020;12.345.678/0001-95;Ativo",
+        "5/2020;12.ABC.345/01DE-35;Ativo",
     ]
 
 

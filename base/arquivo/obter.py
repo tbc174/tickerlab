@@ -51,6 +51,7 @@ from urllib.parse import urlencode
 import pandas as pd
 import requests
 
+from base import cnpj as cnpjs
 from base.arquivo.coleta import (
     SHA256_DA_ORIGEM,
     Cliente,
@@ -58,7 +59,6 @@ from base.arquivo.coleta import (
     SemArquivo,
     assinatura,
 )
-from base.arquivo.obter_pj import DIGITOS_DO_CNPJ, NAO_DIGITO
 
 # o que a vigia da licença guarda da ficha: quem é o conjunto e qual licença ele declara
 CAMPOS_DA_LICENCA_DA_FICHA = ("id", "nome", "titulo", "licenca")
@@ -318,11 +318,13 @@ def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:
 
 
 def tem_cnpj_inteiro(documento: str | None) -> bool:
-    """O documento tem os 14 dígitos de um CNPJ (não é CPF nem CNPJ mascarado `**.***.101/***-**`).
+    """O documento é um CNPJ inteiro, com letras ou não (`base/cnpj.py`), e o dígito confere: não é
+    CPF, nem CNPJ mascarado `**.***.101/***-**`, nem CPF completado com zeros até 14 dígitos.
 
     Mais estrito que `obter_pj.e_pessoa_juridica`: aqui o documento em branco também sai, porque a
     linha de um cadastro sem o CNPJ não serve para nada."""
-    return len(NAO_DIGITO.sub("", documento or "")) == DIGITOS_DO_CNPJ
+    cnpj = cnpjs.completo(documento)
+    return cnpj is not None and cnpjs.dv_confere(cnpj)
 
 
 @contextmanager
