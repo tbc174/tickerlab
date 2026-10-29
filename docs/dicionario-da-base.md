@@ -2871,6 +2871,126 @@ Agentes econômicos registrados na Ancine, por CNPJ. Uma linha por valor diferen
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `mme_reidi`
+
+Projetos de geração e transmissão de energia enquadrados no REIDI (MME), por CNPJ, com a portaria, a execução e o benefício fiscal. Uma linha por valor diferente de cada projeto: a mudança vira linha nova desde o dia em que foi vista, e o projeto que some do arquivo ganha `consta` falso (`como_era_em` dá o retrato de um dia). Só pessoa jurídica: CPF e nome (do cliente, do agente, do investidor, da empresa) saem na coleta; empresário individual e MEI ficam com `trata_como_pessoa`.
+
+- **Fonte:** MME: dados abertos, REIDI (processos deferidos) (`base/incentivos.py`)
+- **Licença:** Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `portaria_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/mme_reidi/<arquivo>.parquet` (servidor de casa, `scripts/carga_incentivos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O processo e o projeto juntos por `|` | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `processo` | Número do processo no MME | texto |
+| `projeto` | Código do projeto no MME | texto |
+| `nome_do_projeto` | Nome do projeto (a usina ou a linha de transmissão) | texto |
+| `portaria` | Portaria de enquadramento, como a fonte escreve | texto |
+| `uf` | UF do projeto (NI quando a fonte não identifica) | texto |
+| `municipio` | Município do projeto, como a fonte escreve | texto |
+| `portaria_em` | Início da portaria de enquadramento | data (dia) |
+| `execucao_desde` | Início da execução do projeto | data (dia) |
+| `execucao_ate` | Fim previsto da execução do projeto | data (dia) |
+| `valor_com_incidencia` | Total do projeto com PIS/Pasep e Cofins | reais (R$), já multiplicado pela escala informada |
+| `valor_sem_incidencia` | Total do projeto sem PIS/Pasep e Cofins | reais (R$), já multiplicado pela escala informada |
+| `valor_do_beneficio` | Benefício fiscal estimado (a diferença) | reais (R$), já multiplicado pela escala informada |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `aneel_cde`
+
+Descontos tarifários pagos pela Conta de Desenvolvimento Energético (CDE, ANEEL), somados por CNPJ, mês, distribuidora, classe, grupo tarifário e tipo de subsídio (a fonte tem uma linha por unidade consumidora). Cada arquivo da ANEEL (um por mês; um por ano na rede básica) é um Parquet; a republicação corrigida vira linha nova. Só pessoa jurídica: CPF e nome (do cliente, do agente, do investidor, da empresa) saem na coleta; empresário individual e MEI ficam com `trata_como_pessoa`.
+
+- **Fonte:** ANEEL: dados abertos, beneficiários da CDE (`base/incentivos.py`)
+- **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal (um arquivo novo por mês; a ANEEL pode republicar o mês corrigido)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `mes`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/aneel_cde/<arquivo>.parquet` (servidor de casa, `scripts/carga_incentivos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `arquivo` | `mensal` (beneficiários) ou `rede_basica` (descontos na transmissão) | texto |
+| `id_na_fonte` | As colunas da soma juntas por `|` | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `mes` | Mês de referência (o 1º dia do mês) | data (dia) |
+| `distribuidora` | Sigla da distribuidora (vazio na rede básica) | texto |
+| `cnpj_da_distribuidora` | CNPJ da distribuidora, só os números (vazio na rede básica) | texto |
+| `classe` | Código da classe do consumidor, como a ANEEL escreve | texto |
+| `grupo_tarifario` | Subgrupo tarifário (código) ou grupo (rede básica) | texto |
+| `tipo_de_desconto` | Tipo de subsídio (`SubsCARFI`, `SubsRural`...) ou o código do tipo (rede básica) | texto |
+| `valor_do_desconto` | Soma dos subsídios ou descontos pagos pela CDE no mês | reais (R$), já multiplicado pela escala informada |
+| `valor_cobrado` | Soma da cobrança (só a rede básica informa) | reais (R$), já multiplicado pela escala informada |
+| `linhas` | Quantas linhas da fonte (unidades consumidoras ou agentes) foram somadas | número inteiro |
+| `gerado_em` | Dia em que a ANEEL gerou o arquivo | data (dia) |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `bcb_rde_ied`
+
+Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela raiz do CNPJ da empresa que recebeu, de nov/2011 a dez/2022 (a série parou aí). A moeda e o valor, sempre vazios na fonte, ficam de fora. Só pessoa jurídica: CPF e nome (do cliente, do agente, do investidor, da empresa) saem na coleta; empresário individual e MEI ficam com `trata_como_pessoa`.
+
+- **Fonte:** Banco Central: API Olinda, RDE-IED (registros) (`base/incentivos.py`)
+- **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Parada desde dez/2022 (o arquivista confere todo mês)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `mes`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/bcb_rde_ied/<arquivo>.parquet` (servidor de casa, `scripts/carga_incentivos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O código, a ocorrência, o mês e o país juntos por `|` | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) da empresa que recebeu o investimento | texto |
+| `codigo_rde` | Código do registro no RDE-IED | texto |
+| `uf` | UF da empresa que recebeu | texto |
+| `pais` | País do investidor estrangeiro | texto |
+| `ocorrencia` | `REGISTRO EFETUADO` ou `REGISTRO ENCERRADO` | texto |
+| `mes` | Mês da ocorrência (o 1º dia do mês) | data (dia) |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `debentures_assembleias`
 
 Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora (`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): `estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF
