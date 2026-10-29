@@ -76,6 +76,7 @@ _SEM_VIGIA = {
     "wayback": "a página de termos do Internet Archive veio vazia",
     "cftc": "a página de política da CFTC deu 404 (domínio público, obra do governo dos EUA)",
     "usda": "usda.gov e fas.usda.gov respondem 403 (domínio público pela política do USDA)",
+    "chirps3": "a licença (CC BY 4.0) está na ficha do dataset no Hugging Face, cópia de terceiro; os termos do Hugging Face não foram lidos (PR da ponte, 28/10/2026)",
     "ico": "ico.org não publica termos, só o aviso de copyright",
     # lote Tesouro (23/10/2026): a licença ODbL está na ficha de cada pacote do CKAN; o catálogo já é vigiado
     **dict.fromkeys(

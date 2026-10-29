@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from base.arquivo import chirps_v3
 from base.commodities import clima_regiao, comex_cafe, conab_cafe, usda_psd
 from base.parquet import ler_tabela
 from base.porta import Porta
@@ -242,9 +243,55 @@ def test_chirps_do_mes_le_o_mes_do_endereco(monkeypatch):
     assert carga_cafe._chirps_do_mes(outra, {}) is None
 
 
+def test_chirps_do_mes_da_v3_traz_a_fonte_propria_e_nunca_a_da_v2(monkeypatch):
+    """A v3 `rnl` é outra série: o endereço `?mes=` escolhe o leitor e a fonte `chirps-v3-rnl`."""
+    grade = chirps_v3.Grade(-180.0, 60.0, 0.05, 7200, 2400)
+    monkeypatch.setattr(
+        chirps_v3,
+        "ler_arquivo",
+        lambda _conteudo: chirps_v3.MesDoCHIRPS(2026, 8, grade, None),
+    )
+    monkeypatch.setattr(
+        clima_regiao,
+        "ler_chirps_v3",
+        lambda _conteudo, _mascaras: pd.DataFrame(
+            {"codigo": ["3170701"], "chuva_mm": [80.0]}
+        ),
+    )
+    monkeypatch.setattr(carga_cafe, "_conteudo", lambda _linha: b"")
+    grades = []
+
+    def mascaras_v3(g):
+        grades.append(g)
+        return {}
+
+    class Linha:
+        url = "https://huggingface.co/x/precip?mes=2026-08"
+
+    mensal = carga_cafe._chirps_do_mes(Linha(), {}, mascaras_v3)
+    assert set(mensal["fonte"]) == {"chirps-v3-rnl"}
+    assert set(pd.to_datetime(mensal["competencia"])) == {pd.Timestamp("2026-08-31")}
+    assert grades == [grade]
+
+
+def test_origens_do_ano_pega_o_mes_da_v3_pelo_endereco():
+    class Linha:
+        def __init__(self, url):
+            self.url = url
+
+    v3 = Linha("https://huggingface.co/x/precip?mes=2026-08")
+    assert carga_cafe._mes_do_chirps(v3.url).group(1) == "2026"
+    assert carga_cafe._mes_do_chirps("https://x/sem-mes.tif") is None
+
+
 def test_a_carga_do_clima_junta_o_chirps_recente_e_o_historico_sem_repetir_endereco():
     """O CHIRPS vem de duas fontes do arquivista (`chirps-mensal` e `chirps-historico`)."""
-    assert carga_cafe.FONTES_DO_CHIRPS == ("chirps-mensal", "chirps-historico")
+    assert carga_cafe.FONTES_DO_CHIRPS == (
+        "chirps-mensal",
+        "chirps-historico",
+        "chirps3-rnl-mensal",
+        "chirps3-rnl-historico",
+    )
 
     class Linha:
         def __init__(self, url):

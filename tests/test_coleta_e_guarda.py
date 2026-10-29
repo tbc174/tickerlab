@@ -21,6 +21,7 @@ PASSAM_AS_MARCAS = {
     "bcb",
     "ccee",
     "chirps",
+    "chirps3",
     "gdelt",
     "cvm",
     "tce-rs-empenhos",

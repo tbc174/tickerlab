@@ -9598,7 +9598,7 @@
           "unidade": "data (dia)"
         },
         "fonte": {
-          "descricao": "inmet ou chirps",
+          "descricao": "inmet, chirps (v2) ou chirps-v3-rnl",
           "unidade": "texto"
         },
         "chuva_mm": {

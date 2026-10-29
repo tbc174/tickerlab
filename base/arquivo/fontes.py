@@ -20,6 +20,7 @@ import sqlalchemy as sa
 from base import intradiario_b3, tce_pr
 from base.arquivo import (
     assessorias,
+    chirps_v3,
     contrapartes,
     lote_acervos,
     lote_atencao,
@@ -1203,6 +1204,9 @@ FONTES: list[Fonte] = [
     # lote clima e fogo (rodada 4, linha 290): INPE Queimadas, NASA FIRMS, TerraBrasilis (WFS), NOAA,
     # ECMWF, MapBiomas, ONS, Climate TRACE, EDGAR e Carbon Monitor
     *lote_clima.fontes(),
+    # ponte da troca do CHIRPS v2 (acaba em dez/2026): a v3 `rnl` pela cópia Zarr do Hugging Face, que o
+    # robots.txt do CHC não deixa coletar direto; fonte própria, nunca soma com a v2 (linha 126 da fila)
+    *chirps_v3.fontes(),
     # lote patentes e marcas (rodada 4, linha 291): INPI (marcas, desenhos, programas, partes de
     # patentes e contratos; pessoa física só como contagem), EPO Linked open EP data e WIPO IP Statistics
     *lote_patentes.fontes(),
