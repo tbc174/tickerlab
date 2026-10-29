@@ -3,7 +3,7 @@
     {
       "chave": "lucros",
       "como_foi_calculado": "O lucro do período de cada balanço anual, na primeira versão que a base guarda, comparado com o número que o balanço do ano seguinte mostra para o mesmo ano (a coluna do ano anterior). A mudança pode vir de uma nova versão do próprio balanço ou do seguinte. Conta como mudado quando a diferença passa de 1% e de R$ 1 mil. Usa o consolidado e, na companhia que não o publica, o individual. Só entram os balanços que já têm o do ano seguinte. Mudar não quer dizer erro: entram reclassificação, norma contábil nova e operação descontinuada.",
-      "data": "2026-10-26",
+      "data": "2026-10-29",
       "fonte": "CVM: demonstrações financeiras padronizadas (DFP)",
       "numero": "6,3%",
       "tabelas": [
@@ -14,7 +14,7 @@
     {
       "chave": "auditor",
       "como_foi_calculado": "Cada troca de firma de auditoria olha o primeiro balanço anual publicado depois dela e compara o lucro do ano anterior com a mesma regra do número dos balanços refeitos. 569 das 2.129 trocas ficam de fora: ainda não têm esse balanço, ou a base não tem o do ano anterior. A comparação com os balanços sem troca mostra uma frequência, não uma causa.",
-      "data": "2026-10-26",
+      "data": "2026-10-29",
       "fonte": "CVM: formulário cadastral (FCA) e demonstrações financeiras (DFP)",
       "numero": "7,9%",
       "tabelas": [
@@ -24,18 +24,53 @@
       "texto": "das 1.560 trocas de auditor vieram com o lucro do ano anterior mudado em mais de 1% no primeiro balanço depois da troca (123 trocas). Nos balanços sem troca, foram 5,9%."
     },
     {
-      "chave": "ofertas",
-      "como_foi_calculado": "As ofertas da Resolução CVM 160 com registro em 2025, encerradas ou com registro concedido (as caducadas, revogadas e suspensas ficam de fora), de ações, debêntures, notas comerciais e promissórias e CPR financeira. Cotas de fundo e títulos de securitização (CRI, CRA) ficam de fora: não são captação da empresa que aparece como emissora. O grupo é a companhia aberta com as controladas que ela declara no formulário de referência, como ele era em 31/12/2025; coligadas e ligações sem o tipo não entram. O valor é o registrado na oferta; as 862 ofertas desses títulos somam R$ 531,7 bilhões.",
-      "data": "2026-10-26",
-      "fonte": "CVM: ofertas da Resolução 160, formulário de referência (FRE) e DFP",
-      "numero": "424",
+      "chave": "atraso",
+      "como_foi_calculado": "O prazo da DFP é o da CVM (três meses depois do fim do exercício) e o atraso é um rótulo nosso: a primeira entrega registrada no sistema da CVM depois do prazo, contada em dias úteis; grave quando passa de 30 dias corridos. O lucro mudado segue a regra do primeiro cartão, e só entram os balanços que já têm o do ano seguinte. Atrasar não quer dizer erro no balanço: o cartão mostra uma frequência, não uma causa.",
+      "data": "2026-10-29",
+      "fonte": "CVM: demonstrações financeiras padronizadas (DFP) e as datas de entrega",
+      "numero": "12,0%",
       "tabelas": [
-        "ofertas_resolucao_160",
-        "controladas",
+        "rotulos_atraso",
         "demonstracoes_como_era"
       ],
-      "texto": "das 862 ofertas de ações, debêntures e notas registradas na CVM em 2025 vieram de 254 grupos de companhias abertas, com R$ 407,0 bilhões. Em 60 delas, quem emitiu foi uma controlada, não a companhia."
+      "texto": "dos 410 balanços anuais entregues à CVM depois do prazo tiveram o lucro do ano mudado em mais de 1% até o balanço seguinte. Nos 7.102 entregues no prazo, foram 5,8%; nos 172 com mais de 30 dias de atraso, 13,4%."
+    },
+    {
+      "chave": "remuneracao",
+      "como_foi_calculado": "A remuneração total reconhecida da diretoria estatutária em cada exercício, como o último formulário de referência público a informa (a CVM reescreve os anos antigos), só nos exercícios inteiros já encerrados quando o formulário saiu: o valor previsto para o ano em curso fica de fora. O lucro é o do período na DRE da DFP, consolidado ou individual. Cada par é um exercício e o anterior: 6.256 pares, de 2011 a 2026, em 803 companhias; em todos eles, a remuneração subiu em 61,4%. Ela pode subir porque entraram diretores ou porque o pagamento foi combinado antes do resultado.",
+      "data": "2026-10-29",
+      "fonte": "CVM: formulário de referência (FRE, remuneração dos administradores) e DFP",
+      "numero": "59,4%",
+      "tabelas": [
+        "fre_remuneracao",
+        "demonstracoes_como_era"
+      ],
+      "texto": "dos 1.579 exercícios em que o lucro caiu mais de 20% (ou virou prejuízo) tiveram a remuneração total da diretoria estatutária maior que no ano anterior. Quando o lucro cresceu mais de 20%, ela subiu em 68,2% dos 1.609."
+    },
+    {
+      "chave": "dividendo",
+      "como_foi_calculado": "O dividendo total do exercício (dividendos e juros sobre capital próprio) que o formulário de referência declara, na última versão cujo prazo de entrega (cinco meses depois do fim do exercício a que o formulário se refere) já tinha passado, comparado com o lucro do período na DRE do mesmo exercício, consolidado ou individual. Pagar mais do que o lucro do ano é permitido: sai de reservas ou de lucros de anos anteriores; o cartão só conta. A CVM tirou a tabela de proventos do formulário aberto depois de 2022, e a série para ali. São 573 companhias.",
+      "data": "2026-10-29",
+      "fonte": "CVM: formulário de referência (FRE, proventos) e DFP",
+      "numero": "255",
+      "tabelas": [
+        "proventos",
+        "demonstracoes_como_era"
+      ],
+      "texto": "dos 2.979 exercícios com dividendo declarado no formulário de referência, de 2010 a 2022, pagaram mais do que o lucro do ano no balanço (149 companhias). Em 72 deles, o ano fechou em prejuízo."
+    },
+    {
+      "chave": "parecer",
+      "como_foi_calculado": "Cada parecer de auditoria da DFP (a última versão pública de cada exercício) publicado há mais de 24 meses, de 2010 a 2024. O alerta é o parágrafo de incerteza relevante sobre a continuidade operacional, lido pelo nosso rótulo no texto do relatório; o relatório curto ou ambíguo fica de fora. A insolvência é o primeiro pedido ou decreto que a própria companhia comunicou à CVM (fato relevante ou formulário); a companhia que já estava em recuperação quando o parecer saiu não entra. São 134 companhias com o alerta. O auditor descreve o que vê: o cartão mostra uma frequência, não uma previsão.",
+      "data": "2026-10-29",
+      "fonte": "CVM: relatório do auditor na DFP e comunicados das companhias",
+      "numero": "5,3%",
+      "tabelas": [
+        "pareceres_dfp",
+        "insolvencia"
+      ],
+      "texto": "dos 455 pareceres de auditoria com incerteza relevante sobre a continuidade da companhia foram seguidos, em 24 meses, de recuperação judicial ou extrajudicial, falência ou liquidação. Entre os 8.421 sem esse alerta, foram 1,5%."
     }
   ],
-  "medido_em_curto": "26/10"
+  "medido_em_curto": "29/10"
 }

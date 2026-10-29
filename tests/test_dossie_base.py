@@ -101,6 +101,30 @@ def test_registrar_tabela_proibida_da_erro() -> None:
         dossie.exigir_que_pode_mostrar(["auditores", "pgfn_divida"])
 
 
+def test_o_atraso_pode_ser_contado_mas_nao_mostrado() -> None:
+    """O cartão do site soma quantos balanços atrasaram; a ficha de uma companhia não mostra o rótulo."""
+    assert not dossie.pode_mostrar("rotulos_atraso")
+    assert dossie.pode_contar("rotulos_atraso")
+
+
+@pytest.mark.parametrize("tabela", ["pgfn_divida", "tabela_que_nao_existe"])
+def test_o_que_nao_esta_na_lista_de_contagem_nao_conta(tabela: str) -> None:
+    assert not dossie.pode_contar(tabela)
+
+
+def test_o_que_pode_ser_mostrado_pode_ser_contado() -> None:
+    assert dossie.pode_contar("insolvencia")
+
+
+def test_contar_tabela_com_pessoa_da_erro(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A lista de contagem não passa por cima da LGPD nem da trava da licença."""
+    com_pessoa = replace(dossie.TABELAS["rotulos_atraso"], pessoa=True)
+    monkeypatch.setitem(dossie.TABELAS, "rotulos_atraso", com_pessoa)
+    assert not dossie.pode_contar("rotulos_atraso")
+    with pytest.raises(dossie.TabelaProibidaError, match="rotulos_atraso"):
+        dossie.exigir_que_pode_contar(["insolvencia", "rotulos_atraso"])
+
+
 def test_todas_as_secoes_registradas_podem_ser_mostradas() -> None:
     for secao in dossie.SECOES:
         dossie.exigir_que_pode_mostrar(secao.tabelas)
