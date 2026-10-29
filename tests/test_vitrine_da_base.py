@@ -130,6 +130,8 @@ def test_repasse_do_site():
     [
         A_CONFIRMAR,
         "não comercial (uso pessoal, só pesquisa)",
+        # a CGU (sanções): a página não pode dizer que o dado é repassado
+        "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
     ],
 )
 def test_revenda_nao_confirmada_tambem_fica_em_consulta(revenda: str):

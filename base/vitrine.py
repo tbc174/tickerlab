@@ -43,6 +43,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da SUSEP\b", "SUSEP"),
     (r"Receita", "Receita Federal"),
     (r"da PGFN\b", "PGFN"),
+    (r"da CGU\b", "CGU"),
     (r"Tesouro", "Tesouro Nacional"),
     (r"Internet Archive", "Internet Archive"),
     (r"a CFTC\b", "CFTC"),
@@ -138,8 +139,13 @@ def orgao_da_licenca(licenca: str) -> str:
 
 
 def situacao_da_licenca(licenca: str, revenda: str) -> str:
-    """ "Licenciada" só quando a licença está escrita e a revenda confirmada; senão "em consulta"."""
-    sem_resposta = revenda.startswith(("a confirmar", "não comercial"))
+    """ "Licenciada" só quando a licença está escrita e a revenda confirmada; senão "em consulta".
+
+    "Só uso interno" também fica em consulta: a página não diz "pode ser repassado" do que a marca
+    manda nunca vender nem exportar (as sanções da CGU)."""
+    sem_resposta = revenda.startswith(
+        ("a confirmar", "não comercial", "só uso interno")
+    )
     if "perguntar" in licenca.lower() or sem_resposta:
         return EM_CONSULTA
     return LICENCIADA

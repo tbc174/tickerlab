@@ -73,6 +73,18 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
       "modulos": [
         "mercado_e_empresas"
@@ -101,17 +113,6 @@
       ],
       "orgao": "ANEEL",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
-      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -157,6 +158,17 @@
       "orgao": "CFTC",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CGU",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -284,7 +296,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 9
+      "tabelas": 11
     },
     {
       "chave": "macro",
@@ -931,6 +943,13 @@
       "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
       "marca": "vendavel",
       "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "antt-autos-de-transito",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
     },
     {
@@ -4190,6 +4209,26 @@
     },
     {
       "atraso": null,
+      "frase": "Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punidas pela Lei Anticorrupção, com o valor da multa).",
+      "frequencia": "Diária",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CGU",
+      "situacao": "em consulta",
+      "tabela": "sancoes_cgu"
+    },
+    {
+      "atraso": null,
+      "frase": "Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tipo do processo, a situação da demanda, as datas da 1ª instância e a multa final.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_penalidades"
+    },
+    {
+      "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -4540,9 +4579,9 @@
     }
   ],
   "totais": {
-    "fontes": 24,
-    "fontes_em_consulta": 7,
+    "fontes": 25,
+    "fontes_em_consulta": 8,
     "modulos": 6,
-    "tabelas": 102
+    "tabelas": 104
   }
 }
