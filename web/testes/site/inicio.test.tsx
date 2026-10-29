@@ -110,7 +110,14 @@ describe("página inicial para quem analisa", () => {
     const secao = trecho('<section class="faixa secao v2-cruzamentos" id="cruzamentos"', "</section>");
     expect(semTags(secao)).toContain(`medidas em ${fatosDaBase.medido_em_curto}`);
     const cartoes = secao.split('<article class="cartao v2-fato"').slice(1);
-    expect(fatosDaBase.fatos.map((f) => f.chave)).toEqual(["lucros", "auditor", "ofertas"]);
+    expect(fatosDaBase.fatos.map((f) => f.chave)).toEqual([
+      "lucros",
+      "auditor",
+      "atraso",
+      "remuneracao",
+      "dividendo",
+      "parecer",
+    ]);
     expect(cartoes).toHaveLength(fatosDaBase.fatos.length);
     fatosDaBase.fatos.forEach((fato, i) => {
       const texto = semTags(cartoes[i]);
