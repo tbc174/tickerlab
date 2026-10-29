@@ -1,0 +1,136 @@
+{
+  "tabela": "anm_titulos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cadastro": {
+      "descricao": "De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine)",
+      "unidade": "texto"
+    },
+    "id_na_fonte": {
+      "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "registro": {
+      "descricao": "Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine",
+      "unidade": "texto"
+    },
+    "processo": {
+      "descricao": "Número do processo no órgão",
+      "unidade": "texto"
+    },
+    "categoria": {
+      "descricao": "O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine)",
+      "unidade": "texto"
+    },
+    "descricao": {
+      "descricao": "O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine)",
+      "unidade": "texto"
+    },
+    "complemento": {
+      "descricao": "Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine)",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da empresa ou do estabelecimento, quando a fonte informa",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município, quando a fonte informa",
+      "unidade": "texto"
+    },
+    "concedido_em": {
+      "descricao": "Data da concessão, autorização, inclusão ou registro, quando a fonte informa",
+      "unidade": "data (dia)"
+    },
+    "publicado_em": {
+      "descricao": "Publicação da licença (Diário Oficial), quando a fonte informa",
+      "unidade": "data (dia)"
+    },
+    "vence_em": {
+      "descricao": "Vencimento da licença ou do registro (nos alimentos da Anvisa, que só dão o mês, o 1º dia do mês)",
+      "unidade": "data (dia)"
+    },
+    "cancelado_em": {
+      "descricao": "Cancelamento, quando a fonte informa",
+      "unidade": "data (dia)"
+    },
+    "situacao_desde": {
+      "descricao": "Desde quando vale a situação (só o RNTRC informa)",
+      "unidade": "data (dia)"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte publica o estado de hoje sem dizer desde quando)",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cadastro",
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "concedido_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "concedido_em": "aconteceu_em",
+    "publicado_em": "publico_em",
+    "vence_em": "ate",
+    "cancelado_em": "ate",
+    "situacao_desde": "aconteceu_em",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-10-29",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": true,
+  "frequencia": "Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+  "atraso": "A fonte publica o estado de hoje sem dizer desde quando: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
+}
