@@ -26,10 +26,13 @@ mensais do VPS, conferido em 13/10/2026).
 
 Selo por ativo (plano dos intradiários grátis, PR 5): no fim de cada rodada, os dias com barras e
 sem selo ganham `selo/AAAA-MM-DD.parquet` (o fechamento das barras contra o oficial do dia,
-`src.barras_intradiarias.selo_dos_fechamentos`) e o resumo `.json` ganha a contagem. O oficial vem
-do Yahoo e só serve para conferir: o preço dele não é guardado. Sem resposta do Yahoo, ou com o
-tempo da rodada (`--minutos`) acabado, o dia fica para a rodada seguinte. `nao_confere` aparece na saída, mas não é falha (na carga antiga, um
-desdobramento depois do dia muda o preço do Yahoo).
+`src.barras_intradiarias.selo_dos_fechamentos`) e o resumo `.json` ganha a contagem. O selo está
+**pausado** desde 28/10/2026 (linha 175 da fila): o fechamento oficial vinha do Yahoo, que saiu das
+rotinas, e o próprio TOPS não serve de oficial (as barras já vêm dele). `main` só sela se receber
+uma fonte (`oficiais`); sem ela os dias ficam sem selo e são selados quando houver fonte licenciada
+(`selar_os_que_faltam` recupera todos). Com fonte: sem resposta, ou com o tempo da rodada
+(`--minutos`) acabado, o dia fica para a rodada seguinte. `nao_confere` aparece na saída, mas não é
+falha (na carga antiga, um desdobramento depois do dia muda o preço oficial).
 
 Atribuição obrigatória ao mostrar estes dados: `iex_tops.ATRIBUICAO` (termos da IEX, ADR 0019).
 """
@@ -72,6 +75,11 @@ SEM_ARQUIVO = "sem arquivo"  # ainda não publicado
 HTTP_NAO_ENCONTRADO = 404
 MAXIMO_DE_SELOS_POR_RODADA = (
     40  # um pedido ao Yahoo por dia; a carga põe ~20 dias por noite
+)
+
+MENSAGEM_DO_SELO_PAUSADO = (
+    "Selo pausado: sem fonte licenciada do fechamento oficial; os dias ficam sem selo "
+    "e são selados quando houver fonte."
 )
 
 log = logging.getLogger(__name__)
@@ -207,25 +215,6 @@ def coletar_dia(
     return resumo
 
 
-def fechamentos_oficiais(dia: date, simbolos: list[str]) -> pd.Series:
-    """O fechamento oficial de `dia` (Yahoo, sem ajuste de dividendos), pelo símbolo da IEX
-    ("BRK.B"). Vazio se o Yahoo não respondeu."""
-    import yfinance as yf  # só aqui: os testes do coletor não vão à internet
-
-    para_yahoo = {s.replace(".", "-"): s for s in simbolos}
-    tabela = yf.download(
-        list(para_yahoo),
-        start=dia,
-        end=dia + timedelta(days=1),
-        auto_adjust=False,
-        progress=False,
-    )
-    if tabela is None or tabela.empty:
-        return pd.Series(dtype=float)
-    fechamentos = tabela["Close"].iloc[0]
-    return fechamentos.rename(index=para_yahoo).dropna()
-
-
 def pasta_do_selo(pasta: Path) -> Path:
     return pasta / "selo"
 
@@ -356,13 +345,16 @@ def main(
     buscar: Callable = rede.get_com_agente,
     oficiais: Callable[[date, list[str]], pd.Series] | None = None,
 ) -> int:
-    """0 = tudo certo (inclusive sem nada a coletar); 1 = algum dia falhou."""
+    """0 = tudo certo (inclusive sem nada a coletar); 1 = algum dia falhou.
+
+    `oficiais` (dia, símbolos → fechamento oficial) é a fonte do selo; sem ela o selo fica pausado."""
     opcoes = _opcoes(argumentos)
     prazo = time.monotonic() + opcoes.minutos * 60 if opcoes.minutos else None
     codigo = _coletar(opcoes, buscar, prazo)
-    for linha in selar_os_que_faltam(
-        opcoes.pasta, oficiais or fechamentos_oficiais, prazo=prazo
-    ):
+    if oficiais is None:
+        print(MENSAGEM_DO_SELO_PAUSADO)
+        return codigo
+    for linha in selar_os_que_faltam(opcoes.pasta, oficiais, prazo=prazo):
         print(linha)
     return codigo
 

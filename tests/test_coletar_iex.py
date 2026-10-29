@@ -1,10 +1,12 @@
 """Coletor diário do IEX HIST (F3), sem internet: uma IEX falsa devolve a lista e o arquivo do dia."""
 
+import ast
 import gzip
 import io
 import json
 import struct
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -323,12 +325,48 @@ def test_conexao_que_cai_de_novo_falha_o_dia_sem_parar_a_rodada(
 # --- selo por ativo (plano dos intradiários grátis, PR 5) --------------------------------------
 
 
-@pytest.fixture(autouse=True)
-def _sem_yahoo(monkeypatch):
-    """Nenhum teste deste arquivo vai à internet: o fechamento oficial vem vazio, salvo pedido."""
-    monkeypatch.setattr(
-        coletor, "fechamentos_oficiais", lambda dia, simbolos: pd.Series(dtype=float)
+def _imports_do_arquivo(caminho: str) -> set[str]:
+    arvore = ast.parse(Path(caminho).read_text("utf-8"))
+    nomes: set[str] = set()
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Import):
+            nomes |= {item.name.split(".")[0] for item in no.names}
+        elif isinstance(no, ast.ImportFrom) and no.module:
+            nomes.add(no.module.split(".")[0])
+    return nomes
+
+
+@pytest.mark.parametrize(
+    "script", ["scripts/coletar_iex_do_dia.py", "scripts/medir_iex_um_dia.py"]
+)
+def test_scripts_do_iex_nao_usam_o_yahoo(script):
+    """O Yahoo saiu das rotinas do IEX (linha 175): o selo só volta com fonte licenciada."""
+    assert "yfinance" not in _imports_do_arquivo(script)
+
+
+def test_sem_fonte_do_fechamento_oficial_o_selo_fica_pausado(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    codigo = coletor.main(
+        ["--data", SEXTA.isoformat(), "--pasta", str(tmp_path)],
+        _iex_falsa(_dia_com_dois_negocios()),
     )
+    assert codigo == 0
+    assert (tmp_path / "2026-10-09.parquet").exists()
+    assert not (tmp_path / "selo").exists()
+    assert "selo" not in json.loads((tmp_path / "2026-10-09.json").read_text("utf-8"))
+    assert "Selo pausado" in capsys.readouterr().out
+
+
+def test_dia_sem_selo_selado_depois_quando_a_fonte_voltar(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    coletor.main(
+        ["--data", SEXTA.isoformat(), "--pasta", str(tmp_path)],
+        _iex_falsa(_dia_com_dois_negocios()),
+    )
+    [linha] = coletor.selar_os_que_faltam(tmp_path, _oficiais({"AAPL": 228.1}))
+    assert linha.startswith("2026-10-09: selo")
 
 
 def _oficiais(precos: dict[str, float], pedidos: list | None = None):

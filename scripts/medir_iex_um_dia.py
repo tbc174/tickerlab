@@ -8,27 +8,23 @@ VPS ou vai para o notebook de casa. O arquivo (~9 GB comprimido) é lido enquant
 no disco; só as barras são gravadas, em `dados/intradiario/iex/AAAA-MM-DD.parquet` (fora do Git).
 
 Mede: GB baixados, tempo, velocidade, memória máxima, negócios lidos e guardados, cobertura dos
-minutos e a diferença entre o último preço das barras e o fechamento oficial (Yahoo).
+minutos. A conferência contra o fechamento oficial saiu daqui com o Yahoo (linha 175 da fila): o
+oficial voltará quando houver fonte licenciada (ver o selo em `scripts/coletar_iex_do_dia.py`).
 """
 
 import argparse
 import gzip
 import threading
 import time
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import BinaryIO
 
 import pandas as pd
 import psutil
-import yfinance as yf
 
 from src import catalogo, iex_tops, rede
-from src.barras_intradiarias import (
-    cobertura_por_simbolo,
-    conferir_fechamentos,
-    montar_barras,
-)
+from src.barras_intradiarias import cobertura_por_simbolo, montar_barras
 
 LISTA_DO_HIST = "https://iextrading.com/api/1.0/hist?date={data}"
 PASTA_DAS_BARRAS = Path("dados/intradiario/iex")
@@ -99,11 +95,11 @@ def endereco_do_tops(data: date) -> tuple[str, int]:
     return tops[0]["link"], int(tops[0]["size"])
 
 
-def simbolos_do_sp500() -> dict[str, str]:
-    """Símbolo da IEX ("BRK.B") → símbolo do Yahoo ("BRK-B"), para as ações dos EUA do catálogo."""
+def simbolos_do_sp500() -> set[str]:
+    """As ações dos EUA do catálogo, no formato da IEX ("BRK.B", não o "BRK-B" do catálogo)."""
     tabela = catalogo.carregar()
     acoes = tabela[(tabela["bolsa"] == "EUA") & (tabela["tipo"] == "Ação")]
-    return {simbolo.replace("-", "."): simbolo for simbolo in acoes.index}
+    return {simbolo.replace("-", ".") for simbolo in acoes.index}
 
 
 def ler_o_dia(link: str, simbolos: set[str], limite_gb: float | None) -> tuple:
@@ -126,28 +122,8 @@ def ler_o_dia(link: str, simbolos: set[str], limite_gb: float | None) -> tuple:
     return dia, contada.lidos, segundos, medidor.maxima_bytes
 
 
-def fechamentos_do_yahoo(data: date, para_yahoo: dict[str, str]) -> pd.Series:
-    """Fechamento oficial (não ajustado) do dia, com o símbolo da IEX no índice."""
-    baixado = yf.download(
-        list(para_yahoo.values()),
-        start=data.isoformat(),
-        end=(data + timedelta(days=1)).isoformat(),
-        auto_adjust=False,
-        progress=False,
-    )
-    if baixado is None:  # o yfinance devolve None quando nada foi baixado
-        return pd.Series(dtype=float)
-    precos = baixado["Close"]
-    linha = precos.iloc[0] if not precos.empty else pd.Series(dtype=float)
-    para_iex = {yahoo: iex for iex, yahoo in para_yahoo.items()}
-    return linha.rename(index=para_iex).dropna()
-
-
-def relatorio(
-    dia: iex_tops.NegociosDoDia, barras: pd.DataFrame, conferencia: pd.DataFrame
-) -> None:
+def relatorio(dia: iex_tops.NegociosDoDia, barras: pd.DataFrame) -> None:
     cobertura = cobertura_por_simbolo(barras)
-    diferenca = conferencia["diferenca"].abs()
     print(f"pacotes lidos: {dia.pacotes_lidos:,}")
     print(
         f"negócios do S&P 500 vistos: {dia.negocios_vistos:,} (pregão regular guardado: {len(dia.preco):,})"
@@ -159,11 +135,6 @@ def relatorio(
         f"{cobertura.median():.0%}, 10% piores abaixo de {cobertura.quantile(0.1):.0%}, "
         f"símbolos com 90% ou mais: {(cobertura >= 0.9).mean():.0%}"
     )
-    print(
-        f"último preço x fechamento oficial ({len(conferencia)} símbolos): mediana "
-        f"{diferenca.median():.3%}, 95% abaixo de {diferenca.quantile(0.95):.3%}, "
-        f"maior {diferenca.max():.3%} ({diferenca.idxmax() if len(diferenca) else '-'})"
-    )
 
 
 def main() -> None:
@@ -173,13 +144,11 @@ def main() -> None:
     opcoes = argumentos.parse_args()
 
     link, tamanho = endereco_do_tops(opcoes.data)
-    para_yahoo = simbolos_do_sp500()
+    simbolos = simbolos_do_sp500()
     print(
-        f"TOPS de {opcoes.data}: {tamanho / BYTES_POR_GB:.2f} GB; {len(para_yahoo)} ações"
+        f"TOPS de {opcoes.data}: {tamanho / BYTES_POR_GB:.2f} GB; {len(simbolos)} ações"
     )
-    dia, baixados, segundos, memoria = ler_o_dia(
-        link, set(para_yahoo), opcoes.limite_gb
-    )
+    dia, baixados, segundos, memoria = ler_o_dia(link, simbolos, opcoes.limite_gb)
     print(
         f"baixado: {baixados / BYTES_POR_GB:.2f} GB em {segundos / 60:.1f} min "
         f"({baixados / segundos / 1e6:.0f} MB/s); memória máxima {memoria / 1e9:.2f} GB"
@@ -190,11 +159,7 @@ def main() -> None:
     arquivo = PASTA_DAS_BARRAS / f"{opcoes.data.isoformat()}.parquet"
     barras.to_parquet(arquivo, index=False)
     print(f"gravado: {arquivo} ({arquivo.stat().st_size / 1e6:.1f} MB)")
-
-    conferencia = conferir_fechamentos(
-        barras, fechamentos_do_yahoo(opcoes.data, para_yahoo)
-    )
-    relatorio(dia, barras, conferencia)
+    relatorio(dia, barras)
 
 
 if __name__ == "__main__":
