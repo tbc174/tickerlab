@@ -374,6 +374,28 @@ DESTINOS: dict[str, Destino] = {
     "antt-autos-de-transito": _planejada(
         "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
     ),
+    # Ficha Clara, licenças e registros: as tabelas por CNPJ vêm na etapa 2b
+    "anvisa-empresas": _planejada(
+        "ficha-clara/licencas", "autorização de funcionamento e boas práticas (Anvisa)"
+    ),
+    "anvisa-produtos": _planejada(
+        "ficha-clara/licencas", "produtos registrados por CNPJ (Anvisa)"
+    ),
+    "antt-rntrc": _planejada(
+        "ficha-clara/licencas", "transportadores de carga (RNTRC)"
+    ),
+    "mapa-sipeagro": _planejada(
+        "ficha-clara/licencas", "estabelecimentos registrados no MAPA (SIPEAGRO)"
+    ),
+    "anatel-outorgas": _planejada(
+        "ficha-clara/licencas", "outorgas de telecomunicações (Anatel)"
+    ),
+    "anm-cadastro-mineiro": _planejada(
+        "ficha-clara/licencas", "títulos minerários por titular (ANM)"
+    ),
+    "ancine-agentes": _planejada(
+        "ficha-clara/licencas", "agentes econômicos registrados (Ancine)"
+    ),
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),

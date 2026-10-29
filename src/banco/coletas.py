@@ -110,6 +110,12 @@ LICENCAS = {
     "ans": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
     "ons": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
     "anatel": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+    # Ficha Clara, licenças e registros (licença lida na ficha do dados.gov.br em 29/10/2026); a coleta
+    # guarda só a linha de CNPJ inteiro, sem nome, endereço nem contato
+    "anvisa": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+    "mapa": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+    "anm": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+    "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
     # série 4, PR 5b: "SES - Base de dados completa" com CC BY no dados.gov.br (lido em 15/10/2026);
     # só os CSVs sem pessoas (nunca administradores, contatos ou acionistas)
@@ -302,6 +308,10 @@ REVENDA = {
     "ans": VENDAVEL_COM_ATRIBUICAO,
     "ons": VENDAVEL_COM_ATRIBUICAO,
     "anatel": VENDAVEL_COM_ATRIBUICAO,
+    "anvisa": VENDAVEL_COM_ATRIBUICAO,
+    "mapa": VENDAVEL_COM_ATRIBUICAO,
+    "anm": VENDAVEL_COM_ATRIBUICAO,
+    "ancine": VENDAVEL_COM_ATRIBUICAO,
     "aneel": VENDAVEL_ODBL,
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": A_CONFIRMAR,
@@ -615,6 +625,11 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "wipo",
             "ipea",
             "ans-demonstracoes",
+            # Ficha Clara, licenças e registros (29/10): termos e robots.txt ainda não lidos
+            "anvisa",
+            "mapa",
+            "anm",
+            "ancine",
         ),
         _NAO_RESPONDIDA,
     ),
