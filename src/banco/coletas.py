@@ -122,8 +122,10 @@ LICENCAS = {
     # série 4, PR 5b: "SES - Base de dados completa" com CC BY no dados.gov.br (lido em 15/10/2026);
     # só os CSVs sem pessoas (nunca administradores, contatos ou acionistas)
     "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
-    # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
-    "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+    # resposta escrita do MDIC em 21/10/2026 (LAI, NUP 52016.008755/2026-24): dados abertos do
+    # Decreto 8.777/2016, uso livre inclusive comercial, derivação e ML; o CC BY-ND do rodapé do
+    # gov.br é do site, não dos dados. Citar "Secex/MDIC" e separar o que é conta nossa
+    "comexstat": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
     # relatório mensal do Cecafé: robots.txt proíbe PDF e a página de termos veio vazia (18/10/2026)
     "cecafe": "Cecafé: robots.txt veda PDF; coleta com ritmo, uso citando a fonte (ADR 0102)",
     # termos lidos em 18/10/2026: uso pessoal e não comercial, vedam robô; coleta pela ADR 0102
@@ -317,7 +319,7 @@ REVENDA = {
     "mme": A_CONFIRMAR,
     "aneel": VENDAVEL_ODBL,
     "susep": VENDAVEL_COM_ATRIBUICAO,
-    "comexstat": A_CONFIRMAR,
+    "comexstat": VENDAVEL_COM_ATRIBUICAO,  # resposta do MDIC em 21/10/2026
     "cecafe": NAO_COMERCIAL,  # o robots.txt veda PDF; coleta com ritmo e uso com a fonte citada (ADR 0102)
     "fnc": NAO_COMERCIAL,  # termos só para uso pessoal; coleta com ritmo e uso com a fonte citada (ADR 0102)
     "b3": NAO_COMERCIAL,  # informação, não trava: sem licença, uso com a fonte citada (ADR 0008, Emenda 6)
@@ -756,13 +758,6 @@ USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
         "resposta escrita da PGFN sobre a licença (pedido LAI da ADR 0086); sem ela, desligar",
         "Dívida ativa: dados abertos da PGFN (licença a confirmar; mostrado com a fonte citada "
         "enquanto o TickerLab não cobra)",
-    ),
-    UsoSemCobranca(
-        "comexstat",
-        "comércio exterior por capítulo do NCM na B13 (empresa ↔ série) e na rede de entidades",
-        "confirmação do MDIC pelo Fala.BR (pedido de 14/10/2026); sem ela, desligar a série",
-        "Comércio exterior: Comex Stat, MDIC (licença aberta sem nome, a confirmar; mostrado com "
-        "a fonte citada enquanto o TickerLab não cobra)",
     ),
     UsoSemCobranca(
         "assessoria",

@@ -2,8 +2,9 @@
 de cada porto ou recinto (URF), mês a mês, derivado dos CSVs `EXP_AAAA.csv` e `IMP_AAAA.csv` do MDIC que
 o arquivista já guarda (a fonte não publica preço; ele é conta nossa: FOB ÷ quilo líquido).
 
-Uso interno até a licença do MDIC (a família `comexstat` está "a confirmar" em `src/banco/coletas.py`;
-a marca da tabela vem de lá, não de uma lista aqui): fora da exportação e do app público.
+Dados abertos de uso livre, inclusive comercial (resposta escrita do MDIC em 21/10/2026; a família
+`comexstat` é vendável com atribuição em `src/banco/coletas.py`, e a marca da tabela vem de lá, não de
+uma lista aqui): citar Secex/MDIC e dizer que o preço é elaboração própria.
 
 - Uma linha por fluxo (`exportacao` ou `importacao`), mês, NCM e URF: as vias, os países e as UFs de
   cada linha da fonte são somados. Quilo zero deixa o preço vazio (vazio não é zero).
