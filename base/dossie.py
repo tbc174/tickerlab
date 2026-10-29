@@ -64,6 +64,10 @@ CALCULO_DO_DOSSIE = f"dossiê {VERSAO_DO_DOSSIE}"
 # (a Emenda 3 da ADR 0008 liberou a da PGFN; o P-44 ainda a segura). A ADR 0103 (D2) tirou daqui a
 # insolvência e a situação especial: só como fato datado e com o direito de resposta (`base/contestacoes.py`)
 TABELAS_PROIBIDAS = frozenset({"rotulos_atraso", "pgfn_divida"})
+# da lista proibida, as que podem entrar numa contagem agregada sem nome (os cartões do site): a soma
+# de quantos balanços atrasaram não expõe ninguém, e o P-44 segura só o nome ("pode" do Tiago em
+# 29/10/2026 para o cartão do atraso). A dívida da PGFN fica fora até da contagem (ADR 0103)
+TABELAS_SO_EM_CONTAGEM = frozenset({"rotulos_atraso"})
 LINHAS_NAS_LISTAS = (
     20  # últimas ofertas, últimos negócios: o resto fica na contagem por ano
 )
@@ -119,6 +123,24 @@ def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:
     proibidas = [nome for nome in tabelas if not pode_mostrar(nome)]
     if proibidas:
         raise TabelaProibidaError(f"não podem ser mostradas: {', '.join(proibidas)}")
+
+
+def pode_contar(nome_da_tabela: str) -> bool:
+    """A tabela pode entrar numa contagem agregada sem nome? (o que pode ser mostrado, mais a lista
+    `TABELAS_SO_EM_CONTAGEM`, com a mesma trava da licença e sem pessoa)"""
+    if pode_mostrar(nome_da_tabela):
+        return True
+    tabela = TABELAS.get(nome_da_tabela)
+    if tabela is None or tabela.pessoa or nome_da_tabela not in TABELAS_SO_EM_CONTAGEM:
+        return False
+    return pode_usar(MOSTRAR, tabela.familia_da_fonte)
+
+
+def exigir_que_pode_contar(tabelas: Iterable[str]) -> None:
+    """Levanta `TabelaProibidaError` com as tabelas que nem numa contagem podem entrar."""
+    proibidas = [nome for nome in tabelas if not pode_contar(nome)]
+    if proibidas:
+        raise TabelaProibidaError(f"não podem ser contadas: {', '.join(proibidas)}")
 
 
 def fontes_das_tabelas(tabelas: Iterable[str]) -> list[str]:

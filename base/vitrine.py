@@ -24,7 +24,12 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from base.cnpj import normalizar_cnpj
-from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar
+from base.dossie import (
+    CONTAS_DA_DRE,
+    TABELAS_SO_EM_CONTAGEM,
+    exigir_que_pode_contar,
+    exigir_que_pode_mostrar,
+)
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 
 # o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
@@ -427,31 +432,53 @@ VAGAS_DA_VITRINE: tuple[Vaga, ...] = (
 # de companhia, auditor ou pessoa sai daqui (um fato com nome pode expor alguém a dano; a passagem do
 # PR 6 pede a contagem na dúvida). A medição é no servidor de casa (`scripts/medir_base_para_o_site.py`),
 # só leitura pela porta; a fotografia guarda os números, e as frases saem dela aqui, num lugar só.
+# Em 29/10/2026 o Tiago trocou o cartão das ofertas por quatro cruzamentos que dizem mais ("Pode: site
+# com S1 a S4 (tira o cartão das ofertas)"; plano "mais cruzamentos da base", na pasta privada).
 FOTOGRAFIA_DOS_CRUZAMENTOS = FOTOGRAFIA.with_name("fatos.json")
 TROCAS_DE_AUDITOR = "trocas_de_auditor"
-OFERTAS = "ofertas_resolucao_160"
-CONTROLADAS = "controladas"
-TABELAS_DOS_CRUZAMENTOS = (DEMONSTRACOES, TROCAS_DE_AUDITOR, OFERTAS, CONTROLADAS)
+ROTULOS_DE_ATRASO = "rotulos_atraso"
+REMUNERACAO = "fre_remuneracao"
+PROVENTOS = "proventos"
+PARECERES = "pareceres_dfp"
+INSOLVENCIA = "insolvencia"
+# o atraso só entra como contagem (`TABELAS_SO_EM_CONTAGEM`, em `base/dossie.py`)
+TABELAS_DOS_CRUZAMENTOS = (
+    DEMONSTRACOES,
+    TROCAS_DE_AUDITOR,
+    ROTULOS_DE_ATRASO,
+    REMUNERACAO,
+    PROVENTOS,
+    PARECERES,
+    INSOLVENCIA,
+)
 LIMITE_DO_FATO = 240  # o cartão da página inicial: duas ou três linhas
 # o lucro mudou quando a diferença passa de 1% do valor publicado e do arredondamento da CVM (R$ 1 mil)
 MUDANCA_QUE_CONTA = 0.01
 # um balanço anual e o do ano seguinte: de 10 a 14 meses entre os dois fins (o exercício que mudou de
 # data ainda conta; um ano sem balanço no meio, não)
 DIAS_ENTRE_BALANCOS = (300, 430)
-# a oferta que saiu: as caducadas, revogadas e suspensas não captaram
-OFERTAS_QUE_SAIRAM = ("Oferta Encerrada", "Registro Concedido")
-# só os títulos que a própria empresa emite para captar: cotas de fundo não são de empresa, e o CRI, o CRA
-# e afins saem pela securitizadora com o dinheiro de outra (o devedor, que a tabela não traz). Lista
-# fechada: um tipo novo da CVM fica de fora até alguém o pôr aqui (medido em 26/10: são 1/4 das ofertas)
-TITULOS_DE_EMPRESA = (
-    "Ações",
-    "Debêntures",
-    "Notas Comerciais",
-    "Notas Promissórias",
-    "Cédula de Produto Rural Financeira",
+DFP = "DFP"
+DIRETORIA = "Diretoria Estatutária"
+# o lucro "caiu" ou "cresceu" quando mudou mais que isso em relação ao ano anterior (ou virou prejuízo)
+VARIACAO_DO_LUCRO = 0.2
+# a tabela de proventos do FRE não traz a data em que cada versão ficou pública: vale o prazo de
+# entrega do formulário (cinco meses depois do fim do exercício a que ele se refere)
+MESES_DO_PRAZO_DO_FRE = 5
+# a janela depois do parecer em que se olha a insolvência; o parecer mais novo que isso ainda não fechou a janela
+MESES_DEPOIS_DO_PARECER = 24
+SIM, NAO = (
+    "sim",
+    "nao",
+)  # os valores do rótulo `continuidade_operacional` (fora o `nao_classificado`)
+# o pedido ou decreto da própria companhia: a exposição a terceiro e o pedido de falência feito por um
+# credor não dizem que ela ficou insolvente
+ROTULOS_DE_INSOLVENCIA = (
+    "recuperacao_judicial",
+    "recuperacao_extrajudicial",
+    "recuperacao_judicial_ou_extrajudicial",
+    "falencia",
+    "liquidacao",
 )
-CONTROLADA = "controlada"
-BILHAO = 1e9
 COLUNAS_DO_LUCRO = (
     "cnpj",
     "grupo",
@@ -465,13 +492,26 @@ COLUNAS_DO_LUCRO = (
     "divulgado_em",
     "publico_em",
 )
-COLUNAS_DAS_OFERTAS = (
-    "cnpj_emissor",
-    "data_registro",
-    "status_requerimento",
-    "valor_mobiliario",
-    "valor_total_registrado",
+COLUNAS_DO_ATRASO = ("cnpj", "documento", "referencia", "atrasou", "atraso_grave")
+COLUNAS_DA_REMUNERACAO = (
+    "cnpj",
+    "referencia",
+    "versao",
+    "inicio_do_exercicio",
+    "fim_do_exercicio",
+    "orgao",
+    "total_do_orgao",
+    "publico_em",
 )
+COLUNAS_DOS_PROVENTOS = ("cnpj", "referencia", "versao", "exercicio", "dividendo_total")
+COLUNAS_DOS_PARECERES = (
+    "cnpj",
+    "referencia",
+    "versao",
+    "continuidade_operacional",
+    "publico_em",
+)
+COLUNAS_DA_INSOLVENCIA = ("cnpj", "rotulo", "publico_em")
 
 
 class PortaQueLe(Protocol):
@@ -485,8 +525,6 @@ class PortaQueLe(Protocol):
         filtros: Mapping[str, object] | None = None,
         colunas: Sequence[str] | None = None,
     ) -> pd.DataFrame: ...
-
-    def distintos(self, tabela: str, coluna: str) -> set[object]: ...
 
 
 @dataclass(frozen=True)
@@ -515,17 +553,60 @@ class TrocasDeAuditor:
 
 
 @dataclass(frozen=True)
-class OfertasDoGrupo:
-    """Ofertas da Resolução CVM 160 de um ano e as que saíram de um grupo de companhia aberta."""
+class AtrasoERefeito:
+    """Balanços anuais entregues depois do prazo da CVM e quantos tiveram o lucro refeito no balanço
+    seguinte, com a taxa dos entregues no prazo ao lado."""
 
-    ano: int
-    ofertas: int
-    valor: float  # R$
-    do_grupo: int  # a própria companhia aberta ou uma controlada que ela declara no FRE
-    valor_do_grupo: float
-    grupos: int
-    por_controlada: int
-    valor_por_controlada: float
+    atrasados: int
+    atrasados_refeitos: int
+    graves: int  # mais de 30 dias corridos de atraso
+    graves_refeitos: int
+    no_prazo: int
+    no_prazo_refeitos: int
+
+
+@dataclass(frozen=True)
+class RemuneracaoELucro:
+    """Pares de exercícios seguidos com o lucro do ano e a remuneração da diretoria estatutária nos dois."""
+
+    pares: int
+    remuneracao_subiu: int
+    lucro_caiu: int  # mais de 20%, ou virou prejuízo
+    lucro_caiu_e_remuneracao_subiu: int
+    lucro_subiu: int  # mais de 20%
+    lucro_subiu_e_remuneracao_subiu: int
+    companhias: int
+    primeiro_exercicio: int
+    ultimo_exercicio: int
+
+
+@dataclass(frozen=True)
+class DividendoELucro:
+    """Exercícios com dividendo declarado no FRE ao lado do lucro do ano na DFP."""
+
+    exercicios: int
+    companhias: int
+    acima_do_lucro: (
+        int  # o dividendo passou do lucro do ano (os de ano com prejuízo estão aqui)
+    )
+    companhias_acima: int
+    com_prejuizo: int
+    primeiro_exercicio: int
+    ultimo_exercicio: int
+
+
+@dataclass(frozen=True)
+class ParecerEInsolvencia:
+    """Pareceres de auditoria da DFP com e sem incerteza sobre a continuidade, e quantos foram seguidos
+    de recuperação, falência ou liquidação nos 24 meses depois."""
+
+    com_duvida: int
+    com_duvida_e_insolvencia: int
+    sem_duvida: int
+    sem_duvida_e_insolvencia: int
+    companhias_com_duvida: int
+    primeiro_exercicio: int
+    ultimo_exercicio: int
 
 
 @dataclass(frozen=True)
@@ -534,7 +615,10 @@ class Cruzamentos:
 
     lucros: LucrosRefeitos
     auditor: TrocasDeAuditor
-    ofertas: OfertasDoGrupo
+    atraso: AtrasoERefeito
+    remuneracao: RemuneracaoELucro
+    dividendo: DividendoELucro
+    parecer: ParecerEInsolvencia
     medido_em: str
 
 
@@ -555,11 +639,6 @@ def _cnpjs(valores: pd.Series) -> pd.Series:
     return valores.map(normalizar_cnpj)
 
 
-def _centavos(reais: float) -> float:
-    """A soma em reais com duas casas: o resto do ponto flutuante não vai para a fotografia."""
-    return round(float(reais), 2)
-
-
 def _so_o_publico(linhas: pd.DataFrame, ate: date) -> pd.DataFrame:
     return linhas[pd.to_datetime(linhas["publico_em"]) <= pd.Timestamp(ate)]
 
@@ -571,7 +650,7 @@ def linhas_do_lucro(porta: PortaQueLe, ate: date) -> pd.DataFrame:
         DEMONSTRACOES,
         filtros={
             "demonstracao": "DRE",
-            "documento": "DFP",
+            "documento": DFP,
             "conta": [c for c in CONTAS_DA_DRE if c != RECEITA],
         },
         colunas=list(COLUNAS_DO_LUCRO),
@@ -588,15 +667,19 @@ def linhas_do_lucro(porta: PortaQueLe, ate: date) -> pd.DataFrame:
     return linhas.sort_values(["cnpj", "fim", "referencia", "versao", "conta"])
 
 
+def _proprios(lucros: pd.DataFrame) -> pd.DataFrame:
+    """As linhas em que o balanço fala do próprio exercício (não a coluna do ano anterior)."""
+    return lucros[
+        (lucros["ordem"] == "ultimo") & (lucros["fim"] == lucros["referencia"])
+    ]
+
+
 def balancos_anuais(lucros: pd.DataFrame) -> pd.DataFrame:
     """Um balanço anual por linha (`cnpj`, `fim`): o lucro na primeira versão que a base guarda, o dia em
     que ela saiu e, quando a base tem o balanço do ano seguinte, o mesmo lucro como o seguinte o mostra
     e se ele mudou (`mudou`; vazio sem o seguinte). A base só guarda a linha "penúltimo" quando o valor
     mudou: sem ela, o seguinte mostra o número da última versão do próprio balanço."""
-    proprios = lucros[
-        (lucros["ordem"] == "ultimo") & (lucros["fim"] == lucros["referencia"])
-    ]
-    versoes = proprios.groupby(["cnpj", "fim"])
+    versoes = _proprios(lucros).groupby(["cnpj", "fim"])
     balancos = pd.DataFrame(
         {
             "original": versoes["valor"].first(),
@@ -624,6 +707,14 @@ def balancos_anuais(lucros: pd.DataFrame) -> pd.DataFrame:
     )
     balancos["mudou"] = (diferenca > limite).where(balancos["fim_seguinte"].notna())
     return balancos[["cnpj", "fim", "saiu_em", "fim_seguinte", "mudou"]]
+
+
+def lucro_por_exercicio(lucros: pd.DataFrame) -> pd.DataFrame:
+    """O lucro do ano de cada balanço anual (`cnpj` normalizado, `fim`, `lucro`), como a última versão
+    já pública o mostra: é o número com que o dividendo e a remuneração se comparam."""
+    ultimo = _proprios(lucros).groupby(["cnpj", "fim"])["valor"].last().rename("lucro")
+    por_exercicio = ultimo.reset_index()
+    return por_exercicio.assign(cnpj=_cnpjs(por_exercicio["cnpj"]))
 
 
 def _com_seguinte(balancos: pd.DataFrame) -> pd.DataFrame:
@@ -681,77 +772,211 @@ def trocas_de_auditor(trocas: pd.DataFrame, balancos: pd.DataFrame) -> TrocasDeA
     )
 
 
-def ofertas_do_grupo(
-    ofertas: pd.DataFrame,
-    controladas: pd.DataFrame,
-    companhias_abertas: set[str],
-    ano: int,
-) -> OfertasDoGrupo:
-    """As ofertas de títulos de empresa registradas no ano que saíram e as que vieram de um grupo: a
-    companhia aberta ou uma controlada que ela declara no FRE (coligada e ligação sem o tipo ficam de
-    fora)."""
-    registro = pd.to_datetime(ofertas["data_registro"])
-    do_ano = ofertas[
-        (registro.dt.year == ano)
-        & ofertas["status_requerimento"].isin(OFERTAS_QUE_SAIRAM)
-        & ofertas["valor_mobiliario"].isin(TITULOS_DE_EMPRESA)
-    ]
-    emissor = _cnpjs(do_ano["cnpj_emissor"])
-    so_controladas = controladas[controladas["tipo"] == CONTROLADA]
-    # a controlada de mais de uma companhia (controle indireto) fica no grupo de menor CNPJ
-    controladora = (
-        pd.DataFrame(
-            {
-                "cnpj": _cnpjs(so_controladas["cnpj"]),
-                "companhia": _cnpjs(so_controladas["cnpj_companhia"]),
-            }
-        )
-        .groupby("cnpj")["companhia"]
-        .min()
+def atraso_e_refeito(rotulos: pd.DataFrame, balancos: pd.DataFrame) -> AtrasoERefeito:
+    """Cada balanço anual que já tem o seguinte, com o rótulo de atraso da DFP do mesmo exercício: os
+    entregues depois do prazo refizeram o lucro mais vezes que os entregues no prazo?"""
+    dfp = rotulos[rotulos["documento"] == DFP]
+    rotulo = pd.DataFrame(
+        {
+            "cnpj": _cnpjs(dfp["cnpj"]),
+            "fim": pd.to_datetime(dfp["referencia"]),
+            "atrasou": dfp["atrasou"].astype(bool),
+            "atraso_grave": dfp["atraso_grave"].astype(bool),
+        }
     )
-    aberta = emissor.isin(companhias_abertas)
-    por_controlada = ~aberta & emissor.isin(controladora.index)
-    grupo = emissor.where(aberta, emissor.map(controladora))
-    valor = do_ano["valor_total_registrado"].astype(float)
-    do_grupo = aberta | por_controlada
-    return OfertasDoGrupo(
-        ano=ano,
-        ofertas=len(do_ano),
-        valor=_centavos(valor.sum()),
-        do_grupo=int(do_grupo.sum()),
-        valor_do_grupo=_centavos(valor[do_grupo].sum()),
-        grupos=grupo[do_grupo].nunique(),
-        por_controlada=int(por_controlada.sum()),
-        valor_por_controlada=_centavos(valor[por_controlada].sum()),
+    seguidos = _com_seguinte(balancos)
+    juntos = seguidos.assign(cnpj=_cnpjs(seguidos["cnpj"])).merge(
+        rotulo, on=["cnpj", "fim"]
+    )
+    mudou = juntos["mudou"].astype(bool)
+    atrasou, grave = juntos["atrasou"], juntos["atraso_grave"]
+    return AtrasoERefeito(
+        atrasados=int(atrasou.sum()),
+        atrasados_refeitos=int((atrasou & mudou).sum()),
+        graves=int(grave.sum()),
+        graves_refeitos=int((grave & mudou).sum()),
+        no_prazo=int((~atrasou).sum()),
+        no_prazo_refeitos=int((~atrasou & mudou).sum()),
+    )
+
+
+def _pares_seguidos(linhas: pd.DataFrame, valores: Sequence[str]) -> pd.DataFrame:
+    """Cada exercício (`cnpj`, `fim`) com os valores do exercício anterior (`<valor>_antes`), quando o
+    anterior é o ano seguido (de 10 a 14 meses antes); sem o anterior, a linha sai."""
+    ordenado = linhas.sort_values(["cnpj", "fim"]).copy()
+    por_companhia = ordenado.groupby("cnpj")
+    dias = (ordenado["fim"] - por_companhia["fim"].shift(1)).dt.days
+    minimo, maximo = DIAS_ENTRE_BALANCOS
+    seguido = dias.between(minimo, maximo)
+    for valor in valores:
+        ordenado[f"{valor}_antes"] = por_companhia[valor].shift(1).where(seguido)
+    return ordenado[seguido]
+
+
+def remuneracao_e_lucro(
+    remuneracao: pd.DataFrame, lucro: pd.DataFrame
+) -> RemuneracaoELucro:
+    """A remuneração total da diretoria estatutária em cada exercício inteiro já encerrado quando o FRE
+    saiu (a última versão pública; o valor previsto para o ano em curso fica de fora), ao lado do lucro
+    do ano, em pares de exercícios seguidos."""
+    diretoria = remuneracao[remuneracao["orgao"] == DIRETORIA].copy()
+    for coluna in (
+        "inicio_do_exercicio",
+        "fim_do_exercicio",
+        "referencia",
+        "publico_em",
+    ):
+        diretoria[coluna] = pd.to_datetime(diretoria[coluna])
+    duracao = (diretoria["fim_do_exercicio"] - diretoria["inicio_do_exercicio"]).dt.days
+    inteiro = duracao >= DIAS_ENTRE_BALANCOS[0]
+    encerrado = diretoria["fim_do_exercicio"] < diretoria["publico_em"]
+    diretoria = diretoria[inteiro & encerrado & (diretoria["total_do_orgao"] > 0)]
+    ultima = (
+        diretoria.sort_values(["cnpj", "fim_do_exercicio", "referencia", "versao"])
+        .groupby(["cnpj", "fim_do_exercicio"])["total_do_orgao"]
+        .last()
+        .rename("remuneracao")
+        .reset_index()
+        .rename(columns={"fim_do_exercicio": "fim"})
+    )
+    juntos = ultima.assign(cnpj=_cnpjs(ultima["cnpj"])).merge(lucro, on=["cnpj", "fim"])
+    pares = _pares_seguidos(juntos, ["remuneracao", "lucro"])
+    subiu = pares["remuneracao"] > pares["remuneracao_antes"]
+    tinha_lucro = pares["lucro_antes"] > 0
+    caiu = tinha_lucro & (
+        pares["lucro"] < (1 - VARIACAO_DO_LUCRO) * pares["lucro_antes"]
+    )
+    cresceu = tinha_lucro & (
+        pares["lucro"] > (1 + VARIACAO_DO_LUCRO) * pares["lucro_antes"]
+    )
+    return RemuneracaoELucro(
+        pares=len(pares),
+        remuneracao_subiu=int(subiu.sum()),
+        lucro_caiu=int(caiu.sum()),
+        lucro_caiu_e_remuneracao_subiu=int((caiu & subiu).sum()),
+        lucro_subiu=int(cresceu.sum()),
+        lucro_subiu_e_remuneracao_subiu=int((cresceu & subiu).sum()),
+        companhias=pares["cnpj"].nunique(),
+        primeiro_exercicio=int(pares["fim"].min().year),
+        ultimo_exercicio=int(pares["fim"].max().year),
+    )
+
+
+def dividendo_e_lucro(
+    proventos: pd.DataFrame, lucro: pd.DataFrame, ate: date
+) -> DividendoELucro:
+    """O dividendo total que o FRE declara para cada exercício (a última versão cujo prazo de entrega já
+    tinha passado em `ate`) ao lado do lucro do ano na DFP; só os exercícios com dividendo."""
+    prazo = pd.to_datetime(proventos["referencia"]) + pd.DateOffset(
+        months=MESES_DO_PRAZO_DO_FRE
+    )
+    entregues = proventos[prazo <= pd.Timestamp(ate)].copy()
+    entregues["exercicio"] = pd.to_datetime(entregues["exercicio"])
+    ultimo = (
+        entregues.sort_values(["cnpj", "exercicio", "referencia", "versao"])
+        .groupby(["cnpj", "exercicio"])["dividendo_total"]
+        .last()
+        .rename("dividendo")
+        .reset_index()
+        .rename(columns={"exercicio": "fim"})
+    )
+    juntos = ultimo.assign(cnpj=_cnpjs(ultimo["cnpj"])).merge(lucro, on=["cnpj", "fim"])
+    com_dividendo = juntos[juntos["dividendo"] > 0]
+    acima = com_dividendo["dividendo"] > com_dividendo["lucro"]
+    return DividendoELucro(
+        exercicios=len(com_dividendo),
+        companhias=com_dividendo["cnpj"].nunique(),
+        acima_do_lucro=int(acima.sum()),
+        companhias_acima=com_dividendo[acima]["cnpj"].nunique(),
+        com_prejuizo=int((com_dividendo["lucro"] <= 0).sum()),
+        primeiro_exercicio=int(com_dividendo["fim"].min().year),
+        ultimo_exercicio=int(com_dividendo["fim"].max().year),
+    )
+
+
+def _primeira_insolvencia(insolvencia: pd.DataFrame) -> pd.Series:
+    """O dia em que cada companhia comunicou o primeiro pedido ou decreto próprio (CNPJ → data)."""
+    propria = insolvencia[insolvencia["rotulo"].isin(ROTULOS_DE_INSOLVENCIA)]
+    return pd.to_datetime(propria["publico_em"]).groupby(_cnpjs(propria["cnpj"])).min()
+
+
+def parecer_e_insolvencia(
+    pareceres: pd.DataFrame, insolvencia: pd.DataFrame, ate: date
+) -> ParecerEInsolvencia:
+    """Cada parecer de DFP (a última versão pública de cada exercício) publicado há mais de 24 meses:
+    o auditor apontou incerteza sobre a continuidade, e a companhia entrou em recuperação, falência ou
+    liquidação nos 24 meses seguintes? A companhia que já estava insolvente no dia do parecer sai."""
+    pareceres = pareceres.assign(publico_em=pd.to_datetime(pareceres["publico_em"]))
+    ultimo = (
+        pareceres.sort_values(["cnpj", "referencia", "versao"])
+        .groupby(["cnpj", "referencia"])
+        .last()
+        .reset_index()
+    )
+    janela = pd.DateOffset(months=MESES_DEPOIS_DO_PARECER)
+    fechados = ultimo[ultimo["publico_em"] + janela <= pd.Timestamp(ate)].copy()
+    fechados["cnpj"] = _cnpjs(fechados["cnpj"])
+    fechados["insolvencia_em"] = fechados["cnpj"].map(
+        _primeira_insolvencia(insolvencia)
+    )
+    ja_estava = fechados["insolvencia_em"] <= fechados["publico_em"]
+    fechados = fechados[~ja_estava]
+    depois = (fechados["insolvencia_em"] > fechados["publico_em"]) & (
+        fechados["insolvencia_em"] <= fechados["publico_em"] + janela
+    )
+    duvida = fechados["continuidade_operacional"] == SIM
+    sem_duvida = fechados["continuidade_operacional"] == NAO
+    classificados = fechados[duvida | sem_duvida]
+    return ParecerEInsolvencia(
+        com_duvida=int(duvida.sum()),
+        com_duvida_e_insolvencia=int((duvida & depois).sum()),
+        sem_duvida=int(sem_duvida.sum()),
+        sem_duvida_e_insolvencia=int((sem_duvida & depois).sum()),
+        companhias_com_duvida=fechados[duvida]["cnpj"].nunique(),
+        primeiro_exercicio=int(pd.to_datetime(classificados["referencia"]).min().year),
+        ultimo_exercicio=int(pd.to_datetime(classificados["referencia"]).max().year),
     )
 
 
 def medir_cruzamentos(porta: PortaQueLe, catalogo: dict, ate: date) -> Cruzamentos:
     """Mede os cruzamentos pela porta, só com o que era público em `ate`. Tabela fora do catálogo ou que
-    a licença não deixa mostrar dá erro, como nos números da página Dados."""
+    a licença não deixa mostrar dá erro, como nos números da página Dados; o atraso só pode ser contado."""
     ausentes = [t for t in TABELAS_DOS_CRUZAMENTOS if t not in catalogo["tabelas"]]
     if ausentes:
         raise ValueError(
             f"fora do catálogo, não vira fato público: {', '.join(ausentes)}"
         )
-    exigir_que_pode_mostrar(TABELAS_DOS_CRUZAMENTOS)
-    balancos = balancos_anuais(linhas_do_lucro(porta, ate))
+    exigir_que_pode_mostrar(
+        t for t in TABELAS_DOS_CRUZAMENTOS if t not in TABELAS_SO_EM_CONTAGEM
+    )
+    exigir_que_pode_contar(TABELAS_SO_EM_CONTAGEM)
+    lucros = linhas_do_lucro(porta, ate)
+    balancos = balancos_anuais(lucros)
+    lucro = lucro_por_exercicio(lucros)
     trocas = porta.ler(
         TROCAS_DE_AUDITOR, como_era_em=ate, colunas=["cnpj", "publico_em"]
     )
-    ano = ate.year - 1  # o último ano completo
-    fim_do_ano = date(ano, 12, 31)
-    ofertas = porta.ler(OFERTAS, como_era_em=ate, colunas=list(COLUNAS_DAS_OFERTAS))
-    controladas = porta.ler(
-        CONTROLADAS, como_era_em=fim_do_ano, colunas=["cnpj_companhia", "cnpj", "tipo"]
+    rotulos = porta.ler(
+        ROTULOS_DE_ATRASO, como_era_em=ate, colunas=list(COLUNAS_DO_ATRASO)
     )
-    abertas = {
-        c for c in map(normalizar_cnpj, porta.distintos(DEMONSTRACOES, "cnpj")) if c
-    }
+    remuneracao = porta.ler(
+        REMUNERACAO, como_era_em=ate, colunas=list(COLUNAS_DA_REMUNERACAO)
+    )
+    # sem `publico_em` no contrato dos proventos: o prazo do FRE decide o que já era público
+    proventos = porta.ler(PROVENTOS, colunas=list(COLUNAS_DOS_PROVENTOS))
+    pareceres = porta.ler(
+        PARECERES, como_era_em=ate, colunas=list(COLUNAS_DOS_PARECERES)
+    )
+    insolvencia = porta.ler(
+        INSOLVENCIA, como_era_em=ate, colunas=list(COLUNAS_DA_INSOLVENCIA)
+    )
     return Cruzamentos(
         lucros=lucros_refeitos(balancos),
         auditor=trocas_de_auditor(trocas, balancos),
-        ofertas=ofertas_do_grupo(ofertas, controladas, abertas, ano),
+        atraso=atraso_e_refeito(rotulos, balancos),
+        remuneracao=remuneracao_e_lucro(remuneracao, lucro),
+        dividendo=dividendo_e_lucro(proventos, lucro, ate),
+        parecer=parecer_e_insolvencia(pareceres, insolvencia, ate),
         medido_em=ate.isoformat(),
     )
 
@@ -761,7 +986,10 @@ def cruzamentos_da_fotografia(dados: dict) -> Cruzamentos:
     return Cruzamentos(
         lucros=LucrosRefeitos(**dados["lucros"]),
         auditor=TrocasDeAuditor(**dados["auditor"]),
-        ofertas=OfertasDoGrupo(**dados["ofertas"]),
+        atraso=AtrasoERefeito(**dados["atraso"]),
+        remuneracao=RemuneracaoELucro(**dados["remuneracao"]),
+        dividendo=DividendoELucro(**dados["dividendo"]),
+        parecer=ParecerEInsolvencia(**dados["parecer"]),
         medido_em=dados["medido_em"],
     )
 
@@ -772,14 +1000,6 @@ def _milhar(numero: int) -> str:
 
 def _porcento(parte: int, todo: int) -> str:
     return f"{100 * parte / todo:.1f}%".replace(".", ",")
-
-
-def _bilhoes(reais: float) -> str:
-    return (
-        f"R$ {reais / BILHAO:,.1f} bilhões".replace(",", "_")
-        .replace(".", ",")
-        .replace("_", ".")
-    )
 
 
 def _fato_dos_lucros(lucros: LucrosRefeitos, data: str) -> Fato:
@@ -830,28 +1050,107 @@ def _fato_do_auditor(auditor: TrocasDeAuditor, data: str) -> Fato:
     )
 
 
-def _fato_das_ofertas(ofertas: OfertasDoGrupo, data: str) -> Fato:
+def _fato_do_atraso(atraso: AtrasoERefeito, data: str) -> Fato:
     return Fato(
-        chave="ofertas",
-        numero=_milhar(ofertas.do_grupo),
+        chave="atraso",
+        numero=_porcento(atraso.atrasados_refeitos, atraso.atrasados),
         texto=(
-            f"das {_milhar(ofertas.ofertas)} ofertas de ações, debêntures e notas registradas na CVM em {ofertas.ano} "
-            f"vieram de "
-            f"{_milhar(ofertas.grupos)} grupos de companhias abertas, com {_bilhoes(ofertas.valor_do_grupo)}. "
-            f"Em {_milhar(ofertas.por_controlada)} delas, quem emitiu foi uma controlada, não a companhia."
+            f"dos {_milhar(atraso.atrasados)} balanços anuais entregues à CVM depois do prazo tiveram o "
+            f"lucro do ano mudado em mais de 1% até o balanço seguinte. Nos {_milhar(atraso.no_prazo)} "
+            f"entregues no prazo, foram {_porcento(atraso.no_prazo_refeitos, atraso.no_prazo)}; nos "
+            f"{_milhar(atraso.graves)} com mais de 30 dias de atraso, "
+            f"{_porcento(atraso.graves_refeitos, atraso.graves)}."
         ),
-        fonte="CVM: ofertas da Resolução 160, formulário de referência (FRE) e DFP",
-        tabelas=(OFERTAS, CONTROLADAS, DEMONSTRACOES),
+        fonte="CVM: demonstrações financeiras padronizadas (DFP) e as datas de entrega",
+        tabelas=(ROTULOS_DE_ATRASO, DEMONSTRACOES),
         data=data,
         como_foi_calculado=(
-            f"As ofertas da Resolução CVM 160 com registro em {ofertas.ano}, encerradas ou com registro "
-            "concedido (as caducadas, revogadas e suspensas ficam de fora), de ações, debêntures, notas "
-            "comerciais e promissórias e CPR financeira. Cotas de fundo e títulos de securitização (CRI, "
-            "CRA) ficam de fora: não são captação da empresa que aparece como emissora. O grupo é a companhia "
-            "aberta "
-            "com as controladas que ela declara no formulário de referência, como ele era em "
-            f"31/12/{ofertas.ano}; coligadas e ligações sem o tipo não entram. O valor é o registrado "
-            f"na oferta; as {_milhar(ofertas.ofertas)} ofertas desses títulos somam {_bilhoes(ofertas.valor)}."
+            "O prazo da DFP é o da CVM (três meses depois do fim do exercício) e o atraso é um rótulo "
+            "nosso: a primeira entrega registrada no sistema da CVM depois do prazo, contada em dias "
+            "úteis; grave quando passa de 30 dias corridos. O lucro mudado segue a regra do primeiro "
+            "cartão, e só entram os balanços que já têm o do ano seguinte. Atrasar não quer dizer "
+            "erro no balanço: o cartão mostra uma frequência, não uma causa."
+        ),
+    )
+
+
+def _fato_da_remuneracao(remuneracao: RemuneracaoELucro, data: str) -> Fato:
+    return Fato(
+        chave="remuneracao",
+        numero=_porcento(
+            remuneracao.lucro_caiu_e_remuneracao_subiu, remuneracao.lucro_caiu
+        ),
+        texto=(
+            f"dos {_milhar(remuneracao.lucro_caiu)} exercícios em que o lucro caiu mais de 20% (ou virou "
+            f"prejuízo) tiveram a remuneração total da diretoria estatutária maior que no ano anterior. "
+            f"Quando o lucro cresceu mais de 20%, ela subiu em "
+            f"{_porcento(remuneracao.lucro_subiu_e_remuneracao_subiu, remuneracao.lucro_subiu)} dos "
+            f"{_milhar(remuneracao.lucro_subiu)}."
+        ),
+        fonte="CVM: formulário de referência (FRE, remuneração dos administradores) e DFP",
+        tabelas=(REMUNERACAO, DEMONSTRACOES),
+        data=data,
+        como_foi_calculado=(
+            "A remuneração total reconhecida da diretoria estatutária em cada exercício, como o último "
+            "formulário de referência público a informa (a CVM reescreve os anos antigos), só nos "
+            "exercícios inteiros já encerrados quando o formulário saiu: o valor previsto para o ano em "
+            "curso fica de fora. O lucro é o do período na DRE da DFP, consolidado ou individual. Cada "
+            f"par é um exercício e o anterior: {_milhar(remuneracao.pares)} pares, de "
+            f"{remuneracao.primeiro_exercicio} a {remuneracao.ultimo_exercicio}, em "
+            f"{_milhar(remuneracao.companhias)} companhias; em todos eles, a remuneração subiu em "
+            f"{_porcento(remuneracao.remuneracao_subiu, remuneracao.pares)}. Ela pode subir porque "
+            "entraram diretores ou porque o pagamento foi combinado antes do resultado."
+        ),
+    )
+
+
+def _fato_do_dividendo(dividendo: DividendoELucro, data: str) -> Fato:
+    return Fato(
+        chave="dividendo",
+        numero=_milhar(dividendo.acima_do_lucro),
+        texto=(
+            f"dos {_milhar(dividendo.exercicios)} exercícios com dividendo declarado no formulário de "
+            f"referência, de {dividendo.primeiro_exercicio} a {dividendo.ultimo_exercicio}, pagaram mais "
+            f"do que o lucro do ano no balanço ({_milhar(dividendo.companhias_acima)} companhias). Em "
+            f"{_milhar(dividendo.com_prejuizo)} deles, o ano fechou em prejuízo."
+        ),
+        fonte="CVM: formulário de referência (FRE, proventos) e DFP",
+        tabelas=(PROVENTOS, DEMONSTRACOES),
+        data=data,
+        como_foi_calculado=(
+            "O dividendo total do exercício (dividendos e juros sobre capital próprio) que o formulário "
+            "de referência declara, na última versão cujo prazo de entrega (cinco meses depois do fim "
+            "do exercício a que o formulário se refere) já tinha passado, comparado com o lucro do "
+            "período na DRE do mesmo exercício, consolidado ou individual. Pagar mais do que o lucro do "
+            "ano é permitido: sai de reservas ou de lucros de anos anteriores; o cartão só conta. A CVM "
+            "tirou a tabela de proventos do formulário aberto depois de 2022, e a série para ali. "
+            f"São {_milhar(dividendo.companhias)} companhias."
+        ),
+    )
+
+
+def _fato_do_parecer(parecer: ParecerEInsolvencia, data: str) -> Fato:
+    return Fato(
+        chave="parecer",
+        numero=_porcento(parecer.com_duvida_e_insolvencia, parecer.com_duvida),
+        texto=(
+            f"dos {_milhar(parecer.com_duvida)} pareceres de auditoria com incerteza relevante sobre a "
+            f"continuidade da companhia foram seguidos, em 24 meses, de recuperação judicial ou "
+            f"extrajudicial, falência ou liquidação. Entre os {_milhar(parecer.sem_duvida)} sem esse "
+            f"alerta, foram {_porcento(parecer.sem_duvida_e_insolvencia, parecer.sem_duvida)}."
+        ),
+        fonte="CVM: relatório do auditor na DFP e comunicados das companhias",
+        tabelas=(PARECERES, INSOLVENCIA),
+        data=data,
+        como_foi_calculado=(
+            "Cada parecer de auditoria da DFP (a última versão pública de cada exercício) publicado há "
+            f"mais de 24 meses, de {parecer.primeiro_exercicio} a {parecer.ultimo_exercicio}. O alerta é "
+            "o parágrafo de incerteza relevante sobre a continuidade operacional, lido pelo nosso "
+            "rótulo no texto do relatório; o relatório curto ou ambíguo fica de fora. A insolvência é o "
+            "primeiro pedido ou decreto que a própria companhia comunicou à CVM (fato relevante ou "
+            "formulário); a companhia que já estava em recuperação quando o parecer saiu não entra. "
+            f"São {_milhar(parecer.companhias_com_duvida)} companhias com o alerta. O auditor descreve o "
+            "que vê: o cartão mostra uma frequência, não uma previsão."
         ),
     )
 
@@ -862,7 +1161,10 @@ def fatos_agregados(cruzamentos: Cruzamentos) -> list[Fato]:
     return [
         _fato_dos_lucros(cruzamentos.lucros, data),
         _fato_do_auditor(cruzamentos.auditor, data),
-        _fato_das_ofertas(cruzamentos.ofertas, data),
+        _fato_do_atraso(cruzamentos.atraso, data),
+        _fato_da_remuneracao(cruzamentos.remuneracao, data),
+        _fato_do_dividendo(cruzamentos.dividendo, data),
+        _fato_do_parecer(cruzamentos.parecer, data),
     ]
 
 
