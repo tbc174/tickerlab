@@ -654,3 +654,60 @@ def test_sem_nenhum_cotahist_e_atrasado():
 def test_lista_curta_de_pregoes_nao_tem_risco():
     """Com poucos pregões conhecidos (acervo começando), todos são recentes."""
     assert b3.dias_em_risco([date(2026, 10, 9), date(2026, 10, 13)], set()) == []
+
+
+def test_contratos_do_pr_trazem_o_ajuste_do_di_em_taxa_e_o_do_dolar_em_preco(tmp_path):
+    """DI1: a taxa de ajuste (% ao ano), não o preço unitário; DOL: o preço de ajuste (R$ por US$ 1.000).
+    Contrato sem negócio no dia também tem ajuste; ação e contrato de outro prefixo ficam de fora."""
+    caminho = zip_do_boletim(
+        tmp_path,
+        {
+            "BVBG.086.01_A.xml": (
+                datetime(2026, 10, 27, 21, 0, tzinfo=UTC),
+                xml_do_boletim(
+                    [
+                        relatorio(
+                            "DI1F29",
+                            TradQty="139933",
+                            AdjstdQt="74289.66",
+                            AdjstdQtTax="14.76",
+                            PrvsAdjstdQt="73646.86",
+                            PrvsAdjstdQtTax="15.223",
+                        ),
+                        relatorio("DI1F35", AdjstdQtTax="14.1", PrvsAdjstdQtTax="14.2"),
+                        relatorio(
+                            "DOLX26",
+                            TradQty="41018",
+                            AdjstdQt="5350.365",
+                            PrvsAdjstdQt="5422.909",
+                        ),
+                        PETR4_NO_BOLETIM,
+                        relatorio(
+                            "WINZ26",
+                            TradQty="9",
+                            AdjstdQt="176000",
+                            PrvsAdjstdQt="177000",
+                        ),
+                    ]
+                ),
+            )
+        },
+    )
+    contratos = b3.ler_contratos_do_pr(caminho)
+    assert sorted(contratos.index) == ["DI1F29", "DI1F35", "DOLX26"]
+    assert tuple(contratos.loc["DI1F29"]) == (14.76, 15.223)
+    assert tuple(contratos.loc["DI1F35"]) == (14.1, 14.2)
+    assert tuple(contratos.loc["DOLX26"]) == (5350.365, 5422.909)
+
+
+def test_contrato_sem_ajuste_fica_de_fora(tmp_path):
+    caminho = zip_do_boletim(
+        tmp_path,
+        {
+            "BVBG.086.01_A.xml": (
+                datetime(2026, 10, 27, 21, 0, tzinfo=UTC),
+                xml_do_boletim([relatorio("DOLF27", PrvsAdjstdQt="5400")]),
+            )
+        },
+    )
+    assert b3.ler_contratos_do_pr(caminho).empty
