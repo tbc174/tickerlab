@@ -21,7 +21,7 @@ from base.setoriais import (
     prazos,
     revisoes,
 )
-from base.vitrine import EM_CONSULTA, situacao_da_licenca
+from base.vitrine import LICENCIADA, situacao_da_licenca
 from src.banco.coletas import (
     Marca,
     licenca_da_fonte,
@@ -294,20 +294,23 @@ def test_comex_revisao_do_mdic_vale_so_desde_a_coleta(exportacao):
     assert depois["vl_fob_usd"].sum() == pytest.approx(revisado["vl_fob_usd"].sum())
 
 
-# --- Licença: o Comex fica de uso interno -----------------------------------------------------------
-def test_preco_medio_nao_e_vendavel_e_aparece_em_consulta():
+# --- Licença: o Comex é vendável com atribuição desde a resposta do MDIC (21/10/2026) ---------------
+def test_preco_medio_e_vendavel_com_atribuicao_e_licenciado():
+    """Até 29/10/2026 a tabela era de uso interno (marca "a confirmar"); o MDIC respondeu por
+    LAI que os dados abertos da Secex têm uso livre, inclusive comercial, citando Secex/MDIC."""
     from base.dicionario import TABELAS
 
     tabela = TABELAS["comex_preco_medio"]
     assert tabela.familia_da_fonte == "comexstat"
-    assert marca_da_fonte(tabela.familia_da_fonte) is not Marca.VENDAVEL
-    assert revenda_da_fonte(tabela.familia_da_fonte).startswith("a confirmar")
+    assert marca_da_fonte(tabela.familia_da_fonte) is Marca.VENDAVEL
+    assert revenda_da_fonte(tabela.familia_da_fonte).startswith("vendável")
     licenca = licenca_da_fonte(tabela.familia_da_fonte)
     assert (
         situacao_da_licenca(licenca, revenda_da_fonte(tabela.familia_da_fonte))
-        == EM_CONSULTA
+        == LICENCIADA
     )
-    assert "Uso interno" in tabela.descricao or "uso interno" in tabela.descricao
+    assert "Secex/MDIC" in tabela.descricao
+    assert "uso interno" not in tabela.descricao.lower()
 
 
 def test_concessionarios_e_ferrovias_vem_de_fonte_com_licenca_escrita():
