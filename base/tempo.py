@@ -37,6 +37,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "registro", "registrada_desde", "inicio_listagem", "inicio_negociacao",
         "entrada_em_operacao", "entrada_em_teste", "fechamento_em", "infracao_em",
         "primeira_inscricao", "ultima_inscricao", "ultima_alteracao_em", "instante",
+        "transito_em_julgado",
     ),
     "ate": (
         "ate", "valido_ate", "cancelamento", "DT_CANCEL", "desativada_em", "fim_listagem",
@@ -78,6 +79,7 @@ COLUNAS_A_CONFERIR = frozenset(
         "data_vencimento",
         "fechado_em",
         "gerado_em",
+        "informado_em",  # o órgão informou a sanção à CGU (antes de ficar pública?)
         "mes",
         "montado_em",
         "porte_publico_em",
