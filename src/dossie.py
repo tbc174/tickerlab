@@ -83,22 +83,27 @@ TITULOS_DAS_TABELAS = {
     "fundos_por_mes": "Fundos com a empresa, mês a mês",
     "entidades_ligadas": "Entidades da agência ligadas à companhia",
     "reapresentacoes": "Lucro e receita refeitos depois de publicados",
+    "lucro_por_exercicio": "Lucro do período de cada exercício (DFP)",
     "releases_diferentes": "Release diferente do ITR ou da DFP",
     "releases_por_classe": "Release contra o ITR ou a DFP, por resultado",
     "insiders_por_cargo": "Insiders nos últimos 12 meses, por cargo",
     "insiders_janelas": "Insiders: 12 meses contra os 12 anteriores",
     "eventos_de_capital": "Eventos de capital dos últimos 10 anos",
     "fundos_janelas": "Compras e vendas dos fundos: 12 meses contra os 12 anteriores",
+    "proventos_por_exercicio": "Lucro ajustado e dividendo de cada exercício (FRE)",
     "caixa_por_exercicio": "EBITDA, capex e FCF de cada exercício (DFP)",
     "governanca_por_ano": "Conselho, comitês e diversidade em cada FRE",
     "comites": "Comitês no FRE mais recente",
     "remuneracao_por_exercicio": "Remuneração da administração por exercício",
     "remuneracao_por_orgao": "Remuneração no último exercício, por órgão",
+    "remuneracao_da_diretoria_por_exercicio": "Remuneração da Diretoria Estatutária por exercício",
     "ratings": "Último rating de cada agência",
     "ratings_janelas": "Ações de rating: 12 meses contra os 12 anteriores",
+    "acoes_de_rating": "Ações das agências de rating, com a nota anterior",
     "assembleias_janelas": "Assembleias de debenturistas: 12 meses contra os 12 anteriores",
     "assembleias_por_tema": "Assembleias de debenturistas por tema do assunto",
     "assembleias_recentes": "Últimos documentos de assembleias de debenturistas",
+    "assembleias_de_aperto": "Assembleias de debenturistas de aperto (waiver, covenant, vencimento)",
     "negocios": "Últimos documentos de negócios",
     "negocios_por_ano": "Documentos de negócios por ano",
     "ma_por_ano": "Negócios de M&A por ano em que ficaram conhecidos",
@@ -578,7 +583,8 @@ _PALAVRAS_COM_ACENTO = {
 }
 
 
-def _agencia_de_rating(valor: object) -> str:
+def agencia_de_rating(valor: object) -> str:
+    """O nome da agência como a ficha o escreve ("fitch" → "Fitch"); código desconhecido sai como veio."""
     return _AGENCIA_DE_RATING.get(str(valor), str(valor))
 
 
@@ -705,6 +711,11 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("trocado_em", "Refeito em", dia),
         ("diferenca_pct", "Diferença", _variacao),
     ],
+    "lucro_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("lucro", "Lucro do período", reais),
+        ("divulgado_em", "Público desde", dia),
+    ],
     "releases_diferentes": [
         ("periodo", "Trimestre", _texto),
         ("linha", "Linha", _texto),
@@ -742,6 +753,13 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("compras", "Compras dos fundos", reais),
         ("vendas", "Vendas dos fundos", reais),
     ],
+    "proventos_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("lucro_ajustado", "Lucro ajustado", reais),
+        ("dividendo_total", "Dividendo total", reais),
+        ("payout", "Payout", fracao),
+        ("conhecido_em", "FRE entregue em", dia),
+    ],
     "caixa_por_exercicio": [
         ("exercicio", "Exercício", _ano),
         ("receita", "Receita", reais),
@@ -778,8 +796,13 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("media", "Média", reais),
         ("menor", "Menor individual", reais),
     ],
+    "remuneracao_da_diretoria_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("total", "Total da Diretoria Estatutária", reais),
+        ("conhecido_em", "FRE entregue em", dia),
+    ],
     "ratings": [
-        ("agencia", "Agência", _agencia_de_rating),
+        ("agencia", "Agência", agencia_de_rating),
         ("escala", "Escala", _codigo),
         ("nota", "Nota", _texto),
         ("perspectiva", "Perspectiva", _codigo),
@@ -793,6 +816,15 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("rebaixamentos", "Rebaixamentos", inteiro),
         ("elevacoes", "Elevações", inteiro),
     ],
+    "acoes_de_rating": [
+        ("publico_em", "Publicado em", dia),
+        ("agencia", "Agência", agencia_de_rating),
+        ("escala", "Escala", _codigo),
+        ("acao", "Ação", _codigo),
+        ("nota_anterior", "Nota anterior", _texto),
+        ("nota", "Nota", _texto),
+        ("perspectiva", "Perspectiva", _codigo),
+    ],
     "assembleias_janelas": [
         ("janela", "Período", _texto),
         ("ate", "Até", dia),
@@ -804,6 +836,11 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("12_meses_anteriores", "12 meses anteriores", inteiro),
     ],
     "assembleias_recentes": [
+        ("publico_em", "Data", dia),
+        ("especie", "Documento", _texto),
+        ("assunto", "Assunto, como a empresa escreveu", _texto),
+    ],
+    "assembleias_de_aperto": [
         ("publico_em", "Data", dia),
         ("especie", "Documento", _texto),
         ("assunto", "Assunto, como a empresa escreveu", _texto),
