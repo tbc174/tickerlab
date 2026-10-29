@@ -1,0 +1,91 @@
+{
+  "tabela": "bcb_rde_ied",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_na_fonte": {
+      "descricao": "O código, a ocorrência, o mês e o país juntos por `|`",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres) da empresa que recebeu o investimento",
+      "unidade": "texto"
+    },
+    "codigo_rde": {
+      "descricao": "Código do registro no RDE-IED",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da empresa que recebeu",
+      "unidade": "texto"
+    },
+    "pais": {
+      "descricao": "País do investidor estrangeiro",
+      "unidade": "texto"
+    },
+    "ocorrencia": {
+      "descricao": "`REGISTRO EFETUADO` ou `REGISTRO ENCERRADO`",
+      "unidade": "texto"
+    },
+    "mes": {
+      "descricao": "Mês da ocorrência (o 1º dia do mês)",
+      "unidade": "data (dia)"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que o arquivista viu a linha",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "mes",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "mes": "a_conferir",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-10-29",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": true,
+  "frequencia": "Parada desde dez/2022 (o arquivista confere todo mês)",
+  "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
+}

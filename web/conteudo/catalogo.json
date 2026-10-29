@@ -30,13 +30,14 @@
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "modulos": [
         "credito_e_fidc",
+        "governo_e_sancoes",
         "macro",
         "mercado_e_empresas"
       ],
       "orgao": "Banco Central",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 5
+      "tabelas": 6
     },
     {
       "historico_desde": "2026-10-16",
@@ -70,6 +71,18 @@
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANEEL",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 2
     },
     {
       "historico_desde": "2026-10-14",
@@ -126,17 +139,6 @@
       ],
       "orgao": "ANAC",
       "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANEEL",
-      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -273,6 +275,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-29",
+      "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MME",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
@@ -337,7 +350,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 17
+      "tabelas": 20
     },
     {
       "chave": "credito_e_fidc",
@@ -4405,6 +4418,36 @@
     },
     {
       "atraso": null,
+      "frase": "Projetos de geração e transmissão de energia enquadrados no REIDI (MME), por CNPJ, com a portaria, a execução e o benefício fiscal.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MME",
+      "situacao": "em consulta",
+      "tabela": "mme_reidi"
+    },
+    {
+      "atraso": null,
+      "frase": "Descontos tarifários pagos pela Conta de Desenvolvimento Energético (CDE, ANEEL), somados por CNPJ, mês, distribuidora, classe.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_cde"
+    },
+    {
+      "atraso": null,
+      "frase": "Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela raiz do CNPJ da empresa que recebeu, de nov/2011 a dez/2022 (a série parou aí).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_rde_ied"
+    },
+    {
+      "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -4755,9 +4798,9 @@
     }
   ],
   "totais": {
-    "fontes": 29,
-    "fontes_em_consulta": 8,
+    "fontes": 30,
+    "fontes_em_consulta": 9,
     "modulos": 6,
-    "tabelas": 110
+    "tabelas": 113
   }
 }
