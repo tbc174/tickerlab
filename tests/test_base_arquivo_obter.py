@@ -304,19 +304,21 @@ CADASTROS_DE_LICENCAS = (
 COLUNA_DE_PESSOA = (
     "RAZAO", "FANTASIA", "TITULAR", "NOME_TRANSPORTADOR", "NOME ENTIDADE", "REPRESENTANTE",
     "RESPONSAVEL", "EMAIL", "ELETRÔNICO", "TELEFONE", "CEP", "ENDERECO", "LOGRADOURO", "BAIRRO",
-    "HOMEPAGE", "SAC",
+    "HOMEPAGE", "SAC", "RAZÃO", "NOMCLIENTE", "NOMAGENTE", "NOMEPESSOA",
 )  # fmt: skip
 
 
 @pytest.mark.parametrize(
     "colunas",
-    [c.colunas for c in CADASTROS_DE_LICENCAS] + [fontes.COLUNAS_DO_RNTRC],
+    [c.colunas for c in CADASTROS_DE_LICENCAS]
+    + [fontes.COLUNAS_DO_RNTRC, fontes.COLUNAS_DO_REIDI, fontes.COLUNAS_DA_CDE]
+    + [fontes.COLUNAS_DA_CDE_NA_REDE_BASICA, fontes.CAMPOS_DO_RDE_IED],
 )
 def test_cadastros_de_licencas_nao_guardam_coluna_de_pessoa(colunas):
     for coluna in colunas:
         nome = coluna.upper().replace(" DO ", " ").replace(" DA ", " ")
-        if nome == "CPF/CNPJ TITULAR":
-            continue  # o documento, que só fica quando é CNPJ
+        if nome in ("CPF/CNPJ TITULAR", "CNPJBASERECEPTORA"):
+            continue  # o documento (só fica quando é CNPJ); "receptora" tem "CEP" no meio
         assert not any(p in nome for p in COLUNA_DE_PESSOA), coluna
 
 
@@ -599,3 +601,121 @@ def test_vigia_do_cnpj_usa_a_rota_da_ficha_que_aceita_a_chave():
     assert fontes.FICHA_DO_CNPJ_NO_DADOS_GOV_BR.startswith(
         "https://dados.gov.br/dados/api/publico/conjuntos-dados/"
     )
+
+
+def _recurso(url: str, formato: str) -> dict:
+    return {"url": url, "format": formato}
+
+
+PASTA_DA_CDE = "https://dadosabertos.aneel.gov.br/dataset/cde/resource"
+
+
+def test_cde_pega_os_meses_mais_novos_e_a_rede_basica(monkeypatch):
+    meses = [f"{PASTA_DA_CDE}/{i}/download/cde-beneficiarios-01{m}" for i, m in enumerate(
+        ("jan2025.zip", "dec2024.zip", "MAY2026.zip", "feb2025.zip")
+    )]  # fmt: skip
+    pacote = {
+        "result": {
+            "resources": [
+                *(_recurso(url, "ZIP") for url in meses),
+                _recurso(f"{PASTA_DA_CDE}/9/download/cde-beneficiarios-rede-basica-2024.csv", "CSV"),
+                _recurso(f"{PASTA_DA_CDE}/8/download/dm-beneficiarios-da-cde.pdf", "PDF"),
+            ]
+        }
+    }  # fmt: skip
+    url_do_pacote = (
+        f"{fontes.PORTAL_DA_ANEEL}/api/3/action/package_show?id={fontes.PACOTE_DA_CDE}"
+    )
+    servidor = ServidorComTrechos({url_do_pacote: json.dumps(pacote).encode()})
+    monkeypatch.setattr(fontes, "MESES_DA_CDE", 2)
+    alvos = fontes.descobrir_cde(servidor, AGORA)
+    assert [a.url.rsplit("-", 1)[-1] for a in alvos] == [
+        "01feb2025.zip", "01MAY2026.zip", "2024.csv",
+    ]  # fmt: skip
+    assert all(a.obter is not None and a.extensao == ".csv" for a in alvos)
+
+
+def test_cde_sem_zip_mensal_falha():
+    url_do_pacote = (
+        f"{fontes.PORTAL_DA_ANEEL}/api/3/action/package_show?id={fontes.PACOTE_DA_CDE}"
+    )
+    pacote = {"result": {"resources": [_recurso("https://x/a.csv", "CSV")]}}
+    servidor = ServidorComTrechos({url_do_pacote: json.dumps(pacote).encode()})
+    with pytest.raises(coleta.ErroDeDescoberta, match="ZIP mensal"):
+        fontes.descobrir_cde(servidor, AGORA)
+
+
+def test_cde_mensal_tira_o_cpf_e_o_nome_do_cliente(tmp_path):
+    """O CSV de dentro do ZIP traz cada unidade consumidora: a linha de CPF (tarifa social, rural)
+    não chega ao acervo, e o nome do cliente sai de todas."""
+    cabecalho = ",".join(
+        (*fontes.COLUNAS_DA_CDE[:10], "NomCliente", *fontes.COLUNAS_DA_CDE[10:])
+    )
+    inicio = "01/07/2026,05/2026,DISTRIB,11111111000191,3550308,1,2,3.30,6,1"
+    csv_ = (
+        f"{cabecalho}\n"
+        f'{inicio},EMPRESA FICTICIA,12345678000195,SubsIrrigacao,"1.234,56"\n'
+        f'{inicio},PESSOA FICTICIA,12345678909,SubsBaixaRenda,"12,30"\n'
+    )
+    url = f"{PASTA_DA_CDE}/1/download/cde-beneficiarios-01may2026.zip"
+    servidor = ServidorComTrechos({url: _zip({"cde.csv": csv_.encode("latin-1")})})
+    alvo = fontes.CsvDeCadastro(
+        url,
+        fontes.COLUNAS_DA_CDE,
+        "NumCPFCNPJCliente",
+        separador=",",
+        dentro_do_zip=True,
+    ).alvo()
+    assert alvo.obter is not None
+    destino = tmp_path / "cde.csv"
+    alvo.obter(servidor, destino)
+    texto = destino.read_text(encoding="latin-1")
+    assert "FICTICIA" not in texto and "12345678909" not in texto
+    assert texto.splitlines()[1].endswith(";12345678000195;SubsIrrigacao;1.234,56")
+
+
+def test_reidi_tira_a_razao_social_e_a_descricao(tmp_path):
+    cabecalho = (
+        "﻿Processo;CNPJ;Razão_Social;Municipio;UF;idt_projeto;Nome_do_Projeto;"
+        "Descrição_do_Projeto;Portaria;Data_inicio_portaria"
+    )
+    csv_ = (
+        f"{cabecalho}\n"
+        '1;12345678000195;EMPRESA FICTICIA S.A;Manaus;AM;7;UTE Ficticia;"texto\nlongo";Portaria 1;'
+        "01/02/2024\n"
+    )
+    servidor = ServidorComTrechos({fontes.REIDI_DO_MME: csv_.encode("utf-8")})
+    alvo = fontes.REIDI_FILTRADO.alvo()
+    assert alvo.obter is not None
+    destino = tmp_path / "reidi.csv"
+    alvo.obter(servidor, destino)
+    assert destino.read_text(encoding="utf-8").splitlines() == [
+        "Processo;CNPJ;Municipio;UF;idt_projeto;Nome_do_Projeto;Portaria;Data_inicio_portaria",
+        "1;12345678000195;Manaus;AM;7;UTE Ficticia;Portaria 1;01/02/2024",
+    ]
+
+
+def test_rde_ied_tira_o_nome_do_investidor_e_da_empresa(tmp_path):
+    item = {
+        "CodigoRDE": "IA000001", "CnpjBaseReceptora": "12345678",
+        "NomePessoaNacional": "EMPRESA FICTICIA LTDA", "UfPessoaNacional": "SP",
+        "NomePessoaEstrangeira": "PESSOA FICTICIA", "PaisPessoaEstrangeira": "PANAMA",
+        "Ocorrencia": "REGISTRO EFETUADO", "Ano": 2020, "Mes": 5,
+    }  # fmt: skip
+    servidor = ServidorComTrechos(
+        {fontes.REGISTROS_DO_RDE_IED: json.dumps({"value": [item]}).encode()}
+    )
+    (alvo,) = fontes.descobrir_rde_ied(servidor, AGORA)
+    assert alvo.obter is not None
+    destino = tmp_path / "rde.json"
+    alvo.obter(servidor, destino)
+    (gravado,) = json.loads(destino.read_text(encoding="utf-8"))["value"]
+    assert "FICTICIA" not in json.dumps(gravado)
+    assert gravado["CnpjBaseReceptora"] == "12345678" and gravado["Ano"] == 2020
+
+
+def test_lei_do_bem_e_8387_ficam_de_fora_das_fontes():
+    """Lei do Bem sem CNPJ e Lei 8.387 com o arquivo fora do ar (29/10/2026): sem coleta (fila)."""
+    ids = {f.id for f in fontes.FONTES}
+    assert {"mme-reidi", "aneel-cde", "bcb-rde-ied"} <= ids
+    assert not any(i.startswith(("mcti-", "suframa-")) for i in ids)
