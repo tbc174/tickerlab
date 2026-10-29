@@ -788,6 +788,171 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_dos_incentivos() -> dict[str, Tabela]:
+    """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE e RDE-IED."""
+    situacao = {
+        "consta": (
+            "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075)"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que o arquivista viu a linha", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também "
+                "no 1º (a fonte não diz quando publicou cada linha)"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    so_pj = (
+        "Só pessoa jurídica: CPF e nome (do cliente, do agente, do investidor, da empresa) saem na "
+        "coleta; empresário individual e MEI ficam com `trata_como_pessoa`."
+    )
+    atraso = (
+        "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o "
+        "arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas "
+        "colunas delas"
+    )
+
+    def tabela(
+        nome: str,
+        descricao: str,
+        fonte: str,
+        familia: str,
+        frequencia: str,
+        colunas: dict[str, tuple[str, str]],
+    ) -> Tabela:
+        return Tabela(
+            descricao=descricao + " " + so_pj,
+            fonte=fonte + " (`base/incentivos.py`)",
+            familia_da_fonte=familia,
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                f"Parquet em `<acervo>/base/{nome}/<arquivo>.parquet` (servidor de casa, "
+                "`scripts/carga_incentivos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={**colunas, **situacao},
+        )
+
+    reidi = {
+        "id_na_fonte": ("O processo e o projeto juntos por `|`", TEXTO),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "processo": ("Número do processo no MME", TEXTO),
+        "projeto": ("Código do projeto no MME", TEXTO),
+        "nome_do_projeto": (
+            "Nome do projeto (a usina ou a linha de transmissão)",
+            TEXTO,
+        ),
+        "portaria": ("Portaria de enquadramento, como a fonte escreve", TEXTO),
+        "uf": ("UF do projeto (NI quando a fonte não identifica)", TEXTO),
+        "municipio": ("Município do projeto, como a fonte escreve", TEXTO),
+        "portaria_em": ("Início da portaria de enquadramento", DATA),
+        "execucao_desde": ("Início da execução do projeto", DATA),
+        "execucao_ate": ("Fim previsto da execução do projeto", DATA),
+        "valor_com_incidencia": ("Total do projeto com PIS/Pasep e Cofins", REAIS),
+        "valor_sem_incidencia": ("Total do projeto sem PIS/Pasep e Cofins", REAIS),
+        "valor_do_beneficio": ("Benefício fiscal estimado (a diferença)", REAIS),
+    }
+    cde = {
+        "arquivo": (
+            "`mensal` (beneficiários) ou `rede_basica` (descontos na transmissão)",
+            TEXTO,
+        ),
+        "id_na_fonte": ("As colunas da soma juntas por `|`", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "cnpj": _EMPRESA["cnpj"],
+        "mes": ("Mês de referência (o 1º dia do mês)", DATA),
+        "distribuidora": ("Sigla da distribuidora (vazio na rede básica)", TEXTO),
+        "cnpj_da_distribuidora": (
+            "CNPJ da distribuidora, só os números (vazio na rede básica)",
+            TEXTO,
+        ),
+        "classe": ("Código da classe do consumidor, como a ANEEL escreve", TEXTO),
+        "grupo_tarifario": (
+            "Subgrupo tarifário (código) ou grupo (rede básica)",
+            TEXTO,
+        ),
+        "tipo_de_desconto": (
+            "Tipo de subsídio (`SubsCARFI`, `SubsRural`...) ou o código do tipo (rede básica)",
+            TEXTO,
+        ),
+        "valor_do_desconto": (
+            "Soma dos subsídios ou descontos pagos pela CDE no mês",
+            REAIS,
+        ),
+        "valor_cobrado": ("Soma da cobrança (só a rede básica informa)", REAIS),
+        "linhas": (
+            "Quantas linhas da fonte (unidades consumidoras ou agentes) foram somadas",
+            NUMERO,
+        ),
+        "gerado_em": ("Dia em que a ANEEL gerou o arquivo", DATA),
+    }
+    rde = {
+        "id_na_fonte": ("O código, a ocorrência, o mês e o país juntos por `|`", TEXTO),
+        "cnpj_basico": (
+            "Raiz do CNPJ (8 caracteres) da empresa que recebeu o investimento",
+            TEXTO,
+        ),
+        "codigo_rde": ("Código do registro no RDE-IED", TEXTO),
+        "uf": ("UF da empresa que recebeu", TEXTO),
+        "pais": ("País do investidor estrangeiro", TEXTO),
+        "ocorrencia": ("`REGISTRO EFETUADO` ou `REGISTRO ENCERRADO`", TEXTO),
+        "mes": ("Mês da ocorrência (o 1º dia do mês)", DATA),
+    }
+    return {
+        "mme_reidi": tabela(
+            "mme_reidi",
+            (
+                "Projetos de geração e transmissão de energia enquadrados no REIDI (MME), por CNPJ, "
+                "com a portaria, a execução e o benefício fiscal. Uma linha por valor diferente de "
+                "cada projeto: a mudança vira linha nova desde o dia em que foi vista, e o projeto "
+                "que some do arquivo ganha `consta` falso (`como_era_em` dá o retrato de um dia)."
+            ),
+            "MME: dados abertos, REIDI (processos deferidos)",
+            "mme",
+            "Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+            reidi,
+        ),
+        "aneel_cde": tabela(
+            "aneel_cde",
+            (
+                "Descontos tarifários pagos pela Conta de Desenvolvimento Energético (CDE, ANEEL), "
+                "somados por CNPJ, mês, distribuidora, classe, grupo tarifário e tipo de subsídio "
+                "(a fonte tem uma linha por unidade consumidora). Cada arquivo da ANEEL (um por "
+                "mês; um por ano na rede básica) é um Parquet; a republicação corrigida vira linha "
+                "nova."
+            ),
+            "ANEEL: dados abertos, beneficiários da CDE",
+            "aneel",
+            "Mensal (um arquivo novo por mês; a ANEEL pode republicar o mês corrigido)",
+            cde,
+        ),
+        "bcb_rde_ied": tabela(
+            "bcb_rde_ied",
+            (
+                "Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela raiz "
+                "do CNPJ da empresa que recebeu, de nov/2011 a dez/2022 (a série parou aí). A moeda "
+                "e o valor, sempre vazios na fonte, ficam de fora."
+            ),
+            "Banco Central: API Olinda, RDE-IED (registros)",
+            "bcb",
+            "Parada desde dez/2022 (o arquivista confere todo mês)",
+            rde,
+        ),
+    }
+
+
 TABELAS: dict[str, Tabela] = {
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -4277,6 +4442,7 @@ TABELAS: dict[str, Tabela] = {
     ),
     **_tabelas_das_sancoes(),
     **_tabelas_das_licencas(),
+    **_tabelas_dos_incentivos(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -6384,6 +6550,7 @@ _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
+_INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -6477,6 +6644,9 @@ _CONTRATO = {
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anm_titulos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "ancine_agentes": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
+    "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
+    "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
@@ -6572,6 +6742,18 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "ancine_agentes": {
         "pasta": "ancine_agentes",
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "mme_reidi": {
+        "pasta": "mme_reidi",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "aneel_cde": {
+        "pasta": "aneel_cde",
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "linhas", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "bcb_rde_ied": {
+        "pasta": "bcb_rde_ied",
+        "nao_nulas": ("id_na_fonte", "cnpj_basico", "codigo_rde", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "ans_penalidades": {
         "pasta": "ans_penalidades",
