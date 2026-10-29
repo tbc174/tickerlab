@@ -1023,6 +1023,55 @@
       "termos_lidos_em": "2026-10-15"
     },
     {
+      "id": "anvisa-empresas",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anvisa-produtos",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "antt-rntrc",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "mapa-sipeagro",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anatel-outorgas",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anm-cadastro-mineiro",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "ancine-agentes",
+      "licenca": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
       "id": "b3-negocios",
       "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
