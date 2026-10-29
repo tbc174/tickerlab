@@ -39,6 +39,8 @@ _SEM_VIGIA = {
             "mapa",
             "anm",
             "ancine",
+            # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
+            "mme",
             "susep",
             "ibama",
             "mte",

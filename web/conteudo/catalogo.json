@@ -1118,6 +1118,27 @@
       "termos_lidos_em": "2026-10-29"
     },
     {
+      "id": "mme-reidi",
+      "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "aneel-cde",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-rde-ied",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
       "id": "b3-negocios",
       "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
