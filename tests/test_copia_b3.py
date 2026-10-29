@@ -146,6 +146,33 @@ def test_freio_de_disco_para_antes_de_baixar(tmp_path):
     assert cliente.baixados == []
 
 
+def test_vps_com_37_gb_livres_de_96_copia(tmp_path):
+    # 28/10/2026: o freio do arquivista (50 GB livres) parava a cópia desde 25/10 com o disco do VPS
+    # 62% usado; lá vale a regra dos 70% e um mínimo pequeno (a cópia ocupa ~3 GB)
+    cliente = B3Falsa({URL: _zip()})
+    assert _copiar(cliente, tmp_path, livre_gb=37).novos == 1
+
+
+def test_vps_com_mais_de_70_por_cento_usado_ainda_freia(tmp_path):
+    cliente = B3Falsa({URL: _zip()})
+    with pytest.raises(coleta.FreioDeDisco):
+        _copiar(cliente, tmp_path, livre_gb=28)  # 71% usado
+    assert cliente.baixados == []
+
+
+def test_vps_freia_abaixo_do_minimo_mesmo_com_o_disco_pouco_usado(tmp_path):
+    cliente = B3Falsa({URL: _zip()})
+    with pytest.raises(coleta.FreioDeDisco):  # 9 GB livres de 20 GB: 55% usado
+        copia_b3.copiar_janela(
+            cliente,
+            tmp_path,
+            AGORA,
+            pausa=0,
+            espaco=lambda _: (20 * 1024**3, 9 * 1024**3),
+        )
+    assert cliente.baixados == []
+
+
 def test_retencao_apaga_so_os_dias_antigos(tmp_path):
     brutos = tmp_path / "brutos"
     for nome in ("2026-07-15", "2026-07-16", "2026-10-13", "outra-coisa"):
