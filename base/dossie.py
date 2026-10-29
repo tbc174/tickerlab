@@ -446,7 +446,7 @@ SECOES = (
     SecaoDaBase(
         "capital_e_acionistas",
         "Capital e acionistas",
-        ("negociacoes", "eventos_de_capital", "painel_dos_fundos"),
+        ("negociacoes", "eventos_de_capital", "painel_dos_fundos", "proventos"),
     ),
     SecaoDaBase(
         "governanca",
@@ -528,7 +528,8 @@ LIMITES = {
         "release é o que a empresa disse no press-release de resultado contra o ITR ou a DFP do "
         "mesmo período (receita, lucro dos controladores e resultado operacional): o número do "
         "release foi lido por um modelo de IA e conferido no texto do PDF, e diferença não é erro, "
-        "pode ser outro critério da empresa. O atraso de entrega está na ficha técnica (o prazo da "
+        "pode ser outro critério da empresa. O lucro de cada exercício é o da última DFP já divulgada "
+        "na data da ficha. O atraso de entrega está na ficha técnica (o prazo da "
         "CVM contra a entrega)."
     ),
     "capital_e_acionistas": (
@@ -538,14 +539,17 @@ LIMITES = {
         "empresa comprando (tesouraria), à parte. Eventos de capital (desdobramentos, grupamentos, "
         "bonificações e aumentos) vêm do Formulário de Referência (FRE). Compras e vendas dos "
         "fundos: o que as carteiras entregues à CVM (CDA) informam no mês, até o último mês "
-        "completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos."
+        "completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos. "
+        "Proventos: o lucro ajustado e o dividendo total de cada exercício como o FRE os informa, "
+        "pelo FRE mais novo já entregue na data da ficha (o dividendo declarado, não o pago no ano)."
     ),
     "governanca": (
         "Do Formulário de Referência (FRE) entregue à CVM, na versão mais nova já entregue na data da "
         "ficha; só contagens e somas, sem nomes. O conselho conta quem está só nele e quem é também "
         "diretor; independente e eleito por minoritários seguem o cargo que a empresa informa. A "
         "remuneração é a do último exercício encerrado, como a empresa a informa por órgão (o total e "
-        "a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. "
+        "a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. A "
+        "remuneração da Diretoria Estatutária por exercício é o total do órgão em cada FRE, sem nomes. "
         "Diversidade só existe no FRE de 2023 em diante."
     ),
     "credito": (
@@ -554,7 +558,11 @@ LIMITES = {
         "documentos conta uma vez, na data do primeiro. Assembleias de debenturistas: editais, atas "
         "e propostas entregues à CVM, na versão mais nova; o tema sai das palavras do assunto, que "
         "a empresa escreve, e pode deixar escapar ou incluir algum. Assembleia não quer dizer "
-        "problema: muitas só aprovam mudanças de rotina."
+        "problema: muitas só aprovam mudanças de rotina. As assembleias de aperto são as que o "
+        "TickerLab marca pelo assunto (waiver, covenant, vencimento antecipado, repactuação): um "
+        "rótulo nosso sobre as palavras da empresa, não um fato da CVM. A nota anterior de cada ação "
+        "de rating é a última da mesma agência e escala na base, que pode não ser a imediatamente "
+        "anterior."
     ),
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
@@ -1433,6 +1441,26 @@ def _trocas_recentes(trocas: pd.DataFrame, hoje: pd.Timestamp) -> list[dict[str,
     ]
 
 
+def _lucro_por_exercicio(como_era: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """O lucro do período de cada um dos últimos 10 exercícios, na última versão divulgada até hoje."""
+    if como_era.empty:
+        return pd.DataFrame()
+    linhas = _linhas_da_dre(como_era)
+    lucros = linhas[
+        (linhas["linha"] == LUCRO_DO_PERIODO) & (linhas["divulgado_em"] <= hoje)
+    ]
+    if lucros.empty:
+        return pd.DataFrame()
+    lucros = lucros[lucros["exercicio"] > lucros["exercicio"].max() - ANOS_NAS_SERIES]
+    atuais = lucros.sort_values(["divulgado_em", "conta"]).drop_duplicates(
+        "exercicio", keep="last"
+    )
+    tabela = atuais.sort_values("exercicio", ascending=False, ignore_index=True)
+    return tabela.assign(lucro=tabela["valor"].astype(float))[
+        ["exercicio", "lucro", "divulgado_em"]
+    ]
+
+
 def secao_qualidade_do_lucro(
     como_era: pd.DataFrame,
     releases: pd.DataFrame,
@@ -1445,7 +1473,11 @@ def secao_qualidade_do_lucro(
     itens = [*itens_da_dre, *itens_do_release, *_trocas_recentes(trocas, hoje)]
     if not itens:
         return None
-    tabelas = {"reapresentacoes": reapresentacoes, **tabelas_do_release}
+    tabelas = {
+        "reapresentacoes": reapresentacoes,
+        "lucro_por_exercicio": _lucro_por_exercicio(como_era, hoje),
+        **tabelas_do_release,
+    }
     return _secao("qualidade_do_lucro", itens, tabelas)
 
 
@@ -1592,26 +1624,71 @@ def _movimento_dos_fundos(
     return itens, pd.DataFrame(linhas)
 
 
+COLUNAS_DOS_PROVENTOS = (
+    "exercicio",
+    "lucro_ajustado",
+    "dividendo_total",
+    "payout",
+    "conhecido_em",
+)
+
+
+def _proventos_por_exercicio(
+    proventos: pd.DataFrame, hoje: pd.Timestamp
+) -> pd.DataFrame:
+    """O lucro ajustado e o dividendo de cada exercício encerrado, pelo FRE mais novo já entregue.
+
+    A tabela `proventos` não tem data de publicação própria: `conhecido_em` é a entrega do FRE que a
+    noite junta (`scripts.gerar_dossies`); linha sem essa data fica de fora (não dá para cortar o
+    futuro nela).
+    """
+    if proventos.empty or "conhecido_em" not in proventos.columns:
+        return pd.DataFrame()
+    conhecidos = proventos.assign(
+        conhecido_em=pd.to_datetime(proventos["conhecido_em"]),
+        exercicio=pd.to_datetime(proventos["exercicio"]),
+    ).dropna(subset=["conhecido_em", "exercicio"])
+    publicos = conhecidos[
+        (conhecidos["conhecido_em"] <= hoje)
+        & (conhecidos["exercicio"] <= hoje)
+        & (conhecidos["exercicio"] > hoje - pd.DateOffset(years=ANOS_NAS_SERIES))
+    ]
+    if publicos.empty:
+        return pd.DataFrame()
+    atuais = publicos.sort_values(["referencia", "versao"]).drop_duplicates(
+        "exercicio", keep="last"
+    )
+    tabela = atuais.sort_values("exercicio", ascending=False, ignore_index=True)
+    return tabela.assign(exercicio=tabela["exercicio"].dt.year)[
+        [*COLUNAS_DOS_PROVENTOS]
+    ]
+
+
 def secao_capital_e_acionistas(
     negociacoes: pd.DataFrame,
     eventos: pd.DataFrame,
     painel: pd.DataFrame,
     hoje: pd.Timestamp,
     ultimo_mes_completo: pd.Timestamp | None = None,
+    proventos: pd.DataFrame | None = None,
 ) -> dict[str, Any] | None:
-    """Insiders, eventos de capital e o movimento dos fundos (None: nada disso)."""
+    """Insiders, eventos de capital, o movimento dos fundos e os proventos (None: nada disso)."""
     itens_dos_insiders, tabelas_dos_insiders = _insiders(negociacoes, hoje)
     itens_dos_eventos, eventos_de_capital = _eventos_de_capital(eventos, hoje)
     itens_dos_fundos, fundos_janelas = _movimento_dos_fundos(
         painel, ultimo_mes_completo
     )
+    por_exercicio = _proventos_por_exercicio(
+        pd.DataFrame() if proventos is None else proventos, hoje
+    )
     itens = [*itens_dos_insiders, *itens_dos_eventos, *itens_dos_fundos]
-    if not itens:
+    if not itens and por_exercicio.empty:
         return None
     tabelas = {
         **tabelas_dos_insiders,
         "eventos_de_capital": eventos_de_capital,
         "fundos_janelas": fundos_janelas,
+        "proventos_por_exercicio": por_exercicio,
     }
     return _secao("capital_e_acionistas", itens, tabelas)
 
@@ -1744,8 +1821,37 @@ def _remuneracao(
     tabelas = {
         "remuneracao_por_exercicio": por_exercicio,
         "remuneracao_por_orgao": por_orgao.reset_index(drop=True),
+        "remuneracao_da_diretoria_por_exercicio": _remuneracao_da_diretoria(exercicios),
     }
     return itens, tabelas
+
+
+DIRETORIA_ESTATUTARIA = "Diretoria Estatutária"  # o nome do órgão no FRE
+
+
+def _remuneracao_da_diretoria(exercicios: pd.DataFrame) -> pd.DataFrame:
+    """O total pago à Diretoria Estatutária em cada exercício (`total_do_orgao`, nunca o da administração,
+    que a CVM repete em cada órgão de 2024 em diante), com a entrega do FRE que o informou."""
+    if "total_do_orgao" not in exercicios.columns:
+        return pd.DataFrame()
+    diretoria = exercicios[exercicios["orgao"] == DIRETORIA_ESTATUTARIA].dropna(
+        subset=["total_do_orgao"]
+    )
+    if diretoria.empty:
+        return pd.DataFrame()
+    por_exercicio = (
+        diretoria.groupby("fim_do_exercicio")
+        .agg(total=("total_do_orgao", "sum"), conhecido_em=("conhecido_em", "max"))
+        .sort_index(ascending=False)
+        .reset_index()
+    )
+    return pd.DataFrame(
+        {
+            "exercicio": pd.to_datetime(por_exercicio["fim_do_exercicio"]).dt.year,
+            "total": por_exercicio["total"].astype(float),
+            "conhecido_em": pd.to_datetime(por_exercicio["conhecido_em"]),
+        }
+    ).head(ANOS_DA_GOVERNANCA)
 
 
 def secao_governanca(
@@ -1789,6 +1895,7 @@ MESMO_RATING = [
 ASSEMBLEIA = (
     "assembleia"  # o aviso de pagamento e a notificação do agente não são assembleia
 )
+APERTO = "estresse"  # o rótulo da base para a assembleia de aperto de crédito (waiver, covenant...)
 TEMAS_DAS_ASSEMBLEIAS = {  # coluna `tema_*` de `debentures_assembleias` → nome na ficha
     "vencimento_antecipado": "Vencimento antecipado",
     "waiver": "Waiver",
@@ -1858,7 +1965,34 @@ def _ratings(
         _item("ratings_rebaixamentos_12m", "Rebaixamentos de rating em 12 meses", int(do_ano["rebaixamentos"]), "ações", base, publicado_em=publicado),
         _item("ratings_elevacoes_12m", "Elevações de rating em 12 meses", int(do_ano["elevacoes"]), "ações", base, publicado_em=publicado),
     ]  # fmt: skip
-    return itens, {"ratings": por_agencia, "ratings_janelas": janelas}
+    tabelas = {
+        "ratings": por_agencia,
+        "ratings_janelas": janelas,
+        "acoes_de_rating": _acoes_com_a_anterior(publicos),
+    }
+    return itens, tabelas
+
+
+COLUNAS_DAS_ACOES = (
+    "agencia", "escala", "acao", "nota", "nota_anterior", "nivel", "nivel_anterior",
+    "perspectiva", "publico_em", "link",
+)  # fmt: skip
+
+
+def _acoes_com_a_anterior(publicos: pd.DataFrame) -> pd.DataFrame:
+    """Cada ação pública com a nota (e o nível, 1 = AAA) da ação anterior da mesma agência e escala."""
+    acoes = publicos.sort_values("publico_em", kind="stable")
+    if "nivel" not in acoes.columns:
+        acoes = acoes.assign(nivel=None)
+    acoes = acoes.drop(columns="nota").rename(columns={"nota_original": "nota"})
+    da_mesma = acoes.groupby(["agencia", "escala"], sort=False)
+    acoes = acoes.assign(
+        nota_anterior=da_mesma["nota"].shift(1),
+        nivel_anterior=da_mesma["nivel"].shift(1),
+    )
+    return acoes.sort_values("publico_em", ascending=False, ignore_index=True)[
+        [*COLUNAS_DAS_ACOES]
+    ].head(LINHAS_NAS_LISTAS)
 
 
 def _assembleias_publicas(
@@ -1928,13 +2062,16 @@ def _assembleias(
         _data(hoje),
         publicado_em=_publicado(publicas, "debentures_assembleias"),
     )
+    fatos = ["publico_em", "especie", "assunto", "link"]
     tabelas = {
         "assembleias_janelas": janelas,
         "assembleias_por_tema": _por_tema(do_ano, do_ano_anterior),
-        "assembleias_recentes": recentes[
-            ["publico_em", "especie", "assunto", "link"]
-        ].head(LINHAS_NAS_LISTAS),
+        "assembleias_recentes": recentes[fatos].head(LINHAS_NAS_LISTAS),
     }
+    if APERTO in recentes.columns:
+        # o rótulo da base vira uma tabela só com os fatos: a coluna em si não sai na ficha
+        de_aperto = recentes[recentes[APERTO].fillna(False).astype(bool)]
+        tabelas["assembleias_de_aperto"] = de_aperto[fatos].head(LINHAS_NAS_LISTAS)
     return [item], tabelas
 
 
