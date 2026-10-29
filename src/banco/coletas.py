@@ -707,11 +707,6 @@ CAMINHOS_DO_YAHOO: tuple[CaminhoDoYahoo, ...] = (
         "P/L e P/VP nos padrões setoriais (só com --com-precos; a trava tira da ficha)",
         _BASE_PROPRIA,
     ),
-    CaminhoDoYahoo(
-        ("scripts/coletar_iex_do_dia.py", "scripts/medir_iex_um_dia.py"),
-        "conferência do fechamento da IEX contra o Yahoo; nada é guardado",
-        "conferir contra outra fonte dos EUA, ou sem conferência",
-    ),
 )
 
 
