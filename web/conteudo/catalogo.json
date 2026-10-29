@@ -1025,6 +1025,13 @@
       "termos_lidos_em": "2026-10-21"
     },
     {
+      "id": "b3-ibov-diario",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
+      "marca": "nao_comercial",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
       "id": "tce-pr-pit",
       "licenca": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
       "marca": "vendavel",

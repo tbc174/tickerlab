@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 import requests
 import sqlalchemy as sa
 
-from base import intradiario_b3, tce_pr
+from base import indices_b3, intradiario_b3, tce_pr
 from base.arquivo import (
     assessorias,
     chirps_v3,
@@ -769,6 +769,26 @@ def descobrir_cotahist_do_dia(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+def descobrir_ibovespa_diario(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Um arquivo por ano, de 2000 ao ano corrente (no fuso da B3): o pregão do dia compara a
+    variação do Ibovespa com a de cada pregão desde 2000."""
+    ano_corrente = agora.astimezone(FUSO_DA_B3).year
+    return [
+        Alvo(indices_b3.endereco_do_ano(ano), ".json")
+        for ano in range(indices_b3.PRIMEIRO_ANO, ano_corrente + 1)
+    ]
+
+
+def _ano_do_indice_ja_fechado(anterior: sa.Row) -> bool:
+    """Baixado depois que o ano acabou (no fuso da B3): o ano não muda mais; o corrente muda todo dia."""
+    baixado = anterior.baixado_em
+    if baixado.tzinfo is None:  # o SQLite dos testes devolve sem fuso
+        baixado = baixado.replace(tzinfo=UTC)
+    return baixado.astimezone(FUSO_DA_B3).year > indices_b3.ano_do_endereco(
+        anterior.url
+    )
+
+
 def _pregao_inteiro_ja_guardado(anterior: sa.Row) -> bool:
     resumo = intradiario_b3.resumo_guardado(
         intradiario_b3.pregao_do_endereco(anterior.url)
@@ -1129,6 +1149,14 @@ FONTES: list[Fonte] = [
         descobrir_cotahist_do_dia,
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
+    ),
+    # fechamento diário do Ibovespa (estatísticas do índice da B3), um arquivo por ano: `base/indices_b3.py`
+    Fonte(
+        "b3-ibov-diario",
+        "diaria",
+        descobrir_ibovespa_diario,
+        "json",
+        guardado_vale=_ano_do_indice_ja_fechado,
     ),
     # PIT do TCE-PR, só com os atributos da lista (sem pessoas): `base/tce_pr.py`
     Fonte("tce-pr-pit", "semanal", descobrir_pit, "zip", pesada=True),

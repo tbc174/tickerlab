@@ -64,6 +64,9 @@ _SO_LIGA_HOJE = "hoje só liga nomes na rede; a tabela própria está prevista"
 _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
 )
+_IBOVESPA_FORA_DO_CATALOGO = (
+    "fechamento do Ibovespa para o pregão do dia, fora do catálogo (licença da B3)"
+)
 
 
 def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
@@ -388,6 +391,7 @@ DESTINOS: dict[str, Destino] = {
     "b3-negocios": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-boletim-pr": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-cotahist-dia": _pesquisa(_B3_FORA_DO_CATALOGO),
+    "b3-ibov-diario": _pesquisa(_IBOVESPA_FORA_DO_CATALOGO),
     "conab-cafe-safra": _tabela("conab_cafe"),
     "conab-cafe-publicacao": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
