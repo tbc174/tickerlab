@@ -1112,6 +1112,18 @@ FONTES: list[Fonte] = [
         ),
         pesada=True,
     ),
+    # autos de infração de trânsito do SIFAMA, um CSV por ano (Ficha Clara, sinais jurídicos):
+    # guardado cru no acervo restrito (pode trazer CPF do autuado); a carga espera ver o layout
+    Fonte(
+        "antt-autos-de-transito",
+        "mensal",
+        _ckan(
+            PORTAL_DA_ANTT,
+            "739c95ed-18f6-42c8-bd0d-8de997915395",
+            formatos=("csv", "pdf"),
+        ),
+        pesada=True,
+    ),
     Fonte("comexstat", "semanal", descobrir_comex, pesada=True),
     Fonte("anac-estatistico", "mensal", _um(ESTATISTICO_DA_ANAC), pesada=True),
     Fonte("ans-beneficiarios", "semanal", descobrir_beneficiarios_ans, pesada=True),

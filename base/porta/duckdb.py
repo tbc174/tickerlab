@@ -97,6 +97,8 @@ ARQUIVOS: dict[str, str] = {
     "cnpj_situacao_especial": "cnpj_situacao_especial/*.parquet",
     "cnpj_situacao_cadastral": "cnpj_situacao_cadastral/*.parquet",
     "pgfn_divida": "pgfn_divida/*/*.parquet",
+    "sancoes_cgu": "sancoes_cgu/*.parquet",
+    "ans_penalidades": "ans_penalidades/*.parquet",
     "ratings": "ratings/*.parquet",
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",

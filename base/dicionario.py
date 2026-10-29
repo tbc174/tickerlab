@@ -454,6 +454,147 @@ def _tabelas_do_cnpj() -> dict[str, Tabela]:
     return tabelas
 
 
+def _tabelas_das_sancoes() -> dict[str, Tabela]:
+    """As sanções por CNPJ (`base/sancoes.py`): uma tabela por família de licença, para a marca da CGU
+    (só uso interno) não se misturar com a da ANS (vende com atribuição)."""
+    colunas = {
+        "cadastro": (
+            "De que cadastro veio: ceis, cnep, cepim, leniencia ou penalidades (ANS)",
+            TEXTO,
+        ),
+        "id_na_fonte": (
+            "O código da sanção na fonte (no CEPIM, que não tem código: o CNPJ e o convênio)",
+            TEXTO,
+        ),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "categoria": (
+            (
+                "O tipo da sanção como a fonte escreve (Suspensão, Inidoneidade, Multa Pecuniária, o "
+                "motivo do impedimento no CEPIM, Acordo de leniência)"
+            ),
+            TEXTO,
+        ),
+        "situacao": (
+            "Situação do acordo (leniência) ou da demanda (ANS), como a fonte escreve",
+            TEXTO,
+        ),
+        "assunto": (
+            "Tipo do processo na ANS (Consumidor, Econômico-financeiro...)",
+            TEXTO,
+        ),
+        "orgao": (
+            "Órgão que aplicou a sanção (no CEPIM, o concedente do convênio)",
+            TEXTO,
+        ),
+        "uf_do_orgao": ("UF do órgão sancionador", TEXTO),
+        "esfera_do_orgao": ("Esfera do órgão (FEDERAL, ESTADUAL, MUNICIPAL)", TEXTO),
+        "origem_da_informacao": ("Quem informou a sanção à CGU", TEXTO),
+        "fundamentacao_legal": ("A lei em que a sanção se baseia", TEXTO),
+        "abrangencia": ("Abrangência da sanção, como a CGU escreve", TEXTO),
+        "processo": ("Número do processo (no CEPIM, o do convênio)", TEXTO),
+        "inicio": (
+            (
+                "Início da sanção ou do acordo; na ANS, a data da decisão de 1ª instância. Pode "
+                "ser depois da publicação (a sanção publicada que só vale adiante)"
+            ),
+            DATA,
+        ),
+        "fim": ("Fim da sanção ou do acordo (vazio: sem prazo ou não informado)", DATA),
+        "publicado_em": (
+            "Publicação oficial (Diário Oficial; na ANS, a da 1ª instância)",
+            DATA,
+        ),
+        "transito_em_julgado": ("Trânsito em julgado, quando a fonte informa", DATA),
+        "informado_em": (
+            "Quando o órgão informou a sanção à CGU (data de origem da informação)",
+            DATA,
+        ),
+        "valor_multa": ("Valor da multa (CNEP; na ANS, a multa final aplicada)", REAIS),
+        "consta": (
+            (
+                "Verdadeiro enquanto a sanção está no arquivo; falso na linha do dia em que saiu "
+                "dele (acabou, foi excluída ou anulada)"
+            ),
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que esta versão da linha foi vista", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: no 1º arquivo, a publicação ou a "
+                "informação ao órgão (a que for depois), nunca depois do dia do arquivo; depois "
+                "dele, o dia do arquivo em que a mudança apareceu"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    comum = (
+        "Uma linha por valor diferente de cada sanção: a mudança (situação, fim, valor) vira linha "
+        "nova que só vale desde o dia em que foi vista, e a sanção que some do arquivo ganha uma "
+        "linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de "
+        "qualquer dia). Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF "
+        "e nome nunca entram, nem a razão social; empresário individual e MEI ficam com "
+        "`trata_como_pessoa`. Arquivo com menos da metade das sanções do anterior é pulado: é "
+        "arquivo quebrado da fonte, não sanção que acabou."
+    )
+    atraso = (
+        "A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data "
+        "de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu "
+        "a mudança (o conservador; a história guardada começa em 14/10/2026)"
+    )
+    return {
+        "sancoes_cgu": Tabela(
+            descricao=(
+                "Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punidas "
+                "pela Lei Anticorrupção, com o valor da multa), CEPIM (entidades sem fins "
+                "lucrativos impedidas de receber convênio) e acordos de leniência. "
+                + comum
+                + " Os efeitos de cada acordo de leniência (o 2º arquivo do ZIP) ainda não entram."
+            ),
+            fonte=(
+                "CGU: Portal da Transparência, download de dados do CEIS, CNEP, CEPIM e acordos "
+                "de leniência (`base/sancoes.py`)"
+            ),
+            familia_da_fonte="cgu",
+            frequencia="Diária (o portal gera um arquivo por dia; o arquivista guarda só o que mudou)",
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/sancoes_cgu/<cadastro>.parquet` (servidor de casa, "
+                "`scripts/carga_sancoes.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=colunas,
+        ),
+        "ans_penalidades": Tabela(
+            descricao=(
+                "Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tipo "
+                "do processo, a situação da demanda, as datas da 1ª instância e a multa final. "
+                + comum
+            ),
+            fonte="ANS: dados abertos, penalidades aplicadas a operadoras (`base/sancoes.py`)",
+            familia_da_fonte="ans",
+            frequencia=(
+                "Mensal (a ANS recarrega o arquivo inteiro; `NR_COMPETENCIA_CARGA` diz o mês)"
+            ),
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/ans_penalidades/penalidades.parquet` (servidor de "
+                "casa, `scripts/carga_sancoes.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=colunas,
+        ),
+    }
+
+
 TABELAS: dict[str, Tabela] = {
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -3940,6 +4081,7 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    **_tabelas_das_sancoes(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -6131,6 +6273,8 @@ _CONTRATO = {
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
@@ -6196,6 +6340,18 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "noticias_numeros": {
         "pasta": "noticias_numeros",
         "nao_nulas": ("id_fato", "campo", "valor", "origem_divulgado_em"),
+    },
+    "sancoes_cgu": {
+        "pasta": "sancoes_cgu",
+        "faixas": {"valor_multa": _SEM_NEGATIVO},
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "anuncia_o_futuro": True,  # a sanção publicada pode começar a valer depois
+    },
+    "ans_penalidades": {
+        "pasta": "ans_penalidades",
+        "faixas": {"valor_multa": _SEM_NEGATIVO},
+        "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "anuncia_o_futuro": True,  # a decisão de 1ª instância vem antes da publicação, mas não sempre
     },
     "pgfn_divida": {
         "pasta": "pgfn_divida",
