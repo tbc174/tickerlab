@@ -1852,8 +1852,8 @@
       },
       "historico_desde": "2026-10-18",
       "granularidade_do_publico_em": "dia",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "revenda": "vendável com atribuição à fonte",
       "pessoa": false,
       "frequencia": "Mensal",
       "atraso": "O mês fecha cerca de 60 dias depois; o `divulgado_em` é a data da coleta do arquivista, não a do MDIC"
@@ -2416,8 +2416,8 @@
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "revenda": "vendável com atribuição à fonte",
       "pessoa": false,
       "frequencia": "Mensal (um CSV por ano e por fluxo)",
       "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar"

@@ -357,12 +357,14 @@ def test_tabela_sem_origens_fica_a_confirmar_e_passa(tmp_path):
 
 
 def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeypatch):
-    """`base/conferidas/empresa_serie.csv` diz a fonte do arquivista em cada linha (o Comex Stat está
-    a confirmar); texto livre na coluna `fonte` (as outras conferidas) não vira fonte."""
+    """`base/conferidas/empresa_serie.csv` diz a fonte do arquivista em cada linha (a PGFN está a
+    confirmar; o Comex Stat é vendável desde a resposta do MDIC de 21/10/2026); texto livre na
+    coluna `fonte` (as outras conferidas) não vira fonte."""
     conferidas = tmp_path / "repo" / "base" / "conferidas"
     conferidas.mkdir(parents=True)
     (conferidas / "empresa_serie.csv").write_text(
-        "fonte;chave;cnpj\nans-beneficiarios;1;x\ncomexstat;2;y\n", encoding="utf-8"
+        "fonte;chave;cnpj\nans-beneficiarios;1;x\ncomexstat;2;y\npgfn-divida;3;z\n",
+        encoding="utf-8",
     )
     (conferidas / "emissores.csv").write_text(
         "emissor;fonte\nABNB;cadastro de companhias da CVM (cad_cia_aberta.csv)\n",
@@ -381,7 +383,12 @@ def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeyp
     )
     assert _manifesto(serie)["licenca"] == {
         "marca": "a_confirmar",
-        "fontes": {"ans": "vendavel", "comexstat": "a_confirmar", "cvm": "vendavel"},
+        "fontes": {
+            "ans": "vendavel",
+            "comexstat": "vendavel",
+            "pgfn": "a_confirmar",
+            "cvm": "vendavel",
+        },
     }
     assert _manifesto(emissores)["licenca"]["fontes"] == {"cvm": "vendavel"}
 
@@ -391,7 +398,6 @@ def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeyp
 FONTES_DA_EMENDA_3 = (
     "yahoo",  # múltiplos p_l e p_vp dos padrões setoriais
     "pgfn",  # dívida ativa
-    "comexstat",  # B13 e rede
     "assessoria",  # negócios de M&A (só fatos, ADR 0082)
     "bcb-sgs-189",  # IGP-M da FGV
     "wayback",  # datas das cópias
@@ -408,12 +414,20 @@ def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
     assert "b3" in por_fonte  # Emenda 6 (22/10/2026): a B3 entrou, com a citação
 
 
+def test_comex_stat_saiu_da_lista_porque_o_mdic_respondeu():
+    """Resposta escrita do MDIC em 21/10/2026 (LAI, Decreto 8.777/2016): uso livre, inclusive
+    comercial, derivação e ML. A fonte é vendável com atribuição e não precisa mais da citação
+    de uso sem cobrança."""
+    assert marca_da_fonte("comexstat") == Marca.VENDAVEL
+    assert coletas.uso_sem_cobranca("comexstat") is None
+    assert coletas.pode_usar("exportar", "comexstat")
+
+
 @pytest.mark.parametrize(
     "fonte",
     [
         "yahoo-bvsp",
         "pgfn-divida",
-        "comexstat",
         "assessoria-igc",
         "bcb-sgs-189",
         "wayback-igc",

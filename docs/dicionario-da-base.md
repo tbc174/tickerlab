@@ -724,8 +724,8 @@ Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por m�
 Exportações de café por mês, NCM, UF de origem e país de destino, recortadas do Comex Stat (NCMs 09011110, 09011190, 09012100 e 21011110). A NCM não separa arábica de conilon: o `tipo` é sempre `total` e o Espírito Santo (quase só conilon) vai marcado em `proxy_conilon`, sem dividir o volume. Cada coleta do arquivista vira linhas novas (`divulgado_em`), porque o MDIC revisa meses antigos
 
 - **Fonte:** MDIC: Comex Stat, exportação por NCM (EXP_AAAA.csv) e tabela de países
-- **Licença:** Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)
+- **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal
 - **Atraso de divulgação:** O mês fecha cerca de 60 dias depois; o `divulgado_em` é a data da coleta do arquivista, não a do MDIC
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
@@ -952,11 +952,11 @@ Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilô
 
 ## `comex_preco_medio`
 
-Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira). A fonte não publica preço: é conta nossa sobre os CSVs de NCM, somando vias, países e UFs de cada linha. Quilo zero deixa o preço vazio. **Uso interno até a licença do MDIC**: fora da exportação e do app público. O MDIC revisa meses passados: a revisão vira linha nova, desde o dia em que foi vista. O nome da URF está em `URF.csv`, outra tabela da fonte
+Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira). A fonte não publica preço: é conta nossa sobre os CSVs de NCM, somando vias, países e UFs de cada linha. Quilo zero deixa o preço vazio. Dados abertos de uso livre, inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC e dizer que o preço é elaboração própria. O MDIC revisa meses passados: a revisão vira linha nova, desde o dia em que foi vista. O nome da URF está em `URF.csv`, outra tabela da fonte
 
 - **Fonte:** MDIC: Comex Stat, exportação e importação por NCM (EXP_AAAA.csv e IMP_AAAA.csv)
-- **Licença:** Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)
+- **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (um CSV por ano e por fluxo)
 - **Atraso de divulgação:** Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
@@ -3671,7 +3671,7 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 - **Fonte:** ANS, ANEEL (SAMP), Banco Central (Pix), Anatel, ANP, ONS, ANTT, ANAC e Comex Stat, ligados pelo FRE da CVM e pelo FCA (tickers)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
-- **Ressalva de revenda:** Os nomes e códigos das entidades seguem a licença de cada regulador: CC BY (ANS, Anatel, ANP, ONS, ANTT, ANAC; citar), ODbL (ANEEL, Banco Central) e Comex Stat a confirmar com o MDIC.
+- **Ressalva de revenda:** Os nomes e códigos das entidades seguem a licença de cada regulador: CC BY (ANS, Anatel, ANP, ONS, ANTT, ANAC; citar), ODbL (ANEEL, Banco Central) e dados abertos de uso livre (Comex Stat; citar Secex/MDIC).
 - **Frequência:** Refeita a cada montagem, com a safra mais recente de cada fonte
 - **Atraso de divulgação:** A ligação vale a partir de `desde` (entrega do FRE que a mostrou); os tickers são os do FCA mais recente
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não

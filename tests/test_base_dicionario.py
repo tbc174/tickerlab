@@ -370,7 +370,9 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         # exigência 13 da ADR 0055: toda linha da série B diz o commit que a montou
         assert "versao_do_codigo" in TABELAS[tabela].linhagem, tabela
         assert "ainda não é guardada" not in TABELAS[tabela].linhagem, tabela
-    assert "Comex Stat a confirmar" in TABELAS["empresa_serie"].ressalva_de_revenda
+    assert (
+        "Comex Stat; citar Secex/MDIC" in TABELAS["empresa_serie"].ressalva_de_revenda
+    )
 
 
 # --- contrato de dados (ADR 0077, PR 1): módulo, chaves, três datas e histórico ---

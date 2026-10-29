@@ -189,8 +189,10 @@ def test_licencas_da_previa_do_balanco():
         assert "CC BY" in licenca_da_fonte(fonte)
         assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_COM_ATRIBUICAO
     assert "ANTT" in licenca_da_fonte("antt-siade")
-    # Comex Stat: licença aberta sem nome; não vender antes da resposta do MDIC
-    assert coletas.revenda_da_fonte("comexstat") == coletas.A_CONFIRMAR
+    # Comex Stat: o MDIC respondeu por escrito em 21/10/2026 (LAI): uso livre, inclusive
+    # comercial, derivação e ML; o CC BY-ND do rodapé é só do site
+    assert coletas.revenda_da_fonte("comexstat") == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert "MDIC" in licenca_da_fonte("comexstat")
 
 
 def test_toda_licenca_cabe_na_coluna_do_registro():

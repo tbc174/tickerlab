@@ -122,13 +122,13 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
       "modulos": [
         "mercado_e_empresas"
       ],
       "orgao": "MDIC",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
       "tabelas": 2
     },
     {
@@ -1013,8 +1013,8 @@
     },
     {
       "id": "comexstat",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "marca": "a_confirmar",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -2483,8 +2483,8 @@
     },
     {
       "id": "comexstat-tabelas",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "marca": "a_confirmar",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -3883,7 +3883,7 @@
       "historico_desde": "2026-10-18",
       "modulo": "mercado_e_empresas",
       "orgao": "MDIC",
-      "situacao": "em consulta",
+      "situacao": "licenciada",
       "tabela": "comex_cafe"
     },
     {
@@ -3953,7 +3953,7 @@
       "historico_desde": "2026-10-14",
       "modulo": "mercado_e_empresas",
       "orgao": "MDIC",
-      "situacao": "em consulta",
+      "situacao": "licenciada",
       "tabela": "comex_preco_medio"
     },
     {
@@ -4799,7 +4799,7 @@
   ],
   "totais": {
     "fontes": 30,
-    "fontes_em_consulta": 9,
+    "fontes_em_consulta": 8,
     "modulos": 6,
     "tabelas": 113
   }
