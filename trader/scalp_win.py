@@ -372,11 +372,14 @@ def grade_de_precos(negocios: pd.DataFrame, pregao: pd.Timestamp) -> pd.Series:
 
 
 # --- M3: as regras ---
-def ganhos_da_regra(grade: pd.Series, h: int, direcao: str) -> np.ndarray:
-    """Ganho bruto (pontos) de cada operação da regra: decide a cada h minutos, sai h minutos depois.
+def ganhos_do_sinal(
+    grade: pd.Series, sinal: np.ndarray, h: int, direcao: str
+) -> np.ndarray:
+    """Ganho bruto (pontos) de cada operação: decide a cada h minutos pelo sinal, sai h minutos depois.
 
-    Decisões nos minutos h, 2h, ... da grade, enquanto a saída cabe nela. Sinal zero ou preço vazio:
-    não opera.
+    `sinal` tem um valor por minuto da grade, calculado só com o que veio antes daquele minuto.
+    Decisões nos minutos h, 2h, ... da grade, enquanto a saída cabe nela. Sinal zero ou vazio, ou
+    preço vazio: não opera. Momento segue o sinal; reversão vai contra.
     """
     if direcao not in SINAL_DA_DIRECAO:
         raise ValueError(
@@ -384,10 +387,18 @@ def ganhos_da_regra(grade: pd.Series, h: int, direcao: str) -> np.ndarray:
         )
     precos = grade.to_numpy(dtype=float)
     decisoes = np.arange(h, len(precos) - h, h)
-    sinal = np.sign(precos[decisoes] - precos[decisoes - h])
+    lado = np.sign(np.asarray(sinal, dtype=float)[decisoes])
     resultado = precos[decisoes + h] - precos[decisoes]
-    opera = np.isfinite(sinal) & np.isfinite(resultado) & (sinal != 0)
-    return SINAL_DA_DIRECAO[direcao] * sinal[opera] * resultado[opera]
+    opera = np.isfinite(lado) & np.isfinite(resultado) & (lado != 0)
+    return SINAL_DA_DIRECAO[direcao] * lado[opera] * resultado[opera]
+
+
+def ganhos_da_regra(grade: pd.Series, h: int, direcao: str) -> np.ndarray:
+    """As regras da fase 1: o sinal é a variação do preço nos h minutos de antes da decisão."""
+    precos = grade.to_numpy(dtype=float)
+    variacao_de_antes = np.full(len(precos), np.nan)
+    variacao_de_antes[h:] = precos[h:] - precos[:-h]
+    return ganhos_do_sinal(grade, variacao_de_antes, h, direcao)
 
 
 # --- M2: movimento por horário ---
@@ -451,14 +462,20 @@ def dividir(pregoes: Sequence[str]) -> tuple[list[str], list[str]]:
 
 
 def veredito(
-    ganhos: dict[str, dict[str, list[np.ndarray]]], empate_em_pontos: float
+    ganhos: dict[str, dict[str, list[np.ndarray]]],
+    empate_em_pontos: float,
+    ordem: Sequence[str] | None = None,
 ) -> dict[str, object]:
-    """Escolhe no desenvolvimento a variante de maior ganho médio e decide só com ela na validação."""
+    """Escolhe no desenvolvimento a variante de maior ganho médio e decide só com ela na validação.
+
+    `ordem` é a lista pré-registrada das variantes, que desempata; sem ela, as 8 da fase 1.
+    """
     medias = {
         nome: {metade: media_por_operacao(dias) for metade, dias in por_metade.items()}
         for nome, por_metade in ganhos.items()
     }
-    ordem = [variante.nome for variante in VARIANTES]
+    if ordem is None:
+        ordem = [variante.nome for variante in VARIANTES]
 
     def chave(nome: str) -> float:
         media = medias[nome]["desenvolvimento"]
