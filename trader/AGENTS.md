@@ -52,6 +52,7 @@ numba, joblib, MetaTrader5, PySide6).
 | VaR/CVaR históricos e Benjamini-Hochberg | `quant.py` |
 | Catálogo de fatores candidatos (nenhum medido) | `fatores/` |
 | Scalp no mini índice, fase 1 (pesquisa à parte da M2; reprovada em 29/10/2026) | `scalp_win.py`; critério em `docs/pre-registro-scalp-win-fase1.md`, resultado em `docs/resultado-scalp-win-fase1.md` |
+| Scalp no mini índice, fase 1b: fluxo do agressor e corretoras de lote pequeno (reprovada em 29/10/2026) | `scalp_win_1b.py`; critério em `docs/pre-registro-scalp-win-fase1b.md`, resultado em `docs/resultado-scalp-win-fase1b.md` |
 | Conferência dos custos (B3 à vista) e da validação | `docs/trader-conferencia-custos-e-validacao.md` |
 | Painel | `interface/` |
 
