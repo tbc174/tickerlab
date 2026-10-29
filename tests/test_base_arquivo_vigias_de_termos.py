@@ -34,6 +34,11 @@ _SEM_VIGIA = {
             "anp",
             "ans",
             "antt",
+            # Ficha Clara, licenças e registros (licença lida na ficha do dados.gov.br em 29/10/2026)
+            "anvisa",
+            "mapa",
+            "anm",
+            "ancine",
             "susep",
             "ibama",
             "mte",
