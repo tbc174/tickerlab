@@ -5,6 +5,7 @@
 
 PR 6 do plano da base de CNPJ com sócios (20/10/2026). A vista leva da base do CNPJ (`scripts.carga_receita_mes`)
 só o que a busca por CNPJ mostra (cadastro até o município, Simples e MEI, quadro de sócios sem o pseudônimo,
+o mesmo quadro virado pela raiz do sócio pessoa jurídica, para o grupo econômico, e as
 mudanças de 12 meses), com o desenho descrito em `base/porta/vista_do_cnpj.py`, por onde a busca a lê. As
 mudanças já vêm sem as linhas em que só mudou o que a vista não leva. `--medir N` lê o cadastro de N empresas
 sorteadas, como a busca faz, e escreve o tamanho da vista e o tempo de cada consulta (mediana, p95 e máximo).
@@ -35,9 +36,11 @@ import pyarrow.parquet as pq
 
 from base import receita_diff
 from base.porta.vista_do_cnpj import (
+    COLUNAS_DAS_PARTICIPACOES,
     MANIFESTO,
     MESES_DAS_MUDANCAS,
     MUDANCAS,
+    PARTICIPACOES,
     PREFIXO,
     TAMANHO_DA_RAIZ,
 )
@@ -58,6 +61,7 @@ VIGENTE = {
         "cnpj_basico", "tipo_socio", "qualificacao", "data_entrada", "pais", "raiz_socio_pj",
     ),
 }  # fmt: skip
+SOCIO_PESSOA_JURIDICA = "1"  # `tipo_socio` da Receita
 VAZIAS = {"qsa": ("id_pessoa",)}  # colunas que a leitura espera e que não saem de casa
 LINHAS_POR_GRUPO = 20_000  # um grupo pequeno: a leitura filtrada pela raiz abre pouco
 ENTROU, SAIU, MUDOU = "entrou", "saiu", "mudou"
@@ -106,6 +110,33 @@ def montar_vigente(base: Path, destino: Path) -> None:
                 dados.sort_by(ordem),
                 destino / "vigente" / tabela / f"{prefixo}.parquet",
             )
+
+
+def montar_participacoes(destino: Path) -> None:
+    """O QSA vigente da vista virado: uma linha por sócia pessoa jurídica e empresa, pela raiz da sócia.
+
+    Lido da própria vista (já sem o pseudônimo), um prefixo por vez e só as linhas de sócio pessoa jurídica.
+    """
+    pasta = destino / "vigente" / "qsa"
+    filtro = [("tipo_socio", "==", SOCIO_PESSOA_JURIDICA)]
+    colunas = list(COLUNAS_DAS_PARTICIPACOES)
+    partes = [
+        pq.read_table(arquivo, columns=colunas, filters=filtro)
+        for arquivo in sorted(pasta.glob("*.parquet"))
+    ]
+    if not partes:
+        return
+    socias = pa.concat_tables(partes).to_pandas()
+    socias = socias[
+        socias["raiz_socio_pj"].fillna("").str.len().eq(TAMANHO_DA_RAIZ)
+        & socias["raiz_socio_pj"].ne(socias["cnpj_basico"])
+    ]
+    for prefixo, parte in socias.groupby(socias["raiz_socio_pj"].str[:PREFIXO]):
+        ordenada = parte.sort_values(["raiz_socio_pj", "cnpj_basico"])
+        _gravar(
+            pa.Table.from_pandas(ordenada, preserve_index=False),
+            destino / "vigente" / PARTICIPACOES / f"{prefixo}.parquet",
+        )
 
 
 def meses_da_janela(meses: list[str], quantos: int = MESES_DAS_MUDANCAS) -> list[str]:
@@ -207,6 +238,7 @@ def montar(base: Path, destino: Path, quantos_meses: int = MESES_DAS_MUDANCAS) -
     )
     janela = meses_da_janela(publicados, quantos_meses)
     montar_vigente(base, destino)
+    montar_participacoes(destino)
     montar_mudancas(base, destino, janela)
     manifesto = {
         "mes": publicados[-1],

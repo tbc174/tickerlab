@@ -4,6 +4,8 @@ A vista é montada em casa por `scripts.montar_vista_do_cnpj` e publicada no ser
 (`src/cadastro_da_receita.py`) a lê só por aqui. O desenho é o mesmo da base do CNPJ:
 - `vigente/<tabela>/<xx>.parquet` (estabelecimentos, simples e qsa), repartida pelos 2 primeiros caracteres
   da raiz, ordenada pela raiz e em grupos pequenos: a leitura de uma empresa só abre o grupo dela;
+- `vigente/participacoes/<xx>.parquet`: o QSA virado, só o sócio pessoa jurídica, repartido e ordenado pela
+  raiz da sócia: as empresas de que cada raiz é sócia (o grupo econômico, `base/rede/grupo_do_qsa.py`);
 - `mudancas/<tabela>/<xx>.parquet`: as mudanças dos últimos 12 meses publicados;
 - `manifesto.json`: o mês do retrato, os meses das mudanças e as linhas e os bytes de cada tabela.
 """
@@ -22,6 +24,13 @@ MUDANCAS = {
     "simples": (("cnpj_basico",), ("optante_simples", "optante_mei")),
     "qsa": (("cnpj_basico", "tipo_socio", "raiz_socio_pj"), ("qualificacao", "data_entrada")),
 }  # fmt: skip
+PARTICIPACOES = "participacoes"
+COLUNAS_DAS_PARTICIPACOES = (
+    "raiz_socio_pj",
+    "cnpj_basico",
+    "qualificacao",
+    "data_entrada",
+)
 PREFIXO = 2  # a base reparte pelos 2 primeiros caracteres da raiz
 TAMANHO_DA_RAIZ = 8
 MANIFESTO = "manifesto.json"
@@ -42,4 +51,13 @@ def da_raiz(vista: Path, grupo: str, tabela: str, raiz: str) -> pd.DataFrame:
     if not arquivo.is_file():
         return pd.DataFrame()
     filtro = [("cnpj_basico", "==", raiz)]
+    return pq.read_table(arquivo, filters=filtro).to_pandas()
+
+
+def participacoes_da_raiz(vista: Path, raiz: str) -> pd.DataFrame:
+    """As empresas de que a `raiz` é sócia pessoa jurídica no retrato vigente (vazio se não há)."""
+    arquivo = vista / "vigente" / PARTICIPACOES / f"{raiz[:PREFIXO]}.parquet"
+    if not arquivo.is_file():
+        return pd.DataFrame(columns=list(COLUNAS_DAS_PARTICIPACOES))
+    filtro = [("raiz_socio_pj", "==", raiz)]
     return pq.read_table(arquivo, filters=filtro).to_pandas()
