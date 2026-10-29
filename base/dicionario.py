@@ -5832,17 +5832,20 @@ TABELAS: dict[str, Tabela] = {
             "chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de "
             "1991–2020 e a anomalia. Duas fontes, uma por linha: as estações automáticas do INMET "
             "(`inmet`; `n_estacoes` diz quantas valeram) e a chuva por satélite do CHIRPS (`chirps`; só "
-            "chuva, média dos municípios ponderada pela área de café da PAM). Região com menos de 3 "
-            "estações válidas no mês fica com os valores vazios, nunca zero"
+            "chuva, média dos municípios ponderada pela área de café da PAM) e, depois de dez/2026, a "
+            "ponte `chirps-v3-rnl` (CHIRPS v3 `rnl`, outra série: nunca somada à v2 e com normal própria). "
+            "Região com menos de 3 estações válidas no mês fica com os valores vazios, nunca zero"
         ),
         fonte=(
             "INMET: dados históricos das estações automáticas (BDMEP), um zip por ano; CHIRPS v2.0 "
-            "(UCSB): GeoTIFF mensal global; IBGE: malha municipal (API de malhas)"
+            "(UCSB): GeoTIFF mensal global; CHIRPS v3 `rnl` diário (cópia de terceiro no Hugging Face, "
+            "CC BY 4.0; soma do mês feita por nós); IBGE: malha municipal (API de malhas)"
         ),
         familia_da_fonte="inmet",
         ressalva_de_revenda=(
-            "As linhas `chirps` são do CHIRPS v2.0 (domínio público; citar Funk et al. 2015); a malha "
-            "é do IBGE"
+            "As linhas `chirps` são do CHIRPS v2.0 (domínio público; citar Funk et al. 2015); as linhas "
+            "`chirps-v3-rnl` são do CHIRPS v3 `rnl` (sabor ERA5, não o `sat`), cópia de terceiro no "
+            "Hugging Face sob CC BY 4.0 (citar Funk et al. e o autor da cópia); a malha é do IBGE"
         ),
         frequencia="Mensal",
         atraso=(
@@ -5870,7 +5873,7 @@ TABELAS: dict[str, Tabela] = {
                 TEXTO,
             ),
             "competencia": ("Mês (último dia)", DATA),
-            "fonte": ("inmet ou chirps", TEXTO),
+            "fonte": ("inmet, chirps (v2) ou chirps-v3-rnl", TEXTO),
             "chuva_mm": (
                 "Chuva acumulada no mês (média das estações, ou do satélite)",
                 "mm",

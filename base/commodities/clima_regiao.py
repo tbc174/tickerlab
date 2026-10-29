@@ -37,6 +37,7 @@ from typing import NamedTuple
 import numpy as np
 import pandas as pd
 
+from base.arquivo.chirps_v3 import FONTE_CHIRPS_V3_RNL, ler_arquivo
 from src.commodities.cafe.regioes import REGIOES, Regiao
 
 FONTE_INMET, FONTE_CHIRPS = "inmet", "chirps"
@@ -65,7 +66,7 @@ ANOS_MINIMOS_NA_NORMAL = 10
 # "como era na data": não medido ainda (o arquivista passa a guardar as fontes com este PR); a folga é
 # conservadora e deve ser conferida com as baixadas. O zip do ano corrente do INMET é regravado de
 # tempos em tempos; o CHIRPS final do mês sai ao longo do mês seguinte
-DIAS_ATE_PUBLICAR = {FONTE_INMET: 45, FONTE_CHIRPS: 60}
+DIAS_ATE_PUBLICAR = {FONTE_INMET: 45, FONTE_CHIRPS: 60, FONTE_CHIRPS_V3_RNL: 60}
 SEM_DADO_DO_CHIRPS = -9999.0
 MAGICO_DO_GZIP = b"\x1f\x8b"
 # o que cada coluna do CSV do INMET começa dizendo (sem acento, em minúsculas) → coluna diária
@@ -391,10 +392,23 @@ def ler_chirps(conteudo: bytes, mascaras: Mapping[str, Mascara]) -> pd.DataFrame
     return pd.DataFrame(linhas, columns=["codigo", "chuva_mm"])
 
 
+def ler_chirps_v3(conteudo: bytes, mascaras: Mapping[str, Mascara]) -> pd.DataFrame:
+    """A chuva do mês por município (`codigo`, `chuva_mm`) do arquivo mensal do CHIRPS v3 `rnl`: média
+    dos pixels da máscara (feita na grade do arquivo); pixel a que faltou algum dia não conta."""
+    chuva = ler_arquivo(conteudo).chuva_mm
+    linhas = []
+    for codigo, mascara in mascaras.items():
+        dentro = (mascara.linhas < chuva.shape[0]) & (mascara.colunas < chuva.shape[1])
+        valores = chuva[mascara.linhas[dentro], mascara.colunas[dentro]]
+        linhas.append((codigo, float(np.nanmean(valores)) if np.isfinite(valores).any() else np.nan))  # fmt: skip
+    return pd.DataFrame(linhas, columns=["codigo", "chuva_mm"])
+
+
 def chirps_por_regiao(
     por_municipio: pd.DataFrame,
     competencia: date,
     regioes: Iterable[Regiao] = REGIOES,
+    fonte: str = FONTE_CHIRPS,
 ) -> pd.DataFrame:
     """A chuva do mês por região: média dos municípios ponderada pela área de café da PAM.
 
@@ -417,7 +431,7 @@ def chirps_por_regiao(
             (regiao.id, pd.Timestamp(competencia) + pd.offsets.MonthEnd(0), media)
         )
     mensal = pd.DataFrame(linhas, columns=["regiao", "competencia", "chuva_mm"])
-    mensal["fonte"] = FONTE_CHIRPS
+    mensal["fonte"] = fonte
     return _completar(mensal)
 
 

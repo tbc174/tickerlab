@@ -48,3 +48,4 @@ streamlit==1.66.1
 stripe==16.0.0
 uvicorn==0.54.0
 yfinance==1.7.0
+zstandard==0.25.0  # lê o Zarr do CHIRPS v3 (base/arquivo/chirps_v3.py)
