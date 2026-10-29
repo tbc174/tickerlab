@@ -4,7 +4,7 @@ que o site mostra todo dia útil, a partir do fechamento oficial da B3.
 Entradas (montadas pelo gerador, que lê o acervo; aqui só se faz conta):
 
 - o COTAHIST da véspera e do dia, como `base.intradiario_b3.ler_cotahist` devolve (código → `fechamento`
-  e `volume`, em reais);
+  e `volume_financeiro`, em reais; o `volume` de lá é a quantidade de papéis e não entra aqui);
 - `papeis`: código, CNPJ, nome curto da empresa e setor (FCA da CVM, só o que era público na véspera);
 - a série do Ibovespa (estatísticas do índice da B3) e os contratos do boletim PR da B3 (DI1 e dólar
   futuro, com o ajuste do dia e o da véspera).
@@ -76,11 +76,18 @@ def variacoes_das_empresas(
     conferir" e fora das contas. O tamanho da variação não basta para isso: no circuit breaker de
     26/10/2026, MGLU3 caiu 58% de verdade.
     """
+    em_reais = {"volume_financeiro": "volume"}
     precos = papeis.merge(
-        vespera[["fechamento", "volume"]].add_suffix("_vespera"),
+        vespera[["fechamento", "volume_financeiro"]]
+        .rename(columns=em_reais)
+        .add_suffix("_vespera"),
         left_on="simbolo",
         right_index=True,
-    ).merge(dia[["fechamento", "volume"]], left_on="simbolo", right_index=True)
+    ).merge(
+        dia[["fechamento", "volume_financeiro"]].rename(columns=em_reais),
+        left_on="simbolo",
+        right_index=True,
+    )
     precos = precos[(precos["fechamento_vespera"] > 0) & (precos["fechamento"] > 0)]
     um_por_empresa = precos.sort_values(
         "volume_vespera", ascending=False

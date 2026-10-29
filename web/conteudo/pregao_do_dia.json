@@ -22,45 +22,45 @@
       {
         "grupo": "amplitude",
         "lacunas": {
-          "cairam": "31",
-          "empresas": "60",
-          "estaveis": "1",
+          "cairam": "68",
+          "empresas": "139",
+          "estaveis": "3",
           "liquidez": "20",
-          "subiram": "28"
+          "subiram": "68"
         },
-        "texto": "Das 60 empresas com R$ 20 milhões ou mais negociados na véspera: 28 em alta, 31 em queda e 1 sem variação.",
+        "texto": "Das 139 empresas com R$ 20 milhões ou mais negociados na véspera: 68 em alta, 68 em queda e 3 sem variação.",
         "variante": "contagem"
       },
       {
         "grupo": "setores",
         "lacunas": {
-          "contra": "+2,8",
-          "empresas": "9",
-          "mediana": "+2,2%",
-          "setor": "Comércio (Atacado e Varejo)"
+          "contra": "+3,7",
+          "empresas": "4",
+          "mediana": "+3,2%",
+          "setor": "Serviços médicos"
         },
-        "texto": "Na ponta de cima dos setores, Comércio (Atacado e Varejo): mediana de +2,2% em 9 empresas (+2,8 pontos percentuais em relação ao Ibovespa).",
+        "texto": "Na ponta de cima dos setores, Serviços médicos: mediana de +3,2% em 4 empresas (+3,7 pontos percentuais em relação ao Ibovespa).",
         "variante": "ponta_de_cima"
       },
       {
         "grupo": "setores",
         "lacunas": {
-          "contra": "−3,4",
-          "empresas": "3",
-          "mediana": "−3,9%",
+          "contra": "−2,2",
+          "empresas": "5",
+          "mediana": "−2,8%",
           "setor": "Metalurgia e Siderurgia"
         },
-        "texto": "Na ponta de baixo, Metalurgia e Siderurgia: mediana de −3,9% em 3 empresas (−3,4 pontos percentuais em relação ao Ibovespa).",
+        "texto": "Na ponta de baixo, Metalurgia e Siderurgia: mediana de −2,8% em 5 empresas (−2,2 pontos percentuais em relação ao Ibovespa).",
         "variante": "ponta_de_baixo"
       },
       {
         "grupo": "maiores",
         "lacunas": {
-          "empresa": "EcoRodovias",
-          "simbolo": "ECOR3",
-          "variacao": "+12,1%"
+          "empresa": "Braskem",
+          "simbolo": "BRKM5",
+          "variacao": "+16,4%"
         },
-        "texto": "Maior alta: EcoRodovias (ECOR3), +12,1%.",
+        "texto": "Maior alta: Braskem (BRKM5), +16,4%.",
         "variante": "alta"
       },
       {
@@ -98,14 +98,29 @@
     "grafico": {
       "barras": [
         {
+          "nome": "Serviços médicos",
+          "texto": "+3,7",
+          "valor": 3.7179422823433117
+        },
+        {
+          "nome": "Educação",
+          "texto": "+1,9",
+          "valor": 1.9450360841649084
+        },
+        {
           "nome": "Comércio (Atacado e Varejo)",
-          "texto": "+2,8",
-          "valor": 2.755763007003098
+          "texto": "+1,5",
+          "valor": 1.5411047858371885
+        },
+        {
+          "nome": "Saneamento, Serv. Água e Gás",
+          "texto": "+1,5",
+          "valor": 1.5374600052645682
         },
         {
           "nome": "Energia Elétrica",
           "texto": "+1,5",
-          "valor": 1.527925959500387
+          "valor": 1.4834501359996088
         },
         {
           "nome": "Serviços Transporte e Logística",
@@ -113,29 +128,64 @@
           "valor": 1.4570814808619992
         },
         {
-          "nome": "Bancos",
-          "texto": "−0,4",
-          "valor": -0.3605232260519786
+          "nome": "Telecomunicações",
+          "texto": "+1,5",
+          "valor": 1.4551614345262975
+        },
+        {
+          "nome": "Têxtil e Vestuário",
+          "texto": "+0,7",
+          "valor": 0.7203082329117261
+        },
+        {
+          "nome": "Seguradoras e Corretoras",
+          "texto": "+0,2",
+          "valor": 0.1986823883901645
         },
         {
           "nome": "Máquinas, Equipamentos, Veículos e Peças",
-          "texto": "−1,2",
-          "valor": -1.202919446775652
+          "texto": "−0,0",
+          "valor": -0.016517669482596364
         },
         {
           "nome": "Petróleo e Gás",
-          "texto": "−1,5",
-          "valor": -1.5144421096523142
+          "texto": "−0,7",
+          "valor": -0.6976205611886277
+        },
+        {
+          "nome": "Bancos",
+          "texto": "−0,9",
+          "valor": -0.8707383490604403
         },
         {
           "nome": "Construção Civil, Mat. Constr. e Decoração",
-          "texto": "−2,0",
-          "valor": -1.979734399824018
+          "texto": "−0,9",
+          "valor": -0.9440090366458376
+        },
+        {
+          "nome": "Alimentos",
+          "texto": "−1,5",
+          "valor": -1.476987571019872
+        },
+        {
+          "nome": "Comunicação e Informática",
+          "texto": "−1,7",
+          "valor": -1.7400337165870972
+        },
+        {
+          "nome": "Extração Mineral",
+          "texto": "−1,8",
+          "valor": -1.8452407028731466
+        },
+        {
+          "nome": "Agricultura (Açúcar, Álcool e Cana)",
+          "texto": "−2,1",
+          "valor": -2.1474953653367823
         },
         {
           "nome": "Metalurgia e Siderurgia",
-          "texto": "−3,4",
-          "valor": -3.376563139367994
+          "texto": "−2,2",
+          "valor": -2.241919163368422
         }
       ],
       "titulo": "Mediana do dia em cada setor menos a variação do Ibovespa, em pontos percentuais"
@@ -163,52 +213,112 @@
         ],
         "linhas": [
           [
+            "Serviços médicos",
+            "4",
+            "+3,2%",
+            "+3,7"
+          ],
+          [
+            "Educação",
+            "5",
+            "+1,4%",
+            "+1,9"
+          ],
+          [
             "Comércio (Atacado e Varejo)",
-            "9",
-            "+2,2%",
-            "+2,8"
+            "16",
+            "+1,0%",
+            "+1,5"
+          ],
+          [
+            "Saneamento, Serv. Água e Gás",
+            "5",
+            "+1,0%",
+            "+1,5"
           ],
           [
             "Energia Elétrica",
-            "6",
+            "13",
             "+1,0%",
             "+1,5"
           ],
           [
             "Serviços Transporte e Logística",
-            "7",
+            "11",
             "+0,9%",
             "+1,5"
           ],
           [
-            "Bancos",
+            "Telecomunicações",
             "4",
-            "−0,9%",
-            "−0,4"
+            "+0,9%",
+            "+1,5"
+          ],
+          [
+            "Têxtil e Vestuário",
+            "6",
+            "+0,2%",
+            "+0,7"
+          ],
+          [
+            "Seguradoras e Corretoras",
+            "6",
+            "−0,3%",
+            "+0,2"
           ],
           [
             "Máquinas, Equipamentos, Veículos e Peças",
-            "3",
-            "−1,7%",
-            "−1,2"
+            "8",
+            "−0,5%",
+            "−0,0"
           ],
           [
             "Petróleo e Gás",
+            "6",
+            "−1,2%",
+            "−0,7"
+          ],
+          [
+            "Bancos",
+            "9",
+            "−1,4%",
+            "−0,9"
+          ],
+          [
+            "Construção Civil, Mat. Constr. e Decoração",
+            "14",
+            "−1,5%",
+            "−0,9"
+          ],
+          [
+            "Alimentos",
             "3",
             "−2,0%",
             "−1,5"
           ],
           [
-            "Construção Civil, Mat. Constr. e Decoração",
+            "Comunicação e Informática",
             "4",
-            "−2,5%",
-            "−2,0"
+            "−2,2%",
+            "−1,7"
+          ],
+          [
+            "Extração Mineral",
+            "4",
+            "−2,4%",
+            "−1,8"
+          ],
+          [
+            "Agricultura (Açúcar, Álcool e Cana)",
+            "4",
+            "−2,7%",
+            "−2,1"
           ],
           [
             "Metalurgia e Siderurgia",
-            "3",
-            "−3,9%",
-            "−3,4"
+            "5",
+            "−2,8%",
+            "−2,2"
           ]
         ],
         "titulo": "Os setores contra o Ibovespa"
@@ -224,11 +334,25 @@
         ],
         "linhas": [
           [
+            "Braskem",
+            "BRKM5",
+            "Petroquímicos e Borracha",
+            "+16,4%",
+            "3,70"
+          ],
+          [
             "EcoRodovias",
             "ECOR3",
             "Serviços Transporte e Logística",
             "+12,1%",
             "5,82"
+          ],
+          [
+            "Tenda",
+            "TEND3",
+            "Construção Civil, Mat. Constr. e Decoração",
+            "+10,2%",
+            "23,01"
           ],
           [
             "Magazine Luiza",
@@ -238,25 +362,11 @@
             "5,75"
           ],
           [
-            "Direcional",
-            "DIRR3",
-            "Construção Civil, Mat. Constr. e Decoração",
-            "+5,4%",
-            "9,25"
-          ],
-          [
-            "Vamos",
-            "VAMO3",
-            "Serviços Transporte e Logística",
-            "+5,1%",
-            "2,91"
-          ],
-          [
-            "Hapvida",
-            "HAPV3",
-            "Serviços médicos",
-            "+5,0%",
-            "4,18"
+            "Intelbras",
+            "INTB3",
+            "Comércio (Atacado e Varejo)",
+            "+7,4%",
+            "14,30"
           ]
         ],
         "titulo": "Maiores altas"
@@ -286,25 +396,25 @@
             "35,35"
           ],
           [
-            "MRV",
-            "MRVE3",
+            "BR Partners",
+            "BRBI11",
+            "Bancos",
+            "−6,8%",
+            "12,12"
+          ],
+          [
+            "Banrisul",
+            "BRSR6",
+            "Bancos",
+            "−6,3%",
+            "13,61"
+          ],
+          [
+            "EZTEC",
+            "EZTC3",
             "Construção Civil, Mat. Constr. e Decoração",
-            "−5,7%",
-            "4,46"
-          ],
-          [
-            "GPS",
-            "GGPS3",
-            "Sem Setor Principal",
-            "−5,3%",
-            "11,41"
-          ],
-          [
-            "Metalúrgica Gerdau",
-            "GOAU4",
-            "Metalurgia e Siderurgia",
-            "−4,5%",
-            "11,00"
+            "−6,2%",
+            "10,50"
           ]
         ],
         "titulo": "Maiores quedas"

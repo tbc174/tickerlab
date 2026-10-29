@@ -13,10 +13,11 @@ MILHAO = 1_000_000
 
 
 def _fechamento(precos: dict[str, tuple[float, int]]) -> pd.DataFrame:
-    """Um dia do COTAHIST como `base.intradiario_b3.ler_cotahist` devolve: código → fechamento e volume."""
+    """Um dia do COTAHIST como `base.intradiario_b3.ler_cotahist` devolve: código → fechamento,
+    quantidade de papéis (`volume`) e valor em reais (`volume_financeiro`). Aqui: preço e reais."""
     tabela = pd.DataFrame(
-        [(s, p, v) for s, (p, v) in precos.items()],
-        columns=["simbolo", "fechamento", "volume"],
+        [(s, p, round(r / p), r) for s, (p, r) in precos.items()],
+        columns=["simbolo", "fechamento", "volume", "volume_financeiro"],
     )
     return tabela.set_index("simbolo")
 
@@ -126,6 +127,28 @@ def test_liquidas_cortam_pelo_volume_da_vespera(tabela: pd.DataFrame) -> None:
     simbolos = set(pregao.liquidas(tabela)["simbolo"])
     assert "TINY3" not in simbolos  # R$ 1 milhão na véspera
     assert "PETR4" in simbolos
+
+
+def test_liquidez_e_em_reais_nao_em_quantidade_de_acoes() -> None:
+    """Regressão (28/10/2026): o corte de R$ 20 milhões comparava a quantidade de ações. Papel de
+    centavos com 25 milhões de ações (R$ 12,5 milhões) entrava; papel de R$ 300 com 100 mil ações
+    (R$ 30 milhões) ficava de fora."""
+    vespera = VESPERA_B3.copy()
+    vespera.loc["MGLU3", ["fechamento", "volume", "volume_financeiro"]] = (
+        0.5,
+        25 * MILHAO,
+        12.5 * MILHAO,
+    )
+    vespera.loc["RECV3", ["fechamento", "volume", "volume_financeiro"]] = (
+        300.0,
+        100_000,
+        30 * MILHAO,
+    )
+    tabela = pregao.variacoes_das_empresas(vespera, DIA_B3, PAPEIS)
+    simbolos = set(pregao.liquidas(tabela)["simbolo"])
+    assert "MGLU3" not in simbolos
+    assert "RECV3" in simbolos
+    assert tabela.set_index("simbolo").loc["RECV3", "volume_vespera"] == 30 * MILHAO
 
 
 def test_liquidas_deixam_de_fora_o_que_esta_a_conferir(tabela: pd.DataFrame) -> None:
