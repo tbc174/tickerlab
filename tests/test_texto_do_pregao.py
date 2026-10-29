@@ -226,16 +226,17 @@ def _grupos(pronto: dict) -> list[str]:
 def test_texto_numero_igual_ao_dos_dados(molde: dict) -> None:
     """Cada número do texto é o do resumo, com a vírgula, o sinal de menos e o separador de milhar."""
     pronto = texto.texto_do_pregao(RESUMO_DE_QUEDA, molde)
+    # "caiu" já diz o sentido: o número vai sem sinal ("caiu −13,9%" diria a queda duas vezes)
     assert (
         _frase(pronto, "abertura")
-        == "O Ibovespa caiu −13,9% em 26/10/2026, para 112.346 pontos."
+        == "O Ibovespa caiu 13,9% em 26/10/2026, para 112.346 pontos."
     )
     assert _frase(pronto, "historia") == (
         "Desde 04/01/2000, 2 dos 6.650 pregões caíram tanto ou mais; o último foi em 16/03/2020."
     )
     assert _frase(pronto, "amplitude") == (
         "Das 120 empresas com R$ 20 milhões ou mais negociados na véspera: 8 em alta, 110 em queda "
-        "e 2 estáveis."
+        "e 2 sem variação."
     )
     setores = [f["texto"] for f in pronto["frases"] if f["grupo"] == "setores"]
     assert setores == [
@@ -257,8 +258,7 @@ def test_texto_numero_igual_ao_dos_dados(molde: dict) -> None:
         "A taxa do DI de janeiro de 2029 (DI1F29) subiu 140,5 pontos-base, para 16,26% ao ano."
     )
     assert (
-        _frase(pronto, "dolar")
-        == "O dólar futuro (DOLX26) subiu +9,2%, para R$ 6,1234."
+        _frase(pronto, "dolar") == "O dólar futuro (DOLX26) subiu 9,2%, para R$ 6,1234."
     )
     assert _frase(pronto, "a_conferir") == (
         "Ficaram fora das contas, por desdobramento ou grupamento no dia: DESD3."
@@ -267,14 +267,27 @@ def test_texto_numero_igual_ao_dos_dados(molde: dict) -> None:
 
 def test_dia_de_alta(molde: dict) -> None:
     pronto = texto.texto_do_pregao(_de_alta(), molde)
-    assert _frase(pronto, "abertura").startswith("O Ibovespa subiu +2,1% em 26/10/2026")
+    assert _frase(pronto, "abertura").startswith("O Ibovespa subiu 2,1% em 26/10/2026")
     assert "180 dos 6.650 pregões subiram tanto ou mais" in _frase(pronto, "historia")
     assert "Nenhuma dessas empresas caiu." in [f["texto"] for f in pronto["frases"]]
     assert _frase(pronto, "juros").endswith("caiu 12 pontos-base, para 16,26% ao ano.")
     assert (
-        _frase(pronto, "dolar") == "O dólar futuro (DOLX26) caiu −1,0%, para R$ 6,1234."
+        _frase(pronto, "dolar") == "O dólar futuro (DOLX26) caiu 1,0%, para R$ 6,1234."
     )
     assert "a_conferir" not in _grupos(pronto)
+
+
+def test_historia_so_em_dia_raro(molde: dict) -> None:
+    """Em 27/10/2026 o Ibovespa caiu 0,5%: 2.186 dos 6.647 pregões caíram tanto ou mais. Dizer isso é
+    verdade, mas não informa nada; a frase da história só sai quando poucos pregões foram tão longe."""
+    resumo = copy.deepcopy(RESUMO_DE_QUEDA)
+    resumo["ibovespa"].update(
+        variacao=-0.0051, pregoes_comparados=6_647, pregoes_tao_extremos=2_186
+    )
+    assert "historia" not in _grupos(texto.texto_do_pregao(resumo, molde))
+    no_limite = round(6_647 * texto.FRACAO_DE_DIA_RARO)
+    resumo["ibovespa"]["pregoes_tao_extremos"] = no_limite
+    assert "historia" in _grupos(texto.texto_do_pregao(resumo, molde))
 
 
 def test_dia_de_lado(molde: dict) -> None:
@@ -347,3 +360,72 @@ def test_texto_recusa_molde_com_palavra_proibida(molde: dict) -> None:
 def test_texto_volta_e_vai_como_json(molde: dict) -> None:
     pronto = texto.texto_do_pregao(RESUMO_DE_QUEDA, molde)
     assert json.loads(json.dumps(pronto, ensure_ascii=False)) == pronto
+
+
+# --- as tabelas, o gráfico e o JSON do site ---------------------------------------------------------
+
+
+def test_tabelas_com_os_titulos_do_molde_e_os_numeros_escritos(molde: dict) -> None:
+    pronto = texto.texto_do_pregao(RESUMO_DE_QUEDA, molde)
+    tabelas = {t["chave"]: t for t in pronto["tabelas"]}
+    assert list(tabelas) == ["setores", "altas", "quedas"]
+    for chave, tabela in tabelas.items():
+        assert tabela["titulo"] == molde["tabelas"][chave]["titulo"]
+        assert tabela["colunas"] == molde["tabelas"][chave]["colunas"]
+        assert all(len(linha) == len(tabela["colunas"]) for linha in tabela["linhas"])
+    assert tabelas["setores"]["linhas"][0] == ["Saneamento", "5", "−5,1%", "+8,8"]
+    assert tabelas["quedas"]["linhas"][1] == [
+        "Vamos",
+        "VAMO3",
+        "Logística",
+        "−56,8%",
+        "2,10",
+    ]
+    assert tabelas["altas"]["linhas"] == [
+        ["Sabesp", "SBSP3", "Saneamento", "+3,1%", "120,50"]
+    ]
+
+
+def test_grafico_dos_setores_em_pontos_percentuais(molde: dict) -> None:
+    grafico = texto.texto_do_pregao(RESUMO_DE_QUEDA, molde)["grafico"]
+    assert grafico["titulo"] == molde["grafico_dos_setores"]
+    assert grafico["barras"] == [
+        {"nome": "Saneamento", "valor": pytest.approx(8.779), "texto": "+8,8"},
+        {"nome": "Bancos", "valor": pytest.approx(1.879), "texto": "+1,9"},
+        {"nome": "Varejo", "valor": pytest.approx(-27.121), "texto": "−27,1"},
+    ]
+
+
+def test_tabelas_e_grafico_tambem_passam_pela_trava(molde: dict) -> None:
+    trocado = copy.deepcopy(molde)
+    trocado["tabelas"]["altas"]["titulo"] = "Ações para comprar"
+    with pytest.raises(ValueError, match="proibida"):
+        texto.conferir_molde(trocado)
+    trocado = copy.deepcopy(molde)
+    trocado["grafico_dos_setores"] = "Setores que devem subir"
+    with pytest.raises(ValueError, match="proibida"):
+        texto.conferir_molde(trocado)
+
+
+def test_molde_do_arquivo_e_o_aprovado(molde: dict) -> None:
+    """Mudar uma letra do molde exige trocar a impressão aprovada no mesmo PR: é texto público novo,
+    que só entra com o "pode" do Tiago."""
+    assert texto.impressao_digital(molde) == texto.IMPRESSAO_DO_MOLDE_APROVADO
+
+
+def test_para_o_site_le_o_ultimo_pregao_guardado(tmp_path, molde: dict) -> None:
+    for dia in ("2026-10-26", "2026-10-27"):
+        resumo = copy.deepcopy(RESUMO_DE_QUEDA) | {"pregao": dia}
+        (tmp_path / f"{dia}.json").write_text(json.dumps(resumo), encoding="utf-8")
+    (tmp_path / "LEIA.md").write_text("não é pregão", encoding="utf-8")
+    site = texto.para_o_site(pasta=tmp_path)
+    assert site["molde_aprovado"] == texto.IMPRESSAO_DO_MOLDE_APROVADO
+    assert site["pregao"]["pregao"] == "2026-10-27"
+    assert site["pregao"]["impressao_digital"] == texto.impressao_digital(molde)
+
+
+def test_pregao_guardado_no_repositorio_monta_o_texto() -> None:
+    """O pregão que o site mostra (conteudo/pregao/) passa pelo molde sem erro e sem lacuna."""
+    site = texto.para_o_site()
+    assert site["pregao"]["frases"]
+    assert site["pregao"]["impressao_digital"] == site["molde_aprovado"]

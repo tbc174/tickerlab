@@ -1,6 +1,8 @@
 // Relatórios: os dois de exemplo, o de uma empresa e o de um setor (o item do topo do plano do site
 // para quem analisa, 18/10/2026). Cada cartão usa o título e a descrição da própria página.
+import { pregaoDoDia } from "../conteudo";
 import { TopoDaPagina } from "../site/Fundo";
+import { DADOS as DADOS_DO_PREGAO, dataDoPregao } from "./PregaoDoDia";
 import { DADOS as DADOS_DO_RAIO_X, MOMENTO_DO_RAIO_X, RAIO_X } from "./RaioXDoChoque";
 import { DADOS as DADOS_DA_EMPRESA } from "./RelatorioExemplo";
 import { DADOS as DADOS_DO_SETOR } from "./RelatorioSemanalEletricas";
@@ -19,6 +21,26 @@ const RELATORIOS = [
   { olho: "Relatório de exemplo", ...DADOS_DA_EMPRESA },
   { olho: "Relatório de setor", ...DADOS_DO_SETOR },
 ];
+
+/** O fechamento do último pregão, que muda todo dia útil. */
+function UltimoPregao() {
+  return (
+    <section className="faixa" aria-labelledby="titulo-pregao">
+      <h2 id="titulo-pregao" className="olho">
+        {DADOS_DO_PREGAO.titulo}
+      </h2>
+      <article className="cartao cartao-de-relatorio">
+        <p className="olho">Todo dia útil, depois do fechamento</p>
+        <h3>
+          <a href={DADOS_DO_PREGAO.caminho}>
+            O pregão de {dataDoPregao(pregaoDoDia.pregao.pregao)}
+          </a>
+        </h3>
+        <p>{DADOS_DO_PREGAO.descricao}</p>
+      </article>
+    </section>
+  );
+}
 
 /** Os estudos de um acontecimento do mercado (o primeiro: o circuit breaker de 26/10/2026). */
 function Estudos() {
@@ -44,6 +66,7 @@ export function Relatorios() {
   return (
     <>
       <TopoDaPagina titulo={DADOS.titulo} subtitulo={FRASE} />
+      <UltimoPregao />
       <Estudos />
       <section className="faixa secao" aria-label={DADOS.titulo}>
         <div className="grade dois">

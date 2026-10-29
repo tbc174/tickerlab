@@ -2,6 +2,7 @@
 // (relatorio_semanal_eletricas.json, de src/relatorio_semanal.py): nunca à mão.
 import { relatorioSemanalEletricas as relatorio } from "../conteudo";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
+import { TabelaPronta } from "../site/TabelaPronta";
 
 const CAMINHO = "/relatorio-de-setor-eletricas.html";
 
@@ -18,8 +19,6 @@ const TITULO_DOS_DESTAQUES = "O que os dados mostram";
 const TITULO_DAS_TABELAS = "Os números por companhia";
 const TITULO_DO_QUE_FALTA = "O que este relatório ainda não traz";
 const TITULO_DOS_LIMITES = "Limites e cuidados";
-// uma célula que é número já escrito ("15.443.941", "17,6%"): vai à direita
-const NUMERO_ESCRITO = /^[-−]?[\d.,]+%?$/;
 
 const SUMARIO = [
   { id: ancora(TITULO_DOS_DESTAQUES), texto: TITULO_DOS_DESTAQUES },
@@ -52,40 +51,9 @@ export function RelatorioSemanalEletricas() {
       </div>
 
       <h2 id={ancora(TITULO_DAS_TABELAS)}>{TITULO_DAS_TABELAS}</h2>
-      {relatorio.tabelas.map((tabela) => {
-        const numericas = tabela.colunas.map((_, i) =>
-          tabela.linhas.every((linha) => NUMERO_ESCRITO.test(linha[i])),
-        );
-        return (
-          <section key={tabela.chave}>
-            <h3>{tabela.titulo}</h3>
-            <div className="tabela">
-              <table>
-                <thead>
-                  <tr>
-                    {tabela.colunas.map((coluna, i) => (
-                      <th key={coluna} scope="col" className={numericas[i] ? "v2-num" : undefined}>
-                        {coluna}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tabela.linhas.map((linha) => (
-                    <tr key={`${tabela.chave}-${linha[0]}`}>
-                      {linha.map((celula, i) => (
-                        <td key={tabela.colunas[i]} className={numericas[i] ? "v2-num" : undefined}>
-                          {celula}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        );
-      })}
+      {relatorio.tabelas.map((tabela) => (
+        <TabelaPronta key={tabela.chave} tabela={tabela} />
+      ))}
 
       <h2 id={ancora(TITULO_DO_QUE_FALTA)}>{TITULO_DO_QUE_FALTA}</h2>
       <p>

@@ -8,11 +8,18 @@ import {
   amostraRelatorio,
   marca,
   planos,
+  pregaoDoDia,
   relatorioSemanalEletricas,
 } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
+import {
+  AVISO_SEM_TEXTO,
+  DADOS as DADOS_DO_PREGAO,
+  dataDoPregao,
+  textoAprovado,
+} from "../src/paginas/PregaoDoDia";
 import {
   DADOS as DADOS_DO_RAIO_X,
   MOMENTO_DO_RAIO_X,
@@ -417,6 +424,43 @@ describe("relatório de setor da semana: elétricas (ADR 0109, item 10)", () => 
   });
 });
 
+describe("pregão do dia (texto só do molde aprovado)", () => {
+  const html = renderizar("pregao-do-dia.html");
+  const texto = semTags(html);
+  const { pregao } = pregaoDoDia;
+
+  it("o texto guardado é do molde aprovado", () => {
+    expect(pregao.impressao_digital).toBe(pregaoDoDia.molde_aprovado);
+    expect(textoAprovado(pregaoDoDia)).toBe(pregao);
+  });
+
+  it("recusa o texto de outro molde", () => {
+    const trocado = { ...pregaoDoDia, molde_aprovado: "outro" };
+    expect(textoAprovado(trocado)).toBeNull();
+    expect(AVISO_SEM_TEXTO).not.toMatch(/\d/);
+  });
+
+  it("abre com a data do pregão e mostra cada frase", () => {
+    expect(dataDoPregao("2026-10-27")).toBe("27/10/2026");
+    expect(texto).toContain(`O pregão de ${dataDoPregao(pregao.pregao)}`);
+    expect(pregao.frases.length).toBeGreaterThanOrEqual(5);
+    for (const f of pregao.frases) expect(texto).toContain(f.texto);
+  });
+
+  it("mostra o gráfico, as tabelas, os limites e as fontes", () => {
+    expect(html).toContain(`aria-label="${esc(pregao.grafico.titulo)}"`);
+    for (const b of pregao.grafico.barras) expect(texto).toContain(`${b.nome}: ${b.texto}`);
+    for (const t of pregao.tabelas) {
+      expect(texto).toContain(t.titulo);
+      for (const linha of t.linhas) for (const celula of linha) expect(texto).toContain(celula);
+    }
+    expect(texto).toContain("Limites e cuidados");
+    for (const l of pregao.limites) expect(texto).toContain(l);
+    expect(texto).toContain("Nada aqui é recomendação de investimento.");
+    for (const f of pregao.fontes) expect(texto).toContain(f);
+  });
+});
+
 describe("página Relatórios (menu do plano de 18/10, pode do Tiago em 23/10)", () => {
   const html = renderizar("relatorios.html");
   const texto = semTags(html);
@@ -436,11 +480,18 @@ describe("página Relatórios (menu do plano de 18/10, pode do Tiago em 23/10)",
     }
   });
 
-  it("os dois relatórios marcam Relatórios no topo", () => {
+  it("o cartão do pregão do dia leva à página, com a data do último pregão", () => {
+    expect(html).toContain(`href="${DADOS_DO_PREGAO.caminho}"`);
+    expect(texto).toContain(`O pregão de ${dataDoPregao(pregaoDoDia.pregao.pregao)}`);
+    expect(html).toContain(esc(DADOS_DO_PREGAO.descricao));
+  });
+
+  it("os relatórios marcam Relatórios no topo", () => {
     for (const arquivo of [
       "relatorio-de-exemplo.html",
       "relatorio-de-setor-eletricas.html",
       "raio-x-do-choque.html",
+      "pregao-do-dia.html",
     ]) {
       const topo = renderizar(arquivo).split("</header>")[0];
       expect(topo).toMatch(/<a href="\/relatorios.html" aria-current="[a-z]+">Relatórios<\/a>/);

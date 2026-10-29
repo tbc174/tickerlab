@@ -257,6 +257,22 @@ export const relatorioSemanalEletricas: {
   nao_temos: { kpi: string; motivo: string; fonte: string }[];
   limites: string[];
 } = semanalEletricasJson;
+import pregaoDoDiaJson from "../conteudo/pregao_do_dia.json";
+
+/** O pregão do dia (src/texto_do_pregao.py, para_o_site): o texto do último pregão pelo molde e a
+ * impressão do molde aprovado, que a página confere antes de mostrar. */
+export const pregaoDoDia: {
+  molde_aprovado: string;
+  pregao: {
+    pregao: string; // AAAA-MM-DD
+    frases: { grupo: string; variante: string; texto: string }[];
+    grafico: { titulo: string; barras: { nome: string; valor: number; texto: string }[] };
+    tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];
+    limites: string[];
+    fontes: string[];
+    impressao_digital: string;
+  };
+} = pregaoDoDiaJson;
 import baseJson from "../conteudo/base.json";
 import catalogoJson from "../conteudo/catalogo.json";
 

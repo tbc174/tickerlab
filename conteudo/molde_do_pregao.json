@@ -15,7 +15,7 @@
       "queda_varios": "Desde {desde}, {tao_extremos} dos {comparados} pregões caíram tanto ou mais; o último foi em {ultima_vez}."
     },
     "amplitude": {
-      "contagem": "Das {empresas} empresas com R$ {liquidez} milhões ou mais negociados na véspera: {subiram} em alta, {cairam} em queda e {estaveis} estáveis."
+      "contagem": "Das {empresas} empresas com R$ {liquidez} milhões ou mais negociados na véspera: {subiram} em alta, {cairam} em queda e {estaveis} sem variação."
     },
     "setores": {
       "ponta_de_cima": "Na ponta de cima dos setores, {setor}: mediana de {mediana} em {empresas} empresas ({contra} pontos percentuais em relação ao Ibovespa).",
@@ -39,6 +39,21 @@
     },
     "a_conferir": {
       "lista": "Ficaram fora das contas, por desdobramento ou grupamento no dia: {simbolos}."
+    }
+  },
+  "grafico_dos_setores": "Mediana do dia em cada setor menos a variação do Ibovespa, em pontos percentuais",
+  "tabelas": {
+    "setores": {
+      "titulo": "Os setores contra o Ibovespa",
+      "colunas": ["Setor", "Empresas", "Mediana do dia", "Contra o Ibovespa (p.p.)"]
+    },
+    "altas": {
+      "titulo": "Maiores altas",
+      "colunas": ["Empresa", "Código", "Setor", "Variação", "Fechamento (R$)"]
+    },
+    "quedas": {
+      "titulo": "Maiores quedas",
+      "colunas": ["Empresa", "Código", "Setor", "Variação", "Fechamento (R$)"]
     }
   },
   "limites": [

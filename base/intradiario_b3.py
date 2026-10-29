@@ -318,10 +318,10 @@ def ler_boletim_pr(caminho_zip: Path) -> pd.DataFrame:
 def _um_por_codigo(tabela: pd.DataFrame) -> pd.DataFrame:
     """Uma linha por código. Código com várias linhas no boletim (termo, uma por vencimento):
     negócios e volume somados, máxima e mínima de todas, abertura e fechamento vazios (não dá para
-    saber qual linha veio antes). Outras colunas: a da primeira linha."""
+    saber qual linha veio antes). Volume em reais também somado; outras colunas: a da primeira linha."""
     grupos = tabela.groupby("simbolo", sort=True)
     extras = {
-        c: (c, "first")
+        c: (c, "sum" if c == "volume_financeiro" else "first")
         for c in tabela.columns
         if c not in ["simbolo", *CAMPOS_CONFERIDOS]
     }
@@ -451,7 +451,8 @@ def _registro_do_cotahist(linha: str) -> dict[str, object]:
         "minima": int(linha[82:95]) / CENTAVOS,
         "fechamento": int(linha[108:121]) / CENTAVOS,
         "negocios": int(linha[147:152]),
-        "volume": int(linha[152:170]),
+        "volume": int(linha[152:170]),  # quantidade de papéis (QUATOT), como no PR
+        "volume_financeiro": int(linha[170:188]) / CENTAVOS,  # em reais (VOLTOT)
     }
 
 
@@ -465,7 +466,10 @@ def ler_cotahist(caminho_zip: Path) -> pd.DataFrame:
         if linha[:2] == TIPO_DE_REGISTRO_DE_COTACAO
     ]
     return _um_por_codigo(
-        pd.DataFrame(registros, columns=["simbolo", "mercado", *CAMPOS_CONFERIDOS])
+        pd.DataFrame(
+            registros,
+            columns=["simbolo", "mercado", *CAMPOS_CONFERIDOS, "volume_financeiro"],
+        )
     )
 
 
