@@ -2015,8 +2015,9 @@ TABELAS: dict[str, Tabela] = {
             "Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo "
             "líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto "
             "de fronteira). A fonte não publica preço: é conta nossa sobre os CSVs de NCM, somando vias, "
-            "países e UFs de cada linha. Quilo zero deixa o preço vazio. **Uso interno até a licença do "
-            "MDIC**: fora da exportação e do app público. O MDIC revisa meses passados: a revisão vira linha "
+            "países e UFs de cada linha. Quilo zero deixa o preço vazio. Dados abertos de uso livre, "
+            "inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC e dizer que o preço "
+            "é elaboração própria. O MDIC revisa meses passados: a revisão vira linha "
             "nova, desde o dia em que foi vista. O nome da URF está em `URF.csv`, outra tabela da fonte"
         ),
         fonte="MDIC: Comex Stat, exportação e importação por NCM (EXP_AAAA.csv e IMP_AAAA.csv)",
@@ -5092,8 +5093,8 @@ TABELAS: dict[str, Tabela] = {
         ),
         ressalva_de_revenda=(
             "Os nomes e códigos das entidades seguem a licença de cada regulador: CC BY (ANS, "
-            "Anatel, ANP, ONS, ANTT, ANAC; citar), ODbL (ANEEL, Banco Central) e Comex Stat a "
-            "confirmar com o MDIC."
+            "Anatel, ANP, ONS, ANTT, ANAC; citar), ODbL (ANEEL, Banco Central) e dados abertos de uso "
+            "livre (Comex Stat; citar Secex/MDIC)."
         ),
         colunas={
             "fonte": ("Fonte do arquivista de onde veio a entidade", TEXTO),
