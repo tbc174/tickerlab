@@ -371,8 +371,28 @@ def _governanca_e_credito(pasta: Path) -> None:
     _gravar(pasta, "fre_comites/2026.parquet", governanca_e_credito._comites())
     _gravar(pasta, "fre_remuneracao/2026.parquet", governanca_e_credito._remuneracao())
     _gravar(pasta, "ratings/ratings.parquet", governanca_e_credito._ratings())
-    assembleias = governanca_e_credito._assembleias().assign(estresse=True)
-    _gravar(pasta, "debentures_assembleias/assembleias.parquet", assembleias)
+    _gravar(
+        pasta,
+        "debentures_assembleias/assembleias.parquet",
+        governanca_e_credito._assembleias(),
+    )
+    # os proventos não têm data de publicação: a noite a tira da entrega do FRE (fre_remuneracao);
+    # o exercício de 2026 vem de um FRE que a base não conhece e fica fora
+    _gravar(
+        pasta,
+        "proventos/2026.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL] * 2,
+                "referencia": [D("2026-01-01"), D("2027-01-01")],
+                "versao": [2, 1],
+                "exercicio": [D("2025-12-31"), D("2026-12-31")],
+                "lucro_ajustado": [100e6, 10e6],
+                "dividendo_total": [130e6, 90e6],
+                "payout": [1.3, 9.0],
+            }
+        ),
+    )
 
 
 def test_ficha_traz_governanca_e_credito(tmp_path: Path) -> None:
@@ -390,8 +410,15 @@ def test_ficha_traz_governanca_e_credito(tmp_path: Path) -> None:
     credito = {i["chave"]: i["valor"] for i in secoes["credito"]["itens"]}
     assert credito["ratings_rebaixamentos_12m"] == 1
     assert credito["assembleias_de_debenturistas_12m"] == 2
-    # o rótulo de aperto de crédito da base não sai na ficha: só os temas do assunto
+    # o rótulo de aperto da base vira a tabela `assembleias_de_aperto`, só com os fatos (sem a coluna)
+    assert len(secoes["credito"]["tabelas"]["assembleias_de_aperto"]) == 3
     assert "estresse" not in json.dumps(secoes["credito"])
+    assert "acoes_de_rating" in secoes["credito"]["tabelas"]
+    assert "remuneracao_da_diretoria_por_exercicio" in secoes["governanca"]["tabelas"]
+    proventos = secoes["capital_e_acionistas"]["tabelas"]["proventos_por_exercicio"]
+    assert [(p["exercicio"], p["conhecido_em"]) for p in proventos] == [
+        (2025, "2026-07-10")
+    ]
 
 
 def test_ficha_traz_a_geracao_de_caixa_da_dfc(tmp_path: Path) -> None:

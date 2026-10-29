@@ -216,6 +216,8 @@ _REGULADORES_PLANEJADAS = {
         "distribuidoras/ficha",
         "indicadores gerenciais e autos de infração por distribuidora",
     ),
+    # das pastas da ANS no lote, só as penalidades viram tabela; o resto segue só no acervo
+    "ans-qualidade": _tabela("ans_penalidades"),
 }
 
 # o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
@@ -365,12 +367,13 @@ DESTINOS: dict[str, Destino] = {
     "antt-siade": _tabela("antt_siade"),
     "comexstat": _tabela("comex_cafe", "comex_preco_medio"),
     # governo, sanções e identificadores
-    "cgu-ceis": _planejada("sinais/PR4", "sanções administrativas da CGU"),
-    "cgu-cnep": _planejada("sinais/PR4", "sanções da Lei Anticorrupção"),
-    "cgu-cepim": _planejada(
-        "sinais/PR4", "entidades privadas sem fins lucrativos impedidas"
+    "cgu-ceis": _tabela("sancoes_cgu"),
+    "cgu-cnep": _tabela("sancoes_cgu"),
+    "cgu-cepim": _tabela("sancoes_cgu"),
+    "cgu-leniencia": _tabela("sancoes_cgu"),
+    "antt-autos-de-transito": _planejada(
+        "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
     ),
-    "cgu-leniencia": _planejada("sinais/PR4", "acordos de leniência"),
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),

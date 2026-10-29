@@ -45,6 +45,7 @@ FONTES_COM_PESSOA = frozenset(
         "ibama-autos",
         "ibama-embargos",
         "cvm-enet-notas",  # o texto das notas da DFP traz nomes (administradores, auditor)
+        "antt-autos-de-transito",  # o autuado pode ser pessoa física (motorista autônomo)
     }
 )
 SEM_EXTENSAO = ".bin"

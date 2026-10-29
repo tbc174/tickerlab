@@ -2505,6 +2505,102 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `sancoes_cgu`
+
+Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punidas pela Lei Anticorrupção, com o valor da multa), CEPIM (entidades sem fins lucrativos impedidas de receber convênio) e acordos de leniência. Uma linha por valor diferente de cada sanção: a mudança (situação, fim, valor) vira linha nova que só vale desde o dia em que foi vista, e a sanção que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram, nem a razão social; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade das sanções do anterior é pulado: é arquivo quebrado da fonte, não sanção que acabou. Os efeitos de cada acordo de leniência (o 2º arquivo do ZIP) ainda não entram.
+
+- **Fonte:** CGU: Portal da Transparência, download de dados do CEIS, CNEP, CEPIM e acordos de leniência (`base/sancoes.py`)
+- **Licença:** Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Diária (o portal gera um arquivo por dia; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sancoes_cgu/<cadastro>.parquet` (servidor de casa, `scripts/carga_sancoes.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que cadastro veio: ceis, cnep, cepim, leniencia ou penalidades (ANS) | texto |
+| `id_na_fonte` | O código da sanção na fonte (no CEPIM, que não tem código: o CNPJ e o convênio) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `categoria` | O tipo da sanção como a fonte escreve (Suspensão, Inidoneidade, Multa Pecuniária, o motivo do impedimento no CEPIM, Acordo de leniência) | texto |
+| `situacao` | Situação do acordo (leniência) ou da demanda (ANS), como a fonte escreve | texto |
+| `assunto` | Tipo do processo na ANS (Consumidor, Econômico-financeiro...) | texto |
+| `orgao` | Órgão que aplicou a sanção (no CEPIM, o concedente do convênio) | texto |
+| `uf_do_orgao` | UF do órgão sancionador | texto |
+| `esfera_do_orgao` | Esfera do órgão (FEDERAL, ESTADUAL, MUNICIPAL) | texto |
+| `origem_da_informacao` | Quem informou a sanção à CGU | texto |
+| `fundamentacao_legal` | A lei em que a sanção se baseia | texto |
+| `abrangencia` | Abrangência da sanção, como a CGU escreve | texto |
+| `processo` | Número do processo (no CEPIM, o do convênio) | texto |
+| `inicio` | Início da sanção ou do acordo; na ANS, a data da decisão de 1ª instância. Pode ser depois da publicação (a sanção publicada que só vale adiante) | data (dia) |
+| `fim` | Fim da sanção ou do acordo (vazio: sem prazo ou não informado) | data (dia) |
+| `publicado_em` | Publicação oficial (Diário Oficial; na ANS, a da 1ª instância) | data (dia) |
+| `transito_em_julgado` | Trânsito em julgado, quando a fonte informa | data (dia) |
+| `informado_em` | Quando o órgão informou a sanção à CGU (data de origem da informação) | data (dia) |
+| `valor_multa` | Valor da multa (CNEP; na ANS, a multa final aplicada) | reais (R$), já multiplicado pela escala informada |
+| `consta` | Verdadeiro enquanto a sanção está no arquivo; falso na linha do dia em que saiu dele (acabou, foi excluída ou anulada) | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a publicação ou a informação ao órgão (a que for depois), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ans_penalidades`
+
+Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tipo do processo, a situação da demanda, as datas da 1ª instância e a multa final. Uma linha por valor diferente de cada sanção: a mudança (situação, fim, valor) vira linha nova que só vale desde o dia em que foi vista, e a sanção que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram, nem a razão social; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade das sanções do anterior é pulado: é arquivo quebrado da fonte, não sanção que acabou.
+
+- **Fonte:** ANS: dados abertos, penalidades aplicadas a operadoras (`base/sancoes.py`)
+- **Licença:** CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a ANS recarrega o arquivo inteiro; `NR_COMPETENCIA_CARGA` diz o mês)
+- **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ans_penalidades/penalidades.parquet` (servidor de casa, `scripts/carga_sancoes.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cadastro` | De que cadastro veio: ceis, cnep, cepim, leniencia ou penalidades (ANS) | texto |
+| `id_na_fonte` | O código da sanção na fonte (no CEPIM, que não tem código: o CNPJ e o convênio) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `categoria` | O tipo da sanção como a fonte escreve (Suspensão, Inidoneidade, Multa Pecuniária, o motivo do impedimento no CEPIM, Acordo de leniência) | texto |
+| `situacao` | Situação do acordo (leniência) ou da demanda (ANS), como a fonte escreve | texto |
+| `assunto` | Tipo do processo na ANS (Consumidor, Econômico-financeiro...) | texto |
+| `orgao` | Órgão que aplicou a sanção (no CEPIM, o concedente do convênio) | texto |
+| `uf_do_orgao` | UF do órgão sancionador | texto |
+| `esfera_do_orgao` | Esfera do órgão (FEDERAL, ESTADUAL, MUNICIPAL) | texto |
+| `origem_da_informacao` | Quem informou a sanção à CGU | texto |
+| `fundamentacao_legal` | A lei em que a sanção se baseia | texto |
+| `abrangencia` | Abrangência da sanção, como a CGU escreve | texto |
+| `processo` | Número do processo (no CEPIM, o do convênio) | texto |
+| `inicio` | Início da sanção ou do acordo; na ANS, a data da decisão de 1ª instância. Pode ser depois da publicação (a sanção publicada que só vale adiante) | data (dia) |
+| `fim` | Fim da sanção ou do acordo (vazio: sem prazo ou não informado) | data (dia) |
+| `publicado_em` | Publicação oficial (Diário Oficial; na ANS, a da 1ª instância) | data (dia) |
+| `transito_em_julgado` | Trânsito em julgado, quando a fonte informa | data (dia) |
+| `informado_em` | Quando o órgão informou a sanção à CGU (data de origem da informação) | data (dia) |
+| `valor_multa` | Valor da multa (CNEP; na ANS, a multa final aplicada) | reais (R$), já multiplicado pela escala informada |
+| `consta` | Verdadeiro enquanto a sanção está no arquivo; falso na linha do dia em que saiu dele (acabou, foi excluída ou anulada) | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a publicação ou a informação ao órgão (a que for depois), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `debentures_assembleias`
 
 Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora (`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): `estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF
