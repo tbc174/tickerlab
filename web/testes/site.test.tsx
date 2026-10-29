@@ -8,11 +8,18 @@ import {
   amostraRelatorio,
   marca,
   planos,
+  pregaoDoDia,
   relatorioSemanalEletricas,
 } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
+import {
+  AVISO_SEM_TEXTO,
+  DADOS as DADOS_DO_PREGAO,
+  dataDoPregao,
+  textoAprovado,
+} from "../src/paginas/PregaoDoDia";
 import {
   DADOS as DADOS_DO_RAIO_X,
   MOMENTO_DO_RAIO_X,
@@ -23,7 +30,7 @@ import { DADOS as DADOS_DO_RELATORIO } from "../src/paginas/RelatorioExemplo";
 import { DADOS as DADOS_DO_SETOR } from "../src/paginas/RelatorioSemanalEletricas";
 import { ROTAS } from "../src/rotas";
 import { MODULOS_DO_PRODUTO, contagem, disponiveis, moduloPelaChave } from "../src/site/comum";
-import { ASSINATURA, URL_DO_SITE } from "../src/site/textos";
+import { ASSINATURA, EMAIL_DE_CONTATO, URL_DO_SITE, linkDoApp } from "../src/site/textos";
 
 const SITE = join(process.cwd(), "..", "site");
 // LF sempre: o Git no Windows pode tirar os arquivos com CRLF
@@ -226,22 +233,40 @@ describe("outras páginas v2 (série site e app v2, PR 2)", () => {
     );
   });
 
-  it("Planos: um cartão por plano, com os limites da mesma tabela do app", () => {
+  it("Planos: a faixa grátis, o cartão Pessoa e o cartão Casa, sem preço", () => {
     const html = renderizar("precos.html");
+    const texto = semTags(html);
+    // a faixa grátis leva ao app; o Pessoa mostra os limites do plano completo, da mesma tabela do app
+    const gratis = trecho(html, '<section class="faixa secao v2-depois-do-topo"', "</section>");
+    expect(semTags(gratis)).toContain("Para conhecer, de graça");
+    expect(gratis).toContain("Começar grátis");
     const cartoes = trecho(html, '<div class="v2-planos">', "</div></section>");
-    expect(cartoes.match(/<article class="v2-plano/g)).toHaveLength(planos.nomes.length);
-    const ultimo = planos.nomes[planos.nomes.length - 1];
-    expect(cartoes).toContain(`<article class="v2-plano v2-plano-destaque"><header><h3>${ultimo}</h3>`);
+    expect(cartoes.match(/<article class="v2-plano/g)).toHaveLength(2);
+    const pessoa = trecho(cartoes, "<h3>Pessoa</h3>", "</article>");
+    const completo = planos.nomes[planos.nomes.length - 1];
     const linhas = planos.tabela as Record<string, string>[];
-    for (const nome of planos.nomes)
-      for (const recurso of ["Simulações salvas", "Favoritos", "Ativos na carteira"]) {
-        const linha = linhas.find((l) => l.Recurso === recurso)!;
-        expect(cartoes).toContain(`${esc(recurso)}: <b>${esc(linha[nome])}</b>`);
-      }
-    // o plano em breve não tem botão que leve a lugar nenhum
-    const emBreve = trecho(cartoes, `<h3>${planos.nomes_em_breve[0]}</h3>`, "</article>");
-    expect(emBreve).not.toContain("href=");
-    expect(emBreve).toContain('aria-disabled="true"');
+    for (const recurso of ["Simulações salvas", "Favoritos", "Ativos na carteira"]) {
+      const linha = linhas.find((l) => l.Recurso === recurso)!;
+      expect(pessoa).toContain(`${esc(recurso)}: <b>${esc(linha[completo])}</b>`);
+    }
+    // o Casa está em construção: sem botão que leve a lugar nenhum, só o e-mail do site
+    const casa = trecho(cartoes, "<h3>Casa</h3>", "</article>");
+    expect(semTags(casa)).toContain("por assento");
+    expect(semTags(casa)).toContain("em construção");
+    expect(casa).not.toContain(linkDoApp());
+    expect(casa).toContain(`mailto:${EMAIL_DE_CONTATO}`);
+    // o texto do pré-lançamento (ADR 0029, Emenda 1) e nenhum valor em dinheiro
+    expect(texto).toContain("definido antes do lançamento");
+    expect(texto).toContain("toda conta usa");
+    expect(html).not.toContain("R$");
+  });
+
+  it("Planos: a tabela agrupa os níveis em Para conhecer e Pessoa, com todos os planos do app", () => {
+    const tabela = trecho(renderizar("precos.html"), '<table class="planos v2-comparativo">', "</table>");
+    const cabecalho = trecho(tabela, "<thead>", "</thead>");
+    expect(semTags(cabecalho)).toContain("Para conhecer, de graça");
+    expect(semTags(cabecalho)).toContain("Pessoa");
+    for (const nome of planos.nomes) expect(cabecalho).toContain(`>${nome}</th>`);
   });
 
   it("Planos: ✓ e — na tabela, com Sim e Não para quem usa leitor de tela", () => {
@@ -399,6 +424,43 @@ describe("relatório de setor da semana: elétricas (ADR 0109, item 10)", () => 
   });
 });
 
+describe("pregão do dia (texto só do molde aprovado)", () => {
+  const html = renderizar("pregao-do-dia.html");
+  const texto = semTags(html);
+  const { pregao } = pregaoDoDia;
+
+  it("o texto guardado é do molde aprovado", () => {
+    expect(pregao.impressao_digital).toBe(pregaoDoDia.molde_aprovado);
+    expect(textoAprovado(pregaoDoDia)).toBe(pregao);
+  });
+
+  it("recusa o texto de outro molde", () => {
+    const trocado = { ...pregaoDoDia, molde_aprovado: "outro" };
+    expect(textoAprovado(trocado)).toBeNull();
+    expect(AVISO_SEM_TEXTO).not.toMatch(/\d/);
+  });
+
+  it("abre com a data do pregão e mostra cada frase", () => {
+    expect(dataDoPregao("2026-10-27")).toBe("27/10/2026");
+    expect(texto).toContain(`O pregão de ${dataDoPregao(pregao.pregao)}`);
+    expect(pregao.frases.length).toBeGreaterThanOrEqual(5);
+    for (const f of pregao.frases) expect(texto).toContain(f.texto);
+  });
+
+  it("mostra o gráfico, as tabelas, os limites e as fontes", () => {
+    expect(html).toContain(`aria-label="${esc(pregao.grafico.titulo)}"`);
+    for (const b of pregao.grafico.barras) expect(texto).toContain(`${b.nome}: ${b.texto}`);
+    for (const t of pregao.tabelas) {
+      expect(texto).toContain(t.titulo);
+      for (const linha of t.linhas) for (const celula of linha) expect(texto).toContain(celula);
+    }
+    expect(texto).toContain("Limites e cuidados");
+    for (const l of pregao.limites) expect(texto).toContain(l);
+    expect(texto).toContain("Nada aqui é recomendação de investimento.");
+    for (const f of pregao.fontes) expect(texto).toContain(f);
+  });
+});
+
 describe("página Relatórios (menu do plano de 18/10, pode do Tiago em 23/10)", () => {
   const html = renderizar("relatorios.html");
   const texto = semTags(html);
@@ -418,11 +480,18 @@ describe("página Relatórios (menu do plano de 18/10, pode do Tiago em 23/10)",
     }
   });
 
-  it("os dois relatórios marcam Relatórios no topo", () => {
+  it("o cartão do pregão do dia leva à página, com a data do último pregão", () => {
+    expect(html).toContain(`href="${DADOS_DO_PREGAO.caminho}"`);
+    expect(texto).toContain(`O pregão de ${dataDoPregao(pregaoDoDia.pregao.pregao)}`);
+    expect(html).toContain(esc(DADOS_DO_PREGAO.descricao));
+  });
+
+  it("os relatórios marcam Relatórios no topo", () => {
     for (const arquivo of [
       "relatorio-de-exemplo.html",
       "relatorio-de-setor-eletricas.html",
       "raio-x-do-choque.html",
+      "pregao-do-dia.html",
     ]) {
       const topo = renderizar(arquivo).split("</header>")[0];
       expect(topo).toMatch(/<a href="\/relatorios.html" aria-current="[a-z]+">Relatórios<\/a>/);

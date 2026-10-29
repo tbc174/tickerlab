@@ -426,12 +426,14 @@ def registro_do_cotahist(
     precos: tuple[float, float, float, float] = (30.1, 30.3, 30.1, 30.3),
     negocios: int = 3,
     volume: int = 600,
+    volume_financeiro: float = 18_120.0,
 ) -> str:
-    """Uma linha de 245 posições do COTAHIST (preços em centavos, 13 algarismos)."""
+    """Uma linha de 245 posições do COTAHIST (preços e volume financeiro em centavos)."""
     abertura, maxima, minima, fechamento = (f"{round(p * 100):013d}" for p in precos)
     linha = ("01" + "20261013" + "02" + simbolo.ljust(12) + tipo_de_mercado).ljust(56)
     linha += abertura + maxima + minima + "0" * 13 + fechamento
     linha = linha.ljust(147) + f"{negocios:05d}" + f"{volume:018d}"
+    linha += f"{round(volume_financeiro * 100):018d}"
     return linha.ljust(245, "0")
 
 
@@ -475,6 +477,28 @@ def test_cotahist_com_os_campos_e_o_mercado(tmp_path):
     termo = cotahist.loc["BBAS3T"]  # uma linha por vencimento, somadas como no PR
     assert (termo["negocios"], termo["volume"]) == (6, 1000)
     assert pd.isna(termo["abertura"])
+
+
+def test_cotahist_traz_o_volume_em_reais_alem_da_quantidade(tmp_path):
+    """Regressão (pregão do dia, 28/10/2026): `volume` é a quantidade de papéis (QUATOT, como o
+    FinInstrmQty do PR); o valor negociado em reais (VOLTOT) vem à parte. VALE3 em 27/10/2026:
+    43.938.600 ações e R$ 2.772.825.021,00."""
+    caminho = zip_do_cotahist(
+        tmp_path,
+        [
+            registro_do_cotahist(
+                "VALE3", "010", volume=43_938_600, volume_financeiro=2_772_825_021.0
+            ),
+            registro_do_cotahist("BBAS3T", "030", volume_financeiro=1_000.5),
+            registro_do_cotahist("BBAS3T", "030", volume_financeiro=2_000.25),
+        ],
+    )
+    cotahist = b3.ler_cotahist(caminho)
+    assert cotahist.loc["VALE3", "volume"] == 43_938_600
+    assert cotahist.loc["VALE3", "volume_financeiro"] == 2_772_825_021.0
+    assert (
+        cotahist.loc["BBAS3T", "volume_financeiro"] == 3_000.75
+    )  # somado, como o volume
 
 
 def test_boletim_do_dia_e_o_pr_completado_pelo_cotahist(tmp_path):

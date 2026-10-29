@@ -50,6 +50,8 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "nyfed": date(2026, 10, 22),
     "tic": date(2026, 10, 22),
     "census": date(2026, 10, 22),
+    # CHIRPS v3 `rnl` pela cópia Zarr do Hugging Face (pesquisa de 28/10/2026, partes 4 a 6)
+    "chirps3": date(2026, 10, 28),
 }
 # releituras e primeiras leituras da auditoria N0 (21/10/2026; `auditoria-licitude-da-coleta-2026-10-21.md`);
 # vale o dia mais novo. Família que a auditoria não conseguiu abrir ou não releu fica com a data antiga

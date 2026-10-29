@@ -267,22 +267,32 @@ def test_uniao_europeia_sem_a_coluna_do_tipo_e_falha(tmp_path):
         lote.sancoes_da_ue_so_com_empresas(bruto, tmp_path / "saida.csv")
 
 
-def test_lgpd_ofsi_so_com_entidades_e_mantem_as_duas_linhas_de_cabecalho(tmp_path):
-    bruto = tmp_path / "conlist.csv"
-    bruto.write_bytes(_fixture("conlist_duble.csv"))
+def test_lgpd_reino_unido_so_com_entidades_e_mantem_as_duas_linhas_de_cabecalho(
+    tmp_path,
+):
+    bruto = tmp_path / "uk.csv"
+    bruto.write_bytes(_fixture("uk_sanctions_duble.csv"))
     destino = tmp_path / "saida.csv"
-    lote.conlist_do_ofsi_so_com_entidades(bruto, destino)
+    lote.sancoes_do_reino_unido_so_com_entidades(bruto, destino)
     linhas = destino.read_text(encoding="utf-8-sig").splitlines()
-    assert linhas[0].startswith("Last Updated,")
-    assert linhas[1].startswith("Name 6,")
-    assert linhas[2:] == ["EXEMPLO BANK,,,Entity,Russia,1001"]
+    assert linhas[0].startswith("Report Date:")
+    assert linhas[1].startswith("Last Updated,Unique ID,")
+    assert len(linhas) == 3 and "EXEMPLO BANK" in linhas[2]
+    assert "Fulano" not in "\n".join(linhas) and "MV EXEMPLO" not in linhas[2]
 
 
-def test_ofsi_sem_a_coluna_do_tipo_e_falha(tmp_path):
-    bruto = tmp_path / "conlist.csv"
-    bruto.write_text("Last Updated,x\nName 6,Name 1\nA,B\n", encoding="utf-8")
-    with pytest.raises(ErroDeDescoberta, match=lote.COLUNA_DO_TIPO_NO_OFSI):
-        lote.conlist_do_ofsi_so_com_entidades(bruto, tmp_path / "saida.csv")
+def test_reino_unido_sem_a_coluna_do_tipo_e_falha(tmp_path):
+    bruto = tmp_path / "uk.csv"
+    bruto.write_text("Report Date: x\nName 6,Name 1\nA,B\n", encoding="utf-8")
+    with pytest.raises(ErroDeDescoberta, match=lote.COLUNA_DO_TIPO_NO_REINO_UNIDO):
+        lote.sancoes_do_reino_unido_so_com_entidades(bruto, tmp_path / "saida.csv")
+
+
+def test_reino_unido_le_a_lista_do_fcdo_e_nao_a_conlist_aposentada():
+    # a ConList do OFSI saiu do ar (409 em 28/10/2026); o Reino Unido publica tudo na UK
+    # Sanctions List do FCDO
+    assert lote.SANCOES_DO_REINO_UNIDO.startswith("https://sanctionslist.fcdo.gov.uk/")
+    assert "ofsistorage" not in lote.SANCOES_DO_REINO_UNIDO
 
 
 @pytest.mark.parametrize(
@@ -290,7 +300,7 @@ def test_ofsi_sem_a_coluna_do_tipo_e_falha(tmp_path):
     [
         ("ofac-sdn", lote.OFAC_SDN),
         ("eufsf-sancoes", lote.UE_SANCOES),
-        ("ofsi-conlist", lote.OFSI_CONLIST),
+        ("ofsi-conlist", lote.SANCOES_DO_REINO_UNIDO),
     ],
 )
 def test_toda_lista_de_sancoes_guarda_o_arquivo_filtrado_nunca_o_bruto(

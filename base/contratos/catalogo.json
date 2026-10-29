@@ -8467,7 +8467,7 @@
       "tabela": "empresa_serie",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "fonte": {
           "descricao": "Fonte do arquivista de onde veio a entidade",
@@ -8513,8 +8513,20 @@
           "descricao": "Referência do FRE mais novo que mostra a ligação",
           "unidade": "data (dia)"
         },
+        "ate": {
+          "descricao": "1ª referência do FRE da companhia que já não mostra a ligação (vazia: ainda aparece, ou a companhia parou de entregar o FRE)",
+          "unidade": "data (dia)"
+        },
+        "ate_publico_em": {
+          "descricao": "Dia em que essa entrega ficou pública: antes dele não se sabia que a ligação acabou",
+          "unidade": "data (dia)"
+        },
+        "vigente": {
+          "descricao": "A ligação aparece no FRE mais novo da companhia; falso quando acabou ou a companhia parou de entregar (a última evidência é a `ultima_referencia`)",
+          "unidade": "verdadeiro ou falso"
+        },
         "principal": {
-          "descricao": "A ligação a usar da entidade (ticker hoje, própria, FRE mais recente; nunca no produto)",
+          "descricao": "A ligação a usar da entidade (ticker hoje, própria, a que ainda vale, FRE mais recente; nunca no produto; na ANEEL, nunca participação minoritária)",
           "unidade": "verdadeiro ou falso"
         },
         "tickers": {
@@ -8546,6 +8558,8 @@
       "sinonimos_de_tempo": {
         "desde": "aconteceu_em",
         "ultima_referencia": "referencia",
+        "ate": "ate",
+        "ate_publico_em": "ate_publico_em",
         "montado_em": "a_conferir"
       },
       "historico_desde": "2010-01-01",
@@ -9584,7 +9598,7 @@
           "unidade": "data (dia)"
         },
         "fonte": {
-          "descricao": "inmet ou chirps",
+          "descricao": "inmet, chirps (v2) ou chirps-v3-rnl",
           "unidade": "texto"
         },
         "chuva_mm": {

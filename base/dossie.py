@@ -421,6 +421,7 @@ SECOES = (
         (
             "auditores",
             "trocas_de_auditor",
+            "pareceres_dfp",
             "controladas",
             "ligacoes",
             "entidades",
@@ -494,6 +495,12 @@ _SECAO_POR_CHAVE = {secao.chave: secao for secao in SECOES}
 
 LIMITES = {
     "auditor_e_controladas": (
+        "Parecer: o relatório do auditor independente sobre a DFP, como a CVM o publica; vale a partir do "
+        "dia em que a companhia o entregou, e a reapresentação vale a partir do dia dela. A opinião é o "
+        "campo da CVM. A ênfase e a incerteza sobre a continuidade operacional não têm campo: são lidas dos "
+        "títulos que o auditor escreve no texto, e ficam de fora quando o relatório é curto demais ou o "
+        "título é ambíguo, porque a ficha prefere não dizer a dizer no chute. O texto do relatório não é "
+        "guardado nem citado. "
         "Controladas e coligadas vêm do Formulário de Referência (FRE) mais recente entregue à CVM. "
         "Quando o FRE não informa o tipo, conta como controlada a sociedade com mais da metade do "
         "capital. A controladora aparece só quando ela também entrega o FRE, com o dos últimos 2 anos ainda listando a "
@@ -820,9 +827,21 @@ def secao_auditor_e_controladas(
     controladas: pd.DataFrame,
     controladoras_da_empresa: pd.DataFrame,
     pessoas: set[str],
+    pareceres: pd.DataFrame | None = None,
+    hoje: pd.Timestamp | None = None,
 ) -> dict[str, Any] | None:
-    """Quem audita, as trocas de auditor, as controladas e coligadas e quem controla (None: nada)."""
+    """Quem audita, o parecer, as trocas de auditor, as controladas e coligadas e quem controla (None: nada).
+
+    `pareceres` (e o dia da ficha, `hoje`) trazem o relatório do auditor sobre a DFP; sem eles a seção sai
+    como antes.
+    """
     itens = _itens_do_auditor(auditores, pessoas)
+    itens_do_parecer, tabela_do_parecer = (
+        parecer_do_auditor(pareceres, hoje)
+        if pareceres is not None and hoje is not None
+        else ([], pd.DataFrame())
+    )
+    itens += itens_do_parecer
     tabela_de_controladas, base = _controladas_do_ultimo_fre(controladas)
     if not tabela_de_controladas.empty:
         sao_controladas = int(tabela_de_controladas["controlada"].sum())
@@ -841,6 +860,7 @@ def secao_auditor_e_controladas(
             ),
         ]  # fmt: skip
     tabelas = {
+        "pareceres_do_auditor": tabela_do_parecer,
         "trocas_de_auditor": _trocas_sem_pessoas(trocas, pessoas),
         "controladas": tabela_de_controladas,
         "controladoras": controladoras_da_empresa.drop(columns="cnpj", errors="ignore"),
@@ -848,6 +868,73 @@ def secao_auditor_e_controladas(
     if not itens and all(t.empty for t in tabelas.values()):
         return None
     return _secao("auditor_e_controladas", itens, tabelas)
+
+
+# --- parecer do auditor ----------------------------------------------------------------------------
+
+EXERCICIOS_DO_PARECER = 5  # quantos exercícios a tabela do parecer mostra
+NAO_CLASSIFICADO = "nao_classificado"  # o que a base escreve quando não deu para decidir (nunca no chute)
+# a unidade diz à tela como escrever o código da base ("sem_ressalva" → "Sem ressalva", `src/dossie.py`)
+UNIDADE_DA_OPINIAO = "opiniao_do_auditor"
+UNIDADE_SIM_OU_NAO = "sim_ou_nao"
+CAMPOS_DO_PARECER = (  # (chave do item, nome, coluna de `pareceres_dfp`, unidade)
+    (
+        "parecer_opiniao",
+        "Opinião do auditor sobre a última DFP",
+        "opiniao",
+        UNIDADE_DA_OPINIAO,
+    ),
+    ("parecer_enfase", "Parágrafo de ênfase no parecer", "enfase", UNIDADE_SIM_OU_NAO),
+    (
+        "parecer_continuidade",
+        "Incerteza sobre a continuidade operacional",
+        "continuidade_operacional",
+        UNIDADE_SIM_OU_NAO,
+    ),
+)
+
+
+def _pareceres_em_vigor(pareceres: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """O relatório que valia em `hoje` para cada exercício: só o já entregue, na maior versão entregue."""
+    entregues = pareceres[pd.to_datetime(pareceres["disponivel_em"]) <= hoje]
+    return (
+        entregues.sort_values(["referencia", "versao"])
+        .drop_duplicates("referencia", keep="last")
+        .sort_values("referencia", ascending=False)
+        .reset_index(drop=True)
+    )
+
+
+def parecer_do_auditor(
+    pareceres: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """O parecer do auditor sobre a DFP mais nova já entregue e os últimos exercícios (tabela da empresa).
+
+    Os valores são os da base (`sem_ressalva`, `sim`, `nao`...), sem o texto que a tela mostra. O que a
+    base não conseguiu decidir (`nao_classificado`) não vira item: a ficha não diz `nao` no chute.
+    `publicado_em` é o dia em que o relatório usado foi entregue; um relatório ou uma versão entregue
+    depois de `hoje` não existe para a ficha.
+    """
+    if pareceres.empty:
+        return [], pd.DataFrame()
+    em_vigor = _pareceres_em_vigor(pareceres, hoje)
+    if em_vigor.empty:
+        return [], pd.DataFrame()
+    ultimo = em_vigor.iloc[[0]]
+    base = _data(ultimo["referencia"].iloc[0])
+    publicado = _publicado(ultimo, "pareceres_dfp")
+    itens = [
+        _item(chave, nome, valor, unidade, base, publicado_em=publicado)
+        for chave, nome, coluna, unidade in CAMPOS_DO_PARECER
+        if (valor := ultimo[coluna].iloc[0]) != NAO_CLASSIFICADO
+    ]
+    colunas = [
+        "referencia",
+        "versao",
+        "disponivel_em",
+        *(c for _, _, c, _ in CAMPOS_DO_PARECER),
+    ]
+    return itens, em_vigor.head(EXERCICIOS_DO_PARECER)[colunas]
 
 
 def controladoras(
@@ -1895,18 +1982,63 @@ def serie_anual(
     return somada.merge(meses.rename_axis("ano").reset_index(), on="ano")
 
 
-def _chaves(ligacoes: pd.DataFrame, serie: SerieDaAgencia) -> set[str]:
+SEM_FIM = float("inf")
+
+
+def _ultimo_ano_da_ligacao(ligacoes: pd.DataFrame) -> pd.Series:
+    """Até que ano a ligação conta a entidade para a companhia.
+
+    A B13 diz se a ligação ainda aparece nas entregas do FRE (`vigente`). Quando acabou, ou a
+    companhia parou de entregar, vale até o ano da última entrega que a mostrou
+    (`ultima_referencia`): o dono do momento, não o de hoje (decisão de 28/10/2026). Sem as colunas
+    (a ligação dos bancos, por exemplo) ou vigente, não há fim. Quando a ligação começou não entra:
+    a estrutura que o FRE mostra vale também para os anos anteriores à primeira entrega.
+    """
+    sem_fim = pd.Series(SEM_FIM, index=ligacoes.index)
+    if "vigente" not in ligacoes or "ultima_referencia" not in ligacoes:
+        return sem_fim
+    ano = pd.to_datetime(ligacoes["ultima_referencia"], errors="coerce").dt.year
+    acabou = ~ligacoes["vigente"].fillna(True).astype(bool)
+    return sem_fim.mask(acabou & ano.notna(), ano)
+
+
+def _vigentes_no_ano(ligacoes: pd.DataFrame, ano: int) -> pd.DataFrame:
+    return ligacoes[_ultimo_ano_da_ligacao(ligacoes) >= ano]
+
+
+def _chaves(
+    ligacoes: pd.DataFrame, serie: SerieDaAgencia, ano: int | None = None
+) -> set[str]:
     principais = ligacoes[
         (ligacoes["fonte"] == serie.fonte_b13) & ligacoes["principal"]
     ]
+    if ano is not None:
+        principais = _vigentes_no_ano(principais, ano)
     valores = principais["chave"].astype(str).str.strip()
     return set(digitos(valores) if serie.chave_em_digitos else valores)
 
 
-def _participacao_por_ano(dados: pd.DataFrame, chaves: set[str]) -> pd.DataFrame:
+def _chaves_por_ano(
+    ligacoes: pd.DataFrame, serie: SerieDaAgencia, anos: Iterable[int]
+) -> dict[int, set[str]]:
+    """As entidades que contam para a companhia em cada ano (só os anos que têm alguma)."""
+    por_ano = {int(ano): _chaves(ligacoes, serie, int(ano)) for ano in anos}
+    return {ano: chaves for ano, chaves in por_ano.items() if chaves}
+
+
+def _participacao_por_ano(
+    dados: pd.DataFrame, chaves: set[str] | Mapping[int, set[str]]
+) -> pd.DataFrame:
     dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
     total = dados.groupby("ano")["valor"].sum()
-    da_empresa = dados[dados["chave"].isin(chaves)].groupby("ano")["valor"].sum()
+    if isinstance(chaves, Mapping):
+        da_empresa_no_ano = [
+            c in chaves.get(a, ())
+            for a, c in zip(dados["ano"], dados["chave"], strict=True)
+        ]
+        da_empresa = dados[da_empresa_no_ano].groupby("ano")["valor"].sum()
+    else:
+        da_empresa = dados[dados["chave"].isin(chaves)].groupby("ano")["valor"].sum()
     # só os anos em que a empresa tem número: a divisão alinharia com todos os anos do mercado
     tabela = pd.DataFrame(
         {"valor": da_empresa, "participacao": da_empresa / total}
@@ -1918,9 +2050,21 @@ def _participacao_por_ano(dados: pd.DataFrame, chaves: set[str]) -> pd.DataFrame
     )
 
 
+COLUNAS_DAS_ENTIDADES_LIGADAS = [
+    "fonte",
+    "nome",
+    "via",
+    "desde",
+    "ate",
+    "ate_publico_em",
+    "vigente",
+]
+
+
 def _entidades_ligadas(ligacoes: pd.DataFrame) -> pd.DataFrame:
     principais = ligacoes[ligacoes["principal"]]
-    return principais[["fonte", "nome", "via", "desde"]].sort_values(["fonte", "nome"])
+    colunas = [c for c in COLUNAS_DAS_ENTIDADES_LIGADAS if c in principais]
+    return principais[colunas].sort_values(["fonte", "nome"])
 
 
 def _linha_do_item(
@@ -1969,9 +2113,11 @@ def secao_setor_regulado(
         return None
     itens, tabelas = [], {}
     for serie in SERIES_DAS_AGENCIAS:
-        chaves = _chaves(ligacoes_b13, serie)
         dados = series.get(serie.nome)
-        if not chaves or dados is None or dados.empty:
+        if dados is None or dados.empty:
+            continue
+        chaves = _chaves_por_ano(ligacoes_b13, serie, dados["ano"].unique())
+        if not chaves:
             continue
         tabela = _participacao_por_ano(dados, chaves)
         if tabela.empty:
@@ -2137,6 +2283,24 @@ def _grupo_da_agencia(dados: pd.DataFrame, grupos: pd.DataFrame | None) -> pd.Se
     return grupo.where(grupo.astype(str).str.strip() != "")
 
 
+def _companhia_em_cada_ano(
+    serie: SerieDaAgencia, dados: pd.DataFrame, empresa_serie: pd.DataFrame
+) -> pd.Series:
+    """A companhia a que cada linha (ano, entidade) pertence: a do dono do momento, e sem companhia
+    (entidade solta) quando a ligação já tinha acabado naquele ano."""
+    por_ano = {
+        int(ano): _companhia_de_cada_entidade(
+            serie, _vigentes_no_ano(empresa_serie, int(ano))
+        )
+        for ano in dados["ano"].unique()
+    }
+    companhias = [
+        por_ano[int(a)].get(c)
+        for a, c in zip(dados["ano"], dados["chave"], strict=True)
+    ]
+    return pd.Series(companhias, index=dados.index, dtype=object)
+
+
 def participantes(
     serie: SerieDaAgencia,
     dados: pd.DataFrame,
@@ -2147,7 +2311,7 @@ def participantes(
     meses, ultimo_mes): o grupo da agência, senão a companhia aberta, senão a própria entidade. No
     IF.data a entidade já é o grupo (o conglomerado prudencial): cada uma é um participante."""
     dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
-    companhia = dados["chave"].map(_companhia_de_cada_entidade(serie, empresa_serie))
+    companhia = _companhia_em_cada_ano(serie, dados, empresa_serie)
     grupo = (
         dados["chave"] if serie.chave_e_o_grupo else _grupo_da_agencia(dados, grupos)
     )
@@ -2174,10 +2338,57 @@ def _concentracao_da_serie(quem: pd.DataFrame) -> pd.DataFrame:
     return tabela.head(ANOS_NAS_SERIES)
 
 
+MARCA_DO_ANO_PARCIAL = (
+    "Ano parcial:"  # o app acha o aviso na seção pelo começo do parágrafo
+)
+MESES_ABREVIADOS = (
+    "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez",
+)  # fmt: skip
+
+
+def _linha_do_topo(
+    serie: SerieDaAgencia, tabela: pd.DataFrame
+) -> tuple[pd.Series, str]:
+    """A linha do topo da seção (mercado, HHI e CR4) e a base: o último ano completo, também para o
+    estoque, porque o ano pela metade tem menos meses (e, às vezes, menos participantes) e não se
+    compara com a série. Sem nenhum ano completo, a mais nova (e o aviso diz que é parcial)."""
+    completos = tabela[tabela["meses"] == MESES_NO_ANO]
+    linha = completos.iloc[0] if not completos.empty else tabela.iloc[0]
+    if serie.modo == ULTIMO_MES:
+        return linha, pd.Timestamp(linha["ultimo_mes"]).strftime("%Y-%m")
+    return linha, str(int(linha["ano"]))
+
+
+def _mes_e_ano(valor: object) -> str:
+    quando = pd.Timestamp(valor)  # type: ignore[arg-type]
+    return f"{MESES_ABREVIADOS[quando.month - 1]}/{quando.year}"
+
+
+def _aviso_do_ano_parcial(serie: SerieDaAgencia, tabela: pd.DataFrame) -> str | None:
+    """A lacuna declarada: o ano mais novo da série tem menos de 12 meses (None: está inteiro)."""
+    novo = tabela.iloc[0]
+    if novo["meses"] == MESES_NO_ANO:
+        return None
+    ano, meses = int(novo["ano"]), int(novo["meses"])
+    ate = _mes_e_ano(novo["ultimo_mes"])
+    completos = tabela[tabela["meses"] == MESES_NO_ANO]
+    if completos.empty:
+        return (
+            f"{MARCA_DO_ANO_PARCIAL} em {serie.medida}, a base só tem {ano}, com {meses} meses de "
+            f"dados (até {ate}): os números do topo são desses meses, não de um ano inteiro."
+        )
+    inteiro = int(completos.iloc[0]["ano"])
+    return (
+        f"{MARCA_DO_ANO_PARCIAL} em {serie.medida}, {ano} tem {meses} meses de dados (até {ate}); "
+        f"os números do topo são do ano inteiro de {inteiro}, o último completo. O ano pela metade "
+        f"aparece na tabela, mas não se compara com os anos inteiros."
+    )
+
+
 def _itens_da_concentracao(
     serie: SerieDaAgencia, tabela: pd.DataFrame, dados: pd.DataFrame
 ) -> list[dict[str, Any]]:
-    linha, base = _linha_do_item(serie, tabela)
+    linha, base = _linha_do_topo(serie, tabela)
     nome, publicado = serie.nome, _publicado_no_ano(dados, linha["ano"])
     return [
         _item(f"mercado_{nome}", f"Mercado: {serie.medida}", float(linha["total"]), serie.unidade, base, publicado_em=publicado),
@@ -2203,7 +2414,9 @@ def _participacao_dos_membros(
     ligacoes = empresa_serie.assign(cnpj=digitos(empresa_serie["cnpj_companhia"]))
     partes = []
     for membro in membros.itertuples(index=False):
-        chaves = _chaves(ligacoes[ligacoes["cnpj"] == membro.cnpj], serie)
+        chaves = _chaves_por_ano(
+            ligacoes[ligacoes["cnpj"] == membro.cnpj], serie, dados["ano"].unique()
+        )
         tabela = _participacao_por_ano(dados, chaves) if chaves else pd.DataFrame()
         if not tabela.empty:
             partes.append(
@@ -2235,12 +2448,17 @@ def _lado_a_lado(
     """O número de cada membro por entidade e ano, sem somar as entidades (um índice não se soma) nem
     dividir pelo mercado, nos últimos anos; a modalidade (`abertura`) continua separada."""
     ligacoes = _ligacoes_principais(empresa_serie, (serie.fonte_b13,))
-    entidades = ligacoes.merge(membros[["cnpj", "empresa"]], on="cnpj")[
-        ["cnpj", "empresa", "chave", "nome"]
-    ].rename(columns={"nome": "entidade"})
+    entidades = (
+        ligacoes.assign(_ate=_ultimo_ano_da_ligacao(ligacoes))
+        .merge(membros[["cnpj", "empresa"]], on="cnpj")[
+            ["cnpj", "empresa", "chave", "nome", "_ate"]
+        ]
+        .rename(columns={"nome": "entidade"})
+    )
     tabela = dados.assign(chave=dados["chave"].astype(str).str.strip()).merge(
         entidades, on="chave"
     )
+    tabela = tabela[tabela["ano"] <= tabela["_ate"]].drop(columns="_ate")
     if tabela.empty:
         return pd.DataFrame()
     anos = sorted(tabela["ano"].unique(), reverse=True)[:ANOS_NAS_SERIES]
@@ -2303,6 +2521,7 @@ def secao_setor(
     ]
     tabelas: dict[str, pd.DataFrame] = {}
     participacoes, usadas, tem_entidade_solta = [], [], False
+    avisos_de_ano_parcial: list[str] = []
     for nome in setor.series:
         dados = series.get(nome)
         if dados is None or dados.empty:
@@ -2311,8 +2530,11 @@ def secao_setor(
         quem = participantes(serie, dados, empresa_serie, grupos.get(nome))
         tabela = _concentracao_da_serie(quem)
         tabelas[f"concentracao_{nome}"] = tabela
-        tem_entidade_solta |= bool(tabela["por_entidade"].iloc[0] > 0)
+        topo = _linha_do_topo(serie, tabela)[0]
+        tem_entidade_solta |= bool(topo["por_entidade"] > 0)
         itens += _itens_da_concentracao(serie, tabela, dados)
+        if (aviso := _aviso_do_ano_parcial(serie, tabela)) is not None:
+            avisos_de_ano_parcial.append(aviso)
         participacoes.append(
             _participacao_dos_membros(serie, dados, membros, empresa_serie)
         )
@@ -2325,6 +2547,7 @@ def secao_setor(
     tabelas |= lado_a_lado
     usadas += [nome.removeprefix("lado_a_lado_") for nome in lado_a_lado]
     paragrafos = [
+        *avisos_de_ano_parcial,
         *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
         *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),
     ]
@@ -2886,6 +3109,7 @@ def _linhas_da_rede(
         if relacao is None or outra == centro:
             continue
         familia, documento = FONTES_DA_REDE[str(ligacao.fonte)]
+        publicado_em = getattr(ligacao, _PUBLICO_EM_DAS_LIGACOES, None)
         linhas.append(
             {
                 "ordem": RELACOES.index(relacao),
@@ -2894,13 +3118,20 @@ def _linhas_da_rede(
                 "entidade": rede.nomes[outra],
                 "cnpj": _cnpj_formatado(rede.cnpjs.get(outra)),
                 "participacao": ligacao.participacao,
-                "desde": ligacao.aconteceu_em,
+                "desde": _desde_quando(ligacao.aconteceu_em, publicado_em),
                 "documento": documento,
                 "familia": familia,
-                "publicado_em": getattr(ligacao, _PUBLICO_EM_DAS_LIGACOES, None),
+                "publicado_em": publicado_em,
             }
         )
     return pd.DataFrame(linhas, columns=list(_COLUNAS_DAS_LIGACOES))
+
+
+def _desde_quando(aconteceu_em: object, publicado_em: object) -> object:
+    """O dia em que a ligação ficou pública, não o dia nominal em que "aconteceu": a CVM dá ao FRE
+    a referência de 31/12 do ano (o FRE de 2026, entregue em agosto, diz 31/12/2026), e a ficha
+    não mostra o futuro. Sem a data de publicação (fonte sem ela), fica a do acontecimento."""
+    return aconteceu_em if pd.isna(publicado_em) else publicado_em
 
 
 def _mostradas(linhas: pd.DataFrame) -> pd.DataFrame:
@@ -3037,9 +3268,22 @@ class Origem(NamedTuple):
 
 
 _DO_FRE_MAIS_RECENTE = "no FRE mais recente"
+_DA_DFP_MAIS_NOVA = "sobre a DFP mais nova já entregue, na versão mais nova já entregue"
 _ORIGENS_FIXAS = {
     "auditor_atual": Origem("auditores", f"a firma do mandato sem fim {_DO_FRE_MAIS_RECENTE}"),
     "auditor_desde": Origem("auditores", f"o início do mandato sem fim {_DO_FRE_MAIS_RECENTE}"),
+    "parecer_opiniao": Origem(
+        "pareceres_dfp", f"opinião do relatório do auditor independente {_DA_DFP_MAIS_NOVA}"
+    ),
+    "parecer_enfase": Origem(
+        "pareceres_dfp",
+        f"parágrafo de ênfase, lido dos títulos do relatório do auditor independente {_DA_DFP_MAIS_NOVA}",
+    ),
+    "parecer_continuidade": Origem(
+        "pareceres_dfp",
+        "incerteza relevante sobre a continuidade operacional, lida dos títulos do relatório do auditor "
+        f"independente {_DA_DFP_MAIS_NOVA}",
+    ),
     "sociedades": Origem("controladas", f"número de sociedades listadas {_DO_FRE_MAIS_RECENTE}"),
     "controladas": Origem(
         "controladas",

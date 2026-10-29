@@ -191,8 +191,10 @@ def test_bancos_concentracao_de_credito() -> None:
         linhas[2025]["hhi"] - (30**2 + 25**2 + 20**2 + 15**2 + 5**2 + 5**2)
     )
     assert linhas[2026]["meses"] == 3 and linhas[2026]["delta_hhi"] is None
+    # março de 2026 é só 1 das 4 datas-base do ano: o topo fica com dezembro de 2025, o ano completo
     itens = {item["chave"]: item for item in _secao()["itens"]}
-    assert itens["cr4_bcb_carteira_de_credito"]["base"] == "2026-03"
+    assert itens["cr4_bcb_carteira_de_credito"]["base"] == "2025-12"
+    assert itens["cr4_bcb_carteira_de_credito"]["valor"] == pytest.approx(0.90)
 
 
 def test_bancos_conglomerado_e_um_participante() -> None:

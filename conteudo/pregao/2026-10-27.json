@@ -1,0 +1,231 @@
+{
+  "pregao": "2026-10-27",
+  "vespera": "2026-10-26",
+  "ibovespa": {
+    "pontos": 175710.05,
+    "variacao": -0.005085719957671375,
+    "pregoes_comparados": 6647,
+    "pregoes_tao_extremos": 2186,
+    "ultima_vez": "2026-10-26",
+    "desde": "2000-01-04",
+    "fonte": "B3, estatísticas do índice Ibovespa",
+    "data": "2026-10-27"
+  },
+  "amplitude": {
+    "subiram": 68,
+    "cairam": 68,
+    "estaveis": 3,
+    "liquidez_minima": 20000000,
+    "fonte": "B3, série histórica de cotações (COTAHIST), fechamento oficial",
+    "data": "2026-10-27"
+  },
+  "setores": {
+    "lista": [
+      {
+        "setor": "Serviços médicos",
+        "empresas": 4,
+        "mediana": 0.03209370286576174,
+        "contra_o_indice": 0.03717942282343312
+      },
+      {
+        "setor": "Educação",
+        "empresas": 5,
+        "mediana": 0.014364640883977708,
+        "contra_o_indice": 0.019450360841649084
+      },
+      {
+        "setor": "Comércio (Atacado e Varejo)",
+        "empresas": 16,
+        "mediana": 0.01032532790070051,
+        "contra_o_indice": 0.015411047858371885
+      },
+      {
+        "setor": "Saneamento, Serv. Água e Gás",
+        "empresas": 5,
+        "mediana": 0.010288880094974306,
+        "contra_o_indice": 0.015374600052645682
+      },
+      {
+        "setor": "Energia Elétrica",
+        "empresas": 13,
+        "mediana": 0.009748781402324713,
+        "contra_o_indice": 0.014834501359996088
+      },
+      {
+        "setor": "Serviços Transporte e Logística",
+        "empresas": 11,
+        "mediana": 0.009485094850948617,
+        "contra_o_indice": 0.014570814808619992
+      },
+      {
+        "setor": "Telecomunicações",
+        "empresas": 4,
+        "mediana": 0.0094658943875916,
+        "contra_o_indice": 0.014551614345262975
+      },
+      {
+        "setor": "Têxtil e Vestuário",
+        "empresas": 6,
+        "mediana": 0.0021173623714458856,
+        "contra_o_indice": 0.007203082329117261
+      },
+      {
+        "setor": "Seguradoras e Corretoras",
+        "empresas": 6,
+        "mediana": -0.00309889607376973,
+        "contra_o_indice": 0.001986823883901645
+      },
+      {
+        "setor": "Máquinas, Equipamentos, Veículos e Peças",
+        "empresas": 8,
+        "mediana": -0.005250896652497339,
+        "contra_o_indice": -0.00016517669482596364
+      },
+      {
+        "setor": "Petróleo e Gás",
+        "empresas": 6,
+        "mediana": -0.012061925569557652,
+        "contra_o_indice": -0.006976205611886277
+      },
+      {
+        "setor": "Bancos",
+        "empresas": 9,
+        "mediana": -0.013793103448275779,
+        "contra_o_indice": -0.008707383490604403
+      },
+      {
+        "setor": "Construção Civil, Mat. Constr. e Decoração",
+        "empresas": 14,
+        "mediana": -0.014525810324129751,
+        "contra_o_indice": -0.009440090366458376
+      },
+      {
+        "setor": "Alimentos",
+        "empresas": 3,
+        "mediana": -0.019855595667870096,
+        "contra_o_indice": -0.014769875710198721
+      },
+      {
+        "setor": "Comunicação e Informática",
+        "empresas": 4,
+        "mediana": -0.022486057123542347,
+        "contra_o_indice": -0.01740033716587097
+      },
+      {
+        "setor": "Extração Mineral",
+        "empresas": 4,
+        "mediana": -0.02353812698640284,
+        "contra_o_indice": -0.018452407028731466
+      },
+      {
+        "setor": "Agricultura (Açúcar, Álcool e Cana)",
+        "empresas": 4,
+        "mediana": -0.0265606736110392,
+        "contra_o_indice": -0.021474953653367823
+      },
+      {
+        "setor": "Metalurgia e Siderurgia",
+        "empresas": 5,
+        "mediana": -0.027504911591355596,
+        "contra_o_indice": -0.02241919163368422
+      }
+    ],
+    "empresas_por_setor_minimo": 3,
+    "fonte": "B3, série histórica de cotações (COTAHIST), fechamento oficial; setor do Formulário Cadastral (FCA) da CVM",
+    "data": "2026-10-27"
+  },
+  "maiores": {
+    "altas": [
+      {
+        "simbolo": "BRKM5",
+        "empresa": "Braskem",
+        "setor": "Petroquímicos e Borracha",
+        "variacao": 0.16352201257861632,
+        "fechamento": 3.7
+      },
+      {
+        "simbolo": "ECOR3",
+        "empresa": "EcoRodovias",
+        "setor": "Serviços Transporte e Logística",
+        "variacao": 0.12138728323699421,
+        "fechamento": 5.82
+      },
+      {
+        "simbolo": "TEND3",
+        "empresa": "Tenda",
+        "setor": "Construção Civil, Mat. Constr. e Decoração",
+        "variacao": 0.10201149425287359,
+        "fechamento": 23.01
+      },
+      {
+        "simbolo": "MGLU3",
+        "empresa": "Magazine Luiza",
+        "setor": "Comércio (Atacado e Varejo)",
+        "variacao": 0.08490566037735858,
+        "fechamento": 5.75
+      },
+      {
+        "simbolo": "INTB3",
+        "empresa": "Intelbras",
+        "setor": "Comércio (Atacado e Varejo)",
+        "variacao": 0.07438016528925617,
+        "fechamento": 14.3
+      }
+    ],
+    "quedas": [
+      {
+        "simbolo": "NATU3",
+        "empresa": "Natura",
+        "setor": "Farmacêutico e Higiene",
+        "variacao": -0.0693739424703892,
+        "fechamento": 5.5
+      },
+      {
+        "simbolo": "TOTS3",
+        "empresa": "Totvs",
+        "setor": "Comunicação e Informática",
+        "variacao": -0.06777426160337552,
+        "fechamento": 35.35
+      },
+      {
+        "simbolo": "BRBI11",
+        "empresa": "BR Partners",
+        "setor": "Bancos",
+        "variacao": -0.06769230769230772,
+        "fechamento": 12.12
+      },
+      {
+        "simbolo": "BRSR6",
+        "empresa": "Banrisul",
+        "setor": "Bancos",
+        "variacao": -0.06331727460426706,
+        "fechamento": 13.61
+      },
+      {
+        "simbolo": "EZTC3",
+        "empresa": "EZTEC",
+        "setor": "Construção Civil, Mat. Constr. e Decoração",
+        "variacao": -0.06249999999999989,
+        "fechamento": 10.5
+      }
+    ],
+    "fonte": "B3, série histórica de cotações (COTAHIST), fechamento oficial",
+    "data": "2026-10-27"
+  },
+  "juros": {
+    "simbolo": "DI1F29",
+    "taxa": 14.76,
+    "taxa_vespera": 15.223,
+    "variacao_em_pontos_base": -46.3000000000001,
+    "fonte": "B3, boletim de preços de referência (BVBG.086), taxa de ajuste do DI1",
+    "data": "2026-10-27"
+  },
+  "dolar": {
+    "simbolo": "DOLX26",
+    "reais_por_dolar": 5.350365,
+    "variacao": -0.013377322024028082,
+    "fonte": "B3, boletim de preços de referência (BVBG.086), ajuste do dólar futuro",
+    "data": "2026-10-27"
+  },
+  "a_conferir": []
+}

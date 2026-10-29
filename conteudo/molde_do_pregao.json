@@ -1,0 +1,69 @@
+{
+  "versao": 1,
+  "frases": {
+    "abertura": {
+      "alta": "O Ibovespa subiu {variacao} em {pregao}, para {pontos} pontos.",
+      "queda": "O Ibovespa caiu {variacao} em {pregao}, para {pontos} pontos.",
+      "de_lado": "O Ibovespa variou pouco em {pregao}: {variacao}, para {pontos} pontos."
+    },
+    "historia": {
+      "alta_nenhum": "Nenhum dos {comparados} pregões desde {desde} subiu tanto.",
+      "alta_um": "Desde {desde}, só 1 dos {comparados} pregões subiu tanto ou mais, em {ultima_vez}.",
+      "alta_varios": "Desde {desde}, {tao_extremos} dos {comparados} pregões subiram tanto ou mais; o último foi em {ultima_vez}.",
+      "queda_nenhum": "Nenhum dos {comparados} pregões desde {desde} caiu tanto.",
+      "queda_um": "Desde {desde}, só 1 dos {comparados} pregões caiu tanto ou mais, em {ultima_vez}.",
+      "queda_varios": "Desde {desde}, {tao_extremos} dos {comparados} pregões caíram tanto ou mais; o último foi em {ultima_vez}."
+    },
+    "amplitude": {
+      "contagem": "Das {empresas} empresas com R$ {liquidez} milhões ou mais negociados na véspera: {subiram} em alta, {cairam} em queda e {estaveis} sem variação."
+    },
+    "setores": {
+      "ponta_de_cima": "Na ponta de cima dos setores, {setor}: mediana de {mediana} em {empresas} empresas ({contra} pontos percentuais em relação ao Ibovespa).",
+      "ponta_de_baixo": "Na ponta de baixo, {setor}: mediana de {mediana} em {empresas} empresas ({contra} pontos percentuais em relação ao Ibovespa)."
+    },
+    "maiores": {
+      "alta": "Maior alta: {empresa} ({simbolo}), {variacao}.",
+      "sem_alta": "Nenhuma dessas empresas subiu.",
+      "queda": "Maior queda: {empresa} ({simbolo}), {variacao}.",
+      "sem_queda": "Nenhuma dessas empresas caiu."
+    },
+    "juros": {
+      "alta": "A taxa do DI de janeiro de {ano} ({simbolo}) subiu {pontos_base} pontos-base, para {taxa} ao ano.",
+      "queda": "A taxa do DI de janeiro de {ano} ({simbolo}) caiu {pontos_base} pontos-base, para {taxa} ao ano.",
+      "estavel": "A taxa do DI de janeiro de {ano} ({simbolo}) ficou em {taxa} ao ano, como na véspera."
+    },
+    "dolar": {
+      "alta": "O dólar futuro ({simbolo}) subiu {variacao}, para R$ {cotacao}.",
+      "queda": "O dólar futuro ({simbolo}) caiu {variacao}, para R$ {cotacao}.",
+      "estavel": "O dólar futuro ({simbolo}) ficou em R$ {cotacao}, como na véspera."
+    },
+    "a_conferir": {
+      "lista": "Ficaram fora das contas, por desdobramento ou grupamento no dia: {simbolos}."
+    }
+  },
+  "grafico_dos_setores": "Mediana do dia em cada setor menos a variação do Ibovespa, em pontos percentuais",
+  "tabelas": {
+    "setores": {
+      "titulo": "Os setores contra o Ibovespa",
+      "colunas": ["Setor", "Empresas", "Mediana do dia", "Contra o Ibovespa (p.p.)"]
+    },
+    "altas": {
+      "titulo": "Maiores altas",
+      "colunas": ["Empresa", "Código", "Setor", "Variação", "Fechamento (R$)"]
+    },
+    "quedas": {
+      "titulo": "Maiores quedas",
+      "colunas": ["Empresa", "Código", "Setor", "Variação", "Fechamento (R$)"]
+    }
+  },
+  "limites": [
+    "É um dia. A variação de um dia mostra o movimento do preço, não o valor da empresa.",
+    "O texto descreve o que os preços fizeram; não diz por quê.",
+    "Variação do dia = fechamento do pregão sobre o da véspera, os dois da B3, sem ajuste por proventos.",
+    "Só entram as empresas com R$ {liquidez} milhões ou mais negociados na véspera, uma linha por empresa (o papel mais negociado dela).",
+    "Setor: o do cadastro da empresa na CVM; setores com menos de {minimo_por_setor} empresas ficam de fora.",
+    "Dólar: o contrato futuro de 1º vencimento da B3 (preço de ajuste), não a PTAX do Banco Central.",
+    "Juros: a taxa de ajuste do contrato DI1 da B3 com vencimento em janeiro mais perto de dois anos.",
+    "Nada aqui é recomendação de investimento."
+  ]
+}

@@ -4,11 +4,12 @@ import json
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlsplit
 
 import pytest
 import requests
 
-from base.arquivo import lote_setoriais, registro
+from base.arquivo import lote_setoriais, registro, robots
 from base.arquivo.coleta import ErroDeDescoberta, Resposta
 from base.arquivo.fontes import FONTES, POR_ID
 from src.banco.coletas import Marca, licenca_da_fonte, marca_da_fonte
@@ -48,6 +49,23 @@ def _pacote(*recursos: tuple[str, str]) -> bytes:
     return json.dumps(
         {"result": {"resources": [{"format": f, "url": u} for f, u in recursos]}}
     ).encode()
+
+
+def _pagina_do_pacote(*recursos: tuple[str, str]) -> bytes:
+    """A página `/dataset/<pacote>` do CKAN com (formato, link de download) por recurso, no formato
+    do portal da CCEE."""
+    itens = "".join(
+        f'<li class="resource-item" data-id="{n}">\n'
+        f'  <a class="heading" href="/dataset/p/resource/{n}">r{n}'
+        f'<span class="format-label" data-format="{f}">{f.upper()}</span></a>\n'
+        f'  <a class="dropdown-item" href="/dataset/p/resource/{n}">preview</a>\n'
+        f'  <a class="dropdown-item resource-url-analytics" href="{u}" target="_blank">download</a>\n'
+        "</li>\n"
+        for n, (f, u) in enumerate(recursos)
+    )
+    return (
+        f'<ul class="resource-list">\n{itens}</ul>\n<a href="/sobre">sobre</a>'.encode()
+    )
 
 
 def _anterior(dias_atras: int):
@@ -133,7 +151,7 @@ def test_fontes_com_etag_conferem_a_assinatura_antes_de_baixar():
 
 # --------------------------------------------------------------- CKAN
 def test_ckan_devolve_os_arquivos_de_cada_pacote_e_deixa_o_painel_de_fora():
-    portal = lote_setoriais.PORTAL_DA_CCEE
+    portal = lote_setoriais.PORTAL_DA_ANEEL
     cliente = Paginas(
         {
             f"{portal}/api/3/action/package_show?id=a": _pacote(
@@ -175,13 +193,84 @@ def test_ckan_com_formatos_escolhe_so_esses_e_pacote_vazio_e_falha():
         )
 
 
+def test_ckan_pela_pagina_devolve_os_downloads_e_deixa_pagina_e_painel_de_fora():
+    portal = lote_setoriais.PORTAL_DA_CCEE
+    cliente = Paginas(
+        {
+            f"{portal}/dataset/a": _pagina_do_pacote(
+                ("csv", "https://pda-download.ccee.org.br/a1/content"),
+                ("html", "https://www.ccee.org.br/pagina"),
+                ("csv", "https://app.powerbi.com/painel"),
+                ("csv", "/dataset/a/resource/9/download/a.csv?v=1&amp;x=2"),
+            ),
+            f"{portal}/dataset/b": _pagina_do_pacote(
+                ("csv", "https://pda-download.ccee.org.br/b1/content")
+            ),
+        }
+    )
+    alvos = lote_setoriais.descobrir_ckan_pela_pagina(cliente, portal, "a", "b")
+    assert _urls(alvos) == [
+        "https://pda-download.ccee.org.br/a1/content",
+        f"{portal}/dataset/a/resource/9/download/a.csv?v=1&x=2",
+        "https://pda-download.ccee.org.br/b1/content",
+    ]
+    assert cliente.pedidos == [f"{portal}/dataset/a", f"{portal}/dataset/b"]
+
+
+def test_ckan_pela_pagina_sem_recurso_e_falha_com_o_nome_do_pacote():
+    portal = lote_setoriais.PORTAL_DA_CCEE
+    cliente = Paginas({f"{portal}/dataset/vazio": b"<p>sem dados</p>"})
+    with pytest.raises(ErroDeDescoberta, match="vazio"):
+        lote_setoriais.descobrir_ckan_pela_pagina(cliente, portal, "vazio")
+
+
+@pytest.mark.parametrize("id_", sorted(lote_setoriais.PACOTES_DA_CCEE))
+def test_cada_fonte_da_ccee_le_a_pagina_de_todos_os_seus_pacotes(id_):
+    portal = lote_setoriais.PORTAL_DA_CCEE
+    pacotes = lote_setoriais.PACOTES_DA_CCEE[id_]
+    cliente = Paginas(
+        {
+            f"{portal}/dataset/{p}": _pagina_do_pacote(("csv", f"https://x/{p}.csv"))
+            for p in pacotes
+        }
+    )
+    alvos = FONTES_DO_LOTE[id_].descobrir(cliente, AGORA)
+    assert cliente.pedidos == [f"{portal}/dataset/{p}" for p in pacotes]
+    assert _urls(alvos) == [f"https://x/{p}.csv" for p in pacotes]
+
+
+class PortalQualquer:
+    """Responde a qualquer página de pacote com um recurso; anota os pedidos."""
+
+    def __init__(self):
+        self.pedidos: list[str] = []
+
+    def ler(self, url, *, metodo="GET", cabecalhos=None, corpo=None):
+        self.pedidos.append(url)
+        return Resposta(url, _pagina_do_pacote(("csv", "https://x/a.csv")), {})
+
+
+def test_nenhuma_fonte_da_ccee_pede_o_que_o_robots_txt_da_ccee_proibe():
+    # 28/10/2026: o robots.txt da CCEE proíbe a `/api/` (o `package_show`) e o portal passou a
+    # devolver 403 ao servidor de casa desde 24/10
+    proibido = (
+        Path(__file__).parent / "arquivos" / "reguladores" / "ccee_robots.txt"
+    ).read_text(encoding="utf-8")
+    assert not robots.pode_buscar(proibido, "/api/3/action/package_show?id=pld_horario")
+    cliente = PortalQualquer()
+    for fonte in FONTES:
+        if fonte.id.startswith("ccee-"):
+            fonte.descobrir(cliente, AGORA)
+    assert cliente.pedidos
+    for pedido in cliente.pedidos:
+        partes = urlsplit(pedido)
+        assert partes.netloc == "dadosabertos.ccee.org.br", pedido
+        assert robots.pode_buscar(proibido, partes.path), pedido
+
+
 @pytest.mark.parametrize(
     ("id_", "portal", "pacotes"),
     [
-        *[
-            (i, lote_setoriais.PORTAL_DA_CCEE, p)
-            for i, p in lote_setoriais.PACOTES_DA_CCEE.items()
-        ],
         *[
             (i, lote_setoriais.PORTAL_DO_ONS, p)
             for i, p in lote_setoriais.PACOTES_DO_ONS.items()

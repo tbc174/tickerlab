@@ -200,8 +200,10 @@ def espaco_do_disco(pasta: Path) -> tuple[int, int]:
     return uso.total, uso.free
 
 
-def conferir_freio(total: int, livre: int) -> None:
-    if livre < LIVRE_MINIMO_EM_BYTES or (total - livre) / total > USO_MAXIMO_DO_DISCO:
+def conferir_freio(
+    total: int, livre: int, livre_minimo: int = LIVRE_MINIMO_EM_BYTES
+) -> None:
+    if livre < livre_minimo or (total - livre) / total > USO_MAXIMO_DO_DISCO:
         raise FreioDeDisco(
             f"livre {livre / 1024**3:.0f} GB de {total / 1024**3:.0f} GB"
         )

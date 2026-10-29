@@ -6,7 +6,9 @@ séries setoriais que movem as empresas listadas e que ainda não estavam na bas
 exterior (MDIC Comex Stat, NCM e município) já está em `fontes.descobrir_comex`; aqui não repete.
 Cada fonte é um `Fonte` do arquivista (`base/arquivo/coleta.py`); aqui só se descobre o que baixar
 e se guarda como a fonte publica. Este módulo não importa `fontes.py` (que importa este): por isso
-leva cópias pequenas de `_um` e `descobrir_ckan`.
+leva cópias pequenas de `_um` e `descobrir_ckan`. A CCEE (todas as fontes `ccee-*`, também as de
+`fontes.py` e do lote reguladores) é descoberta pela página do pacote (`descobrir_ckan_pela_pagina`):
+o robots.txt dela proíbe a `/api/`.
 
 Escolhas (testes em `tests/test_base_arquivo_lote_setoriais.py`):
 - **ritmo pelo calendário da fonte:** o que sai todo mês é `mensal`; os portais CKAN que ganham
@@ -23,6 +25,7 @@ Escolhas (testes em `tests/test_base_arquivo_lote_setoriais.py`):
 - **os que a ANAC publica aninhados por ano e mês** (VRA, atrasos e cancelamentos) ficam para a fila.
 """
 
+import html
 import json
 import re
 from datetime import UTC, datetime, timedelta
@@ -47,6 +50,14 @@ PAINEIS = ("powerbi.com", "app.powerbi", "lookerstudio.google", "datastudio.goog
 PORTAL_DA_CCEE = "https://dadosabertos.ccee.org.br"
 PORTAL_DO_ONS = "https://dados.ons.org.br"
 PORTAL_DA_ANEEL = "https://dadosabertos.aneel.gov.br"
+# o robots.txt da CCEE proíbe a `/api/` (o `package_show`) e o portal passou a devolver 403 ao
+# servidor de casa desde 24/10/2026: os recursos da CCEE saem da página do pacote, que o robots.txt
+# deixa ler. Cada recurso é um `<li class="resource-item">` com o formato e o link de download
+INICIO_DO_RECURSO_NA_PAGINA = b'<li class="resource-item"'
+FORMATO_NA_PAGINA = re.compile(rb'data-format="([^"]*)"')
+DOWNLOAD_NA_PAGINA = re.compile(
+    rb'class="[^"]*\bresource-url-analytics\b[^"]*"\s+href="([^"]+)"'
+)
 # id da fonte → pacotes (o `pld_horario` e as médias diária e mensal já estão em `ccee-pld`; as
 # listas de agentes e os `*_horario` por usina ficam de fora: pessoas e tamanho)
 PACOTES_DA_CCEE = {
@@ -233,6 +244,38 @@ def _ckan(portal: str, *pacotes: str, formatos: tuple[str, ...] = ()) -> Descobr
     )
 
 
+def _recursos_da_pagina(portal: str, pagina: bytes) -> list[dict]:
+    """Os recursos (`url` e `format`, como na API) da página de um pacote CKAN."""
+    recursos = []
+    for trecho in pagina.split(INICIO_DO_RECURSO_NA_PAGINA)[1:]:
+        download = DOWNLOAD_NA_PAGINA.search(trecho)
+        if download is None:
+            continue
+        formato = FORMATO_NA_PAGINA.search(trecho)
+        url = urljoin(portal + "/", html.unescape(download[1].decode()))
+        recursos.append({"url": url, "format": formato[1].decode() if formato else ""})
+    return recursos
+
+
+def descobrir_ckan_pela_pagina(
+    cliente: Cliente, portal: str, *pacotes: str
+) -> list[Alvo]:
+    """Os arquivos dos pacotes de um portal CKAN que proíbe a `/api/` no robots.txt (a CCEE), lidos
+    da página de cada pacote (`/dataset/<pacote>`), que o robots.txt deixa ler."""
+    alvos: list[Alvo] = []
+    for pacote in pacotes:
+        pagina = cliente.ler(f"{portal}/dataset/{pacote}").conteudo
+        urls = [r["url"] for r in _recursos_da_pagina(portal, pagina) if _e_arquivo(r)]
+        if not urls:
+            raise ErroDeDescoberta(f"{pacote}: pacote sem arquivos em {portal}")
+        alvos += [Alvo(url) for url in dict.fromkeys(urls)]
+    return alvos
+
+
+def _ckan_pela_pagina(portal: str, *pacotes: str) -> Descobrir:
+    return lambda cliente, agora: descobrir_ckan_pela_pagina(cliente, portal, *pacotes)
+
+
 def _nao_encontrado(erro: requests.HTTPError) -> bool:
     resposta = erro.response
     return resposta is not None and resposta.status_code == HTTP_NAO_ENCONTRADO
@@ -407,7 +450,7 @@ def _arquivos_do_inpi(*caminhos: str) -> Descobrir:
 def fontes() -> list[Fonte]:
     """As fontes do lote, para a lista `FONTES` (os ids seguem a família: `ccee-...`, `ons-...`)."""
     ccee = [
-        Fonte(id_, SEMANAL, _ckan(PORTAL_DA_CCEE, *pacotes))
+        Fonte(id_, SEMANAL, _ckan_pela_pagina(PORTAL_DA_CCEE, *pacotes))
         for id_, pacotes in PACOTES_DA_CCEE.items()
     ]
     ons = [

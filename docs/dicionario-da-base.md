@@ -3192,7 +3192,7 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 - **Chaves:** `fonte`, `chave`, `cnpj_companhia`
 - **Três datas:** aconteceu_em = `desde`; coletado_em = `montado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/empresa_serie/empresa_serie.parquet` (servidor de casa)
 - **Linhagem:** `origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -3209,7 +3209,10 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 | `participacao` | Participação informada no FRE (vazia no produto) | pontos percentuais (66,25 = 66,25%) |
 | `desde` | 1ª entrega à CVM de um FRE que mostrava a ligação | data (dia) |
 | `ultima_referencia` | Referência do FRE mais novo que mostra a ligação | data (dia) |
-| `principal` | A ligação a usar da entidade (ticker hoje, própria, FRE mais recente; nunca no produto) | verdadeiro ou falso |
+| `ate` | 1ª referência do FRE da companhia que já não mostra a ligação (vazia: ainda aparece, ou a companhia parou de entregar o FRE) | data (dia) |
+| `ate_publico_em` | Dia em que essa entrega ficou pública: antes dele não se sabia que a ligação acabou | data (dia) |
+| `vigente` | A ligação aparece no FRE mais novo da companhia; falso quando acabou ou a companhia parou de entregar (a última evidência é a `ultima_referencia`) | verdadeiro ou falso |
+| `principal` | A ligação a usar da entidade (ticker hoje, própria, a que ainda vale, FRE mais recente; nunca no produto; na ANEEL, nunca participação minoritária) | verdadeiro ou falso |
 | `tickers` | Tickers da companhia no FCA mais recente | texto |
 | `origem_sha256` | SHA-256 do arquivo de onde a entidade saiu | texto |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
@@ -3643,12 +3646,12 @@ Café verde por país e ano da FAO (FAOSTAT): produção em toneladas, área col
 
 ## `clima_regiao_cafe`
 
-Clima do mês por região produtora de café (13 regiões de `src/commodities/cafe/regioes.py`): chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia. Duas fontes, uma por linha: as estações automáticas do INMET (`inmet`; `n_estacoes` diz quantas valeram) e a chuva por satélite do CHIRPS (`chirps`; só chuva, média dos municípios ponderada pela área de café da PAM). Região com menos de 3 estações válidas no mês fica com os valores vazios, nunca zero
+Clima do mês por região produtora de café (13 regiões de `src/commodities/cafe/regioes.py`): chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia. Duas fontes, uma por linha: as estações automáticas do INMET (`inmet`; `n_estacoes` diz quantas valeram) e a chuva por satélite do CHIRPS (`chirps`; só chuva, média dos municípios ponderada pela área de café da PAM) e, depois de dez/2026, a ponte `chirps-v3-rnl` (CHIRPS v3 `rnl`, outra série: nunca somada à v2 e com normal própria). Região com menos de 3 estações válidas no mês fica com os valores vazios, nunca zero
 
-- **Fonte:** INMET: dados históricos das estações automáticas (BDMEP), um zip por ano; CHIRPS v2.0 (UCSB): GeoTIFF mensal global; IBGE: malha municipal (API de malhas)
+- **Fonte:** INMET: dados históricos das estações automáticas (BDMEP), um zip por ano; CHIRPS v2.0 (UCSB): GeoTIFF mensal global; CHIRPS v3 `rnl` diário (cópia de terceiro no Hugging Face, CC BY 4.0; soma do mês feita por nós); IBGE: malha municipal (API de malhas)
 - **Licença:** Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)
 - **Revenda:** vendável com atribuição à fonte
-- **Ressalva de revenda:** As linhas `chirps` são do CHIRPS v2.0 (domínio público; citar Funk et al. 2015); a malha é do IBGE
+- **Ressalva de revenda:** As linhas `chirps` são do CHIRPS v2.0 (domínio público; citar Funk et al. 2015); as linhas `chirps-v3-rnl` são do CHIRPS v3 `rnl` (sabor ERA5, não o `sat`), cópia de terceiro no Hugging Face sob CC BY 4.0 (citar Funk et al. e o autor da cópia); a malha é do IBGE
 - **Frequência:** Mensal
 - **Atraso de divulgação:** Mensal; a regra de "como era na data" usa o fim do mês + 45 dias para o INMET e + 60 dias para o CHIRPS (folga conservadora, não medida: conferir com as baixadas do arquivista)
 - **Módulo:** macro · **Contém dado de pessoa:** não
@@ -3663,7 +3666,7 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 |---|---|---|
 | `regiao` | Id da região produtora (`src/commodities/cafe/regioes.py`) | texto |
 | `competencia` | Mês (último dia) | data (dia) |
-| `fonte` | inmet ou chirps | texto |
+| `fonte` | inmet, chirps (v2) ou chirps-v3-rnl | texto |
 | `chuva_mm` | Chuva acumulada no mês (média das estações, ou do satélite) | mm |
 | `tmin_media_c` | Média das temperaturas mínimas diárias (vazio no chirps) | °C |
 | `dias_tmin_abaixo_de_2c` | Dias do mês com Tmín abaixo de 2 °C (média das estações; vazio no chirps) | dias |

@@ -402,6 +402,8 @@ DESTINOS: dict[str, Destino] = {
     "inmet-bdmep": _tabela("clima_regiao_cafe"),
     "chirps-mensal": _tabela("clima_regiao_cafe"),
     "chirps-historico": _tabela("clima_regiao_cafe"),
+    "chirps3-rnl-mensal": _tabela("clima_regiao_cafe"),
+    "chirps3-rnl-historico": _tabela("clima_regiao_cafe"),
     "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # área de café por município (plano do café, PR 8): `base/commodities/area_municipio.py`
     "mapbiomas-cafe": _tabela("area_cafe_municipio"),

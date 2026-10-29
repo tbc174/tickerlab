@@ -3342,6 +3342,20 @@
       "termos_lidos_em": "2026-10-23"
     },
     {
+      "id": "chirps3-rnl-mensal",
+      "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-28"
+    },
+    {
+      "id": "chirps3-rnl-historico",
+      "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-28"
+    },
+    {
       "id": "inpi-patentes-partes",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
       "marca": "a_confirmar",

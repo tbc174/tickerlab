@@ -39,6 +39,7 @@ from src import (
     qualidade_texto,
     regras_de_imposto,
     relatorio_semanal,
+    texto_do_pregao,
 )
 from src import autenticacao as aut
 from src import graficos_pdf as gp
@@ -406,6 +407,7 @@ def conteudo() -> dict[str, object]:
         "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
         "relatorio_semanal_eletricas": relatorio_semanal.para_o_site(),
+        "pregao_do_dia": texto_do_pregao.para_o_site(),
         "catalogo": _catalogo(),
         "base": _base(),
         "vitrine": [asdict(v) for v in vitrine.VAGAS_DA_VITRINE],

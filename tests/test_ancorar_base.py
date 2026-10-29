@@ -9,9 +9,11 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 import pytest
+import requests
 from opentimestamps.core.notary import BitcoinBlockHeaderAttestation, PendingAttestation
 from opentimestamps.core.timestamp import Timestamp
 
+from base.cripto.no_bitcoin import ErroDoNo
 from base.parquet import gravar_tabela
 from scripts import ancorar_base as ab
 from src import versao_do_codigo as vc
@@ -19,6 +21,13 @@ from src import versao_do_codigo as vc
 ALTURA = 920_000
 TEMPO_DO_BLOCO = 1_791_000_000  # 2026-10-03 UTC, só para o teste
 CALENDARIO = "https://alice.btc.calendar.opentimestamps.org"  # da lista oficial
+
+
+@pytest.fixture(autouse=True)
+def sem_no_do_ambiente(monkeypatch):
+    """Nenhum teste fala com o nó de verdade, mesmo num PC que tenha o cookie no ambiente."""
+    monkeypatch.delenv(ab.VARIAVEL_DO_COOKIE, raising=False)
+    monkeypatch.delenv(ab.VARIAVEL_DO_ENDERECO, raising=False)
 
 
 @pytest.fixture
@@ -165,6 +174,109 @@ def test_raiz_do_bloco_exige_exploradores_de_acordo():
     )
     with pytest.raises(RuntimeError, match="não concordam"):
         ab.raiz_do_bloco(7, respostas.__getitem__, ["https://um", "https://dois"])
+
+
+# --- o nó do Bitcoin de casa vem antes dos exploradores -------------------------------------------
+class NoFalso:
+    """Faz o papel do `ClienteRPC`: guarda as alturas pedidas e responde como o Bitcoin Core."""
+
+    def __init__(self, erro: Exception | None = None):
+        self.erro = erro
+        self.alturas: list[int] = []
+
+    def hash_na_altura(self, altura):
+        if self.erro:
+            raise self.erro
+        self.alturas.append(altura)
+        return "abc"
+
+    def cabecalho(self, hash_do_bloco):
+        assert hash_do_bloco == "abc"
+        return {"merkleroot": "ff", "time": 5, "difficulty": 1}
+
+
+def _exploradores_que_respondem():
+    pedidos = []
+
+    def buscar(url):
+        pedidos.append(url)
+        if "/block-height/" in url:
+            return "abc"
+        return json.dumps({"merkle_root": "ee", "timestamp": 9})
+
+    return pedidos, buscar
+
+
+def test_raiz_do_bloco_pergunta_primeiro_ao_no():
+    pedidos, buscar = _exploradores_que_respondem()
+    no = NoFalso()
+
+    assert ab.raiz_do_bloco(7, buscar, ["https://um"], no=no) == ("ff", 5)
+    assert no.alturas == [7]
+    assert pedidos == []  # os exploradores nem foram chamados
+
+
+@pytest.mark.parametrize(
+    "erro",
+    [
+        ErroDoNo("getblockhash: Block height out of range"),
+        requests.ConnectionError("recusou a conexão"),
+        requests.Timeout("sem resposta"),
+        FileNotFoundError("cookie sumiu"),
+        ValueError("cookie mal formado"),
+    ],
+)
+def test_no_fora_do_ar_ou_sem_o_bloco_cai_para_os_exploradores(erro, caplog):
+    pedidos, buscar = _exploradores_que_respondem()
+
+    raiz = ab.raiz_do_bloco(7, buscar, ["https://um"], no=NoFalso(erro))
+
+    assert raiz == ("ee", 9)
+    assert pedidos == ["https://um/block-height/7", "https://um/block/abc"]
+    assert "nó do Bitcoin sem resposta" in caplog.text
+
+
+def test_sem_cookie_no_ambiente_so_valem_os_exploradores():
+    pedidos, buscar = _exploradores_que_respondem()
+
+    assert ab.raiz_do_bloco(7, buscar, ["https://um"]) == ("ee", 9)
+    assert pedidos
+
+
+def test_cookie_no_ambiente_monta_o_cliente_do_no(monkeypatch, tmp_path):
+    cookie = tmp_path / ".cookie"
+    monkeypatch.setenv(ab.VARIAVEL_DO_COOKIE, str(cookie))
+    monkeypatch.setenv(ab.VARIAVEL_DO_ENDERECO, "http://172.17.0.1:8332")
+
+    no = ab._cliente_do_no()
+
+    assert no is not None
+    assert (no.arquivo_do_cookie, no.endereco) == (cookie, "http://172.17.0.1:8332")
+    assert no.tempo_limite == ab.ESPERA_DO_NO
+
+
+def test_endereco_padrao_quando_so_o_cookie_esta_no_ambiente(monkeypatch, tmp_path):
+    monkeypatch.setenv(ab.VARIAVEL_DO_COOKIE, str(tmp_path / ".cookie"))
+
+    no = ab._cliente_do_no()
+
+    assert no is not None
+    assert no.endereco == "http://127.0.0.1:8332"
+
+
+def test_no_fora_do_ar_nao_vaza_o_cookie_no_log(monkeypatch, tmp_path, caplog):
+    cookie = tmp_path / ".cookie"
+    cookie.write_text("__cookie__:senha-secreta-123", encoding="utf-8")
+    monkeypatch.setenv(ab.VARIAVEL_DO_COOKIE, str(cookie))
+
+    def recusar(*_args, **_kwargs):
+        raise requests.ConnectionError("sem conexão")
+
+    monkeypatch.setattr("base.cripto.no_bitcoin.requests.post", recusar)
+    _pedidos, buscar = _exploradores_que_respondem()
+
+    assert ab.raiz_do_bloco(7, buscar, ["https://um"]) == ("ee", 9)
+    assert "senha-secreta-123" not in caplog.text
 
 
 def test_prova_de_uma_tabela_pela_linha_de_comando(ancora, base, tmp_path, capsys):

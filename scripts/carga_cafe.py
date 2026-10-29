@@ -23,6 +23,7 @@ tabela falhou ou não tem original (última linha `FALHAS: ...`, que vai para o 
 """
 
 import argparse
+import functools
 import io
 import json
 import logging
@@ -37,6 +38,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import sqlalchemy as sa
 
+from base.arquivo import chirps_v3
 from base.commodities import (
     area_municipio,
     clima_regiao,
@@ -64,11 +66,14 @@ FONTE_DO_INMET = "inmet-bdmep"
 FONTES_DO_CHIRPS = (
     "chirps-mensal",
     "chirps-historico",
-)  # recentes + a carga única da normal
+    "chirps3-rnl-mensal",
+    "chirps3-rnl-historico",
+)  # v2 (recentes + a carga única da normal) e a v3 `rnl`, a ponte depois de dez/2026
 ANO_DO_COMEX = re.compile(r"/ncm/EXP_(\d{4})\.csv$")
 PAIS_DO_COMEX = "/tabelas/PAIS.csv"
 ANO_DO_INMET = re.compile(r"/(\d{4})\.zip$")
 MES_DO_CHIRPS = re.compile(r"chirps-v2\.0\.(\d{4})\.(\d{2})\.tif")
+MES_DO_CHIRPS_V3 = re.compile(r"/precip\?mes=(\d{4})-(\d{2})$")
 CSV_DO_PSD = "psd_coffee.csv"
 
 
@@ -238,9 +243,11 @@ def _malha(conexao: sa.Connection) -> dict:
     return {"type": "FeatureCollection", "features": feicoes}
 
 
-def _mascaras_do_cafe(malha: Mapping) -> Mapping[str, clima_regiao.Mascara]:
+def _mascaras_do_cafe(
+    malha: Mapping, grade: clima_regiao.Grade = clima_regiao.GRADE_CHIRPS
+) -> Mapping[str, clima_regiao.Mascara]:
     codigos = {m.codigo for regiao in REGIOES for m in regiao.municipios}
-    return clima_regiao.mascaras_da_malha(malha, codigos)
+    return clima_regiao.mascaras_da_malha(malha, codigos, grade)
 
 
 def _inmet_do_ano(conteudo: bytes) -> pd.DataFrame:
@@ -248,24 +255,49 @@ def _inmet_do_ano(conteudo: bytes) -> pd.DataFrame:
     return clima_regiao.agregar(diario)
 
 
+def _mes_do_chirps(url: str) -> re.Match[str] | None:
+    """O ano e o mês no endereço do arquivo do CHIRPS (v2 ou v3)."""
+    return MES_DO_CHIRPS.search(url) or MES_DO_CHIRPS_V3.search(url)
+
+
 def _chirps_do_mes(
-    linha: sa.Row, mascaras: Mapping[str, clima_regiao.Mascara]
+    linha: sa.Row,
+    mascaras: Mapping[str, clima_regiao.Mascara],
+    mascaras_v3: Callable[[chirps_v3.Grade], Mapping[str, clima_regiao.Mascara]]
+    | None = None,
 ) -> pd.DataFrame | None:
-    achado = MES_DO_CHIRPS.search(linha.url)
-    if achado is None:
+    """O mês do CHIRPS por região: a v2 (GeoTIFF) ou a v3 `rnl` (arquivo mensal do Zarr), cada uma
+    com a sua `fonte`; o endereço diz qual é o mês. A máscara da v3 vem da grade do próprio arquivo."""
+    if (achado := MES_DO_CHIRPS_V3.search(linha.url)) and mascaras_v3 is not None:
+        conteudo = _conteudo(linha)
+        por_municipio = clima_regiao.ler_chirps_v3(
+            conteudo, mascaras_v3(chirps_v3.ler_arquivo(conteudo).grade)
+        )
+        fonte = chirps_v3.FONTE_CHIRPS_V3_RNL
+    elif achado := MES_DO_CHIRPS.search(linha.url):
+        por_municipio = clima_regiao.ler_chirps(_conteudo(linha), mascaras)
+        fonte = clima_regiao.FONTE_CHIRPS
+    else:
         return None
-    por_municipio = clima_regiao.ler_chirps(_conteudo(linha), mascaras)
     mes = date(int(achado.group(1)), int(achado.group(2)), 1)
-    return clima_regiao.chirps_por_regiao(por_municipio, mes)
+    return clima_regiao.chirps_por_regiao(por_municipio, mes, fonte=fonte)
 
 
 def _mensal_do_clima(
     conexao: sa.Connection, inmet: list[sa.Row], chirps: list[sa.Row]
 ) -> pd.DataFrame:
     """INMET e CHIRPS por região e mês, com a normal e a anomalia, de todos os anos juntos."""
-    mascaras = _mascaras_do_cafe(_malha(conexao)) if chirps else {}
+    malha = _malha(conexao) if chirps else {}
+    mascaras = _mascaras_do_cafe(malha) if chirps else {}
+    mascaras_v3 = (
+        functools.cache(  # uma máscara por grade (a de todos os meses da v3 é a mesma)
+            lambda grade: _mascaras_do_cafe(malha, clima_regiao.Grade(*grade))
+        )
+    )
     partes = [_inmet_do_ano(_conteudo(lin)) for lin in inmet]
-    partes += [p for lin in chirps if (p := _chirps_do_mes(lin, mascaras)) is not None]
+    partes += [
+        p for lin in chirps if (p := _chirps_do_mes(lin, mascaras, mascaras_v3)) is not None
+    ]  # fmt: skip
     mensal = pd.concat([p for p in partes if not p.empty], ignore_index=True)
     return clima_regiao.com_normal(mensal)
 
@@ -274,7 +306,9 @@ def _origens_do_ano(
     ano: int, inmet: list[sa.Row], chirps: list[sa.Row], malha: list[sa.Row]
 ) -> list[dict[str, str]]:
     do_ano = [lin for lin in inmet if f"/{ano}.zip" in lin.url]
-    do_ano += [lin for lin in chirps if f".{ano}." in lin.url]
+    do_ano += [
+        lin for lin in chirps if f".{ano}." in lin.url or f"?mes={ano}-" in lin.url
+    ]
     return [{"url": lin.url, "sha256": lin.sha256} for lin in [*do_ano, *malha]]
 
 
@@ -297,7 +331,7 @@ def carregar_clima(conexao: sa.Connection, base: Path) -> None:
     malha = originais_mais_recentes(conexao, FONTE_DA_MALHA) if chirps else []
     destino = base / PASTA / "clima_regiao_cafe"
     anos = sorted({int(a.group(1)) for lin in inmet if (a := ANO_DO_INMET.search(lin.url))}
-                  | {int(m.group(1)) for lin in chirps if (m := MES_DO_CHIRPS.search(lin.url))})  # fmt: skip
+                  | {int(m.group(1)) for lin in chirps if (m := _mes_do_chirps(lin.url))})  # fmt: skip
     mudou = [
         a
         for a in anos

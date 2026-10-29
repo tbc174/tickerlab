@@ -120,11 +120,24 @@ jobs:
 
       # o painel do trader usa o Qt (PySide6): mesmo sem tela ("offscreen"), ele precisa das
       # bibliotecas gráficas do sistema, que o Ubuntu do GitHub não traz (faltava o libEGL.so.1)
+      #
+      # O espelho do apt já travou (26/10, #688: o "apt-get update" ficou parado até o limite de 15 min
+      # do job e cancelou a parte sem rodar teste). Por isso o passo tem prazo curto e até 3
+      # tentativas, em vez de deixar o job inteiro esperando.
       - name: Bibliotecas do Qt
         if: matrix.dependencias == 'requirements-trader.txt'
+        timeout-minutes: 6
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+          apt_opcoes="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
+          for tentativa in 1 2 3; do
+            if sudo timeout 120 apt-get $apt_opcoes update \
+              && sudo timeout 120 apt-get $apt_opcoes install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3; then
+              exit 0
+            fi
+            echo "apt-get falhou na tentativa $tentativa; esperando para tentar de novo"
+            sleep 10
+          done
+          exit 1
 
       # o torch do PyPI para Linux traz as bibliotecas de GPU da NVIDIA (vários GB); a pesquisa só
       # usa CPU, então o uv busca a mesma versão só para CPU (~200 MB) no índice do PyTorch
@@ -139,7 +152,7 @@ jobs:
 
       - name: ruff (formatação do app, telas, src, base e tests)
         if: matrix.qualidade
-        run: python -m ruff format --check app.py telas src base tests trader scripts
+        run: python -m ruff format --check app.py telas src base tests trader scripts migracoes
 
       # tipos: só src/ e scripts/ por enquanto (regras e porquês no pyrightconfig.json)
       - name: pyright (tipos)

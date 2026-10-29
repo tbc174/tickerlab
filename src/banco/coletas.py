@@ -32,6 +32,7 @@ LICENCAS = {
     # clima e geografia do café (lidos em 18/10/2026): o INMET não publica licença escrita
     "inmet": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
     "chirps": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+    "chirps3": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
     "mapbiomas": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
     # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
     # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
@@ -226,6 +227,9 @@ REVENDA = {
     "ibge": VENDAVEL_COM_ATRIBUICAO,
     "inmet": VENDAVEL_COM_ATRIBUICAO,  # sem licença escrita: confirmar por escrito antes de vender
     "chirps": VENDAVEL_COM_ATRIBUICAO,  # domínio público
+    # v3 pela cópia do Hugging Face: a licença do dado é a do CHC (domínio público + CC BY 4.0, lida em
+    # 28/10/2026); o termo de uso do Hugging Face não foi lido (notas de pesquisa, parte 4)
+    "chirps3": VENDAVEL_COM_ATRIBUICAO,
     "mapbiomas": A_CONFIRMAR,  # CC BY-SA (termos do site, 21/10/2026): revenda a confirmar até a P-52
     "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
     "fmi": SO_USO_INTERNO,  # uso comercial pede permissão por escrito do FMI; preços de referência não se distribuem (ADR 0008)
@@ -514,6 +518,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     "catalogo": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
     "cecafe": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.NAO_DIZ),
     # a N0 diz retenção sim, coleta "não diz" ou não lida
+    "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
     "mapbiomas": ColetaEGuarda(
         Coleta.NAO_LIDA, Guarda.SEM_PRAZO
     ),  # CC BY-SA (termos do site, 21/10/2026)
@@ -706,11 +711,6 @@ CAMINHOS_DO_YAHOO: tuple[CaminhoDoYahoo, ...] = (
         ("scripts/atualizar_padroes.py",),
         "P/L e P/VP nos padrões setoriais (só com --com-precos; a trava tira da ficha)",
         _BASE_PROPRIA,
-    ),
-    CaminhoDoYahoo(
-        ("scripts/coletar_iex_do_dia.py", "scripts/medir_iex_um_dia.py"),
-        "conferência do fechamento da IEX contra o Yahoo; nada é guardado",
-        "conferir contra outra fonte dos EUA, ou sem conferência",
     ),
 )
 
