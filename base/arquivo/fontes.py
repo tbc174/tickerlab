@@ -1023,8 +1023,8 @@ FONTES: list[Fonte] = [
     Fonte(
         "ccee-pld",
         "semanal",
-        _ckan(
-            "https://dadosabertos.ccee.org.br",
+        lote_setoriais._ckan_pela_pagina(  # o robots.txt da CCEE proíbe a `/api/`
+            lote_setoriais.PORTAL_DA_CCEE,
             "pld_horario",
             "pld_media_diaria",
             "pld_media_mensal",
