@@ -396,6 +396,17 @@ DESTINOS: dict[str, Destino] = {
     "ancine-agentes": _planejada(
         "ficha-clara/licencas", "agentes econômicos registrados (Ancine)"
     ),
+    # Ficha Clara, incentivos: as tabelas por CNPJ vêm na etapa 4b
+    "mme-reidi": _planejada(
+        "ficha-clara/incentivos", "projetos de energia enquadrados no REIDI (MME)"
+    ),
+    "aneel-cde": _planejada(
+        "ficha-clara/incentivos", "descontos tarifários pagos pela CDE (ANEEL)"
+    ),
+    "bcb-rde-ied": _planejada(
+        "ficha-clara/incentivos",
+        "investimento estrangeiro direto registrado (BC, RDE-IED)",
+    ),
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),

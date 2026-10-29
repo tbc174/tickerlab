@@ -100,6 +100,8 @@ TERMOS_LIDOS_EM |= dict.fromkeys(("anatel", "anp"), date(2026, 10, 14))
 TERMOS_LIDOS_EM |= dict.fromkeys(
     ("anvisa", "mapa", "anm", "ancine"), date(2026, 10, 29)
 )
+# Ficha Clara, incentivos: a licença dita no portal do MME ("Outra (Aberta)", sem nome)
+TERMOS_LIDOS_EM["mme"] = date(2026, 10, 29)
 # lote licitações e contratos (licencas-por-fonte.md, rodada 4, lido em 22/10/2026)
 TERMOS_LIDOS_EM |= dict.fromkeys(
     ("seges", "comprasgov", "transferegov", "pncp", "tcu", "govmg", "govsc"),

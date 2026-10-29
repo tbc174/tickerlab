@@ -330,6 +330,48 @@ COLUNAS_DOS_AGENTES_DA_ANCINE = (
     "CODIGO_MUNICIPIO_IBGE", "CLASSIFICACAO_AGENTE_ECONOMICO", "NATUREZA_JURIDICA",
     "BRASILEIRO_INDEPENDENTE",
 )  # fmt: skip
+
+# Ficha Clara, incentivos (etapa 4, 29/10/2026). Lei do Bem (MCTI) e Lei 8.387 (SUFRAMA) ficam de
+# fora: a primeira só publica totais por região e CNAE, sem CNPJ; o arquivo da segunda dá 404 (fila).
+# REIDI (MME): atos de enquadramento de projetos de geração e transmissão de energia; licença
+# "Outra (Aberta)" no portal do MME, sem nome (a confirmar). Sai a razão social e a descrição longa
+REIDI_DO_MME = "https://dadosabertos.mme.gov.br/dataset/43dbd18d-10b3-4c01-be9a-7a653e986bec/resource/97d455b6-78ca-4356-88a1-f9edf416244f/download/processos_deferidos.csv"
+COLUNAS_DO_REIDI = (
+    "Processo", "CNPJ", "Municipio", "UF", "idt_projeto", "Nome_do_Projeto", "Portaria",
+    "Data_inicio_portaria", "vlr_Total_Com_Incidencia_PISPASEP_COFINS",
+    "vlr_Total_Sem_Incidencia_PISPASEP_COFINS", "vlr_Beneficio_Fiscal", "dat_Execucao_Inicio",
+    "dat_Execucao_Termino",
+)  # fmt: skip
+# CDE (ANEEL, ODbL): quem recebe os descontos tarifários pagos pela Conta de Desenvolvimento
+# Energético. Um ZIP por mês (~300 MB; dentro, um CSV de ~2 GB com cada unidade consumidora, também
+# de pessoa física, com nome e CPF): fica só a linha de CNPJ inteiro, sem o nome do cliente, e só os
+# meses mais novos (o histórico cresce daqui; os anos antigos, fila). A rede básica (geradores e
+# consumidores ligados à transmissão) vem num CSV por ano, sem o nome do agente
+PACOTE_DA_CDE = "beneficiarios-da-cde"
+MESES_DA_CDE = 13  # o último ano e o mesmo mês do ano anterior, para comparar
+MES_NO_ARQUIVO_DA_CDE = re.compile(r"cde-beneficiarios-01([a-z]{3})(\d{4})\.zip$")
+MESES_EM_INGLES = (
+    "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
+)  # fmt: skip
+COLUNAS_DA_CDE = (
+    "DatGeracaoConjuntoDados", "AnmReferencia", "SigAgente", "NumCNPJDistribuidora",
+    "CodIbgeMunicipio", "IdcTipoFaturamento", "IdcClasseConsumidor", "IdcSubclasse",
+    "IdcSubgrupoTarifario", "IdcTipoCompraEnergia", "NumCPFCNPJCliente", "DscTipoSubsidio",
+    "VlrSubsidio",
+)  # fmt: skip
+COLUNAS_DA_CDE_NA_REDE_BASICA = (
+    "DatGeracaoConjuntoDados", "NumAno", "NomMes", "NumCNPJ", "DscGrupoTarifario",
+    "IdcClasseConsumidor", "IdcTipo", "VlrDesconto", "VlrCobranca",
+)  # fmt: skip
+# RDE-IED (Banco Central, ODbL): os registros de investimento estrangeiro direto pelo CNPJ básico
+# (8 dígitos) da empresa que recebeu, de nov/2011 a dez/2022 (a série parou aí; 72.566 registros em
+# 29/10/2026, um pedido só). O nome do investidor estrangeiro (pode ser uma pessoa) e o da empresa
+# ficam de fora
+REGISTROS_DO_RDE_IED = "https://olinda.bcb.gov.br/olinda/servico/RDE_Publicacao/versao/v1/odata/RegistrosIED?$top=500000&$format=json"
+CAMPOS_DO_RDE_IED = (
+    "CodigoRDE", "CnpjBaseReceptora", "UfPessoaNacional", "PaisPessoaEstrangeira",
+    "MoedaOperacao", "ValorOperacao", "Sistema", "Ocorrencia", "Modalidade", "Ano", "Mes",
+)  # fmt: skip
 # 2ª leva (14/10/2026)
 # Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
 # dentro dos ZIPs (o de telefonia móvel tem 3,2 GB; os "_Colunas" somam ~70 MB comprimidos)
@@ -876,6 +918,57 @@ def descobrir_rntrc(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+REIDI_FILTRADO = CsvDeCadastro(REIDI_DO_MME, COLUNAS_DO_REIDI, "CNPJ", "utf-8-sig")
+
+
+def _mes_do_arquivo_da_cde(url: str) -> date | None:
+    achado = MES_NO_ARQUIVO_DA_CDE.search(url.lower())
+    if achado is None:
+        return None
+    mes, ano = achado.groups()
+    return date(int(ano), MESES_EM_INGLES.index(mes) + 1, 1)
+
+
+def descobrir_cde(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os ZIPs mensais mais novos dos beneficiários da CDE (só CNPJ inteiro, sem o nome do cliente)
+    e os CSVs anuais da rede básica (sem o nome do agente)."""
+    alvos = descobrir_ckan(cliente, PORTAL_DA_ANEEL, PACOTE_DA_CDE)
+    meses = {
+        alvo.url: mes
+        for alvo in alvos
+        if (mes := _mes_do_arquivo_da_cde(alvo.url)) is not None
+    }
+    if not meses:
+        raise ErroDeDescoberta(f"{PACOTE_DA_CDE}: nenhum ZIP mensal na ANEEL")
+    mais_novos = sorted(meses, key=meses.__getitem__)[-MESES_DA_CDE:]
+    rede_basica = [
+        a.url
+        for a in alvos
+        if "rede-basica" in a.url.lower() and a.url.lower().endswith(".csv")
+    ]
+    return [
+        *(
+            CsvDeCadastro(url, COLUNAS_DA_CDE, "NumCPFCNPJCliente", separador=",", dentro_do_zip=True).alvo()
+            for url in mais_novos
+        ),
+        *(
+            CsvDeCadastro(url, COLUNAS_DA_CDE_NA_REDE_BASICA, "NumCNPJ", "utf-8").alvo()
+            for url in rede_basica
+        ),
+    ]  # fmt: skip
+
+
+def descobrir_rde_ied(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os registros de investimento estrangeiro direto, sem o nome do investidor nem o da empresa."""
+    return [
+        Alvo(
+            REGISTROS_DO_RDE_IED,
+            ".json",
+            json_so_com_campos(REGISTROS_DO_RDE_IED, CAMPOS_DO_RDE_IED),
+        )
+    ]
+
+
 def _fim_dos_meses(agora: datetime, quantos: int) -> list[date]:
     """O último dia de cada um dos `quantos` meses fechados antes de `agora`."""
     dias: list[date] = []
@@ -1348,6 +1441,10 @@ FONTES: list[Fonte] = [
     ),
     Fonte("anm-cadastro-mineiro", "mensal", _cadastros(*CADASTRO_MINEIRO_FILTRADO)),
     Fonte("ancine-agentes", "mensal", _cadastros(AGENTES_DA_ANCINE_FILTRADOS)),
+    # Ficha Clara, incentivos (etapa 4): só a linha de CNPJ inteiro, sem nome nem razão social
+    Fonte("mme-reidi", "mensal", _cadastros(REIDI_FILTRADO)),
+    Fonte("aneel-cde", "mensal", descobrir_cde, pesada=True),
+    Fonte("bcb-rde-ied", "mensal", descobrir_rde_ied, "json"),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",
