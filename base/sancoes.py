@@ -13,7 +13,8 @@ cadastro no dia em que foi baixado: a CGU publica um por dia, a ANS reescreve o 
 - **Uma linha por valor diferente** de cada sanção (`id_na_fonte`), como `base/setoriais/revisoes.py`:
   o valor que muda num retrato seguinte (fim prorrogado, situação da ANS) vira linha nova, e a sanção
   que some do arquivo ganha uma linha `consta=False` no dia em que sumiu (e outra `True` se voltar).
-  `revisoes.como_era_em` devolve o estado num dia. A tabela só cresce: o passado não é regravado.
+  `revisoes.como_era_em` devolve o estado num dia. A tabela só cresce: o passado não é regravado
+  (o motor é o de `base/retratos.py`).
 - **Sem olhar o futuro** (`disponivel_em`): no primeiro retrato guardado, a data de publicação ou a
   data em que o órgão informou a CGU, a que for depois (nunca o início da sanção, que pode ser anterior à
   publicação), e nunca depois do dia do retrato; sem data, o dia do retrato. O que aparece ou muda num
@@ -27,14 +28,11 @@ tempo crescer). Os efeitos dos acordos de leniência (outro CSV do mesmo ZIP) e 
 (`SGM/ObterMultas`, só agregadas por ano, sem CNPJ) ficam de fora.
 """
 
-import gzip
 import io
-import re
-import unicodedata
 import zipfile
 from collections.abc import Collection, Iterator
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -42,22 +40,16 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base import cnpj as cnpjs
+from base import retratos as motor
 from base.parquet import LINHAGEM, gravar_se_mudou, origens_gravadas
 from base.pgfn import pessoas_pela_receita
-from src import acervo
-from src.banco.coletas import originais_mais_recentes, versoes_guardadas
 from src.versao_do_codigo import versao_do_codigo
 
 CODIFICACAO = "latin-1"
 SEPARADOR = ";"
 FORMATO_DA_DATA = "%d/%m/%Y"
 JA_MONTADO = {"ja_montado": 1}  # no resumo: nenhum retrato novo desde a última montagem
-FRACAO_MINIMA = (
-    0.5  # retrato com menos que isto das sanções do anterior é arquivo cortado
-)
 TIPO_PESSOA_JURIDICA = "J"
-SEPARADOR_DA_CHAVE = "|"
-FORA_DO_NOME = re.compile(r"[^A-Z0-9]")
 
 TEXTOS = [
     "categoria",
@@ -87,8 +79,6 @@ COLUNAS = [
     "disponivel_em",
 ]
 ORDEM = ["id_na_fonte", "visto_em"]
-# o que cada linha ganha do retrato onde foi vista (não conta para saber se o valor mudou)
-_CARIMBOS = ["disponivel_em", "visto_em", "origem_sha256", "origem_coletada_em"]
 
 # colunas da CGU no CEIS e no CNEP (nome sem acento, só letras e números -> coluna da tabela)
 _CGU = {
@@ -193,50 +183,11 @@ CADASTROS: dict[str, Cadastro] = {
 TABELAS = tuple(dict.fromkeys(c.tabela for c in CADASTROS.values()))
 
 
-@dataclass(frozen=True)
-class Retrato:
-    """Um arquivo guardado do cadastro: o conteúdo de um endereço baixado pela primeira vez num dia."""
-
-    url: str
-    sha256: str
-    caminho: Path
-    baixado_em: datetime
-
-    @property
-    def dia(self) -> date:
-        return pd.Timestamp(self.baixado_em).date()
-
-
-def nome_da_coluna(coluna: str) -> str:
-    """O nome da coluna sem acento, maiúsculo, só letras e números (a CGU troca travessão e espaço)."""
-    sem_acento = (
-        unicodedata.normalize("NFKD", coluna).encode("ascii", "ignore").decode()
-    )
-    return FORA_DO_NOME.sub("", sem_acento.upper())
-
-
-def _csv_do_zip(arquivo: zipfile.ZipFile, membro: str | None) -> str:
-    csvs = [n for n in arquivo.namelist() if n.lower().endswith(".csv")]
-    if membro is not None:
-        csvs = [n for n in csvs if membro in n.lower()]
-    if not csvs:
-        raise ValueError(f"nenhum CSV com {membro!r} no ZIP")
-    return csvs[0]
-
-
-def _original(caminho: Path) -> bytes:
-    """O arquivo como veio da fonte: o acervo guarda em `.gz` o que não vem comprimido (o endereço da
-    CGU não termina em `.zip`, então o ZIP dela fica dentro de um `.bin.gz`). Os maiores têm dezenas
-    de MB: cabem na memória."""
-    guardado = caminho.read_bytes()
-    return gzip.decompress(guardado) if caminho.name.endswith(".gz") else guardado
-
-
 def _ler_csv(caminho: Path, cadastro: Cadastro) -> pd.DataFrame:
     """Só as colunas do cadastro, como texto: as de nome nem chegam à memória."""
 
     def lida(coluna: str) -> bool:
-        return nome_da_coluna(coluna) in cadastro.colunas
+        return motor.nome_da_coluna(coluna) in cadastro.colunas
 
     opcoes = {
         "sep": SEPARADOR,
@@ -245,17 +196,17 @@ def _ler_csv(caminho: Path, cadastro: Cadastro) -> pd.DataFrame:
         "keep_default_na": False,
         "usecols": lida,
     }
-    conteudo = io.BytesIO(_original(caminho))
+    conteudo = io.BytesIO(motor.original(caminho))
     if zipfile.is_zipfile(conteudo):
         with (
             zipfile.ZipFile(conteudo) as arquivo,
-            arquivo.open(_csv_do_zip(arquivo, cadastro.membro)) as csv,
+            arquivo.open(motor.csv_do_zip(arquivo, cadastro.membro)) as csv,
         ):
             tabela = pd.read_csv(csv, **opcoes)  # type: ignore[call-overload]
     else:
         conteudo.seek(0)  # o `is_zipfile` deixa o arquivo lido até o fim
         tabela = pd.read_csv(conteudo, **opcoes)  # type: ignore[call-overload]
-    tabela = tabela.rename(columns=lambda c: cadastro.colunas[nome_da_coluna(c)])
+    tabela = tabela.rename(columns=lambda c: cadastro.colunas[motor.nome_da_coluna(c)])
     for coluna in set(cadastro.colunas.values()) - set(tabela.columns):
         tabela[coluna] = ""  # coluna que a fonte deixou de mandar fica vazia
     return tabela.apply(lambda serie: serie.str.strip())
@@ -267,19 +218,7 @@ def _valor(texto: pd.Series) -> pd.Series:
     decimal = texto.where(
         ~com_virgula, texto.str.replace(".", "", regex=False).str.replace(",", ".")
     )
-    return pd.to_numeric(_sem_vazio(decimal), errors="coerce").astype("float64")
-
-
-def _sem_vazio(texto: pd.Series) -> pd.Series:
-    """O texto vazio da fonte vira nulo (o `replace("", None)` do pandas preenche com o de cima)."""
-    return texto.where(texto.ne(""), None)
-
-
-def _chave(tabela: pd.DataFrame, colunas: tuple[str, ...]) -> pd.Series:
-    primeira, *outras = colunas
-    if not outras:
-        return tabela[primeira].astype(str)
-    return tabela[primeira].str.cat([tabela[c] for c in outras], sep=SEPARADOR_DA_CHAVE)
+    return pd.to_numeric(motor.sem_vazio(decimal), errors="coerce").astype("float64")
 
 
 def _datas(texto: pd.Series) -> pd.Series:
@@ -304,7 +243,7 @@ def ler_retrato(
     tabela = juridica[valido.astype(bool)].copy()
     for coluna, valor in cadastro.fixas.items():
         tabela[coluna] = valor
-    tabela["id_na_fonte"] = _chave(tabela, cadastro.chave)
+    tabela["id_na_fonte"] = motor.chave(tabela, cadastro.chave)
     repetido = tabela["id_na_fonte"].duplicated(keep="first")
     tabela = tabela[~repetido]
     padrao = tabela.reindex(columns=[*TEXTOS, *DATAS, "valor_multa"], fill_value="")
@@ -314,7 +253,7 @@ def ler_retrato(
             "id_na_fonte": tabela["id_na_fonte"],
             "cnpj": tabela["cnpj"].map(cnpjs.formatar),
             "cnpj_basico": tabela["cnpj"].str[: cnpjs.TAMANHO_DA_RAIZ],
-            **{c: _sem_vazio(padrao[c].fillna("")) for c in TEXTOS},
+            **{c: motor.sem_vazio(padrao[c].fillna("")) for c in TEXTOS},
             **{c: _datas(padrao[c].fillna("")) for c in DATAS},
             "valor_multa": _valor(padrao["valor_multa"].fillna("")),
         }
@@ -328,88 +267,17 @@ def ler_retrato(
     return pronta, contagem
 
 
-def retratos(conexao: sa.Connection, cadastro: Cadastro) -> list[Retrato]:
-    """Os arquivos do cadastro guardados no acervo, do mais antigo ao mais novo."""
-    pasta = acervo.pasta_do_acervo()
-    if pasta is None:
-        return []
-    achados = [
-        Retrato(original.url, versao.sha256, pasta / versao.caminho, versao.baixado_em)
-        for original in originais_mais_recentes(conexao, cadastro.fonte)
-        if not cadastro.url_termina_em or original.url.endswith(cadastro.url_termina_em)
-        for versao in versoes_guardadas(conexao, original.url)
-        if (pasta / versao.caminho).is_file()
-    ]
-    return sorted(achados, key=lambda r: (pd.Timestamp(r.baixado_em), r.url))
-
-
-def _assinatura(tabela: pd.DataFrame) -> pd.Series:
-    return pd.util.hash_pandas_object(tabela[VALORES], index=False)
-
-
 def _disponivel_no_primeiro(novos: pd.DataFrame, dia: pd.Timestamp) -> pd.Series:
     """Publicação ou informação ao órgão (a que for depois), nunca depois do retrato; sem data, ele."""
     datas = novos[["publicado_em", "informado_em"]].max(axis=1)
     return datas.where(datas <= dia, dia).fillna(dia)
 
 
-def _novos(atual: pd.DataFrame, ultimo: pd.DataFrame) -> pd.DataFrame:
-    """O que mudou desde o último valor de cada sanção, com as que saíram como `consta=False`."""
-    presentes = ultimo[ultimo["consta"]]
-    saidas = presentes[~presentes["id_na_fonte"].isin(atual["id_na_fonte"])].assign(
-        consta=False
-    )
-    candidatos = pd.concat([atual, saidas[atual.columns]], ignore_index=True)
-    # compara os números de 64 bits como vieram: um `map` com sanção nova os passaria a decimal
-    anterior = pd.Series(_assinatura(ultimo).to_numpy(), index=ultimo["id_na_fonte"])
-    assinaturas = _assinatura(candidatos).to_numpy()
-    conhecida = candidatos["id_na_fonte"].isin(anterior.index).to_numpy()
-    mudou = ~conhecida
-    posicoes = np.flatnonzero(conhecida)
-    mudou[posicoes] = (
-        anterior.loc[candidatos["id_na_fonte"].iloc[posicoes]].to_numpy()
-        != assinaturas[posicoes]
-    )
-    return candidatos[mudou]
-
-
 def juntar_retratos(
-    lidos: list[tuple[Retrato, pd.DataFrame]],
+    lidos: list[tuple[motor.Retrato, pd.DataFrame]],
 ) -> tuple[pd.DataFrame, int]:
-    """Os retratos lidos (do mais antigo ao mais novo) numa tabela de valores, e quantos foram pulados.
-
-    O primeiro retrato nunca é pulado: é ele que dá a régua dos seguintes."""
-    if not lidos:
-        raise ValueError("nenhum retrato para juntar")
-    eventos: list[pd.DataFrame] = []
-    ultimo: pd.DataFrame | None = None
-    pulados = 0
-    for retrato, tabela in lidos:
-        dia = pd.Timestamp(retrato.dia)
-        atual = tabela.assign(consta=True)
-        if ultimo is None:
-            novos = atual.assign(disponivel_em=_disponivel_no_primeiro(atual, dia))
-        else:
-            if len(atual) < FRACAO_MINIMA * int(ultimo["consta"].sum()):
-                pulados += 1
-                continue
-            novos = _novos(atual, ultimo.drop(columns=_CARIMBOS)).assign(
-                disponivel_em=dia
-            )
-        novos = novos.assign(
-            visto_em=dia,
-            origem_sha256=retrato.sha256,
-            origem_coletada_em=pd.Timestamp(retrato.baixado_em).isoformat(),
-        )
-        eventos.append(novos)
-        ultimo = (
-            novos
-            if ultimo is None
-            else pd.concat([ultimo, novos], ignore_index=True).drop_duplicates(
-                "id_na_fonte", keep="last"
-            )
-        )
-    return pd.concat(eventos, ignore_index=True), pulados
+    """Os retratos lidos (do mais antigo ao mais novo) numa tabela de valores, e quantos foram pulados."""
+    return motor.juntar(lidos, VALORES, _disponivel_no_primeiro)
 
 
 def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
@@ -422,7 +290,7 @@ def _destino(pasta: Path, cadastro: Cadastro) -> Path:
     return pasta / cadastro.tabela / cadastro.nome
 
 
-def _origens(achados: list[Retrato]) -> list[dict[str, str]]:
+def _origens(achados: list[motor.Retrato]) -> list[dict[str, str]]:
     return [{"url": r.url, "sha256": r.sha256} for r in achados]
 
 
@@ -450,8 +318,8 @@ def _para_gravar(
 
 
 def _lidos(
-    achados: list[Retrato], cadastro: Cadastro, resumo: dict[str, int]
-) -> Iterator[tuple[Retrato, pd.DataFrame]]:
+    achados: list[motor.Retrato], cadastro: Cadastro, resumo: dict[str, int]
+) -> Iterator[tuple[motor.Retrato, pd.DataFrame]]:
     for retrato in achados:
         tabela, contagem = ler_retrato(retrato.caminho, cadastro)
         for chave, valor in contagem.items():
@@ -474,7 +342,7 @@ def montar(
     """
     resumo: dict[str, dict[str, int]] = {}
     for cadastro in CADASTROS.values():
-        achados = retratos(conexao, cadastro)
+        achados = motor.retratos(conexao, cadastro.fonte, cadastro.url_termina_em)
         if not achados:
             continue
         destino = _destino(pasta, cadastro)
