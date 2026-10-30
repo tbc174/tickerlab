@@ -131,3 +131,40 @@ def test_link_de_outra_ficha_nao_fica_embaixo_da_ficha_nova(banco, monkeypatch):
     assert not app.exception
     assert not [c for c in app.code if comp.ENDERECO_DA_PAGINA in c.value]
     assert comp.AVISO_DO_LINK_CRIADO not in _textos(app)
+
+
+def test_aba_aberta_da_conta_bloqueada_nao_revoga_o_link(banco, monkeypatch):
+    """2ª revisão cruzada do Codex no #659: o clique em "Revogar" roda antes da releitura da conta.
+    Revogar é para sempre; na conta bloqueada o link só para enquanto durar o bloqueio."""
+    from src.administracao import desbloquear_conta
+    from src.banco.usuarios import buscar_por_google_sub
+    from tests.ajudantes_da_conta import bloquear_pelo_admin
+
+    monkeypatch.setattr("streamlit.logout", lambda: None)
+    entrar_como(monkeypatch, "lia", "lia@exemplo.com")
+    abrir_app()
+    usuario_id = id_do_usuario(banco, "lia")
+    with banco.begin() as conexao:
+        codigo = links.criar_link_da_ficha(
+            conexao, usuario_id, "gratuito", _congelada(), 30
+        )
+        (link,) = links.listar_links(conexao, usuario_id)
+    app = abrir_app("meus_dados")
+    bloquear_pelo_admin(banco, usuario_id)
+    app.session_state["usuario_em"] = 0  # o prazo da releitura já venceu
+    app.button(key=f"revogar_link_{link.id}").click().run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        assert (
+            conexao.execute(
+                sa.select(compartilhamentos.c.revogado_em).where(
+                    compartilhamentos.c.id == link.id
+                )
+            ).scalar_one()
+            is None
+        )
+    with banco.begin() as conexao:
+        chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+        desbloquear_conta(conexao, chefe.id, usuario_id)
+    with banco.begin() as conexao:
+        assert links.abrir_link(conexao, codigo) is not None

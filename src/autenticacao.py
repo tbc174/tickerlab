@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 from src.banco.conexao import obter_engine
 from src.banco.origens import gravar_origem
-from src.banco.usuarios import Usuario, entrar
+from src.banco.usuarios import ContaBloqueadaError, Usuario, entrar
 from src.origem import Origem
 
 log = logging.getLogger(__name__)
@@ -152,5 +152,7 @@ def registrar_login(
             if primeira_vez and origem is not None:
                 gravar_origem(conexao, usuario.id, origem)
             return usuario, primeira_vez
+    except ContaBloqueadaError:
+        raise  # não é identidade inválida: quem chama mostra o texto da conta bloqueada
     except ValueError as erro:
         raise LoginInvalidoError(str(erro)) from erro

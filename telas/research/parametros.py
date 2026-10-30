@@ -28,6 +28,7 @@ from telas.comum import (
     formatar_pct,
     obter_cdi,
 )
+from telas.conta.guarda import conta_da_sessao_valendo
 
 NOMES_DOS_ESCOPOS_NA_TELA = {
     research_presets.GLOBAL: "Seu padrão (todos os ativos)",
@@ -129,6 +130,8 @@ def _gravar(usuario, escopo, alvo, valores, motivo):
         research_presets.conferir_ao_salvar(atuais, novo)
         st.session_state["presets_locais"] = research_presets.substituir(atuais, novo)
         return versao
+    if not conta_da_sessao_valendo(usuario):
+        return None
     with obter_engine().begin() as conexao:
         return salvar_preset(
             conexao,

@@ -17,6 +17,7 @@ from src.ficha import Ficha, PedidoDaFicha, Resultado, Situacao
 from src.protecoes import Protecoes
 from src.tentativas import impressao
 from telas.comum import ajuda_do
+from telas.conta.guarda import conta_da_sessao_valendo
 
 log = logging.getLogger("tickerlab.conta")
 
@@ -61,7 +62,7 @@ def esquecer_a_ficha_para_salvar() -> None:
 def _guardar_tolerancia():
     """Com login, a tolerância fica nas preferências da conta (mesclada com o que já estava)."""
     usuario = st.session_state.get("usuario")
-    if usuario is None:
+    if usuario is None or not conta_da_sessao_valendo(usuario):
         return
     fracao = ficha.normalizar_tolerancia(st.session_state[CHAVE_DA_TOLERANCIA] / 100)
     try:

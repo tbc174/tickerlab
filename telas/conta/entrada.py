@@ -20,7 +20,11 @@ from src.autenticacao import (
     registrar_login,
 )
 from src.banco.conexao import obter_engine
-from src.banco.usuarios import buscar_por_id
+from src.banco.usuarios import (
+    TEXTO_DA_CONTA_BLOQUEADA,
+    ContaBloqueadaError,
+    buscar_por_id,
+)
 from src.cobranca import buscar_assinatura
 from src.conformidade import (
     CAIXA_DO_ACEITE,
@@ -36,6 +40,7 @@ from src.origem import NOME_DO_COOKIE, ler_origem
 from telas.comum import paleta_da_sessao
 from telas.conta import meus_dados
 from telas.conta.assinatura import _recarregar_o_plano
+from telas.conta.guarda import so_com_a_conta_valendo
 from telas.conta.textos_legais import _corpo_do_texto
 
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
@@ -100,6 +105,8 @@ def _usuario_da_sessao():
             # gravado pelo site: o Google apaga as UTMs da URL no caminho do login
             origem=ler_origem(st.context.cookies.get(NOME_DO_COOKIE)),
         )
+    except ContaBloqueadaError:
+        _parar_na_conta_bloqueada()
     except LoginInvalidoError as erro:
         st.error(f"Não foi possível entrar: {erro}")
         st.button("Sair", on_click=st.logout)
@@ -136,6 +143,9 @@ def _com_plano_atualizado(usuario):
         st.session_state.pop("usuario", None)
         st.session_state["conta_apagada"] = usuario.google_sub
         _parar_na_conta_apagada()
+    elif novo.bloqueada_em is not None:  # bloqueada no incidente: para em até 1 minuto
+        st.session_state.pop("usuario", None)
+        _parar_na_conta_bloqueada()
     st.session_state["usuario"] = novo
     _carregar_assinatura(novo)
     return novo
@@ -145,6 +155,14 @@ def _parar_na_conta_apagada():
     """A conta foi apagada em outra sessão: esta só oferece sair. Sem isso, a execução seguinte
     cadastraria a conta de novo com o login do Google ainda aberto (achado 4d do Codex)."""
     st.error("Esta conta não existe mais.")
+    st.button("Sair", on_click=st.logout)
+    st.stop()
+
+
+def _parar_na_conta_bloqueada():
+    """A conta foi bloqueada por um administrador (incidente): só o texto aprovado e o "Sair".
+    Sem o usuário na sessão, a execução seguinte tenta o login de novo e para aqui outra vez."""
+    st.error(TEXTO_DA_CONTA_BLOQUEADA)
     st.button("Sair", on_click=st.logout)
     st.stop()
 
@@ -166,6 +184,7 @@ def _segredos():
         return None
 
 
+@so_com_a_conta_valendo
 def _registrar_aceite(usuario):
     """O aceite dos termos e, se a caixa opcional foi marcada, a inscrição nas Novidades (na
     mesma transação). A caixa desmarcada não tira ninguém: quem já recebe sai em Meus dados."""

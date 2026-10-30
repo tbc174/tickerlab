@@ -19,6 +19,7 @@ from src.banco.conexao import obter_engine
 from src.banco.usuarios import Usuario
 from src.ficha import Ficha, PedidoDaFicha
 from src.planos import LimiteDoPlanoError
+from telas.conta.guarda import so_com_a_conta_valendo
 
 log = logging.getLogger("tickerlab.conta")
 
@@ -30,6 +31,7 @@ CHAVE_DOS_ERROS = "links_compartilhados_erros"
 CriarLink = Callable[[sa.Connection, int], str]  # (conexão, dias) → código
 
 
+@so_com_a_conta_valendo
 def _criar(alvo: str, criar: CriarLink, de: str | None) -> None:
     """Botão "Criar o link": guarda o endereço só na sessão (o banco fica com o hash)."""
     erros = st.session_state.setdefault(CHAVE_DOS_ERROS, {})
@@ -149,6 +151,7 @@ def compartilhar_pdf(
     mostrar_link_criado(alvo, onde=abaixo)
 
 
+@so_com_a_conta_valendo
 def _revogar(usuario_id: uuid.UUID, link_id: uuid.UUID) -> None:
     try:
         with obter_engine().begin() as conexao:

@@ -5,6 +5,8 @@ Até aqui, quem nunca tinha entrado recebia 401 "conta-nova" e precisava passar 
 (`src/autenticacao.registrar_login`): admin só pelo e-mail confirmado, origem do cookie só na primeira vez.
 """
 
+from datetime import datetime, timedelta
+
 import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
@@ -16,8 +18,9 @@ from src.auditoria import ACAO_TERMOS_ACEITOS
 from src.autenticacao import VARIAVEL_DOS_ADMINS
 from src.banco import novidades_por_email
 from src.banco.modelo import auditoria as auditoria_tabela
+from src.banco.modelo import sessoes_de_login as sessoes_tabela
 from src.banco.origens import buscar_origem
-from src.banco.usuarios import buscar_por_google_sub, entrar
+from src.banco.usuarios import TEXTO_DA_CONTA_BLOQUEADA, buscar_por_google_sub, entrar
 from src.conformidade import VERSAO_DOS_TERMOS, registrar_aceite
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO
 from tests.ajudantes_da_api import (
@@ -29,6 +32,7 @@ from tests.ajudantes_da_api import (
     gerar_chave,
     token,
 )
+from tests.ajudantes_da_conta import bloquear_pelo_admin
 
 DA_CARLA = {"sub": "carla", "email": "carla@exemplo.com", "name": "Carla"}
 
@@ -87,6 +91,136 @@ def test_entrar_de_novo_nao_cria_outra_conta(cliente, banco, chave):
     assert depois is not None and primeira is not None
     assert depois.id == primeira.id
     assert depois.nome == "Carla Souza"  # o login atualiza o nome, como no Streamlit
+
+
+def test_conta_bloqueada_nao_entra_pelo_google_nem_abre_sessao(cliente, banco, chave):
+    _criar(cliente, chave)
+    bloquear_pelo_admin(banco, _da_carla(banco).id)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 403
+    assert resposta.json()["detail"] == TEXTO_DA_CONTA_BLOQUEADA
+    assert "set-cookie" not in resposta.headers
+
+
+def test_cookie_do_login_na_corrida_com_o_bloqueio_nao_volta_no_desbloqueio(
+    cliente, banco, chave, monkeypatch
+):
+    """Achado P0 da revisão cruzada do Codex no #659: o bloqueio cai entre o registro do login e
+    a abertura da sessão. O cookie entregue não vale no bloqueio nem depois do desbloqueio."""
+    from src.administracao import desbloquear_conta
+    from src.api_v1.sessao import NOME_DO_COOKIE
+
+    _criar(cliente, chave)
+    carla = _da_carla(banco)
+    with banco.begin() as conexao:
+        registrar_aceite(conexao, carla.id)
+    original = conta._registrar
+
+    def registrar_e_bloquear(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        bloquear_pelo_admin(banco, carla.id)
+        return resultado
+
+    monkeypatch.setattr(conta, "_registrar", registrar_e_bloquear)
+    resposta = _criar(cliente, chave)
+    assert (
+        resposta.status_code == 403
+    )  # a conferência depois de gravar a sessão já vê o bloqueio
+    valor = resposta.cookies.get(NOME_DO_COOKIE) or cliente.cookies.get(NOME_DO_COOKIE)
+    cliente.cookies.clear()
+    cabecalhos = {"Cookie": f"{NOME_DO_COOKIE}={valor}"}
+    assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 401
+
+    with banco.begin() as conexao:
+        chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+        desbloquear_conta(conexao, chefe.id, carla.id)
+    assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 401
+
+
+def _bloquear_e_desbloquear(banco, alvo_id):
+    from src.administracao import desbloquear_conta
+
+    bloquear_pelo_admin(banco, alvo_id)
+    with banco.begin() as conexao:
+        chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+        desbloquear_conta(conexao, chefe.id, alvo_id)
+
+
+def test_login_de_antes_do_bloqueio_nao_abre_sessao_depois_do_desbloqueio(
+    cliente, banco, chave, monkeypatch
+):
+    """2ª revisão cruzada do Codex no #659: o login passa por `_registrar` antes do bloqueio e só
+    abre a sessão depois do desbloqueio, quando a marca do bloqueio já foi limpa. Esse login não
+    vale; o seguinte, todo depois do desbloqueio, entra."""
+    from src.api_v1.sessao import NOME_DO_COOKIE
+
+    _criar(cliente, chave)
+    carla = _da_carla(banco)
+    with banco.begin() as conexao:
+        registrar_aceite(conexao, carla.id)
+    original = conta._registrar
+
+    def registrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        _bloquear_e_desbloquear(
+            banco, carla.id
+        )  # tudo enquanto o pedido está parado aqui
+        return resultado
+
+    monkeypatch.setattr(conta, "_registrar", registrar_e_pausar)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 409
+    assert not resposta.cookies.get(NOME_DO_COOKIE)
+    with banco.connect() as conexao:
+        abertas = conexao.execute(
+            sa.select(sa.func.count())
+            .select_from(sessoes_tabela)
+            .where(
+                sessoes_tabela.c.usuario_id == carla.id,
+                sessoes_tabela.c.encerrada_em.is_(None),
+            )
+        ).scalar_one()
+    assert abertas == 0
+
+    monkeypatch.setattr(conta, "_registrar", original)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 200
+    valor = resposta.cookies.get(NOME_DO_COOKIE) or cliente.cookies.get(NOME_DO_COOKIE)
+    cliente.cookies.clear()
+    cabecalhos = {"Cookie": f"{NOME_DO_COOKIE}={valor}"}
+    assert cliente.get("/api/v1/eu", headers=cabecalhos).status_code == 200
+
+
+class _RelogioAtrasado(datetime):
+    """O relógio de quem bloqueia (painel do admin, script do servidor), 2 s atrás do da API."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return datetime.now(tz) - timedelta(seconds=2)
+
+
+def test_relogio_atrasado_de_quem_bloqueia_nao_deixa_o_login_passar(
+    cliente, banco, chave, monkeypatch
+):
+    """3ª revisão cruzada do Codex no #659: com o relógio do admin atrás do da API, o bloqueio e o
+    desbloqueio ficavam com hora anterior ao começo do login, e a conferência pela hora os
+    perdia. O login que leu a conta antes do bloqueio continua sem valer."""
+    from src import auditoria as registro_de_auditoria
+
+    _criar(cliente, chave)
+    carla = _da_carla(banco)
+    original = conta._registrar
+
+    def registrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        _bloquear_e_desbloquear(banco, carla.id)
+        return resultado
+
+    monkeypatch.setattr(conta, "_registrar", registrar_e_pausar)
+    monkeypatch.setattr(registro_de_auditoria, "datetime", _RelogioAtrasado)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 409
+    assert resposta.headers[conta.CABECALHO_DO_MOTIVO] == "login-interrompido"
 
 
 def test_admin_pelo_email_da_lista(cliente, banco, chave, monkeypatch):

@@ -19,6 +19,7 @@ from src.banco.dados_do_usuario import (
 from src.carteira_b3 import ArquivoDaB3Error, ler_carteira
 from src.planos import CARTEIRA_NO_RESEARCH, LimiteDoPlanoError, motivo_sem_acesso
 from telas.comum import cabecalho_da_pagina, plano_atual
+from telas.conta.guarda import so_com_a_conta_valendo
 from telas.research.comum import _carteira_do_research
 
 
@@ -39,6 +40,7 @@ def guardar_fotografia(usuario, conteudo, nome_do_arquivo):
     )
 
 
+@so_com_a_conta_valendo
 def _guardar_da_tela(usuario):
     arquivo = st.session_state.get("minha_carteira_arquivo")
     if arquivo is None:
@@ -48,6 +50,7 @@ def _guardar_da_tela(usuario):
     )
 
 
+@so_com_a_conta_valendo
 def _revogar_da_tela(usuario):
     with obter_engine().begin() as conexao:
         revogar_carteira(conexao, usuario.id)

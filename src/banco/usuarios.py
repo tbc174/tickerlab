@@ -33,6 +33,20 @@ TAMANHO_MAXIMO_DO_EMAIL = 320
 # que a lista foi pensada
 PROVEDOR_DOS_ADMINS = "google"
 
+# texto público aprovado pelo Tiago em 24/10 (nível 1): não diz o motivo, porque num roubo de sessão
+# quem está do outro lado pode não ser o dono; o canal do encarregado também atende a LGPD
+TEXTO_DA_CONTA_BLOQUEADA = (
+    "Esta conta está bloqueada. Se ela é sua, escreva para privacidade@tickerlab.com.br: "
+    "por lá você também pode pedir uma cópia dos seus dados ou a exclusão da conta."
+)
+
+
+class ContaBloqueadaError(ValueError):
+    """A conta foi bloqueada por um administrador (incidente): o login não entra."""
+
+    def __init__(self) -> None:
+        super().__init__(TEXTO_DA_CONTA_BLOQUEADA)
+
 
 @dataclass(frozen=True)
 class Usuario:
@@ -47,6 +61,10 @@ class Usuario:
     ultimo_acesso: datetime | None
     termos_versao: str | None = None
     termos_aceitos_em: datetime | None = None
+    bloqueada_em: datetime | None = (
+        None  # bloqueio no incidente (0045); a conta continua existindo
+    )
+    motivo_do_bloqueio: str | None = None
 
     @property
     def e_admin(self) -> bool:
@@ -82,6 +100,8 @@ def _de_linha(linha: sa.Row) -> Usuario:
         ultimo_acesso=linha.ultimo_acesso,
         termos_versao=linha.termos_versao,
         termos_aceitos_em=linha.termos_aceitos_em,
+        bloqueada_em=linha.bloqueada_em,
+        motivo_do_bloqueio=linha.motivo_do_bloqueio,
     )
 
 
@@ -92,6 +112,26 @@ def buscar_por_id(conexao: sa.Connection, usuario_id: uuid.UUID) -> Usuario | No
         )
     ).first()
     return _de_linha(linha) if linha else None
+
+
+def travar(conexao: sa.Connection, usuario_id: uuid.UUID) -> None:
+    """Trava a linha da conta até o fim da transação (`SELECT ... FOR UPDATE`).
+
+    O login que abre sessão e o bloqueio e o desbloqueio travam a mesma linha, então um espera o
+    commit do outro: o bloqueio vê a sessão gravada e a encerra, ou o login vê o bloqueio. Sem a
+    trava, a sessão de um login ainda sem commit fica invisível para o bloqueio (achado P0 da 3ª
+    revisão cruzada do Codex no #659). No SQLite não faz nada: lá o banco inteiro já tem um
+    escritor por vez."""
+    conexao.execute(
+        sa.select(usuarios.c.id).where(usuarios.c.id == usuario_id).with_for_update()
+    )
+
+
+def esta_valendo(conexao: sa.Connection, usuario_id: uuid.UUID) -> bool:
+    """Se a conta existe, não foi apagada e não está bloqueada no incidente. É a conferência das
+    ações que apagam, exportam, publicam ou mexem na cobrança fora do login."""
+    conta = buscar_por_id(conexao, usuario_id)
+    return conta is not None and conta.bloqueada_em is None
 
 
 def buscar_por_google_sub(conexao: sa.Connection, google_sub: str) -> Usuario | None:
@@ -149,7 +189,8 @@ def entrar_por_identidade(
     identidade gravada); a conta ativa mais antiga com uma identidade de e-mail confirmado igual ao
     deste login, se ele também veio confirmado; ou uma conta nova. Nas seguintes, atualiza o último
     acesso (e nome, foto e e-mail, quando vieram). Vira administrador quem entra pelo Google com o
-    e-mail confirmado e listado em `emails_de_admin`.
+    e-mail confirmado e listado em `emails_de_admin`. Conta bloqueada levanta `ContaBloqueadaError`
+    antes de gravar qualquer coisa nela (nem a forma de entrar nova se junta).
     """
     identidade = _validada(identidade)
     admin = (
@@ -159,16 +200,23 @@ def entrar_por_identidade(
     )
     conta = _conta_da_identidade(conexao, identidade)
     if conta is not None:
+        _recusar_se_bloqueada(conta)
         _atualizar_identidade(conexao, identidade)
     else:
         conta = _conta_para_juntar(conexao, identidade)
         if conta is None:
             return _criar_conta(conexao, identidade, admin), True
+        _recusar_se_bloqueada(conta)
         _gravar_identidade(conexao, conta.id, identidade)
     _atualizar_conta(conexao, conta, identidade, admin)
     atualizada = buscar_por_id(conexao, conta.id)
     assert atualizada is not None  # ativa: achada nesta mesma transação
     return atualizada, False
+
+
+def _recusar_se_bloqueada(conta: Usuario) -> None:
+    if conta.bloqueada_em is not None:
+        raise ContaBloqueadaError()
 
 
 def _validada(identidade: IdentidadeDoProvedor) -> IdentidadeDoProvedor:
@@ -221,6 +269,7 @@ def _conta_da_identidade(
     if identidade.provedor == "google":
         conta = buscar_por_google_sub(conexao, identidade.sub)
         if conta is not None:
+            _recusar_se_bloqueada(conta)  # antes de gravar a identidade
             _gravar_identidade(conexao, conta.id, identidade)
         return conta
     return None

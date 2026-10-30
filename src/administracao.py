@@ -13,14 +13,18 @@ import sqlalchemy as sa
 from src import auditoria as registro_de_auditoria
 from src.autenticacao import VARIAVEL_DOS_ADMINS
 from src.autenticacao import emails_de_admin as admins_do_servidor
+from src.banco import sessoes
 from src.banco.modelo import (
+    MOTIVOS_DO_BLOQUEIO,
     PAPEIS,
     PLANOS,
     assinaturas,
     eventos_stripe,
+    identidades,
     simulacoes,
     usuarios,
 )
+from src.banco.usuarios import buscar_por_email, travar
 
 
 class PermissaoNegadaError(PermissionError):
@@ -42,19 +46,54 @@ class LinhaDeUsuario:
     ultimo_acesso: datetime | None
     status_da_assinatura: str | None
     simulacoes: int
+    bloqueada_em: datetime | None = None
+    motivo_do_bloqueio: str | None = None
 
 
 def exigir_admin(conexao: sa.Connection, ator_id: uuid.UUID | None) -> None:
-    """Levanta `PermissaoNegadaError` se o ator não existir ou não for administrador."""
-    papel = (
+    """Levanta `PermissaoNegadaError` se o ator não existir, não for administrador ou estiver
+    bloqueado (o admin bloqueado no incidente deixa de administrar na hora)."""
+    linha = (
         conexao.execute(
-            sa.select(usuarios.c.papel).where(usuarios.c.id == ator_id)
-        ).scalar()
+            sa.select(usuarios.c.papel, usuarios.c.bloqueada_em).where(
+                usuarios.c.id == ator_id
+            )
+        ).first()
         if ator_id
         else None
     )
-    if papel != "admin":
+    if linha is None or linha.papel != "admin" or linha.bloqueada_em is not None:
         raise PermissaoNegadaError("Só administradores podem fazer isso.")
+
+
+def admin_do_servidor(pedido: str | None) -> str:
+    """O e-mail de quem pede num script de administração: precisa estar em `TICKERLAB_ADMINS`.
+
+    Sem `pedido`, vale o único e-mail da lista (com mais de um, é preciso dizer qual)."""
+    lista = admins_do_servidor()
+    if not lista:
+        raise PermissaoNegadaError(f"{VARIAVEL_DOS_ADMINS} está vazia neste servidor.")
+    if pedido is None:
+        if len(lista) > 1:
+            raise PermissaoNegadaError(
+                f"{VARIAVEL_DOS_ADMINS} tem mais de um e-mail: diga qual com --admin."
+            )
+        return lista[0]
+    email = pedido.strip().lower()
+    if email not in lista:
+        raise PermissaoNegadaError(f"Este e-mail não está em {VARIAVEL_DOS_ADMINS}.")
+    return email
+
+
+def ator_do_servidor(conexao: sa.Connection, email: str) -> uuid.UUID:
+    """O id do administrador do script, conferido no banco (a lista sozinha não basta)."""
+    usuario = buscar_por_email(conexao, email)
+    if usuario is None:
+        raise PermissaoNegadaError(
+            "Nenhum administrador com este e-mail no banco: entre no app pelo Google antes."
+        )
+    exigir_admin(conexao, usuario.id)
+    return usuario.id
 
 
 def resumo_geral(conexao: sa.Connection, ator_id: uuid.UUID) -> dict:
@@ -150,6 +189,8 @@ def listar_usuarios(
             ultimo_acesso=l.ultimo_acesso,
             status_da_assinatura=l.status_da_assinatura,
             simulacoes=l.total_de_simulacoes,
+            bloqueada_em=l.bloqueada_em,
+            motivo_do_bloqueio=l.motivo_do_bloqueio,
         )
         for l in conexao.execute(consulta)
     ]
@@ -229,6 +270,115 @@ def alterar_papel(
         alvo_id,
         {"de": antes, "para": papel},
     )
+
+
+def bloquear_conta(
+    conexao: sa.Connection,
+    ator_id: uuid.UUID,
+    alvo_id: uuid.UUID,
+    motivo: str,
+    agora: datetime | None = None,
+    pelo_servidor: bool = False,
+) -> int:
+    """Bloqueia uma conta no incidente: encerra as sessões dela na hora e para o login. Devolve
+    quantas sessões encerrou.
+
+    Não apaga nada (dados, links, assinatura). Ninguém bloqueia a si mesmo: assim quem bloqueia é
+    sempre um administrador que continua desbloqueado, e o serviço nunca fica sem nenhum.
+
+    Conta em `TICKERLAB_ADMINS` só se bloqueia pelo script do servidor (`pelo_servidor`): pelo
+    painel, uma sessão de admin roubada trancaria do lado de fora o dono da lista, que não
+    entraria nem desbloquearia a si mesmo.
+    """
+    exigir_admin(conexao, ator_id)
+    # a mesma trava do login que abre sessão (`usuarios.travar`): um espera o commit do outro
+    travar(conexao, alvo_id)
+    if motivo not in MOTIVOS_DO_BLOQUEIO:
+        raise OperacaoInvalidaError(f"Motivo desconhecido: {motivo}.")
+    if alvo_id == ator_id:
+        raise OperacaoInvalidaError("Você não pode bloquear a sua própria conta.")
+    if _bloqueio_atual(conexao, alvo_id) is not None:
+        raise OperacaoInvalidaError("Esta conta já está bloqueada.")
+    if not pelo_servidor and _esta_na_lista_do_servidor(conexao, alvo_id):
+        raise OperacaoInvalidaError(
+            "Esta conta está na lista de administradores do servidor: bloqueie pelo script do "
+            "servidor (scripts/contas_do_app.py)."
+        )
+    agora = agora or datetime.now(UTC)
+    conexao.execute(
+        sa.update(usuarios)
+        .where(usuarios.c.id == alvo_id)
+        .values(bloqueada_em=agora, motivo_do_bloqueio=motivo)
+    )
+    encerradas = sessoes.encerrar_todas(conexao, alvo_id, agora)
+    registro_de_auditoria.registrar(
+        conexao,
+        ator_id,
+        registro_de_auditoria.ACAO_CONTA_BLOQUEADA,
+        alvo_id,
+        {"motivo": motivo, "sessoes_encerradas": encerradas},
+    )
+    return encerradas
+
+
+def desbloquear_conta(
+    conexao: sa.Connection, ator_id: uuid.UUID, alvo_id: uuid.UUID
+) -> None:
+    """Tira o bloqueio: o login volta. As sessões encerradas no bloqueio não voltam.
+
+    Encerra também as que sobraram abertas: com o login recusado, uma sessão aberta durante o
+    bloqueio só nasce de um login de antes dele, numa corrida, e não pode valer depois (achado
+    P0 da revisão cruzada do Codex no #659). A pessoa entra de novo.
+    """
+    exigir_admin(conexao, ator_id)
+    travar(
+        conexao, alvo_id
+    )  # antes de encerrar as sessões: nenhuma nasce depois sem ser vista
+    motivo = _bloqueio_atual(conexao, alvo_id)
+    if motivo is None:
+        raise OperacaoInvalidaError("Esta conta não está bloqueada.")
+    agora = datetime.now(UTC)
+    encerradas = sessoes.encerrar_todas(conexao, alvo_id, agora)
+    conexao.execute(
+        sa.update(usuarios)
+        .where(usuarios.c.id == alvo_id)
+        .values(bloqueada_em=None, motivo_do_bloqueio=None)
+    )
+    registro_de_auditoria.registrar(
+        conexao,
+        ator_id,
+        registro_de_auditoria.ACAO_CONTA_DESBLOQUEADA,
+        alvo_id,
+        {"motivo": motivo, "sessoes_encerradas": encerradas},
+    )
+
+
+def _bloqueio_atual(conexao: sa.Connection, alvo_id: uuid.UUID) -> str | None:
+    """O motivo do bloqueio da conta (None: não está bloqueada). Conta que não existe é erro.
+
+    O banco garante que o motivo e a data andam juntos (regra `ck_usuarios_bloqueio`)."""
+    linha = conexao.execute(
+        sa.select(usuarios.c.motivo_do_bloqueio).where(
+            usuarios.c.id == alvo_id, usuarios.c.excluido_em.is_(None)
+        )
+    ).first()
+    if linha is None:
+        raise OperacaoInvalidaError("Usuário não encontrado.")
+    return linha.motivo_do_bloqueio
+
+
+def _esta_na_lista_do_servidor(conexao: sa.Connection, alvo_id: uuid.UUID) -> bool:
+    """Se um e-mail da conta está em `TICKERLAB_ADMINS` (sem diferença de maiúsculas): o de
+    contato ou o confirmado de qualquer forma de entrar. O de contato segue a última forma
+    usada, e a do Google com o e-mail da lista continua na conta (achado P1 da revisão cruzada
+    do Codex no #659)."""
+    contato = sa.select(usuarios.c.email).where(usuarios.c.id == alvo_id)
+    confirmados = sa.select(identidades.c.email).where(
+        identidades.c.usuario_id == alvo_id, identidades.c.email_confirmado.is_(True)
+    )
+    emails = conexao.execute(sa.union(contato, confirmados)).scalars()
+    lista = set(admins_do_servidor())
+    return any(email.strip().lower() in lista for email in emails)
 
 
 def eventos_recentes_do_stripe(
