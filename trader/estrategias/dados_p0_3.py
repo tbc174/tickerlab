@@ -164,7 +164,7 @@ def carregar_ipca(
 # --- leitura das fontes locais ------------------------------------------------------------------------
 
 
-def _ponto_da_curva(real: pd.DataFrame, prazo_anos: float) -> pd.Series:
+def ponto_da_curva(real: pd.DataFrame, prazo_anos: float) -> pd.Series:
     ponto = real[real["prazo_anos"] == prazo_anos]
     serie = ponto.set_index("data_base")["taxa"].astype(float).sort_index()
     serie.index = pd.DatetimeIndex(serie.index)
@@ -183,8 +183,8 @@ def taxa_real_a_prazo(
     paralelo). Dia sem os dois pontos fica de fora.
     """
     real = curva[curva["curva"] == "real"]
-    alvo = _ponto_da_curva(real, prazo_anos)
-    reserva = _ponto_da_curva(real, prazo_de_reserva)
+    alvo = ponto_da_curva(real, prazo_anos)
+    reserva = ponto_da_curva(real, prazo_de_reserva)
     datas = alvo.index.union(reserva.index)
     alvo, reserva = alvo.reindex(datas), reserva.reindex(datas)
     reserva_quando_o_alvo_existia = reserva.where(alvo.notna()).ffill()
