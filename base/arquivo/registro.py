@@ -9,12 +9,21 @@ até alguém registrá-los (não são deduzidos do código).
 """
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
 from base.arquivo.fontes import FONTES
+from base.arquivo.orgaos import NAO_SAO_FONTE, ORGAO_DA_FAMILIA
 from base.vitrine import licenca_do_site
-from src.banco.coletas import licenca_da_fonte, marca_da_fonte, revenda_da_fonte
+from src.banco.coletas import (
+    USOS_SEM_COBRANCA,
+    licenca_da_fonte,
+    marca_da_fonte,
+    marca_mais_restrita,
+    revenda_da_fonte,
+)
 
 # família da fonte (o começo do id) → dia em que os termos foram lidos (licencas-por-fonte.md e
 # comentários de `LICENCAS`); família que não está aqui ainda não tem a data anotada
@@ -201,3 +210,103 @@ def para_o_site() -> list[dict]:
         }
         for r in registro_de_fontes()
     ]
+
+
+# --- a lista por família, para a página Dados (linha 592 da fila) ---
+
+# famílias que o app ou os scripts leem sem passar pelo arquivista (preços, café, cripto); têm licença
+# em `LICENCAS`, mas nenhuma coleta em `FONTES`
+FONTES_DE_FORA_DO_ARQUIVISTA = (
+    "yahoo",
+    "iex",
+    "bm",
+    "cecafe",
+    "fnc",
+    "kraken",
+    "mb",
+    "btc",
+)
+RITMO_DE_FORA = "lida pelo app"
+
+# família que chega a uma tela, ao relatório ou à API sem ter tabela no catálogo de contratos: o módulo
+# de `src/` que a lê e uma palavra do texto dele (um teste confere que os dois existem)
+FONTES_LIDAS_PELO_APP: dict[str, tuple[str, str]] = {
+    "yahoo": ("src/dados.py", "Yahoo"),  # todo preço do app
+    "sec": ("src/coleta_sec.py", "sec.gov"),  # busca na SEC, no Research
+    "b3": ("src/carteira_b3.py", "B3"),  # carteira exportada da B3
+    "ibge": ("src/ibge_sidra.py", "IBGE"),  # mapa e calendário do café (API)
+    "chirps": (
+        "src/commodities/cafe/indices_de_clima.py",
+        "CHIRPS",
+    ),  # chuva do painel do café
+    "bm": ("src/commodities/painel_de_precos.py", "Pink Sheet"),  # preços de referência
+    "fmi": ("src/commodities/painel_de_precos.py", "FMI"),  # preços de referência
+}
+
+Uso = Literal["em_uso", "guardada"]
+
+
+def _familia(fonte: str) -> str:
+    return fonte.split("-", 1)[0]
+
+
+def familias_publicas() -> list[str]:
+    """As famílias da lista pública: as do arquivista, na ordem de `FONTES`, e depois as de fora."""
+    vistas = dict.fromkeys(_familia(f.id) for f in FONTES)
+    vistas |= dict.fromkeys(FONTES_DE_FORA_DO_ARQUIVISTA)
+    return [f for f in vistas if f not in NAO_SAO_FONTE]
+
+
+def _fontes_da_familia(familia: str) -> list[str]:
+    """Os ids das coletas da família; família de fora do arquivista vale por ela mesma."""
+    ids = [f.id for f in FONTES if _familia(f.id) == familia]
+    return ids or [familia]
+
+
+def _licencas_do_catalogo(catalogo: dict) -> set[str]:
+    return {t["licenca"] for t in catalogo["tabelas"].values()}
+
+
+def uso_da_familia(familia: str, catalogo: dict) -> Uso:
+    """ "em_uso" se algum número do TickerLab sai da família: tabela do catálogo com a licença de uma
+    coleta dela, uso citado sem cobrança (`USOS_SEM_COBRANCA`) ou módulo do app que a lê."""
+    no_catalogo = _licencas_do_catalogo(catalogo)
+    if any(licenca_da_fonte(f) in no_catalogo for f in _fontes_da_familia(familia)):
+        return "em_uso"
+    if familia in {_familia(u.fonte) for u in USOS_SEM_COBRANCA}:
+        return "em_uso"
+    return "em_uso" if familia in FONTES_LIDAS_PELO_APP else "guardada"
+
+
+def _sem_repetir(textos: Iterable[str]) -> list[str]:
+    return list(dict.fromkeys(textos))
+
+
+def familias_para_o_site(catalogo: dict) -> list[dict]:
+    """Uma linha por família, como a página Dados mostra: órgão, link, uso, a marca mais restrita das
+    coletas, as licenças sem a decisão interna, os ids das coletas e a leitura mais nova dos termos.
+
+    Família sem órgão em `base/arquivo/orgaos.py` dá erro aqui (e no build), em vez de aparecer crua.
+    """
+    linhas = []
+    for familia in familias_publicas():
+        orgao = ORGAO_DA_FAMILIA[familia]
+        fontes = _fontes_da_familia(familia)
+        lida_pelo_app = familia in FONTES_DE_FORA_DO_ARQUIVISTA
+        termos = TERMOS_LIDOS_EM.get(familia)
+        linhas.append(
+            {
+                "familia": familia,
+                "orgao": orgao.nome,
+                "link": orgao.link,
+                "uso": uso_da_familia(familia, catalogo),
+                "marca": marca_mais_restrita(marca_da_fonte(f) for f in fontes).value,
+                "licencas": _sem_repetir(
+                    _licenca_publica(licenca_da_fonte(f)) for f in fontes
+                ),
+                "coletas": [] if lida_pelo_app else fontes,
+                "ritmo": RITMO_DE_FORA if lida_pelo_app else None,
+                "termos_lidos_em": termos.isoformat() if termos else None,
+            }
+        )
+    return linhas
