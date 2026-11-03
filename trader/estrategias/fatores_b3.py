@@ -235,6 +235,13 @@ def _liquidez_media(volume: pd.DataFrame, posicao: int) -> pd.Series:
     return janela.fillna(0.0).sum() / PREGOES_DA_LIQUIDEZ
 
 
+def liquidez_media_em(dia: pd.Timestamp, dados: Dados) -> pd.Series:
+    """Volume financeiro médio por ticker nos pregões anteriores a D, o mesmo do universo."""
+    return _liquidez_media(
+        dados.volume, _posicao(pd.DatetimeIndex(dados.fechamento.index), dia)
+    )
+
+
 def _volatilidade(fechamento: pd.DataFrame, posicao: int) -> pd.Series:
     if posicao < JANELA_DA_VOL:
         return pd.Series(math.nan, index=fechamento.columns, dtype=float)

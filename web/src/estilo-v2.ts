@@ -192,6 +192,18 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .dados-modulo td:first-child { min-width: 16rem; }
 .dados-modulo code { font-size: .88rem; overflow-wrap: anywhere; }
 .dados-aviso { color: var(--apagado); font-size: .9rem; margin-top: 2rem; }
+.dados-filtro-uso { display: inline-flex; flex-wrap: wrap; gap: .25rem; padding: .25rem; margin: .4rem 0 1rem;
+  background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; }
+.dados-filtro-uso[hidden], tr[data-uso-da-fonte][hidden] { display: none; }
+.dados-filtro-uso button { font: 600 .92rem "Manrope", sans-serif; color: var(--apagado); background: transparent;
+  border: 0; border-radius: 9px; padding: .5rem .9rem; cursor: pointer; }
+.dados-filtro-uso button[aria-pressed="true"] { background: var(--azul); color: #fff; }
+.dados-filtro-uso button:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.dados-familias td:first-child { min-width: 14rem; }
+.dados-licenca { display: block; }
+.dados-coletas summary { cursor: pointer; color: var(--apagado); font-size: .88rem; }
+.dados-coletas ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+.dados-coletas code { font-size: .85rem; overflow-wrap: anywhere; }
 .como-foi-calculado { border: 1px solid var(--linha); border-radius: var(--raio); padding: .9rem 1.2rem; margin: 1.2rem 0; background: var(--destaque); }
 :root[data-tema="escuro"] .como-foi-calculado { background: var(--superficie); }
 .como-foi-calculado summary { cursor: pointer; font-weight: 700; list-style: none; }
