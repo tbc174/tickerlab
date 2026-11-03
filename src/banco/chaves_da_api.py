@@ -732,6 +732,19 @@ def reativar_conjunto(
     return bool(mudou)
 
 
+def contratos_do_conjunto(conexao: sa.Connection, conjunto: str) -> int:
+    """Quantas linhas de contrato, de todas as organizações, têm este conjunto (vigentes ou não).
+
+    O script mostra o número ao suspender: um nome digitado errado aparece como zero.
+    """
+    tabela = direitos_da_organizacao
+    return conexao.execute(
+        sa.select(sa.func.count())
+        .select_from(tabela)
+        .where(tabela.c.conjunto == conjunto.strip())
+    ).scalar_one()
+
+
 def conjuntos_suspensos_agora(conexao: sa.Connection) -> list[ConjuntoSuspenso]:
     """Os conjuntos parados para todas as organizações, em ordem de nome."""
     tabela = conjuntos_suspensos

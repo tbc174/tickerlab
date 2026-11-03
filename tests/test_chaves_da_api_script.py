@@ -263,6 +263,7 @@ def test_suspender_e_reativar_conjunto_para_todas_as_organizacoes(banco, admin, 
     codigo, saida, _ = _rodar(capsys, *suspender)
     assert codigo == 0
     assert "cvm-dfp-itr" in saida
+    assert "1 contrato" in saida  # quantos o botão alcançou: nome errado aparece como 0
     assert not permite()
     codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
     assert codigo == 0
@@ -275,6 +276,17 @@ def test_suspender_e_reativar_conjunto_para_todas_as_organizacoes(banco, admin, 
     codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
     assert codigo == 0
     assert "Nenhum conjunto suspenso" in saida
+
+
+def test_suspender_conjunto_sem_contrato_avisa_que_nao_alcancou_ninguem(
+    banco, admin, capsys
+):
+    # um nome digitado errado (DFP em vez de dfp) não pode parecer que parou alguma coisa
+    codigo, saida, _ = _rodar(
+        capsys, "suspender-conjunto", "CVM-DFP-ITR", "--motivo", "fonte"
+    )
+    assert codigo == 0  # suspender antes do primeiro contrato vale
+    assert "nenhum contrato" in saida
 
 
 def test_motivo_do_conjunto_fora_da_lista_e_recusado_pelo_argparse(

@@ -187,3 +187,14 @@ def test_lista_dos_conjuntos_suspensos(conexao, admin):
         (DFP, "fonte"),
         (FUNDOS, "contrato"),
     ]
+
+
+def test_contratos_do_conjunto_conta_todas_as_organizacoes(conexao, admin):
+    alfa = _organizacao(conexao, admin, "Alfa Gestora")
+    beta = _organizacao(conexao, admin, "Beta Crédito")
+    _conceder(conexao, admin, alfa)
+    _conceder(conexao, admin, beta)
+    _conceder(conexao, admin, beta, FUNDOS)
+    assert cb.contratos_do_conjunto(conexao, DFP) == 2
+    assert cb.contratos_do_conjunto(conexao, FUNDOS) == 1
+    assert cb.contratos_do_conjunto(conexao, "dfp") == 0

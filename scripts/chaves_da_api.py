@@ -197,9 +197,15 @@ def _suspender_conjunto(
     mudou = cb.suspender_conjunto(
         conexao, conjunto=args.conjunto, motivo=args.motivo, ator_id=ator
     )
+    contratos = cb.contratos_do_conjunto(conexao, args.conjunto)
+    alcance = (
+        f"{contratos} contrato(s) parado(s)"
+        if contratos
+        else "nenhum contrato tem este conjunto; confira o nome (o `ver` mostra)"
+    )
     return _mudou(
         mudou,
-        f"Conjunto suspenso para todas as organizações: {args.conjunto}",
+        f"Conjunto suspenso para todas as organizações: {args.conjunto} ({alcance})",
         "o conjunto já estava suspenso",
     )
 
