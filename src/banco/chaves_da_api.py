@@ -30,6 +30,7 @@ from src.banco.modelo import (
     TAMANHO_MAXIMO_DO_CONJUNTO,
     TAMANHO_MAXIMO_DO_NOME_DA_ORGANIZACAO,
     chaves_da_api,
+    conjuntos_suspensos,
     consumo_da_api,
     direitos_da_organizacao,
     organizacoes,
@@ -116,6 +117,13 @@ class Direito:
     vigente_desde: date
     vigente_ate: date | None
     suspenso_em: datetime | None
+
+
+@dataclass(frozen=True)
+class ConjuntoSuspenso:
+    conjunto: str
+    motivo: str
+    suspenso_em: datetime
 
 
 def _agora() -> datetime:
@@ -227,6 +235,14 @@ def _organizacao_ativa(
     return organizacao
 
 
+def _motivo_valido(motivo: str) -> str:
+    if motivo not in MOTIVOS_DA_SUSPENSAO:
+        raise ValueError(
+            f"Motivo da suspensão fora da lista: {', '.join(MOTIVOS_DA_SUSPENSAO)}."
+        )
+    return motivo
+
+
 def suspender_organizacao(
     conexao: sa.Connection,
     *,
@@ -236,10 +252,7 @@ def suspender_organizacao(
     agora: datetime | None = None,
 ) -> bool:
     """Todas as chaves da organização param de entrar; nada é apagado. False se já estava."""
-    if motivo not in MOTIVOS_DA_SUSPENSAO:
-        raise ValueError(
-            f"Motivo da suspensão fora da lista: {', '.join(MOTIVOS_DA_SUSPENSAO)}."
-        )
+    _motivo_valido(motivo)
     mudou = conexao.execute(
         sa.update(organizacoes)
         .where(
@@ -658,11 +671,94 @@ def reativar_direito(
     return mudou
 
 
+# ---------------------------------------------------------------- conjunto suspenso para todos (PR 6)
+
+
+def suspender_conjunto(
+    conexao: sa.Connection,
+    *,
+    conjunto: str,
+    motivo: str,
+    ator_id: uuid.UUID,
+    agora: datetime | None = None,
+) -> bool:
+    """O conjunto para de sair para todas as organizações, também para contrato concedido depois.
+
+    Não mexe em `direitos_da_organizacao`. False se já estava suspenso (o motivo da primeira fica).
+    """
+    conjunto = _conjunto_valido(conjunto)
+    _motivo_valido(motivo)
+    valores = {"suspenso_em": agora or _agora(), "motivo_da_suspensao": motivo}
+    tabela = conjuntos_suspensos
+    mudou = conexao.execute(
+        sa.update(tabela)
+        .where(tabela.c.conjunto == conjunto, tabela.c.suspenso_em.is_(None))
+        .values(**valores)
+    ).rowcount
+    if not mudou:
+        ja_tem_linha = conexao.execute(
+            sa.select(sa.exists().where(tabela.c.conjunto == conjunto))
+        ).scalar_one()
+        if ja_tem_linha:
+            return False
+        conexao.execute(sa.insert(tabela).values(conjunto=conjunto, **valores))
+    auditoria.registrar(
+        conexao,
+        ator_id,
+        auditoria.ACAO_CONJUNTO_SUSPENSO,
+        detalhes={"conjunto": conjunto, "motivo": motivo},
+    )
+    return True
+
+
+def reativar_conjunto(
+    conexao: sa.Connection, *, conjunto: str, ator_id: uuid.UUID
+) -> bool:
+    """O conjunto volta a sair para quem tem contrato; o direito suspenso sozinho continua suspenso."""
+    conjunto = _conjunto_valido(conjunto)
+    tabela = conjuntos_suspensos
+    mudou = conexao.execute(
+        sa.update(tabela)
+        .where(tabela.c.conjunto == conjunto, tabela.c.suspenso_em.is_not(None))
+        .values(suspenso_em=None, motivo_da_suspensao=None)
+    ).rowcount
+    if mudou:
+        auditoria.registrar(
+            conexao,
+            ator_id,
+            auditoria.ACAO_CONJUNTO_REATIVADO,
+            detalhes={"conjunto": conjunto},
+        )
+    return bool(mudou)
+
+
+def conjuntos_suspensos_agora(conexao: sa.Connection) -> list[ConjuntoSuspenso]:
+    """Os conjuntos parados para todas as organizações, em ordem de nome."""
+    tabela = conjuntos_suspensos
+    linhas = conexao.execute(
+        sa.select(tabela)
+        .where(tabela.c.suspenso_em.is_not(None))
+        .order_by(tabela.c.conjunto)
+    )
+    return [
+        ConjuntoSuspenso(
+            conjunto=linha.conjunto,
+            motivo=linha.motivo_da_suspensao,
+            suspenso_em=_com_fuso(linha.suspenso_em) or linha.suspenso_em,
+        )
+        for linha in linhas
+    ]
+
+
 def _vigente(organizacao_id: uuid.UUID, dia: date) -> list[sa.ColumnElement[bool]]:
     tabela = direitos_da_organizacao
+    suspensos_para_todos = sa.select(conjuntos_suspensos.c.conjunto).where(
+        conjuntos_suspensos.c.suspenso_em.is_not(None)
+    )
     return [
         tabela.c.organizacao_id == organizacao_id,
         tabela.c.suspenso_em.is_(None),
+        tabela.c.conjunto.not_in(suspensos_para_todos),
         tabela.c.vigente_desde <= dia,
         sa.or_(tabela.c.vigente_ate.is_(None), tabela.c.vigente_ate >= dia),
     ]
@@ -671,7 +767,7 @@ def _vigente(organizacao_id: uuid.UUID, dia: date) -> list[sa.ColumnElement[bool
 def direitos_vigentes(
     conexao: sa.Connection, organizacao_id: uuid.UUID, dia: date
 ) -> list[Direito]:
-    """As linhas do contrato que valem no dia: não suspensas e dentro da vigência."""
+    """As linhas do contrato que valem no dia: não suspensas (nem o conjunto, para todos) e na vigência."""
     tabela = direitos_da_organizacao
     linhas = conexao.execute(
         sa.select(tabela)

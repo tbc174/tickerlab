@@ -6,7 +6,8 @@ No VPS, a pasta `scripts/` não entra na imagem: o arquivo vai pelo stdin para o
 `docker exec -i tickerlab python - COMANDO ... < scripts/chaves_da_api.py` (em `/opt/stacks/tickerlab`).
 Comandos: `criar-organizacao`, `conceder-direito`, `suspender-direito`, `reativar-direito`,
 `emitir-chave`, `rotacionar-chave`, `revogar-chave`, `suspender-organizacao`,
-`reativar-organizacao` e `ver` (chaves pelo prefixo, direitos vigentes e consumo do mês).
+`reativar-organizacao`, `ver` (chaves pelo prefixo, direitos vigentes e consumo do mês) e, para todas
+as organizações de uma vez, `suspender-conjunto`, `reativar-conjunto` e `conjuntos-suspensos`.
 
 Só roda para quem está em `TICKERLAB_ADMINS` **e** é administrador no banco (já entrou no app pelo
 Google); `--admin` é dispensável quando a lista tem um e-mail só. Cada comando é uma transação.
@@ -77,11 +78,13 @@ def _ator(conexao: sa.Connection, email: str) -> uuid.UUID:
     return usuario.id
 
 
-def _mudou(mudou: bool, texto: str) -> str:
+def _mudou(
+    mudou: bool,
+    texto: str,
+    por_que: str = "já estava assim, ou o id não é desta organização",
+) -> str:
     if not mudou:
-        raise NadaMudouError(
-            "Nada mudou: já estava assim, ou o id não é desta organização."
-        )
+        raise NadaMudouError(f"Nada mudou: {por_que}.")
     return texto
 
 
@@ -186,6 +189,43 @@ def _reativar_organizacao(
         conexao, organizacao_id=args.organizacao, ator_id=ator
     )
     return _mudou(mudou, f"Organização reativada: {args.organizacao}")
+
+
+def _suspender_conjunto(
+    conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
+) -> str:
+    mudou = cb.suspender_conjunto(
+        conexao, conjunto=args.conjunto, motivo=args.motivo, ator_id=ator
+    )
+    return _mudou(
+        mudou,
+        f"Conjunto suspenso para todas as organizações: {args.conjunto}",
+        "o conjunto já estava suspenso",
+    )
+
+
+def _reativar_conjunto(
+    conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
+) -> str:
+    mudou = cb.reativar_conjunto(conexao, conjunto=args.conjunto, ator_id=ator)
+    return _mudou(
+        mudou,
+        f"Conjunto reativado: {args.conjunto} (direito suspenso sozinho continua suspenso)",
+        "o conjunto não estava suspenso",
+    )
+
+
+def _conjuntos_suspensos(
+    conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
+) -> str:
+    del args, ator  # só leitura: nada vai para a auditoria
+    suspensos = cb.conjuntos_suspensos_agora(conexao)
+    if not suspensos:
+        return "Nenhum conjunto suspenso para todas as organizações."
+    return "\n".join(
+        f"{s.conjunto}: suspenso em {s.suspenso_em:%Y-%m-%d %H:%M} UTC, motivo {s.motivo}"
+        for s in suspensos
+    )
 
 
 def _estado_da_chave(chave: cb.ChaveListada) -> str:
@@ -296,6 +336,24 @@ def _montar_argumentos() -> argparse.ArgumentParser:
         comando("reativar-organizacao", _reativar_organizacao, "as chaves voltam")
     )
     com_organizacao(comando("ver", _ver, "chaves, direitos e consumo do mês"))
+
+    suspender_conjunto = comando(
+        "suspender-conjunto",
+        _suspender_conjunto,
+        "o conjunto para de sair para todas as organizações",
+    )
+    suspender_conjunto.add_argument("conjunto")
+    suspender_conjunto.add_argument(
+        "--motivo", choices=MOTIVOS_DA_SUSPENSAO, required=True
+    )
+    comando(
+        "reativar-conjunto", _reativar_conjunto, "o conjunto volta a sair"
+    ).add_argument("conjunto")
+    comando(
+        "conjuntos-suspensos",
+        _conjuntos_suspensos,
+        "os conjuntos parados para todas as organizações",
+    )
     return parser
 
 

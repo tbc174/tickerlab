@@ -235,6 +235,56 @@ def test_conceder_suspender_e_reativar_direito(banco, admin, capsys):
     assert permite()
 
 
+def test_suspender_e_reativar_conjunto_para_todas_as_organizacoes(banco, admin, capsys):
+    organizacao_id = _criar_organizacao(capsys)
+    _rodar(
+        capsys,
+        "conceder-direito",
+        str(organizacao_id),
+        "--conjunto",
+        "cvm-dfp-itr",
+        "--finalidade",
+        "analise",
+        "--desde",
+        HOJE.isoformat(),
+    )
+
+    def permite():
+        with banco.connect() as conexao:
+            return cb.contrato_permite(
+                conexao,
+                organizacao_id,
+                conjunto="cvm-dfp-itr",
+                finalidade="analise",
+                dia=HOJE,
+            )
+
+    suspender = ("suspender-conjunto", "cvm-dfp-itr", "--motivo", "fonte")
+    codigo, saida, _ = _rodar(capsys, *suspender)
+    assert codigo == 0
+    assert "cvm-dfp-itr" in saida
+    assert not permite()
+    codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
+    assert codigo == 0
+    assert "cvm-dfp-itr" in saida and "fonte" in saida
+    codigo, _, erro = _rodar(capsys, *suspender)
+    assert codigo == 1  # já estava: nada mudou
+    assert "já estava" in erro
+    assert _rodar(capsys, "reativar-conjunto", "cvm-dfp-itr")[0] == 0
+    assert permite()
+    codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
+    assert codigo == 0
+    assert "Nenhum conjunto suspenso" in saida
+
+
+def test_motivo_do_conjunto_fora_da_lista_e_recusado_pelo_argparse(
+    banco, admin, capsys
+):
+    with pytest.raises(SystemExit) as saida:
+        _rodar(capsys, "suspender-conjunto", "cvm-dfp-itr", "--motivo", "porque sim")
+    assert saida.value.code == 2
+
+
 def test_finalidade_treino_nunca_e_concedida(banco, admin, capsys):
     organizacao_id = _criar_organizacao(capsys)
     with pytest.raises(SystemExit):
