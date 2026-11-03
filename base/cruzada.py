@@ -57,6 +57,8 @@ class Par:
     independencia: str
     # tabelas lidas da base → (lado A, lado B), cada um com as colunas da chave e `valor`
     preparar: Preparar | None = None
+    # as tabelas do dicionário para as quais o par é prova (a prontidão da API é por tabela)
+    tabelas: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -80,6 +82,7 @@ class Relatorio:
     so_em_a: int
     so_em_b: int
     divergencias: list[Divergencia] = field(default_factory=list)
+    tabelas: tuple[str, ...] = ()
     sem_dados: str = ""  # por que o par não rodou (tabela ausente); vazio quando rodou
 
     @property
@@ -102,6 +105,7 @@ class Relatorio:
             "so_em_b": self.so_em_b,
             "sem_explicacao": self.sem_explicacao,
             "vermelho": self.vermelho,
+            "tabelas": list(self.tabelas),
             "sem_dados": self.sem_dados,
             "divergencias": [
                 vars(d) for d in self.divergencias[:MAXIMO_DE_DIVERGENCIAS_NO_JSON]
@@ -132,7 +136,18 @@ def _lado(frame: pd.DataFrame, chave: tuple[str, ...]) -> pd.Series:
 
 def par_sem_dados(par: Par, motivo: str) -> Relatorio:
     """Par que não rodou: não prova nada (zero comparações) e não finge que passou."""
-    return Relatorio(par.nome, par.independencia, 0, 0, 0, 0, 0, 0, sem_dados=motivo)
+    return Relatorio(
+        par.nome,
+        par.independencia,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        tabelas=par.tabelas,
+        sem_dados=motivo,
+    )
 
 
 def comparar(
@@ -173,6 +188,7 @@ def comparar(
         so_em_a=len(lado_a.index.difference(lado_b.index)),
         so_em_b=len(lado_b.index.difference(lado_a.index)),
         divergencias=divergencias,
+        tabelas=par.tabelas,
     )
 
 
@@ -309,6 +325,7 @@ PARES: tuple[Par, ...] = (
         tolerancia=TOLERANCIA_DA_SELIC,
         independencia=MESMA_FONTE_OUTRO_DOCUMENTO,
         preparar=_preparar_selic,
+        tabelas=("bcb_selic_focus",),
     ),
     Par(
         nome="banco_ativo_total_ifdata_x_dfp",
@@ -317,6 +334,7 @@ PARES: tuple[Par, ...] = (
         tolerancia=TOLERANCIA_DOS_BANCOS,
         independencia=OUTRO_ORGAO,
         preparar=_preparar_ativo,
+        tabelas=("ifdata_valores", "demonstracoes_como_era"),
     ),
     Par(
         nome="banco_patrimonio_liquido_ifdata_x_dfp",
@@ -325,5 +343,6 @@ PARES: tuple[Par, ...] = (
         tolerancia=TOLERANCIA_DOS_BANCOS,
         independencia=OUTRO_ORGAO,
         preparar=_preparar_patrimonio,
+        tabelas=("ifdata_valores", "demonstracoes_como_era"),
     ),
 )

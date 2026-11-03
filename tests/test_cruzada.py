@@ -246,3 +246,11 @@ def test_script_sai_com_0_quando_tudo_confere(
     relatorio = comparar(PAR, _lado(x=1.0), _lado(x=1.0), set())
     monkeypatch.setattr(conferir_cruzado, "conferir", lambda dia: [relatorio])
     assert conferir_cruzado.main(["--dia", "2026-11-03"]) == 0
+
+
+def test_cada_par_diz_de_que_tabelas_e_prova() -> None:
+    from base.dicionario import TABELAS
+
+    for par in PARES:
+        assert par.tabelas and set(par.tabelas) <= set(TABELAS)
+        assert par_sem_dados(par, "x").como_dict()["tabelas"] == list(par.tabelas)
