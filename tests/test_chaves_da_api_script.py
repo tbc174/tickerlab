@@ -382,6 +382,24 @@ def test_recusa_quem_esta_na_lista_mas_nao_e_admin_no_banco(
     assert "administrador" in erro
 
 
+def test_suspender_conjunto_recusa_quem_nao_e_admin_no_banco(
+    banco, admin, capsys, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_ADMINS", f"{ADMIN},nunca-entrou@exemplo.com")
+    codigo, _, erro = _rodar(
+        capsys,
+        "suspender-conjunto",
+        "cvm-dfp-itr",
+        "--motivo",
+        "fonte",
+        admin="nunca-entrou@exemplo.com",
+    )
+    assert codigo == 2
+    assert "administrador" in erro
+    with banco.connect() as conexao:
+        assert cb.conjuntos_suspensos_agora(conexao) == []
+
+
 def test_sem_admin_usa_o_unico_da_lista(banco, admin, capsys):
     codigo, saida, _ = _rodar(
         capsys, "criar-organizacao", "--nome", "Delta", admin=None
