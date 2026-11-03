@@ -7,7 +7,7 @@ As regras (texto, ativo, tetos, o que pode ser ligado) ficam em `src/diario_de_t
 
 import uuid
 from collections.abc import Iterable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
 
@@ -18,6 +18,23 @@ from src.banco.modelo import simulacoes, teses, teses_estrategias
 def _com_fuso(momento: datetime) -> datetime:
     # o SQLite devolve a hora sem fuso: ela foi gravada em UTC
     return momento if momento.tzinfo is not None else momento.replace(tzinfo=UTC)
+
+
+def _momento_da_nova(conexao: sa.Connection, usuario_id: uuid.UUID) -> datetime:
+    """Agora, mas sempre depois da anotação mais nova da pessoa.
+
+    Relógios de baixa resolução (Windows, ~15 ms) dão a mesma hora a duas anotações seguidas, e
+    então a ordem de `listar` cairia no `id` aleatório. Um microssegundo a mais desempata.
+    """
+    agora = datetime.now(UTC)
+    ultima = conexao.execute(
+        sa.select(sa.func.max(teses.c.criada_em)).where(
+            teses.c.usuario_id == usuario_id
+        )
+    ).scalar_one()
+    if ultima is not None and _com_fuso(ultima) >= agora:
+        return _com_fuso(ultima) + timedelta(microseconds=1)
+    return agora
 
 
 def contar(conexao: sa.Connection, usuario_id: uuid.UUID) -> int:
@@ -69,7 +86,9 @@ def escrever(
             f"O diário guarda até {diario.MAXIMO_DE_ANOTACOES} anotações. "
             "Apague as que não servem mais para escrever outras."
         )
-    anotacao = diario.Anotacao(uuid.uuid4(), ticker, texto, datetime.now(UTC), ligadas)
+    anotacao = diario.Anotacao(
+        uuid.uuid4(), ticker, texto, _momento_da_nova(conexao, usuario_id), ligadas
+    )
     conexao.execute(
         sa.insert(teses).values(
             id=anotacao.id,
