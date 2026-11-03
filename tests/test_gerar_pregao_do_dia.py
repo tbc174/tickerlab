@@ -5,6 +5,7 @@ Lê o que o arquivista guardou no acervo (pelo manifesto), monta os números do 
 vira `FALHAS:` na última linha, e a B3 corrigir o dia refaz o resumo.
 """
 
+import gzip
 import json
 import shutil
 import zipfile
@@ -43,10 +44,15 @@ PRECOS_DO_DIA = {simbolo: e[3] for simbolo, e in EMPRESAS.items()}
 
 
 def guardar(acervo: Path, fonte: str, url: str, origem: Path, hora: str, sha: str):
-    """Põe o arquivo no acervo e a linha no manifesto, como o arquivista faz."""
+    """Põe o arquivo no acervo e a linha no manifesto, como o arquivista faz: o que não é zip
+    (o JSON do Ibovespa) vai em gzip, `.json.gz`."""
     relativo = f"bruto/{fonte}/{sha}{origem.suffix}"
     (acervo / relativo).parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(origem, acervo / relativo)
+    if origem.suffix.lower() in modulo_do_acervo.JA_COMPRIMIDOS:
+        shutil.copy(origem, acervo / relativo)
+    else:
+        relativo += ".gz"
+        (acervo / relativo).write_bytes(gzip.compress(origem.read_bytes()))
     manifesto = acervo / "manifesto" / f"{hora[:10]}.jsonl"
     manifesto.parent.mkdir(parents=True, exist_ok=True)
     with manifesto.open("a", encoding="utf-8") as arquivo:
