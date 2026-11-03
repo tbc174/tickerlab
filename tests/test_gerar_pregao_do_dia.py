@@ -17,6 +17,7 @@ import pytest
 from base import indices_b3
 from scripts import gerar_pregao_do_dia as script
 from src import acervo as modulo_do_acervo
+from src import eventos_do_pregao
 from src import texto_do_pregao as tp
 from tests.test_base_intradiario_b3 import (
     registro_do_cotahist,
@@ -222,6 +223,48 @@ def test_papel_com_evento_fica_a_conferir_e_fora_das_contas(acervo) -> None:
     resumo = resumo_gravado(acervo)
     assert [papel["simbolo"] for papel in resumo["a_conferir"]] == ["VALE3"]
     assert resumo["maiores"]["altas"][0]["simbolo"] == "PETR4"
+
+
+def test_dia_de_evento_vai_no_resumo(acervo, capsys) -> None:
+    """28/10/2026 teve decisão do Fed (FOMC) no calendário; 27/10 foi um dia comum."""
+    guardar_o_dia(acervo, QUARTA)
+    assert script.main(["--hoje", QUINTA.isoformat()]) == 0
+    assert "2026-10-28: " in capsys.readouterr().out
+    assert resumo_gravado(acervo, DIA)["evento"] is None
+    evento = resumo_gravado(acervo, QUARTA)["evento"]
+    assert [m["evento"] for m in evento["calendario"]] == ["Decisão do Fed (FOMC)"]
+    assert evento["variacao_forte_do_ibovespa"] is False
+
+
+def test_data_nova_no_calendario_refaz_so_o_pregao_dela(acervo, monkeypatch) -> None:
+    script.main(HOJE)
+    caminho = script.caminho_do_resumo(acervo, DIA)
+    antes = caminho.stat().st_mtime_ns
+    calendario = acervo.parent / "calendario.csv"
+    calendario.write_text(
+        "data,evento,momento,fonte\n2026-11-12,IPCA,antes_do_fechamento,https://ibge\n",
+        "utf-8",
+    )
+    monkeypatch.setattr(eventos_do_pregao, "CAMINHO_DO_CALENDARIO", calendario)
+    script.main(HOJE)
+    assert caminho.stat().st_mtime_ns == antes
+    calendario.write_text(
+        "data,evento,momento,fonte\n2026-10-27,IPCA,antes_do_fechamento,https://ibge\n",
+        "utf-8",
+    )
+    script.main(HOJE)
+    assert caminho.stat().st_mtime_ns > antes
+    assert resumo_gravado(acervo)["evento"]["calendario"][0]["evento"] == "IPCA"
+
+
+def test_calendario_estragado_falha_com_aviso(acervo, monkeypatch, capsys) -> None:
+    calendario = acervo.parent / "calendario.csv"
+    calendario.write_text(
+        "data,evento,momento,fonte\n2026-10-27,IPCA,quando,x\n", "utf-8"
+    )
+    monkeypatch.setattr(eventos_do_pregao, "CAMINHO_DO_CALENDARIO", calendario)
+    assert script.main(HOJE) == 1
+    assert "calendário de eventos não abriu" in ultima_linha(capsys)
 
 
 def test_sem_nada_novo_nao_refaz(acervo) -> None:

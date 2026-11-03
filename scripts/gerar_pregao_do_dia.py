@@ -7,7 +7,8 @@
 Roda no servidor de casa depois do arquivista das 2h, que guarda o COTAHIST do dia
 (`b3-cotahist-dia`), o boletim PR (`b3-boletim-pr`) e o Ibovespa (`b3-ibov-diario`). Acha os arquivos
 pelo manifesto do acervo (a versão mais nova de cada um) e grava `<acervo>/pregao/AAAA-MM-DD.json`: o
-`resumo_do_pregao`, mais a `origem` (o que entrou), que diz quando refazer. A B3 corrigir o dia refaz; o
+`resumo_do_pregao`, o `evento` (por que o pregão é dia de evento, ou nada: `src/eventos_do_pregao.py`)
+e a `origem` (o que entrou), que diz quando refazer. A B3 corrigir o dia refaz; o
 arquivo do Ibovespa ganhar um dia novo não refaz os pregões de antes, porque a conta é sobre a série até
 aquele dia.
 
@@ -24,6 +25,7 @@ import sys
 import zipfile
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -32,7 +34,7 @@ from base import indices_b3, porta
 from base import intradiario_b3 as b3
 from base.parquet import gravar_atomico
 from scripts.barras_b3_do_dia import Guardado, versoes_mais_novas
-from src import acervo, pregao_do_dia
+from src import acervo, eventos_do_pregao, pregao_do_dia
 from src import texto_do_pregao as tp
 from src.calendario_b3 import eh_pregao
 from src.versao_do_codigo import versao_do_codigo
@@ -43,7 +45,7 @@ FONTE_DO_IBOVESPA = "b3-ibov-diario"
 NOME_DA_TAREFA = "pregao-do-dia"
 PASTA_NO_ACERVO = "pregao"
 # Muda quando a conta muda: o resumo guardado com outra versão é refeito.
-VERSAO_DA_REGRA = 1
+VERSAO_DA_REGRA = 2
 # O pregão do molde aprovado. Antes dele, os papéis de hoje não dizem quem negociava na época.
 PRIMEIRO_PREGAO = date(2026, 10, 27)
 CAMINHO_DO_CATALOGO = (
@@ -120,11 +122,18 @@ def _conferir_o_indice(
 
 
 def _origem(
-    arquivos: dict[str, dict], serie: pd.Series, dia: date, vespera: date
+    arquivos: dict[str, dict],
+    serie: pd.Series,
+    calendario: list[eventos_do_pregao.EventoMarcado],
+    dia: date,
+    vespera: date,
 ) -> dict[str, object]:
-    """O que entra no resumo do pregão. Levanta `FaltaNoBoletimError` se faltar alguma coisa."""
+    """O que entra no resumo do pregão. Levanta `FaltaNoBoletimError` se faltar alguma coisa.
+
+    Do calendário, só as datas que caem no pregão: data nova de outro dia não refaz este."""
     _conferir_o_indice(arquivos, serie, dia, vespera)
     ate_o_dia = serie[serie.index <= pd.Timestamp(dia)].to_csv()
+    marcados = eventos_do_pregao.eventos_do_pregao(dia, vespera, calendario)
     return {
         "versao_da_regra": VERSAO_DA_REGRA,
         "sha256_do_cotahist": _guardado(arquivos, FONTE_DO_COTAHIST, dia).sha256,
@@ -133,6 +142,7 @@ def _origem(
         ).sha256,
         "sha256_do_pr": _guardado(arquivos, FONTE_DO_PR, dia).sha256,
         "sha256_do_ibovespa_ate_o_dia": hashlib.sha256(ate_o_dia.encode()).hexdigest(),
+        "eventos_marcados": [f"{e.data.isoformat()} {e.evento}" for e in marcados],
     }
 
 
@@ -164,9 +174,11 @@ def montar_resumo(
     vespera: date,
     arquivos: dict[str, dict],
     serie: pd.Series,
+    calendario: list[eventos_do_pregao.EventoMarcado],
     pasta: Path,
 ) -> dict:
-    """O resumo do pregão, sem gravar. Confere que o texto aprovado sai destes números."""
+    """O resumo do pregão e o motivo do dia de evento, sem gravar. Confere que o texto aprovado sai
+    destes números."""
     cotahist_da_vespera = b3.ler_cotahist(
         _guardado(arquivos, FONTE_DO_COTAHIST, vespera).caminho
     )
@@ -177,7 +189,7 @@ def montar_resumo(
         _papeis(pasta, vespera),
         pregao_do_dia.codigos_com_evento(cotahist_da_vespera, cotahist),
     )
-    resumo = pregao_do_dia.resumo_do_pregao(
+    resumo: dict[str, Any] = pregao_do_dia.resumo_do_pregao(
         pregao_do_dia.EntradasDoPregao(
             dia=dia,
             vespera=vespera,
@@ -189,6 +201,9 @@ def montar_resumo(
         )
     )
     tp.texto_do_pregao(resumo, tp.ler_molde())
+    resumo["evento"] = eventos_do_pregao.motivo_do_evento(
+        dia, vespera, resumo["ibovespa"]["variacao"], calendario
+    )
     return resumo
 
 
@@ -208,21 +223,23 @@ def gerar_pregao(
     dia: date,
     arquivos: dict[str, dict],
     serie: pd.Series,
+    calendario: list[eventos_do_pregao.EventoMarcado],
     pasta: Path,
     forcar: bool = False,
 ) -> bool:
     """Grava o resumo de `dia` se ele falta ou mudou. True se gravou."""
     vespera = pregao_anterior(dia)
-    origem = _origem(arquivos, serie, dia, vespera)
+    origem = _origem(arquivos, serie, calendario, dia, vespera)
     caminho = caminho_do_resumo(pasta, dia)
     if not forcar and _em_dia(caminho, origem):
         return False
-    resumo = montar_resumo(dia, vespera, arquivos, serie, pasta)
+    resumo = montar_resumo(dia, vespera, arquivos, serie, calendario, pasta)
     _gravar(caminho, resumo, origem)
     print(
         f"{dia}: Ibovespa {resumo['ibovespa']['variacao']:+.2%}, "
         f"{sum(resumo['amplitude'][k] for k in ('subiram', 'cairam', 'estaveis'))} empresas, "
-        f"{len(resumo['a_conferir'])} a conferir",
+        f"{len(resumo['a_conferir'])} a conferir"
+        + (", dia de evento" if resumo["evento"] else ""),
         flush=True,
     )
     return True
@@ -262,10 +279,14 @@ def gerar_os_pregoes(
         serie = _ibovespa(arquivos)
     except ERROS_DE_LEITURA as erro:
         return [f"{NOME_DA_TAREFA}: o Ibovespa guardado não abriu ({erro})"]
+    try:
+        calendario = eventos_do_pregao.ler_calendario()
+    except ERROS_DE_LEITURA as erro:
+        return [f"{NOME_DA_TAREFA}: o calendário de eventos não abriu ({erro})"]
     falhas = []
     for dia in dias:
         try:
-            gerar_pregao(dia, arquivos, serie, pasta, forcar)
+            gerar_pregao(dia, arquivos, serie, calendario, pasta, forcar)
         except ERROS_DE_LEITURA as erro:
             falhas.append(f"{NOME_DA_TAREFA} {dia}: {erro}")
     return falhas
