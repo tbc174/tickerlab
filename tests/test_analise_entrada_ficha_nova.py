@@ -43,7 +43,10 @@ def _ficha_com_as_secoes_novas() -> dossie.Ficha:
     bruta = dossie_da_base.montar_ficha(
         base.cnpj, base.empresa, novas, base.gerado_em.isoformat()
     )
-    secoes = [*base.secoes, *dossie.Ficha.model_validate(bruta).secoes]
+    novas_secoes = dossie.Ficha.model_validate(bruta).secoes
+    # a ficha do dia já traz estas seções: trocar, não empilhar (seção repetida repete os ids)
+    chaves = {s.chave for s in novas_secoes}
+    secoes = [*(s for s in base.secoes if s.chave not in chaves), *novas_secoes]
     return base.model_copy(update={"secoes": secoes})
 
 

@@ -424,3 +424,76 @@ def test_acervo_desligado_nao_faz_nada(monkeypatch, capsys) -> None:
     monkeypatch.setenv(modulo_do_acervo.VARIAVEL_DA_PASTA, modulo_do_acervo.DESLIGADO)
     assert script.main(HOJE) == 0
     assert "Acervo desligado" in capsys.readouterr().out
+
+
+# --- o rascunho do Raio-X em dia de evento (PR 6b) -------------------------------------------------
+
+AMOSTRAS_DA_CVM = Path(__file__).parent / "arquivos" / "cvm" / "fundamentos"
+PETROBRAS = "33.000.167/0001-01"
+
+
+def guardar_da_cvm(acervo: Path, nome: str) -> None:
+    """Um arquivo anual de DFP ou ITR da CVM, como o arquivista guarda (`cvm-hist-dfp`/`-itr`)."""
+    documento = nome.split("_")[0]
+    guardar(
+        acervo,
+        script.FONTES_DOS_BALANCOS[documento.upper()],
+        f"https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/{documento.upper()}/DADOS/{nome}",
+        AMOSTRAS_DA_CVM / nome,
+        "2026-10-20T03:00:00+00:00",
+        nome,
+    )
+
+
+def test_dia_de_evento_grava_o_rascunho_do_raio_x(acervo, capsys) -> None:
+    """28/10 (decisão do Fed) ganha o rascunho em JSON, HTML e PDF; 27/10, dia comum, não."""
+    guardar_o_dia(acervo, QUARTA)
+    assert script.main(["--hoje", QUINTA.isoformat()]) == 0
+    assert 'rascunho do Raio-X em pregao/raio-x/2026-10-28, esperando o "pode"' in (
+        capsys.readouterr().out
+    )
+    rascunho = json.loads(
+        script.caminho_do_rascunho(acervo, QUARTA, ".json").read_text("utf-8")
+    )
+    assert rascunho["pregao"] == "2026-10-28"
+    assert rascunho["alavancagem"] is None  # sem os DFP e ITR no acervo
+    assert "RASCUNHO" in script.caminho_do_rascunho(acervo, QUARTA, ".html").read_text(
+        "utf-8"
+    )
+    assert (
+        script.caminho_do_rascunho(acervo, QUARTA, ".pdf")
+        .read_bytes()
+        .startswith(b"%PDF")
+    )
+    assert not script.caminho_do_rascunho(acervo, DIA, ".json").exists()
+
+
+def test_rascunho_que_nao_saiu_e_refeito_na_rodada_seguinte(acervo) -> None:
+    guardar_o_dia(acervo, QUARTA)
+    script.main(["--hoje", QUINTA.isoformat()])
+    script.caminho_do_rascunho(acervo, QUARTA, ".json").unlink()
+    assert script.main(["--hoje", QUINTA.isoformat()]) == 0
+    assert script.caminho_do_rascunho(acervo, QUARTA, ".json").exists()
+
+
+def test_balancos_do_acervo_so_os_publicos_na_vespera(acervo) -> None:
+    """A dívida e o EBITDA da Petrobras saem dos arquivos da CVM guardados, até a véspera."""
+    for nome in (
+        "dfp_cia_aberta_2024.zip",
+        "dfp_cia_aberta_2025.zip",
+        "itr_cia_aberta_2026.zip",
+    ):
+        guardar_da_cvm(acervo, nome)
+    arquivos = script.arquivos_no_acervo(acervo)
+    empresas = pd.DataFrame({"cnpj": [PETROBRAS, "11"]})
+    balancos = script.balancos_do_acervo(arquivos, empresas, QUARTA)
+    assert balancos is not None
+    assert list(balancos["cnpj"]) == [PETROBRAS]
+    assert (pd.to_datetime(balancos["divulgado_em"]) <= pd.Timestamp(QUARTA)).all()
+    assert balancos["ebitda"].iloc[0] > 0
+
+
+def test_sem_os_arquivos_da_cvm_fica_sem_balanco(acervo) -> None:
+    arquivos = script.arquivos_no_acervo(acervo)
+    empresas = pd.DataFrame({"cnpj": [PETROBRAS]})
+    assert script.balancos_do_acervo(arquivos, empresas, QUARTA) is None
