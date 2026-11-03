@@ -128,16 +128,26 @@ def test_ponto_de_5_anos_faltando_segue_o_ponto_de_10_anos_em_paralelo():
 
 
 def test_fechamento_do_mt5_pode_ignorar_barras_sem_negocio(tmp_path):
-    """O export do MT5 traz barras de feriado com volume zero e o preço repetido."""
+    """Barra de feriado: volume zero e o preço repetido. Pregão que só veio sem o volume fica.
+
+    O export do BOVA11 tem 18 pregões de março e abril de 2021 com volume zero e o preço
+    mudando todo dia (tentativa 2 da P0-3): são pregões de verdade, não feriados.
+    """
     tabela = pd.DataFrame(
-        {"Close": [10.0, 10.0, 11.0], "Volume": [100, 0, 120]},
-        index=pd.DatetimeIndex(["2020-01-02", "2020-01-03", "2020-01-06"], name="Date"),
+        {"Close": [10.0, 10.0, 10.5, 11.0], "Volume": [100, 0, 0, 120]},
+        index=pd.DatetimeIndex(
+            ["2020-01-02", "2020-01-03", "2020-01-06", "2020-01-07"], name="Date"
+        ),
     )
     arquivo = tmp_path / "X_D1.parquet"
     tabela.to_parquet(arquivo)
-    assert len(dados.fechamento_do_mt5(arquivo)) == 3
+    assert len(dados.fechamento_do_mt5(arquivo)) == 4
     com_negocio = dados.fechamento_do_mt5(arquivo, so_com_negocio=True)
-    assert list(com_negocio.index.strftime("%Y-%m-%d")) == ["2020-01-02", "2020-01-06"]
+    assert list(com_negocio.index.strftime("%Y-%m-%d")) == [
+        "2020-01-02",
+        "2020-01-06",
+        "2020-01-07",
+    ]
 
 
 def test_ntnb_no_calendario_da_b3_rende_o_carry_nos_dias_sem_curva():

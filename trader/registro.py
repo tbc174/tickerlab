@@ -131,7 +131,11 @@ class Registro:
     def registrar(
         self, familia: str, nome: str, spec: dict, fase: str = "desenvolvimento"
     ) -> int:
-        """Anota a tentativa e devolve o id. A mesma especificação na mesma fase não conta de novo."""
+        """Anota a tentativa e devolve o id.
+
+        A mesma especificação na mesma fase é a mesma linha, com `execucoes` somado: no DSR e no
+        orçamento toda execução conta (pré-registro v0.1, seção 9).
+        """
         if familia not in self.familias:
             raise ValueError(
                 f"Família desconhecida: {familia}. Use uma de {self.familias}."
@@ -259,9 +263,19 @@ class Registro:
                 ).fetchone()[0]
             )
 
+    def execucoes(self, fase: str = "desenvolvimento") -> int:
+        """Execuções na fase, reexecuções incluídas (cada uma é uma tentativa)."""
+        with self._conectar() as c:
+            return int(
+                c.execute(
+                    "SELECT COALESCE(SUM(execucoes), 0) FROM tentativas WHERE fase = ?",
+                    (fase,),
+                ).fetchone()[0]
+            )
+
     def total_para_o_dsr(self) -> int:
-        """O número de tentativas que o Sharpe deflacionado deve usar: desenvolvimento + ajustes."""
-        return self.contar("desenvolvimento") + self.tentativas_extras()
+        """O número de tentativas que o Sharpe deflacionado deve usar: execuções + ajustes."""
+        return self.execucoes("desenvolvimento") + self.tentativas_extras()
 
     def orcamento_restante(self) -> int:
         """Negativo quando o orçamento (300 na M2) foi ultrapassado."""

@@ -47,10 +47,13 @@ def test_registrar_conta_uma_tentativa_e_guarda_tudo(r):
 
 
 def test_mesma_configuracao_nao_e_tentativa_nova_mas_conta_a_execucao(r):
+    """Toda execução conta no DSR e no orçamento (pré-registro v0.1, seção 9), mas é a mesma linha."""
     a = r.registrar("H1", "logistica_v1", SPEC)
     b = r.registrar("H1", "outro nome, mesma spec", dict(reversed(list(SPEC.items()))))
     assert a == b and r.contar() == 1
     assert r.obter(a)["execucoes"] == 2
+    assert r.total_para_o_dsr() == 2
+    assert r.orcamento_restante() == r.orcamento - 2
 
 
 def test_mudar_um_valor_e_tentativa_nova(r):
