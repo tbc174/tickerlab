@@ -495,6 +495,7 @@ def _registro_do_cotahist(linha: str) -> dict[str, object]:
         "negocios": int(linha[147:152]),
         "volume": int(linha[152:170]),  # quantidade de papéis (QUATOT), como no PR
         "volume_financeiro": int(linha[170:188]) / CENTAVOS,  # em reais (VOLTOT)
+        "distribuicao": linha[242:245],  # a B3 aumenta o número a cada evento (DISMES)
     }
 
 
@@ -510,7 +511,13 @@ def ler_cotahist(caminho_zip: Path) -> pd.DataFrame:
     return _um_por_codigo(
         pd.DataFrame(
             registros,
-            columns=["simbolo", "mercado", *CAMPOS_CONFERIDOS, "volume_financeiro"],
+            columns=[
+                "simbolo",
+                "mercado",
+                *CAMPOS_CONFERIDOS,
+                "volume_financeiro",
+                "distribuicao",
+            ],
         )
     )
 

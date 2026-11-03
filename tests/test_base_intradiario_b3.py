@@ -427,6 +427,7 @@ def registro_do_cotahist(
     negocios: int = 3,
     volume: int = 600,
     volume_financeiro: float = 18_120.0,
+    distribuicao: str = "101",
 ) -> str:
     """Uma linha de 245 posições do COTAHIST (preços e volume financeiro em centavos)."""
     abertura, maxima, minima, fechamento = (f"{round(p * 100):013d}" for p in precos)
@@ -434,7 +435,7 @@ def registro_do_cotahist(
     linha += abertura + maxima + minima + "0" * 13 + fechamento
     linha = linha.ljust(147) + f"{negocios:05d}" + f"{volume:018d}"
     linha += f"{round(volume_financeiro * 100):018d}"
-    return linha.ljust(245, "0")
+    return linha.ljust(242, "0") + distribuicao
 
 
 FIM_DE_LINHA = chr(13) + chr(10)
@@ -711,3 +712,13 @@ def test_contrato_sem_ajuste_fica_de_fora(tmp_path):
         },
     )
     assert b3.ler_contratos_do_pr(caminho).empty
+
+
+def test_cotahist_traz_o_numero_de_distribuicao(tmp_path):
+    """DISMES: a B3 aumenta o número a cada evento; é por ele que o pregão do dia acha o dia ex."""
+    cotahist = b3.ler_cotahist(
+        zip_do_cotahist(
+            tmp_path, [registro_do_cotahist("VIVT3", "010", distribuicao="191")]
+        )
+    )
+    assert cotahist.loc["VIVT3", "distribuicao"] == "191"

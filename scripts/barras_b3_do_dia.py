@@ -24,9 +24,11 @@ import logging
 import sys
 import time
 from collections import Counter
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -52,20 +54,30 @@ class Guardado:
     hora: str
 
 
-def arquivos_no_acervo(pasta: Path) -> dict[str, dict[date, Guardado]]:
-    """Por fonte e pregão, a versão mais nova guardada (pelo manifesto do arquivista)."""
-    achados: dict[str, dict[date, Guardado]] = {fonte: {} for fonte in FONTES}
+def versoes_mais_novas(
+    pasta: Path, chaves: Mapping[str, Callable[[str], Any]]
+) -> dict[str, dict[Any, Guardado]]:
+    """Por fonte, a versão mais nova guardada de cada arquivo (pelo manifesto do arquivista).
+
+    `chaves`: para cada fonte, a função que tira do endereço o que identifica o arquivo.
+    """
+    achados: dict[str, dict[Any, Guardado]] = {fonte: {} for fonte in chaves}
     for manifesto in sorted((pasta / "manifesto").glob("*.jsonl")):
         for texto in manifesto.read_text("utf-8").splitlines():
             linha = json.loads(texto)
             if linha.get("fonte") not in achados or not linha.get("caminho"):
                 continue
-            pregao = b3.pregao_do_endereco(linha["url"])
+            chave = chaves[linha["fonte"]](linha["url"])
             novo = Guardado(pasta / linha["caminho"], linha["sha256"], linha["hora"])
-            atual = achados[linha["fonte"]].get(pregao)
+            atual = achados[linha["fonte"]].get(chave)
             if atual is None or novo.hora >= atual.hora:
-                achados[linha["fonte"]][pregao] = novo
+                achados[linha["fonte"]][chave] = novo
     return achados
+
+
+def arquivos_no_acervo(pasta: Path) -> dict[str, dict[date, Guardado]]:
+    """Por fonte e pregão, a versão mais nova guardada."""
+    return versoes_mais_novas(pasta, dict.fromkeys(FONTES, b3.pregao_do_endereco))
 
 
 def _entradas(
