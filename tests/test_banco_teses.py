@@ -159,3 +159,21 @@ def test_exportar_traz_o_texto_a_data_e_os_backtests_ligados(conexao, ana):
             "estrategias": [backtest.nome],
         }
     ]
+
+
+def test_duas_anotacoes_no_mesmo_instante_listam_a_ultima_escrita_primeiro(
+    conexao, ana, monkeypatch
+):
+    """Relógio de baixa resolução (Windows): sem desempate, o `id` aleatório decidia a ordem."""
+
+    class _RelogioParado(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 11, 3, 12, 0, 0, tzinfo=UTC)
+
+    monkeypatch.setattr(repo, "datetime", _RelogioParado)
+    for rodada in range(20):  # o id é aleatório: repetir derruba o acerto por sorte
+        antiga = repo.escrever(conexao, ana.id, "PETR4", f"antiga {rodada}")
+        nova = repo.escrever(conexao, ana.id, "PETR4", f"nova {rodada}")
+        assert nova.criada_em > antiga.criada_em
+        assert repo.listar(conexao, ana.id)[:2] == [nova, antiga]
