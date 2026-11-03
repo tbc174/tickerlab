@@ -2,7 +2,7 @@
 
 O fluxo de um mês (critérios, seção 3), numa sessão local do Claude Code:
 
-1. `preparar`: confere os critérios aprovados, a janela (1º ao 5º pregão do mês) e os dados (até o
+1. `preparar` (`python -m trader.agentes.rodada preparar`, com os dados de `trader.agentes.dados`): confere os critérios aprovados, a janela (1º ao 5º pregão do mês) e os dados (até o
    pregão anterior a hoje); escolhe as candidatas pelo universo mecânico e escreve um pedido por
    empresa em `<pasta>/pedidos/`;
 2. a sessão roda um subagente Sonnet por pedido, cada um sem ver os outros, e grava a resposta
@@ -27,6 +27,7 @@ import pandas as pd
 
 from trader import calendario
 from trader.agentes import criterios
+from trader.agentes import dados as dados_da_rodada
 from trader.agentes.registro import (
     BRASILIA,
     PASTA_PADRAO,
@@ -367,15 +368,20 @@ def conferir_registro(registro: RegistroDeAgentes) -> str:
 
 def main(argumentos: list[str] | None = None) -> int:
     leitor = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    leitor.add_argument("acao", choices=("conferir", "registrar"))
+    leitor.add_argument("acao", choices=("conferir", "preparar", "registrar"))
     leitor.add_argument("--pasta", type=Path, default=PASTA_PADRAO)
     leitor.add_argument("--modelo", default="")
     opcoes = leitor.parse_args(argumentos)
     registro = RegistroDeAgentes(opcoes.pasta)
+    hoje = _hoje()
+    pasta_da_rodada = opcoes.pasta / hoje.isoformat()[:7]
+    if opcoes.acao == "preparar":
+        dados = dados_da_rodada.carregar(calendario.pregao_anterior(hoje))
+        pedidos = preparar(dados, pasta_da_rodada, hoje)
+        print(f"{len(pedidos)} pedidos em {pasta_da_rodada / PASTA_DOS_PEDIDOS}")
     if opcoes.acao == "registrar":
         if not opcoes.modelo:
             leitor.error("registrar pede --modelo (o id do modelo dos subagentes)")
-        pasta_da_rodada = opcoes.pasta / _hoje().isoformat()[:7]
         linha = registrar(pasta_da_rodada, registro, opcoes.modelo)
         print(
             f"rodada de {linha['data']} gravada; escolhidas: {linha['escolhidas'] or 'nenhuma (CDI)'}"
