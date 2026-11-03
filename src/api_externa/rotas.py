@@ -11,10 +11,13 @@ mesmo de um CNPJ que não existe, para não dizer qual foi o motivo.
 """
 
 import math
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date
 from functools import cache
 from typing import Annotated
 
+import duckdb
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -40,9 +43,8 @@ Chave = Annotated[ContextoDaChave, Depends(acesso.exigir_chave)]
 
 FINALIDADE = Finalidade.ANALISE.value  # o beta só tem contratos de análise
 NAO_DISPONIVEL = "not_available"
-RETORNO_SUPOSTO_MAXIMO = (
-    1.0  # 100% ao ano: acima disso a conta de exemplo deixa de ser plausível
-)
+# 100% ao ano: acima disso a conta de exemplo deixa de ser plausível
+RETORNO_SUPOSTO_MAXIMO = 1.0
 
 
 def regras_da_api() -> Regras | None:
@@ -55,12 +57,23 @@ def abrir_porta(banco: sa.Connection) -> Porta:
     return porta_da_base.abrir(banco=banco)
 
 
-def _porta(banco: sa.Connection) -> Porta:
-    """503 sem dizer onde nem por quê quando a base não está neste servidor."""
+def _fora_do_ar() -> HTTPException:
+    return HTTPException(status_code=503, detail="service_unavailable")
+
+
+@contextmanager
+def _porta(banco: sa.Connection) -> Iterator[Porta]:
+    """A porta aberta; 503 sem dizer onde nem por quê se a base não está neste servidor ou falha na
+    leitura (a transação volta e o pedido não conta no consumo)."""
     try:
-        return abrir_porta(banco)
+        porta = abrir_porta(banco)
     except (ImportError, OSError, ValueError) as erro:
-        raise HTTPException(status_code=503, detail="service_unavailable") from erro
+        raise _fora_do_ar() from erro
+    with porta:
+        try:
+            yield porta
+        except (duckdb.Error, OSError) as erro:
+            raise _fora_do_ar() from erro
 
 
 def _recusa(codigo: str) -> HTTPException:

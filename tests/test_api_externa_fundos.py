@@ -10,16 +10,20 @@ import dataclasses
 import hashlib
 from datetime import UTC, datetime
 
+import duckdb
 import pandas as pd
 import pytest
 
 from base import prontidao
 from base.parquet import gravar_tabela
 from base.porta import Porta
+from base.porta.duckdb import ARQUIVOS
 from base.prontidao import Prontidao, Prova
+from base.raio_x_de_fundo import CADASTRO
 from src import portao_externo as portao
 from src import versao_do_codigo as vc
 from src.api_externa import acesso, rotas
+from src.api_externa.conjuntos import fundos
 from src.banco import chaves_da_api as cb
 from src.banco.coletas import registrar
 from src.ferramentas.custos import custo_da_taxa
@@ -258,6 +262,22 @@ def test_custo_da_taxa_bate_com_custos_py(cliente, cenario):
         assert prazo["with_fee"]["published_at"] == "2026-11-05"
 
 
+def test_custo_da_taxa_nao_sai_se_a_fonte_so_sai_como_publicada(
+    cliente, cenario, monkeypatch
+):
+    """O custo é um campo derivado: a fonte que só sai como publicada leva o cadastro, não a conta."""
+
+    def regras():
+        return dataclasses.replace(
+            _regras_dos_fundos(), so_como_publicado=frozenset({"cvm-cadastros"})
+        )
+
+    monkeypatch.setattr(rotas, "regras_da_api", regras)
+    corpo = _get(cliente, cenario, assumed_return=0.08).json()
+    assert "fee_cost" not in corpo
+    assert corpo["profile"]["management_fee_pct_per_year"]["value"] == 2.0
+
+
 # ---------------------------------------------------------------- o que não sai
 
 
@@ -319,6 +339,33 @@ def test_base_fora_do_ar_da_503_sem_dizer_onde(cliente, cenario, monkeypatch):
     resposta = _get(cliente, cenario)
     assert resposta.status_code == 503
     assert resposta.json() == {"detail": "service_unavailable"}
+
+
+@pytest.mark.parametrize("pedido", ["get", "lote"])
+def test_falha_na_leitura_da_base_da_503_e_nao_conta(
+    cliente, cenario, banco, monkeypatch, pedido
+):
+    def arquivo_quebrado(*_args):
+        raise duckdb.IOException("arquivo corrompido em /caminho/do/servidor")
+
+    monkeypatch.setattr(fundos, "raio_x_de_fundo", arquivo_quebrado)
+    _ator, org, chave = cenario
+    if pedido == "get":
+        resposta = _get(cliente, cenario)
+    else:
+        resposta = cliente.post(
+            LOTE, json={"cnpjs": [FUNDO]}, headers=aj.bearer(chave.valor)
+        )
+    assert resposta.status_code == 503
+    assert resposta.json() == {"detail": "service_unavailable"}
+    with banco.connect() as conexao:
+        assert cb.consumo_do_mes(conexao, org.id, AGORA.date()).pedidos == 0
+
+
+def test_cadastro_de_fundos_e_um_arquivo_so():
+    """O leitor confere a linhagem do cadastro uma vez por pedido e vale para o lote inteiro: isso só
+    está certo enquanto a tabela é um arquivo só. Se ela virar vários, guarde o retrato por arquivo."""
+    assert "*" not in ARQUIVOS[CADASTRO]
 
 
 # ---------------------------------------------------------------- consumo e limite
