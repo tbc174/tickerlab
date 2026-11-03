@@ -515,6 +515,40 @@ SECOES = (
 )
 _SECAO_POR_CHAVE = {secao.chave: secao for secao in SECOES}
 
+METODOLOGIA_DO_SETOR = (
+    "Concentração pelo HHI (a soma dos quadrados das participações em %, de 0 a 10.000) e pela "
+    "CR4 (a participação somada das 4 maiores), sobre o total nacional que a agência publica no "
+    "ano (o estoque do último mês ou a soma dos meses). Faixas do Guia para Análise de Atos de "
+    "Concentração Horizontal do CADE (2016): abaixo de 1.500 pontos, não concentrado; de 1.500 a "
+    "2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é "
+    "o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está "
+    "ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria "
+    "entidade. A variação do HHI só compara dois anos seguidos e completos."
+)
+METODOLOGIA_DOS_BANCOS = (
+    "Bancos: o IF.data do Banco Central, com todas as instituições do sistema financeiro e cada "
+    "conglomerado prudencial como um participante (o BC já junta as instituições do grupo; a "
+    "companhia aberta se liga ao conglomerado pela base), a mesma base do Relatório de Economia "
+    "Bancária (REB). O estoque é o da última data-base do ano (são 4 por ano), que sai 120 dias "
+    "depois dela. A carteira de crédito é a carteira classificada (desde 2025, a carteira de "
+    "crédito da contabilidade nova) e o REB usa a carteira ativa: a participação de cada banco "
+    "muda um pouco, mas a CR4 de crédito fica perto da publicada (2022: 58,7% contra 58,6%; "
+    "2023: 57,8% contra 57,8%; 2024: 57,3% contra 57,9%). O ativo é o total (o REB tira as "
+    "aplicações interfinanceiras) e as captações são mais largas que os depósitos do REB. O REB "
+    "mede com a régua do BC (o HHI normalizado); aqui, com a do CADE. Quando o BC revisa uma "
+    "data-base, vale a revisão, com a data da primeira publicação: a base não guarda o dia da "
+    "revisão. Basileia e carteira por modalidade são de cada conglomerado, sem somar; a carteira "
+    "por modalidade só existe desde 2025."
+)
+
+
+def metodologia_do_setor(chave: str) -> str:
+    """A metodologia do relatório do setor: a regra comum e, só nos bancos, a do IF.data."""
+    return METODOLOGIA_DO_SETOR + (
+        " " + METODOLOGIA_DOS_BANCOS if chave == "bancos" else ""
+    )
+
+
 LIMITES = {
     "auditor_e_controladas": (
         "Parecer: o relatório do auditor independente sobre a DFP, como a CVM o publica; vale a partir do "
@@ -590,29 +624,7 @@ LIMITES = {
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
         "controlada, pelo FRE). A participação é sobre o total da agência no ano."
     ),
-    "setor": (
-        "Concentração pelo HHI (a soma dos quadrados das participações em %, de 0 a 10.000) e pela "
-        "CR4 (a participação somada das 4 maiores), sobre o total nacional que a agência publica no "
-        "ano (o estoque do último mês ou a soma dos meses). Faixas do Guia para Análise de Atos de "
-        "Concentração Horizontal do CADE (2016): abaixo de 1.500 pontos, não concentrado; de 1.500 a "
-        "2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é "
-        "o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está "
-        "ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria "
-        "entidade. A variação do HHI só compara dois anos seguidos e completos. "
-        "Bancos: o IF.data do Banco Central, com todas as instituições do sistema financeiro e cada "
-        "conglomerado prudencial como um participante (o BC já junta as instituições do grupo; a "
-        "companhia aberta se liga ao conglomerado pela base), a mesma base do Relatório de Economia "
-        "Bancária (REB). O estoque é o da última data-base do ano (são 4 por ano), que sai 120 dias "
-        "depois dela. A carteira de crédito é a carteira classificada (desde 2025, a carteira de "
-        "crédito da contabilidade nova) e o REB usa a carteira ativa: a participação de cada banco "
-        "muda um pouco, mas a CR4 de crédito fica perto da publicada (2022: 58,7% contra 58,6%; "
-        "2023: 57,8% contra 57,8%; 2024: 57,3% contra 57,9%). O ativo é o total (o REB tira as "
-        "aplicações interfinanceiras) e as captações são mais largas que os depósitos do REB. O REB "
-        "mede com a régua do BC (o HHI normalizado); aqui, com a do CADE. Quando o BC revisa uma "
-        "data-base, vale a revisão, com a data da primeira publicação: a base não guarda o dia da "
-        "revisão. Basileia e carteira por modalidade são de cada conglomerado, sem somar; a carteira "
-        "por modalidade só existe desde 2025."
-    ),
+    "setor": (METODOLOGIA_DO_SETOR + " " + METODOLOGIA_DOS_BANCOS),
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
         "reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. "
