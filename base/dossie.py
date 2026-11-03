@@ -665,6 +665,11 @@ def _data(valor: object) -> str | None:
     return None if pd.isna(valor) else pd.Timestamp(valor).strftime("%Y-%m-%d")
 
 
+def _sem_fuso_da_coluna(valores: pd.Series) -> pd.Series:
+    """As datas como dias sem fuso: a base pode trazer o momento em UTC e `hoje` é um dia sem fuso."""
+    return pd.to_datetime(valores, utc=True).dt.tz_localize(None)
+
+
 def _registros(tabela: pd.DataFrame) -> list[dict[str, Any]]:
     """As linhas em tipos simples (datas ISO, faltando → None), como vão no JSON."""
     copia = tabela.copy()
@@ -926,7 +931,7 @@ CAMPOS_DO_PARECER = (  # (chave do item, nome, coluna de `pareceres_dfp`, unidad
 
 def _pareceres_em_vigor(pareceres: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
     """O relatório que valia em `hoje` para cada exercício: só o já entregue, na maior versão entregue."""
-    entregues = pareceres[pd.to_datetime(pareceres["disponivel_em"]) <= hoje]
+    entregues = pareceres[_sem_fuso_da_coluna(pareceres["disponivel_em"]) <= hoje]
     return (
         entregues.sort_values(["referencia", "versao"])
         .drop_duplicates("referencia", keep="last")
@@ -1213,11 +1218,11 @@ def _publicas_no_dia(como_era: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame
     """As linhas da DFP já divulgadas no dia, do consolidado (ou do individual, se não há)."""
     anuais = como_era[
         (como_era["documento"] == DOCUMENTO_ANUAL)
-        & (pd.to_datetime(como_era["divulgado_em"]) <= hoje)
+        & (_sem_fuso_da_coluna(como_era["divulgado_em"]) <= hoje)
     ]
     grupo = "con" if (anuais["grupo"] == "con").any() else "ind"
     return anuais[anuais["grupo"] == grupo].assign(
-        divulgado_em=lambda t: pd.to_datetime(t["divulgado_em"])
+        divulgado_em=lambda t: _sem_fuso_da_coluna(t["divulgado_em"])
     )
 
 
@@ -1444,8 +1449,8 @@ def _trocas_recentes(trocas: pd.DataFrame, hoje: pd.Timestamp) -> list[dict[str,
     """Quantas vezes a empresa trocou de auditor nos últimos 10 anos (a lista está no auditor)."""
     if trocas.empty:
         return []
-    conhecidas = trocas[pd.to_datetime(trocas["conhecido_em"]) <= hoje]
-    efetiva = pd.to_datetime(conhecidas["efetiva_em"])
+    conhecidas = trocas[_sem_fuso_da_coluna(trocas["conhecido_em"]) <= hoje]
+    efetiva = _sem_fuso_da_coluna(conhecidas["efetiva_em"])
     recentes = efetiva[efetiva > hoje - pd.DateOffset(years=ANOS_NAS_SERIES)]
     if recentes.empty:
         return []
@@ -1512,6 +1517,7 @@ JANELAS = ("últimos 12 meses", "12 meses anteriores")
 def _janela(datas: pd.Series, ate: pd.Timestamp, anos_antes: int = 0) -> pd.Series:
     """As datas dentro dos 12 meses que terminam em `ate` (ou `anos_antes` anos antes)."""
     fim = ate - pd.DateOffset(years=anos_antes)
+    datas = _sem_fuso_da_coluna(datas)
     return (datas > fim - pd.DateOffset(years=1)) & (datas <= fim)
 
 
@@ -1735,7 +1741,7 @@ def _entregues(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
     """As linhas dos FREs já entregues até hoje, na versão mais nova de cada referência."""
     if tabela.empty:
         return tabela
-    entregues = tabela[pd.to_datetime(tabela["conhecido_em"]) <= hoje]
+    entregues = tabela[_sem_fuso_da_coluna(tabela["conhecido_em"]) <= hoje]
     ultima = entregues.groupby("referencia")["versao"].transform("max")
     return entregues[entregues["versao"] == ultima]
 
