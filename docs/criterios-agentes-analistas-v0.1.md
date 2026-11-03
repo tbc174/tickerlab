@@ -1,10 +1,10 @@
 # Critérios dos agentes analistas (camada A3), versão 0.1
 
-> **Estado: RASCUNHO do Claude, a aprovar pelo Tiago (nível 1).** Os critérios são do Tiago (ADR 0118, Emenda 1,
-> item 8: "critérios escritos pelo Tiago antes"); este texto é a proposta para ele aprovar, mudar ou reescrever.
-> Enquanto o hash deste texto não estiver em `trader/agentes/criterios.py`, o código **recusa** preparar ou
-> registrar qualquer rodada. Aprovado o texto, o hash entra num PR próprio e o texto não muda mais: mudar
-> qualquer coisa vira a versão 0.2, com data e motivo, e as rodadas anteriores ficam marcadas com a versão antiga.
+> **Estado: APROVADO pelo Tiago em 03/11/2026 às 22h03 ("Aprovar como está"; nível 1).** Os critérios são do
+> Tiago (ADR 0118, Emenda 1, item 8: "critérios escritos pelo Tiago antes"); o Claude escreveu a proposta e ele a
+> aprovou sem mudança. O hash deste texto está em `trader/agentes/criterios.py`, e o código recusa preparar ou
+> registrar uma rodada se o texto mudar. O texto não muda mais: mudar qualquer coisa vira a versão 0.2, com data e
+> motivo, e as rodadas anteriores ficam marcadas com a versão antiga.
 
 ## 1. O que é
 
