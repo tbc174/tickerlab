@@ -25,7 +25,7 @@ PASTA_DOS_PREGOES = CONTEUDO / "pregao"
 # página do site recusa o texto de outro molde, e o teste exige trocar este valor no mesmo PR (texto
 # público novo, que só entra com o "pode").
 IMPRESSAO_DO_MOLDE_APROVADO = (
-    "9a43bd03fa765f8c5704de9b831706a3d9c16f97323b6a2f1239cf90e5e099cc"
+    "3121af1ef8ed0ef143ec6d50dd1625bf7aee714ad4747095ed6884cf8eb5340d"
 )
 
 # Abaixo disto, para cima ou para baixo, o Ibovespa "variou pouco" e o dia não ganha a frase da

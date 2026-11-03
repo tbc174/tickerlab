@@ -261,7 +261,7 @@ def test_texto_numero_igual_ao_dos_dados(molde: dict) -> None:
         _frase(pronto, "dolar") == "O dólar futuro (DOLX26) subiu 9,2%, para R$ 6,1234."
     )
     assert _frase(pronto, "a_conferir") == (
-        "Ficaram fora das contas, por desdobramento ou grupamento no dia: DESD3."
+        "Ficaram fora das contas, por evento societário no dia (como desdobramento, grupamento, bonificação ou provento): DESD3."
     )
 
 

@@ -38,7 +38,7 @@
       "estavel": "O dólar futuro ({simbolo}) ficou em R$ {cotacao}, como na véspera."
     },
     "a_conferir": {
-      "lista": "Ficaram fora das contas, por desdobramento ou grupamento no dia: {simbolos}."
+      "lista": "Ficaram fora das contas, por evento societário no dia (como desdobramento, grupamento, bonificação ou provento): {simbolos}."
     }
   },
   "grafico_dos_setores": "Mediana do dia em cada setor menos a variação do Ibovespa, em pontos percentuais",
