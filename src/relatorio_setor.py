@@ -868,6 +868,30 @@ def _secao_da_participacao(e: EntradasDoSetor, noite: dossie.SecaoDoSetor) -> Se
     )
 
 
+def _aviso_de_quem_ficou_de_fora(
+    membros: list[Membro], participacao: list[dict[str, Any]]
+) -> list[str]:
+    """Quem tem parte do mercado na base e não está no lado a lado (sem ticker, não é membro): o
+    "N" da frase da parte do mercado e o dos membros não são o mesmo número."""
+    dos_membros = {m.cnpj for m in membros}
+    de_fora = {
+        _so_digitos(str(l["cnpj"])): str(l["empresa"])
+        for l in participacao
+        if _so_digitos(str(l["cnpj"])) not in dos_membros
+    }
+    if not de_fora:
+        return []
+    com_parte = {_so_digitos(str(l["cnpj"])) for l in participacao}
+    quantas = "1 está" if len(de_fora) == 1 else f"{len(de_fora)} estão"
+    nomes = ", ".join(sorted(de_fora.values()))
+    texto = (
+        f"{len(com_parte)} têm parte do mercado na base e {quantas} fora desta tabela por não "
+        f"terem ticker na base: {nomes}. A parte do mercado delas entra nas somas da participação "
+        "e nas frases acima, não nas linhas daqui."
+    )
+    return [texto]
+
+
 def _secao_do_lado_a_lado(e: EntradasDoSetor) -> Secao:
     noite = e.da_noite
     participacao = (
@@ -887,7 +911,11 @@ def _secao_do_lado_a_lado(e: EntradasDoSetor) -> Secao:
         "lado_a_lado",
         TITULOS["lado_a_lado"],
         [],
-        [SOBRE_O_LADO_A_LADO, *fontes],
+        [
+            SOBRE_O_LADO_A_LADO,
+            *_aviso_de_quem_ficou_de_fora(e.membros, participacao),
+            *fontes,
+        ],
         tabelas,
     )
 
@@ -934,11 +962,11 @@ def _secao_do_que_nao_temos(faltas: list[FaltaNoSetor]) -> Secao:
     )
 
 
-def _secao_da_metodologia() -> Secao:
+def _secao_da_metodologia(chave: str) -> Secao:
     return Secao(
         "metodologia",
         TITULOS["metodologia"],
-        paragrafos=[dossie_da_base.LIMITES["setor"]],
+        paragrafos=[dossie_da_base.metodologia_do_setor(chave)],
         recolhida=True,
     )
 
@@ -983,7 +1011,7 @@ def montar_relatorio_do_setor(
         _secao_dos_cruzamentos(e, hoje),
         _secao_das_frases(frases),
         _secao_do_que_nao_temos(faltas),
-        _secao_da_metodologia(),
+        _secao_da_metodologia(e.setor.chave),
     ]
     motivo = motivo_sem_acesso(plano, DOSSIE_DA_BASE)
     if motivo is None and noite is not None:
