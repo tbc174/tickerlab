@@ -49,6 +49,9 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "bcb": Orgao("Banco Central do Brasil", "https://dadosabertos.bcb.gov.br/"),
     "bndes": Orgao("BNDES", "https://dadosabertos.bndes.gov.br/"),
     "cgu": Orgao("CGU (cadastros de sanções)", "https://portaldatransparencia.gov.br/"),
+    "djen": Orgao(
+        "CNJ (Diário de Justiça Eletrônico Nacional)", "https://comunica.pje.jus.br/"
+    ),
     "comexstat": Orgao("Comex Stat (MDIC)", "https://balanca.mdic.gov.br/balanca/bd/"),
     "comprasgov": Orgao(
         "Compras.gov.br (Ministério da Gestão)", "https://dadosabertos.compras.gov.br/"

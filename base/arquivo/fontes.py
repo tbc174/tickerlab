@@ -23,6 +23,7 @@ from base.arquivo import (
     assessorias,
     chirps_v3,
     contrapartes,
+    djen,
     lote_acervos,
     lote_atencao,
     lote_bcb,
@@ -1527,6 +1528,9 @@ FONTES: list[Fonte] = [
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
+    # comunicações processuais do DJEN em que cada companhia aberta é parte, sem a Justiça do Trabalho
+    # (plano de 03/11/2026 dos processos judiciais; "pode" do Tiago na mesma data)
+    djen.fonte(),
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),
