@@ -1247,6 +1247,30 @@ def _caixa_por_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
     return tabela[COLUNAS_DO_CAIXA].head(ANOS_NAS_SERIES).reset_index(drop=True)
 
 
+COLUNAS_DA_DFC_E_DVA = ["demonstracao", "conta", "descricao", "exercicio", "valor"]
+
+
+def _dfc_e_dva_por_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
+    """Cada conta da DFC e da DVA dos últimos exercícios, na versão mais nova já divulgada.
+
+    Uma linha por demonstração, conta e exercício (o mais novo primeiro). Conta sem valor não entra:
+    vazio não vira zero.
+    """
+    contas = linhas[linhas["demonstracao"].isin([*t1.DFC, t1.DVA])]
+    contas = contas.sort_values("divulgado_em").drop_duplicates(
+        [*t1.PERIODO, "demonstracao", "conta"], keep="last"
+    )
+    contas = contas.dropna(subset=["valor"]).assign(
+        exercicio=lambda t: pd.to_datetime(t["fim"]).dt.year
+    )
+    if contas.empty:
+        return contas[COLUNAS_DA_DFC_E_DVA]
+    recentes = contas[contas["exercicio"] > contas["exercicio"].max() - ANOS_NAS_SERIES]
+    return recentes.sort_values(
+        ["demonstracao", "conta", "exercicio"], ascending=[True, True, False]
+    )[COLUNAS_DA_DFC_E_DVA].reset_index(drop=True)
+
+
 def secao_geracao_de_caixa(
     como_era: pd.DataFrame, hoje: pd.Timestamp
 ) -> dict[str, Any] | None:
@@ -1257,7 +1281,8 @@ def secao_geracao_de_caixa(
     """
     if como_era.empty:
         return None
-    tabela = _caixa_por_exercicio(_publicas_no_dia(como_era, hoje))
+    publicas = _publicas_no_dia(como_era, hoje)
+    tabela = _caixa_por_exercicio(publicas)
     if tabela.empty:
         return None
     ultimo = tabela.iloc[0]
@@ -1268,7 +1293,10 @@ def secao_geracao_de_caixa(
         for chave, nome in NUMEROS_DO_CAIXA.items()
         if pd.notna(ultimo[chave])
     ]
-    tabelas = {"caixa_por_exercicio": tabela.astype(object).where(tabela.notna(), None)}
+    tabelas = {
+        "caixa_por_exercicio": tabela.astype(object).where(tabela.notna(), None),
+        "dfc_dva_por_exercicio": _dfc_e_dva_por_exercicio(publicas),
+    }
     return _secao("geracao_de_caixa", itens, tabelas)
 
 

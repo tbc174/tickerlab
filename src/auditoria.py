@@ -60,6 +60,8 @@ ACAO_CHAVE_REVOGADA = "chave_revogada"
 ACAO_DIREITO_CONCEDIDO = "direito_concedido"
 ACAO_DIREITO_SUSPENSO = "direito_suspenso"
 ACAO_DIREITO_REATIVADO = "direito_reativado"
+ACAO_CONJUNTO_SUSPENSO = "conjunto_suspenso"
+ACAO_CONJUNTO_REATIVADO = "conjunto_reativado"
 
 
 @dataclass(frozen=True)

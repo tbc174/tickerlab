@@ -368,6 +368,7 @@ def _catalogo() -> dict:
     frases = {nome: vitrine.primeira_frase(t.descricao) for nome, t in TABELAS.items()}
     fontes = vitrine.fontes_do_catalogo(catalogo)
     modulos_da_base = vitrine.modulos_do_catalogo(catalogo)
+    familias = registro.familias_para_o_site(catalogo)
     return {
         "totais": {
             "tabelas": len(catalogo["tabelas"]),
@@ -376,9 +377,12 @@ def _catalogo() -> dict:
                 f.situacao == vitrine.EM_CONSULTA for f in fontes
             ),
             "modulos": len(modulos_da_base),
+            "familias": len(familias),
+            "familias_em_uso": sum(f["uso"] == "em_uso" for f in familias),
         },
         "fontes": [asdict(f) for f in fontes],
         "registro_de_fontes": registro.para_o_site(),
+        "familias_de_fontes": familias,
         "modulos": [asdict(m) for m in modulos_da_base],
         "tabelas": [asdict(t) for t in vitrine.tabelas_do_catalogo(catalogo, frases)],
     }

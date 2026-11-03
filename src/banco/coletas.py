@@ -828,10 +828,18 @@ HTTP_NAO_ENCONTRADO = 404
 
 
 def licenca_da_fonte(fonte: str) -> str:
-    """A licença da fonte ("rfb-cnpj") ou da sua família ("cvm-ipe" → a da CVM)."""
-    return LICENCAS.get(fonte) or LICENCAS.get(
-        fonte.split("-", 1)[0], SEM_LICENCA_CONHECIDA
-    )
+    """A licença da fonte ("rfb-cnpj"), do prefixo mais longo que tem linha ("tesouro-br-divida-dotacao" →
+    a de "tesouro-br-divida") ou da família ("cvm-ipe" → a da CVM).
+
+    O prefixo vem antes da família porque "tesouro" é a chave do Tesouro dos EUA: sem ele, os pacotes
+    `tesouro-br-divida-*` levavam a licença americana (achado da linha 592, 03/11/2026).
+    """
+    partes = fonte.split("-")
+    for corte in range(len(partes), 0, -1):
+        licenca = LICENCAS.get("-".join(partes[:corte]))
+        if licenca:
+            return licenca
+    return SEM_LICENCA_CONHECIDA
 
 
 def revenda_da_fonte(fonte: str) -> str:

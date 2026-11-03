@@ -193,4 +193,17 @@
       if (vazio) vazio.hidden = achou;
     });
   }
+
+  // --- Dados: fontes em uso, guardadas ou todas (sem JavaScript a lista inteira fica à mostra) ---
+  const filtroDeUso = document.querySelector("[data-filtro-uso]");
+  if (filtroDeUso) {
+    filtroDeUso.hidden = false;
+    const botoes = filtroDeUso.querySelectorAll("button[data-uso]");
+    const linhas = document.querySelectorAll("tr[data-uso-da-fonte]");
+    botoes.forEach((botao) => botao.addEventListener("click", () => {
+      botoes.forEach((b) => b.setAttribute("aria-pressed", String(b === botao)));
+      const uso = botao.dataset.uso;
+      linhas.forEach((linha) => { linha.hidden = uso !== "todas" && linha.dataset.usoDaFonte !== uso; });
+    }));
+  }
 })();

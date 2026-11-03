@@ -298,9 +298,12 @@ class Secao:
     def tabelas_a_mostrar(self) -> dict[str, list[dict]]:
         """As tabelas que a página, o PDF e a API mostram: o anexo de anos toma o lugar da tabela
         de anos nas linhas, que fica na seção só porque a análise escrita cita as linhas dela."""
+        escondidas = {
+            ANEXO_DFC_DVA
+        }  # a caminho do anexo de anos, onde `com_a_dfc_e_a_dva` a põe
         if ANEXO_DE_ANOS in self.tabelas:
-            return {k: v for k, v in self.tabelas.items() if k != TABELA_DE_ANOS}
-        return self.tabelas
+            escondidas.add(TABELA_DE_ANOS)
+        return {k: v for k, v in self.tabelas.items() if k not in escondidas}
 
 
 @dataclass(frozen=True)
@@ -1100,6 +1103,10 @@ UNIDADES_DIFERENTES = {
     "lpa_basico": "R$ por ação"
 }  # as demais contas da DFP vêm em reais
 ANEXO_DE_ANOS = "anexo_de_anos"
+ANEXO_DFC_DVA = (
+    "anexo_dfc_dva"  # as linhas da DFC e da DVA da ficha da noite, no formato do anexo
+)
+COLUNAS_FIXAS_DO_ANEXO = ("conta", "unidade")
 TABELA_DE_ANOS = (
     "contas"  # um ano por linha: a que a análise escrita cita (`historico.contas.N`)
 )
@@ -1121,6 +1128,50 @@ def anexo_de_anos(contas: pd.DataFrame) -> list[dict]:
             **{str(ano): para_json(valor) for ano, valor in serie.items()},
         }
         for conta, serie in contas.items()
+    ]
+
+
+def _anos_do_anexo(linhas: list[dict]) -> list[str]:
+    return sorted(
+        {k for linha in linhas for k in linha if k not in COLUNAS_FIXAS_DO_ANEXO}
+    )
+
+
+def _no_formato_do_anexo(linha: dict, anos: list[str]) -> dict:
+    return {
+        **{coluna: linha[coluna] for coluna in COLUNAS_FIXAS_DO_ANEXO},
+        **{ano: linha.get(ano) for ano in anos},
+    }
+
+
+def com_a_dfc_e_a_dva(secoes: list[Secao]) -> list[Secao]:
+    """Passa as linhas da DFC e da DVA (que a ficha da noite traz na seção de caixa) para o anexo de
+    anos do histórico, nos mesmos anos das contas; sem histórico ou sem as linhas, nada muda.
+
+    O PDF lê as colunas da primeira linha do anexo: toda linha sai com os mesmos anos, vazios onde
+    a conta não existe naquele ano.
+    """
+    da_ficha = next((s for s in secoes if ANEXO_DFC_DVA in s.tabelas), None)
+    historico = next((s for s in secoes if s.chave == "historico"), None)
+    if da_ficha is None or historico is None:
+        return secoes
+    contas = historico.tabelas.get(ANEXO_DE_ANOS, [])
+    novas = da_ficha.tabelas[ANEXO_DFC_DVA]
+    anos = _anos_do_anexo(contas) or _anos_do_anexo(novas)
+    do_anexo = [
+        linha
+        for linha in (_no_formato_do_anexo(n, anos) for n in novas)
+        if any(linha[ano] is not None for ano in anos)
+    ]
+    sem_a_tabela = {k: v for k, v in da_ficha.tabelas.items() if k != ANEXO_DFC_DVA}
+    anexo = [_no_formato_do_anexo(linha, anos) for linha in contas] + do_anexo
+    return [
+        replace(s, tabelas=sem_a_tabela)
+        if s is da_ficha
+        else replace(s, tabelas={**s.tabelas, ANEXO_DE_ANOS: anexo})
+        if s is historico
+        else s
+        for s in secoes
     ]
 
 
@@ -1848,7 +1899,7 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
             paragrafos=com_a_contestacao([*limites, *em_aberto]),
         )
     )
-    secoes = na_ordem(secoes)
+    secoes = na_ordem(com_a_dfc_e_a_dva(secoes))
     return Relatorio(
         empresa=entradas.empresa,
         cnpj=entradas.cnpj,
