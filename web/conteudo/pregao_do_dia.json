@@ -1,5 +1,5 @@
 {
-  "molde_aprovado": "9a43bd03fa765f8c5704de9b831706a3d9c16f97323b6a2f1239cf90e5e099cc",
+  "molde_aprovado": "3121af1ef8ed0ef143ec6d50dd1625bf7aee714ad4747095ed6884cf8eb5340d",
   "pregao": {
     "fontes": [
       "B3, estatísticas do índice Ibovespa",
@@ -190,7 +190,7 @@
       ],
       "titulo": "Mediana do dia em cada setor menos a variação do Ibovespa, em pontos percentuais"
     },
-    "impressao_digital": "9a43bd03fa765f8c5704de9b831706a3d9c16f97323b6a2f1239cf90e5e099cc",
+    "impressao_digital": "3121af1ef8ed0ef143ec6d50dd1625bf7aee714ad4747095ed6884cf8eb5340d",
     "limites": [
       "É um dia. A variação de um dia mostra o movimento do preço, não o valor da empresa.",
       "O texto descreve o que os preços fizeram; não diz por quê.",
