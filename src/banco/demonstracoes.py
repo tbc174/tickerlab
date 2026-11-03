@@ -20,6 +20,7 @@ from src.banco.modelo import (
     tickers_dos_emissores,
 )
 from src.banco.versoes import versionar
+from src.demonstracoes import tirar_zeros_de_ausencia
 from src.links_das_fontes import link_da_fonte
 
 
@@ -438,6 +439,9 @@ def dados_da_empresa(conexao: sa.Connection, cnpj: str) -> DadosDaEmpresa:
             "valor",
         ],
     )
+    contas = tirar_zeros_de_ausencia(
+        contas
+    )  # o que já está guardado também (antes desta regra)
     documentos = pd.DataFrame(
         conexao.execute(
             sa.select(
