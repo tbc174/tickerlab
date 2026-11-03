@@ -370,8 +370,8 @@ def escrever_relatorio(
         f"# Synthetic Dividend e rebalanceamento (ficha P0-7): rodada do pré-registro quant v{criterio_quant.VERSAO}",
         "",
         (
-            f"Gerado em {datetime.now(UTC):%d/%m/%Y %H:%M} UTC. Tentativa {saida['id']} da família "
-            "P0-7. Estudo, não candidata: não passa pelo critério da seção 5."
+            f"Gerado em {datetime.now(UTC):%d/%m/%Y %H:%M} UTC. Linha {saida['id']} do registro "
+            "(família P0-7). Estudo, não candidata: não passa pelo critério da seção 5."
         ),
         (
             f"Monte Carlo: GBM, {saida['caminhos']} caminhos, {saida['anos']} anos, semente {sd.SEMENTE}; capital "
