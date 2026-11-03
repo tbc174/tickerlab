@@ -17,8 +17,11 @@ VERSAO = "0.1"
 ARQUIVO = (
     Path(__file__).resolve().parents[2] / "docs" / "criterios-agentes-analistas-v0.1.md"
 )
-# SHA-256 do texto aprovado (quebras de linha normalizadas). None: rascunho, ainda sem o "pode".
-HASH_APROVADO: str | None = None
+# SHA-256 do texto aprovado (quebras de linha normalizadas). None seria rascunho, sem o "pode".
+# "Pode" do Tiago em 03/11/2026 22h03 ("Aprovar como está"), na conversa da carteira própria.
+HASH_APROVADO: str | None = (
+    "ed1fe75c8812df8921cfb343b0aa09cef3b29708454f8b635e2ac6f3ad6628dc"
+)
 
 # --- seção 2: universo ----------------------------------------------------------------------------
 PISO_DE_LIQUIDEZ = criterio_quant.PISO_DE_LIQUIDEZ_EM_REAIS  # o mesmo dos fatores na B3
