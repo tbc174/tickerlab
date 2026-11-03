@@ -22,7 +22,7 @@ from datetime import date
 
 import pandas as pd
 
-from src import pregao_do_dia
+from src import fundamentos, pregao_do_dia
 
 # Queda de 30% ou mais num dia: a contagem que a página de 26/10 destacou (35 de 120 empresas).
 QUEDA_FORTE = -0.30
@@ -55,6 +55,7 @@ PREGOES_DEPOIS = {"1 mês": 21, "3 meses": 63, "6 meses": 126, "12 meses": 252}
 MINIMO_DE_PREGOES = 120
 JANELA_DO_BETA = pd.DateOffset(years=1)
 
+COLUNAS_DOS_BALANCOS = ["cnpj", "divida_liquida", "ebitda", "divulgado_em"]
 FONTE_DO_BALANCO = "CVM, demonstrações financeiras (ITR e DFP) divulgadas até a véspera"
 FONTES = {
     "acoes": pregao_do_dia.FONTE_DAS_ACOES,
@@ -106,6 +107,50 @@ def faixa_de_alavancagem(divida_liquida: float, ebitda: float) -> str | None:
     vezes = divida_liquida / ebitda
     return next(
         (nome for teto, nome in FAIXAS_DE_ALAVANCAGEM if vezes <= teto), ACIMA_DE_4X
+    )
+
+
+def _divida_liquida(saldo: dict) -> float | None:
+    divida, caixa = fundamentos.divida_e_caixa(saldo)
+    return None if divida is None else divida - (caixa or 0.0)
+
+
+def _ebitda(doze_meses: dict) -> float | None:
+    ebit, depreciacao = doze_meses.get("ebit"), doze_meses.get("depreciacao")
+    return None if ebit is None or depreciacao is None else ebit + depreciacao
+
+
+def balancos_na_vespera(
+    contas: pd.DataFrame, documentos: pd.DataFrame, vespera: date
+) -> pd.DataFrame:
+    """Dívida líquida (do balanço mais recente) e EBITDA dos 12 meses de cada CNPJ, só com os DFP e
+    ITR que a CVM recebeu até a véspera, com as regras do Research (`src.fundamentos`).
+
+    `contas` e `documentos` como saem de `src.demonstracoes.ler_demonstracoes`. Os arquivos abertos
+    da CVM guardam só a versão mais nova de cada documento: se ela chegou depois da véspera, o
+    documento inteiro fica de fora (vale o anterior). Empresa sem dívida ou sem EBITDA não entra.
+    """
+    chave = ["cnpj", "documento", "referencia", "versao"]
+    recebidos = documentos[
+        pd.to_datetime(documentos["recebido_em"]) <= pd.Timestamp(vespera)
+    ][[*chave, "recebido_em"]]
+    publicas = contas.merge(recebidos, on=chave)
+    linhas = []
+    for cnpj, da_empresa in publicas.groupby("cnpj"):
+        saldo, _, _ = fundamentos.balanco_mais_recente(da_empresa)
+        doze_meses, _, _ = fundamentos.doze_meses(da_empresa)
+        linhas.append(
+            {
+                "cnpj": cnpj,
+                "divida_liquida": _divida_liquida(saldo),
+                "ebitda": _ebitda(doze_meses),
+                "divulgado_em": max(da_empresa["recebido_em"]),
+            }
+        )
+    return (
+        pd.DataFrame(linhas, columns=COLUNAS_DOS_BALANCOS)
+        .dropna()
+        .reset_index(drop=True)
     )
 
 
