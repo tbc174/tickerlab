@@ -2603,7 +2603,7 @@ Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tip
 
 ## `processos_comunicacoes`
 
-Processos judiciais por companhia aberta: as comunicações. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem.
+Processos judiciais por companhia aberta: as comunicações. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais (`base/arquivo/djen.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
@@ -2648,7 +2648,7 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 
 ## `processos_partes`
 
-Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem.
+Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais (`base/arquivo/djen.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho

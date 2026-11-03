@@ -604,7 +604,10 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
         " Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia "
         "aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho "
         "(Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de "
-        "pessoa física: as partes que não são companhia nem órgão público entram só na contagem."
+        "pessoa física: as partes que não são companhia nem órgão público entram só na contagem. "
+        "Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica "
+        "sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra "
+        "(viés de sobrevivência)."
     )
     atraso = (
         "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a "

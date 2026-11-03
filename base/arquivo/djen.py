@@ -8,13 +8,19 @@ da CVM, uma consulta pela razão social:
 - e, aos poucos, os meses fechados desde `HISTORICO_DESDE` ainda não consultados (até
   `MAXIMO_DO_HISTORICO_POR_RODADA` por rodada, do mais novo ao mais antigo).
 
-O que fica de fora antes de guardar (o acervo guarda o JSON já limpo, em `restrito/`):
+O que fica de fora antes de guardar:
 - **a Justiça do Trabalho inteira**: a Resolução CNJ 121/2010 (art. 4º, § 1º, II, na redação da
   Resolução 143/2011) proíbe a consulta pública dela pelo nome da parte;
-- **o nome dos advogados**: guardamos só quantos são.
+- **a lista dos advogados** (`destinatarioadvogados`): guardamos só quantos são.
 
-O texto da comunicação fica no acervo para a leitura do teor (PR 2 do plano); a tabela nunca guarda
-nome de pessoa física (`base/processos.py`).
+**O que continua com pessoa física:** a lista das partes (`destinatarios`) e o texto da comunicação, que
+costuma trazer o nome dos advogados e das partes (às vezes o CPF). Por isso a fonte está em
+`FONTES_COM_PESSOA` e o JSON vai para `restrito/` no acervo, pasta que nenhum pacote nem exportação
+leva (`src/acervo.py`). O texto fica para a leitura do teor (PR 2 do plano); a tabela nunca guarda nome
+de pessoa física (`base/processos.py`).
+
+**Só as companhias ativas hoje, pela razão social de hoje:** a companhia que saiu da CVM não é
+consultada, e a comunicação que escreve o nome antigo de quem mudou de razão social não é achada.
 """
 
 import json

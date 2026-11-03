@@ -95,6 +95,11 @@ def test_homonimo_do_cadastro_nao_liga():
         ("ENERGIA EXEMPLO SA", processos.COMPANHIA),
         ("MUNICIPIO DE CAMPINAS", processos.ORGAO_PUBLICO),
         ("ESTADO DE SAO PAULO", processos.ORGAO_PUBLICO),
+        ("FAZENDA NACIONAL", processos.ORGAO_PUBLICO),
+        ("FAZENDA PUBLICA DO ESTADO DE SAO PAULO", processos.ORGAO_PUBLICO),
+        ("FAZENDA DO ESTADO DE MINAS GERAIS", processos.ORGAO_PUBLICO),
+        # imóvel rural, às vezes de pessoa física: o nome não pode ir para `orgao_publico`
+        ("FAZENDA BOA VISTA", processos.PESSOA_OU_DESCONHECIDA),
         ("MINISTERIO PUBLICO DO ESTADO DE SAO PAULO", processos.ORGAO_PUBLICO),
         ("PADARIA INVENTADA LTDA", processos.PESSOA_JURIDICA),
         ("FULANA INVENTADA DE TAL", processos.PESSOA_OU_DESCONHECIDA),
