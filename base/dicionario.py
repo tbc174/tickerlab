@@ -145,6 +145,8 @@ class Tabela:
         default_factory=dict
     )  # coluna → (mínimo, máximo); None = sem limite desse lado
     nao_nulas: tuple[str, ...] = ()  # além das chaves, colunas que não aceitam vazio
+    # chaves que podem vir vazias (o vazio também identifica: `inicio` do balanço, que é um saldo numa data)
+    chaves_com_vazio: tuple[str, ...] = ()
     # o fato é anunciado antes de acontecer (assembleia, calendário, mandato que começa depois):
     # `aconteceu_em` pode vir depois de `publico_em`
     anuncia_o_futuro: bool = False
@@ -6566,8 +6568,8 @@ def _contrato(**campos: object) -> dict[str, object]:
 
 _CONTRATO = {
     # 2.0.0: a série T1 pôs a DFC, a DVA e a DRA na tabela (quem não filtra `demonstracao` muda)
-    "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
-    "dmpl_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "grupo", "conta", "coluna"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM),
+    "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta", "ordem", "inicio", "fim"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 3.0.0 (03/11/2026): a chave ganha `ordem`, `inicio` e `fim` (a DRE do ITR traz o trimestre e o acumulado; sem elas 40.913 linhas só em 2011 repetiam a chave)
+    "dmpl_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "grupo", "conta", "coluna", "ordem", "inicio", "fim"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (03/11/2026): a chave ganha `ordem`, `inicio` e `fim`
     "achados_de_qualidade": _contrato(modulo=_ME, chaves=("id",), datas={"aconteceu_em": "referencia", "publico_em": "valido_desde", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "cadastro_das_companhias": _contrato(modulo=_ME, chaves=("cnpj",), datas={"aconteceu_em": "registro"}, historico_desde=_CVM),
     "tickers_no_tempo": _contrato(modulo=_ME, chaves=("codigo", "cnpj"), datas={"aconteceu_em": "inicio_negociacao", "publico_em": "primeiro_visto"}, historico_desde=_CVM),
@@ -6690,6 +6692,16 @@ _CONTRATO = {
 # por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
 _SEM_NEGATIVO = (0.0, None)
 _CONFERENCIA: dict[str, dict[str, object]] = {
+    # DFP/ITR "como eram" (API A3, 03/11/2026): um Parquet por ano; `inicio` é vazio no balanço
+    "demonstracoes_como_era": {"pasta": "demonstracoes", "chaves_com_vazio": ("inicio",)},
+    "dmpl_como_era": {"pasta": "dmpl", "chaves_com_vazio": ("inicio",)},
+    # CNPJ (API A3): o retrato em 256 partes pelos 2 primeiros caracteres da raiz, e as mudanças por mês
+    "cnpj_estabelecimentos": {"pasta": "cnpj/vigente/estabelecimentos"},
+    "cnpj_estabelecimentos_mudancas": {"pasta": "cnpj/mudancas/estabelecimentos"},
+    "cnpj_simples": {"pasta": "cnpj/vigente/simples"},
+    "cnpj_simples_mudancas": {"pasta": "cnpj/mudancas/simples"},
+    "cnpj_qsa": {"pasta": "cnpj/vigente/qsa"},
+    "cnpj_qsa_mudancas": {"pasta": "cnpj/mudancas/qsa"},
     "amostra_painel": {"pasta": "amostra/v1/painel"},
     "eventos": {"pasta": "eventos", "anuncia_o_futuro": True},  # 19% (assembleias, calendários)
     "curva_juros": {

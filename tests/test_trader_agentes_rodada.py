@@ -80,8 +80,15 @@ TODAS_7 = dict.fromkeys(criterios.PESOS, 7)
 # --- os critérios --------------------------------------------------------------------------------
 
 
-def test_rascunho_sem_hash_aprovado_nao_roda():
-    assert criterios.HASH_APROVADO is None  # muda só com o "pode" do Tiago
+def test_texto_aprovado_confere_sem_dublê():
+    # o hash do "pode" do Tiago (03/11/2026) bate com o texto do repositório
+    assert criterios.HASH_APROVADO is not None
+    assert criterios.conferir() == criterios.hash_atual()
+    assert "APROVADO pelo Tiago" in criterios.texto()
+
+
+def test_rascunho_sem_hash_aprovado_nao_roda(monkeypatch):
+    monkeypatch.setattr(criterios, "HASH_APROVADO", None)
     with pytest.raises(criterios.CriteriosNaoAprovadosError, match="rascunho"):
         criterios.conferir()
 
@@ -111,7 +118,6 @@ def test_numeros_do_codigo_estao_no_texto():
     assert "no máximo 5" in texto and "40%" in texto and "12 meses" in texto
     assert criterios.PISO_DE_LIQUIDEZ == criterio_quant.PISO_DE_LIQUIDEZ_EM_REAIS
     assert "R$ 5 milhões" in texto
-    assert "RASCUNHO" in texto  # sai junto com o hash, no PR da aprovação
 
 
 def test_pedido_tem_a_empresa_a_data_e_os_criterios_inteiros():
@@ -245,7 +251,8 @@ def test_janela_da_rodada_sao_os_5_primeiros_pregoes_do_mes(dia, dentro):
 # --- preparar e registrar ------------------------------------------------------------------------
 
 
-def test_preparar_recusa_rascunho(tmp_path):
+def test_preparar_recusa_rascunho(tmp_path, monkeypatch):
+    monkeypatch.setattr(criterios, "HASH_APROVADO", None)
     with pytest.raises(criterios.CriteriosNaoAprovadosError):
         rodada.preparar(_dados(), tmp_path, hoje=date(2026, 11, 3))
     assert not any(tmp_path.iterdir())

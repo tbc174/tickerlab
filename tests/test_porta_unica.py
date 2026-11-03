@@ -21,6 +21,7 @@ _ORIGINAL_EM_PARQUET = (
 _CRIPTO = "base de cripto (ADR 0041): pasta própria, montada e lida pelo próprio módulo"
 EXCECOES_HERDADAS: dict[str, str] = {
     "base/parquet.py": "é quem grava e confere as tabelas (hash, versões, lápide)",
+    "base/reconferir.py": "relê o Parquet já gravado só para refazer a conferência do manifesto",
     "base/ponto_no_tempo.py": "grava e confere a base dos balanços por ano (série 1)",
     "base/auditores.py": "montador das trocas de auditor: relê todos os anos de `auditores`",
     "base/empresa_serie.py": "montador da `empresa_serie`: relê `controladas` e lê o original da ANEEL",
@@ -33,7 +34,7 @@ EXCECOES_HERDADAS: dict[str, str] = {
     "base/cripto/reprodutivel.py": _CRIPTO,
 }
 TETO_DE_EXCECOES = (
-    11  # só desce: arquivo que passou para a porta sai da lista e o teto cai
+    12  # só desce: arquivo que passou para a porta sai da lista e o teto cai
 )
 
 
