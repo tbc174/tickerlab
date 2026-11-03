@@ -28,7 +28,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from base import indices_b3
+from base import indices_b3, porta
 from base import intradiario_b3 as b3
 from base.parquet import gravar_atomico
 from scripts.barras_b3_do_dia import Guardado, versoes_mais_novas
@@ -142,18 +142,18 @@ def _em_dia(caminho: Path, origem: dict[str, object]) -> bool:
     return json.loads(caminho.read_text("utf-8")).get("origem") == origem
 
 
-def _cadastro_da_cvm(pasta: Path) -> pd.DataFrame:
-    arquivos = sorted((pasta / "base" / "fca_geral").glob("*.parquet"))
-    colunas = ["cnpj", "setor", "conhecido_em"]
-    return pd.concat(pd.read_parquet(a, columns=colunas) for a in arquivos)
-
-
 def _papeis(pasta: Path, vespera: date) -> pd.DataFrame:
     nomes = pd.read_csv(CAMINHO_DOS_NOMES, comment="#")
+    with porta.abrir(pasta / "base") as base:
+        tickers = base.ler(
+            "tickers_no_tempo",
+            colunas=["codigo", "cnpj", "inicio_negociacao", "fim_negociacao"],
+        )
+        cadastro = base.ler("fca_geral", colunas=["cnpj", "setor", "conhecido_em"])
     return pregao_do_dia.tabela_de_papeis(
         catalogo=pd.read_csv(CAMINHO_DO_CATALOGO, comment="#"),
-        tickers=pd.read_parquet(pasta / "base" / "fca" / "tickers.parquet"),
-        cadastro=_cadastro_da_cvm(pasta),
+        tickers=tickers,
+        cadastro=cadastro,
         nomes_curtos=dict(zip(nomes["simbolo"], nomes["empresa"], strict=True)),
         ate=vespera,
     )
