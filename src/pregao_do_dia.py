@@ -14,7 +14,8 @@ bloco leva a fonte e a data. Variações são frações (−0,10 é queda de 10%
 mercado se mexeu: só o que ele fez.
 """
 
-from collections.abc import Collection
+import re
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from datetime import date
 
@@ -22,6 +23,11 @@ import pandas as pd
 
 # O mesmo corte do Raio-X de 26/10: papel com menos que isto negociado na véspera não entra nas contas.
 LIQUIDEZ_MINIMA = 20_000_000
+# Dia ex de evento societário: a B3 aumenta o número de distribuição (DISMES) do papel a cada evento,
+# inclusive dividendo comum. Medido em 704 pregões (2024 a 2026): o número mudou no dia ex em todos os 60
+# desdobramentos, grupamentos e bonificações da B3; entre os papéis líquidos, a variação mediana no dia da
+# troca é de 1,5% (dividendo). Só a troca com variação de 5% ou mais fica "a conferir" (128 dias em 704).
+VARIACAO_MINIMA_DO_EVENTO = 0.05
 # Mediana de um ou dois papéis não descreve um setor.
 EMPRESAS_POR_SETOR_MINIMO = 3
 MAIORES_POR_LISTA = 5
@@ -43,6 +49,21 @@ FONTE_DO_DOLAR = (
 )
 FONTE_DOS_SETORES = FONTE_DAS_ACOES + "; setor do Formulário Cadastral (FCA) da CVM"
 
+# Os papéis do relatório: ações e units da B3 do catálogo de ativos.
+BOLSA_DOS_PAPEIS = "B3"
+TIPOS_DE_PAPEL = ("Ação", "Unit")
+SEM_SETOR = "Sem setor"
+# O FCA põe as holdings num setor "Emp. Adm. Part. - <setor>": vale o setor de baixo.
+PREFIXO_DO_SETOR_DE_HOLDING = "Emp. Adm. Part. - "
+# Nomes do FCA abreviados demais para uma tabela pública.
+SETORES_ABREVIADOS = {
+    "Const. Civil, Mat. Const. e Decoração": "Construção Civil, Mat. Constr. e Decoração",
+    "Máqs., Equip., Veíc. e Peças": "Máquinas, Equipamentos, Veículos e Peças",
+}
+_SOCIEDADE_E_CLASSE_NO_FIM = re.compile(
+    r"\s+(?:S[./]?[Aa]\.?\s*)?(?:ON|PN[AB]?|UNT|UNIT)?$"
+)
+
 
 class FaltaNoBoletimError(ValueError):
     """Um número de que o relatório precisa não está nos arquivos do dia."""
@@ -59,7 +80,82 @@ class EntradasDoPregao:
     contratos: pd.DataFrame  # código → `ajuste` e `ajuste_vespera` (boletim PR)
 
 
+# --- os papéis -----------------------------------------------------------------------------------
+
+
+def nome_do_catalogo_sem_classe(nome: str) -> str:
+    """O nome do catálogo sem o "S.A." e sem a classe do papel ("Renova Energia S.A. PN" → "Renova
+    Energia"): é o que aparece quando o papel não tem nome curto."""
+    return _SOCIEDADE_E_CLASSE_NO_FIM.sub("", nome.strip()).strip()
+
+
+def _setor_para_a_tabela(setor: str) -> str:
+    setor = setor.removeprefix(PREFIXO_DO_SETOR_DE_HOLDING)
+    return SETORES_ABREVIADOS.get(setor, setor)
+
+
+def tabela_de_papeis(
+    catalogo: pd.DataFrame,
+    tickers: pd.DataFrame,
+    cadastro: pd.DataFrame,
+    nomes_curtos: Mapping[str, str],
+    ate: date,
+) -> pd.DataFrame:
+    """Código, CNPJ, nome da empresa e setor de cada ação e unit da B3, com o que era público em `ate`.
+
+    - `catalogo`: o catálogo de ativos (`codigo` da B3, `nome`, `bolsa`, `tipo`);
+    - `tickers`: código → CNPJ do FCA (`codigo`, `cnpj`, `inicio_negociacao`, `fim_negociacao`); vale o
+      papel ainda negociado;
+    - `cadastro`: o FCA geral (`cnpj`, `setor`, `conhecido_em`); vale a última versão conhecida até
+      `ate`, para o setor não vir do futuro;
+    - `nomes_curtos`: código → nome pelo qual a empresa é conhecida (`conteudo/nomes_curtos_b3.csv`).
+    """
+    acoes = catalogo[
+        (catalogo["bolsa"] == BOLSA_DOS_PAPEIS) & catalogo["tipo"].isin(TIPOS_DE_PAPEL)
+    ]
+    negociados = tickers[tickers["fim_negociacao"].isna()].assign(
+        simbolo=lambda t: t["codigo"].str.strip().str.upper()
+    )
+    negociados = negociados.sort_values("inicio_negociacao").drop_duplicates(
+        "simbolo", keep="last"
+    )
+    conhecido = cadastro[pd.to_datetime(cadastro["conhecido_em"]) <= pd.Timestamp(ate)]
+    setores = conhecido.sort_values("conhecido_em").drop_duplicates("cnpj", keep="last")
+    papeis = (
+        acoes[["codigo", "nome"]]
+        .rename(columns={"codigo": "simbolo"})
+        .merge(negociados[["simbolo", "cnpj"]], on="simbolo")
+    )
+    papeis = papeis.merge(setores[["cnpj", "setor"]], on="cnpj", how="left")
+    papeis["setor"] = papeis["setor"].fillna(SEM_SETOR).map(_setor_para_a_tabela)
+    papeis["empresa"] = papeis["simbolo"].map(nomes_curtos)
+    sem_nome_curto = papeis["empresa"].isna()
+    papeis.loc[sem_nome_curto, "empresa"] = papeis.loc[sem_nome_curto, "nome"].map(
+        nome_do_catalogo_sem_classe
+    )
+    return papeis[["simbolo", "cnpj", "empresa", "setor"]].reset_index(drop=True)
+
+
 # --- as ações ------------------------------------------------------------------------------------
+
+
+def codigos_com_evento(vespera: pd.DataFrame, dia: pd.DataFrame) -> set[str]:
+    """Os papéis em dia ex de evento societário com preço que andou: número de distribuição novo e
+    variação de pelo menos `VARIACAO_MINIMA_DO_EVENTO`.
+
+    A B3 muda o número a cada evento (desdobramento, grupamento, bonificação, provento) e o COTAHIST
+    não ajusta o preço, então a variação desses papéis não é comparável. Sem a troca do número a queda
+    é de verdade, por maior que seja: no circuit breaker de 26/10/2026, MGLU3 caiu 58%.
+    """
+    juntos = dia[["fechamento", "distribuicao"]].join(
+        vespera[["fechamento", "distribuicao"]], rsuffix="_vespera", how="inner"
+    )
+    juntos = juntos[(juntos["fechamento_vespera"] > 0) & (juntos["fechamento"] > 0)]
+    variacao = juntos["fechamento"] / juntos["fechamento_vespera"] - 1
+    evento = (juntos["distribuicao"] != juntos["distribuicao_vespera"]) & (
+        variacao.abs() >= VARIACAO_MINIMA_DO_EVENTO
+    )
+    return set(juntos.index[evento])
 
 
 def variacoes_das_empresas(
@@ -71,10 +167,8 @@ def variacoes_das_empresas(
     """Uma linha por empresa: o papel mais negociado na véspera, com o fechamento dos dois dias, a
     variação (fração), os volumes (reais) e se a variação está "a conferir".
 
-    `com_evento_no_dia`: os códigos com desdobramento ou grupamento "ex" no dia (cadastro de eventos
-    da B3). O COTAHIST não ajusta o preço, então a variação desses papéis não é comparável: ficam "a
-    conferir" e fora das contas. O tamanho da variação não basta para isso: no circuit breaker de
-    26/10/2026, MGLU3 caiu 58% de verdade.
+    `com_evento_no_dia`: a saída de `codigos_com_evento`. Esses papéis ficam "a conferir" e fora das
+    contas.
     """
     em_reais = {"volume_financeiro": "volume"}
     precos = papeis.merge(

@@ -332,3 +332,153 @@ def test_resumo_vira_json(tabela: pd.DataFrame) -> None:
         )
     )
     assert json.loads(json.dumps(resumo)) == resumo
+
+
+# --- dia ex de evento (número de distribuição) ----------------------------------------------------
+
+
+def _com_distribuicao(linhas: dict[str, tuple[float, str]]) -> pd.DataFrame:
+    """Código → fechamento e número de distribuição (DISMES), como o COTAHIST traz."""
+    tabela = pd.DataFrame(
+        [(s, p, d) for s, (p, d) in linhas.items()],
+        columns=["simbolo", "fechamento", "distribuicao"],
+    )
+    return tabela.set_index("simbolo")
+
+
+def test_evento_e_numero_de_distribuicao_novo_com_preco_que_andou() -> None:
+    vespera = _com_distribuicao(
+        {
+            "DESD3": (100.0, "101"),
+            "GRUP3": (1.0, "101"),
+            "BONI3": (100.0, "101"),
+            "NO5P3": (100.0, "101"),
+            "DIVD3": (100.0, "101"),
+            "MGLU3": (10.0, "101"),
+            "OUTR3": (50.0, "101"),
+            "NOVO3": (100.0, "101"),
+        }
+    )
+    dia = _com_distribuicao(
+        {
+            "DESD3": (10.0, "102"),  # desdobramento de 1 para 10
+            "GRUP3": (10.0, "102"),  # grupamento de 10 para 1
+            "BONI3": (91.0, "102"),  # bonificação de 10%
+            "NO5P3": (95.0, "102"),  # exatamente no corte
+            "DIVD3": (98.5, "102"),  # dividendo comum
+            "MGLU3": (4.2, "101"),  # queda de 58% de verdade
+            "OUTR3": (52.0, "101"),
+            "NOVO3": (100.0, "101"),
+        }
+    )
+    assert pregao.codigos_com_evento(vespera, dia) == {
+        "DESD3",
+        "GRUP3",
+        "BONI3",
+        "NO5P3",
+    }
+
+
+def test_papel_que_so_aparece_num_dos_dias_nao_e_evento() -> None:
+    vespera = _com_distribuicao({"VELH3": (10.0, "101")})
+    dia = _com_distribuicao({"ESTR3": (5.0, "101")})
+    assert pregao.codigos_com_evento(vespera, dia) == set()
+
+
+def test_preco_zerado_nao_conta_como_evento() -> None:
+    vespera = _com_distribuicao({"ZERO3": (0.0, "101")})
+    dia = _com_distribuicao({"ZERO3": (10.0, "102")})
+    assert pregao.codigos_com_evento(vespera, dia) == set()
+
+
+# --- a tabela de papéis ---------------------------------------------------------------------------
+
+CATALOGO = pd.DataFrame(
+    [
+        ("PETR4.SA", "PETR4", "Petroleo Brasileiro S.A. Petrobras PN", "B3", "Ação"),
+        ("BPAC11.SA", "BPAC11", "Banco Btg Pactual S.A. UNT", "B3", "Unit"),
+        ("RNEW4.SA", "RNEW4", "Renova Energia S.A. PN", "B3", "Ação"),
+        ("SEMC3.SA", "SEMC3", "Sem Cadastro S.A. ON", "B3", "Ação"),
+        ("SEMT3.SA", "SEMT3", "Saiu Da Bolsa S.A. ON", "B3", "Ação"),
+        ("HGLG11.SA", "HGLG11", "Fundo Imobiliario", "B3", "FII"),
+        ("AAPL", "AAPL", "Apple Inc", "NASDAQ", "Ação"),
+    ],
+    columns=["simbolo", "codigo", "nome", "bolsa", "tipo"],
+)
+TICKERS = pd.DataFrame(
+    [
+        (" petr4 ", "11", "2000-01-01", None),
+        ("BPAC11", "22", "2012-04-26", None),
+        ("RNEW4", "99", "1990-01-01", "2009-12-31"),
+        ("RNEW4", "33", "2010-07-01", None),
+        ("SEMC3", "44", "2020-01-01", None),
+        ("SEMT3", "55", "2000-01-01", "2020-01-01"),
+        ("HGLG11", "66", "2010-01-01", None),
+    ],
+    columns=["codigo", "cnpj", "inicio_negociacao", "fim_negociacao"],
+)
+CADASTRO = pd.DataFrame(
+    [
+        ("11", "Petróleo e Gás", "2026-01-10"),
+        ("11", "Setor do Futuro", "2026-10-27"),
+        ("22", "Emp. Adm. Part. - Bancos", "2026-01-10"),
+        ("33", "Energia Elétrica", "2025-01-10"),
+        ("33", "Máqs., Equip., Veíc. e Peças", "2026-10-26"),
+    ],
+    columns=["cnpj", "setor", "conhecido_em"],
+)
+NOMES_CURTOS = {"PETR4": "Petrobras", "BPAC11": "BTG Pactual"}
+
+
+@pytest.fixture
+def papeis() -> pd.DataFrame:
+    return pregao.tabela_de_papeis(
+        CATALOGO, TICKERS, CADASTRO, NOMES_CURTOS, ate=date(2026, 10, 26)
+    ).set_index("simbolo")
+
+
+def test_papeis_sao_acoes_e_units_da_b3_ainda_negociadas(papeis: pd.DataFrame) -> None:
+    assert set(papeis.index) == {"PETR4", "BPAC11", "RNEW4", "SEMC3"}
+
+
+def test_cnpj_e_o_do_codigo_ainda_negociado(papeis: pd.DataFrame) -> None:
+    assert papeis.loc["PETR4", "cnpj"] == "11"
+    assert papeis.loc["RNEW4", "cnpj"] == "33"
+
+
+def test_setor_sem_olhar_o_futuro(papeis: pd.DataFrame) -> None:
+    assert papeis.loc["PETR4", "setor"] == "Petróleo e Gás"
+
+
+def test_setor_de_holding_e_nome_abreviado_viram_nome_da_tabela(
+    papeis: pd.DataFrame,
+) -> None:
+    assert papeis.loc["BPAC11", "setor"] == "Bancos"
+    assert papeis.loc["RNEW4", "setor"] == "Máquinas, Equipamentos, Veículos e Peças"
+    assert papeis.loc["SEMC3", "setor"] == pregao.SEM_SETOR
+
+
+def test_nome_curto_ou_nome_do_catalogo_sem_classe(papeis: pd.DataFrame) -> None:
+    assert papeis.loc["PETR4", "empresa"] == "Petrobras"
+    assert papeis.loc["RNEW4", "empresa"] == "Renova Energia"
+
+
+@pytest.mark.parametrize(
+    ("nome", "esperado"),
+    [
+        ("Renova Energia S.A. PN", "Renova Energia"),
+        ("Cpfl Energia S.A.", "Cpfl Energia"),
+        ("Tim S.A. ON", "Tim"),
+        ("Allos S.a ON", "Allos"),
+        ("Lojas Quero-quero S/A ON", "Lojas Quero-quero"),
+        ("Braskem S.A. PNA", "Braskem"),
+        ("Brbi Br Partners S.A. UNT", "Brbi Br Partners"),
+        (
+            "Hapvida Participacoes E Investimentos SA ON",
+            "Hapvida Participacoes E Investimentos",
+        ),
+        ("Log Commercial Properties", "Log Commercial Properties"),
+    ],
+)
+def test_nome_do_catalogo_sem_classe(nome: str, esperado: str) -> None:
+    assert pregao.nome_do_catalogo_sem_classe(nome) == esperado
