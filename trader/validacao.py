@@ -170,3 +170,36 @@ def bootstrap_diferenca_de_sharpe(
         "dias": n,
         "sorteios": len(diferencas),
     }
+
+
+def bootstrap_do_sharpe(
+    serie: pd.Series,
+    bloco: int = BLOCO_DO_BOOTSTRAP,
+    sorteios: int = SORTEIOS_DO_BOOTSTRAP,
+    semente: int = 0,
+    dias_por_ano: int = 252,
+) -> dict:
+    """Sharpe de uma série só, com intervalo de 90% por bootstrap em blocos.
+
+    Para a régua sem risco (o CDI): o excesso dela é zero, então a diferença de Sharpes vira o
+    Sharpe do excesso do candidato.
+    """
+    valores = serie.dropna().to_numpy(dtype=float)
+    n = len(valores)
+    if n < 2 * bloco:
+        raise ValueError("Poucos dias para o bootstrap.")
+    gerador = np.random.default_rng(semente)
+    blocos_por_amostra = int(np.ceil(n / bloco))
+    sharpes = np.empty(sorteios)
+    for i in range(sorteios):
+        inicios = gerador.integers(0, n, blocos_por_amostra)
+        indices = ((inicios[:, None] + np.arange(bloco)) % n).ravel()[:n]
+        sharpes[i] = _sharpe(valores[indices], dias_por_ano)
+    sharpes = sharpes[~np.isnan(sharpes)]
+    return {
+        "sharpe": _sharpe(valores, dias_por_ano),
+        "ic90_inferior": float(np.percentile(sharpes, 5)),
+        "ic90_superior": float(np.percentile(sharpes, 95)),
+        "dias": n,
+        "sorteios": len(sharpes),
+    }

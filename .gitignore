@@ -47,3 +47,5 @@ dados_p2/
 
 # Registro de tentativas e relatórios da Pesquisa 2 (fora do Git, como a pesquisa_m2/)
 pesquisa_p2/
+# Registro, cache e relatórios das estratégias quant P0 (pesquisa_quant/, fora do Git como as outras)
+pesquisa_quant/

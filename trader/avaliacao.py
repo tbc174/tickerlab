@@ -154,3 +154,31 @@ def resumir_carteira(retornos: dict[str, pd.Series]) -> dict:
             str(participacao.idxmax()) if participacao.notna().any() else None
         ),
     }
+
+
+def defasagens_de_newey_west(n: int) -> int:
+    """Quantas defasagens a correção de Newey-West usa: floor(4 (n/100)^(2/9))."""
+    return int(np.floor(4 * (n / 100) ** (2 / 9)))
+
+
+def t_estatistica_corrigida(retorno: pd.Series, defasagens: int | None = None) -> float:
+    """t-estatística da média com a correção de Lo (variância de longo prazo de Newey-West).
+
+    Retornos com autocorrelação positiva têm menos informação do que parecem; a variância da
+    média é inflada pelas autocovariâncias com pesos de Bartlett. Com `defasagens=0` é a t comum.
+    """
+    r = retorno.dropna().to_numpy(dtype=float)
+    n = len(r)
+    if n < 2 or r.std(ddof=1) == 0:
+        return NAN
+    q = defasagens_de_newey_west(n) if defasagens is None else defasagens
+    desvios = r - r.mean()
+    autocovariancia = [
+        float(desvios[k:] @ desvios[: n - k]) / (n - 1) for k in range(q + 1)
+    ]
+    variancia = autocovariancia[0] + 2 * sum(
+        (1 - k / (q + 1)) * autocovariancia[k] for k in range(1, q + 1)
+    )
+    if variancia <= 0:
+        return NAN
+    return float(r.mean() / np.sqrt(variancia / n))
