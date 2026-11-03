@@ -2,8 +2,9 @@
 
 Revogar a chave, suspender a organização, suspender um conjunto para todos e a rotação com prazo, cada
 um conferido no app de verdade, em cada rota de `/data/v1`, no pedido seguinte (sem esperar cache nem
-reinício). As rotas de dado (PR 3 a 5) entram em `ROTAS` quando chegarem; até lá, o conjunto suspenso
-é conferido também no `acesso.autorizar`, que é por onde elas vão passar.
+reinício). As rotas de dado conferem os mesmos botões nos próprios testes (os fundos em
+`test_api_externa_fundos.py`, que precisa da base de exemplo); aqui, o conjunto suspenso é conferido
+também no `acesso.autorizar`, por onde todas elas passam.
 """
 
 from datetime import timedelta
