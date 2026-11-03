@@ -197,8 +197,91 @@ class LinhaDeDireito(NamedTuple):
     tabelas: tuple[str, ...] = ()
 
 
-# Nenhum campo sai ainda: a B-32 escreve aqui cada campo que a rota externa servir, com a prova.
-DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = ()
+# B-32a: o beta da API externa (A5 do lançamento API primeiro)
+BETA_COMECA_EM = date(2026, 11, 3)
+_PROVA_CVM = "ADR 0108 D2.2 e D3: dados abertos da CVM, ODbL, revenda com atribuição"
+
+
+def _campos(
+    fontes: tuple[str, ...],
+    conjunto: str,
+    tabelas: tuple[str, ...],
+    campos: tuple[str, ...],
+    prova: str,
+) -> tuple[LinhaDeDireito, ...]:
+    """Uma linha por fonte e campo: fato de empresa, para análise, pela API externa, desde o beta."""
+    return tuple(
+        LinhaDeDireito(
+            fonte,
+            conjunto,
+            campo,
+            Canal.API_EXTERNA,
+            Finalidade.ANALISE,
+            Categoria.FATO_DE_PJ,
+            BETA_COMECA_EM,
+            prova,
+            tabelas=tabelas,
+        )
+        for fonte in fontes
+        for campo in campos
+    )
+
+
+# Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
+# (D10, `base/prontidao.py`). O conjunto de empresas (Receita) entra com a rota dele: as tabelas do CNPJ
+# têm uma linha por CNPJ, MEI e empresário individual inclusive, e só a rota tira por linha quem é
+# pessoa (ADR 0106); a linha de direito vale para o campo inteiro e não sabe fazer esse corte.
+DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
+    *_campos(
+        ("cvm-hist-dfp", "cvm-hist-itr"),
+        "financials",
+        ("demonstracoes_como_era",),
+        (
+            "demonstracao",
+            "grupo",
+            "conta",
+            "descricao",
+            "valor",
+            "inicio",
+            "fim",
+            "documento",
+            "referencia",
+            "versao",
+            "origem",
+            "ate",
+        ),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-cadastros",),
+        "funds",
+        ("cadastro_de_fundos",),
+        (
+            "nome",
+            "classe",
+            "situacao",
+            "taxa_administracao_pct_ao_ano",
+            "texto_taxa_administracao",
+            "taxa_performance_pct",
+            "texto_taxa_performance",
+            "patrimonio_liquido",
+            "data_do_patrimonio_liquido",
+            # o custo da taxa: conta nossa sobre o cadastro (o raio-x do fundo)
+            "sem_taxa",
+            "com_taxa",
+            "ficou_com_a_taxa",
+            "fracao_do_resultado",
+        ),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-cda", "cvm-cda-recente"),
+        "funds",
+        ("carteiras_dos_fundos",),
+        ("competencia", "codigo", "isin", "emissor", "tipo", "quantidade", "valor"),
+        _PROVA_CVM,
+    ),
+)
 
 
 class Pedido(NamedTuple):

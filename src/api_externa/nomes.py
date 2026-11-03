@@ -10,7 +10,7 @@ Identificadores que já são os mesmos nas duas línguas (o CNPJ) passam como es
 
 from collections.abc import Mapping
 
-IDENTIFICADORES = frozenset({"cnpj", "cnpjs"})
+IDENTIFICADORES = frozenset({"cnpj", "cnpjs", "isin"})
 
 NOMES_DE_FORA: Mapping[str, str] = {
     # os tempos (D6)
@@ -52,6 +52,37 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "itens": "items",
     "situacao_do_item": "status",
     "maximo_do_lote": "max_batch_size",
+    # Os campos dos conjuntos. A tradução vale para a coluna em toda tabela: nome genérico ("situacao",
+    # "tipo", "inicio") ganha nome de fora genérico, e o sentido de cada um vai no catálogo do conjunto.
+    # financials: as demonstrações como eram em cada entrega
+    "demonstracao": "statement",
+    "grupo": "group",
+    "conta": "account",
+    "descricao": "description",
+    "inicio": "start",
+    "fim": "end",
+    "documento": "document",
+    "origem": "origin",
+    "ate": "valid_until",
+    # funds: o cadastro, o custo da taxa e a carteira
+    "nome": "name",
+    "classe": "class",
+    "situacao": "state",
+    "taxa_administracao_pct_ao_ano": "management_fee_pct_per_year",
+    "texto_taxa_administracao": "management_fee_note",
+    "taxa_performance_pct": "performance_fee_pct",
+    "texto_taxa_performance": "performance_fee_note",
+    "patrimonio_liquido": "net_assets",
+    "data_do_patrimonio_liquido": "net_assets_date",
+    "sem_taxa": "without_fee",
+    "com_taxa": "with_fee",
+    "ficou_com_a_taxa": "fee_amount",
+    "fracao_do_resultado": "fee_share_of_return",
+    "competencia": "reporting_month",
+    "codigo": "code",
+    "emissor": "issuer",
+    "tipo": "kind",
+    "quantidade": "quantity",
 }
 
 

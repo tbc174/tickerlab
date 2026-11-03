@@ -2601,6 +2601,85 @@ Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tip
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `processos_comunicacoes`
+
+Processos judiciais por companhia aberta: as comunicações. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
+
+- **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais (`base/arquivo/djen.py`, `base/processos.py`)
+- **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
+- **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `id_na_fonte`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2025-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_comunicacoes/djen.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O `hash` da comunicação no DJEN (único) | texto |
+| `id_djen` | O número da comunicação na API do DJEN | número inteiro |
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `ano_do_processo` | Ano em que o processo foi ajuizado (o AAAA do número) | ano |
+| `justica` | Segmento da Justiça pelo número (Estadual, Federal, STJ...) | texto |
+| `tribunal` | Sigla do tribunal (TJSP, TRF3, STJ...) | texto |
+| `orgao` | Vara, câmara ou turma que publicou, em maiúsculas | texto |
+| `classe_codigo` | Código da classe processual nas tabelas do CNJ | texto |
+| `classe` | Classe processual (procedimento comum, execução fiscal...) | texto |
+| `tipo_comunicacao` | Intimação, citação, edital... | texto |
+| `tipo_documento` | Despacho, decisão, sentença, acórdão... | texto |
+| `meio` | Meio da comunicação, como o DJEN escreve | texto |
+| `link` | Endereço do documento no sistema do tribunal | texto |
+| `cancelada_em` | Dia em que o tribunal cancelou a comunicação (vazio: não cancelada); antes dele, valia | data (dia) |
+| `companhias` | Quantas partes são companhias abertas ligadas ao CNPJ | número inteiro |
+| `orgaos_publicos` | Quantas partes são órgãos públicos | número inteiro |
+| `pessoas_juridicas` | Quantas partes são outras empresas (ou nome de mais de uma companhia do cadastro) | número inteiro |
+| `pessoas_ou_desconhecidas` | Quantas partes são pessoas ou não têm tipo claro | número inteiro |
+| `advogados` | Quantos advogados a comunicação cita (os nomes não entram) | número inteiro |
+| `disponivel_em` | Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base | data (dia) |
+| `visto_em` | Dia da consulta guardada que trouxe esta versão da linha | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `processos_partes`
+
+Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
+
+- **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais (`base/arquivo/djen.py`, `base/processos.py`)
+- **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
+- **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `id_na_fonte`, `polo`, `parte`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2025-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_partes/djen.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O `hash` da comunicação (liga a `processos_comunicacoes`) | texto |
+| `numero_processo` | Número único do processo (CNJ) | texto |
+| `polo` | `ativo` (autor), `passivo` (réu) ou `outro` | texto |
+| `tipo_parte` | `companhia` ou `orgao_publico` | texto |
+| `parte` | Quem é a parte: o `cnpj` da companhia ou o `orgao_publico` | texto |
+| `cnpj` | CNPJ da companhia (14 caracteres, sem pontuação); vazio no órgão público | texto |
+| `empresa` | Razão social da companhia no cadastro da CVM | texto |
+| `orgao_publico` | Nome do órgão público, normalizado (maiúsculas, sem acento) | texto |
+| `disponivel_em` | Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base | data (dia) |
+| `visto_em` | Dia da consulta guardada que trouxe esta versão da linha | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `anvisa_registros`
 
 Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados (medicamentos, saneantes, cosméticos, produtos para saúde e alimentos). Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.

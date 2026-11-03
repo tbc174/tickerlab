@@ -1109,6 +1109,21 @@
     },
     {
       "coletas": [
+        "djen-partes"
+      ],
+      "familia": "djen",
+      "licencas": [
+        "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho"
+      ],
+      "link": "https://comunica.pje.jus.br/",
+      "marca": "a_confirmar",
+      "orgao": "CNJ (Diário de Justiça Eletrônico Nacional)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
         "epe-consumo-mensal"
       ],
       "familia": "epe",
@@ -1940,6 +1955,17 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2025-01-01",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CNJ",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
       "modulos": [
@@ -2169,7 +2195,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 20
+      "tabelas": 22
     },
     {
       "chave": "credito_e_fidc",
@@ -4315,6 +4341,13 @@
       "termos_lidos_em": "2026-10-18"
     },
     {
+      "id": "djen-partes",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
       "id": "bcb-mercado-imobiliario",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "marca": "vendavel",
@@ -6176,6 +6209,26 @@
       "tabela": "ans_penalidades"
     },
     {
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "frase": "Processos judiciais por companhia aberta: as comunicações.",
+      "frequencia": "Semanal",
+      "historico_desde": "2025-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CNJ",
+      "situacao": "em consulta",
+      "tabela": "processos_comunicacoes"
+    },
+    {
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "frase": "Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo.",
+      "frequencia": "Semanal",
+      "historico_desde": "2025-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CNJ",
+      "situacao": "em consulta",
+      "tabela": "processos_partes"
+    },
+    {
       "atraso": null,
       "frase": "Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados.",
       "frequencia": "Mensal",
@@ -6617,11 +6670,11 @@
     }
   ],
   "totais": {
-    "familias": 100,
-    "familias_em_uso": 37,
-    "fontes": 30,
-    "fontes_em_consulta": 8,
+    "familias": 101,
+    "familias_em_uso": 38,
+    "fontes": 31,
+    "fontes_em_consulta": 9,
     "modulos": 6,
-    "tabelas": 113
+    "tabelas": 115
   }
 }
