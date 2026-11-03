@@ -1,6 +1,7 @@
-"""Processos judiciais por CNPJ (plano de 03/11/2026, PR 1; ADR 0121): as comunicações do DJEN que o
-arquivista guardou (`base/arquivo/djen.py`) nas tabelas `processos_comunicacoes` (uma linha por
-comunicação) e `processos_partes` (as companhias abertas e os órgãos públicos de cada uma).
+"""Processos judiciais por CNPJ (plano de 03/11/2026, PRs 1 e 1b; ADR 0121): as comunicações do DJEN
+que o arquivista guardou (`base/arquivo/djen.py`) nas tabelas `processos_comunicacoes` (uma linha por
+comunicação), `processos_partes` (as companhias abertas e os órgãos públicos de cada uma) e `processos`
+(uma linha por processo, com a classe pela TPU do CNJ, `base/tpu.py`).
 
 Lê só o que já está no acervo (não baixa nada).
 
@@ -19,6 +20,13 @@ Lê só o que já está no acervo (não baixa nada).
   antes dela, a comunicação valia.
 - A mesma comunicação achada em duas consultas (a semana e o mês do histórico) fica uma vez só, com o
   que a consulta mais recente disse.
+- **Achada pelo número** (`achada_por`, o segundo passo, `djen-processos`): a comunicação do processo
+  que não intima a companhia fica quando outra comunicação do mesmo processo já a liga a uma companhia.
+  Ela só vale (`disponivel_em`) a partir dessa ligação: antes, nada público dizia que o processo era de
+  uma companhia. O dia em que saiu no DJEN fica em `disponibilizada_em`.
+- **A tabela `processos`** guarda só o que a primeira comunicação diz (tribunal, órgão, classe) e o
+  dia da ligação: o que muda com o tempo (a classe que vira cumprimento de sentença, a última
+  comunicação) se lê nas comunicações.
 
 Limites: a busca é pelo nome, então processo em que a companhia aparece com outro nome (sigla, nome
 antigo) não vem; companhia fechada e controlada sem registro na CVM ficam de fora; o histórico começa
@@ -36,7 +44,7 @@ from typing import Any
 import pandas as pd
 import sqlalchemy as sa
 
-from base import numero_cnj
+from base import numero_cnj, tpu
 from base import retratos as motor
 from base.arquivo import djen
 from base.cadastro import cadastro_do_acervo
@@ -46,6 +54,10 @@ from src.versao_do_codigo import versao_do_codigo
 
 TABELA_DAS_COMUNICACOES = "processos_comunicacoes"
 TABELA_DAS_PARTES = "processos_partes"
+TABELA_DOS_PROCESSOS = "processos"
+ACHADA_PELO_NOME = "nome"
+ACHADA_PELO_NUMERO = "numero"
+SEPARADOR_DO_CAMINHO = " > "
 JA_MONTADO = {"ja_montado": 1}
 
 COMPANHIA = "companhia"
@@ -100,6 +112,8 @@ COLUNAS_DAS_COMUNICACOES = [
     "pessoas_juridicas",
     "pessoas_ou_desconhecidas",
     "advogados",
+    "achada_por",
+    "disponibilizada_em",
     "disponivel_em",
     "visto_em",
 ]
@@ -115,14 +129,36 @@ COLUNAS_DAS_PARTES = [
     "disponivel_em",
     "visto_em",
 ]
+COLUNAS_DOS_PROCESSOS = [
+    "numero_processo",
+    "ano_do_processo",
+    "justica",
+    "tribunal",
+    "orgao",
+    "classe_codigo",
+    "classe",
+    "classe_tpu",
+    "classe_caminho",
+    "ramo",
+    "primeira_comunicacao",
+    "disponivel_em",
+    "visto_em",
+]
 ORDEM_DAS_COMUNICACOES = ["disponivel_em", "id_na_fonte"]
+ORDEM_DOS_PROCESSOS = ["disponivel_em", "numero_processo"]
 ORDEM_DAS_PARTES = [
     "disponivel_em",
     "id_na_fonte",
     "polo",
     "parte",
 ]
-DATAS = ["cancelada_em", "disponivel_em", "visto_em"]
+DATAS = [
+    "cancelada_em",
+    "disponibilizada_em",
+    "primeira_comunicacao",
+    "disponivel_em",
+    "visto_em",
+]
 
 
 def normalizar_nome(nome: object) -> str:
@@ -226,6 +262,8 @@ def _comunicacao(
         "pessoas_juridicas": int((tipos == PESSOA_JURIDICA).sum()),
         "pessoas_ou_desconhecidas": int((tipos == PESSOA_OU_DESCONHECIDA).sum()),
         "advogados": int(item.get("quantidade_de_advogados") or 0),
+        "achada_por": item.get("_achada_por", ACHADA_PELO_NOME),
+        "disponibilizada_em": disponibilizada,
         "disponivel_em": min(disponibilizada, visto_em)
         if disponibilizada
         else visto_em,
@@ -233,11 +271,15 @@ def _comunicacao(
     }
 
 
-def ler_consulta(retrato: motor.Retrato) -> list[dict[str, Any]]:
-    """As comunicações de uma consulta guardada, com o dia e a origem do retrato."""
+def ler_consulta(
+    retrato: motor.Retrato, achada_por: str = ACHADA_PELO_NOME
+) -> list[dict[str, Any]]:
+    """As comunicações de uma consulta guardada, com o dia, a origem do retrato e se a consulta foi
+    pelo nome ou pelo número."""
     conteudo = json.loads(motor.original(retrato.caminho))
     carimbo = {
         "_visto_em": pd.Timestamp(retrato.dia),
+        "_achada_por": achada_por,
         "origem_sha256": retrato.sha256,
         "origem_coletada_em": pd.Timestamp(retrato.baixado_em).isoformat(),
     }
@@ -245,11 +287,19 @@ def ler_consulta(retrato: motor.Retrato) -> list[dict[str, Any]]:
 
 
 def sem_repetidas(itens: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Uma vez cada comunicação (pelo `hash`), com o que a consulta mais recente disse."""
+    """Uma vez cada comunicação (pelo `hash`), com o que a consulta mais recente disse; achada pelo
+    nome se alguma consulta pelo nome a achou."""
     ultima: dict[str, dict[str, Any]] = {}
+    pelo_nome: set[str] = set()
     for item in sorted(itens, key=lambda i: i["_visto_em"]):
-        ultima[str(item.get("hash") or item.get("id"))] = item
-    return list(ultima.values())
+        chave = str(item.get("hash") or item.get("id"))
+        ultima[chave] = item
+        if item.get("_achada_por", ACHADA_PELO_NOME) == ACHADA_PELO_NOME:
+            pelo_nome.add(chave)
+    return [
+        {**item, "_achada_por": ACHADA_PELO_NOME} if chave in pelo_nome else item
+        for chave, item in ultima.items()
+    ]
 
 
 def tabelas(
@@ -257,10 +307,17 @@ def tabelas(
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, int]]:
     """As comunicações e as partes, e quantas saíram por cada motivo."""
     contagem = dict.fromkeys(
-        ("lidas", "do_trabalho", "numero_invalido", "sem_companhia", "homonimos"), 0
+        (
+            "lidas",
+            "do_trabalho",
+            "numero_invalido",
+            "sem_companhia",
+            "ligadas_pelo_processo",
+            "homonimos",
+        ),
+        0,
     )
-    comunicacoes: list[dict[str, Any]] = []
-    linhas_das_partes: list[dict[str, Any]] = []
+    validas: list[tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]] = []
     for item in sem_repetidas(itens):
         contagem["lidas"] += 1
         if djen.da_justica_do_trabalho(item):
@@ -277,11 +334,20 @@ def tabelas(
             for d in item.get("destinatarios") or []
             if razoes.get(normalizar_nome(d.get("nome")), ()) is None
         )
-        if not any(p["tipo_parte"] == COMPANHIA for p in partes):
-            contagem["sem_companhia"] += 1
-            continue
         linha = _comunicacao(item, numero, partes, item["_visto_em"])
         linhagem = {c: item[c] for c in ("origem_sha256", "origem_coletada_em")}
+        validas.append((linha, partes, linhagem))
+    ligacao = _dia_da_ligacao(linha for linha, _, _ in validas)
+    comunicacoes: list[dict[str, Any]] = []
+    linhas_das_partes: list[dict[str, Any]] = []
+    for linha, partes, linhagem in validas:
+        if not linha["companhias"]:
+            ligado_em = ligacao.get(linha["numero_processo"])
+            if ligado_em is None:
+                contagem["sem_companhia"] += 1
+                continue
+            contagem["ligadas_pelo_processo"] += 1
+            linha["disponivel_em"] = max(linha["disponivel_em"], ligado_em)
         comunicacoes.append({**linha, **linhagem})
         comuns = {
             c: linha[c]
@@ -299,6 +365,69 @@ def tabelas(
         linhas_das_partes, columns=[*COLUNAS_DAS_PARTES, *LINHAGEM[:2]]
     ).drop_duplicates()
     return da_comunicacao, das_partes, contagem
+
+
+def _dia_da_ligacao(linhas: Iterable[dict[str, Any]]) -> dict[str, pd.Timestamp]:
+    """Cada processo -> o primeiro dia em que uma comunicação dele saiu com uma companhia entre as
+    partes."""
+    ligacao: dict[str, pd.Timestamp] = {}
+    for linha in linhas:
+        if linha["companhias"]:
+            numero = linha["numero_processo"]
+            ligacao[numero] = min(
+                linha["disponivel_em"], ligacao.get(numero, linha["disponivel_em"])
+            )
+    return ligacao
+
+
+def _classe_pela_tpu(
+    codigo: object, classes: Mapping[int, tpu.Classe] | None
+) -> dict[str, str | None]:
+    numero = str(codigo or "").strip()
+    if classes is None or not numero.isdigit() or int(numero) not in classes:
+        return {"classe_tpu": None, "classe_caminho": None, "ramo": None}
+    return {
+        "classe_tpu": classes[int(numero)].nome,
+        "classe_caminho": SEPARADOR_DO_CAMINHO.join(tpu.caminho(int(numero), classes)),
+        "ramo": tpu.ramo(int(numero), classes),
+    }
+
+
+def tabela_dos_processos(
+    comunicacoes: pd.DataFrame, classes: Mapping[int, tpu.Classe] | None
+) -> pd.DataFrame:
+    """Uma linha por processo: o que a primeira comunicação dele diz, e desde quando vale (a primeira
+    comunicação com uma companhia entre as partes). `classes`: a TPU (`base/tpu.py`); sem ela, a
+    classe fica só com o que o DJEN escreve."""
+    colunas = [*COLUNAS_DOS_PROCESSOS, *LINHAGEM[:2]]
+    if comunicacoes.empty:
+        return pd.DataFrame(columns=colunas)
+    visto = comunicacoes["visto_em"]
+    saiu = comunicacoes["disponibilizada_em"].fillna(visto)
+    em_ordem = comunicacoes.assign(
+        primeira_comunicacao=saiu.where(saiu <= visto, visto)
+    )
+    primeiras = (
+        em_ordem.sort_values(
+            ["primeira_comunicacao", "visto_em", "id_na_fonte"], kind="stable"
+        )
+        .groupby("numero_processo", sort=False)
+        .head(1)
+        .drop(columns=["disponivel_em", "visto_em"])
+    )
+    ligacoes = (
+        em_ordem[em_ordem["companhias"] > 0]
+        .sort_values(["disponivel_em", "visto_em", "id_na_fonte"], kind="stable")
+        .groupby("numero_processo", sort=False)
+        .head(1)[["numero_processo", "disponivel_em", "visto_em"]]
+    )
+    tabela = primeiras.merge(ligacoes, on="numero_processo", how="inner")
+    da_tpu = pd.DataFrame(
+        [_classe_pela_tpu(codigo, classes) for codigo in tabela["classe_codigo"]],
+        columns=["classe_tpu", "classe_caminho", "ramo"],
+        index=tabela.index,
+    )
+    return tabela.assign(**{c: da_tpu[c] for c in da_tpu})[colunas]
 
 
 def _para_gravar(
@@ -321,15 +450,18 @@ def montar(
     cadastro: pd.DataFrame | None = None,
     refazer: bool = False,
 ) -> dict[str, int]:
-    """`<pasta>/processos_comunicacoes/djen.parquet` e `<pasta>/processos_partes/djen.parquet`.
+    """`processos_comunicacoes`, `processos_partes` e `processos` em `<pasta>/<tabela>/djen.parquet`.
 
-    Vazio se nenhuma consulta foi guardada; `JA_MONTADO` se nada mudou desde a última montagem
-    (`refazer` relê mesmo assim). `cadastro`: o da CVM (`base/cadastro.py`); sem ele, o do acervo.
+    Lê as consultas pelo nome (`djen-partes`) e pelo número (`djen-processos`). Vazio se nenhuma
+    consulta pelo nome foi guardada; `JA_MONTADO` se nada mudou desde a última montagem (`refazer`
+    relê mesmo assim). `cadastro`: o da CVM (`base/cadastro.py`); sem ele, o do acervo. A TPU do CNJ
+    (`base/tpu.py`) dá a classe e o ramo; sem ela no acervo, os processos ficam sem o ramo.
     """
-    achados = motor.retratos(conexao, djen.ID)
-    if not achados:
+    pelo_nome = motor.retratos(conexao, djen.ID)
+    if not pelo_nome:
         return {}
-    origens = [{"url": r.url, "sha256": r.sha256} for r in achados]
+    pelo_numero = motor.retratos(conexao, djen.ID_DOS_PROCESSOS)
+    origens = [{"url": r.url, "sha256": r.sha256} for r in (*pelo_nome, *pelo_numero)]
     if cadastro is None:
         do_acervo = cadastro_do_acervo(conexao)
         if do_acervo is None:
@@ -338,17 +470,27 @@ def montar(
             )
         cadastro, origem_do_cadastro = do_acervo
         origens.append(origem_do_cadastro)
+    da_tpu = tpu.classes_do_acervo(conexao)
+    classes = None
+    if da_tpu is not None:
+        classes, origem_da_tpu = da_tpu
+        origens.append(origem_da_tpu)
     destinos = {
-        TABELA_DAS_COMUNICACOES: pasta / TABELA_DAS_COMUNICACOES / "djen",
-        TABELA_DAS_PARTES: pasta / TABELA_DAS_PARTES / "djen",
+        nome: pasta / nome / "djen"
+        for nome in (TABELA_DAS_COMUNICACOES, TABELA_DAS_PARTES, TABELA_DOS_PROCESSOS)
     }
     if not refazer and all(origens_gravadas(d) == origens for d in destinos.values()):
         return JA_MONTADO
-    itens = [item for retrato in achados for item in ler_consulta(retrato)]
+    itens = [
+        *(i for r in pelo_nome for i in ler_consulta(r, ACHADA_PELO_NOME)),
+        *(i for r in pelo_numero for i in ler_consulta(r, ACHADA_PELO_NUMERO)),
+    ]
     comunicacoes, partes, contagem = tabelas(itens, razoes_sociais(cadastro))
+    dos_processos = tabela_dos_processos(comunicacoes, classes)
     for nome, tabela, ordem in (
         (TABELA_DAS_COMUNICACOES, comunicacoes, ORDEM_DAS_COMUNICACOES),
         (TABELA_DAS_PARTES, partes, ORDEM_DAS_PARTES),
+        (TABELA_DOS_PROCESSOS, dos_processos, ORDEM_DOS_PROCESSOS),
     ):
         gravar_se_mudou(
             _para_gravar(tabela, ordem, agora),
@@ -359,7 +501,9 @@ def montar(
         )
     return {
         **contagem,
-        "consultas": len(achados),
+        "consultas": len(pelo_nome) + len(pelo_numero),
         "comunicacoes": len(comunicacoes),
         "partes": len(partes),
+        "processos": len(dos_processos),
+        "sem_ramo": int(dos_processos["ramo"].isna().sum()),
     }

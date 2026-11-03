@@ -2603,9 +2603,9 @@ Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tip
 
 ## `processos_comunicacoes`
 
-Processos judiciais por companhia aberta: as comunicações. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
+Processos judiciais por companhia aberta: as comunicações. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) de um processo em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM ou, depois, pelo número do processo (a que intima só a outra parte). Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
 
-- **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais (`base/arquivo/djen.py`, `base/processos.py`)
+- **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
@@ -2614,7 +2614,7 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 - **Chaves:** `id_na_fonte`
 - **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2025-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/processos_comunicacoes/djen.parquet` (servidor de casa, `scripts/carga_processos.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -2639,7 +2639,9 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 | `pessoas_juridicas` | Quantas partes são outras empresas (ou nome de mais de uma companhia do cadastro) | número inteiro |
 | `pessoas_ou_desconhecidas` | Quantas partes são pessoas ou não têm tipo claro | número inteiro |
 | `advogados` | Quantos advogados a comunicação cita (os nomes não entram) | número inteiro |
-| `disponivel_em` | Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base | data (dia) |
+| `achada_por` | `nome` (a busca pela razão social achou: a companhia está entre as partes) ou `numero` (só a busca pelo número do processo achou) | texto |
+| `disponibilizada_em` | Dia em que a comunicação saiu no DJEN, como o tribunal informou (a achada pelo número pode ter saído antes de `disponivel_em`) | data (dia) |
+| `disponivel_em` | Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base. A achada pelo número vale a partir da primeira comunicação do processo com uma companhia entre as partes | data (dia) |
 | `visto_em` | Dia da consulta guardada que trouxe esta versão da linha | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
@@ -2648,9 +2650,9 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 
 ## `processos_partes`
 
-Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
+Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) de um processo em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM ou, depois, pelo número do processo (a que intima só a outra parte). Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
 
-- **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais (`base/arquivo/djen.py`, `base/processos.py`)
+- **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
@@ -2673,8 +2675,45 @@ Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgã
 | `cnpj` | CNPJ da companhia (14 caracteres, sem pontuação); vazio no órgão público | texto |
 | `empresa` | Razão social da companhia no cadastro da CVM | texto |
 | `orgao_publico` | Nome do órgão público, normalizado (maiúsculas, sem acento) | texto |
-| `disponivel_em` | Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base | data (dia) |
+| `disponivel_em` | Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base. A achada pelo número vale a partir da primeira comunicação do processo com uma companhia entre as partes | data (dia) |
 | `visto_em` | Dia da consulta guardada que trouxe esta versão da linha | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `processos`
+
+Processos judiciais por companhia aberta: uma linha por processo, com o que a primeira comunicação diz e a classe pela TPU do CNJ. A classe é a do começo: a mudança (o cumprimento de sentença, o recurso) está nas comunicações. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) de um processo em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM ou, depois, pelo número do processo (a que intima só a outra parte). Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).
+
+- **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
+- **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
+- **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`
+- **Três datas:** aconteceu_em = `primeira_comunicacao`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2025-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos/djen.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `ano_do_processo` | Ano em que o processo foi ajuizado (o AAAA do número) | ano |
+| `justica` | Segmento da Justiça pelo número (Estadual, Federal, STJ...) | texto |
+| `tribunal` | Sigla do tribunal (TJSP, TRF3, STJ...) | texto |
+| `orgao` | Vara, câmara ou turma da primeira comunicação, em maiúsculas | texto |
+| `classe_codigo` | Código da classe na primeira comunicação (Tabelas Processuais Unificadas do CNJ) | texto |
+| `classe` | Classe da primeira comunicação, como o DJEN escreve | texto |
+| `classe_tpu` | Nome da classe na TPU do CNJ (vazio se a TPU não tem o código) | texto |
+| `classe_caminho` | As classes da TPU da raiz até a desta, separadas por ` > ` | texto |
+| `ramo` | Agrupamento nosso pela classe mais próxima na TPU: execucao_fiscal, insolvencia, coletivo, juizado_especial, criminal, recurso, cumprimento_de_sentenca, execucao, conhecimento (vazio: sem ramo conhecido) | texto |
+| `primeira_comunicacao` | Dia da primeira comunicação do processo no DJEN que a base tem | data (dia) |
+| `disponivel_em` | Dia da primeira comunicação do processo com uma companhia entre as partes: desde quando se sabe que o processo é de uma companhia | data (dia) |
+| `visto_em` | Dia da consulta guardada que trouxe essa comunicação | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |

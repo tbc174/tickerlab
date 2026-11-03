@@ -5,6 +5,7 @@ import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from base.arquivo import djen
@@ -183,3 +184,141 @@ def test_descobrir_a_semana_de_todas_e_o_historico_que_falta(
 def test_descobrir_sem_cadastro_falha():
     with pytest.raises(ErroDeDescoberta, match="cadastro"):
         djen.descobrir(list, frozenset)(Djen({}), AGORA)
+
+
+# o segundo passo: cada processo já ligado a uma companhia, buscado pelo número
+
+OUTRO = "0000003-35.2025.8.26.0100"
+
+
+def _algarismos(numero: str) -> str:
+    return numero.replace("-", "").replace(".", "")
+
+
+def test_a_consulta_do_processo_volta_para_o_numero_e_o_periodo():
+    endereco = djen.consulta_do_processo(ESTADUAL, date(2025, 1, 1), date(2026, 10, 31))
+    assert endereco.startswith(djen.API + "?")
+    assert djen.da_consulta_do_processo(endereco) == (
+        _algarismos(ESTADUAL),
+        date(2025, 1, 1),
+        date(2026, 10, 31),
+    )
+
+
+def test_obter_a_consulta_do_processo_le_as_paginas(tmp_path: Path):
+    inicio, fim = date(2025, 1, 1), date(2026, 10, 31)
+    primeira = djen.consulta_do_processo(ESTADUAL, inicio, fim)
+    segunda = djen.consulta_do_processo(ESTADUAL, inicio, fim, pagina=2)
+    cliente = Djen(
+        {
+            primeira: _corpo([_item(ESTADUAL, "TJSP")] * djen.ITENS_POR_PAGINA, 101),
+            segunda: _corpo([_item(ESTADUAL, "TJSP")], 101),
+        }
+    )
+    destino = tmp_path / "processo.json"
+    djen.obter_consulta(primeira)(cliente, destino)
+
+    guardado = json.loads(destino.read_text(encoding="utf-8"))
+    assert cliente.lidos == [primeira, segunda]
+    assert guardado["consulta"] == {
+        "numero": _algarismos(ESTADUAL),
+        "inicio": "2025-01-01",
+        "fim": "2026-10-31",
+    }
+    assert len(guardado["items"]) == 101
+    assert "ADVOGADO" not in destino.read_text(encoding="utf-8")
+
+
+def test_ultimo_mes_fechado():
+    assert djen.ultimo_mes_fechado(date(2026, 11, 3)) == date(2026, 10, 31)
+    assert djen.ultimo_mes_fechado(date(2026, 3, 1)) == date(2026, 2, 28)
+
+
+def test_descobrir_processos_novos_e_os_que_andaram(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(djen, "HISTORICO_DESDE", date(2025, 1, 1))
+    novo, parado, andou, ainda_no_mes = (
+        ESTADUAL,
+        OUTRO,
+        "0000004-92.2025.8.26.0100",
+        "0000005-49.2025.8.26.0100",
+    )
+    ultima_por_nome = {
+        _algarismos(novo): date(2026, 10, 20),
+        _algarismos(parado): date(2026, 9, 10),  # nada pelo nome depois da consulta
+        _algarismos(andou): date(2026, 10, 5),  # comunicação nova depois da consulta
+        _algarismos(ainda_no_mes): date(2026, 11, 2),  # o mês dela ainda não fechou
+    }
+    setembro = date(2026, 9, 30)
+    guardadas = frozenset(
+        {
+            djen.consulta_do_processo(parado, date(2025, 1, 1), setembro),
+            djen.consulta_do_processo(andou, date(2025, 1, 1), setembro),
+            djen.consulta_do_processo(
+                ainda_no_mes, date(2025, 1, 1), date(2026, 10, 31)
+            ),
+        }
+    )
+    descobrir = djen.descobrir_processos(lambda: ultima_por_nome, lambda: guardadas)
+
+    alvos = [a.url for a in descobrir(Djen({}), AGORA)]
+
+    assert alvos == [
+        djen.consulta_do_processo(novo, date(2025, 1, 1), date(2026, 10, 31)),
+        djen.consulta_do_processo(andou, date(2026, 10, 1), date(2026, 10, 31)),
+    ]
+
+
+def test_descobrir_processos_respeita_o_maximo_da_rodada(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(djen, "MAXIMO_DE_PROCESSOS_POR_RODADA", 1)
+    ultima = {
+        _algarismos(ESTADUAL): date(2026, 10, 1),
+        _algarismos(OUTRO): date(2026, 10, 9),
+    }
+    descobrir = djen.descobrir_processos(lambda: ultima, frozenset)
+    alvos = [a.url for a in descobrir(Djen({}), AGORA)]
+    assert [djen.da_consulta_do_processo(a)[0] for a in alvos] == [_algarismos(OUTRO)]
+
+
+def test_descobrir_processos_sem_nada_novo_repete_uma_guardada():
+    """O arquivista trata a fonte sem alvo como falha: a consulta repetida é pulada sem pedir nada."""
+    guardada = djen.consulta_do_processo(ESTADUAL, date(2025, 1, 1), date(2026, 10, 31))
+    descobrir = djen.descobrir_processos(
+        lambda: {_algarismos(ESTADUAL): date(2026, 10, 1)},
+        lambda: frozenset({guardada}),
+    )
+    assert [a.url for a in descobrir(Djen({}), AGORA)] == [guardada]
+
+
+def test_descobrir_processos_sem_a_tabela_falha():
+    with pytest.raises(ErroDeDescoberta, match="carga"):
+        djen.descobrir_processos(lambda: None, frozenset)(Djen({}), AGORA)
+
+
+def test_processos_da_base_so_pelo_nome(tmp_path: Path):
+    pasta = tmp_path / "processos_comunicacoes"
+    pasta.mkdir()
+    pd.DataFrame(
+        {
+            "numero_processo": [ESTADUAL, ESTADUAL, ESTADUAL, OUTRO],
+            "achada_por": ["nome", "nome", "numero", "numero"],
+            "disponivel_em": [
+                date(2026, 9, 1),
+                date(2026, 10, 2),
+                date(2026, 10, 30),  # a achada pelo número não conta como andamento
+                date(2026, 10, 30),
+            ],
+        }
+    ).to_parquet(pasta / "djen.parquet")
+
+    assert djen.processos_da_base(tmp_path) == {
+        _algarismos(ESTADUAL): date(2026, 10, 2)
+    }
+    assert djen.processos_da_base(tmp_path / "nao-existe") is None
+
+
+def test_a_fonte_dos_processos():
+    fonte = djen.fonte_dos_processos(dict, frozenset)
+    assert (fonte.id, fonte.grupo, fonte.tipo) == ("djen-processos", "semanal", "json")
+    assert fonte.pausa_minima == djen.PAUSA_ENTRE_CONSULTAS_EM_SEGUNDOS

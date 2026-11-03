@@ -58,6 +58,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "origem_divulgado_em", "acumulado_publico_em", "anual_publico_em",
         "balanco_publico_em", "receita_publico_em", "conhecido_em_do_negocio",
         "primeira_entrega", "primeiro_recebido_em", "primeiro_visto",
+        "disponibilizada_em", "primeira_comunicacao",
     ),
     "ate_publico_em": ("ate_publico_em",),
     "visto_em": ("visto_em",),
