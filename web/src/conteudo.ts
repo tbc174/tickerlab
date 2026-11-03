@@ -296,6 +296,19 @@ export interface RegistroDeFonte {
   termos_lidos_em: string | null; // AAAA-MM-DD
 }
 
+/** Uma família de fonte, uma linha (`familias_para_o_site` de base/arquivo/registro.py). */
+export interface FamiliaDeFonte {
+  familia: string;
+  orgao: string;
+  link: string | null;
+  uso: "em_uso" | "guardada";
+  marca: RegistroDeFonte["marca"]; // a mais restrita entre as coletas
+  licencas: string[];
+  coletas: string[]; // ids das coletas do arquivista; vazio quando é lida fora do acervo
+  ritmo: string | null;
+  termos_lidos_em: string | null; // AAAA-MM-DD
+}
+
 /** Um módulo da base com a contagem de tabelas (`Modulo` de base/vitrine.py). */
 export interface ModuloDaBase {
   chave: string;
@@ -317,9 +330,17 @@ export interface TabelaDaBase {
 
 /** O catálogo de contratos da base, contado pelo Python: a página Dados não digita número. */
 export const catalogo: {
-  totais: { tabelas: number; fontes: number; fontes_em_consulta: number; modulos: number };
+  totais: {
+    tabelas: number;
+    fontes: number;
+    fontes_em_consulta: number;
+    modulos: number;
+    familias: number;
+    familias_em_uso: number;
+  };
   fontes: FonteDaBase[];
   registro_de_fontes: RegistroDeFonte[];
+  familias_de_fontes: FamiliaDeFonte[];
   modulos: ModuloDaBase[];
   tabelas: TabelaDaBase[];
 } = catalogoJson as never;

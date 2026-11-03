@@ -713,12 +713,18 @@ def registrar_consumo(
     finalidade: str,
     linhas: int,
     negado: bool = False,
+    pedidos: int = 1,
     agora: datetime | None = None,
 ) -> None:
-    """Soma um pedido da chave do `contexto` na linha do dia (UTC). Negado conta só em `negados`."""
+    """Soma os `pedidos` da chave do `contexto` na linha do dia (UTC). Negado conta só em `negados`.
+
+    Um lote de N CNPJs conta `pedidos=N` (B-32a): é isso que a quota do mês soma.
+    """
     if linhas < 0:
         raise ValueError("O número de linhas servidas não pode ser negativo.")
-    pedidos, servidas, negados = (0, 0, 1) if negado else (1, linhas, 0)
+    if pedidos < 1:
+        raise ValueError("Um pedido conta pelo menos 1.")
+    aceitos, servidas, negados = (0, 0, pedidos) if negado else (pedidos, linhas, 0)
     inserir = _INSERT_DO_BANCO[conexao.dialect.name](consumo_da_api)
     conexao.execute(
         inserir.values(
@@ -728,7 +734,7 @@ def registrar_consumo(
             canal=contexto.canal.value,
             finalidade=_finalidade_valida(finalidade),
             conjunto=_conjunto_valido(conjunto),
-            pedidos=pedidos,
+            pedidos=aceitos,
             linhas=servidas,
             negados=negados,
         ).on_conflict_do_update(
