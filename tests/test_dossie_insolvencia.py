@@ -20,18 +20,7 @@ D = pd.Timestamp
 HOJE = D("2026-10-22")
 RAIZ = "02429144"
 FRASE_FIXA = "a falta de registro nas fontes lidas não prova que não exista"
-# a lista única da ADR 0103 (item 7): a do café mais a da 0085
-VEDADAS = (
-    *cafe.VEDADAS,
-    "fraudador",
-    "corrupção",
-    "cartel",
-    "conluio",
-    "laranja",
-    "superfaturamento",
-    "direcionamento",
-    "suspeito",
-)
+VEDADAS = cafe.VEDADAS_DA_ADR_0103
 JULGAMENTOS = ("avaliamos", "classificamos", "nota ", "risco", "sinal")
 
 
