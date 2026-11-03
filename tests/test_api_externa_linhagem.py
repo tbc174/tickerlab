@@ -14,7 +14,7 @@ from base.arquivo.destinos import DESTINOS
 from base.dicionario import TABELAS
 from base.dossie import COLUNAS_DE_PESSOA
 from base.prontidao import Prontidao, Prova, prova_publicavel
-from base.raio_x_de_fundo import CAMPOS_DO_CADASTRO
+from base.raio_x_de_fundo import CADASTRO, CAMPOS_DO_CADASTRO
 from src import portao_externo as portao
 from src.banco.coletas import Marca, marca_da_fonte
 from src.portao_externo import (
@@ -25,10 +25,12 @@ from src.portao_externo import (
     Categoria,
     Finalidade,
     LinhaDeDireito,
+    Motivo,
     Pedido,
 )
 
-CONJUNTOS_DO_BETA = {"companies", "financials", "funds"}
+# "companies" entra com a rota dele (PR 4), que tira MEI e empresário individual linha a linha
+CONJUNTOS_DO_BETA = {"financials", "funds"}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
 CAMPOS_DO_CUSTO = {"sem_taxa", "com_taxa", "ficou_com_a_taxa", "fracao_do_resultado"}
 DEPOIS_DO_COMECO = date(2026, 11, 10)
@@ -41,15 +43,13 @@ def _pedido(linha: LinhaDeDireito) -> Pedido:
 
 
 def _regras_prontas(dia: date) -> portao.Regras:
-    """As regras de hoje com cada tabela do beta pronta no `dia` e os termos da Receita lidos."""
-    vigentes = portao.regras_vigentes()
+    """As regras de hoje, só com cada tabela do beta pronta no `dia`."""
     prova = Prova(dia, "conferida no teste", "teste")
     versoes = prontidao.versoes_maiores()
     tabelas = {tabela for linha in DIREITOS_DA_API_EXTERNA for tabela in linha.tabelas}
     return dataclasses.replace(
-        vigentes,
+        portao.regras_vigentes(),
         prontidao={t: Prontidao(versoes[t], prova, prova, prova) for t in tabelas},
-        termos_lidos_em={**vigentes.termos_lidos_em, "rfb-cnpj": dia},
     )
 
 
@@ -88,18 +88,28 @@ def test_toda_tabela_existe_e_nao_guarda_dado_de_pessoa():
             assert not TABELAS[tabela].pessoa, (linha, tabela)
 
 
-def test_a_fonte_e_um_arquivo_do_acervo_da_familia_da_tabela():
+def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
     for linha in DIREITOS_DA_API_EXTERNA:
         assert linha.fonte in DESTINOS, linha
         for tabela in linha.tabelas:
+            assert tabela in DESTINOS[linha.fonte].tabelas, (linha, tabela)
             assert _da_familia(linha.fonte, TABELAS[tabela].familia_da_fonte), linha
 
 
-def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_fundo():
+def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
     do_raio_x = set(CAMPOS_DO_CADASTRO.values()) | CAMPOS_DO_CUSTO
     for linha in DIREITOS_DA_API_EXTERNA:
         colunas = {c for tabela in linha.tabelas for c in TABELAS[tabela].colunas}
-        assert linha.campo in colunas | do_raio_x, linha
+        if linha.tabelas == (CADASTRO,):
+            colunas |= do_raio_x
+        assert linha.campo in colunas, linha
+
+
+def test_nenhuma_tabela_do_cnpj_tem_direito_sem_a_rota_que_tira_quem_e_pessoa():
+    # ADR 0106: MEI e empresário individual estão nas tabelas do CNPJ; o corte é por linha, na rota
+    for linha in DIREITOS_DA_API_EXTERNA:
+        assert not _da_familia(linha.fonte, "rfb"), linha
+        assert not any(tabela.startswith("cnpj_") for tabela in linha.tabelas), linha
 
 
 def test_nenhum_campo_de_pessoa_tem_direito():
@@ -119,7 +129,7 @@ def test_hoje_nenhum_campo_sai_sem_a_prontidao_das_tabelas():
     # D10: as linhas existem, mas a tabela só sai com as provas 6, 7 e 8 em `base/prontidao.py`
     for linha in DIREITOS_DA_API_EXTERNA:
         decisao = portao.decidir(_pedido(linha), DEPOIS_DO_COMECO)
-        assert not decisao.libera, linha
+        assert decisao.motivo is Motivo.SEM_PRONTIDAO, linha
         assert portao.codigo_publico(decisao) == "not_available"
 
 
@@ -135,5 +145,5 @@ def test_prova_de_prontidao_vencida_nega_com_o_codigo_de_sempre():
     regras = _regras_prontas(vencida)
     for linha in DIREITOS_DA_API_EXTERNA:
         decisao = portao.decidir(_pedido(linha), DEPOIS_DO_COMECO, regras)
-        assert not decisao.libera, linha
+        assert decisao.motivo is Motivo.PRONTIDAO_VENCIDA, linha
         assert portao.codigo_publico(decisao) == "not_available"

@@ -197,11 +197,9 @@ class LinhaDeDireito(NamedTuple):
     tabelas: tuple[str, ...] = ()
 
 
-BETA_COMECA_EM = date(
-    2026, 11, 3
-)  # B-32a: o beta da API externa (A5 do lançamento API primeiro)
+# B-32a: o beta da API externa (A5 do lançamento API primeiro)
+BETA_COMECA_EM = date(2026, 11, 3)
 _PROVA_CVM = "ADR 0108 D2.2 e D3: dados abertos da CVM, ODbL, revenda com atribuição"
-_PROVA_RFB = "ADR 0108 D2.2 e D3: dados abertos do CNPJ da Receita, CC BY, revenda com atribuição"
 
 
 def _campos(
@@ -230,24 +228,10 @@ def _campos(
 
 
 # Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
-# (D10, `base/prontidao.py`) e, na Receita, antes da data de leitura dos termos (`TERMOS_LIDOS_EM`). O
-# nome e a natureza jurídica (`entidades`) esperam a rota de empresas: a tabela junta várias fontes e
-# guarda MEI, e a rota tem de dizer a fonte de cada linha e tirar quem é pessoa (ADR 0106).
+# (D10, `base/prontidao.py`). O conjunto de empresas (Receita) entra com a rota dele: as tabelas do CNPJ
+# têm uma linha por CNPJ, MEI e empresário individual inclusive, e só a rota tira por linha quem é
+# pessoa (ADR 0106); a linha de direito vale para o campo inteiro e não sabe fazer esse corte.
 DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
-    *_campos(
-        ("rfb-cnpj",),
-        "companies",
-        ("cnpj_situacao_cadastral",),
-        ("situacao_cadastral", "data_situacao_cadastral", "motivo_situacao"),
-        _PROVA_RFB,
-    ),
-    *_campos(
-        ("rfb-cnpj",),
-        "companies",
-        ("cnpj_simples",),
-        ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
-        _PROVA_RFB,
-    ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),
         "financials",
