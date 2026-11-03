@@ -14,7 +14,9 @@ Aproximações declaradas (o relatório as repete em "Limites e cuidados"):
   o último valor disponível.
 - **Volumes para o impacto:** estimativas conservadoras por ETF, fixadas aqui antes dos números.
 - **Barras sem negócio:** o export do MT5 traz barras de feriado com volume zero e o preço
-  repetido (91 no BOVA11 entre 2010 e 2023); elas ficam fora do calendário.
+  repetido (73 no BOVA11 entre 2010 e 2023); elas ficam fora do calendário. Barra com volume
+  zero mas com o preço mudando é pregão que veio sem o volume (18 em março e abril de 2021) e
+  fica.
 """
 
 from __future__ import annotations
@@ -205,22 +207,35 @@ def _coluna_de_volume(tabela: pd.DataFrame) -> str | None:
     return next((c for c in tabela.columns if "volume" in c.lower()), None)
 
 
+def _so_barras_com_negocio(tabela: pd.DataFrame, fechamento: str) -> pd.DataFrame:
+    """Tira a barra de feriado: volume zero e o preço igual ao da barra anterior.
+
+    Pregão que só veio sem o volume (o preço mudou) fica: não é feriado, é falta no export.
+    """
+    volume = _coluna_de_volume(tabela)
+    if volume is None:
+        return tabela
+    repetido = tabela[fechamento] == tabela[fechamento].shift(1)
+    return tabela[(tabela[volume] > 0) | ~repetido]
+
+
 def fechamento_do_mt5(arquivo: Path, *, so_com_negocio: bool = False) -> pd.Series:
     """A coluna de fechamento de um parquet D1 exportado do MT5, indexada pela data.
 
-    `so_com_negocio` tira as barras com volume zero (feriado com o preço repetido).
+    `so_com_negocio` tira as barras de feriado (volume zero e o preço repetido).
     """
     tabela = pd.read_parquet(arquivo)
-    volume = _coluna_de_volume(tabela)
-    if so_com_negocio and volume is not None:
-        tabela = tabela[tabela[volume] > 0]
     coluna = next(c for c in tabela.columns if c.lower() in ("close", "fechamento"))
     data = next(
         (c for c in tabela.columns if c.lower() in ("time", "data", "date")), None
     )
-    serie = tabela.set_index(data)[coluna] if data else tabela[coluna]
-    serie.index = pd.DatetimeIndex(serie.index).normalize()
-    return serie.astype(float).sort_index()
+    if data:
+        tabela = tabela.set_index(data)
+    tabela.index = pd.DatetimeIndex(tabela.index).normalize()
+    tabela = tabela.sort_index()
+    if so_com_negocio:
+        tabela = _so_barras_com_negocio(tabela, coluna)
+    return tabela[coluna].astype(float)
 
 
 def volume_medio_do_mt5(arquivo: Path, pregoes: int = 60) -> float | None:
