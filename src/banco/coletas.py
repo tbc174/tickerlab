@@ -153,9 +153,10 @@ LICENCAS = {
     "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
-    # comunicações processuais do DJEN (plano de 03/11/2026 dos processos; ADR 0121)
-    "djen": "DJEN do CNJ: publicação oficial e pública (Resolução CNJ 455/2022); citar o CNJ "
-    "e o tribunal; sem a Justiça do Trabalho (Resolução CNJ 121/2010, art. 4º, § 1º, II)",
+    # comunicações processuais do DJEN (plano de 03/11/2026 dos processos; ADR 0121): pública pela
+    # Resolução CNJ 455/2022; a Justiça do Trabalho fica de fora pela Resolução CNJ 121/2010, art. 4º,
+    # § 1º, II (proíbe a consulta pública pelo nome da parte)
+    "djen": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
     # lote organismos (termos lidos em 22/10/2026, licencas-por-fonte.md, rodadas 1 e 4)
     "bce": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
     "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",

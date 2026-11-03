@@ -595,6 +595,133 @@ def _tabelas_das_sancoes() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_dos_processos() -> dict[str, Tabela]:
+    """Os processos judiciais por CNPJ (`base/processos.py`): as comunicações do DJEN em que uma
+    companhia aberta é parte, e as partes de cada uma que não são pessoa física."""
+    comum = (
+        " Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia "
+        "aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho "
+        "(Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de "
+        "pessoa física: as partes que não são companhia nem órgão público entram só na contagem."
+    )
+    atraso = (
+        "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a "
+        "consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
+    )
+    datas = {
+        "disponivel_em": (
+            (
+                "Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de "
+                "`visto_em`): desde quando a linha vale para a base"
+            ),
+            DATA,
+        ),
+        "visto_em": ("Dia da consulta guardada que trouxe esta versão da linha", DATA),
+    }
+    comunicacoes = {
+        "id_na_fonte": ("O `hash` da comunicação no DJEN (único)", TEXTO),
+        "id_djen": ("O número da comunicação na API do DJEN", NUMERO),
+        "numero_processo": (
+            "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+            TEXTO,
+        ),
+        "ano_do_processo": (
+            "Ano em que o processo foi ajuizado (o AAAA do número)",
+            "ano",
+        ),
+        "justica": (
+            "Segmento da Justiça pelo número (Estadual, Federal, STJ...)",
+            TEXTO,
+        ),
+        "tribunal": ("Sigla do tribunal (TJSP, TRF3, STJ...)", TEXTO),
+        "orgao": ("Vara, câmara ou turma que publicou, em maiúsculas", TEXTO),
+        "classe_codigo": ("Código da classe processual nas tabelas do CNJ", TEXTO),
+        "classe": ("Classe processual (procedimento comum, execução fiscal...)", TEXTO),
+        "tipo_comunicacao": ("Intimação, citação, edital...", TEXTO),
+        "tipo_documento": ("Despacho, decisão, sentença, acórdão...", TEXTO),
+        "meio": ("Meio da comunicação, como o DJEN escreve", TEXTO),
+        "link": ("Endereço do documento no sistema do tribunal", TEXTO),
+        "cancelada_em": (
+            "Dia em que o tribunal cancelou a comunicação (vazio: não cancelada); antes dele, valia",
+            DATA,
+        ),
+        "companhias": ("Quantas partes são companhias abertas ligadas ao CNPJ", NUMERO),
+        "orgaos_publicos": ("Quantas partes são órgãos públicos", NUMERO),
+        "pessoas_juridicas": (
+            "Quantas partes são outras empresas (ou nome de mais de uma companhia do cadastro)",
+            NUMERO,
+        ),
+        "pessoas_ou_desconhecidas": (
+            "Quantas partes são pessoas ou não têm tipo claro",
+            NUMERO,
+        ),
+        "advogados": (
+            "Quantos advogados a comunicação cita (os nomes não entram)",
+            NUMERO,
+        ),
+        **datas,
+        **_ORIGEM_SEM_ANO,
+    }
+    partes = {
+        "id_na_fonte": (
+            "O `hash` da comunicação (liga a `processos_comunicacoes`)",
+            TEXTO,
+        ),
+        "numero_processo": ("Número único do processo (CNJ)", TEXTO),
+        "polo": ("`ativo` (autor), `passivo` (réu) ou `outro`", TEXTO),
+        "tipo_parte": ("`companhia` ou `orgao_publico`", TEXTO),
+        "parte": ("Quem é a parte: o `cnpj` da companhia ou o `orgao_publico`", TEXTO),
+        "cnpj": (
+            "CNPJ da companhia (14 caracteres, sem pontuação); vazio no órgão público",
+            TEXTO,
+        ),
+        "empresa": ("Razão social da companhia no cadastro da CVM", TEXTO),
+        "orgao_publico": (
+            "Nome do órgão público, normalizado (maiúsculas, sem acento)",
+            TEXTO,
+        ),
+        **datas,
+        **_ORIGEM_SEM_ANO,
+    }
+    fonte = (
+        "CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais "
+        "(`base/arquivo/djen.py`, `base/processos.py`)"
+    )
+    frequencia = "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)"
+    return {
+        "processos_comunicacoes": Tabela(
+            descricao="Processos judiciais por companhia aberta: as comunicações."
+            + comum,
+            fonte=fonte,
+            familia_da_fonte="djen",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_comunicacoes/djen.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=comunicacoes,
+        ),
+        "processos_partes": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos "
+                "públicos de cada comunicação, com o polo." + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="djen",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_partes/djen.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=partes,
+        ),
+    }
+
+
 def _tabelas_das_licencas() -> dict[str, Tabela]:
     """As licenças e registros por CNPJ (`base/licencas.py`, Ficha Clara): uma tabela por órgão, com
     as mesmas colunas, para a ficha da empresa ler todas do mesmo jeito."""
@@ -4441,6 +4568,7 @@ TABELAS: dict[str, Tabela] = {
         },
     ),
     **_tabelas_das_sancoes(),
+    **_tabelas_dos_processos(),
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
     "debentures_assembleias": Tabela(
@@ -6549,6 +6677,9 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_PROCESSOS = (
+    "2025-01-01"  # o histórico do DJEN que a coleta busca (`djen.HISTORICO_DESDE`)
+)
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
@@ -6637,6 +6768,8 @@ _CONTRATO = {
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
+    "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -6718,6 +6851,15 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "faixas": {"valor_multa": _SEM_NEGATIVO},
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "anuncia_o_futuro": True,  # a sanção publicada pode começar a valer depois
+    },
+    "processos_comunicacoes": {
+        "pasta": "processos_comunicacoes",
+        "nao_nulas": ("id_na_fonte", "numero_processo", "ano_do_processo", "justica", "disponivel_em", "visto_em"),
+        "faixas": {"companhias": _SEM_NEGATIVO, "advogados": _SEM_NEGATIVO},
+    },
+    "processos_partes": {
+        "pasta": "processos_partes",
+        "nao_nulas": ("id_na_fonte", "numero_processo", "polo", "tipo_parte", "disponivel_em", "visto_em"),
     },
     "anvisa_registros": {
         "pasta": "anvisa_registros",

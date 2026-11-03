@@ -182,4 +182,4 @@ def test_descobrir_a_semana_de_todas_e_o_historico_que_falta(
 
 def test_descobrir_sem_cadastro_falha():
     with pytest.raises(ErroDeDescoberta, match="cadastro"):
-        djen.descobrir(lambda: [], frozenset)(Djen({}), AGORA)
+        djen.descobrir(list, frozenset)(Djen({}), AGORA)

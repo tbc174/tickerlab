@@ -40,7 +40,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
     ),
     "ate": (
-        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelamento", "DT_CANCEL", "desativada_em", "fim_listagem",
+        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "desativada_em", "fim_listagem",
         "fim_negociacao", "data_encerramento", "data_encerramento_oferta",
         "data_exclusao_mei", "data_exclusao_mei_antes", "data_exclusao_mei_depois",
         "data_exclusao_simples", "data_exclusao_simples_antes", "data_exclusao_simples_depois",
