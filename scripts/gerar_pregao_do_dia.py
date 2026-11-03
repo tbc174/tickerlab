@@ -19,6 +19,7 @@ B3, nunca do último arquivo guardado: um dia sem arquivo não pode virar uma va
 """
 
 import argparse
+import gzip
 import hashlib
 import json
 import sys
@@ -97,8 +98,14 @@ def _ibovespa(arquivos: dict[str, dict]) -> pd.Series:
     if not anos:
         return pd.Series(name="ibovespa", dtype="float64")
     return indices_b3.serie_dos_anos(
-        {ano: guardado.caminho.read_bytes() for ano, guardado in anos.items()}
+        {ano: _original(guardado.caminho) for ano, guardado in anos.items()}
     )
+
+
+def _original(caminho: Path) -> bytes:
+    """O arquivo como veio da fonte: o arquivista guarda o JSON em gzip (`.json.gz`)."""
+    guardado = caminho.read_bytes()
+    return gzip.decompress(guardado) if caminho.suffix == ".gz" else guardado
 
 
 def _conferir_o_indice(
