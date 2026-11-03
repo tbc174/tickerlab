@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
@@ -30,9 +31,15 @@ LINHAS_POR_PEDACO = (
 
 def gravar_atomico(destino: Path, gravar: Callable[[Path], object]) -> None:
     """Grava num arquivo ao lado e troca de nome no fim: quem lê nunca vê o arquivo pela metade."""
-    temporario = destino.with_name(destino.name + ".parcial")
-    gravar(temporario)
-    os.replace(temporario, destino)
+    # Nome único por gravação: dois escritores na mesma tabela não se derrubam.
+    temporario = destino.with_name(
+        f"{destino.name}.{os.getpid()}.{uuid.uuid4().hex}.parcial"
+    )
+    try:
+        gravar(temporario)
+        os.replace(temporario, destino)
+    finally:
+        temporario.unlink(missing_ok=True)
 
 
 def hash_da_tabela(tabela: pd.DataFrame, ordem: list[str]) -> str:
