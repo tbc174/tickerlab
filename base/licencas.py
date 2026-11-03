@@ -45,9 +45,9 @@ from src.versao_do_codigo import versao_do_codigo
 SEPARADOR = ";"
 LATIN1 = "latin-1"
 UTF8 = "utf-8"
-ANO_MAXIMO_DA_DATA = (
-    2200  # a fonte tem erro de digitação (ano 3512) que o pandas não guarda em ns
-)
+# A fonte tem erro de digitação (anos 12 e 3512) que o pandas não guarda em ns: fora disto, a data é nula.
+ANO_MINIMO_DA_DATA = 1900
+ANO_MAXIMO_DA_DATA = 2200
 TAMANHO_DA_DATA = 10  # "24/01/2011 00:00:00": só o dia conta
 DIA_MES_ANO = "%d/%m/%Y"
 MES_DIA_ANO = "%m/%d/%Y"  # a AFE e o CBPF da Anvisa escrevem as datas à americana
@@ -363,7 +363,9 @@ def _datas(texto: pd.Series, formatos: tuple[str, ...]) -> pd.Series:
     datas = pd.Series(pd.NaT, index=texto.index, dtype="datetime64[ns]")
     for formato in formatos:
         lidas = pd.to_datetime(curto, format=formato, errors="coerce")
-        lidas = lidas.where(lidas.dt.year <= ANO_MAXIMO_DA_DATA)
+        lidas = lidas.where(
+            lidas.dt.year.between(ANO_MINIMO_DA_DATA, ANO_MAXIMO_DA_DATA)
+        )
         datas = datas.fillna(lidas)
     return datas
 
