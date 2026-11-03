@@ -150,6 +150,112 @@ def test_queda_por_alavancagem_tira_os_bancos():
     ]
 
 
+# --- o balanço guardado (DFP e ITR da CVM) ---------------------------------------------------------
+
+
+def _documento(documento: str, referencia: str, recebido_em: str) -> dict:
+    return {
+        "cnpj": "A",
+        "empresa": "Empresa A",
+        "documento": documento,
+        "referencia": date.fromisoformat(referencia),
+        "versao": 1,
+        "recebido_em": date.fromisoformat(recebido_em),
+        "link": "",
+    }
+
+
+def _contas(documento: str, referencia: str, periodo: str, **valores: float) -> list:
+    return [
+        {
+            "cnpj": "A",
+            "documento": documento,
+            "referencia": date.fromisoformat(referencia),
+            "versao": 1,
+            "periodo": periodo,
+            "inicio": None,
+            "fim": date.fromisoformat(referencia),
+            "conta": conta,
+            "valor": valor,
+        }
+        for conta, valor in valores.items()
+    ]
+
+
+def _demonstracoes(com_o_itr_de_setembro: bool = False):
+    """O DFP de 2025 e o ITR de junho/2026 (públicos antes de 23/10); o de setembro sai em novembro."""
+    contas = [
+        *_contas("DFP", "2025-12-31", "exercicio", ebit=100.0, depreciacao=20.0),
+        *_contas(
+            "DFP",
+            "2025-12-31",
+            "posicao",
+            divida_cp=50.0,
+            divida_lp=150.0,
+            caixa=40.0,
+            aplicacoes=10.0,
+        ),
+        *_contas("ITR", "2026-06-30", "acumulado", ebit=60.0, depreciacao=10.0),
+        *_contas(
+            "ITR", "2026-06-30", "acumulado_anterior", ebit=40.0, depreciacao=10.0
+        ),
+        *_contas(
+            "ITR", "2026-06-30", "posicao", divida_cp=60.0, divida_lp=140.0, caixa=20.0
+        ),
+    ]
+    documentos = [
+        _documento("DFP", "2025-12-31", "2026-03-20"),
+        _documento("ITR", "2026-06-30", "2026-08-07"),
+    ]
+    if com_o_itr_de_setembro:
+        contas += [
+            *_contas("ITR", "2026-09-30", "acumulado", ebit=-500.0, depreciacao=10.0),
+            *_contas("ITR", "2026-09-30", "acumulado_anterior", ebit=60.0, depreciacao=15.0),
+            *_contas("ITR", "2026-09-30", "posicao", divida_cp=900.0, divida_lp=900.0),
+        ]  # fmt: skip
+        documentos.append(_documento("ITR", "2026-09-30", "2026-11-05"))
+    return pd.DataFrame(contas), pd.DataFrame(documentos)
+
+
+def test_balancos_na_vespera():
+    """Dívida líquida do balanço mais recente e EBITDA dos 12 meses (DFP + ITR − ITR do ano anterior)."""
+    contas, documentos = _demonstracoes()
+    balancos = raio_x.balancos_na_vespera(contas, documentos, VESPERA)
+    assert balancos.to_dict("records") == [
+        {
+            "cnpj": "A",
+            "divida_liquida": pytest.approx(60 + 140 - 20),
+            "ebitda": pytest.approx(100 + 60 - 40 + 20),
+            "divulgado_em": date(2026, 8, 7),
+        }
+    ]
+
+
+def test_balanco_sem_divida_ou_sem_ebitda_fica_de_fora():
+    contas, documentos = _demonstracoes()
+    sem_divida = contas[~contas["conta"].isin(["divida_cp", "divida_lp"])]
+    assert raio_x.balancos_na_vespera(sem_divida, documentos, VESPERA).empty
+    sem_ebit = contas[contas["conta"] != "ebit"]
+    assert raio_x.balancos_na_vespera(sem_ebit, documentos, VESPERA).empty
+
+
+def test_balancos_sem_olhar_o_futuro():
+    """O ITR de setembro chegou à CVM em novembro: na véspera de 26/10, ele não existia."""
+    sem, documentos_sem = _demonstracoes()
+    com, documentos_com = _demonstracoes(com_o_itr_de_setembro=True)
+    pd.testing.assert_frame_equal(
+        raio_x.balancos_na_vespera(com, documentos_com, VESPERA),
+        raio_x.balancos_na_vespera(sem, documentos_sem, VESPERA),
+    )
+    depois = raio_x.balancos_na_vespera(com, documentos_com, date(2026, 11, 5))
+    assert depois["divida_liquida"].iloc[0] == pytest.approx(1800.0)
+
+
+def test_balancos_na_vespera_sem_documento_publico():
+    contas, documentos = _demonstracoes()
+    assert raio_x.balancos_na_vespera(contas, documentos, date(2026, 1, 2)).empty
+
+
 # --- sem olhar o futuro ----------------------------------------------------------------------------
 
 
