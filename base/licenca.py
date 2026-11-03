@@ -57,6 +57,7 @@ FAMILIA_DO_ENDERECO = {
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
+    "comunicaapi.pje.jus.br/": "djen",
     "dadosabertos-download.cgu.gov.br/": "transparencia",
     "dadosabertos.bndes.gov.br/": "bndes",
     "dadosabertos.inss.gov.br/": "inss",
