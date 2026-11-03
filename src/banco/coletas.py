@@ -103,6 +103,16 @@ LICENCAS = {
     "tesouro-br-td-vendas": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-td-resgates": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-td-estoque": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    # pacotes de dívida do lote acervos (base/arquivo/lote_acervos.py): sem linha própria, a busca pela
+    # família caía em "tesouro", que é a licença do Tesouro dos EUA (achado da linha 592, 03/11/2026)
+    "tesouro-br-divida-execucao-por-fonte": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-divida-execucao-por-nd": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-divida-dotacao": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-divida-emissoes-diretas": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-divida-emissoes-soberanas": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-divida-estados-estoque": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-divida-estados-servico": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-divida-consolidada-liquida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     # prévia do balanço (14/10/2026): licença declarada no conjunto no dados.gov.br (o rodapé CC
     # BY-ND dos sites é do conteúdo das páginas); confirmação por escrito pedida às agências
     "anp": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",

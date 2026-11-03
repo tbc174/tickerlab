@@ -337,3 +337,15 @@ def test_catalogo_do_site_nao_leva_conversa_interna():
         assert not re.search(
             r"\bADR\b|perguntar|\bML\b", f["licenca"] + f["repasse"]
         ), f
+
+
+def test_catalogo_leva_as_fontes_por_familia_com_os_totais():
+    """A página Dados conta as famílias em uso e guardadas do registro; nenhum número é digitado."""
+    catalogo = exp.conteudo()["catalogo"]
+    familias = catalogo["familias_de_fontes"]
+    assert catalogo["totais"]["familias"] == len(familias) >= 100
+    assert catalogo["totais"]["familias_em_uso"] == sum(
+        f["uso"] == "em_uso" for f in familias
+    )
+    for f in familias:
+        assert not re.search(r"servidor|VPS|arquivista|\bADR\b|\w+/\w+\.py", str(f)), f
