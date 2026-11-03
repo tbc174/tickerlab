@@ -11,6 +11,7 @@ liberou o preço do Yahoo na tela e no PDF da ficha, não no texto publicado da 
 
 import hashlib
 import json
+from collections import Counter
 from collections.abc import Iterator
 from datetime import date
 from typing import Any
@@ -281,9 +282,11 @@ def entrada_da_ficha(
     linhas = _linhas_da_ficha(ficha)
     _marcar_so_pro(linhas, sem_dossie)
     linhas += _lacunas(relatorio.setor)
-    ids = [linha["id"] for linha in linhas]
-    if len(ids) != len(set(ids)):
-        raise ValueError("id repetido na entrada")
+    repetidos = sorted(
+        id_ for id_, n in Counter(linha["id"] for linha in linhas).items() if n > 1
+    )
+    if repetidos:
+        raise ValueError(f"id repetido na entrada: {', '.join(repetidos[:5])}")
     conferir_corte(linhas, corte)
     entrada = {
         "versao": VERSAO,

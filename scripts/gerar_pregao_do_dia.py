@@ -31,11 +31,13 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from base import indices_b3, porta
+from base import historico, indices_b3, porta
 from base import intradiario_b3 as b3
 from base.parquet import gravar_atomico
 from scripts.barras_b3_do_dia import Guardado, versoes_mais_novas
-from src import acervo, eventos_do_pregao, pregao_do_dia
+from src import acervo, eventos_do_pregao, pregao_do_dia, raio_x
+from src import demonstracoes as dm
+from src import rascunho_do_raio_x as rascunho
 from src import texto_do_pregao as tp
 from src.calendario_b3 import eh_pregao
 from src.versao_do_codigo import versao_do_codigo
@@ -45,6 +47,11 @@ FONTE_DO_PR = "b3-boletim-pr"
 FONTE_DO_IBOVESPA = "b3-ibov-diario"
 NOME_DA_TAREFA = "pregao-do-dia"
 PASTA_NO_ACERVO = "pregao"
+PASTA_DO_RAIO_X = "raio-x"
+# Os DFP e ITR que o arquivista guarda, um arquivo por ano (`base/historico.py`).
+FONTES_DOS_BALANCOS = {"DFP": "cvm-hist-dfp", "ITR": "cvm-hist-itr"}
+# Anos de balanço lidos antes do da véspera: em janeiro, os 12 meses ainda usam o DFP de dois anos antes.
+ANOS_DE_BALANCO_ANTES = 2
 # Muda quando a conta muda: o resumo guardado com outra versão é refeito.
 VERSAO_DA_REGRA = 2
 # O pregão do molde aprovado. Antes dele, os papéis de hoje não dizem quem negociava na época.
@@ -71,14 +78,20 @@ def pregao_anterior(dia: date) -> date:
     return anterior
 
 
+def caminho_do_rascunho(pasta: Path, dia: date, extensao: str) -> Path:
+    return pasta / PASTA_NO_ACERVO / PASTA_DO_RAIO_X / f"{dia.isoformat()}{extensao}"
+
+
 def arquivos_no_acervo(pasta: Path) -> dict[str, dict]:
-    """Por fonte, a versão mais nova guardada: COTAHIST e PR por pregão, o Ibovespa por ano."""
+    """Por fonte, a versão mais nova guardada: COTAHIST e PR por pregão; o Ibovespa, o DFP e o ITR
+    por ano."""
     return versoes_mais_novas(
         pasta,
         {
             FONTE_DO_COTAHIST: b3.pregao_do_endereco,
             FONTE_DO_PR: b3.pregao_do_endereco,
             FONTE_DO_IBOVESPA: indices_b3.ano_do_endereco,
+            **dict.fromkeys(FONTES_DOS_BALANCOS.values(), historico.ano_do_arquivo),
         },
     )
 
@@ -176,26 +189,32 @@ def _papeis(pasta: Path, vespera: date) -> pd.DataFrame:
     )
 
 
-def montar_resumo(
-    dia: date,
-    vespera: date,
-    arquivos: dict[str, dict],
-    serie: pd.Series,
-    calendario: list[eventos_do_pregao.EventoMarcado],
-    pasta: Path,
-) -> dict:
-    """O resumo do pregão e o motivo do dia de evento, sem gravar. Confere que o texto aprovado sai
-    destes números."""
+def _empresas(
+    dia: date, vespera: date, arquivos: dict[str, dict], pasta: Path
+) -> pd.DataFrame:
+    """A tabela do pregão (`pregao_do_dia.variacoes_das_empresas`) dos COTAHIST da véspera e do dia."""
     cotahist_da_vespera = b3.ler_cotahist(
         _guardado(arquivos, FONTE_DO_COTAHIST, vespera).caminho
     )
     cotahist = b3.ler_cotahist(_guardado(arquivos, FONTE_DO_COTAHIST, dia).caminho)
-    empresas = pregao_do_dia.variacoes_das_empresas(
+    return pregao_do_dia.variacoes_das_empresas(
         cotahist_da_vespera,
         cotahist,
         _papeis(pasta, vespera),
         pregao_do_dia.codigos_com_evento(cotahist_da_vespera, cotahist),
     )
+
+
+def montar_resumo(
+    dia: date,
+    vespera: date,
+    empresas: pd.DataFrame,
+    arquivos: dict[str, dict],
+    serie: pd.Series,
+    calendario: list[eventos_do_pregao.EventoMarcado],
+) -> dict:
+    """O resumo do pregão e o motivo do dia de evento, sem gravar. Confere que o texto aprovado sai
+    destes números."""
     resumo: dict[str, Any] = pregao_do_dia.resumo_do_pregao(
         pregao_do_dia.EntradasDoPregao(
             dia=dia,
@@ -226,6 +245,69 @@ def _gravar(caminho: Path, resumo: dict, origem: dict[str, object]) -> None:
     gravar_atomico(caminho, lambda p: p.write_text(texto, "utf-8"))
 
 
+def balancos_do_acervo(
+    arquivos: dict[str, dict], empresas: pd.DataFrame, vespera: date
+) -> pd.DataFrame | None:
+    """Dívida líquida e EBITDA das empresas do pregão, dos DFP e ITR guardados, só o que era público
+    na véspera (`raio_x.balancos_na_vespera`). None sem nenhum arquivo: o rascunho diz que ficou sem
+    a conta da dívida. O ano que falta (o DFP do ano corrente ainda não existe) só fica de fora."""
+    cnpjs = set(empresas["cnpj"].dropna())
+    contas, documentos = [], []
+    for documento, fonte in FONTES_DOS_BALANCOS.items():
+        for ano in range(vespera.year - ANOS_DE_BALANCO_ANTES, vespera.year + 1):
+            guardado = arquivos[fonte].get(ano)
+            if guardado is None:
+                continue
+            do_ano, indice = dm.ler_demonstracoes(
+                _original(guardado.caminho), documento
+            )
+            contas.append(do_ano[do_ano["cnpj"].isin(cnpjs)])
+            documentos.append(indice[indice["cnpj"].isin(cnpjs)])
+    if not contas:
+        return None
+    return raio_x.balancos_na_vespera(
+        pd.concat(contas, ignore_index=True),
+        pd.concat(documentos, ignore_index=True),
+        vespera,
+    )
+
+
+def gravar_rascunho_do_raio_x(
+    dia: date,
+    vespera: date,
+    empresas: pd.DataFrame,
+    serie: pd.Series,
+    arquivos: dict[str, dict],
+    pasta: Path,
+) -> None:
+    """O Raio-X do dia de evento em JSON, HTML e PDF, no acervo. Não publica: espera o "pode"."""
+    saida = raio_x.raio_x_do_pregao(
+        dia, vespera, empresas, serie, balancos_do_acervo(arquivos, empresas, vespera)
+    )
+    texto = json.dumps(saida, ensure_ascii=False, indent=1, allow_nan=False)
+    pagina = rascunho.em_html(saida)
+    pdf = rascunho.em_pdf(saida, datetime.now(ZoneInfo(b3.FUSO_DA_B3)))
+    caminho = caminho_do_rascunho(pasta, dia, ".json")
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    gravar_atomico(
+        caminho.with_suffix(".html"), lambda p: p.write_text(pagina, "utf-8")
+    )
+    gravar_atomico(caminho.with_suffix(".pdf"), lambda p: p.write_bytes(pdf))
+    # o JSON por último: é ele que diz que o rascunho saiu inteiro
+    gravar_atomico(caminho, lambda p: p.write_text(texto, "utf-8"))
+    print(
+        f"{dia}: rascunho do Raio-X em {PASTA_NO_ACERVO}/{PASTA_DO_RAIO_X}/{dia.isoformat()}, "
+        'esperando o "pode"',
+        flush=True,
+    )
+
+
+def _falta_o_rascunho(caminho_do_resumo: Path, pasta: Path, dia: date) -> bool:
+    """Dia de evento cujo rascunho não saiu (a rodada anterior falhou nele): refaz."""
+    evento = json.loads(caminho_do_resumo.read_text("utf-8")).get("evento")
+    return evento is not None and not caminho_do_rascunho(pasta, dia, ".json").exists()
+
+
 def gerar_pregao(
     dia: date,
     arquivos: dict[str, dict],
@@ -238,9 +320,14 @@ def gerar_pregao(
     vespera = pregao_anterior(dia)
     origem = _origem(arquivos, serie, calendario, dia, vespera)
     caminho = caminho_do_resumo(pasta, dia)
-    if not forcar and _em_dia(caminho, origem):
+    if (
+        not forcar
+        and _em_dia(caminho, origem)
+        and not _falta_o_rascunho(caminho, pasta, dia)
+    ):
         return False
-    resumo = montar_resumo(dia, vespera, arquivos, serie, calendario, pasta)
+    empresas = _empresas(dia, vespera, arquivos, pasta)
+    resumo = montar_resumo(dia, vespera, empresas, arquivos, serie, calendario)
     _gravar(caminho, resumo, origem)
     print(
         f"{dia}: Ibovespa {resumo['ibovespa']['variacao']:+.2%}, "
@@ -249,6 +336,8 @@ def gerar_pregao(
         + (", dia de evento" if resumo["evento"] else ""),
         flush=True,
     )
+    if resumo["evento"]:
+        gravar_rascunho_do_raio_x(dia, vespera, empresas, serie, arquivos, pasta)
     return True
 
 
