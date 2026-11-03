@@ -249,6 +249,8 @@ def _contas_do_fluxo(dfc: pd.DataFrame) -> pd.DataFrame:
             # as três abaixo vêm em várias linhas e são somadas (CONTAS_SOMADAS)
             "depreciacao": cd.str.startswith("6.01.01.") & e_depreciacao(ds),
             "capex": cd.str.startswith("6.02.") & e_capex(ds),
+            # o total do investimento só confere o capex (tirar_zeros_de_ausencia o descarta)
+            "investimento_total": (cd == "6.02") & ds.str.startswith("caixa liquido"),
             "dividendos_pagos": cd.str.startswith("6.03.")
             & ds.str.contains(
                 r"dividendo|juros s(?:obre|/) ?(?:o )?capital", regex=True
@@ -323,7 +325,7 @@ def ler_demonstracoes(
     contas = _normalizar(
         pd.concat(partes, ignore_index=True) if partes else pd.DataFrame(), documento
     )
-    contas = _somar_as_divididas(contas)
+    contas = tirar_zeros_de_ausencia(_somar_as_divididas(contas))
     contas = pd.concat([contas, _acoes(capital, documento)], ignore_index=True)
     contas = _so_a_versao_mais_nova(contas)
     return contas[COLUNAS].reset_index(drop=True), _documentos(indice, documento)
@@ -376,6 +378,46 @@ def _somar_as_divididas(contas: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
     return pd.concat([contas[~divididas], somadas], ignore_index=True)
+
+
+_CHAVE_DO_DOCUMENTO = ("cnpj", "documento", "referencia", "versao", "periodo", "tipo")
+# (conta que pode ser zero de ausência, conta de total que prova que o zero não é de verdade):
+# o lucro dos controladores some se o consolidado não é zero; o capex, se o caixa de investimento
+# não é zero (a obra está numa linha que não reconhecemos como capex, ex.: ativo contratual)
+_ZERO_QUE_SO_VALE_COM_TOTAL_ZERO = (
+    ("lucro_controladores", "lucro_liquido"),
+    ("capex", "investimento_total"),
+)
+
+
+def tirar_zeros_de_ausencia(contas: pd.DataFrame) -> pd.DataFrame:
+    """Tira da tabela de contas o zero que é ausência, e a conta `investimento_total` (só conferência).
+
+    A CVM às vezes deixa "atribuído aos controladores" em 0 com lucro consolidado diferente de zero
+    (Light, Renova, CEEE-G), e o capex somado de linhas reconhecidas pode dar 0 com o caixa de
+    investimento em bilhões (COELBA). Esses 0 não são lucro nem capex: ficam sem valor (ausência
+    nunca vira zero). Zero com o total também zero é zero de verdade e continua."""
+    if contas.empty:
+        return contas
+    chave = [c for c in _CHAVE_DO_DOCUMENTO if c in contas]
+    ausentes = pd.Series(False, index=contas.index)
+    linhas = pd.MultiIndex.from_frame(contas[chave])
+    for conta_zerada, conta_total in _ZERO_QUE_SO_VALE_COM_TOTAL_ZERO:
+        totais = (
+            contas[contas["conta"] == conta_total]
+            .drop_duplicates(chave)
+            .set_index(chave)["valor"]
+        )
+        do_total = pd.Series(totais.reindex(linhas).to_numpy(), index=contas.index)
+        ausentes |= (
+            (contas["conta"] == conta_zerada)
+            & (contas["valor"] == 0)
+            & do_total.ne(0)
+            & do_total.notna()
+        )
+    return contas[~ausentes & (contas["conta"] != "investimento_total")].reset_index(
+        drop=True
+    )
 
 
 # Conta do TickerLab → coluna da composição do capital da CVM.
