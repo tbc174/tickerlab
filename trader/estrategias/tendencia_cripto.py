@@ -234,8 +234,11 @@ def _conferir_entradas(
         raise ValueError(f"os volumes têm de ter as colunas {ATIVOS}")
 
 
-def _impacto(valor: float, sigma_diaria: float, volume: float, fator: float) -> float:
-    """Raiz quadrada: Y·σ·√(Q/V)·Q; sem volume conhecido não há como medir (é erro)."""
+def impacto(valor: float, sigma_diaria: float, volume: float, fator: float) -> float:
+    """Raiz quadrada: Y·σ·√(Q/V)·Q; sem volume conhecido não há como medir (é erro).
+
+    A P0-2 (`tendencia_b3`) usa a mesma conta.
+    """
     if fator == 0.0 or valor == 0.0:
         return 0.0
     if not volume > 0:
@@ -365,7 +368,7 @@ def simular(
             if abs(delta) < BANDA_MINIMA * patrimonio_antes:
                 continue
             valor = abs(delta)
-            custo = custo_de_negociar(valor, CLASSE, custos=custos) + _impacto(
+            custo = custo_de_negociar(valor, CLASSE, custos=custos) + impacto(
                 valor, s[i, k], v[i, k], parametros.fator_de_impacto
             )
             cambio = (
@@ -435,7 +438,7 @@ def comprar_e_segurar(
     sigma = fechamento.pct_change().rolling(parametros.janela_da_vol).std()
     custo = (
         custo_de_negociar(capital, CLASSE, custos=parametros.custos)
-        + _impacto(
+        + impacto(
             capital,
             float(np.nan_to_num(sigma.loc[inicio])),
             float(volume.loc[inicio]),
