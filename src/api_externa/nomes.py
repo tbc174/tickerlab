@@ -10,7 +10,7 @@ Identificadores que já são os mesmos nas duas línguas (o CNPJ) passam como es
 
 from collections.abc import Mapping
 
-IDENTIFICADORES = frozenset({"cnpj", "cnpjs"})
+IDENTIFICADORES = frozenset({"cnpj", "cnpjs", "isin"})
 
 NOMES_DE_FORA: Mapping[str, str] = {
     # os tempos (D6)
@@ -52,6 +52,42 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "itens": "items",
     "situacao_do_item": "status",
     "maximo_do_lote": "max_batch_size",
+    # companies: a situação na Receita e o Simples Nacional
+    "situacao_cadastral": "registration_status",
+    "data_situacao_cadastral": "registration_status_date",
+    "motivo_situacao": "registration_status_reason",
+    "optante_simples": "simples_nacional",
+    "data_opcao_simples": "simples_nacional_since",
+    "data_exclusao_simples": "simples_nacional_until",
+    # financials: as demonstrações como eram em cada entrega
+    "demonstracao": "statement",
+    "grupo": "consolidation",
+    "conta": "account",
+    "descricao": "description",
+    "inicio": "period_start",
+    "fim": "period_end",
+    "documento": "document",
+    "origem": "origin",
+    "ate": "valid_until",
+    # funds: o cadastro, o custo da taxa e a carteira
+    "nome": "name",
+    "classe": "fund_class",
+    "situacao": "operating_status",
+    "taxa_administracao_pct_ao_ano": "management_fee_pct_per_year",
+    "texto_taxa_administracao": "management_fee_note",
+    "taxa_performance_pct": "performance_fee_pct",
+    "texto_taxa_performance": "performance_fee_note",
+    "patrimonio_liquido": "net_assets",
+    "data_do_patrimonio_liquido": "net_assets_date",
+    "sem_taxa": "without_fee",
+    "com_taxa": "with_fee",
+    "ficou_com_a_taxa": "fee_amount",
+    "fracao_do_resultado": "fee_share_of_return",
+    "competencia": "portfolio_month",
+    "codigo": "asset_code",
+    "emissor": "issuer",
+    "tipo": "position_type",
+    "quantidade": "quantity",
 }
 
 
