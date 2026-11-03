@@ -474,10 +474,10 @@ def test_datas_em_mais_de_um_formato_e_o_que_nao_e_data_fica_nulo():
 
 
 def test_ano_absurdo_da_fonte_fica_nulo_em_vez_de_derrubar_a_carga():
-    texto = pd.Series(["05/06/3512", "24/01/2011"])
+    texto = pd.Series(["05/06/3512", "01/10/0012", "24/01/2011"])
     datas = licencas._datas(texto, (licencas.DIA_MES_ANO,))
-    assert pd.isna(datas.iloc[0])
-    assert datas.iloc[1] == pd.Timestamp(2011, 1, 24)
+    assert datas.iloc[:2].isna().all()
+    assert datas.iloc[2] == pd.Timestamp(2011, 1, 24)
 
 
 def test_primeira_coluna_cheia_e_coluna_que_a_fonte_nao_manda():
