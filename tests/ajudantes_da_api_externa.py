@@ -9,6 +9,7 @@ from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
 
+from base.prontidao import Prontidao, Prova
 from src import api
 from src import portao_externo as portao
 from src.api_externa import VARIAVEL_DA_CHAVE, acesso
@@ -20,6 +21,7 @@ from src.portao_externo import Canal, Categoria, Finalidade, LinhaDeDireito
 AGORA = datetime(2026, 10, 22, 12, tzinfo=UTC)
 HOJE = AGORA.date()
 CONJUNTO = "dfp"
+TABELA = "demonstracoes"  # nome do dicionário: o portão confere prontidão e versão maior por ele
 
 
 def cliente_da_api(monkeypatch, momento: datetime = AGORA) -> TestClient:
@@ -73,18 +75,22 @@ def linha_do_portao(**outros) -> LinhaDeDireito:
         "categoria": Categoria.FATO_DE_PJ,
         "vigente_desde": date(2026, 10, 1),
         "prova": "teste",
+        "tabelas": (TABELA,),
     }
     return LinhaDeDireito(**(base | outros))  # type: ignore[arg-type]
 
 
 def portao_liberando(*linhas: LinhaDeDireito) -> portao.Regras:
-    """O portão com tudo em ordem para a família `cvm`: só as linhas decidem."""
+    """O portão com tudo em ordem para a família `cvm` e a tabela pronta: só as linhas decidem."""
     respostas = ColetaEGuarda(Coleta.ABERTA, Guarda.SEM_PRAZO)
+    prova = Prova(date(2026, 10, 1), "teste", "teste")
     return dataclasses.replace(
         portao.regras_vigentes(),
         linhas=linhas or (linha_do_portao(),),
         coleta_e_guarda={"cvm": respostas},
         termos_lidos_em={"cvm": date(2026, 10, 1)},
+        prontidao={TABELA: Prontidao(1, prova, prova, prova)},
+        versoes_maiores={TABELA: 1},
     )
 
 
