@@ -194,6 +194,12 @@ def test_catalogo_da_busca_e_o_do_app():
     assert all(len(a) == 5 for a in ativos)
 
 
+def test_ads_txt_e_gerado_com_a_linha_do_adsense(regerado):
+    esperado = "google.com, pub-4178012487609221, DIRECT, f08c47fec0942fa0\n"
+    assert (regerado / "ads.txt").read_bytes() == esperado.encode()
+    assert (SITE / "ads.txt").read_bytes() == esperado.encode()
+
+
 def test_relatorio_de_exemplo_e_um_pdf_de_verdade_marcado_como_exemplo():
     from io import BytesIO
 

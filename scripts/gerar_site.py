@@ -8,7 +8,8 @@ vêm do React (`web/`, com `npm run site`). Aqui fica só o que depende do códi
 - fontes, marca e o cálculo do sol do tema, copiados de `static/` (sem Google Fonts);
 - o relatório de exemplo (PDF) e as imagens das duas primeiras páginas em cada estilo, gerados agora
   pelo mesmo código do app, com os dados de exemplo guardados no projeto (rotulados como exemplo);
-- o catálogo da busca do topo (`conteudo/catalogo_de_ativos.csv`).
+- o catálogo da busca do topo (`conteudo/catalogo_de_ativos.csv`);
+- o `ads.txt` (a linha do Google AdSense).
 
 O site inteiro, do zero: `python -m scripts.gerar_site`, `python -m scripts.exportar_conteudo` e, em
 `web/`, `npm run site`. Há testes que conferem que cada parte de `site/` está em dia.
@@ -52,7 +53,10 @@ COPIADOS = (
 )
 # pastas e arquivos de site/ que são deste script (o resto é do React)
 PASTAS_DO_PYTHON = ("fontes", "marca", "tema", "relatorio", "estudos")
-ARQUIVOS_DO_PYTHON = ("catalogo.json",)
+ARQUIVOS_DO_PYTHON = ("catalogo.json", "ads.txt")
+# a linha do AdSense (conta PJ do TickerLab, plano mestre §9); é a mesma que o Calcula Dinheiro e o
+# Ficha Clara publicam. O Google lê `/ads.txt` na raiz do domínio.
+ADS_TXT = "google.com, pub-4178012487609221, DIRECT, f08c47fec0942fa0\n"
 
 
 def dados_de_exemplo(ticker: str) -> pd.DataFrame:
@@ -114,6 +118,9 @@ def gerar(destino: Path = DESTINO) -> None:
     (destino / amostra_do_relatorio.CAMINHO_DO_PDF.lstrip("/")).write_bytes(
         amostra_do_relatorio.pdf()
     )
+    (destino / "ads.txt").write_bytes(
+        ADS_TXT.encode("utf-8")
+    )  # bytes: sem CRLF no Windows
     tabela = catalogo.carregar().reset_index()
     (destino / "catalogo.json").write_text(
         json.dumps(
