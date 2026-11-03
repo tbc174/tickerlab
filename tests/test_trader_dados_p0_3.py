@@ -102,3 +102,46 @@ def test_montar_precos_alinha_ao_calendario_da_b3_e_corta_no_comeco_comum():
 def test_volumes_declarados_cobrem_os_quatro_ativos():
     assert set(dados.VOLUME_MEDIO_EM_REAIS) == set(ATIVOS_DE_RISCO)
     assert all(v > 0 for v in dados.VOLUME_MEDIO_EM_REAIS.values())
+
+
+def test_ponto_de_5_anos_faltando_segue_o_ponto_de_10_anos_em_paralelo():
+    """De abr a ago/2019 o Tesouro Direto não tinha título perto de 5 anos: o ponto some da
+    curva, e o índice ficava parado. Agora ele segue o ponto de 10 anos em paralelo."""
+    datas = pd.to_datetime(["2019-08-07", "2019-08-08", "2019-08-09", "2019-08-12"])
+    linhas = []
+    cinco = [0.030, None, None, 0.025]
+    dez = [0.035, 0.034, 0.036, 0.030]
+    for dia, taxa_5, taxa_10 in zip(datas, cinco, dez, strict=True):
+        if taxa_5 is not None:
+            linhas.append(
+                {"data_base": dia, "curva": "real", "prazo_anos": 5.0, "taxa": taxa_5}
+            )
+        linhas.append(
+            {"data_base": dia, "curva": "real", "prazo_anos": 10.0, "taxa": taxa_10}
+        )
+        linhas.append(
+            {"data_base": dia, "curva": "nominal", "prazo_anos": 5.0, "taxa": 0.07}
+        )
+    taxa = dados.taxa_real_a_prazo(pd.DataFrame(linhas))
+    assert list(taxa.index) == list(datas)
+    assert taxa.to_numpy() == pytest.approx([0.030, 0.029, 0.031, 0.025])
+
+
+def test_fechamento_do_mt5_pode_ignorar_barras_sem_negocio(tmp_path):
+    """O export do MT5 traz barras de feriado com volume zero e o preço repetido."""
+    tabela = pd.DataFrame(
+        {"Close": [10.0, 10.0, 11.0], "Volume": [100, 0, 120]},
+        index=pd.DatetimeIndex(["2020-01-02", "2020-01-03", "2020-01-06"], name="Date"),
+    )
+    arquivo = tmp_path / "X_D1.parquet"
+    tabela.to_parquet(arquivo)
+    assert len(dados.fechamento_do_mt5(arquivo)) == 3
+    com_negocio = dados.fechamento_do_mt5(arquivo, so_com_negocio=True)
+    assert list(com_negocio.index.strftime("%Y-%m-%d")) == ["2020-01-02", "2020-01-06"]
+
+
+def test_ntnb_no_calendario_da_b3_rende_o_carry_nos_dias_sem_curva():
+    taxa = pd.Series(0.06, index=DATAS).drop(DATAS[100:140])  # 40 pregões sem curva
+    indice = dados.ntnb_no_calendario(taxa, _ipca(), DATAS)
+    assert list(indice.index) == list(DATAS)
+    assert (indice.pct_change().iloc[1:] > 0).all()  # o carry continua nesses dias

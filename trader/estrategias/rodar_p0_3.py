@@ -54,13 +54,16 @@ def carregar_tabelas(
 ) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
     """Preços em reais, CDI e volumes, só com dados do desenvolvimento."""
     mt5 = {
-        nome: dados_p0_3.fechamento_do_mt5(dados_p0_3.PASTA_DO_MT5 / arquivo)
+        nome: dados_p0_3.fechamento_do_mt5(
+            dados_p0_3.PASTA_DO_MT5 / arquivo, so_com_negocio=(nome == "BOVA11")
+        )
         for nome, arquivo in dados_p0_3.ARQUIVOS_DO_MT5.items()
     }
     curva = dados_p0_3.carregar_curva_real()
     inicio, fim = curva.index.min(), pd.Timestamp(criterio_quant.FIM_DO_DESENVOLVIMENTO)
     ipca = dados_p0_3.carregar_ipca(inicio - pd.DateOffset(months=1), fim, pasta)
-    ntnb = dados_p0_3.indice_sintetico_da_ntnb(recortar_desenvolvimento(curva), ipca)
+    pregoes = pd.DatetimeIndex(recortar_desenvolvimento(mt5["BOVA11"]).index)
+    ntnb = dados_p0_3.ntnb_no_calendario(recortar_desenvolvimento(curva), ipca, pregoes)
     precos = recortar_desenvolvimento(
         dados_p0_3.montar_precos(
             bova11=mt5["BOVA11"],

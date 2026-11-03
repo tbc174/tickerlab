@@ -319,3 +319,17 @@ def test_p_valor_do_acaso_ve_quem_sabe_o_futuro():
     )
     acaso = rp.p_valor_do_acaso(pesos, retornos, CDI_ZERO, 0.0, sorteios=200)
     assert acaso["p_valor"] < 0.05
+
+
+def test_janela_sem_variacao_e_recusada_em_vez_de_virar_nan():
+    """Achado da tentativa 1 real: a NTN-B ficou parada por 80 pregões (buraco na curva) e o
+    risk parity virou 0/0 em silêncio na rodada que olha o futuro."""
+    janela = _precos().pct_change().iloc[1:300]
+    janela["NTNB"] = 0.0
+    for esquema in ("risk_parity", "inverso_vol", "min_var"):
+        with pytest.raises(ValueError, match="sem variação em NTNB"):
+            rp.calcular_pesos(esquema, janela)
+    precos = _precos()
+    precos.loc[: DATAS[400], "NTNB"] = 100.0  # preço repetido por mais de um ano
+    with pytest.raises(ValueError, match="sem variação"):
+        rp.simular(precos, _cdi(), VOLUMES, rp.Parametros())

@@ -4,12 +4,17 @@ Aproximações declaradas (o relatório as repete em "Limites e cuidados"):
 - **NTN-B sintética de 5 anos:** índice que rende o juro real da curva de 5 anos do Tesouro
   (prazo constante: a cada dia o título é "trocado" por um de 5 anos), mais a variação de preço
   quando a taxa muda, mais o IPCA do mês espalhado pelos pregões do mês. Não é o preço de um
-  título de verdade nem o do B5P211.
+  título de verdade nem o do B5P211. Dia em que a curva não tem o ponto de 5 anos (de abr a
+  ago/2019 o Tesouro Direto só vendia IPCA+ de 10 anos ou mais) usa o último ponto conhecido
+  deslocado pelo que o ponto de 10 anos andou; dia sem curva nenhuma mantém a taxa e segue
+  rendendo o carry e o IPCA (o índice nunca fica "parado").
 - **Ouro e S&P 500 em reais:** preço em dólar × dólar do dia, sem hedge; em feriado lá fora vale o
   último preço em dólar (o dólar do dia ainda move o valor em reais).
 - **Calendário:** o dos preços do BOVA11 (pregões da B3); as outras séries são levadas a ele com
   o último valor disponível.
 - **Volumes para o impacto:** estimativas conservadoras por ETF, fixadas aqui antes dos números.
+- **Barras sem negócio:** o export do MT5 traz barras de feriado com volume zero e o preço
+  repetido (91 no BOVA11 entre 2010 e 2023); elas ficam fora do calendário.
 """
 
 from __future__ import annotations
@@ -29,6 +34,7 @@ PASTA_DA_PESQUISA = RAIZ / "pesquisa_quant"
 PASTA_DO_MT5 = RAIZ / "dados_mt5"
 PASTA_DA_CURVA = Path("C:/Users/tiago/TickerLab-Acervo/acervo/base/curva_juros")
 PRAZO_DA_NTNB_EM_ANOS = 5.0
+PRAZO_DE_RESERVA_EM_ANOS = 10.0  # quem guia o ponto de 5 anos nos dias em que ele falta
 PREGOES_POR_ANO = 252
 SERIE_DO_IPCA = bcb.SERIES["ipca"]
 ARQUIVOS_DO_MT5 = {
@@ -89,6 +95,15 @@ def ao_calendario(serie: pd.Series, indice: pd.DatetimeIndex) -> pd.Series:
     return serie.sort_index().reindex(indice, method="ffill")
 
 
+def ntnb_no_calendario(
+    taxa_real: pd.Series, ipca_mensal: pd.Series, indice: pd.DatetimeIndex
+) -> pd.Series:
+    """A NTN-B sintética no calendário dado: dia sem curva mantém a taxa e rende o carry e o IPCA."""
+    return indice_sintetico_da_ntnb(
+        ao_calendario(taxa_real, indice).dropna(), ipca_mensal
+    )
+
+
 def montar_precos(
     *,
     bova11: pd.Series,
@@ -147,14 +162,32 @@ def carregar_ipca(
 # --- leitura das fontes locais ------------------------------------------------------------------------
 
 
-def taxa_real_a_prazo(
-    curva: pd.DataFrame, prazo_anos: float = PRAZO_DA_NTNB_EM_ANOS
-) -> pd.Series:
-    """A taxa real (fração a.a.) no prazo dado, por `data_base`, da tabela da curva do Tesouro."""
-    real = curva[(curva["curva"] == "real") & (curva["prazo_anos"] == prazo_anos)]
-    serie = real.set_index("data_base")["taxa"].astype(float).sort_index()
+def _ponto_da_curva(real: pd.DataFrame, prazo_anos: float) -> pd.Series:
+    ponto = real[real["prazo_anos"] == prazo_anos]
+    serie = ponto.set_index("data_base")["taxa"].astype(float).sort_index()
     serie.index = pd.DatetimeIndex(serie.index)
     return serie[~serie.index.duplicated(keep="last")]
+
+
+def taxa_real_a_prazo(
+    curva: pd.DataFrame,
+    prazo_anos: float = PRAZO_DA_NTNB_EM_ANOS,
+    prazo_de_reserva: float = PRAZO_DE_RESERVA_EM_ANOS,
+) -> pd.Series:
+    """A taxa real (fração a.a.) no prazo dado, por `data_base`, da tabela da curva do Tesouro.
+
+    Dia em que o ponto não existe (o Tesouro Direto não oferecia título perto dele) recebe o
+    último valor conhecido mais o que o ponto de reserva andou desde então (deslocamento
+    paralelo). Dia sem os dois pontos fica de fora.
+    """
+    real = curva[curva["curva"] == "real"]
+    alvo = _ponto_da_curva(real, prazo_anos)
+    reserva = _ponto_da_curva(real, prazo_de_reserva)
+    datas = alvo.index.union(reserva.index)
+    alvo, reserva = alvo.reindex(datas), reserva.reindex(datas)
+    reserva_quando_o_alvo_existia = reserva.where(alvo.notna()).ffill()
+    deslocada = alvo.ffill() + (reserva - reserva_quando_o_alvo_existia)
+    return alvo.fillna(deslocada).dropna()
 
 
 def carregar_curva_real(
@@ -168,9 +201,19 @@ def carregar_curva_real(
     )
 
 
-def fechamento_do_mt5(arquivo: Path) -> pd.Series:
-    """A coluna de fechamento de um parquet D1 exportado do MT5, indexada pela data."""
+def _coluna_de_volume(tabela: pd.DataFrame) -> str | None:
+    return next((c for c in tabela.columns if "volume" in c.lower()), None)
+
+
+def fechamento_do_mt5(arquivo: Path, *, so_com_negocio: bool = False) -> pd.Series:
+    """A coluna de fechamento de um parquet D1 exportado do MT5, indexada pela data.
+
+    `so_com_negocio` tira as barras com volume zero (feriado com o preço repetido).
+    """
     tabela = pd.read_parquet(arquivo)
+    volume = _coluna_de_volume(tabela)
+    if so_com_negocio and volume is not None:
+        tabela = tabela[tabela[volume] > 0]
     coluna = next(c for c in tabela.columns if c.lower() in ("close", "fechamento"))
     data = next(
         (c for c in tabela.columns if c.lower() in ("time", "data", "date")), None
@@ -183,7 +226,7 @@ def fechamento_do_mt5(arquivo: Path) -> pd.Series:
 def volume_medio_do_mt5(arquivo: Path, pregoes: int = 60) -> float | None:
     """Volume financeiro médio (preço × volume) dos últimos `pregoes`, se o arquivo tem volume."""
     tabela = pd.read_parquet(arquivo)
-    volume = next((c for c in tabela.columns if "volume" in c.lower()), None)
+    volume = _coluna_de_volume(tabela)
     if volume is None:
         return None
     fechamento = fechamento_do_mt5(arquivo)

@@ -41,7 +41,7 @@ from src.carteiras import dias_de_decisao
 from trader.avaliacao import sharpe
 from trader.custos_br import PADRAO, CustosBR, apurar_ir_mensal, custo_de_negociar
 
-VERSAO = "0.1"
+VERSAO = "0.2"  # 0.2: janela sem variação é erro, não NaN (tentativa 1 real)
 ATIVOS_DE_RISCO = ("NTNB", "BOVA11", "OURO", "SP500")
 ETF_DE_CADA_ATIVO = {
     "NTNB": "B5P211",
@@ -204,6 +204,8 @@ def calcular_pesos(
     pesos_fixos: dict[str, float] | None = None,
 ) -> pd.Series:
     """Os pesos-alvo dos ativos de risco para uma janela de retornos (soma <= 1; o resto é caixa)."""
+    if esquema in ("risk_parity", "inverso_vol", "min_var"):
+        _conferir_janela(retornos)
     if esquema == "risk_parity":
         return pesos_risk_parity(retornos)
     if esquema == "inverso_vol":
@@ -218,6 +220,16 @@ def calcular_pesos(
             .astype(float)
         )
     raise ValueError(f"esquema desconhecido: {esquema!r}; use um de {ESQUEMAS}")
+
+
+def _conferir_janela(retornos: pd.DataFrame) -> None:
+    """Coluna sem variação (preço repetido: dado inconforme) viraria 0/0 nos pesos, em silêncio."""
+    desvio = retornos.std()
+    paradas = desvio.index[(desvio == 0) | desvio.isna()]
+    if len(paradas):
+        raise ValueError(
+            f"janela sem variação em {paradas[0]}: preço repetido (dado inconforme)"
+        )
 
 
 def fora_da_banda(atual: pd.Series, alvo: pd.Series, banda: float) -> bool:
@@ -456,6 +468,8 @@ def simular(
                         pesos_fixos=p.pesos_fixos,
                     )
                     alvo = w.reindex(ativos).to_numpy(float)
+                    if not np.isfinite(alvo).all():
+                        raise ValueError(f"pesos-alvo inválidos em {datas[t].date()}")
                     alvos[datas[t]] = alvo
                     pendente = (alvo, janela.std(axis=0, ddof=1))
             devido = carteira.fechar_mes(datas[t], p.custos)
