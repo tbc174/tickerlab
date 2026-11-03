@@ -10,7 +10,8 @@ no servidor de casa (`scripts/gerar_dossies.py`), uma ficha JSON por CNPJ, e só
 - a fonte pode ser **mostrada** pela trava das licenças (`coletas.pode_usar("mostrar", ...)`): toda
   fonte, com a marca registrada e a fonte citada (ADR 0102; a B3 entrou em 22/10/2026, ADR 0008 Emenda 6);
 - não é uma tabela de crise ou de risco com o nome da empresa (insolvência, atraso, situação especial,
-  dívida com a União: esperam o parecer, P-44), nem das assessorias de M&A (licença a confirmar).
+  dívida com a União: esperam o parecer, P-44). As assessorias de M&A (marca "a confirmar") entram, porque
+  a marca não decide (ADR 0102): saem com a fonte citada, só os fatos, enquanto o TickerLab não cobra.
 
 Uma fonte que passar a ser vendável entra sozinha: basta a tabela estar numa seção. Para pôr uma série
 nova de agência (as das séries 5 e 6 da base, quando chegarem), é uma linha em `SERIES_DAS_AGENCIAS`.
