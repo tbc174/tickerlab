@@ -182,28 +182,28 @@ def ultimos_12_meses(base: pd.DataFrame, conta: str) -> pd.Series:
     """Valor da conta de resultado nos últimos 12 meses, por CNPJ (NaN sem as três peças).
 
     Só os períodos acumulados desde 1º de janeiro contam: DFP (o ano inteiro) ou o acumulado do
-    ITR; trimestre isolado é ignorado.
+    ITR; trimestre isolado é ignorado. As três peças saem de um dicionário (CNPJ, fim) → valor:
+    uma tabela do pandas por CNPJ custava segundos a cada decisão.
     """
     inicio = pd.to_datetime(base["inicio"])
     acumulados = base[(base["conta"] == conta) & inicio.dt.is_year_start.fillna(False)]
-    acumulados = acumulados.sort_values(["cnpj", "fim"], kind="stable").drop_duplicates(
-        ["cnpj", "inicio", "fim"], keep="last"
-    )
+    acumulados = acumulados.assign(
+        fim=pd.to_datetime(acumulados["fim"]), valor=acumulados["valor"].astype(float)
+    ).sort_values(["cnpj", "fim"], kind="stable")
+    valores = acumulados.groupby(["cnpj", "fim"], sort=False)["valor"].last().to_dict()
+    ultimos = acumulados.groupby("cnpj", sort=True)["fim"].max()
     resultado: dict[str, float] = {}
-    for cnpj, grupo in acumulados.groupby("cnpj", sort=True):
-        por_fim = grupo.set_index(pd.to_datetime(grupo["fim"]))["valor"].astype(float)
-        ultimo = pd.Timestamp(por_fim.index.max())
+    for cnpj, ultimo in ultimos.items():
+        ultimo = pd.Timestamp(ultimo)
         if ultimo.is_year_end:
-            resultado[str(cnpj)] = float(por_fim[ultimo])
+            resultado[str(cnpj)] = valores[(cnpj, ultimo)]
             continue
-        dfp = pd.Timestamp(year=ultimo.year - 1, month=12, day=31)
-        mesmo_mes = ultimo - pd.DateOffset(years=1)
-        if dfp in por_fim.index and mesmo_mes in por_fim.index:
-            resultado[str(cnpj)] = float(
-                por_fim[ultimo] + por_fim[dfp] - por_fim[mesmo_mes]
-            )
-        else:
+        dfp = valores.get((cnpj, pd.Timestamp(year=ultimo.year - 1, month=12, day=31)))
+        mesmo_mes = valores.get((cnpj, ultimo - pd.DateOffset(years=1)))
+        if dfp is None or mesmo_mes is None:
             resultado[str(cnpj)] = math.nan
+        else:
+            resultado[str(cnpj)] = valores[(cnpj, ultimo)] + dfp - mesmo_mes
     return pd.Series(resultado, dtype=float)
 
 

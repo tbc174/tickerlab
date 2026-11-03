@@ -15,6 +15,8 @@ from trader import criterio_quant
 from trader.estrategias import dados_f_b3
 from trader.estrategias import rodar_f_b3 as rodar
 
+# A rodada do fixture de módulo demora; num processo só ela roda uma vez (CI com --dist loadgroup).
+pytestmark = pytest.mark.xdist_group("f_b3")
 # Quatro anos bastam para 12 meses de pregão e de balanço antes da primeira decisão (2017).
 DATAS_CURTAS = pd.bdate_range("2016-01-04", "2019-12-30")
 
