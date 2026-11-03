@@ -19,6 +19,7 @@ import stripe
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from src.api_externa import api_externa_ligada
 from src.api_v1 import api_v1_ligada
 from src.banco import newsletter_por_email, novidades_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
@@ -148,7 +149,8 @@ async def _ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
 
 
 def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
-    """A API; as rotas de leitura (v1) só entram com `TICKERLAB_API_V1=1` (ADR 0048)."""
+    """A API; as rotas de leitura (v1) só entram com `TICKERLAB_API_V1=1` (ADR 0048) e as da API
+    externa (B-32a) só com `TICKERLAB_API_EXTERNA=1`."""
     nova = FastAPI(
         title="TickerLab API",
         docs_url=None,
@@ -207,6 +209,12 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
         ):
             nova.include_router(rotas)
             nova.include_router(rotas, prefix="/api")
+    if api_externa_ligada(ambiente):
+        # a API paga da TickerLab Data (B-32a): desligada até o pen test (linha 19 da fila)
+        from src.api_externa.rotas import router as router_da_api_externa
+
+        nova.include_router(router_da_api_externa)
+        nova.include_router(router_da_api_externa, prefix="/api")
     return nova
 
 

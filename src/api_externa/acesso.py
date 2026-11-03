@@ -95,9 +95,7 @@ def _segundos_ate_o_mes_seguinte(momento: datetime) -> int:
     return max(1, int((virada - momento).total_seconds()))
 
 
-def _conferir_quotas(
-    conexao: sa.Connection, contexto: ContextoDaChave, momento: datetime
-) -> None:
+def _conferir_minuto(contexto: ContextoDaChave, momento: datetime) -> None:
     limite = _limite_do_minuto(contexto.plano_da_api)
     if not limite.permitir(str(contexto.organizacao_id), momento.timestamp()):
         raise HTTPException(
@@ -105,16 +103,49 @@ def _conferir_quotas(
             detail=CODIGO_DO_LIMITE_DO_MINUTO,
             headers={"Retry-After": str(JANELA_DO_MINUTO)},
         )
+
+
+def exigir_quota(
+    conexao: sa.Connection,
+    contexto: ContextoDaChave,
+    pedidos: int,
+    momento: datetime,
+) -> None:
+    """429 se `pedidos` a mais passam da quota do mês. O lote de N chama com N antes de servir.
+
+    Dois lotes da mesma organização ao mesmo tempo podem passar juntos da quota em até um lote: a
+    conferência e a soma não ficam na mesma trava. O plano aceita esse estouro (B-32a, risco 4).
+    """
+    if pedidos < 1:
+        raise ValueError("Um pedido conta pelo menos 1 na quota.")
     por_mes = limites_da_api(contexto.plano_da_api).pedidos_por_mes
-    if (
-        consumo_do_mes(conexao, contexto.organizacao_id, momento.date()).pedidos
-        >= por_mes
-    ):
+    ja_usados = consumo_do_mes(conexao, contexto.organizacao_id, momento.date()).pedidos
+    if ja_usados + pedidos > por_mes:
         raise HTTPException(
             status_code=429,
             detail=CODIGO_DA_QUOTA_DO_MES,
             headers={"Retry-After": str(_segundos_ate_o_mes_seguinte(momento))},
         )
+
+
+def _contexto_da_chave(
+    request: Request,
+    authorization: str | None,
+    x_api_key: str | None,
+    *,
+    com_quota_do_mes: bool,
+) -> ContextoDaChave:
+    _recusar_chave_na_url(request)
+    chave = _chave_do_cabecalho(authorization, x_api_key)
+    momento = agora()
+    with obter_engine().begin() as conexao:  # begin: grava o último uso da chave
+        resultado = conferir_chave(conexao, chave, agora=momento)
+        if not isinstance(resultado, ContextoDaChave):
+            raise _chave_recusada()
+        _conferir_minuto(resultado, momento)
+        if com_quota_do_mes:
+            exigir_quota(conexao, resultado, 1, momento)
+    return resultado
 
 
 def exigir_chave(
@@ -123,15 +154,19 @@ def exigir_chave(
     x_api_key: Annotated[str | None, Header()] = None,
 ) -> ContextoDaChave:
     """Dependência do FastAPI: o contexto da organização dona da chave, ou 400, 401 ou 429."""
-    _recusar_chave_na_url(request)
-    chave = _chave_do_cabecalho(authorization, x_api_key)
-    momento = agora()
-    with obter_engine().begin() as conexao:  # begin: grava o último uso da chave
-        resultado = conferir_chave(conexao, chave, agora=momento)
-        if not isinstance(resultado, ContextoDaChave):
-            raise _chave_recusada()
-        _conferir_quotas(conexao, resultado, momento)
-    return resultado
+    return _contexto_da_chave(request, authorization, x_api_key, com_quota_do_mes=True)
+
+
+def exigir_chave_sem_quota_do_mes(
+    request: Request,
+    authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
+) -> ContextoDaChave:
+    """A mesma porta, sem a quota do mês: para o catálogo e o consumo, que não servem dado.
+
+    Quem gastou a quota precisa conseguir ver que gastou. O limite do minuto continua valendo.
+    """
+    return _contexto_da_chave(request, authorization, x_api_key, com_quota_do_mes=False)
 
 
 def linhas_por_resposta(contexto: ContextoDaChave) -> int:
