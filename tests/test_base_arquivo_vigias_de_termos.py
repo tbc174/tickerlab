@@ -152,6 +152,7 @@ _SEM_VIGIA = {
     "wiki": "a documentação da API deu 502 e as páginas lidas não dizem a licença",
     "termos": "são as próprias cópias das páginas vigiadas",
     "contrapartes": "páginas de terceiros guardadas como prova, sem coleta recorrente do termo",
+    "djen": "a regra é a Resolução CNJ 455/2022 (norma publicada); a API não tem página de termos",
 }
 
 

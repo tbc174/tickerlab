@@ -153,6 +153,10 @@ LICENCAS = {
     "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
+    # comunicações processuais do DJEN (plano de 03/11/2026 dos processos; ADR 0121): pública pela
+    # Resolução CNJ 455/2022; a Justiça do Trabalho fica de fora pela Resolução CNJ 121/2010, art. 4º,
+    # § 1º, II (proíbe a consulta pública pelo nome da parte)
+    "djen": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
     # lote organismos (termos lidos em 22/10/2026, licencas-por-fonte.md, rodadas 1 e 4)
     "bce": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
     "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
@@ -337,6 +341,8 @@ REVENDA = {
     "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "ico": NAO_COMERCIAL,  # PDF sem termos lidos; coleta e uso com a fonte citada (ADR 0102)
     "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
+    # o CNJ não escreve licença de reuso da API; sem pedido ao CNJ (ADR 0102 Emenda 2): uso citando a fonte
+    "djen": A_CONFIRMAR,
     "bce": VENDAVEL_COM_ATRIBUICAO,  # "Source: ECB statistics"
     "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
@@ -527,6 +533,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
         Coleta.TERMO_VEDA, Guarda.NAO_DIZ
     ),  # BDI veda; VPS 90 dias, casa sem prazo
     "contrapartes": ColetaEGuarda(Coleta.TERMO_VEDA, Guarda.SO_PROVA),
+    # o robots.txt da API libera tudo (lido em 03/11/2026) e a Resolução CNJ 455/2022 faz do DJEN a
+    # publicação oficial; nenhum termo diz por quanto tempo guardar
+    "djen": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
     # robots.txt fecha o portal e a N0 não achou licença escrita que dê reuso comercial (ONS: "reuso e
     # redistribuição" sem nome de licença; catálogo: só metadados; Cecafé: `Disallow: /*.pdf$`)
     "ons": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
