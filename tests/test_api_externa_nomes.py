@@ -65,3 +65,29 @@ def test_traduzir_chaves_troca_todas_as_chaves_e_mais_nada():
         "value": 1,
         "sources": [{"source": "cvm", "license": "ODbL"}],
     }
+
+
+# ---------------------------------------------------------------- as linhas do portão saem traduzidas
+# O catálogo passa cada finalidade, campo e fonte liberados por `para_fora` e `fontes_da_resposta`, que
+# levantam erro sem tradução ou atribuição (500 no catálogo inteiro). Estes testes travam no CI a linha
+# de direito nova que chegaria assim à produção (revisão cruzada do PR 1).
+
+
+def test_toda_finalidade_tem_nome_de_fora():
+    from src.portao_externo import Finalidade
+
+    for finalidade in Finalidade:
+        assert nomes.para_fora(finalidade.value)
+
+
+def test_toda_linha_da_api_externa_tem_nome_de_fora_e_atribuicao():
+    from src.api_externa import envelope
+    from src.portao_externo import Canal, regras_vigentes
+
+    linhas = [
+        linha for linha in regras_vigentes().linhas if linha.canal == Canal.API_EXTERNA
+    ]
+    for linha in linhas:
+        assert nomes.para_fora(linha.campo)
+    fontes = {linha.fonte for linha in linhas}
+    assert len(envelope.fontes_da_resposta(fontes)) == len(fontes)

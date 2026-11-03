@@ -36,6 +36,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "campo": "field",
     "analise": "analysis",
     "credito": "credit",
+    "treino": "training",
     # o consumo e os limites
     "mes": "month",
     "pedidos": "requests",

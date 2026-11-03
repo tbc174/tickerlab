@@ -1,6 +1,6 @@
 """O roteador `/data/v1` da API externa (B-32a, PR 1): desligado por padrão, catálogo e consumo.
 
-Riscos do plano que estes testes pegam: a API servir antes do pen test (desligada por padrão); o
+Riscos do plano que estes testes pegam: a API servir antes do "pode" de ligar (desligada por padrão); o
 catálogo mostrar o que a chave não pode ver ou o que é de outra organização; o consumo vazar entre
 organizações (risco 3); nome em português escapar para fora.
 """
