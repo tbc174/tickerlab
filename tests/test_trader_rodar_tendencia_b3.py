@@ -137,6 +137,12 @@ def test_relatorio_tem_as_tabelas_e_os_limites(rodada, tmp_path):
     assert "recomendação de investimento" in texto
 
 
+def test_relatorio_escreve_reais_e_a_regua_do_tempo_em_palavras():
+    assert rodar._reais(8283.7) == "R$ 8.284"
+    assert "nenhum prazo" in rodar._anos_para_t(float("inf"))
+    assert rodar._anos_para_t(46.4) == "seriam ≈ 46 anos"
+
+
 def test_pre_registro_alterado_nao_roda_nem_registra(tmp_path, monkeypatch):
     def recusar(*_, **__):
         raise criterio_quant.PreRegistroAlteradoError("mudou")

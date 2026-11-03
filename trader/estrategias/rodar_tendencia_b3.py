@@ -15,6 +15,7 @@ de todas as tentativas anteriores de todas as fichas.
 
 from __future__ import annotations
 
+import math
 import sys
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -401,6 +402,18 @@ def _linha(nome: str, r: dict) -> str:
     )
 
 
+def _reais(valor: float) -> str:
+    """R$ com ponto de milhar, como se escreve no Brasil (R$ 8.284)."""
+    return "R$ " + f"{valor:,.0f}".replace(",", ".")
+
+
+def _anos_para_t(anos: float) -> str:
+    """A régua do tempo em palavras: com Sharpe do excesso ≤ 0, nenhum prazo chega a t = 3."""
+    if not math.isfinite(anos):
+        return "nenhum prazo bastaria (o Sharpe do excesso não é positivo)"
+    return f"seriam ≈ {anos:.0f} anos"
+
+
 CABECALHO = (
     "| Versão | Sharpe do excesso | Sharpe | Retorno anual | Volatilidade | Maior queda | "
     "Exposição média | Giro/ano | Custos ÷ capital | IR ÷ capital | Meses com IR |\n"
@@ -431,7 +444,7 @@ def escrever_relatorio(
         ),
         (
             f"Régua do tempo: anos necessários ≈ (t ÷ SR)²; com t = {T_ALVO:.0f} e o Sharpe do excesso "
-            f"do BOVA11 ({r['sharpe_do_excesso']:.2f}) seriam {saida['anos_para_t3']:.0f} anos."
+            f"do BOVA11 ({r['sharpe_do_excesso']:.2f}), {_anos_para_t(saida['anos_para_t3'])}."
         ),
         "",
         "## Veredito (seção 5 do pré-registro)",
@@ -458,7 +471,9 @@ def escrever_relatorio(
         "## Teste do Brasil (ficha P0-2)",
         "",
         (
-            f"- (a) Saídas que viram day trade (20%): {b['day_trades']}. Uma ordem por pregão, no leilão de "
+            "- (a) Saídas que viram day trade (20%): "
+            + ", ".join(f"{n} {q}" for n, q in b["day_trades"].items())
+            + ". Uma ordem por pregão, no leilão de "
             "abertura, e as pernas da rolagem são contratos diferentes: nenhuma compra e venda do mesmo "
             "instrumento no mesmo pregão."
         ),
@@ -470,14 +485,15 @@ def escrever_relatorio(
         "| Versão | Sharpe do excesso | IR total | IR por ano | Meses com IR | Meses acima de R$ 20 mil |",
         "|---|---|---|---|---|---|",
         *(
-            f"| {n} | {x['sharpe_do_excesso']:.2f} | R$ {x['imposto']:,.0f} | R$ {x['imposto_por_ano']:,.0f} | "
-            f"{x['meses_com_imposto']} de {x['meses_simulados']} | {x['meses_acima_da_isencao']} |"
+            f"| {n} | {x['sharpe_do_excesso']:.2f} | {_reais(x['imposto'])} | {_reais(x['imposto_por_ano'])} | "
+            f"{x['meses_com_imposto']} de {x['meses_simulados']} | "
+            f"{'-' if n == 'cesta_sem_isencao' else x['meses_acima_da_isencao']} |"
             for n, x in imposto.items()
         ),
         "",
         (
             f"- (c) Rolagem do WIN: {rolagem['rolagens_com_posicao']} de {rolagem['rolagens_no_periodo']} "
-            f"rolagens com posição; R$ {rolagem['total']:,.0f} no período (R$ {rolagem['por_ano_em_reais']:,.0f} "
+            f"rolagens com posição; {_reais(rolagem['total'])} no período ({_reais(rolagem['por_ano_em_reais'])} "
             f"por ano, {rolagem['por_ano_do_patrimonio']:.3%} do patrimônio médio por ano)."
         ),
         "",
