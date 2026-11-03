@@ -4,7 +4,7 @@
       "tabela": "demonstracoes_como_era",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "2.0.0",
+      "versao": "3.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -78,7 +78,10 @@
         "versao",
         "demonstracao",
         "grupo",
-        "conta"
+        "conta",
+        "ordem",
+        "inicio",
+        "fim"
       ],
       "datas": {
         "aconteceu_em": "referencia",
@@ -103,7 +106,7 @@
       "tabela": "dmpl_como_era",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -181,7 +184,10 @@
         "versao",
         "grupo",
         "conta",
-        "coluna"
+        "coluna",
+        "ordem",
+        "inicio",
+        "fim"
       ],
       "datas": {
         "aconteceu_em": "referencia",

@@ -15,10 +15,10 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 - **Frequência:** Diária no servidor de casa (carga do ENET às 0h30); a base é remontada por ano
 - **Atraso de divulgação:** DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
-- **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `demonstracao`, `grupo`, `conta`
+- **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `demonstracao`, `grupo`, `conta`, `ordem`, `inicio`, `fim`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `divulgado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 2.0.0
+- **Versão do contrato:** 3.0.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/demonstracoes/<ano>.parquet` (servidor de casa)
 - **Linhagem:** `cnpj`, `documento`, `referencia` e `versao` dizem qual entrega à CVM publicou o valor; `origem` diz se veio dos dados abertos ou do XML do ENET. Ao lado de cada Parquet, `<ano>.json` guarda o SHA-256 da base e o endereço e o SHA-256 de cada original, que está no acervo e no registro de coletas (com a data da coleta), e a `versao_do_codigo` (o commit que montou o ano; os anos montados antes da série 3 ficam sem ela até serem remontados). `base/linhagem.py` refaz o caminho de qualquer linha e diz se está completo.
 
@@ -51,10 +51,10 @@ A demonstração das mutações do patrimônio líquido (DMPL) como era em cada 
 - **Frequência:** Montada junto com `demonstracoes_como_era`, por ano (opção `--serie-t1`)
 - **Atraso de divulgação:** DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
-- **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `grupo`, `conta`, `coluna`
+- **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `grupo`, `conta`, `coluna`, `ordem`, `inicio`, `fim`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `divulgado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/dmpl/<ano>.parquet` (servidor de casa)
 - **Linhagem:** A mesma de `demonstracoes_como_era`: `cnpj`, `documento`, `referencia` e `versao` dizem qual entrega publicou o valor e `origem` se veio dos dados abertos ou do ENET; ao lado de cada Parquet, `<ano>.json` guarda o SHA-256 da base, cada original e a `versao_do_codigo`.
 
