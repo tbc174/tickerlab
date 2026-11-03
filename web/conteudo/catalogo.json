@@ -578,7 +578,10 @@
     },
     {
       "coletas": [
-        "cftc-cot-disaggregated"
+        "cftc-cot-disaggregated",
+        "cftc-cot-futuros-e-opcoes",
+        "cftc-cot-cit",
+        "cftc-cot-legado"
       ],
       "familia": "cftc",
       "licencas": [
@@ -594,7 +597,11 @@
     {
       "coletas": [
         "conab-cafe-safra",
-        "conab-cafe-publicacao"
+        "conab-cafe-publicacao",
+        "conab-series-graos",
+        "conab-series-cana",
+        "conab-series-cafe",
+        "conab-boletins-graos"
       ],
       "familia": "conab",
       "licencas": [
@@ -625,7 +632,9 @@
     },
     {
       "coletas": [
-        "faostat-cafe"
+        "faostat-cafe",
+        "faostat-precos-ao-produtor",
+        "faostat-comercio"
       ],
       "familia": "faostat",
       "licencas": [
@@ -640,7 +649,8 @@
     },
     {
       "coletas": [
-        "ico-relatorio-mensal"
+        "ico-relatorio-mensal",
+        "ico-icip-mensal"
       ],
       "familia": "ico",
       "licencas": [
@@ -656,7 +666,8 @@
     {
       "coletas": [
         "inmet-bdmep",
-        "inmet-estacoes"
+        "inmet-estacoes",
+        "inmet-normais"
       ],
       "familia": "inmet",
       "licencas": [
@@ -672,7 +683,11 @@
     {
       "coletas": [
         "chirps-mensal",
-        "chirps-historico"
+        "chirps-historico",
+        "chirps-chirts-tmax-mensal",
+        "chirps-chirts-tmax-historico",
+        "chirps-spei-fldas",
+        "chirps-spi-chirps3"
       ],
       "familia": "chirps",
       "licencas": [
@@ -705,7 +720,8 @@
     {
       "coletas": [
         "mapbiomas-cafe",
-        "mapbiomas-estatisticas"
+        "mapbiomas-estatisticas",
+        "mapbiomas-bioma-e-estado"
       ],
       "familia": "mapbiomas",
       "licencas": [
@@ -5314,6 +5330,118 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-23"
+    },
+    {
+      "id": "faostat-precos-ao-produtor",
+      "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "faostat-comercio",
+      "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ico-icip-mensal",
+      "licenca": "ICO: relatório mensal sem termos achados; uso citando a fonte",
+      "marca": "nao_comercial",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-series-graos",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-series-cana",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-series-cafe",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-boletins-graos",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cftc-cot-futuros-e-opcoes",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "cftc-cot-cit",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "cftc-cot-legado",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "chirps-chirts-tmax-mensal",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "chirps-chirts-tmax-historico",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "chirps-spei-fldas",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "chirps-spi-chirps3",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "inmet-normais",
+      "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "mapbiomas-bioma-e-estado",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "chirps3-rnl-mensal",
