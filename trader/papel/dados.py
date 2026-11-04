@@ -29,9 +29,9 @@ from src import cdi as modulo_cdi
 from trader import dados as dados_do_trader
 from trader.baixar_historico import baixar_yfinance
 from trader.calendario import eh_pregao, proximo_pregao
+from trader.estrategias import dados_cripto_brl as dados_brl
 from trader.estrategias import dados_p0_3, rodar_alavancagem
 from trader.estrategias import dados_tendencia_b3 as dados_b3
-from trader.estrategias import dados_cripto_brl as dados_brl
 from trader.estrategias import dados_tendencia_cripto as dados_cripto
 from trader.estrategias import tendencia_b3 as tb
 from trader.papel.registro import PASTA_PADRAO
@@ -297,7 +297,9 @@ def _klines_ate(
     """Os candles de cada ativo, do início dos dados ao fechamento (que tem de já ter saído)."""
     atualizar_binance(inicio, fechamento, fontes, pasta, pares)
     tabelas = {
-        ativo: dados_cripto.carregar_par(par, pasta).loc[inicio : pd.Timestamp(fechamento)]
+        ativo: dados_cripto.carregar_par(par, pasta).loc[
+            inicio : pd.Timestamp(fechamento)
+        ]
         for ativo, par in pares.items()
     }
     for ativo, tabela in tabelas.items():

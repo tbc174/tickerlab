@@ -3,6 +3,15 @@
 O papel está na seção 5 do [pré-registro v0.2](pre-registro-quant-p0-v0.2.md). Lá estão a regra, a lista das séries
 e os critérios P1 a P3. Este texto explica como o código em `trader/papel/` cumpre essa regra.
 
+Séries gravadas hoje (`trader/papel/series.py`):
+
+- P0-3 (registro 5);
+- P0-1 (registro 11);
+- DI1 (registro 12);
+- P0-1b (registro 18; reprovada na 1ª tentativa, mas a seção 5 grava a série mesmo assim).
+
+A C-1, candidata e comparação, entra quando a 1ª tentativa dela estiver na `main`.
+
 Nada vai para corretora e nada aqui é recomendação de investimento.
 
 ## O que cada linha grava
@@ -36,6 +45,7 @@ O gravador usa só as fontes que as séries já usam:
 - P0-3: Yahoo (BOVA11, ouro, S&P 500 e o dólar), curva do Tesouro do acervo, CDI e IPCA do Banco Central.
 - P0-1: arquivos diários e mensais da Binance e PTAX do Banco Central.
 - DI1: curva do Tesouro e CDI.
+- P0-1b: arquivos diários e mensais da Binance para BTCBRL e ETHBRL (em reais, sem PTAX) e CDI.
 
 Os dados baixados ficam em `papel/dados/`, fora do Git e separados das pastas da pesquisa.
 
