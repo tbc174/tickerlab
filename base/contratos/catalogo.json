@@ -9234,8 +9234,8 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "vigencia_inicio": "a_conferir",
-        "vigencia_fim": "a_conferir",
+        "vigencia_inicio": "aconteceu_em",
+        "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "a_conferir"
@@ -9351,8 +9351,8 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "vigencia_inicio": "a_conferir",
-        "vigencia_fim": "a_conferir",
+        "vigencia_inicio": "aconteceu_em",
+        "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "a_conferir"
@@ -9563,9 +9563,9 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "data_contrato": "a_conferir",
-        "vigencia_inicio": "a_conferir",
-        "vigencia_fim": "a_conferir",
+        "data_contrato": "aconteceu_em",
+        "vigencia_inicio": "aconteceu_em",
+        "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "a_conferir"
@@ -9687,9 +9687,9 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "vigencia_inicio": "a_conferir",
-        "vigencia_fim": "a_conferir",
-        "data_assinatura": "a_conferir",
+        "vigencia_inicio": "aconteceu_em",
+        "vigencia_fim": "ate",
+        "data_assinatura": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "a_conferir"
