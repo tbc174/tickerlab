@@ -525,8 +525,14 @@ def test_toda_pagina_do_site_com_dados_da_base_leva_o_selo_da_data():
     raiz = Path(__file__).resolve().parent.parent / "site"
     selo = re.compile(r'data-data-da-base="(\d{2}/\d{2}/\d{4})"')
     dados = re.compile(r"Dados da base de (\d{2}/\d{2}/\d{4})")
-    com_dados = [p for p in raiz.glob("*.html") if dados.search(p.read_text(encoding="utf-8"))]
-    assert com_dados, "nenhuma página com 'Dados da base de': o teste deixou de olhar o site"
+    com_dados = [
+        p for p in raiz.glob("*.html") if dados.search(p.read_text(encoding="utf-8"))
+    ]
+    assert com_dados, (
+        "nenhuma página com 'Dados da base de': o teste deixou de olhar o site"
+    )
     for pagina in com_dados:
         html = pagina.read_text(encoding="utf-8")
-        assert selo.findall(html) == dados.findall(html), f"{pagina.name} sai sem o selo da data da base"
+        assert selo.findall(html) == dados.findall(html), (
+            f"{pagina.name} sai sem o selo da data da base"
+        )
