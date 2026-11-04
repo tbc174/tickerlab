@@ -1,0 +1,125 @@
+{
+  "tabela": "anm_sigbm_barragens",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id": {
+      "descricao": "Identificador da barragem no SIGBM",
+      "unidade": "texto"
+    },
+    "nome": {
+      "descricao": "Nome da barragem",
+      "unidade": "texto"
+    },
+    "empreendedor": {
+      "descricao": "Nome do empreendedor; vazio quando o documento não é um CNPJ completo (pode ser pessoa física)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do empreendedor, só os 14 dígitos. Não é necessariamente quem opera a mina",
+      "unidade": "texto"
+    },
+    "cnpj_raiz": {
+      "descricao": "Os 8 primeiros dígitos do CNPJ do empreendedor",
+      "unidade": "texto"
+    },
+    "nome_mina": {
+      "descricao": "Nome da mina",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla do estado",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município, como a ANM escreve",
+      "unidade": "texto"
+    },
+    "latitude": {
+      "descricao": "Latitude em graus decimais (a ANM entrega em graus, minutos e segundos)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "longitude": {
+      "descricao": "Longitude em graus decimais (a ANM entrega em graus, minutos e segundos)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "categoria_risco": {
+      "descricao": "Categoria de risco (CRI) declarada pelo empreendedor: Alta, Média ou Baixa",
+      "unidade": "texto"
+    },
+    "dano_potencial": {
+      "descricao": "Dano potencial associado (DPA) declarado pelo empreendedor: Alto, Médio ou Baixo",
+      "unidade": "texto"
+    },
+    "classificado_em": {
+      "descricao": "Data da finalização da declaração (DCE) em que o CRI e o DPA foram informados; vazio quando a ANM diz que não se aplica ou que não foi entregue",
+      "unidade": "data (dia)"
+    },
+    "nivel_emergencia": {
+      "descricao": "Nível de emergência declarado",
+      "unidade": "texto"
+    },
+    "situacao_operacional": {
+      "descricao": "Situação operacional (em operação, em descaracterização...)",
+      "unidade": "texto"
+    },
+    "motivo_envio": {
+      "descricao": "Motivo do envio da declaração",
+      "unidade": "texto"
+    },
+    "altura_atual_m": {
+      "descricao": "Altura máxima atual da barragem, em metros",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "volume_atual_m3": {
+      "descricao": "Volume atual do reservatório, em metros cúbicos",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "unidade_gestora": {
+      "descricao": "Unidade gestora da ANM responsável",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que a coleta viu essa versão da linha pela primeira vez: a ANM sobrescreve o arquivo, sem histórico, e `classificado_em` nunca serve de disponibilidade",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id"
+  ],
+  "datas": {
+    "aconteceu_em": "classificado_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "classificado_em": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a ANM sobrescreve o arquivo)",
+  "atraso": "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu. A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte"
+}

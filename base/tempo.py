@@ -76,7 +76,9 @@ COLUNAS_A_CONFERIR = frozenset(
         "atualizado_em",
         "base_de",
         "calculado_em",
+        "classificado_em",  # SIGBM: data da declaração que informou o CRI e o DPA
         "confidencial_ate",
+        "criado_em",  # CFEM: dia em que a ANM criou a linha (vira disponivel_em)
         "data",
         "data_da_previsao",
         "data_de_corte",

@@ -38,6 +38,9 @@ _SEM_VIGIA = {
             "anvisa",
             "mapa",
             "anm",
+            "anm-amb",  # linha 657: sem licença declarada no portal, a confirmar
+            "anm-cfem",
+            "anm-sigbm",
             "ancine",
             # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
             "mme",
