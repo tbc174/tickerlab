@@ -31,6 +31,7 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_commodities,
     lote_cvm,
     lote_eua,
     lote_licitacoes,
@@ -1560,6 +1561,9 @@ FONTES: list[Fonte] = [
     # lote clima e fogo (rodada 4, linha 290): INPE Queimadas, NASA FIRMS, TerraBrasilis (WFS), NOAA,
     # ECMWF, MapBiomas, ONS, Climate TRACE, EDGAR e Carbon Monitor
     *lote_clima.fontes(),
+    # lote café, commodities e clima (linha 204): USDA PSD inteiro, FAOSTAT, I-CIP da OIC, séries e boletins da
+    # CONAB, outras famílias do COT, CHIRTS, SPEI e SPI do CHC, normais do INMET e MapBiomas por bioma
+    *lote_commodities.fontes(),
     # ponte da troca do CHIRPS v2 (acaba em dez/2026): a v3 `rnl` pela cópia Zarr do Hugging Face, que o
     # robots.txt do CHC não deixa coletar direto; fonte própria, nunca soma com a v2 (linha 126 da fila)
     *chirps_v3.fontes(),

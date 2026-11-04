@@ -15,6 +15,7 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_commodities,
     lote_cvm,
     lote_eua,
     lote_licitacoes,
@@ -204,6 +205,11 @@ _LOTE_REGULADORES_SO_ARQUIVO = (
     "dado aberto de regulador ou operador do setor guardado como publicado, só pessoa jurídica e "
     "agregados (nada por titular ou beneficiário, ADR 0088); a tabela com contrato no catálogo ainda "
     "não existe"
+)
+
+_LOTE_COMMODITIES_SO_ARQUIVO = (
+    "série de café, commodities ou clima guardada como a fonte publica (USDA, FAO, OIC, CONAB, CFTC, CHC, "
+    "INMET e MapBiomas, citando a fonte); o leitor com tabela no catálogo ainda não existe"
 )
 
 # GSF e repasse do risco hidrológico: a linha que mais muda o resultado das hidrelétricas; DEC, FEC e
@@ -570,6 +576,10 @@ DESTINOS: dict[str, Destino] = {
     **_REGULADORES_PLANEJADAS,
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),
+    # lote café, commodities e clima (linha 204 da fila, 03/11/2026): guardado no acervo; leitores depois
+    **{
+        f.id: _pesquisa(_LOTE_COMMODITIES_SO_ARQUIVO) for f in lote_commodities.fontes()
+    },
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`
     "contrapartes-cafe": _tabela("contraparte_cafe"),
 }
