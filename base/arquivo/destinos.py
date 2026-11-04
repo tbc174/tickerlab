@@ -22,6 +22,7 @@ from base.arquivo import (
     lote_patentes,
     lote_reguladores,
     lote_sec,
+    lote_selic,
     lote_setoriais,
     lote_tesouro,
 )
@@ -398,6 +399,7 @@ DESTINOS: dict[str, Destino] = {
     "mme-reidi": _tabela("mme_reidi"),
     "aneel-cde": _tabela("aneel_cde"),
     "bcb-rde-ied": _tabela("bcb_rde_ied"),
+    **{f.id: _tabela("bcb_selic_focus") for f in lote_selic.fontes()},
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),
