@@ -263,3 +263,79 @@ def test_fundamentos_do_acervo_so_consolidado_e_contas_usadas():
     assert len(tabela) == 1
     assert tabela.loc[0, "valor"] == 1.0
     assert list(tabela.columns) == list(dados_f_b3.COLUNAS_DOS_FUNDAMENTOS)
+
+
+def test_ler_cotahist_anual_traz_o_numero_de_distribuicao(tmp_path):
+    linha = list(
+        _registro_cotahist(
+            "20200102", "AAA3", "010", "ON", 1000, 1050, 100, "BRAAAACNOR0"
+        )
+    )
+    inicio, fim = dados_f_b3.CAMPOS["distribuicao"]
+    linha[inicio:fim] = list("107")
+    longo = dados_f_b3.ler_cotahist_anual(_zip_cotahist(tmp_path, ["".join(linha)]))
+    assert longo.loc[0, "distribuicao"] == "107"
+
+
+def test_trocas_de_distribuicao_marcam_o_dia_em_que_o_numero_muda():
+    longo = pd.DataFrame(
+        {
+            "data": pd.to_datetime(
+                ["2020-01-02", "2020-01-03", "2020-01-06", "2020-01-02", "2020-01-06"]
+            ),
+            "ticker": ["AAA3", "AAA3", "AAA3", "BBB4", "BBB4"],
+            "distribuicao": ["101", "101", "102", "200", "200"],
+        }
+    )
+    trocas = dados_f_b3.trocas_de_distribuicao(longo)
+    assert trocas.dtypes.eq(bool).all()
+    assert trocas["AAA3"].tolist() == [False, False, True]
+    assert not trocas["BBB4"].any()  # o primeiro dia de um papel não é troca
+
+
+def test_emissores_antigos_completam_o_fca_sem_trocar_o_que_o_fca_diz():
+    emissores = pd.DataFrame({"emissor": ["AAAA"], "cnpj": [CNPJS["AAA3"]]})
+    antigos = pd.DataFrame(
+        {
+            "emissor": ["AAAA", "OLDD", "VAZI"],
+            "cnpj": ["00.000.000/0000-00", CNPJS["BBB3"], None],
+        }
+    )
+    juntos = dados_f_b3.emissores_com_antigos(emissores, antigos)
+    por_emissor = juntos.set_index("emissor")["cnpj"]
+    assert por_emissor["AAAA"] == CNPJS["AAA3"]
+    assert por_emissor["OLDD"] == CNPJS["BBB3"]
+    assert "VAZI" not in por_emissor.index
+
+
+def test_tabela_dos_emissores_antigos():
+    """Ligação pelo nome conferida por dois modelos: quem discordou fica sem CNPJ."""
+    antigos = pd.read_csv(dados_f_b3.ARQUIVO_DOS_EMISSORES_ANTIGOS, dtype=str)
+    assert list(antigos.columns) == list(dados_f_b3.COLUNAS_DOS_EMISSORES_ANTIGOS)
+    assert antigos["emissor"].is_unique
+    assert antigos["emissor"].str.fullmatch(r"[A-Z0-9]{4}").all()
+    ligados = antigos["conferencia"] == "os dois modelos"
+    assert (
+        antigos.loc[ligados, "cnpj"]
+        .str.fullmatch(r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}")
+        .all()
+    )
+    assert antigos.loc[~ligados, "cnpj"].isna().all()
+    assert set(antigos["conferencia"]) <= {
+        "os dois modelos",
+        "discordaram",
+        "nenhum achou",
+    }
+
+
+def test_fechamento_zero_no_arquivo_vira_dia_sem_preco(tmp_path):
+    """Achado da tentativa 1 da P0-4: BGIP4 tinha um fechamento zero, que vira retorno infinito."""
+    linhas = [
+        _registro_cotahist("20200102", "AAA3", "010", "ON", 0, 0, 100, "BRAAAACNOR0"),
+        _registro_cotahist(
+            "20200103", "AAA3", "010", "ON", 1000, 1050, 100, "BRAAAACNOR0"
+        ),
+    ]
+    longo = dados_f_b3.ler_cotahist_anual(_zip_cotahist(tmp_path, linhas))
+    assert pd.isna(longo.loc[0, "fechamento"]) and pd.isna(longo.loc[0, "abertura"])
+    assert longo.loc[1, "fechamento"] == 10.5
