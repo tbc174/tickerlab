@@ -225,6 +225,7 @@ FONTES_DE_FORA_DO_ARQUIVISTA = (
     "kraken",
     "mb",
     "btc",
+    "ms",  # CNES: carga mensal por `scripts/carga_cnes.py`, fora do arquivista (linha 654)
 )
 RITMO_DE_FORA = "lida pelo app"
 
