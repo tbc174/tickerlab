@@ -30,11 +30,10 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import pandas as pd
-import requests
 
 from base import receita_renuncias as renuncias
 from base.parquet import GRAVADO, gravar_com_versoes
-from src import acervo
+from src import acervo, rede
 from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.carga_receita_renuncias")
@@ -56,7 +55,7 @@ TAMANHO_DO_PEDACO = 1 << 20
 
 
 def _sessao_da_receita() -> tuple[str, dict[str, str]]:
-    final = requests.get(RAIZ, timeout=60).url
+    final = rede.get_com_agente(RAIZ, timeout=60).url
     achado = re.search(r"/s/([A-Za-z0-9]+)", final)
     if not achado:
         raise RuntimeError(f"Receita: sem o token do compartilhamento em {final}")
@@ -73,7 +72,7 @@ def baixar(destino: Path) -> dict[str, str]:
     modificados: dict[str, str] = {}
     for pasta, nomes in PASTAS_DA_FONTE.items():
         for nome in (*nomes, *(d for d in DICIONARIOS if _e_da_pasta(d, pasta))):
-            with requests.get(
+            with rede.get_com_agente(
                 f"{WEBDAV}{pasta}/{nome}",
                 headers=cabecalhos,
                 stream=True,
