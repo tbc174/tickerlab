@@ -195,6 +195,8 @@ def test_relatorio_do_setor_traz_os_graficos_na_api_e_no_pdf(relatorio: dict) ->
 
 def test_contagem_de_milhoes_vai_em_milhoes_no_eixo(relatorio: dict) -> None:
     """87.543.053 consumidores não cabem no eixo do PDF: o gráfico fala em milhões."""
-    tamanho = next(g for g in graficos_do_setor(relatorio, CORTE) if g.secao == "tamanho")
+    tamanho = next(
+        g for g in graficos_do_setor(relatorio, CORTE) if g.secao == "tamanho"
+    )
     assert tamanho.escala.medida == "milhões"
     assert tamanho.escala.divisor == 1e6
