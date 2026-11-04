@@ -64,7 +64,7 @@ PORTAIS = {
     "sp": (
         "https://dados.prefeitura.sp.gov.br",
         "contratos extrato",
-        "contrato",
+        "compras-e-licitacoes",  # o pacote traz o extrato de contratos por ano
     ),
 }
 ANO_MES = re.compile(r"(20\d{2})[-_./ ]?(0[1-9]|1[0-2])(?!\d)")

@@ -78,7 +78,7 @@ class _Fonte:
         if "dados.prefeitura.sp.gov.br" in endereco and "package_search" in endereco:
             return _indice(
                 ("Contratos 2025", "https://sp.exemplo/c.csv"),
-                nome="contratos-extrato",
+                nome="base-de-compras-e-licitacoes",
             )
         if endereco.startswith("https://go."):
             return CSV_GO.encode()
