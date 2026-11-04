@@ -5,19 +5,22 @@ muda a cada download: o ENET monta o zip na hora). Sem internet."""
 import hashlib
 import io
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import requests
 import sqlalchemy as sa
 
 from base.enet import limpar_xml
+from base.enet_antigo import FormatoNaoLido
 from base.enet_coleta import (
     FONTE,
     PAUSA_ENTRE_PEDIDOS,
     Baixador,
     baixar_em_fila,
+    deixados_de_lado,
     guardar,
+    ja_falharam,
     ja_guardados,
     registrar_falha,
     xml_do_pacote,
@@ -191,3 +194,33 @@ def test_fila_para_quando_a_janela_acaba_e_diz_que_parou():
     )
     assert feitos == ["a", "b"]
     assert resultado.interrompida and resultado.baixados == ["a", "b"]
+
+
+def test_deixados_de_lado_sem_leitor_na_hora_cortado_na_terceira_e_por_um_mes(banco):
+    sem_leitor, cortado, guardado_depois = (f"{LINK}&n={n}" for n in (1, 2, 3))
+    with banco.begin() as c:
+        registrar_falha(c, sem_leitor, FormatoNaoLido("?"), AGORA)
+        for _ in range(2):
+            registrar_falha(c, cortado, zipfile.BadZipFile("?"), AGORA)
+        registrar_falha(c, guardado_depois, FormatoNaoLido("?"), AGORA)
+        guardar(c, guardado_depois, _pacote(_dfp()), AGORA)
+    with banco.connect() as c:
+        assert ja_falharam(c) == {sem_leitor, cortado}
+        assert deixados_de_lado(c, AGORA) == {sem_leitor}
+    with banco.begin() as c:
+        registrar_falha(c, cortado, zipfile.BadZipFile("?"), AGORA)
+    with banco.connect() as c:
+        assert deixados_de_lado(c, AGORA + timedelta(days=29)) == {sem_leitor, cortado}
+        assert deixados_de_lado(c, AGORA + timedelta(days=31)) == set()
+
+
+def test_fila_entrega_cada_falha_a_ao_falhar():
+    falhas = []
+
+    def baixar(link: str) -> bytes:
+        raise requests.ConnectionError(link)
+
+    baixar_em_fila(
+        ["a", "b"], baixar, {"b"}, print, ao_falhar=lambda l, e: falhas.append(l)
+    )
+    assert falhas == ["a"]

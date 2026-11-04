@@ -19,6 +19,7 @@ TEXTO = "texto"
 DATA = "data (dia)"
 MOMENTO = "data e hora (UTC)"
 REAIS = "reais (R$), já multiplicado pela escala informada"
+REAIS_EXATOS = "reais (R$)"
 FRACAO = "fração (0,25 = 25%)"
 ACOES = "ações"
 NUMERO = "número inteiro"
@@ -1223,6 +1224,192 @@ def _tabelas_dos_financiamentos() -> dict[str, Tabela]:
     }
 
 
+# as alíquotas de ICMS das listas da CMED, na ordem do arquivo (as mesmas de
+# `base/arquivo/fontes.py::ALIQUOTAS_DA_CMED`; um teste confere que as colunas batem com `base/cmed.py`)
+_ALIQUOTAS_DA_CMED = (
+    "12",
+    "17",
+    "17,5",
+    "18",
+    "19",
+    "19,5",
+    "20",
+    "20,5",
+    "21",
+    "22",
+    "22,5",
+    "23",
+)
+_REFERENCIAS_DA_CMED = {
+    "pf": "Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor)",
+    "pmc": (
+        "Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio "
+        "quando a CMED não o publica, nunca zero)"
+    ),
+    "pmvg": (
+        "Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`)"
+    ),
+}
+
+
+def _colunas_de_preco_da_cmed() -> dict[str, tuple[str, str]]:
+    colunas: dict[str, tuple[str, str]] = {}
+    for sigla, nome in _REFERENCIAS_DA_CMED.items():
+        colunas[f"{sigla}_sem_impostos"] = (f"{nome}, sem impostos", REAIS_EXATOS)
+        colunas[f"{sigla}_0"] = (f"{nome}, com ICMS de 0%", REAIS_EXATOS)
+        for aliquota in _ALIQUOTAS_DA_CMED:
+            sufixo = aliquota.replace(",", "_")
+            colunas[f"{sigla}_{sufixo}"] = (
+                f"{nome}, com ICMS de {aliquota}%",
+                REAIS_EXATOS,
+            )
+            colunas[f"{sigla}_{sufixo}_alc"] = (
+                f"{nome}, com ICMS de {aliquota}%, na Área de Livre Comércio (ALC)",
+                REAIS_EXATOS,
+            )
+    return colunas
+
+
+def _tabelas_da_cmed() -> dict[str, Tabela]:
+    """Os preços máximos da CMED por apresentação (`base/cmed.py`, Ficha Clara)."""
+    colunas = {
+        "lista": (
+            (
+                "`consumidor` (TA_PRECO_MEDICAMENTO: PF e PMC) ou `governo` (TA_PRECO_MEDICAMENTO_GOV: "
+                "PF e PMVG); nunca somar as duas"
+            ),
+            TEXTO,
+        ),
+        "id_na_fonte": (
+            "A apresentação: CNPJ (só os dígitos) e código GGREM juntos por `|`",
+            TEXTO,
+        ),
+        "cnpj": ("CNPJ do detentor do registro, no formato 00.000.000/0000-00", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "ggrem": ("Código GGREM da apresentação, como a CMED escreve", TEXTO),
+        "registro": (
+            "Registro da apresentação na Anvisa (13 dígitos), como a lista escreve",
+            TEXTO,
+        ),
+        "registro_produto": (
+            (
+                "Os 9 primeiros dígitos do registro: o produto (vazio quando o registro não tem 13 "
+                "dígitos). Liga à tabela `anvisa_registros` pelo CNPJ inteiro, nunca pelo nome"
+            ),
+            TEXTO,
+        ),
+        "eans": (
+            "Códigos de barras (EAN 1 a 3) da apresentação, separados por ` / `",
+            TEXTO,
+        ),
+        "produto": ("Nome do produto, como a lista escreve", TEXTO),
+        "apresentacao": (
+            "Apresentação (concentração, forma e embalagem), como a lista escreve",
+            TEXTO,
+        ),
+        "substancia": ("Substância (princípio ativo), como a lista escreve", TEXTO),
+        "classe_terapeutica": ("Classe terapêutica, como a lista escreve", TEXTO),
+        "tipo_de_produto": (
+            "Tipo de produto (novo, genérico, similar...), como a lista escreve; vazio onde ela põe `-`",
+            TEXTO,
+        ),
+        "regime_de_preco": (
+            "Regime de preço (regulado ou liberado), como a lista escreve",
+            TEXTO,
+        ),
+        **_colunas_de_preco_da_cmed(),
+        "precos_com_asterisco": (
+            (
+                "Colunas de preço que a lista marca com `*`, separadas por ` / ` (o valor fica, sem a "
+                "marca; o sentido da marca está na nota da lista)"
+            ),
+            TEXTO,
+        ),
+        "precos_ilegiveis": (
+            (
+                "Colunas de preço que não são um número de até 2 casas, com o texto da fonte "
+                "(`pf_0=1.234,56`): o preço fica vazio"
+            ),
+            TEXTO,
+        ),
+        "restricao_hospitalar": (
+            "Se a venda é restrita a hospitais (Sim/Não da lista)",
+            SIM_OU_NAO,
+        ),
+        "cap": ("Se a apresentação está sujeita ao CAP (Sim/Não da lista)", SIM_OU_NAO),
+        "confaz_87": (
+            "Se está no Convênio ICMS 87/02 do Confaz (Sim/Não da lista)",
+            SIM_OU_NAO,
+        ),
+        "icms_0": ("Se a lista marca ICMS 0% (Sim/Não da lista)", SIM_OU_NAO),
+        "analise_recursal": ("Análise recursal, como a lista escreve", TEXTO),
+        "lista_pis_cofins": (
+            "Lista de concessão de crédito tributário (PIS/Cofins), como a lista escreve",
+            TEXTO,
+        ),
+        "tarja": ("Tarja, como a lista escreve", TEXTO),
+        "lista_publicada_em": (
+            (
+                "Dia em que a fonte diz ter publicado o arquivo (o Last-Modified da coleta; vazio "
+                "quando o servidor não informou)"
+            ),
+            DATA,
+        ),
+        "consta": (
+            "Verdadeiro enquanto a apresentação está na lista; falso na linha do dia em que saiu dela",
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075)"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que o arquivista viu a linha", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também "
+                "no 1º (a lista não diz desde quando vale cada preço)"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    return {
+        "cmed_precos": Tabela(
+            descricao=(
+                "Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas "
+                "duas listas que a Anvisa publica. São tetos regulatórios, não preço praticado nem "
+                "receita: nada se multiplica por quantidade. Uma linha por valor diferente de cada "
+                "apresentação: a mudança vira linha nova que só vale desde o dia em que foi vista, "
+                "e a que some da lista ganha `consta` falso (`base/setoriais/revisoes.py::"
+                "como_era_em` dá o retrato de qualquer dia). Preço exato em 2 casas: vazio fica "
+                "vazio e zero fica zero. O nome do laboratório não chega ao acervo (a ligação é "
+                "pelo CNPJ); empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo "
+                "com layout novo, ou com menos da metade das apresentações do anterior, é pulado. "
+                "A ligação a `anvisa_registros` usa só CNPJ + registro do produto entre os "
+                "medicamentos REGISTRADOS e não diz a situação do registro: vigente na lista de "
+                "preços não quer dizer registro ativo."
+            ),
+            fonte="Anvisa: listas de preços da CMED, dados abertos (`base/cmed.py`)",
+            familia_da_fonte="anvisa-cmed",
+            frequencia="Mensal (a CMED republica as listas inteiras)",
+            atraso=(
+                "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o "
+                "arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia "
+                "da publicação do arquivo fica em `lista_publicada_em`"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cmed_precos/<lista>.parquet` (servidor de casa, "
+                "`scripts/carga_cmed.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=colunas,
+        ),
+    }
+
+
 def _tabelas_do_cnes() -> dict[str, Tabela]:
     """O CNES por competência (`base/cnes.py`, linha 654): os estabelecimentos e a situação de cada competência."""
     atraso = (
@@ -1514,6 +1701,246 @@ def _tabelas_dos_tces() -> dict[str, Tabela]:
             "TCE-RS, dados abertos (LicitaCon, um ZIP por órgão)",
             "Mensal (índice do CKAN e um ZIP por órgão, com retomada)",
             "tce_rs_contratos",
+        ),
+    }
+
+
+def _tabelas_da_anm() -> dict[str, Tabela]:
+    """CFEM, SIGBM e Anuário Mineral da ANM (`base/anm.py`, linha 657): o royalty por titular, as barragens e a produção."""
+    onde = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `scripts/carga_anm.py`)"
+    licenca = "A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte"
+    cfem = {
+        "ano": ("Ano de competência do recolhimento", TEXTO),
+        "mes": ("Mês de competência do recolhimento (1 a 12)", TEXTO),
+        "processo": ("Número do processo minerário na ANM", TEXTO),
+        "ano_processo": ("Ano do processo minerário", TEXTO),
+        "cnpj": (
+            "CNPJ do titular, só os 14 dígitos. Pessoa física, CPF e documento mascarado são descartados na carga",
+            TEXTO,
+        ),
+        "cnpj_raiz": (
+            "Os 8 primeiros dígitos do CNPJ: a ponte com o quadro de sócios da Receita",
+            TEXTO,
+        ),
+        "substancia": ("Substância mineral, como a ANM escreve", TEXTO),
+        "uf": ("Sigla do estado", TEXTO),
+        "codigo_municipio": ("Código IBGE do município", TEXTO),
+        "municipio": ("Nome do município, como a ANM escreve", TEXTO),
+        "quantidade": (
+            "Quantidade comercializada, na unidade da coluna `unidade`",
+            NUMERO_DECIMAL,
+        ),
+        "unidade": (
+            "Unidade da quantidade (t, l, m3, g, kg, ct...), como a ANM escreve",
+            TEXTO,
+        ),
+        "valor_recolhido": ("CFEM recolhida, em reais (R$)", NUMERO_DECIMAL),
+        "criado_em": ("Data e hora em que a ANM criou a linha", DATA),
+        "disponivel_em": (
+            (
+                "Dia em que a linha passou a existir na ANM (`criado_em`); sem data na linha, o dia da coleta. "
+                "`ano` e `mes` nunca servem de disponibilidade"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    sigbm = {
+        "id": ("Identificador da barragem no SIGBM", TEXTO),
+        "nome": ("Nome da barragem", TEXTO),
+        "empreendedor": (
+            "Nome do empreendedor; vazio quando o documento não é um CNPJ completo (pode ser pessoa física)",
+            TEXTO,
+        ),
+        "cnpj": (
+            "CNPJ do empreendedor, só os 14 dígitos. Não é necessariamente quem opera a mina",
+            TEXTO,
+        ),
+        "cnpj_raiz": ("Os 8 primeiros dígitos do CNPJ do empreendedor", TEXTO),
+        "nome_mina": ("Nome da mina", TEXTO),
+        "uf": ("Sigla do estado", TEXTO),
+        "municipio": ("Município, como a ANM escreve", TEXTO),
+        "latitude": (
+            "Latitude em graus decimais (a ANM entrega em graus, minutos e segundos)",
+            NUMERO_DECIMAL,
+        ),
+        "longitude": (
+            "Longitude em graus decimais (a ANM entrega em graus, minutos e segundos)",
+            NUMERO_DECIMAL,
+        ),
+        "categoria_risco": (
+            "Categoria de risco (CRI) declarada pelo empreendedor: Alta, Média ou Baixa",
+            TEXTO,
+        ),
+        "dano_potencial": (
+            "Dano potencial associado (DPA) declarado pelo empreendedor: Alto, Médio ou Baixo",
+            TEXTO,
+        ),
+        "classificado_em": (
+            (
+                "Data da finalização da declaração (DCE) em que o CRI e o DPA foram informados; vazio quando a "
+                "ANM diz que não se aplica ou que não foi entregue"
+            ),
+            DATA,
+        ),
+        "nivel_emergencia": ("Nível de emergência declarado", TEXTO),
+        "situacao_operacional": (
+            "Situação operacional (em operação, em descaracterização...)",
+            TEXTO,
+        ),
+        "motivo_envio": ("Motivo do envio da declaração", TEXTO),
+        "altura_atual_m": (
+            "Altura máxima atual da barragem, em metros",
+            NUMERO_DECIMAL,
+        ),
+        "volume_atual_m3": (
+            "Volume atual do reservatório, em metros cúbicos",
+            NUMERO_DECIMAL,
+        ),
+        "unidade_gestora": ("Unidade gestora da ANM responsável", TEXTO),
+        "disponivel_em": (
+            (
+                "Dia em que a coleta viu essa versão da linha pela primeira vez: a ANM sobrescreve o arquivo, sem "
+                "histórico, e `classificado_em` nunca serve de disponibilidade"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    amb_comum = {
+        "ano": ("Ano-base do Anuário Mineral", TEXTO),
+        "uf": ("Sigla do estado", TEXTO),
+        "classe": ("Classe da substância (metálicos, não metálicos...)", TEXTO),
+        "substancia": ("Substância mineral, como a ANM escreve", TEXTO),
+    }
+    disponivel_amb = {
+        "disponivel_em": (
+            (
+                "Dia em que a coleta viu essa versão da linha pela primeira vez: o Anuário é sobrescrito pela ANM, "
+                "e `ano` (o ano-base) nunca serve de disponibilidade"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    bruta = {
+        **amb_comum,
+        "producao_rom_t": ("Produção de minério ROM, em toneladas", NUMERO_DECIMAL),
+        "contido": ("Quantidade contida, na unidade da linha (`contido_unidade`)", NUMERO_DECIMAL),
+        "contido_unidade": ("Unidade do contido, por linha, sem converter", TEXTO),
+        "contido_indicacao": ("Indicação do contido (de que mineral ou fase), como a ANM escreve", TEXTO),
+        "venda_t": ("Quantidade vendida, em toneladas", NUMERO_DECIMAL),
+        "venda_valor": ("Valor da venda, em reais (R$)", NUMERO_DECIMAL),
+        "consumo_t": ("Quantidade para transformação, consumo ou utilização, em toneladas", NUMERO_DECIMAL),
+        "consumo_valor": ("Valor da transformação, consumo ou utilização nesta mina, em reais (R$)", NUMERO_DECIMAL),
+        "transferencia_t": ("Quantidade transferida para transformação, utilização ou consumo, em toneladas", NUMERO_DECIMAL),
+        "transferencia_valor": ("Valor da transferência, em reais (R$)", NUMERO_DECIMAL),
+        **disponivel_amb,
+    }  # fmt: skip
+    beneficiada = {
+        **amb_comum,
+        "producao": ("Quantidade produzida, na unidade `producao_unidade`", NUMERO_DECIMAL),
+        "producao_unidade": ("Unidade da produção, por linha, sem converter", TEXTO),
+        "contido": ("Quantidade contida, na unidade da linha (`contido_unidade`)", NUMERO_DECIMAL),
+        "contido_unidade": ("Unidade do contido, por linha, sem converter", TEXTO),
+        "contido_indicacao": ("Indicação do contido, como a ANM escreve", TEXTO),
+        "venda": ("Quantidade vendida, na unidade `venda_unidade`", NUMERO_DECIMAL),
+        "venda_unidade": ("Unidade da venda, por linha, sem converter", TEXTO),
+        "venda_valor": ("Valor da venda, em reais (R$)", NUMERO_DECIMAL),
+        "consumo": ("Quantidade consumida ou utilizada na usina, na unidade `consumo_unidade`", NUMERO_DECIMAL),
+        "consumo_unidade": ("Unidade do consumo, por linha, sem converter", TEXTO),
+        "consumo_valor": ("Valor do consumo ou utilização na usina, em reais (R$)", NUMERO_DECIMAL),
+        "transferencia": ("Quantidade transferida, na unidade `transferencia_unidade`", NUMERO_DECIMAL),
+        "transferencia_unidade": ("Unidade da transferência, por linha, sem converter", TEXTO),
+        "transferencia_valor": ("Valor da transferência, em reais (R$)", NUMERO_DECIMAL),
+        **disponivel_amb,
+    }  # fmt: skip
+    embalagens = (
+        ("garrafao", "garrafão"), ("garrafa_plastica", "garrafa plástica"), ("garrafa_vidro", "garrafa de vidro"),
+        ("copo", "copo"), ("outras", "outras embalagens"),
+        ("industrializados", "composição de produtos industrializados"),
+    )  # fmt: skip
+    agua = {
+        **amb_comum,
+        **{f"litros_{tipo}": (f"Litros vendidos em {nome}", NUMERO_DECIMAL) for tipo, nome in embalagens},
+        **{f"valor_{tipo}": (f"Valor das vendas em {nome}, em reais (R$)", NUMERO_DECIMAL) for tipo, nome in embalagens},
+        "unidade": ("Unidade de medida declarada pela ANM", TEXTO),
+        **disponivel_amb,
+    }  # fmt: skip
+
+    def comum(fonte: str, frequencia: str, atraso: str) -> dict[str, str]:
+        return {
+            "fonte": fonte,
+            "familia_da_fonte": "anm",
+            "frequencia": frequencia,
+            "atraso": f"{atraso}. {licenca}",
+            "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+        }
+
+    cfem_comum = comum(
+        "ANM, Dados Abertos, arrecadação da CFEM (`base/anm.py`)",
+        "Mensal (a coleta olha a faixa de anos do ano corrente e a anterior)",
+        "A linha vale desde a data em que a ANM a criou (`criado_em`)",
+    )
+    sigbm_comum = comum(
+        "ANM, Dados Abertos, SIGBM (`base/anm.py`)",
+        "Mensal (a ANM sobrescreve o arquivo)",
+        "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+    )
+    amb_fonte = comum(
+        "ANM, Dados Abertos, Anuário Mineral Brasileiro (`base/anm.py`)",
+        "Mensal (o Anuário é anual e a ANM sobrescreve o arquivo)",
+        "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+    )
+    return {
+        "anm_cfem_arrecadacao": Tabela(
+            descricao=(
+                "CFEM (royalty da mineração) recolhida por titular do processo, substância e município. Só "
+                "pessoa jurídica com CNPJ completo: pessoa física, CPF e documento mascarado são descartados "
+                "na carga. Um arquivo por faixa de anos da ANM. O CNPJ liga a tabela ao quadro de sócios "
+                "pela raiz."
+            ),
+            onde=onde.format(pasta="anm_cfem_arrecadacao", arquivo="<faixa de anos>"),
+            colunas=cfem,
+            **cfem_comum,
+        ),
+        "anm_sigbm_barragens": Tabela(
+            descricao=(
+                "Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial "
+                "(DPA) como o empreendedor declarou. O CNPJ é o do empreendedor, que não é necessariamente "
+                "quem opera a mina; sem CNPJ completo, o nome do empreendedor também fica de fora."
+            ),
+            onde=onde.format(pasta="anm_sigbm_barragens", arquivo="barragens"),
+            colunas=sigbm,
+            **sigbm_comum,
+        ),
+        "anm_amb_producao_bruta": Tabela(
+            descricao=(
+                "Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por "
+                "ano, UF e substância. Série setorial, sem CNPJ. Unidades por linha, sem converter; chave "
+                "repetida não é somada."
+            ),
+            onde=onde.format(pasta="anm_amb_producao_bruta", arquivo="atual"),
+            colunas=bruta,
+            **amb_fonte,
+        ),
+        "anm_amb_producao_beneficiada": Tabela(
+            descricao=(
+                "Produção mineral beneficiada do Anuário Mineral por ano, UF e substância. Série setorial, "
+                "sem CNPJ. Unidades por linha, sem converter."
+            ),
+            onde=onde.format(pasta="anm_amb_producao_beneficiada", arquivo="atual"),
+            colunas=beneficiada,
+            **amb_fonte,
+        ),
+        "anm_amb_agua_mineral": Tabela(
+            descricao=(
+                "Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e "
+                "substância. Série setorial, sem CNPJ."
+            ),
+            onde=onde.format(pasta="anm_amb_agua_mineral", arquivo="atual"),
+            colunas=agua,
+            **amb_fonte,
         ),
     }
 
@@ -5232,8 +5659,10 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
     **_tabelas_dos_financiamentos(),
+    **_tabelas_da_cmed(),
     **_tabelas_do_cnes(),
     **_tabelas_dos_tces(),
+    **_tabelas_da_anm(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -7389,6 +7818,8 @@ _PROCESSOS = (
 )
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
 _FINANCIAMENTOS = "2026-11-04"
+_CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
+_ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
 _CNES = (
     "2026-11-04"  # o CNES por competência entrou no arquivista neste dia (linha 654)
 )
@@ -7504,6 +7935,18 @@ _CONTRATO = {
         },
         historico_desde=_FINANCIAMENTOS,
     ),
+    "cmed_precos": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("lista", "id_na_fonte", "visto_em"),
+        datas={
+            "aconteceu_em": "lista_publicada_em",
+            "publico_em": "disponivel_em",
+            "coletado_em": "origem_coletada_em",
+        },
+        historico_desde=_CMED,
+        granularidade_do_publico_em="mes",
+    ),
     "financiamentos_finep": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
@@ -7528,6 +7971,37 @@ _CONTRATO = {
         chaves=("competencia",),
         datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
         historico_desde=_CNES,
+    ),
+    "anm_cfem_arrecadacao": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("ano", "mes", "processo", "ano_processo", "cnpj", "substancia", "municipio", "criado_em"),
+        datas={"aconteceu_em": "criado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde="2002-01-01",
+        granularidade_do_publico_em="dia",
+    ),
+    "anm_sigbm_barragens": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("id",),
+        datas={"aconteceu_em": "classificado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_ANM_SEM_HISTORICO,
+    ),
+    "anm_amb_producao_bruta": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("ano", "uf", "substancia", "contido_indicacao"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_ANM_SEM_HISTORICO,
+    ),
+    "anm_amb_producao_beneficiada": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("ano", "uf", "substancia", "contido_indicacao"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_ANM_SEM_HISTORICO,
+    ),
+    "anm_amb_agua_mineral": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("ano", "uf", "substancia"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_ANM_SEM_HISTORICO,
     ),
     "tce_pe_contratos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_contrato', 'cnpj'), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
     "tce_pe_aditivos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_contrato', 'numero_aditivo', 'ano_aditivo', 'cnpj'), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
@@ -7665,6 +8139,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
     },
+    "cmed_precos": {
+        "pasta": "cmed_precos",
+        "nao_nulas": ("lista", "id_na_fonte", "cnpj", "cnpj_basico", "ggrem", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in _colunas_de_preco_da_cmed()},
+    },
     "financiamentos_finep": {
         "pasta": "financiamentos_finep",
         "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
@@ -7677,6 +8156,26 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "cnes_competencias": {
         "pasta": "cnes_competencias",
         "nao_nulas": ("situacao", "linhas", "coletado_em"),
+    },
+    "anm_cfem_arrecadacao": {
+        "pasta": "anm_cfem_arrecadacao",
+        "nao_nulas": ("ano", "mes", "processo", "cnpj", "disponivel_em"),
+    },
+    "anm_sigbm_barragens": {
+        "pasta": "anm_sigbm_barragens",
+        "nao_nulas": ("id", "disponivel_em"),
+    },
+    "anm_amb_producao_bruta": {
+        "pasta": "anm_amb_producao_bruta",
+        "nao_nulas": ("ano", "uf", "substancia", "disponivel_em"),
+    },
+    "anm_amb_producao_beneficiada": {
+        "pasta": "anm_amb_producao_beneficiada",
+        "nao_nulas": ("ano", "uf", "substancia", "disponivel_em"),
+    },
+    "anm_amb_agua_mineral": {
+        "pasta": "anm_amb_agua_mineral",
+        "nao_nulas": ("ano", "uf", "substancia", "disponivel_em"),
     },
     "mme_reidi": {
         "pasta": "mme_reidi",

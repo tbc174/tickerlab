@@ -38,6 +38,9 @@ _SEM_VIGIA = {
             "anvisa",
             "mapa",
             "anm",
+            "anm-amb",  # linha 657: sem licença declarada no portal, a confirmar
+            "anm-cfem",
+            "anm-sigbm",
             "ancine",
             # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
             "mme",
@@ -73,6 +76,9 @@ _SEM_VIGIA = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
+            "goias",
+            "msestado",
+            "spcapital",
             "conab",
             "comexstat",
         ),
@@ -93,6 +99,7 @@ _SEM_VIGIA = {
     "chirps3": "a licença (CC BY 4.0) está na ficha do dataset no Hugging Face, cópia de terceiro; os termos do Hugging Face não foram lidos (PR da ponte, 28/10/2026)",
     "ico": "ico.org não publica termos, só o aviso de copyright",
     "finep": "a planilha de contratações da Finep não diz licença nem aponta termos (a confirmar, linha 469)",
+    "anvisa-cmed": "as listas de preços da CMED não dizem licença própria nem apontam termos (a confirmar)",
     # lote Tesouro (23/10/2026): a licença ODbL está na ficha de cada pacote do CKAN; o catálogo já é vigiado
     **dict.fromkeys(
         (

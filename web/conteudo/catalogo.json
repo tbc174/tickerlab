@@ -441,14 +441,16 @@
     {
       "coletas": [
         "anvisa-empresas",
-        "anvisa-produtos"
+        "anvisa-produtos",
+        "anvisa-cmed"
       ],
       "familia": "anvisa",
       "licencas": [
-        "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)"
+        "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+        "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)"
       ],
       "link": "https://dados.anvisa.gov.br/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "Anvisa (vigilância sanitária)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-29",
@@ -1900,6 +1902,45 @@
       "ritmo": "lida pelo app",
       "termos_lidos_em": null,
       "uso": "em_uso"
+    },
+    {
+      "coletas": [],
+      "familia": "goias",
+      "licencas": [
+        "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)"
+      ],
+      "link": "https://dadosabertos.go.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Goiás (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "msestado",
+      "licencas": [
+        "Despesas do MS por credor: a confirmar, só interno"
+      ],
+      "link": "https://dados.ms.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Governo de Mato Grosso do Sul (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "spcapital",
+      "licencas": [
+        "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)"
+      ],
+      "link": "https://dados.prefeitura.sp.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Prefeitura de São Paulo (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
     }
   ],
   "fontes": [
@@ -1928,6 +1969,17 @@
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 8
+    },
+    {
+      "historico_desde": "2002-01-01",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "ANM",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 6
     },
     {
       "historico_desde": "2010-01-01",
@@ -2081,17 +2133,6 @@
     },
     {
       "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "ANM",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
       "licenca": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
       "modulos": [
         "governo_e_sancoes"
@@ -2152,6 +2193,17 @@
         "governo_e_sancoes"
       ],
       "orgao": "CGU",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CMED (Anvisa)",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 1
@@ -2342,7 +2394,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 33
+      "tabelas": 39
     },
     {
       "chave": "credito_e_fidc",
@@ -3084,6 +3136,13 @@
       "id": "anvisa-produtos",
       "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
       "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anvisa-cmed",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-29"
     },
@@ -6706,6 +6765,16 @@
     },
     {
       "atraso": null,
+      "frase": "Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas duas listas que a Anvisa publica.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CMED (Anvisa)",
+      "situacao": "em consulta",
+      "tabela": "cmed_precos"
+    },
+    {
+      "atraso": null,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -6773,6 +6842,56 @@
       "orgao": "TCE-RS",
       "situacao": "em consulta",
       "tabela": "tce_rs_contratos"
+    },
+    {
+      "atraso": "A linha vale desde a data em que a ANM a criou",
+      "frase": "CFEM (royalty da mineração) recolhida por titular do processo, substância e município.",
+      "frequencia": "Mensal",
+      "historico_desde": "2002-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_cfem_arrecadacao"
+    },
+    {
+      "atraso": "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial (DPA) como o empreendedor declarou.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_sigbm_barragens"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_bruta"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Produção mineral beneficiada do Anuário Mineral por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_beneficiada"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_agua_mineral"
     },
     {
       "atraso": null,
@@ -7136,11 +7255,11 @@
     }
   ],
   "totais": {
-    "familias": 104,
+    "familias": 107,
     "familias_em_uso": 41,
-    "fontes": 38,
-    "fontes_em_consulta": 15,
+    "fontes": 39,
+    "fontes_em_consulta": 16,
     "modulos": 6,
-    "tabelas": 128
+    "tabelas": 134
   }
 }

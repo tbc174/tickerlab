@@ -3289,6 +3289,136 @@ Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédi
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `cmed_precos`
+
+Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas duas listas que a Anvisa publica. São tetos regulatórios, não preço praticado nem receita: nada se multiplica por quantidade. Uma linha por valor diferente de cada apresentação: a mudança vira linha nova que só vale desde o dia em que foi vista, e a que some da lista ganha `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Preço exato em 2 casas: vazio fica vazio e zero fica zero. O nome do laboratório não chega ao acervo (a ligação é pelo CNPJ); empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com layout novo, ou com menos da metade das apresentações do anterior, é pulado. A ligação a `anvisa_registros` usa só CNPJ + registro do produto entre os medicamentos REGISTRADOS e não diz a situação do registro: vigente na lista de preços não quer dizer registro ativo.
+
+- **Fonte:** Anvisa: listas de preços da CMED, dados abertos (`base/cmed.py`)
+- **Licença:** Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (a CMED republica as listas inteiras)
+- **Atraso de divulgação:** A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `lista`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `lista_publicada_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cmed_precos/<lista>.parquet` (servidor de casa, `scripts/carga_cmed.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `lista` | `consumidor` (TA_PRECO_MEDICAMENTO: PF e PMC) ou `governo` (TA_PRECO_MEDICAMENTO_GOV: PF e PMVG); nunca somar as duas | texto |
+| `id_na_fonte` | A apresentação: CNPJ (só os dígitos) e código GGREM juntos por `|` | texto |
+| `cnpj` | CNPJ do detentor do registro, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `ggrem` | Código GGREM da apresentação, como a CMED escreve | texto |
+| `registro` | Registro da apresentação na Anvisa (13 dígitos), como a lista escreve | texto |
+| `registro_produto` | Os 9 primeiros dígitos do registro: o produto (vazio quando o registro não tem 13 dígitos). Liga à tabela `anvisa_registros` pelo CNPJ inteiro, nunca pelo nome | texto |
+| `eans` | Códigos de barras (EAN 1 a 3) da apresentação, separados por ` / ` | texto |
+| `produto` | Nome do produto, como a lista escreve | texto |
+| `apresentacao` | Apresentação (concentração, forma e embalagem), como a lista escreve | texto |
+| `substancia` | Substância (princípio ativo), como a lista escreve | texto |
+| `classe_terapeutica` | Classe terapêutica, como a lista escreve | texto |
+| `tipo_de_produto` | Tipo de produto (novo, genérico, similar...), como a lista escreve; vazio onde ela põe `-` | texto |
+| `regime_de_preco` | Regime de preço (regulado ou liberado), como a lista escreve | texto |
+| `pf_sem_impostos` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), sem impostos | reais (R$) |
+| `pf_0` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 0% | reais (R$) |
+| `pf_12` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 12% | reais (R$) |
+| `pf_12_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 12%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_17` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 17% | reais (R$) |
+| `pf_17_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 17%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_17_5` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 17,5% | reais (R$) |
+| `pf_17_5_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 17,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_18` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 18% | reais (R$) |
+| `pf_18_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 18%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_19` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 19% | reais (R$) |
+| `pf_19_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 19%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_19_5` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 19,5% | reais (R$) |
+| `pf_19_5_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 19,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_20` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 20% | reais (R$) |
+| `pf_20_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 20%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_20_5` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 20,5% | reais (R$) |
+| `pf_20_5_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 20,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_21` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 21% | reais (R$) |
+| `pf_21_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 21%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_22` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 22% | reais (R$) |
+| `pf_22_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 22%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_22_5` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 22,5% | reais (R$) |
+| `pf_22_5_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 22,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pf_23` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 23% | reais (R$) |
+| `pf_23_alc` | Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor), com ICMS de 23%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_sem_impostos` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), sem impostos | reais (R$) |
+| `pmc_0` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 0% | reais (R$) |
+| `pmc_12` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 12% | reais (R$) |
+| `pmc_12_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 12%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_17` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 17% | reais (R$) |
+| `pmc_17_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 17%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_17_5` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 17,5% | reais (R$) |
+| `pmc_17_5_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 17,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_18` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 18% | reais (R$) |
+| `pmc_18_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 18%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_19` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 19% | reais (R$) |
+| `pmc_19_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 19%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_19_5` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 19,5% | reais (R$) |
+| `pmc_19_5_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 19,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_20` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 20% | reais (R$) |
+| `pmc_20_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 20%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_20_5` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 20,5% | reais (R$) |
+| `pmc_20_5_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 20,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_21` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 21% | reais (R$) |
+| `pmc_21_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 21%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_22` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 22% | reais (R$) |
+| `pmc_22_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 22%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_22_5` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 22,5% | reais (R$) |
+| `pmc_22_5_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 22,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmc_23` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 23% | reais (R$) |
+| `pmc_23_alc` | Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio quando a CMED não o publica, nunca zero), com ICMS de 23%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_sem_impostos` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), sem impostos | reais (R$) |
+| `pmvg_0` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 0% | reais (R$) |
+| `pmvg_12` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 12% | reais (R$) |
+| `pmvg_12_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 12%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_17` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 17% | reais (R$) |
+| `pmvg_17_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 17%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_17_5` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 17,5% | reais (R$) |
+| `pmvg_17_5_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 17,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_18` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 18% | reais (R$) |
+| `pmvg_18_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 18%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_19` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 19% | reais (R$) |
+| `pmvg_19_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 19%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_19_5` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 19,5% | reais (R$) |
+| `pmvg_19_5_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 19,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_20` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 20% | reais (R$) |
+| `pmvg_20_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 20%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_20_5` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 20,5% | reais (R$) |
+| `pmvg_20_5_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 20,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_21` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 21% | reais (R$) |
+| `pmvg_21_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 21%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_22` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 22% | reais (R$) |
+| `pmvg_22_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 22%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_22_5` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 22,5% | reais (R$) |
+| `pmvg_22_5_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 22,5%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `pmvg_23` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 23% | reais (R$) |
+| `pmvg_23_alc` | Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`), com ICMS de 23%, na Área de Livre Comércio (ALC) | reais (R$) |
+| `precos_com_asterisco` | Colunas de preço que a lista marca com `*`, separadas por ` / ` (o valor fica, sem a marca; o sentido da marca está na nota da lista) | texto |
+| `precos_ilegiveis` | Colunas de preço que não são um número de até 2 casas, com o texto da fonte (`pf_0=1.234,56`): o preço fica vazio | texto |
+| `restricao_hospitalar` | Se a venda é restrita a hospitais (Sim/Não da lista) | verdadeiro ou falso |
+| `cap` | Se a apresentação está sujeita ao CAP (Sim/Não da lista) | verdadeiro ou falso |
+| `confaz_87` | Se está no Convênio ICMS 87/02 do Confaz (Sim/Não da lista) | verdadeiro ou falso |
+| `icms_0` | Se a lista marca ICMS 0% (Sim/Não da lista) | verdadeiro ou falso |
+| `analise_recursal` | Análise recursal, como a lista escreve | texto |
+| `lista_pis_cofins` | Lista de concessão de crédito tributário (PIS/Cofins), como a lista escreve | texto |
+| `tarja` | Tarja, como a lista escreve | texto |
+| `lista_publicada_em` | Dia em que a fonte diz ter publicado o arquivo (o Last-Modified da coleta; vazio quando o servidor não informou) | data (dia) |
+| `consta` | Verdadeiro enquanto a apresentação está na lista; falso na linha do dia em que saiu dela | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a lista não diz desde quando vale cada preço) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `cnes_estabelecimentos`
 
 Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia não grava linha: veja `cnes_competencias`.
@@ -3554,6 +3684,213 @@ Contratos do LicitaCon do TCE-RS por contratado (só `contrato.csv`; `pessoas.cs
 | `tabela` | Assunto da linha dentro do tribunal (contratos, aditivos, despesas) | texto |
 | `cnpj` | CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados | texto |
 | `disponivel_em` | Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anm_cfem_arrecadacao`
+
+CFEM (royalty da mineração) recolhida por titular do processo, substância e município. Só pessoa jurídica com CNPJ completo: pessoa física, CPF e documento mascarado são descartados na carga. Um arquivo por faixa de anos da ANM. O CNPJ liga a tabela ao quadro de sócios pela raiz.
+
+- **Fonte:** ANM, Dados Abertos, arrecadação da CFEM (`base/anm.py`)
+- **Licença:** CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a coleta olha a faixa de anos do ano corrente e a anterior)
+- **Atraso de divulgação:** A linha vale desde a data em que a ANM a criou (`criado_em`). A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `ano`, `mes`, `processo`, `ano_processo`, `cnpj`, `substancia`, `municipio`, `criado_em`
+- **Três datas:** aconteceu_em = `criado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2002-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anm_cfem_arrecadacao/<faixa de anos>.parquet` (servidor de casa, `scripts/carga_anm.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `ano` | Ano de competência do recolhimento | texto |
+| `mes` | Mês de competência do recolhimento (1 a 12) | texto |
+| `processo` | Número do processo minerário na ANM | texto |
+| `ano_processo` | Ano do processo minerário | texto |
+| `cnpj` | CNPJ do titular, só os 14 dígitos. Pessoa física, CPF e documento mascarado são descartados na carga | texto |
+| `cnpj_raiz` | Os 8 primeiros dígitos do CNPJ: a ponte com o quadro de sócios da Receita | texto |
+| `substancia` | Substância mineral, como a ANM escreve | texto |
+| `uf` | Sigla do estado | texto |
+| `codigo_municipio` | Código IBGE do município | texto |
+| `municipio` | Nome do município, como a ANM escreve | texto |
+| `quantidade` | Quantidade comercializada, na unidade da coluna `unidade` | número com decimais, na unidade da fonte |
+| `unidade` | Unidade da quantidade (t, l, m3, g, kg, ct...), como a ANM escreve | texto |
+| `valor_recolhido` | CFEM recolhida, em reais (R$) | número com decimais, na unidade da fonte |
+| `criado_em` | Data e hora em que a ANM criou a linha | data (dia) |
+| `disponivel_em` | Dia em que a linha passou a existir na ANM (`criado_em`); sem data na linha, o dia da coleta. `ano` e `mes` nunca servem de disponibilidade | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anm_sigbm_barragens`
+
+Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial (DPA) como o empreendedor declarou. O CNPJ é o do empreendedor, que não é necessariamente quem opera a mina; sem CNPJ completo, o nome do empreendedor também fica de fora.
+
+- **Fonte:** ANM, Dados Abertos, SIGBM (`base/anm.py`)
+- **Licença:** CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a ANM sobrescreve o arquivo)
+- **Atraso de divulgação:** O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu. A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `id`
+- **Três datas:** aconteceu_em = `classificado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anm_sigbm_barragens/barragens.parquet` (servidor de casa, `scripts/carga_anm.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id` | Identificador da barragem no SIGBM | texto |
+| `nome` | Nome da barragem | texto |
+| `empreendedor` | Nome do empreendedor; vazio quando o documento não é um CNPJ completo (pode ser pessoa física) | texto |
+| `cnpj` | CNPJ do empreendedor, só os 14 dígitos. Não é necessariamente quem opera a mina | texto |
+| `cnpj_raiz` | Os 8 primeiros dígitos do CNPJ do empreendedor | texto |
+| `nome_mina` | Nome da mina | texto |
+| `uf` | Sigla do estado | texto |
+| `municipio` | Município, como a ANM escreve | texto |
+| `latitude` | Latitude em graus decimais (a ANM entrega em graus, minutos e segundos) | número com decimais, na unidade da fonte |
+| `longitude` | Longitude em graus decimais (a ANM entrega em graus, minutos e segundos) | número com decimais, na unidade da fonte |
+| `categoria_risco` | Categoria de risco (CRI) declarada pelo empreendedor: Alta, Média ou Baixa | texto |
+| `dano_potencial` | Dano potencial associado (DPA) declarado pelo empreendedor: Alto, Médio ou Baixo | texto |
+| `classificado_em` | Data da finalização da declaração (DCE) em que o CRI e o DPA foram informados; vazio quando a ANM diz que não se aplica ou que não foi entregue | data (dia) |
+| `nivel_emergencia` | Nível de emergência declarado | texto |
+| `situacao_operacional` | Situação operacional (em operação, em descaracterização...) | texto |
+| `motivo_envio` | Motivo do envio da declaração | texto |
+| `altura_atual_m` | Altura máxima atual da barragem, em metros | número com decimais, na unidade da fonte |
+| `volume_atual_m3` | Volume atual do reservatório, em metros cúbicos | número com decimais, na unidade da fonte |
+| `unidade_gestora` | Unidade gestora da ANM responsável | texto |
+| `disponivel_em` | Dia em que a coleta viu essa versão da linha pela primeira vez: a ANM sobrescreve o arquivo, sem histórico, e `classificado_em` nunca serve de disponibilidade | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anm_amb_producao_bruta`
+
+Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por ano, UF e substância. Série setorial, sem CNPJ. Unidades por linha, sem converter; chave repetida não é somada.
+
+- **Fonte:** ANM, Dados Abertos, Anuário Mineral Brasileiro (`base/anm.py`)
+- **Licença:** CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o Anuário é anual e a ANM sobrescreve o arquivo)
+- **Atraso de divulgação:** O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu. A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `ano`, `uf`, `substancia`, `contido_indicacao`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anm_amb_producao_bruta/atual.parquet` (servidor de casa, `scripts/carga_anm.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `ano` | Ano-base do Anuário Mineral | texto |
+| `uf` | Sigla do estado | texto |
+| `classe` | Classe da substância (metálicos, não metálicos...) | texto |
+| `substancia` | Substância mineral, como a ANM escreve | texto |
+| `producao_rom_t` | Produção de minério ROM, em toneladas | número com decimais, na unidade da fonte |
+| `contido` | Quantidade contida, na unidade da linha (`contido_unidade`) | número com decimais, na unidade da fonte |
+| `contido_unidade` | Unidade do contido, por linha, sem converter | texto |
+| `contido_indicacao` | Indicação do contido (de que mineral ou fase), como a ANM escreve | texto |
+| `venda_t` | Quantidade vendida, em toneladas | número com decimais, na unidade da fonte |
+| `venda_valor` | Valor da venda, em reais (R$) | número com decimais, na unidade da fonte |
+| `consumo_t` | Quantidade para transformação, consumo ou utilização, em toneladas | número com decimais, na unidade da fonte |
+| `consumo_valor` | Valor da transformação, consumo ou utilização nesta mina, em reais (R$) | número com decimais, na unidade da fonte |
+| `transferencia_t` | Quantidade transferida para transformação, utilização ou consumo, em toneladas | número com decimais, na unidade da fonte |
+| `transferencia_valor` | Valor da transferência, em reais (R$) | número com decimais, na unidade da fonte |
+| `disponivel_em` | Dia em que a coleta viu essa versão da linha pela primeira vez: o Anuário é sobrescrito pela ANM, e `ano` (o ano-base) nunca serve de disponibilidade | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anm_amb_producao_beneficiada`
+
+Produção mineral beneficiada do Anuário Mineral por ano, UF e substância. Série setorial, sem CNPJ. Unidades por linha, sem converter.
+
+- **Fonte:** ANM, Dados Abertos, Anuário Mineral Brasileiro (`base/anm.py`)
+- **Licença:** CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o Anuário é anual e a ANM sobrescreve o arquivo)
+- **Atraso de divulgação:** O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu. A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `ano`, `uf`, `substancia`, `contido_indicacao`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anm_amb_producao_beneficiada/atual.parquet` (servidor de casa, `scripts/carga_anm.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `ano` | Ano-base do Anuário Mineral | texto |
+| `uf` | Sigla do estado | texto |
+| `classe` | Classe da substância (metálicos, não metálicos...) | texto |
+| `substancia` | Substância mineral, como a ANM escreve | texto |
+| `producao` | Quantidade produzida, na unidade `producao_unidade` | número com decimais, na unidade da fonte |
+| `producao_unidade` | Unidade da produção, por linha, sem converter | texto |
+| `contido` | Quantidade contida, na unidade da linha (`contido_unidade`) | número com decimais, na unidade da fonte |
+| `contido_unidade` | Unidade do contido, por linha, sem converter | texto |
+| `contido_indicacao` | Indicação do contido, como a ANM escreve | texto |
+| `venda` | Quantidade vendida, na unidade `venda_unidade` | número com decimais, na unidade da fonte |
+| `venda_unidade` | Unidade da venda, por linha, sem converter | texto |
+| `venda_valor` | Valor da venda, em reais (R$) | número com decimais, na unidade da fonte |
+| `consumo` | Quantidade consumida ou utilizada na usina, na unidade `consumo_unidade` | número com decimais, na unidade da fonte |
+| `consumo_unidade` | Unidade do consumo, por linha, sem converter | texto |
+| `consumo_valor` | Valor do consumo ou utilização na usina, em reais (R$) | número com decimais, na unidade da fonte |
+| `transferencia` | Quantidade transferida, na unidade `transferencia_unidade` | número com decimais, na unidade da fonte |
+| `transferencia_unidade` | Unidade da transferência, por linha, sem converter | texto |
+| `transferencia_valor` | Valor da transferência, em reais (R$) | número com decimais, na unidade da fonte |
+| `disponivel_em` | Dia em que a coleta viu essa versão da linha pela primeira vez: o Anuário é sobrescrito pela ANM, e `ano` (o ano-base) nunca serve de disponibilidade | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anm_amb_agua_mineral`
+
+Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e substância. Série setorial, sem CNPJ.
+
+- **Fonte:** ANM, Dados Abertos, Anuário Mineral Brasileiro (`base/anm.py`)
+- **Licença:** CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o Anuário é anual e a ANM sobrescreve o arquivo)
+- **Atraso de divulgação:** O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu. A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `ano`, `uf`, `substancia`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anm_amb_agua_mineral/atual.parquet` (servidor de casa, `scripts/carga_anm.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `ano` | Ano-base do Anuário Mineral | texto |
+| `uf` | Sigla do estado | texto |
+| `classe` | Classe da substância (metálicos, não metálicos...) | texto |
+| `substancia` | Substância mineral, como a ANM escreve | texto |
+| `litros_garrafao` | Litros vendidos em garrafão | número com decimais, na unidade da fonte |
+| `litros_garrafa_plastica` | Litros vendidos em garrafa plástica | número com decimais, na unidade da fonte |
+| `litros_garrafa_vidro` | Litros vendidos em garrafa de vidro | número com decimais, na unidade da fonte |
+| `litros_copo` | Litros vendidos em copo | número com decimais, na unidade da fonte |
+| `litros_outras` | Litros vendidos em outras embalagens | número com decimais, na unidade da fonte |
+| `litros_industrializados` | Litros vendidos em composição de produtos industrializados | número com decimais, na unidade da fonte |
+| `valor_garrafao` | Valor das vendas em garrafão, em reais (R$) | número com decimais, na unidade da fonte |
+| `valor_garrafa_plastica` | Valor das vendas em garrafa plástica, em reais (R$) | número com decimais, na unidade da fonte |
+| `valor_garrafa_vidro` | Valor das vendas em garrafa de vidro, em reais (R$) | número com decimais, na unidade da fonte |
+| `valor_copo` | Valor das vendas em copo, em reais (R$) | número com decimais, na unidade da fonte |
+| `valor_outras` | Valor das vendas em outras embalagens, em reais (R$) | número com decimais, na unidade da fonte |
+| `valor_industrializados` | Valor das vendas em composição de produtos industrializados, em reais (R$) | número com decimais, na unidade da fonte |
+| `unidade` | Unidade de medida declarada pela ANM | texto |
+| `disponivel_em` | Dia em que a coleta viu essa versão da linha pela primeira vez: o Anuário é sobrescrito pela ANM, e `ano` (o ano-base) nunca serve de disponibilidade | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |

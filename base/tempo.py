@@ -61,6 +61,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "balanco_publico_em", "receita_publico_em", "conhecido_em_do_negocio",
         "primeira_entrega", "primeiro_recebido_em", "primeiro_visto",
         "disponibilizada_em", "primeira_comunicacao",
+        "lista_publicada_em",  # a CMED: o Last-Modified do arquivo no portal da Anvisa
     ),
     "ate_publico_em": ("ate_publico_em",),
     "visto_em": ("visto_em",),
@@ -76,7 +77,9 @@ COLUNAS_A_CONFERIR = frozenset(
         "atualizado_em",
         "base_de",
         "calculado_em",
+        "classificado_em",  # SIGBM: data da declaração que informou o CRI e o DPA
         "confidencial_ate",
+        "criado_em",  # CFEM: dia em que a ANM criou a linha (vira disponivel_em)
         "data",
         "data_da_previsao",
         "data_de_corte",

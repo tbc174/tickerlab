@@ -87,14 +87,18 @@ cd web; npm run site                                        # páginas, CSS e JS
 - **Nunca** commitar na `main` direto, nem `push --force`, nem reescrever histórico publicado.
   Trabalho em ramos `feat/...`, `fix/...`, `docs/...`, `test/...`; entra na `main` por PR com o
   CI verde. Push e PR são livres. **Merge:** com CI verde, dentro de um plano aceito e fora das áreas
-  sensíveis (login, contas e admins, cobrança, limites dos planos, migração, segredos, apagar dado), a
-  sessão mescla e registra a decisão (alçadas da ADR 0101, na pasta privada); nessas áreas, só com o
-  "pode" do Tiago e depois da revisão de segurança.
+  sensíveis (login, contas e admins, cobrança, limites dos planos, migração que apaga, renomeia ou altera
+  dado, segredos, apagar dado), a sessão mescla e registra a decisão (alçadas da ADR 0101, na pasta
+  privada); nessas áreas, só com o "pode" do Tiago e depois da revisão de segurança. Migração que só
+  acrescenta (tabela, coluna anulável ou com padrão, índice) e tem `downgrade` testado é da sessão, mas
+  também passa pela revisão de segurança antes do merge (ADR 0101, Emenda 2).
 - **Ordens da Diretoria:** a conversa da Diretoria que toca a fila única pode mandar ordens às outras sessões
   (mensagem entre sessões ou, para a IA que não recebe mensagens, escrita na passagem da tarefa), citando as
   palavras do Tiago (autorização dele em 20/10/2026). Fora do nível 1 da ADR 0101, essa ordem vale como a do
   Tiago para push, PR, merge com auto-merge e o próximo passo da passagem. No nível 1 (as áreas sensíveis acima,
   texto público, gasto, licença de dado e LGPD), só vale o "pode" que o Tiago escreve na própria conversa.
+  Correção de digitação ou de link quebrado em texto público já aprovado, sem mudar sentido, número, preço,
+  promessa, nome nem texto legal, não é nível 1 (ADR 0101, Emenda 2).
 - **Merge automático:** quando o merge está autorizado (pela alçada ou pelo Tiago), ative o auto-merge do PR (ele
   mescla sozinho quando o CI fica verde), em vez de esperar o CI para voltar e mesclar. CI vermelho
   não mescla: corrija e faça o push de novo.
