@@ -56,10 +56,14 @@ def manter_apenas_dias_uteis(dados: pd.DataFrame) -> pd.DataFrame:
     return uteis
 
 
-def _baixar_do_yahoo(ticker: str, **pedido: str) -> pd.DataFrame | None:
-    """Uma consulta ao Yahoo, com colunas simples e só dias úteis. None se falhar ou vier vazia."""
+def _baixar_do_yahoo(
+    ticker: str, ajustado: bool = True, **pedido: str
+) -> pd.DataFrame | None:
+    """Uma consulta ao Yahoo, com colunas simples e só dias úteis. None se falhar ou vier vazia.
+
+    `ajustado=False` pede os preços como negociados, sem o ajuste por proventos."""
     try:
-        dados = yf.download(ticker, auto_adjust=True, progress=False, **pedido)
+        dados = yf.download(ticker, auto_adjust=ajustado, progress=False, **pedido)
     except Exception as erro:  # noqa: BLE001  (o yfinance levanta vários tipos de erro)
         log.warning("Falha ao baixar %s no Yahoo Finance: %s", ticker, erro)
         return None
@@ -79,6 +83,15 @@ def baixar_historico_completo(ticker: str) -> pd.DataFrame:
             f"Sem histórico de {ticker} no Yahoo Finance agora."
         )
     return dados
+
+
+def baixar_fechamento_sem_ajuste(ticker: str, periodo: str = "2y") -> pd.Series | None:
+    """O fechamento diário SEM ajuste por proventos (para a mínima e a máxima de 52 semanas), direto
+    do Yahoo e sem guardar a série. None se o Yahoo falhar ou não tiver o ticker."""
+    dados = _baixar_do_yahoo(normalizar_ticker(ticker), ajustado=False, period=periodo)
+    if dados is None or "Close" not in dados:
+        return None
+    return dados["Close"]
 
 
 def _recortar_periodo(dados: pd.DataFrame, periodo: str) -> pd.DataFrame:

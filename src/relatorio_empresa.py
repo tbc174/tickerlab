@@ -29,6 +29,7 @@ from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.contestacao import com_a_contestacao
+from src.faixa_de_preco import FaixaDePreco
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao, Numero
@@ -387,6 +388,7 @@ class Entradas:
         None  # codigo, valor_mobiliario, atualizado_em (do FCA)
     )
     premissas: Premissas = field(default_factory=Premissas)
+    faixa_de_preco: FaixaDePreco | None = None  # 52 semanas e 12 meses, sem ajuste
 
 
 # --- números escritos ------------------------------------------------------------------------------
@@ -943,6 +945,8 @@ def _valuation(c: _Calculos, e: Entradas) -> Secao:
             "no DCF. São um ponto de partida declarado, não uma opinião sobre a empresa."
         )
     ]
+    if e.faixa_de_preco is not None:
+        paragrafos.append(e.faixa_de_preco.texto())
     tabelas: dict[str, list[dict]] = {}
     livre = c.indicadores.get("caixa_livre")
     acoes, divida = _acoes_e_divida(c)

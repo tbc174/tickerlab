@@ -32,6 +32,7 @@ from src.banco.pdfs_originais import guardar_pdf_original
 from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.configuracao import preco_no_relatorio_ligado
 from src.dados import normalizar_ticker
+from src.faixa_de_preco import FaixaDePreco, faixa_de_preco_do_ticker
 from src.fundamentos import VERSAO_DOS_FUNDAMENTOS
 from src.moedas import moeda_do_ticker
 from src.padroes import VERSAO_DOS_PADROES
@@ -105,7 +106,13 @@ def _ler(ticker: str, preco: float | None, fechamentos: pd.Series):
             icon=":material/schedule:",
         )
         return None
-    return entradas
+    return replace(entradas, faixa_de_preco=_faixa_de_preco(ticker))
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _faixa_de_preco(ticker: str) -> FaixaDePreco | None:
+    """A faixa de 52 semanas, guardada por uma hora: a página roda de novo a cada clique."""
+    return faixa_de_preco_do_ticker(ticker)
 
 
 def _origem(item: Item) -> str:
