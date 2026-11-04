@@ -2,6 +2,7 @@
 // Python (amostra_relatorio.json, de src/amostra_do_relatorio.py), os mesmos do PDF: nunca à mão.
 import { type TabelaDaAmostra, amostraRelatorio as amostra } from "../conteudo";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
+import { SeloDaBase } from "../site/SeloDaBase";
 
 export const DADOS = {
   caminho: "/relatorio-de-exemplo.html",
@@ -96,6 +97,7 @@ export function RelatorioExemplo() {
       }
       sumario={SUMARIO}
     >
+      <SeloDaBase data={amostra.dados_de} />
       <p className="v2-aviso">{amostra.aviso}</p>
       <p className="atalhos">
         <a className="botao primario" href={amostra.pdf}>

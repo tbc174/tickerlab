@@ -3,6 +3,7 @@
 import { TextoComLinks } from "../app/TextoComLinks";
 import { relatorioSemanalEletricas as relatorio } from "../conteudo";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
+import { SeloDaBase } from "../site/SeloDaBase";
 import { TabelaPronta } from "../site/TabelaPronta";
 
 const CAMINHO = "/relatorio-de-setor-eletricas.html";
@@ -37,6 +38,7 @@ export function RelatorioSemanalEletricas() {
       subtitulo={`Companhias abertas de distribuição e geração de energia. Dados da base de ${relatorio.dados_de}.`}
       sumario={SUMARIO}
     >
+      <SeloDaBase data={relatorio.dados_de} />
       <p className="v2-aviso">{relatorio.aviso}</p>
       <p className="atalhos">
         <a className="botao primario" href={relatorio.arquivos.pdf}>
