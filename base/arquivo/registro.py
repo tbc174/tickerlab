@@ -229,6 +229,7 @@ FONTES_DE_FORA_DO_ARQUIVISTA = (
     "mb",
     "btc",
     "ms",  # CNES: carga mensal por `scripts/carga_cnes.py`, fora do arquivista (linha 654)
+    "estban",  # ESTBAN do BCB: carga mensal por `scripts/carga_estban.py`, fora do arquivista (linha 659)
 )
 RITMO_DE_FORA = "lida pelo app"
 

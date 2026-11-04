@@ -48,6 +48,10 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "susep": Orgao("SUSEP (seguros)", "https://dados.susep.gov.br/"),
     # Brasil: governo federal, bancos públicos e tribunais
     "bcb": Orgao("Banco Central do Brasil", "https://dadosabertos.bcb.gov.br/"),
+    "estban": Orgao(
+        "Banco Central do Brasil (ESTBAN)",
+        "https://www.bcb.gov.br/estatisticas/estatisticabancariamunicipios",
+    ),
     "bndes": Orgao("BNDES", "https://dadosabertos.bndes.gov.br/"),
     "finep": Orgao("Finep (financiamento à inovação)", "https://www.finep.gov.br/"),
     "cgu": Orgao("CGU (cadastros de sanções)", "https://portaldatransparencia.gov.br/"),
