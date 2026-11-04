@@ -53,6 +53,7 @@ LICENCAS = {
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
     "rfb-renuncias": "DIRBI e ECF da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
     "rfb-transacoes": "Transações da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
+    "ms": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
     "tce-rn": "TCE-RN: licença não localizada; a confirmar, só interno (ADR 0102)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
@@ -274,6 +275,7 @@ REVENDA = {
     "rfb-cnpj": VENDAVEL_COM_ATRIBUICAO,
     "rfb-renuncias": A_CONFIRMAR,  # DIRBI e ECF (linha 660): nada perguntado à Receita, uso interno
     "rfb-transacoes": A_CONFIRMAR,  # transações (linha 661): nada perguntado à Receita, uso interno
+    "ms": A_CONFIRMAR,  # CNES (linha 654): nada perguntado ao DATASUS, uso interno
     "tce-rn": A_CONFIRMAR,  # linha 662: nada perguntado ao TCE-RN, uso interno
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
@@ -576,6 +578,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "pgfn",
             "rfb-renuncias",
             "rfb-transacoes",
+            "ms",
             "tce-rn",
             "mte",
             "comexstat",

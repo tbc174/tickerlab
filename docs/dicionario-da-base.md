@@ -3289,6 +3289,74 @@ Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédi
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `cnes_estabelecimentos`
+
+Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia não grava linha: veja `cnes_competencias`.
+
+- **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
+- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
+- **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `competencia`, `codigo_cnes`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnes_estabelecimentos/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_cnes.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Competência do cadastro, no formato AAAAMM | número inteiro |
+| `codigo_cnes` | Código do estabelecimento no CNES (7 dígitos) | texto |
+| `cnpj` | CNPJ do estabelecimento, só os 14 dígitos; vazio na unidade pública que não tem CNPJ próprio e no CPF (CPF nunca vira CNPJ) | texto |
+| `cnpj_mantenedora` | CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos. Não substitui o `cnpj`, e a mantenedora não é dona de tudo o que mantém | texto |
+| `razao_social` | Nome empresarial; vazio quando não há nenhum CNPJ (pessoa física) | texto |
+| `nome_fantasia` | Nome fantasia; vazio quando não há nenhum CNPJ (pessoa física) | texto |
+| `codigo_ibge_municipio` | Código IBGE do município do estabelecimento | texto |
+| `gestao` | Tipo de gestão (municipal, estadual, dupla...), como a fonte escreve | texto |
+| `tipo_unidade` | Tipo de unidade (hospital geral, posto de saúde...), como a fonte escreve | texto |
+| `classificacao` | Classificação do estabelecimento, como a fonte escreve | texto |
+| `natureza_juridica` | Natureza jurídica, como a fonte escreve | texto |
+| `grupo_natureza_juridica` | Grupo da natureza jurídica, como a fonte escreve | texto |
+| `latitude` | Latitude do estabelecimento (graus); vazio quando a fonte não informa | número com decimais, na unidade da fonte |
+| `longitude` | Longitude do estabelecimento (graus); vazio quando a fonte não informa | número com decimais, na unidade da fonte |
+| `situacao_cnes` | Situação do estabelecimento (ativo ou não), como a fonte escreve | texto |
+| `disponivel_em` | Dia em que a coleta viu a competência pela primeira vez (a API não dá a data de publicação); `competencia` nunca serve de disponibilidade | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `cnes_competencias`
+
+Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia. Serve para não confundir competência ainda não publicada com ausência de estabelecimentos.
+
+- **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
+- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
+- **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `coletado_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnes_competencias/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_cnes.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Competência olhada, no formato AAAAMM | número inteiro |
+| `linhas` | Quantos estabelecimentos a fonte devolveu na competência | número inteiro |
+| `situacao` | `com_dados` ou `vazia`. `vazia` é a fonte ainda não ter publicado a competência: nunca significa que não há estabelecimentos | texto |
+| `coletado_em` | Dia em que a competência foi vista pela primeira vez com essa situação | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `debentures_assembleias`
 
 Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora (`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): `estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF

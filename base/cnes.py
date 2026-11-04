@@ -56,7 +56,7 @@ COMPETENCIA_VAZIA = "vazia"
 COLUNAS = (
     "competencia", "codigo_cnes", "cnpj", "cnpj_mantenedora", "razao_social", "nome_fantasia",
     "codigo_ibge_municipio", "gestao", "tipo_unidade", "classificacao", "natureza_juridica",
-    "grupo_natureza_juridica", "latitude", "longitude", "status", "disponivel_em",
+    "grupo_natureza_juridica", "latitude", "longitude", "situacao_cnes", "disponivel_em",
 )  # fmt: skip
 CHAVE = ["competencia", "codigo_cnes"]
 COLUNAS_DA_SITUACAO = ("competencia", "linhas", "situacao", "coletado_em")
@@ -70,7 +70,7 @@ _TEXTOS = {
     "ds_class_estab": "classificacao",
     "ds_natureza_juridica": "natureza_juridica",
     "no_grupo_nat_jur": "grupo_natureza_juridica",
-    "ds_status": "status",
+    "ds_status": "situacao_cnes",
 }
 
 Buscador = Callable[[int, int, int], dict[str, Any]]
