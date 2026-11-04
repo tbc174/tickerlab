@@ -95,8 +95,8 @@ def test_meses_do_historico_e_do_atual_nao_se_repetem():
 
 
 def test_le_a_anp_com_cabecalho_precedido_de_bom():
-    """A ANP passou a gravar o BOM UTF-8 antes do cabeçalho; lido como latin-1 ele vira "ï»¿" e a
-    coluna do ano não era reconhecida (o arquivo era lido como sem cabeçalho, com 12 colunas)."""
+    """A ANP passou a gravar o BOM UTF-8 antes do cabeçalho; o arquivo passa a ser UTF-8 (antes, latin-1): lido como latin-1, o cabeçalho
+    não era reconhecido (12 colunas sem cabeçalho) e os acentos viravam "MÃªs"."""
     import io
     import zipfile
 
@@ -115,7 +115,7 @@ def test_le_a_anp_com_cabecalho_precedido_de_bom():
     with zipfile.ZipFile(conteudo, "w") as z:
         z.writestr(
             "Liquidos_Vendas_Historico_2018_a_2023.csv",
-            b"\xef\xbb\xbf" + "\r\n".join(linhas).encode("latin-1"),
+            b"\xef\xbb\xbf" + "\r\n".join(linhas).encode("utf-8"),
         )
     tabela = anp.ler(conteudo.getvalue(), "liquidos").set_index("competencia")
     assert tabela.loc[pd.Timestamp("2018-01-31"), "quantidade"] == 3.0

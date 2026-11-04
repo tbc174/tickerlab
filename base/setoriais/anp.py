@@ -42,16 +42,8 @@ UNIDADE = re.compile(r"\((mil [^)]+)\)")
 VENDAS = re.compile(r"_Vendas_(Atual|Historico)")
 
 
-BOM_LIDO_COMO_LATIN1 = codecs.BOM_UTF8.decode(
-    CODIFICACAO
-)  # o BOM UTF-8 que a ANP passou a gravar
-
-
 def _simples(nome: str) -> str:
-    sem_bom = nome.removeprefix(BOM_LIDO_COMO_LATIN1)
-    sem_acento = (
-        unicodedata.normalize("NFKD", sem_bom).encode("ascii", "ignore").decode()
-    )
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
     return " ".join(sem_acento.replace("﻿", "").strip().strip('"').lower().split())
 
 
@@ -66,10 +58,15 @@ def _nome_da_coluna(coluna: str) -> str:
 
 def _ler_membro(arquivo: zipfile.ZipFile, nome: str) -> tuple[pd.DataFrame, str | None]:
     """O CSV de vendas, com as colunas da base, e a unidade escrita no cabeçalho (se houver)."""
-    primeira = arquivo.open(nome).readline().decode(CODIFICACAO, errors="replace")
+    primeira_linha = arquivo.open(nome).readline()
+    # a ANP passou a gravar alguns arquivos em UTF-8 com BOM; os antigos são latin-1
+    codificacao = (
+        "utf-8-sig" if primeira_linha.startswith(codecs.BOM_UTF8) else CODIFICACAO
+    )
+    primeira = primeira_linha.decode(codificacao, errors="replace")
     com_cabecalho = _simples(primeira.split(";")[0]) == "ano"
     bruto = pd.read_csv(
-        arquivo.open(nome), sep=";", encoding=CODIFICACAO, encoding_errors="replace",
+        arquivo.open(nome), sep=";", encoding=codificacao, encoding_errors="replace",
         dtype=str, keep_default_na=False, header=0 if com_cabecalho else None,
     )  # fmt: skip
     if not com_cabecalho:
