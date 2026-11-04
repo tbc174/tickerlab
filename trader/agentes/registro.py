@@ -22,7 +22,9 @@ from trader.registro import RAIZ, especificacao_canonica, pasta_da_pesquisa_quan
 
 __all__ = ["RAIZ"]
 
-PASTA_PADRAO = pasta_da_pesquisa_quant() / "agentes"  # fora do Git e das cópias, como o resto da pesquisa
+PASTA_PADRAO = (
+    pasta_da_pesquisa_quant() / "agentes"
+)  # fora do Git e das cópias, como o resto da pesquisa
 BRASILIA = ZoneInfo("America/Sao_Paulo")
 GENESE = "0" * 64  # o "hash anterior" da primeira linha
 CAMPOS_DO_REGISTRO = ("data", "registrado_em", "hash_anterior", "hash")

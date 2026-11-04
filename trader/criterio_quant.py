@@ -109,7 +109,11 @@ CANDIDATOS = {
 def abrir_registro(caminho: Path | None = None) -> Registro:
     """O registro único das P0 (seção 10). O de verdade (sem `caminho`) guarda uma cópia a cada escrita."""
     if caminho is not None:
-        return Registro(caminho, familias=tuple(ORCAMENTO_POR_FICHA), orcamento=ORCAMENTO_DE_TENTATIVAS)
+        return Registro(
+            caminho,
+            familias=tuple(ORCAMENTO_POR_FICHA),
+            orcamento=ORCAMENTO_DE_TENTATIVAS,
+        )
     return Registro(
         pasta_da_pesquisa_quant() / "registro.db",
         familias=tuple(ORCAMENTO_POR_FICHA),

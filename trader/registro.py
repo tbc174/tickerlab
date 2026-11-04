@@ -166,7 +166,10 @@ class Registro:
         carimbo = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
         destino = self.copias / f"registro_{carimbo}.db"
         # fechar as duas conexões: no Windows, um arquivo aberto não pode ser apagado depois
-        with closing(self._conectar()) as origem, closing(sqlite3.connect(destino)) as copia:
+        with (
+            closing(self._conectar()) as origem,
+            closing(sqlite3.connect(destino)) as copia,
+        ):
             origem.backup(copia)
         for antiga in sorted(self.copias.glob("registro_*.db"))[:-MAXIMO_DE_COPIAS]:
             antiga.unlink()

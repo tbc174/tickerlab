@@ -225,7 +225,9 @@ def test_copias_ficam_nas_mais_recentes(tmp_path, monkeypatch):
 
 
 def test_registro_sem_copias_nao_cria_pasta(tmp_path):
-    Registro(tmp_path / "registro.db", commit_fn=lambda: "c1").registrar("H1", "a", SPEC)
+    Registro(tmp_path / "registro.db", commit_fn=lambda: "c1").registrar(
+        "H1", "a", SPEC
+    )
     assert sorted(p.name for p in tmp_path.iterdir()) == ["registro.db"]
 
 
@@ -244,12 +246,17 @@ def test_variaveis_trocam_os_lugares_da_pesquisa(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("tem_onedrive", [True, False])
-def test_copias_vao_para_o_onedrive_quando_ele_existe(tmp_path, monkeypatch, tem_onedrive):
+def test_copias_vao_para_o_onedrive_quando_ele_existe(
+    tmp_path, monkeypatch, tem_onedrive
+):
     monkeypatch.delenv(reg.VARIAVEL_DA_PESQUISA_QUANT, raising=False)
     monkeypatch.delenv(reg.VARIAVEL_DAS_COPIAS, raising=False)
     monkeypatch.setattr(reg.Path, "home", classmethod(lambda cls: tmp_path))
     if tem_onedrive:
         (tmp_path / "OneDrive").mkdir()
-        assert reg.pasta_das_copias() == tmp_path / "OneDrive" / "TickerLab-Pesquisa" / "copias"
+        assert (
+            reg.pasta_das_copias()
+            == tmp_path / "OneDrive" / "TickerLab-Pesquisa" / "copias"
+        )
     else:
         assert reg.pasta_das_copias() == reg.pasta_da_pesquisa_quant() / "copias"
