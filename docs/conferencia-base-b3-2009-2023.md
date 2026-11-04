@@ -120,7 +120,7 @@ e também não ajustam. A tolerância de 5% foi escolhida olhando esses casos co
 |---|---|---|
 | Eventos do formulário aplicados | 480 | 515 (mais CNPJs ligados) |
 | Desdobramentos pelo preço | — | 461 (14 no universo líquido) |
-| Saltos de 2× sem evento | 2.898 | 2.405; **15 no universo líquido** |
+| Saltos de 2× sem evento | 2.898 | 2.403 (depois de o preço zero do arquivo virar dia sem preço); **15 no universo líquido** |
 
 No universo líquido, os 14 pelo preço são B3 (05/2021), Inter (05/2021, três classes), BTG (07/2021),
 Méliuz (06/2023), Cielo (05/2011), JSL (11/2020), OGX (12/2009), GPA (08/2023), PDG (01/2019), Rumo
@@ -138,5 +138,6 @@ o erro tende a se compensar entre as pernas, mas não some.
 
 ## Próximo passo
 
-Com a base completada, a tentativa 1 da P0-4 pode rodar: `python -m trader.estrategias.rodar_pares`
-(o resultado vai em `docs/resultado-pares-p0-4-tentativa-1.md`). A regra da ficha não muda.
+Com a base completada, a tentativa 1 da P0-4 rodou em 03/11 (`python -m trader.estrategias.rodar_pares`)
+e foi **reprovada**: a regra quase não achou par cointegrado (2 operações em 14 anos). O resultado está em
+`docs/resultado-pares-p0-4-tentativa-1.md`. A regra da ficha não mudou.
