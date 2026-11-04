@@ -6,9 +6,14 @@ nem Parquet (o mesmo jeito dos contratos do PNCP). Uma seção por tema na ficha
 - **não consta**: a fonte está no arquivo (`meta.estado`, com a data até onde foi conferida) e a raiz não;
 - **não conferido**: a fonte não está no arquivo. A ficha nunca confunde isso com "não consta".
 
-**Vigente.** Nas tabelas de retratos (sanções, licenças e incentivos), o valor mais novo de cada registro já
+**Vigente.** Nas tabelas de retratos (sanções, licenças, incentivos e financiamentos), o valor mais novo de cada registro já
 público no dia da montagem (`como_era_em`) e só se ainda consta na fonte. Na dívida ativa, o retrato mais novo
 já público de cada tipo de dívida. Nada do futuro: a linha que ainda não era pública fica de fora.
+
+**Financiamentos.** O histórico de contratações do BNDES e da Finep (linha 469): cada operação com o valor
+contratado e o desembolsado como a fonte divulga, em texto exato ("250.04"), nunca somados nem tomados por
+saldo; a liquidada continua (é o histórico), com a situação ao lado. Uma fonte por banco, cada uma com a sua
+licença (`licenca` no estado: a do BNDES é ODbL e pede a atribuição).
 
 **Sem pessoa física.** A linha marcada `trata_como_pessoa` (empresário individual e MEI, ADR 0075) não entra,
 nem coluna de texto livre que possa levar nome (assunto, origem da informação, complemento). A ficha também não
@@ -34,6 +39,7 @@ from base.porta import Porta, vista_do_cnpj
 from base.porta.duckdb import nome_da_view
 from base.porta.rede import views
 from base.rede import grupo_do_qsa
+from src.banco.coletas import licenca_da_fonte
 
 ESQUEMA = "1"  # o portal recusa outro: campo novo só entra com o contrato da integração
 LINHAS_POR_FONTE = 50  # por raiz e fonte; `total` diz quantas há
@@ -41,6 +47,7 @@ TEMAS = {
     "sinais": "Sanções, penalidades e dívida ativa",
     "licencas": "Licenças e registros",
     "incentivos": "Incentivos e benefícios",
+    "financiamentos": "Financiamentos do BNDES e da Finep",
 }
 RAIZ_DA_FONTE = "raiz"  # a fonte só traz a raiz do CNPJ (o RDE-IED)
 
@@ -52,6 +59,12 @@ _SANCOES = (
 _LICENCAS = (
     "cadastro", "cnpj", "registro", "categoria", "descricao", "situacao", "uf", "municipio",
     "concedido_em", "vence_em", "cancelado_em",
+)  # fmt: skip
+_FINANCIAMENTOS = (
+    "cnpj", "modalidade", "contrato", "convenio_do_agente", "contratado_em", "valor_contratado",
+    "valor_desembolsado", "contrapartida", "financiador", "forma_de_apoio", "produto",
+    "custo_financeiro", "juros", "carencia_meses", "amortizacao_meses", "situacao", "situacao_classe",
+    "uf",
 )  # fmt: skip
 
 
@@ -104,6 +117,10 @@ FONTES = (
     Fonte("bcb_rde_ied", "incentivos", "Registros de investimento estrangeiro direto (RDE-IED)",
           "Banco Central", "https://dadosabertos.bcb.gov.br",
           ("codigo_rde", "uf", "pais", "ocorrencia", "mes"), "mes", RAIZ_DA_FONTE),
+    Fonte("financiamentos_bndes", "financiamentos", "Operações de crédito não automáticas do BNDES",
+          "BNDES", "https://dadosabertos.bndes.gov.br/", _FINANCIAMENTOS, "contratado_em"),
+    Fonte("financiamentos_finep", "financiamentos", "Crédito direto e descentralizado da Finep", "Finep",
+          "https://www.finep.gov.br/", _FINANCIAMENTOS, "contratado_em"),
 )  # fmt: skip
 
 _CNPJ_LIMPO = "regexp_replace(upper(CAST(cnpj AS VARCHAR)), '[^0-9A-Z]', '', 'g')"
@@ -141,7 +158,7 @@ def _vigentes_sql(fonte: Fonte, hoje: date) -> str:
 
 
 def _valor(valor: object) -> object:
-    """Um valor de célula em tipo de JSON: data em ISO, vazio em None."""
+    """Um valor de célula em tipo de JSON: data em ISO, vazio em None, `Decimal` em texto exato."""
     if valor is None or (not isinstance(valor, str) and pd.isna(valor)):  # type: ignore[arg-type]
         return None
     if isinstance(valor, pd.Timestamp | datetime | date):
@@ -156,11 +173,23 @@ def _linhas_da_fonte(
 ) -> tuple[pd.DataFrame, str | None]:
     """As linhas vigentes (só as colunas da ficha e a raiz) e o dia mais novo conferido na fonte."""
     con.execute(f"CREATE OR REPLACE TEMP VIEW vigentes AS {_vigentes_sql(fonte, hoje)}")
-    presentes = {linha[0] for linha in con.execute("DESCRIBE vigentes").fetchall()}
-    colunas = [c for c in fonte.colunas if c in presentes]
-    selecao = ", ".join(["raiz", *colunas])
+    tipos = {
+        linha[0]: linha[1] for linha in con.execute("DESCRIBE vigentes").fetchall()
+    }
+    colunas = [c for c in fonte.colunas if c in tipos]
+    # o decimal sai em texto ("250.04"): o DataFrame do DuckDB o faria float e perderia o valor exato
+    selecao = ", ".join(
+        [
+            "raiz",
+            *(
+                f"CAST({c} AS VARCHAR) AS {c}" if tipos[c].startswith("DECIMAL") else c
+                for c in colunas
+            ),
+        ]
+    )
+    # a ordem é a da coluna da view (o número), não a do texto da seleção ("99.00" > "1000.00")
     tabela = con.execute(
-        f"SELECT {selecao} FROM vigentes ORDER BY raiz, {fonte.ordem} DESC NULLS LAST"
+        f"SELECT {selecao} FROM vigentes ORDER BY raiz, vigentes.{fonte.ordem} DESC NULLS LAST"
     ).df()
     dia = "data_do_retrato" if fonte.tabela == "pgfn_divida" else "visto_em"
     conferido = con.execute(
@@ -256,6 +285,7 @@ def montar(
                         {
                             "tabela": fonte.tabela, "tema": fonte.tema, "nome": fonte.nome,
                             "orgao": fonte.orgao, "endereco": fonte.endereco,
+                            "licenca": licenca_da_fonte(TABELAS[fonte.tabela].familia_da_fonte),
                             "conferido_ate": conferido, "empresas": len(linhas),
                             "registros": len(tabela),
                         }
