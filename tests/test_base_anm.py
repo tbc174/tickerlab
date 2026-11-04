@@ -147,6 +147,19 @@ def test_sigbm_empreendedor_pessoa_fisica_fica_sem_documento_e_sem_nome():
     assert tabela["empreendedor"].iloc[0] == "Mineradora Fictícia S.A."
 
 
+def test_sigbm_latitude_e_longitude_em_graus_minutos_e_segundos_viram_decimal():
+    # formato do arquivo real conferido em 04/11/2026 (Barragens.csv): -09°47'16.100''
+    assert anm.graus("-09°47'16.100''") == pytest.approx(-9.787806, abs=1e-6)
+    assert anm.graus("-63°33'55.000''") == pytest.approx(-63.565278, abs=1e-6)
+    assert anm.graus("02°19'16.300''") == pytest.approx(2.321194, abs=1e-6)
+    assert anm.graus("-9,5") == -9.5  # decimal puro continua valendo
+    assert pd.isna(anm.graus("")) and pd.isna(anm.graus("sem coordenada"))
+
+
+def test_sigbm_traco_no_volume_e_nulo_e_nao_erro():
+    assert pd.isna(anm.numero("-")) and anm.numero("12.345,67") == 12345.67
+
+
 def test_sigbm_sem_uma_coluna_exigida_e_recusado():
     cabecalho = (
         SIGBM.decode("cp1252").splitlines()[0].replace('"Nível de Emergência",', "")

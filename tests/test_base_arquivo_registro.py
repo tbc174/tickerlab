@@ -86,6 +86,12 @@ def test_a_exportacao_para_o_site_nao_leva_conversa_interna():
     }
 
 
+def test_a_base_de_cnpj_tem_a_data_da_leitura_dos_termos():
+    """Sem a data, o portão da API externa nega `rfb-cnpj` por `termos_sem_data`."""
+    por_id = {r.id: r for r in registro.registro_de_fontes()}
+    assert por_id["rfb-cnpj"].termos_lidos_em == date(2026, 10, 21)
+
+
 # --- a lista por família da página Dados (linha 592 da fila) ---
 
 RAIZ = Path(__file__).resolve().parents[1]

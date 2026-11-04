@@ -1,0 +1,112 @@
+{
+  "tabela": "anm_cfem_arrecadacao",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "ano": {
+      "descricao": "Ano de competência do recolhimento",
+      "unidade": "texto"
+    },
+    "mes": {
+      "descricao": "Mês de competência do recolhimento (1 a 12)",
+      "unidade": "texto"
+    },
+    "processo": {
+      "descricao": "Número do processo minerário na ANM",
+      "unidade": "texto"
+    },
+    "ano_processo": {
+      "descricao": "Ano do processo minerário",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do titular, só os 14 dígitos. Pessoa física, CPF e documento mascarado são descartados na carga",
+      "unidade": "texto"
+    },
+    "cnpj_raiz": {
+      "descricao": "Os 8 primeiros dígitos do CNPJ: a ponte com o quadro de sócios da Receita",
+      "unidade": "texto"
+    },
+    "substancia": {
+      "descricao": "Substância mineral, como a ANM escreve",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla do estado",
+      "unidade": "texto"
+    },
+    "codigo_municipio": {
+      "descricao": "Código IBGE do município",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Nome do município, como a ANM escreve",
+      "unidade": "texto"
+    },
+    "quantidade": {
+      "descricao": "Quantidade comercializada, na unidade da coluna `unidade`",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "unidade": {
+      "descricao": "Unidade da quantidade (t, l, m3, g, kg, ct...), como a ANM escreve",
+      "unidade": "texto"
+    },
+    "valor_recolhido": {
+      "descricao": "CFEM recolhida, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "criado_em": {
+      "descricao": "Data e hora em que a ANM criou a linha",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que a linha passou a existir na ANM (`criado_em`); sem data na linha, o dia da coleta. `ano` e `mes` nunca servem de disponibilidade",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "ano",
+    "mes",
+    "processo",
+    "ano_processo",
+    "cnpj",
+    "substancia",
+    "municipio",
+    "criado_em"
+  ],
+  "datas": {
+    "aconteceu_em": "criado_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "criado_em": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2002-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a coleta olha a faixa de anos do ano corrente e a anterior)",
+  "atraso": "A linha vale desde a data em que a ANM a criou (`criado_em`). A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte"
+}

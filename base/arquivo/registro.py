@@ -152,6 +152,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 TERMOS_LIDOS_EM |= dict.fromkeys(("epo", "wipo"), date(2026, 10, 22))
 # lote acervos históricos (rodada 4, linha 292): IPEADATA sem termos publicados, lido em 22/10/2026
 TERMOS_LIDOS_EM |= dict.fromkeys(("ipea",), date(2026, 10, 22))
+# base de CNPJ (família "rfb", fonte `rfb-cnpj`): ficha do conjunto lida em 20/10/2026 e rodapé em
+# 21/10/2026 na auditoria N0; vale a leitura completa. O portão olha a família (o id até o 1º hífen)
+TERMOS_LIDOS_EM["rfb"] = date(2026, 10, 21)
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")

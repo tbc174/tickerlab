@@ -44,7 +44,7 @@ from trader import avaliacao, calendario, criterio_quant, freios
 from trader.criterio import Veredito
 from trader.custos_br import PADRAO, CustosBR
 from trader.estrategias import camadas_da_combinada as cdc
-from trader.estrategias import combinada, dados_p0_3
+from trader.estrategias import combinada, dados_congelados, dados_p0_3
 from trader.estrategias.carteira_rp import p_valor_do_acaso
 from trader.holdout import FIM_DO_DESENVOLVIMENTO, exigir_sem_holdout
 from trader.registro import Registro
@@ -375,7 +375,7 @@ def avaliar_carteira(
     return veredito, saida
 
 
-def especificacao(nome: str, fim: date) -> dict:
+def especificacao(nome: str, fim: date, marca_dos_dados: str | None = None) -> dict:
     return {
         "pesquisa": FICHA,
         "pre_registro": criterio_quant.HASH_DO_CRITERIO,
@@ -384,6 +384,7 @@ def especificacao(nome: str, fim: date) -> dict:
         "linhas_das_camadas": {c: cdc.REGISTRADO[c].linha for c in CARTEIRAS[nome]},
         "parametros": asdict(combinada.ParametrosC1()),
         "fim": fim.isoformat(),
+        **({} if marca_dos_dados is None else {"dados": marca_dos_dados}),
     }
 
 
@@ -391,6 +392,7 @@ def executar(
     carregar: Callable[[], tuple[cdc.Camadas, pd.Series]],
     registro: Registro,
     pregoes: pd.DatetimeIndex | None = None,
+    marca_dos_dados: str | None = None,
 ) -> dict:
     """Registra as duas tentativas, confere as camadas, avalia as duas carteiras e grava.
 
@@ -400,7 +402,7 @@ def executar(
     criterio_quant.conferir()
     fim = FIM_DO_DESENVOLVIMENTO.date()
     ids = {
-        nome: registro.registrar(FICHA, nome, especificacao(nome, fim))
+        nome: registro.registrar(FICHA, nome, especificacao(nome, fim, marca_dos_dados))
         for nome in CARTEIRAS
     }
     camadas, cdi = carregar()
@@ -536,7 +538,11 @@ def escrever_relatorio(
 
 
 def main() -> int:
-    saida = executar(carregar_do_desenvolvimento, abrir_registro())
+    marca = dados_congelados.congelar_hoje()
+    saida = executar(
+        carregar_do_desenvolvimento, abrir_registro(), marca_dos_dados=marca
+    )
+    dados_congelados.exigir_a_mesma_marca(marca)
     print(escrever_relatorio(saida).read_text(encoding="utf-8"))
     return 0 if "defeito" not in saida else 1
 
