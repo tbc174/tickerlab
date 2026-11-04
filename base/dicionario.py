@@ -1277,7 +1277,7 @@ def _tabelas_do_cnes() -> dict[str, Tabela]:
             "Longitude do estabelecimento (graus); vazio quando a fonte não informa",
             NUMERO_DECIMAL,
         ),
-        "status": (
+        "situacao_cnes": (
             "Situação do estabelecimento (ativo ou não), como a fonte escreve",
             TEXTO,
         ),
@@ -1308,7 +1308,7 @@ def _tabelas_do_cnes() -> dict[str, Tabela]:
     }
     comum = {
         "fonte": "Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)",
-        "familia_da_fonte": "ms-cnes",
+        "familia_da_fonte": "ms",
         "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
         "atraso": atraso,
         "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,

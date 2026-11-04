@@ -68,7 +68,7 @@ _SEM_VIGIA = {
             "pgfn",
             "rfb-renuncias",
             "rfb-transacoes",
-            "ms-cnes",
+            "ms",
             "tce-rn",
             "conab",
             "comexstat",

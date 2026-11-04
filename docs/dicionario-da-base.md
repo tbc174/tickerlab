@@ -3294,7 +3294,7 @@ Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédi
 Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia não grava linha: veja `cnes_competencias`.
 
 - **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
-- **Licença:** CNES do Ministério da Saúde (DATASUS): licença não declarada; a confirmar, só interno (ADR 0102)
+- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
 - **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás
@@ -3322,7 +3322,7 @@ Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimen
 | `grupo_natureza_juridica` | Grupo da natureza jurídica, como a fonte escreve | texto |
 | `latitude` | Latitude do estabelecimento (graus); vazio quando a fonte não informa | número com decimais, na unidade da fonte |
 | `longitude` | Longitude do estabelecimento (graus); vazio quando a fonte não informa | número com decimais, na unidade da fonte |
-| `status` | Situação do estabelecimento (ativo ou não), como a fonte escreve | texto |
+| `situacao_cnes` | Situação do estabelecimento (ativo ou não), como a fonte escreve | texto |
 | `disponivel_em` | Dia em que a coleta viu a competência pela primeira vez (a API não dá a data de publicação); `competencia` nunca serve de disponibilidade | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
@@ -3334,7 +3334,7 @@ Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimen
 Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia. Serve para não confundir competência ainda não publicada com ausência de estabelecimentos.
 
 - **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
-- **Licença:** CNES do Ministério da Saúde (DATASUS): licença não declarada; a confirmar, só interno (ADR 0102)
+- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
 - **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás

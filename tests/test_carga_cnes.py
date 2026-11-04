@@ -154,7 +154,7 @@ def test_a_api_e_pedida_pelo_agente_do_tickerlab(monkeypatch: pytest.MonkeyPatch
 def test_fonte_do_cnes_e_a_confirmar_e_so_uso_interno():
     endereco = cnes.URL_DA_API.removeprefix("https://")
     familia = next(f for p, f in FAMILIA_DO_ENDERECO.items() if endereco.startswith(p))
-    assert familia == "ms-cnes"
+    assert familia == "ms"
     assert cnes.FONTE.startswith(familia)
     assert "a confirmar" in coletas.licenca_da_fonte(cnes.FONTE)
     assert coletas.revenda_da_fonte(cnes.FONTE) == coletas.A_CONFIRMAR

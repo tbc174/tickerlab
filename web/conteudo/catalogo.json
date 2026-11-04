@@ -1887,6 +1887,19 @@
       "ritmo": "lida pelo app",
       "termos_lidos_em": null,
       "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "ms",
+      "licencas": [
+        "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno"
+      ],
+      "link": "https://opendatasus.saude.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "em_uso"
     }
   ],
   "fontes": [
@@ -2031,6 +2044,17 @@
       "orgao": "MDIC",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 2
     },
     {
@@ -2274,7 +2298,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 26
+      "tabelas": 28
     },
     {
       "chave": "credito_e_fidc",
@@ -6638,6 +6662,26 @@
     },
     {
       "atraso": null,
+      "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "em consulta",
+      "tabela": "cnes_estabelecimentos"
+    },
+    {
+      "atraso": null,
+      "frase": "Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "em consulta",
+      "tabela": "cnes_competencias"
+    },
+    {
+      "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -6998,11 +7042,11 @@
     }
   ],
   "totais": {
-    "familias": 103,
-    "familias_em_uso": 40,
-    "fontes": 33,
-    "fontes_em_consulta": 10,
+    "familias": 104,
+    "familias_em_uso": 41,
+    "fontes": 34,
+    "fontes_em_consulta": 11,
     "modulos": 6,
-    "tabelas": 121
+    "tabelas": 123
   }
 }
