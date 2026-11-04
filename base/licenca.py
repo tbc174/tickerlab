@@ -55,6 +55,7 @@ FAMILIA_DO_ENDERECO = {
     "iextrading.com/": "iex",
     "arquivos.receitafederal.gov.br/Dados/Obrigacoes_Acessorias/": "rfb-renuncias",  # DIRBI e ECF
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
+    "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
