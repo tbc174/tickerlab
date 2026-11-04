@@ -22,10 +22,12 @@ from src.api_v1.acesso import LimiteDePedidos, agora, exigir_api_ligada
 from src.api_v1.compartilhados import ip_de_quem_pede
 from src.banco.conexao import obter_engine
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
+from src.ordem_da_busca import Candidata, ordenar
 
 PEDIDOS_POR_MINUTO = 60
 MAXIMO_NO_CACHE = 512
 MAXIMO_DE_RESULTADOS = 20
+MAXIMO_DE_LINHAS_LIDAS = 1000  # a ordem por listada é feita depois da leitura
 ORIGEM_DO_SITE = "https://tickerlab.com.br"
 FORA_DA_BASE = (
     "Esta empresa ainda não está na base aberta. A busca pública mostra apenas companhias "
@@ -82,20 +84,20 @@ def _consulta(texto: str) -> tuple[str, bool]:
 
 
 @lru_cache(maxsize=MAXIMO_NO_CACHE)
-def _companhias(
-    consulta: str, por_cnpj: bool, dia: date
-) -> tuple[tuple[str, str], ...]:
+def _companhias(consulta: str, por_cnpj: bool, dia: date) -> tuple[Candidata, ...]:
     # Cadastro e tickers são públicos e comuns a todas as contas. Nenhuma tabela de usuário é lida.
     del dia
     tabela = tickers_dos_emissores
     if por_cnpj:
         # Companhia registrada na CVM pode ter ficha mesmo sem ação negociada na bolsa.
-        pedido = sa.select(setores_cvm.c.cnpj, sa.literal("").label("empresa")).where(
-            setores_cvm.c.cnpj.in_((consulta, cnpjs.formatar(consulta)))
-        )
+        pedido = sa.select(
+            setores_cvm.c.cnpj,
+            sa.literal("").label("empresa"),
+            sa.literal("").label("valor_mobiliario"),
+        ).where(setores_cvm.c.cnpj.in_((consulta, cnpjs.formatar(consulta))))
     else:
         pedido = (
-            sa.select(tabela.c.cnpj, tabela.c.empresa)
+            sa.select(tabela.c.cnpj, tabela.c.empresa, tabela.c.valor_mobiliario)
             .join(setores_cvm, setores_cvm.c.cnpj == tabela.c.cnpj)
             .where(
                 sa.or_(
@@ -109,10 +111,14 @@ def _companhias(
     pedido = (
         pedido.distinct()
         .order_by(pedido.selected_columns.empresa, pedido.selected_columns.cnpj)
-        .limit(MAXIMO_DE_RESULTADOS)
+        .limit(MAXIMO_DE_LINHAS_LIDAS)
     )
     with obter_engine().connect() as conexao:
-        return tuple((str(l.cnpj), str(l.empresa)) for l in conexao.execute(pedido))
+        linhas = [
+            (str(l.cnpj), str(l.empresa), str(l.valor_mobiliario))
+            for l in conexao.execute(pedido)
+        ]
+    return tuple(ordenar(linhas)[:MAXIMO_DE_RESULTADOS])
 
 
 @lru_cache(maxsize=MAXIMO_NO_CACHE)
@@ -161,6 +167,17 @@ def _resposta(cnpj: str, dia: date) -> dict[str, object] | None:
     return resultado
 
 
+def _outras(
+    candidatas: tuple[Candidata, ...], escolhido: str
+) -> list[dict[str, object]]:
+    """As demais companhias que o nome ou código achou, na ordem da busca (listadas primeiro)."""
+    return [
+        {"cnpj": c.cnpj, "empresa": c.empresa, "listada": c.listada}
+        for c in candidatas
+        if cnpjs.normalizar_cnpj(c.cnpj) != escolhido and c.empresa
+    ]
+
+
 @router.get("/destaques")
 def buscar(
     request: Request, q: Annotated[str, Query(min_length=1, max_length=120)]
@@ -172,11 +189,11 @@ def buscar(
         raise _recusar(request, 422, str(erro)) from None
     try:
         candidatas = _companhias(consulta, por_cnpj, hoje())
-        for documento, _ in candidatas:
-            cnpj = cnpjs.normalizar_cnpj(documento)
+        for candidata in candidatas:
+            cnpj = cnpjs.normalizar_cnpj(candidata.cnpj)
             if cnpj and (resultado := _resposta(cnpj, hoje())):
                 return JSONResponse(
-                    resultado,
+                    {**resultado, "candidatas": _outras(candidatas, cnpj)},
                     headers={
                         **_cabecalhos(request),
                         "Cache-Control": "public, max-age=86400",
