@@ -145,7 +145,7 @@ def test_trava_desligada_e_a_ficha_sem_preco_dy_multiplos_nem_a_frase(
     assert re_.LIMITE_DO_PRECO not in ficha.secao("limites").paragrafos
     for secao in ("valuation", "dividendos"):
         for item in ficha.secao(secao).itens:
-            if item.fonte == re_.FONTE_DOS_MULTIPLOS:
+            if item.fonte.startswith(re_.FONTE_DOS_MULTIPLOS):
                 assert item.valor is None and "preço" in item.motivo, item.chave
 
 

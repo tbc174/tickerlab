@@ -15,6 +15,7 @@ from datetime import datetime
 from src import dossie
 from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.analise_escrita.modelo_da_tela import AnaliseDaTela
+from src.enderecos_das_fontes import separar
 from src.relatorio_empresa import (
     ANEXO_DE_ANOS,
     Item,
@@ -120,7 +121,7 @@ def _slides_de_numeros(titulo: str, itens: list[Item]) -> list[Slide]:
     slides = []
     for i, bloco in enumerate(blocos):
         linhas = tuple(
-            (item.nome, item.texto, _comparacao(item), item.fonte or "—")
+            (item.nome, item.texto, _comparacao(item), separar(item.fonte)[0] or "—")
             for item in bloco
         )
         notas = list(

@@ -26,6 +26,7 @@ from src.banco.demonstracoes import dados_da_empresa
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
 from src.contestacao import com_a_contestacao
 from src.dossie import Ficha
+from src.enderecos_das_fontes import fonte_com_endereco
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
     AINDA_SEM_DADO,
@@ -39,6 +40,7 @@ from src.relatorio_empresa import (
     Dossie,
     Item,
     Secao,
+    com_enderecos_das_fontes,
     data_do_dossie,
     escrever,
     para_json,
@@ -1031,10 +1033,10 @@ def montar_relatorio_do_setor(
         nome=e.setor.nome,
         como_era_em=noite.dia if noite else None,
         membros=e.membros,
-        secoes=secoes,
+        secoes=com_enderecos_das_fontes(secoes),
         frases=frases,
         nao_temos=faltas,
-        fontes=list(dict.fromkeys(fontes)),
+        fontes=list(dict.fromkeys(fonte_com_endereco(f) for f in fontes)),
         limites=com_a_contestacao(list(LIMITES_DO_SETOR)),
         avisos=[] if noite else [SEM_A_NOITE],
     )
