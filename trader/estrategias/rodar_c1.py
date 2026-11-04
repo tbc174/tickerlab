@@ -410,6 +410,7 @@ def executar(
             "gravado": cdc.REGISTRADO[nome].sharpe,
             "reexecucao": c.sharpe,
             "reproduz": cdc.reproduz(c),
+            "hash_da_serie": cdc.hash_da_serie(c),
         }
         for nome, c in camadas.camadas.items()
     }

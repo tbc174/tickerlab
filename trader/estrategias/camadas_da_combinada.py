@@ -14,6 +14,7 @@ dias corridos em dias úteis), e a C-1 confere que ele reproduz o número gravad
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -89,6 +90,13 @@ def reproduz(camada: Camada) -> bool:
     """O Sharpe do excesso da reexecução bate com o gravado no registro?"""
     gravado = REGISTRADO[camada.nome]
     return abs(camada.sharpe - gravado.sharpe) <= gravado.tolerancia + EXATO
+
+
+def hash_da_serie(camada: Camada) -> str:
+    """Impressão digital da série base: a rodada seguinte confere se os dados da camada mudaram."""
+    base = camada.base.dropna().round(12)
+    conteudo = base.index.asi8.tobytes() + base.to_numpy().tobytes()
+    return hashlib.sha256(conteudo).hexdigest()
 
 
 def _excesso(retorno: pd.Series, cdi: pd.Series) -> pd.Series:

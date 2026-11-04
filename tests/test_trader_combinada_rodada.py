@@ -169,3 +169,10 @@ def test_relatorio_tem_o_veredito_das_duas(rodada, tmp_path):
     texto = rodar_c1.escrever_relatorio(saida, tmp_path).read_text(encoding="utf-8")
     assert "candidata" in texto and "comparação" in texto
     assert "| A1 |" in texto
+
+
+def test_reproducao_guarda_o_hash_da_serie_de_cada_camada(registro):
+    saida = rodar_c1.executar(lambda: (_camadas(sharpe_da_p0_4=9.0), _cdi()), registro)
+    hashes = {n: r["hash_da_serie"] for n, r in saida["reproducao"].items()}
+    assert hashes["P0-3"] == cdc.hash_da_serie(_camadas().camadas["P0-3"])
+    assert len(set(hashes.values())) == len(hashes)
