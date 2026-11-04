@@ -70,10 +70,15 @@ def nome_do_cotahist(ano: int) -> str:
     return f"COTAHIST_A{ano}.ZIP"
 
 
-def conferir_base(pasta: Path = PASTA_DA_FICHA) -> list[str]:
-    """Os arquivos que faltam para a ficha rodar; lista vazia quando dá para rodar."""
+def conferir_base(pasta: Path = PASTA_DA_FICHA, *, com_acoes: bool = True) -> list[str]:
+    """Os arquivos que faltam para a ficha rodar; lista vazia quando dá para rodar.
+
+    `com_acoes=False` serve às fichas que não usam a quantidade de ações (P0-4, pares).
+    """
     esperados = [nome_do_cotahist(ano) for ano in range(PRIMEIRO_ANO, ULTIMO_ANO + 1)]
-    esperados += [ARQUIVO_DE_PRECOS_AJUSTADOS, ARQUIVO_DE_ACOES]
+    esperados.append(ARQUIVO_DE_PRECOS_AJUSTADOS)
+    if com_acoes:
+        esperados.append(ARQUIVO_DE_ACOES)
     return [nome for nome in esperados if not (pasta / nome).exists()]
 
 
@@ -183,10 +188,16 @@ def fundamentos_do_acervo(demonstracoes: pd.DataFrame) -> pd.DataFrame:
 
 
 def carregar_tabelas(
-    pasta: Path = PASTA_DA_FICHA, pasta_do_acervo: Path = PASTA_DO_ACERVO
+    pasta: Path = PASTA_DA_FICHA,
+    pasta_do_acervo: Path = PASTA_DO_ACERVO,
+    *,
+    com_acoes: bool = True,
 ) -> Dados:
-    """Monta `Dados` da ficha só com o desenvolvimento; falha listando o que falta."""
-    faltas = conferir_base(pasta)
+    """Monta `Dados` da ficha só com o desenvolvimento; falha listando o que falta.
+
+    Com `com_acoes=False`, `acoes` vem vazia (com as colunas certas).
+    """
+    faltas = conferir_base(pasta, com_acoes=com_acoes)
     if faltas:
         raise FileNotFoundError(f"faltam na base da ficha F-B3: {', '.join(faltas)}")
     anos = range(PRIMEIRO_ANO, ULTIMO_ANO + 1)
@@ -223,7 +234,11 @@ def carregar_tabelas(
         volume=volume.reindex(datas),
         cadastro=cadastro_dos_tickers(longo, emissores, tickers_do_fca),
         fundamentos=fundamentos,
-        acoes=pd.read_parquet(pasta / ARQUIVO_DE_ACOES)[list(COLUNAS_DAS_ACOES)],
+        acoes=(
+            pd.read_parquet(pasta / ARQUIVO_DE_ACOES)[list(COLUNAS_DAS_ACOES)]
+            if com_acoes
+            else pd.DataFrame(columns=list(COLUNAS_DAS_ACOES))
+        ),
         cdi=cdi,
         ibovespa=ibovespa,
     )
