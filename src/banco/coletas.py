@@ -557,6 +557,14 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     "ons": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
     "catalogo": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
     "cecafe": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.NAO_DIZ),
+    # BIS: `data.bis.org/help/legal`, lido em 03/11/2026 (linha 639; ADR 0121, item 1). O texto libera o
+    # uso das estatísticas "unrestricted" sob seis condições (citar o BIS, avisar que a tradução não é
+    # oficial, não sugerir apoio do BIS, nenhum custo extra por elas, sem garantia, sem conselho de
+    # investimento) e oferece a API SDMX em `stats.bis.org`; o robots.txt do `data.bis.org` (para onde o
+    # `stats` redireciona) só fecha telas com filtro e ordenação, não a API. O texto não fala de prazo
+    # de guarda: o uso "unrestricted" cobre guardar, e o silêncio fica registrado aqui. A API tem termo
+    # próprio (o BIS pode limitar o IP e suspender), sem proibir ler os dados.
+    "bis": _ABERTA_SEM_PRAZO,
     # a N0 diz retenção sim, coleta "não diz" ou não lida
     "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
     "mapbiomas": ColetaEGuarda(
@@ -620,7 +628,6 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "ocde",
             "eurostat",
             "worldbank",
-            "bis",
             "nasa",
             "noaa",
             "inpe",

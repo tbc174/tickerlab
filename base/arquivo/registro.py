@@ -47,7 +47,9 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "ocde": date(2026, 10, 22),
     "eurostat": date(2026, 10, 22),
     "worldbank": date(2026, 10, 22),
-    "bis": date(2026, 10, 22),
+    "bis": date(
+        2026, 11, 3
+    ),  # relido em 03/11 (linha 639): data.bis.org/help/legal e robots.txt
     "nasa": date(2026, 10, 22),
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
