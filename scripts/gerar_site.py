@@ -25,7 +25,14 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from src import amostra_do_relatorio, catalogo, previa_pdf, relatorios
+from src import (
+    amostra_do_relatorio,
+    catalogo,
+    previa_pdf,
+    relatorio_semanal,
+    relatorio_semanal_arquivos,
+    relatorios,
+)
 from src.estilos_pdf import ESTILOS
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -94,6 +101,22 @@ def gerar_relatorio_de_exemplo(destino: Path) -> list[str]:
     return estilos
 
 
+def gerar_arquivos_do_relatorio_de_setor(destino: Path) -> None:
+    """O PDF e o deck (PDF e PPTX) do relatório de setor da página pública, do mesmo conteúdo dela."""
+    conteudo = relatorio_semanal.para_o_site()
+    gerado_em = relatorio_semanal.gerado_em_do_retrato()
+    caminhos = relatorio_semanal.CAMINHOS_DOS_ARQUIVOS
+    arquivos = {
+        "pdf": relatorio_semanal_arquivos.relatorio_em_pdf,
+        "apresentacao_pdf": relatorio_semanal_arquivos.apresentacao_em_pdf_do_relatorio,
+        "apresentacao_pptx": relatorio_semanal_arquivos.apresentacao_em_pptx_do_relatorio,
+    }
+    for chave, escrever in arquivos.items():
+        (destino / caminhos[chave].lstrip("/")).write_bytes(
+            escrever(conteudo, gerado_em)
+        )
+
+
 def arquivos_do_python(pasta: Path) -> set[Path]:
     """Os arquivos de `pasta` que este script gera (caminhos relativos)."""
     arquivos = {Path(n) for n in ARQUIVOS_DO_PYTHON if (pasta / n).exists()}
@@ -115,6 +138,7 @@ def gerar(destino: Path = DESTINO) -> None:
         for nome in nomes:
             shutil.copyfile(RAIZ / "static" / pasta / nome, destino / pasta / nome)
     gerar_relatorio_de_exemplo(destino)
+    gerar_arquivos_do_relatorio_de_setor(destino)
     (destino / amostra_do_relatorio.CAMINHO_DO_PDF.lstrip("/")).write_bytes(
         amostra_do_relatorio.pdf()
     )
