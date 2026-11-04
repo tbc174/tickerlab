@@ -12,7 +12,8 @@ com crédito, depósitos e demais verbetes contábeis (Documento 4500).
   aqui).
 - **A instituição, não o tomador:** o CNPJ é o da raiz do banco que mantém a agência. O dado diz quanto
   crédito e quanto depósito há em cada município, nunca quem deve ou quem depositou.
-- **Chave:** competência + agência (14 dígitos) + município IBGE; a tabela larga tem uma linha por isso e
+- **Chave:** competência + raiz do CNPJ + agência + município IBGE (o código da agência repete entre
+  instituições no mesmo município: 4 casos em Brasília em 202602, conferido com o arquivo real); a tabela larga tem uma linha por isso e
   `em_formato_longo` vira uma linha por verbete.
 
 **Sem olhar o futuro:** o dado sai com cerca de 7 meses de atraso (202512 foi gerado em 03/08/2026), então
@@ -65,7 +66,7 @@ COLUNAS_DE_IDENTIFICACAO = (
     "cnpj_raiz", "instituicao", "agencia",
 )  # fmt: skip
 COLUNAS_DE_DATA = ("gerado_em", "disponivel_em")
-CHAVE = ["competencia", "agencia", "codigo_ibge_municipio"]
+CHAVE = ["competencia", "cnpj_raiz", "agencia", "codigo_ibge_municipio"]
 CHAVE_LONGA = [*CHAVE, "verbete"]
 
 _ROTULO_DA_GERACAO = "data de geracao dos dados:"
@@ -165,7 +166,9 @@ def ler_competencia(
             nome = nome_da_coluna(codigo_do_verbete(cabecalho))
             tabela[nome] = _numero(bruto[cabecalho])
     if tabela.duplicated(CHAVE).any():
-        raise ValueError("ESTBAN: agência repetida no mesmo município e competência")
+        raise ValueError(
+            "ESTBAN: agência repetida (mesma instituição, agência e município) na competência"
+        )
     tabela["gerado_em"] = pd.Timestamp(gerado_em)
     pronto = disponivel_em(gerado_em, modificado_em)
     tabela["disponivel_em"] = pronto

@@ -45,7 +45,8 @@ from src.banco.coletas import (
     _guardar_sem_atrapalhar,
     registrar,
 )
-from src.banco.conexao import obter_engine
+from src.banco.conexao import migrar_para, obter_engine
+from src.configuracao import url_do_banco
 from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.carga_estban")
@@ -185,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
     log.info("Versão do código: %s", exigir_versao_do_codigo())
+    migrar_para("head", url=url_do_banco())
     resultado = rodar(opcoes.competencia, saida, hoje, forcar=opcoes.forcar)
     contagem = list(resultado.values())
     log.info(
