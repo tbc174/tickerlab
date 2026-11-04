@@ -61,6 +61,7 @@ FAMILIA_DO_ENDERECO = {
     "gateway.cloud.pje.jus.br/tpu/": "cnj",
     "dadosabertos-download.cgu.gov.br/": "transparencia",
     "dadosabertos.bndes.gov.br/": "bndes",
+    "download.finep.gov.br/": "finep",
     "dadosabertos.inss.gov.br/": "inss",
     "dadosabertos.ibama.gov.br/": "ibama",
     "www.gov.br/trabalho-e-emprego/": "mte",

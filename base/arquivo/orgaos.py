@@ -48,6 +48,7 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     # Brasil: governo federal, bancos públicos e tribunais
     "bcb": Orgao("Banco Central do Brasil", "https://dadosabertos.bcb.gov.br/"),
     "bndes": Orgao("BNDES", "https://dadosabertos.bndes.gov.br/"),
+    "finep": Orgao("Finep (financiamento à inovação)", "https://www.finep.gov.br/"),
     "cgu": Orgao("CGU (cadastros de sanções)", "https://portaldatransparencia.gov.br/"),
     "djen": Orgao(
         "CNJ (Diário de Justiça Eletrônico Nacional)", "https://comunica.pje.jus.br/"

@@ -120,6 +120,8 @@ LICENCAS = {
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+    # financiamentos por CNPJ (linha 469, 04/11/2026): a planilha não diz licença
+    "finep": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
     # série 4, PR 5b: "SES - Base de dados completa" com CC BY no dados.gov.br (lido em 15/10/2026);
     # só os CSVs sem pessoas (nunca administradores, contatos ou acionistas)
     "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
@@ -325,6 +327,7 @@ REVENDA = {
     "anm": VENDAVEL_COM_ATRIBUICAO,
     "ancine": VENDAVEL_COM_ATRIBUICAO,
     "mme": A_CONFIRMAR,
+    "finep": A_CONFIRMAR,
     "aneel": VENDAVEL_ODBL,
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": VENDAVEL_COM_ATRIBUICAO,  # resposta do MDIC em 21/10/2026
@@ -654,6 +657,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "ancine",
             # Ficha Clara, incentivos (29/10): termos e robots.txt ainda não lidos
             "mme",
+            # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos
+            "finep",
         ),
         _NAO_RESPONDIDA,
     ),
