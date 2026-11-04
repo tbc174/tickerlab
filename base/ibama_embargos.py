@@ -18,9 +18,15 @@ Sem Streamlit; pandas só.
 """
 
 import io
+from collections.abc import Collection
+from datetime import datetime
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import sqlalchemy as sa
 
+from base import cadastros_em_retrato
 from base import cnpj as cnpjs
 from base import retratos as motor
 
@@ -119,3 +125,33 @@ def juntar_retratos(
 ) -> tuple[pd.DataFrame, int]:
     """Os retratos lidos (do mais antigo ao mais novo) numa tabela de valores, e quantos foram pulados."""
     return motor.juntar(lidos, VALORES, disponivel_no_primeiro)
+
+
+TABELA = "ibama_embargos"
+CADASTROS = (
+    cadastros_em_retrato.Cadastro(
+        tabela=TABELA,
+        nome="termos",
+        fonte=FONTE,
+        ler=lambda retrato: ler_retrato(
+            motor.original(retrato.caminho), pd.Timestamp(retrato.dia)
+        ),
+        juntar=juntar_retratos,
+        colunas=tuple(COLUNAS),
+        datas=tuple(DATAS),
+        url_termina_em="/termo_embargo.csv",
+    ),
+)
+
+
+def montar(
+    conexao: sa.Connection,
+    pasta: Path,
+    agora: datetime,
+    pessoas: Collection[str] | np.ndarray | None = None,
+    refazer: bool = False,
+) -> dict[str, dict[str, int]]:
+    """`<pasta>/ibama_embargos/termos.parquet` (o CSV do termo de embargo)."""
+    return cadastros_em_retrato.montar(
+        CADASTROS, conexao, pasta, agora, pessoas, refazer
+    )

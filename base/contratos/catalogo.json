@@ -9427,6 +9427,425 @@
       "frequencia": "Mensal (a CMED republica as listas inteiras)",
       "atraso": "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`"
     },
+    "ans_operadoras": {
+      "tabela": "ans_operadoras",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O que identifica o registro na fonte",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "razao_social": {
+          "descricao": "Razão social da operadora, como a ANS escreve",
+          "unidade": "texto"
+        },
+        "nome_fantasia": {
+          "descricao": "Nome fantasia, quando a ANS informa",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "Modalidade (Medicina de Grupo, Cooperativa Médica...)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da sede",
+          "unidade": "texto"
+        },
+        "registrada_em": {
+          "descricao": "Data do registro na ANS",
+          "unidade": "data (dia)"
+        },
+        "descredenciada_em": {
+          "descricao": "Data do descredenciamento (só nas canceladas)",
+          "unidade": "data (dia)"
+        },
+        "motivo_do_descredenciamento": {
+          "descricao": "Motivo, como a ANS escreve (só nas canceladas)",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "`ativas` ou `canceladas`: o arquivo de onde a linha veio",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "situacao",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "registrada_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "registrada_em": "a_conferir",
+        "descredenciada_em": "a_conferir",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": true,
+      "frequencia": "Mensal (a ANS recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+    },
+    "susep_cadastro": {
+      "tabela": "susep_cadastro",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O que identifica o registro na fonte",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "codigo_do_mercado": {
+          "descricao": "Código do mercado da SUSEP (1 a 8 e 99), como vem",
+          "unidade": "número inteiro"
+        },
+        "nome": {
+          "descricao": "Nome da entidade, como a SUSEP escreve",
+          "unidade": "texto"
+        },
+        "autorizada_em": {
+          "descricao": "Data da autorização para funcionar",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "autorizada_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "autorizada_em": "a_conferir",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": true,
+      "frequencia": "Mensal (a SUSEP devolve a lista inteira; o arquivista guarda só o que mudou)",
+      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+    },
+    "mte_lista_suja": {
+      "tabela": "mte_lista_suja",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O que identifica o registro na fonte",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "ano_da_acao": {
+          "descricao": "Ano da ação fiscal",
+          "unidade": "número inteiro"
+        },
+        "uf": {
+          "descricao": "UF do estabelecimento",
+          "unidade": "texto"
+        },
+        "empregador": {
+          "descricao": "Razão social do empregador pessoa jurídica",
+          "unidade": "texto"
+        },
+        "estabelecimento": {
+          "descricao": "Endereço do estabelecimento, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "cnae": {
+          "descricao": "CNAE do estabelecimento, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "trabalhadores": {
+          "descricao": "Trabalhadores envolvidos na ação",
+          "unidade": "número inteiro"
+        },
+        "incluida_em": {
+          "descricao": "Data da inclusão no cadastro (a 1ª, se a fonte traz um período)",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "incluida_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "incluida_em": "a_conferir",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+      "pessoa": true,
+      "frequencia": "Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)",
+      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+    },
+    "ibama_embargos": {
+      "tabela": "ibama_embargos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O que identifica o registro na fonte",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "numero_do_termo": {
+          "descricao": "Número do termo de embargo",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "Nome do embargado pessoa jurídica",
+          "unidade": "texto"
+        },
+        "status": {
+          "descricao": "Situação do termo, como o IBAMA escreve",
+          "unidade": "texto"
+        },
+        "cancelado": {
+          "descricao": "Marca de cancelamento do termo, como o IBAMA escreve",
+          "unidade": "texto"
+        },
+        "codigo_do_municipio": {
+          "descricao": "Código do município (IBGE) do embargo",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF do embargo",
+          "unidade": "texto"
+        },
+        "desembargado": {
+          "descricao": "Marca de desembargo, como o IBAMA escreve",
+          "unidade": "texto"
+        },
+        "numero_do_auto": {
+          "descricao": "Número do auto de infração que gerou o embargo",
+          "unidade": "texto"
+        },
+        "area_embargada_ha": {
+          "descricao": "Área embargada, em hectares",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "embargada_em": {
+          "descricao": "Data do embargo",
+          "unidade": "data (dia)"
+        },
+        "desembargada_em": {
+          "descricao": "Data do desembargo",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "embargada_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "embargada_em": "a_conferir",
+        "desembargada_em": "a_conferir",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+      "pessoa": true,
+      "frequencia": "Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)",
+      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+    },
     "cnes_estabelecimentos": {
       "tabela": "cnes_estabelecimentos",
       "modulo": "governo_e_sancoes",
