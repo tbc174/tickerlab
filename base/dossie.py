@@ -3044,6 +3044,10 @@ def secao_insolvencia(
 
     Os dois quadros já são só da empresa da ficha; `contestacoes` também (`base.contestacoes`). Um fato
     contestado ganha `situacao: contestada` e o texto da empresa ao lado.
+
+    O desfecho (vigente, encerrada) não sai daqui: a CVM e a Receita só dizem que o fato existiu, e o
+    código não o deduz da idade do fato nem de ele sumir do retrato seguinte. `situacao` é vazia ou
+    `contestada`; um desfecho só entra quando uma fonte oficial o disser (despacho do processo).
     """
     if insolvencia is None and situacao_especial is None:
         return None

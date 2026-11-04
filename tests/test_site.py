@@ -105,7 +105,7 @@ def test_nada_vem_de_terceiros():
     """Sem Google Fonts, sem rastreadores: fontes, imagens e scripts são do próprio site."""
     for arquivo in [
         *PAGINAS_HTML,
-        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js")),
+        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js", "origem.js")),
     ]:
         texto = arquivo.read_text(encoding="utf-8")
         assert "googleapis" not in texto and "gstatic" not in texto
@@ -263,7 +263,7 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
     um deploy recebe o HTML novo com o estilo antigo."""
     import hashlib
 
-    for nome in ("estilo.css", "site.js", "movimento.js"):
+    for nome in ("estilo.css", "site.js", "movimento.js", "origem.js"):
         conteudo = (SITE / nome).read_text(
             encoding="utf-8"
         )  # quebras de linha iguais em todo SO
