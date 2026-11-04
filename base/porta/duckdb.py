@@ -51,6 +51,8 @@ ARQUIVOS: dict[str, str] = {
     "cda_cotas": "cda_cotas/*.parquet",
     "fidc_informe": "fidc/informe/*/*.parquet",
     "cadastro_de_fundos": "fidc/cadastro/cad_fi.parquet",
+    "cadastro_gestor_hist": "fidc/cadastro/hist_gestor.parquet",
+    "cadastro_admin_hist": "fidc/cadastro/hist_admin.parquet",
     "painel_dos_fundos": "fundos/painel_*/*.parquet",  # os dois: o por empresa não tem `emissor`
     "cobertura_dos_fundos": "fundos/cobertura.parquet",
     "buracos_dos_fundos": "fundos/buracos.parquet",
