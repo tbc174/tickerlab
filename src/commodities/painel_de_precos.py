@@ -34,7 +34,6 @@ CHAVES_DO_PAINEL = (
     "dap",
     "cloreto-de-potassio",
 )
-MESES_DO_HISTORICO = 60
 MESES_NO_ANO = 12
 ARABICA = "cafe-arabica"
 ROBUSTA = "cafe-robusta"
@@ -108,7 +107,7 @@ def _montar_item(
         if com_fmi
         else pd.Series(dtype=float)
     )
-    meses = bm.index[-MESES_DO_HISTORICO:]
+    meses = bm.index  # o histórico inteiro do acervo (o Pink Sheet volta a 1960)
     item = _ITEM_PELA_CHAVE[chave]
     return PrecoDeReferencia(
         chave=chave,
