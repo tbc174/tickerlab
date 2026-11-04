@@ -100,6 +100,7 @@ ARQUIVOS: dict[str, str] = {
     "sancoes_cgu": "sancoes_cgu/*.parquet",
     "ans_penalidades": "ans_penalidades/*.parquet",
     "processos_comunicacoes": "processos_comunicacoes/*.parquet",
+    "processos": "processos/*.parquet",
     "processos_partes": "processos_partes/*.parquet",
     "anvisa_registros": "anvisa_registros/*.parquet",
     "antt_rntrc": "antt_rntrc/*.parquet",

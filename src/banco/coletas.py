@@ -157,6 +157,8 @@ LICENCAS = {
     # Resolução CNJ 455/2022; a Justiça do Trabalho fica de fora pela Resolução CNJ 121/2010, art. 4º,
     # § 1º, II (proíbe a consulta pública pelo nome da parte)
     "djen": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+    # as Tabelas Processuais Unificadas (Resolução CNJ 46/2007): tabela pública de uso obrigatório
+    "cnj": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
     # lote organismos (termos lidos em 22/10/2026, licencas-por-fonte.md, rodadas 1 e 4)
     "bce": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
     "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
@@ -343,6 +345,7 @@ REVENDA = {
     "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
     # o CNJ não escreve licença de reuso da API; sem pedido ao CNJ (ADR 0102 Emenda 2): uso citando a fonte
     "djen": A_CONFIRMAR,
+    "cnj": A_CONFIRMAR,  # a TPU também não tem licença de reuso escrita (ADR 0102 Emenda 2)
     "bce": VENDAVEL_COM_ATRIBUICAO,  # "Source: ECB statistics"
     "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
@@ -536,6 +539,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # o robots.txt da API libera tudo (lido em 03/11/2026) e a Resolução CNJ 455/2022 faz do DJEN a
     # publicação oficial; nenhum termo diz por quanto tempo guardar
     "djen": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
+    # o servidor da TPU não tem robots.txt (404 em 03/11/2026) nem termo de uso
+    "cnj": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
     # robots.txt fecha o portal e a N0 não achou licença escrita que dê reuso comercial (ONS: "reuso e
     # redistribuição" sem nome de licença; catálogo: só metadados; Cecafé: `Disallow: /*.pdf$`)
     "ons": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
