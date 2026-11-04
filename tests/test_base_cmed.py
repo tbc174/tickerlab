@@ -26,7 +26,6 @@ from base.parquet import LINHAGEM
 from base.setoriais.revisoes import como_era_em
 from src.banco import coletas
 from src.banco.coletas import (
-    SEM_LICENCA_CONHECIDA,
     Marca,
     com_registro,
     licenca_da_fonte,
@@ -74,9 +73,11 @@ def test_a_fonte_pega_as_duas_listas_e_nao_repete_a_consulta_de_medicamentos():
     assert consultas == ["anvisa-produtos"]
 
 
-def test_a_fonte_tem_licenca_da_anvisa_e_destino_nos_precos():
-    assert licenca_da_fonte("anvisa-cmed") != SEM_LICENCA_CONHECIDA
-    assert marca_da_fonte("anvisa-cmed") == Marca.VENDAVEL
+def test_a_fonte_fica_a_confirmar_e_tem_destino_nos_precos():
+    # as listas não trazem licença própria: não herdam a CC BY do resto da Anvisa (ADR 0102, Emenda 2)
+    assert "a confirmar" in licenca_da_fonte("anvisa-cmed")
+    assert marca_da_fonte("anvisa-cmed") == Marca.A_CONFIRMAR
+    assert marca_da_fonte("anvisa-produtos") == Marca.VENDAVEL
     assert destinos.DESTINOS["anvisa-cmed"].tabelas == ("cmed_precos",)
 
 
@@ -452,10 +453,14 @@ def test_comando_monta_e_sem_nada_guardado_sai_com_1(banco, tmp_path, monkeypatc
         assert tabela[
             "trata_como_pessoa"
         ].all()  # sem a Receita guardada: o conservador
-    assert cmed.resumo_da_ponte(tmp_path / "b") == {}  # sem os medicamentos montados
+    assert (
+        carga_cmed.resumo_da_ponte(tmp_path / "b") == {}
+    )  # sem os medicamentos montados
 
 
 def test_resumo_da_ponte_com_os_medicamentos_montados(tmp_path):
+    from scripts import carga_cmed
+
     cadastro = licencas.CADASTROS["medicamentos"]
     (tmp_path / cadastro.tabela).mkdir()
     _medicamentos().assign(visto_em=PRIMEIRO_DIA, consta=True).to_parquet(
@@ -466,7 +471,7 @@ def test_resumo_da_ponte_com_os_medicamentos_montados(tmp_path):
     apresentacoes.assign(visto_em=PRIMEIRO_DIA, consta=True).to_parquet(
         tmp_path / cmed.TABELA / "governo.parquet"
     )
-    assert cmed.resumo_da_ponte(tmp_path) == {
+    assert carga_cmed.resumo_da_ponte(tmp_path) == {
         "governo": {"unica": APRESENTACOES_NA_FIXTURE, "produtos": 438}
     }
 

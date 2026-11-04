@@ -17,12 +17,29 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import cmed
+import pandas as pd
+
+from base import cmed, licencas
+from base.arquivo.fontes import ARQUIVOS_DA_CMED
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.carga_cmed")
+
+
+def resumo_da_ponte(pasta: Path) -> dict[str, dict[str, int]]:
+    """A `cmed.resumo_da_ponte` das listas gravadas; vazio sem os medicamentos montados na `pasta`."""
+    cadastro = licencas.CADASTROS["medicamentos"]
+    medicamentos = pasta / cadastro.tabela / f"{cadastro.nome}.parquet"
+    if not medicamentos.exists():
+        return {}
+    listas = {
+        lista: pd.read_parquet(caminho)
+        for lista in ARQUIVOS_DA_CMED
+        if (caminho := pasta / cmed.TABELA / f"{lista}.parquet").exists()
+    }
+    return cmed.resumo_da_ponte(listas, pd.read_parquet(medicamentos))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -45,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     for lista, contagem in resumo.items():
         log.info("%s: %s", lista, contagem)
-    for lista, ligadas in cmed.resumo_da_ponte(pasta).items():
+    for lista, ligadas in resumo_da_ponte(pasta).items():
         log.info("ponte %s: %s", lista, ligadas)
     return 0
 

@@ -1393,7 +1393,7 @@ def _tabelas_da_cmed() -> dict[str, Tabela]:
                 "preços não quer dizer registro ativo."
             ),
             fonte="Anvisa: listas de preços da CMED, dados abertos (`base/cmed.py`)",
-            familia_da_fonte="anvisa",
+            familia_da_fonte="anvisa-cmed",
             frequencia="Mensal (a CMED republica as listas inteiras)",
             atraso=(
                 "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o "
@@ -1406,9 +1406,6 @@ def _tabelas_da_cmed() -> dict[str, Tabela]:
             ),
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
             colunas=colunas,
-            ressalva_de_revenda=(
-                "A licença própria das listas da CMED ainda está a confirmar (ADR 0102, Emenda 2)"
-            ),
         ),
     }
 

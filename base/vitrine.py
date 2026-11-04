@@ -45,6 +45,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da ANEEL\b", "ANEEL"),
     (r"da Anatel\b", "Anatel"),
     (r"da ANS\b", "ANS"),
+    (r"\bCMED\b", "CMED (Anvisa)"),  # antes da Anvisa: as listas não têm a licença dela
     (r"da Anvisa\b", "Anvisa"),
     (r"do MAPA\b", "MAPA"),
     (r"da ANM\b", "ANM"),

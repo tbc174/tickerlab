@@ -41,7 +41,6 @@ import pyarrow as pa
 import sqlalchemy as sa
 
 from base import cnpj as cnpjs
-from base import licencas
 from base import retratos as motor
 from base.arquivo.fontes import (
     ARQUIVOS_DA_CMED,
@@ -535,33 +534,26 @@ def montar(
     return resumo
 
 
-def _medicamentos_vigentes(pasta: Path) -> pd.DataFrame | None:
-    """As linhas de hoje do cadastro de medicamentos em `anvisa_registros`, ou None se não montado."""
-    cadastro = licencas.CADASTROS["medicamentos"]
-    caminho = pasta / cadastro.tabela / f"{cadastro.nome}.parquet"
-    if not caminho.exists():
-        return None
-    tabela = pd.read_parquet(caminho)
-    ultimas = tabela.sort_values("visto_em", kind="stable").drop_duplicates(
+def _medicamentos_vigentes(medicamentos: pd.DataFrame) -> pd.DataFrame:
+    """As linhas de hoje do cadastro de medicamentos de `anvisa_registros` (todas as gravadas)."""
+    ultimas = medicamentos.sort_values("visto_em", kind="stable").drop_duplicates(
         "id_na_fonte", keep="last"
     )
     return ultimas[ultimas["consta"].astype(bool)]
 
 
-def resumo_da_ponte(pasta: Path) -> dict[str, dict[str, int]]:
-    """Para cada lista montada, quantas apresentações de hoje acham o produto registrado (`ponte`).
+def resumo_da_ponte(
+    listas: dict[str, pd.DataFrame], medicamentos: pd.DataFrame
+) -> dict[str, dict[str, int]]:
+    """Para cada lista (as linhas gravadas), quantas apresentações de hoje acham o produto registrado.
 
-    Vazio quando os medicamentos de `anvisa_registros` ainda não foram montados na `pasta`.
+    As contagens vêm por `correspondencia` da `ponte`, mais os produtos distintos achados. Quem lê
+    os Parquets é o montador (`scripts/carga_cmed.py`): a regra fica aqui, sem ler a base.
     """
-    medicamentos = _medicamentos_vigentes(pasta)
-    if medicamentos is None:
-        return {}
+    vigentes = _medicamentos_vigentes(medicamentos)
     resumo: dict[str, dict[str, int]] = {}
-    for lista in ARQUIVOS_DA_CMED:
-        caminho = _destino(pasta, lista).with_suffix(".parquet")
-        if not caminho.exists():
-            continue
-        ligadas = ponte(_mais_novo(pd.read_parquet(caminho)), medicamentos)
+    for lista, tabela in listas.items():
+        ligadas = ponte(_mais_novo(tabela), vigentes)
         resumo[lista] = {
             **ligadas["correspondencia"].value_counts().to_dict(),
             "produtos": int(ligadas["medicamento"].nunique()),

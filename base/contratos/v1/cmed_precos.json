@@ -464,8 +464,8 @@
   },
   "historico_desde": "2026-11-04",
   "granularidade_do_publico_em": "mes",
-  "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
-  "revenda": "vendável com atribuição à fonte",
+  "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
   "pessoa": true,
   "frequencia": "Mensal (a CMED republica as listas inteiras)",
   "atraso": "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`"

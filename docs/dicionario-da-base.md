@@ -3294,9 +3294,8 @@ Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédi
 Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas duas listas que a Anvisa publica. São tetos regulatórios, não preço praticado nem receita: nada se multiplica por quantidade. Uma linha por valor diferente de cada apresentação: a mudança vira linha nova que só vale desde o dia em que foi vista, e a que some da lista ganha `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Preço exato em 2 casas: vazio fica vazio e zero fica zero. O nome do laboratório não chega ao acervo (a ligação é pelo CNPJ); empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com layout novo, ou com menos da metade das apresentações do anterior, é pulado. A ligação a `anvisa_registros` usa só CNPJ + registro do produto entre os medicamentos REGISTRADOS e não diz a situação do registro: vigente na lista de preços não quer dizer registro ativo.
 
 - **Fonte:** Anvisa: listas de preços da CMED, dados abertos (`base/cmed.py`)
-- **Licença:** CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)
-- **Revenda:** vendável com atribuição à fonte
-- **Ressalva de revenda:** A licença própria das listas da CMED ainda está a confirmar (ADR 0102, Emenda 2)
+- **Licença:** Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Mensal (a CMED republica as listas inteiras)
 - **Atraso de divulgação:** A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
