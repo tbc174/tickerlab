@@ -13,9 +13,11 @@ from base.arquivo.coleta import ErroDeDescoberta, Resposta
 from base.arquivo.registro import TERMOS_LIDOS_EM
 from src.banco.coletas import (
     SEM_LICENCA_CONHECIDA,
+    VENDAVEL_COM_ATRIBUICAO,
     Marca,
     licenca_da_fonte,
     marca_da_fonte,
+    revenda_da_fonte,
 )
 from src.commodities.cafe import regioes
 
@@ -23,7 +25,7 @@ AGORA = datetime(2026, 10, 22, 13, tzinfo=UTC)
 PASTA = Path(__file__).parent / "arquivos" / "organismos"
 PAGINA_DO_BANCO_MUNDIAL = (PASTA / "banco_mundial_pagina.json").read_bytes()
 EMISSORES_DO_GLEIF = (PASTA / "gleif_emissores.json").read_bytes()
-FAMILIAS_NAO_COMERCIAIS = {"bis"}
+FAMILIAS_NAO_COMERCIAIS: set[str] = set()  # o BIS saiu em 03/11/2026 (ADR 0121, item 1)
 FAMILIAS_SO_USO_INTERNO = {"fmi"}
 FAMILIAS = {"bce", "ocde", "eurostat", "worldbank", "bis", "fmi", "nasa", "noaa"}
 
@@ -61,7 +63,7 @@ def test_toda_fonte_do_lote_tem_licenca_marca_e_data_da_leitura():
         assert fonte.grupo in fontes.GRUPOS, fonte.id
 
 
-def test_bis_e_nao_comercial_fmi_so_uso_interno_e_o_resto_e_vendavel():
+def test_fmi_so_uso_interno_e_o_resto_inclusive_o_bis_e_vendavel():
     for fonte in _fontes_do_lote():
         familia = fonte.id.split("-", 1)[0]
         if familia in FAMILIAS_NAO_COMERCIAIS:
@@ -71,6 +73,17 @@ def test_bis_e_nao_comercial_fmi_so_uso_interno_e_o_resto_e_vendavel():
         else:
             esperada = Marca.VENDAVEL
         assert marca_da_fonte(fonte.id) == esperada, fonte.id
+
+
+def test_bis_e_vendavel_citando_o_bis_pelos_termos_de_data_bis_org_legal():
+    """ADR 0121, item 1: o texto vigente de data.bis.org/help/legal permite produto comercial citando o BIS."""
+    for fonte in _fontes_do_lote():
+        if fonte.id.startswith("bis-"):
+            assert revenda_da_fonte(fonte.id) == VENDAVEL_COM_ATRIBUICAO, fonte.id
+            assert marca_da_fonte(fonte.id) == Marca.VENDAVEL, fonte.id
+    licenca = licenca_da_fonte("bis-cambio")
+    assert "BIS" in licenca and "não comercial" not in licenca
+    assert "data.bis.org/help/legal" in licenca
 
 
 def test_as_familias_do_lote_estao_todas_representadas():

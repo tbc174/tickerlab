@@ -14,7 +14,11 @@ Escolhas (testes em `tests/test_base_arquivo_lote_reguladores.py`):
   `agentes-de-geracao-de-energia-eletrica` (coluna de CPF ou CNPJ; hoje só CNPJ, mas nada garante amanhã, e o SIGA já traz as usinas),
   `tarifa-social-de-energia-eletrica-beneficiarios`, `beneficiarios-da-cde` e as listas de agentes e de
   perfil da CCEE (`lista_*`, `varejista_consumidor`, `mve_contrapartes`);
-- **fora também, de propósito:** a BDGD da ANEEL (GBs por distribuidora, base geográfica); o
+- **BDGD da ANEEL: só o `UCAT_PJ`** (ADR 0121, item 4, 03/11/2026): um CSV de 1,42 MB com as unidades
+  consumidoras PJ de alta tensão, sem CNPJ (o identificador é cifrado). Entra com licença ODbL (a da família
+  `aneel`), citando a ANEEL, e quem usa o dado tira a agregação por município e CNAE: a base derivada sai em
+  ODbL, sem linha individual. O resto da BDGD continua fora;
+- **fora também, de propósito:** o resto da BDGD da ANEEL (GBs por distribuidora, base geográfica); o
   `programacao_diaria` do ONS (um arquivo por dia desde 2024, mais de 2.000 arquivos); os `*_horaria_*`
   e `*_horario` da CCEE por usina ou agente (volume), e o EAR/ENA por REE (o ONS não tem o pacote com
   esse nome);
@@ -254,6 +258,11 @@ MEMBROS_GRANDES_DA_SUSEP = (
     "SES_Balanco.csv",
 )
 
+URL_DO_UCAT_PJ = (
+    "https://dadosabertos.aneel.gov.br/dataset/4459e483-451f-4444-8022-bd8b5eac05c5"
+    "/resource/4318d38a-0bcd-421d-afb1-fb88b0c92a87/download/ucat_pj.csv"
+)
+
 COMEX_TABELAS = "https://balanca.mdic.gov.br/balanca/bd/tabelas/"
 TABELAS_DO_COMEX = (
     "NCM_SH",
@@ -301,6 +310,11 @@ def descobrir_susep_grandes(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+def descobrir_ucat_pj(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """O único arquivo da BDGD que entra: o `UCAT_PJ` (o endereço do recurso, que o portal mantém)."""
+    return [Alvo(URL_DO_UCAT_PJ)]
+
+
 def descobrir_tabelas_do_comex(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return [Alvo(f"{COMEX_TABELAS}{nome}.csv") for nome in TABELAS_DO_COMEX]
 
@@ -335,6 +349,7 @@ def fontes() -> list[Fonte]:
             Fonte(id_, ritmo, _da_pasta_da_ans(pastas), pesada=pesada)
             for id_, (ritmo, pastas, pesada) in PASTAS_DA_ANS.items()
         ),
+        Fonte("aneel-bdgd-ucat-pj", MENSAL, descobrir_ucat_pj),
         Fonte("susep-ses-grandes", MENSAL, descobrir_susep_grandes, pesada=True),
         Fonte("comexstat-tabelas", MENSAL, descobrir_tabelas_do_comex),
     ]
