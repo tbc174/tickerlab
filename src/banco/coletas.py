@@ -671,6 +671,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "mapa",
             "anm",
             "ancine",
+            # preços da CMED (04/11): os termos das listas são os do portal da Anvisa, ainda não lidos
+            "anvisa-cmed",
             # Ficha Clara, incentivos (29/10): termos e robots.txt ainda não lidos
             "mme",
             # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos
