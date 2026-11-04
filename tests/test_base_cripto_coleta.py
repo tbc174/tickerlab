@@ -376,3 +376,17 @@ def test_no_com_indice_sincronizando_deixa_a_conferencia_para_depois(tmp_path):
             )
 
     assert coleta.coletar_no(tmp_path, AGORA, NoSincronizando(_cadeia(30))) == 25
+
+
+def test_cftc_guarda_tambem_o_tff_inteiro_sem_mexer_no_de_bitcoin(tmp_path):
+    fonte = Fonte(lambda _: _zip_da_amostra())
+
+    coleta.coletar_cftc(tmp_path, AGORA, fonte)
+    coleta.coletar_cftc(tmp_path, AGORA, fonte)  # de novo: sem duplicar
+
+    bitcoin = ler_tabela(tmp_path / "cftc", ["relatorio", "contrato"])
+    inteiro = ler_tabela(tmp_path / "cftc_tff", ["relatorio", "codigo"])
+    assert set(bitcoin["contrato"]) == {"bitcoin", "micro_bitcoin"}
+    assert "13874+" in set(inteiro["codigo"])
+    assert not inteiro.duplicated(["relatorio", "codigo"]).any()
+    assert {"publicado_em", "disponivel_em"} <= set(inteiro.columns)
