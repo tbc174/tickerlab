@@ -185,3 +185,10 @@ def test_carga_grava_os_dois_parquets_sem_pessoa_fisica(tmp_path):
         (saida / "receita" / "transacoes_adesao.json").read_text(encoding="utf-8")
     )
     assert "vendável" not in json.dumps(manifesto["licenca"], ensure_ascii=False)
+
+
+def test_valor_com_traco_ou_vazio_e_nao_declarado():
+    assert transacoes.valor_individual(" -   ") is None
+    assert transacoes.valor_individual("") is None
+    assert transacoes.valor_da_adesao("-") is None
+    assert transacoes.valor_individual("1.234") == 1234

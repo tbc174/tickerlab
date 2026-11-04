@@ -67,6 +67,7 @@ _MESES = {
 }  # fmt: skip
 _MES_E_ANO = re.compile(r"^([a-z]{3})/(\d{2})$")
 _SECULO = 2000
+_NAO_DECLARADO = ("", "-")
 
 
 @dataclass
@@ -111,17 +112,17 @@ def cnpj_inteiro(texto: str) -> str | None:
 
 
 def valor_individual(texto: str) -> float | None:
-    """`"1.890.254.972"` vira 1890254972.0 (ponto é milhar); vazio vira `None`."""
+    """`"1.890.254.972"` vira 1890254972.0 (ponto é milhar); vazio ou `-` vira `None` (não declarado)."""
     texto = texto.strip()
-    if not texto:
+    if texto in _NAO_DECLARADO:
         return None
     return float(texto.replace(".", "").replace(",", "."))
 
 
 def valor_da_adesao(texto: str) -> float | None:
-    """`"3057774,82"` vira 3057774.82 (vírgula decimal); vazio vira `None`."""
+    """`"3057774,82"` vira 3057774.82 (vírgula decimal); vazio ou `-` vira `None` (não declarado)."""
     texto = texto.strip()
-    if not texto:
+    if texto in _NAO_DECLARADO:
         return None
     return float(texto.replace(",", "."))
 
