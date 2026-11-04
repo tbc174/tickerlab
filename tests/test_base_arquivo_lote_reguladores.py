@@ -11,7 +11,14 @@ from base.arquivo import destinos, fontes
 from base.arquivo import lote_reguladores as lote
 from base.arquivo import lote_setoriais as setoriais
 from base.arquivo.coleta import ErroDeDescoberta, Resposta
-from src.banco.coletas import SEM_LICENCA_CONHECIDA, licenca_da_fonte, revenda_da_fonte
+from src.banco.coletas import (
+    SEM_LICENCA_CONHECIDA,
+    VENDAVEL_ODBL,
+    Marca,
+    licenca_da_fonte,
+    marca_da_fonte,
+    revenda_da_fonte,
+)
 
 AGORA = datetime(2026, 10, 23, 23, tzinfo=UTC)
 PASTA = Path(__file__).parent / "arquivos" / "reguladores"
@@ -256,3 +263,20 @@ def test_comex_tabelas_usa_os_nomes_que_devolvem_csv():
     assert "NCM_SH.csv" in nomes and "PAIS_BLOCO.csv" in nomes
     assert not {"SH.csv", "CUCI.csv", "ISIC.csv", "CGCE.csv"} & set(nomes)
     assert not set(nomes) & {f"{n}.csv" for n in fontes.TABELAS_DO_COMEX}
+
+
+def test_bdgd_entra_so_pelo_ucat_pj_e_o_resto_segue_fora():
+    """ADR 0121, item 4: do BDGD só o UCAT_PJ (1,42 MB, sem CNPJ); as bases por distribuidora ficam de fora."""
+    fonte = _fonte("aneel-bdgd-ucat-pj")
+    alvos = fonte.descobrir(None, AGORA)
+    assert [a.url for a in alvos] == [lote.URL_DO_UCAT_PJ]
+    assert lote.URL_DO_UCAT_PJ.endswith("/ucat_pj.csv")
+    assert not fonte.pesada
+    outras = [f.id for f in lote.fontes() if "bdgd" in f.id]
+    assert outras == ["aneel-bdgd-ucat-pj"]
+
+
+def test_ucat_pj_e_odbl_com_atribuicao_a_aneel():
+    assert revenda_da_fonte("aneel-bdgd-ucat-pj") == VENDAVEL_ODBL
+    assert marca_da_fonte("aneel-bdgd-ucat-pj") == Marca.VENDAVEL
+    assert "ODbL" in licenca_da_fonte("aneel-bdgd-ucat-pj")
