@@ -55,6 +55,9 @@ LICENCAS = {
     "rfb-transacoes": "Transações da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
     "ms": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
     "tce-rn": "TCE-RN: licença não localizada; a confirmar, só interno (ADR 0102)",
+    "tce-pe": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
+    "tce-sp": "TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)",
+    "tce-ce": "TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
     "transparencia": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
@@ -280,6 +283,9 @@ REVENDA = {
     "rfb-transacoes": A_CONFIRMAR,  # transações (linha 661): nada perguntado à Receita, uso interno
     "ms": A_CONFIRMAR,  # CNES (linha 654): nada perguntado ao DATASUS, uso interno
     "tce-rn": A_CONFIRMAR,  # linha 662: nada perguntado ao TCE-RN, uso interno
+    "tce-pe": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-PE, uso interno
+    "tce-sp": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-SP, uso interno
+    "tce-ce": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-CE, uso interno
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
@@ -587,6 +593,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "rfb-transacoes",
             "ms",
             "tce-rn",
+            "tce-pe",
+            "tce-sp",
+            "tce-ce",
             "mte",
             "comexstat",
             "wayback",

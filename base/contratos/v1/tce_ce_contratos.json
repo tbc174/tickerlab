@@ -1,0 +1,118 @@
+{
+  "tabela": "tce_ce_contratos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "codigo_municipio": {
+      "descricao": "Código do município no SIM do TCE-CE",
+      "unidade": "texto"
+    },
+    "numero_contrato": {
+      "descricao": "Número do contrato, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "data_contrato": {
+      "descricao": "Dia do contrato",
+      "unidade": "data (dia)"
+    },
+    "data_referencia": {
+      "descricao": "Data de referência do documento do contratado",
+      "unidade": "texto"
+    },
+    "codigo_tipo_negociante": {
+      "descricao": "Tipo do negociante, como a fonte codifica",
+      "unidade": "texto"
+    },
+    "tipo_contrato": {
+      "descricao": "Tipo do contrato, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "modalidade": {
+      "descricao": "Modalidade, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "numero_processo": {
+      "descricao": "Número do processo administrativo",
+      "unidade": "texto"
+    },
+    "vigencia_inicio": {
+      "descricao": "Início da vigência",
+      "unidade": "data (dia)"
+    },
+    "vigencia_fim": {
+      "descricao": "Fim da vigência",
+      "unidade": "data (dia)"
+    },
+    "valor": {
+      "descricao": "Valor total do contrato, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_pncp": {
+      "descricao": "Id do contrato no PNCP, para casar com a carga do PNCP; vazio quando não há",
+      "unidade": "texto"
+    },
+    "com_contrato": {
+      "descricao": "`True` quando o contratado achou o contrato pela chave (município, número, data)",
+      "unidade": "texto"
+    },
+    "tribunal": {
+      "descricao": "Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs`",
+      "unidade": "texto"
+    },
+    "tabela": {
+      "descricao": "Assunto da linha dentro do tribunal (contratos, aditivos, despesas)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "codigo_municipio",
+    "numero_contrato",
+    "data_contrato",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "data_contrato",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "data_contrato": "a_conferir",
+    "vigencia_inicio": "a_conferir",
+    "vigencia_fim": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": true,
+  "frequencia": "Sem rotina: carga manual de arquivos baixados",
+  "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
+}
