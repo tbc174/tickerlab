@@ -281,6 +281,7 @@ REVENDA = {
     "ccee": VENDAVEL_COM_ATRIBUICAO,
     "seges": VENDAVEL_COM_ATRIBUICAO,
     "seges-pesquisa-precos": A_CONFIRMAR,  # preço de referência (ADR 0008)
+    "transferegov-especiais-pagamentos": A_CONFIRMAR,  # API nova sem licença lida (rodada de 03/11/2026): uso interno
     "comprasgov": VENDAVEL_COM_ATRIBUICAO,
     "transferegov": VENDAVEL_COM_ATRIBUICAO,
     "pncp": A_CONFIRMAR,

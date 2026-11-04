@@ -25,15 +25,24 @@ Escolhas (testes em `tests/test_base_arquivo_lote_licitacoes.py`):
 
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from urllib.parse import urlencode
 
 import requests
 import sqlalchemy as sa
 
-from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
-from base.arquivo.obter_pj import csv_so_pj, json_paginado
+from base.arquivo.coleta import (
+    Alvo,
+    Cliente,
+    Descobrir,
+    ErroDeDescoberta,
+    Fonte,
+    Obter,
+    SemArquivo,
+)
+from base.arquivo.obter_pj import DIGITOS_DO_CNPJ, csv_so_pj, json_paginado
 
 HTTP_NAO_ENCONTRADO = 404
 SEMANAL = "semanal"
@@ -115,19 +124,44 @@ DIAS_DA_ATUALIZACAO_DO_TRANSFEREGOV = (
     25  # as tabelas mudam o tempo todo; olhar uma vez por mês basta
 )
 
+# ---- Transferegov, API nova das especiais: subtransações de pagamento, com o CNPJ do favorecido ----
+PAGAMENTOS_DO_TRANSFEREGOV = (
+    "https://api-publica.transferegov.gestao.gov.br/especiais/"
+    "gestao-financeira-subtransacoes-especiais"
+)
+LINHAS_POR_PAGINA_DOS_PAGAMENTOS = 500
+MAXIMO_DE_PAGINAS_DOS_PAGAMENTOS = 200  # 14.294 itens em 03/11/2026: 29 páginas
+DOCUMENTO_DO_FAVORECIDO = "numero_documento_beneficiario_subtransacao_gestao_financeira"
+CNPJ_DO_FAVORECIDO = "cnpj_beneficiario"
+
 # ---- TCU: responsáveis inidôneos para licitar (ORDS; o CPF vem formatado, o CNPJ também) ----
 INIDONEOS_DO_TCU = "https://contas.tcu.gov.br/ords/condenacao/consulta/inidoneos"
 POR_PAGINA_DO_TCU = 500
 MAXIMO_DE_PAGINAS_DO_TCU = 100
 
 # ---- PNCP: contratos por data de publicação (3 a 12 s por página; as atas levam 40 s e ficam de fora) ----
-CONTRATOS_DO_PNCP = "https://pncp.gov.br/api/consulta/v1/contratos"
+PNCP_CONSULTA = "https://pncp.gov.br/api/consulta/v1"
+CONTRATOS_DO_PNCP = f"{PNCP_CONSULTA}/contratos"
 POR_PAGINA_DO_PNCP = 500
 DIAS_DO_PNCP = 14
 DIAS_ATE_FECHAR_O_DIA_DO_PNCP = 7
 MAXIMO_DE_PAGINAS_DO_PNCP = 500
 PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS = 1.0
 PAUSA_ENTRE_DIAS_EM_SEGUNDOS = 5.0
+# rotas por data de atualização (revisões, aditivos, atas): o registro alterado volta na janela do dia da
+# alteração; o arquivista guarda cada conteúdo novo com a data da coleta, sem reescrever o antigo
+ROTAS_DE_ATUALIZACAO_DO_PNCP = {
+    "pncp-contratos-atualizados": "contratos",
+    "pncp-atas-atualizadas": "atas",
+    "pncp-contratacoes-atualizadas": "contratacoes",
+}
+MODALIDADES_DO_PNCP = tuple(
+    range(1, 14)
+)  # a rota de contratações exige a modalidade (tabela do PNCP)
+DIAS_DA_ATUALIZACAO_DO_PNCP = 14
+DIAS_ATE_FECHAR_A_ATUALIZACAO_DO_PNCP = (
+    1  # coletado a partir do dia seguinte: o dia não muda mais
+)
 
 # ---- estados: portais CKAN com os contratos (MG: CC BY 4.0; SC: CC BY) ----
 PORTAL_DE_MG = "https://dados.mg.gov.br"
@@ -352,6 +386,67 @@ def _tabelas_do_transferegov(esquema: str, tabelas: tuple[str, ...]) -> Descobri
     return descobrir
 
 
+class ContagemDivergente(RuntimeError):
+    """A API pagou menos (ou mais) itens do que a própria resposta contou: melhor falhar do que guardar um pedaço."""
+
+
+def _endereco_dos_pagamentos(pagina: int) -> str:
+    consulta = urlencode(
+        {"pagina": pagina, "tamanho_da_pagina": LINHAS_POR_PAGINA_DOS_PAGAMENTOS}
+    )
+    return f"{PAGAMENTOS_DO_TRANSFEREGOV}?{consulta}"
+
+
+def _cnpj_do_favorecido(documento: object) -> str | None:
+    """Os 14 dígitos do CNPJ do favorecido; CPF (ou máscara) não é CNPJ e não vira campo."""
+    digitos = re.sub(r"\D", "", "" if documento is None else str(documento))
+    return digitos if len(digitos) == DIGITOS_DO_CNPJ else None
+
+
+def _leitor_dos_pagamentos() -> Callable[[object], tuple[list[dict], bool]]:
+    """Lê a página (`data`, `page_number`, `total_pages`, `total_items`), põe o CNPJ normalizado em
+    cada item e, na última página, confere quantos itens vieram contra o total que a API contou."""
+    lidos = 0
+
+    def ler(resposta: object) -> tuple[list[dict], bool]:
+        nonlocal lidos
+        corpo = resposta if isinstance(resposta, dict) else {}
+        itens = corpo.get("data") or []
+        pagina = corpo.get("page_number") or 1
+        lidos = len(itens) if pagina == 1 else lidos + len(itens)
+        for item in itens:
+            cnpj = _cnpj_do_favorecido(item.get(DOCUMENTO_DO_FAVORECIDO))
+            if cnpj:
+                item[CNPJ_DO_FAVORECIDO] = cnpj
+        ha_mais = pagina < (corpo.get("total_pages") or 0)
+        total = corpo.get("total_items")
+        if not ha_mais and total is not None and lidos != total:
+            raise ContagemDivergente(
+                f"subtransações do Transferegov: {lidos} itens lidos, a API contou {total}"
+            )
+        return itens, ha_mais
+
+    return ler
+
+
+def descobrir_pagamentos_do_transferegov(
+    cliente: Cliente, agora: datetime
+) -> list[Alvo]:
+    """Um alvo só: a lista inteira das subtransações; só pessoa jurídica fica (ADR 0088)."""
+    return [
+        Alvo(
+            _endereco_dos_pagamentos(1),
+            ".jsonl",
+            json_paginado(
+                _endereco_dos_pagamentos,
+                _leitor_dos_pagamentos(),
+                maximo_de_paginas=MAXIMO_DE_PAGINAS_DOS_PAGAMENTOS,
+                pausa_s=PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS / 2,
+            ),
+        )
+    ]
+
+
 # ---------- TCU ----------
 
 
@@ -415,6 +510,67 @@ def descobrir_contratos_do_pncp(cliente: Cliente, agora: datetime) -> list[Alvo]
         )
         for dia in _dias_da_janela(agora, DIAS_DO_PNCP)
     ]
+
+
+def _endereco_da_atualizacao_do_pncp(
+    rota: str, dia: date, pagina: int, modalidade: int | None = None
+) -> str:
+    dia_texto = dia.strftime("%Y%m%d")
+    consulta = {
+        "dataInicial": dia_texto,
+        "dataFinal": dia_texto,
+        "pagina": pagina,
+        "tamanhoPagina": POR_PAGINA_DO_PNCP,
+    }
+    if modalidade is not None:
+        consulta["codigoModalidadeContratacao"] = modalidade
+    return f"{PNCP_CONSULTA}/{rota}/atualizacao?{urlencode(consulta)}"
+
+
+def _vazio_se_nao_encontrado(obter: Obter) -> Obter:
+    """O 404 da rota por atualização é "nenhum registro neste dia" (a fonte responde assim): `SemArquivo`."""
+
+    def envolvido(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        try:
+            return obter(cliente, destino)
+        except requests.HTTPError as erro:
+            if (
+                erro.response is not None
+                and erro.response.status_code == HTTP_NAO_ENCONTRADO
+            ):
+                raise SemArquivo("rota sem registros neste dia") from erro
+            raise
+
+    return envolvido
+
+
+def _descobrir_atualizacoes_do_pncp(rota: str) -> Descobrir:
+    """Um alvo por dia dos últimos `DIAS_DA_ATUALIZACAO_DO_PNCP` (e por modalidade, nas contratações)."""
+    modalidades = MODALIDADES_DO_PNCP if rota == "contratacoes" else (None,)
+
+    def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
+        return [
+            Alvo(
+                _endereco_da_atualizacao_do_pncp(rota, dia, 1, modalidade),
+                ".jsonl",
+                _vazio_se_nao_encontrado(
+                    json_paginado(
+                        lambda pagina, dia=dia, modalidade=modalidade: (
+                            _endereco_da_atualizacao_do_pncp(
+                                rota, dia, pagina, modalidade
+                            )
+                        ),
+                        _contratos_do_pncp,
+                        maximo_de_paginas=MAXIMO_DE_PAGINAS_DO_PNCP,
+                        pausa_s=PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS,
+                    )
+                ),
+            )
+            for dia in _dias_da_janela(agora, DIAS_DA_ATUALIZACAO_DO_PNCP)
+            for modalidade in modalidades
+        ]
+
+    return descobrir
 
 
 # ---------- estados (CKAN) ----------
@@ -551,6 +707,23 @@ def fontes() -> list[Fonte]:
             pausa_minima=PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS,
         ),
         *transferegov,
+        Fonte(
+            "transferegov-especiais-pagamentos",
+            MENSAL,
+            descobrir_pagamentos_do_transferegov,
+            guardado_vale=_baixado_neste_mes(DIAS_DA_ATUALIZACAO_DO_TRANSFEREGOV),
+            pausa_minima=PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS,
+        ),
+        *(
+            Fonte(
+                id_,
+                SEMANAL,
+                _descobrir_atualizacoes_do_pncp(rota),
+                guardado_vale=_dia_fechado(DIAS_ATE_FECHAR_A_ATUALIZACAO_DO_PNCP),
+                pausa_minima=PAUSA_ENTRE_DIAS_EM_SEGUNDOS,
+            )
+            for id_, rota in ROTAS_DE_ATUALIZACAO_DO_PNCP.items()
+        ),
         Fonte(
             "pncp-contratos",
             SEMANAL,
