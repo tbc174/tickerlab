@@ -1,5 +1,6 @@
 // O relatório de setor da semana 1: elétricas. Textos e números vêm do Python
 // (relatorio_semanal_eletricas.json, de src/relatorio_semanal.py): nunca à mão.
+import { TextoComLinks } from "../app/TextoComLinks";
 import { relatorioSemanalEletricas as relatorio } from "../conteudo";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
 import { SeloDaBase } from "../site/SeloDaBase";
@@ -58,7 +59,7 @@ export function RelatorioSemanalEletricas() {
             <h3>{d.titulo}</h3>
             <p>{d.texto}</p>
             <p className="v2-fonte">
-              Fonte: {d.fonte}; dado de {d.data}.
+              Fonte: <TextoComLinks texto={d.fonte} />; dado de {d.data}.
             </p>
           </article>
         ))}
@@ -77,7 +78,9 @@ export function RelatorioSemanalEletricas() {
       <ul>
         {relatorio.nao_temos.map((f) => (
           <li key={f.kpi}>
-            <strong>{f.kpi}.</strong> {f.motivo} <small>Fonte: {f.fonte}.</small>
+            <strong>{f.kpi}.</strong> {f.motivo} <small>
+              Fonte: <TextoComLinks texto={f.fonte} />.
+            </small>
           </li>
         ))}
       </ul>

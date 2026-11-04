@@ -357,14 +357,15 @@ custos e descontando a sorte de testar muitas ideias?**
 - **Depois da M2:** pesquisas novas, cada uma com o critério escrito e travado por hash antes de
   qualquer resultado: o scalp no mini índice (fases 1 e 1b, as duas reprovadas), a Pesquisa 2 com
   CFDs (`docs/pre-registro-p2-v0.1.md`) e as estratégias quantitativas na versão brasileira, com
-  CDI, imposto, lote, leilões e custos da B3 (`docs/pre-registro-quant-p0-v0.1.md`; a tendência na
-  B3 foi reprovada na 1ª tentativa e os fatores na B3 ficaram inconclusivos por falta de dados). O
+  CDI, imposto, lote, leilões e custos da B3 (`docs/pre-registro-quant-p0-v0.2.md`, que substituiu
+  a v0.1; nenhuma das oito fichas da v0.1 passou na 1ª rodada, e a v0.2 testa a carteira combinada,
+  a cripto no par em reais e fixa como o papel é julgado). O
   registro de tentativas e os relatórios ficam fora do Git.
 
 O código das fases M1 e M2 (dados, critério em código, validação, modelos e um painel só de
 leitura) e das pesquisas seguintes está em `trader/`, e os critérios pré-registrados, em `docs/`
 (`pre-registro-m2-v0.1.md` a `v0.4.md`, `pre-registro-scalp-win-fase1*.md`, `pre-registro-p2-v0.1.md`
-e `pre-registro-quant-p0-v0.1.md`).
+e `pre-registro-quant-p0-v0.1.md` e `v0.2.md`).
 
 ## Qualidade e testes
 
