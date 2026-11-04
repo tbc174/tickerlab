@@ -41,7 +41,7 @@ def test_valores_estranhos_na_url_sao_ignorados():
     lidos = ler_parametros(
         {
             "ticker": "<script>alert(1)</script>",
-            "periodo": "10y",
+            "periodo": "20y",
             "taxa": "Inventada",
             "reais": "talvez",
             "fav": "OK3.SA,<b>,AAPL,aapl,,../etc",
@@ -81,3 +81,8 @@ def test_alternar_favorito():
     cheia = [f"AAA{i}" for i in range(MAX_FAVORITOS)]
     with pytest.raises(ValueError, match="limite"):
         alternar_favorito(cheia, "NOVO")
+
+
+@pytest.mark.parametrize("periodo", ["10y", "max"])
+def test_periodos_longos_valem_no_link(periodo):
+    assert ler_parametros({"periodo": periodo}) == {"periodo": periodo}

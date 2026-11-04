@@ -4235,7 +4235,9 @@
               "6mo",
               "1y",
               "2y",
-              "5y"
+              "5y",
+              "10y",
+              "max"
             ],
             "title": "Periodo",
             "type": "string"
@@ -6390,7 +6392,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -6681,7 +6685,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7189,7 +7195,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7303,7 +7311,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7498,7 +7508,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"

@@ -135,7 +135,7 @@ def test_sem_medias_nao_mostra_legenda():
 def test_grafico_de_preco_tem_botoes_de_periodo():
     figura = criar_grafico_preco(_ohlcv())
     rotulos = [b.label for b in figura.layout.xaxis.rangeselector.buttons]
-    assert rotulos == ["1M", "3M", "6M", "1A", "YTD", "Tudo"]
+    assert rotulos == ["1M", "3M", "6M", "1A", "2A", "5A", "10A", "YTD", "Tudo"]
 
 
 def test_zoom_do_preco_e_do_volume_andam_juntos():
@@ -200,7 +200,7 @@ def test_config_acompanha_a_opcao_de_zoom_com_a_roda_do_mouse():
 def test_graficos_de_risco_tem_botoes_de_periodo_e_linha_guia():
     fechamento = _fechamento()
     figura = criar_grafico_drawdown(calcular_drawdown(fechamento))
-    assert len(figura.layout.xaxis.rangeselector.buttons) == 6
+    assert len(figura.layout.xaxis.rangeselector.buttons) == 9
     assert figura.layout.xaxis.showspikes is True
 
 

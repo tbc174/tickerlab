@@ -1,5 +1,6 @@
 """O ciclo da conta no app: favoritos e preferências que voltam, simulações salvas, reabertas e apagadas."""
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from src import ficha
@@ -30,6 +31,19 @@ def test_favoritos_e_preferencias_voltam_na_proxima_sessao(banco, monkeypatch):
     assert not outra_sessao.exception
     assert outra_sessao.session_state["favoritos"] == ["PETR4.SA"]
     assert outra_sessao.session_state["periodo"] == "5y"
+
+
+@pytest.mark.parametrize("periodo", ["10y", "max"])
+def test_periodos_longos_abrem_e_ficam_na_conta(banco, monkeypatch, periodo):
+    """10 anos e Tudo (o histórico inteiro) no seletor do topo: a página abre e a escolha volta."""
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app("visao_geral")
+    app.button_group(key="periodo").set_value(periodo).run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        ana = id_do_usuario(banco, "ana")
+        assert repo.carregar_preferencias(conexao, ana)["periodo"] == periodo
+    assert abrir_app().session_state["periodo"] == periodo
 
 
 def test_so_grava_quando_ha_mudanca(banco, monkeypatch):
