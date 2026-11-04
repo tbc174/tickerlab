@@ -25,6 +25,7 @@ from base.arquivo import (
     cnj_tpu,
     contrapartes,
     djen,
+    finep,
     lote_acervos,
     lote_atencao,
     lote_bcb,
@@ -1449,6 +1450,8 @@ FONTES: list[Fonte] = [
     Fonte("mme-reidi", "mensal", _cadastros(REIDI_FILTRADO)),
     Fonte("aneel-cde", "mensal", descobrir_cde, pesada=True),
     Fonte("bcb-rde-ied", "mensal", descobrir_rde_ied, "json"),
+    # financiamentos por CNPJ (linha 469): só as abas de crédito, sem nome, título nem resumo
+    Fonte("finep-contratacao", "mensal", finep.descobrir_contratacao),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",
