@@ -8,6 +8,7 @@ futura não), número vazio quando falta a linha (nada inventado) e a margem sob
 import pandas as pd
 
 from base import dossie
+from src.rastro import como_foi_calculado
 
 D = pd.Timestamp
 HOJE = D("2026-10-17")
@@ -33,6 +34,8 @@ def _linha(
         "grupo": grupo,
         "demonstracao": demonstracao,
         "documento": "DFP",
+        "referencia": D(f"{exercicio}-12-31"),
+        "versao": 1,
         "conta": numero,
         "descricao": descricao,
         "inicio": D(f"{exercicio}-01-01"),
@@ -81,6 +84,62 @@ def test_geracao_de_caixa_traz_ebitda_capex_e_fcf_da_ultima_dfp() -> None:
     assert itens["fcf"]["valor"] == 1_300 * MILHAO
     assert {i["base"] for i in itens.values()} == {"2025-12-31"}
     assert {i["unidade"] for i in itens.values()} == {"R$"}
+
+
+def test_cada_numero_leva_as_contas_que_entram_nele_no_rastro() -> None:
+    secao = dossie.secao_geracao_de_caixa(_como_era(), HOJE)
+    assert secao is not None
+    itens = _itens(secao)
+
+    def contas(chave: str) -> dict[str, float]:
+        return {e["conta"]: e["valor"] for e in itens[chave]["rastro"]["entradas"]}
+
+    assert contas("ebitda") == {
+        "ebit": 2_000 * MILHAO,
+        "depreciacao_amortizacao": -500 * MILHAO,
+    }
+    assert contas("capex") == {"capex": -900 * MILHAO}
+    assert contas("fcf") == {
+        "caixa_operacional": 2_200 * MILHAO,
+        "capex": -900 * MILHAO,
+    }
+    ebit = next(
+        e for e in itens["ebitda"]["rastro"]["entradas"] if e["conta"] == "ebit"
+    )
+    assert ebit == {
+        "conta": "ebit",
+        "codigo": "3.05",
+        "nome": "Resultado Antes do Resultado Financeiro e dos Tributos (DRE)",
+        "valor": 2_000 * MILHAO,
+        "periodo": "exercicio",
+        "documento": "DFP",
+        "referencia": "2025-12-31",
+        "versao": 1,
+        "publicado_em": "2026-03-20",
+    }
+
+
+def test_a_ficha_congelada_devolve_as_entradas_ao_rastro() -> None:
+    from src.dossie import ItemDaFicha
+
+    secao = dossie.secao_geracao_de_caixa(_como_era(), HOJE)
+    assert secao is not None
+    item = ItemDaFicha.model_validate(_itens(secao)["fcf"])
+    assert item.rastro is not None
+    rastro = item.rastro.como_rastro()
+    assert [e.conta for e in rastro.entradas] == ["caixa_operacional", "capex"]
+    assert rastro.entradas[0].publicado_em == pd.Timestamp("2026-03-20").date()
+    linhas = como_foi_calculado(rastro)
+    assert "Contas usadas" in [linha.rotulo for linha in linhas]
+
+
+def test_ficha_de_antes_das_entradas_continua_abrindo() -> None:
+    from src.dossie import RastroDaFicha
+
+    antigo = RastroDaFicha.model_validate(
+        {"formula": "f", "versao_do_calculo": "v", "fonte_id": "cvm"}
+    )
+    assert antigo.como_rastro().entradas == ()
 
 
 def test_tabela_por_exercicio_usa_o_que_era_publico_no_dia() -> None:

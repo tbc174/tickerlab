@@ -53,7 +53,11 @@ LICENCAS = {
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
     "rfb-renuncias": "DIRBI e ECF da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
     "rfb-transacoes": "Transações da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
+    "ms": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
     "tce-rn": "TCE-RN: licença não localizada; a confirmar, só interno (ADR 0102)",
+    "tce-pe": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
+    "tce-sp": "TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)",
+    "tce-ce": "TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
     "transparencia": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
@@ -117,8 +121,14 @@ LICENCAS = {
     # Ficha Clara, licenças e registros (licença lida na ficha do dados.gov.br em 29/10/2026); a coleta
     # guarda só a linha de CNPJ inteiro, sem nome, endereço nem contato
     "anvisa": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+    # preços da CMED (04/11/2026): publicados pela Anvisa, mas a licença própria das listas não está
+    # escrita (ADR 0102, Emenda 2): a confirmar, sem perguntar à fonte
+    "anvisa-cmed": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
     "mapa": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
     "anm": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+    "anm-cfem": "ANM, CFEM: licença não declarada; a confirmar, só interno (ADR 0102)",
+    "anm-sigbm": "ANM, SIGBM: licença não declarada; a confirmar, só interno (ADR 0102)",
+    "anm-amb": "ANM, Anuário: licença não declarada; a confirmar, só interno (ADR 0102)",
     "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
@@ -274,7 +284,11 @@ REVENDA = {
     "rfb-cnpj": VENDAVEL_COM_ATRIBUICAO,
     "rfb-renuncias": A_CONFIRMAR,  # DIRBI e ECF (linha 660): nada perguntado à Receita, uso interno
     "rfb-transacoes": A_CONFIRMAR,  # transações (linha 661): nada perguntado à Receita, uso interno
+    "ms": A_CONFIRMAR,  # CNES (linha 654): nada perguntado ao DATASUS, uso interno
     "tce-rn": A_CONFIRMAR,  # linha 662: nada perguntado ao TCE-RN, uso interno
+    "tce-pe": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-PE, uso interno
+    "tce-sp": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-SP, uso interno
+    "tce-ce": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-CE, uso interno
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
@@ -329,8 +343,13 @@ REVENDA = {
     "ons": VENDAVEL_COM_ATRIBUICAO,
     "anatel": VENDAVEL_COM_ATRIBUICAO,
     "anvisa": VENDAVEL_COM_ATRIBUICAO,
+    "anvisa-cmed": A_CONFIRMAR,
     "mapa": VENDAVEL_COM_ATRIBUICAO,
     "anm": VENDAVEL_COM_ATRIBUICAO,
+    # CFEM, SIGBM e AMB (linha 657): nada perguntado à ANM, uso interno
+    "anm-cfem": A_CONFIRMAR,
+    "anm-sigbm": A_CONFIRMAR,
+    "anm-amb": A_CONFIRMAR,
     "ancine": VENDAVEL_COM_ATRIBUICAO,
     "mme": A_CONFIRMAR,
     "finep": A_CONFIRMAR,
@@ -576,7 +595,11 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "pgfn",
             "rfb-renuncias",
             "rfb-transacoes",
+            "ms",
             "tce-rn",
+            "tce-pe",
+            "tce-sp",
+            "tce-ce",
             "mte",
             "comexstat",
             "wayback",
@@ -663,7 +686,12 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "anvisa",
             "mapa",
             "anm",
+            "anm-cfem",  # linha 657: licença não declarada, a confirmar
+            "anm-sigbm",
+            "anm-amb",
             "ancine",
+            # preços da CMED (04/11): os termos das listas são os do portal da Anvisa, ainda não lidos
+            "anvisa-cmed",
             # Ficha Clara, incentivos (29/10): termos e robots.txt ainda não lidos
             "mme",
             # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos
@@ -876,7 +904,10 @@ def licenca_da_fonte(fonte: str) -> str:
 def revenda_da_fonte(fonte: str) -> str:
     """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, a confirmar
     (fonte nova sem resposta escrita: ADR 0008, Emenda 1)."""
-    return REVENDA.get(fonte) or REVENDA.get(fonte.split("-", 1)[0], A_CONFIRMAR)
+    partes = fonte.split("-")
+    # a ANM tem subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem"), linha 657
+    subfamilia = REVENDA.get("-".join(partes[:2])) if partes[0] == "anm" else None
+    return REVENDA.get(fonte) or subfamilia or REVENDA.get(partes[0], A_CONFIRMAR)
 
 
 def marca_da_fonte(fonte: str) -> Marca:

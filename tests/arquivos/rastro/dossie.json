@@ -117,7 +117,20 @@
     "versao_do_calculo": "dossiê 1",
     "fonte_id": "cvm",
     "outras_fontes": [],
-    "publicado_em": "2026-03-20"
+    "publicado_em": "2026-03-20",
+    "entradas": [
+      {
+        "conta": "capex",
+        "codigo": "6.02.01",
+        "nome": "Aquisição de Imobilizado (DFC_MI)",
+        "valor": -900000000.0,
+        "periodo": "exercicio",
+        "documento": "DFP",
+        "referencia": "2025-12-31",
+        "versao": 1,
+        "publicado_em": "2026-03-20"
+      }
+    ]
   },
   "geracao_de_caixa.ebitda": {
     "valor": 2500000000.0,
@@ -125,7 +138,31 @@
     "versao_do_calculo": "dossiê 1",
     "fonte_id": "cvm",
     "outras_fontes": [],
-    "publicado_em": "2026-03-20"
+    "publicado_em": "2026-03-20",
+    "entradas": [
+      {
+        "conta": "depreciacao_amortizacao",
+        "codigo": "7.04.01",
+        "nome": "Depreciação, Amortização e Exaustão (DVA)",
+        "valor": -500000000.0,
+        "periodo": "exercicio",
+        "documento": "DFP",
+        "referencia": "2025-12-31",
+        "versao": 1,
+        "publicado_em": "2026-03-20"
+      },
+      {
+        "conta": "ebit",
+        "codigo": "3.05",
+        "nome": "Resultado Antes do Resultado Financeiro e dos Tributos (DRE)",
+        "valor": 2000000000.0,
+        "periodo": "exercicio",
+        "documento": "DFP",
+        "referencia": "2025-12-31",
+        "versao": 1,
+        "publicado_em": "2026-03-20"
+      }
+    ]
   },
   "geracao_de_caixa.fcf": {
     "valor": 1300000000.0,
@@ -133,7 +170,31 @@
     "versao_do_calculo": "dossiê 1",
     "fonte_id": "cvm",
     "outras_fontes": [],
-    "publicado_em": "2026-03-20"
+    "publicado_em": "2026-03-20",
+    "entradas": [
+      {
+        "conta": "caixa_operacional",
+        "codigo": "6.01",
+        "nome": "Caixa Líquido Atividades Operacionais (DFC_MI)",
+        "valor": 2200000000.0,
+        "periodo": "exercicio",
+        "documento": "DFP",
+        "referencia": "2025-12-31",
+        "versao": 1,
+        "publicado_em": "2026-03-20"
+      },
+      {
+        "conta": "capex",
+        "codigo": "6.02.01",
+        "nome": "Aquisição de Imobilizado (DFC_MI)",
+        "valor": -900000000.0,
+        "periodo": "exercicio",
+        "documento": "DFP",
+        "referencia": "2025-12-31",
+        "versao": 1,
+        "publicado_em": "2026-03-20"
+      }
+    ]
   },
   "governanca.comites": {
     "valor": 3,
