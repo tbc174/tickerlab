@@ -6,7 +6,7 @@ import os
 import time
 import uuid
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, TypeVar
 
@@ -84,6 +84,7 @@ from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
 from src.eventos_sec import PREFIXO_DO_CIK
+from src.faixa_de_preco import faixa_de_preco_do_ticker
 from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.links_das_fontes import link_da_fonte
@@ -1013,6 +1014,7 @@ def _relatorio_da_empresa_do_ticker(conta: Usuario, ticker: str) -> Relatorio:
         raise
     if entradas is None or entradas.cnpj.startswith(PREFIXO_DO_CIK):
         raise HTTPException(status_code=404, detail=SO_B3)
+    entradas = replace(entradas, faixa_de_preco=faixa_de_preco_do_ticker(ticker))
     if entradas.dados.contas.empty:
         raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
     relatorio = montar_relatorio(entradas, conta.plano)

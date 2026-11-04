@@ -233,3 +233,40 @@ def test_trava_desligada_e_padroes_so_de_multiplos_ficam_sem_padroes(
     monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
     desligada = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=AGORA.date())
     assert desligada is not None and desligada.padroes is None
+
+
+def test_ficha_mostra_a_faixa_de_52_semanas_na_secao_de_valuation(conexao):
+    """Linha 412: a faixa entra como parágrafo do valuation, com fonte e data; sem ela, nada muda."""
+    from dataclasses import replace
+
+    from src import relatorio_empresa as re_
+    from src.faixa_de_preco import calcular_faixa_de_preco
+
+    indice = pd.bdate_range(end="2026-11-03", periods=520)
+    faixa = calcular_faixa_de_preco(pd.Series(10.0, index=indice))
+    entradas = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, hoje=AGORA.date()
+    )
+    assert entradas is not None
+    sem = re_.montar(entradas).secao("valuation").paragrafos
+    com = (
+        re_.montar(replace(entradas, faixa_de_preco=faixa))
+        .secao("valuation")
+        .paragrafos
+    )
+    assert faixa is not None and faixa.texto() in com
+    assert [p for p in com if p != faixa.texto()] == sem
+
+
+def test_trava_desligada_nao_pergunta_a_faixa_ao_yahoo(monkeypatch):
+    from src import faixa_de_preco as modulo
+
+    chamadas = []
+    monkeypatch.setattr(
+        modulo, "baixar_fechamento_sem_ajuste", lambda *a: chamadas.append(a)
+    )
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    assert modulo.faixa_de_preco_do_ticker("WEGE3.SA") is None
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    assert modulo.faixa_de_preco_do_ticker("AAPL") is None  # fora da B3
+    assert chamadas == []
