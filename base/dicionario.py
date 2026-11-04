@@ -1529,6 +1529,182 @@ def _tabelas_do_cnes() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_dos_tces() -> dict[str, Tabela]:
+    """Contratos e despesas por CNPJ dos TCEs de PE, SP, CE e RS (`base/contratos_tces.py`, linha 652)."""
+    comum = {
+        "tribunal": ("Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs`", TEXTO),
+        "tabela": (
+            "Assunto da linha dentro do tribunal (contratos, aditivos, despesas)",
+            TEXTO,
+        ),
+        "cnpj": (
+            (
+                "CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa "
+                "física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados"
+            ),
+            TEXTO,
+        ),
+        "disponivel_em": (
+            (
+                "Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir "
+                "do dia em que a coleta o viu"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    pe = {
+        "codigo_contrato": ("Código do contrato no TCE-PE", TEXTO),
+        "numero_contrato": ("Número do contrato, como a fonte escreve", TEXTO),
+        "ano_contrato": ("Ano do contrato", TEXTO),
+        "codigo_ug": ("Código da unidade gestora", TEXTO),
+        "codigo_efisco_ug": ("Código e-Fisco da unidade gestora", TEXTO),
+        "municipio": ("Município da unidade gestora, como a fonte escreve", TEXTO),
+        "situacao": ("Situação, como a fonte escreve", TEXTO),
+        "estagio": ("Estágio, como a fonte escreve", TEXTO),
+        "link": ("Endereço do documento na fonte", TEXTO),
+        "vigencia_inicio": (
+            "Início da vigência (a fonte traz o período numa frase)",
+            DATA,
+        ),
+        "vigencia_fim": ("Fim da vigência", DATA),
+    }
+    contratos_pe = {
+        **pe,
+        "esfera": ("Esfera (estadual ou municipal), como a fonte escreve", TEXTO),
+        "tipo_processo": (
+            "Tipo do processo de contratação, como a fonte escreve",
+            TEXTO,
+        ),
+        "numero_processo": ("Número do processo de contratação", TEXTO),
+        "valor": ("Valor do contrato, em reais", NUMERO_DECIMAL),
+    }
+    aditivos_pe = {
+        **pe,
+        "numero_aditivo": ("Número do termo aditivo", TEXTO),
+        "ano_aditivo": ("Ano do termo aditivo", TEXTO),
+    }
+    sp = {
+        "municipio": (
+            "Município da consulta, como no endereço da fonte (sem acento, com hífen)",
+            TEXTO,
+        ),
+        "ano": ("Ano da consulta", TEXTO),
+        "mes": ("Mês por extenso, como a fonte escreve", TEXTO),
+        "evento": (
+            "Evento da despesa (empenhado, liquidado, pago): cada um é uma linha e eles não se somam",
+            TEXTO,
+        ),
+        "numero_empenho": ("Número do empenho, como a fonte escreve", TEXTO),
+        "data_emissao": ("Dia da emissão da despesa", DATA),
+        "valor": ("Valor do evento, em reais", NUMERO_DECIMAL),
+    }
+    ce = {
+        "codigo_municipio": ("Código do município no SIM do TCE-CE", TEXTO),
+        "numero_contrato": ("Número do contrato, como a fonte escreve", TEXTO),
+        "data_contrato": ("Dia do contrato", DATA),
+        "data_referencia": ("Data de referência do documento do contratado", TEXTO),
+        "codigo_tipo_negociante": ("Tipo do negociante, como a fonte codifica", TEXTO),
+        "tipo_contrato": ("Tipo do contrato, como a fonte escreve", TEXTO),
+        "modalidade": ("Modalidade, como a fonte escreve", TEXTO),
+        "numero_processo": ("Número do processo administrativo", TEXTO),
+        "vigencia_inicio": ("Início da vigência", DATA),
+        "vigencia_fim": ("Fim da vigência", DATA),
+        "valor": ("Valor total do contrato, em reais", NUMERO_DECIMAL),
+        "id_pncp": (
+            "Id do contrato no PNCP, para casar com a carga do PNCP; vazio quando não há",
+            TEXTO,
+        ),
+        "com_contrato": (
+            "`True` quando o contratado achou o contrato pela chave (município, número, data)",
+            TEXTO,
+        ),
+    }
+    rs = {
+        "codigo_orgao": ("Código do órgão no LicitaCon", TEXTO),
+        "numero_licitacao": ("Número da licitação", TEXTO),
+        "ano_licitacao": ("Ano da licitação", TEXTO),
+        "codigo_modalidade": ("Código da modalidade da licitação", TEXTO),
+        "numero_contrato": ("Número do contrato", TEXTO),
+        "ano_contrato": ("Ano do contrato", TEXTO),
+        "tipo_instrumento": ("Tipo do instrumento, como a fonte codifica", TEXTO),
+        "numero_processo": ("Número do processo", TEXTO),
+        "ano_processo": ("Ano do processo", TEXTO),
+        "link": ("Endereço da licitação no LicitaCon Cidadão", TEXTO),
+        "vigencia_inicio": ("Início da vigência", DATA),
+        "vigencia_fim": ("Fim da vigência", DATA),
+        "data_assinatura": ("Dia da assinatura", DATA),
+        "valor": ("Valor do contrato, em reais", NUMERO_DECIMAL),
+    }
+    cuidado = (
+        "Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. "
+        "Uso interno, licença a confirmar."
+    )
+
+    def tabela(
+        sigla: str,
+        descricao: str,
+        colunas: dict[str, tuple[str, str]],
+        fonte: str,
+        frequencia: str,
+        nome: str,
+    ) -> Tabela:
+        return Tabela(
+            descricao=f"{descricao} {cuidado}",
+            onde=f"Parquet em `<acervo>/base/{nome}/<ano>.parquet` (`scripts/carga_tces.py`)",
+            colunas={**colunas, **comum},
+            fonte=fonte,
+            familia_da_fonte=f"tce-{sigla}",
+            frequencia=frequencia,
+            atraso="Sem data de publicação na fonte: a linha vale desde o download",
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+        )
+
+    anual = "Anual (um pedido por ano; refazer o ano corrente a cada trimestre)"
+    return {
+        "tce_pe_contratos": tabela(
+            "pe",
+            "Contratos do TCE-PE (estaduais e municipais) por contratado.",
+            contratos_pe,
+            "TCE-PE, API Dados Abertos (`Contratos`)",
+            anual,
+            "tce_pe_contratos",
+        ),
+        "tce_pe_aditivos": tabela(
+            "pe",
+            "Termos aditivos dos contratos do TCE-PE por contratado.",
+            aditivos_pe,
+            "TCE-PE, API Dados Abertos (`TermoAditivo`)",
+            anual,
+            "tce_pe_aditivos",
+        ),
+        "tce_sp_despesas": tabela(
+            "sp",
+            "Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha.",
+            sp,
+            "TCE-SP, Portal da Transparência Municipal",
+            "Mensal por município (645 x 12 pedidos por ano, com pausa)",
+            "tce_sp_despesas",
+        ),
+        "tce_ce_contratos": tabela(
+            "ce",
+            "Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data.",
+            ce,
+            "TCE-CE, SIM (arquivos postos à mão; sem coleta automática ainda)",
+            "Sem rotina: carga manual de arquivos baixados",
+            "tce_ce_contratos",
+        ),
+        "tce_rs_contratos": tabela(
+            "rs",
+            "Contratos do LicitaCon do TCE-RS por contratado (só `contrato.csv`; `pessoas.csv` nunca é aberto).",
+            rs,
+            "TCE-RS, dados abertos (LicitaCon, um ZIP por órgão)",
+            "Mensal (índice do CKAN e um ZIP por órgão, com retomada)",
+            "tce_rs_contratos",
+        ),
+    }
+
+
 def _tabelas_dos_incentivos() -> dict[str, Tabela]:
     """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE e RDE-IED."""
     situacao = {
@@ -5245,6 +5421,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_financiamentos(),
     **_tabelas_da_cmed(),
     **_tabelas_do_cnes(),
+    **_tabelas_dos_tces(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -7404,6 +7581,7 @@ _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista nest
 _CNES = (
     "2026-11-04"  # o CNES por competência entrou no arquivista neste dia (linha 654)
 )
+_TCES = "2026-11-04"  # os contratos dos TCEs entraram na base neste dia (linha 652)
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
@@ -7552,6 +7730,11 @@ _CONTRATO = {
         datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
         historico_desde=_CNES,
     ),
+    "tce_pe_contratos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_contrato', 'cnpj'), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
+    "tce_pe_aditivos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_contrato', 'numero_aditivo', 'ano_aditivo', 'cnpj'), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
+    "tce_sp_despesas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('municipio', 'mes', 'evento', 'numero_empenho', 'cnpj', 'data_emissao', 'valor'), datas={"aconteceu_em": "data_emissao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
+    "tce_ce_contratos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_municipio', 'numero_contrato', 'data_contrato', 'cnpj'), datas={"aconteceu_em": "data_contrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
+    "tce_rs_contratos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_orgao', 'numero_licitacao', 'ano_licitacao', 'numero_contrato', 'ano_contrato', 'cnpj'), datas={"aconteceu_em": "data_assinatura", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
