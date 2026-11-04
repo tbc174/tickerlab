@@ -109,6 +109,9 @@ class GraficoDaTela:
     origem: str  # "modelo" ou "regras" (a reserva)
     pontos: PontosDoGrafico
     escala: Escala
+    # a seção do relatório onde o gráfico entra, no fim dela (o relatório do setor não tem texto
+    # com parágrafos para prender o gráfico); vazio no da empresa
+    secao: str = ""
 
 
 @dataclass(frozen=True)
