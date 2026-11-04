@@ -79,7 +79,12 @@ def pasta_das_analises() -> Path:
 
 def _ler_guardada(cnpj: str, pasta: Path) -> dict[str, Any] | None:
     """O arquivo do lote do CNPJ, ou None se não há, é grande demais ou está fora do formato."""
-    caminho = pasta / f"{re.sub(r'\D', '', cnpj)}.json"
+    return ler_lote(re.sub(r"\D", "", cnpj), pasta)
+
+
+def ler_lote(nome: str, pasta: Path) -> dict[str, Any] | None:
+    """O arquivo do lote (`<nome>.json`: o CNPJ só com algarismos, ou `setor-<chave>`), ou None."""
+    caminho = pasta / f"{nome}.json"
     try:
         if caminho.stat().st_size > TAMANHO_MAXIMO:
             log.warning("análise grande demais: %s", caminho)
@@ -290,7 +295,7 @@ def _analise_a_mostrar(
     return mostrada, publicada, None
 
 
-def _escolha_publicada(
+def escolha_publicada(
     guardada: dict[str, Any], ampliada: dict[str, Any], publicada: saida.Analise
 ) -> gr.Escolha:
     """A escolha do modelo, se foi feita para esta ficha e este texto; senão, nenhuma."""
@@ -340,7 +345,7 @@ def _graficos_a_mostrar(
     vista = ampliada if e_pro else _sem_o_dossie(ampliada)
     escolha = SEM_ESCOLHA
     if publicada is not None:
-        escolha = _escolha_publicada(guardada, ampliada, publicada)
+        escolha = escolha_publicada(guardada, ampliada, publicada)
         escolha = _ancorada_no_mesmo_texto(escolha, publicada, mostrada)
     # a porta 2 julgou antes de publicar (o passo `publicar` só grava o que passou nela); a porta 1
     # confere de novo, contra a ficha que quem lê pode ver

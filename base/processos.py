@@ -1,4 +1,4 @@
-"""Processos judiciais por CNPJ (plano de 03/11/2026, PRs 1 e 1b; ADR 0121): as comunicações do DJEN
+"""Processos judiciais por CNPJ (plano de 03/11/2026, PRs 1, 1b e 1c; ADR 0121): as comunicações do DJEN
 que o arquivista guardou (`base/arquivo/djen.py`) nas tabelas `processos_comunicacoes` (uma linha por
 comunicação), `processos_partes` (as companhias abertas e os órgãos públicos de cada uma) e `processos`
 (uma linha por processo, com a classe pela TPU do CNJ, `base/tpu.py`).
@@ -27,6 +27,12 @@ Lê só o que já está no acervo (não baixa nada).
 - **A tabela `processos`** guarda só o que a primeira comunicação diz (tribunal, órgão, classe) e o
   dia da ligação: o que muda com o tempo (a classe que vira cumprimento de sentença, a última
   comunicação) se lê nas comunicações.
+- **Citados nas notas da DFP** (`processos_nas_notas`, PR 1c): o número de processo que a própria
+  companhia escreveu nas notas explicativas (`notas_dfp`), conferido pelo dígito, vale a partir da
+  entrega daquela versão da DFP. Numa amostra de 29 DFPs de 2025, 9 citavam números (37 no total): é o
+  processo que a companhia achou grande o bastante para contar. Número da Justiça do Trabalho fica de
+  fora também aqui.
+- **Contagens** (`contagens`): por companhia e por ano da ligação, sem olhar o futuro, para a ficha.
 
 Limites: a busca é pelo nome, então processo em que a companhia aparece com outro nome (sigla, nome
 antigo) não vem; companhia fechada e controlada sem registro na CVM ficam de fora; o histórico começa
@@ -44,17 +50,25 @@ from typing import Any
 import pandas as pd
 import sqlalchemy as sa
 
-from base import numero_cnj, tpu
+from base import numero_cnj, porta, tpu
 from base import retratos as motor
 from base.arquivo import djen
 from base.cadastro import cadastro_do_acervo
 from base.cnpj import normalizar_cnpj
-from base.parquet import LINHAGEM, gravar_se_mudou, origens_gravadas
+from base.parquet import (
+    LINHAGEM,
+    arquivos_atuais,
+    gravar_se_mudou,
+    origem_de_tabela,
+    origens_gravadas,
+)
 from src.versao_do_codigo import versao_do_codigo
 
 TABELA_DAS_COMUNICACOES = "processos_comunicacoes"
 TABELA_DAS_PARTES = "processos_partes"
 TABELA_DOS_PROCESSOS = "processos"
+TABELA_DAS_CITACOES = "processos_nas_notas"
+TABELA_DAS_NOTAS = "notas_dfp"
 ACHADA_PELO_NOME = "nome"
 ACHADA_PELO_NUMERO = "numero"
 SEPARADOR_DO_CAMINHO = " > "
@@ -67,6 +81,11 @@ PESSOA_OU_DESCONHECIDA = "pessoa_ou_desconhecida"
 POLOS = {"A": "ativo", "P": "passivo"}
 OUTRO_POLO = "outro"
 
+# o número como o PDF entrega: com a máscara (às vezes quebrada por espaço ou linha) ou só os algarismos
+_NUMERO_COM_MASCARA = re.compile(
+    r"(?<!\d)\d{7}\s*-\s*\d{2}\s*\.\s*\d{4}\s*\.\s*\d\s*\.\s*\d{2}\s*\.\s*\d{4}(?!\d)"
+)
+_NUMERO_SEM_MASCARA = re.compile(r"(?<!\d)\d{20}(?!\d)")
 # o que vem depois de " _" é o apelido que o tribunal pôs ("COMPANHIA X _CPFL")
 _APELIDO = re.compile(r"\s+_.*$")
 _FORA_DO_NOME = re.compile(r"[^A-Z0-9 ]")
@@ -144,7 +163,29 @@ COLUNAS_DOS_PROCESSOS = [
     "disponivel_em",
     "visto_em",
 ]
+COLUNAS_DAS_CITACOES = [
+    "numero_processo",
+    "ano_do_processo",
+    "justica",
+    "cnpj",
+    "empresa",
+    "referencia",
+    "versao",
+    "pagina",
+    "link",
+    "disponivel_em",
+    "origem_sha256",
+    "origem_coletada_em",
+]
 ORDEM_DAS_COMUNICACOES = ["disponivel_em", "id_na_fonte"]
+ORDEM_DAS_CITACOES = [
+    "disponivel_em",
+    "cnpj",
+    "referencia",
+    "versao",
+    "pagina",
+    "numero_processo",
+]
 ORDEM_DOS_PROCESSOS = ["disponivel_em", "numero_processo"]
 ORDEM_DAS_PARTES = [
     "disponivel_em",
@@ -153,6 +194,7 @@ ORDEM_DAS_PARTES = [
     "parte",
 ]
 DATAS = [
+    "referencia",
     "cancelada_em",
     "disponibilizada_em",
     "primeira_comunicacao",
@@ -428,6 +470,147 @@ def tabela_dos_processos(
         index=tabela.index,
     )
     return tabela.assign(**{c: da_tpu[c] for c in da_tpu})[colunas]
+
+
+# --- os processos citados nas notas da DFP e as contagens (PR 1c) ---------------------------------
+
+
+def numeros_no_texto(texto: str) -> list[str]:
+    """Os números de processo do texto com o dígito certo, com a máscara e sem repetir; sem os da
+    Justiça do Trabalho."""
+    candidatos = {
+        *_NUMERO_COM_MASCARA.findall(texto),
+        *_NUMERO_SEM_MASCARA.findall(texto),
+    }
+    numeros = set()
+    for candidato in candidatos:
+        try:
+            numero = numero_cnj.decodificar(candidato)
+        except numero_cnj.NumeroInvalido:
+            continue
+        if numero.segmento != numero_cnj.JUSTICA_DO_TRABALHO:
+            numeros.add(numero.formatado)
+    return sorted(numeros)
+
+
+def tabela_das_citacoes(notas: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por número de processo e página das notas da DFP (`notas_dfp`), sem o texto.
+
+    Cada versão da DFP é um documento: a reapresentação cita de novo e vale a partir da própria
+    entrega (`disponivel_em` da página)."""
+    da_pagina = [c for c in COLUNAS_DAS_CITACOES if c in notas.columns]
+    linhas = []
+    for pagina in notas.to_dict("records"):
+        for formatado in numeros_no_texto(str(pagina.get("texto") or "")):
+            numero = numero_cnj.decodificar(formatado)
+            linhas.append(
+                {c: pagina[c] for c in da_pagina}
+                | {
+                    "numero_processo": formatado,
+                    "ano_do_processo": numero.ano,
+                    "justica": numero.nome_do_segmento,
+                }
+            )
+    return (
+        pd.DataFrame(linhas, columns=COLUNAS_DAS_CITACOES)
+        .sort_values(ORDEM_DAS_CITACOES, kind="stable")
+        .reset_index(drop=True)
+    )
+
+
+def contagens(
+    partes: pd.DataFrame,
+    dos_processos: pd.DataFrame,
+    citacoes: pd.DataFrame,
+    como_era_em: object,
+) -> pd.DataFrame:
+    """Por companhia e por ano: quantos processos, em que polo, de que ramo e quantos citados nas
+    notas da DFP, só com o que era público em `como_era_em`.
+
+    O processo conta no ano da primeira comunicação que o liga à companhia, com o polo dela nessa
+    comunicação; citado é o que a própria companhia citou numa DFP entregue até o dia."""
+    dia = pd.Timestamp(como_era_em)
+    ramos = sorted(set(tpu.RAMOS.values()))
+    contados = [
+        "processos",
+        "como_autora",
+        "como_re",
+        *ramos,
+        "sem_ramo",
+        "citados_na_dfp",
+    ]
+    da_companhia = partes[
+        (partes["tipo_parte"] == COMPANHIA)
+        & partes["cnpj"].notna()
+        & (pd.to_datetime(partes["disponivel_em"]) <= dia)
+    ]
+    if da_companhia.empty:
+        return pd.DataFrame(columns=["cnpj", "ano", *contados])
+    ligacoes = (
+        da_companhia.assign(disponivel_em=pd.to_datetime(da_companhia["disponivel_em"]))
+        .sort_values("disponivel_em", kind="stable")
+        .drop_duplicates(["cnpj", "numero_processo"])
+        .merge(
+            dos_processos[["numero_processo", "ramo"]], on="numero_processo", how="left"
+        )
+    )
+    citados = citacoes[pd.to_datetime(citacoes["disponivel_em"]) <= dia]
+    ja_citados = set(zip(citados["cnpj"], citados["numero_processo"], strict=True))
+    ligacoes = ligacoes.assign(
+        ano=ligacoes["disponivel_em"].dt.year,
+        processos=True,
+        como_autora=ligacoes["polo"] == POLOS["A"],
+        como_re=ligacoes["polo"] == POLOS["P"],
+        **{ramo: ligacoes["ramo"] == ramo for ramo in ramos},
+        sem_ramo=ligacoes["ramo"].isna(),
+        citados_na_dfp=[
+            par in ja_citados
+            for par in zip(ligacoes["cnpj"], ligacoes["numero_processo"], strict=True)
+        ],
+    )
+    return ligacoes.groupby(["cnpj", "ano"])[contados].sum().astype(int).reset_index()
+
+
+def montar_citacoes(pasta: Path, agora: datetime) -> dict[str, int]:
+    """`<pasta>/processos_nas_notas/dfp.parquet`, das notas da DFP lidas pela porta, um ano por vez.
+
+    Vazio (nada gravado) se a base ainda não tem `notas_dfp`; `JA_MONTADO` se as notas não mudaram."""
+    anos = arquivos_atuais(pasta / TABELA_DAS_NOTAS)
+    if not anos:
+        return {}
+    origens = [origem_de_tabela(ano, pasta) for ano in anos]
+    destino = pasta / TABELA_DAS_CITACOES / "dfp"
+    if origens_gravadas(destino) == origens:
+        return JA_MONTADO
+    da_nota = [
+        c
+        for c in COLUNAS_DAS_CITACOES
+        if c not in ("numero_processo", "ano_do_processo", "justica")
+    ]
+    paginas, por_ano = 0, []
+    with porta.abrir(pasta) as base:
+        for ano in anos:
+            notas = base.ler(
+                TABELA_DAS_NOTAS,
+                filtros={"ano_do_arquivo": int(ano.stem)},
+                colunas=[*da_nota, "texto"],
+            )
+            paginas += len(notas)
+            por_ano.append(tabela_das_citacoes(notas))
+    citacoes = pd.concat(por_ano, ignore_index=True)
+    gravar_se_mudou(
+        _para_gravar(citacoes, ORDEM_DAS_CITACOES, agora),
+        destino,
+        origens,
+        ORDEM_DAS_CITACOES,
+        carimbos=LINHAGEM,
+    )
+    return {
+        "paginas": paginas,
+        "citacoes": len(citacoes),
+        "processos": citacoes["numero_processo"].nunique(),
+        "companhias": citacoes["cnpj"].nunique(),
+    }
 
 
 def _para_gravar(

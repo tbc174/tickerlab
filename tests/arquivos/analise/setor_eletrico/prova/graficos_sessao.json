@@ -1,0 +1,57 @@
+{
+ "graficos": [
+  {
+   "tipo": "linha_no_tempo",
+   "tabela": "concentracao.concentracao_aneel_consumidores",
+   "eixo": "Ano",
+   "colunas": ["CR4 (4 maiores)"],
+   "titulo": "Fatia dos maiores grupos, por ano",
+   "parte": "tamanho_e_concentracao",
+   "paragrafo": 1,
+   "por_que": {
+    "texto": "Mostra a fatia dos maiores quase parada, de 54,3% em 2017 a 54,2% em 2025, enquanto o mercado ganhou participantes.",
+    "notas": [
+     "concentracao.concentracao_aneel_consumidores.9",
+     "concentracao.concentracao_aneel_consumidores.1"
+    ],
+    "contas": []
+   }
+  },
+  {
+   "tipo": "barras_no_tempo",
+   "tabela": "concentracao.concentracao_aneel_consumidores",
+   "eixo": "Ano",
+   "colunas": ["Participantes"],
+   "titulo": "Quantos participantes a agência conta, por ano",
+   "parte": "tamanho_e_concentracao",
+   "paragrafo": 2,
+   "por_que": {
+    "texto": "Mostra a lista subindo de 67 participantes em 2017 para 81 em 2025, sem mexer na concentração.",
+    "notas": [
+     "concentracao.concentracao_aneel_consumidores.9",
+     "concentracao.concentracao_aneel_consumidores.1"
+    ],
+    "contas": []
+   }
+  },
+  {
+   "tipo": "barras_por_categoria",
+   "tabela": "lado_a_lado.lado_a_lado",
+   "eixo": "Companhia",
+   "colunas": ["Parte do mercado: Consumidores atendidos pelas distribuidoras (ANEEL)"],
+   "titulo": "Parte do mercado de consumidores, por companhia",
+   "parte": "lado_a_lado",
+   "paragrafo": 1,
+   "por_que": {
+    "texto": "Mostra a Neoenergia com 17,6% e a Equatorial com 15,5% dos consumidores, bem à frente da CPFL, com 11,1%.",
+    "notas": [
+     "lado_a_lado.lado_a_lado.30",
+     "lado_a_lado.lado_a_lado.27",
+     "lado_a_lado.lado_a_lado.17"
+    ],
+    "contas": []
+   }
+  }
+ ],
+ "destaques": []
+}

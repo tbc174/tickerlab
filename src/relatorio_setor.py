@@ -20,6 +20,8 @@ import sqlalchemy as sa
 from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src import cruzamentos, dossie, fundamentalista, fundamentos
+from src.analise_escrita.exibicao_do_setor import graficos_do_setor
+from src.analise_escrita.modelo_da_tela import GraficoDaTela
 from src.banco.demonstracoes import dados_da_empresa
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
 from src.contestacao import com_a_contestacao
@@ -751,6 +753,8 @@ class RelatorioDoSetor:
     fontes: list[str]
     limites: list[str]
     avisos: list[str] = field(default_factory=list)
+    # os gráficos escolhidos para este setor (plano de 23/10/2026, PR 4); entram no fim da seção
+    graficos: tuple[GraficoDaTela, ...] = ()
 
     def como_dict(self) -> dict:
         return para_json(asdict(self))  # type: ignore[return-value]
@@ -1079,7 +1083,10 @@ def relatorio_do_setor(
 ) -> RelatorioDoSetor:
     """O relatório do setor para o plano de quem pede; `SetorDesconhecidoError` fora da lista."""
     entradas = entradas_do_setor(conexao, chave, pasta)
-    return montar_relatorio_do_setor(entradas, plano, hoje or datetime.now(FUSO).date())
+    hoje = hoje or datetime.now(FUSO).date()
+    relatorio = montar_relatorio_do_setor(entradas, plano, hoje)
+    graficos = graficos_do_setor(relatorio.como_dict(), hoje)
+    return replace(relatorio, graficos=graficos)
 
 
 @dataclass(frozen=True)
