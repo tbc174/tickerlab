@@ -119,6 +119,16 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     ),
     "senado": Orgao("Senado Federal (Agência Senado)", "https://www12.senado.leg.br/"),
     "tce": Orgao("TCE-PR (Tribunal de Contas do Paraná)", "https://pit.tce.pr.gov.br/"),
+    # linha 658: portais CKAN estaduais e da capital de SP
+    "goias": Orgao(
+        "Governo de Goiás (dados abertos)", "https://dadosabertos.go.gov.br/"
+    ),
+    "msestado": Orgao(
+        "Governo de Mato Grosso do Sul (dados abertos)", "https://dados.ms.gov.br/"
+    ),
+    "spcapital": Orgao(
+        "Prefeitura de São Paulo (dados abertos)", "https://dados.prefeitura.sp.gov.br/"
+    ),
     "mapbiomas": Orgao("MapBiomas (uso da terra)", "https://brasil.mapbiomas.org/"),
     # café e agricultura
     "cecafe": Orgao("Cecafé (exportadores de café)", "https://www.cecafe.com.br/"),
