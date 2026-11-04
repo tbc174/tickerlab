@@ -55,6 +55,7 @@ FAMILIA_DO_ENDERECO = {
     "iextrading.com/": "iex",
     "arquivos.receitafederal.gov.br/Dados/Obrigacoes_Acessorias/": "rfb-renuncias",  # DIRBI e ECF
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
+    "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
@@ -92,6 +93,7 @@ FAMILIA_DO_ENDERECO = {
     "api.kraken.com/": "kraken",
     "assets.kraken.com/": "kraken",
     "api.mercadobitcoin.net/": "mb",
+    "apidadosabertos.tce.rn.gov.br/": "tce-rn",  # unidades, licitações e participantes (linha 662)
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",
