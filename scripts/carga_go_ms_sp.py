@@ -58,7 +58,7 @@ PORTAIS = {
     "go": (
         "https://dadosabertos.go.gov.br",
         "licencas ambientais ipe",
-        "licenc",
+        "licencas-ambientais-ipe",  # o pacote do SGA (outro sistema) repete os meses de 2026
     ),
     "ms": ("https://dados.ms.gov.br", "despesas credor", "despesa"),
     "sp": (
