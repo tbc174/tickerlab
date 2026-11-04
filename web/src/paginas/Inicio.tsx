@@ -1,7 +1,7 @@
 // Página inicial para quem analisa empresas (plano do site para quem analisa, 18/10/2026, PR 5): a
 // assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
-// estudo do dia, a vitrine das análises abertas, os cruzamentos da base (PR 6), as quatro regras da base, as fontes com licença e
-// os planos. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
+// estudo do dia, a vitrine das análises abertas, o que a base liga pelo CNPJ, os cruzamentos da base (PR 6), as quatro regras
+// da base, as fontes com licença e os planos. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
 import { BuscaDaBase } from "../site/BuscaDaBase";
 import { baseEmNumeros, catalogo } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
@@ -9,6 +9,7 @@ import { Cruzamentos } from "../site/Cruzamentos";
 import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
 import { Fundo } from "../site/Fundo";
 import { ancora } from "../site/Leitura";
+import { LigadoPeloCnpj } from "../site/LigadoPeloCnpj";
 import { ASSINATURA, REGRAS_DA_BASE, linkDoApp } from "../site/textos";
 import { Vitrine } from "../site/Vitrine";
 import {
@@ -35,9 +36,9 @@ const SUBTITULO =
 const SEM_RESPOSTA = "licença em consulta";
 const milhares = (n: number) => n.toLocaleString("pt-BR");
 
-/** Os três números da abertura, cada um com a conta recolhida ao lado. */
+/** Os quatro números da abertura, cada um com a conta recolhida ao lado. */
 function PainelDaBase() {
-  const { totais } = catalogo;
+  const { totais, ligado_pelo_cnpj: ligado } = catalogo;
   const { numeros, medido_em_curto } = baseEmNumeros;
   return (
     <div className="v2-painel-pilha">
@@ -58,6 +59,17 @@ function PainelDaBase() {
                   Contamos as tabelas do catálogo de contratos da base. Cada contrato diz a fonte,
                   a licença, as datas e a frequência de atualização; tabela nova entra na conta
                   sozinha.
+                </p>
+              </ComoFoiCalculado>
+            </dd>
+          </div>
+          <div>
+            <dt>tabelas ligadas pelo CNPJ</dt>
+            <dd className="v2-numero">{milhares(ligado.tabelas)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  {`Contamos as tabelas do catálogo com uma coluna de CNPJ (ou da raiz dele), mais as da rede que liga empresas, fundos e tickers. Vêm de ${ligado.orgaos} órgãos públicos.`}
                 </p>
               </ComoFoiCalculado>
             </dd>
@@ -226,6 +238,7 @@ export function Inicio() {
       <Heroi />
       <EstudoDoDia />
       <Vitrine />
+      <LigadoPeloCnpj />
       <Cruzamentos />
       <RegrasDaBase />
       <FontesDaBase />
