@@ -2058,6 +2058,17 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-PE: licença não localizada; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-PE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
       "modulos": [
@@ -2267,6 +2278,39 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-CE: licença não localizada; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-CE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-RS",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-SP: licença não localizada; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-SP",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "modulos": [
@@ -2298,7 +2342,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 28
+      "tabelas": 33
     },
     {
       "chave": "credito_e_fidc",
@@ -6681,6 +6725,56 @@
       "tabela": "cnes_competencias"
     },
     {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Contratos do TCE-PE (estaduais e municipais) por contratado.",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "em consulta",
+      "tabela": "tce_pe_contratos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Termos aditivos dos contratos do TCE-PE por contratado.",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "em consulta",
+      "tabela": "tce_pe_aditivos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-SP",
+      "situacao": "em consulta",
+      "tabela": "tce_sp_despesas"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-CE",
+      "situacao": "em consulta",
+      "tabela": "tce_ce_contratos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Contratos do LicitaCon do TCE-RS por contratado (só contrato.csv; pessoas.csv nunca é aberto).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-RS",
+      "situacao": "em consulta",
+      "tabela": "tce_rs_contratos"
+    },
+    {
       "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
@@ -7044,9 +7138,9 @@
   "totais": {
     "familias": 104,
     "familias_em_uso": 41,
-    "fontes": 34,
-    "fontes_em_consulta": 11,
+    "fontes": 38,
+    "fontes_em_consulta": 15,
     "modulos": 6,
-    "tabelas": 123
+    "tabelas": 128
   }
 }

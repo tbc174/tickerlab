@@ -1,0 +1,95 @@
+{
+  "tabela": "tce_sp_despesas",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "municipio": {
+      "descricao": "Município da consulta, como no endereço da fonte (sem acento, com hífen)",
+      "unidade": "texto"
+    },
+    "ano": {
+      "descricao": "Ano da consulta",
+      "unidade": "texto"
+    },
+    "mes": {
+      "descricao": "Mês por extenso, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "evento": {
+      "descricao": "Evento da despesa (empenhado, liquidado, pago): cada um é uma linha e eles não se somam",
+      "unidade": "texto"
+    },
+    "numero_empenho": {
+      "descricao": "Número do empenho, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "data_emissao": {
+      "descricao": "Dia da emissão da despesa",
+      "unidade": "data (dia)"
+    },
+    "valor": {
+      "descricao": "Valor do evento, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "tribunal": {
+      "descricao": "Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs`",
+      "unidade": "texto"
+    },
+    "tabela": {
+      "descricao": "Assunto da linha dentro do tribunal (contratos, aditivos, despesas)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "municipio",
+    "mes",
+    "evento",
+    "numero_empenho",
+    "cnpj",
+    "data_emissao",
+    "valor"
+  ],
+  "datas": {
+    "aconteceu_em": "data_emissao",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "data_emissao": "aconteceu_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": true,
+  "frequencia": "Mensal por município (645 x 12 pedidos por ano, com pausa)",
+  "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
+}
