@@ -1271,14 +1271,16 @@
       "coletas": [
         "transferegov-especiais",
         "transferegov-ted",
-        "transferegov-fundo-a-fundo"
+        "transferegov-fundo-a-fundo",
+        "transferegov-especiais-pagamentos"
       ],
       "familia": "transferegov",
       "licencas": [
-        "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)"
+        "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+        "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)"
       ],
       "link": "https://www.gov.br/transferegov/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "Transferegov (Ministério da Gestão)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
@@ -1286,6 +1288,9 @@
     },
     {
       "coletas": [
+        "pncp-contratos-atualizados",
+        "pncp-atas-atualizadas",
+        "pncp-contratacoes-atualizadas",
         "pncp-contratos"
       ],
       "familia": "pncp",
@@ -1875,6 +1880,7 @@
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "modulos": [
         "credito_e_fidc",
+        "governo_e_sancoes",
         "ma",
         "mercado_e_empresas",
         "rede"
@@ -1882,7 +1888,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 60
+      "tabelas": 61
     },
     {
       "historico_desde": "2026-10-14",
@@ -2231,7 +2237,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 23
+      "tabelas": 24
     },
     {
       "chave": "credito_e_fidc",
@@ -4797,6 +4803,34 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "transferegov-especiais-pagamentos",
+      "licenca": "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratos-atualizados",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-atas-atualizadas",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratacoes-atualizadas",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
       "id": "pncp-contratos",
       "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
       "marca": "a_confirmar",
@@ -6599,6 +6633,16 @@
       "tabela": "notas_dfp"
     },
     {
+      "atraso": "O da DFP: cada versão vale a partir da própria entrega à CVM",
+      "frase": "Processos judiciais que a própria companhia cita nas notas explicativas da DFP: uma linha por número de processo e página de cada versão.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "processos_nas_notas"
+    },
+    {
       "atraso": null,
       "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
       "frequencia": "Anual",
@@ -6875,6 +6919,6 @@
     "fontes": 31,
     "fontes_em_consulta": 9,
     "modulos": 6,
-    "tabelas": 116
+    "tabelas": 117
   }
 }

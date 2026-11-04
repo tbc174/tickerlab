@@ -68,6 +68,7 @@ LICENCAS = {
     # licitações e contratos (lidos em 22/10/2026): só pessoa jurídica no acervo (LGPD, ADR 0088)
     "seges": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
     "seges-pesquisa-precos": "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)",
+    "transferegov-especiais-pagamentos": "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)",
     "comprasgov": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
     "transferegov": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
     "pncp": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
@@ -281,6 +282,7 @@ REVENDA = {
     "ccee": VENDAVEL_COM_ATRIBUICAO,
     "seges": VENDAVEL_COM_ATRIBUICAO,
     "seges-pesquisa-precos": A_CONFIRMAR,  # preço de referência (ADR 0008)
+    "transferegov-especiais-pagamentos": A_CONFIRMAR,  # API nova sem licença lida (rodada de 03/11/2026): uso interno
     "comprasgov": VENDAVEL_COM_ATRIBUICAO,
     "transferegov": VENDAVEL_COM_ATRIBUICAO,
     "pncp": A_CONFIRMAR,
@@ -576,6 +578,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "seges-pesquisa-precos",
             "comprasgov",
             "transferegov",
+            "transferegov-especiais-pagamentos",
             "pncp",
             "tcu",
             "govmg",

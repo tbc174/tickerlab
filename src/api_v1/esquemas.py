@@ -912,6 +912,7 @@ class GraficoDaAnaliseV1(BaseModel):
     origem: str  # "modelo" (escolhido pela IA) ou "regras" (a reserva)
     pontos: PontosDoGraficoV1
     escala: EscalaDoGraficoV1
+    secao: str = ""  # no relatório do setor: a seção em cujo fim o gráfico entra
 
 
 class DestaqueDaAnaliseV1(BaseModel):
@@ -1078,6 +1079,8 @@ class RelatorioDoSetorV1(BaseModel):
     fontes: list[str]
     limites: list[str]
     avisos: list[str]
+    # escolhidos para o setor, cada um no fim da seção `secao`; vazia sem seção com tabela
+    graficos: list[GraficoDaAnaliseV1] = []
 
 
 def _tabela_ja_escrita(chave: str, linhas: list[dict[str, str]]) -> TabelaDoRelatorioV1:

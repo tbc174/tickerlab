@@ -8,6 +8,8 @@ dossiê da base, as seções com números saem trancadas, igual na tela. "Limite
 
 from datetime import datetime
 
+from src import graficos_do_relatorio as gdr
+from src.analise_escrita.modelo_da_tela import GraficoDaTela
 from src.estilos_pdf import PADRAO, Estilo
 from src.relatorio_empresa_pdf import FUSO, _titulo_da_tabela, escrever_secao
 from src.relatorio_pdf import RelatorioPDF
@@ -51,6 +53,30 @@ def _tabela_ja_escrita(pdf: RelatorioPDF, chave: str, linhas: list[dict]) -> Non
         pdf.tabela_de_texto(cabecalho, corpo)
 
 
+def _grafico(pdf: RelatorioPDF, grafico: GraficoDaTela, estilo: Estilo) -> None:
+    """O gráfico com o achado embaixo, em letra miúda (as linhas dele estão na tabela da seção)."""
+    pdf.imagem(gdr.png(grafico.pontos, estilo))
+    pdf.paragrafo(grafico.por_que.texto, apagado=True)
+
+
+def _graficos_da_secao(
+    pdf: RelatorioPDF, relatorio: RelatorioDoSetor, chave: str, estilo: Estilo
+) -> None:
+    for grafico in relatorio.graficos:
+        if grafico.secao == chave:
+            _grafico(pdf, grafico, estilo)
+
+
+def _graficos_sem_secao(
+    pdf: RelatorioPDF, relatorio: RelatorioDoSetor, estilo: Estilo
+) -> None:
+    """O gráfico de uma seção que o relatório não traz não se perde: vem antes das fontes."""
+    chaves = {s.chave for s in relatorio.secoes}
+    for grafico in relatorio.graficos:
+        if grafico.secao not in chaves:
+            _grafico(pdf, grafico, estilo)
+
+
 def _capa(relatorio: RelatorioDoSetor, gerado_em: datetime) -> list[tuple[str, str]]:
     linhas = [("Setor", relatorio.nome)]
     if relatorio.como_era_em:
@@ -82,6 +108,8 @@ def relatorio_do_setor(
         pdf.aviso_destacado(aviso)
     for secao in relatorio.secoes:
         escrever_secao(pdf, secao, estilo, _tabela_ja_escrita)
+        _graficos_da_secao(pdf, relatorio, secao.chave, estilo)
+    _graficos_sem_secao(pdf, relatorio, estilo)
     if relatorio.fontes:
         pdf.paragrafo("Fontes: " + "; ".join(relatorio.fontes) + ".", apagado=True)
     pdf.secao(TITULO_DOS_LIMITES, reservar=40, numerada=True)
