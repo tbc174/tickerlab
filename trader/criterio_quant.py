@@ -34,7 +34,7 @@ from src import acaso
 from trader import avaliacao
 from trader.criterio import Item, Veredito
 from trader.holdout import FIM_DO_DESENVOLVIMENTO, hash_do_texto
-from trader.registro import RAIZ, Registro
+from trader.registro import RAIZ, Registro, pasta_da_pesquisa_quant, pasta_das_copias
 from trader.validacao import bootstrap_diferenca_de_sharpe, bootstrap_do_sharpe
 
 __all__ = ["FIM_DO_DESENVOLVIMENTO"]
@@ -104,6 +104,22 @@ CANDIDATOS = {
     "P0-2": "BOVA11",
     "P0-1": "BTC e ETH 50/50",
 }
+
+
+def abrir_registro(caminho: Path | None = None) -> Registro:
+    """O registro único das P0 (seção 10). O de verdade (sem `caminho`) guarda uma cópia a cada escrita."""
+    if caminho is not None:
+        return Registro(
+            caminho,
+            familias=tuple(ORCAMENTO_POR_FICHA),
+            orcamento=ORCAMENTO_DE_TENTATIVAS,
+        )
+    return Registro(
+        pasta_da_pesquisa_quant() / "registro.db",
+        familias=tuple(ORCAMENTO_POR_FICHA),
+        orcamento=ORCAMENTO_DE_TENTATIVAS,
+        copias=pasta_das_copias(),
+    )
 
 
 class PreRegistroAlteradoError(RuntimeError):

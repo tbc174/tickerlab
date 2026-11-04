@@ -30,9 +30,11 @@ import pandas as pd
 from src import bcb
 from src import cdi as modulo_cdi
 from trader.estrategias.carteira_rp import ATIVOS_DE_RISCO
-from trader.registro import RAIZ
+from trader.registro import RAIZ, pasta_da_pesquisa_quant
 
-PASTA_DA_PESQUISA = RAIZ / "pesquisa_quant"
+PASTA_DA_PESQUISA = (
+    pasta_da_pesquisa_quant()
+)  # fora das cópias do repositório (ver trader/registro.py)
 PASTA_DO_MT5 = RAIZ / "dados_mt5"
 PASTA_DA_CURVA = Path("C:/Users/tiago/TickerLab-Acervo/acervo/base/curva_juros")
 PRAZO_DA_NTNB_EM_ANOS = 5.0
