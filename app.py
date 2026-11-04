@@ -59,6 +59,7 @@ from telas.research.por_dentro import pagina_por_dentro
 from telas.research.precos_de_referencia import pagina_precos_de_referencia
 from telas.research.pulse import pagina_pulse
 from telas.research.relatorio_empresa import pagina_relatorio_empresa
+from telas.research.simulador_de_trava import pagina_simulador_de_trava
 from telas.trade import pagina_trade
 
 configurar_logs()
@@ -174,6 +175,7 @@ FUNCOES_DAS_PAGINAS = {
     "juros_e_inflacao": pagina_juros_e_inflacao,
     "linha_do_tempo": pagina_linha_do_tempo,
     "precos_de_referencia": pagina_precos_de_referencia,
+    "simulador_de_trava": pagina_simulador_de_trava,
     "por_dentro": pagina_por_dentro,
     "donos": pagina_donos,
     "newsletter": pagina_newsletter,

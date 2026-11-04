@@ -517,6 +517,16 @@ PAGINAS = (
         ),
     ),
     Pagina(
+        "simulador_de_trava",
+        "Simulador de trava do café",
+        GRUPO_RESEARCH,
+        ":material/balance:",
+        "A sua produção de café em cada safra desde 2000: sem travar, a termo, no futuro e com "
+        "opção, lado a lado com os riscos, no preço mensal. Nada do que você digita é guardado.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "linha_do_tempo",
         "Linha do tempo",
         GRUPO_RESEARCH,
