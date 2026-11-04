@@ -609,6 +609,18 @@
     "url": "precos-de-referencia"
   },
   {
+    "area": "acompanhar",
+    "chave": "simulador_de_trava",
+    "contrato": null,
+    "descricao": "A sua produção de café em cada safra desde 2000: sem travar, a termo, no futuro e com opção, lado a lado com os riscos, no preço mensal. Nada do que você digita é guardado.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Simulador de trava do café",
+    "url": "simulador-de-trava"
+  },
+  {
     "area": "ativo",
     "chave": "linha_do_tempo",
     "contrato": {
