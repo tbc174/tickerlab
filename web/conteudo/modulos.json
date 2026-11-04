@@ -228,10 +228,10 @@
         "ticker": null
       },
       {
-        "descricao": "A mesma estratégia com parâmetros e períodos diferentes.",
-        "disponivel": false,
+        "descricao": "Treino e teste, walk-forward e o mapa de parâmetros da mesma estratégia, na ficha do Backtest.",
+        "disponivel": true,
         "nome": "Testes de robustez",
-        "pagina_do_app": null,
+        "pagina_do_app": "backtest",
         "pagina_do_site": null,
         "ticker": null
       }
@@ -468,10 +468,10 @@
         "ticker": null
       },
       {
-        "descricao": "Sequências curtas, do primeiro ativo ao primeiro relatório.",
-        "disponivel": false,
+        "descricao": "Três caminhos guiados na página inicial: a primeira análise, a carteira e o primeiro relatório.",
+        "disponivel": true,
         "nome": "Trilhas",
-        "pagina_do_app": null,
+        "pagina_do_app": "inicio",
         "pagina_do_site": null,
         "ticker": null
       }
