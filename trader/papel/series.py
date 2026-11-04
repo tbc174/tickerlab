@@ -328,8 +328,10 @@ def fotografar_di1(entradas: EntradasDoDI1, fechamento: date, primeiro: date) ->
 # Referências do desenvolvimento: Sharpe do excesso da tabela da seção 5 e a maior queda (F1) dos
 # relatórios docs/resultado-carteira-p0-3-tentativa-3.md, resultado-tendencia-cripto-p0-1.md e
 # resultado-tendencia-b3-p0-2.md; os da P0-1b são os da 1ª tentativa (resultado-p0-1b-tentativa-1.md,
-# reprovada: o papel grava a série mesmo assim). A C-1 (candidata e comparação) entra aqui quando a
-# 1ª tentativa dela estiver no main, com o Sharpe e a queda dela.
+# reprovada: o papel grava a série mesmo assim). A C-1 (candidata e comparação) fica fora desta versão
+# do papel (decisão do Tiago em 04/11/2026): os pesos dela pedem 252 pregões de retorno de cada camada,
+# que no início estão no holdout, e quatro camadas da candidata não têm dado diário. Ela volta numa
+# v0.3, com regra de aquecimento própria.
 SERIES: tuple[Serie, ...] = (
     Serie(
         nome="p0_3",

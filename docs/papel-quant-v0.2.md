@@ -10,7 +10,13 @@ Séries gravadas hoje (`trader/papel/series.py`):
 - DI1 (registro 12);
 - P0-1b (registro 18; reprovada na 1ª tentativa, mas a seção 5 grava a série mesmo assim).
 
-A C-1, candidata e comparação, entra quando a 1ª tentativa dela estiver na `main`.
+A C-1, candidata e comparação, fica fora desta versão do papel. O Tiago decidiu isso em 04/11/2026, depois da 1ª
+tentativa dela (as duas carteiras reprovaram). Gravá-la como o texto descreve não dá certo por dois motivos:
+
+- os pesos pedem 252 pregões de retorno de cada camada, que no início do papel estão no holdout;
+- quatro camadas da candidata (F-B3, P0-2 no BOVA11, P0-4 e P0-5) não têm dado diário.
+
+Ela volta numa v0.3, com regra de aquecimento própria.
 
 Nada vai para corretora e nada aqui é recomendação de investimento.
 
