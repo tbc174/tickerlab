@@ -69,8 +69,8 @@ Os dados baixados ficam em `papel/dados/`, fora do Git e separados das pastas da
   - o patrimônio gravado é contado a partir do primeiro fechamento (`_patrimonio_no_papel`).
 
   Nenhum Sharpe nem retorno do holdout é calculado, e o papel não abre `holdout.lock` nem `trader/holdout.py`. Ler
-  esse trecho ainda é uma leitura do período do holdout fora de `trader/holdout.py`, e por isso espera o "pode" do
-  Tiago antes do merge.
+  esse trecho é uma leitura do período do holdout fora de `trader/holdout.py`, que a seção 5 não previa. O Tiago a
+  aprovou em 04/11/2026, só nesta forma: preços do aquecimento, nenhum resultado.
 - **Cortar o futuro não muda o passado.** Há um teste por série: a foto de um dia é a mesma com ou sem os dados dos
   dias seguintes.
 
