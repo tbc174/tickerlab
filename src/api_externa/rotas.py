@@ -11,7 +11,7 @@ mesmo de um CNPJ que não existe, para não dizer qual foi o motivo.
 """
 
 import math
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import date
 from functools import cache
@@ -26,7 +26,7 @@ from base import porta as porta_da_base
 from base.porta import Porta
 from src.api_externa import acesso, lote
 from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organizacao
-from src.api_externa.conjuntos import fundos
+from src.api_externa.conjuntos import Permitido, Servido, demonstracoes, fundos
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import traduzir_chaves
 from src.banco.chaves_da_api import registrar_consumo
@@ -103,7 +103,7 @@ def _retorno_pedido(assumed_return: float | None) -> float | None:
 
 def _portao(
     conexao: sa.Connection, contexto: ContextoDaChave, conjunto: str
-) -> fundos.Permitido:
+) -> Permitido:
     """O contrato da organização e o portão, uma pergunta por fonte e campo dentro do pedido."""
     hoje = acesso.agora().date()
     regras = regras_da_api()
@@ -196,6 +196,35 @@ def lote_de_fundos(pedido: LoteDeFundos, contexto: Chave) -> object:
     return traduzir_chaves(corpo)
 
 
+def _um_pedido(
+    contexto: ContextoDaChave,
+    conjunto: str,
+    ler: Callable[[sa.Connection, Porta], Servido | None],
+) -> object:
+    """Um pedido de dado: lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
+    with obter_engine().begin() as conexao:
+        with _porta(conexao) as porta:
+            servido = ler(conexao, porta)
+        # o 404 sai depois do `with` para o consumo não voltar atrás
+        registrar_consumo(
+            conexao, contexto, conjunto=conjunto, finalidade=FINALIDADE,
+            linhas=0 if servido is None else servido.linhas, negado=servido is None,
+            agora=acesso.agora(),
+        )  # fmt: skip
+    if servido is None:
+        raise HTTPException(status_code=404, detail=NAO_DISPONIVEL)
+    corpo = servido.corpo | {"fontes": fontes_da_resposta(servido.fontes)}
+    return traduzir_chaves(corpo)
+
+
+def _cnpj_pedido(cnpj: str) -> str:
+    """O CNPJ do endereço, só com os números; 400 se não é um CNPJ."""
+    lido = lote.ler_lote([cnpj])
+    if not lido.validos:
+        raise _recusa("invalid_cnpj")
+    return lido.validos[0]
+
+
 @router.get("/funds/{cnpj}")
 def fundo(
     cnpj: str,
@@ -204,22 +233,35 @@ def fundo(
     assumed_return: float | None = None,
 ) -> object:
     """Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`."""
-    lido = lote.ler_lote([cnpj])
-    if not lido.validos:
-        raise _recusa("invalid_cnpj")
+    numeros = _cnpj_pedido(cnpj)
     dia, retorno = _dia_pedido(known_at), _retorno_pedido(assumed_return)
-    with obter_engine().begin() as conexao:
-        with _porta(conexao) as porta:
-            servido = _leitor(conexao, porta, contexto).fundo(
-                lido.validos[0], dia, retorno
-            )
-        # a recusa conta como negada; o 404 sai depois do `with` para o consumo não voltar atrás
-        registrar_consumo(
-            conexao, contexto, conjunto=fundos.CONJUNTO, finalidade=FINALIDADE,
-            linhas=0 if servido is None else servido.linhas, negado=servido is None,
-            agora=acesso.agora(),
-        )  # fmt: skip
-    if servido is None:
-        raise HTTPException(status_code=404, detail=NAO_DISPONIVEL)
-    corpo = servido.corpo | {"fontes": fontes_da_resposta(servido.fontes)}
-    return traduzir_chaves(corpo)
+    return _um_pedido(
+        contexto,
+        fundos.CONJUNTO,
+        lambda conexao, porta: _leitor(conexao, porta, contexto).fundo(
+            numeros, dia, retorno
+        ),
+    )
+
+
+@router.get("/companies/{cnpj}/financials")
+def demonstracoes_da_empresa(
+    cnpj: str,
+    contexto: Chave,
+    known_at: date | None = None,
+    period_end: date | None = None,
+) -> object:
+    """As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,
+    a versão e a origem; `period_end` traz só o período que termina nesse dia."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+
+    def ler(conexao: sa.Connection, porta: Porta) -> Servido | None:
+        leitor = demonstracoes.LeitorDeDemonstracoes(
+            porta,
+            _portao(conexao, contexto, demonstracoes.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        )
+        return leitor.demonstracoes(numeros, dia, period_end)
+
+    return _um_pedido(contexto, demonstracoes.CONJUNTO, ler)

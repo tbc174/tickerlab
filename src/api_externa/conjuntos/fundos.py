@@ -18,7 +18,6 @@ as chaves em português (a rota traduz na saída):
 negado não aparece. Sem nada liberado, `None`, e a rota responde o mesmo de um fundo que não existe.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
@@ -31,6 +30,7 @@ from base.raio_x_de_fundo import (
     raio_x_de_fundo,
     taxas_do_fundo,
 )
+from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
 from src.ferramentas.custos import custo_da_taxa
 
@@ -44,8 +44,6 @@ CAMPOS_DA_POSICAO = (
 CAMPOS_DO_CUSTO = ("sem_taxa", "com_taxa", "ficou_com_a_taxa", "fracao_do_resultado")
 TAXA_DE_ADMINISTRACAO = "taxa_administracao_pct_ao_ano"
 PERCENTUAL = 100
-
-Permitido = Callable[[str, str, bool], bool]
 
 
 @dataclass(frozen=True)
