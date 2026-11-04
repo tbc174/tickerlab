@@ -23,6 +23,21 @@ ROTA = "/api/v1/busca-por-cnpj/pdf"
 GERADO_EM = datetime(2026, 10, 20, 9, 0, tzinfo=ZoneInfo("America/Sao_Paulo"))
 
 
+_NOME = r"[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+(?:\s+(?:d[aeo]s?\s+)?[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+)+"
+_CARGO = r"(?:Diretor|Diretora|Conselheir[oa]s?|Administrador[a]?(?:es)?|Acionistas?)"
+# Cargo + nome: "Diretor João Silva", "Conselheiros: Ana Souza". O rótulo de contagem ("Conselheiros
+# independentes: 3") não tem pessoa e passa; o cargo no plural sem dois-pontos também (só é rótulo).
+_PESSOA_NO_TEXTO = re.compile(
+    rf"\b(?:Diretor|Diretora|Conselheir[oa]|Administrador|Administradora|Acionista)\s+{_NOME}"
+    rf"|\b{_CARGO}\s*[:\-–]\s*{_NOME}"
+    rf"|\b{_NOME}\s*[,\-–(]\s*{_CARGO}\b"
+)
+
+
+def _tem_nome_de_pessoa(texto: str) -> bool:
+    return _PESSOA_NO_TEXTO.search(texto) is not None
+
+
 def _texto_do_pdf(pdf: bytes) -> str:
     import pypdfium2
 
@@ -87,6 +102,41 @@ def test_pdf_nao_traz_nome_de_pessoa(banco, com_a_petrobras) -> None:
     assert not re.search(r"\d{3}\.\d{3}\.\d{3}-\d{2}", texto)
     assert not re.search(r"\b(Diretor|Conselheir|Administrador|Acionista)", texto)
     assert "Nome de sócio ou administrador pessoa física: não aparece" in texto
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "Diretor João da Silva",
+        "Conselheira Maria Souza Lima",
+        "Administrador Carlos Pereira",
+        "Acionista José Santos",
+        "Conselheiros: Ana Souza, Pedro Alves",
+        "Diretor - Marcos Oliveira",
+        "Marcos Oliveira, Diretor",
+        "Ana Souza (Conselheira)",
+        "Governança: Acionista Roberto Lima Filho",
+    ],
+)
+def test_regra_de_pessoa_reprova_nome_com_cargo(texto) -> None:
+    assert _tem_nome_de_pessoa(texto)
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "Conselheiros independentes: 3",
+        "Conselheiros independentes 2 de 9",
+        "Conselheiros Independentes",
+        "Diretores estatutários: 5",
+        "Número de diretores e de conselheiros",
+        "Acionistas controladores: 1",
+        "Administradores com mandato vigente",
+        "Governança Conselheiros independentes 3 Comitê de auditoria sim",
+    ],
+)
+def test_regra_de_pessoa_aprova_rotulo_de_contagem(texto) -> None:
+    assert not _tem_nome_de_pessoa(texto)
 
 
 def test_pdf_nao_traz_o_que_esta_desligado(banco, com_a_petrobras) -> None:

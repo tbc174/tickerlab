@@ -1,0 +1,106 @@
+{
+  "tabela": "anm_amb_producao_bruta",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "ano": {
+      "descricao": "Ano-base do Anuário Mineral",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla do estado",
+      "unidade": "texto"
+    },
+    "classe": {
+      "descricao": "Classe da substância (metálicos, não metálicos...)",
+      "unidade": "texto"
+    },
+    "substancia": {
+      "descricao": "Substância mineral, como a ANM escreve",
+      "unidade": "texto"
+    },
+    "producao_rom_t": {
+      "descricao": "Produção de minério ROM, em toneladas",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "contido": {
+      "descricao": "Quantidade contida, na unidade da linha (`contido_unidade`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "contido_unidade": {
+      "descricao": "Unidade do contido, por linha, sem converter",
+      "unidade": "texto"
+    },
+    "contido_indicacao": {
+      "descricao": "Indicação do contido (de que mineral ou fase), como a ANM escreve",
+      "unidade": "texto"
+    },
+    "venda_t": {
+      "descricao": "Quantidade vendida, em toneladas",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "venda_valor": {
+      "descricao": "Valor da venda, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "consumo_t": {
+      "descricao": "Quantidade para transformação, consumo ou utilização, em toneladas",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "consumo_valor": {
+      "descricao": "Valor da transformação, consumo ou utilização nesta mina, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "transferencia_t": {
+      "descricao": "Quantidade transferida para transformação, utilização ou consumo, em toneladas",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "transferencia_valor": {
+      "descricao": "Valor da transferência, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que a coleta viu essa versão da linha pela primeira vez: o Anuário é sobrescrito pela ANM, e `ano` (o ano-base) nunca serve de disponibilidade",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "ano",
+    "uf",
+    "substancia",
+    "contido_indicacao"
+  ],
+  "datas": {
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (o Anuário é anual e a ANM sobrescreve o arquivo)",
+  "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu. A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte"
+}
