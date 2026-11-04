@@ -10,6 +10,7 @@ import pytest
 
 from base.conferencia import (
     REGRA_POR_UNIDADE,
+    _datas_fora_de_ordem,
     conferir,
     tabela_do_destino,
 )
@@ -161,6 +162,22 @@ def test_fato_anunciado_antes_de_acontecer_passa_onde_o_dicionario_permite():
     tabela.loc[0, "referencia"] = date(2024, 4, 30)
     assert TABELAS["eventos"].anuncia_o_futuro
     assert _problemas(tabela) == []
+
+
+def test_ma_candidatos_aceita_referencia_depois_da_entrega():
+    # no IPE a `referencia` é a data que a companhia informa (a assembleia que vai aprovar a
+    # operação, por exemplo) e pode vir depois da entrega à CVM: não é erro de leitura
+    tabela = TABELAS["ma_candidatos"]
+    assert tabela.anuncia_o_futuro
+    datas = {
+        "referencia": pd.Series([pd.Timestamp("2024-04-30")]),
+        "publico_em": pd.Series([pd.Timestamp("2024-03-02")]),
+        "origem_coletada_em": pd.Series([pd.Timestamp("2024-03-03")]),
+    }
+    assert _datas_fora_de_ordem(tabela, datas) == []
+    # a regra segue valendo para as outras datas: público depois de coletado reprova
+    datas["publico_em"] = pd.Series([pd.Timestamp("2024-03-05")])
+    assert len(_datas_fora_de_ordem(tabela, datas)) == 1
 
 
 def test_data_antes_de_1900_reprova():
