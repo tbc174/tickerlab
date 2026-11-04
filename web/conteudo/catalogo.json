@@ -2446,16 +2446,20 @@
           "PGFN",
           "CGU",
           "ANS",
+          "MTE",
+          "IBAMA",
           "CNJ",
           "CVM"
         ],
-        "tabelas": 5,
-        "texto": "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 7,
+        "texto": "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         "titulo": "Dívida, sanções e processos"
       },
       {
         "chave": "licencas",
         "orgaos": [
+          "ANS",
+          "SUSEP",
           "Anvisa",
           "ANP",
           "ANTT",
@@ -2466,8 +2470,8 @@
           "Ancine",
           "Ministério da Saúde (DATASUS)"
         ],
-        "tabelas": 11,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine e os estabelecimentos de saúde do CNES.",
+        "tabelas": 13,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
         "titulo": "Licenças e registros nas agências"
       },
       {
