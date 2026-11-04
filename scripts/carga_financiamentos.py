@@ -1,4 +1,4 @@
-"""Carga dos financiamentos por CNPJ para a base: a tabela `financiamentos` (`base/financiamentos.py`).
+"""Carga dos financiamentos por CNPJ para a base: uma tabela por banco (`base/financiamentos.py`).
 
     python -m scripts.carga_financiamentos                    (todos os arquivos guardados)
     python -m scripts.carga_financiamentos --pasta /tmp/base  (outra pasta de saída)
@@ -6,8 +6,8 @@
 
 Lê as operações não automáticas do BNDES e a planilha de contratações da Finep que o arquivista já
 guardou no acervo (não baixa nada). Só crédito reembolsável e CNPJ inteiro de dígito certo; nome do
-cliente, título e resumo nunca (ADR 0075). Saída padrão: `<TICKERLAB_ACERVO>/base/financiamentos/
-bndes.parquet` e `finep.parquet`. Feita para o servidor de casa (ADR 0031), todo mês depois do
+cliente, título e resumo nunca (ADR 0075). Saída padrão: `<TICKERLAB_ACERVO>/base/financiamentos_bndes/
+bndes.parquet` e `financiamentos_finep/finep.parquet`. Feita para o servidor de casa (ADR 0031), todo mês depois do
 arquivista; recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1
 nenhum arquivo de financiamento guardado.
 """

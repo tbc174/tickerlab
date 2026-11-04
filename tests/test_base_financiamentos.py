@@ -505,7 +505,9 @@ def _montar(banco, tmp_path, pessoas=frozenset()) -> dict:
 
 
 def _tabela(tmp_path, arquivo: str) -> pd.DataFrame:
-    return pd.read_parquet(tmp_path / "base" / "financiamentos" / f"{arquivo}.parquet")
+    return pd.read_parquet(
+        tmp_path / "base" / f"financiamentos_{arquivo}" / f"{arquivo}.parquet"
+    )
 
 
 def _texto_gravado(tmp_path) -> str:
@@ -649,5 +651,5 @@ def test_comando_monta_e_sem_nada_guardado_sai_com_1(banco, tmp_path, monkeypatc
         PRIMEIRO_DIA,
     )  # fmt: skip
     assert carga_financiamentos.main(["--pasta", str(tmp_path / "b")]) == 0
-    tabela = pd.read_parquet(tmp_path / "b" / "financiamentos" / "bndes.parquet")
+    tabela = pd.read_parquet(tmp_path / "b" / "financiamentos_bndes" / "bndes.parquet")
     assert tabela["trata_como_pessoa"].all()  # sem a Receita guardada: o conservador

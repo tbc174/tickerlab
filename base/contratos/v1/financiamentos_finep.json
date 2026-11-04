@@ -1,5 +1,5 @@
 {
-  "tabela": "financiamentos",
+  "tabela": "financiamentos_finep",
   "modulo": "governo_e_sancoes",
   "dono": "Dados",
   "versao": "1.0.0",
@@ -187,9 +187,9 @@
   },
   "historico_desde": "2026-11-04",
   "granularidade_do_publico_em": "dia",
-  "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
-  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
   "pessoa": true,
-  "frequencia": "Mensal (as duas fontes reescrevem o arquivo inteiro)",
-  "atraso": "As fontes não dizem quando publicaram cada linha: toda linha vale desde o dia em que o arquivista a viu"
+  "frequencia": "Mensal (a fonte reescreve o arquivo inteiro)",
+  "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu"
 }

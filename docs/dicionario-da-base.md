@@ -3109,21 +3109,82 @@ Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela rai
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
-## `financiamentos`
+## `financiamentos_bndes`
 
-Histórico de contratações de crédito reembolsável por CNPJ: BNDES (operações não automáticas) e Finep (crédito direto e descentralizado). **Não é saldo nem dívida atual:** é o fluxo que cada banco divulga (contratado e desembolsado), nada se soma (subcréditos e fontes ficam separados) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente, descrição, título e resumo do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`. A "Posição" da planilha da Finep fica no CSV guardado e não vira coluna: a data que vale é a do arquivo.
+Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas). **Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.
 
-- **Fonte:** BNDES: dados abertos, operações não automáticas (ODbL; citar o BNDES); Finep: planilha de contratações (licença a confirmar: uso interno) (`base/financiamentos.py`)
+- **Fonte:** BNDES, dados abertos: operações não automáticas (ODbL; citar o BNDES) (`base/financiamentos.py`)
 - **Licença:** ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
-- **Frequência:** Mensal (as duas fontes reescrevem o arquivo inteiro)
-- **Atraso de divulgação:** As fontes não dizem quando publicaram cada linha: toda linha vale desde o dia em que o arquivista a viu
+- **Frequência:** Mensal (a fonte reescreve o arquivo inteiro)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
 - **Chaves:** `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `contratado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-11-04 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/financiamentos/bndes.parquet` e `finep.parquet` (servidor de casa, `scripts/carga_financiamentos.py`)
+- **Onde fica:** Parquet em `<acervo>/base/financiamentos_bndes/bndes.parquet` (servidor de casa, `scripts/carga_financiamentos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identidade estável da operação (nunca o número da linha). BNDES: `bndes|contrato|resumo|n`, com um hash curto dos campos que não mudam (CNPJ, data, produto, instrumento, fonte de recurso, custo, juros, prazos, subsetor, forma e repassador) e a ordem pelo valor contratado dentro do grupo (um contrato tem vários subcréditos, alguns iguais em tudo). Finep direta: `finep|direto|contrato|n`; descentralizada: `finep|descentralizado|convênio|CNPJ|data|n`. Limite: um subcrédito novo de valor menor no mesmo grupo empurra a ordem dos outros | texto |
+| `fonte` | `bndes` ou `finep`: nunca somar as duas | texto |
+| `modalidade` | `bndes_nao_automatica` (operações não automáticas do BNDES), `finep_credito_direto` ou `finep_credito_descentralizado` | texto |
+| `cnpj` | CNPJ de quem tomou o crédito, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `uf` | UF de quem tomou, como a fonte escreve | texto |
+| `contrato` | Número do contrato (BNDES e Finep direta; vazio na descentralizada) | texto |
+| `convenio_do_agente` | Finep descentralizada: o convênio entre a Finep e o agente financeiro ("Contrato Finep Agente"), não o empréstimo da empresa: muitas empresas cabem nele | texto |
+| `contratado_em` | Dia da contratação (BNDES) ou da assinatura (Finep) | data (dia) |
+| `valor_contratado` | Valor contratado (Finep: "Valor Finep" ou "Valor Financiado"); vazio fica vazio | reais (R$), já multiplicado pela escala informada |
+| `valor_desembolsado` | Valor desembolsado até a data do arquivo (Finep: "Valor Pago" ou "Valor Liberado"). É desembolso, não pagamento da dívida; vazio fica vazio, nunca zero | reais (R$), já multiplicado pela escala informada |
+| `contrapartida` | Contrapartida da empresa (só a Finep informa) | reais (R$), já multiplicado pela escala informada |
+| `outros_recursos` | Outros recursos (só a Finep descentralizada) | reais (R$), já multiplicado pela escala informada |
+| `financiador` | Quem emprestou: `BNDES` na DIRETA, a instituição credenciada na INDIRETA, `FINEP` no crédito direto, o agente financeiro no descentralizado | texto |
+| `agente_papel` | `financiador_direto`, `instituicao_credenciada` ou `agente_descentralizado` | texto |
+| `cnpj_do_financiador` | CNPJ de quem emprestou, quando a fonte o dá inteiro e de dígito certo (vazio no agente da Finep descentralizada) | texto |
+| `forma_de_apoio` | BNDES: `DIRETA` (sem repassador, é normal) ou `INDIRETA` | texto |
+| `cnpj_do_executor` | Finep direta: CNPJ do executor do projeto (não é quem tomou o crédito) | texto |
+| `uf_do_projeto` | Finep direta: UF do projeto | texto |
+| `produto` | BNDES: produto (`BNDES FINEM`...) | texto |
+| `instrumento` | BNDES: instrumento financeiro | texto |
+| `fonte_de_recurso` | BNDES: fonte de recurso dos desembolsos | texto |
+| `custo_financeiro` | BNDES: custo financeiro (`TJLP`, `TLP`, `SELIC`, `US$ / CESTA`...) | texto |
+| `juros` | BNDES: juros (spread) em % ao ano, como a fonte escreve; não é o custo efetivo | número com decimais, na unidade da fonte |
+| `carencia_meses` | BNDES: prazo de carência, em meses | número inteiro |
+| `amortizacao_meses` | BNDES: prazo de amortização, em meses | número inteiro |
+| `inovacao` | BNDES: se a operação é de inovação, como a fonte escreve | texto |
+| `porte` | BNDES: porte do cliente | texto |
+| `natureza` | BNDES: natureza do cliente (privada ou pública) | texto |
+| `subsetor_cnae` | BNDES: código do subsetor CNAE | texto |
+| `tipo_de_garantia` | BNDES: tipo de garantia | texto |
+| `situacao` | Situação como a fonte escreve (vazio quando a fonte põe `-`; a descentralizada não tem) | texto |
+| `situacao_classe` | `liquidado`, `ativo`, `cancelado`, `rescindido`, `pendente`, `encerrado_tecnico` (o ENCERRADO da Finep fecha o projeto, não quita), `nao_informado` ou `nao_classificado` (situação que a tabela não conhece) | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (nenhuma das duas fontes diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `financiamentos_finep`
+
+Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e descentralizado, pelos agentes financeiros). A "Posição" da planilha fica no CSV guardado e não vira coluna: a data que vale é a do arquivo. **Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.
+
+- **Fonte:** Finep, planilha de contratações (licença a confirmar: uso interno) (`base/financiamentos.py`)
+- **Licença:** Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (a fonte reescreve o arquivo inteiro)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `contratado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/financiamentos_finep/finep.parquet` (servidor de casa, `scripts/carga_financiamentos.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |

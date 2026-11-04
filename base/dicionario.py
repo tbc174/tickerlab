@@ -1128,37 +1128,51 @@ def _tabelas_dos_financiamentos() -> dict[str, Tabela]:
         ),
         **_ORIGEM_SEM_ANO,
     }
-    return {
-        "financiamentos": Tabela(
-            descricao=(
-                "Histórico de contratações de crédito reembolsável por CNPJ: BNDES (operações não "
-                "automáticas) e Finep (crédito direto e descentralizado). **Não é saldo nem dívida "
-                "atual:** é o fluxo que cada banco divulga (contratado e desembolsado), nada se "
-                "soma (subcréditos e fontes ficam separados) e o vazio fica vazio. Uma linha por "
-                "valor diferente de cada operação: a mudança vira linha nova desde o dia em que "
-                "foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome "
-                "do cliente, descrição, título e resumo do projeto nunca entram; empresário "
-                'individual e MEI ficam com `trata_como_pessoa`. A "Posição" da planilha da Finep '
-                "fica no CSV guardado e não vira coluna: a data que vale é a do arquivo."
-            ),
-            fonte=(
-                "BNDES: dados abertos, operações não automáticas (ODbL; citar o BNDES); Finep: "
-                "planilha de contratações (licença a confirmar: uso interno) "
-                "(`base/financiamentos.py`)"
-            ),
-            familia_da_fonte="bndes",
-            frequencia="Mensal (as duas fontes reescrevem o arquivo inteiro)",
-            atraso=(
-                "As fontes não dizem quando publicaram cada linha: toda linha vale desde o dia em "
-                "que o arquivista a viu"
-            ),
+    comum = (
+        "**Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e "
+        "desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra "
+        "tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança "
+        "vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` "
+        "falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário "
+        "individual e MEI ficam com `trata_como_pessoa`."
+    )
+    atraso = (
+        "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o "
+        "arquivista a viu"
+    )
+
+    def tabela(banco: str, frase: str, fonte: str, familia: str) -> Tabela:
+        return Tabela(
+            descricao=f"{frase} {comum}",
+            fonte=f"{fonte} (`base/financiamentos.py`)",
+            familia_da_fonte=familia,
+            frequencia="Mensal (a fonte reescreve o arquivo inteiro)",
+            atraso=atraso,
             onde=(
-                "Parquet em `<acervo>/base/financiamentos/bndes.parquet` e `finep.parquet` "
-                "(servidor de casa, `scripts/carga_financiamentos.py`)"
+                f"Parquet em `<acervo>/base/financiamentos_{banco}/{banco}.parquet` (servidor "
+                "de casa, `scripts/carga_financiamentos.py`)"
             ),
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
             colunas=colunas,
         )
+
+    # uma tabela por banco: cada uma com a licença dela (a do BNDES é ODbL, camada própria)
+    return {
+        "financiamentos_bndes": tabela(
+            "bndes",
+            "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não "
+            "automáticas, diretas e pelas instituições credenciadas).",
+            "BNDES, dados abertos: operações não automáticas (ODbL; citar o BNDES)",
+            "bndes",
+        ),
+        "financiamentos_finep": tabela(
+            "finep",
+            "Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e "
+            'descentralizado, pelos agentes financeiros). A "Posição" da planilha fica no CSV '
+            "guardado e não vira coluna: a data que vale é a do arquivo.",
+            "Finep, planilha de contratações (licença a confirmar: uso interno)",
+            "finep",
+        ),
     }
 
 
@@ -7072,7 +7086,18 @@ _CONTRATO = {
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anm_titulos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "ancine_agentes": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
-    "financiamentos": _contrato(
+    "financiamentos_bndes": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={
+            "aconteceu_em": "contratado_em",
+            "publico_em": "disponivel_em",
+            "coletado_em": "origem_coletada_em",
+        },
+        historico_desde=_FINANCIAMENTOS,
+    ),
+    "financiamentos_finep": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
         chaves=("id_na_fonte", "visto_em"),
@@ -7209,8 +7234,13 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "ancine_agentes",
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
-    "financiamentos": {
-        "pasta": "financiamentos",
+    "financiamentos_bndes": {
+        "pasta": "financiamentos_bndes",
+        "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
+    },
+    "financiamentos_finep": {
+        "pasta": "financiamentos_finep",
         "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
     },

@@ -47,7 +47,10 @@ from base.parquet import LINHAGEM, gravar_se_mudou, origens_gravadas
 from base.pgfn import pessoas_pela_receita
 from src.versao_do_codigo import versao_do_codigo
 
-TABELA = "financiamentos"
+TABELA_DO_BNDES = (
+    "financiamentos_bndes"  # uma tabela por banco: cada uma com a licença dela
+)
+TABELA_DA_FINEP = "financiamentos_finep"
 FONTE_DO_BNDES = "bndes-operacoes"
 FONTE_DA_FINEP = "finep-contratacao"
 ARQUIVO_DO_BNDES = "operacoes-financiamento-operacoes-nao-automaticas.csv"
@@ -475,10 +478,10 @@ class _Montagem:
 def _montagens(conexao: sa.Connection, pasta: Path) -> Iterator[tuple[str, _Montagem]]:
     bndes = motor.retratos(conexao, FONTE_DO_BNDES, url_termina_em=ARQUIVO_DO_BNDES)
     if bndes:
-        yield "bndes", _Montagem(pasta / TABELA / "bndes", bndes, ler_bndes)
+        yield "bndes", _Montagem(pasta / TABELA_DO_BNDES / "bndes", bndes, ler_bndes)
     finep = motor.retratos(conexao, FONTE_DA_FINEP)
     if finep:
-        yield "finep", _Montagem(pasta / TABELA / "finep", finep, ler_finep)
+        yield "finep", _Montagem(pasta / TABELA_DA_FINEP / "finep", finep, ler_finep)
 
 
 def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
@@ -523,7 +526,7 @@ def montar(
     pessoas: Collection[str] | np.ndarray | None = None,
     refazer: bool = False,
 ) -> dict[str, dict[str, int]]:
-    """`<pasta>/financiamentos/bndes.parquet` e `finep.parquet` com os retratos guardados.
+    """`<pasta>/financiamentos_bndes/bndes.parquet` e `financiamentos_finep/finep.parquet` com os retratos guardados.
 
     Sem arquivo novo desde a última montagem, o banco é pulado (`refazer` relê mesmo assim, para
     código novo). `pessoas`: as raízes de pessoa já sabidas; sem elas, pergunta à Receita guardada.
