@@ -56,6 +56,7 @@ FAMILIA_DO_ENDERECO = {
     "arquivos.receitafederal.gov.br/Dados/Obrigacoes_Acessorias/": "rfb-renuncias",  # DIRBI e ECF
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
     "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
+    "apidadosabertos.saude.gov.br/assistencia-a-saude/cnes": "ms",  # CNES por competência
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",

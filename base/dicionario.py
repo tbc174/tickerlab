@@ -1410,6 +1410,125 @@ def _tabelas_da_cmed() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_do_cnes() -> dict[str, Tabela]:
+    """O CNES por competência (`base/cnes.py`, linha 654): os estabelecimentos e a situação de cada competência."""
+    atraso = (
+        "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): "
+        "a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
+    )
+    onde = "Parquet em `<acervo>/base/{pasta}/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_cnes.py`)"
+    estabelecimentos = {
+        "competencia": ("Competência do cadastro, no formato AAAAMM", NUMERO),
+        "codigo_cnes": ("Código do estabelecimento no CNES (7 dígitos)", TEXTO),
+        "cnpj": (
+            (
+                "CNPJ do estabelecimento, só os 14 dígitos; vazio na unidade pública que não tem "
+                "CNPJ próprio e no CPF (CPF nunca vira CNPJ)"
+            ),
+            TEXTO,
+        ),
+        "cnpj_mantenedora": (
+            (
+                "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos. Não substitui o "
+                "`cnpj`, e a mantenedora não é dona de tudo o que mantém"
+            ),
+            TEXTO,
+        ),
+        "razao_social": (
+            "Nome empresarial; vazio quando não há nenhum CNPJ (pessoa física)",
+            TEXTO,
+        ),
+        "nome_fantasia": (
+            "Nome fantasia; vazio quando não há nenhum CNPJ (pessoa física)",
+            TEXTO,
+        ),
+        "codigo_ibge_municipio": ("Código IBGE do município do estabelecimento", TEXTO),
+        "gestao": (
+            "Tipo de gestão (municipal, estadual, dupla...), como a fonte escreve",
+            TEXTO,
+        ),
+        "tipo_unidade": (
+            "Tipo de unidade (hospital geral, posto de saúde...), como a fonte escreve",
+            TEXTO,
+        ),
+        "classificacao": (
+            "Classificação do estabelecimento, como a fonte escreve",
+            TEXTO,
+        ),
+        "natureza_juridica": ("Natureza jurídica, como a fonte escreve", TEXTO),
+        "grupo_natureza_juridica": (
+            "Grupo da natureza jurídica, como a fonte escreve",
+            TEXTO,
+        ),
+        "latitude": (
+            "Latitude do estabelecimento (graus); vazio quando a fonte não informa",
+            NUMERO_DECIMAL,
+        ),
+        "longitude": (
+            "Longitude do estabelecimento (graus); vazio quando a fonte não informa",
+            NUMERO_DECIMAL,
+        ),
+        "situacao_cnes": (
+            "Situação do estabelecimento (ativo ou não), como a fonte escreve",
+            TEXTO,
+        ),
+        "disponivel_em": (
+            (
+                "Dia em que a coleta viu a competência pela primeira vez (a API não dá a data de publicação); "
+                "`competencia` nunca serve de disponibilidade"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    situacao = {
+        "competencia": ("Competência olhada, no formato AAAAMM", NUMERO),
+        "linhas": ("Quantos estabelecimentos a fonte devolveu na competência", NUMERO),
+        "situacao": (
+            (
+                "`com_dados` ou `vazia`. `vazia` é a fonte ainda não ter publicado a competência: nunca "
+                "significa que não há estabelecimentos"
+            ),
+            TEXTO,
+        ),
+        "coletado_em": (
+            "Dia em que a competência foi vista pela primeira vez com essa situação",
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    comum = {
+        "fonte": "Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)",
+        "familia_da_fonte": "ms",
+        "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
+        "atraso": atraso,
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    return {
+        "cnes_estabelecimentos": Tabela(
+            descricao=(
+                "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da "
+                "mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem "
+                "nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário "
+                "individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia "
+                "não grava linha: veja `cnes_competencias`."
+            ),
+            onde=onde.format(pasta="cnes_estabelecimentos"),
+            colunas=estabelecimentos,
+            **comum,
+        ),
+        "cnes_competencias": Tabela(
+            descricao=(
+                "Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia. "
+                "Serve para não confundir competência ainda não publicada com ausência de estabelecimentos."
+            ),
+            onde=onde.format(pasta="cnes_competencias"),
+            colunas=situacao,
+            **comum,
+        ),
+    }
+
+
 def _tabelas_dos_incentivos() -> dict[str, Tabela]:
     """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE e RDE-IED."""
     situacao = {
@@ -5125,6 +5244,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_incentivos(),
     **_tabelas_dos_financiamentos(),
     **_tabelas_da_cmed(),
+    **_tabelas_do_cnes(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -7281,6 +7401,9 @@ _PROCESSOS = (
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
 _FINANCIAMENTOS = "2026-11-04"
 _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
+_CNES = (
+    "2026-11-04"  # o CNES por competência entrou no arquivista neste dia (linha 654)
+)
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
@@ -7414,6 +7537,20 @@ _CONTRATO = {
             "coletado_em": "origem_coletada_em",
         },
         historico_desde=_FINANCIAMENTOS,
+    ),
+    "cnes_estabelecimentos": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("competencia", "codigo_cnes"),
+        datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_CNES,
+        granularidade_do_publico_em="mes",
+    ),
+    "cnes_competencias": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("competencia",),
+        datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
+        historico_desde=_CNES,
     ),
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
@@ -7555,6 +7692,14 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "financiamentos_finep",
         "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
+    },
+    "cnes_estabelecimentos": {
+        "pasta": "cnes_estabelecimentos",
+        "nao_nulas": ("codigo_cnes", "competencia", "disponivel_em"),
+    },
+    "cnes_competencias": {
+        "pasta": "cnes_competencias",
+        "nao_nulas": ("situacao", "linhas", "coletado_em"),
     },
     "mme_reidi": {
         "pasta": "mme_reidi",
