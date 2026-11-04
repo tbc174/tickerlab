@@ -163,6 +163,8 @@
         "bcb-leiloes-selic",
         "bcb-tarifas-instituicao",
         "bcb-cosif",
+        "bcb-sgs-selic-meta",
+        "bcb-focus-selic-anual",
         "bcb-relatorio-anual",
         "bcb-sgs-pre-2000"
       ],
@@ -4484,6 +4486,20 @@
       "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-sgs-selic-meta",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-focus-selic-anual",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
