@@ -520,6 +520,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-destaques { display: grid; gap: 1rem; margin: 1.2rem 0 2.5rem; }
 .v2-destaques article p { margin: .6rem 0 0; }
 .v2-fonte { color: var(--apagado); font-size: .86rem; }
+.v2-selo-base { margin: 0 0 1rem; font-size: .9rem; color: var(--apagado); }
 .v2-aviso { padding: .9rem 1.1rem; border-radius: var(--raio); border: 1px solid var(--linha); background: color-mix(in srgb, var(--azul) 7%, transparent); }
 .v2-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .8rem; margin: 1rem 0 1.2rem; }
 .v2-numeros div { padding: .8rem 1rem; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--destaque); }

@@ -564,3 +564,18 @@ describe("Raio-X do choque de 26/10/2026 (pode do Tiago para publicar, 26/10)", 
     expect(inicio).toContain(`href="${PDF_DO_RAIO_X}"`);
   });
 });
+
+
+describe("a data da base à vista em toda página pública que mostra a base (linha 605)", () => {
+  const paginas = ["relatorio-de-exemplo.html", "relatorio-de-setor-eletricas.html"];
+  const datas: Record<string, string> = {
+    "relatorio-de-exemplo.html": amostraRelatorio.dados_de,
+    "relatorio-de-setor-eletricas.html": relatorioSemanalEletricas.dados_de,
+  };
+
+  it.each(paginas)("%s leva o selo com a data do próprio dado", (pagina) => {
+    const html = renderizar(pagina);
+    expect(html).toContain(`data-data-da-base="${datas[pagina]}"`);
+    expect(semTags(html)).toContain(`Retrato de ${datas[pagina]}`);
+  });
+});
