@@ -252,6 +252,7 @@ export const relatorioSemanalEletricas: {
   titulo: string;
   dados_de: string; // DD/MM/AAAA
   aviso: string;
+  aviso_rodape: string; // o rodapé da página: as bases de onde vêm os dados do setor
   arquivos: { pdf: string; apresentacao_pdf: string; apresentacao_pptx: string };
   destaques: { titulo: string; texto: string; fonte: string; data: string }[];
   tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];

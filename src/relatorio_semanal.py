@@ -20,7 +20,7 @@ from typing import Any
 
 from src import dossie, relatorio_setor
 from src.amostra_do_relatorio import conferir
-from src.enderecos_das_fontes import fonte_com_endereco
+from src.enderecos_das_fontes import enderecos_da_fonte, fonte_com_endereco
 from src.relatorio_empresa_pdf import FUSO
 
 PASTA = Path(__file__).resolve().parent.parent / "conteudo" / "relatorios_semanais"
@@ -32,6 +32,10 @@ FONTE_DOS_CONSUMIDORES = (
 FONTE_DO_AUDITOR = (
     "ODbL (dados abertos da CVM; citar a fonte): Formulário de Referência"
 )
+FONTES_DOS_DADOS = (
+    FONTE_DOS_CONSUMIDORES,
+    FONTE_DO_AUDITOR,
+)  # o rodapé da página lê daqui
 HORA_DO_ARQUIVO = (
     18  # os arquivos levam a data do retrato (não mudam a cada geração), como a amostra
 )
@@ -49,6 +53,7 @@ AUDITORES = (  # trecho do nome em minúsculas → nome curto
     ("ernst", "EY"),
 )
 ANO_DA_TROCA_EM_DESTAQUE = "2022"
+RODAPE_DA_PAGINA = "Nada aqui é recomendação de investimento."
 RODAPE = (
     "Nada aqui é recomendação de investimento. Os números descrevem o que as companhias e as agências "
     "entregaram, sem dizer o que vai acontecer."
@@ -341,6 +346,16 @@ def _fonte_publica(fonte: str) -> str:
     )
 
 
+def _aviso_do_rodape(fontes: tuple[str, ...]) -> str:
+    """O rodapé da página: as bases de onde vêm os dados, lidas das mesmas fontes dos números (o
+    rodapé padrão do site fala do Yahoo Finance, que o relatório do setor não usa; linha 602)."""
+    bases = dict.fromkeys(par for fonte in fontes for par in enderecos_da_fonte(fonte))
+    citadas = "; ".join(f"{rotulo} ({endereco})" for rotulo, endereco in bases)
+    return (
+        f"{RODAPE_DA_PAGINA} Os dados vêm de {citadas}, cada número com a data do dado."
+    )
+
+
 def para_o_site(retrato: dict[str, Any] | None = None) -> dict[str, Any]:
     """O JSON da página `relatorio-de-setor-eletricas.html` (web/conteudo/relatorio_semanal_eletricas.json)."""
     retrato = retrato or ler_retrato()
@@ -351,6 +366,7 @@ def para_o_site(retrato: dict[str, Any] | None = None) -> dict[str, Any]:
         "titulo": "Elétricas: quem atende os consumidores do país e quem audita",
         "dados_de": _data_escrita(retrato["dados_de"]),
         "aviso": RODAPE,
+        "aviso_rodape": _aviso_do_rodape(FONTES_DOS_DADOS),
         "arquivos": CAMINHOS_DOS_ARQUIVOS,
         "destaques": _destaques(retrato, grupos),
         "tabelas": [

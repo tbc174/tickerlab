@@ -399,6 +399,8 @@ DESTINOS: dict[str, Destino] = {
     "mme-reidi": _tabela("mme_reidi"),
     "aneel-cde": _tabela("aneel_cde"),
     "bcb-rde-ied": _tabela("bcb_rde_ied"),
+    # financiamentos por CNPJ (`base/financiamentos.py`; o BNDES vem do lote Brasil 2, abaixo)
+    "finep-contratacao": _tabela("financiamentos_finep"),
     **{f.id: _tabela("bcb_selic_focus") for f in lote_selic.fontes()},
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
@@ -461,6 +463,8 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/brasil-camada-2", _LOTE_BRASIL2_SO_ARQUIVO)
         for f in lote_brasil2.fontes()
     },
+    # das operações do BNDES, o arquivo das não automáticas já vira tabela (linha 469)
+    "bndes-operacoes": _tabela("financiamentos_bndes"),
     # lote cadastros globais (rodada 4, linha 287): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CADASTROS_SO_ARQUIVO)

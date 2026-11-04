@@ -1042,6 +1042,183 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_dos_financiamentos() -> dict[str, Tabela]:
+    """Os financiamentos por CNPJ (`base/financiamentos.py`, linha 469): BNDES e Finep."""
+    colunas = {
+        "id_na_fonte": (
+            (
+                "Identidade estável da operação (nunca o número da linha). BNDES: `bndes|contrato|"
+                "resumo|n`, com um hash curto dos campos que não mudam (CNPJ, data, produto, "
+                "instrumento, fonte de recurso, custo, juros, prazos, subsetor, forma e repassador) "
+                "e a ordem pelo valor contratado dentro do grupo (um contrato tem vários "
+                "subcréditos, alguns iguais em tudo). Finep direta: `finep|direto|contrato|n`; "
+                "descentralizada: `finep|descentralizado|convênio|CNPJ|data|n`. Limite: um "
+                "subcrédito novo de valor menor no mesmo grupo empurra a ordem dos outros"
+            ),
+            TEXTO,
+        ),
+        "fonte": ("`bndes` ou `finep`: nunca somar as duas", TEXTO),
+        "modalidade": (
+            (
+                "`bndes_nao_automatica` (operações não automáticas do BNDES), "
+                "`finep_credito_direto` ou `finep_credito_descentralizado`"
+            ),
+            TEXTO,
+        ),
+        "cnpj": ("CNPJ de quem tomou o crédito, no formato 00.000.000/0000-00", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "uf": ("UF de quem tomou, como a fonte escreve", TEXTO),
+        "contrato": (
+            "Número do contrato (BNDES e Finep direta; vazio na descentralizada)",
+            TEXTO,
+        ),
+        "convenio_do_agente": (
+            (
+                'Finep descentralizada: o convênio entre a Finep e o agente financeiro ("Contrato '
+                'Finep Agente"), não o empréstimo da empresa: muitas empresas cabem nele'
+            ),
+            TEXTO,
+        ),
+        "contratado_em": ("Dia da contratação (BNDES) ou da assinatura (Finep)", DATA),
+        "valor_contratado": (
+            'Valor contratado (Finep: "Valor Finep" ou "Valor Financiado"); vazio fica vazio',
+            REAIS,
+        ),
+        "valor_desembolsado": (
+            (
+                'Valor desembolsado até a data do arquivo (Finep: "Valor Pago" ou "Valor '
+                'Liberado"). É desembolso, não pagamento da dívida; vazio fica vazio, nunca zero'
+            ),
+            REAIS,
+        ),
+        "contrapartida": ("Contrapartida da empresa (só a Finep informa)", REAIS),
+        "outros_recursos": ("Outros recursos (só a Finep descentralizada)", REAIS),
+        "financiador": (
+            (
+                "Quem emprestou: `BNDES` na DIRETA, a instituição credenciada na INDIRETA, `FINEP` "
+                "no crédito direto, o agente financeiro no descentralizado"
+            ),
+            TEXTO,
+        ),
+        "agente_papel": (
+            "`financiador_direto`, `instituicao_credenciada` ou `agente_descentralizado`",
+            TEXTO,
+        ),
+        "cnpj_do_financiador": (
+            (
+                "CNPJ de quem emprestou, quando a fonte o dá inteiro e de dígito certo (vazio no "
+                "agente da Finep descentralizada)"
+            ),
+            TEXTO,
+        ),
+        "forma_de_apoio": (
+            "BNDES: `DIRETA` (sem repassador, é normal) ou `INDIRETA`",
+            TEXTO,
+        ),
+        "cnpj_do_executor": (
+            "Finep direta: CNPJ do executor do projeto (não é quem tomou o crédito)",
+            TEXTO,
+        ),
+        "uf_do_projeto": ("Finep direta: UF do projeto", TEXTO),
+        "produto": ("BNDES: produto (`BNDES FINEM`...)", TEXTO),
+        "instrumento": ("BNDES: instrumento financeiro", TEXTO),
+        "fonte_de_recurso": ("BNDES: fonte de recurso dos desembolsos", TEXTO),
+        "custo_financeiro": (
+            "BNDES: custo financeiro (`TJLP`, `TLP`, `SELIC`, `US$ / CESTA`...)",
+            TEXTO,
+        ),
+        "juros": (
+            "BNDES: juros (spread) em % ao ano, como a fonte escreve; não é o custo efetivo",
+            NUMERO_DECIMAL,
+        ),
+        "carencia_meses": ("BNDES: prazo de carência, em meses", NUMERO),
+        "amortizacao_meses": ("BNDES: prazo de amortização, em meses", NUMERO),
+        "inovacao": ("BNDES: se a operação é de inovação, como a fonte escreve", TEXTO),
+        "porte": ("BNDES: porte do cliente", TEXTO),
+        "natureza": ("BNDES: natureza do cliente (privada ou pública)", TEXTO),
+        "subsetor_cnae": ("BNDES: código do subsetor CNAE", TEXTO),
+        "tipo_de_garantia": ("BNDES: tipo de garantia", TEXTO),
+        "situacao": (
+            "Situação como a fonte escreve (vazio quando a fonte põe `-`; a descentralizada não tem)",
+            TEXTO,
+        ),
+        "situacao_classe": (
+            (
+                "`liquidado`, `ativo`, `cancelado`, `rescindido`, `pendente`, "
+                "`encerrado_tecnico` (o ENCERRADO da Finep fecha o projeto, não quita), "
+                "`nao_informado` ou `nao_classificado` (situação que a tabela não conhece)"
+            ),
+            TEXTO,
+        ),
+        "consta": (
+            "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075)"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que o arquivista viu a linha", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também "
+                "no 1º (nenhuma das duas fontes diz quando publicou cada linha)"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    comum = (
+        "**Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e "
+        "desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra "
+        "tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança "
+        "vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` "
+        "falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário "
+        "individual e MEI ficam com `trata_como_pessoa`."
+    )
+    atraso = (
+        "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o "
+        "arquivista a viu"
+    )
+
+    def tabela(banco: str, frase: str, fonte: str, familia: str) -> Tabela:
+        return Tabela(
+            descricao=f"{frase} {comum}",
+            fonte=f"{fonte} (`base/financiamentos.py`)",
+            familia_da_fonte=familia,
+            frequencia="Mensal (a fonte reescreve o arquivo inteiro)",
+            atraso=atraso,
+            onde=(
+                f"Parquet em `<acervo>/base/financiamentos_{banco}/{banco}.parquet` (servidor "
+                "de casa, `scripts/carga_financiamentos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=colunas,
+        )
+
+    # uma tabela por banco: cada uma com a licença dela (a do BNDES é ODbL, camada própria)
+    return {
+        "financiamentos_bndes": tabela(
+            "bndes",
+            "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não "
+            "automáticas, diretas e pelas instituições credenciadas).",
+            "BNDES, dados abertos: operações não automáticas (ODbL; citar o BNDES)",
+            "bndes",
+        ),
+        "financiamentos_finep": tabela(
+            "finep",
+            "Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e "
+            'descentralizado, pelos agentes financeiros). A "Posição" da planilha fica no CSV '
+            "guardado e não vira coluna: a data que vale é a do arquivo.",
+            "Finep, planilha de contratações (licença a confirmar: uso interno)",
+            "finep",
+        ),
+    }
+
+
 def _tabelas_dos_incentivos() -> dict[str, Tabela]:
     """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE e RDE-IED."""
     situacao = {
@@ -4698,6 +4875,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_processos(),
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
+    **_tabelas_dos_financiamentos(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -6852,6 +7030,7 @@ _PROCESSOS = (
     "2025-01-01"  # o histórico do DJEN que a coleta busca (`djen.HISTORICO_DESDE`)
 )
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
+_FINANCIAMENTOS = "2026-11-04"
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
@@ -6950,6 +7129,28 @@ _CONTRATO = {
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anm_titulos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "ancine_agentes": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "financiamentos_bndes": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={
+            "aconteceu_em": "contratado_em",
+            "publico_em": "disponivel_em",
+            "coletado_em": "origem_coletada_em",
+        },
+        historico_desde=_FINANCIAMENTOS,
+    ),
+    "financiamentos_finep": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={
+            "aconteceu_em": "contratado_em",
+            "publico_em": "disponivel_em",
+            "coletado_em": "origem_coletada_em",
+        },
+        historico_desde=_FINANCIAMENTOS,
+    ),
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
@@ -7075,6 +7276,16 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "ancine_agentes": {
         "pasta": "ancine_agentes",
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "financiamentos_bndes": {
+        "pasta": "financiamentos_bndes",
+        "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
+    },
+    "financiamentos_finep": {
+        "pasta": "financiamentos_finep",
+        "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
     },
     "mme_reidi": {
         "pasta": "mme_reidi",
