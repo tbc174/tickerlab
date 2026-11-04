@@ -390,6 +390,10 @@ DESTINOS: dict[str, Destino] = {
     # Ficha Clara, licenças e registros (`base/licencas.py`)
     "anvisa-empresas": _tabela("anvisa_registros"),
     "anvisa-produtos": _tabela("anvisa_registros"),
+    "anvisa-cmed": _planejada(
+        "ficha-clara/cmed",
+        "preços máximos por apresentação (`base/cmed.py`, tabela cmed_precos)",
+    ),
     "antt-rntrc": _tabela("antt_rntrc"),
     "mapa-sipeagro": _tabela("mapa_sipeagro"),
     "anatel-outorgas": _tabela("anatel_outorgas"),
