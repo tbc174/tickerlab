@@ -371,7 +371,11 @@ DESTINOS: dict[str, Destino] = {
     "cgu-cnep": _tabela("sancoes_cgu"),
     "cgu-cepim": _tabela("sancoes_cgu"),
     "cgu-leniencia": _tabela("sancoes_cgu"),
-    "djen-partes": _tabela("processos_comunicacoes", "processos_partes"),
+    "djen-partes": _tabela("processos_comunicacoes", "processos_partes", "processos"),
+    "djen-processos": _tabela(
+        "processos_comunicacoes", "processos_partes", "processos"
+    ),
+    "cnj-tpu": _tabela("processos"),
     "antt-autos-de-transito": _planejada(
         "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
     ),

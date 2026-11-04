@@ -598,11 +598,12 @@ def _tabelas_das_sancoes() -> dict[str, Tabela]:
 
 
 def _tabelas_dos_processos() -> dict[str, Tabela]:
-    """Os processos judiciais por CNPJ (`base/processos.py`): as comunicações do DJEN em que uma
-    companhia aberta é parte, e as partes de cada uma que não são pessoa física."""
+    """Os processos judiciais por CNPJ (`base/processos.py`): as comunicações do DJEN dos processos em
+    que uma companhia aberta é parte, as partes de cada uma que não são pessoa física e os processos."""
     comum = (
-        " Uma linha por comunicação publicada no DJEN (intimação, citação, edital) em que uma companhia "
-        "aberta é parte, achada pela razão social do cadastro da CVM. Sem a Justiça do Trabalho "
+        " Uma linha por comunicação publicada no DJEN (intimação, citação, edital) de um processo em que "
+        "uma companhia aberta é parte, achada pela razão social do cadastro da CVM ou, depois, pelo "
+        "número do processo (a que intima só a outra parte). Sem a Justiça do Trabalho "
         "(Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de "
         "pessoa física: as partes que não são companhia nem órgão público entram só na contagem. "
         "Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica "
@@ -617,7 +618,8 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
         "disponivel_em": (
             (
                 "Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de "
-                "`visto_em`): desde quando a linha vale para a base"
+                "`visto_em`): desde quando a linha vale para a base. A achada pelo número vale a "
+                "partir da primeira comunicação do processo com uma companhia entre as partes"
             ),
             DATA,
         ),
@@ -664,6 +666,20 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
             "Quantos advogados a comunicação cita (os nomes não entram)",
             NUMERO,
         ),
+        "achada_por": (
+            (
+                "`nome` (a busca pela razão social achou: a companhia está entre as partes) ou "
+                "`numero` (só a busca pelo número do processo achou)"
+            ),
+            TEXTO,
+        ),
+        "disponibilizada_em": (
+            (
+                "Dia em que a comunicação saiu no DJEN, como o tribunal informou (a achada pelo "
+                "número pode ter saído antes de `disponivel_em`)"
+            ),
+            DATA,
+        ),
         **datas,
         **_ORIGEM_SEM_ANO,
     }
@@ -688,9 +704,54 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
         **datas,
         **_ORIGEM_SEM_ANO,
     }
+    dos_processos = {
+        "numero_processo": comunicacoes["numero_processo"],
+        "ano_do_processo": comunicacoes["ano_do_processo"],
+        "justica": comunicacoes["justica"],
+        "tribunal": comunicacoes["tribunal"],
+        "orgao": (
+            "Vara, câmara ou turma da primeira comunicação, em maiúsculas",
+            TEXTO,
+        ),
+        "classe_codigo": (
+            "Código da classe na primeira comunicação (Tabelas Processuais Unificadas do CNJ)",
+            TEXTO,
+        ),
+        "classe": ("Classe da primeira comunicação, como o DJEN escreve", TEXTO),
+        "classe_tpu": (
+            "Nome da classe na TPU do CNJ (vazio se a TPU não tem o código)",
+            TEXTO,
+        ),
+        "classe_caminho": (
+            "As classes da TPU da raiz até a desta, separadas por ` > `",
+            TEXTO,
+        ),
+        "ramo": (
+            (
+                "Agrupamento nosso pela classe mais próxima na TPU: execucao_fiscal, insolvencia, "
+                "coletivo, juizado_especial, criminal, recurso, cumprimento_de_sentenca, execucao, "
+                "conhecimento (vazio: sem ramo conhecido)"
+            ),
+            TEXTO,
+        ),
+        "primeira_comunicacao": (
+            "Dia da primeira comunicação do processo no DJEN que a base tem",
+            DATA,
+        ),
+        "disponivel_em": (
+            (
+                "Dia da primeira comunicação do processo com uma companhia entre as partes: desde "
+                "quando se sabe que o processo é de uma companhia"
+            ),
+            DATA,
+        ),
+        "visto_em": ("Dia da consulta guardada que trouxe essa comunicação", DATA),
+        **_ORIGEM_SEM_ANO,
+    }
     fonte = (
-        "CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais "
-        "(`base/arquivo/djen.py`, `base/processos.py`)"
+        "CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as "
+        "Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, "
+        "`base/processos.py`)"
     )
     frequencia = "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)"
     return {
@@ -723,6 +784,24 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
             ),
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
             colunas=partes,
+        ),
+        "processos": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta: uma linha por processo, com o que a "
+                "primeira comunicação diz e a classe pela TPU do CNJ. A classe é a do começo: a "
+                "mudança (o cumprimento de sentença, o recurso) está nas comunicações."
+                + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="djen",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos/djen.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=dos_processos,
         ),
     }
 
@@ -6773,8 +6852,9 @@ _CONTRATO = {
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
+    "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.1.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo)
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
+    "processos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo",), datas={"aconteceu_em": "primeira_comunicacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -6869,12 +6949,16 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     },
     "processos_comunicacoes": {
         "pasta": "processos_comunicacoes",
-        "nao_nulas": ("id_na_fonte", "numero_processo", "ano_do_processo", "justica", "disponivel_em", "visto_em"),
+        "nao_nulas": ("id_na_fonte", "numero_processo", "ano_do_processo", "justica", "achada_por", "disponivel_em", "visto_em"),
         "faixas": {"companhias": _SEM_NEGATIVO, "advogados": _SEM_NEGATIVO},
     },
     "processos_partes": {
         "pasta": "processos_partes",
         "nao_nulas": ("id_na_fonte", "numero_processo", "polo", "tipo_parte", "disponivel_em", "visto_em"),
+    },
+    "processos": {
+        "pasta": "processos",
+        "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "primeira_comunicacao", "disponivel_em", "visto_em"),
     },
     "anvisa_registros": {
         "pasta": "anvisa_registros",

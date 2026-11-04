@@ -1,13 +1,17 @@
-"""Carga dos processos judiciais por CNPJ para a base: as tabelas `processos_comunicacoes` e
-`processos_partes` (`base/processos.py`).
+"""Carga dos processos judiciais por CNPJ para a base: as tabelas `processos_comunicacoes`,
+`processos_partes` e `processos` (`base/processos.py`).
 
     python -m scripts.carga_processos                    (todas as consultas guardadas)
     python -m scripts.carga_processos --pasta /tmp/base  (outra pasta de saída)
     python -m scripts.carga_processos --refazer          (relê mesmo sem consulta nova: código novo)
 
-Lê as consultas do DJEN por companhia (`djen-partes`) e o cadastro da CVM que o arquivista já guardou
-no acervo (não baixa nada). Nome de pessoa física nunca entra na tabela. Saída padrão:
-`<TICKERLAB_ACERVO>/base/processos_comunicacoes/djen.parquet` e `.../processos_partes/djen.parquet`.
+Lê as consultas do DJEN por companhia (`djen-partes`) e por processo (`djen-processos`), a TPU do CNJ
+(`cnj-tpu`) e o cadastro da CVM que o arquivista já guardou no acervo (não baixa nada). Nome de pessoa
+física nunca entra na tabela. Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/djen.parquet`.
+
+A consulta por processo do arquivista lê a `processos_comunicacoes` que esta carga grava: na primeira
+semana só a busca pelo nome roda; a partir da segunda, o arquivista busca pelo número os processos que
+a carga anterior ligou a uma companhia.
 Feita para o servidor de casa (ADR 0031), toda semana depois do arquivista; recusa rodar sem a versão
 do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhuma consulta do DJEN guardada.
 """
