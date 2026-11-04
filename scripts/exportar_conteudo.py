@@ -385,6 +385,7 @@ def _catalogo() -> dict:
         "familias_de_fontes": familias,
         "modulos": [asdict(m) for m in modulos_da_base],
         "tabelas": [asdict(t) for t in vitrine.tabelas_do_catalogo(catalogo, frases)],
+        "ligado_pelo_cnpj": vitrine.ligado_pelo_cnpj(catalogo),
     }
 
 
