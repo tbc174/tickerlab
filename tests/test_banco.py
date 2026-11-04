@@ -666,8 +666,9 @@ def test_busca_publica_por_cnpj_nome_e_ticker_no_banco(motor, monkeypatch, consu
     base_publica.limpar_cache()
     try:
         consulta, por_cnpj = base_publica._consulta(consulta)
-        assert base_publica._companhias(consulta, por_cnpj, base_publica.hoje()) == (
-            (cnpj, "" if por_cnpj else empresa),
-        )
+        assert [
+            (c.cnpj, c.empresa)
+            for c in base_publica._companhias(consulta, por_cnpj, base_publica.hoje())
+        ] == [(cnpj, "" if por_cnpj else empresa)]
     finally:
         base_publica.limpar_cache()
