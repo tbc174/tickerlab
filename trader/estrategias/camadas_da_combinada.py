@@ -39,7 +39,7 @@ from trader.estrategias import tendencia_cripto as tc
 from trader.holdout import exigir_sem_holdout
 
 FATOR = criterio_quant.FATOR_DE_IMPACTO_NO_ESTRESSE
-# As linhas 5, 11, 12 e 14 do registro foram refeitas dos relatórios (o original se perdeu em
+# As linhas 5, 11 e 12 do registro foram refeitas dos relatórios (o original se perdeu em
 # 03/11/2026) e guardam o Sharpe do excesso com duas casas: reproduzir é cair no mesmo arredondamento.
 ARREDONDADO_EM_DUAS_CASAS = 0.005
 EXATO = 1e-9
@@ -60,8 +60,10 @@ REGISTRADO = {
     "P0-1": Registrado(11, 0.68, ARREDONDADO_EM_DUAS_CASAS),
     "P0-2 BOVA11": Registrado(12, -0.16, ARREDONDADO_EM_DUAS_CASAS),
     "P0-2 DI1": Registrado(12, 0.44, ARREDONDADO_EM_DUAS_CASAS),
-    "P0-4": Registrado(14, 0.05, ARREDONDADO_EM_DUAS_CASAS),
-    "P0-5": Registrado(16, 0.0788694656791887, EXATO),
+    # P0-4 e P0-5: as tentativas 2, rodadas de novo em 04/11 com os arquivos congelados, porque as 1as
+    # não se reproduziam mais (`docs/resultado-c1-tentativa-1.md`).
+    "P0-4": Registrado(21, 0.16437441760350194, EXATO),
+    "P0-5": Registrado(22, 0.06832810672343792, EXATO),
 }
 
 
