@@ -11,6 +11,7 @@ FUNDO = "11.111.111/0001-91"
 ADMIN = "22.222.222/0001-91"
 OUTRO_ADMIN = "33.333.333/0001-91"
 GESTOR = "44.444.444/0001-91"
+OUTRO_GESTOR = "77.777.777/0001-91"
 CEDENTE = "55.555.555/0001-91"
 SECURITIZADORA = "66.666.666/0001-91"
 
@@ -49,6 +50,34 @@ def _cadastro(gestor: str | None = GESTOR) -> pd.DataFrame:
             "GESTOR": ["GESTORA" if gestor else None],
         }
     )
+
+
+def _historico_do_gestor() -> pd.DataFrame:
+    """O gestor do fundo: GESTOR até 30/06/2024, OUTRO_GESTOR desde 01/07/2024 (sem fim)."""
+    return pd.DataFrame(
+        {
+            "CNPJ_FUNDO": [FUNDO, FUNDO],
+            "DT_REG": ["2015-01-01"] * 2,
+            "PF_PJ_GESTOR": ["PJ", "PJ"],
+            "CPF_CNPJ_GESTOR": [GESTOR, OUTRO_GESTOR],
+            "GESTOR": ["GESTORA", "OUTRA GESTORA"],
+            "DT_INI_GESTOR": ["2015-01-01", "2024-07-01"],
+            "DT_FIM_GESTOR": ["2024-06-30", None],
+        }
+    )
+
+
+def _historico_ate(corte: pd.Timestamp) -> pd.DataFrame:
+    """O histórico como era em `corte`: some a linha que começa depois e o fim posterior vira vazio."""
+    historico = _historico_do_gestor()
+    comeco = pd.to_datetime(historico["DT_INI_GESTOR"])
+    fim = pd.to_datetime(historico["DT_FIM_GESTOR"])
+    historico["DT_FIM_GESTOR"] = historico["DT_FIM_GESTOR"].where(fim <= corte)
+    return historico[comeco <= corte]
+
+
+def _gravar_gestor(pasta, historico: pd.DataFrame) -> None:
+    _gravar(pasta, "fidc/cadastro/hist_gestor.parquet", historico)
 
 
 def _antigas() -> pd.DataFrame:
@@ -93,6 +122,7 @@ def base(tmp_path):
     )
     _gravar(tmp_path, "fidc/informe/tab_I/2024.parquet", informe)
     _gravar(tmp_path, "fidc/cadastro/cad_fi.parquet", _cadastro())
+    _gravar_gestor(tmp_path, _historico_do_gestor())
     _gravar(tmp_path, "ofertas/antigas.parquet", _antigas())
     _gravar(tmp_path, "ofertas/resolucao_160.parquet", _recente())
     with Porta(tmp_path) as porta:
@@ -175,10 +205,74 @@ def test_como_era_em_corta_o_que_ainda_nao_era_publico(base):
     assert OUTRO_ADMIN not in set(mapa.vinculos["cnpj_papel"])
 
 
-def test_como_era_em_nao_mostra_gestor_e_diz_por_que(base):
-    mapa = mapa_de_operacoes(base, FUNDO, como_era_em="2024-12-31")
-    assert "gestor" not in set(mapa.vinculos["papel"])
-    assert any("retrato" in lacuna for lacuna in mapa.lacunas)
+def _gestores_em(mapa) -> set[str]:
+    v = mapa.vinculos
+    return set(v.loc[v["papel"] == "gestor", "cnpj_papel"])
+
+
+def test_como_era_em_traz_o_gestor_daquele_dia_pelo_historico(base):
+    antes = mapa_de_operacoes(base, FUNDO, como_era_em="2024-03-31")
+    depois = mapa_de_operacoes(base, FUNDO, como_era_em="2024-12-31")
+    assert _gestores_em(antes) == {GESTOR} and _gestores_em(depois) == {OUTRO_GESTOR}
+    gestor = antes.vinculos.query("papel == 'gestor'").iloc[0]
+    assert gestor["fonte"] == "cadastro_gestor_hist"
+    assert gestor["referencia_desde"] == pd.Timestamp("2015-01-01")
+    assert pd.isna(gestor["publico_em"])
+    assert any("não diz o dia" in lacuna for lacuna in antes.lacunas)
+
+
+def test_como_era_em_antes_do_primeiro_gestor_nao_tem_gestor(base):
+    assert (
+        _gestores_em(mapa_de_operacoes(base, FUNDO, como_era_em="2014-12-31")) == set()
+    )
+
+
+def test_o_gestor_acha_os_fundos_dele_como_era_em_d(base):
+    assert _gestores_em(mapa_de_operacoes(base, GESTOR, como_era_em="2024-03-31")) == {
+        GESTOR
+    }
+    assert (
+        _gestores_em(mapa_de_operacoes(base, GESTOR, como_era_em="2024-12-31")) == set()
+    )
+
+
+def test_gestor_de_fundo_que_nao_e_fidc_nao_entra(tmp_path):
+    cadastro = _cadastro().assign(TP_FUNDO="FI")
+    _gravar(tmp_path, "fidc/cadastro/cad_fi.parquet", cadastro)
+    _gravar_gestor(tmp_path, _historico_do_gestor())
+    with Porta(tmp_path) as porta:
+        mapa = mapa_de_operacoes(porta, GESTOR, como_era_em="2024-03-31")
+    assert _gestores_em(mapa) == set()
+
+
+def test_como_era_em_sem_o_historico_diz_que_falta(tmp_path):
+    _gravar(tmp_path, "fidc/cadastro/cad_fi.parquet", _cadastro())
+    with Porta(tmp_path) as porta:
+        mapa = mapa_de_operacoes(porta, FUNDO, como_era_em="2024-03-31")
+    assert _gestores_em(mapa) == set()
+    assert any("histórico do cadastro" in lacuna for lacuna in mapa.lacunas)
+
+
+@pytest.mark.parametrize(
+    "dia", ["2014-12-31", "2015-06-30", "2024-06-30", "2024-12-31"]
+)
+def test_sem_olhar_o_futuro_o_gestor_de_d_nao_muda_se_cortar_o_futuro(
+    base, tmp_path, dia
+):
+    """O gestor em D com o histórico inteiro é o mesmo com o histórico só até D: a linha que começa
+    depois de D some e o fim posterior a D vira "ainda sem fim"."""
+    corte = pd.Timestamp(dia)
+    pasta = tmp_path / "corte"
+    _gravar(pasta, "fidc/cadastro/cad_fi.parquet", _cadastro())
+    _gravar_gestor(pasta, _historico_ate(corte))
+    with Porta(pasta) as so_ate_d:
+        cortado = mapa_de_operacoes(so_ate_d, FUNDO, como_era_em=dia).vinculos
+    inteiro = mapa_de_operacoes(base, FUNDO, como_era_em=dia).vinculos
+    pd.testing.assert_frame_equal(
+        inteiro.query("papel == 'gestor'").reset_index(drop=True),
+        cortado.query("papel == 'gestor'").reset_index(drop=True),
+        check_dtype=False,
+    )
 
 
 @pytest.mark.parametrize(
@@ -186,7 +280,7 @@ def test_como_era_em_nao_mostra_gestor_e_diz_por_que(base):
 )
 def test_sem_olhar_o_futuro_cortar_o_futuro_nao_muda_o_passado(base, tmp_path, dia):
     """O mapa em D (com a base inteira) é igual ao mapa montado só com a base até D."""
-    for cnpj in (FUNDO, ADMIN, SECURITIZADORA):
+    for cnpj in (FUNDO, ADMIN, GESTOR, SECURITIZADORA):
         inteiro = mapa_de_operacoes(base, cnpj, como_era_em=dia).vinculos
         pasta = tmp_path / f"corte-{dia}-{cnpj[:2]}"
         corte = pd.Timestamp(dia)
@@ -196,6 +290,8 @@ def test_sem_olhar_o_futuro_cortar_o_futuro_nao_muda_o_passado(base, tmp_path, d
             ("2025-01-31", "2025-03-17", OUTRO_ADMIN, None),
         )
         antigas, recente = _antigas(), _recente()
+        _gravar(pasta, "fidc/cadastro/cad_fi.parquet", _cadastro())
+        _gravar_gestor(pasta, _historico_ate(corte))
         _gravar(
             pasta,
             "fidc/informe/tab_I/2024.parquet",
@@ -381,3 +477,30 @@ def test_com_informe_na_base_a_lacuna_diz_o_que_a_cvm_nao_da(base_com_informes):
 def test_base_sem_o_informe_de_securitizacao_diz_que_falta(base):
     lacunas = mapa_de_operacoes(base, SECURITIZADORA).lacunas
     assert any("informe mensal dos certificados" in lacuna for lacuna in lacunas)
+
+
+# --- as strings reais do acervo (conferidas em 04/11/2026 em `ofertas_antigas` e `ofertas_resolucao_160`) ---
+
+
+@pytest.mark.parametrize(
+    ("texto", "tipo"),
+    [
+        ("CERTIFICADOS DE RECEBÍVEIS IMOBILIÁRIOS - CRI", "CRI"),
+        ("CERTIFICADO DE RECEBÍVEIS IMOBILIÁRIOS", "CRI"),
+        ("Certificados de Recebíveis Imobiliários", "CRI"),
+        ("CERTIFICADOS DE RECEBÍVEIS DO AGRONEGÓCIO - CRA", "CRA"),
+        ("CERTIFICADO DE RECEBÍVEIS DO AGRONEGÓCIO", "CRA"),
+        ("Certificados de Recebíveis do Agronegócio", "CRA"),
+        ("QUOTAS DE FUNDO IMOBILIÁRIO", None),
+        ("CERTIFICADOS DE DIREITOS CREDITÓRIOS DO AGRONEGÓCIO - CDCA", None),
+        ("Certificado de Direitos Creditórios do Agronegócio", None),
+        ("Cotas de FIAGRO - FII", None),
+        ("CERTIFICADOS DE RECEBÍVEIS", None),
+        ("Certificados de Recebíveis", None),
+        ("DEBÊNTURES SIMPLES", None),
+    ],
+)
+def test_cri_e_cra_pelas_strings_reais_do_acervo(texto, tipo):
+    from base.mapa_de_operacoes import _tipo_do_certificado
+
+    assert _tipo_do_certificado(texto) == tipo

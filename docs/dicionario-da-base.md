@@ -453,6 +453,59 @@ O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe
 | `INVEST_CEMPR_EXTER` | S se pode aplicar 100% no exterior | texto |
 | `CLASSE_ANBIMA` | Classificação da Anbima | texto |
 
+## `cadastro_gestor_hist`
+
+O gestor de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linha por período, com o início e o fim que a CVM declara. Serve para dizer quem era o gestor do fundo numa data passada. A CVM não dá o dia em que cada linha ficou pública. Sem dado pessoal: o gestor pessoa física fica sem CNPJ e sem nome
+
+- **Fonte:** CVM: histórico do cadastro de fundos (`cad_fi_hist.zip`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)
+- **Atraso de divulgação:** Sem data pública por linha: vale o início e o fim que a CVM declara
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `CNPJ_FUNDO`, `DT_INI_GESTOR`
+- **Três datas:** aconteceu_em = `DT_INI_GESTOR`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)
+- **Linhagem:** O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `CNPJ_FUNDO` | CNPJ do fundo | texto |
+| `DT_REG` | Data do registro do fundo na CVM | data (dia) |
+| `PF_PJ_GESTOR` | PF ou PJ: o gestor é pessoa física ou jurídica | texto |
+| `CPF_CNPJ_GESTOR` | CNPJ do gestor; vazio quando é pessoa física | texto |
+| `GESTOR` | Nome do gestor; vazio quando é pessoa física | texto |
+| `DT_INI_GESTOR` | Início do gestor no fundo | data (dia) |
+| `DT_FIM_GESTOR` | Fim do gestor no fundo (vazio: sem fim declarado) | data (dia) |
+
+## `cadastro_admin_hist`
+
+O administrador de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linha por período, com o início e o fim que a CVM declara. Serve para dizer quem era o administrador do fundo numa data passada. A CVM não dá o dia em que cada linha ficou pública. Sem dado pessoal: só pessoa jurídica
+
+- **Fonte:** CVM: histórico do cadastro de fundos (`cad_fi_hist.zip`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)
+- **Atraso de divulgação:** Sem data pública por linha: vale o início e o fim que a CVM declara
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `CNPJ_FUNDO`, `DT_INI_ADMIN`
+- **Três datas:** aconteceu_em = `DT_INI_ADMIN`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)
+- **Linhagem:** O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `CNPJ_FUNDO` | CNPJ do fundo | texto |
+| `DT_REG` | Data do registro do fundo na CVM | data (dia) |
+| `CNPJ_ADMIN` | CNPJ do administrador | texto |
+| `ADMIN` | Nome do administrador (empresa) | texto |
+| `DT_INI_ADMIN` | Início do administrador no fundo | data (dia) |
+| `DT_FIM_ADMIN` | Fim do administrador no fundo (vazio: sem fim declarado) | data (dia) |
+
 ## `painel_dos_fundos`
 
 Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ). O emissor vira CNPJ pelo FCA e, no que falta (empresas que saíram antes de 2018), pela tabela conferida `base/conferidas/emissores_antigos.csv`; cada ano tem pelo menos 95% do valor comprado com CNPJ (`cobertura`), e o resto está em `buracos`. Inclui empresas que saíram da bolsa (sem viés de sobrevivência)

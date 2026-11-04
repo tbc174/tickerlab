@@ -2096,6 +2096,63 @@ TABELAS: dict[str, Tabela] = {
             "CLASSE_ANBIMA": ("Classificação da Anbima", TEXTO),
         },
     ),
+    "cadastro_gestor_hist": Tabela(
+        descricao=(
+            "O gestor de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linha por período, "
+            "com o início e o fim que a CVM declara. Serve para dizer quem era o gestor do fundo numa "
+            "data passada. A CVM não dá o dia em que cada linha ficou pública. Sem dado pessoal: "
+            "o gestor pessoa física fica sem CNPJ e sem nome"
+        ),
+        fonte="CVM: histórico do cadastro de fundos (`cad_fi_hist.zip`)",
+        familia_da_fonte="cvm",
+        frequencia="Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+        atraso="Sem data pública por linha: vale o início e o fim que a CVM declara",
+        onde="Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)",
+        linhagem=(
+            "O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no "
+            "acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou."
+        ),
+        colunas={
+            "CNPJ_FUNDO": ("CNPJ do fundo", TEXTO),
+            "DT_REG": ("Data do registro do fundo na CVM", DATA),
+            "PF_PJ_GESTOR": ("PF ou PJ: o gestor é pessoa física ou jurídica", TEXTO),
+            "CPF_CNPJ_GESTOR": ("CNPJ do gestor; vazio quando é pessoa física", TEXTO),
+            "GESTOR": ("Nome do gestor; vazio quando é pessoa física", TEXTO),
+            "DT_INI_GESTOR": ("Início do gestor no fundo", DATA),
+            "DT_FIM_GESTOR": (
+                "Fim do gestor no fundo (vazio: sem fim declarado)",
+                DATA,
+            ),
+        },
+    ),
+    "cadastro_admin_hist": Tabela(
+        descricao=(
+            "O administrador de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linha por período, "
+            "com o início e o fim que a CVM declara. Serve para dizer quem era o administrador do fundo numa "
+            "data passada. A CVM não dá o dia em que cada linha ficou pública. Sem dado pessoal: "
+            "só pessoa jurídica"
+        ),
+        fonte="CVM: histórico do cadastro de fundos (`cad_fi_hist.zip`)",
+        familia_da_fonte="cvm",
+        frequencia="Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+        atraso="Sem data pública por linha: vale o início e o fim que a CVM declara",
+        onde="Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)",
+        linhagem=(
+            "O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no "
+            "acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou."
+        ),
+        colunas={
+            "CNPJ_FUNDO": ("CNPJ do fundo", TEXTO),
+            "DT_REG": ("Data do registro do fundo na CVM", DATA),
+            "CNPJ_ADMIN": ("CNPJ do administrador", TEXTO),
+            "ADMIN": ("Nome do administrador (empresa)", TEXTO),
+            "DT_INI_ADMIN": ("Início do administrador no fundo", DATA),
+            "DT_FIM_ADMIN": (
+                "Fim do administrador no fundo (vazio: sem fim declarado)",
+                DATA,
+            ),
+        },
+    ),
     "painel_dos_fundos": Tabela(
         descricao=(
             "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por "
@@ -7060,6 +7117,8 @@ _CONTRATO = {
     "cda_cotas": _contrato(modulo=_FIDC, chaves=("competencia", "tipo_do_fundo", "cnpj_fundo", "cnpj_fundo_investido"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="2005-01-31"),
     "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
+    "cadastro_gestor_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_GESTOR"), datas={"aconteceu_em": "DT_INI_GESTOR"}, historico_desde=_CVM),
+    "cadastro_admin_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_ADMIN"), datas={"aconteceu_em": "DT_INI_ADMIN"}, historico_desde=_CVM),
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
     "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM, versao_do_contrato="1.1.0"),

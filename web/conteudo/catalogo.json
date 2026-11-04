@@ -1903,7 +1903,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 61
+      "tabelas": 63
     },
     {
       "historico_desde": "2026-10-14",
@@ -2279,7 +2279,7 @@
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 13
+      "tabelas": 15
     },
     {
       "chave": "macro",
@@ -5917,6 +5917,26 @@
       "tabela": "cadastro_de_fundos"
     },
     {
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "frase": "O gestor de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_gestor_hist"
+    },
+    {
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "frase": "O administrador de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_admin_hist"
+    },
+    {
       "atraso": null,
       "frase": "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ).",
       "frequencia": "Mensal",
@@ -6983,6 +7003,6 @@
     "fontes": 33,
     "fontes_em_consulta": 10,
     "modulos": 6,
-    "tabelas": 119
+    "tabelas": 121
   }
 }
