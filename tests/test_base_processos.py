@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 import sqlalchemy as sa
 
-from base import numero_cnj, processos, tpu
+from base import conferencia_processos, numero_cnj, processos, processos_teor, tpu
 from base.arquivo import djen
 from src.banco import coletas
 from src.banco.coletas import com_registro
@@ -549,3 +549,66 @@ def test_montar_le_as_duas_fontes_e_grava_os_processos(banco, tmp_path, monkeypa
         p.read_bytes().decode("latin-1") for p in pasta.rglob("*") if p.is_file()
     )
     assert PESSOA not in gravado
+
+
+# --- o teor (PR 2): lido pela regra, publicado só depois da conferência ---------------------------
+
+TEOR = f"{PESSOA} contra a ENERGIA EXEMPLO S.A. JULGO PROCEDENTE o pedido. Custas de R$ 1.000,00."
+
+
+def test_tabelas_leem_o_teor_pela_regra_sem_guardar_o_texto():
+    item = _item("t", _numero(31), ("ENERGIA EXEMPLO S.A.", "P"), texto=TEOR)
+    linha = _tabelas(item)[0].iloc[0]
+    assert (linha["tipo_de_ato"], linha["resultado"]) == ("sentenca", "procedente")
+    assert (linha["resultado_trecho"], linha["valor_citado"]) == (
+        "JULGO PROCEDENTE",
+        1000.0,
+    )
+    assert linha["teor_conferido_em"] is None
+    assert "texto" not in linha.index
+
+
+def test_montar_so_publica_o_teor_conferido(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    _coletar(
+        banco,
+        djen.consulta("ENERGIA EXEMPLO S.A.", date(2026, 10, 26), date(2026, 11, 1)),
+        [_item("t", _numero(32), ("ENERGIA EXEMPLO S.A.", "P"), texto=TEOR)],
+        date(2026, 11, 2),
+    )
+    pasta = tmp_path / "base"
+    arquivo = pasta / "processos_comunicacoes" / "djen.parquet"
+    teor = ["tipo_de_ato", "resultado", "resultado_trecho", "valor_citado"]
+    with banco.connect() as conexao:
+        processos.montar(conexao, pasta, AGORA, cadastro=CADASTRO)
+        assert pd.read_parquet(arquivo)[teor].isna().all().all()
+
+        dia = date(2026, 11, 3)
+        conferencia_processos.gravar(
+            conferencia_processos.Conferencia(
+                feita_em=dia,
+                versao_da_regra=processos_teor.VERSAO_DA_REGRA,
+                modelo=conferencia_processos.MODELO_DO_GABARITO,
+                semente=20261103,
+                cobre_ate=dia,
+                campos={
+                    c: conferencia_processos.Campo(100, 100)
+                    for c in conferencia_processos.CAMPOS
+                },
+                discordantes={c: () for c in conferencia_processos.CAMPOS},
+            ),
+            pasta,
+        )
+        # a conferência nova é origem da tabela: refaz sem precisar de --refazer
+        assert (
+            processos.montar(conexao, pasta, AGORA, cadastro=CADASTRO)
+            != processos.JA_MONTADO
+        )
+    linha = pd.read_parquet(arquivo).iloc[0]
+    assert linha[teor].tolist() == [
+        "sentenca",
+        "procedente",
+        "JULGO PROCEDENTE",
+        1000.0,
+    ]
+    assert linha["teor_conferido_em"] == dia
