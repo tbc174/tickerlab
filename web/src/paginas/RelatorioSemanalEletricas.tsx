@@ -13,6 +13,7 @@ export const DADOS = {
     "Quem atende os consumidores de energia do país e quem audita as companhias abertas do setor, " +
     "com a fonte e a data de cada número e o que a base ainda não tem.",
   atual: "/relatorios.html",
+  avisoRodape: relatorio.aviso_rodape, // as fontes do setor, não a do site (Yahoo)
 };
 
 const TITULO_DOS_DESTAQUES = "O que os dados mostram";

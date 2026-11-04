@@ -408,6 +408,13 @@ describe("relatório de setor da semana: elétricas (ADR 0109, item 10)", () => 
     expect(texto).toContain("Nada aqui é recomendação de investimento");
   });
 
+  it("o rodapé cita as fontes do setor (ANEEL e CVM), não o Yahoo Finance do rodapé padrão", () => {
+    const rodape = semTags(trecho(html, '<footer class="rodape escura">', "</footer>"));
+    expect(rodape).toContain(relatorioSemanalEletricas.aviso_rodape);
+    expect(rodape).toContain("ANEEL");
+    expect(rodape).not.toContain("Yahoo");
+  });
+
   it("cada destaque mostra a fonte e a data", () => {
     expect(relatorioSemanalEletricas.destaques.length).toBeGreaterThanOrEqual(3);
     for (const d of relatorioSemanalEletricas.destaques) {
