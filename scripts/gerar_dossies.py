@@ -153,6 +153,8 @@ COLUNAS_DA_DRE = (
     "grupo",
     "demonstracao",
     "documento",
+    "referencia",
+    "versao",
     "conta",
     "descricao",
     "inicio",

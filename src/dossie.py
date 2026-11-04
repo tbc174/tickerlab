@@ -33,7 +33,7 @@ from base.pessoas.sem_cpf import tirar_cpf
 from src.configuracao import PASTA_RAIZ
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao
-from src.rastro import Rastro
+from src.rastro import Entrada, Rastro
 from src.relatorio_empresa import ANEXO_DFC_DVA, Dossie, Item, Secao
 
 log = logging.getLogger(__name__)
@@ -144,6 +144,23 @@ _NOME_DA_AGENCIA = {
 }
 
 
+class EntradaDaFicha(BaseModel):
+    """Uma conta da demonstração que entra no número, como a base escreve (`base.dossie._entradas_do_caixa`)."""
+
+    conta: str
+    codigo: str
+    nome: str
+    valor: float
+    periodo: str
+    documento: str
+    referencia: date
+    versao: int
+    publicado_em: date | None = None
+
+    def como_entrada(self) -> Entrada:
+        return Entrada(**self.model_dump())
+
+
 class RastroDaFicha(BaseModel):
     """Como o item foi calculado e de onde veio, como a base escreve (`base.dossie._rastro`)."""
 
@@ -152,6 +169,9 @@ class RastroDaFicha(BaseModel):
     fonte_id: str
     outras_fontes: list[str] = []
     publicado_em: date | None = None
+    entradas: list[
+        EntradaDaFicha
+    ] = []  # [] nas fichas de antes das entradas (linha 424)
 
     def como_rastro(self) -> Rastro:
         return Rastro(
@@ -160,6 +180,7 @@ class RastroDaFicha(BaseModel):
             self.fonte_id,
             self.publicado_em,
             outras_fontes=tuple(self.outras_fontes),
+            entradas=tuple(e.como_entrada() for e in self.entradas),
         )
 
 

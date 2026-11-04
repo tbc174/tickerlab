@@ -864,7 +864,9 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
         "id_na_fonte": (
             (
                 "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o "
-                "identificam juntas por `|`)"
+                "identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código "
+                "(`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de "
+                "outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles"
             ),
             TEXTO,
         ),
@@ -906,7 +908,9 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
         "situacao": (
             (
                 "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do "
-                "título...): vale desde o dia do arquivo, nunca antes"
+                "título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as "
+                "situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): "
+                "nenhuma vence, e a de cada apresentação não está no arquivo"
             ),
             TEXTO,
         ),

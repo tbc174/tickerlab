@@ -2797,7 +2797,7 @@ Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
-| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
 | `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
@@ -2805,7 +2805,7 @@ Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados
 | `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
 | `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
 | `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
-| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo | texto |
 | `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
 | `municipio` | Município, quando a fonte informa | texto |
 | `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
@@ -2842,7 +2842,7 @@ Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ. Um
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
-| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
 | `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
@@ -2850,7 +2850,7 @@ Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ. Um
 | `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
 | `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
 | `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
-| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo | texto |
 | `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
 | `municipio` | Município, quando a fonte informa | texto |
 | `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
@@ -2887,7 +2887,7 @@ Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
-| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
 | `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
@@ -2895,7 +2895,7 @@ Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e
 | `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
 | `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
 | `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
-| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo | texto |
 | `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
 | `municipio` | Município, quando a fonte informa | texto |
 | `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
@@ -2932,7 +2932,7 @@ Prestadoras de telecomunicações com outorga da Anatel, por CNPJ e serviço not
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
-| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
 | `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
@@ -2940,7 +2940,7 @@ Prestadoras de telecomunicações com outorga da Anatel, por CNPJ e serviço not
 | `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
 | `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
 | `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
-| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo | texto |
 | `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
 | `municipio` | Município, quando a fonte informa | texto |
 | `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
@@ -2977,7 +2977,7 @@ Títulos e requerimentos minerários da ANM por CNPJ do titular (Cadastro Mineir
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
-| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
 | `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
@@ -2985,7 +2985,7 @@ Títulos e requerimentos minerários da ANM por CNPJ do titular (Cadastro Mineir
 | `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
 | `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
 | `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
-| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo | texto |
 | `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
 | `municipio` | Município, quando a fonte informa | texto |
 | `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
@@ -3022,7 +3022,7 @@ Agentes econômicos registrados na Ancine, por CNPJ. Uma linha por valor diferen
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
-| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`) | texto |
+| `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
 | `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
@@ -3030,7 +3030,7 @@ Agentes econômicos registrados na Ancine, por CNPJ. Uma linha por valor diferen
 | `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |
 | `descricao` | O que a licença cobre: atividades (AFE), assunto (CBPF), nome do produto, classificação (MAPA), serviço notificado (Anatel), substâncias (ANM), natureza jurídica (Ancine) | texto |
 | `complemento` | Um dado a mais de cada fonte: número novo da AFE, país da fábrica inspecionada (CBPF), transportador equiparado (RNTRC), característica ou aeronave (MAPA), Fistel da notificação (Anatel), tipo de uso (ANM), brasileiro independente (Ancine) | texto |
-| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes | texto |
+| `situacao` | A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo | texto |
 | `uf` | UF da empresa ou do estabelecimento, quando a fonte informa | texto |
 | `municipio` | Município, quando a fonte informa | texto |
 | `concedido_em` | Data da concessão, autorização, inclusão ou registro, quando a fonte informa | data (dia) |
