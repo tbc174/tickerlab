@@ -9,6 +9,10 @@ Uma semana vai de segunda 00:00 a domingo 23:59 (UTC) e é identificada pela seg
 "Usou o app" é qualquer um destes eventos datados da pessoa: entrar (sessão de login), salvar uma
 simulação, gerar um relatório em PDF, anotar uma tese ou rodar uma configuração nova do backtest.
 O app não guarda "download" à parte: o PDF gerado é o PDF entregue.
+
+**Ativos por origem** (plano da campanha, seção 5): os mesmos ativos, separados pela origem do
+cadastro (`origens_do_cadastro`, lida do cookie `tl_origem` no primeiro login). Mostra qual canal
+traz gente que volta, não só gente que se cadastra. Conta apagada sai da contagem (LGPD).
 """
 
 import uuid
@@ -18,16 +22,20 @@ import sqlalchemy as sa
 
 from src.administracao import exigir_admin
 from src.banco.modelo import (
+    origens_do_cadastro,
     relatorios,
     sessoes_de_login,
     simulacoes,
     tentativas,
     teses,
+    usuarios,
 )
 
 SEMANAS_DA_JANELA = 4
 SEMANAS_ATIVAS_MINIMAS = 2  # "ativo" = usou em pelo menos 2 das últimas 4 semanas
 SEMANAS_NO_HISTORICO = 12
+# o que separa um canal do outro; a peça (`utm_content`) fica de fora: dividiria demais
+CAMPOS_DA_ORIGEM = ("utm_source", "utm_medium", "utm_campaign", "ref")
 
 _EVENTOS_DE_USO = (
     (sessoes_de_login, "criada_em"),
@@ -73,6 +81,13 @@ def _semanas_de_uso(
     return por_pessoa
 
 
+def _ativos(por_pessoa: dict[uuid.UUID, set[date]]) -> set[uuid.UUID]:
+    """Quem usou o app em pelo menos `SEMANAS_ATIVAS_MINIMAS` semanas da janela."""
+    return {
+        p for p, semanas in por_pessoa.items() if len(semanas) >= SEMANAS_ATIVAS_MINIMAS
+    }
+
+
 def _contar_relatorios(
     conexao: sa.Connection, inicio: datetime, fim: datetime
 ) -> dict[str, int]:
@@ -97,9 +112,7 @@ def numeros_da_semana(conexao: sa.Connection, segunda: date) -> dict:
     return {
         "semana": segunda.isoformat(),
         "ativos_na_semana": sum(1 for s in por_pessoa.values() if segunda in s),
-        "ativos": sum(
-            1 for s in por_pessoa.values() if len(s) >= SEMANAS_ATIVAS_MINIMAS
-        ),
+        "ativos": len(_ativos(por_pessoa)),
         "relatorios_gerados": sum(por_tipo.values()),
         "relatorios_por_tipo": dict(sorted(por_tipo.items())),
         "pdfs_entregues": sum(por_tipo.values()),
@@ -131,3 +144,53 @@ def historico_semanal(
     """O mesmo histórico, só para administradores."""
     exigir_admin(conexao, ator_id)
     return historico(conexao, hoje, semanas)
+
+
+def ativos_por_origem(conexao: sa.Connection, segunda: date) -> list[dict]:
+    """Cadastros e ativos de cada origem, na semana que começa em `segunda`, sem checar quem pede.
+
+    Uma linha por origem (`CAMPOS_DA_ORIGEM`; todos `None` = chegou sem link de campanha), com
+    `cadastros` (contas criadas até o fim da semana), `cadastros_na_semana` e `ativos` (mesma regra
+    de `numeros_da_semana`). Quem traz mais ativos vem primeiro. "Sem olhar o futuro": conta e uso
+    depois do domingo não mudam a semana. Só contagens, nenhum id ou e-mail.
+    """
+    _, fim = _limites(segunda)
+    janela_inicio, _ = _limites(segunda - timedelta(weeks=SEMANAS_DA_JANELA - 1))
+    ativos = _ativos(_semanas_de_uso(conexao, janela_inicio, fim))
+    consulta = (
+        sa.select(
+            usuarios.c.id,
+            usuarios.c.criado_em,
+            *(origens_do_cadastro.c[campo] for campo in CAMPOS_DA_ORIGEM),
+        )
+        .select_from(usuarios.outerjoin(origens_do_cadastro))
+        .where(usuarios.c.criado_em < fim, usuarios.c.excluido_em.is_(None))
+    )
+    por_origem: dict[tuple, dict] = {}
+    for usuario_id, criado_em, *origem in conexao.execute(consulta):
+        linha = por_origem.setdefault(
+            tuple(origem),
+            dict(zip(CAMPOS_DA_ORIGEM, origem, strict=True))
+            | {"cadastros": 0, "cadastros_na_semana": 0, "ativos": 0},
+        )
+        linha["cadastros"] += 1
+        linha["cadastros_na_semana"] += _semana_do_evento(criado_em) == segunda
+        linha["ativos"] += usuario_id in ativos
+    return sorted(
+        por_origem.values(),
+        key=lambda l: (
+            -l["ativos"],
+            -l["cadastros"],
+            *(l[c] or "" for c in CAMPOS_DA_ORIGEM),
+        ),
+    )
+
+
+def ativos_por_origem_do_admin(
+    conexao: sa.Connection, ator_id: uuid.UUID, hoje: date | None = None
+) -> list[dict]:
+    """Os ativos por origem da semana em curso, só para administradores."""
+    exigir_admin(conexao, ator_id)
+    return ativos_por_origem(
+        conexao, segunda_da_semana(hoje or datetime.now(UTC).date())
+    )

@@ -1,11 +1,11 @@
 // Monta o HTML pronto de cada página no build (sem navegador): é o que a busca do Google lê. O site
-// é estático: nada de React no navegador; o site.js cuida do tema, da busca e da vitrine, e o
-// movimento.js das animações.
+// é estático: nada de React no navegador; o site.js cuida do tema, da busca e da vitrine, o
+// movimento.js das animações e o origem.js da origem do cadastro.
 import { renderToStaticMarkup } from "react-dom/server";
 import { css } from "./estilo";
 import { ROTAS, rotaDoArquivo } from "./rotas";
 import { expandirBruto } from "./site/Bruto";
-import { Documento, MOVIMENTO_JS, SITE_JS } from "./site/Moldura";
+import { Documento, MOVIMENTO_JS, ORIGEM_JS, SITE_JS } from "./site/Moldura";
 import { URL_DO_SITE } from "./site/textos";
 
 export const arquivos = ROTAS.map((r) => r.arquivo);
@@ -35,6 +35,7 @@ export function arquivosFixos(): Record<string, string> {
     "estilo.css": css(),
     "site.js": SITE_JS,
     "movimento.js": MOVIMENTO_JS,
+    "origem.js": ORIGEM_JS,
     "robots.txt": `User-agent: *\nAllow: /\nSitemap: ${URL_DO_SITE}/sitemap.xml\n`,
     "sitemap.xml": mapaDoSite(),
     ".well-known/security.txt": securityTxt(),
