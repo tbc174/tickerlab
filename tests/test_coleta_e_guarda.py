@@ -14,8 +14,8 @@ from src.banco.coletas import Coleta, Guarda
 HOJE = date(2026, 10, 26)
 
 # Famílias que passam as marcas do portão externo (revenda, guarda, coleta, leitura dos termos).
-# Ficam de fora, de propósito: `bm`, `cgu` e `cftc` (revenda só uso interno); `rfb-cnpj` (coleta
-# `robots_fecha` com as duas condições, mas `TERMOS_LIDOS_EM` ainda não tem a data da leitura)
+# Ficam de fora, de propósito: `bm`, `cgu` e `cftc` (revenda só uso interno). `rfb-cnpj` passa desde
+# que `TERMOS_LIDOS_EM` ganhou a data da leitura (coleta `robots_fecha` com as duas condições).
 PASSAM_AS_MARCAS = {
     "antt",
     "bcb",
@@ -42,6 +42,7 @@ PASSAM_AS_MARCAS = {
     "susep",
     "usda",
     "faostat",
+    "rfb-cnpj",
 }
 
 
