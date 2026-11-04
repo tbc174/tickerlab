@@ -388,6 +388,9 @@ _COLUNA_DE_CNPJ = re.compile(r"(^|_)cnpj(_|$)|(^|_)raiz$", re.IGNORECASE)
 _COLUNA_QUE_CONTA_CNPJ = re.compile(r"_com_cnpj$", re.IGNORECASE)
 # a rede liga as entidades pelos identificadores (CNPJ, raiz, ticker), não por uma coluna de CNPJ
 MODULO_DA_REDE = "rede"
+# os módulos dos órgãos públicos: toda tabela deles ligada pelo CNPJ tem de estar num tema, para a página
+# inicial acompanhar a base (pedido do Tiago, 04/11/2026); o teste do catálogo real cobra
+MODULOS_COM_TEMA_OBRIGATORIO = ("governo_e_sancoes", MODULO_DA_REDE)
 
 
 @dataclass(frozen=True)
@@ -462,8 +465,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "licencas",
         "Licenças e registros nas agências",
         "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, "
-        "outorgas da Anatel, títulos minerários e barragens na ANM, a Ancine e os "
-        "estabelecimentos de saúde do CNES.",
+        "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
+        "a Ancine e os estabelecimentos de saúde do CNES.",
         (
             "anvisa_registros",
             "anp_concessionarios",
@@ -472,6 +475,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "anatel_outorgas",
             "anm_titulos",
             "anm_sigbm_barragens",
+            "anm_cfem_arrecadacao",
+            "cmed_precos",
             "ancine_agentes",
             "cnes_estabelecimentos",
         ),
@@ -511,6 +516,19 @@ def tabelas_ligadas_pelo_cnpj(catalogo: dict) -> list[str]:
         nome
         for nome, t in catalogo["tabelas"].items()
         if t["modulo"] == MODULO_DA_REDE or any(map(e_coluna_de_cnpj, t["colunas"]))
+    ]
+
+
+def tabelas_sem_tema(
+    catalogo: dict, temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ
+) -> list[str]:
+    """As tabelas de órgão público ligadas pelo CNPJ que nenhum cartão da página inicial conta."""
+    nos_temas = {nome for tema in temas for nome in tema.tabelas}
+    return [
+        nome
+        for nome in tabelas_ligadas_pelo_cnpj(catalogo)
+        if catalogo["tabelas"][nome]["modulo"] in MODULOS_COM_TEMA_OBRIGATORIO
+        and nome not in nos_temas
     ]
 
 

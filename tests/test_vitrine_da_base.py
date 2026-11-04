@@ -946,6 +946,30 @@ def test_temas_do_cnpj_valem_no_catalogo_real():
     assert len(nomes) == len(set(nomes))
 
 
+def test_tabela_sem_tema_so_cobra_os_modulos_dos_orgaos_publicos():
+    tema = vitrine.TemaDoCnpj("x", "X", "X.", ("a",))
+    catalogo = {
+        "tabelas": {
+            "a": _com_colunas("a", "governo_e_sancoes", PGFN, "cnpj"),
+            "b": _com_colunas("b", "governo_e_sancoes", PGFN, "cnpj_basico"),
+            "c": _com_colunas("c", "mercado_e_empresas", CVM, "cnpj"),
+            "d": _com_colunas("d", "governo_e_sancoes", PGFN, "data"),
+        }
+    }
+
+    assert vitrine.tabelas_sem_tema(catalogo, (tema,)) == ["b"]
+
+
+def test_toda_tabela_nova_de_orgao_publico_com_cnpj_entra_num_tema():
+    sem_tema = vitrine.tabelas_sem_tema(_catalogo_real())
+
+    assert not sem_tema, (
+        f"tabela nova ligada pelo CNPJ fora da página inicial: {', '.join(sem_tema)}. Ponha-a num "
+        "tema de base/vitrine.py::TEMAS_DO_CNPJ (e o órgão na frase do tema), rode os geradores do "
+        "site e faça o commit junto"
+    )
+
+
 def test_temas_do_cnpj_sem_numero_digitado_nem_conversa_interna():
     for tema in vitrine.TEMAS_DO_CNPJ:
         for texto in (tema.titulo, tema.texto):
