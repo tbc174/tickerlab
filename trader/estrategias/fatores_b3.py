@@ -17,7 +17,9 @@ ver um resultado é tentativa nova):
   menos R$ 5 milhões, balanço divulgado nos 12 meses anteriores e sem recuperação judicial em
   curso; uma classe por empresa (a mais líquida). Deslistadas entram enquanto existiram.
 - **Fatores em D** (fechamento): valor = EBIT 12m ÷ valor da firma (ações × preço + empréstimos
-  − caixa e aplicações); qualidade = lucro 12m ÷ patrimônio líquido; momento = preço 21 pregões
+  − caixa e aplicações, com o preço **bruto** de uma ação da empresa em D, `preco_por_acao`, quando
+  existir: a quantidade é a do dia, e o preço ajustado de anos atrás não casa com ela; sem a
+  tabela, vale o fechamento do ticker); qualidade = lucro 12m ÷ patrimônio líquido; momento = preço 21 pregões
   atrás ÷ preço 252 pregões atrás − 1; baixa vol = −desvio dos retornos dos 252 pregões até D.
   Bancos não têm EBIT nem empréstimos no plano industrial, então ficam sem valor (limitação
   declarada). Nota = média simples dos escores z dos fatores disponíveis, com pelo menos 3 dos 4.
@@ -59,7 +61,7 @@ from trader.estrategias.carteira_rp import fora_da_banda, p_valor_do_acaso
 
 __all__ = ["p_valor_do_acaso"]
 
-VERSAO = "0.1"
+VERSAO = "0.2"  # 0.2: valor da firma pelo preço bruto de uma ação (antes da 1ª rodada)
 CLASSE = "acoes"
 CLASSES_DE_ACAO = ("ON", "PN", "UNT")
 FATORES = ("valor", "qualidade", "momento", "baixa_vol")
@@ -114,6 +116,8 @@ class Dados:
     ibovespa: pd.Series | None = (
         None  # retorno diário da régua (total líquido), se houver
     )
+    # preço bruto de uma ação por CNPJ (data × CNPJ, as datas do fechamento), para o valor da firma
+    preco_por_acao: pd.DataFrame | None = None
 
 
 @dataclass(frozen=True)
@@ -332,7 +336,11 @@ def fatores_em(
             axis=0,
         )
 
-    preco = dados.fechamento.loc[dia, tickers].to_numpy(float)
+    preco = (
+        dados.fechamento.loc[dia, tickers].to_numpy(float)
+        if dados.preco_por_acao is None
+        else da_empresa(dados.preco_por_acao.loc[dia])
+    )
     quantidade = da_empresa(_quantidade_de_acoes(dados.acoes, dia))
     valor_da_firma = quantidade * preco + soma(CONTAS_DA_DIVIDA) - soma(CONTAS_DO_CAIXA)
     patrimonio = da_empresa(valor_pontual(vigentes, CONTA_PL))
@@ -406,6 +414,10 @@ def _conferir_entradas(dados: Dados) -> None:
             dados.fechamento.columns
         ):
             raise ValueError(f"{nome}: precisa ter as datas e os tickers do fechamento")
+    if dados.preco_por_acao is not None and not dados.preco_por_acao.index.equals(
+        datas
+    ):
+        raise ValueError("preco_por_acao: precisa ter as datas do fechamento")
     if not dados.cdi.index.equals(datas) or dados.cdi.isna().any():
         raise ValueError("o CDI precisa ter exatamente as datas dos preços, sem vazios")
     sem_cadastro = set(dados.fechamento.columns) - set(dados.cadastro.index)
@@ -761,6 +773,9 @@ def cortar(dados: Dados, corte: pd.Timestamp) -> Dados:
         ibovespa=None
         if dados.ibovespa is None
         else dados.ibovespa[dados.ibovespa.index <= corte],
+        preco_por_acao=None
+        if dados.preco_por_acao is None
+        else dados.preco_por_acao[ate],
     )
 
 

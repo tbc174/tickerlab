@@ -286,6 +286,10 @@ def escrever_relatorio(
         "- A régua do Ibovespa é o BOVA11 comprado e mantido, sem o IR da venda final.",
         "- Preço ajustado para momento e volatilidade; a execução usa a abertura ajustada pelo mesmo fator.",
         "- A recuperação judicial só é filtrada quando a tabela existe; sem ela, a ficha declara a falta.",
+        "- Recuperação judicial: um episódio vai do 1º documento à CVM até 12 meses depois do último (a CVM não marca o fim).",
+        "- Ações: o capital integralizado (ON + PN, sem descontar a tesouraria) do FRE desde 06/2010 e, desde 2020, da DFP e do ITR; antes de 06/2010 não há quantidade e a carteira começa vazia.",
+        "- A CVM não diz se a quantidade está em unidades ou em milhares: o erro de unidade sai pelo preço e pelo volume (`corrigir_quantidade`), e algumas empresas podem ficar com o valor de mercado errado.",
+        "- O valor de mercado usa o preço bruto da ON ou PN mais negociada; a unit fica fora.",
         "- O DARF é pago no último pregão do mês seguinte, vendendo se o caixa não cobre.",
         "- Nada aqui é recomendação de investimento; retorno passado não garante retorno futuro.",
     ]
