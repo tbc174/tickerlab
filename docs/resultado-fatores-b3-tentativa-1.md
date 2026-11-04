@@ -111,7 +111,8 @@ ajustado por proventos.
 - **Preço:** momento e volatilidade usam o preço ajustado; a execução usa a abertura ajustada pelo mesmo fator.
 - **IR:** o DARF é pago no último pregão do mês seguinte, vendendo se o caixa não cobre.
 - **Bancos e seguradoras** entram sem o fator valor (plano de contas próprio).
-- **O piso de liquidez de R$ 5 milhões por dia** está como proposta no pré-registro, ainda "a confirmar pelo Tiago".
+- **O piso de liquidez de R$ 5 milhões por dia** foi aprovado com o texto do pré-registro (seção 13, item 4). A
+  marca "a confirmar" da seção 8 sobrou do rascunho.
 - **Recuperação judicial:** a CVM não marca o fim do processo; a regra dos 12 meses pode deixar uma empresa fora por
   mais ou menos tempo que o real.
 - **Duplicação:** os ZIPs da DFP e do ITR baixados da CVM (13 + 13, SHA-256 em `f_b3/cvm/SHA256SUMS.txt`) também
