@@ -80,15 +80,16 @@ def apresentacao_em_pptx_do_relatorio(conteudo: dict, gerado_em: datetime) -> by
 
 
 def _zip_com_data_fixa(conteudo: bytes, momento: datetime) -> bytes:
-    """O mesmo .pptx com a data de cada arquivo do zip trocada pela do relatório: o python-pptx grava
-    a hora da geração, e o arquivo do site não pode mudar a cada geração."""
+    """O mesmo .pptx com a data de cada arquivo do zip trocada pela do relatório e sem compressão: o
+    python-pptx grava a hora da geração e o zlib comprime diferente de uma máquina para outra, e o
+    arquivo do site tem de sair igual no PC e no CI."""
     saida = BytesIO()
     with (
         zipfile.ZipFile(BytesIO(conteudo)) as origem,
-        zipfile.ZipFile(saida, "w", zipfile.ZIP_DEFLATED) as destino,
+        zipfile.ZipFile(saida, "w", zipfile.ZIP_STORED) as destino,
     ):
         for entrada in origem.infolist():
             nova = zipfile.ZipInfo(entrada.filename, momento.timetuple()[:6])
-            nova.compress_type = zipfile.ZIP_DEFLATED
+            nova.compress_type = zipfile.ZIP_STORED
             destino.writestr(nova, origem.read(entrada.filename))
     return saida.getvalue()
