@@ -41,6 +41,7 @@ import pyarrow as pa
 import sqlalchemy as sa
 
 from base import cnpj as cnpjs
+from base import licencas
 from base import retratos as motor
 from base.arquivo.fontes import (
     ARQUIVOS_DA_CMED,
@@ -340,8 +341,18 @@ def _disponivel_no_primeiro(novos: pd.DataFrame, dia: pd.Timestamp) -> pd.Series
 def juntar_retratos(
     lidos: list[tuple[motor.Retrato, pd.DataFrame]],
 ) -> tuple[pd.DataFrame, int]:
-    """Os retratos lidos (do mais antigo ao mais novo) numa tabela de valores, e quantos foram pulados."""
-    return motor.juntar(lidos, VALORES, _disponivel_no_primeiro)
+    """Os retratos lidos (do mais antigo ao mais novo) numa tabela de valores, e quantos foram pulados.
+
+    `lista_publicada_em` é a do arquivo de cada linha: na saída da apresentação o motor copia a linha
+    anterior, e a data tem de ser a do arquivo em que ela sumiu."""
+    tabela, pulados = motor.juntar(lidos, VALORES, _disponivel_no_primeiro)
+    if "lista_publicada_em" in tabela:
+        publicada = {
+            retrato.sha256: lido["lista_publicada_em"].iloc[0] if len(lido) else None
+            for retrato, lido in lidos
+        }
+        tabela["lista_publicada_em"] = tabela["origem_sha256"].map(publicada)
+    return tabela, pulados
 
 
 def ponte(apresentacoes: pd.DataFrame, medicamentos: pd.DataFrame) -> pd.DataFrame:
@@ -520,5 +531,39 @@ def montar(
                 .drop_duplicates()
                 .shape[0]
             ),
+        }
+    return resumo
+
+
+def _medicamentos_vigentes(pasta: Path) -> pd.DataFrame | None:
+    """As linhas de hoje do cadastro de medicamentos em `anvisa_registros`, ou None se não montado."""
+    cadastro = licencas.CADASTROS["medicamentos"]
+    caminho = pasta / cadastro.tabela / f"{cadastro.nome}.parquet"
+    if not caminho.exists():
+        return None
+    tabela = pd.read_parquet(caminho)
+    ultimas = tabela.sort_values("visto_em", kind="stable").drop_duplicates(
+        "id_na_fonte", keep="last"
+    )
+    return ultimas[ultimas["consta"].astype(bool)]
+
+
+def resumo_da_ponte(pasta: Path) -> dict[str, dict[str, int]]:
+    """Para cada lista montada, quantas apresentações de hoje acham o produto registrado (`ponte`).
+
+    Vazio quando os medicamentos de `anvisa_registros` ainda não foram montados na `pasta`.
+    """
+    medicamentos = _medicamentos_vigentes(pasta)
+    if medicamentos is None:
+        return {}
+    resumo: dict[str, dict[str, int]] = {}
+    for lista in ARQUIVOS_DA_CMED:
+        caminho = _destino(pasta, lista).with_suffix(".parquet")
+        if not caminho.exists():
+            continue
+        ligadas = ponte(_mais_novo(pd.read_parquet(caminho)), medicamentos)
+        resumo[lista] = {
+            **ligadas["correspondencia"].value_counts().to_dict(),
+            "produtos": int(ligadas["medicamento"].nunique()),
         }
     return resumo

@@ -19,6 +19,7 @@ TEXTO = "texto"
 DATA = "data (dia)"
 MOMENTO = "data e hora (UTC)"
 REAIS = "reais (R$), já multiplicado pela escala informada"
+REAIS_EXATOS = "reais (R$)"
 FRACAO = "fração (0,25 = 25%)"
 ACOES = "ações"
 NUMERO = "número inteiro"
@@ -1219,6 +1220,195 @@ def _tabelas_dos_financiamentos() -> dict[str, Tabela]:
             "guardado e não vira coluna: a data que vale é a do arquivo.",
             "Finep, planilha de contratações (licença a confirmar: uso interno)",
             "finep",
+        ),
+    }
+
+
+# as alíquotas de ICMS das listas da CMED, na ordem do arquivo (as mesmas de
+# `base/arquivo/fontes.py::ALIQUOTAS_DA_CMED`; um teste confere que as colunas batem com `base/cmed.py`)
+_ALIQUOTAS_DA_CMED = (
+    "12",
+    "17",
+    "17,5",
+    "18",
+    "19",
+    "19,5",
+    "20",
+    "20,5",
+    "21",
+    "22",
+    "22,5",
+    "23",
+)
+_REFERENCIAS_DA_CMED = {
+    "pf": "Preço Fábrica (PF: o teto de venda do fabricante e do distribuidor)",
+    "pmc": (
+        "Preço Máximo ao Consumidor (PMC: o teto da farmácia; só na lista `consumidor`, vazio "
+        "quando a CMED não o publica, nunca zero)"
+    ),
+    "pmvg": (
+        "Preço Máximo de Venda ao Governo (PMVG: o PF com o desconto do CAP; só na lista `governo`)"
+    ),
+}
+
+
+def _colunas_de_preco_da_cmed() -> dict[str, tuple[str, str]]:
+    colunas: dict[str, tuple[str, str]] = {}
+    for sigla, nome in _REFERENCIAS_DA_CMED.items():
+        colunas[f"{sigla}_sem_impostos"] = (f"{nome}, sem impostos", REAIS_EXATOS)
+        colunas[f"{sigla}_0"] = (f"{nome}, com ICMS de 0%", REAIS_EXATOS)
+        for aliquota in _ALIQUOTAS_DA_CMED:
+            sufixo = aliquota.replace(",", "_")
+            colunas[f"{sigla}_{sufixo}"] = (
+                f"{nome}, com ICMS de {aliquota}%",
+                REAIS_EXATOS,
+            )
+            colunas[f"{sigla}_{sufixo}_alc"] = (
+                f"{nome}, com ICMS de {aliquota}%, na Área de Livre Comércio (ALC)",
+                REAIS_EXATOS,
+            )
+    return colunas
+
+
+def _tabelas_da_cmed() -> dict[str, Tabela]:
+    """Os preços máximos da CMED por apresentação (`base/cmed.py`, Ficha Clara)."""
+    colunas = {
+        "lista": (
+            (
+                "`consumidor` (TA_PRECO_MEDICAMENTO: PF e PMC) ou `governo` (TA_PRECO_MEDICAMENTO_GOV: "
+                "PF e PMVG); nunca somar as duas"
+            ),
+            TEXTO,
+        ),
+        "id_na_fonte": (
+            "A apresentação: CNPJ (só os dígitos) e código GGREM juntos por `|`",
+            TEXTO,
+        ),
+        "cnpj": ("CNPJ do detentor do registro, no formato 00.000.000/0000-00", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "ggrem": ("Código GGREM da apresentação, como a CMED escreve", TEXTO),
+        "registro": (
+            "Registro da apresentação na Anvisa (13 dígitos), como a lista escreve",
+            TEXTO,
+        ),
+        "registro_produto": (
+            (
+                "Os 9 primeiros dígitos do registro: o produto (vazio quando o registro não tem 13 "
+                "dígitos). Liga à tabela `anvisa_registros` pelo CNPJ inteiro, nunca pelo nome"
+            ),
+            TEXTO,
+        ),
+        "eans": (
+            "Códigos de barras (EAN 1 a 3) da apresentação, separados por ` / `",
+            TEXTO,
+        ),
+        "produto": ("Nome do produto, como a lista escreve", TEXTO),
+        "apresentacao": (
+            "Apresentação (concentração, forma e embalagem), como a lista escreve",
+            TEXTO,
+        ),
+        "substancia": ("Substância (princípio ativo), como a lista escreve", TEXTO),
+        "classe_terapeutica": ("Classe terapêutica, como a lista escreve", TEXTO),
+        "tipo_de_produto": (
+            "Tipo de produto (novo, genérico, similar...), como a lista escreve; vazio onde ela põe `-`",
+            TEXTO,
+        ),
+        "regime_de_preco": (
+            "Regime de preço (regulado ou liberado), como a lista escreve",
+            TEXTO,
+        ),
+        **_colunas_de_preco_da_cmed(),
+        "precos_com_asterisco": (
+            (
+                "Colunas de preço que a lista marca com `*`, separadas por ` / ` (o valor fica, sem a "
+                "marca; o sentido da marca está na nota da lista)"
+            ),
+            TEXTO,
+        ),
+        "precos_ilegiveis": (
+            (
+                "Colunas de preço que não são um número de até 2 casas, com o texto da fonte "
+                "(`pf_0=1.234,56`): o preço fica vazio"
+            ),
+            TEXTO,
+        ),
+        "restricao_hospitalar": (
+            "Se a venda é restrita a hospitais (Sim/Não da lista)",
+            SIM_OU_NAO,
+        ),
+        "cap": ("Se a apresentação está sujeita ao CAP (Sim/Não da lista)", SIM_OU_NAO),
+        "confaz_87": (
+            "Se está no Convênio ICMS 87/02 do Confaz (Sim/Não da lista)",
+            SIM_OU_NAO,
+        ),
+        "icms_0": ("Se a lista marca ICMS 0% (Sim/Não da lista)", SIM_OU_NAO),
+        "analise_recursal": ("Análise recursal, como a lista escreve", TEXTO),
+        "lista_pis_cofins": (
+            "Lista de concessão de crédito tributário (PIS/Cofins), como a lista escreve",
+            TEXTO,
+        ),
+        "tarja": ("Tarja, como a lista escreve", TEXTO),
+        "lista_publicada_em": (
+            (
+                "Dia em que a fonte diz ter publicado o arquivo (o Last-Modified da coleta; vazio "
+                "quando o servidor não informou)"
+            ),
+            DATA,
+        ),
+        "consta": (
+            "Verdadeiro enquanto a apresentação está na lista; falso na linha do dia em que saiu dela",
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075)"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que o arquivista viu a linha", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também "
+                "no 1º (a lista não diz desde quando vale cada preço)"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    return {
+        "cmed_precos": Tabela(
+            descricao=(
+                "Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas "
+                "duas listas que a Anvisa publica. São tetos regulatórios, não preço praticado nem "
+                "receita: nada se multiplica por quantidade. Uma linha por valor diferente de cada "
+                "apresentação: a mudança vira linha nova que só vale desde o dia em que foi vista, "
+                "e a que some da lista ganha `consta` falso (`base/setoriais/revisoes.py::"
+                "como_era_em` dá o retrato de qualquer dia). Preço exato em 2 casas: vazio fica "
+                "vazio e zero fica zero. O nome do laboratório não chega ao acervo (a ligação é "
+                "pelo CNPJ); empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo "
+                "com layout novo, ou com menos da metade das apresentações do anterior, é pulado. "
+                "A ligação a `anvisa_registros` usa só CNPJ + registro do produto entre os "
+                "medicamentos REGISTRADOS e não diz a situação do registro: vigente na lista de "
+                "preços não quer dizer registro ativo."
+            ),
+            fonte="Anvisa: listas de preços da CMED, dados abertos (`base/cmed.py`)",
+            familia_da_fonte="anvisa",
+            frequencia="Mensal (a CMED republica as listas inteiras)",
+            atraso=(
+                "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o "
+                "arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia "
+                "da publicação do arquivo fica em `lista_publicada_em`"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cmed_precos/<lista>.parquet` (servidor de casa, "
+                "`scripts/carga_cmed.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=colunas,
+            ressalva_de_revenda=(
+                "A licença própria das listas da CMED ainda está a confirmar (ADR 0102, Emenda 2)"
+            ),
         ),
     }
 
@@ -4937,6 +5127,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
     **_tabelas_dos_financiamentos(),
+    **_tabelas_da_cmed(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -7092,6 +7283,7 @@ _PROCESSOS = (
 )
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
 _FINANCIAMENTOS = "2026-11-04"
+_CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
@@ -7202,6 +7394,18 @@ _CONTRATO = {
             "coletado_em": "origem_coletada_em",
         },
         historico_desde=_FINANCIAMENTOS,
+    ),
+    "cmed_precos": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("lista", "id_na_fonte", "visto_em"),
+        datas={
+            "aconteceu_em": "lista_publicada_em",
+            "publico_em": "disponivel_em",
+            "coletado_em": "origem_coletada_em",
+        },
+        historico_desde=_CMED,
+        granularidade_do_publico_em="mes",
     ),
     "financiamentos_finep": _contrato(
         modulo="governo_e_sancoes",
@@ -7344,6 +7548,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "financiamentos_bndes",
         "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
+    },
+    "cmed_precos": {
+        "pasta": "cmed_precos",
+        "nao_nulas": ("lista", "id_na_fonte", "cnpj", "cnpj_basico", "ggrem", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in _colunas_de_preco_da_cmed()},
     },
     "financiamentos_finep": {
         "pasta": "financiamentos_finep",
