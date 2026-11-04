@@ -164,7 +164,7 @@ LICENCAS = {
     "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
     "eurostat": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
     "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
-    "bis": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+    "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
     # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
@@ -350,7 +350,7 @@ REVENDA = {
     "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
     "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
-    "bis": NAO_COMERCIAL,  # só uso não comercial sem permissão; sem pedir (Tiago, 22/10/2026)
+    "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
     "inpe": A_CONFIRMAR,  # sem licença escrita no INPE Queimadas

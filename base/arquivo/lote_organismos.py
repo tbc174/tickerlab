@@ -16,9 +16,11 @@ Regras (testes em `tests/test_base_arquivo_lote_organismos.py`):
 - API que falha ou muda de formato é falha (`ErroDeDescoberta`), nunca "nada novo";
 - nenhuma é `pesada`: a maior tem poucos MB e as APIs não mandam `ETag` nem `Last-Modified`, então
   o SHA-256 decide se o retrato mudou;
-- o **FMI** e o **BIS** entram com a marca `nao_comercial` (termos lidos em 22/10/2026: uso comercial só
-  com permissão) e a fonte citada; o dado fica para pesquisa e para a tela com a fonte, nunca vai
-  para venda (ADR 0102);
+- o **FMI** entra com a marca `uso_interno` (termos lidos em 22/10/2026: uso comercial só com permissão) e
+  a fonte citada; o dado fica para pesquisa e para a tela com a fonte, nunca vai para venda (ADR 0102);
+- o **BIS** era `nao_comercial` e passou a **vendável com atribuição** em 03/11/2026 (ADR 0121, item 1): o texto
+  vigente de `data.bis.org/help/legal` permite o uso em produto comercial, sem cobrança adicional, citando o
+  BIS. A marca sozinha não abre a venda: o portão da API externa ainda pede coleta e guarda lidas;
 - **fora daqui**: ENSO, GHCN e OISST do NOAA (linha 290 da fila), o golden copy do GLEIF (287) e as
   fontes do grupo "depois" da rodada 1 (SNB, Riksbank, ABS, ILO, Companies House, INMET, CHIRPS e UNCTAD:
   a licença ainda não foi lida).
@@ -145,7 +147,7 @@ SERIES_DO_EUROSTAT = (
     ),
 )
 
-# ---- BIS (estatísticas em CSV; termos: só uso não comercial sem permissão) -----------------------
+# ---- BIS (estatísticas em CSV; termos de 03/11/2026: uso comercial citando o BIS) -----------------------
 BIS = "https://stats.bis.org/api/v2/data/dataflow/BIS"
 PAISES_DO_BIS = "BR+US+XM+CN"  # XM: área do euro
 SERIES_DO_BIS = (
