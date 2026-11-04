@@ -21,6 +21,15 @@ de pessoa física (`base/processos.py`).
 
 **Só as companhias ativas hoje, pela razão social de hoje:** a companhia que saiu da CVM não é
 consultada, e a comunicação que escreve o nome antigo de quem mudou de razão social não é achada.
+
+**O segundo passo, pelo número do processo (`djen-processos`, PR 1b):** a busca pelo nome só acha a
+comunicação que intima a companhia; a do mesmo processo dirigida só à outra parte (a sentença
+publicada para o autor, por exemplo) não vem. Cada processo que a tabela `processos_comunicacoes` já
+ligou a uma companhia pelo nome é consultado pelo número (a API ignora o filtro por CNPJ, mas o
+`numeroProcesso` funciona), de `HISTORICO_DESDE` até o último mês fechado; depois, só quando a busca
+pelo nome mostra comunicação nova depois do fim da última consulta, e só o pedaço que falta. Processo
+parado pelo nome não é consultado de novo: a comunicação nova que só intima a outra parte fica de fora
+até a companhia ser intimada outra vez.
 """
 
 import json
@@ -32,12 +41,15 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pandas as pd
 
+from base import porta
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte, Obter
 from base.cadastro import cadastro_do_acervo
+from src import acervo
 from src.banco import coletas
 from src.banco.conexao import obter_engine
 
 ID = "djen-partes"
+ID_DOS_PROCESSOS = "djen-processos"
 API = "https://comunicaapi.pje.jus.br/api/v1/comunicacao"
 HISTORICO_DESDE = date(2025, 1, 1)
 ITENS_POR_PAGINA = 100  # o máximo que a API aceita
@@ -45,6 +57,10 @@ ITENS_POR_PAGINA = 100  # o máximo que a API aceita
 # genérico demais (a consulta fica marcada como `cortada`)
 MAXIMO_DE_PAGINAS = 20
 MAXIMO_DO_HISTORICO_POR_RODADA = 1500
+# uma consulta por processo; a Petrobras sozinha tem milhares de processos, então o primeiro passo
+# pelo número leva várias rodadas (os que andaram mais recente pelo nome primeiro)
+MAXIMO_DE_PROCESSOS_POR_RODADA = 3000
+TABELA_DAS_COMUNICACOES = "processos_comunicacoes"
 PAUSA_ENTRE_CONSULTAS_EM_SEGUNDOS = 2.0
 DIAS_DA_SEMANA = 7
 SEGMENTO_DO_TRABALHO = "5"  # o `J` do número CNJ (`base/numero_cnj.py`)
@@ -75,12 +91,61 @@ def da_consulta(endereco: str) -> tuple[str, date, date]:
     )
 
 
+def consulta_do_processo(numero: str, inicio: date, fim: date, pagina: int = 1) -> str:
+    """O endereço da busca pelo número do processo (só os algarismos) entre `inicio` e `fim`."""
+    parametros = {
+        "numeroProcesso": _algarismos(numero),
+        "dataDisponibilizacaoInicio": inicio.isoformat(),
+        "dataDisponibilizacaoFim": fim.isoformat(),
+        "itensPorPagina": ITENS_POR_PAGINA,
+        "pagina": pagina,
+    }
+    return f"{API}?{urlencode(parametros)}"
+
+
+def da_consulta_do_processo(endereco: str) -> tuple[str, date, date]:
+    """O número e o período de volta do endereço (o inverso de `consulta_do_processo`)."""
+    parametros = parse_qs(urlsplit(endereco).query)
+    return (
+        parametros["numeroProcesso"][0],
+        date.fromisoformat(parametros["dataDisponibilizacaoInicio"][0]),
+        date.fromisoformat(parametros["dataDisponibilizacaoFim"][0]),
+    )
+
+
+def _algarismos(numero: str) -> str:
+    return "".join(c for c in numero if c.isdigit())
+
+
+def _na_pagina(endereco: str, pagina: int) -> str:
+    """O mesmo endereço em outra página."""
+    partes = urlsplit(endereco)
+    parametros = {k: v[0] for k, v in parse_qs(partes.query).items()}
+    return partes._replace(query=urlencode({**parametros, "pagina": pagina})).geturl()
+
+
+def _o_que_foi_consultado(endereco: str) -> dict[str, str]:
+    """O nome ou o número, e o período, para gravar junto com as comunicações."""
+    parametros = parse_qs(urlsplit(endereco).query)
+    pedido = {"nome": "nomeParte", "numero": "numeroProcesso"}
+    return {
+        **{chave: parametros[p][0] for chave, p in pedido.items() if p in parametros},
+        "inicio": parametros["dataDisponibilizacaoInicio"][0],
+        "fim": parametros["dataDisponibilizacaoFim"][0],
+    }
+
+
 def ultima_semana_fechada(hoje: date) -> Periodo:
     """De segunda a domingo, a semana inteira mais recente antes de `hoje`."""
     domingo = hoje - timedelta(
         days=hoje.isoweekday() % DIAS_DA_SEMANA or DIAS_DA_SEMANA
     )
     return domingo - timedelta(days=DIAS_DA_SEMANA - 1), domingo
+
+
+def ultimo_mes_fechado(hoje: date) -> date:
+    """O último dia do mês antes do de `hoje`."""
+    return hoje.replace(day=1) - timedelta(days=1)
 
 
 def meses_fechados(hoje: date, desde: date = HISTORICO_DESDE) -> list[Periodo]:
@@ -141,8 +206,9 @@ def _pagina(
 
 
 def obter_consulta(endereco: str) -> Obter:
-    """Lê todas as páginas da busca (até `MAXIMO_DE_PAGINAS`) e grava o JSON limpo."""
-    nome, inicio, fim = da_consulta(endereco)
+    """Lê todas as páginas da busca, pelo nome ou pelo número (até `MAXIMO_DE_PAGINAS`), e grava o
+    JSON limpo."""
+    consultado = _o_que_foi_consultado(endereco)
 
     def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
         corpo, cabecalhos = _pagina(cliente, endereco)
@@ -151,15 +217,11 @@ def obter_consulta(endereco: str) -> Obter:
         pagina = 1
         while len(itens) < total and corpo["items"] and pagina < MAXIMO_DE_PAGINAS:
             pagina += 1
-            corpo, _ = _pagina(cliente, consulta(nome, inicio, fim, pagina))
+            corpo, _ = _pagina(cliente, _na_pagina(endereco, pagina))
             itens.extend(corpo["items"])
         guardados = [sem_advogados(i) for i in itens if not da_justica_do_trabalho(i)]
         conteudo = {
-            "consulta": {
-                "nome": nome,
-                "inicio": inicio.isoformat(),
-                "fim": fim.isoformat(),
-            },
+            "consulta": consultado,
             "total_na_fonte": total,
             "lidas": len(itens),
             "fora_por_ser_do_trabalho": len(itens) - len(guardados),
@@ -224,6 +286,101 @@ def fonte(
         ID,
         "semanal",
         descobrir(ler_empresas, ler_guardadas),
+        "json",
+        guardado_vale=_ja_consultada,
+        pausa_minima=PAUSA_ENTRE_CONSULTAS_EM_SEGUNDOS,
+    )
+
+
+# --- o segundo passo, pelo número do processo -----------------------------------------------------
+
+
+def processos_da_base(pasta: Path | None = None) -> dict[str, date] | None:
+    """Cada processo da tabela `processos_comunicacoes` (só os algarismos) -> o dia da comunicação mais
+    recente achada pelo nome; None se a carga ainda não montou a tabela.
+
+    Só a achada pelo nome conta: a achada pelo número é consequência desta consulta, e contar com ela
+    faria o processo ser consultado de novo toda semana."""
+    if pasta is None:
+        pasta = (acervo.pasta_do_acervo() or acervo.PASTA_PADRAO) / "base"
+    if not (pasta / TABELA_DAS_COMUNICACOES / "djen.parquet").exists():
+        return None
+    with porta.abrir(pasta) as base:
+        pelo_nome = base.ler(
+            TABELA_DAS_COMUNICACOES,
+            filtros={"achada_por": "nome"},
+            colunas=["numero_processo", "disponivel_em"],
+        )
+    ultima = pelo_nome.groupby("numero_processo")["disponivel_em"].max()
+    return {_algarismos(str(n)): pd.Timestamp(d).date() for n, d in ultima.items()}
+
+
+def consultas_dos_processos_guardadas() -> frozenset[str]:
+    with obter_engine().connect() as conexao:
+        return frozenset(
+            g.url for g in coletas.originais_mais_recentes(conexao, ID_DOS_PROCESSOS)
+        )
+
+
+def _ate_onde_foi(guardadas: frozenset[str]) -> dict[str, date]:
+    """Cada processo já consultado -> o fim da consulta guardada mais longa."""
+    fins: dict[str, date] = {}
+    for endereco in guardadas:
+        numero, _, fim = da_consulta_do_processo(endereco)
+        fins[numero] = max(fim, fins.get(numero, fim))
+    return fins
+
+
+def descobrir_processos(
+    ler_processos: Callable[[], dict[str, date] | None] = processos_da_base,
+    ler_guardadas: Callable[[], frozenset[str]] = consultas_dos_processos_guardadas,
+) -> Descobrir:
+    """Cada processo novo, de `HISTORICO_DESDE` até o último mês fechado; cada processo que andou pelo
+    nome depois da última consulta, só o pedaço que falta. Os que andaram mais recente vão primeiro,
+    até `MAXIMO_DE_PROCESSOS_POR_RODADA`."""
+
+    def _descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
+        ultima_pelo_nome = ler_processos()
+        if ultima_pelo_nome is None:
+            raise ErroDeDescoberta(
+                f"{ID_DOS_PROCESSOS}: a tabela processos_comunicacoes não existe "
+                "(a carga dos processos ainda não rodou?)"
+            )
+        fim = ultimo_mes_fechado(pd.Timestamp(agora).date())
+        guardadas = ler_guardadas()
+        ate_onde_foi = _ate_onde_foi(guardadas)
+        pendentes: list[tuple[date, str]] = []
+        for numero, ultima in ultima_pelo_nome.items():
+            ja_foi = ate_onde_foi.get(numero)
+            if ja_foi is None:
+                pendentes.append(
+                    (ultima, consulta_do_processo(numero, HISTORICO_DESDE, fim))
+                )
+            elif ultima > ja_foi and fim > ja_foi:
+                inicio = ja_foi + timedelta(days=1)
+                pendentes.append((ultima, consulta_do_processo(numero, inicio, fim)))
+        pendentes.sort(key=lambda p: p[0], reverse=True)
+        enderecos = [e for _, e in pendentes[:MAXIMO_DE_PROCESSOS_POR_RODADA]]
+        if not enderecos and guardadas:
+            # o arquivista trata a fonte sem alvo como falha; a consulta guardada é pulada sem pedir
+            enderecos = [min(guardadas)]
+        if not enderecos:
+            raise ErroDeDescoberta(
+                f"{ID_DOS_PROCESSOS}: nenhum processo ligado a uma companhia na base"
+            )
+        return [Alvo(e, ".json", obter=obter_consulta(e)) for e in enderecos]
+
+    return _descobrir
+
+
+def fonte_dos_processos(
+    ler_processos: Callable[[], dict[str, date] | None] = processos_da_base,
+    ler_guardadas: Callable[[], frozenset[str]] = consultas_dos_processos_guardadas,
+) -> Fonte:
+    return Fonte(
+        ID_DOS_PROCESSOS,
+        "semanal",
+        descobrir_processos(ler_processos, ler_guardadas),
         "json",
         guardado_vale=_ja_consultada,
         pausa_minima=PAUSA_ENTRE_CONSULTAS_EM_SEGUNDOS,

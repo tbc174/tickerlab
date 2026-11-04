@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 import sqlalchemy as sa
 
-from base import numero_cnj, processos
+from base import numero_cnj, processos, tpu
 from base.arquivo import djen
 from src.banco import coletas
 from src.banco.coletas import com_registro
@@ -109,10 +109,11 @@ def test_tipo_da_parte(nome: str, tipo: str):
     assert processos.tipo_da_parte(nome, processos.razoes_sociais(CADASTRO)) == tipo
 
 
-def _carimbado(item: dict, dia: date) -> dict:
+def _carimbado(item: dict, dia: date, por: str = "nome") -> dict:
     return {
         **item,
         "_visto_em": pd.Timestamp(dia),
+        "_achada_por": por,
         "origem_sha256": "s" * 64,
         "origem_coletada_em": f"{dia}T03:00:00+00:00",
     }
@@ -172,6 +173,7 @@ def test_sai_o_trabalho_o_numero_errado_e_a_comunicacao_sem_companhia():
         "do_trabalho": 1,
         "numero_invalido": 1,
         "sem_companhia": 1,
+        "ligadas_pelo_processo": 0,
         "homonimos": 1,
     }
 
@@ -202,9 +204,11 @@ def test_disponivel_em_nunca_depois_do_dia_em_que_vimos():
     assert comunicacoes.iloc[0]["disponivel_em"] == pd.Timestamp("2026-11-02")
 
 
-def _coletar(banco, url: str, itens: list[dict], dia: date) -> None:
+def _coletar(
+    banco, url: str, itens: list[dict], dia: date, fonte: str = djen.ID
+) -> None:
     conteudo = json.dumps({"consulta": {}, "items": itens}).encode()
-    com_registro(djen.ID, lambda _url: conteudo)(url)
+    com_registro(fonte, lambda _url: conteudo)(url)
     with banco.begin() as conexao:
         conexao.execute(
             sa.update(coletas.coletas)
@@ -273,3 +277,262 @@ def test_comando_monta_e_sem_nada_guardado_sai_com_1(banco, tmp_path, monkeypatc
     assert carga_processos.main(["--pasta", str(tmp_path / "b")]) == 0
     partes = pd.read_parquet(tmp_path / "b" / "processos_partes" / "djen.parquet")
     assert partes["cnpj"].tolist() == [CNPJ_A]
+
+
+# --- o segundo passo (pelo número) e a tabela `processos` (PR 1b) ----------------------------------
+
+
+def _so_a_outra_parte(hash_: str, numero: str, dia: str) -> dict:
+    """A comunicação do processo que intima só a outra parte (a companhia não está entre as partes)."""
+    return _item(
+        hash_,
+        numero,
+        (PESSOA, "A"),
+        ("MUNICIPIO DE CAMPINAS", "P"),
+        data_disponibilizacao=dia,
+    )
+
+
+def test_achada_pelo_numero_fica_se_o_processo_e_de_uma_companhia():
+    ligado, solto = _numero(10), _numero(11)
+    pelo_numero = date(2026, 11, 9)
+    comunicacoes, partes, contagem = processos.tabelas(
+        [
+            _carimbado(
+                _item("n", ligado, ("ENERGIA EXEMPLO SA", "P")), date(2026, 11, 2)
+            ),
+            _carimbado(
+                _so_a_outra_parte("antes", ligado, "2026-10-20"), pelo_numero, "numero"
+            ),
+            _carimbado(
+                _so_a_outra_parte("depois", ligado, "2026-11-04"), pelo_numero, "numero"
+            ),
+            _carimbado(
+                _so_a_outra_parte("solto", solto, "2026-10-20"), pelo_numero, "numero"
+            ),
+        ],
+        processos.razoes_sociais(CADASTRO),
+    )
+    por_id = comunicacoes.set_index("id_na_fonte")
+    assert sorted(por_id.index) == ["antes", "depois", "n"]
+    assert por_id.loc["antes", "achada_por"] == "numero"
+    assert por_id.loc["n", "achada_por"] == "nome"
+    assert por_id.loc["antes", "companhias"] == 0
+    # a que saiu antes da ligação só vale a partir dela (cortar o futuro não muda o passado)
+    assert por_id.loc["antes", "disponibilizada_em"] == pd.Timestamp("2026-10-20")
+    assert por_id.loc["antes", "disponivel_em"] == pd.Timestamp("2026-10-28")
+    assert por_id.loc["depois", "disponivel_em"] == pd.Timestamp("2026-11-04")
+    das_outras = partes[partes["id_na_fonte"] == "antes"]
+    assert das_outras["tipo_parte"].tolist() == ["orgao_publico"]
+    assert das_outras["disponivel_em"].tolist() == [pd.Timestamp("2026-10-28")]
+    assert (contagem["sem_companhia"], contagem["ligadas_pelo_processo"]) == (1, 2)
+    gravado = comunicacoes.astype(str).to_csv() + partes.astype(str).to_csv()
+    assert PESSOA not in gravado
+
+
+def test_a_mesma_comunicacao_pelo_nome_e_pelo_numero_fica_achada_pelo_nome():
+    item = _item("h", _numero(12), ("ENERGIA EXEMPLO SA", "P"))
+    comunicacoes, _, _ = processos.tabelas(
+        [
+            _carimbado(item, date(2026, 11, 2)),
+            _carimbado(item, date(2026, 11, 9), "numero"),
+        ],
+        processos.razoes_sociais(CADASTRO),
+    )
+    assert comunicacoes["achada_por"].tolist() == ["nome"]
+    assert comunicacoes.iloc[0]["visto_em"] == pd.Timestamp("2026-11-09")
+
+
+def _classe(codigo: int, pai: int | None, nome: str) -> dict:
+    return {"cod_item": codigo, "cod_item_pai": pai, "nome": nome, "situacao": "A"}
+
+
+CLASSES = tpu.ler_classes(
+    json.dumps(
+        [
+            _classe(2, None, "PROCESSO CÍVEL E DO TRABALHO"),
+            _classe(1106, 2, "Processo de Conhecimento"),
+            _classe(65, 1106, "Ação Civil Pública"),
+            _classe(7, 1106, "Procedimento Comum Cível"),
+        ]
+    ).encode()
+)
+
+
+def test_tabela_dos_processos_pela_primeira_comunicacao():
+    numero = _numero(13)
+    comunicacoes, _, _ = processos.tabelas(
+        [
+            _carimbado(
+                _so_a_outra_parte("primeira", numero, "2026-10-01")
+                | {"codigoClasse": "65", "nomeClasse": "AÇÃO CIVIL PÚBLICA"},
+                date(2026, 11, 9),
+                "numero",
+            ),
+            _carimbado(
+                _item(
+                    "n",
+                    numero,
+                    ("ENERGIA EXEMPLO SA", "P"),
+                    codigoClasse="7",
+                    data_disponibilizacao="2026-10-15",
+                ),
+                date(2026, 11, 2),
+            ),
+        ],
+        processos.razoes_sociais(CADASTRO),
+    )
+    tabela = processos.tabela_dos_processos(comunicacoes, CLASSES)
+
+    assert len(tabela) == 1
+    linha = tabela.iloc[0]
+    assert linha["numero_processo"] == numero_cnj.decodificar(numero).formatado
+    assert (linha["classe_codigo"], linha["classe_tpu"], linha["ramo"]) == (
+        "65",
+        "Ação Civil Pública",
+        "coletivo",
+    )
+    assert linha["classe_caminho"] == (
+        "PROCESSO CÍVEL E DO TRABALHO > Processo de Conhecimento > Ação Civil Pública"
+    )
+    assert linha["primeira_comunicacao"] == pd.Timestamp("2026-10-01")
+    # vale desde a primeira comunicação que liga o processo a uma companhia
+    assert linha["disponivel_em"] == pd.Timestamp("2026-10-15")
+    assert linha["visto_em"] == pd.Timestamp("2026-11-02")
+    assert (linha["tribunal"], linha["justica"]) == ("TJSP", "Justiça Estadual")
+
+
+def test_tabela_dos_processos_sem_a_tpu_fica_sem_o_ramo():
+    comunicacoes, _, _ = _tabelas(
+        _item("n", _numero(14), ("ENERGIA EXEMPLO SA", "P"), codigoClasse="X")
+    )
+    linha = processos.tabela_dos_processos(comunicacoes, None).iloc[0]
+    assert pd.isna(linha["ramo"]) and pd.isna(linha["classe_tpu"])
+    assert linha["classe_codigo"] == "X"
+
+
+def _tres_tabelas(itens: list[dict]):
+    comunicacoes, partes, _ = processos.tabelas(
+        itens, processos.razoes_sociais(CADASTRO)
+    )
+    return comunicacoes, partes, processos.tabela_dos_processos(comunicacoes, CLASSES)
+
+
+def _ate(tabela: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
+    return (
+        tabela[tabela["disponivel_em"] <= dia]
+        .sort_values(list(tabela.columns[:3]))
+        .reset_index(drop=True)
+        .astype(object)
+        .pipe(lambda t: t.where(t.notna(), None))  # vazio é vazio (`nan` ou `None`)
+    )
+
+
+@pytest.mark.parametrize(
+    "corte", ["2026-09-30", "2026-10-10", "2026-10-15", "2026-10-25", "2026-11-30"]
+)
+def test_cortar_o_futuro_nao_muda_o_passado(corte: str):
+    """Montar só com o que tinha saído até o corte dá o mesmo que montar com tudo e cortar depois."""
+    a, b = _numero(15), _numero(16)
+    pelo_nome, pelo_numero = date(2026, 11, 2), date(2026, 11, 9)
+    itens = [
+        _carimbado(
+            _so_a_outra_parte("a1", a, "2026-10-01") | {"codigoClasse": "65"},
+            pelo_numero,
+            "numero",
+        ),
+        _carimbado(
+            _item(
+                "a2",
+                a,
+                ("ENERGIA EXEMPLO SA", "P"),
+                data_disponibilizacao="2026-10-15",
+            ),
+            pelo_nome,
+        ),
+        _carimbado(_so_a_outra_parte("a3", a, "2026-10-20"), pelo_numero, "numero"),
+        _carimbado(
+            _item(
+                "b1",
+                b,
+                ("CIA FICTICIA DE AGUAS", "A"),
+                data_disponibilizacao="2026-10-05",
+            ),
+            date(2026, 12, 1),
+        ),
+        _carimbado(
+            _item(
+                "b2",
+                b,
+                ("ENERGIA EXEMPLO SA", "P"),
+                data_disponibilizacao="2026-10-25",
+            ),
+            pelo_nome,
+        ),
+        _carimbado(
+            _so_a_outra_parte("solto", _numero(17), "2026-10-02"),
+            pelo_numero,
+            "numero",
+        ),
+    ]
+    dia = pd.Timestamp(corte)
+    com_tudo = _tres_tabelas(itens)
+
+    def saiu_ate_o_corte(item: dict) -> bool:
+        saiu = min(pd.Timestamp(item["data_disponibilizacao"]), item["_visto_em"])
+        return saiu <= dia
+
+    so_o_passado = _tres_tabelas([i for i in itens if saiu_ate_o_corte(i)])
+    for inteira, cortada in zip(com_tudo, so_o_passado, strict=True):
+        # vazia, a coluna de texto perde o tipo; os valores continuam conferidos
+        pd.testing.assert_frame_equal(
+            _ate(inteira, dia), _ate(cortada, dia), check_dtype=False
+        )
+
+
+def test_montar_le_as_duas_fontes_e_grava_os_processos(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    da_tpu = {"url": "https://tpu.exemplo/classes", "sha256": "t" * 64}
+    monkeypatch.setattr(
+        processos.tpu, "classes_do_acervo", lambda _conexao: (CLASSES, da_tpu)
+    )
+    numero = _numero(18)
+    _coletar(
+        banco,
+        djen.consulta("ENERGIA EXEMPLO S.A.", date(2026, 10, 26), date(2026, 11, 1)),
+        [_item("n", numero, ("ENERGIA EXEMPLO S.A.", "P"))],
+        date(2026, 11, 2),
+    )
+    _coletar(
+        banco,
+        djen.consulta_do_processo(numero, date(2025, 1, 1), date(2026, 10, 31)),
+        [_so_a_outra_parte("o", numero, "2026-10-20")],
+        date(2026, 11, 3),
+        fonte=djen.ID_DOS_PROCESSOS,
+    )
+    pasta = tmp_path / "base"
+    with banco.connect() as conexao:
+        resumo = processos.montar(conexao, pasta, AGORA, cadastro=CADASTRO)
+        de_novo = processos.montar(conexao, pasta, AGORA, cadastro=CADASTRO)
+
+    assert (resumo["consultas"], resumo["comunicacoes"], resumo["processos"]) == (
+        2,
+        2,
+        1,
+    )
+    assert de_novo == processos.JA_MONTADO
+    comunicacoes = pd.read_parquet(pasta / "processos_comunicacoes" / "djen.parquet")
+    assert sorted(comunicacoes["achada_por"]) == ["nome", "numero"]
+    tabela = pd.read_parquet(pasta / "processos" / "djen.parquet")
+    assert tabela["ramo"].tolist() == ["conhecimento"]
+    assert tabela["versao_do_codigo"].iloc[0] == "0123abc"
+    for manifesto in pasta.rglob("*.json"):
+        conferencia = json.loads(manifesto.read_text(encoding="utf-8"))
+        assert conferencia["conferencia_do_contrato"]["aprovada"], manifesto.name
+    assert da_tpu["sha256"] in (pasta / "processos" / "djen.json").read_text(
+        encoding="utf-8"
+    )
+    gravado = "".join(
+        p.read_bytes().decode("latin-1") for p in pasta.rglob("*") if p.is_file()
+    )
+    assert PESSOA not in gravado

@@ -22,6 +22,7 @@ from base import indices_b3, intradiario_b3, tce_pr
 from base.arquivo import (
     assessorias,
     chirps_v3,
+    cnj_tpu,
     contrapartes,
     djen,
     lote_acervos,
@@ -1531,6 +1532,11 @@ FONTES: list[Fonte] = [
     # comunicações processuais do DJEN em que cada companhia aberta é parte, sem a Justiça do Trabalho
     # (plano de 03/11/2026 dos processos judiciais; "pode" do Tiago na mesma data)
     djen.fonte(),
+    # e cada processo já ligado a uma companhia, pelo número (acha a comunicação que só intima a outra
+    # parte; PR 1b)
+    djen.fonte_dos_processos(),
+    # as classes processuais da TPU do CNJ, para o nome e o ramo da classe de cada processo (PR 1b)
+    cnj_tpu.fonte(),
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),

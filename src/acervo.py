@@ -47,6 +47,7 @@ FONTES_COM_PESSOA = frozenset(
         "cvm-enet-notas",  # o texto das notas da DFP traz nomes (administradores, auditor)
         "antt-autos-de-transito",  # o autuado pode ser pessoa física (motorista autônomo)
         "djen-partes",  # as partes e o texto da comunicação trazem pessoas físicas
+        "djen-processos",  # as mesmas comunicações, achadas pelo número do processo
     }
 )
 SEM_EXTENSAO = ".bin"

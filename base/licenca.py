@@ -58,6 +58,7 @@ FAMILIA_DO_ENDERECO = {
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
     "comunicaapi.pje.jus.br/": "djen",
+    "gateway.cloud.pje.jus.br/tpu/": "cnj",
     "dadosabertos-download.cgu.gov.br/": "transparencia",
     "dadosabertos.bndes.gov.br/": "bndes",
     "dadosabertos.inss.gov.br/": "inss",

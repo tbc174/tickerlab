@@ -45,6 +45,7 @@ CAMPOS_DO_CADASTRO = {
 }
 COLUNAS_DA_CARTEIRA = (
     "competencia", "codigo", "isin", "emissor", "tipo", "quantidade", "valor", "disponivel_em",
+    "visto_em",
 )  # fmt: skip
 
 
@@ -102,6 +103,14 @@ def _taxas(linha: pd.Series) -> dict:
         for coluna, nome in CAMPOS_DO_CADASTRO.items()
         if coluna in linha.index
     }
+
+
+def taxas_do_fundo(porta: Porta, cnpj_formatado: str) -> dict | None:
+    """As taxas, a classe, a situação e o patrimônio do retrato do cadastro; None se o fundo não está nele.
+
+    É o retrato mais novo, sem data por linha: quem usa decide a partir de que dia ele vale."""
+    linha = _cadastro_do_fundo(porta, cnpj_formatado)
+    return None if linha is None else _taxas(linha)
 
 
 def _custo(cadastro: dict) -> tuple[dict[int, dict], list[str]]:

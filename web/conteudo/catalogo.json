@@ -1125,7 +1125,8 @@
     },
     {
       "coletas": [
-        "djen-partes"
+        "djen-partes",
+        "djen-processos"
       ],
       "familia": "djen",
       "licencas": [
@@ -1137,6 +1138,21 @@
       "ritmo": null,
       "termos_lidos_em": null,
       "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "cnj-tpu"
+      ],
+      "familia": "cnj",
+      "licencas": [
+        "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ"
+      ],
+      "link": "https://www.cnj.jus.br/sgt/consulta_publica_classes.php",
+      "marca": "a_confirmar",
+      "orgao": "CNJ (Tabelas Processuais Unificadas)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -1912,6 +1928,17 @@
       "tabelas": 3
     },
     {
+      "historico_desde": "2025-01-01",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CNJ",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 3
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "modulos": [
@@ -1968,17 +1995,6 @@
       "orgao": "Anatel",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2025-01-01",
-      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "CNJ",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
       "tabelas": 2
     },
     {
@@ -2211,7 +2227,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 22
+      "tabelas": 23
     },
     {
       "chave": "credito_e_fidc",
@@ -4364,6 +4380,20 @@
       "termos_lidos_em": null
     },
     {
+      "id": "djen-processos",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "cnj-tpu",
+      "licenca": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
       "id": "bcb-mercado-imobiliario",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "marca": "vendavel",
@@ -6357,6 +6387,16 @@
       "tabela": "processos_partes"
     },
     {
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "frase": "Processos judiciais por companhia aberta: uma linha por processo, com o que a primeira comunicação diz e a classe pela TPU do CNJ.",
+      "frequencia": "Semanal",
+      "historico_desde": "2025-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CNJ",
+      "situacao": "em consulta",
+      "tabela": "processos"
+    },
+    {
       "atraso": null,
       "frase": "Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados.",
       "frequencia": "Mensal",
@@ -6798,11 +6838,11 @@
     }
   ],
   "totais": {
-    "familias": 101,
+    "familias": 102,
     "familias_em_uso": 38,
     "fontes": 31,
     "fontes_em_consulta": 9,
     "modulos": 6,
-    "tabelas": 115
+    "tabelas": 116
   }
 }
