@@ -87,6 +87,7 @@ def test_a_lista_e_a_da_tabela_da_secao_5():
         "p0_3": (5, 0.41, "b3"),
         "p0_1": (11, 0.68, "cripto"),
         "di1": (12, 0.44, "b3"),
+        "p0_1b": (18, -1.16, "cripto"),
     }
     assert all(s.queda_do_desenvolvimento < 0 for s in sr.SERIES)
     assert sr.serie("di1").registro == 12
@@ -195,10 +196,14 @@ def test_estimados_vao_para_a_foto():
 PRIMEIRO_DE_CRIPTO = DIAS[400].date()
 
 
-def test_cripto_esta_em_caixa_no_primeiro_fechamento_e_aquece_365_dias():
-    foto = sr.fotografar_p0_1(
-        _tabelas_de_cripto(), PRIMEIRO_DE_CRIPTO, PRIMEIRO_DE_CRIPTO
-    )
+FOTOS_DE_CRIPTO = pytest.mark.parametrize(
+    "fotografar", [sr.fotografar_p0_1, sr.fotografar_p0_1b], ids=["p0_1", "p0_1b"]
+)
+
+
+@FOTOS_DE_CRIPTO
+def test_cripto_esta_em_caixa_no_primeiro_fechamento_e_aquece_365_dias(fotografar):
+    foto = fotografar(_tabelas_de_cripto(), PRIMEIRO_DE_CRIPTO, PRIMEIRO_DE_CRIPTO)
     assert set(foto["carteira"]["exposicao"].values()) == {0.0}
     assert foto["dados"]["desde"] == DIAS[35].date().isoformat()
     assert set(foto["sinal"]["alvo"]) == {"BTC", "ETH"}
@@ -224,13 +229,24 @@ def test_cripto_o_alvo_do_dia_e_o_que_a_simulacao_executa_no_dia_seguinte():
     assert executados > 0  # o teste olha dias com posição de verdade
 
 
+@FOTOS_DE_CRIPTO
 @pytest.mark.parametrize("posicao", [400, 450, 520])
-def test_cripto_cortar_o_futuro_nao_muda_o_passado(posicao):
+def test_cripto_cortar_o_futuro_nao_muda_o_passado(fotografar, posicao):
     tabelas = _tabelas_de_cripto()
     dia = DIAS[posicao].date()
-    inteira = sr.fotografar_p0_1(tabelas, dia, PRIMEIRO_DE_CRIPTO)
-    cortada = sr.fotografar_p0_1(_cortado(tabelas, dia), dia, PRIMEIRO_DE_CRIPTO)
+    inteira = fotografar(tabelas, dia, PRIMEIRO_DE_CRIPTO)
+    cortada = fotografar(_cortado(tabelas, dia), dia, PRIMEIRO_DE_CRIPTO)
     assert inteira == cortada
+
+
+def test_p0_1b_e_a_p0_1_diferem_pela_banda_e_pelo_cambio():
+    tabelas = _tabelas_de_cripto()
+    dia = DIAS[520].date()
+    p0_1 = sr.fotografar_p0_1(tabelas, dia, PRIMEIRO_DE_CRIPTO)
+    p0_1b = sr.fotografar_p0_1b(tabelas, dia, PRIMEIRO_DE_CRIPTO)
+    assert p0_1["sinal"] == p0_1b["sinal"]  # o alvo é a regra da P0-1, sem mudança
+    assert p0_1["regra"]["parametros"] != p0_1b["regra"]["parametros"]
+    assert p0_1["carteira"]["patrimonio"] != p0_1b["carteira"]["patrimonio"]
 
 
 def test_cripto_precisa_dos_dados_desde_o_aquecimento():

@@ -31,6 +31,7 @@ from trader.baixar_historico import baixar_yfinance
 from trader.calendario import eh_pregao, proximo_pregao
 from trader.estrategias import dados_p0_3, rodar_alavancagem
 from trader.estrategias import dados_tendencia_b3 as dados_b3
+from trader.estrategias import dados_cripto_brl as dados_brl
 from trader.estrategias import dados_tendencia_cripto as dados_cripto
 from trader.estrategias import tendencia_b3 as tb
 from trader.papel.registro import PASTA_PADRAO
@@ -230,7 +231,7 @@ def carregar_di1(
     )
 
 
-# --- P0-1 (cripto) -------------------------------------------------------------------------------
+# --- P0-1 e P0-1b (cripto) -----------------------------------------------------------------------
 
 
 def _baixar_dia(par: str, dia: date, fontes: Fontes, pasta: Path, hashes: dict) -> bool:
@@ -252,7 +253,11 @@ def _baixar_dia(par: str, dia: date, fontes: Fontes, pasta: Path, hashes: dict) 
 
 
 def atualizar_binance(
-    inicio: pd.Timestamp, fechamento: date, fontes: Fontes, pasta: Path
+    inicio: pd.Timestamp,
+    fechamento: date,
+    fontes: Fontes,
+    pasta: Path,
+    pares: dict[str, str] = dados_cripto.PARES,
 ) -> None:
     """Zips mensais dos meses fechados e diários do mês corrente (e do mês cujo mensal não saiu)."""
     pasta.mkdir(parents=True, exist_ok=True)
@@ -263,7 +268,7 @@ def atualizar_binance(
         else {}
     )
     mes_do_fechamento = pd.Period(fechamento, "M")
-    for par in dados_cripto.PARES.values():
+    for par in pares.values():
         for mes in pd.period_range(pd.Period(inicio, "M"), mes_do_fechamento, freq="M"):
             if mes < mes_do_fechamento and _baixar_mes(par, mes, fontes, pasta):
                 continue
@@ -282,6 +287,35 @@ def _baixar_mes(par: str, mes: pd.Period, fontes: Fontes, pasta: Path) -> bool:
     return True
 
 
+def _klines_ate(
+    pares: dict[str, str],
+    inicio: pd.Timestamp,
+    fechamento: date,
+    fontes: Fontes,
+    pasta: Path,
+) -> dict[str, pd.DataFrame]:
+    """Os candles de cada ativo, do início dos dados ao fechamento (que tem de já ter saído)."""
+    atualizar_binance(inicio, fechamento, fontes, pasta, pares)
+    tabelas = {
+        ativo: dados_cripto.carregar_par(par, pasta).loc[inicio : pd.Timestamp(fechamento)]
+        for ativo, par in pares.items()
+    }
+    for ativo, tabela in tabelas.items():
+        _exigir_o_fechamento(pd.DatetimeIndex(tabela.index), fechamento, f"o {ativo}")
+    return tabelas
+
+
+def _caixa_corrido(
+    fontes: Fontes,
+    inicio: pd.Timestamp,
+    fechamento: date,
+    estimados: set[str],
+    dias: pd.DatetimeIndex,
+) -> pd.Series:
+    uteis = _cdi_ate(fontes, inicio, fechamento, estimados)
+    return modulo_cdi.retorno_diario_do_caixa(uteis, dias)
+
+
 def carregar_p0_1(
     fechamento: date,
     primeiro_fechamento: date,
@@ -289,33 +323,50 @@ def carregar_p0_1(
     pasta: Path = PASTA_DOS_DADOS,
 ) -> Tabelas:
     """BTC e ETH em reais (USDT × PTAX da véspera), o caixa e o volume, até o fechamento."""
-    inicio, fim, estimados = (
-        inicio_dos_dados(primeiro_fechamento),
-        pd.Timestamp(fechamento),
-        set(),
+    inicio, estimados = inicio_dos_dados(primeiro_fechamento), set()
+    klines = _klines_ate(
+        dados_cripto.PARES, inicio, fechamento, fontes, pasta / "binance"
     )
-    binance = pasta / "binance"
-    atualizar_binance(inicio, fechamento, fontes, binance)
     dolar = fontes.sgs(
         dados_cripto.SERIE_DO_DOLAR, (inicio - pd.Timedelta(days=10)).date(), fechamento
     )
     # `dolar_da_vespera` só acha a véspera do primeiro dia se ela tem cotação: começa num desses.
     comeco = next(
         dia
-        for dia in pd.date_range(inicio, fim)
+        for dia in pd.date_range(inicio, pd.Timestamp(fechamento))
         if dia - pd.Timedelta(days=1) in dolar.index
     )
-    tabelas = {
-        ativo: dados_cripto.carregar_par(par, binance).loc[comeco:fim]
-        for ativo, par in dados_cripto.PARES.items()
-    }
-    for ativo, tabela in tabelas.items():
-        _exigir_o_fechamento(pd.DatetimeIndex(tabela.index), fechamento, f"o {ativo}")
+    tabelas = {ativo: tabela.loc[comeco:] for ativo, tabela in klines.items()}
     precos, volumes = dados_cripto.montar_precos(tabelas, dolar)
     volumes = dados_cripto.volume_medio_conhecido(volumes)
-    uteis = _cdi_ate(fontes, inicio, fechamento, estimados)
-    cdi = modulo_cdi.retorno_diario_do_caixa(uteis, pd.DatetimeIndex(precos.index))
+    cdi = _caixa_corrido(
+        fontes, inicio, fechamento, estimados, pd.DatetimeIndex(precos.index)
+    )
     return Tabelas(precos, cdi, volumes, tuple(sorted(estimados)))
 
 
-CARREGADORES = {"p0_3": carregar_p0_3, "p0_1": carregar_p0_1, "di1": carregar_di1}
+def carregar_p0_1b(
+    fechamento: date,
+    primeiro_fechamento: date,
+    fontes: Fontes = FONTES,
+    pasta: Path = PASTA_DOS_DADOS,
+) -> Tabelas:
+    """BTCBRL e ETHBRL, já em reais (sem câmbio), o caixa e o volume, até o fechamento."""
+    inicio, estimados = inicio_dos_dados(primeiro_fechamento), set()
+    tabelas = _klines_ate(
+        dados_brl.PARES, inicio, fechamento, fontes, pasta / "binance_brl"
+    )
+    precos, volumes = dados_brl.montar_precos(tabelas)
+    volumes = dados_cripto.volume_medio_conhecido(volumes)
+    cdi = _caixa_corrido(
+        fontes, inicio, fechamento, estimados, pd.DatetimeIndex(precos.index)
+    )
+    return Tabelas(precos, cdi, volumes, tuple(sorted(estimados)))
+
+
+CARREGADORES = {
+    "p0_3": carregar_p0_3,
+    "p0_1": carregar_p0_1,
+    "di1": carregar_di1,
+    "p0_1b": carregar_p0_1b,
+}

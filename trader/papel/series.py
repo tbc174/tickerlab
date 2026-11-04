@@ -32,6 +32,7 @@ from trader.calendario import proxima_execucao
 from trader.estrategias import carteira_rp as rp
 from trader.estrategias import tendencia_b3 as tb
 from trader.estrategias import tendencia_cripto as tc
+from trader.estrategias import tendencia_cripto_brl as brl
 from trader.registro import hash_da_especificacao
 
 
@@ -201,10 +202,37 @@ def _sinal_da_p0_3(
     return {"decisao": True, "alvo": _numeros(alvos.loc[_ts(fechamento)])}
 
 
-# --- P0-1: tendência em cripto, USDT × PTAX (registro 11) ----------------------------------------
+# --- P0-1 (USDT × PTAX, registro 11) e P0-1b (par em reais, registro 18): tendência em cripto ----
 
 
 def fotografar_p0_1(tabelas: Tabelas, fechamento: date, primeiro: date) -> dict:
+    return _fotografar_cripto(
+        tabelas, fechamento, primeiro, tc.simular, tc.PARAMETROS_DA_FICHA, 11, tc.VERSAO
+    )
+
+
+def fotografar_p0_1b(tabelas: Tabelas, fechamento: date, primeiro: date) -> dict:
+    """A regra da P0-1 no BTCBRL e no ETHBRL, com a banda de 20% e o spread do livro."""
+    return _fotografar_cripto(
+        tabelas,
+        fechamento,
+        primeiro,
+        brl.simular,
+        brl.PARAMETROS_DA_FICHA,
+        18,
+        brl.VERSAO,
+    )
+
+
+def _fotografar_cripto(
+    tabelas: Tabelas,
+    fechamento: date,
+    primeiro: date,
+    simular: Callable[..., tc.Resultado],
+    parametros: tc.Parametros,
+    registro: int,
+    versao: str,
+) -> dict:
     desde = _ts(primeiro) - pd.Timedelta(days=tc.AQUECIMENTO_EM_DIAS)
     precos = tabelas.precos.loc[desde : _ts(fechamento)]
     if len(precos) == 0 or precos.index[0] != desde:
@@ -212,8 +240,7 @@ def fotografar_p0_1(tabelas: Tabelas, fechamento: date, primeiro: date) -> dict:
     _conferir_fechamento(pd.DatetimeIndex(precos.index), fechamento)
     cdi = tabelas.cdi.reindex(precos.index)
     volumes = tabelas.volumes.loc[precos.index]
-    parametros = tc.PARAMETROS_DA_FICHA
-    resultado = tc.simular(precos, cdi, volumes, parametros)  # type: ignore[arg-type]
+    resultado = simular(precos, cdi, volumes, parametros)
     _sem_posicao_ate(resultado.exposicao, primeiro)
     alvo = tc.fracoes_alvo(precos, parametros).loc[_ts(fechamento)]
     return _foto(
@@ -222,7 +249,7 @@ def fotografar_p0_1(tabelas: Tabelas, fechamento: date, primeiro: date) -> dict:
         resultado.patrimonio.loc[_ts(fechamento)],
         _numeros(resultado.exposicao.loc[_ts(fechamento)]),
         cdi.loc[_ts(fechamento)],
-        _regra(11, tc.VERSAO, parametros.especificacao()),
+        _regra(registro, versao, parametros.especificacao()),
         desde,
         _hash_dos_dados(precos, cdi),
         tabelas.estimados,
@@ -270,8 +297,9 @@ def fotografar_di1(entradas: EntradasDoDI1, fechamento: date, primeiro: date) ->
 
 # Referências do desenvolvimento: Sharpe do excesso da tabela da seção 5 e a maior queda (F1) dos
 # relatórios docs/resultado-carteira-p0-3-tentativa-3.md, resultado-tendencia-cripto-p0-1.md e
-# resultado-tendencia-b3-p0-2.md. A C-1 (candidata e comparação) e a P0-1b entram aqui quando a 1ª
-# tentativa de cada uma estiver no main, com o Sharpe e a queda dela.
+# resultado-tendencia-b3-p0-2.md; os da P0-1b são os da 1ª tentativa (resultado-p0-1b-tentativa-1.md,
+# reprovada: o papel grava a série mesmo assim). A C-1 (candidata e comparação) entra aqui quando a
+# 1ª tentativa dela estiver no main, com o Sharpe e a queda dela.
 SERIES: tuple[Serie, ...] = (
     Serie(
         nome="p0_3",
@@ -302,6 +330,16 @@ SERIES: tuple[Serie, ...] = (
         queda_do_desenvolvimento=-0.029,
         fotografar=fotografar_di1,
         sharpe_do_excesso=tb.sharpe_do_excesso,
+    ),
+    Serie(
+        nome="p0_1b",
+        titulo="tendência em cripto no par em reais (P0-1b)",
+        mercado="cripto",
+        registro=18,
+        sharpe_de_referencia=-1.16,
+        queda_do_desenvolvimento=-0.079,
+        fotografar=fotografar_p0_1b,
+        sharpe_do_excesso=tc.sharpe_do_excesso,
     ),
 )
 

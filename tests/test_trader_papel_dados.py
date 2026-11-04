@@ -304,3 +304,33 @@ def test_cripto_comeca_num_dia_cuja_vespera_tem_dolar(tmp_path):
     assert tabelas.precos.index.min() == pd.Timestamp(
         "2024-11-05"
     )  # a véspera, 04/11, é pregão
+
+
+def test_p0_1b_le_os_pares_em_reais_sem_dolar(tmp_path):
+    pasta = tmp_path / "papel"
+    pedidos = []
+    mundo = TUDO_PUBLICADO
+
+    def sgs(serie, inicio, fim):
+        pedidos.append(serie)
+        return mundo.sgs(serie, inicio, fim)
+
+    fontes = replace(_fontes(mundo, tmp_path), sgs=sgs)
+    tabelas = dd.carregar_p0_1b(F, PRIMEIRO, fontes, pasta)
+    assert pedidos == []  # sem PTAX: o par já é em reais
+    assert (pasta / "binance_brl" / "BTCBRL-1d-2026-11-10.zip").exists()
+    assert not (pasta / "binance").exists()
+    assert tabelas.precos.index.min() == dd.inicio_dos_dados(PRIMEIRO)
+    assert tabelas.precos.index.max() == pd.Timestamp(F)
+    foto = sr.fotografar_p0_1b(tabelas, F, PRIMEIRO)
+    assert foto["regra"]["registro"] == 18
+
+
+def test_p0_1b_sem_o_candle_do_fechamento_espera(tmp_path):
+    atrasado = replace(TUDO_PUBLICADO, diario_ate=date(2026, 11, 9))
+    with pytest.raises(dd.DadoAindaNaoSaiuError, match="BTC"):
+        dd.carregar_p0_1b(F, PRIMEIRO, _fontes(atrasado, tmp_path), tmp_path / "papel")
+
+
+def test_toda_serie_tem_carregador():
+    assert set(dd.CARREGADORES) == {s.nome for s in sr.SERIES}
