@@ -489,6 +489,7 @@
  "tests/test_trader_agentes_dados.py": 23.4,
  "tests/test_trader_agentes_registro.py": 16.4,
  "tests/test_trader_agentes_rodada.py": 0.5,
+ "tests/test_trader_ajuste_b3.py": 10.0,
  "tests/test_trader_alavancagem.py": 7.0,
  "tests/test_trader_aquecimento.py": 1.8,
  "tests/test_trader_arima.py": 6.5,
