@@ -899,11 +899,9 @@ def revenda_da_fonte(fonte: str) -> str:
     """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, a confirmar
     (fonte nova sem resposta escrita: ADR 0008, Emenda 1)."""
     partes = fonte.split("-")
-    for corte in range(len(partes), 0, -1):
-        revenda = REVENDA.get("-".join(partes[:corte]))
-        if revenda:
-            return revenda
-    return A_CONFIRMAR
+    # a ANM tem subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem"), linha 657
+    subfamilia = REVENDA.get("-".join(partes[:2])) if partes[0] == "anm" else None
+    return REVENDA.get(fonte) or subfamilia or REVENDA.get(partes[0], A_CONFIRMAR)
 
 
 def marca_da_fonte(fonte: str) -> Marca:
