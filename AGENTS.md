@@ -121,6 +121,9 @@ cd web; npm run site                                        # páginas, CSS e JS
   resolvido rodando os geradores; conflito em código para e pede uma pessoa) e `git push` comum. Rode
   também antes de pedir o merge. Mudou `src/paginas.py`, `src/modulos.py` ou `web/`: rode os geradores
   (`exportar_conteudo`, `gerar_site`, `npm run site`, `npm run app`) e faça o commit junto.
+- **A página inicial acompanha a base** (pedido do Tiago, 04/11/2026): tabela ou fonte nova no catálogo pede
+  os geradores do site; se é de órgão público e tem CNPJ, entra num tema de `base/vitrine.py::TEMAS_DO_CNPJ`
+  (há teste que cobra), com o órgão na frase. Frase nova na página é texto público: nível 1.
 
 ## Várias IAs no mesmo projeto
 

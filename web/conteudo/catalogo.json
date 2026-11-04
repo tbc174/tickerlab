@@ -2408,6 +2408,87 @@
       "tabelas": 1
     }
   ],
+  "ligado_pelo_cnpj": {
+    "orgaos": 29,
+    "tabelas": 103,
+    "temas": [
+      {
+        "chave": "cvm",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da diretoria e ofertas de ações e de dívida.",
+        "titulo": "O que a companhia entrega à CVM"
+      },
+      {
+        "chave": "donos",
+        "orgaos": [
+          "Receita Federal",
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
+        "titulo": "Quem é dono e quem controla"
+      },
+      {
+        "chave": "cadastro",
+        "orgaos": [
+          "Receita Federal"
+        ],
+        "tabelas": 6,
+        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro.",
+        "titulo": "Cadastro e situação na Receita"
+      },
+      {
+        "chave": "riscos",
+        "orgaos": [
+          "PGFN",
+          "CGU",
+          "ANS",
+          "CNJ",
+          "CVM"
+        ],
+        "tabelas": 5,
+        "texto": "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "titulo": "Dívida, sanções e processos"
+      },
+      {
+        "chave": "licencas",
+        "orgaos": [
+          "Anvisa",
+          "ANP",
+          "ANTT",
+          "MAPA",
+          "Anatel",
+          "ANM",
+          "CMED (Anvisa)",
+          "Ancine",
+          "Ministério da Saúde (DATASUS)"
+        ],
+        "tabelas": 11,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine e os estabelecimentos de saúde do CNES.",
+        "titulo": "Licenças e registros nas agências"
+      },
+      {
+        "chave": "dinheiro_publico",
+        "orgaos": [
+          "BNDES",
+          "Finep",
+          "MME",
+          "ANEEL",
+          "TCE-PE",
+          "TCE-SP",
+          "TCE-CE",
+          "TCE-RS",
+          "Banco Central"
+        ],
+        "tabelas": 10,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "titulo": "Dinheiro público e capital de fora"
+      }
+    ]
+  },
   "modulos": [
     {
       "chave": "mercado_e_empresas",
