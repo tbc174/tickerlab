@@ -53,6 +53,7 @@ FAMILIA_DO_ENDERECO = {
     "home.treasury.gov/": "tesouro",
     "www.tesourotransparente.gov.br/": "tesouro-br",
     "iextrading.com/": "iex",
+    "arquivos.receitafederal.gov.br/Dados/Obrigacoes_Acessorias/": "rfb-renuncias",  # DIRBI e ECF
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",

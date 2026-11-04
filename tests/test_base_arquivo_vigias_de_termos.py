@@ -66,6 +66,7 @@ _SEM_VIGIA = {
             "tce-rs-empenhos",
             "cgu",
             "pgfn",
+            "rfb-renuncias",
             "conab",
             "comexstat",
         ),
