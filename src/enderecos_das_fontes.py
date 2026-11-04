@@ -77,3 +77,14 @@ def separar(fonte: str) -> tuple[str, list[tuple[str, str]]]:
         if _ENDERECO.fullmatch(url):
             pares.append((rotulo, url))
     return texto, pares
+
+
+def paragrafo_sem_endereco(paragrafo: str) -> str:
+    """O inverso de `paragrafo_com_endereco`: a entrada da análise escrita e o hash dela não dependem
+    do endereço, que é só da tela."""
+    prefixo = "Fonte: "
+    if not paragrafo.startswith(prefixo):
+        return paragrafo
+    corpo = paragrafo.removeprefix(prefixo)
+    ponto = "." if corpo.endswith(".") else ""
+    return prefixo + separar(corpo.removesuffix("."))[0] + ponto

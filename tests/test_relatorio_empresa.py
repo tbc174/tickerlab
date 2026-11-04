@@ -219,9 +219,11 @@ def test_relatorio_cita_o_yahoo_pela_lista_dos_usos_sem_cobranca(dados_da_weg):
     relatorio = re_.montar(_entradas(dados_da_weg))
     citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "yahoo")
     assert re_.fontes_do_relatorio(_entradas(dados_da_weg)) == ("cvm", "yahoo")
-    assert citacao in relatorio.fontes
+    assert any(f.startswith(citacao) for f in relatorio.fontes)
     assert "Yahoo" in citacao
-    assert relatorio.fontes.index(citacao) > 0  # a CVM vem primeiro
+    assert (
+        next(i for i, f in enumerate(relatorio.fontes) if f.startswith(citacao)) > 0
+    )  # a CVM vem primeiro
 
 
 def test_relatorio_barra_fonte_fora_dos_usos(dados_da_weg, monkeypatch):
@@ -241,8 +243,10 @@ def test_relatorio_com_preco_da_b3_cita_a_fonte(dados_da_weg, monkeypatch):
     monkeypatch.setattr(re_, "FONTE_DO_PRECO", "b3")
     relatorio = re_.montar(_entradas(dados_da_weg))
     citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "b3")
-    assert citacao in relatorio.fontes
-    assert relatorio.fontes.index(citacao) > 0  # a CVM vem primeiro
+    assert any(f.startswith(citacao) for f in relatorio.fontes)
+    assert (
+        next(i for i, f in enumerate(relatorio.fontes) if f.startswith(citacao)) > 0
+    )  # a CVM vem primeiro
 
 
 def test_relatorio_monta_mesmo_sem_a_lista_dos_usos_sem_cobranca(
@@ -270,7 +274,7 @@ def test_dividendos_abrem_com_o_dy_citando_o_preco(dados_da_weg):
     dividendos = re_.montar(_entradas(dados_da_weg)).secao("dividendos")
     dy = dividendos.itens[0]
     assert dy.chave == "dividend_yield" and dy.valor and dy.valor > 0
-    assert dy.texto.endswith("%") and dy.fonte == re_.FONTE_DOS_MULTIPLOS
+    assert dy.texto.endswith("%") and dy.fonte.startswith(re_.FONTE_DOS_MULTIPLOS)
     assert any("minoritários" in p for p in dividendos.paragrafos)
 
 
@@ -279,7 +283,7 @@ def test_valuation_traz_valor_de_mercado_ev_e_multiplos(dados_da_weg):
     itens = {i.chave: i for i in valuation.itens}
     for chave in ("p_l", "p_vp", *re_.MULTIPLOS_DE_MERCADO):
         assert itens[chave].valor is not None, chave
-        assert itens[chave].fonte == re_.FONTE_DOS_MULTIPLOS
+        assert itens[chave].fonte.startswith(re_.FONTE_DOS_MULTIPLOS)
     assert itens["valor_de_mercado"].texto.startswith("R$ ")
     assert itens["ev_ebitda"].texto.endswith("×")
 
@@ -289,7 +293,9 @@ def test_dy_medio_fica_nos_dividendos_logo_depois_do_dy(dados_da_weg):
     dividendos = relatorio.secao("dividendos")
     medio = dividendos.itens[1]
     assert medio.chave == "dividend_yield_medio"
-    assert medio.fonte == re_.FONTE_DOS_MULTIPLOS  # fora da análise escrita, como o DY
+    assert medio.fonte.startswith(
+        re_.FONTE_DOS_MULTIPLOS
+    )  # fora da análise escrita, como o DY
     assert medio.motivo  # a amostra da WEG tem só 2 exercícios: o motivo explica
     assert re_.COMO_SAI_O_DY_MEDIO in dividendos.paragrafos
     valuation = {i.chave for i in relatorio.secao("valuation").itens}
