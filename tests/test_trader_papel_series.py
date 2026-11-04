@@ -1,6 +1,9 @@
 """Papel da v0.2: a foto de cada série sai do simulador registrado, sem olhar o futuro e sem posição
 antes do início do papel."""
 
+from dataclasses import replace
+from datetime import date
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -118,7 +121,11 @@ def test_p0_3_esta_em_caixa_no_primeiro_fechamento_e_comeca_no_aquecimento():
 
 def test_p0_3_decide_so_no_ultimo_pregao_do_mes_e_o_alvo_e_o_que_a_simulacao_executa():
     tabelas = _tabelas_da_p0_3()
-    fim_de_mes = next(d for d in _fins_de_mes(PREGOES) if d > PRIMEIRO_DA_P0_3)
+    fim_de_mes = next(
+        d
+        for d in _fins_de_mes(PREGOES)
+        if PREGOES[PREGOES.get_loc(pd.Timestamp(d)) - 5].date() > PRIMEIRO_DA_P0_3
+    )
     meio_do_mes = PREGOES[PREGOES.get_loc(pd.Timestamp(fim_de_mes)) - 5].date()
     assert sr.fotografar_p0_3(tabelas, meio_do_mes, PRIMEIRO_DA_P0_3)["sinal"] == {
         "decisao": False,
@@ -143,17 +150,20 @@ def test_p0_3_decide_so_no_ultimo_pregao_do_mes_e_o_alvo_e_o_que_a_simulacao_exe
 def test_p0_3_a_carteira_do_dia_e_a_da_simulacao_continua():
     tabelas = _tabelas_da_p0_3()
     desde = PREGOES[300 - 252]
+    # o caixa não rende até o primeiro fechamento: nada do aquecimento chega ao papel
+    caixa = tabelas.cdi.loc[desde:].copy()
+    caixa.loc[: pd.Timestamp(PRIMEIRO_DA_P0_3)] = 0.0
     longa = rp.simular(
-        tabelas.precos.loc[desde:],
-        tabelas.cdi.loc[desde:],
-        tabelas.volumes,
-        rp.Parametros(),
+        tabelas.precos.loc[desde:], caixa, tabelas.volumes, rp.Parametros()
     )
+    assert longa.patrimonio.loc[pd.Timestamp(PRIMEIRO_DA_P0_3)] == sr.CAPITAL_DO_PAPEL
     for posicao in (330, 360, 400):
         dia = PREGOES[posicao]
         foto = sr.fotografar_p0_3(tabelas, dia.date(), PRIMEIRO_DA_P0_3)
         assert foto["carteira"]["patrimonio"] == pytest.approx(
-            longa.patrimonio.loc[dia]
+            sr.CAPITAL_DO_PAPEL
+            * longa.patrimonio.loc[dia]
+            / longa.patrimonio.loc[pd.Timestamp(PRIMEIRO_DA_P0_3)]
         )
     assert longa.pesos.loc[PREGOES[400]].sum() > 0  # a carteira já investiu
 
@@ -307,3 +317,49 @@ def test_posicao_antes_do_inicio_e_recusada():
         sr._sem_posicao_ate(exposicao, DIAS[2].date())
     sr._sem_posicao_ate(exposicao, DIAS[0].date())
     sr._sem_posicao_ate(pd.Series([0.0, 0.0], index=DIAS[:2]), DIAS[1].date())
+
+
+# --- nada de antes do início entra no papel ------------------------------------------------------
+
+
+def _casos_do_inicio():
+    return [
+        pytest.param(sr.fotografar_p0_3, _tabelas_da_p0_3, PRIMEIRO_DA_P0_3, id="p0_3"),
+        pytest.param(
+            sr.fotografar_p0_1, _tabelas_de_cripto, PRIMEIRO_DE_CRIPTO, id="p0_1"
+        ),
+        pytest.param(
+            sr.fotografar_p0_1b, _tabelas_de_cripto, PRIMEIRO_DE_CRIPTO, id="p0_1b"
+        ),
+        pytest.param(sr.fotografar_di1, _entradas_do_di1, PRIMEIRO_DO_DI1, id="di1"),
+    ]
+
+
+@pytest.mark.parametrize(("fotografar", "entradas", "primeiro"), _casos_do_inicio())
+def test_no_primeiro_fechamento_o_papel_vale_o_capital_e_esta_em_caixa(
+    fotografar, entradas, primeiro
+):
+    foto = fotografar(entradas(), primeiro, primeiro)
+    assert foto["carteira"]["patrimonio"] == sr.CAPITAL_DO_PAPEL
+    assert set(foto["carteira"]["exposicao"].values()) == {0.0}
+
+
+def _com_outro_cdi_antes(entradas, primeiro: date):
+    """As mesmas entradas, com o triplo do CDI em todo pregão até o primeiro fechamento."""
+    antes = entradas.cdi.index <= pd.Timestamp(primeiro)
+    return replace(entradas, cdi=entradas.cdi.where(~antes, entradas.cdi * 3))
+
+
+@pytest.mark.parametrize(("fotografar", "entradas", "primeiro"), _casos_do_inicio())
+def test_o_caixa_de_antes_do_inicio_nao_muda_o_que_e_gravado(
+    fotografar, entradas, primeiro
+):
+    """O aquecimento cai no holdout: o que a simulação rende nele não pode chegar à foto."""
+    tabelas = entradas()
+    mexida = _com_outro_cdi_antes(tabelas, primeiro)
+    datas = pd.DatetimeIndex(tabelas.cdi.index)
+    for dia in datas[datas.get_loc(pd.Timestamp(primeiro)) :][[0, 10, 40]]:
+        original = fotografar(tabelas, dia.date(), primeiro)
+        mexido = fotografar(mexida, dia.date(), primeiro)
+        assert mexido["carteira"] == original["carteira"]
+        assert mexido["sinal"] == original["sinal"]

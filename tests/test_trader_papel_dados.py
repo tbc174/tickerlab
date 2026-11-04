@@ -6,6 +6,7 @@ import re
 import zipfile
 from dataclasses import dataclass, replace
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -168,7 +169,9 @@ def test_p0_3_le_ate_o_fechamento_desde_a_folga(tmp_path):
         F, PRIMEIRO, _fontes(TUDO_PUBLICADO, tmp_path), tmp_path / "papel"
     )
     assert tabelas.precos.index.max() == pd.Timestamp(F)
-    assert tabelas.precos.index.min() >= dd.inicio_dos_dados(PRIMEIRO)
+    assert tabelas.precos.index.min() >= dd.inicio_dos_dados(
+        PRIMEIRO, dd.AQUECIMENTO_DA_P0_3_EM_DIAS
+    )
     assert list(tabelas.precos.columns) == ["NTNB", "BOVA11", "OURO", "SP500"]
     assert tabelas.cdi.index.equals(tabelas.precos.index)
     assert tabelas.estimados == ()
@@ -295,15 +298,15 @@ def test_cripto_le_de_novo_sem_baixar_o_que_ja_tem(tmp_path):
 
 
 def test_cripto_comeca_num_dia_cuja_vespera_tem_dolar(tmp_path):
-    primeiro = date(2026, 11, 3)  # a folga cai num domingo, com a véspera no sábado
-    assert dd.inicio_dos_dados(primeiro).day_name() == "Sunday"
+    primeiro = date(2026, 11, 7)  # a folga cai num domingo, com a véspera no sábado
+    inicio = dd.inicio_dos_dados(primeiro, dd.AQUECIMENTO_DE_CRIPTO_EM_DIAS)
+    assert inicio.day_name() == "Sunday"
     tabelas = dd.carregar_p0_1(
         F, primeiro, _fontes(TUDO_PUBLICADO, tmp_path), tmp_path / "papel"
     )
     assert tabelas.precos.notna().all().all()
-    assert tabelas.precos.index.min() == pd.Timestamp(
-        "2024-11-05"
-    )  # a véspera, 04/11, é pregão
+    # a véspera da segunda é o domingo, sem PTAX; a da terça (25/08/2025) é pregão
+    assert tabelas.precos.index.min() == pd.Timestamp("2025-08-26")
 
 
 def test_p0_1b_le_os_pares_em_reais_sem_dolar(tmp_path):
@@ -320,7 +323,9 @@ def test_p0_1b_le_os_pares_em_reais_sem_dolar(tmp_path):
     assert pedidos == []  # sem PTAX: o par já é em reais
     assert (pasta / "binance_brl" / "BTCBRL-1d-2026-11-10.zip").exists()
     assert not (pasta / "binance").exists()
-    assert tabelas.precos.index.min() == dd.inicio_dos_dados(PRIMEIRO)
+    assert tabelas.precos.index.min() == dd.inicio_dos_dados(
+        PRIMEIRO, dd.AQUECIMENTO_DE_CRIPTO_EM_DIAS
+    )
     assert tabelas.precos.index.max() == pd.Timestamp(F)
     foto = sr.fotografar_p0_1b(tabelas, F, PRIMEIRO)
     assert foto["regra"]["registro"] == 18
@@ -334,3 +339,14 @@ def test_p0_1b_sem_o_candle_do_fechamento_espera(tmp_path):
 
 def test_toda_serie_tem_carregador():
     assert set(dd.CARREGADORES) == {s.nome for s in sr.SERIES}
+
+
+def test_o_papel_nao_abre_o_holdout_por_outro_caminho():
+    """O holdout só se lê por `trader/holdout.py`; o papel lê preços do aquecimento e nada mais."""
+    pasta = Path(dd.__file__).parent
+    for arquivo in pasta.glob("*.py"):
+        codigo = arquivo.read_text(encoding="utf-8")
+        assert "holdout.lock" not in codigo, arquivo.name
+        assert not re.search(r"(from|import) trader(\.| import )holdout", codigo), (
+            arquivo.name
+        )

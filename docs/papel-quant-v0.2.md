@@ -58,11 +58,19 @@ Os dados baixados ficam em `papel/dados/`, fora do Git e separados das pastas da
     antecipa.
 
   A linha gravada não muda quando o valor de verdade chega. Isso é a regra "corrige-se dali para a frente".
-- **Aquecimento.** Os indicadores pedem histórico: 252 pregões na P0-3, 365 dias na P0-1 e 360 pregões no DI1. Por
-  isso o gravador lê os preços desde 730 dias antes do primeiro fechamento. Até o primeiro fechamento, a carteira
-  simulada fica 100% em caixa (`_sem_posicao_ate`). Nenhum retorno daquele período entra no papel nem no julgamento:
-  o histórico serve só para o primeiro sinal existir. Esse trecho cai dentro do período do holdout (10/10/2023 a
-  09/10/2026), mas o gravador não calcula ali nenhum resultado das estratégias.
+- **Aquecimento.** Os indicadores pedem histórico: 252 pregões na P0-3, 365 dias na cripto e 360 pregões no DI1.
+  Cada carregador lê só esse trecho, com uma folga pequena: 400 dias antes do primeiro fechamento na P0-3, 440 na
+  cripto e 560 no DI1. Esse trecho cai dentro do período do holdout (10/10/2023 a 09/10/2026). Dele saem só preços,
+  para o primeiro sinal existir. Três travas, todas com teste:
+  - até o primeiro fechamento, a carteira simulada fica 100% em caixa (`_sem_posicao_ate`);
+  - nesse trecho o caixa da simulação não rende (`_caixa_parado_ate`), então ela chega ao primeiro fechamento com o
+    capital inicial intacto: R$ 100 mil e exposição zero em toda série. Mudar o CDI do aquecimento não muda nenhuma
+    linha gravada;
+  - o patrimônio gravado é contado a partir do primeiro fechamento (`_patrimonio_no_papel`).
+
+  Nenhum Sharpe nem retorno do holdout é calculado, e o papel não abre `holdout.lock` nem `trader/holdout.py`. Ler
+  esse trecho ainda é uma leitura do período do holdout fora de `trader/holdout.py`, e por isso espera o "pode" do
+  Tiago antes do merge.
 - **Cortar o futuro não muda o passado.** Há um teste por série: a foto de um dia é a mesma com ou sem os dados dos
   dias seguintes.
 

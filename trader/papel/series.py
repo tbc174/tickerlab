@@ -35,6 +35,8 @@ from trader.estrategias import tendencia_cripto as tc
 from trader.estrategias import tendencia_cripto_brl as brl
 from trader.registro import hash_da_especificacao
 
+CAPITAL_DO_PAPEL = 100_000.0  # o capital inicial das fichas, no primeiro fechamento
+
 
 class AntesDoInicioError(RuntimeError):
     """A simulação teria posição antes do início do papel (aquecimento cortado errado)."""
@@ -113,6 +115,33 @@ def _sem_posicao_ate(exposicao: pd.Series | pd.DataFrame, ultimo: date) -> None:
         )
 
 
+def _caixa_parado_ate(cdi: pd.Series, primeiro: date) -> pd.Series:
+    """O CDI que a simulação usa: zero até o primeiro fechamento, inclusive.
+
+    O aquecimento cai no período do holdout. Sem posição e sem rendimento do caixa, a simulação
+    chega ao primeiro fechamento com o capital inicial intacto: nenhum retorno daquele trecho sai
+    dela, nem pelo tamanho das ordens. O CDI de verdade continua no hash e no `cdi_do_dia`.
+    """
+    return cdi.where(cdi.index > _ts(primeiro), 0.0)
+
+
+def _patrimonio_no_papel(
+    patrimonio: pd.Series, fechamento: date, primeiro: date
+) -> float:
+    """O patrimônio contado a partir do primeiro fechamento, que vale o capital inicial.
+
+    A simulação começa no aquecimento, que cai no período do holdout. Até o primeiro fechamento ela
+    fica em caixa (`_sem_posicao_ate`). Mesmo assim, o que ela acumulou ali não entra na foto: cada
+    linha gravada só reflete retornos de depois do início do papel.
+    """
+    if _ts(primeiro) not in patrimonio.index:
+        raise AntesDoInicioError(
+            f"a simulação não tem o primeiro fechamento do papel ({primeiro})"
+        )
+    relativo = patrimonio.loc[_ts(fechamento)] / patrimonio.loc[_ts(primeiro)]
+    return float(CAPITAL_DO_PAPEL * relativo)
+
+
 def _regra(registro: int, versao: str, parametros: dict) -> dict:
     return {
         "registro": registro,
@@ -174,12 +203,13 @@ def fotografar_p0_3(tabelas: Tabelas, fechamento: date, primeiro: date) -> dict:
     _conferir_fechamento(pd.DatetimeIndex(precos.index), fechamento)
     cdi = tabelas.cdi.reindex(precos.index)
     volumes = tabelas.volumes
-    resultado = rp.simular(precos, cdi, volumes, PARAMETROS_DA_P0_3)  # type: ignore[arg-type]
+    caixa = _caixa_parado_ate(cdi, primeiro)
+    resultado = rp.simular(precos, caixa, volumes, PARAMETROS_DA_P0_3)  # type: ignore[arg-type]
     _sem_posicao_ate(resultado.pesos, primeiro)
     return _foto(
         fechamento,
-        _sinal_da_p0_3(precos, cdi, volumes, fechamento),  # type: ignore[arg-type]
-        resultado.patrimonio.loc[_ts(fechamento)],
+        _sinal_da_p0_3(precos, caixa, volumes, fechamento),  # type: ignore[arg-type]
+        _patrimonio_no_papel(resultado.patrimonio, fechamento, primeiro),
         _numeros(resultado.pesos.loc[_ts(fechamento)]),
         cdi.loc[_ts(fechamento)],
         _regra(5, rp.VERSAO, PARAMETROS_DA_P0_3.especificacao()),
@@ -240,13 +270,13 @@ def _fotografar_cripto(
     _conferir_fechamento(pd.DatetimeIndex(precos.index), fechamento)
     cdi = tabelas.cdi.reindex(precos.index)
     volumes = tabelas.volumes.loc[precos.index]
-    resultado = simular(precos, cdi, volumes, parametros)
+    resultado = simular(precos, _caixa_parado_ate(cdi, primeiro), volumes, parametros)
     _sem_posicao_ate(resultado.exposicao, primeiro)
     alvo = tc.fracoes_alvo(precos, parametros).loc[_ts(fechamento)]
     return _foto(
         fechamento,
         {"alvo": _numeros(alvo)},
-        resultado.patrimonio.loc[_ts(fechamento)],
+        _patrimonio_no_papel(resultado.patrimonio, fechamento, primeiro),
         _numeros(resultado.exposicao.loc[_ts(fechamento)]),
         cdi.loc[_ts(fechamento)],
         _regra(registro, versao, parametros.especificacao()),
@@ -277,13 +307,13 @@ def fotografar_di1(entradas: EntradasDoDI1, fechamento: date, primeiro: date) ->
     _conferir_fechamento(ativo.datas, fechamento)
     cdi = entradas.cdi.reindex(ativo.datas)
     parametros = tb.PARAMETROS_DA_FICHA
-    resultado = tb.simular(ativo, cdi, parametros)
+    resultado = tb.simular(ativo, _caixa_parado_ate(cdi, primeiro), parametros)
     _sem_posicao_ate(resultado.exposicao, primeiro)
     alvo = tb.fracao_alvo(ativo, parametros).loc[_ts(fechamento)]
     return _foto(
         fechamento,
         {"alvo": {"DI1": float(alvo)}},
-        resultado.patrimonio.loc[_ts(fechamento)],
+        _patrimonio_no_papel(resultado.patrimonio, fechamento, primeiro),
         {"DI1": float(resultado.exposicao.loc[_ts(fechamento)])},
         cdi.loc[_ts(fechamento)],
         _regra(12, tb.VERSAO, parametros.especificacao()),

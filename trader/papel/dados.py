@@ -47,9 +47,13 @@ SIMBOLOS_DO_YAHOO = {
     "SP500": "^GSPC",
     "BRL": "BRL=X",
 }
-# Folga antes do primeiro fechamento: o maior aquecimento (360 pregões do DI1, uns 520 dias
-# corridos; 365 dias mais o volume de 60 na cripto) com margem.
-DIAS_ANTES_DO_PRIMEIRO_FECHAMENTO = 730
+# Quantos dias antes do primeiro fechamento cada carregador lê: só o aquecimento que o sinal da série
+# pede, com uma folga pequena para feriados. Esse trecho cai no período do holdout; dele saem só
+# preços para o primeiro sinal existir (a carteira fica em caixa até o início, ver `series`).
+AQUECIMENTO_DA_P0_3_EM_DIAS = 400  # 252 pregões ≈ 370 dias corridos
+AQUECIMENTO_DO_DI1_EM_DIAS = 560  # 360 pregões ≈ 530 dias corridos
+# na cripto: 365 dias, a média de 60 dias do volume e a véspera com dólar
+AQUECIMENTO_DE_CRIPTO_EM_DIAS = 440
 
 
 class DadoAindaNaoSaiuError(RuntimeError):
@@ -70,10 +74,8 @@ class Fontes:
 FONTES = Fontes()
 
 
-def inicio_dos_dados(primeiro_fechamento: date) -> pd.Timestamp:
-    return pd.Timestamp(
-        primeiro_fechamento - timedelta(days=DIAS_ANTES_DO_PRIMEIRO_FECHAMENTO)
-    )
+def inicio_dos_dados(primeiro_fechamento: date, dias: int) -> pd.Timestamp:
+    return pd.Timestamp(primeiro_fechamento - timedelta(days=dias))
 
 
 # --- ajudantes -----------------------------------------------------------------------------------
@@ -157,7 +159,7 @@ def carregar_p0_3(
 ) -> Tabelas:
     """As quatro séries em reais, o CDI e os volumes, como o `rodar_p0_3`, até o fechamento."""
     inicio, fim, estimados = (
-        inicio_dos_dados(primeiro_fechamento),
+        inicio_dos_dados(primeiro_fechamento, AQUECIMENTO_DA_P0_3_EM_DIAS),
         pd.Timestamp(fechamento),
         set(),
     )
@@ -203,7 +205,7 @@ def carregar_di1(
 ) -> EntradasDoDI1:
     """O DI1 sintético sobre o calendário do BOVA11, como o `rodar_tendencia_b3`, até o fechamento."""
     inicio, fim, estimados = (
-        inicio_dos_dados(primeiro_fechamento),
+        inicio_dos_dados(primeiro_fechamento, AQUECIMENTO_DO_DI1_EM_DIAS),
         pd.Timestamp(fechamento),
         set(),
     )
@@ -325,7 +327,8 @@ def carregar_p0_1(
     pasta: Path = PASTA_DOS_DADOS,
 ) -> Tabelas:
     """BTC e ETH em reais (USDT × PTAX da véspera), o caixa e o volume, até o fechamento."""
-    inicio, estimados = inicio_dos_dados(primeiro_fechamento), set()
+    inicio = inicio_dos_dados(primeiro_fechamento, AQUECIMENTO_DE_CRIPTO_EM_DIAS)
+    estimados: set[str] = set()
     klines = _klines_ate(
         dados_cripto.PARES, inicio, fechamento, fontes, pasta / "binance"
     )
@@ -354,7 +357,8 @@ def carregar_p0_1b(
     pasta: Path = PASTA_DOS_DADOS,
 ) -> Tabelas:
     """BTCBRL e ETHBRL, já em reais (sem câmbio), o caixa e o volume, até o fechamento."""
-    inicio, estimados = inicio_dos_dados(primeiro_fechamento), set()
+    inicio = inicio_dos_dados(primeiro_fechamento, AQUECIMENTO_DE_CRIPTO_EM_DIAS)
+    estimados: set[str] = set()
     tabelas = _klines_ate(
         dados_brl.PARES, inicio, fechamento, fontes, pasta / "binance_brl"
     )
