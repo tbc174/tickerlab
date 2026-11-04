@@ -33,6 +33,29 @@ def test_custo_de_negociar_day_trade_usa_a_tarifa_de_day_trade():
     ) == pytest.approx(2.0)
 
 
+def test_ordem_no_leilao_paga_a_tarifa_do_leilao_salvo_no_day_trade():
+    custos = CustosBR(
+        emolumentos_a_vista=0.0003,
+        emolumentos_no_leilao=0.00032,
+        emolumentos_day_trade=0.00023,
+    )
+    assert custos_br.custo_de_negociar(
+        10_000, "etf", no_leilao=True, custos=custos
+    ) == pytest.approx(3.2)
+    assert custos_br.custo_de_negociar(
+        10_000, "etf", no_leilao=True, day_trade=True, custos=custos
+    ) == pytest.approx(2.3)
+    estresse = custos.em_estresse()
+    assert estresse.emolumentos_no_leilao == pytest.approx(0.00064)
+
+
+def test_futuro_aceita_fracao_de_contrato():
+    custos = CustosBR(corretagem_por_ordem=0.0, tarifa_futuro_por_contrato=0.4)
+    assert custos_br.custo_de_negociar(
+        50_000, "futuros", contratos=2.5, custos=custos
+    ) == pytest.approx(1.0)
+
+
 def test_futuro_paga_por_contrato_e_nao_pelo_valor():
     custos = CustosBR(corretagem_por_ordem=0.0, tarifa_futuro_por_contrato=0.25)
     assert custos_br.custo_de_negociar(
@@ -214,6 +237,17 @@ def test_estresse_dobra_os_custos_e_nunca_o_imposto():
 
 
 def test_tabela_tem_versao_e_lista_o_que_falta_confirmar():
-    assert custos_br.VERSAO == "v0.1"
+    assert custos_br.VERSAO == "v0.2"
     for campo in CustosBR().a_confirmar:
         assert hasattr(CustosBR(), campo), campo
+    # Lidos na fonte em 03/11/2026 (tabelas da B3 e da Binance): saíram da lista
+    assert "emolumentos_day_trade" not in CustosBR().a_confirmar
+    assert "taxa_cripto_por_lado" not in CustosBR().a_confirmar
+
+
+def test_valores_da_v0_2_lidos_na_tabela_da_b3():
+    padrao = CustosBR()
+    assert padrao.emolumentos_a_vista == pytest.approx(0.00030)
+    assert padrao.emolumentos_no_leilao == pytest.approx(0.00032)
+    assert padrao.emolumentos_day_trade == pytest.approx(0.00023)
+    assert padrao.tarifa_futuro_por_contrato == pytest.approx(0.394)

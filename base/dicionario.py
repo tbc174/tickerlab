@@ -145,6 +145,8 @@ class Tabela:
         default_factory=dict
     )  # coluna → (mínimo, máximo); None = sem limite desse lado
     nao_nulas: tuple[str, ...] = ()  # além das chaves, colunas que não aceitam vazio
+    # chaves que podem vir vazias (o vazio também identifica: `inicio` do balanço, que é um saldo numa data)
+    chaves_com_vazio: tuple[str, ...] = ()
     # o fato é anunciado antes de acontecer (assembleia, calendário, mandato que começa depois):
     # `aconteceu_em` pode vir depois de `publico_em`
     anuncia_o_futuro: bool = False
@@ -595,6 +597,258 @@ def _tabelas_das_sancoes() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_dos_processos() -> dict[str, Tabela]:
+    """Os processos judiciais por CNPJ (`base/processos.py`): as comunicações do DJEN dos processos em
+    que uma companhia aberta é parte, as partes de cada uma que não são pessoa física e os processos."""
+    comum = (
+        " Uma linha por comunicação publicada no DJEN (intimação, citação, edital) de um processo em que "
+        "uma companhia aberta é parte, achada pela razão social do cadastro da CVM ou, depois, pelo "
+        "número do processo (a que intima só a outra parte). Sem a Justiça do Trabalho "
+        "(Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de "
+        "pessoa física: as partes que não são companhia nem órgão público entram só na contagem. "
+        "Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica "
+        "sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra "
+        "(viés de sobrevivência)."
+    )
+    atraso = (
+        "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a "
+        "consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
+    )
+    datas = {
+        "disponivel_em": (
+            (
+                "Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de "
+                "`visto_em`): desde quando a linha vale para a base. A achada pelo número vale a "
+                "partir da primeira comunicação do processo com uma companhia entre as partes"
+            ),
+            DATA,
+        ),
+        "visto_em": ("Dia da consulta guardada que trouxe esta versão da linha", DATA),
+    }
+    comunicacoes = {
+        "id_na_fonte": ("O `hash` da comunicação no DJEN (único)", TEXTO),
+        "id_djen": ("O número da comunicação na API do DJEN", NUMERO),
+        "numero_processo": (
+            "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+            TEXTO,
+        ),
+        "ano_do_processo": (
+            "Ano em que o processo foi ajuizado (o AAAA do número)",
+            "ano",
+        ),
+        "justica": (
+            "Segmento da Justiça pelo número (Estadual, Federal, STJ...)",
+            TEXTO,
+        ),
+        "tribunal": ("Sigla do tribunal (TJSP, TRF3, STJ...)", TEXTO),
+        "orgao": ("Vara, câmara ou turma que publicou, em maiúsculas", TEXTO),
+        "classe_codigo": ("Código da classe processual nas tabelas do CNJ", TEXTO),
+        "classe": ("Classe processual (procedimento comum, execução fiscal...)", TEXTO),
+        "tipo_comunicacao": ("Intimação, citação, edital...", TEXTO),
+        "tipo_documento": ("Despacho, decisão, sentença, acórdão...", TEXTO),
+        "meio": ("Meio da comunicação, como o DJEN escreve", TEXTO),
+        "link": ("Endereço do documento no sistema do tribunal", TEXTO),
+        "cancelada_em": (
+            "Dia em que o tribunal cancelou a comunicação (vazio: não cancelada); antes dele, valia",
+            DATA,
+        ),
+        "companhias": ("Quantas partes são companhias abertas ligadas ao CNPJ", NUMERO),
+        "orgaos_publicos": ("Quantas partes são órgãos públicos", NUMERO),
+        "pessoas_juridicas": (
+            "Quantas partes são outras empresas (ou nome de mais de uma companhia do cadastro)",
+            NUMERO,
+        ),
+        "pessoas_ou_desconhecidas": (
+            "Quantas partes são pessoas ou não têm tipo claro",
+            NUMERO,
+        ),
+        "advogados": (
+            "Quantos advogados a comunicação cita (os nomes não entram)",
+            NUMERO,
+        ),
+        "tipo_de_ato": (
+            (
+                "O ato publicado (`sentenca`, `acordao`, `decisao`, `despacho`, `despacho_ou_decisao`, "
+                "`ato_ordinatorio`, `ata_de_julgamento`, `pauta`, `distribuicao`, `edital`, `certidao`), "
+                "pelo tipo do documento; no tipo genérico, `sentenca` só com o dispositivo de uma. "
+                "Vazio: não identificado ou não conferido"
+            ),
+            TEXTO,
+        ),
+        "resultado": (
+            (
+                "O que a comunicação decide, pela fórmula do dispositivo (`procedente`, "
+                "`parcialmente_procedente`, `improcedente`, `acordo_homologado`, `extinto`, "
+                "`recurso_provido`, `recurso_parcialmente_provido`, `recurso_nao_provido`). É o "
+                "resultado do pedido, não o da companhia: quem ganhou depende do polo "
+                "(`processos_partes`). Vazio: sem dispositivo claro, dois que se contradizem, lista "
+                "de muitos processos ou não conferido"
+            ),
+            TEXTO,
+        ),
+        "resultado_trecho": (
+            (
+                'A fórmula que provou o resultado ("JULGO PROCEDENTE", "NEGO PROVIMENTO"); o '
+                'que fica entre o verbo e a palavra-chave vira "..." (nenhum texto livre)'
+            ),
+            TEXTO,
+        ),
+        "valor_citado": (
+            (
+                "O maior valor em reais escrito no teor (condenação, causa ou honorários: o que o "
+                "texto cita, não o valor da causa)"
+            ),
+            REAIS,
+        ),
+        "teor_conferido_em": (
+            (
+                "Dia da conferência automática que cobre a linha (amostra com semente, gabarito de "
+                "um segundo modelo, precisão mínima de 95% por campo; regra e modelo que discordam "
+                "deixam o campo vazio). Vazio: nenhuma conferência ainda cobre a comunicação, e o "
+                "teor fica vazio"
+            ),
+            DATA,
+        ),
+        "achada_por": (
+            (
+                "`nome` (a busca pela razão social achou: a companhia está entre as partes) ou "
+                "`numero` (só a busca pelo número do processo achou)"
+            ),
+            TEXTO,
+        ),
+        "disponibilizada_em": (
+            (
+                "Dia em que a comunicação saiu no DJEN, como o tribunal informou (a achada pelo "
+                "número pode ter saído antes de `disponivel_em`)"
+            ),
+            DATA,
+        ),
+        **datas,
+        **_ORIGEM_SEM_ANO,
+    }
+    partes = {
+        "id_na_fonte": (
+            "O `hash` da comunicação (liga a `processos_comunicacoes`)",
+            TEXTO,
+        ),
+        "numero_processo": ("Número único do processo (CNJ)", TEXTO),
+        "polo": ("`ativo` (autor), `passivo` (réu) ou `outro`", TEXTO),
+        "tipo_parte": ("`companhia` ou `orgao_publico`", TEXTO),
+        "parte": ("Quem é a parte: o `cnpj` da companhia ou o `orgao_publico`", TEXTO),
+        "cnpj": (
+            "CNPJ da companhia (14 caracteres, sem pontuação); vazio no órgão público",
+            TEXTO,
+        ),
+        "empresa": ("Razão social da companhia no cadastro da CVM", TEXTO),
+        "orgao_publico": (
+            "Nome do órgão público, normalizado (maiúsculas, sem acento)",
+            TEXTO,
+        ),
+        **datas,
+        **_ORIGEM_SEM_ANO,
+    }
+    dos_processos = {
+        "numero_processo": comunicacoes["numero_processo"],
+        "ano_do_processo": comunicacoes["ano_do_processo"],
+        "justica": comunicacoes["justica"],
+        "tribunal": comunicacoes["tribunal"],
+        "orgao": (
+            "Vara, câmara ou turma da primeira comunicação, em maiúsculas",
+            TEXTO,
+        ),
+        "classe_codigo": (
+            "Código da classe na primeira comunicação (Tabelas Processuais Unificadas do CNJ)",
+            TEXTO,
+        ),
+        "classe": ("Classe da primeira comunicação, como o DJEN escreve", TEXTO),
+        "classe_tpu": (
+            "Nome da classe na TPU do CNJ (vazio se a TPU não tem o código)",
+            TEXTO,
+        ),
+        "classe_caminho": (
+            "As classes da TPU da raiz até a desta, separadas por ` > `",
+            TEXTO,
+        ),
+        "ramo": (
+            (
+                "Agrupamento nosso pela classe mais próxima na TPU: execucao_fiscal, insolvencia, "
+                "coletivo, juizado_especial, criminal, recurso, cumprimento_de_sentenca, execucao, "
+                "conhecimento (vazio: sem ramo conhecido)"
+            ),
+            TEXTO,
+        ),
+        "primeira_comunicacao": (
+            "Dia da primeira comunicação do processo no DJEN que a base tem",
+            DATA,
+        ),
+        "disponivel_em": (
+            (
+                "Dia da primeira comunicação do processo com uma companhia entre as partes: desde "
+                "quando se sabe que o processo é de uma companhia"
+            ),
+            DATA,
+        ),
+        "visto_em": ("Dia da consulta guardada que trouxe essa comunicação", DATA),
+        **_ORIGEM_SEM_ANO,
+    }
+    fonte = (
+        "CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as "
+        "Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, "
+        "`base/processos.py`)"
+    )
+    frequencia = "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)"
+    return {
+        "processos_comunicacoes": Tabela(
+            descricao="Processos judiciais por companhia aberta: as comunicações."
+            + comum,
+            fonte=fonte,
+            familia_da_fonte="djen",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_comunicacoes/djen.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=comunicacoes,
+        ),
+        "processos_partes": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos "
+                "públicos de cada comunicação, com o polo." + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="djen",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_partes/djen.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=partes,
+        ),
+        "processos": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta: uma linha por processo, com o que a "
+                "primeira comunicação diz e a classe pela TPU do CNJ. A classe é a do começo: a "
+                "mudança (o cumprimento de sentença, o recurso) está nas comunicações."
+                + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="djen",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos/djen.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=dos_processos,
+        ),
+    }
+
+
 def _tabelas_das_licencas() -> dict[str, Tabela]:
     """As licenças e registros por CNPJ (`base/licencas.py`, Ficha Clara): uma tabela por órgão, com
     as mesmas colunas, para a ficha da empresa ler todas do mesmo jeito."""
@@ -610,7 +864,9 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
         "id_na_fonte": (
             (
                 "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o "
-                "identificam juntas por `|`)"
+                "identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código "
+                "(`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de "
+                "outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles"
             ),
             TEXTO,
         ),
@@ -652,7 +908,9 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
         "situacao": (
             (
                 "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do "
-                "título...): vale desde o dia do arquivo, nunca antes"
+                "título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as "
+                "situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): "
+                "nenhuma vence, e a de cada apresentação não está no arquivo"
             ),
             TEXTO,
         ),
@@ -784,6 +1042,302 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
             "Agentes econômicos registrados na Ancine, por CNPJ.",
             "Ancine: dados abertos, agentes econômicos regulares",
             "ancine",
+        ),
+    }
+
+
+def _tabelas_dos_financiamentos() -> dict[str, Tabela]:
+    """Os financiamentos por CNPJ (`base/financiamentos.py`, linha 469): BNDES e Finep."""
+    colunas = {
+        "id_na_fonte": (
+            (
+                "Identidade estável da operação (nunca o número da linha). BNDES: `bndes|contrato|"
+                "resumo|n`, com um hash curto dos campos que não mudam (CNPJ, data, produto, "
+                "instrumento, fonte de recurso, custo, juros, prazos, subsetor, forma e repassador) "
+                "e a ordem pelo valor contratado dentro do grupo (um contrato tem vários "
+                "subcréditos, alguns iguais em tudo). Finep direta: `finep|direto|contrato|n`; "
+                "descentralizada: `finep|descentralizado|convênio|CNPJ|data|n`. Limite: um "
+                "subcrédito novo de valor menor no mesmo grupo empurra a ordem dos outros"
+            ),
+            TEXTO,
+        ),
+        "fonte": ("`bndes` ou `finep`: nunca somar as duas", TEXTO),
+        "modalidade": (
+            (
+                "`bndes_nao_automatica` (operações não automáticas do BNDES), "
+                "`finep_credito_direto` ou `finep_credito_descentralizado`"
+            ),
+            TEXTO,
+        ),
+        "cnpj": ("CNPJ de quem tomou o crédito, no formato 00.000.000/0000-00", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "uf": ("UF de quem tomou, como a fonte escreve", TEXTO),
+        "contrato": (
+            "Número do contrato (BNDES e Finep direta; vazio na descentralizada)",
+            TEXTO,
+        ),
+        "convenio_do_agente": (
+            (
+                'Finep descentralizada: o convênio entre a Finep e o agente financeiro ("Contrato '
+                'Finep Agente"), não o empréstimo da empresa: muitas empresas cabem nele'
+            ),
+            TEXTO,
+        ),
+        "contratado_em": ("Dia da contratação (BNDES) ou da assinatura (Finep)", DATA),
+        "valor_contratado": (
+            'Valor contratado (Finep: "Valor Finep" ou "Valor Financiado"); vazio fica vazio',
+            REAIS,
+        ),
+        "valor_desembolsado": (
+            (
+                'Valor desembolsado até a data do arquivo (Finep: "Valor Pago" ou "Valor '
+                'Liberado"). É desembolso, não pagamento da dívida; vazio fica vazio, nunca zero'
+            ),
+            REAIS,
+        ),
+        "contrapartida": ("Contrapartida da empresa (só a Finep informa)", REAIS),
+        "outros_recursos": ("Outros recursos (só a Finep descentralizada)", REAIS),
+        "financiador": (
+            (
+                "Quem emprestou: `BNDES` na DIRETA, a instituição credenciada na INDIRETA, `FINEP` "
+                "no crédito direto, o agente financeiro no descentralizado"
+            ),
+            TEXTO,
+        ),
+        "agente_papel": (
+            "`financiador_direto`, `instituicao_credenciada` ou `agente_descentralizado`",
+            TEXTO,
+        ),
+        "cnpj_do_financiador": (
+            (
+                "CNPJ de quem emprestou, quando a fonte o dá inteiro e de dígito certo (vazio no "
+                "agente da Finep descentralizada)"
+            ),
+            TEXTO,
+        ),
+        "forma_de_apoio": (
+            "BNDES: `DIRETA` (sem repassador, é normal) ou `INDIRETA`",
+            TEXTO,
+        ),
+        "cnpj_do_executor": (
+            "Finep direta: CNPJ do executor do projeto (não é quem tomou o crédito)",
+            TEXTO,
+        ),
+        "uf_do_projeto": ("Finep direta: UF do projeto", TEXTO),
+        "produto": ("BNDES: produto (`BNDES FINEM`...)", TEXTO),
+        "instrumento": ("BNDES: instrumento financeiro", TEXTO),
+        "fonte_de_recurso": ("BNDES: fonte de recurso dos desembolsos", TEXTO),
+        "custo_financeiro": (
+            "BNDES: custo financeiro (`TJLP`, `TLP`, `SELIC`, `US$ / CESTA`...)",
+            TEXTO,
+        ),
+        "juros": (
+            "BNDES: juros (spread) em % ao ano, como a fonte escreve; não é o custo efetivo",
+            NUMERO_DECIMAL,
+        ),
+        "carencia_meses": ("BNDES: prazo de carência, em meses", NUMERO),
+        "amortizacao_meses": ("BNDES: prazo de amortização, em meses", NUMERO),
+        "inovacao": ("BNDES: se a operação é de inovação, como a fonte escreve", TEXTO),
+        "porte": ("BNDES: porte do cliente", TEXTO),
+        "natureza": ("BNDES: natureza do cliente (privada ou pública)", TEXTO),
+        "subsetor_cnae": ("BNDES: código do subsetor CNAE", TEXTO),
+        "tipo_de_garantia": ("BNDES: tipo de garantia", TEXTO),
+        "situacao": (
+            "Situação como a fonte escreve (vazio quando a fonte põe `-`; a descentralizada não tem)",
+            TEXTO,
+        ),
+        "situacao_classe": (
+            (
+                "`liquidado`, `ativo`, `cancelado`, `rescindido`, `pendente`, "
+                "`encerrado_tecnico` (o ENCERRADO da Finep fecha o projeto, não quita), "
+                "`nao_informado` ou `nao_classificado` (situação que a tabela não conhece)"
+            ),
+            TEXTO,
+        ),
+        "consta": (
+            "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075)"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que o arquivista viu a linha", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também "
+                "no 1º (nenhuma das duas fontes diz quando publicou cada linha)"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    comum = (
+        "**Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e "
+        "desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra "
+        "tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança "
+        "vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` "
+        "falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário "
+        "individual e MEI ficam com `trata_como_pessoa`."
+    )
+    atraso = (
+        "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o "
+        "arquivista a viu"
+    )
+
+    def tabela(banco: str, frase: str, fonte: str, familia: str) -> Tabela:
+        return Tabela(
+            descricao=f"{frase} {comum}",
+            fonte=f"{fonte} (`base/financiamentos.py`)",
+            familia_da_fonte=familia,
+            frequencia="Mensal (a fonte reescreve o arquivo inteiro)",
+            atraso=atraso,
+            onde=(
+                f"Parquet em `<acervo>/base/financiamentos_{banco}/{banco}.parquet` (servidor "
+                "de casa, `scripts/carga_financiamentos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=colunas,
+        )
+
+    # uma tabela por banco: cada uma com a licença dela (a do BNDES é ODbL, camada própria)
+    return {
+        "financiamentos_bndes": tabela(
+            "bndes",
+            "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não "
+            "automáticas, diretas e pelas instituições credenciadas).",
+            "BNDES, dados abertos: operações não automáticas (ODbL; citar o BNDES)",
+            "bndes",
+        ),
+        "financiamentos_finep": tabela(
+            "finep",
+            "Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e "
+            'descentralizado, pelos agentes financeiros). A "Posição" da planilha fica no CSV '
+            "guardado e não vira coluna: a data que vale é a do arquivo.",
+            "Finep, planilha de contratações (licença a confirmar: uso interno)",
+            "finep",
+        ),
+    }
+
+
+def _tabelas_do_cnes() -> dict[str, Tabela]:
+    """O CNES por competência (`base/cnes.py`, linha 654): os estabelecimentos e a situação de cada competência."""
+    atraso = (
+        "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): "
+        "a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
+    )
+    onde = "Parquet em `<acervo>/base/{pasta}/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_cnes.py`)"
+    estabelecimentos = {
+        "competencia": ("Competência do cadastro, no formato AAAAMM", NUMERO),
+        "codigo_cnes": ("Código do estabelecimento no CNES (7 dígitos)", TEXTO),
+        "cnpj": (
+            (
+                "CNPJ do estabelecimento, só os 14 dígitos; vazio na unidade pública que não tem "
+                "CNPJ próprio e no CPF (CPF nunca vira CNPJ)"
+            ),
+            TEXTO,
+        ),
+        "cnpj_mantenedora": (
+            (
+                "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos. Não substitui o "
+                "`cnpj`, e a mantenedora não é dona de tudo o que mantém"
+            ),
+            TEXTO,
+        ),
+        "razao_social": (
+            "Nome empresarial; vazio quando não há nenhum CNPJ (pessoa física)",
+            TEXTO,
+        ),
+        "nome_fantasia": (
+            "Nome fantasia; vazio quando não há nenhum CNPJ (pessoa física)",
+            TEXTO,
+        ),
+        "codigo_ibge_municipio": ("Código IBGE do município do estabelecimento", TEXTO),
+        "gestao": (
+            "Tipo de gestão (municipal, estadual, dupla...), como a fonte escreve",
+            TEXTO,
+        ),
+        "tipo_unidade": (
+            "Tipo de unidade (hospital geral, posto de saúde...), como a fonte escreve",
+            TEXTO,
+        ),
+        "classificacao": (
+            "Classificação do estabelecimento, como a fonte escreve",
+            TEXTO,
+        ),
+        "natureza_juridica": ("Natureza jurídica, como a fonte escreve", TEXTO),
+        "grupo_natureza_juridica": (
+            "Grupo da natureza jurídica, como a fonte escreve",
+            TEXTO,
+        ),
+        "latitude": (
+            "Latitude do estabelecimento (graus); vazio quando a fonte não informa",
+            NUMERO_DECIMAL,
+        ),
+        "longitude": (
+            "Longitude do estabelecimento (graus); vazio quando a fonte não informa",
+            NUMERO_DECIMAL,
+        ),
+        "situacao_cnes": (
+            "Situação do estabelecimento (ativo ou não), como a fonte escreve",
+            TEXTO,
+        ),
+        "disponivel_em": (
+            (
+                "Dia em que a coleta viu a competência pela primeira vez (a API não dá a data de publicação); "
+                "`competencia` nunca serve de disponibilidade"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    situacao = {
+        "competencia": ("Competência olhada, no formato AAAAMM", NUMERO),
+        "linhas": ("Quantos estabelecimentos a fonte devolveu na competência", NUMERO),
+        "situacao": (
+            (
+                "`com_dados` ou `vazia`. `vazia` é a fonte ainda não ter publicado a competência: nunca "
+                "significa que não há estabelecimentos"
+            ),
+            TEXTO,
+        ),
+        "coletado_em": (
+            "Dia em que a competência foi vista pela primeira vez com essa situação",
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    comum = {
+        "fonte": "Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)",
+        "familia_da_fonte": "ms",
+        "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
+        "atraso": atraso,
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    return {
+        "cnes_estabelecimentos": Tabela(
+            descricao=(
+                "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da "
+                "mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem "
+                "nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário "
+                "individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia "
+                "não grava linha: veja `cnes_competencias`."
+            ),
+            onde=onde.format(pasta="cnes_estabelecimentos"),
+            colunas=estabelecimentos,
+            **comum,
+        ),
+        "cnes_competencias": Tabela(
+            descricao=(
+                "Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia. "
+                "Serve para não confundir competência ainda não publicada com ausência de estabelecimentos."
+            ),
+            onde=onde.format(pasta="cnes_competencias"),
+            colunas=situacao,
+            **comum,
         ),
     }
 
@@ -1663,6 +2217,63 @@ TABELAS: dict[str, Tabela] = {
             "CONTROLADOR": ("Nome do controlador", TEXTO),
             "INVEST_CEMPR_EXTER": ("S se pode aplicar 100% no exterior", TEXTO),
             "CLASSE_ANBIMA": ("Classificação da Anbima", TEXTO),
+        },
+    ),
+    "cadastro_gestor_hist": Tabela(
+        descricao=(
+            "O gestor de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linha por período, "
+            "com o início e o fim que a CVM declara. Serve para dizer quem era o gestor do fundo numa "
+            "data passada. A CVM não dá o dia em que cada linha ficou pública. Sem dado pessoal: "
+            "o gestor pessoa física fica sem CNPJ e sem nome"
+        ),
+        fonte="CVM: histórico do cadastro de fundos (`cad_fi_hist.zip`)",
+        familia_da_fonte="cvm",
+        frequencia="Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+        atraso="Sem data pública por linha: vale o início e o fim que a CVM declara",
+        onde="Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)",
+        linhagem=(
+            "O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no "
+            "acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou."
+        ),
+        colunas={
+            "CNPJ_FUNDO": ("CNPJ do fundo", TEXTO),
+            "DT_REG": ("Data do registro do fundo na CVM", DATA),
+            "PF_PJ_GESTOR": ("PF ou PJ: o gestor é pessoa física ou jurídica", TEXTO),
+            "CPF_CNPJ_GESTOR": ("CNPJ do gestor; vazio quando é pessoa física", TEXTO),
+            "GESTOR": ("Nome do gestor; vazio quando é pessoa física", TEXTO),
+            "DT_INI_GESTOR": ("Início do gestor no fundo", DATA),
+            "DT_FIM_GESTOR": (
+                "Fim do gestor no fundo (vazio: sem fim declarado)",
+                DATA,
+            ),
+        },
+    ),
+    "cadastro_admin_hist": Tabela(
+        descricao=(
+            "O administrador de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linha por período, "
+            "com o início e o fim que a CVM declara. Serve para dizer quem era o administrador do fundo numa "
+            "data passada. A CVM não dá o dia em que cada linha ficou pública. Sem dado pessoal: "
+            "só pessoa jurídica"
+        ),
+        fonte="CVM: histórico do cadastro de fundos (`cad_fi_hist.zip`)",
+        familia_da_fonte="cvm",
+        frequencia="Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+        atraso="Sem data pública por linha: vale o início e o fim que a CVM declara",
+        onde="Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)",
+        linhagem=(
+            "O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no "
+            "acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou."
+        ),
+        colunas={
+            "CNPJ_FUNDO": ("CNPJ do fundo", TEXTO),
+            "DT_REG": ("Data do registro do fundo na CVM", DATA),
+            "CNPJ_ADMIN": ("CNPJ do administrador", TEXTO),
+            "ADMIN": ("Nome do administrador (empresa)", TEXTO),
+            "DT_INI_ADMIN": ("Início do administrador no fundo", DATA),
+            "DT_FIM_ADMIN": (
+                "Fim do administrador no fundo (vazio: sem fim declarado)",
+                DATA,
+            ),
         },
     ),
     "painel_dos_fundos": Tabela(
@@ -4441,8 +5052,11 @@ TABELAS: dict[str, Tabela] = {
         },
     ),
     **_tabelas_das_sancoes(),
+    **_tabelas_dos_processos(),
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
+    **_tabelas_dos_financiamentos(),
+    **_tabelas_do_cnes(),
     "debentures_assembleias": Tabela(
         descricao=(
             "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
@@ -4846,6 +5460,50 @@ TABELAS: dict[str, Tabela] = {
             ),
             "link": ("Endereço do pacote no ENET de onde o texto saiu", TEXTO),
             **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "processos_nas_notas": Tabela(
+        descricao=(
+            "Processos judiciais que a própria companhia cita nas notas explicativas da DFP: uma "
+            "linha por número de processo e página de cada versão, achado no texto de `notas_dfp` "
+            "e conferido pelo dígito verificador (número com o dígito errado fica de fora). Sem a "
+            "Justiça do Trabalho, como no resto da base de processos (Resolução CNJ 121/2010). "
+            "Sem o texto da página: ele fica em `notas_dfp`, em área restrita"
+        ),
+        fonte="CVM: ENET, PDF do pacote da DFP, pela tabela `notas_dfp` (`base/processos.py`)",
+        familia_da_fonte="cvm",
+        frequencia="A cada montagem de `notas_dfp`: relê as notas quando elas mudam",
+        atraso="O da DFP: cada versão vale a partir da própria entrega à CVM",
+        onde=(
+            "Parquet em `<acervo>/base/processos_nas_notas/dfp.parquet` (servidor de casa, "
+            "`scripts/carga_processos.py`)"
+        ),
+        linhagem=(
+            "Cada linha leva o `origem_sha256` e o `origem_coletada_em` da página de `notas_dfp` "
+            "de onde saiu; o manifesto guarda os arquivos de `notas_dfp` lidos. "
+            + LINHAGEM_DA_HISTORICA_SEM_ANO
+        ),
+        colunas={
+            "numero_processo": (
+                "Número do processo no formato do CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+                TEXTO,
+            ),
+            "ano_do_processo": ("Ano de ajuizamento, como o número diz", "ano"),
+            "justica": (
+                "Ramo da Justiça, pelo número (Estadual, Federal, Eleitoral...)",
+                TEXTO,
+            ),
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "referencia": ("Data a que a DFP se refere (fim do exercício)", DATA),
+            "versao": ("Versão da DFP (cada reapresentação é um documento)", NUMERO),
+            "pagina": ("Página do PDF em que o número aparece, a partir de 1", NUMERO),
+            "link": ("Endereço do pacote no ENET de onde o texto saiu", TEXTO),
+            "disponivel_em": (
+                "Data em que a versão da DFP ficou pública: desde quando se sabe que a companhia cita o processo",
+                DATA,
+            ),
+            **_ORIGEM_SEM_ANO,
         },
     ),
     "fca_geral": Tabela(
@@ -6549,7 +7207,14 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_PROCESSOS = (
+    "2025-01-01"  # o histórico do DJEN que a coleta busca (`djen.HISTORICO_DESDE`)
+)
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
+_FINANCIAMENTOS = "2026-11-04"
+_CNES = (
+    "2026-11-04"  # o CNES por competência entrou no arquivista neste dia (linha 654)
+)
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
@@ -6566,8 +7231,8 @@ def _contrato(**campos: object) -> dict[str, object]:
 
 _CONTRATO = {
     # 2.0.0: a série T1 pôs a DFC, a DVA e a DRA na tabela (quem não filtra `demonstracao` muda)
-    "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
-    "dmpl_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "grupo", "conta", "coluna"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM),
+    "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta", "ordem", "inicio", "fim"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 3.0.0 (03/11/2026): a chave ganha `ordem`, `inicio` e `fim` (a DRE do ITR traz o trimestre e o acumulado; sem elas 40.913 linhas só em 2011 repetiam a chave)
+    "dmpl_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "grupo", "conta", "coluna", "ordem", "inicio", "fim"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (03/11/2026): a chave ganha `ordem`, `inicio` e `fim`
     "achados_de_qualidade": _contrato(modulo=_ME, chaves=("id",), datas={"aconteceu_em": "referencia", "publico_em": "valido_desde", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "cadastro_das_companhias": _contrato(modulo=_ME, chaves=("cnpj",), datas={"aconteceu_em": "registro"}, historico_desde=_CVM),
     "tickers_no_tempo": _contrato(modulo=_ME, chaves=("codigo", "cnpj"), datas={"aconteceu_em": "inicio_negociacao", "publico_em": "primeiro_visto"}, historico_desde=_CVM),
@@ -6579,6 +7244,8 @@ _CONTRATO = {
     "cda_cotas": _contrato(modulo=_FIDC, chaves=("competencia", "tipo_do_fundo", "cnpj_fundo", "cnpj_fundo_investido"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="2005-01-31"),
     "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
+    "cadastro_gestor_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_GESTOR"), datas={"aconteceu_em": "DT_INI_GESTOR"}, historico_desde=_CVM),
+    "cadastro_admin_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_ADMIN"), datas={"aconteceu_em": "DT_INI_ADMIN"}, historico_desde=_CVM),
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
     "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM, versao_do_contrato="1.1.0"),
@@ -6637,6 +7304,10 @@ _CONTRATO = {
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.2.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo); 1.2.0 (04/11/2026): o teor conferido (`tipo_de_ato`, `resultado`, `resultado_trecho`, `valor_citado`, `teor_conferido_em`)
+    "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
+    "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "processos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo",), datas={"aconteceu_em": "primeira_comunicacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -6644,6 +7315,42 @@ _CONTRATO = {
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anm_titulos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "ancine_agentes": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "financiamentos_bndes": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={
+            "aconteceu_em": "contratado_em",
+            "publico_em": "disponivel_em",
+            "coletado_em": "origem_coletada_em",
+        },
+        historico_desde=_FINANCIAMENTOS,
+    ),
+    "financiamentos_finep": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={
+            "aconteceu_em": "contratado_em",
+            "publico_em": "disponivel_em",
+            "coletado_em": "origem_coletada_em",
+        },
+        historico_desde=_FINANCIAMENTOS,
+    ),
+    "cnes_estabelecimentos": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("competencia", "codigo_cnes"),
+        datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_CNES,
+        granularidade_do_publico_em="mes",
+    ),
+    "cnes_competencias": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("competencia",),
+        datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
+        historico_desde=_CNES,
+    ),
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
@@ -6690,6 +7397,16 @@ _CONTRATO = {
 # por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
 _SEM_NEGATIVO = (0.0, None)
 _CONFERENCIA: dict[str, dict[str, object]] = {
+    # DFP/ITR "como eram" (API A3, 03/11/2026): um Parquet por ano; `inicio` é vazio no balanço
+    "demonstracoes_como_era": {"pasta": "demonstracoes", "chaves_com_vazio": ("inicio",)},
+    "dmpl_como_era": {"pasta": "dmpl", "chaves_com_vazio": ("inicio",)},
+    # CNPJ (API A3): o retrato em 256 partes pelos 2 primeiros caracteres da raiz, e as mudanças por mês
+    "cnpj_estabelecimentos": {"pasta": "cnpj/vigente/estabelecimentos"},
+    "cnpj_estabelecimentos_mudancas": {"pasta": "cnpj/mudancas/estabelecimentos"},
+    "cnpj_simples": {"pasta": "cnpj/vigente/simples"},
+    "cnpj_simples_mudancas": {"pasta": "cnpj/mudancas/simples"},
+    "cnpj_qsa": {"pasta": "cnpj/vigente/qsa"},
+    "cnpj_qsa_mudancas": {"pasta": "cnpj/mudancas/qsa"},
     "amostra_painel": {"pasta": "amostra/v1/painel"},
     "eventos": {"pasta": "eventos", "anuncia_o_futuro": True},  # 19% (assembleias, calendários)
     "curva_juros": {
@@ -6719,6 +7436,23 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "anuncia_o_futuro": True,  # a sanção publicada pode começar a valer depois
     },
+    "processos_comunicacoes": {
+        "pasta": "processos_comunicacoes",
+        "nao_nulas": ("id_na_fonte", "numero_processo", "ano_do_processo", "justica", "achada_por", "disponivel_em", "visto_em"),
+        "faixas": {"companhias": _SEM_NEGATIVO, "advogados": _SEM_NEGATIVO, "valor_citado": _SEM_NEGATIVO},
+    },
+    "processos_partes": {
+        "pasta": "processos_partes",
+        "nao_nulas": ("id_na_fonte", "numero_processo", "polo", "tipo_parte", "disponivel_em", "visto_em"),
+    },
+    "processos_nas_notas": {
+        "pasta": "processos_nas_notas",
+        "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "cnpj", "referencia", "versao", "pagina", "disponivel_em"),
+    },
+    "processos": {
+        "pasta": "processos",
+        "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "primeira_comunicacao", "disponivel_em", "visto_em"),
+    },
     "anvisa_registros": {
         "pasta": "anvisa_registros",
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
@@ -6742,6 +7476,24 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "ancine_agentes": {
         "pasta": "ancine_agentes",
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "financiamentos_bndes": {
+        "pasta": "financiamentos_bndes",
+        "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
+    },
+    "financiamentos_finep": {
+        "pasta": "financiamentos_finep",
+        "nao_nulas": ("id_na_fonte", "fonte", "modalidade", "cnpj", "cnpj_basico", "agente_papel", "situacao_classe", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("valor_contratado", "valor_desembolsado", "contrapartida", "outros_recursos", "carencia_meses", "amortizacao_meses")},
+    },
+    "cnes_estabelecimentos": {
+        "pasta": "cnes_estabelecimentos",
+        "nao_nulas": ("codigo_cnes", "competencia", "disponivel_em"),
+    },
+    "cnes_competencias": {
+        "pasta": "cnes_competencias",
+        "nao_nulas": ("situacao", "linhas", "coletado_em"),
     },
     "mme_reidi": {
         "pasta": "mme_reidi",

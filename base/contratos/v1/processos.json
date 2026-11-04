@@ -1,0 +1,98 @@
+{
+  "tabela": "processos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "numero_processo": {
+      "descricao": "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+      "unidade": "texto"
+    },
+    "ano_do_processo": {
+      "descricao": "Ano em que o processo foi ajuizado (o AAAA do número)",
+      "unidade": "ano"
+    },
+    "justica": {
+      "descricao": "Segmento da Justiça pelo número (Estadual, Federal, STJ...)",
+      "unidade": "texto"
+    },
+    "tribunal": {
+      "descricao": "Sigla do tribunal (TJSP, TRF3, STJ...)",
+      "unidade": "texto"
+    },
+    "orgao": {
+      "descricao": "Vara, câmara ou turma da primeira comunicação, em maiúsculas",
+      "unidade": "texto"
+    },
+    "classe_codigo": {
+      "descricao": "Código da classe na primeira comunicação (Tabelas Processuais Unificadas do CNJ)",
+      "unidade": "texto"
+    },
+    "classe": {
+      "descricao": "Classe da primeira comunicação, como o DJEN escreve",
+      "unidade": "texto"
+    },
+    "classe_tpu": {
+      "descricao": "Nome da classe na TPU do CNJ (vazio se a TPU não tem o código)",
+      "unidade": "texto"
+    },
+    "classe_caminho": {
+      "descricao": "As classes da TPU da raiz até a desta, separadas por ` > `",
+      "unidade": "texto"
+    },
+    "ramo": {
+      "descricao": "Agrupamento nosso pela classe mais próxima na TPU: execucao_fiscal, insolvencia, coletivo, juizado_especial, criminal, recurso, cumprimento_de_sentenca, execucao, conhecimento (vazio: sem ramo conhecido)",
+      "unidade": "texto"
+    },
+    "primeira_comunicacao": {
+      "descricao": "Dia da primeira comunicação do processo no DJEN que a base tem",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Dia da primeira comunicação do processo com uma companhia entre as partes: desde quando se sabe que o processo é de uma companhia",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da consulta guardada que trouxe essa comunicação",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "numero_processo"
+  ],
+  "datas": {
+    "aconteceu_em": "primeira_comunicacao",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "primeira_comunicacao": "a_conferir",
+    "disponivel_em": "publico_em",
+    "visto_em": "visto_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2025-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": false,
+  "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
+  "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
+}

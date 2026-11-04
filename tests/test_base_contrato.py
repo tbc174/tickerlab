@@ -2,18 +2,24 @@
 
 import json
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from base import contrato
+from base import contrato, prontidao
 from base.dicionario import TABELAS, Tabela
+from base.prontidao import Prontidao, Prova
 
 CAMPOS_DA_P6 = {
     "tabela", "modulo", "dono", "versao", "colunas", "chaves", "datas", "historico_desde",
     "granularidade_do_publico_em", "licenca", "revenda", "pessoa", "frequencia", "atraso",
     "sinonimos_de_tempo",
 }  # fmt: skip
+# só aparecem quando há: o catálogo das tabelas sem elas não muda
+CAMPOS_OPCIONAIS = {"renomeadas", "prontidao"}
+PROVA = Prova(date(2026, 10, 15), "placar-2026-10-15", "mesmo documento, outro canal")
+PRONTA = Prontidao(1, PROVA, PROVA._replace(independencia=""), None)
 
 
 def _tabela(**mudancas) -> Tabela:
@@ -51,10 +57,41 @@ def test_catalogo_tem_os_campos_da_p6():
     catalogo = contrato.catalogo()
     assert set(catalogo["tabelas"]) == set(TABELAS)
     for nome, entrada in catalogo["tabelas"].items():
-        assert set(entrada) == CAMPOS_DA_P6, nome
+        assert CAMPOS_DA_P6 <= set(entrada) <= CAMPOS_DA_P6 | CAMPOS_OPCIONAIS, nome
         assert entrada["tabela"] == nome
         assert entrada["dono"] == "Dados"
         assert entrada["colunas"], nome
+
+
+def test_catalogo_mostra_a_prontidao_da_tabela_pronta():
+    """ADR 0108, D10: a data e a prova de cada exigência e a versão maior conferida."""
+    catalogo = contrato.catalogo({"t": _tabela()}, {"t": PRONTA})
+    assert catalogo["tabelas"]["t"]["prontidao"] == {
+        "versao_maior": 1,
+        "cruzada": {
+            "data": "2026-10-15",
+            "prova": "placar-2026-10-15",
+            "independencia": "mesmo documento, outro canal",
+        },
+        "qualidade": {"data": "2026-10-15", "prova": "placar-2026-10-15"},
+        "dicionario": None,
+    }
+
+
+def test_sem_prontidao_o_catalogo_nao_muda():
+    sem = contrato.catalogo({"t": _tabela()}, {})
+    assert "prontidao" not in sem["tabelas"]["t"]
+    assert contrato.catalogo({"t": _tabela()}) == sem  # o registro de hoje é vazio
+
+
+def test_contrato_congelado_nao_leva_a_prontidao(tmp_path, monkeypatch):
+    """A prontidão muda sem mudar o contrato: fica só no catálogo, nunca no arquivo congelado."""
+    monkeypatch.setitem(prontidao.PRONTIDAO, "t", PRONTA)
+    _congelar(tmp_path, {"t": _tabela()})
+    congelado = json.loads((tmp_path / "v1" / "t.json").read_text(encoding="utf-8"))
+    publicado = json.loads((tmp_path / "catalogo.json").read_text(encoding="utf-8"))
+    assert "prontidao" not in congelado
+    assert publicado["tabelas"]["t"]["prontidao"]["versao_maior"] == 1
 
 
 def test_contrato_guarda_unidade_de_cada_coluna():

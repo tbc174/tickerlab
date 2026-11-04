@@ -6,6 +6,7 @@ Dados de mentira, sem internet: Parquets gravados à mão com as colunas das tab
 import json
 import sqlite3
 from datetime import UTC, datetime
+from decimal import Decimal
 
 import pandas as pd
 import pytest
@@ -237,3 +238,105 @@ def test_comando_grava_o_arquivo(base, tmp_path, monkeypatch):
     )
     _, estado = _abrir(destino)
     assert len(estado["fontes"]) == 3
+
+
+def _financiamento(raiz: str, id_na_fonte: str, visto: str, **campos) -> dict:
+    return {
+        "id_na_fonte": id_na_fonte,
+        "fonte": campos.get("fonte", "bndes"),
+        "modalidade": "bndes_nao_automatica",
+        "cnpj": _cnpj(raiz),
+        "cnpj_basico": raiz,
+        "uf": "SP",
+        "contrato": "12345",
+        "contratado_em": pd.Timestamp(campos.get("contratado", "2024-03-10")),
+        "valor_contratado": Decimal("1000.00"),
+        "valor_desembolsado": campos.get("desembolsado", Decimal("100.00")),
+        "financiador": "BNDES",
+        "agente_papel": "financiador_direto",
+        "cnpj_do_executor": "99.888.777/0001-00",
+        "situacao": "LIQUIDADA",
+        "situacao_classe": "liquidado",
+        "consta": campos.get("consta", True),
+        "trata_como_pessoa": campos.get("pessoa", False),
+        "visto_em": pd.Timestamp(visto),
+        "disponivel_em": pd.Timestamp(campos.get("disponivel", visto)),
+    }
+
+
+@pytest.fixture
+def base_com_financiamentos(base):
+    _gravar(
+        base,
+        "financiamentos_bndes",
+        [
+            _financiamento(RAIZ, "b1", "2026-09-01"),
+            _financiamento(RAIZ, "b1", "2026-10-01", desembolsado=Decimal("250.04")),
+            _financiamento(
+                RAIZ, "b2", "2026-10-01", desembolsado=None, contratado="2025-06-01"
+            ),
+            _financiamento(OUTRA, "b3", "2026-11-01"),  # do futuro
+            _financiamento(MEI, "b4", "2026-10-01", pessoa=True),
+        ],
+        arquivo="bndes",
+    )
+    _gravar(
+        base,
+        "financiamentos_finep",
+        [_financiamento(OUTRA, "f1", "2026-10-01", fonte="finep")],
+        arquivo="finep",
+    )
+    return base
+
+
+def test_financiamento_vigente_e_o_valor_mais_novo_com_o_dinheiro_exato(
+    base_com_financiamentos, tmp_path
+):
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base_com_financiamentos, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    total, (b2, b1) = _registros(banco, RAIZ, "financiamentos_bndes")
+    assert total == 2  # o mais novo primeiro (contratado em 2025)
+    assert b1["valor_desembolsado"] == "250.04" and b1["valor_contratado"] == "1000.00"
+    assert b2["valor_desembolsado"] is None  # vazio fica vazio, nunca zero
+    assert b1["situacao_classe"] == "liquidado" and b1["contratado_em"] == "2024-03-10"
+    assert "cnpj_do_executor" not in b1 and "id_na_fonte" not in b1
+    assert (
+        _registros(banco, OUTRA, "financiamentos_bndes") is None
+    )  # ainda não era pública
+    assert _registros(banco, MEI, "financiamentos_bndes") is None  # pessoa não entra
+    assert _registros(banco, OUTRA, "financiamentos_finep")[0] == 1
+
+
+def test_financiamentos_tem_tema_proprio_e_a_licenca_de_cada_banco(
+    base_com_financiamentos, tmp_path
+):
+    estado = conferencias.montar(
+        base_com_financiamentos, tmp_path / "c.sqlite", agora=AGORA
+    )
+    assert "financiamentos" in estado["temas"]
+    fontes = {f["tabela"]: f for f in estado["fontes"]}
+    assert fontes["financiamentos_bndes"]["tema"] == "financiamentos"
+    assert fontes["financiamentos_finep"]["tema"] == "financiamentos"
+    assert "ODbL" in fontes["financiamentos_bndes"]["licenca"]
+    assert "a confirmar" in fontes["financiamentos_finep"]["licenca"]
+    assert all(f["licenca"] for f in estado["fontes"])  # toda fonte leva a sua
+
+
+def test_ordem_pelo_valor_decimal_e_a_do_numero_e_nao_a_do_texto(tmp_path):
+    base = tmp_path / "base"
+    _gravar(
+        base / "pgfn_divida",
+        "2026-10",
+        [
+            _divida(RAIZ, "2026-09-30", 0, tipo="sida")
+            | {"valor_consolidado": Decimal("99.00")},
+            _divida(RAIZ, "2026-09-30", 0, tipo="fgts")
+            | {"valor_consolidado": Decimal("1000.00")},
+        ],
+    )
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    _, linhas = _registros(banco, RAIZ, "pgfn_divida")
+    assert [linha["valor_consolidado"] for linha in linhas] == ["1000.00", "99.00"]

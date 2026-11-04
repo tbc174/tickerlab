@@ -1,0 +1,87 @@
+{
+  "tabela": "processos_partes",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_na_fonte": {
+      "descricao": "O `hash` da comunicação (liga a `processos_comunicacoes`)",
+      "unidade": "texto"
+    },
+    "numero_processo": {
+      "descricao": "Número único do processo (CNJ)",
+      "unidade": "texto"
+    },
+    "polo": {
+      "descricao": "`ativo` (autor), `passivo` (réu) ou `outro`",
+      "unidade": "texto"
+    },
+    "tipo_parte": {
+      "descricao": "`companhia` ou `orgao_publico`",
+      "unidade": "texto"
+    },
+    "parte": {
+      "descricao": "Quem é a parte: o `cnpj` da companhia ou o `orgao_publico`",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia (14 caracteres, sem pontuação); vazio no órgão público",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Razão social da companhia no cadastro da CVM",
+      "unidade": "texto"
+    },
+    "orgao_publico": {
+      "descricao": "Nome do órgão público, normalizado (maiúsculas, sem acento)",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da consulta guardada que trouxe esta versão da linha",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "polo",
+    "parte"
+  ],
+  "datas": {
+    "aconteceu_em": "disponivel_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "disponivel_em": "publico_em",
+    "visto_em": "visto_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2025-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "DJEN do CNJ: publicação oficial e pública (Resolução CNJ 455/2022); citar o CNJ e o tribunal; sem a Justiça do Trabalho (Resolução CNJ 121/2010, art. 4º, § 1º, II)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": false,
+  "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
+  "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
+}

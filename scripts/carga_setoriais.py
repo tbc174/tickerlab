@@ -180,7 +180,7 @@ def _leitor(fonte: str, linha: sa.Row) -> Callable[[bytes], pd.DataFrame] | None
         return ons.ler
     if fonte == cftc_cot.FONTE and linha.url.endswith(".zip"):
         return cftc_cot.ler_disaggregated
-    if fonte == ccee.FONTE and ".csv" in linha.url.lower():
+    if fonte == ccee.FONTE:  # o portal entrega o CSV em ".../content", sem extensão
         return ccee.ler
     return None
 

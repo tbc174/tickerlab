@@ -285,7 +285,8 @@ def conferir(
                 )
 
     regras += 1
-    problemas += _vazios(tabela_df, [*tabela.chaves, *tabela.nao_nulas])
+    obrigatorias = [c for c in tabela.chaves if c not in tabela.chaves_com_vazio]
+    problemas += _vazios(tabela_df, [*obrigatorias, *tabela.nao_nulas])
 
     chaves = [c for c in tabela.chaves if c in tabela_df]
     if chaves:

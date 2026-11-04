@@ -101,7 +101,10 @@ def test_toda_fonte_do_lote_tem_licenca_marca_data_dos_termos_e_destino(fonte):
     assert len(licenca_da_fonte(fonte)) <= 80
     familia = fonte.split("-", 1)[0]
     assert registro.TERMOS_LIDOS_EM[familia] == date(2026, 10, 22)
-    sem_licenca_escrita = familia in {"pncp", "tcu"} or fonte == "seges-pesquisa-precos"
+    sem_licenca_escrita = familia in {"pncp", "tcu"} or fonte in {
+        "seges-pesquisa-precos",
+        "transferegov-especiais-pagamentos",
+    }
     esperada = Marca.A_CONFIRMAR if sem_licenca_escrita else Marca.VENDAVEL
     assert marca_da_fonte(fonte) == esperada
     assert fonte in DESTINOS
@@ -494,6 +497,171 @@ def test_transferegov_pagina_ate_vir_pagina_menor_e_tira_conta_bancaria(tmp_path
     for campo in ("numero_conta", "nome_banco", "parlamentar", "Fulana"):
         assert campo not in saida
     assert servidor.pedidos == enderecos
+
+
+# ---------------------------------------------------------------- Transferegov: subtransações (B6)
+def _subtransacao(numero: int, documento: str, nome: str = "ACME LTDA") -> dict:
+    chave = "subtransacao_gestao_financeira"
+    return {
+        f"id_{chave}": f"{numero}-1",
+        f"data_pagamento_{chave}": "2022-09-01",
+        f"valor_{chave}": 100.5,
+        f"codigo_banco_beneficiario_{chave}": 1,
+        f"codigo_agencia_beneficiario_{chave}": "***",
+        f"codigo_conta_beneficiario_{chave}": "***",
+        f"tipo_pessoa_beneficiario_{chave}": 2,
+        lote_licitacoes.DOCUMENTO_DO_FAVORECIDO: documento,
+        f"nome_beneficiario_{chave}": nome,
+        "id_lancamento_gestao_financeira": f"001-{numero}",
+    }
+
+
+def _pagina_de_pagamentos(
+    itens: list[dict], pagina: int, paginas: int, total: int
+) -> bytes:
+    corpo = {
+        "data": itens,
+        "page_number": pagina,
+        "total_pages": paginas,
+        "total_items": total,
+        "page_size": 2,
+    }
+    return json.dumps(corpo).encode()
+
+
+def _ler_pagamentos(tmp_path: Path, paginas: list[bytes]) -> list[dict]:
+    alvo = POR_ID["transferegov-especiais-pagamentos"].descobrir(Servidor({}), AGORA)[0]
+    assert alvo.obter is not None
+    enderecos = [lote_licitacoes._endereco_dos_pagamentos(n) for n in (1, 2)]
+    servidor = Servidor({e: [p] for e, p in zip(enderecos, paginas, strict=False)})
+    destino = tmp_path / "pagamentos.jsonl"
+    alvo.obter(servidor, destino)
+    return [json.loads(linha) for linha in destino.read_text().splitlines()]
+
+
+def test_pagamentos_do_transferegov_usam_a_api_nova_com_pagina_e_tamanho():
+    alvos = POR_ID["transferegov-especiais-pagamentos"].descobrir(Servidor({}), AGORA)
+    assert len(alvos) == 1
+    assert alvos[0].url.startswith(
+        "https://api-publica.transferegov.gestao.gov.br/especiais/"
+        "gestao-financeira-subtransacoes-especiais?"
+    )
+    assert "pagina=1&tamanho_da_pagina=500" in alvos[0].url
+    assert POR_ID["transferegov-especiais-pagamentos"].guardado_vale is not None
+
+
+def test_pagamentos_guardam_so_cnpj_normalizado_sem_conta_nem_cpf(tmp_path):
+    itens = [
+        _subtransacao(1, "13399033000106"),
+        _subtransacao(2, "***456789**", "JOAO DA SILVA"),
+    ]
+    resto = [_subtransacao(3, "41499157000190", "VH ENGENHARIA LTDA")]
+    saida = _ler_pagamentos(
+        tmp_path,
+        [
+            _pagina_de_pagamentos(itens, 1, 2, 3),
+            _pagina_de_pagamentos(resto, 2, 2, 3),
+        ],
+    )
+
+    assert [i["cnpj_beneficiario"] for i in saida] == [
+        "13399033000106",
+        "41499157000190",
+    ]
+    texto = json.dumps(saida)
+    assert "JOAO DA SILVA" not in texto
+    for campo in ("codigo_banco", "codigo_agencia", "codigo_conta"):
+        assert campo not in texto
+    # a ligação com a transferência-mãe vai pela chave do lançamento, não por texto
+    assert saida[0]["id_lancamento_gestao_financeira"] == "001-1"
+
+
+def test_pagamentos_com_documento_formatado_viram_so_digitos(tmp_path):
+    saida = _ler_pagamentos(
+        tmp_path,
+        [_pagina_de_pagamentos([_subtransacao(1, "13.399.033/0001-06")], 1, 1, 1)],
+    )
+    assert saida[0]["cnpj_beneficiario"] == "13399033000106"
+
+
+def test_pagamentos_com_menos_itens_que_o_total_da_api_sao_erro(tmp_path):
+    paginas = [
+        _pagina_de_pagamentos([_subtransacao(1, "13399033000106")], 1, 2, 3),
+        _pagina_de_pagamentos([_subtransacao(2, "41499157000190")], 2, 2, 3),
+    ]
+    with pytest.raises(lote_licitacoes.ContagemDivergente):
+        _ler_pagamentos(tmp_path, paginas)
+
+
+# ---------------------------------------------------------------- PNCP por atualização (B7)
+def test_pncp_atualizacao_tem_um_alvo_por_dia_e_a_data_yyyymmdd_na_rota_certa():
+    alvos = POR_ID["pncp-contratos-atualizados"].descobrir(Servidor({}), AGORA)
+    assert len(alvos) == lote_licitacoes.DIAS_DA_ATUALIZACAO_DO_PNCP
+    assert alvos[-1].url.startswith(
+        "https://pncp.gov.br/api/consulta/v1/contratos/atualizacao?"
+        "dataInicial=20261021&dataFinal=20261021"
+    )
+    atas = POR_ID["pncp-atas-atualizadas"].descobrir(Servidor({}), AGORA)
+    assert "/atas/atualizacao?" in atas[0].url
+
+
+def test_pncp_contratacoes_por_atualizacao_pedem_uma_modalidade_por_alvo():
+    alvos = POR_ID["pncp-contratacoes-atualizadas"].descobrir(Servidor({}), AGORA)
+    dias = lote_licitacoes.DIAS_DA_ATUALIZACAO_DO_PNCP
+    assert len(alvos) == dias * len(lote_licitacoes.MODALIDADES_DO_PNCP)
+    assert len({a.url for a in alvos}) == len(alvos)
+    assert all("codigoModalidadeContratacao=" in a.url for a in alvos)
+    assert lote_licitacoes._dia_na_url(alvos[-1].url) == date(2026, 10, 21)
+
+
+def test_pncp_atualizacao_so_para_de_olhar_o_dia_depois_que_ele_fechou():
+    fonte = POR_ID["pncp-contratos-atualizados"]
+    url = lote_licitacoes._endereco_da_atualizacao_do_pncp(
+        "contratos", date(2026, 10, 10), 1
+    )
+    assert fonte.guardado_vale is not None
+    no_proprio_dia = datetime(2026, 10, 10, 15, tzinfo=UTC)
+    no_dia_seguinte = datetime(2026, 10, 11, 1, tzinfo=UTC)
+    assert not fonte.guardado_vale(SimpleNamespace(url=url, baixado_em=no_proprio_dia))
+    assert fonte.guardado_vale(SimpleNamespace(url=url, baixado_em=no_dia_seguinte))
+
+
+def test_pncp_atualizacao_le_registro_alterado_e_nao_guarda_o_usuario(tmp_path):
+    alvo = POR_ID["pncp-atas-atualizadas"].descobrir(Servidor({}), AGORA)[-1]
+    pagina = {
+        "data": [
+            {
+                "numeroControlePNCPAta": "1-1-1/2026",
+                "dataAtualizacao": "2026-10-21",
+                "cnpjOrgao": "00394460000141",
+                "usuario": "Servidor",
+            }
+        ],
+        "paginasRestantes": 0,
+    }
+    servidor = Servidor({alvo.url: [json.dumps(pagina).encode()]})
+    destino = tmp_path / "atas.jsonl"
+    assert alvo.obter is not None
+    alvo.obter(servidor, destino)
+    linha = json.loads(destino.read_text())
+    assert linha["dataAtualizacao"] == "2026-10-21"
+    assert "usuario" not in linha
+
+
+def test_pncp_atualizacao_dia_sem_registro_404_e_sem_arquivo_e_nao_falha(tmp_path):
+    alvo = POR_ID["pncp-contratacoes-atualizadas"].descobrir(Servidor({}), AGORA)[0]
+    servidor = Servidor({alvo.url: 404})
+    assert alvo.obter is not None
+    with pytest.raises(SemArquivo):
+        alvo.obter(servidor, tmp_path / "x.jsonl")
+
+
+def test_pncp_atualizacao_erro_que_nao_e_404_continua_erro(tmp_path):
+    alvo = POR_ID["pncp-atas-atualizadas"].descobrir(Servidor({}), AGORA)[0]
+    servidor = Servidor({alvo.url: 500})
+    assert alvo.obter is not None
+    with pytest.raises(requests.HTTPError):
+        alvo.obter(servidor, tmp_path / "x.jsonl")
 
 
 # ---------------------------------------------------------------- estados (CKAN)

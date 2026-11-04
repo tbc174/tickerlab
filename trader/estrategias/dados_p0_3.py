@@ -30,9 +30,11 @@ import pandas as pd
 from src import bcb
 from src import cdi as modulo_cdi
 from trader.estrategias.carteira_rp import ATIVOS_DE_RISCO
-from trader.registro import RAIZ
+from trader.registro import RAIZ, pasta_da_pesquisa_quant
 
-PASTA_DA_PESQUISA = RAIZ / "pesquisa_quant"
+PASTA_DA_PESQUISA = (
+    pasta_da_pesquisa_quant()
+)  # fora das cópias do repositório (ver trader/registro.py)
 PASTA_DO_MT5 = RAIZ / "dados_mt5"
 PASTA_DA_CURVA = Path("C:/Users/tiago/TickerLab-Acervo/acervo/base/curva_juros")
 PRAZO_DA_NTNB_EM_ANOS = 5.0
@@ -164,7 +166,7 @@ def carregar_ipca(
 # --- leitura das fontes locais ------------------------------------------------------------------------
 
 
-def _ponto_da_curva(real: pd.DataFrame, prazo_anos: float) -> pd.Series:
+def ponto_da_curva(real: pd.DataFrame, prazo_anos: float) -> pd.Series:
     ponto = real[real["prazo_anos"] == prazo_anos]
     serie = ponto.set_index("data_base")["taxa"].astype(float).sort_index()
     serie.index = pd.DatetimeIndex(serie.index)
@@ -183,8 +185,8 @@ def taxa_real_a_prazo(
     paralelo). Dia sem os dois pontos fica de fora.
     """
     real = curva[curva["curva"] == "real"]
-    alvo = _ponto_da_curva(real, prazo_anos)
-    reserva = _ponto_da_curva(real, prazo_de_reserva)
+    alvo = ponto_da_curva(real, prazo_anos)
+    reserva = ponto_da_curva(real, prazo_de_reserva)
     datas = alvo.index.union(reserva.index)
     alvo, reserva = alvo.reindex(datas), reserva.reindex(datas)
     reserva_quando_o_alvo_existia = reserva.where(alvo.notna()).ffill()

@@ -66,6 +66,10 @@ _SEM_VIGIA = {
             "tce-rs-empenhos",
             "cgu",
             "pgfn",
+            "rfb-renuncias",
+            "rfb-transacoes",
+            "ms",
+            "tce-rn",
             "conab",
             "comexstat",
         ),
@@ -85,6 +89,7 @@ _SEM_VIGIA = {
     "usda": "usda.gov e fas.usda.gov respondem 403 (domínio público pela política do USDA)",
     "chirps3": "a licença (CC BY 4.0) está na ficha do dataset no Hugging Face, cópia de terceiro; os termos do Hugging Face não foram lidos (PR da ponte, 28/10/2026)",
     "ico": "ico.org não publica termos, só o aviso de copyright",
+    "finep": "a planilha de contratações da Finep não diz licença nem aponta termos (a confirmar, linha 469)",
     # lote Tesouro (23/10/2026): a licença ODbL está na ficha de cada pacote do CKAN; o catálogo já é vigiado
     **dict.fromkeys(
         (
@@ -133,7 +138,13 @@ _SEM_VIGIA = {
     "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
     # lote licitações e contratos (rodada 4, 22/10/2026)
     **dict.fromkeys(
-        ("seges", "seges-pesquisa-precos", "comprasgov", "transferegov"),
+        (
+            "seges",
+            "seges-pesquisa-precos",
+            "comprasgov",
+            "transferegov",
+            "transferegov-especiais-pagamentos",
+        ),
         "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
     ),
     "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",
@@ -152,6 +163,8 @@ _SEM_VIGIA = {
     "wiki": "a documentação da API deu 502 e as páginas lidas não dizem a licença",
     "termos": "são as próprias cópias das páginas vigiadas",
     "contrapartes": "páginas de terceiros guardadas como prova, sem coleta recorrente do termo",
+    "djen": "a regra é a Resolução CNJ 455/2022 (norma publicada); a API não tem página de termos",
+    "cnj": "a regra é a Resolução CNJ 46/2007 (norma publicada); o serviço da TPU não tem termos",
 }
 
 

@@ -7,6 +7,7 @@ login. Só passam campos curtos com letras minúsculas, números e hífen: assim
 
 import re
 from datetime import date
+from urllib.parse import quote
 
 from hypothesis import given
 from hypothesis import strategies as st
@@ -87,3 +88,20 @@ def test_cookie_vazio_ou_quebrado():
     assert ler_origem("s=|m=|r=") is None
     assert ler_origem("s=Fulano@gmail.com") is None
     assert ler_origem("s=google|" * 200) is None  # grande demais: não é o nosso cookie
+
+
+def test_le_o_cookie_que_o_site_grava():
+    """O contrato com web/publico/origem.js: o valor que web/testes/origem.test.ts espera, codificado
+    como o `encodeURIComponent` do navegador, volta inteiro."""
+    gravado = quote(
+        "s=linkedin|m=organico|c=relatorio-eletricas|t=post-2026-11-03|r=liga-ibmec|v=2026-11-03",
+        safe="",
+    )
+    assert ler_origem(gravado) == Origem(
+        source="linkedin",
+        medium="organico",
+        campaign="relatorio-eletricas",
+        content="post-2026-11-03",
+        ref="liga-ibmec",
+        primeira_visita=date(2026, 11, 3),
+    )

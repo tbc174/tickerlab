@@ -273,6 +273,104 @@ def test_medicamento_com_varias_apresentacoes_fica_uma_vez(
     ]
 
 
+# O ID 937 do arquivo de medicamentos de 13/10/2026 (pacote da pesquisa farmacêutica de 04/11): o mesmo
+# CO_SEQ_PRODUTO é uma tintura notificada de uma empresa e o ATENOCLOR registrado da Vitamedic, nesta
+# ordem no arquivo. Com o ID sozinho como chave, a primeira linha apagava a Vitamedic.
+NOTIFICADO_937 = {
+    "NU_CNPJ_EMPRESA": "30332829000152",
+    "CO_SEQ_PRODUTO": "937",
+    "TIPO_AUTORIZACAO": "NOTIFICADO",
+    "NO_PRODUTO": "tintura de benjoim",
+    "NU_REGISTRO_PRODUTO": "",
+    "NU_PROCESSO": "",
+    "VALIDADE_SITUACAO": "Válido",
+}
+REGISTRADO_937 = {
+    "NU_CNPJ_EMPRESA": "30222814000131",
+    "CO_SEQ_PRODUTO": "937",
+    "TIPO_AUTORIZACAO": "REGISTRADO",
+    "NO_PRODUTO": "ATENOCLOR",
+    "NU_REGISTRO_PRODUTO": "103920091",
+    "NU_PROCESSO": "250000184299933",
+    "VALIDADE_SITUACAO": "Válido",
+}
+
+
+def _ler_medicamentos(tmp_path, linhas: list[dict[str, str]]):
+    caminho = tmp_path / "TA_CONSULTA_MEDICAMENTOS.CSV"
+    caminho.write_bytes(_csv(linhas))
+    return licencas.ler_retrato(caminho, licencas.CADASTROS["medicamentos"])
+
+
+def test_medicamentos_mesmo_id_em_tipos_diferentes_preserva_empresas(tmp_path):
+    tabela, contagem = _ler_medicamentos(tmp_path, [NOTIFICADO_937, REGISTRADO_937])
+    por_id = tabela.set_index("id_na_fonte")
+    assert sorted(por_id.index) == ["NOTIFICADO|937", "REGISTRADO|937"]
+    vitamedic = por_id.loc["REGISTRADO|937"]
+    assert (vitamedic["cnpj"], vitamedic["registro"]) == (
+        "30.222.814/0001-31",
+        "103920091",
+    )
+    assert vitamedic["processo"] == "250000184299933"
+    assert por_id.loc["NOTIFICADO|937", "cnpj"] == "30.332.829/0001-52"
+    assert contagem["id_repetido"] == 0
+
+
+def test_medicamentos_na_ordem_inversa_dao_as_mesmas_identidades(tmp_path):
+    na_ordem, _ = _ler_medicamentos(tmp_path, [NOTIFICADO_937, REGISTRADO_937])
+    invertida, _ = _ler_medicamentos(tmp_path, [REGISTRADO_937, NOTIFICADO_937])
+    ordem = ["id_na_fonte"]
+    pd.testing.assert_frame_equal(
+        na_ordem.sort_values(ordem).reset_index(drop=True),
+        invertida.sort_values(ordem).reset_index(drop=True),
+    )
+
+
+def test_medicamento_com_situacoes_divergentes_mostra_todas_em_qualquer_ordem(
+    tmp_path,
+):
+    """Apresentações do mesmo produto com situações diferentes: nenhuma vence (nem a primeira, nem
+    a última, nem "Válido"); a linha do produto mostra todas, e a contagem avisa."""
+    inativa = {**REGISTRADO_937, "VALIDADE_SITUACAO": "Inativo"}
+    lidas = [
+        _ler_medicamentos(tmp_path, linhas)
+        for linhas in (
+            [REGISTRADO_937, inativa, REGISTRADO_937],
+            [inativa, REGISTRADO_937],
+        )
+    ]
+    for tabela, contagem in lidas:
+        assert tabela["situacao"].tolist() == [
+            f"Inativo{licencas.SEPARADOR_DAS_SITUACOES}Válido"
+        ]
+        assert contagem["situacao_divergente"] == 1
+    assert lidas[0][1]["id_repetido"] == 2
+
+
+def test_medicamento_com_mesma_chave_e_outro_cnpj_nao_some(tmp_path):
+    """Se um dia o tipo + ID também colidir entre empresas, as duas ficam (com o CNPJ na chave) e a
+    contagem avisa: nada se perde calado."""
+    outra_empresa = {
+        **REGISTRADO_937,
+        "NU_CNPJ_EMPRESA": EMPRESA,
+        "NU_REGISTRO_PRODUTO": "113000267",
+    }
+    tabela, contagem = _ler_medicamentos(tmp_path, [REGISTRADO_937, outra_empresa])
+    assert sorted(tabela["cnpj"]) == sorted(
+        ["30.222.814/0001-31", cnpjs.formatar(EMPRESA)]
+    )
+    assert tabela["id_na_fonte"].is_unique
+    assert all(i.startswith("REGISTRADO|937|") for i in tabela["id_na_fonte"])
+    assert contagem["identidade_em_conflito"] == 1
+
+
+def test_medicamento_sem_o_tipo_fica_marcado_e_nao_e_reconstruido(tmp_path):
+    sem_tipo = {**REGISTRADO_937, "TIPO_AUTORIZACAO": ""}
+    tabela, contagem = _ler_medicamentos(tmp_path, [sem_tipo])
+    assert tabela["id_na_fonte"].tolist() == ["|937"]
+    assert contagem["sem_tipo"] == 1
+
+
 def test_rntrc_de_cada_mes_e_um_retrato_com_mudanca_e_saida(
     banco, tmp_path, monkeypatch
 ):

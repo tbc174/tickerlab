@@ -43,7 +43,7 @@ def test_todo_numero_da_ficha_vira_uma_linha_com_id(entrada):
         if secao.chave in en.SECOES_FORA:
             continue
         for item in secao.itens:
-            if item.fonte == re_.FONTE_DOS_MULTIPLOS:  # o DY: usa o preço
+            if item.fonte.startswith(re_.FONTE_DOS_MULTIPLOS):  # o DY: usa o preço
                 assert f"{secao.chave}.{item.chave}" not in _linhas(entrada)
                 continue
             if item.chave in en.ITENS_FORA_DA_ENTRADA:  # até a próxima rodada de textos

@@ -51,6 +51,10 @@ LICENCAS = {
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+    "rfb-renuncias": "DIRBI e ECF da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
+    "rfb-transacoes": "Transações da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
+    "ms": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
+    "tce-rn": "TCE-RN: licença não localizada; a confirmar, só interno (ADR 0102)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
     "transparencia": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
@@ -68,6 +72,7 @@ LICENCAS = {
     # licitações e contratos (lidos em 22/10/2026): só pessoa jurídica no acervo (LGPD, ADR 0088)
     "seges": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
     "seges-pesquisa-precos": "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)",
+    "transferegov-especiais-pagamentos": "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)",
     "comprasgov": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
     "transferegov": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
     "pncp": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
@@ -119,6 +124,8 @@ LICENCAS = {
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+    # financiamentos por CNPJ (linha 469, 04/11/2026): a planilha não diz licença
+    "finep": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
     # série 4, PR 5b: "SES - Base de dados completa" com CC BY no dados.gov.br (lido em 15/10/2026);
     # só os CSVs sem pessoas (nunca administradores, contatos ou acionistas)
     "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
@@ -153,12 +160,18 @@ LICENCAS = {
     "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
+    # comunicações processuais do DJEN (plano de 03/11/2026 dos processos; ADR 0121): pública pela
+    # Resolução CNJ 455/2022; a Justiça do Trabalho fica de fora pela Resolução CNJ 121/2010, art. 4º,
+    # § 1º, II (proíbe a consulta pública pelo nome da parte)
+    "djen": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+    # as Tabelas Processuais Unificadas (Resolução CNJ 46/2007): tabela pública de uso obrigatório
+    "cnj": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
     # lote organismos (termos lidos em 22/10/2026, licencas-por-fonte.md, rodadas 1 e 4)
     "bce": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
     "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
     "eurostat": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
     "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
-    "bis": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
+    "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
     # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
@@ -260,6 +273,10 @@ REVENDA = {
     # a ficha do conjunto no dados.gov.br declara CC BY (o CC BY-ND é do rodapé do site gov.br
     # inteiro); Tiago, "Pode", 20/10/2026 (ADR 0106, item 2). Sócio pessoa física segue fora do app.
     "rfb-cnpj": VENDAVEL_COM_ATRIBUICAO,
+    "rfb-renuncias": A_CONFIRMAR,  # DIRBI e ECF (linha 660): nada perguntado à Receita, uso interno
+    "rfb-transacoes": A_CONFIRMAR,  # transações (linha 661): nada perguntado à Receita, uso interno
+    "ms": A_CONFIRMAR,  # CNES (linha 654): nada perguntado ao DATASUS, uso interno
+    "tce-rn": A_CONFIRMAR,  # linha 662: nada perguntado ao TCE-RN, uso interno
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
@@ -275,6 +292,7 @@ REVENDA = {
     "ccee": VENDAVEL_COM_ATRIBUICAO,
     "seges": VENDAVEL_COM_ATRIBUICAO,
     "seges-pesquisa-precos": A_CONFIRMAR,  # preço de referência (ADR 0008)
+    "transferegov-especiais-pagamentos": A_CONFIRMAR,  # API nova sem licença lida (rodada de 03/11/2026): uso interno
     "comprasgov": VENDAVEL_COM_ATRIBUICAO,
     "transferegov": VENDAVEL_COM_ATRIBUICAO,
     "pncp": A_CONFIRMAR,
@@ -317,6 +335,7 @@ REVENDA = {
     "anm": VENDAVEL_COM_ATRIBUICAO,
     "ancine": VENDAVEL_COM_ATRIBUICAO,
     "mme": A_CONFIRMAR,
+    "finep": A_CONFIRMAR,
     "aneel": VENDAVEL_ODBL,
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": VENDAVEL_COM_ATRIBUICAO,  # resposta do MDIC em 21/10/2026
@@ -337,11 +356,14 @@ REVENDA = {
     "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "ico": NAO_COMERCIAL,  # PDF sem termos lidos; coleta e uso com a fonte citada (ADR 0102)
     "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
+    # o CNJ não escreve licença de reuso da API; sem pedido ao CNJ (ADR 0102 Emenda 2): uso citando a fonte
+    "djen": A_CONFIRMAR,
+    "cnj": A_CONFIRMAR,  # a TPU também não tem licença de reuso escrita (ADR 0102 Emenda 2)
     "bce": VENDAVEL_COM_ATRIBUICAO,  # "Source: ECB statistics"
     "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
     "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
-    "bis": NAO_COMERCIAL,  # só uso não comercial sem permissão; sem pedir (Tiago, 22/10/2026)
+    "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
     "inpe": A_CONFIRMAR,  # sem licença escrita no INPE Queimadas
@@ -527,6 +549,11 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
         Coleta.TERMO_VEDA, Guarda.NAO_DIZ
     ),  # BDI veda; VPS 90 dias, casa sem prazo
     "contrapartes": ColetaEGuarda(Coleta.TERMO_VEDA, Guarda.SO_PROVA),
+    # o robots.txt da API libera tudo (lido em 03/11/2026) e a Resolução CNJ 455/2022 faz do DJEN a
+    # publicação oficial; nenhum termo diz por quanto tempo guardar
+    "djen": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
+    # o servidor da TPU não tem robots.txt (404 em 03/11/2026) nem termo de uso
+    "cnj": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
     # robots.txt fecha o portal e a N0 não achou licença escrita que dê reuso comercial (ONS: "reuso e
     # redistribuição" sem nome de licença; catálogo: só metadados; Cecafé: `Disallow: /*.pdf$`)
     "ons": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
@@ -549,6 +576,10 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "wiki",
             "mb",
             "pgfn",
+            "rfb-renuncias",
+            "rfb-transacoes",
+            "ms",
+            "tce-rn",
             "mte",
             "comexstat",
             "wayback",
@@ -562,6 +593,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "seges-pesquisa-precos",
             "comprasgov",
             "transferegov",
+            "transferegov-especiais-pagamentos",
             "pncp",
             "tcu",
             "govmg",
@@ -637,6 +669,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "ancine",
             # Ficha Clara, incentivos (29/10): termos e robots.txt ainda não lidos
             "mme",
+            # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos
+            "finep",
         ),
         _NAO_RESPONDIDA,
     ),
@@ -828,10 +862,18 @@ HTTP_NAO_ENCONTRADO = 404
 
 
 def licenca_da_fonte(fonte: str) -> str:
-    """A licença da fonte ("rfb-cnpj") ou da sua família ("cvm-ipe" → a da CVM)."""
-    return LICENCAS.get(fonte) or LICENCAS.get(
-        fonte.split("-", 1)[0], SEM_LICENCA_CONHECIDA
-    )
+    """A licença da fonte ("rfb-cnpj"), do prefixo mais longo que tem linha ("tesouro-br-divida-dotacao" →
+    a de "tesouro-br-divida") ou da família ("cvm-ipe" → a da CVM).
+
+    O prefixo vem antes da família porque "tesouro" é a chave do Tesouro dos EUA: sem ele, os pacotes
+    `tesouro-br-divida-*` levavam a licença americana (achado da linha 592, 03/11/2026).
+    """
+    partes = fonte.split("-")
+    for corte in range(len(partes), 0, -1):
+        licenca = LICENCAS.get("-".join(partes[:corte]))
+        if licenca:
+            return licenca
+    return SEM_LICENCA_CONHECIDA
 
 
 def revenda_da_fonte(fonte: str) -> str:

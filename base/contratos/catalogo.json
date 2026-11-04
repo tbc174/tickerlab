@@ -4,7 +4,7 @@
       "tabela": "demonstracoes_como_era",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "2.0.0",
+      "versao": "3.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -78,7 +78,10 @@
         "versao",
         "demonstracao",
         "grupo",
-        "conta"
+        "conta",
+        "ordem",
+        "inicio",
+        "fim"
       ],
       "datas": {
         "aconteceu_em": "referencia",
@@ -103,7 +106,7 @@
       "tabela": "dmpl_como_era",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -181,7 +184,10 @@
         "versao",
         "grupo",
         "conta",
-        "coluna"
+        "coluna",
+        "ordem",
+        "inicio",
+        "fim"
       ],
       "datas": {
         "aconteceu_em": "referencia",
@@ -1144,6 +1150,112 @@
       "pessoa": false,
       "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
       "atraso": "Do dia: é um retrato do cadastro na data da coleta; o histórico vem de `cad_fi_hist`"
+    },
+    "cadastro_gestor_hist": {
+      "tabela": "cadastro_gestor_hist",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "CNPJ_FUNDO": {
+          "descricao": "CNPJ do fundo",
+          "unidade": "texto"
+        },
+        "DT_REG": {
+          "descricao": "Data do registro do fundo na CVM",
+          "unidade": "data (dia)"
+        },
+        "PF_PJ_GESTOR": {
+          "descricao": "PF ou PJ: o gestor é pessoa física ou jurídica",
+          "unidade": "texto"
+        },
+        "CPF_CNPJ_GESTOR": {
+          "descricao": "CNPJ do gestor; vazio quando é pessoa física",
+          "unidade": "texto"
+        },
+        "GESTOR": {
+          "descricao": "Nome do gestor; vazio quando é pessoa física",
+          "unidade": "texto"
+        },
+        "DT_INI_GESTOR": {
+          "descricao": "Início do gestor no fundo",
+          "unidade": "data (dia)"
+        },
+        "DT_FIM_GESTOR": {
+          "descricao": "Fim do gestor no fundo (vazio: sem fim declarado)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "CNPJ_FUNDO",
+        "DT_INI_GESTOR"
+      ],
+      "datas": {
+        "aconteceu_em": "DT_INI_GESTOR"
+      },
+      "sinonimos_de_tempo": {
+        "DT_REG": "aconteceu_em",
+        "DT_INI_GESTOR": "aconteceu_em",
+        "DT_FIM_GESTOR": "ate"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara"
+    },
+    "cadastro_admin_hist": {
+      "tabela": "cadastro_admin_hist",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "CNPJ_FUNDO": {
+          "descricao": "CNPJ do fundo",
+          "unidade": "texto"
+        },
+        "DT_REG": {
+          "descricao": "Data do registro do fundo na CVM",
+          "unidade": "data (dia)"
+        },
+        "CNPJ_ADMIN": {
+          "descricao": "CNPJ do administrador",
+          "unidade": "texto"
+        },
+        "ADMIN": {
+          "descricao": "Nome do administrador (empresa)",
+          "unidade": "texto"
+        },
+        "DT_INI_ADMIN": {
+          "descricao": "Início do administrador no fundo",
+          "unidade": "data (dia)"
+        },
+        "DT_FIM_ADMIN": {
+          "descricao": "Fim do administrador no fundo (vazio: sem fim declarado)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "CNPJ_FUNDO",
+        "DT_INI_ADMIN"
+      ],
+      "datas": {
+        "aconteceu_em": "DT_INI_ADMIN"
+      },
+      "sinonimos_de_tempo": {
+        "DT_REG": "aconteceu_em",
+        "DT_INI_ADMIN": "aconteceu_em",
+        "DT_FIM_ADMIN": "ate"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara"
     },
     "painel_dos_fundos": {
       "tabela": "painel_dos_fundos",
@@ -6955,6 +7067,351 @@
       "frequencia": "Mensal (a ANS recarrega o arquivo inteiro; `NR_COMPETENCIA_CARGA` diz o mês)",
       "atraso": "A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)"
     },
+    "processos_comunicacoes": {
+      "tabela": "processos_comunicacoes",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.2.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O `hash` da comunicação no DJEN (único)",
+          "unidade": "texto"
+        },
+        "id_djen": {
+          "descricao": "O número da comunicação na API do DJEN",
+          "unidade": "número inteiro"
+        },
+        "numero_processo": {
+          "descricao": "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+          "unidade": "texto"
+        },
+        "ano_do_processo": {
+          "descricao": "Ano em que o processo foi ajuizado (o AAAA do número)",
+          "unidade": "ano"
+        },
+        "justica": {
+          "descricao": "Segmento da Justiça pelo número (Estadual, Federal, STJ...)",
+          "unidade": "texto"
+        },
+        "tribunal": {
+          "descricao": "Sigla do tribunal (TJSP, TRF3, STJ...)",
+          "unidade": "texto"
+        },
+        "orgao": {
+          "descricao": "Vara, câmara ou turma que publicou, em maiúsculas",
+          "unidade": "texto"
+        },
+        "classe_codigo": {
+          "descricao": "Código da classe processual nas tabelas do CNJ",
+          "unidade": "texto"
+        },
+        "classe": {
+          "descricao": "Classe processual (procedimento comum, execução fiscal...)",
+          "unidade": "texto"
+        },
+        "tipo_comunicacao": {
+          "descricao": "Intimação, citação, edital...",
+          "unidade": "texto"
+        },
+        "tipo_documento": {
+          "descricao": "Despacho, decisão, sentença, acórdão...",
+          "unidade": "texto"
+        },
+        "meio": {
+          "descricao": "Meio da comunicação, como o DJEN escreve",
+          "unidade": "texto"
+        },
+        "link": {
+          "descricao": "Endereço do documento no sistema do tribunal",
+          "unidade": "texto"
+        },
+        "cancelada_em": {
+          "descricao": "Dia em que o tribunal cancelou a comunicação (vazio: não cancelada); antes dele, valia",
+          "unidade": "data (dia)"
+        },
+        "companhias": {
+          "descricao": "Quantas partes são companhias abertas ligadas ao CNPJ",
+          "unidade": "número inteiro"
+        },
+        "orgaos_publicos": {
+          "descricao": "Quantas partes são órgãos públicos",
+          "unidade": "número inteiro"
+        },
+        "pessoas_juridicas": {
+          "descricao": "Quantas partes são outras empresas (ou nome de mais de uma companhia do cadastro)",
+          "unidade": "número inteiro"
+        },
+        "pessoas_ou_desconhecidas": {
+          "descricao": "Quantas partes são pessoas ou não têm tipo claro",
+          "unidade": "número inteiro"
+        },
+        "advogados": {
+          "descricao": "Quantos advogados a comunicação cita (os nomes não entram)",
+          "unidade": "número inteiro"
+        },
+        "tipo_de_ato": {
+          "descricao": "O ato publicado (`sentenca`, `acordao`, `decisao`, `despacho`, `despacho_ou_decisao`, `ato_ordinatorio`, `ata_de_julgamento`, `pauta`, `distribuicao`, `edital`, `certidao`), pelo tipo do documento; no tipo genérico, `sentenca` só com o dispositivo de uma. Vazio: não identificado ou não conferido",
+          "unidade": "texto"
+        },
+        "resultado": {
+          "descricao": "O que a comunicação decide, pela fórmula do dispositivo (`procedente`, `parcialmente_procedente`, `improcedente`, `acordo_homologado`, `extinto`, `recurso_provido`, `recurso_parcialmente_provido`, `recurso_nao_provido`). É o resultado do pedido, não o da companhia: quem ganhou depende do polo (`processos_partes`). Vazio: sem dispositivo claro, dois que se contradizem, lista de muitos processos ou não conferido",
+          "unidade": "texto"
+        },
+        "resultado_trecho": {
+          "descricao": "A fórmula que provou o resultado (\"JULGO PROCEDENTE\", \"NEGO PROVIMENTO\"); o que fica entre o verbo e a palavra-chave vira \"...\" (nenhum texto livre)",
+          "unidade": "texto"
+        },
+        "valor_citado": {
+          "descricao": "O maior valor em reais escrito no teor (condenação, causa ou honorários: o que o texto cita, não o valor da causa)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "teor_conferido_em": {
+          "descricao": "Dia da conferência automática que cobre a linha (amostra com semente, gabarito de um segundo modelo, precisão mínima de 95% por campo; regra e modelo que discordam deixam o campo vazio). Vazio: nenhuma conferência ainda cobre a comunicação, e o teor fica vazio",
+          "unidade": "data (dia)"
+        },
+        "achada_por": {
+          "descricao": "`nome` (a busca pela razão social achou: a companhia está entre as partes) ou `numero` (só a busca pelo número do processo achou)",
+          "unidade": "texto"
+        },
+        "disponibilizada_em": {
+          "descricao": "Dia em que a comunicação saiu no DJEN, como o tribunal informou (a achada pelo número pode ter saído antes de `disponivel_em`)",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base. A achada pelo número vale a partir da primeira comunicação do processo com uma companhia entre as partes",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da consulta guardada que trouxe esta versão da linha",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "cancelada_em": "ate",
+        "teor_conferido_em": "coletado_em",
+        "disponibilizada_em": "publico_em",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2025-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
+    },
+    "processos_partes": {
+      "tabela": "processos_partes",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O `hash` da comunicação (liga a `processos_comunicacoes`)",
+          "unidade": "texto"
+        },
+        "numero_processo": {
+          "descricao": "Número único do processo (CNJ)",
+          "unidade": "texto"
+        },
+        "polo": {
+          "descricao": "`ativo` (autor), `passivo` (réu) ou `outro`",
+          "unidade": "texto"
+        },
+        "tipo_parte": {
+          "descricao": "`companhia` ou `orgao_publico`",
+          "unidade": "texto"
+        },
+        "parte": {
+          "descricao": "Quem é a parte: o `cnpj` da companhia ou o `orgao_publico`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia (14 caracteres, sem pontuação); vazio no órgão público",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Razão social da companhia no cadastro da CVM",
+          "unidade": "texto"
+        },
+        "orgao_publico": {
+          "descricao": "Nome do órgão público, normalizado (maiúsculas, sem acento)",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base. A achada pelo número vale a partir da primeira comunicação do processo com uma companhia entre as partes",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da consulta guardada que trouxe esta versão da linha",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "polo",
+        "parte"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2025-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
+    },
+    "processos": {
+      "tabela": "processos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "numero_processo": {
+          "descricao": "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+          "unidade": "texto"
+        },
+        "ano_do_processo": {
+          "descricao": "Ano em que o processo foi ajuizado (o AAAA do número)",
+          "unidade": "ano"
+        },
+        "justica": {
+          "descricao": "Segmento da Justiça pelo número (Estadual, Federal, STJ...)",
+          "unidade": "texto"
+        },
+        "tribunal": {
+          "descricao": "Sigla do tribunal (TJSP, TRF3, STJ...)",
+          "unidade": "texto"
+        },
+        "orgao": {
+          "descricao": "Vara, câmara ou turma da primeira comunicação, em maiúsculas",
+          "unidade": "texto"
+        },
+        "classe_codigo": {
+          "descricao": "Código da classe na primeira comunicação (Tabelas Processuais Unificadas do CNJ)",
+          "unidade": "texto"
+        },
+        "classe": {
+          "descricao": "Classe da primeira comunicação, como o DJEN escreve",
+          "unidade": "texto"
+        },
+        "classe_tpu": {
+          "descricao": "Nome da classe na TPU do CNJ (vazio se a TPU não tem o código)",
+          "unidade": "texto"
+        },
+        "classe_caminho": {
+          "descricao": "As classes da TPU da raiz até a desta, separadas por ` > `",
+          "unidade": "texto"
+        },
+        "ramo": {
+          "descricao": "Agrupamento nosso pela classe mais próxima na TPU: execucao_fiscal, insolvencia, coletivo, juizado_especial, criminal, recurso, cumprimento_de_sentenca, execucao, conhecimento (vazio: sem ramo conhecido)",
+          "unidade": "texto"
+        },
+        "primeira_comunicacao": {
+          "descricao": "Dia da primeira comunicação do processo no DJEN que a base tem",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Dia da primeira comunicação do processo com uma companhia entre as partes: desde quando se sabe que o processo é de uma companhia",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da consulta guardada que trouxe essa comunicação",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "numero_processo"
+      ],
+      "datas": {
+        "aconteceu_em": "primeira_comunicacao",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "primeira_comunicacao": "publico_em",
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2025-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
+    },
     "anvisa_registros": {
       "tabela": "anvisa_registros",
       "modulo": "governo_e_sancoes",
@@ -6966,7 +7423,7 @@
           "unidade": "texto"
         },
         "id_na_fonte": {
-          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`)",
+          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles",
           "unidade": "texto"
         },
         "cnpj": {
@@ -6998,7 +7455,7 @@
           "unidade": "texto"
         },
         "situacao": {
-          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes",
+          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo",
           "unidade": "texto"
         },
         "uf": {
@@ -7102,7 +7559,7 @@
           "unidade": "texto"
         },
         "id_na_fonte": {
-          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`)",
+          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles",
           "unidade": "texto"
         },
         "cnpj": {
@@ -7134,7 +7591,7 @@
           "unidade": "texto"
         },
         "situacao": {
-          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes",
+          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo",
           "unidade": "texto"
         },
         "uf": {
@@ -7238,7 +7695,7 @@
           "unidade": "texto"
         },
         "id_na_fonte": {
-          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`)",
+          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles",
           "unidade": "texto"
         },
         "cnpj": {
@@ -7270,7 +7727,7 @@
           "unidade": "texto"
         },
         "situacao": {
-          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes",
+          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo",
           "unidade": "texto"
         },
         "uf": {
@@ -7374,7 +7831,7 @@
           "unidade": "texto"
         },
         "id_na_fonte": {
-          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`)",
+          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles",
           "unidade": "texto"
         },
         "cnpj": {
@@ -7406,7 +7863,7 @@
           "unidade": "texto"
         },
         "situacao": {
-          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes",
+          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo",
           "unidade": "texto"
         },
         "uf": {
@@ -7510,7 +7967,7 @@
           "unidade": "texto"
         },
         "id_na_fonte": {
-          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`)",
+          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles",
           "unidade": "texto"
         },
         "cnpj": {
@@ -7542,7 +7999,7 @@
           "unidade": "texto"
         },
         "situacao": {
-          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes",
+          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo",
           "unidade": "texto"
         },
         "uf": {
@@ -7646,7 +8103,7 @@
           "unidade": "texto"
         },
         "id_na_fonte": {
-          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`)",
+          "descricao": "O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles",
           "unidade": "texto"
         },
         "cnpj": {
@@ -7678,7 +8135,7 @@
           "unidade": "texto"
         },
         "situacao": {
-          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes",
+          "descricao": "A situação como a fonte escreve hoje (ativo, vencido, cancelado, fase atual do título...): vale desde o dia do arquivo, nunca antes. Nos medicamentos, todas as situações das apresentações do produto, em ordem alfabética (`Ativo / Inativo`): nenhuma vence, e a de cada apresentação não está no arquivo",
           "unidade": "texto"
         },
         "uf": {
@@ -8107,6 +8564,566 @@
       "pessoa": true,
       "frequencia": "Parada desde dez/2022 (o arquivista confere todo mês)",
       "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
+    },
+    "financiamentos_bndes": {
+      "tabela": "financiamentos_bndes",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Identidade estável da operação (nunca o número da linha). BNDES: `bndes|contrato|resumo|n`, com um hash curto dos campos que não mudam (CNPJ, data, produto, instrumento, fonte de recurso, custo, juros, prazos, subsetor, forma e repassador) e a ordem pelo valor contratado dentro do grupo (um contrato tem vários subcréditos, alguns iguais em tudo). Finep direta: `finep|direto|contrato|n`; descentralizada: `finep|descentralizado|convênio|CNPJ|data|n`. Limite: um subcrédito novo de valor menor no mesmo grupo empurra a ordem dos outros",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "`bndes` ou `finep`: nunca somar as duas",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "`bndes_nao_automatica` (operações não automáticas do BNDES), `finep_credito_direto` ou `finep_credito_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ de quem tomou o crédito, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF de quem tomou, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "contrato": {
+          "descricao": "Número do contrato (BNDES e Finep direta; vazio na descentralizada)",
+          "unidade": "texto"
+        },
+        "convenio_do_agente": {
+          "descricao": "Finep descentralizada: o convênio entre a Finep e o agente financeiro (\"Contrato Finep Agente\"), não o empréstimo da empresa: muitas empresas cabem nele",
+          "unidade": "texto"
+        },
+        "contratado_em": {
+          "descricao": "Dia da contratação (BNDES) ou da assinatura (Finep)",
+          "unidade": "data (dia)"
+        },
+        "valor_contratado": {
+          "descricao": "Valor contratado (Finep: \"Valor Finep\" ou \"Valor Financiado\"); vazio fica vazio",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_desembolsado": {
+          "descricao": "Valor desembolsado até a data do arquivo (Finep: \"Valor Pago\" ou \"Valor Liberado\"). É desembolso, não pagamento da dívida; vazio fica vazio, nunca zero",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "contrapartida": {
+          "descricao": "Contrapartida da empresa (só a Finep informa)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "outros_recursos": {
+          "descricao": "Outros recursos (só a Finep descentralizada)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "financiador": {
+          "descricao": "Quem emprestou: `BNDES` na DIRETA, a instituição credenciada na INDIRETA, `FINEP` no crédito direto, o agente financeiro no descentralizado",
+          "unidade": "texto"
+        },
+        "agente_papel": {
+          "descricao": "`financiador_direto`, `instituicao_credenciada` ou `agente_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj_do_financiador": {
+          "descricao": "CNPJ de quem emprestou, quando a fonte o dá inteiro e de dígito certo (vazio no agente da Finep descentralizada)",
+          "unidade": "texto"
+        },
+        "forma_de_apoio": {
+          "descricao": "BNDES: `DIRETA` (sem repassador, é normal) ou `INDIRETA`",
+          "unidade": "texto"
+        },
+        "cnpj_do_executor": {
+          "descricao": "Finep direta: CNPJ do executor do projeto (não é quem tomou o crédito)",
+          "unidade": "texto"
+        },
+        "uf_do_projeto": {
+          "descricao": "Finep direta: UF do projeto",
+          "unidade": "texto"
+        },
+        "produto": {
+          "descricao": "BNDES: produto (`BNDES FINEM`...)",
+          "unidade": "texto"
+        },
+        "instrumento": {
+          "descricao": "BNDES: instrumento financeiro",
+          "unidade": "texto"
+        },
+        "fonte_de_recurso": {
+          "descricao": "BNDES: fonte de recurso dos desembolsos",
+          "unidade": "texto"
+        },
+        "custo_financeiro": {
+          "descricao": "BNDES: custo financeiro (`TJLP`, `TLP`, `SELIC`, `US$ / CESTA`...)",
+          "unidade": "texto"
+        },
+        "juros": {
+          "descricao": "BNDES: juros (spread) em % ao ano, como a fonte escreve; não é o custo efetivo",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carencia_meses": {
+          "descricao": "BNDES: prazo de carência, em meses",
+          "unidade": "número inteiro"
+        },
+        "amortizacao_meses": {
+          "descricao": "BNDES: prazo de amortização, em meses",
+          "unidade": "número inteiro"
+        },
+        "inovacao": {
+          "descricao": "BNDES: se a operação é de inovação, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "porte": {
+          "descricao": "BNDES: porte do cliente",
+          "unidade": "texto"
+        },
+        "natureza": {
+          "descricao": "BNDES: natureza do cliente (privada ou pública)",
+          "unidade": "texto"
+        },
+        "subsetor_cnae": {
+          "descricao": "BNDES: código do subsetor CNAE",
+          "unidade": "texto"
+        },
+        "tipo_de_garantia": {
+          "descricao": "BNDES: tipo de garantia",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação como a fonte escreve (vazio quando a fonte põe `-`; a descentralizada não tem)",
+          "unidade": "texto"
+        },
+        "situacao_classe": {
+          "descricao": "`liquidado`, `ativo`, `cancelado`, `rescindido`, `pendente`, `encerrado_tecnico` (o ENCERRADO da Finep fecha o projeto, não quita), `nao_informado` ou `nao_classificado` (situação que a tabela não conhece)",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (nenhuma das duas fontes diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "contratado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "contratado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-11-04",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": true,
+      "frequencia": "Mensal (a fonte reescreve o arquivo inteiro)",
+      "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu"
+    },
+    "financiamentos_finep": {
+      "tabela": "financiamentos_finep",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Identidade estável da operação (nunca o número da linha). BNDES: `bndes|contrato|resumo|n`, com um hash curto dos campos que não mudam (CNPJ, data, produto, instrumento, fonte de recurso, custo, juros, prazos, subsetor, forma e repassador) e a ordem pelo valor contratado dentro do grupo (um contrato tem vários subcréditos, alguns iguais em tudo). Finep direta: `finep|direto|contrato|n`; descentralizada: `finep|descentralizado|convênio|CNPJ|data|n`. Limite: um subcrédito novo de valor menor no mesmo grupo empurra a ordem dos outros",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "`bndes` ou `finep`: nunca somar as duas",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "`bndes_nao_automatica` (operações não automáticas do BNDES), `finep_credito_direto` ou `finep_credito_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ de quem tomou o crédito, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF de quem tomou, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "contrato": {
+          "descricao": "Número do contrato (BNDES e Finep direta; vazio na descentralizada)",
+          "unidade": "texto"
+        },
+        "convenio_do_agente": {
+          "descricao": "Finep descentralizada: o convênio entre a Finep e o agente financeiro (\"Contrato Finep Agente\"), não o empréstimo da empresa: muitas empresas cabem nele",
+          "unidade": "texto"
+        },
+        "contratado_em": {
+          "descricao": "Dia da contratação (BNDES) ou da assinatura (Finep)",
+          "unidade": "data (dia)"
+        },
+        "valor_contratado": {
+          "descricao": "Valor contratado (Finep: \"Valor Finep\" ou \"Valor Financiado\"); vazio fica vazio",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_desembolsado": {
+          "descricao": "Valor desembolsado até a data do arquivo (Finep: \"Valor Pago\" ou \"Valor Liberado\"). É desembolso, não pagamento da dívida; vazio fica vazio, nunca zero",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "contrapartida": {
+          "descricao": "Contrapartida da empresa (só a Finep informa)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "outros_recursos": {
+          "descricao": "Outros recursos (só a Finep descentralizada)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "financiador": {
+          "descricao": "Quem emprestou: `BNDES` na DIRETA, a instituição credenciada na INDIRETA, `FINEP` no crédito direto, o agente financeiro no descentralizado",
+          "unidade": "texto"
+        },
+        "agente_papel": {
+          "descricao": "`financiador_direto`, `instituicao_credenciada` ou `agente_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj_do_financiador": {
+          "descricao": "CNPJ de quem emprestou, quando a fonte o dá inteiro e de dígito certo (vazio no agente da Finep descentralizada)",
+          "unidade": "texto"
+        },
+        "forma_de_apoio": {
+          "descricao": "BNDES: `DIRETA` (sem repassador, é normal) ou `INDIRETA`",
+          "unidade": "texto"
+        },
+        "cnpj_do_executor": {
+          "descricao": "Finep direta: CNPJ do executor do projeto (não é quem tomou o crédito)",
+          "unidade": "texto"
+        },
+        "uf_do_projeto": {
+          "descricao": "Finep direta: UF do projeto",
+          "unidade": "texto"
+        },
+        "produto": {
+          "descricao": "BNDES: produto (`BNDES FINEM`...)",
+          "unidade": "texto"
+        },
+        "instrumento": {
+          "descricao": "BNDES: instrumento financeiro",
+          "unidade": "texto"
+        },
+        "fonte_de_recurso": {
+          "descricao": "BNDES: fonte de recurso dos desembolsos",
+          "unidade": "texto"
+        },
+        "custo_financeiro": {
+          "descricao": "BNDES: custo financeiro (`TJLP`, `TLP`, `SELIC`, `US$ / CESTA`...)",
+          "unidade": "texto"
+        },
+        "juros": {
+          "descricao": "BNDES: juros (spread) em % ao ano, como a fonte escreve; não é o custo efetivo",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carencia_meses": {
+          "descricao": "BNDES: prazo de carência, em meses",
+          "unidade": "número inteiro"
+        },
+        "amortizacao_meses": {
+          "descricao": "BNDES: prazo de amortização, em meses",
+          "unidade": "número inteiro"
+        },
+        "inovacao": {
+          "descricao": "BNDES: se a operação é de inovação, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "porte": {
+          "descricao": "BNDES: porte do cliente",
+          "unidade": "texto"
+        },
+        "natureza": {
+          "descricao": "BNDES: natureza do cliente (privada ou pública)",
+          "unidade": "texto"
+        },
+        "subsetor_cnae": {
+          "descricao": "BNDES: código do subsetor CNAE",
+          "unidade": "texto"
+        },
+        "tipo_de_garantia": {
+          "descricao": "BNDES: tipo de garantia",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação como a fonte escreve (vazio quando a fonte põe `-`; a descentralizada não tem)",
+          "unidade": "texto"
+        },
+        "situacao_classe": {
+          "descricao": "`liquidado`, `ativo`, `cancelado`, `rescindido`, `pendente`, `encerrado_tecnico` (o ENCERRADO da Finep fecha o projeto, não quita), `nao_informado` ou `nao_classificado` (situação que a tabela não conhece)",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (nenhuma das duas fontes diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "contratado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "contratado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-11-04",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": true,
+      "frequencia": "Mensal (a fonte reescreve o arquivo inteiro)",
+      "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu"
+    },
+    "cnes_estabelecimentos": {
+      "tabela": "cnes_estabelecimentos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Competência do cadastro, no formato AAAAMM",
+          "unidade": "número inteiro"
+        },
+        "codigo_cnes": {
+          "descricao": "Código do estabelecimento no CNES (7 dígitos)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ do estabelecimento, só os 14 dígitos; vazio na unidade pública que não tem CNPJ próprio e no CPF (CPF nunca vira CNPJ)",
+          "unidade": "texto"
+        },
+        "cnpj_mantenedora": {
+          "descricao": "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos. Não substitui o `cnpj`, e a mantenedora não é dona de tudo o que mantém",
+          "unidade": "texto"
+        },
+        "razao_social": {
+          "descricao": "Nome empresarial; vazio quando não há nenhum CNPJ (pessoa física)",
+          "unidade": "texto"
+        },
+        "nome_fantasia": {
+          "descricao": "Nome fantasia; vazio quando não há nenhum CNPJ (pessoa física)",
+          "unidade": "texto"
+        },
+        "codigo_ibge_municipio": {
+          "descricao": "Código IBGE do município do estabelecimento",
+          "unidade": "texto"
+        },
+        "gestao": {
+          "descricao": "Tipo de gestão (municipal, estadual, dupla...), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "tipo_unidade": {
+          "descricao": "Tipo de unidade (hospital geral, posto de saúde...), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "classificacao": {
+          "descricao": "Classificação do estabelecimento, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "natureza_juridica": {
+          "descricao": "Natureza jurídica, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "grupo_natureza_juridica": {
+          "descricao": "Grupo da natureza jurídica, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "latitude": {
+          "descricao": "Latitude do estabelecimento (graus); vazio quando a fonte não informa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "longitude": {
+          "descricao": "Longitude do estabelecimento (graus); vazio quando a fonte não informa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "situacao_cnes": {
+          "descricao": "Situação do estabelecimento (ativo ou não), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Dia em que a coleta viu a competência pela primeira vez (a API não dá a data de publicação); `competencia` nunca serve de disponibilidade",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "codigo_cnes"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-11-04",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": true,
+      "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
+      "atraso": "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
+    },
+    "cnes_competencias": {
+      "tabela": "cnes_competencias",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Competência olhada, no formato AAAAMM",
+          "unidade": "número inteiro"
+        },
+        "linhas": {
+          "descricao": "Quantos estabelecimentos a fonte devolveu na competência",
+          "unidade": "número inteiro"
+        },
+        "situacao": {
+          "descricao": "`com_dados` ou `vazia`. `vazia` é a fonte ainda não ter publicado a competência: nunca significa que não há estabelecimentos",
+          "unidade": "texto"
+        },
+        "coletado_em": {
+          "descricao": "Dia em que a competência foi vista pela primeira vez com essa situação",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "competencia"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "coletado_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "coletado_em": "coletado_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-11-04",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
+      "atraso": "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
     },
     "debentures_assembleias": {
       "tabela": "debentures_assembleias",
@@ -8940,6 +9957,95 @@
       "pessoa": true,
       "frequencia": "Sob demanda: a carga baixa um pacote por vez, de madrugada, e a montagem relê o acervo",
       "atraso": "A entrega à CVM (`DT_RECEB` do índice do DFP); documento enviado com a empresa fora do registro vale a partir do registro seguinte"
+    },
+    "processos_nas_notas": {
+      "tabela": "processos_nas_notas",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "numero_processo": {
+          "descricao": "Número do processo no formato do CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+          "unidade": "texto"
+        },
+        "ano_do_processo": {
+          "descricao": "Ano de ajuizamento, como o número diz",
+          "unidade": "ano"
+        },
+        "justica": {
+          "descricao": "Ramo da Justiça, pelo número (Estadual, Federal, Eleitoral...)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data a que a DFP se refere (fim do exercício)",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão da DFP (cada reapresentação é um documento)",
+          "unidade": "número inteiro"
+        },
+        "pagina": {
+          "descricao": "Página do PDF em que o número aparece, a partir de 1",
+          "unidade": "número inteiro"
+        },
+        "link": {
+          "descricao": "Endereço do pacote no ENET de onde o texto saiu",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Data em que a versão da DFP ficou pública: desde quando se sabe que a companhia cita o processo",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao",
+        "pagina",
+        "numero_processo"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "A cada montagem de `notas_dfp`: relê as notas quando elas mudam",
+      "atraso": "O da DFP: cada versão vale a partir da própria entrega à CVM"
     },
     "fca_geral": {
       "tabela": "fca_geral",

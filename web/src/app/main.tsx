@@ -4,6 +4,9 @@ import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import { caminhoSemONovo, desregistrarServicoDoNovo } from "./raiz";
 import "./app.css";
+// quem chega ao app por link de campanha (as calculadoras do site, por exemplo) também ganha o
+// cookie `tl_origem`, lido no primeiro login: o mesmo script do site (publico/origem.js)
+import "../../publico/origem.js";
 
 // quem chegou pelo endereço antigo (/novo/...) vai ao mesmo caminho na raiz (src/app/raiz.ts)
 const naRaiz = caminhoSemONovo(window.location);

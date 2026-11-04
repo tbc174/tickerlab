@@ -4,7 +4,8 @@ import empresas from "../../conteudo/empresas_da_base.json";
 import { URL_DO_APP, linkDoApp } from "./textos";
 
 interface Destaque { titulo: string; texto: string; fonte: string; data: string }
-interface Resposta { cnpj: string; empresa: string; medido_em: string; destaques: Destaque[]; aviso: string }
+interface Candidata { cnpj: string; empresa: string; listada: boolean }
+interface Resposta { cnpj: string; empresa: string; medido_em: string; destaques: Destaque[]; aviso: string; candidatas?: Candidata[] }
 const ENDERECO = `${URL_DO_APP}/api/v1/base/destaques`;
 const TEMPO_LIMITE = 12_000;
 const INDISPONIVEL = "A busca está indisponível agora. Você pode abrir a ficha de exemplo abaixo ou tentar novamente.";
@@ -19,15 +20,21 @@ export function BuscaDaBase() {
   const pedido = useRef<AbortController | null>(null);
   useEffect(() => () => pedido.current?.abort(), []);
 
-  async function buscar(evento: FormEvent) {
+  function buscarPor(texto: string) { setConsulta(texto); void pedir(texto); }
+
+  function buscar(evento: FormEvent) {
     evento.preventDefault();
+    void pedir(consulta);
+  }
+
+  async function pedir(texto: string) {
     pedido.current?.abort();
     const controle = new AbortController();
     pedido.current = controle;
     const prazo = setTimeout(() => controle.abort(), TEMPO_LIMITE);
     setBuscando(true); setMensagem(""); setResultado(null);
     try {
-      const resposta = await fetch(`${ENDERECO}?${new URLSearchParams({ q: consulta.trim() })}`, {
+      const resposta = await fetch(`${ENDERECO}?${new URLSearchParams({ q: texto.trim() })}`, {
         credentials: "omit", signal: controle.signal,
       });
       const corpo = await resposta.json();
@@ -65,6 +72,13 @@ export function BuscaDaBase() {
           </li>)}</ul>
           <a className="seta" href={linkDoApp("busca-por-cnpj")}>Relatório completo no app</a>
           <p className="busca-base-limite">{resultado.aviso}</p>
+          {resultado.candidatas?.length ? <details className="busca-base-candidatas">
+            <summary>Outras empresas com esse nome ({resultado.candidatas.length})</summary>
+            <ul>{resultado.candidatas.map(c => <li key={c.cnpj}>
+              <button type="button" className="seta" onClick={() => buscarPor(c.cnpj)}>{c.empresa}</button>
+              {c.listada ? " · negociada na bolsa" : " · sem ação na bolsa"}
+            </li>)}</ul>
+          </details> : null}
         </article> : null}
       </div>
       <p className="busca-base-exemplos">Ficha aberta de exemplo: {empresas.map(e =>

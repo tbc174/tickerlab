@@ -5,6 +5,7 @@ Lê o que o arquivista guardou no acervo (pelo manifesto), monta os números do 
 vira `FALHAS:` na última linha, e a B3 corrigir o dia refaz o resumo.
 """
 
+import gzip
 import json
 import shutil
 import zipfile
@@ -17,6 +18,7 @@ import pytest
 from base import indices_b3
 from scripts import gerar_pregao_do_dia as script
 from src import acervo as modulo_do_acervo
+from src import eventos_do_pregao
 from src import texto_do_pregao as tp
 from tests.test_base_intradiario_b3 import (
     registro_do_cotahist,
@@ -42,10 +44,15 @@ PRECOS_DO_DIA = {simbolo: e[3] for simbolo, e in EMPRESAS.items()}
 
 
 def guardar(acervo: Path, fonte: str, url: str, origem: Path, hora: str, sha: str):
-    """Põe o arquivo no acervo e a linha no manifesto, como o arquivista faz."""
+    """Põe o arquivo no acervo e a linha no manifesto, como o arquivista faz: o que não é zip
+    (o JSON do Ibovespa) vai em gzip, `.json.gz`."""
     relativo = f"bruto/{fonte}/{sha}{origem.suffix}"
     (acervo / relativo).parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(origem, acervo / relativo)
+    if origem.suffix.lower() in modulo_do_acervo.JA_COMPRIMIDOS:
+        shutil.copy(origem, acervo / relativo)
+    else:
+        relativo += ".gz"
+        (acervo / relativo).write_bytes(gzip.compress(origem.read_bytes()))
     manifesto = acervo / "manifesto" / f"{hora[:10]}.jsonl"
     manifesto.parent.mkdir(parents=True, exist_ok=True)
     with manifesto.open("a", encoding="utf-8") as arquivo:
@@ -224,6 +231,48 @@ def test_papel_com_evento_fica_a_conferir_e_fora_das_contas(acervo) -> None:
     assert resumo["maiores"]["altas"][0]["simbolo"] == "PETR4"
 
 
+def test_dia_de_evento_vai_no_resumo(acervo, capsys) -> None:
+    """28/10/2026 teve decisão do Fed (FOMC) no calendário; 27/10 foi um dia comum."""
+    guardar_o_dia(acervo, QUARTA)
+    assert script.main(["--hoje", QUINTA.isoformat()]) == 0
+    assert "2026-10-28: " in capsys.readouterr().out
+    assert resumo_gravado(acervo, DIA)["evento"] is None
+    evento = resumo_gravado(acervo, QUARTA)["evento"]
+    assert [m["evento"] for m in evento["calendario"]] == ["Decisão do Fed (FOMC)"]
+    assert evento["variacao_forte_do_ibovespa"] is False
+
+
+def test_data_nova_no_calendario_refaz_so_o_pregao_dela(acervo, monkeypatch) -> None:
+    script.main(HOJE)
+    caminho = script.caminho_do_resumo(acervo, DIA)
+    antes = caminho.stat().st_mtime_ns
+    calendario = acervo.parent / "calendario.csv"
+    calendario.write_text(
+        "data,evento,momento,fonte\n2026-11-12,IPCA,antes_do_fechamento,https://ibge\n",
+        "utf-8",
+    )
+    monkeypatch.setattr(eventos_do_pregao, "CAMINHO_DO_CALENDARIO", calendario)
+    script.main(HOJE)
+    assert caminho.stat().st_mtime_ns == antes
+    calendario.write_text(
+        "data,evento,momento,fonte\n2026-10-27,IPCA,antes_do_fechamento,https://ibge\n",
+        "utf-8",
+    )
+    script.main(HOJE)
+    assert caminho.stat().st_mtime_ns > antes
+    assert resumo_gravado(acervo)["evento"]["calendario"][0]["evento"] == "IPCA"
+
+
+def test_calendario_estragado_falha_com_aviso(acervo, monkeypatch, capsys) -> None:
+    calendario = acervo.parent / "calendario.csv"
+    calendario.write_text(
+        "data,evento,momento,fonte\n2026-10-27,IPCA,quando,x\n", "utf-8"
+    )
+    monkeypatch.setattr(eventos_do_pregao, "CAMINHO_DO_CALENDARIO", calendario)
+    assert script.main(HOJE) == 1
+    assert "calendário de eventos não abriu" in ultima_linha(capsys)
+
+
 def test_sem_nada_novo_nao_refaz(acervo) -> None:
     script.main(HOJE)
     caminho = script.caminho_do_resumo(acervo, DIA)
@@ -375,3 +424,76 @@ def test_acervo_desligado_nao_faz_nada(monkeypatch, capsys) -> None:
     monkeypatch.setenv(modulo_do_acervo.VARIAVEL_DA_PASTA, modulo_do_acervo.DESLIGADO)
     assert script.main(HOJE) == 0
     assert "Acervo desligado" in capsys.readouterr().out
+
+
+# --- o rascunho do Raio-X em dia de evento (PR 6b) -------------------------------------------------
+
+AMOSTRAS_DA_CVM = Path(__file__).parent / "arquivos" / "cvm" / "fundamentos"
+PETROBRAS = "33.000.167/0001-01"
+
+
+def guardar_da_cvm(acervo: Path, nome: str) -> None:
+    """Um arquivo anual de DFP ou ITR da CVM, como o arquivista guarda (`cvm-hist-dfp`/`-itr`)."""
+    documento = nome.split("_")[0]
+    guardar(
+        acervo,
+        script.FONTES_DOS_BALANCOS[documento.upper()],
+        f"https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/{documento.upper()}/DADOS/{nome}",
+        AMOSTRAS_DA_CVM / nome,
+        "2026-10-20T03:00:00+00:00",
+        nome,
+    )
+
+
+def test_dia_de_evento_grava_o_rascunho_do_raio_x(acervo, capsys) -> None:
+    """28/10 (decisão do Fed) ganha o rascunho em JSON, HTML e PDF; 27/10, dia comum, não."""
+    guardar_o_dia(acervo, QUARTA)
+    assert script.main(["--hoje", QUINTA.isoformat()]) == 0
+    assert 'rascunho do Raio-X em pregao/raio-x/2026-10-28, esperando o "pode"' in (
+        capsys.readouterr().out
+    )
+    rascunho = json.loads(
+        script.caminho_do_rascunho(acervo, QUARTA, ".json").read_text("utf-8")
+    )
+    assert rascunho["pregao"] == "2026-10-28"
+    assert rascunho["alavancagem"] is None  # sem os DFP e ITR no acervo
+    assert "RASCUNHO" in script.caminho_do_rascunho(acervo, QUARTA, ".html").read_text(
+        "utf-8"
+    )
+    assert (
+        script.caminho_do_rascunho(acervo, QUARTA, ".pdf")
+        .read_bytes()
+        .startswith(b"%PDF")
+    )
+    assert not script.caminho_do_rascunho(acervo, DIA, ".json").exists()
+
+
+def test_rascunho_que_nao_saiu_e_refeito_na_rodada_seguinte(acervo) -> None:
+    guardar_o_dia(acervo, QUARTA)
+    script.main(["--hoje", QUINTA.isoformat()])
+    script.caminho_do_rascunho(acervo, QUARTA, ".json").unlink()
+    assert script.main(["--hoje", QUINTA.isoformat()]) == 0
+    assert script.caminho_do_rascunho(acervo, QUARTA, ".json").exists()
+
+
+def test_balancos_do_acervo_so_os_publicos_na_vespera(acervo) -> None:
+    """A dívida e o EBITDA da Petrobras saem dos arquivos da CVM guardados, até a véspera."""
+    for nome in (
+        "dfp_cia_aberta_2024.zip",
+        "dfp_cia_aberta_2025.zip",
+        "itr_cia_aberta_2026.zip",
+    ):
+        guardar_da_cvm(acervo, nome)
+    arquivos = script.arquivos_no_acervo(acervo)
+    empresas = pd.DataFrame({"cnpj": [PETROBRAS, "11"]})
+    balancos = script.balancos_do_acervo(arquivos, empresas, QUARTA)
+    assert balancos is not None
+    assert list(balancos["cnpj"]) == [PETROBRAS]
+    assert (pd.to_datetime(balancos["divulgado_em"]) <= pd.Timestamp(QUARTA)).all()
+    assert balancos["ebitda"].iloc[0] > 0
+
+
+def test_sem_os_arquivos_da_cvm_fica_sem_balanco(acervo) -> None:
+    arquivos = script.arquivos_no_acervo(acervo)
+    empresas = pd.DataFrame({"cnpj": [PETROBRAS]})
+    assert script.balancos_do_acervo(arquivos, empresas, QUARTA) is None

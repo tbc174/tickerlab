@@ -60,11 +60,9 @@ class YahooFalso:
         dados = self.historico
         if "start" in pedido:
             dados = dados.loc[pedido["start"] :]
-        if "period" in pedido:
-            dados = dados.loc[
-                dados.index
-                > dados.index[-1] - DESLOCAMENTO_DO_PERIODO[pedido["period"]]
-            ]
+        deslocamento = DESLOCAMENTO_DO_PERIODO.get(pedido.get("period", "max"))
+        if deslocamento is not None:  # "max" (ou só `start`): sem corte no começo
+            dados = dados.loc[dados.index > dados.index[-1] - deslocamento]
         return _como_o_yahoo(dados, ticker)
 
 
@@ -323,3 +321,86 @@ def test_ticker_aberto_toda_semana_continua_guardado(yahoo):
     assert yahoo.pedidos[1].keys() == {
         "start"
     }  # o guardado ficou: pediu só o que falta
+
+
+# --- períodos longos: 10 anos e "Tudo" ---------------------------------------------------------
+
+
+def test_dez_anos_baixa_e_recorta_dez_anos(monkeypatch):
+    falso = YahooFalso(_precos("2010-01-04", "2026-10-08"))
+    monkeypatch.setattr("src.dados.yf.download", falso)
+    dez = baixar_dados("PETR4", "10y", agora=HOJE)
+    assert falso.pedidos == [{"period": "10y"}]
+    assert pd.Timestamp("2016-10-01") < dez.index[0] < pd.Timestamp("2016-10-15")
+    cinco = baixar_dados("PETR4", "5y", agora=HOJE)
+    assert len(falso.pedidos) == 1  # 5 anos saem dos 10 guardados
+    assert 1250 < len(cinco) < 1320
+
+
+def test_tudo_traz_o_historico_inteiro_e_depois_sai_do_guardado(monkeypatch):
+    falso = YahooFalso(_precos("2001-01-02", "2026-10-08"))
+    monkeypatch.setattr("src.dados.yf.download", falso)
+    tudo = baixar_dados("PETR4", "max", agora=HOJE)
+    assert falso.pedidos == [{"period": "max"}]
+    assert tudo.index[0] == pd.Timestamp("2001-01-02")
+    de_novo = baixar_dados("PETR4", "max", agora=HOJE + timedelta(minutes=30))
+    assert len(falso.pedidos) == 1 and len(de_novo) == len(tudo)
+    assert len(baixar_dados("PETR4", "10y", agora=HOJE)) > 2500
+    assert len(falso.pedidos) == 1
+
+
+def test_tudo_nao_confia_num_guardado_de_periodo_curto(monkeypatch):
+    """Um ativo guardado com 2 anos não é "Tudo": o histórico inteiro vem do Yahoo."""
+    falso = YahooFalso(_precos("2001-01-02", "2026-10-08"))
+    monkeypatch.setattr("src.dados.yf.download", falso)
+    baixar_dados("PETR4", "2y", agora=HOJE)
+    tudo = baixar_dados("PETR4", "max", agora=HOJE + timedelta(minutes=30))
+    assert falso.pedidos == [{"period": "2y"}, {"period": "max"}]
+    assert tudo.index[0] == pd.Timestamp("2001-01-02")
+
+
+def test_ativo_novo_em_tudo_nao_vai_ao_yahoo_toda_hora(monkeypatch):
+    """Um IPO recente tem menos de 10 anos: o "Tudo" guardado vale mesmo assim."""
+    falso = YahooFalso(_precos("2024-03-01", "2026-10-08"))
+    monkeypatch.setattr("src.dados.yf.download", falso)
+    baixar_dados("PETR4", "max", agora=HOJE)
+    baixar_dados("PETR4", "max", agora=HOJE + timedelta(hours=1))
+    assert len(falso.pedidos) == 1
+
+
+def test_tudo_segue_inteiro_depois_dos_dias_novos_e_do_reajuste(monkeypatch):
+    falso = YahooFalso(_precos("2001-01-02", "2026-10-08"))
+    monkeypatch.setattr("src.dados.yf.download", falso)
+    baixar_dados("PETR4", "max", agora=HOJE)
+    falso.historico = _precos("2001-01-02", "2026-10-14")
+    dados = baixar_dados("PETR4", "max", agora=HOJE + timedelta(hours=5))
+    assert falso.pedidos[1].keys() == {"start"}
+    assert dados.index[0] == pd.Timestamp("2001-01-02")
+    falso.historico = falso.historico * 0.9  # dividendo: o passado inteiro mudou
+    dados = baixar_dados("PETR4", "max", agora=HOJE + timedelta(hours=10))
+    assert falso.pedidos[-1] == {"period": "max"}
+    assert dados.index[0] == pd.Timestamp("2001-01-02")
+    baixar_dados("PETR4", "max", agora=HOJE + timedelta(hours=11))
+    assert falso.pedidos[-1] == {"period": "max"} and len(falso.pedidos) == 4
+
+
+def test_reajuste_pedido_com_periodo_curto_tira_a_marca_de_tudo(monkeypatch):
+    falso = YahooFalso(_precos("2001-01-02", "2026-10-08"))
+    monkeypatch.setattr("src.dados.yf.download", falso)
+    baixar_dados("PETR4", "max", agora=HOJE)
+    falso.historico = falso.historico * 0.9
+    baixar_dados(
+        "PETR4", "2y", agora=HOJE + timedelta(hours=5)
+    )  # o guardado vira 2 anos
+    tudo = baixar_dados("PETR4", "max", agora=HOJE + timedelta(hours=6))
+    assert falso.pedidos[-1] == {"period": "max"}
+    assert tudo.index[0] == pd.Timestamp("2001-01-02")
+
+
+def test_ticker_esquecido_perde_a_marca_de_tudo(monkeypatch):
+    falso = YahooFalso(_precos("2001-01-02", "2026-10-08"))
+    monkeypatch.setattr("src.dados.yf.download", falso)
+    baixar_dados("PETR4", "max", agora=HOJE)
+    depois = HOJE + timedelta(days=ar.DIAS_SEM_CONSULTA + 1)
+    ar.apagar_tickers_esquecidos(depois)
+    assert not ar.tem_historico_inteiro("PETR4.SA")

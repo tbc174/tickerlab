@@ -15,12 +15,14 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_commodities,
     lote_cvm,
     lote_eua,
     lote_licitacoes,
     lote_patentes,
     lote_reguladores,
     lote_sec,
+    lote_selic,
     lote_setoriais,
     lote_tesouro,
 )
@@ -119,6 +121,7 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
     "indicadores do Banco Mundial para o Brasil e para o mundo": _ids(
         "worldbank",
         "brasil",
+        "qeds-brasil",
         "mundo-fp-cpi-totl-zg",
         "mundo-ny-gdp-mktp-kd-zg",
         "mundo-sp-pop-totl",
@@ -204,6 +207,11 @@ _LOTE_REGULADORES_SO_ARQUIVO = (
     "dado aberto de regulador ou operador do setor guardado como publicado, só pessoa jurídica e "
     "agregados (nada por titular ou beneficiário, ADR 0088); a tabela com contrato no catálogo ainda "
     "não existe"
+)
+
+_LOTE_COMMODITIES_SO_ARQUIVO = (
+    "série de café, commodities ou clima guardada como a fonte publica (USDA, FAO, OIC, CONAB, CFTC, CHC, "
+    "INMET e MapBiomas, citando a fonte); o leitor com tabela no catálogo ainda não existe"
 )
 
 # GSF e repasse do risco hidrológico: a linha que mais muda o resultado das hidrelétricas; DEC, FEC e
@@ -371,6 +379,11 @@ DESTINOS: dict[str, Destino] = {
     "cgu-cnep": _tabela("sancoes_cgu"),
     "cgu-cepim": _tabela("sancoes_cgu"),
     "cgu-leniencia": _tabela("sancoes_cgu"),
+    "djen-partes": _tabela("processos_comunicacoes", "processos_partes", "processos"),
+    "djen-processos": _tabela(
+        "processos_comunicacoes", "processos_partes", "processos"
+    ),
+    "cnj-tpu": _tabela("processos"),
     "antt-autos-de-transito": _planejada(
         "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
     ),
@@ -386,6 +399,9 @@ DESTINOS: dict[str, Destino] = {
     "mme-reidi": _tabela("mme_reidi"),
     "aneel-cde": _tabela("aneel_cde"),
     "bcb-rde-ied": _tabela("bcb_rde_ied"),
+    # financiamentos por CNPJ (`base/financiamentos.py`; o BNDES vem do lote Brasil 2, abaixo)
+    "finep-contratacao": _tabela("financiamentos_finep"),
+    **{f.id: _tabela("bcb_selic_focus") for f in lote_selic.fontes()},
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),
@@ -447,6 +463,8 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/brasil-camada-2", _LOTE_BRASIL2_SO_ARQUIVO)
         for f in lote_brasil2.fontes()
     },
+    # das operações do BNDES, o arquivo das não automáticas já vira tabela (linha 469)
+    "bndes-operacoes": _tabela("financiamentos_bndes"),
     # lote cadastros globais (rodada 4, linha 287): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CADASTROS_SO_ARQUIVO)
@@ -565,6 +583,10 @@ DESTINOS: dict[str, Destino] = {
     **_REGULADORES_PLANEJADAS,
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),
+    # lote café, commodities e clima (linha 204 da fila, 03/11/2026): guardado no acervo; leitores depois
+    **{
+        f.id: _pesquisa(_LOTE_COMMODITIES_SO_ARQUIVO) for f in lote_commodities.fontes()
+    },
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`
     "contrapartes-cafe": _tabela("contraparte_cafe"),
 }

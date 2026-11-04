@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Streamlit-app-2962FF?logo=streamlit&logoColor=white" alt="Streamlit">
   <img src="https://img.shields.io/badge/React-TypeScript-2962FF?logo=react&logoColor=white" alt="React e TypeScript">
   <img src="https://img.shields.io/badge/PostgreSQL-16-2962FF?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
-  <img src="https://img.shields.io/badge/testes-11.000%2B-2EBD85" alt="Mais de 11.000 testes">
+  <img src="https://img.shields.io/badge/testes-12.000%2B-2EBD85" alt="Mais de 12.000 testes">
   <img src="https://img.shields.io/badge/cobertura-m%C3%ADnimo%2085%25-2EBD85" alt="Cobertura mínima de 85%">
   <img src="https://img.shields.io/badge/Stripe-modo%20de%20teste-F5B83D?logo=stripe&logoColor=white" alt="Stripe em modo de teste">
   <img src="https://img.shields.io/badge/direitos-reservados-93A0B8" alt="Todos os direitos reservados">
@@ -50,25 +50,26 @@ Cada número vem explicado em português, e o produto mostra também o que **nã
 ## Para quem vai avaliar o projeto
 
 Esta seção é um mapa para quem chega de fora (investidor, banca, auditor ou um assistente de IA)
-e quer entender o projeto inteiro sem ler as 266 mil linhas de Python.
+e quer entender o projeto inteiro sem ler as 292 mil linhas de Python.
 
 **Em uma frase:** um produto de assinatura em teste, no ar em produção, criado e mantido por Tiago
 Borsari Coelho com uso intenso de assistentes de IA, com disciplina de engenharia (PR com CI verde, testes,
 cobertura mínima, deploy automático com volta sozinha) e uma regra que atravessa tudo: **mostrar os
 números como eles são**.
 
-**O que está no ar hoje (29/10/2026):**
+**O que está no ar hoje (03/11/2026):**
 
 | Parte | Estado |
 |---|---|
-| Site público, 14 ferramentas grátis e relatórios abertos | no ar, em `tickerlab.com.br`, com o pregão do dia (feito do fechamento oficial da B3) e o Raio-X do choque de 26/10/2026 |
+| Site público, 14 ferramentas grátis e relatórios abertos | no ar, em `tickerlab.com.br`, com o pregão do dia (feito do fechamento oficial da B3), o Raio-X do choque de 26/10/2026 e a página Dados, com todas as fontes por órgão |
 | App (44 páginas, 3 planos) | no ar, em `app.tickerlab.com.br`, em fase de testes, com beta por convite: as telas novas em React na raiz, as demais na versão clássica, em `app.tickerlab.com.br/classico/` |
 | Cobrança | Stripe **só em modo de teste**: nenhum pagamento real é feito. O Plus existe, mas ainda não está à venda |
 | App novo em React (substituto do Streamlit) | é o principal desde 18/10/2026, na raiz de `app.tickerlab.com.br`: 19 telas; um link antigo de página que ainda não migrou abre na versão clássica |
-| API de leitura v1 | pronta e documentada (`docs/api/`), **desligada em produção**; no ar só a rota pública da ferramenta "Quanto daria?" |
-| Base de dados | em construção contínua: 102 tabelas com contrato versionado, coletas diárias, âncora no Bitcoin toda noite |
+| API de leitura v1 | pronta e documentada (`docs/api/`), **desligada em produção**; no ar só as rotas públicas que o site usa, sem login e sem preço bruto |
+| API externa de dados (TickerLab Data, `/data/v1`) | em construção, **desligada em produção**: chave por organização, catálogo e consumo do mês; o dado sai com a fonte, a data e a atribuição de cada campo |
+| Base de dados | em construção contínua: 113 tabelas com contrato versionado, coletas diárias, âncora no Bitcoin toda noite |
 | Newsletter | pronta, enviada só para administradores até o parecer jurídico |
-| TickerLab Trade (pesquisa de trading com ML) | fase M2 terminada **sem modelo aprovado**; pesquisa pausada |
+| TickerLab Trade (pesquisa de trading) | fase M2 terminada **sem modelo aprovado**; seguem pesquisas novas, cada uma com o critério escrito antes dos resultados |
 
 **Ordem de leitura sugerida:**
 
@@ -78,7 +79,7 @@ números como eles são**.
 4. `src/paginas.py` (o mapa do produto) e `src/planos.py` (o modelo de negócio em código).
 5. `docs/dicionario-da-base.md`, `docs/CHANGELOG-da-base.md` e `docs/ancoragem-da-base.md`: a base
    de dados.
-6. `docs/api/README.md` e `docs/api/openapi-v1.json`: a API.
+6. `docs/api/README.md` e `docs/api/openapi-v1.json`: a API de leitura e a API externa.
 7. `notas/erros-e-solucoes.md`: mais de 100 erros reais, com sintoma, causa e solução.
 8. `docs/pre-registro-m2-v0.1.md` a `v0.4.md`: o método da pesquisa de trading.
 
@@ -101,17 +102,17 @@ registrado no próprio repositório (`notas/`, `guias/`, `estudos/`).
 
 ## Em números
 
-Contados no repositório em 29/10/2026.
+Contados no repositório em 03/11/2026.
 
-| 44 páginas no app | 14 ferramentas grátis | 102 tabelas catalogadas na base | mais de 80 fontes arquivadas | mais de 11 mil testes |
+| 44 páginas no app | 14 ferramentas grátis | 113 tabelas catalogadas na base | mais de 80 fontes arquivadas | mais de 12 mil testes |
 |:---:|:---:|:---:|:---:|:---:|
 | análise, estratégias, research, carteira, relatórios e conta | calculadoras e simuladores no site | com contrato de dados versionado | CVM, BCB, Tesouro, B3, reguladores, clima e cripto, em mais de 400 arquivos acompanhados | com PostgreSQL de verdade e cobertura mínima de 85% |
 
-| ~1.700 ativos na busca | 12 estratégias | 42 migrações do banco | ~266 mil linhas de Python | ~26 mil linhas de TypeScript |
+| ~1.700 ativos na busca | 12 estratégias | 43 migrações do banco | ~292 mil linhas de Python | ~27 mil linhas de TypeScript |
 |:---:|:---:|:---:|:---:|:---:|
-| B3, S&P 500, índices, cripto e câmbio | tendência e reversão, com custos e stops | Alembic, de 0001 a 0044 | app, base, pesquisa, scripts e testes | site, ferramentas e o app novo |
+| B3, S&P 500, índices, cripto e câmbio | tendência e reversão, com custos e stops | Alembic, de 0001 a 0046 | app, base, pesquisa, scripts e testes | site, ferramentas e o app novo |
 
-Mais de 680 pull requests e 920 commits desde a criação do repositório no GitHub, em 10/10/2026.
+Mais de 730 pull requests e 1.000 commits desde a criação do repositório no GitHub, em 10/10/2026.
 
 ## As partes do projeto
 
@@ -120,7 +121,7 @@ Mais de 680 pull requests e 920 commits desde a criação do repositório no Git
 | **App** (`app.tickerlab.com.br`) | o serviço web: análises, estratégias, research, carteira da B3, relatórios em PDF, contas e planos. O Streamlit é a **versão clássica**, em `app.tickerlab.com.br/classico/` | `app.py`, `telas/`, `src/` |
 | **App novo** (raiz de `app.tickerlab.com.br`) | a troca do Streamlit por React, uma tela por vez, consumindo a API; é o principal, e manda à versão clássica o que ainda não migrou | `web/src/app/`, gerado em `novo/` |
 | **Site público** (`tickerlab.com.br`) | apresenta o produto, os planos e a metodologia, e oferece as ferramentas grátis, o pregão do dia e os estudos | `site/`, gerado pelo React (`web/`) e por `scripts/gerar_site.py` |
-| **API** (`api.tickerlab.com.br`) | saúde, webhook do Stripe, descadastro de e-mails, a rota pública do "Quanto daria?" e a API de leitura v1 (desligada), que inclui os destaques públicos da busca por companhia | `src/api.py`, `src/api_v1/` |
+| **API** (`api.tickerlab.com.br`) | saúde, webhook do Stripe, descadastro de e-mails, as rotas públicas do site ("Quanto daria?", pregão do dia e destaques da busca por companhia), a API de leitura v1 (desligada) e a API externa de dados `/data/v1` (desligada) | `src/api.py`, `src/api_v1/`, `src/api_externa/` |
 | **Base de dados** | arquivista dos originais oficiais, tabelas "como eram na data", contratos de dados e âncora no Bitcoin | `base/`, `scripts/` |
 | **TickerLab Trade** | pesquisa de trading quantitativo com machine learning e MetaTrader 5, em conta de demonstração | `trader/` (roda no PC, fora do app) |
 | **Caderno de estudos** | anotações do aprendizado: Python, Pandas, Git, Streamlit, finanças e os erros resolvidos | `notas/`, `guias/`, `estudos/` |
@@ -179,7 +180,10 @@ português ao passar o mouse no **?**. O mapa fica num lugar só, `src/paginas.p
   clássicas (como a de Piotroski) e valuation (P/L e P/VP contra o próprio histórico e DCF),
   **sem preço-alvo**. Cada número leva o **rastro**: as contas do balanço usadas na conta e o
   documento de origem, na tela, no PDF e na API. A ficha traz também o parecer do auditor sobre a
-  demonstração mais nova (opinião, ênfase e continuidade).
+  demonstração mais nova (opinião, ênfase e continuidade), um anexo dos anos com a DFC e a DVA
+  completas e os **cruzamentos** (`src/cruzamentos.py`): sinais que só aparecem juntando fontes, como
+  remuneração da diretoria subindo com o lucro caindo, dividendo acima do lucro, parecer com
+  ressalva, rebaixamento de rating ou assembleia de debenturistas para renegociar a dívida.
 - **Pessoas de dentro e Donos e fundos:** negociações de administradores (CVM e SEC), carteiras dos
   fundos (CDA da CVM) e formulários 13F da SEC.
 - **Carteira da B3:** envie as planilhas da Área do Investidor da B3 (posição,
@@ -267,10 +271,12 @@ Páginas sem login, feitas da mesma base e com a fonte e a data de cada número:
   traga a impressão digital desse molde (`src/pregao_do_dia.py`, `src/texto_do_pregao.py`).
 - **Raio-X do choque** (`tickerlab.com.br/raio-x-do-choque.html`): o estudo da queda de
   26/10/2026, o dia do circuit breaker: quem caiu mais e por quê (beta, dívida, setores), com dólar,
-  juros e os choques anteriores, também em PDF.
+  juros e os choques anteriores, também em PDF. O mesmo estudo já se refaz para qualquer pregão
+  (`src/raio_x.py`): em dia de evento sai um rascunho, que só vai ao ar depois de aprovado pelo autor.
 - **Busca por companhia** (página inicial): três destaques da ficha de uma companhia aberta, cada
   um com a fonte e a data, por uma rota pública da API sem login, sem preço e sem dado de conta
   (`src/api_v1/base_publica.py`).
+- **Dados** (`tickerlab.com.br/dados.html`): todas as fontes da base, por órgão, com o uso de cada uma.
 
 ## A base de dados
 
@@ -285,6 +291,11 @@ responder como os dados **eram** em qualquer data.
   SCR.data), Tesouro, B3 (negócios do pregão), reguladores e órgãos públicos (CGU, PGFN, Receita,
   IBAMA, ANP, ONS, ANEEL, CCEE, ANS, SUSEP, ANATEL e outros), clima e agro (INMET, CHIRPS, CONAB),
   listas de sanções, SEC, IEX e fontes de cripto.
+- **Por CNPJ:** sanções (CGU e ANS), licenças e registros, incentivos (REIDI, CDE e RDE-IED), o grupo
+  econômico pelo quadro de sócios da Receita (empresas ligadas por sócia PJ) e o raio-x de fundo
+  (taxas, carteira como era na data e custo da taxa), além da conferência cruzada do mesmo número
+  lido em duas fontes (`base/sancoes.py`, `base/licencas.py`, `base/incentivos.py`, `base/rede/`,
+  `base/raio_x_de_fundo.py`, `base/cruzada.py`).
 - **Original guardado:** cada arquivo baixado fica no acervo com o SHA-256 como nome, e cada
   coleta entra num registro e num manifesto diário.
 - **Ponto no tempo:** cada linha tem a data em que ficou pública e até quando valeu;
@@ -293,7 +304,7 @@ responder como os dados **eram** em qualquer data.
   conteúdo muda, a tabela anterior é guardada.
 - **Linhagem:** cada linha de cada tabela se liga ao manifesto, à coleta e ao original no acervo;
   as tabelas derivadas seguem até os originais das tabelas de entrada.
-- **Contrato de dados:** as 102 tabelas têm catálogo (`base/contratos/catalogo.json`), contrato
+- **Contrato de dados:** as 113 tabelas têm catálogo (`base/contratos/catalogo.json`), contrato
   congelado por versão e changelog (`docs/CHANGELOG-da-base.md`), com versão semântica conferida
   no CI. O dicionário de cada coluna está em `docs/dicionario-da-base.md`.
 - **Âncora no Bitcoin:** toda noite, se a base mudou, uma raiz de Merkle dos manifestos é
@@ -328,7 +339,7 @@ custos e descontando a sorte de testar muitas ideias?**
 - **Fases:** M0 ambiente (MetaTrader 5 em conta de demonstração) → M1 dados (histórico diário de
   mais de 80 ativos: forex, ações da B3, índices, renda fixa, commodities e cripto) → M2 pesquisa
   com ML → M3 teste em conta demo → M4 controles de risco → M5 painel. A M2 terminou sem nenhum
-  modelo aprovado e a pesquisa está pausada.
+  modelo aprovado.
 - **Método da M2:** critério de aprovação escrito e aprovado **antes** de ver qualquer resultado
   (Sharpe deflacionado, PBO, t-estatística ≥ 3, vitória sobre a regra de tendência com folga
   estatística, consistência entre ativos e no tempo, estresse de custos, teste contra o acaso);
@@ -343,13 +354,22 @@ custos e descontando a sorte de testar muitas ideias?**
   demonstração, nenhuma ordem com dinheiro real sem decisão escrita do autor, e nada disso roda no
   app público. O pacote `MetaTrader5` só funciona no Windows, por isso a pesquisa roda no PC.
 
+- **Depois da M2:** pesquisas novas, cada uma com o critério escrito e travado por hash antes de
+  qualquer resultado: o scalp no mini índice (fases 1 e 1b, as duas reprovadas), a Pesquisa 2 com
+  CFDs (`docs/pre-registro-p2-v0.1.md`) e as estratégias quantitativas na versão brasileira, com
+  CDI, imposto, lote, leilões e custos da B3 (`docs/pre-registro-quant-p0-v0.2.md`, que substituiu
+  a v0.1; nenhuma das oito fichas da v0.1 passou na 1ª rodada, e a v0.2 testa a carteira combinada,
+  a cripto no par em reais e fixa como o papel é julgado). O
+  registro de tentativas e os relatórios ficam fora do Git.
+
 O código das fases M1 e M2 (dados, critério em código, validação, modelos e um painel só de
-leitura) está em `trader/`, e os critérios pré-registrados, em `docs/pre-registro-m2-v0.1.md` a
-`v0.4.md`.
+leitura) e das pesquisas seguintes está em `trader/`, e os critérios pré-registrados, em `docs/`
+(`pre-registro-m2-v0.1.md` a `v0.4.md`, `pre-registro-scalp-win-fase1*.md`, `pre-registro-p2-v0.1.md`
+e `pre-registro-quant-p0-v0.1.md` e `v0.2.md`).
 
 ## Qualidade e testes
 
-- **Mais de 11 mil testes** (pytest) em 583 arquivos, rodando com **PostgreSQL 16 de verdade**, em
+- **Mais de 12 mil testes** (pytest) em 638 arquivos, rodando com **PostgreSQL 16 de verdade**, em
   5 máquinas ao mesmo tempo no GitHub Actions. A cobertura mínima é de **85%** (`.coveragerc`); o
   CI falha abaixo disso.
 - **Estilo e tipos:** `ruff` (estilo e formatação) e `pyright` (tipos) em todo commit.
@@ -404,10 +424,10 @@ Segredos nunca vão para o Git: ficam em arquivos com permissão 600 no servidor
 
 | Onde | O que |
 |---|---|
-| `.env` (modelo em `.env.example`) | `TICKERLAB_DATABASE_URL` (PostgreSQL), `TICKERLAB_AMBIENTE=producao` (sem o login configurado, o app não abre), `TICKERLAB_ADMINS`, chaves do Stripe de **teste** (`rk_test_`/`sk_test_`: chaves de produção são recusadas), `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `TICKERLAB_URL_PUBLICA` (e, só quando for ligar a API de leitura, `TICKERLAB_API_V1=1`) |
+| `.env` (modelo em `.env.example`) | `TICKERLAB_DATABASE_URL` (PostgreSQL), `TICKERLAB_AMBIENTE=producao` (sem o login configurado, o app não abre), `TICKERLAB_ADMINS`, chaves do Stripe de **teste** (`rk_test_`/`sk_test_`: chaves de produção são recusadas), `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `TICKERLAB_URL_PUBLICA` (e, só quando for ligar cada API, `TICKERLAB_API_V1=1` para a de leitura e `TICKERLAB_API_EXTERNA=1` para a externa) |
 | `.streamlit/secrets.toml` (modelo em `secrets.toml.example`) | Cliente OAuth do Google (`[auth]`) |
 
-O esquema do banco é criado pelas migrações do Alembic (`migracoes/`, de 0001 a 0044), aplicadas
+O esquema do banco é criado pelas migrações do Alembic (`migracoes/`, de 0001 a 0046), aplicadas
 sozinhas quando o contêiner sobe: `python -m alembic upgrade head`.
 
 </details>
@@ -462,6 +482,9 @@ cobrança de teste.
   O plano só muda pelo webhook.
 - API v1 com o token do Google conferido pela assinatura, limite de pedidos por minuto e o plano
   conferido rota por rota; ela entrega números calculados, nunca preço bruto.
+- API externa com a chave da organização só no cabeçalho (na URL, o pedido é recusado), o mesmo 401
+  para toda chave recusada, quota do mês e limite por minuto, e duas travas por campo: o contrato da
+  organização e o direito do TickerLab de redistribuir aquele dado.
 - Painel de administração confere o papel **no banco** a cada ação e registra tudo em uma
   auditoria que guarda só ids, nunca e-mail ou nome. Erros do banco não expõem dados pessoais.
 - LGPD: aceite dos termos no primeiro acesso (com versão e data), exportação dos dados em JSON e
@@ -495,13 +518,14 @@ Para uma avaliação justa, o que ainda **não** está pronto:
 - **Sem receita:** a cobrança está em modo de teste; antes da cobrança real vêm a revisão jurídica
   dos termos e da política de privacidade e a decisão sobre o Plus.
 - **Newsletter** liberada só para administradores até o parecer jurídico.
-- **API v1** pronta, mas desligada; a documentação (`docs/api/`) ainda não lista as rotas mais
-  novas (links compartilhados e ferramentas).
+- **API v1** pronta, mas desligada.
+- **API externa (`/data/v1`)** desligada: hoje responde só o catálogo e o consumo; a consulta em lote
+  (até 100 CNPJs) já está em `src/api_externa/lote.py`, esperando a rota de dado.
 - **App novo em React** com 19 telas; as demais páginas continuam no Streamlit (a versão clássica,
   em `/classico/`).
 - **Base de dados** sem carga do histórico completo do COTAHIST da B3; os intradiários são só
   para pesquisa e não aparecem no app.
-- **TickerLab Trade** pausado depois da M2 sem modelo aprovado; não há operação com dinheiro real.
+- **TickerLab Trade:** nenhum modelo aprovado até aqui; não há operação com dinheiro real.
 - **Documentação de decisões fora do repositório:** o planejamento e as ADRs ficam numa pasta
   privada do autor; o código foi escrito com ajuda intensa de assistentes de IA, sempre por PR,
   com testes e CI.
@@ -522,7 +546,8 @@ src/                  as contas, as regras e os dados (não importa o Streamlit)
   autenticacao.py, conformidade.py, auditoria.py, administracao.py   login, LGPD, auditoria e admin
   banco/              modelo, conexão, usuários, coletas e dados por usuário (SQLAlchemy)
   cobranca.py         Stripe: pagamento, portal e eventos (idempotentes)
-  api.py, api_v1/     FastAPI: saúde, webhook, descadastro, ferramentas e a API de leitura v1
+  api.py, api_v1/     FastAPI: saúde, webhook, descadastro, rotas públicas e a API de leitura v1
+  api_externa/        a API externa de dados (/data/v1): chave da organização, catálogo, consumo e lote
   dados.py, armazenamento.py, exemplos.py, moedas.py, catalogo.py   preços, cache, exemplos, câmbio e busca
   indicadores.py, metricas.py, analise.py               números básicos e métricas de desempenho
   backtest.py, estrategias.py, protecoes.py, imposto.py motor vetorizado, 12 estratégias, stops e IR
@@ -541,6 +566,7 @@ src/                  as contas, as regras e os dados (não importa o Streamlit)
   ferramentas/        contas de referência das ferramentas grátis
   relatorios.py, relatorio_pdf.py, estilos_pdf.py, graficos_pdf.py, previa_pdf.py   relatórios em PDF
   graficos.py         gráficos Plotly
+  pregao_do_dia.py, raio_x.py, cruzamentos.py   pregão do dia, Raio-X do choque e cruzamentos da ficha
 base/                 a base de dados: arquivista, ponto no tempo, linhagem, contratos e âncora
   arquivo/            o arquivista das fontes oficiais (mais de 80 órgãos)
   contratos/          catálogo e contratos versionados das tabelas

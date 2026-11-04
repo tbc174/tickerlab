@@ -408,6 +408,13 @@ describe("relatório de setor da semana: elétricas (ADR 0109, item 10)", () => 
     expect(texto).toContain("Nada aqui é recomendação de investimento");
   });
 
+  it("o rodapé cita as fontes do setor (ANEEL e CVM), não o Yahoo Finance do rodapé padrão", () => {
+    const rodape = semTags(trecho(html, '<footer class="rodape escura">', "</footer>"));
+    expect(rodape).toContain(relatorioSemanalEletricas.aviso_rodape);
+    expect(rodape).toContain("ANEEL");
+    expect(rodape).not.toContain("Yahoo");
+  });
+
   it("cada destaque mostra a fonte e a data", () => {
     expect(relatorioSemanalEletricas.destaques.length).toBeGreaterThanOrEqual(3);
     for (const d of relatorioSemanalEletricas.destaques) {
@@ -555,5 +562,20 @@ describe("Raio-X do choque de 26/10/2026 (pode do Tiago para publicar, 26/10)", 
     expect(inicio.split(DADOS_DO_RAIO_X.caminho).length - 1).toBeGreaterThanOrEqual(3);
     expect(semTags(inicio)).toContain("Estudo do dia");
     expect(inicio).toContain(`href="${PDF_DO_RAIO_X}"`);
+  });
+});
+
+
+describe("a data da base à vista em toda página pública que mostra a base (linha 605)", () => {
+  const paginas = ["relatorio-de-exemplo.html", "relatorio-de-setor-eletricas.html"];
+  const datas: Record<string, string> = {
+    "relatorio-de-exemplo.html": amostraRelatorio.dados_de,
+    "relatorio-de-setor-eletricas.html": relatorioSemanalEletricas.dados_de,
+  };
+
+  it.each(paginas)("%s leva o selo com a data do próprio dado", (pagina) => {
+    const html = renderizar(pagina);
+    expect(html).toContain(`data-data-da-base="${datas[pagina]}"`);
+    expect(semTags(html)).toContain(`Retrato de ${datas[pagina]}`);
   });
 });

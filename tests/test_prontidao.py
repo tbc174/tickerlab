@@ -1,0 +1,194 @@
+"""Prontidão por tabela para a API externa (ADR 0108, D10): as três provas, o prazo e o contrato."""
+
+from datetime import date, timedelta
+
+import pytest
+
+from base import prontidao
+from base.dicionario import TABELAS
+from base.prontidao import (
+    PRAZO_DA_PROVA,
+    PRONTIDAO,
+    Falta,
+    Prontidao,
+    Prova,
+    negacao_da_prontidao,
+    prova_publicavel,
+    versao_maior,
+    versoes_maiores,
+)
+
+HOJE = date(2026, 11, 3)
+
+
+def _prova(dias_atras: int = 10, **outros) -> Prova:
+    base = {"data": HOJE - timedelta(days=dias_atras), "prova": "placar-2026-10-24"}
+    return Prova(**(base | outros))
+
+
+def _pronta(**outros) -> Prontidao:
+    base = {
+        "versao_maior": 2,
+        "cruzada": _prova(independencia="mesmo documento, outro canal (ENET)"),
+        "qualidade": _prova(),
+        "dicionario": _prova(prova="revisao-do-dicionario-2026-10-20"),
+    }
+    return Prontidao(**(base | outros))
+
+
+def _negacao(
+    tabelas: tuple[str, ...] = ("dfp",),
+    registro: dict[str, Prontidao] | None = None,
+    versoes: dict[str, int] | None = None,
+    hoje: date = HOJE,
+) -> Falta | None:
+    registro = {"dfp": _pronta()} if registro is None else registro
+    versoes = {"dfp": 2, "cnpj": 2} if versoes is None else versoes
+    return negacao_da_prontidao(tabelas, registro, versoes, hoje)
+
+
+# --- o caminho que libera ---
+
+
+def test_tabela_com_as_tres_provas_em_dia_libera() -> None:
+    assert _negacao() is None
+
+
+# --- risco 1: duas provas só, ou prova velha ---
+
+
+@pytest.mark.parametrize("exigencia", ["cruzada", "qualidade", "dicionario"])
+def test_falta_uma_exigencia_nega(exigencia: str) -> None:
+    registro = {"dfp": _pronta(**{exigencia: None})}
+    assert _negacao(registro=registro) is Falta.SEM_PRONTIDAO
+
+
+@pytest.mark.parametrize("exigencia", ["cruzada", "qualidade", "dicionario"])
+def test_prova_em_branco_nao_conta(exigencia: str) -> None:
+    registro = {"dfp": _pronta(**{exigencia: _prova(prova=" ", independencia="x")})}
+    assert _negacao(registro=registro) is Falta.SEM_PRONTIDAO
+
+
+def test_cruzada_sem_a_independencia_anotada_nega() -> None:
+    """D10.6: a prova da 6 diz por que as duas fontes são independentes (ou o par do mesmo documento)."""
+    registro = {"dfp": _pronta(cruzada=_prova(independencia=""))}
+    assert _negacao(registro=registro) is Falta.SEM_PRONTIDAO
+
+
+@pytest.mark.parametrize("exigencia", ["cruzada", "qualidade", "dicionario"])
+def test_prova_com_data_no_futuro_nao_conta(exigencia: str) -> None:
+    futura = _prova(dias_atras=-1, independencia="x")
+    assert _negacao(registro={"dfp": _pronta(**{exigencia: futura})}) is (
+        Falta.SEM_PRONTIDAO
+    )
+
+
+@pytest.mark.parametrize("exigencia", ["cruzada", "qualidade"])
+def test_prova_com_91_dias_nega(exigencia: str) -> None:
+    velha = _prova(dias_atras=PRAZO_DA_PROVA.days + 1, independencia="x")
+    registro = {"dfp": _pronta(**{exigencia: velha})}
+    assert _negacao(registro=registro) is Falta.PRONTIDAO_VENCIDA
+
+
+@pytest.mark.parametrize("exigencia", ["cruzada", "qualidade"])
+def test_prova_com_90_dias_libera(exigencia: str) -> None:
+    no_limite = _prova(dias_atras=PRAZO_DA_PROVA.days, independencia="x")
+    assert _negacao(registro={"dfp": _pronta(**{exigencia: no_limite})}) is None
+
+
+def test_prova_do_dicionario_nao_vence_com_o_tempo() -> None:
+    """A 8 vale enquanto a versão maior do contrato não mudar (D10.4)."""
+    antiga = _prova(dias_atras=400, prova="revisao-do-dicionario-2025-09-30")
+    assert _negacao(registro={"dfp": _pronta(dicionario=antiga)}) is None
+
+
+def test_prazo_e_de_90_dias() -> None:
+    assert timedelta(days=90) == PRAZO_DA_PROVA
+
+
+# --- risco 2: campo calculado de duas tabelas ---
+
+
+def test_campo_de_duas_tabelas_exige_as_duas() -> None:
+    so_uma = _negacao(tabelas=("dfp", "cnpj"))
+    as_duas = _negacao(
+        tabelas=("dfp", "cnpj"), registro={"dfp": _pronta(), "cnpj": _pronta()}
+    )
+    assert so_uma is Falta.SEM_PRONTIDAO
+    assert as_duas is None
+
+
+def test_sem_tabela_nega() -> None:
+    """Linha de direito sem `tabelas` não sai: o padrão vazio nega (D10.3)."""
+    assert _negacao(tabelas=()) is Falta.SEM_TABELA
+
+
+# --- risco 3: o contrato mudou e a prontidão ficou ---
+
+
+def test_versao_maior_diferente_nega() -> None:
+    assert _negacao(versoes={"dfp": 3}) is Falta.CONTRATO_MUDOU
+    assert _negacao(versoes={"dfp": 1}) is Falta.CONTRATO_MUDOU
+
+
+def test_tabela_fora_do_dicionario_nega() -> None:
+    assert _negacao(versoes={}) is Falta.CONTRATO_MUDOU
+
+
+def test_versao_maior_le_so_o_primeiro_numero() -> None:
+    """Menor e correção diferentes não mexem na prontidão: só coluna nova ou correção de texto."""
+    assert versao_maior("2.0.0") == versao_maior("2.3.1") == 2
+    assert versao_maior("10.0.0") == 10
+
+
+def test_versoes_maiores_vem_do_dicionario() -> None:
+    versoes = versoes_maiores()
+    assert versoes.keys() == TABELAS.keys()
+    for nome, tabela in TABELAS.items():
+        assert versoes[nome] == versao_maior(tabela.versao_do_contrato)
+
+
+# --- risco 6: a prova vai para o catálogo público ---
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "/srv/tickerlab/placar/2026-10-24.json",
+        r"C:\placar\2026-10-24.json",
+        "placar em 192.168.0.10",
+        "https://kuma.exemplo/status",
+        "pessoa@exemplo.com",
+        "",
+        "   ",
+    ],
+)
+def test_prova_com_caminho_ip_ou_email_nao_e_publicavel(texto: str) -> None:
+    assert not prova_publicavel(texto)
+
+
+@pytest.mark.parametrize(
+    "texto",
+    ["placar-2026-10-24", "conferencia-do-contrato dfp v2", "kuma: dfp-qualidade"],
+)
+def test_identificador_simples_e_publicavel(texto: str) -> None:
+    assert prova_publicavel(texto)
+
+
+def test_prova_sem_caminho_ip_ou_email() -> None:
+    """Toda prova do registro de verdade é publicável (vale também quando ele deixar de ser vazio)."""
+    for tabela, registro in PRONTIDAO.items():
+        for prova in (registro.cruzada, registro.qualidade, registro.dicionario):
+            if prova is not None:
+                assert prova_publicavel(prova.prova), tabela
+                assert prova_publicavel(prova.independencia or "-"), tabela
+
+
+def test_registro_so_tem_tabela_do_dicionario() -> None:
+    assert set(PRONTIDAO) <= set(TABELAS)
+
+
+def test_registro_comeca_vazio() -> None:
+    """D10: nenhuma tabela tem as três provas ainda (o placar da 427 é a A2b). Quando a primeira
+    entrar, por PR de nível 2 da mesa Dados, este teste sai junto."""
+    assert prontidao.PRONTIDAO == {}
