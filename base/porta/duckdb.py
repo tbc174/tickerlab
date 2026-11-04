@@ -118,6 +118,7 @@ ARQUIVOS: dict[str, str] = {
     "pareceres_dfp": "pareceres_dfp/*.parquet",
     "pareceres_itr": "pareceres_itr/*.parquet",
     "notas_dfp": "notas_dfp/*.parquet",
+    "processos_nas_notas": "processos_nas_notas/*.parquet",
     "securitizacao_certificados": "securitizacao_certificados/*.parquet",
     "securitizacao_cedente_devedor": "securitizacao_cedente_devedor/*.parquet",
     "trocas_de_auditor": "trocas_de_auditor/trocas.parquet",

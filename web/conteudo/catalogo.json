@@ -1878,6 +1878,7 @@
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "modulos": [
         "credito_e_fidc",
+        "governo_e_sancoes",
         "ma",
         "mercado_e_empresas",
         "rede"
@@ -1885,7 +1886,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 60
+      "tabelas": 61
     },
     {
       "historico_desde": "2026-10-14",
@@ -2234,7 +2235,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 23
+      "tabelas": 24
     },
     {
       "chave": "credito_e_fidc",
@@ -6616,6 +6617,16 @@
       "tabela": "notas_dfp"
     },
     {
+      "atraso": "O da DFP: cada versão vale a partir da própria entrega à CVM",
+      "frase": "Processos judiciais que a própria companhia cita nas notas explicativas da DFP: uma linha por número de processo e página de cada versão.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "processos_nas_notas"
+    },
+    {
       "atraso": null,
       "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
       "frequencia": "Anual",
@@ -6892,6 +6903,6 @@
     "fontes": 31,
     "fontes_em_consulta": 9,
     "modulos": 6,
-    "tabelas": 116
+    "tabelas": 117
   }
 }

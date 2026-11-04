@@ -1,5 +1,5 @@
 """Carga dos processos judiciais por CNPJ para a base: as tabelas `processos_comunicacoes`,
-`processos_partes` e `processos` (`base/processos.py`).
+`processos_partes`, `processos` e `processos_nas_notas` (`base/processos.py`).
 
     python -m scripts.carga_processos                    (todas as consultas guardadas)
     python -m scripts.carga_processos --pasta /tmp/base  (outra pasta de saída)
@@ -7,7 +7,9 @@
 
 Lê as consultas do DJEN por companhia (`djen-partes`) e por processo (`djen-processos`), a TPU do CNJ
 (`cnj-tpu`) e o cadastro da CVM que o arquivista já guardou no acervo (não baixa nada). Nome de pessoa
-física nunca entra na tabela. Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/djen.parquet`.
+física nunca entra na tabela. Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/djen.parquet`. Os
+números de processo que as companhias citam nas notas da DFP saem da tabela `notas_dfp` da mesma pasta
+(`processos_nas_notas/dfp.parquet`), lida pela porta.
 
 A consulta por processo do arquivista lê a `processos_comunicacoes` que esta carga grava: na primeira
 semana só a busca pelo nome roda; a partir da segunda, o arquivista busca pelo número os processos que
@@ -42,10 +44,11 @@ def main(argv: list[str] | None = None) -> int:
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
     log.info("Versão do código: %s", exigir_versao_do_codigo())
+    agora = datetime.now(UTC)
     with obter_engine().connect() as conexao:
-        resumo = processos.montar(
-            conexao, pasta, datetime.now(UTC), refazer=opcoes.refazer
-        )
+        resumo = processos.montar(conexao, pasta, agora, refazer=opcoes.refazer)
+    # as notas da DFP não dependem do DJEN: as citações se montam mesmo sem consulta guardada
+    log.info("processos nas notas da DFP: %s", processos.montar_citacoes(pasta, agora))
     if not resumo:
         log.warning("nenhuma consulta do DJEN guardada no acervo")
         return 1
