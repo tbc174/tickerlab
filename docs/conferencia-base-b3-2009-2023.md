@@ -67,6 +67,8 @@ receber e a vendida deixa de pagar, então o erro tende a se compensar, mas não
 
 ## Limites e cuidados
 
+- Ligação pelo nome: dois modelos podem errar juntos; o CNPJ errado traria o balanço de outra empresa. A tabela fica no Git para qualquer pessoa conferir linha por linha.
+
 - Nenhum número de estratégia foi produzido; esta é só a conferência da base.
 - O ajuste para trás multiplica todo o passado de cada evento pela mesma constante: retornos e o z de uma
   janela sem evento não mudam com eventos posteriores (há teste).
@@ -75,8 +77,66 @@ receber e a vendida deixa de pagar, então o erro tende a se compensar, mas não
 - Desenvolvimento só até 08/09/2023; o holdout continua lacrado. Os saltos de 2023 depois dessa data
   (Casas Bahia, SLC) não entram em nenhuma ficha.
 
-## Próximo passo (decisão do Tiago)
+## Segunda passada: a base completada (03/11, depois das 22h)
 
-Completar a base antes da tentativa 1: (1) ligar os 78 papéis antigos ao CNPJ; (2) cobrir os
-desdobramentos que faltam; (3) decidir se os proventos ficam como limitação. As opções estão na conversa
-e na fila (linha 577).
+O Tiago escolheu completar sem baixar nada ("Pelo nome, sem baixar"): ligar os papéis antigos ao CNPJ
+pelo nome, com os dados da CVM que o acervo já tem, cobrir os desdobramentos pelo preço e deixar os
+proventos como limitação. Continua sendo conferência de dados: nenhuma tentativa foi gasta aqui.
+
+### Lacuna 1 fechada em boa parte: `trader/estrategias/emissores_antigos.csv`
+
+- **Como:** para os 96 emissores sem CNPJ com média de pelo menos R$ 1 milhão por pregão, os 8 nomes
+  mais parecidos entre os 2.347 pares (CNPJ, nome) do FCA geral de 2010 a 2023, das demonstrações de
+  2010 a 2017 e do FCA de emissores. Dois modelos escolheram às cegas, cada um sem ver a lista do outro
+  (Claude Opus e Claude Sonnet). Empresa incorporada fica com o próprio CNPJ ou com nenhum, nunca com o
+  da que a incorporou.
+- **Resultado:** 77 ligações em que os dois concordam; 6 em que discordaram (RUMO, BBTG, DURA, LVTC,
+  IENG e SFSA) e 13 que nenhum achou (Aracruz, Unibanco, Sadia, GVT, Nossa Caixa, Brasil Telecom
+  Participações e outros, cujo CNPJ não está nos arquivos da CVM do acervo) ficam **sem CNPJ**, pela
+  regra da conferência automática: quem discordou fica vazio. A tabela guarda as 96 linhas, com o nome
+  de pregão, o nome na CVM e a conferência de cada uma.
+- **No cadastro:** `dados_f_b3.ler_emissores` junta o FCA e a tabela; no mesmo emissor vale o FCA.
+
+| Medida | Antes | Depois |
+|---|---|---|
+| Papéis líquidos (média de R$ 5 mi em algum dia) sem CNPJ | 78 de 394 | **14 de 394** |
+| Parte do universo sem CNPJ em 2009 | 35% | 8% |
+| Em 2010 / 2011 a 2017 / 2018 em diante | 27% / 4 a 24% | 1% / até 2% / até 0,2% |
+
+Os 14 que sobram: ABNB3, ABYA3, AGIN3, ARCZ6, BBTG11, BNCA3, BRTP3, BRTP4, DURA4, GVTT3, LVTC3,
+RUMO3, SDIA4 e UBBR11. Em 2009 não há decisão (é o ano de formação; a primeira decisão é em 2010).
+
+### Lacuna 2 fechada em boa parte: desdobramento pelo preço
+
+O COTAHIST traz o número de distribuição (DISMES, posições 243 a 245), que a B3 muda no dia ex de todo
+evento. A regra, escrita no topo de `ajuste_b3.py` antes de qualquer número da P0-4: depois dos eventos
+do formulário, um salto de 2× ou mais no dia em que o DISMES mudou é desdobramento ou grupamento se a
+razão de preços ficar a até 5% de um fator usual (2 a 10, 12, 15, 16, 20, 25, 30, 40, 50, 60, 80, 100,
+200, 250, 500, 1000 e os inversos). A quebra da Americanas (01/2023) não muda o DISMES e não ajusta;
+o dividendo da Bradespar (razão 2,41) e a cisão do Assaí (3,56) mudam, mas ficam longe de um fator usual
+e também não ajustam. A tolerância de 5% foi escolhida olhando esses casos conhecidos, na conferência.
+
+| Medida | Primeira passada | Segunda |
+|---|---|---|
+| Eventos do formulário aplicados | 480 | 515 (mais CNPJs ligados) |
+| Desdobramentos pelo preço | — | 461 (14 no universo líquido) |
+| Saltos de 2× sem evento | 2.898 | 2.405; **15 no universo líquido** |
+
+No universo líquido, os 14 pelo preço são B3 (05/2021), Inter (05/2021, três classes), BTG (07/2021),
+Méliuz (06/2023), Cielo (05/2011), JSL (11/2020), OGX (12/2009), GPA (08/2023), PDG (01/2019), Rumo
+(08/2015), Refinaria de Manguinhos (07/2010) e SLC (12/2023, no holdout). Os de GPA e JSL caem em reorganizações
+(a cisão do Éxito e a da Simpar) com razão perto de 3. Se forem cisões, o ajuste pela razão do dia
+aproxima o retorno do acionista que recebeu as ações da empresa nova, que é o certo para os pares. Os
+15 saltos que sobram são movimentos de verdade: Americanas, Casas Bahia (holdout), Bradespar (dividendo),
+Lojas Americanas (reorganização com a B2W), GPA (cisão do Assaí), BR Properties, MMX, Mundial, Syn e
+Viver.
+
+### Lacuna 3: proventos continuam como limitação declarada
+
+Sem valor por ação nem data ex no acervo, os preços ajustados não incluem dividendos e JCP. Nos pares,
+o erro tende a se compensar entre as pernas, mas não some.
+
+## Próximo passo
+
+Com a base completada, a tentativa 1 da P0-4 pode rodar: `python -m trader.estrategias.rodar_pares`
+(o resultado vai em `docs/resultado-pares-p0-4-tentativa-1.md`). A regra da ficha não muda.
