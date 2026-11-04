@@ -19,6 +19,36 @@ def test_texto_alterado_e_recusado(tmp_path):
         criterio_quant.conferir(copia)
 
 
+def test_versoes_anteriores_ficam_congeladas():
+    """A v0.1 continua com o texto e o hash com que as rodadas dela foram feitas."""
+    for arquivo, esperado in criterio_quant.VERSOES_ANTERIORES.values():
+        criterio_quant.conferir(arquivo, esperado)
+    assert criterio_quant.VERSAO not in criterio_quant.VERSOES_ANTERIORES
+
+
+def test_v0_2_acrescenta_so_as_duas_fichas_novas():
+    """Nenhuma ficha da v0.1 mudou de orçamento (seção 14 da v0.2)."""
+    v0_1 = {
+        "F-B3": 10,
+        "P0-3": 8,
+        "P0-1": 10,
+        "P0-2": 8,
+        "P0-7": 4,
+        "P0-4": 8,
+        "P0-5": 6,
+        "P0-6": 2,
+        "P0-8": 4,
+    }
+    novas = {"C-1": 6, "P0-1b": 2}
+    assert {**v0_1, **novas} == criterio_quant.ORCAMENTO_POR_FICHA
+    texto_v0_1 = criterio_quant.VERSOES_ANTERIORES["0.1"][0].read_text(encoding="utf-8")
+    for ficha, orcamento in v0_1.items():
+        assert (
+            f"**Orçamento:** {orcamento} tentativas"
+            in texto_v0_1.split(f"### Ficha {ficha}.")[1]
+        )
+
+
 def test_orcamento_das_fichas_soma_o_total_da_versao():
     assert sum(criterio_quant.ORCAMENTO_POR_FICHA.values()) == (
         criterio_quant.ORCAMENTO_DE_TENTATIVAS
@@ -37,7 +67,7 @@ def test_alavancagem_do_nucleo_so_tem_as_duas_versoes():
 
 def test_numeros_do_codigo_aparecem_no_texto():
     texto = criterio_quant.ARQUIVO.read_text(encoding="utf-8")
-    assert "**Status: APROVADO, versão 0.1, em 03/11/2026" in texto
+    assert "**Status: APROVADO, versão 0.2, em 04/11/2026" in texto
     assert "DSR ≥ 0,95" in texto
     assert "≤ 0,30" in texto
     assert "±20% em cada parâmetro mantém ≥ 70% do Sharpe" in texto
@@ -52,7 +82,7 @@ def test_numeros_do_codigo_aparecem_no_texto():
     assert "volta no primeiro pregão 12 meses depois do disparo" in texto
     assert "**1,0x** e **1,3x**" in texto
     assert "≥ R$ 5 milhões nos 60 pregões anteriores" in texto
-    assert "**Orçamento total desta versão: 60\ntentativas**" in texto
+    assert "**Orçamento total desta versão: 68\ntentativas**" in texto
     assert "**+25 tentativas**" in texto
     for ficha, orcamento in criterio_quant.ORCAMENTO_POR_FICHA.items():
         assert f"### Ficha {ficha}." in texto
@@ -188,19 +218,20 @@ def test_estresse_e_queda_sao_medidos_no_estresse_e_no_candidato():
     assert "F1" in criterio_quant.avaliar(_evidencia_boa(candidato=tombo)).reprovados
 
 
-def test_tentativas_anteriores_somam_m2_scalp_e_o_registro_da_p2(tmp_path):
+def test_tentativas_anteriores_somam_m2_scalp_versoes_e_o_registro_da_p2(tmp_path):
     assert (
         criterio_quant.TENTATIVAS_DA_M2 == 101
         and criterio_quant.TENTATIVAS_DO_SCALP == 2
+        and criterio_quant.TENTATIVAS_DAS_VERSOES_NOVAS == 25  # só a v0.2 até agora
     )
-    assert criterio_quant.tentativas_anteriores(tmp_path / "nao-existe.db") == 103
+    assert criterio_quant.tentativas_anteriores(tmp_path / "nao-existe.db") == 128
     from trader.registro import Registro
 
     registro = Registro(
         tmp_path / "registro.db", familias=("K", "B"), commit_fn=lambda: "x"
     )
     registro.registrar("K", "k1", {"a": 1})
-    assert criterio_quant.tentativas_anteriores(tmp_path / "registro.db") == 104
+    assert criterio_quant.tentativas_anteriores(tmp_path / "registro.db") == 129
 
 
 def test_registro_das_p0_de_teste_nao_guarda_copias(tmp_path):

@@ -1,9 +1,9 @@
 # Estratégias quant P0 e carteira própria: pré-registro (critério, fichas, freios, alavancagem e universo)
 
-**Status: RASCUNHO da versão 0.2, escrito em 04/11/2026, esperando a aprovação do Tiago.** Quando aprovado, substitui a
-v0.1 (aprovada em 03/11/2026 01h18, SHA-256 `ea45eddf09e8…`, guardada em `docs/pre-registro-quant-p0-v0.1.md`). O
-hash da v0.2 vai para `trader/criterio_quant.py` e para o registro só depois do "pode" dele; até lá, nenhuma ficha nova
-roda. Como manda a seção 10, esta versão soma **+25 tentativas** ao registro.
+**Status: APROVADO, versão 0.2, em 04/11/2026 03h31 (Brasília), pelo Tiago ("Pode, como está").** Substitui a v0.1
+(aprovada em 03/11/2026 01h18, SHA-256 `ea45eddf09e8…`, que continua guardada em `docs/pre-registro-quant-p0-v0.1.md`).
+O hash desta versão fica em `trader/criterio_quant.py`, e nenhuma rodada roda sem ele. Como manda a seção 10, esta
+versão soma **+25 tentativas** ao registro.
 
 **Ao contrário da v0.1, a v0.2 foi escrita DEPOIS de ver os resultados** das oito P0 e da 1ª tentativa da F-B3
 (nenhuma passou). Por isso, ela não muda nenhuma régua, nenhum limite nem nenhum parâmetro das fichas da v0.1. A
@@ -366,7 +366,7 @@ defeito contam.
   peso-alvo em mais de 20% dele. Quando o alvo é zero, a posição zera. Quando a posição é zero, ela abre se o alvo
   passar de 0,5% do patrimônio (a mesma convenção da P0-1). O objetivo é cortar o giro de 5,5 vezes por ano.
 - **Dados:** candles diários de BTCBRL e ETHBRL do Binance Vision (mesma licença de uso interno da P0-1). O download
-  pede o ok do Tiago (seção 15). Cada série começa no 1º candle do par, a confirmar no download; os pares em reais
+  foi aprovado com esta versão (seção 15, escolha 4). Cada série começa no 1º candle do par, a confirmar no download; os pares em reais
   começaram depois dos pares em USDT.
 - **Impacto e spread:** o mesmo modelo de impacto, sobre o volume do par em reais, que é bem menor que o do par em
   USDT. O livro em reais não tem histórico de spread. **O critério usa 0,3% por lado** (conservador); o relatório
@@ -444,6 +444,8 @@ critério como qualquer outro item.
 Nenhum limite do critério (A1 a A8, F1, V, B1, B2, C) mudou, nenhuma régua mudou e nenhum candidato da v0.1 mudou.
 
 ## 15. Escolhas para o Tiago aprovar (v0.2)
+
+**Aprovadas as seis em 04/11/2026 03h31** ("Pode, como está"), inclusive o download da escolha 4.
 
 Propostas do Claude; com o "pode", passam a fazer parte do critério como qualquer outro item.
 
