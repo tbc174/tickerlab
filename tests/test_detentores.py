@@ -285,3 +285,13 @@ def test_aviso_de_cobertura_so_quando_o_mes_tem_bem_menos_informantes():
     aviso = dt.aviso_de_cobertura(cobertura, AGOSTO, "fundos")
     assert "1082 fundos informaram posições em 08/2026, contra 3216 em 03/2026" in aviso
     assert dt.aviso_de_cobertura({marco: 3216, AGOSTO: 3100}, AGOSTO, "fundos") is None
+
+
+def test_listas_do_mercado_podem_ter_25_ou_50_ativos(banco, trimestre):
+    _gravar(banco, trimestre)
+    app = _abrir("PETR4.SA")
+    tamanho = app.button_group(key="donos_tamanho")
+    assert tamanho.value == 10
+    tamanho.set_value(50).run()
+    assert not app.exception
+    assert any("Vendido ÷ comprado" in t.value.columns for t in app.dataframe)
