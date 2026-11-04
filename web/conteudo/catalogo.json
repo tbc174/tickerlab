@@ -2400,11 +2400,12 @@
           "MAPA",
           "Anatel",
           "ANM",
+          "CMED (Anvisa)",
           "Ancine",
           "Ministério da Saúde (DATASUS)"
         ],
-        "tabelas": 9,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos minerários e barragens na ANM, a Ancine e os estabelecimentos de saúde do CNES.",
+        "tabelas": 11,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine e os estabelecimentos de saúde do CNES.",
         "titulo": "Licenças e registros nas agências"
       },
       {
