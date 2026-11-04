@@ -24,13 +24,14 @@ do mês seguinte). `disponivel_em` é a data da coleta; `nu_comp` nunca serve de
 Sem Streamlit; pandas só.
 """
 
+import ftplib
 from collections.abc import Callable, Iterable
 from datetime import date
 from typing import Any
 
 import pandas as pd
 
-from base import cnpj
+from base import cnpj, dbc
 
 FONTE = "ms-cnes-estabelecimentos-competencia"
 ATRIBUICAO = (
@@ -49,6 +50,20 @@ MAXIMO_DE_PAGINAS = (
     500  # 500 mil estabelecimentos numa competência: bem acima dos ~400 mil de hoje
 )
 CHAVE_DA_LISTA = "cnes_estabelecimentos"
+
+SERVIDOR_FTP = "ftp.datasus.gov.br"
+PASTA_NO_FTP = "/dissemin/publicos/CNES/200508_/Dados/ST"
+TEMPO_LIMITE_DO_FTP = 120
+DIA_DE_PUBLICACAO_NO_FTP = 15
+UFS = (
+    "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE",
+    "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
+)  # fmt: skip
+COLUNAS_DO_DBC = ("CNES", "CODUFMUN", "CNPJ_MAN", "TPGESTAO", "TP_UNID", "NAT_JUR")
+COLUNAS_DO_CNPJ_DO_DBC = (
+    "CNPJ",
+    "CPF_CNPJ",
+)  # o nome muda com a versão do layout; CPF_CNPJ mistura CPF
 
 COMPETENCIA_COM_DADOS = "com_dados"
 COMPETENCIA_VAZIA = "vazia"
@@ -150,6 +165,82 @@ def tabela_da_competencia(
     tabela = pd.DataFrame(linhas, columns=list(COLUNAS))
     if tabela.duplicated(CHAVE).any():
         raise ValueError(f"CNES {competencia}: estabelecimento repetido na competência")
+    return tabela.reset_index(drop=True)
+
+
+def disponivel_em_da_competencia(competencia: int) -> date:
+    """O dia 15 do mês seguinte à competência: quando o FTP costuma publicar (sem olhar o futuro)."""
+    ano, mes = divmod(competencia, 100)
+    return date(ano + (mes == 12), mes % 12 + 1, DIA_DE_PUBLICACAO_NO_FTP)
+
+
+def caminho_no_ftp(uf: str, competencia: int) -> str:
+    """O arquivo `ST<UF><AAMM>.dbc` da competência `AAAAMM` no FTP do DATASUS."""
+    if uf not in UFS:
+        raise ValueError(f"CNES: UF desconhecida: {uf!r}")
+    return f"{PASTA_NO_FTP}/ST{uf}{competencia % 10000:04d}.dbc"
+
+
+def baixar_dbc(
+    uf: str, competencia: int, abrir: Callable[..., ftplib.FTP] = ftplib.FTP
+) -> bytes:
+    """O DBC inteiro da UF e da competência. O FTP não passa por `rede.get_com_agente` (que é HTTP)."""
+    caminho = caminho_no_ftp(uf, competencia)
+    pedaços: list[bytes] = []
+    with abrir(SERVIDOR_FTP, timeout=TEMPO_LIMITE_DO_FTP) as ftp:
+        ftp.login()
+        ftp.retrbinary(f"RETR {caminho}", pedaços.append)
+    return b"".join(pedaços)
+
+
+def _coluna_do_cnpj(nomes: list[str]) -> str:
+    for candidata in COLUNAS_DO_CNPJ_DO_DBC:
+        if candidata in nomes:
+            return candidata
+    raise dbc.DbcInvalido(
+        f"CNES DBC: sem coluna de CNPJ entre {COLUNAS_DO_CNPJ_DO_DBC}"
+    )
+
+
+def tabela_do_dbc(conteudo: bytes, competencia: int) -> pd.DataFrame:
+    """As linhas do DBC no mesmo formato de `tabela_da_competencia`.
+
+    Só CNPJ de 14 caracteres entra: o CPF do consultório de pessoa física (11 dígitos) e qualquer valor
+    fora da forma ficam vazios. O DBC não traz razão social, nome fantasia nem coordenadas: ficam vazios.
+    `disponivel_em` é o dia 15 do mês seguinte à competência.
+    """
+    coluna_cnpj = _coluna_do_cnpj(dbc.nomes_das_colunas(conteudo))
+    pedidas = (*COLUNAS_DO_DBC, coluna_cnpj)
+    disponivel_em = pd.Timestamp(disponivel_em_da_competencia(competencia))
+    linhas = [
+        {
+            "competencia": competencia,
+            "codigo_cnes": registro["CNES"],
+            "cnpj": cnpj.completo(registro[coluna_cnpj]) or "",
+            "cnpj_mantenedora": cnpj.completo(registro["CNPJ_MAN"]) or "",
+            "codigo_ibge_municipio": registro["CODUFMUN"],
+            "gestao": registro["TPGESTAO"],
+            "tipo_unidade": registro["TP_UNID"],
+            "natureza_juridica": registro["NAT_JUR"],
+            "disponivel_em": disponivel_em,
+        }
+        for registro in dbc.ler_dbc(conteudo, pedidas)
+    ]
+    tabela = pd.DataFrame(linhas).reindex(columns=list(COLUNAS))
+    for coluna in (
+        "razao_social",
+        "nome_fantasia",
+        "classificacao",
+        "grupo_natureza_juridica",
+        "situacao_cnes",
+    ):
+        tabela[coluna] = ""
+    for coluna in ("latitude", "longitude"):
+        tabela[coluna] = float("nan")
+    if tabela.duplicated(CHAVE).any():
+        raise ValueError(
+            f"CNES DBC {competencia}: estabelecimento repetido na competência"
+        )
     return tabela.reset_index(drop=True)
 
 
