@@ -83,6 +83,17 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "emissor": "issuer",
     "tipo": "kind",
     "quantidade": "quantity",
+    # funds: a forma da resposta
+    "cadastro": "profile",
+    "custo_da_taxa": "fee_cost",
+    "hipotese": "assumptions",
+    "capital_inicial": "initial_amount",
+    "retorno_suposto": "assumed_return",
+    "prazos": "horizons",
+    "anos": "years",
+    "carteira": "holdings",
+    "posicoes": "positions",
+    "cortada": "truncated",
 }
 
 
