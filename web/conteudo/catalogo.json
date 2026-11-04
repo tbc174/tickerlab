@@ -1269,14 +1269,16 @@
       "coletas": [
         "transferegov-especiais",
         "transferegov-ted",
-        "transferegov-fundo-a-fundo"
+        "transferegov-fundo-a-fundo",
+        "transferegov-especiais-pagamentos"
       ],
       "familia": "transferegov",
       "licencas": [
-        "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)"
+        "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+        "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)"
       ],
       "link": "https://www.gov.br/transferegov/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "Transferegov (Ministério da Gestão)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
@@ -1284,6 +1286,9 @@
     },
     {
       "coletas": [
+        "pncp-contratos-atualizados",
+        "pncp-atas-atualizadas",
+        "pncp-contratacoes-atualizadas",
         "pncp-contratos"
       ],
       "familia": "pncp",
@@ -4779,6 +4784,34 @@
       "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
       "marca": "vendavel",
       "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "transferegov-especiais-pagamentos",
+      "licenca": "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratos-atualizados",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-atas-atualizadas",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratacoes-atualizadas",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "a_confirmar",
+      "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
