@@ -10,6 +10,7 @@ from pypdf import PdfReader
 from src import apresentacao
 from src import relatorio_semanal as semanal
 from src import relatorio_semanal_arquivos as arquivos
+from src.enderecos_das_fontes import enderecos_da_fonte
 
 
 def _retrato() -> dict:
@@ -148,3 +149,24 @@ def test_o_pptx_nao_muda_com_o_relogio():
     primeiro = arquivos.apresentacao_em_pptx_do_relatorio(pagina, momento)
     time.sleep(2)
     assert primeiro == arquivos.apresentacao_em_pptx_do_relatorio(pagina, momento)
+
+
+def test_o_rodape_cita_as_fontes_do_setor_e_nao_o_yahoo():
+    """Linha 602: o rodapé padrão do site dizia "Os dados vêm do Yahoo Finance" no relatório do setor,
+    cujos dados são da ANEEL e da CVM. O rodapé sai das fontes dos próprios destaques."""
+    pagina = semanal.para_o_site()
+    rodape = pagina["aviso_rodape"]
+    fontes = " ".join(d["fonte"] for d in pagina["destaques"])
+    assert "Yahoo" not in fontes
+    assert "Yahoo" not in rodape
+    assert "Nada aqui é recomendação de investimento" in rodape
+    for orgao, endereco in enderecos_da_fonte(fontes):
+        assert orgao in rodape and endereco in rodape
+    assert "ANEEL" in rodape and "dados.cvm.gov.br" in rodape
+
+
+def test_o_rodape_cita_o_yahoo_so_se_uma_fonte_usa_dado_dele(monkeypatch):
+    monkeypatch.setattr(
+        semanal, "FONTES_DOS_DADOS", ("Yahoo Finance, preços de fechamento",)
+    )
+    assert "Yahoo Finance" in semanal.para_o_site()["aviso_rodape"]

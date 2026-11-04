@@ -50,6 +50,8 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da ANM\b", "ANM"),
     (r"da Ancine\b", "Ancine"),
     (r"do MME\b", "MME"),
+    (r"do BNDES\b", "BNDES"),
+    (r"da Finep\b", "Finep"),
     (r"da SUSEP\b", "SUSEP"),
     (r"Receita", "Receita Federal"),
     (r"da PGFN\b", "PGFN"),

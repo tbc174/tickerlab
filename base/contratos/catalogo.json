@@ -8438,6 +8438,396 @@
       "frequencia": "Parada desde dez/2022 (o arquivista confere todo mês)",
       "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
     },
+    "financiamentos_bndes": {
+      "tabela": "financiamentos_bndes",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Identidade estável da operação (nunca o número da linha). BNDES: `bndes|contrato|resumo|n`, com um hash curto dos campos que não mudam (CNPJ, data, produto, instrumento, fonte de recurso, custo, juros, prazos, subsetor, forma e repassador) e a ordem pelo valor contratado dentro do grupo (um contrato tem vários subcréditos, alguns iguais em tudo). Finep direta: `finep|direto|contrato|n`; descentralizada: `finep|descentralizado|convênio|CNPJ|data|n`. Limite: um subcrédito novo de valor menor no mesmo grupo empurra a ordem dos outros",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "`bndes` ou `finep`: nunca somar as duas",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "`bndes_nao_automatica` (operações não automáticas do BNDES), `finep_credito_direto` ou `finep_credito_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ de quem tomou o crédito, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF de quem tomou, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "contrato": {
+          "descricao": "Número do contrato (BNDES e Finep direta; vazio na descentralizada)",
+          "unidade": "texto"
+        },
+        "convenio_do_agente": {
+          "descricao": "Finep descentralizada: o convênio entre a Finep e o agente financeiro (\"Contrato Finep Agente\"), não o empréstimo da empresa: muitas empresas cabem nele",
+          "unidade": "texto"
+        },
+        "contratado_em": {
+          "descricao": "Dia da contratação (BNDES) ou da assinatura (Finep)",
+          "unidade": "data (dia)"
+        },
+        "valor_contratado": {
+          "descricao": "Valor contratado (Finep: \"Valor Finep\" ou \"Valor Financiado\"); vazio fica vazio",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_desembolsado": {
+          "descricao": "Valor desembolsado até a data do arquivo (Finep: \"Valor Pago\" ou \"Valor Liberado\"). É desembolso, não pagamento da dívida; vazio fica vazio, nunca zero",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "contrapartida": {
+          "descricao": "Contrapartida da empresa (só a Finep informa)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "outros_recursos": {
+          "descricao": "Outros recursos (só a Finep descentralizada)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "financiador": {
+          "descricao": "Quem emprestou: `BNDES` na DIRETA, a instituição credenciada na INDIRETA, `FINEP` no crédito direto, o agente financeiro no descentralizado",
+          "unidade": "texto"
+        },
+        "agente_papel": {
+          "descricao": "`financiador_direto`, `instituicao_credenciada` ou `agente_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj_do_financiador": {
+          "descricao": "CNPJ de quem emprestou, quando a fonte o dá inteiro e de dígito certo (vazio no agente da Finep descentralizada)",
+          "unidade": "texto"
+        },
+        "forma_de_apoio": {
+          "descricao": "BNDES: `DIRETA` (sem repassador, é normal) ou `INDIRETA`",
+          "unidade": "texto"
+        },
+        "cnpj_do_executor": {
+          "descricao": "Finep direta: CNPJ do executor do projeto (não é quem tomou o crédito)",
+          "unidade": "texto"
+        },
+        "uf_do_projeto": {
+          "descricao": "Finep direta: UF do projeto",
+          "unidade": "texto"
+        },
+        "produto": {
+          "descricao": "BNDES: produto (`BNDES FINEM`...)",
+          "unidade": "texto"
+        },
+        "instrumento": {
+          "descricao": "BNDES: instrumento financeiro",
+          "unidade": "texto"
+        },
+        "fonte_de_recurso": {
+          "descricao": "BNDES: fonte de recurso dos desembolsos",
+          "unidade": "texto"
+        },
+        "custo_financeiro": {
+          "descricao": "BNDES: custo financeiro (`TJLP`, `TLP`, `SELIC`, `US$ / CESTA`...)",
+          "unidade": "texto"
+        },
+        "juros": {
+          "descricao": "BNDES: juros (spread) em % ao ano, como a fonte escreve; não é o custo efetivo",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carencia_meses": {
+          "descricao": "BNDES: prazo de carência, em meses",
+          "unidade": "número inteiro"
+        },
+        "amortizacao_meses": {
+          "descricao": "BNDES: prazo de amortização, em meses",
+          "unidade": "número inteiro"
+        },
+        "inovacao": {
+          "descricao": "BNDES: se a operação é de inovação, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "porte": {
+          "descricao": "BNDES: porte do cliente",
+          "unidade": "texto"
+        },
+        "natureza": {
+          "descricao": "BNDES: natureza do cliente (privada ou pública)",
+          "unidade": "texto"
+        },
+        "subsetor_cnae": {
+          "descricao": "BNDES: código do subsetor CNAE",
+          "unidade": "texto"
+        },
+        "tipo_de_garantia": {
+          "descricao": "BNDES: tipo de garantia",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação como a fonte escreve (vazio quando a fonte põe `-`; a descentralizada não tem)",
+          "unidade": "texto"
+        },
+        "situacao_classe": {
+          "descricao": "`liquidado`, `ativo`, `cancelado`, `rescindido`, `pendente`, `encerrado_tecnico` (o ENCERRADO da Finep fecha o projeto, não quita), `nao_informado` ou `nao_classificado` (situação que a tabela não conhece)",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (nenhuma das duas fontes diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "contratado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "contratado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-11-04",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": true,
+      "frequencia": "Mensal (a fonte reescreve o arquivo inteiro)",
+      "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu"
+    },
+    "financiamentos_finep": {
+      "tabela": "financiamentos_finep",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Identidade estável da operação (nunca o número da linha). BNDES: `bndes|contrato|resumo|n`, com um hash curto dos campos que não mudam (CNPJ, data, produto, instrumento, fonte de recurso, custo, juros, prazos, subsetor, forma e repassador) e a ordem pelo valor contratado dentro do grupo (um contrato tem vários subcréditos, alguns iguais em tudo). Finep direta: `finep|direto|contrato|n`; descentralizada: `finep|descentralizado|convênio|CNPJ|data|n`. Limite: um subcrédito novo de valor menor no mesmo grupo empurra a ordem dos outros",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "`bndes` ou `finep`: nunca somar as duas",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "`bndes_nao_automatica` (operações não automáticas do BNDES), `finep_credito_direto` ou `finep_credito_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ de quem tomou o crédito, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF de quem tomou, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "contrato": {
+          "descricao": "Número do contrato (BNDES e Finep direta; vazio na descentralizada)",
+          "unidade": "texto"
+        },
+        "convenio_do_agente": {
+          "descricao": "Finep descentralizada: o convênio entre a Finep e o agente financeiro (\"Contrato Finep Agente\"), não o empréstimo da empresa: muitas empresas cabem nele",
+          "unidade": "texto"
+        },
+        "contratado_em": {
+          "descricao": "Dia da contratação (BNDES) ou da assinatura (Finep)",
+          "unidade": "data (dia)"
+        },
+        "valor_contratado": {
+          "descricao": "Valor contratado (Finep: \"Valor Finep\" ou \"Valor Financiado\"); vazio fica vazio",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_desembolsado": {
+          "descricao": "Valor desembolsado até a data do arquivo (Finep: \"Valor Pago\" ou \"Valor Liberado\"). É desembolso, não pagamento da dívida; vazio fica vazio, nunca zero",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "contrapartida": {
+          "descricao": "Contrapartida da empresa (só a Finep informa)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "outros_recursos": {
+          "descricao": "Outros recursos (só a Finep descentralizada)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "financiador": {
+          "descricao": "Quem emprestou: `BNDES` na DIRETA, a instituição credenciada na INDIRETA, `FINEP` no crédito direto, o agente financeiro no descentralizado",
+          "unidade": "texto"
+        },
+        "agente_papel": {
+          "descricao": "`financiador_direto`, `instituicao_credenciada` ou `agente_descentralizado`",
+          "unidade": "texto"
+        },
+        "cnpj_do_financiador": {
+          "descricao": "CNPJ de quem emprestou, quando a fonte o dá inteiro e de dígito certo (vazio no agente da Finep descentralizada)",
+          "unidade": "texto"
+        },
+        "forma_de_apoio": {
+          "descricao": "BNDES: `DIRETA` (sem repassador, é normal) ou `INDIRETA`",
+          "unidade": "texto"
+        },
+        "cnpj_do_executor": {
+          "descricao": "Finep direta: CNPJ do executor do projeto (não é quem tomou o crédito)",
+          "unidade": "texto"
+        },
+        "uf_do_projeto": {
+          "descricao": "Finep direta: UF do projeto",
+          "unidade": "texto"
+        },
+        "produto": {
+          "descricao": "BNDES: produto (`BNDES FINEM`...)",
+          "unidade": "texto"
+        },
+        "instrumento": {
+          "descricao": "BNDES: instrumento financeiro",
+          "unidade": "texto"
+        },
+        "fonte_de_recurso": {
+          "descricao": "BNDES: fonte de recurso dos desembolsos",
+          "unidade": "texto"
+        },
+        "custo_financeiro": {
+          "descricao": "BNDES: custo financeiro (`TJLP`, `TLP`, `SELIC`, `US$ / CESTA`...)",
+          "unidade": "texto"
+        },
+        "juros": {
+          "descricao": "BNDES: juros (spread) em % ao ano, como a fonte escreve; não é o custo efetivo",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carencia_meses": {
+          "descricao": "BNDES: prazo de carência, em meses",
+          "unidade": "número inteiro"
+        },
+        "amortizacao_meses": {
+          "descricao": "BNDES: prazo de amortização, em meses",
+          "unidade": "número inteiro"
+        },
+        "inovacao": {
+          "descricao": "BNDES: se a operação é de inovação, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "porte": {
+          "descricao": "BNDES: porte do cliente",
+          "unidade": "texto"
+        },
+        "natureza": {
+          "descricao": "BNDES: natureza do cliente (privada ou pública)",
+          "unidade": "texto"
+        },
+        "subsetor_cnae": {
+          "descricao": "BNDES: código do subsetor CNAE",
+          "unidade": "texto"
+        },
+        "tipo_de_garantia": {
+          "descricao": "BNDES: tipo de garantia",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação como a fonte escreve (vazio quando a fonte põe `-`; a descentralizada não tem)",
+          "unidade": "texto"
+        },
+        "situacao_classe": {
+          "descricao": "`liquidado`, `ativo`, `cancelado`, `rescindido`, `pendente`, `encerrado_tecnico` (o ENCERRADO da Finep fecha o projeto, não quita), `nao_informado` ou `nao_classificado` (situação que a tabela não conhece)",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (nenhuma das duas fontes diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "contratado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "contratado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-11-04",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": true,
+      "frequencia": "Mensal (a fonte reescreve o arquivo inteiro)",
+      "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu"
+    },
     "debentures_assembleias": {
       "tabela": "debentures_assembleias",
       "modulo": "credito_e_fidc",
