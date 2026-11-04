@@ -89,12 +89,12 @@ def _cabecalho_e_linhas(linhas: list[dict]) -> tuple[list[str], list[list[str]]]
         chave = colunas[0]
         cabecalho = [rotulo_da_coluna(chave)] + [str(linha[chave]) for linha in linhas]
         corpo = [
-            [rotulo_da_coluna(c)] + [escrever_celula(linha.get(c)) for linha in linhas]
+            [rotulo_da_coluna(c)] + [escrever_celula(linha.get(c), c) for linha in linhas]
             for c in colunas[1:]
         ]
     else:
         cabecalho = [rotulo_da_coluna(c) for c in colunas]
-        corpo = [[escrever_celula(linha.get(c)) for c in colunas] for linha in linhas]
+        corpo = [[escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas]
     if len(cabecalho) > MAX_COLUNAS:
         cabecalho = [cabecalho[0], *cabecalho[-(MAX_COLUNAS - 1) :]]
         corpo = [[linha[0], *linha[-(MAX_COLUNAS - 1) :]] for linha in corpo]
@@ -108,7 +108,7 @@ def _anexo_de_anos(
     ficam largos, os anos dividem o resto em corpo menor."""
     colunas = list(linhas[0])
     cabecalho = [rotulo_da_coluna(c) for c in colunas]
-    corpo = [[escrever_celula(linha.get(c)) for c in colunas] for linha in linhas]
+    corpo = [[escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas]
     nome, unidade = LARGURA_DO_NOME_NO_ANEXO, LARGURA_DA_UNIDADE_NO_ANEXO
     ano = (largura - nome - unidade) / max(len(colunas) - 2, 1)
     return cabecalho, corpo, [nome, unidade, *[ano] * (len(colunas) - 2)]
