@@ -190,6 +190,27 @@ def test_ler_cotahist_anual_so_pega_o_mercado_a_vista_e_converte_centavos(tmp_pa
     assert longo.loc[1, "especificacao"] == "PN N2"
 
 
+def test_ler_cotahist_anual_divide_pelo_fator_de_cotacao(tmp_path):
+    """Papel cotado por lote de mil (FATCOT 1000) vira preço por ação; o volume já vem em reais."""
+    linha = list(
+        _registro_cotahist(
+            "20200102", "CCC3", "010", "ON", 250_000, 260_000, 500_000, "BRCCCCACNOR0"
+        )
+    )
+    inicio, fim = dados_f_b3.CAMPOS["fator_de_cotacao"]
+    linha[inicio:fim] = list("0001000")
+    sem_fator = _registro_cotahist(
+        "20200102", "DDD3", "010", "ON", 1000, 1050, 100, "BRDDDDACNOR0"
+    )
+    longo = dados_f_b3.ler_cotahist_anual(
+        _zip_cotahist(tmp_path, ["".join(linha), sem_fator])
+    )
+    assert longo.loc[0, "abertura"] == 2.5
+    assert longo.loc[0, "fechamento"] == 2.6
+    assert longo.loc[0, "volume"] == 5_000.0
+    assert longo.loc[1, "fechamento"] == 10.5  # campo vazio vale 1
+
+
 def test_paineis_e_cadastro_pelo_isin(tmp_path):
     linhas = [
         _registro_cotahist(
