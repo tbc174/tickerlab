@@ -1,6 +1,7 @@
 // A página inicial para quem analisa empresas (plano do site para quem analisa, PR 5, tarefa 9):
 // a assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
-// Raio-X aberta, as cinco vagas da vitrine, os cruzamentos da base (PR 6), as quatro regras, as fontes com licença e os planos.
+// Raio-X aberta, as cinco vagas da vitrine, o que a base liga pelo CNPJ, os cruzamentos da base (PR 6), as quatro regras, as
+// fontes com licença e os planos.
 import { describe, expect, it } from "vitest";
 import { baseEmNumeros, catalogo, fatosDaBase, vitrine } from "../../src/conteudo";
 import { renderizar } from "../../src/entry-server";
@@ -56,21 +57,22 @@ describe("página inicial para quem analisa", () => {
     expect(html).toContain(`<meta name="description" content="${esc(DADOS.descricao)}"`);
   });
 
-  it("o que a base tem: tabelas, fontes e companhias vindos do catálogo e da medição", () => {
+  it("o que a base tem: tabelas, ligadas pelo CNPJ, fontes e companhias vindos do catálogo e da medição", () => {
     const painel = trecho('<article class="v2-painel v2-painel-base"', "</article>");
     const texto = semTags(painel);
     expect(texto).toContain("O que a base tem");
     for (const numero of [
       catalogo.totais.tabelas,
+      catalogo.ligado_pelo_cnpj.tabelas,
       catalogo.totais.fontes,
       baseEmNumeros.numeros.empresas,
     ])
       expect(painel).toContain(`<dd class="v2-numero">${milhares(numero)}</dd>`);
-    for (const rotulo of ["tabelas", "fontes públicas", "companhias abertas"])
+    for (const rotulo of ["tabelas", "ligadas pelo CNPJ", "fontes públicas", "companhias abertas"])
       expect(texto).toContain(rotulo);
     expect(texto).toContain(`Medido em ${baseEmNumeros.medido_em_curto}`);
     // cada número com a conta recolhida, que abre sem JavaScript
-    expect(painel.match(/<details class="como-foi-calculado">/g)).toHaveLength(3);
+    expect(painel.match(/<details class="como-foi-calculado">/g)).toHaveLength(4);
     expect(painel).not.toMatch(/<details[^>]*\sopen/);
   });
 
@@ -104,6 +106,27 @@ describe("página inicial para quem analisa", () => {
         expect(cartao, vaga.chave).not.toContain("href=");
       }
     });
+  });
+
+  it("ligado pelo CNPJ: o total e um cartão por tema, com os órgãos e a contagem do catálogo", () => {
+    const secao = trecho('<section class="faixa secao v2-ligado-pelo-cnpj" id="ligado-pelo-cnpj"', "</section>");
+    const { tabelas, orgaos, temas } = catalogo.ligado_pelo_cnpj;
+    expect(semTags(secao)).toContain(`${tabelas} das ${catalogo.totais.tabelas} tabelas se ligam pelo CNPJ`);
+    expect(semTags(secao)).toContain(`o que ${orgaos} órgãos públicos publicam`);
+    const cartoes = secao.split('<article class="cartao v2-tema-cnpj"').slice(1);
+    expect(cartoes).toHaveLength(temas.length);
+    temas.forEach((tema, i) => {
+      const texto = semTags(cartoes[i]);
+      expect(texto, tema.chave).toContain(esc(tema.titulo));
+      expect(texto, tema.chave).toContain(esc(tema.texto));
+      for (const orgao of tema.orgaos) expect(cartoes[i], tema.chave).toContain(`<li>${esc(orgao)}</li>`);
+      expect(texto, tema.chave).toContain(`${tema.tabelas} tabelas`);
+    });
+    expect(semTags(secao)).toContain("nome de pessoa física não aparece");
+    expect(secao).toContain('href="/dados.html#');
+    // fica entre a vitrine e os cruzamentos
+    expect(html.indexOf("v2-vitrine")).toBeLessThan(html.indexOf("v2-ligado-pelo-cnpj"));
+    expect(html.indexOf("v2-ligado-pelo-cnpj")).toBeLessThan(html.indexOf("v2-cruzamentos"));
   });
 
   it("os cruzamentos: cada fato com o número, a fonte e a conta recolhida, sem nome de empresa", () => {
