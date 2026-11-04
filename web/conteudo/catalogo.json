@@ -133,7 +133,7 @@
       "marca": "vendavel",
       "orgao": "Receita Federal (CNPJ)",
       "ritmo": null,
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-10-21",
       "uso": "em_uso"
     },
     {
@@ -2860,7 +2860,7 @@
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "pgfn-divida",
