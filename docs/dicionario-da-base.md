@@ -3357,6 +3357,208 @@ Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `tce_pe_contratos`
+
+Contratos do TCE-PE (estaduais e municipais) por contratado. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
+
+- **Fonte:** TCE-PE, API Dados Abertos (`Contratos`)
+- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Anual (um pedido por ano; refazer o ano corrente a cada trimestre)
+- **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `codigo_contrato`, `cnpj`
+- **Três datas:** aconteceu_em = `vigencia_inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/tce_pe_contratos/<ano>.parquet` (`scripts/carga_tces.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo_contrato` | Código do contrato no TCE-PE | texto |
+| `numero_contrato` | Número do contrato, como a fonte escreve | texto |
+| `ano_contrato` | Ano do contrato | texto |
+| `codigo_ug` | Código da unidade gestora | texto |
+| `codigo_efisco_ug` | Código e-Fisco da unidade gestora | texto |
+| `municipio` | Município da unidade gestora, como a fonte escreve | texto |
+| `situacao` | Situação, como a fonte escreve | texto |
+| `estagio` | Estágio, como a fonte escreve | texto |
+| `link` | Endereço do documento na fonte | texto |
+| `vigencia_inicio` | Início da vigência (a fonte traz o período numa frase) | data (dia) |
+| `vigencia_fim` | Fim da vigência | data (dia) |
+| `esfera` | Esfera (estadual ou municipal), como a fonte escreve | texto |
+| `tipo_processo` | Tipo do processo de contratação, como a fonte escreve | texto |
+| `numero_processo` | Número do processo de contratação | texto |
+| `valor` | Valor do contrato, em reais | número com decimais, na unidade da fonte |
+| `tribunal` | Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs` | texto |
+| `tabela` | Assunto da linha dentro do tribunal (contratos, aditivos, despesas) | texto |
+| `cnpj` | CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados | texto |
+| `disponivel_em` | Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `tce_pe_aditivos`
+
+Termos aditivos dos contratos do TCE-PE por contratado. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
+
+- **Fonte:** TCE-PE, API Dados Abertos (`TermoAditivo`)
+- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Anual (um pedido por ano; refazer o ano corrente a cada trimestre)
+- **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `codigo_contrato`, `numero_aditivo`, `ano_aditivo`, `cnpj`
+- **Três datas:** aconteceu_em = `vigencia_inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/tce_pe_aditivos/<ano>.parquet` (`scripts/carga_tces.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo_contrato` | Código do contrato no TCE-PE | texto |
+| `numero_contrato` | Número do contrato, como a fonte escreve | texto |
+| `ano_contrato` | Ano do contrato | texto |
+| `codigo_ug` | Código da unidade gestora | texto |
+| `codigo_efisco_ug` | Código e-Fisco da unidade gestora | texto |
+| `municipio` | Município da unidade gestora, como a fonte escreve | texto |
+| `situacao` | Situação, como a fonte escreve | texto |
+| `estagio` | Estágio, como a fonte escreve | texto |
+| `link` | Endereço do documento na fonte | texto |
+| `vigencia_inicio` | Início da vigência (a fonte traz o período numa frase) | data (dia) |
+| `vigencia_fim` | Fim da vigência | data (dia) |
+| `numero_aditivo` | Número do termo aditivo | texto |
+| `ano_aditivo` | Ano do termo aditivo | texto |
+| `tribunal` | Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs` | texto |
+| `tabela` | Assunto da linha dentro do tribunal (contratos, aditivos, despesas) | texto |
+| `cnpj` | CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados | texto |
+| `disponivel_em` | Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `tce_sp_despesas`
+
+Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
+
+- **Fonte:** TCE-SP, Portal da Transparência Municipal
+- **Licença:** TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal por município (645 x 12 pedidos por ano, com pausa)
+- **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `municipio`, `mes`, `evento`, `numero_empenho`, `cnpj`, `data_emissao`, `valor`
+- **Três datas:** aconteceu_em = `data_emissao`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/tce_sp_despesas/<ano>.parquet` (`scripts/carga_tces.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `municipio` | Município da consulta, como no endereço da fonte (sem acento, com hífen) | texto |
+| `ano` | Ano da consulta | texto |
+| `mes` | Mês por extenso, como a fonte escreve | texto |
+| `evento` | Evento da despesa (empenhado, liquidado, pago): cada um é uma linha e eles não se somam | texto |
+| `numero_empenho` | Número do empenho, como a fonte escreve | texto |
+| `data_emissao` | Dia da emissão da despesa | data (dia) |
+| `valor` | Valor do evento, em reais | número com decimais, na unidade da fonte |
+| `tribunal` | Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs` | texto |
+| `tabela` | Assunto da linha dentro do tribunal (contratos, aditivos, despesas) | texto |
+| `cnpj` | CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados | texto |
+| `disponivel_em` | Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `tce_ce_contratos`
+
+Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
+
+- **Fonte:** TCE-CE, SIM (arquivos postos à mão; sem coleta automática ainda)
+- **Licença:** TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Sem rotina: carga manual de arquivos baixados
+- **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `codigo_municipio`, `numero_contrato`, `data_contrato`, `cnpj`
+- **Três datas:** aconteceu_em = `data_contrato`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/tce_ce_contratos/<ano>.parquet` (`scripts/carga_tces.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo_municipio` | Código do município no SIM do TCE-CE | texto |
+| `numero_contrato` | Número do contrato, como a fonte escreve | texto |
+| `data_contrato` | Dia do contrato | data (dia) |
+| `data_referencia` | Data de referência do documento do contratado | texto |
+| `codigo_tipo_negociante` | Tipo do negociante, como a fonte codifica | texto |
+| `tipo_contrato` | Tipo do contrato, como a fonte escreve | texto |
+| `modalidade` | Modalidade, como a fonte escreve | texto |
+| `numero_processo` | Número do processo administrativo | texto |
+| `vigencia_inicio` | Início da vigência | data (dia) |
+| `vigencia_fim` | Fim da vigência | data (dia) |
+| `valor` | Valor total do contrato, em reais | número com decimais, na unidade da fonte |
+| `id_pncp` | Id do contrato no PNCP, para casar com a carga do PNCP; vazio quando não há | texto |
+| `com_contrato` | `True` quando o contratado achou o contrato pela chave (município, número, data) | texto |
+| `tribunal` | Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs` | texto |
+| `tabela` | Assunto da linha dentro do tribunal (contratos, aditivos, despesas) | texto |
+| `cnpj` | CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados | texto |
+| `disponivel_em` | Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `tce_rs_contratos`
+
+Contratos do LicitaCon do TCE-RS por contratado (só `contrato.csv`; `pessoas.csv` nunca é aberto). Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
+
+- **Fonte:** TCE-RS, dados abertos (LicitaCon, um ZIP por órgão)
+- **Licença:** LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (índice do CKAN e um ZIP por órgão, com retomada)
+- **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `codigo_orgao`, `numero_licitacao`, `ano_licitacao`, `numero_contrato`, `ano_contrato`, `cnpj`
+- **Três datas:** aconteceu_em = `data_assinatura`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/tce_rs_contratos/<ano>.parquet` (`scripts/carga_tces.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo_orgao` | Código do órgão no LicitaCon | texto |
+| `numero_licitacao` | Número da licitação | texto |
+| `ano_licitacao` | Ano da licitação | texto |
+| `codigo_modalidade` | Código da modalidade da licitação | texto |
+| `numero_contrato` | Número do contrato | texto |
+| `ano_contrato` | Ano do contrato | texto |
+| `tipo_instrumento` | Tipo do instrumento, como a fonte codifica | texto |
+| `numero_processo` | Número do processo | texto |
+| `ano_processo` | Ano do processo | texto |
+| `link` | Endereço da licitação no LicitaCon Cidadão | texto |
+| `vigencia_inicio` | Início da vigência | data (dia) |
+| `vigencia_fim` | Fim da vigência | data (dia) |
+| `data_assinatura` | Dia da assinatura | data (dia) |
+| `valor` | Valor do contrato, em reais | número com decimais, na unidade da fonte |
+| `tribunal` | Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs` | texto |
+| `tabela` | Assunto da linha dentro do tribunal (contratos, aditivos, despesas) | texto |
+| `cnpj` | CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados | texto |
+| `disponivel_em` | Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `debentures_assembleias`
 
 Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora (`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): `estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF
