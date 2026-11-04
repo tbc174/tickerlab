@@ -89,12 +89,15 @@ def _cabecalho_e_linhas(linhas: list[dict]) -> tuple[list[str], list[list[str]]]
         chave = colunas[0]
         cabecalho = [rotulo_da_coluna(chave)] + [str(linha[chave]) for linha in linhas]
         corpo = [
-            [rotulo_da_coluna(c)] + [escrever_celula(linha.get(c), c) for linha in linhas]
+            [rotulo_da_coluna(c)]
+            + [escrever_celula(linha.get(c), c) for linha in linhas]
             for c in colunas[1:]
         ]
     else:
         cabecalho = [rotulo_da_coluna(c) for c in colunas]
-        corpo = [[escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas]
+        corpo = [
+            [escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas
+        ]
     if len(cabecalho) > MAX_COLUNAS:
         cabecalho = [cabecalho[0], *cabecalho[-(MAX_COLUNAS - 1) :]]
         corpo = [[linha[0], *linha[-(MAX_COLUNAS - 1) :]] for linha in corpo]
