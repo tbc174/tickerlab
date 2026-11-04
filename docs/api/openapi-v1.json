@@ -2546,6 +2546,11 @@
           "por_que": {
             "$ref": "#/components/schemas/FraseDaAnaliseV1"
           },
+          "secao": {
+            "default": "",
+            "title": "Secao",
+            "type": "string"
+          },
           "tipo": {
             "title": "Tipo",
             "type": "string"
@@ -5380,6 +5385,14 @@
               "$ref": "#/components/schemas/FraseDoSetorV1"
             },
             "title": "Frases",
+            "type": "array"
+          },
+          "graficos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraficoDaAnaliseV1"
+            },
+            "title": "Graficos",
             "type": "array"
           },
           "limites": {
