@@ -3413,6 +3413,40 @@ Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma lin
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `processos_nas_notas`
+
+Processos judiciais que a própria companhia cita nas notas explicativas da DFP: uma linha por número de processo e página de cada versão, achado no texto de `notas_dfp` e conferido pelo dígito verificador (número com o dígito errado fica de fora). Sem a Justiça do Trabalho, como no resto da base de processos (Resolução CNJ 121/2010). Sem o texto da página: ele fica em `notas_dfp`, em área restrita
+
+- **Fonte:** CVM: ENET, PDF do pacote da DFP, pela tabela `notas_dfp` (`base/processos.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem de `notas_dfp`: relê as notas quando elas mudam
+- **Atraso de divulgação:** O da DFP: cada versão vale a partir da própria entrega à CVM
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `pagina`, `numero_processo`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_nas_notas/dfp.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha leva o `origem_sha256` e o `origem_coletada_em` da página de `notas_dfp` de onde saiu; o manifesto guarda os arquivos de `notas_dfp` lidos. Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número do processo no formato do CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `ano_do_processo` | Ano de ajuizamento, como o número diz | ano |
+| `justica` | Ramo da Justiça, pelo número (Estadual, Federal, Eleitoral...) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data a que a DFP se refere (fim do exercício) | data (dia) |
+| `versao` | Versão da DFP (cada reapresentação é um documento) | número inteiro |
+| `pagina` | Página do PDF em que o número aparece, a partir de 1 | número inteiro |
+| `link` | Endereço do pacote no ENET de onde o texto saiu | texto |
+| `disponivel_em` | Data em que a versão da DFP ficou pública: desde quando se sabe que a companhia cita o processo | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `fca_geral`
 
 Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, como a companhia informou naquele formulário. É o cadastro "como era na data" do modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje

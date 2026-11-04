@@ -5060,6 +5060,50 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_DA_LINHA,
         },
     ),
+    "processos_nas_notas": Tabela(
+        descricao=(
+            "Processos judiciais que a própria companhia cita nas notas explicativas da DFP: uma "
+            "linha por número de processo e página de cada versão, achado no texto de `notas_dfp` "
+            "e conferido pelo dígito verificador (número com o dígito errado fica de fora). Sem a "
+            "Justiça do Trabalho, como no resto da base de processos (Resolução CNJ 121/2010). "
+            "Sem o texto da página: ele fica em `notas_dfp`, em área restrita"
+        ),
+        fonte="CVM: ENET, PDF do pacote da DFP, pela tabela `notas_dfp` (`base/processos.py`)",
+        familia_da_fonte="cvm",
+        frequencia="A cada montagem de `notas_dfp`: relê as notas quando elas mudam",
+        atraso="O da DFP: cada versão vale a partir da própria entrega à CVM",
+        onde=(
+            "Parquet em `<acervo>/base/processos_nas_notas/dfp.parquet` (servidor de casa, "
+            "`scripts/carga_processos.py`)"
+        ),
+        linhagem=(
+            "Cada linha leva o `origem_sha256` e o `origem_coletada_em` da página de `notas_dfp` "
+            "de onde saiu; o manifesto guarda os arquivos de `notas_dfp` lidos. "
+            + LINHAGEM_DA_HISTORICA_SEM_ANO
+        ),
+        colunas={
+            "numero_processo": (
+                "Número do processo no formato do CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+                TEXTO,
+            ),
+            "ano_do_processo": ("Ano de ajuizamento, como o número diz", "ano"),
+            "justica": (
+                "Ramo da Justiça, pelo número (Estadual, Federal, Eleitoral...)",
+                TEXTO,
+            ),
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "referencia": ("Data a que a DFP se refere (fim do exercício)", DATA),
+            "versao": ("Versão da DFP (cada reapresentação é um documento)", NUMERO),
+            "pagina": ("Página do PDF em que o número aparece, a partir de 1", NUMERO),
+            "link": ("Endereço do pacote no ENET de onde o texto saiu", TEXTO),
+            "disponivel_em": (
+                "Data em que a versão da DFP ficou pública: desde quando se sabe que a companhia cita o processo",
+                DATA,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "fca_geral": Tabela(
         descricao=(
             "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A "
@@ -6854,6 +6898,7 @@ _CONTRATO = {
     "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.1.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo)
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
+    "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "processos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo",), datas={"aconteceu_em": "primeira_comunicacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -6955,6 +7000,10 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "processos_partes": {
         "pasta": "processos_partes",
         "nao_nulas": ("id_na_fonte", "numero_processo", "polo", "tipo_parte", "disponivel_em", "visto_em"),
+    },
+    "processos_nas_notas": {
+        "pasta": "processos_nas_notas",
+        "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "cnpj", "referencia", "versao", "pagina", "disponivel_em"),
     },
     "processos": {
         "pasta": "processos",

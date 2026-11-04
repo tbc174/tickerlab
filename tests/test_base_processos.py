@@ -279,6 +279,19 @@ def test_comando_monta_e_sem_nada_guardado_sai_com_1(banco, tmp_path, monkeypatc
     assert partes["cnpj"].tolist() == [CNPJ_A]
 
 
+def test_comando_monta_as_citacoes_da_dfp_mesmo_sem_djen(banco, tmp_path, monkeypatch):
+    """As notas da DFP não dependem do DJEN: a carga monta `processos_nas_notas` de todo jeito."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    pastas = []
+    monkeypatch.setattr(
+        processos, "montar_citacoes", lambda pasta, _agora: pastas.append(pasta) or {}
+    )
+    from scripts import carga_processos
+
+    assert carga_processos.main(["--pasta", str(tmp_path / "b")]) == 1
+    assert pastas == [tmp_path / "b"]
+
+
 # --- o segundo passo (pelo número) e a tabela `processos` (PR 1b) ----------------------------------
 
 
