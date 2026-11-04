@@ -41,6 +41,7 @@ _SEM_VIGIA = {
             "anm-amb",  # linha 657: sem licença declarada no portal, a confirmar
             "anm-cfem",
             "anm-sigbm",
+            "estban",  # linha 659: termos gerais do BC lidos em 04/11/2026, sem página própria do ESTBAN
             "ancine",
             # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
             "mme",

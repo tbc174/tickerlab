@@ -46,6 +46,7 @@ FAMILIA_DO_ENDERECO = {
     "www.sec.gov/": "sec",
     "data.sec.gov/": "sec",
     "api.bcb.gov.br/dados/serie/bcdata.sgs.189/": "bcb-sgs-189",  # IGP-M da FGV
+    "www.bcb.gov.br/content/estatisticas/estatistica_bancaria_estban/": "estban",  # ESTBAN (linha 659)
     "api.bcb.gov.br/": "bcb",
     "olinda.bcb.gov.br/": "bcb",
     "dadosabertos.bcb.gov.br/": "bcb",

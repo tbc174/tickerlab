@@ -40,7 +40,7 @@ from datetime import date
 
 import pandas as pd
 
-FONTE = "bcb-estban-agencia"
+FONTE = "estban-agencia"
 ATRIBUICAO = (
     "Fonte: Banco Central do Brasil, Estatística Bancária Mensal por município (ESTBAN), "
     "https://www.bcb.gov.br/estatisticas/estatisticabancariamunicipios"
