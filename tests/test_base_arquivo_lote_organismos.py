@@ -187,7 +187,7 @@ def test_banco_mundial_com_resposta_de_erro_e_falha_nao_nada_novo():
 def test_banco_mundial_pede_o_mundo_todo_so_para_os_indicadores_de_comparacao():
     ids = {f.id for f in _fontes_do_lote() if f.id.startswith("worldbank-")}
     assert "worldbank-brasil" in ids
-    assert len(ids) == 1 + len(lote.INDICADORES_DO_MUNDO)
+    assert len(ids) == 2 + len(lote.INDICADORES_DO_MUNDO)  # Brasil, QEDS e o mundo
 
 
 def test_gleif_novas_listas_andam_ate_a_ultima_pagina():
