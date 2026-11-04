@@ -14,11 +14,13 @@ página com o motivo (`de_fora`).
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from src import dossie, relatorio_setor
 from src.amostra_do_relatorio import conferir
+from src.relatorio_empresa_pdf import FUSO
 
 PASTA = Path(__file__).resolve().parent.parent / "conteudo" / "relatorios_semanais"
 CHAVE_DO_SETOR = "eletricas"
@@ -29,6 +31,14 @@ FONTE_DOS_CONSUMIDORES = (
 FONTE_DO_AUDITOR = (
     "ODbL (dados abertos da CVM; citar a fonte): Formulário de Referência"
 )
+HORA_DO_ARQUIVO = (
+    18  # os arquivos levam a data do retrato (não mudam a cada geração), como a amostra
+)
+CAMINHOS_DOS_ARQUIVOS = {
+    "pdf": f"/relatorio/setor-{CHAVE_DO_SETOR}.pdf",
+    "apresentacao_pdf": f"/relatorio/setor-{CHAVE_DO_SETOR}-apresentacao.pdf",
+    "apresentacao_pptx": f"/relatorio/setor-{CHAVE_DO_SETOR}-apresentacao.pptx",
+}
 QUATRO_MAIORES = 4
 CASAS_DA_PARTICIPACAO = 1
 AUDITORES = (  # trecho do nome em minúsculas → nome curto
@@ -115,6 +125,13 @@ def ler_retrato(caminho: Path | None = None) -> dict[str, Any]:
     """O retrato guardado (a semana 1, por padrão)."""
     caminho = caminho or PASTA / f"{CHAVE_DO_SETOR}.json"
     return json.loads(caminho.read_text(encoding="utf-8"))
+
+
+def gerado_em_do_retrato(retrato: dict[str, Any] | None = None) -> datetime:
+    """O instante que os arquivos do relatório carregam: o dia do retrato, no fuso de Brasília."""
+    retrato = retrato or ler_retrato()
+    dia = datetime.fromisoformat(retrato["dados_de"][:10])
+    return dia.replace(hour=HORA_DO_ARQUIVO, tzinfo=FUSO)
 
 
 # --- os números do cruzamento ----------------------------------------------------------------------
@@ -333,6 +350,7 @@ def para_o_site(retrato: dict[str, Any] | None = None) -> dict[str, Any]:
         "titulo": "Elétricas: quem atende os consumidores do país e quem audita",
         "dados_de": _data_escrita(retrato["dados_de"]),
         "aviso": RODAPE,
+        "arquivos": CAMINHOS_DOS_ARQUIVOS,
         "destaques": _destaques(retrato, grupos),
         "tabelas": [
             _tabela_dos_consumidores(retrato, grupos),
