@@ -17,8 +17,9 @@ nunca o mais cedo). As competências mais antigas só são baixadas se ainda nã
 do arquivo), nada se regrava e o `disponivel_em` continua o da primeira vez; se os números mudaram, é versão
 nova e a data nova vale.
 
-`PRIMEIRA_COMPETENCIA` (200301) é uma suposição: o primeiro endereço que existir vale, e 404 é "não
-publicada". Ritmo mensal; o app não depende dela. Licença do BCB a confirmar, só uso interno (ADR 0102,
+`PRIMEIRA_COMPETENCIA` (202302) é a mais antiga que o BC servia em 04/11/2026 (200301, 201201, 201912 e 202301
+deram 404; de 202302 em diante, 200). Se o BC mexe nessa janela, 404 é "não publicada" e o que já está gravado
+fica: quem já baixou guarda o que o servidor um dia apagar. Ritmo mensal; o app não depende dela. Licença do BCB a confirmar, só uso interno (ADR 0102,
 Emenda 2); nada é perguntado à fonte. Recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0
 tudo certo; 1 se alguma competência falhou.
 """
@@ -51,7 +52,7 @@ from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.carga_estban")
 TEMPO_LIMITE = 600
-PRIMEIRA_COMPETENCIA = 200301
+PRIMEIRA_COMPETENCIA = 202302
 COMPETENCIAS_REGRAVADAS = 6
 PAUSA_ENTRE_PEDIDOS = 2.0  # segundos
 DESTINO = "estban_agencias"
