@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 import subprocess
 from collections.abc import Callable
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -28,6 +30,14 @@ TENTATIVAS_POR_AJUSTE = 25  # mudar o critério depois de aprovado soma isto
 # baselines, linear, árvores, meta-rotulagem, deep learning e séries temporais clássicas (v0.2)
 FAMILIAS = ("H0", "H1", "H2", "H3", "H4", "H5")
 FASES = ("desenvolvimento", "holdout")
+
+# A pesquisa da carteira própria (P0) fica fora das cópias do repositório: em 03/11/2026 a cópia
+# (worktree) de uma conversa foi apagada logo depois do merge e levou junto o registro de tentativas
+# e os dados baixados. As duas variáveis trocam os lugares; as cópias vão para o OneDrive quando ele
+# existe, para que um disco ou uma pasta apagada não leve a contagem do DSR.
+VARIAVEL_DA_PESQUISA_QUANT = "TICKERLAB_PESQUISA_QUANT"
+VARIAVEL_DAS_COPIAS = "TICKERLAB_COPIAS_DA_PESQUISA"
+MAXIMO_DE_COPIAS = 50  # cada cópia tem uns 100 KB; 50 cobrem semanas de rodadas
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS tentativas (
@@ -97,6 +107,25 @@ def commit_atual() -> str:
     return f"{curto}+alterado" if sujo else curto
 
 
+def pasta_da_pesquisa_quant() -> Path:
+    """Onde ficam o registro, os dados e os relatórios da pesquisa P0 (fora do Git e das cópias)."""
+    escolhida = os.environ.get(VARIAVEL_DA_PESQUISA_QUANT)
+    if escolhida:
+        return Path(escolhida)
+    return Path.home() / "TickerLab-Pesquisa" / "pesquisa_quant"
+
+
+def pasta_das_copias() -> Path:
+    """Onde o registro da pesquisa P0 guarda as cópias: no OneDrive quando existe, senão ao lado."""
+    escolhida = os.environ.get(VARIAVEL_DAS_COPIAS)
+    if escolhida:
+        return Path(escolhida)
+    onedrive = Path.home() / "OneDrive"
+    if onedrive.is_dir():
+        return onedrive / "TickerLab-Pesquisa" / "copias"
+    return pasta_da_pesquisa_quant() / "copias"
+
+
 class OrcamentoEstouradoError(RuntimeError):
     """Mais tentativas do que o orçamento aprovado (não bloqueia: só avisa e penaliza o DSR)."""
 
@@ -111,8 +140,10 @@ class Registro:
         agora_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
         familias: tuple[str, ...] = FAMILIAS,
         orcamento: int = ORCAMENTO_DE_TENTATIVAS,
+        copias: Path | None = None,
     ) -> None:
         self.caminho = Path(caminho)
+        self.copias = Path(copias) if copias is not None else None
         self.familias = familias
         self.orcamento = orcamento
         self._commit_fn = commit_fn
@@ -126,6 +157,19 @@ class Registro:
         c = sqlite3.connect(self.caminho)
         c.row_factory = sqlite3.Row
         return c
+
+    def _guardar_copia(self) -> None:
+        """Copia o banco inteiro para `copias` depois de cada escrita e apaga as mais antigas."""
+        if self.copias is None:
+            return
+        self.copias.mkdir(parents=True, exist_ok=True)
+        carimbo = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
+        destino = self.copias / f"registro_{carimbo}.db"
+        # fechar as duas conexões: no Windows, um arquivo aberto não pode ser apagado depois
+        with closing(self._conectar()) as origem, closing(sqlite3.connect(destino)) as copia:
+            origem.backup(copia)
+        for antiga in sorted(self.copias.glob("registro_*.db"))[:-MAXIMO_DE_COPIAS]:
+            antiga.unlink()
 
     # --- escrever ----------------------------------------------------------------------------
     def registrar(
@@ -155,21 +199,35 @@ class Registro:
                     "UPDATE tentativas SET execucoes = execucoes + 1 WHERE id = ?",
                     (existente["id"],),
                 )
-                return int(existente["id"])
-            cursor = c.execute(
-                "INSERT INTO tentativas (hash, familia, nome, fase, spec_json,"
-                " commit_do_codigo, criada_em) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    hash_,
-                    familia,
-                    nome,
-                    fase,
-                    texto,
-                    self._commit_fn(),
-                    self._agora_fn().isoformat(),
-                ),
-            )
-            return int(cursor.lastrowid)
+                tentativa_id = int(existente["id"])
+            else:
+                tentativa_id = self._inserir(c, hash_, familia, nome, fase, texto)
+        self._guardar_copia()
+        return tentativa_id
+
+    def _inserir(
+        self,
+        c: sqlite3.Connection,
+        hash_: str,
+        familia: str,
+        nome: str,
+        fase: str,
+        texto: str,
+    ) -> int:
+        cursor = c.execute(
+            "INSERT INTO tentativas (hash, familia, nome, fase, spec_json,"
+            " commit_do_codigo, criada_em) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                hash_,
+                familia,
+                nome,
+                fase,
+                texto,
+                self._commit_fn(),
+                self._agora_fn().isoformat(),
+            ),
+        )
+        return int(cursor.lastrowid)
 
     def salvar_resultado(self, tentativa_id: int, resultado: dict) -> None:
         with self._conectar() as c:
@@ -179,6 +237,7 @@ class Registro:
             ).rowcount
         if not alteradas:
             raise KeyError(f"Não existe a tentativa {tentativa_id}.")
+        self._guardar_copia()
 
     def registrar_proveniencia(
         self, tentativa_id: int, autor: str, modelo: str | None = None
@@ -212,6 +271,7 @@ class Registro:
                     self._agora_fn().isoformat(),
                 ),
             )
+        self._guardar_copia()
 
     def registrar_ajuste_do_criterio(self, versao: str, motivo: str) -> None:
         """Mudar o critério depois de aprovado é permitido, mas custa tentativas (seção 7)."""
@@ -221,6 +281,7 @@ class Registro:
                 " VALUES (?, ?, ?, ?)",
                 (versao, motivo, TENTATIVAS_POR_AJUSTE, self._agora_fn().isoformat()),
             )
+        self._guardar_copia()
 
     # --- ler ---------------------------------------------------------------------------------
     def obter(self, tentativa_id: int) -> dict:

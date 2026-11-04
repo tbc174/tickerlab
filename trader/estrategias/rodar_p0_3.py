@@ -41,12 +41,7 @@ NOMES = {
 }
 
 
-def abrir_registro(caminho: Path = PASTA_DA_PESQUISA / "registro.db") -> Registro:
-    return Registro(
-        caminho,
-        familias=tuple(criterio_quant.ORCAMENTO_POR_FICHA),
-        orcamento=criterio_quant.ORCAMENTO_DE_TENTATIVAS,
-    )
+abrir_registro = criterio_quant.abrir_registro
 
 
 def carregar_tabelas(
