@@ -133,3 +133,77 @@ def test_ajustar_a_tabela_por_cnpj_e_conta_saltos_sem_evento():
 def test_main_sem_os_cotahist_diz_o_que_falta(tmp_path, capsys):
     assert ajuste_b3.main(tmp_path, tmp_path) == 2
     assert "COTAHIST_A2009.ZIP" in capsys.readouterr().out
+
+
+def _so_no_dia(dia: int) -> pd.Series:
+    """Troca do número de distribuição só no pregão `dia` (o dia ex de um evento na B3)."""
+    return pd.Series(DATAS.isin([DATAS[dia]]), index=DATAS)
+
+
+@pytest.mark.parametrize(("razao", "fator"), [(0.25, 4.0), (10.0, 0.1), (1 / 3.1, 3.0)])
+def test_desdobramento_sem_formulario_ajusta_pelo_preco_no_dia_da_troca(razao, fator):
+    precos = _precos(salto_em=60, razao=razao)
+    fechamento = pd.DataFrame({"AAA3": precos})
+    ajuste = ajuste_b3.ajustar(
+        fechamento,
+        pd.Series({"AAA3": None}),
+        pd.DataFrame(columns=["cnpj", "tipo", "data", "fator"]),
+        trocas=pd.DataFrame({"AAA3": _so_no_dia(60)}),
+    )
+    assert list(ajuste.pelo_preco["data"]) == [DATAS[60]]
+    assert ajuste.pelo_preco["fator"].tolist() == pytest.approx([fator])
+    assert ajuste.ajustado["AAA3"].iloc[:60].to_numpy() == pytest.approx(
+        precos.iloc[:60].to_numpy() / fator
+    )
+    assert ajuste.ajustado["AAA3"].iloc[60:].equals(precos.iloc[60:])
+    assert ajuste.saltos.empty
+
+
+def test_queda_sem_troca_de_distribuicao_fica_como_salto():
+    """Uma quebra (como a da Americanas em 2023) não muda a distribuição e não é desdobramento."""
+    precos = _precos(salto_em=60, razao=0.25)
+    ajuste = ajuste_b3.ajustar(
+        pd.DataFrame({"AAA3": precos}),
+        pd.Series({"AAA3": None}),
+        pd.DataFrame(columns=["cnpj", "tipo", "data", "fator"]),
+        trocas=pd.DataFrame({"AAA3": _so_no_dia(61)}),
+    )
+    assert ajuste.pelo_preco.empty
+    assert ajuste.ajustado["AAA3"].equals(precos)
+    assert list(ajuste.saltos["data"]) == [DATAS[60]]
+
+
+def test_salto_longe_de_um_fator_usual_nao_ajusta_pelo_preco():
+    """Dividendo grande ou cisão no dia ex: razão de 2,41 não está a 5% de 2 nem de 3."""
+    precos = _precos(salto_em=60, razao=1 / 2.41)
+    ajuste = ajuste_b3.ajustar(
+        pd.DataFrame({"AAA3": precos}),
+        pd.Series({"AAA3": None}),
+        pd.DataFrame(columns=["cnpj", "tipo", "data", "fator"]),
+        trocas=pd.DataFrame({"AAA3": _so_no_dia(60)}),
+    )
+    assert ajuste.pelo_preco.empty
+    assert len(ajuste.saltos) == 1
+
+
+def test_evento_do_formulario_vem_antes_e_o_preco_nao_ajusta_de_novo():
+    precos = _precos(salto_em=50, razao=0.5)
+    ajuste = ajuste_b3.ajustar(
+        pd.DataFrame({"AAA3": precos}),
+        pd.Series({"AAA3": "A"}),
+        pd.DataFrame([_evento("A", DATAS[45], 2.0)]),
+        trocas=pd.DataFrame({"AAA3": _so_no_dia(50)}),
+    )
+    assert len(ajuste.aplicados) == 1
+    assert ajuste.pelo_preco.empty
+    assert ajuste.ajustado["AAA3"].iloc[:50].to_numpy() == pytest.approx(
+        precos.iloc[:50].to_numpy() / 2
+    )
+
+
+def test_fator_usual():
+    assert ajuste_b3.fator_usual(4.1) == 4
+    assert ajuste_b3.fator_usual(0.0103) == pytest.approx(0.01)
+    assert ajuste_b3.fator_usual(2.41) is None
+    assert ajuste_b3.fator_usual(float("inf")) is None
+    assert ajuste_b3.fator_usual(0.0) is None

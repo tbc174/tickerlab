@@ -6,7 +6,7 @@ De onde vem cada tabela de `fatores_b3.Dados`:
 |---|---|---|
 | fechamento, abertura, volume | COTAHIST anual (`COTAHIST_A<ano>.ZIP`, mercado à vista) de 2009 a 2023, na pasta da ficha | **falta**: o acervo só tem o COTAHIST diário desde 09/2026 e o lote anual de 1986 a 2009 |
 | preços ajustados | `precos_ajustados.parquet` (fechamento ajustado por desdobramentos e proventos, mesmas datas e tickers) | **falta**: não há base de preços ajustados; `eventos_de_capital` e `proventos` do acervo vão até 2023 e permitem construí-la |
-| cadastro | ISIN do COTAHIST (posições 3 a 6 = emissor) → `fca/emissores.parquet`; classe pela especificação; datas do FCA quando houver | pronto (emissores do FCA desde 2018) |
+| cadastro | ISIN do COTAHIST (posições 3 a 6 = emissor) → `fca/emissores.parquet` e, para quem saiu antes de 2018, `emissores_antigos.csv` (ligação pelo nome, conferida por dois modelos); classe pela especificação; datas do FCA quando houver | pronto (emissores do FCA desde 2018 e 77 antigos) |
 | fundamentos | `demonstracoes/<ano>.parquet` do acervo, consolidado, com `divulgado_em` e `ate` | pronto (2010 em diante) |
 | acoes | `acoes_em_circulacao.parquet` (CNPJ, quantidade, data em que ficou pública) | **falta**: o acervo não tem quantidade de ações |
 | cdi, ibovespa | SGS 12 (cache da pesquisa) e BOVA11 do export do MT5 | pronto |
@@ -64,7 +64,19 @@ CAMPOS = {
     "volume": (170, 188),
     "fator_de_cotacao": (210, 217),
     "isin": (230, 242),
+    "distribuicao": (242, 245),  # DISMES: muda no dia ex de desdobramento e de provento
 }
+# Emissores que saíram antes de 2018 (o FCA do acervo só liga ticker a CNPJ desde então): o CNPJ
+# pelo nome de pregão, escolhido às cegas por dois modelos nos nomes da CVM do acervo; quem
+# discordou ou não achou fica sem CNPJ (conferência automática, sem o Tiago).
+ARQUIVO_DOS_EMISSORES_ANTIGOS = Path(__file__).with_name("emissores_antigos.csv")
+COLUNAS_DOS_EMISSORES_ANTIGOS = (
+    "emissor",
+    "cnpj",
+    "nome_no_pregao",
+    "empresa_na_cvm",
+    "conferencia",
+)
 
 
 def nome_do_cotahist(ano: int) -> str:
@@ -110,11 +122,18 @@ def ler_cotahist_anual(caminho: Path) -> pd.DataFrame:
             "ticker": cotacoes["ticker"].str.strip(),
             "isin": cotacoes["isin"].str.strip(),
             "especificacao": cotacoes["especificacao"].str.strip(),
-            "abertura": cotacoes["abertura"].astype(float) / divisor,
-            "fechamento": cotacoes["fechamento"].astype(float) / divisor,
+            "abertura": _preco(cotacoes["abertura"], divisor),
+            "fechamento": _preco(cotacoes["fechamento"], divisor),
             "volume": cotacoes["volume"].astype(float) / CENTAVOS,
+            "distribuicao": cotacoes["distribuicao"].str.strip(),
         }
     ).reset_index(drop=True)
+
+
+def _preco(campo: pd.Series, divisor: pd.Series) -> pd.Series:
+    """Preço por ação; zero no arquivo é dia sem preço (viraria retorno infinito no dia seguinte)."""
+    preco = campo.astype(float) / divisor
+    return preco.where(preco > 0)
 
 
 def paineis(longo: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -130,6 +149,37 @@ def paineis(longo: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         fechamento,
         painel("abertura").reindex_like(fechamento),
         painel("volume").reindex_like(fechamento),
+    )
+
+
+def trocas_de_distribuicao(longo: pd.DataFrame) -> pd.DataFrame:
+    """Tabela larga (data × ticker): verdadeiro no pregão em que o número de distribuição mudou.
+
+    O primeiro pregão de cada papel não conta como troca; dia sem pregão é falso.
+    """
+    ordenado = longo.sort_values(["ticker", "data"], kind="stable")
+    anterior = ordenado.groupby("ticker")["distribuicao"].shift()
+    troca = anterior.notna() & (ordenado["distribuicao"] != anterior)
+    largo = ordenado.assign(troca=troca).pivot_table(
+        index="data", columns="ticker", values="troca", aggfunc="max"
+    )
+    return largo.sort_index().eq(True)
+
+
+def emissores_com_antigos(
+    emissores: pd.DataFrame, antigos: pd.DataFrame
+) -> pd.DataFrame:
+    """Os emissores do FCA mais os antigos com CNPJ; no mesmo emissor vale o FCA."""
+    com_cnpj = antigos.loc[antigos["cnpj"].notna(), ["emissor", "cnpj"]]
+    juntos = pd.concat([emissores[["emissor", "cnpj"]], com_cnpj], ignore_index=True)
+    return juntos.drop_duplicates("emissor", keep="first").reset_index(drop=True)
+
+
+def ler_emissores(pasta_do_acervo: Path) -> pd.DataFrame:
+    """`fca/emissores.parquet` do acervo completado por `emissores_antigos.csv`."""
+    return emissores_com_antigos(
+        pd.read_parquet(pasta_do_acervo / "fca" / "emissores.parquet"),
+        pd.read_csv(ARQUIVO_DOS_EMISSORES_ANTIGOS, dtype=str),
     )
 
 
@@ -214,7 +264,7 @@ def carregar_tabelas(
     fator = ajustado / bruto
     fechamento = recortar_desenvolvimento(ajustado)
     datas = pd.DatetimeIndex(fechamento.index)
-    emissores = pd.read_parquet(pasta_do_acervo / "fca" / "emissores.parquet")
+    emissores = ler_emissores(pasta_do_acervo)
     tickers_do_fca = pd.read_parquet(pasta_do_acervo / "fca" / "tickers.parquet")
     fundamentos = pd.concat(
         [

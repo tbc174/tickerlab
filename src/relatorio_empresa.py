@@ -143,6 +143,10 @@ ROTULOS_DAS_COLUNAS = {  # o cabeçalho que a regra geral (`rotulo_da_coluna`) e
     "inicio": "Início",
     "mes": "Mês",
     "mudanca": "Mudança",
+    # as contagens de ações (a sensibilidade do DCF e o histórico)
+    "acoes": "Ações",
+    "acoes_ajustadas": "Ações ajustadas",
+    "acoes_em_circulacao": "Ações em circulação",
 }
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
@@ -163,6 +167,10 @@ NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "socios_da_receita": "Quadro de sócios",
     "mudancas_da_receita": "O que mudou nos últimos 12 meses",
 }
+COLUNAS_DE_ANO = frozenset(
+    {"ano", "exercicio", "exercicio_do_caixa"}
+)  # 2024, não "R$ 2,0 mil"
+COLUNAS_DE_CONTAGEM = frozenset({"acoes", "acoes_ajustadas", "acoes_em_circulacao"})
 MIL = 1_000  # daqui para cima, a célula é dinheiro (R$ mil, mi, bi)
 QUANTOS_EVENTOS = 15
 FONTES = ("CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",)
@@ -421,14 +429,19 @@ def rotulo_da_coluna(coluna: str) -> str:
     return str(coluna).replace("_", " ").capitalize()
 
 
-def escrever_celula(valor: object) -> str:
-    """Uma célula das tabelas do relatório, igual na página e no PDF (valores em reais acima de
-    mil viram "R$ 1,2 bi"; frações e contagens ficam com duas casas)."""
+def escrever_celula(valor: object, coluna: str | None = None) -> str:
+    """Uma célula das tabelas do relatório, igual na página e no PDF. Pela coluna: ano sai como
+    "2024" e contagem de ações como "1.152.254.440"; sem coluna, ou em outra, o número acima de
+    mil é dinheiro ("R$ 1,2 bi") e frações ficam com duas casas."""
     if valor is None or (isinstance(valor, float) and not math.isfinite(valor)):
         return "—"
     if isinstance(valor, bool):
         return "sim" if valor else "não"
     if isinstance(valor, int | float):
+        if coluna in COLUNAS_DE_ANO:
+            return str(int(valor))
+        if coluna in COLUNAS_DE_CONTAGEM:
+            return _acoes(valor)
         if abs(valor) >= MIL:
             return formatar_valor(float(valor), "BRL")
         return f"{valor:.2f}".replace(".", ",")

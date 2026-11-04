@@ -31,6 +31,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
+from base import qeds_banco_mundial as qeds
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from src.commodities.cafe import regioes
 
@@ -41,6 +42,7 @@ PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS = (
     1.0  # APIs abertas, mas de terceiros (ADR 0082)
 )
 POR_PAGINA_DO_BANCO_MUNDIAL = 1000
+FONTE_DO_WDI = 2
 POR_PAGINA_DO_GLEIF = 200
 
 # ---- BCE (Data Portal, SDMX; "Source: ECB statistics") -----------------------------------------
@@ -303,16 +305,28 @@ def _paginas_do_banco_mundial(cliente: Cliente, url: str) -> int:
     return int(resposta[0]["pages"])
 
 
-def _indicadores_do_banco_mundial(pais: str, indicadores: Iterable[str]) -> str:
+def _indicadores_do_banco_mundial(
+    pais: str, indicadores: Iterable[str], fonte: int = FONTE_DO_WDI
+) -> str:
     return (
         f"{BANCO_MUNDIAL}/country/{pais}/indicator/{';'.join(indicadores)}"
-        f"?format=json&source=2&per_page={POR_PAGINA_DO_BANCO_MUNDIAL}&page={{pagina}}"
+        f"?format=json&source={fonte}&per_page={POR_PAGINA_DO_BANCO_MUNDIAL}&page={{pagina}}"
     )
 
 
-def descobrir_banco_mundial(pais: str, indicadores: Iterable[str]) -> Descobrir:
+def endereco_do_qeds(pagina: int) -> str:
+    """A dívida externa bruta trimestral do Brasil (QEDS, fonte 22), sem filtro de data: o retrato inteiro."""
+    url = _indicadores_do_banco_mundial(
+        qeds.PAIS, (qeds.INDICADOR,), qeds.FONTE_DO_BANCO_MUNDIAL
+    )
+    return url.format(pagina=pagina)
+
+
+def descobrir_banco_mundial(
+    pais: str, indicadores: Iterable[str], fonte: int = FONTE_DO_WDI
+) -> Descobrir:
     """Todas as páginas dos indicadores do país (`all` é o mundo todo): cada página vira um JSON."""
-    url = _indicadores_do_banco_mundial(pais, indicadores)
+    url = _indicadores_do_banco_mundial(pais, indicadores, fonte)
 
     def _descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
         paginas = _paginas_do_banco_mundial(cliente, url)
@@ -392,6 +406,15 @@ def fontes() -> list[Fonte]:
             "worldbank-brasil",
             "mensal",
             descobrir_banco_mundial("BRA", INDICADORES_DO_BRASIL),
+            "json",
+            pausa_minima=PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS,
+        ),
+        Fonte(
+            qeds.FONTE,
+            "mensal",  # trimestral na fonte; o SHA-256 decide se o retrato mudou
+            descobrir_banco_mundial(
+                qeds.PAIS, (qeds.INDICADOR,), qeds.FONTE_DO_BANCO_MUNDIAL
+            ),
             "json",
             pausa_minima=PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS,
         ),
