@@ -279,8 +279,10 @@ def _sobreviventes(dados: Dados) -> pd.Series:
     return fim.isna() & (pd.to_datetime(ultimo_preco) == ultimo_dia)
 
 
-def universo_em(dia: pd.Timestamp, dados: Dados, parametros: Parametros) -> list[str]:
-    """Os tickers elegíveis em D pela seção 8 do pré-registro (uma classe por empresa)."""
+def elegiveis_em(
+    dia: pd.Timestamp, dados: Dados, *, com_deslistadas: bool = True
+) -> pd.DataFrame:
+    """Todas as classes que passam pela seção 8 em D, com CNPJ e liquidez (antes de uma por empresa)."""
     tickers = dados.fechamento.columns
     cadastro = dados.cadastro.reindex(tickers)
     posicao = _posicao(pd.DatetimeIndex(dados.fechamento.index), dia)
@@ -298,9 +300,14 @@ def universo_em(dia: pd.Timestamp, dados: Dados, parametros: Parametros) -> list
         & ~cnpj.isin(_em_recuperacao_judicial(dados, dia))
         & cnpj.isin(_com_balanco_recente(dados.fundamentos, dia))
     )
-    if not parametros.com_deslistadas:
+    if not com_deslistadas:
         elegivel &= _sobreviventes(dados)
-    candidatas = pd.DataFrame({"cnpj": cnpj, "liquidez": liquidez})[elegivel.to_numpy()]
+    return pd.DataFrame({"cnpj": cnpj, "liquidez": liquidez})[elegivel.to_numpy()]
+
+
+def universo_em(dia: pd.Timestamp, dados: Dados, parametros: Parametros) -> list[str]:
+    """Os tickers elegíveis em D pela seção 8 do pré-registro (uma classe por empresa)."""
+    candidatas = elegiveis_em(dia, dados, com_deslistadas=parametros.com_deslistadas)
     candidatas = candidatas.sort_values("liquidez", ascending=False, kind="stable")
     return sorted(candidatas.drop_duplicates("cnpj", keep="first").index.astype(str))
 
