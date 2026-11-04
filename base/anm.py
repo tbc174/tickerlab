@@ -22,6 +22,7 @@ Sem Streamlit; pandas só.
 """
 
 import io
+import re
 from datetime import date
 
 import pandas as pd
@@ -191,10 +192,10 @@ def _tabela_bruta(
 
 
 def numero(texto: str) -> float:
-    """ "155024,500000" → 155024.5; ",000000" → 0.0; vazio → nulo. Vírgula é o decimal; o ponto, se vier
+    """ "155024,500000" → 155024.5; ",000000" → 0.0; vazio e "-" → nulo. Vírgula é o decimal; o ponto, se vier
     junto com a vírgula, é milhar."""
     limpo = texto.strip()
-    if not limpo:
+    if limpo in ("", "-"):  # "-" é como o SIGBM marca o volume que não existe
         return float("nan")
     if "," in limpo:
         limpo = limpo.replace(".", "").replace(",", ".")
@@ -203,6 +204,24 @@ def numero(texto: str) -> float:
 
 def _numeros(coluna: pd.Series) -> pd.Series:
     return coluna.map(numero)
+
+
+def graus(texto: str) -> float:
+    """\"-09°47'16.100''\" → -9.7878; decimal puro passa pelo `numero`; vazio ou lixo → nulo.
+
+    O SIGBM entrega latitude e longitude em graus, minutos e segundos; o sinal vale para os três."""
+    limpo = texto.strip()
+    partes = re.fullmatch(r"(-?)(\d+)\D+(\d+)\D+(\d+(?:[.,]\d+)?)\D*", limpo)
+    if partes:
+        sinal, graus_, minutos, segundos = partes.groups()
+        valor = (
+            int(graus_) + int(minutos) / 60 + float(segundos.replace(",", ".")) / 3600
+        )
+        return -valor if sinal else valor
+    try:
+        return numero(limpo)
+    except ValueError:
+        return float("nan")
 
 
 def _datas(coluna: pd.Series) -> pd.Series:
@@ -273,8 +292,8 @@ def ler_sigbm(conteudo: bytes, coletado_em: date) -> pd.DataFrame:
             },
             "cnpj": cnpj,
             "cnpj_raiz": cnpj.str[:8],
-            "latitude": _numeros(bruta["Latitude"]),
-            "longitude": _numeros(bruta["Longitude"]),
+            "latitude": bruta["Latitude"].map(graus),
+            "longitude": bruta["Longitude"].map(graus),
             "classificado_em": _datas(bruta["Data da Finalização da DCE"]),
             "altura_atual_m": _numeros(bruta["Altura máxima atual (m)"]),
             "volume_atual_m3": _numeros(bruta["Volume atual do Reservatório (m³)"]),

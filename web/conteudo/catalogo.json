@@ -1932,6 +1932,17 @@
       "tabelas": 8
     },
     {
+      "historico_desde": "2002-01-01",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "ANM",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 6
+    },
+    {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "modulos": [
@@ -2077,17 +2088,6 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANAC",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "ANM",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -2355,7 +2355,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 34
+      "tabelas": 39
     },
     {
       "chave": "credito_e_fidc",
@@ -6805,6 +6805,56 @@
       "tabela": "tce_rs_contratos"
     },
     {
+      "atraso": "A linha vale desde a data em que a ANM a criou",
+      "frase": "CFEM (royalty da mineração) recolhida por titular do processo, substância e município.",
+      "frequencia": "Mensal",
+      "historico_desde": "2002-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_cfem_arrecadacao"
+    },
+    {
+      "atraso": "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial (DPA) como o empreendedor declarou.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_sigbm_barragens"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_bruta"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Produção mineral beneficiada do Anuário Mineral por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_beneficiada"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_agua_mineral"
+    },
+    {
       "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
@@ -7171,6 +7221,6 @@
     "fontes": 39,
     "fontes_em_consulta": 16,
     "modulos": 6,
-    "tabelas": 129
+    "tabelas": 134
   }
 }
