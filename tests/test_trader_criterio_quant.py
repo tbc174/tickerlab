@@ -201,3 +201,17 @@ def test_tentativas_anteriores_somam_m2_scalp_e_o_registro_da_p2(tmp_path):
     )
     registro.registrar("K", "k1", {"a": 1})
     assert criterio_quant.tentativas_anteriores(tmp_path / "registro.db") == 104
+
+
+def test_registro_das_p0_de_teste_nao_guarda_copias(tmp_path):
+    registro = criterio_quant.abrir_registro(tmp_path / "registro.db")
+    assert registro.copias is None
+    assert registro.familias == tuple(criterio_quant.ORCAMENTO_POR_FICHA)
+
+
+def test_registro_das_p0_de_verdade_guarda_copias(tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_PESQUISA_QUANT", str(tmp_path / "pesquisa"))
+    monkeypatch.setenv("TICKERLAB_COPIAS_DA_PESQUISA", str(tmp_path / "copias"))
+    registro = criterio_quant.abrir_registro()
+    assert registro.caminho == tmp_path / "pesquisa" / "registro.db"
+    assert registro.copias == tmp_path / "copias"
