@@ -122,12 +122,18 @@ def ler_cotahist_anual(caminho: Path) -> pd.DataFrame:
             "ticker": cotacoes["ticker"].str.strip(),
             "isin": cotacoes["isin"].str.strip(),
             "especificacao": cotacoes["especificacao"].str.strip(),
-            "abertura": cotacoes["abertura"].astype(float) / divisor,
-            "fechamento": cotacoes["fechamento"].astype(float) / divisor,
+            "abertura": _preco(cotacoes["abertura"], divisor),
+            "fechamento": _preco(cotacoes["fechamento"], divisor),
             "volume": cotacoes["volume"].astype(float) / CENTAVOS,
             "distribuicao": cotacoes["distribuicao"].str.strip(),
         }
     ).reset_index(drop=True)
+
+
+def _preco(campo: pd.Series, divisor: pd.Series) -> pd.Series:
+    """Preço por ação; zero no arquivo é dia sem preço (viraria retorno infinito no dia seguinte)."""
+    preco = campo.astype(float) / divisor
+    return preco.where(preco > 0)
 
 
 def paineis(longo: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:

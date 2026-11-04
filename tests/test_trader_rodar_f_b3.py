@@ -326,3 +326,16 @@ def test_tabela_dos_emissores_antigos():
         "discordaram",
         "nenhum achou",
     }
+
+
+def test_fechamento_zero_no_arquivo_vira_dia_sem_preco(tmp_path):
+    """Achado da tentativa 1 da P0-4: BGIP4 tinha um fechamento zero, que vira retorno infinito."""
+    linhas = [
+        _registro_cotahist("20200102", "AAA3", "010", "ON", 0, 0, 100, "BRAAAACNOR0"),
+        _registro_cotahist(
+            "20200103", "AAA3", "010", "ON", 1000, 1050, 100, "BRAAAACNOR0"
+        ),
+    ]
+    longo = dados_f_b3.ler_cotahist_anual(_zip_cotahist(tmp_path, linhas))
+    assert pd.isna(longo.loc[0, "fechamento"]) and pd.isna(longo.loc[0, "abertura"])
+    assert longo.loc[1, "fechamento"] == 10.5
