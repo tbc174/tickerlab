@@ -94,6 +94,33 @@ def test_meses_do_historico_e_do_atual_nao_se_repetem():
     assert tabela.loc[pd.Timestamp("2016-12-31"), "quantidade"] == 1.0  # do histórico
 
 
+def test_le_a_anp_com_cabecalho_precedido_de_bom():
+    """A ANP passou a gravar o BOM UTF-8 antes do cabeçalho; lido como latin-1 ele vira "ï»¿" e a
+    coluna do ano não era reconhecida (o arquivo era lido como sem cabeçalho, com 12 colunas)."""
+    import io
+    import zipfile
+
+    linhas = [
+        (
+            '"Ano";"Mês";"Agente Regulado";"Código do Produto";"Nome do Produto";"Descrição do Produto";'
+            '"Região Origem";"UF Origem";"Região Destinatário";"UF Destino";"Mercado Destinatário";'
+            '"Quantidade de Produto (mil m³)"'
+        ),
+        (
+            '"2018";"1";"RAIZEN S.A.";"320102001";"Gasolina C";"GASOLINA C COMUM";"CO";"DF";"CO";"DF";'
+            '"CONSUMIDOR FINAL";"3,000000"'
+        ),
+    ]
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as z:
+        z.writestr(
+            "Liquidos_Vendas_Historico_2018_a_2023.csv",
+            b"\xef\xbb\xbf" + "\r\n".join(linhas).encode("latin-1"),
+        )
+    tabela = anp.ler(conteudo.getvalue(), "liquidos").set_index("competencia")
+    assert tabela.loc[pd.Timestamp("2018-01-31"), "quantidade"] == 3.0
+
+
 def test_le_o_ons_nos_dois_formatos(geracao):
     assert list(geracao.columns) == list(ons.COLUNAS)
     assert set(geracao["id_ons"]) == {"PYIT50", "PRIT60"}

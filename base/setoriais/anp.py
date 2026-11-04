@@ -7,6 +7,7 @@ só com ele. A ANP escreve o nome atual da distribuidora também no passado ("VI
 2010, quando era BR Distribuidora): o CNPJ é o mesmo, e a ligação pela B13 usa esse nome.
 """
 
+import codecs
 import io
 import re
 import unicodedata
@@ -41,8 +42,16 @@ UNIDADE = re.compile(r"\((mil [^)]+)\)")
 VENDAS = re.compile(r"_Vendas_(Atual|Historico)")
 
 
+BOM_LIDO_COMO_LATIN1 = codecs.BOM_UTF8.decode(
+    CODIFICACAO
+)  # o BOM UTF-8 que a ANP passou a gravar
+
+
 def _simples(nome: str) -> str:
-    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    sem_bom = nome.removeprefix(BOM_LIDO_COMO_LATIN1)
+    sem_acento = (
+        unicodedata.normalize("NFKD", sem_bom).encode("ascii", "ignore").decode()
+    )
     return " ".join(sem_acento.replace("﻿", "").strip().strip('"').lower().split())
 
 
