@@ -61,7 +61,7 @@ export function PaginaDeLeitura({
   children,
 }: {
   olho?: string;
-  titulo: string;
+  titulo: ReactNode;
   subtitulo?: string;
   sumario: ItemDoSumario[];
   children: ReactNode;

@@ -36,6 +36,17 @@ export function RelatorioSemanalEletricas() {
       sumario={SUMARIO}
     >
       <p className="v2-aviso">{relatorio.aviso}</p>
+      <p className="atalhos">
+        <a className="botao primario" href={relatorio.arquivos.pdf}>
+          Baixar o PDF
+        </a>{" "}
+        <a className="botao secundario" href={relatorio.arquivos.apresentacao_pptx}>
+          Baixar a apresentação (PPTX)
+        </a>{" "}
+        <a className="botao secundario" href={relatorio.arquivos.apresentacao_pdf}>
+          Apresentação em PDF
+        </a>
+      </p>
 
       <h2 id={ancora(TITULO_DOS_DESTAQUES)}>{TITULO_DOS_DESTAQUES}</h2>
       <div className="v2-destaques">

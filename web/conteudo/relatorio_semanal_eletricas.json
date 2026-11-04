@@ -1,4 +1,9 @@
 {
+  "arquivos": {
+    "apresentacao_pdf": "/relatorio/setor-eletricas-apresentacao.pdf",
+    "apresentacao_pptx": "/relatorio/setor-eletricas-apresentacao.pptx",
+    "pdf": "/relatorio/setor-eletricas.pdf"
+  },
   "aviso": "Nada aqui é recomendação de investimento. Os números descrevem o que as companhias e as agências entregaram, sem dizer o que vai acontecer.",
   "dados_de": "19/10/2026",
   "destaques": [
