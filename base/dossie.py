@@ -624,7 +624,7 @@ LIMITES = {
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
         "controlada, pelo FRE). A participação é sobre o total da agência no ano."
     ),
-    "setor": (METODOLOGIA_DO_SETOR + " " + METODOLOGIA_DOS_BANCOS),
+    "setor": METODOLOGIA_DO_SETOR,  # a ficha usa `metodologia_do_setor(chave)`: o IF.data é só dos bancos
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
         "reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. "
@@ -748,6 +748,7 @@ def _secao(
     tabelas: Mapping[str, pd.DataFrame],
     paragrafos: list[str] | None = None,
     fontes: list[str] | None = None,
+    limites: str | None = None,
 ) -> dict[str, Any]:
     registro = _SECAO_POR_CHAVE[chave]
     return {
@@ -755,7 +756,7 @@ def _secao(
         "titulo": registro.titulo,
         "itens": itens,
         "tabelas": {nome: _registros(t) for nome, t in tabelas.items() if not t.empty},
-        "paragrafos": [*(paragrafos or []), LIMITES[chave]],
+        "paragrafos": [*(paragrafos or []), limites or LIMITES[chave]],
         "fontes": fontes_das_tabelas(registro.tabelas) if fontes is None else fontes,
     }
 
@@ -2750,7 +2751,14 @@ def secao_setor(
         *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
         *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),
     ]
-    return _secao("setor", itens, tabelas, paragrafos, fontes=fontes_do_setor(usadas))
+    return _secao(
+        "setor",
+        itens,
+        tabelas,
+        paragrafos,
+        fontes=fontes_do_setor(usadas),
+        limites=metodologia_do_setor(setor.chave),
+    )
 
 
 # --- negócios ------------------------------------------------------------------------------------
