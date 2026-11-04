@@ -2614,7 +2614,7 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 - **Chaves:** `id_na_fonte`
 - **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2025-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.1.0
+- **Versão do contrato:** 1.2.0
 - **Onde fica:** Parquet em `<acervo>/base/processos_comunicacoes/djen.parquet` (servidor de casa, `scripts/carga_processos.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -2639,6 +2639,11 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 | `pessoas_juridicas` | Quantas partes são outras empresas (ou nome de mais de uma companhia do cadastro) | número inteiro |
 | `pessoas_ou_desconhecidas` | Quantas partes são pessoas ou não têm tipo claro | número inteiro |
 | `advogados` | Quantos advogados a comunicação cita (os nomes não entram) | número inteiro |
+| `tipo_de_ato` | O ato publicado (`sentenca`, `acordao`, `decisao`, `despacho`, `despacho_ou_decisao`, `ato_ordinatorio`, `ata_de_julgamento`, `pauta`, `distribuicao`, `edital`, `certidao`), pelo tipo do documento; no tipo genérico, `sentenca` só com o dispositivo de uma. Vazio: não identificado ou não conferido | texto |
+| `resultado` | O que a comunicação decide, pela fórmula do dispositivo (`procedente`, `parcialmente_procedente`, `improcedente`, `acordo_homologado`, `extinto`, `recurso_provido`, `recurso_parcialmente_provido`, `recurso_nao_provido`). É o resultado do pedido, não o da companhia: quem ganhou depende do polo (`processos_partes`). Vazio: sem dispositivo claro, dois que se contradizem, lista de muitos processos ou não conferido | texto |
+| `resultado_trecho` | A fórmula que provou o resultado ("JULGO PROCEDENTE", "NEGO PROVIMENTO"); o que fica entre o verbo e a palavra-chave vira "..." (nenhum texto livre) | texto |
+| `valor_citado` | O maior valor em reais escrito no teor (condenação, causa ou honorários: o que o texto cita, não o valor da causa) | reais (R$), já multiplicado pela escala informada |
+| `teor_conferido_em` | Dia da conferência automática que cobre a linha (amostra com semente, gabarito de um segundo modelo, precisão mínima de 95% por campo; regra e modelo que discordam deixam o campo vazio). Vazio: nenhuma conferência ainda cobre a comunicação, e o teor fica vazio | data (dia) |
 | `achada_por` | `nome` (a busca pela razão social achou: a companhia está entre as partes) ou `numero` (só a busca pelo número do processo achou) | texto |
 | `disponibilizada_em` | Dia em que a comunicação saiu no DJEN, como o tribunal informou (a achada pelo número pode ter saído antes de `disponivel_em`) | data (dia) |
 | `disponivel_em` | Dia em que a comunicação foi disponibilizada no DJEN (nunca depois de `visto_em`): desde quando a linha vale para a base. A achada pelo número vale a partir da primeira comunicação do processo com uma companhia entre as partes | data (dia) |

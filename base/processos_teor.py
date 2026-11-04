@@ -131,12 +131,16 @@ class Leitura:
     valor_citado: float | None
 
 
+def sem_html(texto: object) -> str:
+    """O texto sem as marcas de HTML, com um espaço só entre as palavras."""
+    return _ESPACOS.sub(" ", html.unescape(_TAG.sub(" ", str(texto or "")))).strip()
+
+
 def texto_limpo(texto: object) -> str:
     """Sem HTML, sem acento, em maiúsculas, com um espaço só entre as palavras."""
-    sem_tags = html.unescape(_TAG.sub(" ", str(texto or "")))
     sem_acento = "".join(
         c
-        for c in unicodedata.normalize("NFKD", sem_tags)
+        for c in unicodedata.normalize("NFKD", sem_html(texto))
         if not unicodedata.combining(c)
     )
     return _ESPACOS.sub(" ", sem_acento).strip().upper()

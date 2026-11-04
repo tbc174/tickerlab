@@ -666,6 +666,49 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
             "Quantos advogados a comunicação cita (os nomes não entram)",
             NUMERO,
         ),
+        "tipo_de_ato": (
+            (
+                "O ato publicado (`sentenca`, `acordao`, `decisao`, `despacho`, `despacho_ou_decisao`, "
+                "`ato_ordinatorio`, `ata_de_julgamento`, `pauta`, `distribuicao`, `edital`, `certidao`), "
+                "pelo tipo do documento; no tipo genérico, `sentenca` só com o dispositivo de uma. "
+                "Vazio: não identificado ou não conferido"
+            ),
+            TEXTO,
+        ),
+        "resultado": (
+            (
+                "O que a comunicação decide, pela fórmula do dispositivo (`procedente`, "
+                "`parcialmente_procedente`, `improcedente`, `acordo_homologado`, `extinto`, "
+                "`recurso_provido`, `recurso_parcialmente_provido`, `recurso_nao_provido`). É o "
+                "resultado do pedido, não o da companhia: quem ganhou depende do polo "
+                "(`processos_partes`). Vazio: sem dispositivo claro, dois que se contradizem, lista "
+                "de muitos processos ou não conferido"
+            ),
+            TEXTO,
+        ),
+        "resultado_trecho": (
+            (
+                'A fórmula que provou o resultado ("JULGO PROCEDENTE", "NEGO PROVIMENTO"); o '
+                'que fica entre o verbo e a palavra-chave vira "..." (nenhum texto livre)'
+            ),
+            TEXTO,
+        ),
+        "valor_citado": (
+            (
+                "O maior valor em reais escrito no teor (condenação, causa ou honorários: o que o "
+                "texto cita, não o valor da causa)"
+            ),
+            REAIS,
+        ),
+        "teor_conferido_em": (
+            (
+                "Dia da conferência automática que cobre a linha (amostra com semente, gabarito de "
+                "um segundo modelo, precisão mínima de 95% por campo; regra e modelo que discordam "
+                "deixam o campo vazio). Vazio: nenhuma conferência ainda cobre a comunicação, e o "
+                "teor fica vazio"
+            ),
+            DATA,
+        ),
         "achada_por": (
             (
                 "`nome` (a busca pela razão social achou: a companhia está entre as partes) ou "
@@ -6896,7 +6939,7 @@ _CONTRATO = {
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.1.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo)
+    "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.2.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo); 1.2.0 (04/11/2026): o teor conferido (`tipo_de_ato`, `resultado`, `resultado_trecho`, `valor_citado`, `teor_conferido_em`)
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "processos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo",), datas={"aconteceu_em": "primeira_comunicacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
@@ -6995,7 +7038,7 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "processos_comunicacoes": {
         "pasta": "processos_comunicacoes",
         "nao_nulas": ("id_na_fonte", "numero_processo", "ano_do_processo", "justica", "achada_por", "disponivel_em", "visto_em"),
-        "faixas": {"companhias": _SEM_NEGATIVO, "advogados": _SEM_NEGATIVO},
+        "faixas": {"companhias": _SEM_NEGATIVO, "advogados": _SEM_NEGATIVO, "valor_citado": _SEM_NEGATIVO},
     },
     "processos_partes": {
         "pasta": "processos_partes",
