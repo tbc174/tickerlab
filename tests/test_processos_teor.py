@@ -93,11 +93,6 @@ def test_tipo_generico_vira_sentenca_so_com_dispositivo_de_sentenca():
             "NEGAR PROVIMENTO",
         ),
         (
-            "RECURSO NÃO PROVIDO. Acórdão vistos e relatados.",
-            "recurso_nao_provido",
-            "RECURSO NAO PROVIDO",
-        ),
-        (
             "Por maioria, DERAM PARCIAL PROVIMENTO ao apelo.",
             "recurso_parcialmente_provido",
             "DERAM PARCIAL PROVIMENTO",
@@ -110,7 +105,7 @@ def test_tipo_generico_vira_sentenca_so_com_dispositivo_de_sentenca():
         (
             "DAR PROVIMENTO PARCIAL ao recurso.",
             "recurso_parcialmente_provido",
-            "PROVIMENTO PARCIAL",
+            "DAR PROVIMENTO PARCIAL",
         ),
     ],
 )
@@ -130,6 +125,11 @@ def test_resultado_pelo_dispositivo(texto, resultado, trecho):
         "Providencie o interessado o preenchimento, conforme o Provimento CGJ nº 05/2019.",
         "Homologo os quesitos apresentados pelas partes.",
         "Rejeito os embargos de declaração.",
+        # a ementa é igual à do precedente citado: não diz o que esta comunicação decidiu
+        "RECURSO NÃO PROVIDO. Acórdão vistos e relatados.",
+        'Conforme julgado a seguir: "RECURSO ESPECIAL. MORA. RECURSO PROVIDO." Intime-se.',
+        # o provimento narrado é o de antes
+        "Ao negar provimento ao recurso, a decisão fixou honorários de 20%. Acolho os embargos.",
     ],
 )
 def test_sem_resultado_quando_nao_ha_dispositivo_claro(texto):

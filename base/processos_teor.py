@@ -4,7 +4,8 @@ resultado e o maior valor em reais citado, tirados do teor por regra.
 - **Só a fórmula do dispositivo.** O resultado sai do verbo no presente ("JULGO PROCEDENTE", "NEGO
   PROVIMENTO", "HOMOLOGO O ACORDO", "EXTINGO O PROCESSO"); a decisão de antes contada no passado ("a
   sentença julgou improcedente") não conta. Dois dispositivos que se contradizem no mesmo texto (a ação
-  procedente e a reconvenção improcedente) deixam o resultado vazio. O resultado é o do pedido, não o da
+  procedente e a reconvenção improcedente) deixam o resultado vazio. A ementa ("RECURSO PROVIDO")
+  também não conta: aparece igual no precedente que a decisão cita. O resultado é o do pedido, não o da
   companhia: quem ganhou depende do polo (`processos_partes`).
 - **Nenhum texto livre guardado.** O trecho de prova é a fórmula montada com as palavras da própria
   regra; o que estiver entre o verbo e a palavra-chave (pode ser um nome) vira "...".
@@ -24,7 +25,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-VERSAO_DA_REGRA = "v1"
+# v2 (04/11): a ementa ("RECURSO PROVIDO") e o provimento narrado ("ao negar provimento") deixam de
+# contar; na conferência da v1 o resultado ficou em 93%, quase tudo por ementa de precedente citado
+VERSAO_DA_REGRA = "v2"
 MAX_CARACTERES = (
     20_000  # a mediana da amostra de 04/11 tem ~1.200; acima de 20 mil é lista
 )
@@ -89,23 +92,23 @@ _EXTINCAO = re.compile(
     r"(?P<chave>PROCESSO|FEITO|EXECUCAO|ACAO|CUMPRIMENTO DE SENTENCA)\b"
 )
 _DAR = r"D(?:OU|AR|ERAM|A-SE|EU-SE)"
+# "ao negar provimento ao recurso, a decisão fixou..." conta o que já foi decidido
+_NAO_NARRADO = r"(?<!\bAO )"
 _RECURSOS = (
     (
         re.compile(
-            r"\b(?:NEG(?:O|AR|ARAM|A-SE|OU-SE)\s+(?:INTEGRAL\s+)?PROVIMENTO|"
-            r"RECURSOS?\s+(?:NAO\s+PROVIDOS?|IMPROVIDOS?|DESPROVIDOS?))\b"
+            rf"{_NAO_NARRADO}\bNEG(?:O|AR|ARAM|A-SE|OU-SE)\s+(?:INTEGRAL\s+)?PROVIMENTO\b"
         ),
         "recurso_nao_provido",
     ),
     (
         re.compile(
-            rf"\b(?:{_DAR}\s+PARCIAL\s+PROVIMENTO|PROVIMENTO\s+PARCIAL|"
-            r"RECURSOS?\s+PARCIALMENTE\s+PROVIDOS?)\b"
+            rf"{_NAO_NARRADO}\b(?:{_DAR}\s+PARCIAL\s+PROVIMENTO|{_DAR}\s+PROVIMENTO\s+PARCIAL)\b"
         ),
         "recurso_parcialmente_provido",
     ),
     (
-        re.compile(rf"\b(?:{_DAR}\s+PROVIMENTO(?!\s+PARCIAL)|RECURSOS?\s+PROVIDOS?)\b"),
+        re.compile(rf"{_NAO_NARRADO}\b{_DAR}\s+PROVIMENTO(?!\s+PARCIAL)\b"),
         "recurso_provido",
     ),
 )
