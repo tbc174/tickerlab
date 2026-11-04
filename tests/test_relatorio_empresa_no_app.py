@@ -207,6 +207,15 @@ def test_no_modo_local_gera_e_baixa_o_deck_em_pdf_e_ppt(banco):
     assert "Baixar o PDF" not in rotulos
 
 
+def test_a_pagina_oferece_a_ficha_em_markdown_sem_contar_no_plano(banco):
+    _coletar(banco)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    rotulos = [b.proto.label for b in app.get("download_button")]
+    assert "Baixar em Markdown (para IA)" in rotulos
+    assert "Baixar o PDF" not in rotulos
+
+
 def test_indicadores_sem_preco_aparecem_na_pagina(banco):
     """Linha 54 da fila: os números novos chegam à tela, cada um com o valor escrito."""
     _coletar(banco)
