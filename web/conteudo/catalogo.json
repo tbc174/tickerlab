@@ -1902,6 +1902,45 @@
       "ritmo": "lida pelo app",
       "termos_lidos_em": null,
       "uso": "em_uso"
+    },
+    {
+      "coletas": [],
+      "familia": "goias",
+      "licencas": [
+        "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)"
+      ],
+      "link": "https://dadosabertos.go.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Goiás (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "msestado",
+      "licencas": [
+        "Despesas do MS por credor: a confirmar, só interno"
+      ],
+      "link": "https://dados.ms.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Governo de Mato Grosso do Sul (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "spcapital",
+      "licencas": [
+        "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)"
+      ],
+      "link": "https://dados.prefeitura.sp.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Prefeitura de São Paulo (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
     }
   ],
   "fontes": [
@@ -7297,7 +7336,7 @@
     }
   ],
   "totais": {
-    "familias": 104,
+    "familias": 107,
     "familias_em_uso": 41,
     "fontes": 39,
     "fontes_em_consulta": 16,
