@@ -862,6 +862,7 @@
     {
       "coletas": [
         "worldbank-brasil",
+        "worldbank-qeds-brasil",
         "worldbank-mundo-ny-gdp-mktp-kd-zg",
         "worldbank-mundo-fp-cpi-totl-zg",
         "worldbank-mundo-sp-pop-totl"
@@ -3388,6 +3389,13 @@
     },
     {
       "id": "worldbank-brasil",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-qeds-brasil",
       "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
       "marca": "vendavel",
       "ritmo": "mensal",

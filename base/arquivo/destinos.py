@@ -120,6 +120,7 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
     "indicadores do Banco Mundial para o Brasil e para o mundo": _ids(
         "worldbank",
         "brasil",
+        "qeds-brasil",
         "mundo-fp-cpi-totl-zg",
         "mundo-ny-gdp-mktp-kd-zg",
         "mundo-sp-pop-totl",
