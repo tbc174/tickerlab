@@ -1,5 +1,8 @@
 """P0-5: a rodada completa com dados sintéticos e um registro temporário, e o carregador do IPE."""
 
+import io
+import sys
+
 import pandas as pd
 import pytest
 
@@ -182,3 +185,12 @@ def test_documentos_do_ipe_so_do_desenvolvimento(tmp_path):
 def test_carregar_tabelas_sem_base_falha_listando_o_que_falta(tmp_path):
     with pytest.raises(FileNotFoundError, match="P0-5"):
         dados_pead.carregar_tabelas(tmp_path, tmp_path)
+
+
+def test_imprimir_num_terminal_sem_utf8_nao_quebra(monkeypatch):
+    # Regressão da tentativa 1: o β do relatório derrubou o print no cp1252 do Windows.
+    bruto = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(bruto, encoding="cp1252"))
+    rodar.imprimir("o β é estimado em 252 pregões")
+    sys.stdout.flush()
+    assert bruto.getvalue().decode("cp1252").startswith("o ? é estimado em 252 pregões")

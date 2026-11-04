@@ -422,6 +422,12 @@ def escrever_relatorio(
     return caminho
 
 
+def imprimir(texto: str) -> None:
+    """Imprime sem quebrar num terminal sem UTF-8 (o `python -I` ignora o PYTHONIOENCODING)."""
+    codificacao = sys.stdout.encoding or "utf-8"
+    print(texto.encode(codificacao, errors="replace").decode(codificacao))
+
+
 def main(
     pasta: Path = dados_pead.PASTA_DA_FICHA,
     pasta_do_acervo: Path = dados_pead.PASTA_DO_ACERVO,
@@ -432,7 +438,7 @@ def main(
         return SAIDA_SEM_BASE
     dados = dados_pead.carregar_tabelas(pasta, pasta_do_acervo)
     saida = executar(dados, abrir_registro())
-    print(escrever_relatorio(saida).read_text(encoding="utf-8"))
+    imprimir(escrever_relatorio(saida).read_text(encoding="utf-8"))
     return 0
 
 
