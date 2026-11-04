@@ -154,7 +154,7 @@ def _nota(numero: int, linha: dict[str, Any], entrada: dict[str, Any]) -> NotaDa
         case "linha":
             nome = f"{secao}: {linha['tabela']}"
             texto = "; ".join(
-                f"{rotulo_da_coluna(k)} {escrever_celula(v)}"
+                f"{rotulo_da_coluna(k)} {escrever_celula(v, k)}"
                 for k, v in linha["celulas"].items()
             )
         case "ponto":

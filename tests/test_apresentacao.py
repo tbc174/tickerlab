@@ -125,7 +125,7 @@ def test_setor_tem_as_secoes_da_tela_na_ordem_e_as_fontes(setor) -> None:
 
 def test_tabela_larga_fica_com_a_primeira_coluna_e_as_mais_recentes() -> None:
     linhas = [{f"c{i}": f"v{i}" for i in range(10)}]
-    cabecalho, corpo = ap._tabela_de_texto(linhas, str, str)
+    cabecalho, corpo = ap._tabela_de_texto(linhas, lambda v, _coluna: str(v), str)
     assert len(cabecalho) == ap.COLUNAS_NA_TABELA
     assert cabecalho[0] == "c0" and cabecalho[-1] == "c9"
     assert corpo == [("v0", "v5", "v6", "v7", "v8", "v9")]

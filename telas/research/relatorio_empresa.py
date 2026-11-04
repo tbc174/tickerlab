@@ -195,7 +195,10 @@ def _tabela_escrita(linhas: list[dict]) -> pd.DataFrame:
     """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não)."""
     tabela = pd.DataFrame(linhas)
     return pd.DataFrame(
-        {rotulo_da_coluna(c): [escrever_celula(v) for v in tabela[c]] for c in tabela}
+        {
+            rotulo_da_coluna(c): [escrever_celula(v, c) for v in tabela[c]]
+            for c in tabela
+        }
     )
 
 

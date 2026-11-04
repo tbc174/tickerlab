@@ -145,21 +145,23 @@ def _slides_de_numeros(titulo: str, itens: list[Item]) -> list[Slide]:
 
 
 def _tabela_de_texto(
-    linhas: list[dict], escrever: Callable[[object], str], rotulo: Callable[[str], str]
+    linhas: list[dict],
+    escrever: Callable[[object, str], str],
+    rotulo: Callable[[str], str],
 ) -> tuple[Linha, list[Linha]]:
     """Cabeçalho e linhas em texto; larga demais, fica a primeira coluna e as mais recentes."""
     colunas = list(linhas[0])
     if len(colunas) > COLUNAS_NA_TABELA:
         colunas = [colunas[0], *colunas[-(COLUNAS_NA_TABELA - 1) :]]
     cabecalho = tuple(rotulo(c) for c in colunas)
-    corpo = [tuple(escrever(linha.get(c)) for c in colunas) for linha in linhas]
+    corpo = [tuple(escrever(linha.get(c), c) for c in colunas) for linha in linhas]
     return cabecalho, corpo
 
 
 def _slides_de_tabela(
     titulo: str,
     linhas: list[dict],
-    escrever: Callable[[object], str],
+    escrever: Callable[[object, str], str],
     rotulo: Callable[[str], str],
 ) -> list[Slide]:
     cabecalho, corpo = _tabela_de_texto(linhas, escrever, rotulo)
@@ -175,7 +177,7 @@ def _slides_de_tabela(
     ]
 
 
-def _como_texto(valor: object) -> str:
+def _como_texto(valor: object, coluna: str) -> str:
     return "—" if valor is None else str(valor)
 
 
@@ -185,7 +187,7 @@ def _como_texto(valor: object) -> str:
 def _slides_da_secao(
     secao: Secao,
     titulo_da_tabela_: Callable[[str], str],
-    escrever: Callable[[object], str],
+    escrever: Callable[[object, str], str],
     rotulo: Callable[[str], str],
 ) -> list[Slide]:
     slides: list[Slide] = []
