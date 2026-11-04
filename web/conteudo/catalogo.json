@@ -1274,7 +1274,8 @@
       ],
       "familia": "transferegov",
       "licencas": [
-        "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)"
+        "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+        "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)"
       ],
       "link": "https://www.gov.br/transferegov/",
       "marca": "a_confirmar",
@@ -4786,7 +4787,7 @@
     },
     {
       "id": "transferegov-especiais-pagamentos",
-      "licenca": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+      "licenca": "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)",
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"

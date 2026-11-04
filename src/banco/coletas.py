@@ -578,6 +578,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "seges-pesquisa-precos",
             "comprasgov",
             "transferegov",
+            "transferegov-especiais-pagamentos",
             "pncp",
             "tcu",
             "govmg",
