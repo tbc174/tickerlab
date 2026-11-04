@@ -196,8 +196,8 @@ PARAMETROS: tuple[ParametroConfiguravel, ...] = (
     _p("fundamentalista.pl_maximo", "P/L máximo do filtro", "decimal", 30.0,
        "Filtro educacional de valuation; P/L negativo é tratado como \"não se aplica\".",
        minimo=0, maximo=500),
-    # ainda sem leitor: o dividend yield de 12 meses e de 5 anos (linha 55 da fila, atrás da trava do
-    # preço) é quem vai usá-la; o dividendo por ação e o payout não dependem dela
+    # ainda sem leitor (AINDA_SEM_EFEITO): o dividend yield de 12 meses e de 5 anos (linha 55 da fila,
+    # atrás da trava do preço) é quem vai usá-la; o dividendo por ação e o payout não dependem dela
     _p("fundamentalista.janela_proventos", "Janela dos proventos", "inteiro", 24,
        "Quantos meses de proventos entram no dividend yield. Yield passado não indica o futuro.",
        opcoes=(12, 24, 60), unidade="meses"),
@@ -237,6 +237,24 @@ PARAMETROS: tuple[ParametroConfiguravel, ...] = (
        opcoes=("web", "pdf")),
 )  # fmt: skip
 CATALOGO: dict[str, ParametroConfiguravel] = {p.chave: p for p in PARAMETROS}
+
+# Guardados e validados, mas nenhuma conta os lê ainda: a página Parâmetros os mostra travados, para
+# não parecer que mexer neles muda algo. A edição do Research é montada pela relevância e pelos temas
+# (não tem uma parte para risco, fundamentos e técnica), só sai no site, e o dividend yield ainda não
+# tem leitor. Quem passar a ler um deles o tira daqui.
+AINDA_SEM_EFEITO = frozenset(
+    {
+        "fundamentalista.janela_proventos",
+        "editorial.eventos",
+        "editorial.risco",
+        "editorial.fundamentos",
+        "editorial.tecnica",
+        "newsletter.canal",
+    }
+)
+AVISO_SEM_EFEITO = (
+    "Por enquanto ainda não muda nenhum número: fica travado até uma etapa usá-lo."
+)
 
 
 # --- regras entre parâmetros -----------------------------------------------------------------

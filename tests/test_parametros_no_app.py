@@ -6,6 +6,7 @@ import pytest
 import sqlalchemy as sa
 from streamlit.testing.v1 import AppTest
 
+from src import parametros as research_parametros
 from src.banco import dados_do_usuario as repo
 from src.banco import usuarios as contas
 from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
@@ -319,3 +320,20 @@ def test_correlacao_comeca_no_indice_e_na_janela_do_usuario():
     assert not app.exception
     assert app.selectbox(key="corr_indice").value == "S&P 500"
     assert app.slider(key="corr_janela").value == 60
+
+
+def test_parametro_que_ainda_nao_muda_numeros_fica_travado_e_diz_por_que():
+    app = _app_local()
+    for chave in research_parametros.AINDA_SEM_EFEITO:
+        parametro = research_parametros.CATALOGO[chave]
+        caixa = app.selectbox if parametro.opcoes else app.number_input
+        campo = caixa(key=_campo("global", 0, chave))
+        assert campo.disabled, chave
+        assert "ainda não muda" in campo.help, chave
+    # os que já mudam números continuam livres
+    assert not app.number_input(
+        key=_campo("global", 0, "relevancia.exposicao")
+    ).disabled
+    assert not app.number_input(key=_campo("global", 0, "tecnica.rsi_periodo")).disabled
+    legendas = " ".join(c.value for c in app.caption)
+    assert "Pulse" in legendas  # a relevância já ordena o Research
