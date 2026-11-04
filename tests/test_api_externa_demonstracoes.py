@@ -206,6 +206,23 @@ def test_period_end_filtra_o_periodo(cliente, cenario):
     assert [r["end"]["value"] for r in corpo["rows"]] == ["2024-12-31"]
 
 
+def test_period_end_com_known_at_mostra_o_periodo_como_era(cliente, cenario):
+    corpo = _get(
+        cliente, cenario, period_end="2024-12-31", known_at="2025-06-10"
+    ).json()
+    (receita,) = corpo["rows"]
+    assert (receita["value"]["value"], receita["revision"]["value"]) == (110.0, 2)
+    # o período que ainda não tinha saído em D não aparece
+    vazio = _get(cliente, cenario, period_end="2025-12-31", known_at="2026-03-14")
+    assert vazio.status_code == 404
+
+
+def test_limite_exato_nao_corta(cliente, cenario, monkeypatch):
+    monkeypatch.setattr(acesso, "linhas_por_resposta", lambda _contexto: 4)
+    corpo = _get(cliente, cenario).json()
+    assert (len(corpo["rows"]), corpo["truncated"]) == (4, False)
+
+
 def test_linhas_cortadas_pelo_plano(cliente, cenario, banco, monkeypatch):
     monkeypatch.setattr(acesso, "linhas_por_resposta", lambda _contexto: 2)
     corpo = _get(cliente, cenario).json()
@@ -276,6 +293,17 @@ def test_cortar_o_futuro_nao_muda_o_passado(tmp_path):
             respostas.append(leitor.demonstracoes(EMPRESA, dia))
     assert respostas[0] is not None
     assert respostas[0] == respostas[1]
+
+
+def test_documento_sem_fonte_conhecida_nao_sai(tmp_path):
+    """Só DFP e ITR têm fonte e direito: outro documento na base não vira linha sem fonte."""
+    base = _base().assign(documento="FRE")
+    arquivo = tmp_path / "demonstracoes" / "2025.parquet"
+    arquivo.parent.mkdir(parents=True)
+    base.to_parquet(arquivo, index=False)
+    with Porta(tmp_path) as porta:
+        leitor = demonstracoes.LeitorDeDemonstracoes(porta, lambda *_: True, 1_000)
+        assert leitor.demonstracoes(EMPRESA, AGORA.date()) is None
 
 
 def test_known_at_antes_de_qualquer_entrega_da_404(cliente, cenario):

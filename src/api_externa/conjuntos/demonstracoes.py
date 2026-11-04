@@ -14,6 +14,7 @@ vazio. As linhas saem do período mais novo para o mais velho, cortadas no limit
 
 from dataclasses import dataclass, field
 from datetime import date
+from itertools import islice
 
 import pandas as pd
 
@@ -86,26 +87,27 @@ class LeitorDeDemonstracoes:
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
+        filtros: dict[str, object] = {"cnpj": cnpj_.formatar(normal)}
+        if fim is not None:
+            filtros["fim"] = pd.Timestamp(fim)
         tabela = self.porta.ler(
             TABELA,
             como_era_em=como_era_em,
-            filtros={"cnpj": cnpj_.formatar(normal)},
+            filtros=filtros,
             colunas=[*CAMPOS, PUBLICADO_EM],
-        )
-        if fim is not None:
-            tabela = tabela[pd.to_datetime(tabela["fim"]).dt.date == fim]
-        tabela = tabela.sort_values(
-            list(ORDEM), ascending=list(CRESCENTE), na_position="first"
-        )
-        servidas = [s for _i, linha in tabela.iterrows() if (s := self._linha(linha))]
-        cortadas = servidas[: self.linhas_maximas]
+        ).sort_values(list(ORDEM), ascending=list(CRESCENTE), na_position="first")
+        servidas = (s for _i, linha in tabela.iterrows() if (s := self._linha(linha)))
+        # uma a mais que o limite basta para dizer se cortou: o resto da empresa nem vira campo
+        cortadas = list(islice(servidas, self.linhas_maximas + 1))
+        cortada = len(cortadas) > self.linhas_maximas
+        cortadas = cortadas[: self.linhas_maximas]
         if not cortadas:
             return None
         corpo = {
             "cnpj": normal,
             "como_era_em": como_era_em.isoformat(),
             "linhas": [servida for servida, _fonte in cortadas],
-            "cortada": len(servidas) > len(cortadas),
+            "cortada": cortada,
         }
         return DemonstracoesServidas(
             corpo, {fonte for _servida, fonte in cortadas}, len(cortadas)
