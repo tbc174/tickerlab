@@ -7,6 +7,7 @@ fontes, marca, relatório de exemplo e catálogo vêm de `scripts/gerar_site.py`
 import html
 import json
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -43,13 +44,24 @@ def esc(texto: str) -> str:
     return html.escape(texto, quote=True)
 
 
+def _conteudo(caminho: Path) -> object:
+    """Os bytes do arquivo; do .pptx, o texto de cada parte menos as imagens: o Pillow do PC e o do CI
+    recodificam a marca de jeitos diferentes, e isso não muda nenhum slide."""
+    if caminho.suffix != ".pptx":
+        return caminho.read_bytes()
+    with zipfile.ZipFile(caminho) as pptx:
+        return {
+            n: pptx.read(n) for n in pptx.namelist() if not n.startswith("ppt/media/")
+        }
+
+
 def test_parte_do_python_esta_em_dia(regerado):
     """Mudou a marca, o relatório de exemplo ou o catálogo? Rode `python -m scripts.gerar_site`."""
     novos = gs.arquivos_do_python(regerado)
     atuais = gs.arquivos_do_python(SITE)
     assert novos == atuais
     diferentes = [
-        str(c) for c in novos if (regerado / c).read_bytes() != (SITE / c).read_bytes()
+        str(c) for c in novos if _conteudo(regerado / c) != _conteudo(SITE / c)
     ]
     assert not diferentes, f"Rode python -m scripts.gerar_site: {diferentes}"
 

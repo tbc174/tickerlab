@@ -313,3 +313,42 @@ def do_setor(relatorio: RelatorioDoSetor, gerado_em: datetime) -> Apresentacao:
         AVISO_DO_DECK,
         tuple(slides),
     )
+
+
+def do_relatorio_semanal(conteudo: dict, gerado_em: datetime) -> Apresentacao:
+    """O deck do relatório de setor da página pública (o mesmo conteúdo da página e do PDF): os
+    destaques com fonte e data, as tabelas, o que a base não tem, as fontes e os limites."""
+    destaques = [
+        f"{d['titulo']}. {d['texto']} (Fonte: {d['fonte']}; dado de {d['data']}.)"
+        for d in conteudo["destaques"]
+    ]
+    faltas = [
+        f"{f['kpi']}: {f['motivo']} (Fonte: {f['fonte']}.)"
+        for f in conteudo["nao_temos"]
+    ]
+    capa = Slide(
+        CAPA,
+        conteudo["titulo"],
+        subtitulo="Relatório de setor",
+        notas=(
+            f"Dados da base de {conteudo['dados_de']}",
+            f"Gerado em {gerado_em:%d/%m/%Y às %H:%M}",
+        ),
+    )
+    slides = [capa, *_slides_de_texto("Antes de ler", [conteudo["aviso"]])]
+    slides += _slides_de_texto("O que os dados mostram", destaques)
+    for tabela in conteudo["tabelas"]:
+        linhas = [
+            dict(zip(tabela["colunas"], linha, strict=True))
+            for linha in tabela["linhas"]
+        ]
+        slides += _slides_de_tabela(tabela["titulo"], linhas, _como_texto, str)
+    slides += _slides_de_texto("O que este relatório ainda não traz", faltas)
+    fontes = list(dict.fromkeys(d["fonte"] for d in conteudo["destaques"]))
+    slides += _fechamento(fontes, list(conteudo["limites"]))
+    return Apresentacao(
+        f"Relatório do setor: {conteudo['titulo']}",
+        conteudo["setor"],
+        AVISO_DO_DECK,
+        tuple(slides),
+    )
