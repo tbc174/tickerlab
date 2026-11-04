@@ -1,9 +1,9 @@
 """O pré-registro vigente das estratégias quant P0 e da carteira própria, e a trava do hash.
 
-O texto aprovado pelo Tiago (03/11/2026 01h18, "Pode, como está") fica em
-`docs/pre-registro-quant-p0-v0.1.md`. Mudar qualquer coisa nele gera uma versão nova, com data,
-motivo e +25 tentativas no registro (seção 10 do próprio texto); o hash abaixo só muda junto com
-essa versão nova. Os números do critério ficam repetidos aqui para o código não ler o texto; há
+O texto vigente é a v0.2, aprovada pelo Tiago em 04/11/2026 03h31 ("Pode, como está"), em
+`docs/pre-registro-quant-p0-v0.2.md`; ela substitui a v0.1 (03/11/2026 01h18), que fica guardada
+com o próprio hash. Mudar qualquer coisa no texto gera uma versão nova, com data, motivo e +25
+tentativas no registro (seção 10 do próprio texto); o hash abaixo só muda junto com essa versão nova. Os números do critério ficam repetidos aqui para o código não ler o texto; há
 teste de que cada um aparece no texto.
 
 A avaliação contra o critério (`Evidencia` e `avaliar`) também fica aqui: todos os Sharpes são
@@ -39,10 +39,18 @@ from trader.validacao import bootstrap_diferenca_de_sharpe, bootstrap_do_sharpe
 
 __all__ = ["FIM_DO_DESENVOLVIMENTO"]
 
-VERSAO = "0.1"
-ARQUIVO = Path(__file__).resolve().parents[1] / "docs" / "pre-registro-quant-p0-v0.1.md"
-# SHA-256 do texto aprovado em 03/11/2026 (quebras de linha normalizadas para \n).
-HASH_DO_CRITERIO = "ea45eddf09e89f1cee5af3e7612fac2739cebf05ab1583e5270c6b3c2f403269"
+_DOCS = Path(__file__).resolve().parents[1] / "docs"
+VERSAO = "0.2"
+ARQUIVO = _DOCS / "pre-registro-quant-p0-v0.2.md"
+# SHA-256 do texto aprovado em 04/11/2026 (quebras de linha normalizadas para \n).
+HASH_DO_CRITERIO = "abea3c8556410d823e091117a7587955e106ebd3edb745d43d13de138bdc35cd"
+# As versões substituídas ficam congeladas: o texto e o hash com que as rodadas antigas foram feitas.
+VERSOES_ANTERIORES = {
+    "0.1": (
+        _DOCS / "pre-registro-quant-p0-v0.1.md",
+        "ea45eddf09e89f1cee5af3e7612fac2739cebf05ab1583e5270c6b3c2f403269",
+    ),
+}
 
 # --- seção 5: critério único (medido no desenvolvimento, retornos diários líquidos) ---------------
 DSR_MINIMO = 0.95  # A1
@@ -90,9 +98,13 @@ ORCAMENTO_POR_FICHA = {
     "P0-5": 6,
     "P0-6": 2,
     "P0-8": 4,
+    "C-1": 6,  # v0.2: carteira combinada das camadas
+    "P0-1b": 2,  # v0.2: tendência em cripto no par em reais
 }
-ORCAMENTO_DE_TENTATIVAS = 60
+ORCAMENTO_DE_TENTATIVAS = 68
 TENTATIVAS_POR_VERSAO_NOVA = 25
+# Seção 10: cada versão nova soma +25 ao N do DSR de toda rodada feita depois dela.
+TENTATIVAS_DAS_VERSOES_NOVAS = TENTATIVAS_POR_VERSAO_NOVA * len(VERSOES_ANTERIORES)
 # Estudo (P0-7) e monitor (P0-6): não são candidatas a dinheiro.
 FICHAS_SEM_CRITERIO = ("P0-7", "P0-6")
 # Tentativas anteriores a esta versão, contadas no DSR (seção 5, A1): M2, scalp e a Pesquisa 2.
@@ -137,8 +149,8 @@ def conferir(arquivo: Path = ARQUIVO, esperado: str = HASH_DO_CRITERIO) -> None:
 
 
 def tentativas_anteriores(registro_da_p2: Path = REGISTRO_DA_P2) -> int:
-    """M2 + scalp + as tentativas da Pesquisa 2 (se o registro dela está neste PC)."""
-    total = TENTATIVAS_DA_M2 + TENTATIVAS_DO_SCALP
+    """M2 + scalp + as +25 de cada versão nova + as da Pesquisa 2 (se o registro dela está neste PC)."""
+    total = TENTATIVAS_DA_M2 + TENTATIVAS_DO_SCALP + TENTATIVAS_DAS_VERSOES_NOVAS
     if registro_da_p2.exists():
         registro = Registro(registro_da_p2, familias=("K", "B"), commit_fn=lambda: "")
         total += registro.total_para_o_dsr()
