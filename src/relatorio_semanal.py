@@ -20,6 +20,7 @@ from typing import Any
 
 from src import dossie, relatorio_setor
 from src.amostra_do_relatorio import conferir
+from src.enderecos_das_fontes import fonte_com_endereco
 from src.relatorio_empresa_pdf import FUSO
 
 PASTA = Path(__file__).resolve().parent.parent / "conteudo" / "relatorios_semanais"
@@ -218,7 +219,7 @@ def _destaques(retrato: dict[str, Any], grupos: list[Grupo]) -> list[dict[str, s
                 f"{len(grupos)} companhias abertas desta página, com as distribuidoras que a base liga a "
                 f"cada uma, somam {_milhoes(soma)}: {_percentual(soma / total)} do total."
             ),
-            "fonte": FONTE_DOS_CONSUMIDORES,
+            "fonte": fonte_com_endereco(FONTE_DOS_CONSUMIDORES),
             "data": f"{base} (ficha de {dados_de})",
         },
         {
@@ -228,7 +229,7 @@ def _destaques(retrato: dict[str, Any], grupos: list[Grupo]) -> list[dict[str, s
                 f"{_milhoes(sum(g.consumidores for g in maiores))} de consumidores, "
                 f"{_percentual(sum(g.consumidores for g in maiores) / soma)} do que as {len(grupos)} somam."
             ),
-            "fonte": FONTE_DOS_CONSUMIDORES,
+            "fonte": fonte_com_endereco(FONTE_DOS_CONSUMIDORES),
             "data": f"{base} (ficha de {dados_de})",
         },
         {
@@ -240,7 +241,7 @@ def _destaques(retrato: dict[str, Any], grupos: list[Grupo]) -> list[dict[str, s
                 f"têm o auditor atual desde {ANO_DA_TROCA_EM_DESTAQUE}, segundo o formulário de referência. "
                 f"Juntas, atendem {_percentual(peso_2022 / total)} dos consumidores do país."
             ),
-            "fonte": FONTE_DO_AUDITOR,
+            "fonte": fonte_com_endereco(FONTE_DO_AUDITOR),
             "data": f"ficha de {dados_de} (formulário mais recente)",
         },
     ]
@@ -358,7 +359,11 @@ def para_o_site(retrato: dict[str, Any] | None = None) -> dict[str, Any]:
             _tabela_do_peso_por_auditor(retrato, grupos),
         ],
         "nao_temos": [
-            {"kpi": f.kpi, "motivo": f.motivo, "fonte": _fonte_publica(f.fonte)}
+            {
+                "kpi": f.kpi,
+                "motivo": f.motivo,
+                "fonte": fonte_com_endereco(_fonte_publica(f.fonte)),
+            }
             for f in faltas
         ],
         "limites": _limites(retrato),

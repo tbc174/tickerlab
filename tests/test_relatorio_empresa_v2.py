@@ -512,7 +512,9 @@ def test_indicadores_sem_preco_tem_data_fonte_comparacao_e_formula(ficha_da_cpfl
         for chave in chaves:
             item = itens[chave]
             assert item.valor is not None, chave
-            assert item.base and item.fonte == re_.FONTE_DAS_DEMONSTRACOES, chave
+            assert item.base and item.fonte.startswith(re_.FONTE_DAS_DEMONSTRACOES), (
+                chave
+            )
             assert (
                 item.comparacao is not None and "balanço de" in item.comparacao.contra
             )
@@ -531,7 +533,7 @@ def test_dividendo_por_acao_payout_e_crescimento_da_cpfl(ficha_da_cpfl):
     itens = _itens(ficha_da_cpfl, "dividendos")
     dpa = itens["dividendo_por_acao"]
     assert dpa.texto.startswith("R$ ") and dpa.base == "DFP de 2025"
-    assert dpa.fonte == re_.FONTE_DAS_ACOES
+    assert dpa.fonte.startswith(re_.FONTE_DAS_ACOES)
     assert dpa.comparacao is not None and dpa.comparacao.contra == "DFP de 2024"
     assert itens["payout"].valor and itens["payout"].texto.endswith("%")
     crescimento = itens["crescimento_do_dividendo"]  # só DFP de 2024 e 2025 na amostra
@@ -546,7 +548,7 @@ def test_ficha_tecnica_traz_as_acoes_por_especie(ficha_da_cpfl):
     acoes = _itens(ficha_da_cpfl, "ficha_tecnica")["acoes_em_circulacao"]
     assert acoes.texto == "1.152.254.440 (1.152.254.440 ON e 0 PN)"
     assert acoes.base == "balanço de 30/06/2026"
-    assert acoes.fonte == re_.FONTE_DAS_ACOES
+    assert acoes.fonte.startswith(re_.FONTE_DAS_ACOES)
     assert acoes.comparacao is not None and acoes.comparacao.texto.startswith("era ")
     assert acoes.rastro is not None
 
@@ -557,3 +559,20 @@ def test_acoes_sem_especie_mostram_so_o_total():
         re_.texto_das_acoes(3_000.0, 1_000.0, 2_000.0) == "3.000 (1.000 ON e 2.000 PN)"
     )
     assert re_.escrever(1_234_567.0, fundamentalista.ACOES) == "1.234.567"
+
+
+def test_todo_numero_da_ficha_com_fonte_conhecida_leva_o_endereco(ficha_da_cpfl):
+    itens = [i for s in ficha_da_cpfl.secoes for i in s.itens if i.fonte]
+    assert itens
+    sem_endereco = [i.chave for i in itens if "https://" not in i.fonte]
+    # sobra só a fonte que o app calcula sozinho, sem base pública para apontar
+    assert len(sem_endereco) < len(itens) / 2
+    assert all("https://" in f for f in ficha_da_cpfl.fontes if "CVM" in f)
+
+
+def test_o_markdown_escreve_o_endereco_sem_marcas_escapadas(ficha_da_cpfl):
+    from src.relatorio_empresa_markdown import relatorio_em_markdown
+
+    texto = relatorio_em_markdown(ficha_da_cpfl)
+    assert "https://dados.cvm.gov.br/dataset/cia_aberta-doc-dfp" in texto
+    assert r"cia\_aberta" not in texto

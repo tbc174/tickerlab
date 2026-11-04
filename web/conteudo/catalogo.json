@@ -516,6 +516,21 @@
     },
     {
       "coletas": [
+        "finep-contratacao"
+      ],
+      "familia": "finep",
+      "licencas": [
+        "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)"
+      ],
+      "link": "https://www.finep.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Finep (financiamento à inovação)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
         "b3-negocios",
         "b3-boletim-pr",
         "b3-cotahist-dia",
@@ -1387,7 +1402,7 @@
       "orgao": "BNDES",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -2063,6 +2078,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "BNDES",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
       "modulos": [
@@ -2115,6 +2141,17 @@
       "orgao": "FAO",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Finep",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -2237,7 +2274,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 24
+      "tabelas": 26
     },
     {
       "chave": "credito_e_fidc",
@@ -3037,6 +3074,13 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "finep-contratacao",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
     },
     {
       "id": "b3-negocios",
@@ -6554,6 +6598,26 @@
     },
     {
       "atraso": null,
+      "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "BNDES",
+      "situacao": "licenciada",
+      "tabela": "financiamentos_bndes"
+    },
+    {
+      "atraso": null,
+      "frase": "Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e descentralizado, pelos agentes financeiros).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Finep",
+      "situacao": "em consulta",
+      "tabela": "financiamentos_finep"
+    },
+    {
+      "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -6914,11 +6978,11 @@
     }
   ],
   "totais": {
-    "familias": 102,
-    "familias_em_uso": 38,
-    "fontes": 31,
-    "fontes_em_consulta": 9,
+    "familias": 103,
+    "familias_em_uso": 40,
+    "fontes": 33,
+    "fontes_em_consulta": 10,
     "modulos": 6,
-    "tabelas": 117
+    "tabelas": 119
   }
 }

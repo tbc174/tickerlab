@@ -29,6 +29,7 @@ from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.contestacao import com_a_contestacao
+from src.enderecos_das_fontes import fonte_com_endereco, paragrafo_com_endereco
 from src.faixa_de_preco import FaixaDePreco
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
@@ -1867,6 +1868,19 @@ def fontes_do_relatorio(e: Entradas) -> tuple[str, ...]:
     return (FONTE_DA_CVM, *([FONTE_DO_PRECO] if com_preco else []))
 
 
+def com_enderecos_das_fontes(secoes: list[Secao]) -> list[Secao]:
+    """As seções com o endereço público da fonte em cada número e em cada parágrafo "Fonte: ..."
+    (linha 601): a página, o PDF, o Markdown e a API mostram o mesmo texto."""
+    return [
+        replace(
+            s,
+            itens=[replace(i, fonte=fonte_com_endereco(i.fonte)) for i in s.itens],
+            paragrafos=[paragrafo_com_endereco(p) for p in s.paragrafos],
+        )
+        for s in secoes
+    ]
+
+
 def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     """O relatório completo de uma empresa, pronto para a página, o PDF e a API.
 
@@ -1923,8 +1937,8 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
         ticker=entradas.ticker,
         setor=entradas.dados.setor,
         grupo=NOMES.get(c.grupo, c.grupo),
-        secoes=secoes,
-        fontes=tuple(dict.fromkeys(fontes)),
+        secoes=com_enderecos_das_fontes(secoes),
+        fontes=tuple(dict.fromkeys(fonte_com_endereco(f) for f in fontes)),
         aviso_das_notas=notas.AVISO,
         em_conferencia=bool(entradas.achados),
     )

@@ -65,7 +65,6 @@ MESES_ABREVIADOS = (
 )
 MESES_NO_ANO = 12
 DIAS_UTEIS_NO_ANO = 252
-ANOS_DE_HISTORICO = 10
 DIAS_DE_CDI = 400  # um pouco mais que um ano de dias corridos: cobre 252 dias úteis
 
 
@@ -227,13 +226,12 @@ def _expectativas(lidas: dict[str, SerieLida], hoje: date) -> tuple[Expectativa,
     return tuple(saida)
 
 
-def _historico(lidas: dict[str, SerieLida], hoje: date) -> tuple[PontoMensal, ...]:
+def _historico(lidas: dict[str, SerieLida]) -> tuple[PontoMensal, ...]:
     ipca = lidas.get(IPCA)
     if ipca is None:
         return ()
+    # todo o histórico do acervo (desde 2010): o gráfico tem os botões de 1 a 10 anos e Tudo
     acumulado = _acumulado_em_12_meses(ipca.valores)
-    inicio = pd.Timestamp(hoje.year - ANOS_DE_HISTORICO, hoje.month, 1)
-    acumulado = acumulado[acumulado.index >= inicio]
     selic = lidas.get(SELIC_META)
     selic_no_mes = (
         selic.valores.resample("MS").last().reindex(acumulado.index).ffill()
@@ -273,7 +271,7 @@ def montar_painel(
     return PainelDeJuros(
         numeros=_numeros(lidas, cdi_diario),
         expectativas=_expectativas(lidas, hoje),
-        historico=_historico(lidas, hoje),
+        historico=_historico(lidas),
         avisos=_avisos(lidas, cdi_diario),
     )
 

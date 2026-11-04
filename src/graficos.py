@@ -166,6 +166,8 @@ COLUNAS_DE_PRECO = ("Open", "High", "Low", "Close", "Volume")
 # Acima de ~1 ano de pregões, as velas diárias ficam com menos de 1 pixel de largura: o
 # corpo some e sobra só o pavio. Aí cada vela passa a ser uma semana (como no TradingView).
 LIMITE_DE_VELAS_DIARIAS = 260
+# Pelo mesmo motivo, acima de ~5 anos de semanas (10 anos, Tudo) cada vela passa a ser um mês.
+LIMITE_DE_VELAS_SEMANAIS = 260
 
 # Com a roda do mouse ligada, rolar a página por cima de um gráfico dá zoom nele em vez de
 # rolar a página (os gráficos são grandes e prendem a rolagem). Mude para True se preferir.
@@ -191,6 +193,14 @@ _BOTOES_DE_PERIODO = [
     {"step": "year", "stepmode": "todate", "label": "YTD"},
     {"step": "all", "label": "Tudo"},
 ]
+# o Pink Sheet volta a 1960: os preços de referência abrem nos últimos 10 anos
+ANOS_NA_ABERTURA_DOS_PRECOS = 10
+# séries mensais (juros, inflação): 1M e 3M dariam um ou três pontos
+_BOTOES_DE_PERIODO_LONGO = [
+    botao
+    for botao in _BOTOES_DE_PERIODO
+    if botao.get("step") in ("year", "all") and botao.get("stepmode") != "todate"
+]
 
 
 def _estilo_base(figura: go.Figure, titulo: str | None, altura: int) -> None:
@@ -215,14 +225,15 @@ def _estilo_base(figura: go.Figure, titulo: str | None, altura: int) -> None:
     )
 
 
-def _seletor_de_periodo(a_direita: bool = False) -> dict:
-    """Botões 1M a Tudo. `a_direita` os põe no canto, ao lado do título, sem cobri-lo."""
+def _seletor_de_periodo(a_direita: bool = False, botoes: list | None = None) -> dict:
+    """Botões 1M a Tudo (ou `botoes`). `a_direita` os põe no canto, ao lado do título, sem
+    cobri-lo."""
     posicao = (
         {"x": 1, "xanchor": "right", "y": 1.0, "yanchor": "bottom"} if a_direita else {}
     )
     return {
         **posicao,
-        "buttons": _BOTOES_DE_PERIODO,
+        "buttons": botoes or _BOTOES_DE_PERIODO,
         "bgcolor": marca.DESTAQUE,
         "activecolor": COR_BOTAO,
         "font": {"size": 12},
@@ -256,25 +267,36 @@ def dias_sem_pregao(datas: pd.DatetimeIndex) -> pd.DatetimeIndex:
     return uteis.difference(datas.normalize())
 
 
-def velas_semanais(dados: pd.DataFrame) -> pd.DataFrame:
-    """Junta os dias de cada semana numa vela só.
+def _juntar_velas(dados: pd.DataFrame, frequencia: str) -> pd.DataFrame:
+    """Junta os dias de cada período (`frequencia` do pandas: "W" ou "M") numa vela só.
 
-    Abertura do primeiro dia, máxima e mínima da semana, fechamento do último dia e a soma do
-    volume. A vela fica no último dia que teve pregão na semana (não num sábado sem pregão),
+    Abertura do primeiro dia, máxima e mínima do período, fechamento do último dia e a soma do
+    volume. A vela fica no último dia que teve pregão no período (não num sábado sem pregão),
     para casar com as médias móveis diárias e com o eixo que esconde os fins de semana.
     """
-    semana = dados.index.to_period("W")
-    juntos = dados.groupby(semana).agg(
+    periodo = dados.index.to_period(frequencia)
+    juntos = dados.groupby(periodo).agg(
         {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
     )
-    juntos.index = pd.DatetimeIndex(dados.index.to_series().groupby(semana).max())
+    juntos.index = pd.DatetimeIndex(dados.index.to_series().groupby(periodo).max())
     return juntos
+
+
+def velas_semanais(dados: pd.DataFrame) -> pd.DataFrame:
+    """Junta os dias de cada semana numa vela só (ver `_juntar_velas`)."""
+    return _juntar_velas(dados, "W")
+
+
+def velas_mensais(dados: pd.DataFrame) -> pd.DataFrame:
+    """Junta os dias de cada mês numa vela só (ver `_juntar_velas`)."""
+    return _juntar_velas(dados, "M")
 
 
 def _textos_das_velas(
     dados: pd.DataFrame, fechamento_anterior: pd.Series, periodo: str = "dia"
 ) -> list[str]:
-    """Texto da dica do mouse em cada vela, em português, com a variação do dia ou da semana."""
+    """Texto da dica do mouse em cada vela, em português, com a variação do dia, da semana ou
+    do mês."""
     variacao = dados["Close"] / fechamento_anterior - 1
     textos = []
     for (_, linha), var in zip(dados.iterrows(), variacao, strict=True):
@@ -284,7 +306,7 @@ def _textos_das_velas(
             f"Máxima: {_numero_br(linha['High'])}<br>"
             f"Mínima: {_numero_br(linha['Low'])}<br>"
             f"Fechamento: {_numero_br(linha['Close'])}<br>"
-            f"Variação {'no' if periodo == 'dia' else 'na'} {periodo}: {texto_var}"
+            f"Variação {'na' if periodo == 'semana' else 'no'} {periodo}: {texto_var}"
         )
     return textos
 
@@ -300,8 +322,9 @@ def criar_grafico_preco(
 
     `dias_visiveis` mostra só os últimos N dias (útil nas velas, que ficam finas demais com
     muitos dias). As médias móveis são calculadas com todo o histórico antes do recorte.
-    Velas com mais de `LIMITE_DE_VELAS_DIARIAS` dias viram velas semanais; as médias
-    continuam sendo de dias, lidas no último dia de cada semana.
+    Velas com mais de `LIMITE_DE_VELAS_DIARIAS` dias viram velas semanais, e com mais de
+    `LIMITE_DE_VELAS_SEMANAIS` semanas, mensais; as médias continuam sendo de dias, lidas no
+    último dia de cada vela.
     `escala_log` põe o preço em escala logarítmica: a mesma variação em % ocupa a mesma
     altura, seja a ação de R$ 4.000 ou de R$ 5 (útil em históricos longos ou com tombos).
     """
@@ -326,8 +349,12 @@ def criar_grafico_preco(
     )  # antes de juntar em semanas
     periodo_da_vela = "dia"
     if tipo == "velas" and len(dados) > LIMITE_DE_VELAS_DIARIAS:
-        periodo_da_vela = "semana"
-        dados = velas_semanais(dados)
+        semanas = velas_semanais(dados)
+        periodo_da_vela, dados = (
+            ("semana", semanas)
+            if len(semanas) <= LIMITE_DE_VELAS_SEMANAIS
+            else ("mês", velas_mensais(dados))
+        )
         medias = {j: serie.loc[dados.index] for j, serie in medias.items()}
         fechamento_anterior = dados["Close"].shift(1)
 
@@ -1507,6 +1534,24 @@ def criar_grafico_obv(obv: pd.Series, volume_relativo: pd.Series) -> go.Figure:
     return figura
 
 
+def _botoes_mensais(
+    figura: go.Figure, meses: pd.DatetimeIndex, anos_na_abertura: int | None = None
+) -> None:
+    """Troca os botões de `_figura_base` pelos de série mensal (1A a Tudo). Com
+    `anos_na_abertura`, o gráfico abre nos últimos N anos (o "Tudo" mostra o resto)."""
+    figura.update_xaxes(  # overwrite: troca os botões em vez de somar aos que já estavam
+        rangeselector=_seletor_de_periodo(
+            a_direita=True, botoes=_BOTOES_DE_PERIODO_LONGO
+        ),
+        overwrite=True,
+    )
+    if anos_na_abertura is None:
+        return
+    inicio = meses[-1] - pd.DateOffset(years=anos_na_abertura)
+    if meses[0] < inicio:
+        figura.update_xaxes(range=[inicio, meses[-1]])
+
+
 def criar_grafico_juros_e_inflacao(
     historico: "tuple[PontoMensal, ...]",
 ) -> go.Figure:
@@ -1516,6 +1561,7 @@ def criar_grafico_juros_e_inflacao(
         raise ValueError("Não há meses para mostrar.")
     meses = pd.to_datetime([p.mes for p in historico])
     figura = _figura_base("Meta da Selic e IPCA em 12 meses (% ao ano)")
+    _botoes_mensais(figura, meses)
     figura.update_yaxes(tickformat=".1f", ticksuffix="%")
     for nome, valores, cor in (
         ("Meta da Selic", [p.selic_meta for p in historico], COR_AZUL),
@@ -1576,6 +1622,7 @@ def criar_grafico_preco_de_referencia(item: "PrecoDeReferencia") -> go.Figure:
         raise ValueError("Não há meses para mostrar.")
     meses = pd.to_datetime([p.mes for p in item.historico])
     figura = _figura_base(f"{item.nome} ({item.unidade}, média mensal)")
+    _botoes_mensais(figura, meses, ANOS_NA_ABERTURA_DOS_PRECOS)
     figura.update_yaxes(tickformat=",.2f")
     fontes = [("Banco Mundial (Pink Sheet)", [p.bm for p in item.historico], COR_AZUL)]
     if item.com_fmi:
@@ -1600,11 +1647,13 @@ def criar_grafico_spread_do_cafe(spread: "tuple[PontoDoSpread, ...]") -> go.Figu
     """A diferença entre o arábica e o robusta (US$/kg), mês a mês."""
     if not spread:
         raise ValueError("Não há meses para mostrar.")
+    meses = pd.to_datetime([p.mes for p in spread])
     figura = _figura_base("Spread arábica menos robusta (US$/kg)")
+    _botoes_mensais(figura, meses, ANOS_NA_ABERTURA_DOS_PRECOS)
     figura.update_yaxes(tickformat=",.2f")
     figura.add_trace(
         go.Scatter(
-            x=pd.to_datetime([p.mes for p in spread]),
+            x=meses,
             y=[p.valor for p in spread],
             mode="lines",
             line={"color": COR_AZUL, "width": 2.2},

@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from src import dossie
 from src import o_que_os_dados_mostram as leitura_da_ficha
+from src.enderecos_das_fontes import separar
 from src.rastro import DOCUMENTO as DOCUMENTO_DO_RASTRO
 from src.rastro import como_foi_calculado
 from src.relatorio_empresa import Item, Relatorio, Secao, nome_da_tabela
@@ -56,6 +57,23 @@ def _endereco(url: str) -> str:
     return quote(url, safe=_PRESERVADOS_NO_ENDERECO)
 
 
+def _fonte(fonte: str) -> str:
+    """A fonte como dado e, depois, os endereços dela como texto puro (sem marcas escapadas)."""
+    texto, pares = separar(fonte)
+    if not pares:
+        return como_texto_de_dado(texto)
+    links = "; ".join(f"{como_texto_de_dado(r)}: {_endereco(u)}" for r, u in pares)
+    return f"{como_texto_de_dado(texto)} — {links}"
+
+
+def _paragrafo(paragrafo: str) -> str:
+    """O parágrafo como dado; o "Fonte: ..." leva os endereços como texto puro."""
+    if paragrafo.startswith("Fonte: "):
+        ponto = "." if paragrafo.endswith(".") else ""
+        return "Fonte: " + _fonte(paragrafo.removeprefix("Fonte: ")) + ponto
+    return como_texto_de_dado(paragrafo)
+
+
 def _campo(nome: str, valor: object) -> str:
     return f"- **{como_texto_de_dado(nome)}:** {como_texto_de_dado(valor)}"
 
@@ -64,7 +82,7 @@ def _linha_do_item(item: Item) -> str:
     partes = [
         f"**{como_texto_de_dado(item.nome)}:** {como_texto_de_dado(item.texto)}",
         f"base: {como_texto_de_dado(item.base)}",
-        f"fonte: {como_texto_de_dado(item.fonte)}",
+        f"fonte: {_fonte(item.fonte)}",
     ]
     if comparacao := _comparacao(item):
         partes.append(f"comparado com: {como_texto_de_dado(comparacao)}")
@@ -139,7 +157,7 @@ def _secao(secao: Secao) -> list[str]:
             *(f"- {como_texto_de_dado(leitura_da_ficha.frase(p))}" for p in pontos),
             "",
         ]
-    saida += [f"{como_texto_de_dado(p)}\n" for p in secao.paragrafos]
+    saida += [f"{_paragrafo(p)}\n" for p in secao.paragrafos]
     return saida + _tabelas_da_secao(secao)
 
 
@@ -210,7 +228,7 @@ def relatorio_em_markdown(
         _campo("Ticker", relatorio.ticker.removesuffix(".SA")),
         _campo("Grupo de setores", relatorio.grupo),
         _campo("Gerado em", f"{gerado_em:%d/%m/%Y às %H:%M}"),
-        _campo("Fontes", "; ".join(relatorio.fontes)),
+        f"- **Fontes:** {'; '.join(_fonte(f) for f in relatorio.fontes)}",
         "",
     ]
     if relatorio.em_conferencia:
