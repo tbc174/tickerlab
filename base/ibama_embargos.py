@@ -39,7 +39,7 @@ COLUNAS_DA_FONTE = {
     "NUM_TAD": "numero_do_termo",
     "NOME_EMBARGADO": "nome",
     "CPF_CNPJ_EMBARGADO": "documento",
-    "DES_STATUS_FORMULARIO": "status",
+    "DES_STATUS_FORMULARIO": "situacao_do_termo",
     "SIT_CANCELADO": "cancelado",
     "DAT_EMBARGO": "embargada_em",
     "COD_MUNICIPIO": "codigo_do_municipio",
@@ -50,7 +50,7 @@ COLUNAS_DA_FONTE = {
     "NUM_AUTO_INFRACAO": "numero_do_auto",
 }
 TEXTOS = [
-    "numero_do_termo", "nome", "status", "cancelado", "codigo_do_municipio", "uf",
+    "numero_do_termo", "nome", "situacao_do_termo", "cancelado", "codigo_do_municipio", "uf",
     "desembargado", "numero_do_auto",
 ]  # fmt: skip
 DATAS = ["embargada_em", "desembargada_em"]

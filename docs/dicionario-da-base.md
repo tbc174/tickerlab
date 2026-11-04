@@ -3554,7 +3554,7 @@ Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, 
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
 | `numero_do_termo` | Número do termo de embargo | texto |
 | `nome` | Nome do embargado pessoa jurídica | texto |
-| `status` | Situação do termo, como o IBAMA escreve | texto |
+| `situacao_do_termo` | Situação do termo, como o IBAMA escreve | texto |
 | `cancelado` | Marca de cancelamento do termo, como o IBAMA escreve | texto |
 | `codigo_do_municipio` | Código do município (IBGE) do embargo | texto |
 | `uf` | UF do embargo | texto |

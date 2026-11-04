@@ -1588,7 +1588,7 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
             {
                 "numero_do_termo": ("Número do termo de embargo", TEXTO),
                 "nome": ("Nome do embargado pessoa jurídica", TEXTO),
-                "status": ("Situação do termo, como o IBAMA escreve", TEXTO),
+                "situacao_do_termo": ("Situação do termo, como o IBAMA escreve", TEXTO),
                 "cancelado": (
                     "Marca de cancelamento do termo, como o IBAMA escreve",
                     TEXTO,

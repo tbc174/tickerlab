@@ -24,7 +24,7 @@
       "descricao": "Nome do embargado pessoa jurídica",
       "unidade": "texto"
     },
-    "status": {
+    "situacao_do_termo": {
       "descricao": "Situação do termo, como o IBAMA escreve",
       "unidade": "texto"
     },
@@ -103,18 +103,18 @@
     "coletado_em": "origem_coletada_em"
   },
   "sinonimos_de_tempo": {
-    "embargada_em": "a_conferir",
-    "desembargada_em": "a_conferir",
+    "embargada_em": "aconteceu_em",
+    "desembargada_em": "ate",
     "visto_em": "visto_em",
     "disponivel_em": "publico_em",
     "origem_coletada_em": "coletado_em",
     "montado_em": "a_conferir"
   },
-  "historico_desde": "2026-11-04",
+  "historico_desde": "2026-10-14",
   "granularidade_do_publico_em": "mes",
   "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
   "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
   "pessoa": true,
   "frequencia": "Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)",
-  "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que a coleta entrou, 04/11/2026 para estas fontes)"
+  "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
 }

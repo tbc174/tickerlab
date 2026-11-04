@@ -9521,8 +9521,8 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "registrada_em": "a_conferir",
-        "descredenciada_em": "a_conferir",
+        "registrada_em": "aconteceu_em",
+        "descredenciada_em": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
@@ -9609,7 +9609,7 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "autorizada_em": "a_conferir",
+        "autorizada_em": "aconteceu_em",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
@@ -9712,7 +9712,7 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "incluida_em": "a_conferir",
+        "incluida_em": "aconteceu_em",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
@@ -9752,7 +9752,7 @@
           "descricao": "Nome do embargado pessoa jurídica",
           "unidade": "texto"
         },
-        "status": {
+        "situacao_do_termo": {
           "descricao": "Situação do termo, como o IBAMA escreve",
           "unidade": "texto"
         },
@@ -9831,8 +9831,8 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "embargada_em": "a_conferir",
-        "desembargada_em": "a_conferir",
+        "embargada_em": "aconteceu_em",
+        "desembargada_em": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
