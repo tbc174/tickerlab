@@ -51,6 +51,7 @@ LICENCAS = {
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+    "rfb-renuncias": "DIRBI e ECF da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
     "transparencia": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
@@ -267,6 +268,7 @@ REVENDA = {
     # a ficha do conjunto no dados.gov.br declara CC BY (o CC BY-ND é do rodapé do site gov.br
     # inteiro); Tiago, "Pode", 20/10/2026 (ADR 0106, item 2). Sócio pessoa física segue fora do app.
     "rfb-cnpj": VENDAVEL_COM_ATRIBUICAO,
+    "rfb-renuncias": A_CONFIRMAR,  # DIRBI e ECF (linha 660): nada perguntado à Receita, uso interno
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
@@ -565,6 +567,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "wiki",
             "mb",
             "pgfn",
+            "rfb-renuncias",
             "mte",
             "comexstat",
             "wayback",
