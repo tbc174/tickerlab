@@ -58,13 +58,13 @@ PORTAIS = {
     "go": (
         "https://dadosabertos.go.gov.br",
         "licencas ambientais ipe",
-        "licenc",
+        "licencas-ambientais-ipe",  # o pacote do SGA (outro sistema) repete os meses de 2026
     ),
     "ms": ("https://dados.ms.gov.br", "despesas credor", "despesa"),
     "sp": (
         "https://dados.prefeitura.sp.gov.br",
         "contratos extrato",
-        "contrato",
+        "compras-e-licitacoes",  # o pacote traz o extrato de contratos por ano
     ),
 }
 ANO_MES = re.compile(r"(20\d{2})[-_./ ]?(0[1-9]|1[0-2])(?!\d)")
