@@ -48,6 +48,7 @@ from src.relatorio_empresa import (
     nome_da_tabela,
     rotulo_da_coluna,
 )
+from src.relatorio_empresa_markdown import relatorio_em_markdown
 from src.relatorio_empresa_pdf import FUSO, relatorio_da_empresa
 from telas.comum import (
     PAGINAS_DO_MENU,
@@ -381,6 +382,20 @@ def _oferecer_o_pdf(relatorio: Relatorio) -> None:
         )
 
 
+def _oferecer_o_markdown(relatorio: Relatorio) -> None:
+    """A ficha em Markdown para ler com uma IA (as mesmas seções do PDF). É o mesmo conteúdo da
+    página, então não conta como relatório do plano."""
+    st.download_button(
+        "Baixar em Markdown (para IA)",
+        data=relatorio_em_markdown(relatorio),
+        file_name=f"tickerlab-empresa-{relatorio.ticker.removesuffix('.SA')}.md",
+        mime="text/markdown",
+        icon=":material/description:",
+        key="empresa_baixar_markdown",
+        on_click="ignore",
+    )
+
+
 def _oferecer_o_deck(relatorio: Relatorio) -> None:
     """O deck da ficha (PDF e PPT, os mesmos slides) para mandar sem editar. É o mesmo conteúdo
     da página, então não conta como relatório do plano."""
@@ -435,6 +450,7 @@ def pagina_relatorio_empresa():
     entradas = replace(entradas, premissas=_premissas())
     relatorio = com_analise(montar(entradas, plano_atual()), entradas, plano_atual())
     _oferecer_o_pdf(relatorio)
+    _oferecer_o_markdown(relatorio)
     _oferecer_o_deck(relatorio)
     _mostrar(relatorio)
     st.page_link(
