@@ -62,6 +62,7 @@ CAMPOS = {
     "abertura": (56, 69),
     "fechamento": (108, 121),
     "volume": (170, 188),
+    "fator_de_cotacao": (210, 217),
     "isin": (230, 242),
 }
 
@@ -85,7 +86,9 @@ def conferir_base(pasta: Path = PASTA_DA_FICHA, *, com_acoes: bool = True) -> li
 def ler_cotahist_anual(caminho: Path) -> pd.DataFrame:
     """Um ZIP anual da B3 em formato longo: data, ticker, isin, especificação, preços e volume.
 
-    Só o mercado à vista em lote padrão (010); preços e volume vêm em centavos no arquivo.
+    Só o mercado à vista em lote padrão (010); preços e volume vêm em centavos no arquivo. Até
+    2023 há papéis cotados por lote de mil (fator de cotação 1000): o preço é dividido pelo fator
+    para ficar por ação (o volume já vem em reais). Campo vazio vale 1.
     """
     with zipfile.ZipFile(caminho) as pacote:
         nome = next(n for n in pacote.namelist() if n.upper().endswith(".TXT"))
@@ -100,14 +103,15 @@ def ler_cotahist_anual(caminho: Path) -> pd.DataFrame:
     cotacoes = tabela[
         (tabela["tipo"] == TIPO_DE_REGISTRO) & (tabela["mercado"] == MERCADO_A_VISTA)
     ]
+    divisor = CENTAVOS * pd.to_numeric(cotacoes["fator_de_cotacao"]).fillna(1.0)
     return pd.DataFrame(
         {
             "data": pd.to_datetime(cotacoes["data"], format="%Y%m%d"),
             "ticker": cotacoes["ticker"].str.strip(),
             "isin": cotacoes["isin"].str.strip(),
             "especificacao": cotacoes["especificacao"].str.strip(),
-            "abertura": cotacoes["abertura"].astype(float) / CENTAVOS,
-            "fechamento": cotacoes["fechamento"].astype(float) / CENTAVOS,
+            "abertura": cotacoes["abertura"].astype(float) / divisor,
+            "fechamento": cotacoes["fechamento"].astype(float) / divisor,
             "volume": cotacoes["volume"].astype(float) / CENTAVOS,
         }
     ).reset_index(drop=True)
