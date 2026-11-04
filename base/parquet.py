@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import shutil
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
@@ -195,7 +196,12 @@ def _hash_gravado(destino: Path) -> str | None:
 
 
 def guardar_versao_anterior(destino: Path) -> Path:
-    """`<destino>.parquet` e `.json` viram `<destino>.v<N>`, com o primeiro N livre."""
+    """`<destino>.parquet` e `.json` são copiados para `<destino>.v<N>`, com o primeiro N livre.
+
+    Copia, não move: a vigente fica no lugar até a troca atômica da nova (`gravar_tabela`), então
+    a tabela nunca fica sem Parquet no meio (auditoria N9). Cópia e não link, porque a lápide
+    regrava as versões no lugar e não pode mexer na vigente junto.
+    """
     n = 1
     while destino.with_name(f"{destino.name}.v{n}.parquet").exists():
         n += 1
@@ -205,7 +211,7 @@ def guardar_versao_anterior(destino: Path) -> Path:
         if (
             anterior.exists()
         ):  # tabela gravada antes do manifesto (ADR 0078) não tem o .json
-            anterior.rename(versao.with_name(versao.name + extensao))
+            shutil.copy2(anterior, versao.with_name(versao.name + extensao))
     log.info(
         "%s mudou na fonte: a versão anterior ficou como %s", destino.name, versao.name
     )
