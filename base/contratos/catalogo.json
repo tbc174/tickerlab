@@ -7106,7 +7106,7 @@
       },
       "sinonimos_de_tempo": {
         "cancelada_em": "ate",
-        "teor_conferido_em": "a_conferir",
+        "teor_conferido_em": "coletado_em",
         "disponibilizada_em": "publico_em",
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
