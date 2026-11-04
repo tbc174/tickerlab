@@ -402,6 +402,7 @@
         "aneel-empreendimentos",
         "aneel-encargos",
         "aneel-fiscalizacao",
+        "aneel-bdgd-ucat-pj",
         "aneel-tarifas",
         "aneel-geracao",
         "aneel-qualidade"
@@ -786,10 +787,10 @@
       ],
       "familia": "bis",
       "licencas": [
-        "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS"
+        "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS"
       ],
       "link": "https://www.bis.org/statistics/",
-      "marca": "nao_comercial",
+      "marca": "vendavel",
       "orgao": "BIS (Banco de Compensações Internacionais)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
@@ -3245,50 +3246,50 @@
     },
     {
       "id": "bis-cambio-efetivo-nominal",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "bis-cambio-efetivo-real",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "bis-juro-dos-bancos-centrais",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "bis-preco-de-imoveis",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "bis-inflacao-longa",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "bis-cambio",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "bis-lacuna-de-credito",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -4331,6 +4332,13 @@
     {
       "id": "ans-cobertura-e-produtos",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-bdgd-ucat-pj",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
