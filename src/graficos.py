@@ -185,6 +185,9 @@ _BOTOES_DE_PERIODO = [
     {"count": 3, "label": "3M", "step": "month", "stepmode": "backward"},
     {"count": 6, "label": "6M", "step": "month", "stepmode": "backward"},
     {"count": 1, "label": "1A", "step": "year", "stepmode": "backward"},
+    {"count": 2, "label": "2A", "step": "year", "stepmode": "backward"},
+    {"count": 5, "label": "5A", "step": "year", "stepmode": "backward"},
+    {"count": 10, "label": "10A", "step": "year", "stepmode": "backward"},
     {"step": "year", "stepmode": "todate", "label": "YTD"},
     {"step": "all", "label": "Tudo"},
 ]

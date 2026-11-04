@@ -103,7 +103,14 @@ NO_FIM_DA_AREA = ("comparar", "relatorio")
 # O que a tela recebe (entradas) e qual rota da API devolve o que ela mostra (resposta). Uma tela nova
 # (React) é montada a partir daqui; há teste que confere cada contrato contra a API de verdade.
 
-PERIODOS = ("6mo", "1y", "2y", "5y")  # os mesmos de src/dados.py (há teste)
+PERIODOS = (
+    "6mo",
+    "1y",
+    "2y",
+    "5y",
+    "10y",
+    "max",
+)  # os mesmos de src/dados.py (há teste)
 
 
 @dataclass(frozen=True)

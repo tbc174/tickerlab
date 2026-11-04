@@ -120,7 +120,9 @@ TIPOS_DO_DECK = {
     "pdf": "application/pdf",
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
-Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
+Periodo = Literal[
+    "6mo", "1y", "2y", "5y", "10y", "max"
+]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
 SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o CDI à toa)
 # a ficha "Foi sorte?": o capital entra só no imposto da checagem 2 (o mesmo padrão do Streamlit)
