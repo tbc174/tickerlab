@@ -7071,7 +7071,7 @@
       "tabela": "processos_comunicacoes",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.1.0",
+      "versao": "1.2.0",
       "colunas": {
         "id_na_fonte": {
           "descricao": "O `hash` da comunicação no DJEN (único)",
@@ -7149,6 +7149,26 @@
           "descricao": "Quantos advogados a comunicação cita (os nomes não entram)",
           "unidade": "número inteiro"
         },
+        "tipo_de_ato": {
+          "descricao": "O ato publicado (`sentenca`, `acordao`, `decisao`, `despacho`, `despacho_ou_decisao`, `ato_ordinatorio`, `ata_de_julgamento`, `pauta`, `distribuicao`, `edital`, `certidao`), pelo tipo do documento; no tipo genérico, `sentenca` só com o dispositivo de uma. Vazio: não identificado ou não conferido",
+          "unidade": "texto"
+        },
+        "resultado": {
+          "descricao": "O que a comunicação decide, pela fórmula do dispositivo (`procedente`, `parcialmente_procedente`, `improcedente`, `acordo_homologado`, `extinto`, `recurso_provido`, `recurso_parcialmente_provido`, `recurso_nao_provido`). É o resultado do pedido, não o da companhia: quem ganhou depende do polo (`processos_partes`). Vazio: sem dispositivo claro, dois que se contradizem, lista de muitos processos ou não conferido",
+          "unidade": "texto"
+        },
+        "resultado_trecho": {
+          "descricao": "A fórmula que provou o resultado (\"JULGO PROCEDENTE\", \"NEGO PROVIMENTO\"); o que fica entre o verbo e a palavra-chave vira \"...\" (nenhum texto livre)",
+          "unidade": "texto"
+        },
+        "valor_citado": {
+          "descricao": "O maior valor em reais escrito no teor (condenação, causa ou honorários: o que o texto cita, não o valor da causa)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "teor_conferido_em": {
+          "descricao": "Dia da conferência automática que cobre a linha (amostra com semente, gabarito de um segundo modelo, precisão mínima de 95% por campo; regra e modelo que discordam deixam o campo vazio). Vazio: nenhuma conferência ainda cobre a comunicação, e o teor fica vazio",
+          "unidade": "data (dia)"
+        },
         "achada_por": {
           "descricao": "`nome` (a busca pela razão social achou: a companhia está entre as partes) ou `numero` (só a busca pelo número do processo achou)",
           "unidade": "texto"
@@ -7192,6 +7212,7 @@
       },
       "sinonimos_de_tempo": {
         "cancelada_em": "ate",
+        "teor_conferido_em": "coletado_em",
         "disponibilizada_em": "publico_em",
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",

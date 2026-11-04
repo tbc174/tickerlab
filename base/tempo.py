@@ -66,6 +66,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
     "visto_em": ("visto_em",),
     "coletado_em": (
         "coletado_em", "origem_coletada_em", "conferido_em", "confirmacao_em", "wayback_em",
+        "teor_conferido_em",
     ),
 }  # fmt: skip
 

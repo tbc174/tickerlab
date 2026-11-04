@@ -50,7 +50,7 @@ from typing import Any
 import pandas as pd
 import sqlalchemy as sa
 
-from base import numero_cnj, porta, tpu
+from base import conferencia_processos, numero_cnj, porta, processos_teor, tpu
 from base import retratos as motor
 from base.arquivo import djen
 from base.cadastro import cadastro_do_acervo
@@ -131,6 +131,11 @@ COLUNAS_DAS_COMUNICACOES = [
     "pessoas_juridicas",
     "pessoas_ou_desconhecidas",
     "advogados",
+    "tipo_de_ato",
+    "resultado",
+    "resultado_trecho",
+    "valor_citado",
+    "teor_conferido_em",
     "achada_por",
     "disponibilizada_em",
     "disponivel_em",
@@ -196,6 +201,7 @@ ORDEM_DAS_PARTES = [
 DATAS = [
     "referencia",
     "cancelada_em",
+    "teor_conferido_em",
     "disponibilizada_em",
     "primeira_comunicacao",
     "disponivel_em",
@@ -284,6 +290,7 @@ def _comunicacao(
         item.get("data_disponibilizacao") or item.get("datadisponibilizacao")
     )
     tipos = pd.Series([p["tipo_parte"] for p in partes], dtype=str)
+    leitura = processos_teor.ler(item)
     return {
         "id_na_fonte": str(item.get("hash") or item.get("id")),
         "id_djen": int(item["id"]) if item.get("id") is not None else None,
@@ -304,6 +311,12 @@ def _comunicacao(
         "pessoas_juridicas": int((tipos == PESSOA_JURIDICA).sum()),
         "pessoas_ou_desconhecidas": int((tipos == PESSOA_OU_DESCONHECIDA).sum()),
         "advogados": int(item.get("quantidade_de_advogados") or 0),
+        # o teor lido pela regra; `montar` só deixa o que a conferência aprovou
+        "tipo_de_ato": leitura.tipo_de_ato,
+        "resultado": leitura.resultado,
+        "resultado_trecho": leitura.resultado_trecho,
+        "valor_citado": leitura.valor_citado,
+        "teor_conferido_em": None,
         "achada_por": item.get("_achada_por", ACHADA_PELO_NOME),
         "disponibilizada_em": disponibilizada,
         "disponivel_em": min(disponibilizada, visto_em)
@@ -626,6 +639,41 @@ def _para_gravar(
     )
 
 
+def _cadastro_do_acervo(conexao: sa.Connection) -> tuple[pd.DataFrame, dict[str, str]]:
+    do_acervo = cadastro_do_acervo(conexao)
+    if do_acervo is None:
+        raise ValueError(
+            "sem o cadastro da CVM no acervo não há como ligar as partes ao CNPJ"
+        )
+    return do_acervo
+
+
+def _itens(
+    pelo_nome: Iterable[motor.Retrato], pelo_numero: Iterable[motor.Retrato]
+) -> list[dict[str, Any]]:
+    return [
+        *(i for r in pelo_nome for i in ler_consulta(r, ACHADA_PELO_NOME)),
+        *(i for r in pelo_numero for i in ler_consulta(r, ACHADA_PELO_NUMERO)),
+    ]
+
+
+def comunicacoes_da_tabela(
+    conexao: sa.Connection, cadastro: pd.DataFrame | None = None
+) -> dict[str, dict[str, Any]]:
+    """As comunicações como o DJEN entregou (com o teor) que entram em `processos_comunicacoes`,
+    pelo `id_na_fonte`: de onde a conferência do teor (`base/conferencia_processos.py`) sorteia. Vazio
+    se nenhuma consulta pelo nome foi guardada."""
+    pelo_nome = motor.retratos(conexao, djen.ID)
+    if not pelo_nome:
+        return {}
+    if cadastro is None:
+        cadastro = _cadastro_do_acervo(conexao)[0]
+    itens = _itens(pelo_nome, motor.retratos(conexao, djen.ID_DOS_PROCESSOS))
+    da_tabela = set(tabelas(itens, razoes_sociais(cadastro))[0]["id_na_fonte"])
+    unicas = {str(i.get("hash") or i.get("id")): i for i in sem_repetidas(itens)}
+    return {chave: item for chave, item in unicas.items() if chave in da_tabela}
+
+
 def montar(
     conexao: sa.Connection,
     pasta: Path,
@@ -646,13 +694,9 @@ def montar(
     pelo_numero = motor.retratos(conexao, djen.ID_DOS_PROCESSOS)
     origens = [{"url": r.url, "sha256": r.sha256} for r in (*pelo_nome, *pelo_numero)]
     if cadastro is None:
-        do_acervo = cadastro_do_acervo(conexao)
-        if do_acervo is None:
-            raise ValueError(
-                "sem o cadastro da CVM no acervo não há como ligar as partes ao CNPJ"
-            )
-        cadastro, origem_do_cadastro = do_acervo
+        cadastro, origem_do_cadastro = _cadastro_do_acervo(conexao)
         origens.append(origem_do_cadastro)
+    origens.extend(conferencia_processos.origens(pasta))
     da_tpu = tpu.classes_do_acervo(conexao)
     classes = None
     if da_tpu is not None:
@@ -664,11 +708,11 @@ def montar(
     }
     if not refazer and all(origens_gravadas(d) == origens for d in destinos.values()):
         return JA_MONTADO
-    itens = [
-        *(i for r in pelo_nome for i in ler_consulta(r, ACHADA_PELO_NOME)),
-        *(i for r in pelo_numero for i in ler_consulta(r, ACHADA_PELO_NUMERO)),
-    ]
+    itens = _itens(pelo_nome, pelo_numero)
     comunicacoes, partes, contagem = tabelas(itens, razoes_sociais(cadastro))
+    comunicacoes = conferencia_processos.aplicar(
+        comunicacoes, conferencia_processos.vigente(pasta)
+    )
     dos_processos = tabela_dos_processos(comunicacoes, classes)
     for nome, tabela, ordem in (
         (TABELA_DAS_COMUNICACOES, comunicacoes, ORDEM_DAS_COMUNICACOES),
