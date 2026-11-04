@@ -441,14 +441,16 @@
     {
       "coletas": [
         "anvisa-empresas",
-        "anvisa-produtos"
+        "anvisa-produtos",
+        "anvisa-cmed"
       ],
       "familia": "anvisa",
       "licencas": [
-        "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)"
+        "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+        "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)"
       ],
       "link": "https://dados.anvisa.gov.br/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "Anvisa (vigilância sanitária)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-29",
@@ -2157,6 +2159,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CMED (Anvisa)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-02-05",
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
       "modulos": [
@@ -2342,7 +2355,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 38
+      "tabelas": 39
     },
     {
       "chave": "credito_e_fidc",
@@ -3084,6 +3097,13 @@
       "id": "anvisa-produtos",
       "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
       "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anvisa-cmed",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-29"
     },
@@ -6706,6 +6726,16 @@
     },
     {
       "atraso": null,
+      "frase": "Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas duas listas que a Anvisa publica.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CMED (Anvisa)",
+      "situacao": "em consulta",
+      "tabela": "cmed_precos"
+    },
+    {
+      "atraso": null,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7188,9 +7218,9 @@
   "totais": {
     "familias": 104,
     "familias_em_uso": 41,
-    "fontes": 38,
-    "fontes_em_consulta": 15,
+    "fontes": 39,
+    "fontes_em_consulta": 16,
     "modulos": 6,
-    "tabelas": 133
+    "tabelas": 134
   }
 }

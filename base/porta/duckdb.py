@@ -112,6 +112,7 @@ ARQUIVOS: dict[str, str] = {
     "ancine_agentes": "ancine_agentes/*.parquet",
     "financiamentos_bndes": "financiamentos_bndes/*.parquet",
     "financiamentos_finep": "financiamentos_finep/*.parquet",
+    "cmed_precos": "cmed_precos/*.parquet",
     "cnes_estabelecimentos": "cnes_estabelecimentos/*.parquet",
     "cnes_competencias": "cnes_competencias/*.parquet",
     "anm_cfem_arrecadacao": "anm_cfem_arrecadacao/*.parquet",

@@ -121,6 +121,9 @@ LICENCAS = {
     # Ficha Clara, licenças e registros (licença lida na ficha do dados.gov.br em 29/10/2026); a coleta
     # guarda só a linha de CNPJ inteiro, sem nome, endereço nem contato
     "anvisa": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+    # preços da CMED (04/11/2026): publicados pela Anvisa, mas a licença própria das listas não está
+    # escrita (ADR 0102, Emenda 2): a confirmar, sem perguntar à fonte
+    "anvisa-cmed": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
     "mapa": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
     "anm": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
     "anm-cfem": "ANM, CFEM: licença não declarada; a confirmar, só interno (ADR 0102)",
@@ -340,6 +343,7 @@ REVENDA = {
     "ons": VENDAVEL_COM_ATRIBUICAO,
     "anatel": VENDAVEL_COM_ATRIBUICAO,
     "anvisa": VENDAVEL_COM_ATRIBUICAO,
+    "anvisa-cmed": A_CONFIRMAR,
     "mapa": VENDAVEL_COM_ATRIBUICAO,
     "anm": VENDAVEL_COM_ATRIBUICAO,
     # CFEM, SIGBM e AMB (linha 657): nada perguntado à ANM, uso interno
@@ -686,6 +690,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "anm-sigbm",
             "anm-amb",
             "ancine",
+            # preços da CMED (04/11): os termos das listas são os do portal da Anvisa, ainda não lidos
+            "anvisa-cmed",
             # Ficha Clara, incentivos (29/10): termos e robots.txt ainda não lidos
             "mme",
             # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos

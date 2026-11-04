@@ -61,6 +61,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "balanco_publico_em", "receita_publico_em", "conhecido_em_do_negocio",
         "primeira_entrega", "primeiro_recebido_em", "primeiro_visto",
         "disponibilizada_em", "primeira_comunicacao",
+        "lista_publicada_em",  # a CMED: o Last-Modified do arquivo no portal da Anvisa
     ),
     "ate_publico_em": ("ate_publico_em",),
     "visto_em": ("visto_em",),
