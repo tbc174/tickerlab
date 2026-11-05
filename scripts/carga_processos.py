@@ -1,5 +1,7 @@
 """Carga dos processos judiciais por CNPJ para a base: as tabelas `processos_comunicacoes`,
-`processos_partes`, `processos` e `processos_nas_notas` (`base/processos.py`).
+`processos_partes`, `processos` e `processos_nas_notas` (`base/processos.py`), e as internas do
+DataJud, `processos_datajud` e `processos_datajud_movimentos` (`base/processos_datajud.py`, só uso
+interno).
 
     python -m scripts.carga_processos                    (todas as consultas guardadas)
     python -m scripts.carga_processos --pasta /tmp/base  (outra pasta de saída)
@@ -23,7 +25,7 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import processos
+from base import processos, processos_datajud
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -47,8 +49,13 @@ def main(argv: list[str] | None = None) -> int:
     agora = datetime.now(UTC)
     with obter_engine().connect() as conexao:
         resumo = processos.montar(conexao, pasta, agora, refazer=opcoes.refazer)
+        # o DataJud (só uso interno) lê as próprias consultas guardadas: monta mesmo sem DJEN novo
+        datajud = processos_datajud.montar(
+            conexao, pasta, agora, refazer=opcoes.refazer
+        )
     # as notas da DFP não dependem do DJEN: as citações se montam mesmo sem consulta guardada
     log.info("processos nas notas da DFP: %s", processos.montar_citacoes(pasta, agora))
+    log.info("processos no DataJud (só uso interno): %s", datajud)
     if not resumo:
         log.warning("nenhuma consulta do DJEN guardada no acervo")
         return 1

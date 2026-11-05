@@ -190,6 +190,13 @@ FORA_DA_PORTA: dict[str, str] = {
     "cadastro_das_companhias": (
         "não é Parquet da base: é lido do original no acervo (`base/cadastro.py::ler_cadastro`)"
     ),
+    **dict.fromkeys(
+        ("processos_datajud", "processos_datajud_movimentos"),
+        (
+            "só uso interno (`coletas.FONTES_SO_INTERNAS`): a porta serve a API e o site; o "
+            "treino lê o Parquet direto"
+        ),
+    ),
     **{
         f"cnpj_{nome}{sufixo}": _CNPJ_DA_CARGA
         for nome in ("estabelecimentos", "simples", "qsa")

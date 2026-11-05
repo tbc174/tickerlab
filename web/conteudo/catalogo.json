@@ -1162,6 +1162,21 @@
     },
     {
       "coletas": [
+        "datajud-processos"
+      ],
+      "familia": "datajud",
+      "licencas": [
+        "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)"
+      ],
+      "link": "https://datajud-wiki.cnj.jus.br/api-publica/",
+      "marca": "uso_interno",
+      "orgao": "CNJ (DataJud, só uso interno)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "cnj-tpu"
       ],
       "familia": "cnj",
@@ -4714,6 +4729,13 @@
       "termos_lidos_em": null
     },
     {
+      "id": "datajud-processos",
+      "licenca": "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
       "id": "cnj-tpu",
       "licenca": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
       "marca": "a_confirmar",
@@ -7477,7 +7499,7 @@
     }
   ],
   "totais": {
-    "familias": 108,
+    "familias": 109,
     "familias_em_uso": 42,
     "fontes": 42,
     "fontes_em_consulta": 18,
