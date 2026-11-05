@@ -95,8 +95,13 @@ MODULOS = (
             ),
             Funcionalidade(
                 "Busca por CNPJ",
-                "Digite o CNPJ de uma companhia aberta e veja de que grupo ela faz parte e os fatos públicos, com data e fonte.",
+                "Digite o CNPJ de qualquer empresa: da companhia aberta, o grupo e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que mudou em 12 meses. Com data e fonte.",
                 "busca-por-cnpj",
+            ),
+            Funcionalidade(
+                "Relatório do setor",
+                "Quem está no setor, o tamanho do mercado, a concentração (CR4 e HHI) e as empresas lado a lado, com a fonte de cada número.",
+                "relatorio-do-setor",
             ),
             Funcionalidade(
                 "Pulse",
@@ -227,6 +232,11 @@ MODULOS = (
                 "Newsletter", "Os acontecimentos da sua lista por e-mail.", "newsletter"
             ),
             Funcionalidade(
+                "Sala de dados",
+                "Os documentos de cada operação num lugar cifrado, só da sua conta, com a origem de cada número e o que falta.",
+                "sala-de-dados",
+            ),
+            Funcionalidade(
                 "Compartilhamento seguro",
                 'Um link privado, com prazo e revogável, para a ficha "Foi sorte?" ou um PDF.',
                 "relatorio",
@@ -251,6 +261,26 @@ MODULOS = (
             ),
             Funcionalidade(
                 "Cotações", "B3, EUA, câmbio e cripto, com o atraso de cada fonte."
+            ),
+            Funcionalidade(
+                "Preços de referência",
+                "Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI, com a fonte e a data.",
+                "precos-de-referencia",
+            ),
+            Funcionalidade(
+                "Painel do café",
+                "Preço de referência, câmbio, fundos, exportações, safra da CONAB, clima e calendário do café.",
+                "painel-do-cafe",
+            ),
+            Funcionalidade(
+                "Mapa do café",
+                "Onde se produz arábica e conilon, município a município, e a chuva e a geada contra a normal.",
+                "mapa-do-cafe",
+            ),
+            Funcionalidade(
+                "Simulador de trava do café",
+                "A sua produção em cada safra desde 2000: sem travar, a termo, no futuro e com opção. Nada do que você digita é guardado.",
+                "simulador-de-trava",
             ),
             Funcionalidade(
                 "Qualidade do lucro",
