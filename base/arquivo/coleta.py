@@ -413,6 +413,13 @@ def arquivar(
                 resultado.falhas.append(alvo.url)
             detalhe = f"{type(erro).__name__}: {erro}"
             _registrar(fonte.id, alvo.url, None, None, "falhou", detalhe, agora)
+    if len(alvos) > 1 and resultado.sem_arquivo == len(alvos):
+        # 404 num mês só é "ainda não saiu"; em todos ao mesmo tempo, o endereço provavelmente mudou
+        log.warning(
+            "%s: todos os arquivos deram 404 (%d); confira se o endereço da fonte mudou",
+            fonte.id,
+            len(alvos),
+        )
     return resultado
 
 
