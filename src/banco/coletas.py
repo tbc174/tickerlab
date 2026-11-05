@@ -129,7 +129,7 @@ LICENCAS = {
     "anm-cfem": "ANM, CFEM: licença não declarada; a confirmar, só interno (ADR 0102)",
     "anm-sigbm": "ANM, SIGBM: licença não declarada; a confirmar, só interno (ADR 0102)",
     "anm-amb": "ANM, Anuário: licença não declarada; a confirmar, só interno (ADR 0102)",
-    "estban": "BCB, ESTBAN: reprodução com fonte e integridade (Termos de Uso do BC, lidos em 04/11/2026); a confirmar, só interno (ADR 0102)",
+    "estban": "BCB, ESTBAN: reprodução com fonte e integridade; a confirmar, só interno",
     "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
