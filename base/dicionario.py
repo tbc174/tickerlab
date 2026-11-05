@@ -1936,6 +1936,34 @@ def _tabelas_dos_tces() -> dict[str, Tabela]:
         "numero_aditivo": ("Número do termo aditivo", TEXTO),
         "ano_aditivo": ("Ano do termo aditivo", TEXTO),
     }
+    licitacoes_pe = {
+        "codigo_licitacao": ("Código do processo licitatório no TCE-PE", TEXTO),
+        "numero_processo": ("Número do processo", TEXTO),
+        "ano_processo": ("Ano do processo", TEXTO),
+        "numero_modalidade": ("Número da licitação na modalidade", TEXTO),
+        "ano_modalidade": ("Ano da licitação na modalidade", TEXTO),
+        "codigo_modalidade": ("Código da modalidade, como a fonte codifica", TEXTO),
+        "modalidade": ("Nome da modalidade, como a fonte escreve", TEXTO),
+        "codigo_ug": ("Código da unidade gestora", TEXTO),
+        "unidade_gestora": ("Nome da unidade gestora (órgão público)", TEXTO),
+        "codigo_municipio": ("Código do município no TCE-PE", TEXTO),
+        "natureza": ("Natureza do objeto, como a fonte escreve", TEXTO),
+        "fundamento_legal": (
+            "Código do fundamento legal, como a fonte codifica",
+            TEXTO,
+        ),
+        "situacao": ("Situação da licitação, como a fonte escreve", TEXTO),
+        "estagio": ("Estágio da licitação, como a fonte escreve", TEXTO),
+        "quantidade_licitantes": ("Quantidade de licitantes", TEXTO),
+        "link": ("Endereço do documento na fonte", TEXTO),
+        "data_edital": ("Dia da emissão do edital", DATA),
+        "data_homologacao": ("Dia da publicação da homologação", DATA),
+        "valor_estimado": ("Valor estimado do orçamento, em reais", NUMERO_DECIMAL),
+        "valor_adjudicado": (
+            "Total adjudicado ao vencedor (a linha é a do licitante vencedor), em reais",
+            NUMERO_DECIMAL,
+        ),
+    }
     sp = {
         "municipio": (
             "Município da consulta, como no endereço da fonte (sem acento, com hífen)",
@@ -2029,6 +2057,14 @@ def _tabelas_dos_tces() -> dict[str, Tabela]:
             "TCE-PE, API Dados Abertos (`TermoAditivo`)",
             anual,
             "tce_pe_aditivos",
+        ),
+        "tce_pe_licitacoes": tabela(
+            "pe",
+            "Licitações do TCE-PE por licitante vencedor (`LicitacoesDetalhes`; só a linha do vencedor pessoa jurídica).",
+            licitacoes_pe,
+            "TCE-PE, API Dados Abertos (`LicitacoesDetalhes`)",
+            "Anual, fatiado por ano e modalidade (um pedido por fatia, com pausa); refazer o ano corrente a cada trimestre",
+            "tce_pe_licitacoes",
         ),
         "tce_sp_despesas": tabela(
             "sp",
@@ -8394,6 +8430,7 @@ _CONTRATO = {
     ),
     "tce_pe_contratos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_contrato', 'cnpj'), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
     "tce_pe_aditivos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_contrato', 'numero_aditivo', 'ano_aditivo', 'cnpj'), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
+    "tce_pe_licitacoes": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_licitacao', 'cnpj'), datas={"aconteceu_em": "data_homologacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
     "tce_sp_despesas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('municipio', 'mes', 'evento', 'numero_empenho', 'cnpj', 'data_emissao', 'valor'), datas={"aconteceu_em": "data_emissao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
     "tce_ce_contratos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_municipio', 'numero_contrato', 'data_contrato', 'cnpj'), datas={"aconteceu_em": "data_contrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),
     "tce_rs_contratos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=('codigo_orgao', 'numero_licitacao', 'ano_licitacao', 'numero_contrato', 'ano_contrato', 'cnpj'), datas={"aconteceu_em": "data_assinatura", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_TCES, granularidade_do_publico_em="dia"),

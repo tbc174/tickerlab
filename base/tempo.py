@@ -84,6 +84,8 @@ COLUNAS_A_CONFERIR = frozenset(
         "data",
         "data_da_previsao",
         "data_de_corte",
+        "data_edital",  # TCE-PE: emissão do edital da licitação
+        "data_homologacao",  # TCE-PE: publicação da homologação (o resultado já era público?)
         "data_vencimento",
         "fechado_em",
         "gerado_em",

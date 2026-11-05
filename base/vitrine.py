@@ -502,6 +502,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "aneel_cde",
             "tce_pe_contratos",
             "tce_pe_aditivos",
+            "tce_pe_licitacoes",
             "tce_sp_despesas",
             "tce_ce_contratos",
             "tce_rs_contratos",
