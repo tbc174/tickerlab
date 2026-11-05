@@ -73,6 +73,21 @@ def test_zip_sem_csv_interrompe_a_leitura():
         faostat_cafe.ler(saida.getvalue(), date(2026, 10, 19))
 
 
+def test_zip_real_com_cinco_csvs_le_so_o_de_dados(tabela):
+    """O zip da FAO traz também códigos de país, elementos, flags e itens: só o `All_Data` vale."""
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as arquivo:
+        for nome in ("AreaCodes", "Elements", "Flags", "ItemCodes"):
+            arquivo.writestr(
+                f"Production_Crops_Livestock_E_{nome}.csv", "Code,Nome\n1,x\n"
+            )
+        arquivo.writestr(
+            "Production_Crops_Livestock_E_All_Data_(Normalized).csv", CSV.read_bytes()
+        )
+    lida = faostat_cafe.ler(saida.getvalue(), date(2026, 10, 19))
+    pd.testing.assert_frame_equal(lida, tabela)
+
+
 def test_corte_em_d_nao_usa_a_baixada_do_futuro(tabela):
     revista = faostat_cafe.ler(
         _zip(CSV.read_bytes().replace(b"3406000", b"3500000")), date(2026, 11, 20)
