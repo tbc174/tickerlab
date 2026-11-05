@@ -46,6 +46,7 @@ PASSAM_AS_MARCAS = {
     "rfb-cnpj",
     "goias",  # CC BY, termos relidos em 05/11/2026 (linha 688)
     "spcapital",  # CC0, termos relidos em 05/11/2026 (linha 688)
+    "msestado",  # CC BY, "pode" do Tiago em 05/11/2026 (linha 688)
 }
 
 
