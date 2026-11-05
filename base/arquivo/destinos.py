@@ -347,7 +347,12 @@ DESTINOS: dict[str, Destino] = {
     "tesouro-br-divida": _planejada(
         "serie-T/T7", "estoque e emissões da dívida federal, CAPAG e dívida dos estados"
     ),
-    "rfb-cnpj": _tabela("cnpj_situacao_especial", "cnpj_situacao_cadastral"),
+    "rfb-cnpj": _tabela(
+        "cnpj_situacao_especial",
+        "cnpj_situacao_cadastral",
+        "cnpj_simples_historico",
+        "cnpj_empresas_historico",
+    ),
     "pgfn-divida": _tabela("pgfn_divida"),
     # setoriais
     "anp-vendas-distribuidora": _tabela("anp_vendas"),
