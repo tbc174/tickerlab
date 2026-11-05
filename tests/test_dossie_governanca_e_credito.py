@@ -151,6 +151,8 @@ def _governanca(hoje: pd.Timestamp = HOJE, **tabelas: pd.DataFrame) -> dict | No
         tabelas.get("extremos", vazia),
         tabelas.get("diversidade", vazia),
         hoje,
+        tabelas.get("capital"),
+        tabelas.get("empregados"),
     )
 
 
@@ -300,6 +302,79 @@ def test_governanca_cortar_o_futuro_nao_muda_o_passado() -> None:
     assert cortada == _governanca_completa(dia)
     assert cortada is not None
     assert _itens(cortada)["conselho_membros"]["valor"] == 9
+
+
+def _capital() -> pd.DataFrame:
+    def linha(fre, tipo, valor, ordinarias, preferenciais):
+        return _do_fre(
+            fre, tipo_capital=tipo, valor_capital=valor, acoes_ordinarias=ordinarias,
+            acoes_preferenciais=preferenciais, acoes_total=ordinarias + preferenciais,
+        )  # fmt: skip
+
+    return pd.DataFrame(
+        [
+            linha(FRE_2025, "integralizado", 90 * MILHAO, 900.0, 0.0),
+            linha(FRE_2026_V2, "integralizado", 100 * MILHAO, 1000.0, 500.0),
+            linha(FRE_2026_V2, "autorizado", 150 * MILHAO, 2000.0, 0.0),
+            linha(FRE_2027, "integralizado", 999 * MILHAO, 9999.0, 0.0),
+        ]
+    )
+
+
+def _empregados() -> pd.DataFrame:
+    def linha(fre, recorte, grupo, mulheres, homens):
+        return _do_fre(
+            fre, recorte=recorte, grupo=grupo, genero_feminino=mulheres,
+            genero_masculino=homens, genero_nao_binario=0.0, genero_outros=0.0,
+            genero_sem_resposta=1.0,
+        )  # fmt: skip
+
+    return pd.DataFrame(
+        [
+            linha(FRE_2026_V2, "posicao", "Liderança", 10.0, 30.0),
+            linha(FRE_2026_V2, "posicao", "Não-liderança", 60.0, 100.0),
+            linha(FRE_2026_V2, "local", "Sudeste", 70.0, 130.0),
+            linha(FRE_2027, "posicao", "Liderança", 500.0, 500.0),
+        ]
+    )
+
+
+def test_capital_e_empregados_vem_do_fre_mais_novo_ja_entregue() -> None:
+    secao = _governanca(capital=_capital(), empregados=_empregados())
+    assert secao is not None
+    itens = _itens(secao)
+    assert (
+        itens["acoes_integralizadas"]["valor"] == 1500
+    )  # o FRE de 2027 ainda não era público
+    assert itens["acoes_integralizadas"]["base"] == "2026-07-10"
+    assert (
+        itens["empregados"]["valor"] == 202
+    )  # 41 + 161 (soma das respostas de gênero)
+    capital = secao["tabelas"]["capital_social"]
+    assert [linha["tipo_capital"] for linha in capital] == [
+        "autorizado",
+        "integralizado",
+    ]
+    por_posicao = [
+        linha
+        for linha in secao["tabelas"]["empregados_do_fre"]
+        if linha["recorte"] == "Por posição"
+    ]
+    assert sum(linha["mulheres"] for linha in por_posicao) == 70
+
+
+def test_capital_e_empregados_cortar_o_futuro_nao_muda_o_passado() -> None:
+    dia = D("2026-06-15")  # a versão 2 do FRE de 2026 ainda não existia
+    cortada = _governanca(
+        dia,
+        capital=_capital()[lambda t: t["conhecido_em"] <= dia],
+        empregados=_empregados()[lambda t: t["conhecido_em"] <= dia],
+    )
+    completa = _governanca(dia, capital=_capital(), empregados=_empregados())
+    assert cortada == completa
+    assert cortada is not None
+    assert _itens(cortada)["acoes_integralizadas"]["valor"] == 900
+    assert "empregados" not in _itens(cortada)  # não havia FRE de empregados entregue
 
 
 def test_governanca_sem_nenhuma_tabela_nao_tem_secao() -> None:

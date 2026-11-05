@@ -487,6 +487,8 @@ SECOES = (
             "fre_remuneracao",
             "fre_remuneracao_extremos",
             "fre_diversidade",
+            "fre_capital_social",
+            "fre_empregados",
         ),
     ),
     SecaoDaBase("credito", "Crédito", ("ratings", "debentures_assembleias")),
@@ -615,7 +617,9 @@ LIMITES = {
         "remuneração é a do último exercício encerrado, como a empresa a informa por órgão (o total e "
         "a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. A "
         "remuneração da Diretoria Estatutária por exercício é o total do órgão em cada FRE, sem nomes. "
-        "Diversidade só existe no FRE de 2023 em diante."
+        "Diversidade e empregados só existem no FRE de 2023 em diante; o total de empregados é a soma das "
+        "respostas de gênero. O capital é o do FRE mais novo: valor e ações por tipo, sem as condições "
+        "de conversão (texto livre)."
     ),
     "credito": (
         "Ratings: os relatórios das agências e os comunicados da companhia entregues à CVM, lidos "
@@ -1983,6 +1987,88 @@ def _remuneracao_da_diretoria(exercicios: pd.DataFrame) -> pd.DataFrame:
     ).head(ANOS_DA_GOVERNANCA)
 
 
+TIPOS_DE_CAPITAL = ("autorizado", "emitido", "subscrito", "integralizado")
+COLUNAS_DO_CAPITAL = ("tipo_capital", "valor_capital", "acoes_ordinarias",
+                      "acoes_preferenciais", "acoes_total")  # fmt: skip
+GRUPOS_DE_EMPREGADOS = {"posicao": "Por posição", "local": "Por região"}
+
+
+def _capital_do_fre(capital: pd.DataFrame) -> pd.DataFrame:
+    """O capital do FRE mais novo entregue: um tipo por linha (autorizado, emitido, subscrito,
+    integralizado), com o valor e as ações. Só empresa: a tabela não tem pessoa."""
+    if capital.empty:
+        return pd.DataFrame()
+    do_fre = _do_fre_mais_novo(capital).copy()
+    do_fre["ordem"] = do_fre["tipo_capital"].map(
+        {tipo: i for i, tipo in enumerate(TIPOS_DE_CAPITAL)}
+    )
+    tabela = do_fre.sort_values("ordem")[
+        [
+            "tipo_capital",
+            "valor_capital",
+            "acoes_ordinarias",
+            "acoes_preferenciais",
+            "acoes_total",
+        ]
+    ]
+    return tabela.drop_duplicates("tipo_capital").reset_index(drop=True)
+
+
+def _empregados_do_fre(empregados: pd.DataFrame) -> pd.DataFrame:
+    """Os empregados do FRE mais novo (de 2023 em diante): o total e as mulheres de cada grupo, por
+    posição e por região. O total é a soma das respostas de gênero, que a CVM pede de todos."""
+    if empregados.empty:
+        return pd.DataFrame()
+    do_fre = _do_fre_mais_novo(empregados).copy()
+    do_fre["total"] = _total_de_empregados(do_fre)
+    do_fre["mulheres"] = do_fre["genero_feminino"]
+    do_fre["recorte"] = do_fre["recorte"].map(GRUPOS_DE_EMPREGADOS)
+    tabela = do_fre.dropna(subset=["recorte"])[
+        ["recorte", "grupo", "total", "mulheres"]
+    ]
+    return tabela.sort_values(["recorte", "grupo"], ignore_index=True)
+
+
+def _itens_do_capital_e_dos_empregados(
+    capital: pd.DataFrame, empregados: pd.DataFrame
+) -> list[dict[str, Any]]:
+    """As ações integralizadas e o total de empregados, do FRE mais novo (as tabelas já cortadas por
+    `_entregues`): a data-base é a entrega do FRE, o dia em que ficou público."""
+    itens: list[dict[str, Any]] = []
+    integralizado = _do_fre_mais_novo(capital)
+    if not integralizado.empty:
+        integralizado = integralizado[integralizado["tipo_capital"] == "integralizado"]
+    if not integralizado.empty:
+        base = _data(integralizado["conhecido_em"].max())
+        itens.append(_item(
+            "acoes_integralizadas", "Ações do capital integralizado",
+            float(integralizado.iloc[0]["acoes_total"]), "ações", base, publicado_em=base,
+        ))  # fmt: skip
+    por_posicao = _do_fre_mais_novo(empregados)
+    if not por_posicao.empty:
+        por_posicao = por_posicao[por_posicao["recorte"] == "posicao"]
+    if not por_posicao.empty:
+        base = _data(por_posicao["conhecido_em"].max())
+        itens.append(_item(
+            "empregados", "Empregados informados no FRE",
+            float(_total_de_empregados(por_posicao).sum()), "pessoas", base, publicado_em=base,
+        ))  # fmt: skip
+    return itens
+
+
+def _do_fre_mais_novo(tabela: pd.DataFrame) -> pd.DataFrame:
+    """As linhas do FRE de maior referência (a tabela vazia continua vazia, com as colunas)."""
+    if tabela.empty:
+        return tabela
+    return tabela[tabela["referencia"] == tabela["referencia"].max()]
+
+
+def _total_de_empregados(tabela: pd.DataFrame) -> pd.Series:
+    """O total de cada linha: a soma das respostas de gênero, que a CVM pede de todos."""
+    generos = [c for c in tabela.columns if c.startswith("genero_")]
+    return tabela[generos].fillna(0).sum(axis=1)
+
+
 def secao_governanca(
     conselho: pd.DataFrame,
     comites: pd.DataFrame,
@@ -1990,21 +2076,37 @@ def secao_governanca(
     extremos: pd.DataFrame,
     diversidade: pd.DataFrame,
     hoje: pd.Timestamp,
+    capital: pd.DataFrame | None = None,
+    empregados: pd.DataFrame | None = None,
 ) -> dict[str, Any] | None:
-    """Conselho, comitês, remuneração e diversidade pelo FRE, só contagens e somas (None: nada)."""
-    conselho, comites, diversidade = (
-        _entregues(tabela, hoje) for tabela in (conselho, comites, diversidade)
+    """Conselho, comitês, remuneração, diversidade, capital social e empregados pelo FRE, só
+    contagens e somas (None: nada)."""
+    conselho, comites, diversidade, capital, empregados = (
+        _entregues(tabela, hoje)
+        for tabela in (
+            conselho,
+            comites,
+            diversidade,
+            pd.DataFrame() if capital is None else capital,
+            pd.DataFrame() if empregados is None else empregados,
+        )
     )
     por_ano = _governanca_por_ano(conselho, comites, diversidade)
     itens_da_remuneracao, tabelas_da_remuneracao = _remuneracao(
         remuneracao, extremos, hoje
     )
-    itens = [*_itens_da_governanca(por_ano), *itens_da_remuneracao]
+    itens = [
+        *_itens_da_governanca(por_ano),
+        *itens_da_remuneracao,
+        *_itens_do_capital_e_dos_empregados(capital, empregados),
+    ]
     if not itens:
         return None
     tabelas = {
         "governanca_por_ano": por_ano,
         "comites": _comites_do_fre(comites),
+        "capital_social": _capital_do_fre(capital),
+        "empregados_do_fre": _empregados_do_fre(empregados),
         **tabelas_da_remuneracao,
     }
     return _secao("governanca", itens, tabelas)
@@ -3710,6 +3812,14 @@ _ORIGENS_FIXAS = {
     "comites": Origem("fre_comites", "tipos de comitê distintos no FRE mais novo entregue"),
     "mulheres_no_conselho": Origem(
         "fre_diversidade", "mulheres no conselho de administração no FRE mais novo entregue"
+    ),
+    "acoes_integralizadas": Origem(
+        "fre_capital_social", "ações do capital integralizado no FRE mais novo entregue"
+    ),
+    "empregados": Origem(
+        "fre_empregados",
+        "soma das respostas de gênero dos empregados por posição no FRE mais novo entregue "
+        "(só de 2023 em diante)",
     ),
     "remuneracao_da_administracao": Origem(
         "fre_remuneracao",
