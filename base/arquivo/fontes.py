@@ -280,6 +280,46 @@ COLUNAS_DOS_PRODUTOS_DA_ANVISA = (
     "DT_VENCIMENTO_PRODUTO", "DT_VENCIMENTO_REGISTRO", "VALIDADE_SITUACAO", "DATA_CANCELAMENTO",
     "DT_CANCELAMENTO", "CANCELAMENTO", "DT_ATUALIZACAO", "DATA_ULTIMA_ATUALIZACAO", "DT_CARGA_ETL",
 )  # fmt: skip
+# preços máximos da CMED (lista de preços de medicamentos, Anvisa; 04/11/2026): uma linha por
+# apresentação (CNPJ + código GGREM), na lista ao consumidor (PF e PMC) e na de compras públicas (PF e
+# PMVG). UTF-8 com BOM. Sai o nome do laboratório (a razão social); "COMERCIALIZAÇÃO 2025" muda de
+# nome todo ano e "DESTINAÇÃO COMERCIAL" vem vazia, então ficam de fora até terem um nome estável.
+# Licença: a da Anvisa (CC BY); a desta lista em particular está "a confirmar" (ADR 0102, Emenda 2)
+PRECOS_DA_CMED = "https://dados.anvisa.gov.br/dados/"
+ALIQUOTAS_DA_CMED = (
+    "12", "17", "17,5", "18", "19", "19,5", "20", "20,5", "21", "22", "22,5", "23",
+)  # fmt: skip
+COLUNAS_DE_IDENTIDADE_DA_CMED = (
+    "SUBSTÂNCIA", "CNPJ", "CÓDIGO GGREM", "REGISTRO", "EAN 1", "EAN 2", "EAN 3", "PRODUTO",
+    "APRESENTAÇÃO", "CLASSE TERAPÊUTICA", "TIPO DE PRODUTO (STATUS DO PRODUTO)", "REGIME DE PREÇO",
+)  # fmt: skip
+COLUNAS_DE_MARCAS_DA_CMED = (
+    "RESTRIÇÃO HOSPITALAR", "CAP", "CONFAZ 87", "ICMS 0%", "ANÁLISE RECURSAL",
+    "LISTA DE CONCESSÃO DE CRÉDITO TRIBUTÁRIO (PIS/COFINS)", "TARJA",
+)  # fmt: skip
+
+
+def colunas_de_preco_da_cmed(referencia: str) -> tuple[str, ...]:
+    """As colunas de um preço ("PF", "PMC" ou "PMVG") como a CMED as escreve, na ordem do arquivo.
+
+    A alíquota zero do PF vem sem espaço ("PF 0%") e a do PMC e do PMVG com espaço ("PMC 0 %"); a
+    área de livre comércio (ALC) tem dois espaços antes ("PF 12 %  ALC").
+    """
+    zero = "0%" if referencia == "PF" else "0 %"
+    colunas = [f"{referencia} Sem Impostos", f"{referencia} {zero}"]
+    for aliquota in ALIQUOTAS_DA_CMED:
+        colunas += [f"{referencia} {aliquota} %", f"{referencia} {aliquota} %  ALC"]
+    return tuple(colunas)
+
+
+LISTAS_DA_CMED = {
+    "consumidor": "PMC",
+    "governo": "PMVG",
+}  # a lista e o preço máximo dela
+ARQUIVOS_DA_CMED = {
+    "consumidor": "TA_PRECO_MEDICAMENTO.csv",
+    "governo": "TA_PRECO_MEDICAMENTO_GOV.csv",
+}
 # RNTRC (transportadores de carga): um CSV por mês (~160 MB), e cada um é o cadastro inteiro daquele
 # mês; basta o mais novo (o arquivista guarda o histórico a partir daqui)
 COLUNAS_DO_RNTRC = (
@@ -877,6 +917,18 @@ CADASTROS_DE_PRODUTOS_DA_ANVISA = tuple(
     )
     for nome in ARQUIVOS_DE_PRODUTOS_DA_ANVISA
 )
+CADASTROS_DE_PRECOS_DA_CMED = tuple(
+    CsvDeCadastro(
+        PRECOS_DA_CMED + ARQUIVOS_DA_CMED[lista],
+        COLUNAS_DE_IDENTIDADE_DA_CMED
+        + colunas_de_preco_da_cmed("PF")
+        + colunas_de_preco_da_cmed(maximo)
+        + COLUNAS_DE_MARCAS_DA_CMED,
+        "CNPJ",
+        "utf-8-sig",
+    )
+    for lista, maximo in LISTAS_DA_CMED.items()
+)
 CADASTROS_DO_SIPEAGRO = (
     CsvDeCadastro(
         PRODUTO_VETERINARIO_DO_SIPEAGRO, COLUNAS_DO_SIPEAGRO, "CNPJ", "utf-8"
@@ -1436,6 +1488,7 @@ FONTES: list[Fonte] = [
         _cadastros(*CADASTROS_DE_PRODUTOS_DA_ANVISA),
         pesada=True,
     ),
+    Fonte("anvisa-cmed", "mensal", _cadastros(*CADASTROS_DE_PRECOS_DA_CMED)),
     Fonte("antt-rntrc", "mensal", descobrir_rntrc, pesada=True),
     Fonte("mapa-sipeagro", "mensal", _cadastros(*CADASTROS_DO_SIPEAGRO)),
     Fonte(

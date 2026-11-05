@@ -1,0 +1,110 @@
+{
+  "tabela": "cnes_estabelecimentos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Competência do cadastro, no formato AAAAMM",
+      "unidade": "número inteiro"
+    },
+    "codigo_cnes": {
+      "descricao": "Código do estabelecimento no CNES (7 dígitos)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do estabelecimento, só os 14 dígitos; vazio na unidade pública que não tem CNPJ próprio e no CPF (CPF nunca vira CNPJ)",
+      "unidade": "texto"
+    },
+    "cnpj_mantenedora": {
+      "descricao": "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos. Não substitui o `cnpj`, e a mantenedora não é dona de tudo o que mantém",
+      "unidade": "texto"
+    },
+    "razao_social": {
+      "descricao": "Nome empresarial; vazio quando não há nenhum CNPJ (pessoa física)",
+      "unidade": "texto"
+    },
+    "nome_fantasia": {
+      "descricao": "Nome fantasia; vazio quando não há nenhum CNPJ (pessoa física)",
+      "unidade": "texto"
+    },
+    "codigo_ibge_municipio": {
+      "descricao": "Código IBGE do município do estabelecimento",
+      "unidade": "texto"
+    },
+    "gestao": {
+      "descricao": "Tipo de gestão (municipal, estadual, dupla...), como a fonte escreve",
+      "unidade": "texto"
+    },
+    "tipo_unidade": {
+      "descricao": "Tipo de unidade (hospital geral, posto de saúde...), como a fonte escreve",
+      "unidade": "texto"
+    },
+    "classificacao": {
+      "descricao": "Classificação do estabelecimento, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "natureza_juridica": {
+      "descricao": "Natureza jurídica, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "grupo_natureza_juridica": {
+      "descricao": "Grupo da natureza jurídica, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "latitude": {
+      "descricao": "Latitude do estabelecimento (graus); vazio quando a fonte não informa",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "longitude": {
+      "descricao": "Longitude do estabelecimento (graus); vazio quando a fonte não informa",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "situacao_cnes": {
+      "descricao": "Situação do estabelecimento (ativo ou não), como a fonte escreve",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que a coleta viu a competência pela primeira vez (a API não dá a data de publicação); `competencia` nunca serve de disponibilidade",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "codigo_cnes"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "competencia": "referencia",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno (ADR 0102)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": true,
+  "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
+  "atraso": "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
+}

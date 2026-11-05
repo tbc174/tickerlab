@@ -371,9 +371,9 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   font-variant-numeric: tabular-nums; }
 .v2-painel-rodape { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-top: .8rem;
   color: var(--apagado); font-size: .86rem; }
-/* o painel da base: três números grandes, cada um com a conta recolhida embaixo */
+/* o painel da base: quatro números grandes, cada um com a conta recolhida embaixo */
 .v2-base-numeros { display: grid; grid-template-columns: auto 1fr; column-gap: 1rem; margin: 0; }
-/* subgrid: os três números dividem a mesma coluna, e os rótulos começam na mesma linha vertical */
+/* subgrid: os quatro números dividem a mesma coluna, e os rótulos começam na mesma linha vertical */
 .v2-base-numeros > div { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
   padding: .75rem 0; border-top: 1px solid var(--linha); }
 .v2-base-numeros dt { grid-column: 2; grid-row: 1; color: var(--apagado); font-size: .92rem; }
@@ -392,6 +392,18 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-vaga h3 { margin: 0 0 .4rem; font-size: 1.12rem; }
 .v2-vaga .seta { margin-top: auto; }
 .v2-vaga.breve h3 { color: var(--apagado); }
+
+/* ligado pelo CNPJ: um cartão por tema, com os órgãos em pílulas e a contagem de tabelas embaixo */
+.v2-temas-cnpj { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.v2-tema-cnpj { display: flex; flex-direction: column; gap: .6rem; }
+.v2-tema-cnpj h3 { margin: 0; font-size: 1.12rem; }
+.v2-tema-cnpj p { margin: 0; }
+.v2-orgaos { display: flex; flex-wrap: wrap; gap: .35rem; list-style: none; margin: 0; padding: 0; }
+.v2-orgaos li { max-width: none; padding: .15rem .55rem; border: 1px solid var(--linha); border-radius: 999px;
+  color: var(--apagado); font-size: .78rem; }
+.v2-tema-cnpj-conta { margin-top: auto !important; color: var(--azul-texto); font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: .86rem; font-weight: 700; }
+.v2-ligado-nota { margin: 1.2rem 0 .8rem; color: var(--apagado); font-size: .9rem; }
 
 /* cruzamentos: o número grande, a frase, a fonte e a conta recolhida */
 .v2-fatos { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
@@ -435,12 +447,6 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-doc-titulo { font-size: .72rem; font-weight: 700; color: var(--apagado); }
 .v2-doc-selo { justify-self: start; margin-top: .2rem; padding: .1rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 700;
   color: var(--azul-texto); border: 1px solid color-mix(in srgb, var(--azul-texto) 45%, transparent); }
-
-/* faixa da diferença */
-.v2-diferenca { background: radial-gradient(60rem 22rem at 15% 0%, rgba(41, 98, 255, .22), transparent 70%), #0a1f44; }
-.v2-diferenca h2 { max-width: 24ch; font-size: clamp(1.8rem, 3.6vw, 2.7rem); }
-.v2-principio { padding: 1.4rem; border-radius: var(--raio); background: rgba(16, 39, 82, .55); border: 1px solid var(--linha); }
-.v2-principio p { color: var(--apagado); margin: 0; }
 
 /* Report Studio: controles em pílula e folhas em leve perspectiva */
 .vitrine .controles { border-radius: 999px; background: var(--destaque); box-shadow: 0 1px 2px var(--linha); }
@@ -504,7 +510,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   .v2-bento .v2-larga { grid-template-columns: 1fr; }
   .v2-bento .v2-faixa-cartao { flex-direction: column; align-items: start; }
   .v2-regras-lista { grid-template-columns: 1fr; }
-  .v2-vagas, .v2-fatos { grid-template-columns: 1fr; }
+  .v2-vagas, .v2-fatos, .v2-temas-cnpj { grid-template-columns: 1fr; }
   .v2-vaga, .v2-vaga.breve { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -552,22 +558,17 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 /* o gráfico do cartão Estratégias se desenha quando aparece */
 .v2-anima .v2-mini .est { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1400ms cubic-bezier(.3, .7, .2, 1) 300ms; }
 .v2-anima .visivel .v2-mini .est { stroke-dashoffset: 0; }
-/* o horizonte da chamada final sobe quando ela aparece; a faixa da diferença acende */
+/* o horizonte da chamada final sobe quando ela aparece */
 .v2-anima .v2-final-fundo .v2-horizonte { opacity: 0; transform: translateY(80px) scale(.95);
   transition: opacity 1400ms ease, transform 1600ms cubic-bezier(.2, .7, .2, 1); }
 .v2-anima .v2-final-fundo.visivel .v2-horizonte { opacity: .9; transform: none; }
-.v2-diferenca { background-size: 100% 100%; }
-.v2-anima .v2-diferenca { background: #0a1f44; transition: background 1200ms ease; }
-.v2-anima .v2-diferenca.visivel { background: radial-gradient(60rem 22rem at 15% 0%, rgba(41, 98, 255, .22), transparent 70%), #0a1f44; }
 
 /* luz que segue o cursor (cartões) */
-.v2-bento .cartao, .v2-principio { position: relative; overflow: hidden; isolation: isolate; }
-.v2-bento .cartao::after, .v2-principio::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0;
+.v2-bento .cartao { position: relative; overflow: hidden; isolation: isolate; }
+.v2-bento .cartao::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0;
   background: radial-gradient(22rem circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--azul) 16%, transparent), transparent 60%);
   transition: opacity 220ms ease; }
-.v2-bento .cartao:hover::after, .v2-principio:hover::after { opacity: 1; }
-.v2-principio { transition: border-color 180ms ease, transform 180ms ease; }
-.v2-principio:hover { border-color: var(--azul-texto); transform: translateY(-2px); }
+.v2-bento .cartao:hover::after { opacity: 1; }
 
 /* painel do hero: a inclinação segue o cursor com suavidade */
 .v2-painel { transition: transform 300ms cubic-bezier(.2, .7, .2, 1); transform-style: preserve-3d; }
@@ -614,13 +615,6 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-anima .vitrine:not(.visivel) .folhas img:first-child { transform: translateX(50%) scale(.94); }
 .v2-anima .vitrine:not(.visivel) .folhas img:last-child { transform: translateX(-50%) scale(.94); }
 
-/* os três princípios: uma linha azul os liga quando a faixa aparece */
-.v2-diferenca .grade { position: relative; }
-.v2-diferenca .grade::before { content: ""; position: absolute; left: 0; right: 0; top: -1.1rem; height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, #2962ff, #6e95ff 60%, transparent); transform: scaleX(0); transform-origin: left;
-  transition: transform 1400ms cubic-bezier(.3, .7, .2, 1) 300ms; }
-.v2-diferenca.visivel .grade::before, :root:not(.v2-anima) .v2-diferenca .grade::before { transform: none; }
-
 /* menu que encolhe ao rolar */
 .topo .faixa { transition: min-height 260ms ease, box-shadow 260ms ease, background 260ms ease, max-width 260ms ease; }
 .v2-rolou .topo .faixa { min-height: 3.1rem; max-width: calc(var(--largura) - 4rem);
@@ -633,7 +627,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   .v2-painel::before { animation: none !important; }
 }
 /* o hover dos cartões continua valendo depois de revelados */
-.v2-anima .v2-revelar.visivel.cartao:hover, .v2-anima .v2-revelar.visivel.v2-principio:hover { transform: translateY(-2px); }
+.v2-anima .v2-revelar.visivel.cartao:hover { transform: translateY(-2px); }
 .v2-anima .v2-revelar.visivel.cartao.breve:hover { transform: none; }
 
 /* ===== rodada 4: o visual v2 em todas as páginas (14/10/2026) ===== */

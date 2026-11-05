@@ -1,0 +1,124 @@
+{
+  "tabela": "tce_rs_contratos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "codigo_orgao": {
+      "descricao": "Código do órgão no LicitaCon",
+      "unidade": "texto"
+    },
+    "numero_licitacao": {
+      "descricao": "Número da licitação",
+      "unidade": "texto"
+    },
+    "ano_licitacao": {
+      "descricao": "Ano da licitação",
+      "unidade": "texto"
+    },
+    "codigo_modalidade": {
+      "descricao": "Código da modalidade da licitação",
+      "unidade": "texto"
+    },
+    "numero_contrato": {
+      "descricao": "Número do contrato",
+      "unidade": "texto"
+    },
+    "ano_contrato": {
+      "descricao": "Ano do contrato",
+      "unidade": "texto"
+    },
+    "tipo_instrumento": {
+      "descricao": "Tipo do instrumento, como a fonte codifica",
+      "unidade": "texto"
+    },
+    "numero_processo": {
+      "descricao": "Número do processo",
+      "unidade": "texto"
+    },
+    "ano_processo": {
+      "descricao": "Ano do processo",
+      "unidade": "texto"
+    },
+    "link": {
+      "descricao": "Endereço da licitação no LicitaCon Cidadão",
+      "unidade": "texto"
+    },
+    "vigencia_inicio": {
+      "descricao": "Início da vigência",
+      "unidade": "data (dia)"
+    },
+    "vigencia_fim": {
+      "descricao": "Fim da vigência",
+      "unidade": "data (dia)"
+    },
+    "data_assinatura": {
+      "descricao": "Dia da assinatura",
+      "unidade": "data (dia)"
+    },
+    "valor": {
+      "descricao": "Valor do contrato, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "tribunal": {
+      "descricao": "Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs`",
+      "unidade": "texto"
+    },
+    "tabela": {
+      "descricao": "Assunto da linha dentro do tribunal (contratos, aditivos, despesas)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "codigo_orgao",
+    "numero_licitacao",
+    "ano_licitacao",
+    "numero_contrato",
+    "ano_contrato",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "data_assinatura",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "vigencia_inicio": "a_conferir",
+    "vigencia_fim": "a_conferir",
+    "data_assinatura": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": true,
+  "frequencia": "Mensal (índice do CKAN e um ZIP por órgão, com retomada)",
+  "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
+}
