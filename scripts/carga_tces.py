@@ -10,7 +10,8 @@ Os leitores são os de `base/contratos_tces.py` (só pessoa jurídica, sem nome,
 `disponivel_em`):
 - **PE**: `Contratos` e `TermoAditivo` do Dados Abertos, um pedido por ano (o teto da API é de 100 mil linhas por
   pedido: se a resposta chegar nele, a coleta para e avisa, em vez de gravar um ano cortado). As licitações
-  ficam de fora: `LicitacoesDetalhes` tem outro formato e passa do teto (linha nova na fila).
+  (`LicitacoesDetalhes`, uma linha por licitante, de 70 a 90 mil por ano só na modalidade 8) vão fatiadas por
+  ano e código de modalidade (`pe/licitacoes_<ano>_<modalidade>.json`); só o CNPJ do vencedor é lido.
 - **SP**: despesas por município e mês, só fornecedor marcado como CNPJ (645 municípios x 12 meses por ano).
 - **RS**: o `package_search` do CKAN lista os pacotes `contratos-<órgão>` e cada ZIP é baixado uma vez; só o
   `contrato.csv` é aberto.
@@ -18,7 +19,7 @@ Os leitores são os de `base/contratos_tces.py` (só pessoa jurídica, sem nome,
   `ce/contratados_<município>_<ano>.json` e `ce/contratos_<município>_<ano>.json` postos à mão.
 
 `--origem` grava, com manifesto e versões (`base/parquet.py::gravar_com_versoes`), uma tabela por assunto e
-um Parquet por ano em `<base>/<tabela>/<ano>.parquet`: `tce_pe_contratos`, `tce_pe_aditivos`, `tce_sp_despesas`,
+um Parquet por ano em `<base>/<tabela>/<ano>.parquet`: `tce_pe_contratos`, `tce_pe_aditivos`, `tce_pe_licitacoes`, `tce_sp_despesas`,
 `tce_ce_contratos` e `tce_rs_contratos`. Os arquivos baixados são dados de fora: ficam numa pasta nova, nunca
 no repositório, e esta carga os lê com o Python em modo isolado (`python -I`).
 
@@ -59,11 +60,15 @@ MESES = range(1, 13)
 SEM_ANO = "sem_ano"
 # entidade da API do TCE-PE por tabela (o parâmetro de ano é `AnoContrato` nas duas)
 ENTIDADES_PE = {"contratos": "Contratos", "aditivos": "TermoAditivo"}
+# `LicitacoesDetalhes` filtra por `ANOMODALIDADE` e `CODIGOMODALIDADE` (nomes em maiúsculas); conferido em
+# 05/11/2026: códigos de 1 a 25 têm linhas, o resto vem vazio. Cada fatia (ano x modalidade) cabe no teto.
+MODALIDADES_PE = range(1, 31)
 
 # tabela gravada: (pasta de origem, chave que ordena e identifica a linha)
 CHAVES = {
     "tce_pe_contratos": ["codigo_contrato", "cnpj"],
     "tce_pe_aditivos": ["codigo_contrato", "numero_aditivo", "ano_aditivo", "cnpj"],
+    "tce_pe_licitacoes": ["codigo_licitacao", "cnpj"],
     "tce_sp_despesas": [
         "municipio",
         "mes",
@@ -109,6 +114,16 @@ def _baixar_pe(baixador: Baixador, anos: Iterable[int]) -> None:
                 f"{PE}/{entidade}!json?AnoContrato={ano}",
             )
             _recusar_corte_pe(corpo, tabela, ano)
+        _baixar_licitacoes_pe(baixador, ano)
+
+
+def _baixar_licitacoes_pe(baixador: Baixador, ano: int) -> None:
+    for modalidade in MODALIDADES_PE:
+        corpo = baixador.pegar(
+            f"pe/licitacoes_{ano}_{modalidade}.json",
+            f"{PE}/LicitacoesDetalhes!json?ANOMODALIDADE={ano}&CODIGOMODALIDADE={modalidade}",
+        )
+        _recusar_corte_pe(corpo, f"licitacoes (modalidade {modalidade})", ano)
 
 
 def _recusar_corte_pe(corpo: bytes, tabela: str, ano: int) -> None:
@@ -194,9 +209,12 @@ def _quando(feitos: dict[str, str], arquivo: str) -> date:
 def _do_pe(origem: Path, feitos: dict[str, str]) -> list[Porcao]:
     porcoes = []
     for arquivo in sorted(a for a in feitos if a.startswith("pe/") and "_" in a):
-        tabela, ano = Path(arquivo).stem.split("_")
-        leitura = contratos_tces.ler_pe(
-            (origem / arquivo).read_bytes(), tabela, _quando(feitos, arquivo)
+        tabela, ano, *_ = Path(arquivo).stem.split("_")
+        corpo, quando = (origem / arquivo).read_bytes(), _quando(feitos, arquivo)
+        leitura = (
+            contratos_tces.ler_pe_licitacoes(corpo, quando)
+            if tabela == "licitacoes"
+            else contratos_tces.ler_pe(corpo, tabela, quando)
         )
         porcoes.append((f"tce_pe_{tabela}", ano, leitura))
     return porcoes
@@ -283,6 +301,10 @@ def _origem(origem: Path, tabela: str, ano: str) -> dict[str, str]:
         tabela.split("_")[1]
     ]
     for arquivo in sorted(origem.glob(f"{tabela.split('_')[1]}/*")):
+        if tabela.startswith("tce_pe_") and not arquivo.name.startswith(
+            tabela.removeprefix("tce_pe_") + "_"
+        ):
+            continue  # cada tabela do PE assina só os arquivos dela
         if ano in arquivo.name or tabela.endswith("_rs_contratos"):
             resumo.update(arquivo.name.encode() + arquivo.read_bytes())
     return {"url": pasta, "sha256": resumo.hexdigest()}

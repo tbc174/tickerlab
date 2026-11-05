@@ -128,6 +128,7 @@ ARQUIVOS: dict[str, str] = {
     "anm_amb_agua_mineral": "anm_amb_agua_mineral/*.parquet",
     "tce_pe_contratos": "tce_pe_contratos/*.parquet",
     "tce_pe_aditivos": "tce_pe_aditivos/*.parquet",
+    "tce_pe_licitacoes": "tce_pe_licitacoes/*.parquet",
     "tce_sp_despesas": "tce_sp_despesas/*.parquet",
     "tce_ce_contratos": "tce_ce_contratos/*.parquet",
     "tce_rs_contratos": "tce_rs_contratos/*.parquet",

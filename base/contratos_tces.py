@@ -16,7 +16,8 @@ leva `disponivel_em`, a data da coleta que o chamador informa: o dado só vale a
 Formatos conferidos em 03/11/2026 (rodada de aprofundamento de fontes, `evidencias/regionais`):
 - **PE** (Dados Abertos, JSON em ISO-8859-1, `{"resposta": {"conteudo": [...]}}`): o filtro é
   `NumeroDocumentoAjustado`, nunca `TipoCredor=2` (em despesas há CPF mascarado com esse tipo).
-  `LicitacoesDetalhes` só foi visto vazio: o mapa de campos dela é o mais provável, a conferir na 1ª carga.
+  `LicitacoesDetalhes` (conferida em 05/11/2026) tem os campos em maiúsculas, uma linha por licitante
+  (`ADJUDICADA` = "Vencedor" ou "Não Vencedor") e o CNPJ em `NUMERODOCUMENTOAJUSTADO` com espaços à direita.
 - **SP** (Portal da Transparência Municipal, JSON): `id_fornecedor` é texto ("CNPJ - PESSOA JURÍDICA -
   <14 dígitos>"); valor com vírgula decimal; os eventos (empenhado, liquidado, pago) não se somam.
 - **CE** (SIM, `elements`): `contratados` liga ao `contratos` por município, número e data do contrato.
@@ -73,21 +74,28 @@ CAMPOS_PE_ADITIVO = {
     "Estagio": "estagio",
     "LinkArquivo": "link",
 }
+# `LicitacoesDetalhes` traz os nomes em maiúsculas; só vai a linha do vencedor (uma por licitante na fonte)
 CAMPOS_PE_LICITACAO = {
-    "CodigoLicitacao": "codigo_licitacao",
-    "NumeroLicitacao": "numero_licitacao",
-    "AnoLicitacao": "ano_licitacao",
-    "Modalidade": "modalidade",
-    "CodigoUG": "codigo_ug",
-    "CodigoEfiscoUG": "codigo_efisco_ug",
-    "Municipio": "municipio",
-    "Situacao": "situacao",
+    "CODIGOPL": "codigo_licitacao",
+    "NUMEROPROCESSO": "numero_processo",
+    "ANOPROCESSO": "ano_processo",
+    "NUMEROMODALIDADE": "numero_modalidade",
+    "ANOMODALIDADE": "ano_modalidade",
+    "CODIGOMODALIDADE": "codigo_modalidade",
+    "NOMEMODALIDADE": "modalidade",
+    "CODIGOUG": "codigo_ug",
+    "UG": "unidade_gestora",
+    "CODIGOMUNICIPIO": "codigo_municipio",
+    "NOMENATUREZA": "natureza",
+    "FUNDAMENTOLEGAL": "fundamento_legal",
+    "SITUACAOLICITACAO": "situacao",
+    "ESTAGIOLICITACAO": "estagio",
+    "QTDELICITANTES": "quantidade_licitantes",
     "LinkArquivo": "link",
 }
 CAMPOS_PE = {
     "contratos": CAMPOS_PE_CONTRATO,
     "aditivos": CAMPOS_PE_ADITIVO,
-    "licitacoes": CAMPOS_PE_LICITACAO,
 }
 CAMPOS_SP = {
     "mes": "mes",
@@ -188,7 +196,7 @@ def _carimbar(linha: Linha, tribunal: str, tabela: str, coletado_em: date) -> Li
 
 
 def ler_pe(corpo: bytes, tabela: str, coletado_em: date) -> Leitura:
-    """Lê uma resposta do TCE-PE (`contratos`, `aditivos` ou `licitacoes`).
+    """Lê uma resposta do TCE-PE (`contratos` ou `aditivos`; as licitações têm `ler_pe_licitacoes`).
 
     O CNPJ vem de `NumeroDocumentoAjustado` (o campo que filtra bem); `TipoCredor` não é consultado.
     A vigência ("12/03/2025 a 12/07/2025") vira início e fim em ISO.
@@ -203,13 +211,42 @@ def ler_pe(corpo: bytes, tabela: str, coletado_em: date) -> Leitura:
             continue
         inicio, fim = _vigencia_pe(item.get("Vigencia"))
         linha = _copiar(item, campos)
-        if tabela != "licitacoes":
-            linha.update(vigencia_inicio=inicio, vigencia_fim=fim)
+        linha.update(vigencia_inicio=inicio, vigencia_fim=fim)
         if tabela == "contratos":
             linha["valor"] = _numero(item.get("Valor"))
         linha["cnpj"] = documento
         leitura.linhas.append(_carimbar(linha, "pe", tabela, coletado_em))
     return leitura
+
+
+def ler_pe_licitacoes(corpo: bytes, coletado_em: date) -> Leitura:
+    """Lê uma fatia de `LicitacoesDetalhes`: só a linha do licitante vencedor e só se ele for pessoa jurídica.
+
+    A razão social e o objeto não são lidos. Licitante não vencedor, CPF mascarado ("***.***.004-02") e
+    CNPJ com DV errado são descartados e contados.
+    """
+    resposta = json.loads(corpo.decode(CODIFICACAO_PE))["resposta"]
+    leitura = Leitura()
+    for item in resposta.get("conteudo") or []:
+        documento = _cnpj_de_pj(item.get("NUMERODOCUMENTOAJUSTADO"))
+        if documento is None or not _e_vencedor(item.get("ADJUDICADA")):
+            leitura.descartadas += 1
+            continue
+        linha = _copiar(item, CAMPOS_PE_LICITACAO)
+        linha.update(
+            data_edital=_data_iso(item.get("DATAEMISSAOEDITAL")),
+            data_homologacao=_data_iso(item.get("DATAPUBLICACAOHOMOLOGACAO")),
+            valor_estimado=_numero(item.get("VALORORCAMENTOESTIMATIVO")),
+            valor_adjudicado=_numero(item.get("TOTALADJUDICADOLICITANTE")),
+            cnpj=documento,
+        )
+        leitura.linhas.append(_carimbar(linha, "pe", "licitacoes", coletado_em))
+    return leitura
+
+
+def _e_vencedor(valor: object) -> bool:
+    """O vencedor entra e o "Não Vencedor" não (compara pelo começo da palavra, sem acento)."""
+    return (_texto(valor) or "").casefold().startswith("vencedor")
 
 
 def _vigencia_pe(valor: object) -> tuple[str | None, str | None]:

@@ -54,7 +54,7 @@ def test_pe_contratos_filtra_pelo_documento_ajustado_e_ignora_tipo_de_credor() -
     )
 
 
-def test_pe_aditivos_e_licitacoes_vazia() -> None:
+def test_pe_aditivos() -> None:
     aditivo = {
         "NumeroDocumentoAjustado": CNPJ,
         "CodigoContrato": "434774",
@@ -66,7 +66,35 @@ def test_pe_aditivos_e_licitacoes_vazia() -> None:
     (linha,) = t.ler_pe(_pe([aditivo]), "aditivos", HOJE).linhas
     assert linha["numero_aditivo"] == "001"
     assert "JustificativaTermoAditivo" not in linha
-    assert t.ler_pe(_pe([]), "licitacoes", HOJE).linhas == []
+
+
+def test_pe_licitacoes_so_o_vencedor_com_cnpj_e_sem_razao_social_nem_objeto() -> None:
+    vencedor = {
+        "NUMERODOCUMENTOAJUSTADO": f"{CNPJ}      ",
+        "ADJUDICADA": "Vencedor",
+        "CODIGOPL": "60089744",
+        "CODIGOMODALIDADE": "11",
+        "TOTALADJUDICADOLICITANTE": "3700.0000",
+        "VALORORCAMENTOESTIMATIVO": "3700.000000000",
+        "DATAEMISSAOEDITAL": "2025-06-10 00:00:00.0",
+        "RAZAOSOCIAL": "NÃO ENTRA",
+        "DESCRICAOOBJETO": "NÃO ENTRA",
+    }
+    itens = [
+        vencedor,
+        {**vencedor, "ADJUDICADA": "Não Vencedor"},
+        {**vencedor, "NUMERODOCUMENTOAJUSTADO": "***.***.004-02"},
+        {**vencedor, "NUMERODOCUMENTOAJUSTADO": "11222333000182"},
+    ]
+    leitura = t.ler_pe_licitacoes(_pe(itens), HOJE)
+    (linha,) = leitura.linhas
+    assert leitura.descartadas == 3
+    assert linha["cnpj"] == CNPJ
+    assert linha["valor_adjudicado"] == 3700.0
+    assert linha["data_edital"] == "2025-06-10"
+    assert linha["disponivel_em"] == "2026-11-03"
+    assert not {"RAZAOSOCIAL", "DESCRICAOOBJETO", "razao_social", "objeto"} & set(linha)
+    assert t.ler_pe_licitacoes(_pe([]), HOJE).linhas == []
 
 
 def test_sp_so_cnpj_e_valor_com_virgula_sem_nome_do_fornecedor() -> None:
