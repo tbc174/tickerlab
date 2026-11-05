@@ -14,6 +14,7 @@ from hypothesis import strategies as st
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from base.rede import ids
 from src.credito import features as fc
 from src.credito import features_da_base as fb
 from src.credito.dicionario import DA_BASE, DAS_DEMONSTRACOES, DICIONARIO
@@ -70,6 +71,18 @@ def _evento(cnpj, protocolo, rotulo, tema, publicado_em) -> dict:
             "publicado_em": pd.Timestamp(publicado_em), "link": f"https://cvm/{protocolo}"}  # fmt: skip
 
 
+def _entidade(cnpj, natureza, pessoa) -> tuple[dict, dict]:
+    """A entidade da rede e o identificador da raiz do CNPJ, públicos antes de qualquer retrato."""
+    id_entidade = ids.id_entidade("empresa", "cnpj_raiz", cnpj[:8])
+    publico = pd.Timestamp("2024-12-31")
+    return (
+        {"id_entidade": id_entidade, "tipo": "empresa", "nome": "X", "natureza_juridica": natureza,
+         "natureza_fonte": "receita", "mei": pessoa, "trata_como_pessoa": pessoa, "publico_em": publico},
+        {"id_entidade": id_entidade, "sistema": "cnpj_raiz", "valor": cnpj[:8], "desde": publico,
+         "publico_em": publico},
+    )  # fmt: skip
+
+
 def _scr(data_base, secao, ativa, inadimplencia, uf, cliente="PJ") -> dict:
     """Uma linha do SCR; o BC publica a data-base 60 dias depois (`disponivel_em`)."""
     base = pd.Timestamp(data_base)
@@ -122,9 +135,15 @@ SCR = [
     _scr("2026-04-30", "Educação", 500.0, 400.0, "SP"),
     _scr("2026-05-31", SECAO, 6000.0, 1800.0, "SP"),
 ]
+# a rede diz quem é pessoa (a MEI, natureza 213-5); a NOVA não consta nela
+REDE = [_entidade(EMPRESA, "2046", pessoa=False), _entidade(MEI, "2135", pessoa=True)]
+ENTIDADES = [entidade for entidade, _ in REDE]
+IDENTIFICADORES = [identificador for _, identificador in REDE]
 TABELAS = {
     "scr_credito": SCR,
     "pgfn_divida": PGFN,
+    "entidades": ENTIDADES,
+    "identificadores": IDENTIFICADORES,
     "cnpj_situacao_especial": SITUACAO,
     "insolvencia": INSOLVENCIA,
     "eventos": EVENTOS,
@@ -133,6 +152,8 @@ TABELAS = {
 PUBLICO_EM = {
     "scr_credito": lambda linha: linha["disponivel_em"],
     "pgfn_divida": lambda linha: linha["disponivel_em"] + pd.offsets.MonthEnd(0),
+    "entidades": lambda linha: linha["publico_em"],
+    "identificadores": lambda linha: linha["publico_em"],
     "cnpj_situacao_especial": lambda linha: (
         linha["disponivel_em"] + pd.offsets.MonthEnd(0)
     ),
@@ -199,6 +220,8 @@ def test_empresa_fora_do_retrato_tem_zero_e_antes_do_retrato_nao_observado(porta
 
 
 def test_mei_nao_sai_da_base(porta):
+    """A porta esconde as linhas da MEI na PGFN (ADR 0075) e as `entidades` dizem que o CNPJ é pessoa:
+    a feature fica não observada, em vez de um zero falso."""
     f = _da_base(porta, MEI, date(2026, 11, 1))
     for chave in (
         "divida_ativa_da_uniao",
@@ -206,6 +229,22 @@ def test_mei_nao_sai_da_base(porta):
         "inscricoes_em_divida_ativa",
     ):
         assert f[chave].valor is None and f[chave].motivo == fb.COMO_PESSOA
+
+
+def test_a_porta_nao_entrega_a_linha_da_mei(porta):
+    """O que a feature lê da PGFN nunca traz a MEI: a view da porta já a esconde."""
+    linhas = porta.ler("pgfn_divida", como_era_em=date(2026, 11, 1))
+    assert not linhas["trata_como_pessoa"].fillna(False).astype(bool).any()
+    assert _formatado(MEI) not in set(linhas["cnpj"])
+
+
+def test_sem_a_rede_na_base_a_empresa_segue_com_os_numeros(tmp_path):
+    with _porta(tmp_path, sem=("entidades", "identificadores")) as p:
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor == 3000.0
+        and f["divida_ativa_da_uniao"].motivo == ""
+    )
 
 
 # --- situação especial na Receita -----------------------------------------------------------------

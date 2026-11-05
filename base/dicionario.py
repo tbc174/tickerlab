@@ -129,6 +129,9 @@ class Tabela:
         ""  # mercado_e_empresas, credito_e_fidc, ma, governo_e_sancoes, macro, ...
     )
     pessoa: bool = False  # a tabela guarda dado de pessoa natural?
+    # numa tabela de empresas, a coluna booleana que marca as linhas de pessoa natural (empresário
+    # individual e MEI, ADR 0075): a porta não serve essas linhas
+    linhas_de_pessoa: str = ""
     chaves: tuple[str, ...] = ()  # colunas que identificam uma linha
     datas: dict[str, str] = field(
         default_factory=dict
@@ -5974,7 +5977,8 @@ TABELAS: dict[str, Tabela] = {
             "uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região "
             "da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor "
             "somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e "
-            "nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`."
+            "nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa` e a porta não "
+            "os serve."
         ),
         fonte="PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)",
         familia_da_fonte="pgfn",
@@ -8437,7 +8441,7 @@ _CONTRATO = {
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
-    "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
@@ -8724,6 +8728,16 @@ def _tabela_em_markdown(nome: str, tabela: Tabela) -> list[str]:
         f"- **Frequência:** {tabela.frequencia}",
         f"- **Atraso de divulgação:** {tabela.atraso}",
         f"- **Módulo:** {tabela.modulo} · **Contém dado de pessoa:** {'sim' if tabela.pessoa else 'não'}",
+        *(
+            [
+                (
+                    "- **Linhas de pessoa:** a porta esconde as marcadas em "
+                    f"`{tabela.linhas_de_pessoa}` (ADR 0075)"
+                )
+            ]
+            if tabela.linhas_de_pessoa
+            else []
+        ),
         f"- **Chaves:** {', '.join(f'`{c}`' for c in tabela.chaves)}",
         f"- **Três datas:** {_datas_em_texto(tabela)}",
         f"- **Histórico desde:** {tabela.historico_desde} (`publico_em` por {tabela.granularidade_do_publico_em})",

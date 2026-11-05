@@ -269,6 +269,88 @@ def test_renomeadas_entram_no_contrato_so_quando_existem():
     assert com["renomeadas"] == {"a": "b"}
 
 
+def test_linhas_de_pessoa_entram_no_contrato_so_quando_existem():
+    sem = contrato_da_tabela("fatos", FATOS)
+    com = contrato_da_tabela(
+        "fatos", replace(FATOS, linhas_de_pessoa="trata_como_pessoa")
+    )
+    assert "linhas_de_pessoa" not in sem
+    assert com["linhas_de_pessoa"] == "trata_como_pessoa"
+
+
+def test_linhas_de_pessoa_apontam_coluna_da_propria_tabela_sem_pessoa():
+    """A marca só faz sentido numa tabela de empresas (`pessoa` falso) e numa coluna que ela tem."""
+    marcadas = {n: t for n, t in TABELAS.items() if t.linhas_de_pessoa}
+    assert "pgfn_divida" in marcadas
+    for nome, tabela in marcadas.items():
+        assert tabela.linhas_de_pessoa in tabela.colunas, nome
+        assert not tabela.pessoa, nome
+
+
+# --- as linhas de pessoa ficam fora da porta (ADR 0075 depois da virada de 5/11/2026) -------------
+
+DIVIDAS = _tabela(
+    colunas={
+        "id": ("Identificador", TEXTO),
+        "trata_como_pessoa": ("Empresário individual ou MEI (ADR 0075)", TEXTO),
+        "publicado_em": ("Entrega", DATA),
+    },
+    datas={"publico_em": "publicado_em"},
+    linhas_de_pessoa="trata_como_pessoa",
+)
+
+
+def _dividas(**colunas: list) -> pd.DataFrame:
+    dias = pd.to_datetime(["2024-01-02"] * len(colunas["id"]))
+    return pd.DataFrame({"publicado_em": dias, **colunas})
+
+
+def _porta_das_dividas(pasta, tabela: Tabela = DIVIDAS):
+    return conectar(
+        pasta,
+        tabelas={"dividas": tabela},
+        arquivos={"dividas": "dividas/*.parquet"},
+        contratos=pasta / "contratos",
+    )
+
+
+def test_view_esconde_as_linhas_marcadas_como_pessoa(tmp_path):
+    """A linha do empresário individual e do MEI não sai da porta, nem na vista da versão; a linha sem
+    a marca (vazia) é empresa e sai."""
+    _gravar(
+        tmp_path,
+        "dividas/2024.parquet",
+        _dividas(
+            id=["empresa", "mei", "sem_marca"], trata_como_pessoa=[False, True, None]
+        ),
+    )
+    with _porta_das_dividas(tmp_path) as con:
+        servidas = con.execute("SELECT id FROM dividas ORDER BY id").fetchall()
+        na_versao = con.execute(
+            f"SELECT id FROM {nome_da_view('dividas', '1')} ORDER BY id"
+        ).fetchall()
+    assert servidas == [("empresa",), ("sem_marca",)]
+    assert na_versao == servidas
+
+
+def test_sem_a_coluna_da_pessoa_a_view_nao_serve_linha_nenhuma(tmp_path):
+    """Sem a marca no arquivo não dá para separar empresa de pessoa: o conservador é não servir."""
+    _gravar(tmp_path, "dividas/2024.parquet", _dividas(id=["empresa"]))
+    with _porta_das_dividas(tmp_path) as con:
+        assert con.execute("SELECT count(*) FROM dividas").fetchone() == (0,)
+
+
+def test_tabela_sem_a_marca_de_pessoa_serve_toda_linha(tmp_path):
+    """A marca só vale para a tabela que a declara: as outras seguem servindo tudo."""
+    _gravar(
+        tmp_path,
+        "dividas/2024.parquet",
+        _dividas(id=["a", "b"], trata_como_pessoa=[True, True]),
+    )
+    with _porta_das_dividas(tmp_path, replace(DIVIDAS, linhas_de_pessoa="")) as con:
+        assert con.execute("SELECT count(*) FROM dividas").fetchone() == (2,)
+
+
 def _cnpj(raiz: str) -> str:
     return f"{raiz[:2]}.{raiz[2:5]}.{raiz[5:8]}/0001-00"
 

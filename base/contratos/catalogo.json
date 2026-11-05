@@ -6656,7 +6656,7 @@
       "tabela": "pgfn_divida",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.0.1",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -6767,9 +6767,10 @@
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
       "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
-      "pessoa": true,
+      "pessoa": false,
       "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
-      "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
+      "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "sancoes_cgu": {
       "tabela": "sancoes_cgu",

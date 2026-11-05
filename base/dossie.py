@@ -8,10 +8,13 @@ no servidor de casa (`scripts/gerar_dossies.py`), uma ficha JSON por CNPJ, e só
 
 - a tabela está no dicionário da base e **não guarda pessoa** (ADR 0075: nomes esperam a LGPD);
 - a fonte pode ser **mostrada** pela trava das licenças (`coletas.pode_usar("mostrar", ...)`): toda
-  fonte, com a marca registrada e a fonte citada (ADR 0102; a B3 entrou em 22/10/2026, ADR 0008 Emenda 6);
-- não é uma tabela de crise ou de risco com o nome da empresa (insolvência, atraso, situação especial,
-  dívida com a União: esperam o parecer, P-44). As assessorias de M&A (marca "a confirmar") entram, porque
-  a marca não decide (ADR 0102): saem com a fonte citada, só os fatos, enquanto o TickerLab não cobra.
+  fonte, com a marca registrada e a fonte citada (ADR 0102; a B3 entrou em 22/10/2026, ADR 0008 Emenda 6).
+
+Crise e risco com o nome da empresa (insolvência, atraso, situação especial, dívida com a União) entram
+como fato datado, com a fonte, a data em que ficou público e o link para o original: a virada de
+5/11/2026 (`docs/virada-empresas-fechadas.md`) pôs toda a base a público sem esperar o parecer que o
+P-44 aguardava. As assessorias de M&A (marca "a confirmar") entram, porque a marca não decide
+(ADR 0102): saem com a fonte citada, só os fatos, enquanto o TickerLab não cobra.
 
 Uma fonte que passar a ser vendável entra sozinha: basta a tabela estar numa seção. Para pôr uma série
 nova de agência (as das séries 5 e 6 da base, quando chegarem), é uma linha em `SERIES_DAS_AGENCIAS`.
@@ -61,14 +64,9 @@ VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
 # sobe quando a conta de um item muda (o gabarito de `tests/test_dossie_rastro.py` quebra se não subir)
 VERSAO_DO_DOSSIE = "1"
 CALCULO_DO_DOSSIE = f"dossiê {VERSAO_DO_DOSSIE}"
-# fora do app até o parecer (crise ou risco com o nome da empresa, P-44), mesmo que a licença deixe
-# (a Emenda 3 da ADR 0008 liberou a da PGFN; o P-44 ainda a segura). A ADR 0103 (D2) tirou daqui a
-# insolvência e a situação especial: só como fato datado e com o direito de resposta (`base/contestacoes.py`)
-TABELAS_PROIBIDAS = frozenset({"rotulos_atraso", "pgfn_divida"})
-# da lista proibida, as que podem entrar numa contagem agregada sem nome (os cartões do site): a soma
-# de quantos balanços atrasaram não expõe ninguém, e o P-44 segura só o nome ("pode" do Tiago em
-# 29/10/2026 para o cartão do atraso). A dívida da PGFN fica fora até da contagem (ADR 0103)
-TABELAS_SO_EM_CONTAGEM = frozenset({"rotulos_atraso"})
+# Até 5/11/2026 havia aqui uma lista de tabelas proibidas (`rotulos_atraso` e `pgfn_divida`, que esperavam
+# o parecer P-44) e outra das que só entravam em contagem. A virada (`docs/virada-empresas-fechadas.md`)
+# pôs toda a base a público: em `pode_mostrar` só sobram a pessoa (ADR 0075) e a trava da licença.
 LINHAS_NAS_LISTAS = (
     20  # últimas ofertas, últimos negócios: o resto fica na contagem por ano
 )
@@ -112,9 +110,9 @@ class PessoaNaFichaError(ValueError):
 
 
 def pode_mostrar(nome_da_tabela: str) -> bool:
-    """A tabela pode aparecer no app? (a trava deixa mostrar, sem pessoa e fora da lista proibida)"""
+    """A tabela pode aparecer no app? (está no dicionário, não guarda pessoa e a trava deixa mostrar)"""
     tabela = TABELAS.get(nome_da_tabela)
-    if tabela is None or tabela.pessoa or nome_da_tabela in TABELAS_PROIBIDAS:
+    if tabela is None or tabela.pessoa:
         return False
     return pode_usar(MOSTRAR, tabela.familia_da_fonte)
 
@@ -124,24 +122,6 @@ def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:
     proibidas = [nome for nome in tabelas if not pode_mostrar(nome)]
     if proibidas:
         raise TabelaProibidaError(f"não podem ser mostradas: {', '.join(proibidas)}")
-
-
-def pode_contar(nome_da_tabela: str) -> bool:
-    """A tabela pode entrar numa contagem agregada sem nome? (o que pode ser mostrado, mais a lista
-    `TABELAS_SO_EM_CONTAGEM`, com a mesma trava da licença e sem pessoa)"""
-    if pode_mostrar(nome_da_tabela):
-        return True
-    tabela = TABELAS.get(nome_da_tabela)
-    if tabela is None or tabela.pessoa or nome_da_tabela not in TABELAS_SO_EM_CONTAGEM:
-        return False
-    return pode_usar(MOSTRAR, tabela.familia_da_fonte)
-
-
-def exigir_que_pode_contar(tabelas: Iterable[str]) -> None:
-    """Levanta `TabelaProibidaError` com as tabelas que nem numa contagem podem entrar."""
-    proibidas = [nome for nome in tabelas if not pode_contar(nome)]
-    if proibidas:
-        raise TabelaProibidaError(f"não podem ser contadas: {', '.join(proibidas)}")
 
 
 def fontes_das_tabelas(tabelas: Iterable[str]) -> list[str]:

@@ -32,40 +32,41 @@ CNPJ = "02429144000193"
         # marca restrita, que desde a ADR 0102 é só informação
         "ma_negocios",  # assessorias de M&A, só fatos (a confirmar)
         "ma_datas",  # datas pelo Wayback (não comercial)
+        # crise e risco com o nome da empresa: fato datado desde a virada de 5/11/2026
+        "insolvencia",
+        "cnpj_situacao_especial",
+        "rotulos_atraso",
+        "pgfn_divida",
     ],
 )
-def test_tabela_sem_pessoa_e_fora_da_lista_proibida_pode_ser_mostrada(
-    tabela: str,
-) -> None:
+def test_tabela_sem_pessoa_que_a_licenca_deixa_pode_ser_mostrada(tabela: str) -> None:
     assert dossie.pode_mostrar(tabela)
 
 
-@pytest.mark.parametrize(
-    "tabela",
-    [
-        "pgfn_divida",  # a licença deixa, mas é crise com nome (P-44)
-        "rotulos_atraso",
-        "tabela_que_nao_existe",
-    ],
-)
-def test_tabela_que_nao_pode_ser_mostrada(tabela: str) -> None:
+@pytest.mark.parametrize("tabela", ["tabela_que_nao_existe", "cnpj_qsa"])
+def test_tabela_fora_do_dicionario_ou_com_pessoa_nao_pode_ser_mostrada(
+    tabela: str,
+) -> None:
     assert not dossie.pode_mostrar(tabela)
 
 
-@pytest.mark.parametrize("tabela", ["cnpj_situacao_especial", "insolvencia"])
-def test_a_d2_liberou_insolvencia_e_situacao_especial(tabela: str) -> None:
-    """A ADR 0103 (D2, só fatos) tirou as duas da lista do P-44; a pgfn_divida segue fora."""
-    assert dossie.pode_mostrar(tabela)
+def test_a_virada_de_5_11_2026_tirou_a_lista_de_tabelas_proibidas() -> None:
+    """`docs/virada-empresas-fechadas.md`: toda a base vai a público; crise e risco com o nome da
+    empresa saem como fato datado, sem esperar parecer. Não há mais lista proibida nem "só em contagem"."""
+    assert not hasattr(dossie, "TABELAS_PROIBIDAS")
+    assert not hasattr(dossie, "TABELAS_SO_EM_CONTAGEM")
+    assert not hasattr(dossie, "pode_contar")
 
 
-def test_a_pgfn_tem_pessoa_e_a_lgpd_segura_mesmo_com_a_licenca_liberada(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Emenda 3, item 3b: dado pessoal é LGPD, não licença; a trava deixa, a tabela não sai."""
-    assert coletas.pode_usar("mostrar", dossie.TABELAS["pgfn_divida"].familia_da_fonte)
-    monkeypatch.setattr(dossie, "TABELAS_PROIBIDAS", frozenset())
-    assert dossie.TABELAS["pgfn_divida"].pessoa
-    assert not dossie.pode_mostrar("pgfn_divida")
+def test_a_pgfn_sai_sem_as_linhas_de_pessoa() -> None:
+    """ADR 0075 depois da virada: a tabela não é de pessoa (sai no app), mas o empresário individual e
+    o MEI ficam marcados em `trata_como_pessoa` e a porta esconde essas linhas."""
+    pgfn = dossie.TABELAS["pgfn_divida"]
+    assert coletas.pode_usar("mostrar", pgfn.familia_da_fonte)
+    assert pgfn.pessoa is False
+    assert pgfn.linhas_de_pessoa == "trata_como_pessoa"
+    assert pgfn.linhas_de_pessoa in pgfn.colunas
+    assert dossie.pode_mostrar("pgfn_divida")
 
 
 def test_a_lista_dos_usos_sem_cobranca_nao_decide_mais(
@@ -97,32 +98,8 @@ def test_tabela_vendavel_com_pessoa_nao_pode_ser_mostrada(
 
 
 def test_registrar_tabela_proibida_da_erro() -> None:
-    with pytest.raises(dossie.TabelaProibidaError, match="pgfn_divida"):
-        dossie.exigir_que_pode_mostrar(["auditores", "pgfn_divida"])
-
-
-def test_o_atraso_pode_ser_contado_mas_nao_mostrado() -> None:
-    """O cartão do site soma quantos balanços atrasaram; a ficha de uma companhia não mostra o rótulo."""
-    assert not dossie.pode_mostrar("rotulos_atraso")
-    assert dossie.pode_contar("rotulos_atraso")
-
-
-@pytest.mark.parametrize("tabela", ["pgfn_divida", "tabela_que_nao_existe"])
-def test_o_que_nao_esta_na_lista_de_contagem_nao_conta(tabela: str) -> None:
-    assert not dossie.pode_contar(tabela)
-
-
-def test_o_que_pode_ser_mostrado_pode_ser_contado() -> None:
-    assert dossie.pode_contar("insolvencia")
-
-
-def test_contar_tabela_com_pessoa_da_erro(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A lista de contagem não passa por cima da LGPD nem da trava da licença."""
-    com_pessoa = replace(dossie.TABELAS["rotulos_atraso"], pessoa=True)
-    monkeypatch.setitem(dossie.TABELAS, "rotulos_atraso", com_pessoa)
-    assert not dossie.pode_contar("rotulos_atraso")
-    with pytest.raises(dossie.TabelaProibidaError, match="rotulos_atraso"):
-        dossie.exigir_que_pode_contar(["insolvencia", "rotulos_atraso"])
+    with pytest.raises(dossie.TabelaProibidaError, match="cnpj_qsa"):
+        dossie.exigir_que_pode_mostrar(["auditores", "cnpj_qsa"])
 
 
 def test_todas_as_secoes_registradas_podem_ser_mostradas() -> None:
