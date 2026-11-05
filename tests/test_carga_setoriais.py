@@ -81,7 +81,8 @@ ENDERECOS = {
     comex_preco_medio.FONTE: [
         ("https://x.gov.br/comexstat-bd/ncm/EXP_2026.csv", "comex/EXP_2026.csv"),
         ("https://x.gov.br/comexstat-bd/ncm/IMP_2026.csv", "comex/IMP_2026.csv"),
-        ("https://x.gov.br/comexstat-bd/tabelas/URF.csv", "comex/URF.csv"),  # fica fora: não é de NCM
+        ("https://x.gov.br/comexstat-bd/tabelas/URF.csv", "comex/URF.csv"),  # tabela de apoio (comex_urf)
+        ("https://x.gov.br/comexstat-bd/tabelas/VIA.csv", "comex/VIA.csv"),  # tabela de apoio (comex_via)
     ],
 }  # fmt: skip
 CNPJS_SEM_B13 = {
@@ -147,6 +148,8 @@ def test_grava_cada_fonte_por_ano_com_manifesto_e_linhagem(ambiente):
         "anp_concessionarios": {"concessionarios"},
         "antt_siade": {"2006", "2026"},
         "comex_preco_medio": {"exportacao_2026", "importacao_2026"},
+        "comex_urf": {"urf"},
+        "comex_via": {"via"},
     }
     with criar_engine().connect() as c:
         for fonte, anos in esperados.items():
@@ -297,6 +300,20 @@ def test_preco_medio_do_comex_soma_os_dois_fluxos_sem_ligar_a_empresa(ambiente):
         pd.read_parquet(ambiente / "setoriais" / "buracos.parquet")["fonte"]
         == comex_preco_medio.FONTE
     ).any()
+
+
+def test_nomes_da_urf_e_da_via_do_comex_valem_desde_o_dia_da_coleta(ambiente):
+    carga_setoriais.main(["--base", str(ambiente)])
+    pasta = ambiente / "setoriais"
+    urf = pd.read_parquet(pasta / "comex_urf" / "urf.parquet")
+    via = pd.read_parquet(pasta / "comex_via" / "via.parquet")
+    assert urf.loc[urf["urf"] == "0510353", "nome"].tolist() == ["IRF ILHEUS"]
+    assert via.loc[via["via"] == "01", "nome"].tolist() == ["MARITIMA"]
+    for tabela in (urf, via):
+        assert set(tabela["disponivel_em"]) == {pd.Timestamp("2026-10-14")}
+        assert set(tabela["visto_em"]) == {pd.Timestamp("2026-10-14")}
+    # as tabelas de apoio não são lidas como o preço médio (que ignora os endereços de tabelas/)
+    assert not (pasta / "comex_preco_medio" / "urf.parquet").exists()
 
 
 def test_ccee_e_lida_mesmo_com_o_endereco_do_portal_sem_extensao():

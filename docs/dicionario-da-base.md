@@ -1032,6 +1032,54 @@ Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB �
 | `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
 | `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
 
+## `comex_urf`
+
+Nome de cada URF (unidade da Receita: porto, aeroporto ou posto) do Comex Stat, para ler o código que `comex_preco_medio` guarda (coluna `urf`). Tabela de apoio da fonte (`URF.csv`), sem data própria: o primeiro valor vale desde o dia da coleta, e um nome que o MDIC mude depois vira linha nova, desde o dia em que foi visto. Dados abertos de uso livre, inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC
+
+- **Fonte:** MDIC: Comex Stat, tabela auxiliar `URF.csv`
+- **Licença:** Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)
+- **Atraso de divulgação:** Sem data própria: vale desde o dia da coleta do arquivista
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `urf`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/comex_urf/urf.parquet` (`scripts/carga_setoriais.py`; leitor `base/setoriais/comex_tabelas.py`)
+- **Linhagem:** O `.json` do arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `urf` | Código da URF, o mesmo de `comex_preco_medio.urf` | texto |
+| `nome` | Nome da unidade, sem o código repetido na frente (`IRF ILHEUS`) | texto |
+| `disponivel_em` | Desde quando o nome era público (o dia da coleta que o trouxe) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
+## `comex_via`
+
+Nome de cada via de transporte do Comex Stat, para ler o código que `comex_preco_medio` guarda (a via de transporte dos CSVs do MDIC). Tabela de apoio da fonte (`VIA.csv`), sem data própria: o primeiro valor vale desde o dia da coleta, e um nome que o MDIC mude depois vira linha nova, desde o dia em que foi visto. Dados abertos de uso livre, inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC
+
+- **Fonte:** MDIC: Comex Stat, tabela auxiliar `VIA.csv`
+- **Licença:** Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)
+- **Atraso de divulgação:** Sem data própria: vale desde o dia da coleta do arquivista
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `via`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/comex_via/via.parquet` (`scripts/carga_setoriais.py`; leitor `base/setoriais/comex_tabelas.py`)
+- **Linhagem:** O `.json` do arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `via` | Código da via (`01` marítima, `04` aérea...) | texto |
+| `nome` | Nome da via, como o MDIC escreve (`MARITIMA`) | texto |
+| `disponivel_em` | Desde quando o nome era público (o dia da coleta que o trouxe) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
 ## `aneel_samp`
 
 Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece
@@ -2588,7 +2636,7 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 
 - **Fonte:** PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)
 - **Licença:** Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)
 - **Atraso de divulgação:** O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -2724,7 +2772,7 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
 - **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -2776,7 +2824,7 @@ Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgã
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
 - **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -2810,7 +2858,7 @@ Processos judiciais por companhia aberta: uma linha por processo, com o que a pr
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
 - **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -3194,7 +3242,7 @@ Projetos de geração e transmissão de energia enquadrados no REIDI (MME), por 
 
 - **Fonte:** MME: dados abertos, REIDI (processos deferidos) (`base/incentivos.py`)
 - **Licença:** Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3375,7 +3423,7 @@ Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédi
 
 - **Fonte:** Finep, planilha de contratações (licença a confirmar: uso interno) (`base/financiamentos.py`)
 - **Licença:** Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (a fonte reescreve o arquivo inteiro)
 - **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3436,7 +3484,7 @@ Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGRE
 
 - **Fonte:** Anvisa: listas de preços da CMED, dados abertos (`base/cmed.py`)
 - **Licença:** Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (a CMED republica as listas inteiras)
 - **Atraso de divulgação:** A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3807,8 +3855,8 @@ A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ da
 Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia não grava linha: veja `cnes_competencias`.
 
 - **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
-- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar
+- **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
 - **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3847,8 +3895,8 @@ Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimen
 Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia. Serve para não confundir competência ainda não publicada com ausência de estabelecimentos.
 
 - **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
-- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar
+- **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
 - **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -3875,8 +3923,8 @@ Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados
 Contratos do TCE-PE (estaduais e municipais) por contratado. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-PE, API Dados Abertos (`Contratos`)
-- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-PE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Anual (um pedido por ano; refazer o ano corrente a cada trimestre)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3918,8 +3966,8 @@ Contratos do TCE-PE (estaduais e municipais) por contratado. Só pessoa jurídic
 Termos aditivos dos contratos do TCE-PE por contratado. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-PE, API Dados Abertos (`TermoAditivo`)
-- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-PE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Anual (um pedido por ano; refazer o ano corrente a cada trimestre)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3959,8 +4007,8 @@ Termos aditivos dos contratos do TCE-PE por contratado. Só pessoa jurídica (CN
 Licitações do TCE-PE por licitante vencedor (`LicitacoesDetalhes`; só a linha do vencedor pessoa jurídica). Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-PE, API Dados Abertos (`LicitacoesDetalhes`)
-- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-PE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Anual, fatiado por ano e modalidade (um pedido por fatia, com pausa); refazer o ano corrente a cada trimestre
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -4007,8 +4055,8 @@ Licitações do TCE-PE por licitante vencedor (`LicitacoesDetalhes`; só a linha
 Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-SP, Portal da Transparência Municipal
-- **Licença:** TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-SP: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal por município (645 x 12 pedidos por ano, com pausa)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -4042,8 +4090,8 @@ Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento po
 Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-CE, SIM (arquivos postos à mão; sem coleta automática ainda)
-- **Licença:** TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-CE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Sem rotina: carga manual de arquivos baixados
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -4084,7 +4132,7 @@ Contratos do LicitaCon do TCE-RS por contratado (só `contrato.csv`; `pessoas.cs
 
 - **Fonte:** TCE-RS, dados abertos (LicitaCon, um ZIP por órgão)
 - **Licença:** LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (índice do CKAN e um ZIP por órgão, com retomada)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -5419,7 +5467,7 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 
 - **Fonte:** CONAB: Acompanhamento da Safra Brasileira de Café (planilha de cada levantamento)
 - **Licença:** CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista
 - **Atraso de divulgação:** O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento
 - **Módulo:** macro · **Contém dado de pessoa:** não
@@ -5543,7 +5591,7 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 
 - **Fonte:** IBGE: PAM, tabela 1613 do SIDRA (variáveis 216 e 214, café arábica e canephora, por município); MapBiomas: Coleção 11, planilha de cobertura por bioma, estado e município
 - **Licença:** MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Ressalva de revenda:** As colunas da PAM são do IBGE (domínio público; citar o IBGE); a coluna do MapBiomas é CC BY-SA (citar o projeto MapBiomas, Souza et al. 2020; revenda a confirmar)
 - **Frequência:** Anual
 - **Atraso de divulgação:** Anual; a regra de "como era na data" usa 31/10 do ano seguinte, quando a PAM já saiu (setembro ou outubro); a coleção do MapBiomas sai uma vez por ano com todos os anos refeitos

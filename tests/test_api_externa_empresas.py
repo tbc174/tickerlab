@@ -5,8 +5,8 @@ Base de mentira, sem internet; os CNPJs são de ninguém. As linhas de direito s
 pessoa (MEI, empresário individual e quem a rede não conhece saem `not_available`, igual a um CNPJ que não
 existe) e olhar o futuro (o retrato do mês só vale desde o dia em que ficou público).
 
-Só a situação cadastral sai (decisão do Tiago em 04/11/2026): nome, natureza jurídica e Simples a base só
-guarda como são hoje, e servi-los numa data passada mostraria o futuro.
+Da raiz saem também a razão social, a natureza jurídica e o Simples do histórico datado (linha 686, "pode 8"
+do Tiago em 05/11/2026), cada campo da versão que já era pública na data pedida.
 """
 
 import dataclasses
@@ -123,11 +123,72 @@ def _identificadores() -> pd.DataFrame:
     )
 
 
-def _gravar_base(base, retratos: pd.DataFrame, com_rede: bool = True) -> None:
+# o histórico datado da raiz da EMPRESA (o mês vale pelo último dia, como a situação): o nome mudou em
+# 2025-06 e em 2025-07; o Simples foi excluído em 2025-03 e a raiz saiu do arquivo do Simples em 2025-06. O MEI também
+# tem histórico, e nada dele pode sair.
+EMPRESAS_HISTORICO = "cnpj_empresas_historico"
+SIMPLES_HISTORICO = "cnpj_simples_historico"
+# fmt: off
+VERSOES_DO_NOME = [
+    (EMPRESA[:8], "2023-05", "2023-05-21", True, "2062", "ALFA LTDA"),
+    (EMPRESA[:8], "2025-06", "2025-06-21", True, "2054", "ALFA S.A."),
+    (EMPRESA[:8], "2025-07", "2025-07-21", True, "2054", "ALFA HOLDING S.A."),
+    (MEI[:8], "2023-05", "2023-05-21", True, "2135", None),
+]
+VERSOES_DO_SIMPLES = [
+    (EMPRESA[:8], "2023-05", "2023-05-21", True, True, "2018-01-01", None, False),
+    (EMPRESA[:8], "2025-03", "2025-03-21", True, False, "2018-01-01", "2025-01-01", False),
+    (EMPRESA[:8], "2025-06", "2025-06-21", False, None, None, None, None),
+    (MEI[:8], "2023-05", "2023-05-21", True, True, "2019-03-01", None, True),
+]
+# fmt: on
+_VERSAO = ("cnpj_basico", "mes_do_retrato", "disponivel_em", "consta")
+_CARIMBOS = {
+    "origem_sha256": "0" * 64,
+    "montado_em": pd.Timestamp("2026-11-05", tz="UTC"),
+    "versao_do_codigo": "teste",
+}
+
+
+def _historico_do_nome(versoes=VERSOES_DO_NOME) -> pd.DataFrame:
+    tabela = pd.DataFrame(
+        versoes, columns=[*_VERSAO, "natureza_juridica", "razao_social"]
+    )
+    tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
+    return tabela.assign(**_CARIMBOS)
+
+
+def _historico_do_simples(versoes=VERSOES_DO_SIMPLES) -> pd.DataFrame:
+    colunas = [
+        "optante_simples", "data_opcao_simples", "data_exclusao_simples", "optante_mei",
+    ]  # fmt: skip
+    tabela = pd.DataFrame(versoes, columns=[*_VERSAO, *colunas])
+    tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
+    for data in ("data_opcao_simples", "data_exclusao_simples"):
+        tabela[data] = pd.to_datetime(tabela[data])
+    tabela["optante_simples"] = tabela["optante_simples"].astype("boolean")
+    tabela["optante_mei"] = tabela["optante_mei"].astype("boolean")
+    tabela["data_opcao_mei"] = pd.NaT
+    tabela["data_exclusao_mei"] = pd.NaT
+    return tabela.assign(**_CARIMBOS)
+
+
+def _gravar_historicos(base, nome: pd.DataFrame, simples: pd.DataFrame) -> None:
+    for tabela, versoes in ((EMPRESAS_HISTORICO, nome), (SIMPLES_HISTORICO, simples)):
+        (base / tabela).mkdir(parents=True, exist_ok=True)
+        for prefixo, linhas in versoes.groupby(versoes["cnpj_basico"].str[:2]):
+            linhas.to_parquet(base / tabela / f"{prefixo}.parquet", index=False)
+
+
+def _gravar_base(
+    base, retratos: pd.DataFrame, com_rede: bool = True, historicos: bool = True
+) -> None:
     pasta = base / TABELA
     pasta.mkdir(parents=True, exist_ok=True)
     for mes, linhas in retratos.groupby("mes_do_retrato"):
         linhas.to_parquet(pasta / f"{mes}.parquet", index=False)
+    if historicos:
+        _gravar_historicos(base, _historico_do_nome(), _historico_do_simples())
     if com_rede:
         (base / "rede").mkdir(exist_ok=True)
         _entidades().to_parquet(base / "rede" / "entidades.parquet", index=False)
@@ -144,13 +205,13 @@ def pasta(tmp_path, monkeypatch):
     return base
 
 
-def _regras_das_empresas() -> portao.Regras:
-    """As regras de verdade, com a tabela da situação cadastral pronta (provas do D10) no dia do teste."""
+def _regras_das_empresas(tabelas=empresas.TABELAS) -> portao.Regras:
+    """As regras de verdade, com as tabelas de `companies` prontas (provas do D10) no dia do teste."""
     prova = Prova(AGORA.date(), "conferida no teste", "teste")
-    versao = prontidao.versoes_maiores()[TABELA]
+    versoes = prontidao.versoes_maiores()
     return dataclasses.replace(
         portao.regras_vigentes(),
-        prontidao={TABELA: Prontidao(versao, prova, prova, prova)},
+        prontidao={t: Prontidao(versoes[t], prova, prova, prova) for t in tabelas},
     )
 
 
@@ -207,6 +268,67 @@ def test_situacao_sai_com_fonte_data_e_atribuicao_em_ingles(cliente, cenario):
     (fonte,) = corpo["sources"]
     assert fonte["source"] == "rfb-cnpj"
     assert "Receita" in fonte["attribution"]
+
+
+def test_nome_natureza_e_simples_saem_da_versao_que_valia(cliente, cenario):
+    corpo = _get(cliente, cenario, known_at="2025-06-29").json()
+    # o nome de 2025-06 só vale em 30/06; o Simples excluído em 2025-03 já era público em 31/03
+    assert corpo["legal_name"] == {
+        "value": "ALFA LTDA",
+        "source": "rfb-cnpj",
+        "published_at": "2023-05-31",
+        "observed_at": None,
+    }
+    assert corpo["legal_nature_code"]["value"] == "2062"
+    assert corpo["simples_nacional"]["value"] is False
+    assert corpo["simples_nacional"]["published_at"] == "2025-03-31"
+    assert corpo["simples_nacional_since"]["value"] == "2018-01-01"
+    assert corpo["simples_nacional_until"]["value"] == "2025-01-01"
+
+
+def test_versao_nova_vale_no_ultimo_dia_do_mes_e_raiz_que_saiu_nao_leva_simples(
+    cliente, cenario
+):
+    corpo = _get(cliente, cenario, known_at="2025-06-30").json()
+    assert corpo["legal_name"]["value"] == "ALFA S.A."
+    assert corpo["legal_name"]["published_at"] == "2025-06-30"
+    assert corpo["legal_nature_code"]["value"] == "2054"
+    # em 2025-06 a raiz saiu do arquivo do Simples: nenhum campo do Simples sai
+    do_simples = {
+        "simples_nacional",
+        "simples_nacional_since",
+        "simples_nacional_until",
+    }
+    assert not do_simples & set(corpo)
+
+
+def test_simples_de_antes_da_exclusao(cliente, cenario):
+    corpo = _get(cliente, cenario, known_at="2025-01-31").json()
+    assert corpo["simples_nacional"]["value"] is True
+    assert corpo["simples_nacional_until"]["value"] is None
+
+
+def test_nada_do_mei_sai_nem_de_quem_nao_e_mei(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert not [c for c in aj.chaves_de(corpo) if "mei" in str(c).split("_")]
+
+
+def test_historico_sem_prontidao_nao_sai_e_a_situacao_continua(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras_das_empresas((TABELA,)))
+    corpo = _get(cliente, cenario).json()
+    assert corpo["registration_status"]["value"] == "08"
+    assert not {"legal_name", "legal_nature_code", "simples_nacional"} & set(corpo)
+
+
+def test_base_sem_o_historico_serve_so_a_situacao(tmp_path, cenario, monkeypatch):
+    base = tmp_path / "sem_historico"
+    _gravar_base(base, _retratos(), historicos=False)
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    corpo = _get(aj.cliente_da_api(monkeypatch, AGORA), cenario).json()
+    assert corpo["registration_status"]["value"] == "08"
+    assert "legal_name" not in corpo
 
 
 @pytest.mark.parametrize(
@@ -332,6 +454,22 @@ def _o_que_era(dia: date) -> dict | None:
     return publicos.sort_values("mes_do_retrato").iloc[-1].to_dict()
 
 
+def _versao_que_valia(versoes: pd.DataFrame, dia: date) -> dict | None:
+    """O oráculo do histórico: a versão mais nova da raiz da EMPRESA já pública no dia, se ainda constava."""
+    versoes = versoes[versoes["cnpj_basico"] == EMPRESA[:8]].assign(
+        publico=lambda t: pd.to_datetime(t["disponivel_em"]) + pd.offsets.MonthEnd(0)
+    )
+    publicas = versoes[versoes["publico"].dt.date <= dia]
+    if publicas.empty:
+        return None
+    versao = publicas.sort_values("mes_do_retrato").iloc[-1].to_dict()
+    return versao if versao["consta"] else None
+
+
+def _valor(corpo: dict, campo: str) -> object:
+    return corpo[campo]["value"] if campo in corpo else None
+
+
 @settings(
     max_examples=25,
     deadline=None,
@@ -347,7 +485,21 @@ def test_known_at_nunca_mostra_o_futuro(cliente, cenario, dia):
     corpo = resposta.json()
     assert corpo["registration_status"]["value"] == esperado["situacao_cadastral"]
     assert corpo["snapshot_month"]["value"] == esperado["mes_do_retrato"]
-    assert corpo["registration_status"]["published_at"] <= dia.isoformat()
+    nome = _versao_que_valia(_historico_do_nome(), dia)
+    assert _valor(corpo, "legal_name") == (nome["razao_social"] if nome else None)
+    simples = _versao_que_valia(_historico_do_simples(), dia)
+    assert _valor(corpo, "simples_nacional") == (
+        bool(simples["optante_simples"]) if simples else None
+    )
+    for envelope in corpo.values():
+        if isinstance(envelope, dict) and "published_at" in envelope:
+            assert envelope["published_at"] <= dia.isoformat()
+
+
+def _ja_publico(versoes: pd.DataFrame, dia: str) -> pd.DataFrame:
+    """Só as versões do histórico já públicas no dia (o mês vale pelo último dia)."""
+    publico = pd.to_datetime(versoes["disponivel_em"]) + pd.offsets.MonthEnd(0)
+    return versoes[publico <= pd.Timestamp(dia)]
 
 
 def test_cortar_o_futuro_nao_muda_o_passado(tmp_path, cenario, monkeypatch):
@@ -356,7 +508,14 @@ def test_cortar_o_futuro_nao_muda_o_passado(tmp_path, cenario, monkeypatch):
     inteira = _get(cliente, cenario, known_at=dia).json()
     base = tmp_path / "cortada"
     retratos = _retratos()
-    _gravar_base(base, retratos[retratos["mes_do_retrato"] < "2025-06"])
+    _gravar_base(
+        base, retratos[retratos["mes_do_retrato"] < "2025-06"], historicos=False
+    )
+    _gravar_historicos(
+        base,
+        _ja_publico(_historico_do_nome(), dia),
+        _ja_publico(_historico_do_simples(), dia),
+    )
     monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
     assert _get(cliente, cenario, known_at=dia).json() == inteira
 

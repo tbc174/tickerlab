@@ -107,6 +107,17 @@ def test_pessoa_fisica_fica_sem_nome_e_cpf_nao_vira_cnpj():
     )  # o estabelecimento existe, só não tem nome guardado
 
 
+def test_pessoa_fisica_fica_sem_coordenada_e_pessoa_juridica_mantem():
+    """Condição do MS (05/11/2026): a coordenada do consultório, com o código CNES, acharia a pessoa."""
+    consultorio = _item("0000009", nu_cnpj="123.456.789-09", nu_cnpj_mantenedora=None)
+    hospital = _item("2627183", nu_cnpj="33.000.167/0001-01")
+    tabela = cnes.tabela_da_competencia([consultorio, hospital], COMPETENCIA, COLETA)
+    pessoa, empresa = tabela.iloc[0], tabela.iloc[1]
+    assert pd.isna(pessoa["latitude"]) and pd.isna(pessoa["longitude"])
+    assert empresa["latitude"] == -22.9
+    assert empresa["longitude"] == -43.2
+
+
 def test_endereco_telefone_e_email_nunca_entram():
     tabela = cnes.tabela_da_competencia([_item("0000001")], COMPETENCIA, COLETA)
     assert list(tabela.columns) == list(cnes.COLUNAS)
@@ -116,7 +127,7 @@ def test_endereco_telefone_e_email_nunca_entram():
 
 
 def test_tipos_e_disponibilidade_pela_data_da_coleta():
-    item = _item("0000001", nu_latitude=None)
+    item = _item("0000001", nu_latitude=None, nu_cnpj_mantenedora="29.138.328/0001-50")
     linha = cnes.tabela_da_competencia([item], COMPETENCIA, COLETA).iloc[0]
     assert linha["competencia"] == COMPETENCIA
     assert linha["codigo_ibge_municipio"] == "330330"

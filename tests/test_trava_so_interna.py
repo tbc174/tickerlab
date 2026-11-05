@@ -139,7 +139,13 @@ def test_o_ficha_clara_e_a_vista_do_cnpj_nao_leem_tabela_so_interna():
     from base.dicionario import TABELAS
     from base.porta import vista_do_cnpj
 
-    lidas = {fonte.tabela for fonte in FONTES} | set(vista_do_cnpj.MUDANCAS)
+    lidas = {tabela for fonte in FONTES for tabela in fonte.lidas}
+    assert {
+        "processos",
+        "processos_partes",
+        "processos_comunicacoes",
+    } <= lidas  # o DJEN sai
+    lidas |= set(vista_do_cnpj.MUDANCAS)
     lidas.add(vista_do_cnpj.PARTICIPACOES)
     internas = {
         nome

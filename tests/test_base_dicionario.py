@@ -25,6 +25,7 @@ from base.setoriais import ans as setoriais_ans
 from base.setoriais import antt_siade as setoriais_antt_siade
 from base.setoriais import ccee as setoriais_ccee
 from base.setoriais import comex_preco_medio as setoriais_comex_preco_medio
+from base.setoriais import comex_tabelas as setoriais_comex_tabelas
 from base.setoriais import ons as setoriais_ons
 from base.setoriais import ons_capacidade as setoriais_ons_capacidade
 from base.setoriais import ons_restricao as setoriais_ons_restricao
@@ -125,6 +126,8 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "anp_concessionarios": [*setoriais_anp_concessionarios.COLUNAS, "visto_em"],
         "antt_siade": [*setoriais_antt_siade.COLUNAS, "visto_em"],
         "comex_preco_medio": [*setoriais_comex_preco_medio.COLUNAS, "visto_em"],
+        "comex_urf": [*setoriais_comex_tabelas.COLUNAS_DA_URF, "visto_em"],
+        "comex_via": [*setoriais_comex_tabelas.COLUNAS_DA_VIA, "visto_em"],
         "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),
         "amostra_painel": [
             *amostra_universo.COLUNAS,
