@@ -41,6 +41,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
+        "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud
     ),
     "ate": (
         "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",

@@ -1162,6 +1162,21 @@
     },
     {
       "coletas": [
+        "datajud-processos"
+      ],
+      "familia": "datajud",
+      "licencas": [
+        "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)"
+      ],
+      "link": "https://datajud-wiki.cnj.jus.br/api-publica/",
+      "marca": "uso_interno",
+      "orgao": "CNJ (DataJud, só uso interno)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "cnj-tpu"
       ],
       "familia": "cnj",
@@ -1926,20 +1941,20 @@
       "marca": "vendavel",
       "orgao": "Governo de Goiás (dados abertos)",
       "ritmo": "lida pelo app",
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-05",
       "uso": "guardada"
     },
     {
       "coletas": [],
       "familia": "msestado",
       "licencas": [
-        "Despesas do MS por credor: a confirmar, só interno"
+        "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)"
       ],
-      "link": "https://dados.ms.gov.br/",
+      "link": "https://www.dados.ms.gov.br/",
       "marca": "vendavel",
       "orgao": "Governo de Mato Grosso do Sul (dados abertos)",
       "ritmo": "lida pelo app",
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-05",
       "uso": "guardada"
     },
     {
@@ -1952,7 +1967,7 @@
       "marca": "vendavel",
       "orgao": "Prefeitura de São Paulo (dados abertos)",
       "ritmo": "lida pelo app",
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-05",
       "uso": "guardada"
     }
   ],
@@ -1981,7 +1996,7 @@
       "orgao": "Receita Federal",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 8
+      "tabelas": 10
     },
     {
       "historico_desde": "2002-01-01",
@@ -2434,7 +2449,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 30,
-    "tabelas": 106,
+    "tabelas": 108,
     "temas": [
       {
         "chave": "cvm",
@@ -2460,7 +2475,7 @@
         "orgaos": [
           "Receita Federal"
         ],
-        "tabelas": 6,
+        "tabelas": 8,
         "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro.",
         "titulo": "Cadastro e situação na Receita"
       },
@@ -2526,7 +2541,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 44
+      "tabelas": 46
     },
     {
       "chave": "credito_e_fidc",
@@ -4714,6 +4729,13 @@
       "termos_lidos_em": null
     },
     {
+      "id": "datajud-processos",
+      "licenca": "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
       "id": "cnj-tpu",
       "licenca": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
       "marca": "vendavel",
@@ -6726,6 +6748,26 @@
       "tabela": "cnpj_qsa_mudancas"
     },
     {
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
+      "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com disponivel_em até D.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_simples_historico"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
+      "frase": "Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_empresas_historico"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
       "frequencia": "Trimestral",
@@ -7457,11 +7499,11 @@
     }
   ],
   "totais": {
-    "familias": 108,
+    "familias": 109,
     "familias_em_uso": 42,
     "fontes": 42,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 141
+    "tabelas": 143
   }
 }

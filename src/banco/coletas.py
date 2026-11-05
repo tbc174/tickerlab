@@ -60,7 +60,7 @@ LICENCAS = {
     "tce-ce": "TCE-CE: licença não localizada; risco assumido (ADR 0122)",
     # linha 658 (fichas dos conjuntos no CKAN, lidas em 03/11/2026)
     "goias": "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)",
-    "msestado": "Despesas do MS por credor: a confirmar, só interno (ADR 0102)",
+    "msestado": "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)",
     "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
@@ -180,6 +180,9 @@ LICENCAS = {
     "djen": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
     # as Tabelas Processuais Unificadas (Resolução CNJ 46/2007): tabela pública de uso obrigatório
     "cnj": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
+    # API Pública do DataJud (termo de uso lido em 03/11/2026): itens 3.3 e 3.8 vedam o uso comercial e a
+    # consultoria; entra só para uso interno (treinar e rotular), nunca em tela, API nem exportação
+    "datajud": "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)",
     # lote organismos (termos lidos em 22/10/2026, licencas-por-fonte.md, rodadas 1 e 4)
     "bce": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
     "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
@@ -304,7 +307,7 @@ REVENDA = {
     "tce-sp": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-SP
     "tce-ce": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-CE
     "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
-    "msestado": VENDAVEL_RISCO_ASSUMIDO,  # linha 658: nada perguntado ao governo do MS
+    "msestado": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN; uso público com a fonte: "pode" do Tiago em 05/11/2026 (linha 688)
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": VENDAVEL_RISCO_ASSUMIDO,
     # dado pessoal (autuados, empregadores pessoa física): só interno
@@ -394,6 +397,7 @@ REVENDA = {
     # o CNJ não escreve licença de reuso da API; sem pedido ao CNJ (ADR 0102 Emenda 2): uso citando a fonte
     "djen": VENDAVEL_RISCO_ASSUMIDO,
     "cnj": VENDAVEL_RISCO_ASSUMIDO,  # a TPU também não tem licença de reuso escrita (ADR 0102 Emenda 2)
+    "datajud": SO_USO_INTERNO,  # o termo veda uso comercial e consultoria: trava em `FONTES_SO_INTERNAS`
     "bce": VENDAVEL_COM_ATRIBUICAO,  # "Source: ECB statistics"
     "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
@@ -573,6 +577,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "rfb-cnpj",  # Disallow: / ; CC BY na ficha do dados.gov.br
             "goias",  # Disallow: /api/ e Crawl-Delay: 10 (04/11/2026); CC BY
             "spcapital",  # Disallow: / (04/11/2026); CC0
+            "msestado",  # www.dados.ms.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN
         ),
         _ROBOTS_FECHA_COM_LICENCA,
     ),
@@ -592,6 +597,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     "djen": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
     # o servidor da TPU não tem robots.txt (404 em 03/11/2026) nem termo de uso
     "cnj": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
+    # API com a chave pública que o CNJ publica na wiki; o termo não diz por quanto tempo guardar
+    "datajud": ColetaEGuarda(Coleta.COM_CADASTRO, Guarda.NAO_DIZ),
     # robots.txt fecha o portal e a N0 não achou licença escrita que dê reuso comercial (ONS: "reuso e
     # redistribuição" sem nome de licença; catálogo: só metadados; Cecafé: `Disallow: /*.pdf$`)
     "ons": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
@@ -629,7 +636,6 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
-            "msestado",  # host dados.ms.gov.br não resolveu em 04/11/2026; robots.txt não lido
             "mte",
             "comexstat",
             "wayback",
@@ -737,6 +743,12 @@ USOS = ("treinar", "rotular", "exportar", MOSTRAR)
 # (ADR 0008, Emenda 6, risco assumido por ele). O mecanismo fica: pôr uma família aqui volta a barrá-la
 # em `pode_usar` e `exigir_licenca` (é o "como desfazer" da Emenda 6: pôr "b3" de volta).
 FONTES_FORA_DOS_USOS: frozenset[str] = frozenset()
+# As famílias que só entram nos usos internos (`USOS_INTERNOS`): treinar e rotular, nunca exportar nem
+# mostrar. O DataJud (plano dos processos de 03/11/2026, ADR 0121): o termo de uso da API Pública veda o uso
+# comercial e a consultoria (itens 3.3 e 3.8). Como a trava passa por `pode_usar`, vale para a vitrine, o
+# dossiê, a busca por CNPJ, o relatório, a exportação do acervo e o portão da API externa.
+FONTES_SO_INTERNAS: frozenset[str] = frozenset({"datajud"})
+USOS_INTERNOS = ("treinar", "rotular")
 
 
 class UsoSemCobranca(NamedTuple):
@@ -916,7 +928,8 @@ _VENDAVEIS_COM_LICENCA_ESCRITA = (VENDAVEL_ODBL, VENDAVEL_COM_ATRIBUICAO)
 
 
 class LicencaNaoPermiteError(Exception):
-    """Treinar, rotular, exportar ou mostrar com fonte fora dos usos (`FONTES_FORA_DOS_USOS`, hoje vazia)."""
+    """Treinar, rotular, exportar ou mostrar com fonte fora dos usos (`FONTES_FORA_DOS_USOS`, hoje vazia),
+    ou exportar e mostrar com fonte só interna (`FONTES_SO_INTERNAS`)."""
 
 
 LIMITE_DO_DETALHE = 300
@@ -974,6 +987,15 @@ def fora_dos_usos(fonte: str) -> bool:
     return _familia(fonte) in FONTES_FORA_DOS_USOS
 
 
+def so_interna(fonte: str) -> bool:
+    """A fonte ("datajud-processos") ou a família dela só entra em treinar e rotular?"""
+    return _familia(fonte) in FONTES_SO_INTERNAS
+
+
+def _barrada(uso: str, fonte: str) -> bool:
+    return fora_dos_usos(fonte) or (so_interna(fonte) and uso not in USOS_INTERNOS)
+
+
 def _conferir_uso(uso: str) -> None:
     if uso not in USOS:
         raise ValueError(f"uso {uso!r} não existe; use um de {USOS}")
@@ -983,25 +1005,33 @@ def pode_usar(uso: str, fonte: str) -> bool:
     """A fonte pode `uso` ("treinar", "rotular", "exportar" ou "mostrar")? `exigir_licenca` sem o erro.
 
     Pela ADR 0102 a marca não decide: toda fonte entra em qualquer uso, com a fonte e a data citadas
-    (`citacoes_das_fontes`); só entra em `FONTES_FORA_DOS_USOS` o que uma decisão nova barrar. Vale para o app
+    (`citacoes_das_fontes`); só entra em `FONTES_FORA_DOS_USOS` o que uma decisão nova barrar, e as
+    `FONTES_SO_INTERNAS` só treinam e rotulam. Vale para o app
     (tela, PDF, newsletter e a v1 interna); a API externa tem outra regra, que nega por padrão:
     `src/portao_externo.py` (ADR 0108).
     """
     _conferir_uso(uso)
-    return not fora_dos_usos(fonte)
+    return not _barrada(uso, fonte)
 
 
 def exigir_licenca(uso: str, fontes: Iterable[str], onde: str = "") -> None:
     """Erro (não aviso) se alguma fonte está fora de `uso` ("treinar", "rotular", "exportar" ou "mostrar").
 
-    Só barra o que está em `FONTES_FORA_DOS_USOS` (hoje nada); a marca é informação (ADR 0102). `onde`
-    (a tabela, o script, o relatório) entra na mensagem.
+    Barra o que está em `FONTES_FORA_DOS_USOS` (hoje nada) e, fora de treinar e rotular, as
+    `FONTES_SO_INTERNAS`; a marca é informação (ADR 0102). `onde` (a tabela, o script, o relatório) entra
+    na mensagem.
     """
     _conferir_uso(uso)
+    alvo = f" ({onde})" if onde else ""
+    internas = sorted({f for f in fontes if so_interna(f) and _barrada(uso, f)})
+    if internas:
+        raise LicencaNaoPermiteError(
+            f"{uso}{alvo} com fonte de só uso interno: {', '.join(internas)} (`FONTES_SO_INTERNAS`; "
+            "só treinar e rotular)"
+        )
     barradas = sorted({f for f in fontes if fora_dos_usos(f)})
     if barradas:
         lista = ", ".join(f"{f} ({marca_da_fonte(f)})" for f in barradas)
-        alvo = f" ({onde})" if onde else ""
         raise LicencaNaoPermiteError(
             f"{uso}{alvo} com fonte fora dos usos: {lista} (lista `FONTES_FORA_DOS_USOS` da "
             "ADR 0008; Emenda 6 liberou a B3 em 22/10/2026)"

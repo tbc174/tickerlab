@@ -11,7 +11,7 @@ por ano (SP capital), com pausa entre os pedidos (o `robots.txt` do GO pede 10 s
 (`baixados.jsonl`; a data do download vira o `disponivel_em`). O mês e o ano vêm do nome do recurso; recurso
 sem período legível é pulado e anotado no log. Os portais:
 - **GO**, licenças ambientais do Ipê (dadosabertos.go.gov.br, CC BY);
-- **MS**, despesas por credor (dados.ms.gov.br, licença a confirmar);
+- **MS**, despesas por credor (www.dados.ms.gov.br, licença a confirmar);
 - **SP capital**, extrato de contratos (dados.prefeitura.sp.gov.br, CC0).
 
 `--origem` grava, com manifesto e versões (`base/parquet.py::gravar_com_versoes`), um Parquet por ano em
@@ -60,7 +60,8 @@ PORTAIS = {
         "licencas ambientais ipe",
         "licencas-ambientais-ipe",  # o pacote do SGA (outro sistema) repete os meses de 2026
     ),
-    "ms": ("https://dados.ms.gov.br", "despesas credor", "despesa"),
+    # o MS só atende em `www.` (o endereço sem `www` não resolve; conferido em 05/11/2026)
+    "ms": ("https://www.dados.ms.gov.br", "despesas credor", "despesa"),
     "sp": (
         "https://dados.prefeitura.sp.gov.br",
         "contratos extrato",

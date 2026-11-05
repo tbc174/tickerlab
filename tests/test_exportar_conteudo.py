@@ -3,6 +3,7 @@
 import json
 import re
 
+from base import vitrine
 from base.contrato import PASTA
 from scripts import exportar_conteudo as exp
 from src import marca, modulos, planos
@@ -301,9 +302,9 @@ def test_site_nao_leva_mais_a_fita_nem_os_exemplos_da_busca():
 
 def test_catalogo_do_site_vem_do_contrato():
     """A página Dados conta as tabelas e as fontes do `catalogo.json`; nada é digitado à mão."""
-    contrato = json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))[
-        "tabelas"
-    ]
+    contrato = vitrine.catalogo_publico(
+        json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    )["tabelas"]
     catalogo = exp.conteudo()["catalogo"]
 
     assert catalogo["totais"]["tabelas"] == len(contrato) == len(catalogo["tabelas"])

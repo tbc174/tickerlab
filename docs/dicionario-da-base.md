@@ -2518,6 +2518,70 @@ O que mudou de um mês para o outro em `cnpj_qsa`: uma linha por entrada, saída
 | `pais_antes` | Antes da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
 | `pais_depois` | Depois da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
 
+## `cnpj_simples_historico`
+
+Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com `disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do CNPJ; a última versão de cada raiz é conferida com o vigente. Sem dado de pessoa além do próprio CNPJ. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, `Simples.zip` (`scripts/montar_historico_do_cnpj.py simples`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_simples_historico/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá | AAAA-MM |
+| `disponivel_em` | Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês | data (dia) |
+| `consta` | Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios) | verdadeiro ou falso |
+| `optante_simples` | Verdadeiro se a empresa é optante do Simples Nacional | verdadeiro ou falso |
+| `data_opcao_simples` | Data da opção pelo Simples; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_simples` | Data da exclusão do Simples; vazio quando a Receita põe zero | data (dia) |
+| `optante_mei` | Verdadeiro se a empresa é MEI | verdadeiro ou falso |
+| `data_opcao_mei` | Data do enquadramento como MEI; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_mei` | Data do desenquadramento do MEI; vazio quando a Receita põe zero | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `cnpj_empresas_historico`
+
+Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública. Montada mês a mês dos `Empresas*.zip`. **A razão social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor (ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do responsável e ente federativo não são lidos. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, `Empresas*.zip` (`scripts/montar_historico_do_cnpj.py empresas`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_empresas_historico/<2 primeiros caracteres da raiz>.parquet` (servidor de casa; `meses.json` diz os meses já acrescentados e o SHA-256 de cada ZIP)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá | AAAA-MM |
+| `disponivel_em` | Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês | data (dia) |
+| `consta` | Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios) | verdadeiro ou falso |
+| `natureza_juridica` | Código da natureza jurídica (tabela da Receita, 4 dígitos: 2062 limitada, 2054 S.A. fechada, 2046 S.A. aberta, 2135 empresário individual) | texto |
+| `razao_social` | Razão social como a Receita publica; vazia para empresário individual, MEI e grupo 4 (é o nome da pessoa) | texto |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.
@@ -2772,6 +2836,83 @@ Processos judiciais por companhia aberta: uma linha por processo, com o que a pr
 | `primeira_comunicacao` | Dia da primeira comunicação do processo no DJEN que a base tem | data (dia) |
 | `disponivel_em` | Dia da primeira comunicação do processo com uma companhia entre as partes: desde quando se sabe que o processo é de uma companhia | data (dia) |
 | `visto_em` | Dia da consulta guardada que trouxe essa comunicação | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `processos_datajud`
+
+Processos judiciais por companhia aberta, pelo DataJud: um retrato de cada processo, por grau, a cada consulta (classe, assuntos, órgão julgador, ajuizamento). **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud não traz as partes: nenhum nome de pessoa.
+
+- **Fonte:** CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, `base/processos_datajud.py`)
+- **Licença:** DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)
+- **Atraso de divulgação:** O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado ficou público
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`, `grau`, `visto_em`
+- **Três datas:** aconteceu_em = `ajuizado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-05 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_datajud/datajud.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `ano_do_processo` | Ano em que o processo foi ajuizado (o AAAA do número) | ano |
+| `justica` | A justiça pelo J do número (Justiça Estadual, Justiça Federal...) | texto |
+| `tribunal` | Sigla do tribunal no DataJud (TJSP, TRF3...) | texto |
+| `grau` | Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP... | texto |
+| `classe_codigo` | Código da classe (Tabelas Processuais Unificadas do CNJ) | texto |
+| `classe` | Nome da classe, como o DataJud escreve | texto |
+| `assuntos_codigos` | Códigos dos assuntos na TPU, separados por `;` | texto |
+| `assuntos` | Nomes dos assuntos, separados por `; ` | texto |
+| `orgao_julgador_codigo` | Código do órgão julgador no CNJ | texto |
+| `orgao_julgador` | Vara, câmara ou turma, como o DataJud escreve | texto |
+| `ajuizado_em` | Dia do ajuizamento (`dataAjuizamento`) | data (dia) |
+| `atualizado_na_fonte_em` | Última atualização do processo no DataJud | data e hora (UTC) |
+| `nivel_sigilo` | Nível de sigilo no DataJud (0: público) | número inteiro |
+| `sistema` | Sistema processual do tribunal (PJe, eproc, SAJ...) | texto |
+| `formato` | Eletrônico ou físico | texto |
+| `movimentos` | Quantos movimentos a consulta trouxe | número inteiro |
+| `ultimo_movimento_codigo` | Código TPU do movimento mais recente da consulta | texto |
+| `ultimo_movimento_em` | Quando aconteceu o movimento mais recente da consulta | data e hora (UTC) |
+| `disponivel_em` | Dia da consulta: desde quando a linha vale para a base | data (dia) |
+| `visto_em` | Dia da consulta guardada que trouxe esta versão da linha | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `processos_datajud_movimentos`
+
+Processos judiciais por companhia aberta, pelo DataJud: os movimentos de cada processo (distribuição, sentença, recurso, trânsito em julgado), uma linha por movimento. **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud não traz as partes: nenhum nome de pessoa.
+
+- **Fonte:** CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, `base/processos_datajud.py`)
+- **Licença:** DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)
+- **Atraso de divulgação:** O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado ficou público
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`, `grau`, `aconteceu_em`, `movimento_codigo`, `complementos`
+- **Três datas:** aconteceu_em = `aconteceu_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-05 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_datajud_movimentos/datajud.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `grau` | Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP... | texto |
+| `movimento_codigo` | Código do movimento (Tabelas Processuais Unificadas do CNJ) | texto |
+| `movimento` | Nome do movimento, como o DataJud escreve | texto |
+| `complementos` | Complementos tabelados do CNJ, `nome: descrição`, separados por `; ` (texto vazio: sem complemento) | texto |
+| `aconteceu_em` | Quando o movimento aconteceu, como o tribunal informou | data e hora (UTC) |
+| `disponivel_em` | Primeiro dia em que uma consulta mostrou o movimento: desde quando a linha vale (o movimento pode ter acontecido muito antes) | data (dia) |
+| `visto_em` | Dia da primeira consulta que trouxe o movimento | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |

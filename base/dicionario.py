@@ -457,6 +457,114 @@ def _tabelas_do_cnpj() -> dict[str, Tabela]:
     return tabelas
 
 
+def _historicos_do_cnpj() -> dict[str, Tabela]:
+    """O histórico datado do CNPJ (linha 686, `base/cnpj_historico.py`): uma linha por versão, com desde
+    quando era pública, para servir o campo "como era na data" sem mostrar o futuro."""
+    versao = {
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "mes_do_retrato": (
+            (
+                "Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base "
+                "(2023-05) traz o que já estava lá"
+            ),
+            "AAAA-MM",
+        ),
+        "disponivel_em": (
+            (
+                "Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de "
+                "publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até "
+                "a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a "
+                "partir do último dia do mês"
+            ),
+            DATA,
+        ),
+        "consta": (
+            "Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios)",
+            SIM_OU_NAO,
+        ),
+    }
+    linhagem = (
+        "Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "
+        '"saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` '
+        "diz quando a tabela foi montada. " + COM_VERSAO_DO_CODIGO
+    )
+    carimbos = {
+        "origem_sha256": _ORIGEM_SEM_ANO["origem_sha256"],
+        "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+        "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+    }
+    comum = {
+        "familia_da_fonte": "rfb-cnpj",
+        "frequencia": (
+            "Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam"
+        ),
+        "atraso": (
+            "A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do "
+            "mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita "
+            "informa e podem ser anteriores ao retrato em que apareceram"
+        ),
+        "linhagem": linhagem,
+        "ressalva_de_revenda": _RESSALVA_DO_CNPJ,
+    }
+    simples = {c: v for c, v in _SIMPLES.items() if c != "cnpj_basico"}
+    return {
+        "cnpj_simples_historico": Tabela(
+            descricao=(
+                "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, "
+                "com desde quando cada uma era pública: a versão que vale na data D é a última com "
+                "`disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do "
+                "CNPJ; a última versão de cada raiz é conferida com o vigente. Sem dado de pessoa além "
+                "do próprio CNPJ. " + _FINALIDADE_DO_CNPJ
+            ),
+            fonte=(
+                "Receita Federal: dados abertos do CNPJ, `Simples.zip` (`scripts/montar_historico_do_cnpj.py simples`)"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cnpj_simples_historico/<2 primeiros caracteres da raiz>.parquet` "
+                "(servidor de casa)"
+            ),
+            colunas={**versao, **simples, **carimbos},
+            **comum,  # type: ignore[arg-type]
+        ),
+        "cnpj_empresas_historico": Tabela(
+            descricao=(
+                "Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com "
+                "desde quando cada uma era pública. Montada mês a mês dos `Empresas*.zip`. **A razão "
+                "social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do "
+                "grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor "
+                "(ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do "
+                "responsável e ente federativo não são lidos. " + _FINALIDADE_DO_CNPJ
+            ),
+            fonte=(
+                "Receita Federal: dados abertos do CNPJ, `Empresas*.zip` (`scripts/montar_historico_do_cnpj.py empresas`)"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cnpj_empresas_historico/<2 primeiros caracteres da raiz>.parquet` "
+                "(servidor de casa; `meses.json` diz os meses já acrescentados e o SHA-256 de cada ZIP)"
+            ),
+            colunas={
+                **versao,
+                "natureza_juridica": (
+                    (
+                        "Código da natureza jurídica (tabela da Receita, 4 dígitos: 2062 limitada, "
+                        "2054 S.A. fechada, 2046 S.A. aberta, 2135 empresário individual)"
+                    ),
+                    TEXTO,
+                ),
+                "razao_social": (
+                    (
+                        "Razão social como a Receita publica; vazia para empresário individual, "
+                        "MEI e grupo 4 (é o nome da pessoa)"
+                    ),
+                    TEXTO,
+                ),
+                **carimbos,
+            },
+            **comum,  # type: ignore[arg-type]
+        ),
+    }
+
+
 def _tabelas_das_sancoes() -> dict[str, Tabela]:
     """As sanções por CNPJ (`base/sancoes.py`): uma tabela por família de licença, para a marca da CGU
     (só uso interno) não se misturar com a da ANS (vende com atribuição)."""
@@ -846,6 +954,142 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
             ),
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
             colunas=dos_processos,
+        ),
+    }
+
+
+def _tabelas_do_datajud() -> dict[str, Tabela]:
+    """Os processos do DJEN completados pelo DataJud (`base/processos_datajud.py`). **Só uso interno**
+    (`coletas.FONTES_SO_INTERNAS`): treinam e rotulam, e nenhuma tela, relatório, API ou exportação
+    as lê."""
+    comum = (
+        " **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso "
+        "comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) "
+        "e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma "
+        "companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud "
+        "não traz as partes: nenhum nome de pessoa."
+    )
+    atraso = (
+        "O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha "
+        "vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado "
+        "ficou público"
+    )
+    fonte = (
+        "CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, "
+        "`base/processos_datajud.py`)"
+    )
+    frequencia = "Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)"
+    numero = (
+        "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+        TEXTO,
+    )
+    grau = ("Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP...", TEXTO)
+    visto = ("Dia da consulta guardada que trouxe esta versão da linha", DATA)
+    retratos = {
+        "numero_processo": numero,
+        "ano_do_processo": (
+            "Ano em que o processo foi ajuizado (o AAAA do número)",
+            "ano",
+        ),
+        "justica": (
+            "A justiça pelo J do número (Justiça Estadual, Justiça Federal...)",
+            TEXTO,
+        ),
+        "tribunal": ("Sigla do tribunal no DataJud (TJSP, TRF3...)", TEXTO),
+        "grau": grau,
+        "classe_codigo": (
+            "Código da classe (Tabelas Processuais Unificadas do CNJ)",
+            TEXTO,
+        ),
+        "classe": ("Nome da classe, como o DataJud escreve", TEXTO),
+        "assuntos_codigos": ("Códigos dos assuntos na TPU, separados por `;`", TEXTO),
+        "assuntos": ("Nomes dos assuntos, separados por `; `", TEXTO),
+        "orgao_julgador_codigo": ("Código do órgão julgador no CNJ", TEXTO),
+        "orgao_julgador": ("Vara, câmara ou turma, como o DataJud escreve", TEXTO),
+        "ajuizado_em": ("Dia do ajuizamento (`dataAjuizamento`)", DATA),
+        "atualizado_na_fonte_em": (
+            "Última atualização do processo no DataJud",
+            MOMENTO,
+        ),
+        "nivel_sigilo": ("Nível de sigilo no DataJud (0: público)", NUMERO),
+        "sistema": ("Sistema processual do tribunal (PJe, eproc, SAJ...)", TEXTO),
+        "formato": ("Eletrônico ou físico", TEXTO),
+        "movimentos": ("Quantos movimentos a consulta trouxe", NUMERO),
+        "ultimo_movimento_codigo": (
+            "Código TPU do movimento mais recente da consulta",
+            TEXTO,
+        ),
+        "ultimo_movimento_em": (
+            "Quando aconteceu o movimento mais recente da consulta",
+            MOMENTO,
+        ),
+        "disponivel_em": (
+            "Dia da consulta: desde quando a linha vale para a base",
+            DATA,
+        ),
+        "visto_em": visto,
+        **_ORIGEM_SEM_ANO,
+    }
+    movimentos = {
+        "numero_processo": numero,
+        "grau": grau,
+        "movimento_codigo": (
+            "Código do movimento (Tabelas Processuais Unificadas do CNJ)",
+            TEXTO,
+        ),
+        "movimento": ("Nome do movimento, como o DataJud escreve", TEXTO),
+        "complementos": (
+            "Complementos tabelados do CNJ, `nome: descrição`, separados por `; ` (texto vazio: sem complemento)",
+            TEXTO,
+        ),
+        "aconteceu_em": (
+            "Quando o movimento aconteceu, como o tribunal informou",
+            MOMENTO,
+        ),
+        "disponivel_em": (
+            (
+                "Primeiro dia em que uma consulta mostrou o movimento: desde quando a linha vale "
+                "(o movimento pode ter acontecido muito antes)"
+            ),
+            DATA,
+        ),
+        "visto_em": ("Dia da primeira consulta que trouxe o movimento", DATA),
+        **_ORIGEM_SEM_ANO,
+    }
+    return {
+        "processos_datajud": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta, pelo DataJud: um retrato de cada processo, "
+                "por grau, a cada consulta (classe, assuntos, órgão julgador, ajuizamento)."
+                + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="datajud",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_datajud/datajud.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=retratos,
+        ),
+        "processos_datajud_movimentos": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta, pelo DataJud: os movimentos de cada "
+                "processo (distribuição, sentença, recurso, trânsito em julgado), uma linha por "
+                "movimento." + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="datajud",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_datajud_movimentos/datajud.parquet` (servidor "
+                "de casa, `scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=movimentos,
         ),
     }
 
@@ -5968,6 +6212,7 @@ TABELAS: dict[str, Tabela] = {
         },
     ),
     **_tabelas_do_cnpj(),
+    **_historicos_do_cnpj(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -6044,6 +6289,7 @@ TABELAS: dict[str, Tabela] = {
     ),
     **_tabelas_das_sancoes(),
     **_tabelas_dos_processos(),
+    **_tabelas_do_datajud(),
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
     **_tabelas_dos_financiamentos(),
@@ -8206,6 +8452,7 @@ _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas nes
 _PROCESSOS = (
     "2025-01-01"  # o histórico do DJEN que a coleta busca (`djen.HISTORICO_DESDE`)
 )
+_DATAJUD = "2026-11-05"  # o DataJud (só uso interno) entrou no arquivista neste dia
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
 _FINANCIAMENTOS = "2026-11-04"
 _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
@@ -8300,6 +8547,8 @@ _CONTRATO = {
     "cnpj_estabelecimentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj",), datas={"aconteceu_em": "data_situacao_cadastral"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
@@ -8308,6 +8557,8 @@ _CONTRATO = {
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "processos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo",), datas={"aconteceu_em": "primeira_comunicacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
+    "processos_datajud": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo", "grau", "visto_em"), datas={"aconteceu_em": "ajuizado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_DATAJUD),
+    "processos_datajud_movimentos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo", "grau", "aconteceu_em", "movimento_codigo", "complementos"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_DATAJUD),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -8490,6 +8741,9 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "cnpj_simples_mudancas": {"pasta": "cnpj/mudancas/simples"},
     "cnpj_qsa": {"pasta": "cnpj/vigente/qsa"},
     "cnpj_qsa_mudancas": {"pasta": "cnpj/mudancas/qsa"},
+    # histórico datado do CNPJ (linha 686): uma versão por raiz e mês do retrato
+    "cnpj_simples_historico": {"pasta": "cnpj_simples_historico", "nao_nulas": ("disponivel_em", "consta")},
+    "cnpj_empresas_historico": {"pasta": "cnpj_empresas_historico", "nao_nulas": ("disponivel_em", "consta")},
     "amostra_painel": {"pasta": "amostra/v1/painel"},
     "eventos": {"pasta": "eventos", "anuncia_o_futuro": True},  # 19% (assembleias, calendários)
     "curva_juros": {
@@ -8535,6 +8789,15 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "processos": {
         "pasta": "processos",
         "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "primeira_comunicacao", "disponivel_em", "visto_em"),
+    },
+    "processos_datajud": {
+        "pasta": "processos_datajud",
+        "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "grau", "movimentos", "disponivel_em", "visto_em"),
+        "faixas": {"movimentos": _SEM_NEGATIVO, "nivel_sigilo": _SEM_NEGATIVO},
+    },
+    "processos_datajud_movimentos": {
+        "pasta": "processos_datajud_movimentos",
+        "nao_nulas": ("numero_processo", "grau", "movimento_codigo", "disponivel_em", "visto_em"),
     },
     "anvisa_registros": {
         "pasta": "anvisa_registros",

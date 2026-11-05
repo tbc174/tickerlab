@@ -62,6 +62,9 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "CNJ (Tabelas Processuais Unificadas)",
         "https://www.cnj.jus.br/sgt/consulta_publica_classes.php",
     ),
+    "datajud": Orgao(
+        "CNJ (DataJud, só uso interno)", "https://datajud-wiki.cnj.jus.br/api-publica/"
+    ),
     "comexstat": Orgao("Comex Stat (MDIC)", "https://balanca.mdic.gov.br/balanca/bd/"),
     "comprasgov": Orgao(
         "Compras.gov.br (Ministério da Gestão)", "https://dadosabertos.compras.gov.br/"
@@ -128,7 +131,7 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "Governo de Goiás (dados abertos)", "https://dadosabertos.go.gov.br/"
     ),
     "msestado": Orgao(
-        "Governo de Mato Grosso do Sul (dados abertos)", "https://dados.ms.gov.br/"
+        "Governo de Mato Grosso do Sul (dados abertos)", "https://www.dados.ms.gov.br/"
     ),
     "spcapital": Orgao(
         "Prefeitura de São Paulo (dados abertos)", "https://dados.prefeitura.sp.gov.br/"

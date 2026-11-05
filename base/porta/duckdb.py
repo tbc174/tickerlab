@@ -98,6 +98,8 @@ ARQUIVOS: dict[str, str] = {
     "insolvencia": "insolvencia/*.parquet",
     "cnpj_situacao_especial": "cnpj_situacao_especial/*.parquet",
     "cnpj_situacao_cadastral": "cnpj_situacao_cadastral/*.parquet",
+    "cnpj_simples_historico": "cnpj_simples_historico/*.parquet",
+    "cnpj_empresas_historico": "cnpj_empresas_historico/*.parquet",
     "pgfn_divida": "pgfn_divida/*/*.parquet",
     "sancoes_cgu": "sancoes_cgu/*.parquet",
     "ans_penalidades": "ans_penalidades/*.parquet",
@@ -187,6 +189,13 @@ FORA_DA_PORTA: dict[str, str] = {
     "fre_eventos_de_capital": _NO_BANCO,
     "cadastro_das_companhias": (
         "não é Parquet da base: é lido do original no acervo (`base/cadastro.py::ler_cadastro`)"
+    ),
+    **dict.fromkeys(
+        ("processos_datajud", "processos_datajud_movimentos"),
+        (
+            "só uso interno (`coletas.FONTES_SO_INTERNAS`): a porta serve a API e o site; o "
+            "treino lê o Parquet direto"
+        ),
     ),
     **{
         f"cnpj_{nome}{sufixo}": _CNPJ_DA_CARGA

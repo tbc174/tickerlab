@@ -113,6 +113,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 )
 # Ficha Clara, incentivos: a licença dita no portal do MME ("Outra (Aberta)", sem nome)
 TERMOS_LIDOS_EM["mme"] = date(2026, 10, 29)
+# linhas 658 e 688: robots.txt e licença dos CKAN de GO (CC BY), MS (CC BY no conjunto; uso a confirmar) e
+# SP capital (CC0) lidos em 05/11/2026; GO e MS: Disallow /api/ e Crawl-Delay 10; SP: Disallow /
+TERMOS_LIDOS_EM |= dict.fromkeys(("goias", "msestado", "spcapital"), date(2026, 11, 5))
 # lote licitações e contratos (licencas-por-fonte.md, rodada 4, lido em 22/10/2026)
 TERMOS_LIDOS_EM |= dict.fromkeys(
     ("seges", "comprasgov", "transferegov", "pncp", "tcu", "govmg", "govsc"),
@@ -264,6 +267,9 @@ TABELAS_SEM_LEITOR: frozenset[str] = frozenset(
         "processos_comunicacoes",
         "processos_partes",
         "processos_nas_notas",
+        # DataJud: só uso interno (`coletas.FONTES_SO_INTERNAS`); nenhuma tela pode ler, nunca
+        "processos_datajud",
+        "processos_datajud_movimentos",
     }
 )
 

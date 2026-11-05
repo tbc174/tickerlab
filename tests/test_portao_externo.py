@@ -236,6 +236,7 @@ def test_a_lista_negada_e_a_da_auditoria_n0() -> None:
     assert {
         "b3", "yahoo", "fnc", "cecafe", "kraken", "mb", "fmi",
         "wayback", "contrapartes", "termos", "ico", "bcb-sgs-189",
+        "datajud",  # só uso interno (plano dos processos, PR 3)
     } == portao.NEGADAS_DESDE_O_PRIMEIRO_DIA  # fmt: skip
     assert set(coletas.LICENCAS) >= portao.NEGADAS_DESDE_O_PRIMEIRO_DIA
 
@@ -637,11 +638,16 @@ def test_nos_canais_do_app_o_portao_so_repete_pode_usar(canal: Canal) -> None:
             )
 
 
-def test_pode_usar_libera_tudo_inclusive_a_b3() -> None:
-    """ADR 0008, Emenda 6 (22/10/2026): a B3 entrou no app; a API externa tem a regra própria."""
+def test_pode_usar_libera_tudo_inclusive_a_b3_menos_as_so_internas() -> None:
+    """ADR 0008, Emenda 6 (22/10/2026): a B3 entrou no app; a API externa tem a regra própria. As
+    `FONTES_SO_INTERNAS` (o DataJud) só treinam e rotulam (`tests/test_trava_so_interna.py`)."""
     for familia in coletas.LICENCAS:
         for uso in coletas.USOS:
-            assert coletas.pode_usar(uso, familia) is True, (familia, uso)
+            esperado = (
+                familia not in coletas.FONTES_SO_INTERNAS
+                or uso in coletas.USOS_INTERNOS
+            )
+            assert coletas.pode_usar(uso, familia) is esperado, (familia, uso)
 
 
 def test_nenhuma_tela_nem_a_api_do_app_usa_o_portao_externo() -> None:

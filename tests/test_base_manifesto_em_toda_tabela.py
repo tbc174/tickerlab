@@ -15,6 +15,7 @@ PODEM_GRAVAR_PARQUET = {
     "base/ponto_no_tempo.py": "base 'como era na data': manifesto próprio, com `sha256_da_tabela`",
     "base/arquivo/obter.py": "original baixado pelo arquivista, guardado em `bruto/`, fora de `base/`",
     "scripts/carga_receita_mes.py": "só as partes de trabalho em `_novo/` (apagadas ao fim do mês) e as pessoas no restrito; o vigente e as mudanças do CNPJ saem por `gravar_tabela`, com manifesto",
+    "scripts/montar_historico_do_cnpj.py": "só as partes de trabalho em `_trabalho/` (apagadas ao fim da montagem); o histórico datado do CNPJ sai por `gravar_se_mudou`, com manifesto",
     "base/pessoas/oposicoes.py": "oposições dos titulares e `pessoas` no restrito, fora de `base/` (ADR 0077, item 2); o QSA da lápide passa por `regravar_por_lapide`, que anota o manifesto",
     "base/cripto/reprodutivel.py": "Parquet só na memória, para calcular o hash",
     "scripts/barras_b3_do_dia.py": "intradiário em `<acervo>/intradiario/`, fora de `base/` (ADR 0019)",
