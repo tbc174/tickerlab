@@ -19,9 +19,11 @@ from base.arquivo.registro import TERMOS_LIDOS_EM
 from src.banco import coletas
 from src.banco.coletas import (
     SEM_LICENCA_CONHECIDA,
+    VENDAVEL_RISCO_ASSUMIDO,
     Marca,
     licenca_da_fonte,
     marca_da_fonte,
+    revenda_da_fonte,
 )
 
 AGORA = datetime(2026, 10, 23, 13, tzinfo=UTC)
@@ -112,16 +114,13 @@ def test_as_familias_do_lote_estao_todas_representadas():
     assert {f.id.split("-", 1)[0] for f in _fontes_do_lote()} == FAMILIAS
 
 
-def test_marcas_inpe_a_confirmar_terrabrasilis_so_uso_interno_e_o_resto_vendavel():
-    especiais = {
-        "inpe": Marca.A_CONFIRMAR,
-        "mapbiomas": Marca.A_CONFIRMAR,
-        "terrabrasilis": Marca.USO_INTERNO,
-    }
+def test_todo_o_lote_e_vendavel_inpe_mapbiomas_e_terrabrasilis_por_risco_assumido():
+    # INPE, MapBiomas e TerraBrasilis sem resposta escrita: o Tiago assumiu o risco (ADR 0122, 05/11/2026)
+    assumidas = {"inpe", "mapbiomas", "terrabrasilis"}
     for fonte in _fontes_do_lote():
-        familia = fonte.id.split("-", 1)[0]
-        esperada = especiais.get(familia, Marca.VENDAVEL)
-        assert marca_da_fonte(fonte.id) == esperada, fonte.id
+        assert marca_da_fonte(fonte.id) == Marca.VENDAVEL, fonte.id
+        if fonte.id.split("-", 1)[0] in assumidas:
+            assert revenda_da_fonte(fonte.id) == VENDAVEL_RISCO_ASSUMIDO, fonte.id
 
 
 def test_o_lote_nao_repete_o_que_ja_existe_nem_traz_o_que_ficou_de_fora():

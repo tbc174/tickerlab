@@ -121,8 +121,8 @@ def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas()
     assert licenca_da_fonte("gleif-br").startswith("CC0")
     for fonte in ("cgu-ceis", "ibama-autos", "mte-lista-suja"):
         assert coletas.revenda_da_fonte(fonte) == coletas.SO_USO_INTERNO, fonte
-    # só o rodapé CC BY-ND do site: perguntar a licença (ADR 0008, Emenda 1: não entra em modelo)
-    assert coletas.revenda_da_fonte("pgfn-divida") == coletas.A_CONFIRMAR
+    # só o rodapé CC BY-ND do site, sem resposta: vendável por risco assumido (ADR 0122)
+    assert coletas.revenda_da_fonte("pgfn-divida") == coletas.VENDAVEL_RISCO_ASSUMIDO
     assert coletas.revenda_da_fonte("rfb-cnpj") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("gleif-br") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("termos-b3") == coletas.SO_USO_INTERNO
@@ -272,7 +272,6 @@ def test_marca_do_tce_pr_e_vendavel_com_atribuicao():
     )
 
 
-def test_licitacon_fica_a_confirmar():
-    # o LicitaCon do TCE-RS espera a resposta da Ouvidoria (ADR 0085)
-    assert coletas.revenda_da_fonte("tce-rs") == coletas.A_CONFIRMAR
-    assert coletas.revenda_da_fonte("tce-rs-licitacon") == coletas.A_CONFIRMAR
+def test_licitacon_e_vendavel_por_risco_assumido():
+    # o LicitaCon do TCE-RS segue sem resposta da Ouvidoria (ADR 0085); o Tiago assumiu o risco (ADR 0122)
+    assert coletas.revenda_da_fonte("tce-rs") == coletas.VENDAVEL_RISCO_ASSUMIDO

@@ -150,8 +150,14 @@ def _linha(
         "razao_social": _texto(item.get("no_empresarial")) if pessoa_juridica else "",
         "nome_fantasia": _texto(item.get("no_fantasia")) if pessoa_juridica else "",
         "codigo_ibge_municipio": _texto(item.get("co_ibge")),
-        "latitude": _numero(item.get("nu_latitude")),
-        "longitude": _numero(item.get("nu_longitude")),
+        # a coordenada do consultório de pessoa física é a casa ou o consultório de uma pessoa: com o
+        # `codigo_cnes`, ela identifica alguém (condição do MS na resposta de 05/11/2026, ADR 0122)
+        "latitude": _numero(item.get("nu_latitude"))
+        if pessoa_juridica
+        else float("nan"),
+        "longitude": _numero(item.get("nu_longitude"))
+        if pessoa_juridica
+        else float("nan"),
         "disponivel_em": pd.Timestamp(coletado_em),
     }
     linha.update({coluna: _texto(item.get(campo)) for campo, coluna in _TEXTOS.items()})
