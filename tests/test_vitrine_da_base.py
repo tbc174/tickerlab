@@ -54,7 +54,10 @@ def _catalogo_falso() -> dict:
 
 
 def _catalogo_real() -> dict:
-    return json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    """O catálogo como o site o vê (sem as tabelas só internas)."""
+    return vitrine.catalogo_publico(
+        json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    )
 
 
 # --- fontes --------------------------------------------------------------------------------------

@@ -2518,13 +2518,77 @@ O que mudou de um mês para o outro em `cnpj_qsa`: uma linha por entrada, saída
 | `pais_antes` | Antes da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
 | `pais_depois` | Depois da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
 
+## `cnpj_simples_historico`
+
+Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com `disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do CNPJ; a última versão de cada raiz é conferida com o vigente. Sem dado de pessoa além do próprio CNPJ. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, `Simples.zip` (`scripts/montar_historico_do_cnpj.py simples`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_simples_historico/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá | AAAA-MM |
+| `disponivel_em` | Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês | data (dia) |
+| `consta` | Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios) | verdadeiro ou falso |
+| `optante_simples` | Verdadeiro se a empresa é optante do Simples Nacional | verdadeiro ou falso |
+| `data_opcao_simples` | Data da opção pelo Simples; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_simples` | Data da exclusão do Simples; vazio quando a Receita põe zero | data (dia) |
+| `optante_mei` | Verdadeiro se a empresa é MEI | verdadeiro ou falso |
+| `data_opcao_mei` | Data do enquadramento como MEI; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_mei` | Data do desenquadramento do MEI; vazio quando a Receita põe zero | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `cnpj_empresas_historico`
+
+Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública. Montada mês a mês dos `Empresas*.zip`. **A razão social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor (ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do responsável e ente federativo não são lidos. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, `Empresas*.zip` (`scripts/montar_historico_do_cnpj.py empresas`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_empresas_historico/<2 primeiros caracteres da raiz>.parquet` (servidor de casa; `meses.json` diz os meses já acrescentados e o SHA-256 de cada ZIP)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá | AAAA-MM |
+| `disponivel_em` | Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês | data (dia) |
+| `consta` | Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios) | verdadeiro ou falso |
+| `natureza_juridica` | Código da natureza jurídica (tabela da Receita, 4 dígitos: 2062 limitada, 2054 S.A. fechada, 2046 S.A. aberta, 2135 empresário individual) | texto |
+| `razao_social` | Razão social como a Receita publica; vazia para empresário individual, MEI e grupo 4 (é o nome da pessoa) | texto |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa` e a porta não os serve.
 
 - **Fonte:** PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)
 - **Licença:** Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)
 - **Atraso de divulgação:** O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -2661,7 +2725,7 @@ Processos judiciais por companhia aberta: as comunicações. Uma linha por comun
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
 - **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -2713,7 +2777,7 @@ Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgã
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
 - **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -2747,7 +2811,7 @@ Processos judiciais por companhia aberta: uma linha por processo, com o que a pr
 
 - **Fonte:** CNJ: Diário de Justiça Eletrônico Nacional, API pública de comunicações processuais, e as Tabelas Processuais Unificadas (`base/arquivo/djen.py`, `base/arquivo/cnj_tpu.py`, `base/processos.py`)
 - **Licença:** DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)
 - **Atraso de divulgação:** A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -2773,6 +2837,83 @@ Processos judiciais por companhia aberta: uma linha por processo, com o que a pr
 | `primeira_comunicacao` | Dia da primeira comunicação do processo no DJEN que a base tem | data (dia) |
 | `disponivel_em` | Dia da primeira comunicação do processo com uma companhia entre as partes: desde quando se sabe que o processo é de uma companhia | data (dia) |
 | `visto_em` | Dia da consulta guardada que trouxe essa comunicação | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `processos_datajud`
+
+Processos judiciais por companhia aberta, pelo DataJud: um retrato de cada processo, por grau, a cada consulta (classe, assuntos, órgão julgador, ajuizamento). **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud não traz as partes: nenhum nome de pessoa.
+
+- **Fonte:** CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, `base/processos_datajud.py`)
+- **Licença:** DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)
+- **Atraso de divulgação:** O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado ficou público
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`, `grau`, `visto_em`
+- **Três datas:** aconteceu_em = `ajuizado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-05 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_datajud/datajud.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `ano_do_processo` | Ano em que o processo foi ajuizado (o AAAA do número) | ano |
+| `justica` | A justiça pelo J do número (Justiça Estadual, Justiça Federal...) | texto |
+| `tribunal` | Sigla do tribunal no DataJud (TJSP, TRF3...) | texto |
+| `grau` | Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP... | texto |
+| `classe_codigo` | Código da classe (Tabelas Processuais Unificadas do CNJ) | texto |
+| `classe` | Nome da classe, como o DataJud escreve | texto |
+| `assuntos_codigos` | Códigos dos assuntos na TPU, separados por `;` | texto |
+| `assuntos` | Nomes dos assuntos, separados por `; ` | texto |
+| `orgao_julgador_codigo` | Código do órgão julgador no CNJ | texto |
+| `orgao_julgador` | Vara, câmara ou turma, como o DataJud escreve | texto |
+| `ajuizado_em` | Dia do ajuizamento (`dataAjuizamento`) | data (dia) |
+| `atualizado_na_fonte_em` | Última atualização do processo no DataJud | data e hora (UTC) |
+| `nivel_sigilo` | Nível de sigilo no DataJud (0: público) | número inteiro |
+| `sistema` | Sistema processual do tribunal (PJe, eproc, SAJ...) | texto |
+| `formato` | Eletrônico ou físico | texto |
+| `movimentos` | Quantos movimentos a consulta trouxe | número inteiro |
+| `ultimo_movimento_codigo` | Código TPU do movimento mais recente da consulta | texto |
+| `ultimo_movimento_em` | Quando aconteceu o movimento mais recente da consulta | data e hora (UTC) |
+| `disponivel_em` | Dia da consulta: desde quando a linha vale para a base | data (dia) |
+| `visto_em` | Dia da consulta guardada que trouxe esta versão da linha | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `processos_datajud_movimentos`
+
+Processos judiciais por companhia aberta, pelo DataJud: os movimentos de cada processo (distribuição, sentença, recurso, trânsito em julgado), uma linha por movimento. **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud não traz as partes: nenhum nome de pessoa.
+
+- **Fonte:** CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, `base/processos_datajud.py`)
+- **Licença:** DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)
+- **Atraso de divulgação:** O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado ficou público
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`, `grau`, `aconteceu_em`, `movimento_codigo`, `complementos`
+- **Três datas:** aconteceu_em = `aconteceu_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-05 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_datajud_movimentos/datajud.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `grau` | Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP... | texto |
+| `movimento_codigo` | Código do movimento (Tabelas Processuais Unificadas do CNJ) | texto |
+| `movimento` | Nome do movimento, como o DataJud escreve | texto |
+| `complementos` | Complementos tabelados do CNJ, `nome: descrição`, separados por `; ` (texto vazio: sem complemento) | texto |
+| `aconteceu_em` | Quando o movimento aconteceu, como o tribunal informou | data e hora (UTC) |
+| `disponivel_em` | Primeiro dia em que uma consulta mostrou o movimento: desde quando a linha vale (o movimento pode ter acontecido muito antes) | data (dia) |
+| `visto_em` | Dia da primeira consulta que trouxe o movimento | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
@@ -3054,7 +3195,7 @@ Projetos de geração e transmissão de energia enquadrados no REIDI (MME), por 
 
 - **Fonte:** MME: dados abertos, REIDI (processos deferidos) (`base/incentivos.py`)
 - **Licença:** Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3235,7 +3376,7 @@ Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédi
 
 - **Fonte:** Finep, planilha de contratações (licença a confirmar: uso interno) (`base/financiamentos.py`)
 - **Licença:** Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (a fonte reescreve o arquivo inteiro)
 - **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3296,7 +3437,7 @@ Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGRE
 
 - **Fonte:** Anvisa: listas de preços da CMED, dados abertos (`base/cmed.py`)
 - **Licença:** Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (a CMED republica as listas inteiras)
 - **Atraso de divulgação:** A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3667,8 +3808,8 @@ A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ da
 Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia não grava linha: veja `cnes_competencias`.
 
 - **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
-- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar
+- **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
 - **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3707,8 +3848,8 @@ Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimen
 Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia. Serve para não confundir competência ainda não publicada com ausência de estabelecimentos.
 
 - **Fonte:** Ministério da Saúde, DATASUS, API de dados abertos do CNES (`base/cnes.py`)
-- **Licença:** CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar
+- **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)
 - **Atraso de divulgação:** A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -3735,8 +3876,8 @@ Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados
 Contratos do TCE-PE (estaduais e municipais) por contratado. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-PE, API Dados Abertos (`Contratos`)
-- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-PE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Anual (um pedido por ano; refazer o ano corrente a cada trimestre)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3778,8 +3919,8 @@ Contratos do TCE-PE (estaduais e municipais) por contratado. Só pessoa jurídic
 Termos aditivos dos contratos do TCE-PE por contratado. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-PE, API Dados Abertos (`TermoAditivo`)
-- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-PE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Anual (um pedido por ano; refazer o ano corrente a cada trimestre)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3819,8 +3960,8 @@ Termos aditivos dos contratos do TCE-PE por contratado. Só pessoa jurídica (CN
 Licitações do TCE-PE por licitante vencedor (`LicitacoesDetalhes`; só a linha do vencedor pessoa jurídica). Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-PE, API Dados Abertos (`LicitacoesDetalhes`)
-- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-PE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Anual, fatiado por ano e modalidade (um pedido por fatia, com pausa); refazer o ano corrente a cada trimestre
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3867,8 +4008,8 @@ Licitações do TCE-PE por licitante vencedor (`LicitacoesDetalhes`; só a linha
 Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-SP, Portal da Transparência Municipal
-- **Licença:** TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-SP: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal por município (645 x 12 pedidos por ano, com pausa)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3902,8 +4043,8 @@ Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento po
 Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
 - **Fonte:** TCE-CE, SIM (arquivos postos à mão; sem coleta automática ainda)
-- **Licença:** TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Licença:** TCE-CE: licença não localizada; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Sem rotina: carga manual de arquivos baixados
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -3944,7 +4085,7 @@ Contratos do LicitaCon do TCE-RS por contratado (só `contrato.csv`; `pessoas.cs
 
 - **Fonte:** TCE-RS, dados abertos (LicitaCon, um ZIP por órgão)
 - **Licença:** LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Mensal (índice do CKAN e um ZIP por órgão, com retomada)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -5279,7 +5420,7 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 
 - **Fonte:** CONAB: Acompanhamento da Safra Brasileira de Café (planilha de cada levantamento)
 - **Licença:** CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento (ADR 0102)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista
 - **Atraso de divulgação:** O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento
 - **Módulo:** macro · **Contém dado de pessoa:** não
@@ -5403,7 +5544,7 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 
 - **Fonte:** IBGE: PAM, tabela 1613 do SIDRA (variáveis 216 e 214, café arábica e canephora, por município); MapBiomas: Coleção 11, planilha de cobertura por bioma, estado e município
 - **Licença:** MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)
-- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Ressalva de revenda:** As colunas da PAM são do IBGE (domínio público; citar o IBGE); a coluna do MapBiomas é CC BY-SA (citar o projeto MapBiomas, Souza et al. 2020; revenda a confirmar)
 - **Frequência:** Anual
 - **Atraso de divulgação:** Anual; a regra de "como era na data" usa 31/10 do ano seguinte, quando a PAM já saiu (setembro ou outubro); a coleção do MapBiomas sai uma vez por ano com todos os anos refeitos

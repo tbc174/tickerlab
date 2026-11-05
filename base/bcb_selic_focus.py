@@ -135,12 +135,21 @@ def divergencias_com_a_sgs(
     return divergencias
 
 
+def _dia_da_coleta(coletado_em: datetime) -> pd.Timestamp:
+    return pd.Timestamp(coletado_em).tz_localize(None).normalize()
+
+
 def observacoes_da_meta(conteudo: bytes, coletado_em: datetime) -> pd.DataFrame:
     """A SGS 432 como o banco de produção a guarda: a meta vale desde o dia em que aparece."""
     itens = pd.DataFrame(json.loads(conteudo))
     if itens.empty:
         return pd.DataFrame(columns=COLUNAS_DAS_OBSERVACOES)
     dia = pd.to_datetime(itens["data"], format="%d/%m/%Y")
+    # o SGS responde também as semanas seguintes: a meta só vale a partir do dia em que aparece
+    itens, dia = (
+        itens[dia <= _dia_da_coleta(coletado_em)],
+        dia[dia <= _dia_da_coleta(coletado_em)],
+    )
     return pd.DataFrame(
         {
             "serie": SERIE_DA_META,

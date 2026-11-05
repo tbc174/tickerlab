@@ -62,6 +62,9 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "CNJ (Tabelas Processuais Unificadas)",
         "https://www.cnj.jus.br/sgt/consulta_publica_classes.php",
     ),
+    "datajud": Orgao(
+        "CNJ (DataJud, só uso interno)", "https://datajud-wiki.cnj.jus.br/api-publica/"
+    ),
     "comexstat": Orgao("Comex Stat (MDIC)", "https://balanca.mdic.gov.br/balanca/bd/"),
     "comprasgov": Orgao(
         "Compras.gov.br (Ministério da Gestão)", "https://dadosabertos.compras.gov.br/"

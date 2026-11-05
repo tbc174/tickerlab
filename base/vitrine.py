@@ -26,6 +26,7 @@ import pandas as pd
 from base.cnpj import normalizar_cnpj
 from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
+from src.banco.coletas import FONTES_SO_INTERNAS, licenca_da_fonte
 
 # o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
 ORGAOS: tuple[tuple[str, str], ...] = (
@@ -178,6 +179,19 @@ def repasse_do_site(licenca: str, situacao: str) -> str:
     if situacao == EM_CONSULTA:
         return REPASSE_EM_CONSULTA
     return REPASSE_ODBL if "ODbL" in licenca else REPASSE_COM_ATRIBUICAO
+
+
+def catalogo_publico(catalogo: dict) -> dict:
+    """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
+    DataJud). Elas estão no contrato e no dicionário do repositório, mas o site não anuncia dado que
+    não pode sair em tela, relatório, API nem exportação."""
+    internas = {licenca_da_fonte(familia) for familia in FONTES_SO_INTERNAS}
+    tabelas = {
+        nome: tabela
+        for nome, tabela in catalogo["tabelas"].items()
+        if tabela["licenca"] not in internas
+    }
+    return {**catalogo, "tabelas": tabelas}
 
 
 def fontes_do_catalogo(catalogo: dict) -> list[Fonte]:
@@ -444,6 +458,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cnpj_situacao_especial",
             "cnpj_simples",
             "cnpj_simples_mudancas",
+            "cnpj_simples_historico",
+            "cnpj_empresas_historico",
         ),
     ),
     TemaDoCnpj(
