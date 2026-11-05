@@ -730,3 +730,86 @@ def test_processos_limite_de_linhas_mostra_os_mais_novos_e_conta_todos(tmp_path)
     assert total == conferencias.LINHAS_POR_FONTE + 5
     assert len(linhas) == conferencias.LINHAS_POR_FONTE
     assert linhas[0]["numero_processo"] == numeros[-1]
+
+
+def _companhia(
+    raiz: str, cancelamento: str | None = None, registro: str = "2000-01-01"
+) -> dict:
+    return {
+        "cnpj": _cnpj(raiz),
+        "empresa": "COMPANHIA DE TESTE S.A.",
+        "registro": pd.Timestamp(registro),
+        "cancelamento": pd.Timestamp(cancelamento) if cancelamento else pd.NaT,
+        "situacao": "CANCELADA" if cancelamento else "ATIVO",
+    }
+
+
+def test_companhia_aberta_sem_processo_e_nao_encontrado_com_a_data_da_busca(
+    base_com_processos, tmp_path
+):
+    """A busca do DJEN cobre as companhias com registro ativo na CVM: a que não teve processo ganha
+    total 0 (a ficha diz "não encontrado até"); a empresa fora do cadastro fica sem linha (a ficha diz
+    "não conferido", nunca "não consta")."""
+    cadastro = pd.DataFrame(
+        [
+            _companhia(RAIZ),
+            _companhia(OUTRA),
+            _companhia(MEI, cancelamento="2020-01-01"),  # cancelada: não é buscada
+            _companhia("99888777", registro="2026-11-01"),  # registro depois do dia
+        ]
+    )
+    destino = tmp_path / "c.sqlite"
+    estado = conferencias.montar(
+        base_com_processos, destino, agora=AGORA, cadastro=cadastro
+    )
+    banco, _ = _abrir(destino)
+    assert _registros(banco, OUTRA, "processos") == (0, [])
+    assert _registros(banco, RAIZ, "processos")[0] == 2
+    assert _registros(banco, MEI, "processos") is None
+    assert _registros(banco, "99888777", "processos") is None
+    assert _registros(banco, OUTRA, "processos_por_ano") is None
+    fonte = next(f for f in estado["fontes"] if f["tabela"] == "processos")
+    assert fonte["empresas"] == 1 and fonte["buscadas"] == 2
+
+
+def test_sem_o_cadastro_so_as_empresas_com_processo(base_com_processos, tmp_path):
+    destino = tmp_path / "c.sqlite"
+    estado = conferencias.montar(base_com_processos, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    assert _registros(banco, OUTRA, "processos") is None  # sem saber quem foi buscado
+    fonte = next(f for f in estado["fontes"] if f["tabela"] == "processos")
+    assert fonte["buscadas"] is None
+
+
+def test_comando_passa_o_cadastro_da_cvm_do_acervo(
+    base_com_processos, tmp_path, monkeypatch
+):
+    """No servidor, o comando lê o cadastro guardado no acervo: a companhia aberta sem processo vira
+    "não encontrado" com a data da busca."""
+    monkeypatch.setattr(
+        exportar_conferencias, "exigir_versao_do_codigo", lambda: "teste"
+    )
+    cadastro = pd.DataFrame([_companhia(RAIZ), _companhia(OUTRA)])
+    monkeypatch.setattr(exportar_conferencias, "cadastro_da_cvm", lambda: cadastro)
+    destino = tmp_path / "c.sqlite"
+    argumentos = ["--base", str(base_com_processos), "--destino", str(destino)]
+    assert exportar_conferencias.main(argumentos) == 0
+    banco, _ = _abrir(destino)
+    assert _registros(banco, OUTRA, "processos") == (0, [])
+
+
+def test_sem_o_banco_o_comando_segue_sem_o_cadastro(
+    base_com_processos, tmp_path, monkeypatch
+):
+    """Sem o banco do acervo, a ficha não inventa zero: só as empresas com processo."""
+    import sqlalchemy as sa
+
+    monkeypatch.setattr(
+        exportar_conferencias, "exigir_versao_do_codigo", lambda: "teste"
+    )
+
+    def sem_banco():
+        raise sa.exc.OperationalError("SELECT 1", {}, Exception("fora do ar"))
+
+    monkeypatch.setattr(exportar_conferencias, "obter_engine", sem_banco)
+    assert exportar_conferencias.cadastro_da_cvm() is None

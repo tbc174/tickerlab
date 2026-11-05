@@ -35,8 +35,10 @@ tribunal, órgão, classe, ramo, o polo e o dia da primeira comunicação que a 
 nova e a certidão oficial dela no DJEN) e `processos_por_ano` (as contagens de `processos.contagens`: por ano da
 ligação, polo e ramo). Sem o nome das partes, sem advogados e sem o link do tribunal. `conferido_ate` é o dia da
 comunicação mais nova vista: a ficha diz "não encontrado até" esse dia, nunca que a empresa não tem processos (ADR
-0103). Limites: só companhias abertas (o cadastro da CVM), ligadas pelo nome; só o que saiu no DJEN desde 2025;
-sem segredo de justiça, sem STF e sem a Justiça do Trabalho.
+0103). Com o cadastro da CVM (`montar(cadastro=...)`), cada companhia com registro ativo no dia sem processo ganha
+total 0 ("não encontrado até"); a empresa fora do cadastro fica sem linha (a ficha diz "não conferido"), e o
+estado traz quantas foram `buscadas`. Limites: só companhias abertas, ligadas pelo nome; só o que saiu no DJEN
+desde 2025; sem segredo de justiça, sem STF e sem a Justiça do Trabalho.
 """
 
 import json
@@ -123,6 +125,9 @@ class Fonte:
     arquivo: str = ""
     # a montagem própria das linhas (raiz, colunas, em ordem) e do dia conferido; sem ela, as vigentes
     linhas: "Callable[[duckdb.DuckDBPyConnection, Fonte, date], tuple[pd.DataFrame, str | None]] | None" = None
+    # a busca da fonte cobre as companhias com registro ativo na CVM (o DJEN busca pelo nome delas):
+    # com o cadastro, a buscada sem linha ganha total 0; a de fora fica sem linha ("não conferido")
+    so_companhias_abertas: bool = False
 
     @property
     def nome_no_arquivo(self) -> str:
@@ -255,6 +260,21 @@ def _linhas_por_ano(
     return tabela[["raiz", *fonte.colunas]], _conferido_no_djen(con, dia)
 
 
+def companhias_buscadas(cadastro: pd.DataFrame | None, hoje: date) -> set[str] | None:
+    """As raízes das companhias com registro ativo na CVM no dia (`base.cadastro.ler_cadastro`): as que a
+    busca do DJEN cobre (`base/arquivo/djen.py`). None sem o cadastro: não se sabe quem foi buscado."""
+    if cadastro is None:
+        return None
+    ativas = cadastro[
+        cadastro["cancelamento"].isna()
+        & (pd.to_datetime(cadastro["registro"]) <= pd.Timestamp(hoje))
+    ]
+    raizes = (
+        ativas["cnpj"].astype(str).str.upper().str.replace(r"[^0-9A-Z]", "", regex=True)
+    )
+    return set(raizes[raizes.str.len() == 14].str[:8])
+
+
 FONTES = (
     Fonte("sancoes_cgu", "sinais", "Sanções do CEIS, CNEP, CEPIM e acordos de leniência", "CGU",
           "https://portaldatransparencia.gov.br/download-de-dados", _SANCOES, "inicio"),
@@ -303,7 +323,7 @@ FONTES = (
     Fonte("processos", "processos", "Processos em que a companhia é parte, a comunicação mais nova primeiro",
           "CNJ (DJEN)", "https://comunica.pje.jus.br/", _PROCESSOS, "ultima_comunicacao",
           outras=(processos.TABELA_DAS_PARTES, processos.TABELA_DAS_COMUNICACOES),
-          linhas=_linhas_dos_processos),
+          linhas=_linhas_dos_processos, so_companhias_abertas=True),
     Fonte("processos", "processos", "Processos por ano da ligação, polo e ramo", "CNJ (DJEN)",
           "https://comunica.pje.jus.br/", _POR_ANO, "ano",
           outras=(processos.TABELA_DAS_PARTES, processos.TABELA_DAS_COMUNICACOES),
@@ -440,11 +460,46 @@ def _gravar_ligacoes(banco: sqlite3.Connection, vista: Path) -> dict | None:
     }
 
 
+def _gravar_fonte(
+    banco: sqlite3.Connection,
+    con: duckdb.DuckDBPyConnection,
+    fonte: Fonte,
+    hoje: date,
+    abertas: set[str] | None,
+) -> dict | None:
+    """Grava as linhas da fonte em `registros` e devolve o estado dela; None se ela fica "não
+    conferida" (a lista da CMED ainda não montada nunca vira zero). `abertas`: as raízes que a busca
+    cobre, para a fonte `so_companhias_abertas`."""
+    montagem = fonte.linhas or _linhas_da_fonte
+    tabela, conferido = montagem(con, fonte, hoje)
+    if fonte.lista and conferido is None:
+        return None
+    linhas = list(_por_raiz(tabela))
+    buscadas = abertas if fonte.so_companhias_abertas else None
+    com_linhas = {raiz for raiz, _, _ in linhas}
+    sem_linhas = sorted((buscadas or set()) - com_linhas)
+    banco.executemany(
+        "INSERT INTO registros VALUES (?, ?, ?, ?)",
+        [(raiz, fonte.nome_no_arquivo, total, js) for raiz, total, js in linhas]
+        + [(raiz, fonte.nome_no_arquivo, 0, "[]") for raiz in sem_linhas],
+    )
+    estado = {
+        "tabela": fonte.nome_no_arquivo, "tema": fonte.tema, "nome": fonte.nome,
+        "orgao": fonte.orgao, "endereco": fonte.endereco,
+        "licenca": licenca_da_fonte(TABELAS[fonte.tabela].familia_da_fonte),
+        "conferido_ate": conferido, "empresas": len(linhas), "registros": len(tabela),
+    }  # fmt: skip
+    if fonte.so_companhias_abertas:
+        estado["buscadas"] = None if buscadas is None else len(buscadas)
+    return estado
+
+
 def montar(
     base: Path,
     destino: Path,
     vista: Path | None = None,
     agora: datetime | None = None,
+    cadastro: pd.DataFrame | None = None,
 ) -> dict:
     """Grava o arquivo das conferências em `destino` (troca no fim) e devolve o estado gravado.
 
@@ -453,6 +508,7 @@ def montar(
     """
     agora = agora or datetime.now(UTC)
     hoje = agora.date()
+    abertas = companhias_buscadas(cadastro, hoje)
     estado: dict = {
         "esquema": ESQUEMA,
         "gerado_em": agora.isoformat(),
@@ -470,27 +526,9 @@ def montar(
                 for fonte in FONTES:
                     if any(nome_da_view(t) not in existem for t in fonte.lidas):
                         continue
-                    montagem = fonte.linhas or _linhas_da_fonte
-                    tabela, conferido = montagem(porta.con, fonte, hoje)
-                    if fonte.lista and conferido is None:
-                        continue  # a lista ainda não montada fica "não conferida", nunca zero
-                    linhas = list(_por_raiz(tabela))
-                    banco.executemany(
-                        "INSERT INTO registros VALUES (?, ?, ?, ?)",
-                        [
-                            (raiz, fonte.nome_no_arquivo, total, js)
-                            for raiz, total, js in linhas
-                        ],
-                    )
-                    estado["fontes"].append(
-                        {
-                            "tabela": fonte.nome_no_arquivo, "tema": fonte.tema, "nome": fonte.nome,
-                            "orgao": fonte.orgao, "endereco": fonte.endereco,
-                            "licenca": licenca_da_fonte(TABELAS[fonte.tabela].familia_da_fonte),
-                            "conferido_ate": conferido, "empresas": len(linhas),
-                            "registros": len(tabela),
-                        }
-                    )  # fmt: skip
+                    gravada = _gravar_fonte(banco, porta.con, fonte, hoje, abertas)
+                    if gravada is not None:
+                        estado["fontes"].append(gravada)
             estado["grupo"] = _gravar_ligacoes(banco, vista) if vista else None
             banco.executemany(
                 "INSERT INTO meta VALUES (?, ?)",
