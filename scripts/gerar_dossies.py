@@ -144,6 +144,9 @@ class Entradas:
     contestacoes: pd.DataFrame = field(default_factory=contestacoes_da_base.vazia)
     # o relatório do auditor sobre a DFP (`pareceres_dfp`); vazio: a base ainda não tem a tabela
     pareceres: pd.DataFrame = field(default_factory=pd.DataFrame)
+    # o mesmo para o ITR (`pareceres_itr`) e a DMPL das DFPs (`dmpl_como_era`); vazio: sem a tabela
+    pareceres_itr: pd.DataFrame = field(default_factory=pd.DataFrame)
+    dmpl: pd.DataFrame = field(default_factory=pd.DataFrame)
     # o lucro ajustado e o dividendo de cada exercício (`proventos`, do FRE), já com a entrega do FRE
     proventos: pd.DataFrame = field(default_factory=pd.DataFrame)
 
@@ -208,6 +211,10 @@ COLUNAS_DA_INSOLVENCIA = (
 )  # fmt: skip
 COLUNAS_DOS_PARECERES = (
     "cnpj", "referencia", "versao", "disponivel_em", "opiniao", "enfase", "continuidade_operacional",
+)  # fmt: skip
+COLUNAS_DA_DMPL = (
+    "cnpj", "grupo", "conta", "coluna", "valor", "documento", "referencia", "versao", "ordem",
+    "divulgado_em", "ate",
 )  # fmt: skip
 COLUNAS_DA_SITUACAO_ESPECIAL = (
     "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo", "data_situacao_especial",
@@ -468,6 +475,8 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         ),
         contestacoes=contestacoes_da_base.ler(),
         pareceres=_pareceres(leitor),
+        pareceres_itr=_pareceres(leitor, "pareceres_itr"),
+        dmpl=_dmpl(leitor, _dia(hoje)),
         proventos=_proventos(leitor, fre["fre_remuneracao"]),
     )
 
@@ -505,10 +514,22 @@ def com_a_entrega_do_fre(proventos: pd.DataFrame, do_fre: pd.DataFrame) -> pd.Da
     return juntos.reset_index(drop=True)
 
 
-def _pareceres(leitor: Leitor) -> pd.DataFrame:
+def _pareceres(leitor: Leitor, tabela: str = "pareceres_dfp") -> pd.DataFrame:
     """Os pareceres do auditor (todas as versões, com o dia em que ficaram públicos); vazio sem a tabela."""
-    pareceres = _ler_se_existe(leitor, "pareceres_dfp", COLUNAS_DOS_PARECERES)
+    pareceres = _ler_se_existe(leitor, tabela, COLUNAS_DOS_PARECERES)
     return VAZIA if pareceres is None else pareceres
+
+
+def _dmpl(leitor: Leitor, hoje: pd.Timestamp) -> pd.DataFrame:
+    """O saldo final da DMPL das DFPs como era em `hoje`; vazio sem a tabela."""
+    if not leitor.tem_coluna("dmpl_como_era", COLUNAS_DA_DMPL[0]):
+        return VAZIA
+    return leitor.ler(
+        "dmpl_como_era",
+        [*COLUNAS_DA_DMPL],
+        filtros={"documento": "DFP", "conta": "5.07"},
+        como_era_em=hoje,
+    )
 
 
 def _ler_se_existe(
@@ -607,6 +628,8 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     auditores = _por_cnpj(entradas.auditores, "cnpj")
     trocas = _por_cnpj(entradas.trocas, "cnpj")
     pareceres = _por_cnpj(entradas.pareceres, "cnpj")
+    pareceres_itr = _por_cnpj(entradas.pareceres_itr, "cnpj")
+    dmpl = _por_cnpj(entradas.dmpl, "cnpj")
     controladas = _por_cnpj(entradas.controladas, "cnpj_companhia")
     controladoras = _por_cnpj(entradas.controladoras, "cnpj")
     ofertas_160 = _por_cnpj(entradas.ofertas_160, "cnpj_emissor")
@@ -657,6 +680,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             entradas.pessoas,
             pareceres.get(c, VAZIA),
             hoje,
+            pareceres_itr.get(c, VAZIA),
         ),
         "qualidade_do_lucro": lambda c: dossie.secao_qualidade_do_lucro(
             como_era.get(c, VAZIA), releases.get(c, VAZIA), trocas.get(c, VAZIA), hoje
@@ -672,6 +696,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             hoje,
             entradas.ultimo_mes_do_cda,
             proventos=proventos.get(c, VAZIA),
+            dmpl=dmpl.get(c, VAZIA),
         ),
         "governanca": governanca,
         "credito": lambda c: dossie.secao_credito(

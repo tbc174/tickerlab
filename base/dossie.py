@@ -452,6 +452,7 @@ SECOES = (
             "auditores",
             "trocas_de_auditor",
             "pareceres_dfp",
+            "pareceres_itr",
             "controladas",
             "ligacoes",
             "entidades",
@@ -476,7 +477,13 @@ SECOES = (
     SecaoDaBase(
         "capital_e_acionistas",
         "Capital e acionistas",
-        ("negociacoes", "eventos_de_capital", "painel_dos_fundos", "proventos"),
+        (
+            "negociacoes",
+            "eventos_de_capital",
+            "painel_dos_fundos",
+            "proventos",
+            "dmpl_como_era",
+        ),
     ),
     SecaoDaBase(
         "governanca",
@@ -608,7 +615,9 @@ LIMITES = {
         "fundos: o que as carteiras entregues à CVM (CDA) informam no mês, até o último mês "
         "completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos. "
         "Proventos: o lucro ajustado e o dividendo total de cada exercício como o FRE os informa, "
-        "pelo FRE mais novo já entregue na data da ficha (o dividendo declarado, não o pago no ano)."
+        "pelo FRE mais novo já entregue na data da ficha (o dividendo declarado, não o pago no ano). "
+        "Patrimônio por componente: o saldo final da DMPL de cada DFP, consolidado, como era público na "
+        "data (uma reapresentação só vale a partir da entrega); coluna que a base não soube nomear fica de fora."
     ),
     "governanca": (
         "Do Formulário de Referência (FRE) entregue à CVM, na versão mais nova já entregue na data da "
@@ -902,6 +911,7 @@ def secao_auditor_e_controladas(
     pessoas: set[str],
     pareceres: pd.DataFrame | None = None,
     hoje: pd.Timestamp | None = None,
+    pareceres_itr: pd.DataFrame | None = None,
 ) -> dict[str, Any] | None:
     """Quem audita, o parecer, as trocas de auditor, as controladas e coligadas e quem controla (None: nada).
 
@@ -915,6 +925,18 @@ def secao_auditor_e_controladas(
         else ([], pd.DataFrame())
     )
     itens += itens_do_parecer
+    itens_do_itr, tabela_do_itr = (
+        parecer_do_auditor(
+            pareceres_itr,
+            hoje,
+            "pareceres_itr",
+            CAMPOS_DO_PARECER_DO_ITR,
+            TRIMESTRES_DO_PARECER,
+        )
+        if pareceres_itr is not None and hoje is not None
+        else ([], pd.DataFrame())
+    )
+    itens += itens_do_itr
     tabela_de_controladas, base = _controladas_do_ultimo_fre(controladas)
     if not tabela_de_controladas.empty:
         sao_controladas = int(tabela_de_controladas["controlada"].sum())
@@ -934,6 +956,7 @@ def secao_auditor_e_controladas(
         ]  # fmt: skip
     tabelas = {
         "pareceres_do_auditor": tabela_do_parecer,
+        "pareceres_do_itr": tabela_do_itr,
         "trocas_de_auditor": _trocas_sem_pessoas(trocas, pessoas),
         "controladas": tabela_de_controladas,
         "controladoras": controladoras_da_empresa.drop(columns="cnpj", errors="ignore"),
@@ -965,6 +988,27 @@ CAMPOS_DO_PARECER = (  # (chave do item, nome, coluna de `pareceres_dfp`, unidad
         UNIDADE_SIM_OU_NAO,
     ),
 )
+CAMPOS_DO_PARECER_DO_ITR = (  # o mesmo parecer, sobre a revisão especial do ITR mais novo
+    (
+        "parecer_itr_opiniao",
+        "Conclusão do auditor sobre o último ITR",
+        "opiniao",
+        UNIDADE_DA_OPINIAO,
+    ),
+    (
+        "parecer_itr_enfase",
+        "Parágrafo de ênfase na revisão do ITR",
+        "enfase",
+        UNIDADE_SIM_OU_NAO,
+    ),
+    (
+        "parecer_itr_continuidade",
+        "Incerteza sobre a continuidade no ITR",
+        "continuidade_operacional",
+        UNIDADE_SIM_OU_NAO,
+    ),
+)
+TRIMESTRES_DO_PARECER = 4  # quantos ITRs a tabela da revisão mostra
 
 
 def _pareceres_em_vigor(pareceres: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
@@ -979,14 +1023,18 @@ def _pareceres_em_vigor(pareceres: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataF
 
 
 def parecer_do_auditor(
-    pareceres: pd.DataFrame, hoje: pd.Timestamp
+    pareceres: pd.DataFrame,
+    hoje: pd.Timestamp,
+    tabela: str = "pareceres_dfp",
+    campos: tuple[tuple[str, str, str, str], ...] = CAMPOS_DO_PARECER,
+    linhas: int = EXERCICIOS_DO_PARECER,
 ) -> tuple[list[dict[str, Any]], pd.DataFrame]:
     """O parecer do auditor sobre a DFP mais nova já entregue e os últimos exercícios (tabela da empresa).
 
     Os valores são os da base (`sem_ressalva`, `sim`, `nao`...), sem o texto que a tela mostra. O que a
     base não conseguiu decidir (`nao_classificado`) não vira item: a ficha não diz `nao` no chute.
     `publicado_em` é o dia em que o relatório usado foi entregue; um relatório ou uma versão entregue
-    depois de `hoje` não existe para a ficha.
+    depois de `hoje` não existe para a ficha. `tabela`, `campos` e `linhas` trocam a DFP pelo ITR.
     """
     if pareceres.empty:
         return [], pd.DataFrame()
@@ -995,19 +1043,14 @@ def parecer_do_auditor(
         return [], pd.DataFrame()
     ultimo = em_vigor.iloc[[0]]
     base = _data(ultimo["referencia"].iloc[0])
-    publicado = _publicado(ultimo, "pareceres_dfp")
+    publicado = _publicado(ultimo, tabela)
     itens = [
         _item(chave, nome, valor, unidade, base, publicado_em=publicado)
-        for chave, nome, coluna, unidade in CAMPOS_DO_PARECER
+        for chave, nome, coluna, unidade in campos
         if (valor := ultimo[coluna].iloc[0]) != NAO_CLASSIFICADO
     ]
-    colunas = [
-        "referencia",
-        "versao",
-        "disponivel_em",
-        *(c for _, _, c, _ in CAMPOS_DO_PARECER),
-    ]
-    return itens, em_vigor.head(EXERCICIOS_DO_PARECER)[colunas]
+    colunas = ["referencia", "versao", "disponivel_em", *(c for _, _, c, _ in campos)]
+    return itens, em_vigor.head(linhas)[colunas]
 
 
 def controladoras(
@@ -1797,6 +1840,63 @@ def _proventos_por_exercicio(
     ]
 
 
+EXERCICIOS_DA_DMPL = 3  # quantos exercícios a tabela do patrimônio mostra
+SALDO_FINAL_DA_DMPL = "5.07"  # a linha "Saldo final" da DMPL no plano da CVM
+COMPONENTES_DA_DMPL = {  # coluna da base → o nome que a tela mostra, na ordem do balanço
+    "capital_social": "Capital social",
+    "reservas_de_capital": "Reservas de capital",
+    "reservas_de_lucro": "Reservas de lucro",
+    "lucros_acumulados": "Lucros ou prejuízos acumulados",
+    "outros_resultados_abrangentes": "Outros resultados abrangentes",
+    "ajustes_de_avaliacao_patrimonial": "Ajustes de avaliação patrimonial",
+    "reservas_de_reavaliacao": "Reservas de reavaliação",
+    "nao_controladores": "Participação dos não controladores",
+    "patrimonio_liquido": "Patrimônio líquido",
+    "patrimonio_liquido_consolidado": "Patrimônio líquido consolidado",
+}
+
+
+def _dmpl_por_exercicio(dmpl: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """O saldo final de cada componente do patrimônio nos últimos exercícios (DFP), como eram públicos
+    em `hoje`: consolidado (o individual só quando o exercício não tem consolidado). Coluna que a base não
+    soube nomear (`sem_coluna`) ou que a empresa batizou fica de fora, em vez de entrar com nome chutado."""
+    if dmpl.empty:
+        return pd.DataFrame()
+    valem = dmpl[
+        (dmpl["documento"] == "DFP")
+        & (dmpl["conta"] == SALDO_FINAL_DA_DMPL)
+        & (dmpl["ordem"] == "ultimo")
+        & dmpl["coluna"].isin(COMPONENTES_DA_DMPL)
+        & (_sem_fuso_da_coluna(dmpl["divulgado_em"]) <= hoje)
+        & (dmpl["ate"].isna() | (_sem_fuso_da_coluna(dmpl["ate"]) > hoje))
+    ]
+    if valem.empty:
+        return pd.DataFrame()
+    valem = valem.assign(consolidado=(valem["grupo"] == "con"))
+    tem_consolidado = valem.groupby("referencia")["consolidado"].transform("max")
+    valem = valem[valem["consolidado"] == tem_consolidado]
+    ultima = valem.sort_values("versao").drop_duplicates(
+        ["referencia", "coluna"], keep="last"
+    )
+    exercicios = sorted(ultima["referencia"].unique(), reverse=True)[
+        :EXERCICIOS_DA_DMPL
+    ]
+    ultima = ultima[ultima["referencia"].isin(exercicios)].copy()
+    ultima["componente"] = ultima["coluna"].map(COMPONENTES_DA_DMPL)
+    ultima["ordem_do_componente"] = ultima["coluna"].map(
+        {c: i for i, c in enumerate(COMPONENTES_DA_DMPL)}
+    )
+    ultima["demonstracao"] = ultima["grupo"].map(
+        {"con": "Consolidada", "ind": "Individual"}
+    )
+    ultima["publicado_em"] = ultima["divulgado_em"]
+    ordenada = ultima.sort_values(
+        ["referencia", "ordem_do_componente"], ascending=[False, True]
+    )
+    colunas = ["referencia", "demonstracao", "componente", "valor", "publicado_em"]
+    return ordenada[colunas].reset_index(drop=True)
+
+
 def secao_capital_e_acionistas(
     negociacoes: pd.DataFrame,
     eventos: pd.DataFrame,
@@ -1804,8 +1904,9 @@ def secao_capital_e_acionistas(
     hoje: pd.Timestamp,
     ultimo_mes_completo: pd.Timestamp | None = None,
     proventos: pd.DataFrame | None = None,
+    dmpl: pd.DataFrame | None = None,
 ) -> dict[str, Any] | None:
-    """Insiders, eventos de capital, o movimento dos fundos e os proventos (None: nada disso)."""
+    """Insiders, eventos de capital, o movimento dos fundos, os proventos e a DMPL (None: nada disso)."""
     itens_dos_insiders, tabelas_dos_insiders = _insiders(negociacoes, hoje)
     itens_dos_eventos, eventos_de_capital = _eventos_de_capital(eventos, hoje)
     itens_dos_fundos, fundos_janelas = _movimento_dos_fundos(
@@ -1814,14 +1915,16 @@ def secao_capital_e_acionistas(
     por_exercicio = _proventos_por_exercicio(
         pd.DataFrame() if proventos is None else proventos, hoje
     )
+    do_patrimonio = _dmpl_por_exercicio(pd.DataFrame() if dmpl is None else dmpl, hoje)
     itens = [*itens_dos_insiders, *itens_dos_eventos, *itens_dos_fundos]
-    if not itens and por_exercicio.empty:
+    if not itens and por_exercicio.empty and do_patrimonio.empty:
         return None
     tabelas = {
         **tabelas_dos_insiders,
         "eventos_de_capital": eventos_de_capital,
         "fundos_janelas": fundos_janelas,
         "proventos_por_exercicio": por_exercicio,
+        "dmpl_por_exercicio": do_patrimonio,
     }
     return _secao("capital_e_acionistas", itens, tabelas)
 
@@ -3722,6 +3825,20 @@ _ORIGENS_FIXAS = {
         "pareceres_dfp",
         "incerteza relevante sobre a continuidade operacional, lida dos títulos do relatório do auditor "
         f"independente {_DA_DFP_MAIS_NOVA}",
+    ),
+    "parecer_itr_opiniao": Origem(
+        "pareceres_itr",
+        "conclusão da revisão especial do auditor independente sobre o ITR mais novo já entregue",
+    ),
+    "parecer_itr_enfase": Origem(
+        "pareceres_itr",
+        "parágrafo de ênfase, lido dos títulos da revisão do auditor independente sobre o ITR "
+        "mais novo já entregue",
+    ),
+    "parecer_itr_continuidade": Origem(
+        "pareceres_itr",
+        "incerteza relevante sobre a continuidade operacional, lida dos títulos da revisão do "
+        "auditor independente sobre o ITR mais novo já entregue",
     ),
     "sociedades": Origem("controladas", f"número de sociedades listadas {_DO_FRE_MAIS_RECENTE}"),
     "controladas": Origem(
