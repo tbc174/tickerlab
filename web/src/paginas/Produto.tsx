@@ -3,13 +3,14 @@
 import { Fragment } from "react";
 import { ChamadaFinal, MODULOS_DO_PRODUTO, SecaoDoModulo } from "../site/comum";
 import { TopoDaPagina } from "../site/Fundo";
+import { URL_DA_API } from "../site/textos";
 
 export const DADOS = {
   caminho: "/produto.html",
   titulo: "Produto",
   descricao:
-    "Relatórios com a fonte de cada número, a base com a data de cada dado e a exportação em " +
-    "PDF: o que o TickerLab já faz e o que está em construção.",
+    "Relatórios com a fonte de cada número, a base com a data de cada dado e a saída em PDF ou " +
+    "pela API: o que o TickerLab já faz e o que está em construção.",
   atual: "/produto.html",
 };
 
@@ -36,10 +37,13 @@ const BLOCOS = [
     id: "bloco-exportar",
     titulo: "Exportar",
     texto:
-      "O relatório sai em PDF, e o original que você gerou fica guardado para baixar de novo. A " +
-      "exportação da base em tabela e a API aberta ainda estão em construção, sem data marcada.",
+      "O relatório sai em PDF, e o original que você gerou fica guardado para baixar de novo. " +
+      "Para o seu sistema, a TickerLab Data entrega a mesma base por API, consultada por data: " +
+      "em beta fechado, sem cobrança, com a documentação aberta.",
     link: "/metodologia.html#relatorios-em-pdf",
     rotulo: "Como os relatórios são feitos",
+    linkDeFora: URL_DA_API,
+    rotuloDeFora: "Documentação da API",
   },
 ];
 
@@ -74,6 +78,11 @@ export function Produto() {
               <a className="seta" href={b.link}>
                 {b.rotulo}
               </a>
+              {"linkDeFora" in b ? (
+                <a className="seta" href={b.linkDeFora} rel="noopener">
+                  {b.rotuloDeFora}
+                </a>
+              ) : null}
             </article>
           ))}
         </div>

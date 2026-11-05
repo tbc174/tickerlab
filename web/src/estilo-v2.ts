@@ -568,6 +568,14 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   .v2-estudo { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* a inicial para quem analisa: a linha de para quem é, o que o app acrescenta e as últimas novidades */
+.v2-para-quem { margin: .9rem 0 0; font-size: .95rem; line-height: 1.55; color: var(--apagado); }
+.v2-no-app-rodape { margin-top: 1.25rem; }
+.v2-no-app-rodape a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+.v2-ultimas .cartao h3 { font-size: 1.05rem; }
+.v2-ultimas .cartao p { font-size: .92rem; }
+.v2-ultimas > .seta { display: inline-block; margin-top: 1.25rem; }
+
 .busca-base { margin-top: 1.6rem; scroll-margin-top: 6rem; }
 .busca-base label { display: block; margin-bottom: .5rem; font-weight: 650; }
 .busca-base-campos { display: flex; gap: .55rem; }
