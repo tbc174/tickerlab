@@ -645,7 +645,10 @@ def test_pode_usar_libera_tudo_inclusive_a_b3_menos_as_so_internas() -> None:
     `FONTES_SO_INTERNAS` (o DataJud) só treinam e rotulam (`tests/test_trava_so_interna.py`)."""
     for familia in coletas.LICENCAS:
         for uso in coletas.USOS:
-            esperado = familia not in coletas.FONTES_SO_INTERNAS or uso in coletas.USOS_INTERNOS
+            esperado = (
+                familia not in coletas.FONTES_SO_INTERNAS
+                or uso in coletas.USOS_INTERNOS
+            )
             assert coletas.pode_usar(uso, familia) is esperado, (familia, uso)
 
 
