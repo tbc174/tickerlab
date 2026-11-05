@@ -23,7 +23,14 @@ const DICAS: Record<string, string> = {
   taxa: "vazio = CDI do período",
   tolerancia_de_queda: "vazio = a guardada na conta (30%)",
 };
-const PERIODOS: Record<string, string> = { "6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos" };
+const PERIODOS: Record<string, string> = {
+  "6mo": "6 meses",
+  "1y": "1 ano",
+  "2y": "2 anos",
+  "5y": "5 anos",
+  "10y": "10 anos",
+  max: "Todo o histórico",
+};
 const CEM = 100;
 const LISTA = "lista de textos"; // vários valores do mesmo campo (com=VALE3&com=AAPL)
 const OBJETO = "objeto"; // os parâmetros da estratégia, no endereço como p.curta=20

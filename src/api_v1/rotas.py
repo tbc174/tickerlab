@@ -6,7 +6,7 @@ import os
 import time
 import uuid
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, TypeVar
 
@@ -84,6 +84,7 @@ from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
 from src.eventos_sec import PREFIXO_DO_CIK
+from src.faixa_de_preco import faixa_de_preco_do_ticker
 from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.links_das_fontes import link_da_fonte
@@ -119,7 +120,9 @@ TIPOS_DO_DECK = {
     "pdf": "application/pdf",
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
-Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
+Periodo = Literal[
+    "6mo", "1y", "2y", "5y", "10y", "max"
+]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
 SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o CDI à toa)
 # a ficha "Foi sorte?": o capital entra só no imposto da checagem 2 (o mesmo padrão do Streamlit)
@@ -1013,6 +1016,7 @@ def _relatorio_da_empresa_do_ticker(conta: Usuario, ticker: str) -> Relatorio:
         raise
     if entradas is None or entradas.cnpj.startswith(PREFIXO_DO_CIK):
         raise HTTPException(status_code=404, detail=SO_B3)
+    entradas = replace(entradas, faixa_de_preco=faixa_de_preco_do_ticker(ticker))
     if entradas.dados.contas.empty:
         raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
     relatorio = montar_relatorio(entradas, conta.plano)

@@ -41,7 +41,9 @@ FUSO = ZoneInfo("America/Sao_Paulo")
 DIAS_DE_TOLERANCIA = (
     10  # sem pregão nos 10 dias antes do corte: sem preço (ação parada ou fora)
 )
-PERIODO_DOS_PRECOS = "5y"  # o maior que o app guarda
+PERIODO_DOS_PRECOS = (
+    "5y"  # os padrões olham 5 anos (o app guarda até o histórico inteiro)
+)
 ORIGEM_PROIBIDA = "exemplo"  # dado de exemplo do app: nunca num padrão
 
 

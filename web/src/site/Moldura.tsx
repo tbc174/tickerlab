@@ -20,6 +20,8 @@ export { SOL_JS, versao };
 export const SITE_JS = lerTexto(join(process.cwd(), "publico", "site.js"));
 // as animações do visual v2 (ADR 0065), com pausa e "reduzir movimento"
 export const MOVIMENTO_JS = lerTexto(join(process.cwd(), "publico", "movimento.js"));
+// a origem do cadastro: grava o cookie `tl_origem` de quem chega por link de campanha
+export const ORIGEM_JS = lerTexto(join(process.cwd(), "publico", "origem.js"));
 // o script das calculadoras (vite.ferramentas.config.ts): só as páginas de ferramentas carregam;
 // lido na hora (o `npm run site` gera o arquivo antes das páginas)
 export const FERRAMENTAS_JS = () => lerTexto(join(RAIZ_DO_REPOSITORIO, "site", "ferramentas.js"));
@@ -218,6 +220,7 @@ export function Documento({
         <link rel="stylesheet" href={`/estilo.css?v=${versao(css())}`} />
         <script src={`/site.js?v=${versao(SITE_JS)}`} defer />
         <script src={`/movimento.js?v=${versao(MOVIMENTO_JS)}`} defer />
+        <script src={`/origem.js?v=${versao(ORIGEM_JS)}`} defer />
         {ferramenta ? <script src={`/ferramentas.js?v=${versao(FERRAMENTAS_JS())}`} defer /> : null}
       </head>
       <body>

@@ -1,0 +1,120 @@
+{
+  "tabela": "ibama_embargos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_na_fonte": {
+      "descricao": "O que identifica o registro na fonte",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "numero_do_termo": {
+      "descricao": "Número do termo de embargo",
+      "unidade": "texto"
+    },
+    "nome": {
+      "descricao": "Nome do embargado pessoa jurídica",
+      "unidade": "texto"
+    },
+    "situacao_do_termo": {
+      "descricao": "Situação do termo, como o IBAMA escreve",
+      "unidade": "texto"
+    },
+    "cancelado": {
+      "descricao": "Marca de cancelamento do termo, como o IBAMA escreve",
+      "unidade": "texto"
+    },
+    "codigo_do_municipio": {
+      "descricao": "Código do município (IBGE) do embargo",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF do embargo",
+      "unidade": "texto"
+    },
+    "desembargado": {
+      "descricao": "Marca de desembargo, como o IBAMA escreve",
+      "unidade": "texto"
+    },
+    "numero_do_auto": {
+      "descricao": "Número do auto de infração que gerou o embargo",
+      "unidade": "texto"
+    },
+    "area_embargada_ha": {
+      "descricao": "Área embargada, em hectares",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "embargada_em": {
+      "descricao": "Data do embargo",
+      "unidade": "data (dia)"
+    },
+    "desembargada_em": {
+      "descricao": "Data do desembargo",
+      "unidade": "data (dia)"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "embargada_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "embargada_em": "aconteceu_em",
+    "desembargada_em": "ate",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+  "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+  "pessoa": true,
+  "frequencia": "Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)",
+  "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+}

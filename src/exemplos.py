@@ -12,11 +12,15 @@ import pandas as pd
 
 PASTA_DOS_EXEMPLOS = Path(__file__).resolve().parent.parent / "dados_de_exemplo"
 COLUNAS = ["Open", "High", "Low", "Close", "Volume"]
-DESLOCAMENTO_DO_PERIODO = {
+PERIODO_TUDO = "max"  # todo o histórico que a fonte tiver (o nome do Yahoo)
+# quanto cada período volta a partir do último dia; None = sem corte no começo
+DESLOCAMENTO_DO_PERIODO: dict[str, pd.DateOffset | None] = {
     "6mo": pd.DateOffset(months=6),
     "1y": pd.DateOffset(years=1),
     "2y": pd.DateOffset(years=2),
     "5y": pd.DateOffset(years=5),
+    "10y": pd.DateOffset(years=10),
+    PERIODO_TUDO: None,
 }
 
 log = logging.getLogger(__name__)
@@ -53,7 +57,9 @@ def carregar_exemplo(
     except (OSError, ValueError, KeyError) as erro:
         log.error("Arquivo de exemplo ilegível (%s): %s", caminho.name, erro)
         return None
-    dados = dados.loc[dados.index > dados.index[-1] - DESLOCAMENTO_DO_PERIODO[periodo]]
+    deslocamento = DESLOCAMENTO_DO_PERIODO[periodo]
+    if deslocamento is not None:
+        dados = dados.loc[dados.index > dados.index[-1] - deslocamento]
     dados.attrs["origem"] = "exemplo"
     dados.attrs["ate"] = dados.index[-1].strftime("%d/%m/%Y")
     return dados

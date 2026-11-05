@@ -364,6 +364,34 @@ def test_a_contestacao_tambem_vale_para_o_fato_da_receita() -> None:
     assert linha["situacao"] == "contestada"
 
 
+# --- o desfecho não se deduz (linha 235 da fila) ---------------------------------------------------
+
+
+def test_a_situacao_do_fato_so_pode_ser_vazia_ou_contestada() -> None:
+    """A CVM e a Receita só dizem que o fato existiu: nem a idade do fato, nem o sumiço dele do retrato
+    seguinte, nem um documento posterior viram `vigente` ou `encerrada`. Só a empresa, contestando."""
+    antigo = _cvm(
+        {"referencia": D("2010-01-01"), "conhecido_em": D("2010-01-05")},
+        {
+            "protocolo": "P2",
+            "rotulo": "falencia",
+            "referencia": D("2026-10-01"),
+            "conhecido_em": D("2026-10-02"),
+        },
+    )
+    sem_o_fato_depois = _receita(
+        {"mes_do_retrato": "2025-07", "disponivel_em": D("2025-07-31")},
+        {"situacao_especial": None, "rotulo": None, "mes_do_retrato": "2025-08"},
+    )
+    contestada = _contestacao(registro="falencia")
+    for contestadas in (SEM_CONTESTACAO, contestada):
+        linhas = _linhas(
+            _secao(cvm=antigo, receita=sem_o_fato_depois, contestadas=contestadas)
+        )
+        assert {linha.get("situacao") for linha in linhas} <= {None, "contestada"}
+    assert not re.search(r"vigente|encerrad", str(_linhas(_secao(cvm=antigo))))
+
+
 # --- o arquivo das contestações ---------------------------------------------------------------------
 
 

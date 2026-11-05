@@ -63,7 +63,14 @@ JANELAS_VOLATILIDADE = [20, 60, 120]  # dias
 JANELAS_MEDIAS = [20, 50, 200]  # dias
 
 
-PERIODOS_DAS_VELAS = {"3 meses": 63, "6 meses": 126, "1 ano": 252, "Tudo": None}
+PERIODOS_DAS_VELAS = {
+    "3 meses": 63,
+    "6 meses": 126,
+    "1 ano": 252,
+    "2 anos": 504,
+    "5 anos": 1260,
+    "Tudo": None,
+}
 
 
 def mostrar_metrica(coluna, rotulo, valor, termo_do_glossario):
@@ -220,7 +227,7 @@ def secao_preco(dados, medias_do_usuario=()):
             horizontal=True,
             help="Até 1 ano, cada vela é um dia. Com mais de 1 ano, cada vela vira uma "
             "semana (abertura do primeiro pregão, máxima e mínima da semana e fechamento do "
-            "último pregão), "
+            "último pregão), e com mais de 5 anos, um mês, "
             "porque as velas diárias ficariam finas demais para enxergar. As médias "
             "móveis continuam sendo de dias.",
         )

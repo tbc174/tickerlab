@@ -66,7 +66,10 @@ def test_pro_ve_a_fonte_e_a_atribuicao_odbl(entradas):
     relatorio = re_.montar(entradas, "pro")
     for secao in _da_base(relatorio):
         assert any(p.startswith("Fonte: ") for p in secao.paragrafos), secao.chave
-    assert "ODbL (dados abertos da CVM; citar a fonte)" in relatorio.fontes
+    assert any(
+        f.startswith("ODbL (dados abertos da CVM; citar a fonte)")
+        for f in relatorio.fontes
+    )
 
 
 def test_pro_ve_os_limites_da_base_e_que_nada_e_recomendacao(entradas):

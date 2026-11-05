@@ -32,6 +32,7 @@ from src.banco.pdfs_originais import guardar_pdf_original
 from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.configuracao import preco_no_relatorio_ligado
 from src.dados import normalizar_ticker
+from src.faixa_de_preco import FaixaDePreco, faixa_de_preco_do_ticker
 from src.fundamentos import VERSAO_DOS_FUNDAMENTOS
 from src.moedas import moeda_do_ticker
 from src.padroes import VERSAO_DOS_PADROES
@@ -47,6 +48,7 @@ from src.relatorio_empresa import (
     nome_da_tabela,
     rotulo_da_coluna,
 )
+from src.relatorio_empresa_markdown import relatorio_em_markdown
 from src.relatorio_empresa_pdf import FUSO, relatorio_da_empresa
 from telas.comum import (
     PAGINAS_DO_MENU,
@@ -105,7 +107,13 @@ def _ler(ticker: str, preco: float | None, fechamentos: pd.Series):
             icon=":material/schedule:",
         )
         return None
-    return entradas
+    return replace(entradas, faixa_de_preco=_faixa_de_preco(ticker))
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _faixa_de_preco(ticker: str) -> FaixaDePreco | None:
+    """A faixa de 52 semanas, guardada por uma hora: a página roda de novo a cada clique."""
+    return faixa_de_preco_do_ticker(ticker)
 
 
 def _origem(item: Item) -> str:
@@ -195,7 +203,10 @@ def _tabela_escrita(linhas: list[dict]) -> pd.DataFrame:
     """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não)."""
     tabela = pd.DataFrame(linhas)
     return pd.DataFrame(
-        {rotulo_da_coluna(c): [escrever_celula(v) for v in tabela[c]] for c in tabela}
+        {
+            rotulo_da_coluna(c): [escrever_celula(v, c) for v in tabela[c]]
+            for c in tabela
+        }
     )
 
 
@@ -371,6 +382,20 @@ def _oferecer_o_pdf(relatorio: Relatorio) -> None:
         )
 
 
+def _oferecer_o_markdown(relatorio: Relatorio) -> None:
+    """A ficha em Markdown para ler com uma IA (as mesmas seções do PDF). É o mesmo conteúdo da
+    página, então não conta como relatório do plano."""
+    st.download_button(
+        "Baixar em Markdown (para IA)",
+        data=relatorio_em_markdown(relatorio),
+        file_name=f"tickerlab-empresa-{relatorio.ticker.removesuffix('.SA')}.md",
+        mime="text/markdown",
+        icon=":material/description:",
+        key="empresa_baixar_markdown",
+        on_click="ignore",
+    )
+
+
 def _oferecer_o_deck(relatorio: Relatorio) -> None:
     """O deck da ficha (PDF e PPT, os mesmos slides) para mandar sem editar. É o mesmo conteúdo
     da página, então não conta como relatório do plano."""
@@ -425,6 +450,7 @@ def pagina_relatorio_empresa():
     entradas = replace(entradas, premissas=_premissas())
     relatorio = com_analise(montar(entradas, plano_atual()), entradas, plano_atual())
     _oferecer_o_pdf(relatorio)
+    _oferecer_o_markdown(relatorio)
     _oferecer_o_deck(relatorio)
     _mostrar(relatorio)
     st.page_link(

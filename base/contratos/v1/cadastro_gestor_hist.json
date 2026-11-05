@@ -1,0 +1,55 @@
+{
+  "tabela": "cadastro_gestor_hist",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "CNPJ_FUNDO": {
+      "descricao": "CNPJ do fundo",
+      "unidade": "texto"
+    },
+    "DT_REG": {
+      "descricao": "Data do registro do fundo na CVM",
+      "unidade": "data (dia)"
+    },
+    "PF_PJ_GESTOR": {
+      "descricao": "PF ou PJ: o gestor é pessoa física ou jurídica",
+      "unidade": "texto"
+    },
+    "CPF_CNPJ_GESTOR": {
+      "descricao": "CNPJ do gestor; vazio quando é pessoa física",
+      "unidade": "texto"
+    },
+    "GESTOR": {
+      "descricao": "Nome do gestor; vazio quando é pessoa física",
+      "unidade": "texto"
+    },
+    "DT_INI_GESTOR": {
+      "descricao": "Início do gestor no fundo",
+      "unidade": "data (dia)"
+    },
+    "DT_FIM_GESTOR": {
+      "descricao": "Fim do gestor no fundo (vazio: sem fim declarado)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "CNPJ_FUNDO",
+    "DT_INI_GESTOR"
+  ],
+  "datas": {
+    "aconteceu_em": "DT_INI_GESTOR"
+  },
+  "sinonimos_de_tempo": {
+    "DT_REG": "aconteceu_em",
+    "DT_INI_GESTOR": "a_conferir",
+    "DT_FIM_GESTOR": "a_conferir"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+  "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara"
+}

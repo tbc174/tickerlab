@@ -15,6 +15,7 @@ from datetime import datetime
 from src import dossie
 from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.analise_escrita.modelo_da_tela import AnaliseDaTela
+from src.enderecos_das_fontes import separar
 from src.relatorio_empresa import (
     ANEXO_DE_ANOS,
     Item,
@@ -120,7 +121,7 @@ def _slides_de_numeros(titulo: str, itens: list[Item]) -> list[Slide]:
     slides = []
     for i, bloco in enumerate(blocos):
         linhas = tuple(
-            (item.nome, item.texto, _comparacao(item), item.fonte or "—")
+            (item.nome, item.texto, _comparacao(item), separar(item.fonte)[0] or "—")
             for item in bloco
         )
         notas = list(
@@ -145,21 +146,23 @@ def _slides_de_numeros(titulo: str, itens: list[Item]) -> list[Slide]:
 
 
 def _tabela_de_texto(
-    linhas: list[dict], escrever: Callable[[object], str], rotulo: Callable[[str], str]
+    linhas: list[dict],
+    escrever: Callable[[object, str], str],
+    rotulo: Callable[[str], str],
 ) -> tuple[Linha, list[Linha]]:
     """Cabeçalho e linhas em texto; larga demais, fica a primeira coluna e as mais recentes."""
     colunas = list(linhas[0])
     if len(colunas) > COLUNAS_NA_TABELA:
         colunas = [colunas[0], *colunas[-(COLUNAS_NA_TABELA - 1) :]]
     cabecalho = tuple(rotulo(c) for c in colunas)
-    corpo = [tuple(escrever(linha.get(c)) for c in colunas) for linha in linhas]
+    corpo = [tuple(escrever(linha.get(c), c) for c in colunas) for linha in linhas]
     return cabecalho, corpo
 
 
 def _slides_de_tabela(
     titulo: str,
     linhas: list[dict],
-    escrever: Callable[[object], str],
+    escrever: Callable[[object, str], str],
     rotulo: Callable[[str], str],
 ) -> list[Slide]:
     cabecalho, corpo = _tabela_de_texto(linhas, escrever, rotulo)
@@ -175,7 +178,7 @@ def _slides_de_tabela(
     ]
 
 
-def _como_texto(valor: object) -> str:
+def _como_texto(valor: object, coluna: str) -> str:
     return "—" if valor is None else str(valor)
 
 
@@ -185,7 +188,7 @@ def _como_texto(valor: object) -> str:
 def _slides_da_secao(
     secao: Secao,
     titulo_da_tabela_: Callable[[str], str],
-    escrever: Callable[[object], str],
+    escrever: Callable[[object, str], str],
     rotulo: Callable[[str], str],
 ) -> list[Slide]:
     slides: list[Slide] = []
@@ -308,6 +311,45 @@ def do_setor(relatorio: RelatorioDoSetor, gerado_em: datetime) -> Apresentacao:
     return Apresentacao(
         f"Relatório do setor: {relatorio.nome}",
         relatorio.nome,
+        AVISO_DO_DECK,
+        tuple(slides),
+    )
+
+
+def do_relatorio_semanal(conteudo: dict, gerado_em: datetime) -> Apresentacao:
+    """O deck do relatório de setor da página pública (o mesmo conteúdo da página e do PDF): os
+    destaques com fonte e data, as tabelas, o que a base não tem, as fontes e os limites."""
+    destaques = [
+        f"{d['titulo']}. {d['texto']} (Fonte: {d['fonte']}; dado de {d['data']}.)"
+        for d in conteudo["destaques"]
+    ]
+    faltas = [
+        f"{f['kpi']}: {f['motivo']} (Fonte: {f['fonte']}.)"
+        for f in conteudo["nao_temos"]
+    ]
+    capa = Slide(
+        CAPA,
+        conteudo["titulo"],
+        subtitulo="Relatório de setor",
+        notas=(
+            f"Dados da base de {conteudo['dados_de']}",
+            f"Gerado em {gerado_em:%d/%m/%Y às %H:%M}",
+        ),
+    )
+    slides = [capa, *_slides_de_texto("Antes de ler", [conteudo["aviso"]])]
+    slides += _slides_de_texto("O que os dados mostram", destaques)
+    for tabela in conteudo["tabelas"]:
+        linhas = [
+            dict(zip(tabela["colunas"], linha, strict=True))
+            for linha in tabela["linhas"]
+        ]
+        slides += _slides_de_tabela(tabela["titulo"], linhas, _como_texto, str)
+    slides += _slides_de_texto("O que este relatório ainda não traz", faltas)
+    fontes = list(dict.fromkeys(d["fonte"] for d in conteudo["destaques"]))
+    slides += _fechamento(fontes, list(conteudo["limites"]))
+    return Apresentacao(
+        f"Relatório do setor: {conteudo['titulo']}",
+        conteudo["setor"],
         AVISO_DO_DECK,
         tuple(slides),
     )

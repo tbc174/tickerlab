@@ -41,12 +41,7 @@ NOMES = {
 }
 
 
-def abrir_registro(caminho: Path = PASTA_DA_PESQUISA / "registro.db") -> Registro:
-    return Registro(
-        caminho,
-        familias=tuple(criterio_quant.ORCAMENTO_POR_FICHA),
-        orcamento=criterio_quant.ORCAMENTO_DE_TENTATIVAS,
-    )
+abrir_registro = criterio_quant.abrir_registro
 
 
 def carregar_tabelas(
@@ -88,18 +83,23 @@ def _excesso(retorno: pd.Series, cdi: pd.Series) -> pd.Series:
     return retorno - cdi.reindex(retorno.index)
 
 
-def executar(
-    precos: pd.DataFrame, cdi: pd.Series, volumes: pd.Series, registro: Registro
-) -> dict:
-    """Registra as 4 tentativas, simula tudo, avalia o candidato e guarda no registro."""
-    criterio_quant.conferir()
-    comum = {
+def especificacao_comum(precos: pd.DataFrame) -> dict:
+    """O que toda tentativa da ficha registra além dos parâmetros (a alavancagem reusa)."""
+    return {
         "pesquisa": FICHA,
         "pre_registro": criterio_quant.HASH_DO_CRITERIO,
         "versao_do_codigo": carteira_rp.VERSAO,
         "inicio": precos.index.min().date().isoformat(),
         "fim": precos.index.max().date().isoformat(),
     }
+
+
+def executar(
+    precos: pd.DataFrame, cdi: pd.Series, volumes: pd.Series, registro: Registro
+) -> dict:
+    """Registra as 4 tentativas, simula tudo, avalia o candidato e guarda no registro."""
+    criterio_quant.conferir()
+    comum = especificacao_comum(precos)
     configuracoes = {
         esquema: carteira_rp.Parametros(esquema=esquema) for esquema in ESQUEMAS
     }

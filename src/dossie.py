@@ -33,8 +33,8 @@ from base.pessoas.sem_cpf import tirar_cpf
 from src.configuracao import PASTA_RAIZ
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao
-from src.rastro import Rastro
-from src.relatorio_empresa import Dossie, Item, Secao
+from src.rastro import Entrada, Rastro
+from src.relatorio_empresa import ANEXO_DFC_DVA, Dossie, Item, Secao
 
 log = logging.getLogger(__name__)
 
@@ -92,6 +92,7 @@ TITULOS_DAS_TABELAS = {
     "fundos_janelas": "Compras e vendas dos fundos: 12 meses contra os 12 anteriores",
     "proventos_por_exercicio": "Lucro ajustado e dividendo de cada exercício (FRE)",
     "caixa_por_exercicio": "EBITDA, capex e FCF de cada exercício (DFP)",
+    "dfc_dva_por_exercicio": "DFC e DVA de cada exercício (DFP)",
     "governanca_por_ano": "Conselho, comitês e diversidade em cada FRE",
     "comites": "Comitês no FRE mais recente",
     "remuneracao_por_exercicio": "Remuneração da administração por exercício",
@@ -143,6 +144,23 @@ _NOME_DA_AGENCIA = {
 }
 
 
+class EntradaDaFicha(BaseModel):
+    """Uma conta da demonstração que entra no número, como a base escreve (`base.dossie._entradas_do_caixa`)."""
+
+    conta: str
+    codigo: str
+    nome: str
+    valor: float
+    periodo: str
+    documento: str
+    referencia: date
+    versao: int
+    publicado_em: date | None = None
+
+    def como_entrada(self) -> Entrada:
+        return Entrada(**self.model_dump())
+
+
 class RastroDaFicha(BaseModel):
     """Como o item foi calculado e de onde veio, como a base escreve (`base.dossie._rastro`)."""
 
@@ -151,6 +169,9 @@ class RastroDaFicha(BaseModel):
     fonte_id: str
     outras_fontes: list[str] = []
     publicado_em: date | None = None
+    entradas: list[
+        EntradaDaFicha
+    ] = []  # [] nas fichas de antes das entradas (linha 424)
 
     def como_rastro(self) -> Rastro:
         return Rastro(
@@ -159,6 +180,7 @@ class RastroDaFicha(BaseModel):
             self.fonte_id,
             self.publicado_em,
             outras_fontes=tuple(self.outras_fontes),
+            entradas=tuple(e.como_entrada() for e in self.entradas),
         )
 
 
@@ -771,6 +793,13 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("fcf", "FCF", reais),
         ("divulgado_em", "Público desde", dia),
     ],
+    "dfc_dva_por_exercicio": [
+        ("demonstracao", "Demonstração", _texto),
+        ("conta", "Conta", _texto),
+        ("descricao", "Descrição", _texto),
+        ("exercicio", "Exercício", _ano),
+        ("valor", "Valor", reais),
+    ],
     "governanca_por_ano": [
         ("ano", "FRE", _ano),
         ("entregue_em", "Entregue em", dia),
@@ -1334,6 +1363,37 @@ def _item_da_ficha(ficha: Ficha, secao: SecaoDaFicha, item: ItemDaFicha) -> Item
     )
 
 
+TABELA_DA_DFC_E_DVA = "dfc_dva_por_exercicio"
+SIGLA_DA_DEMONSTRACAO = {
+    "DFC_MI": "DFC",
+    "DFC_MD": "DFC (método direto)",
+    "DVA": "DVA",
+}  # o código da conta se repete entre a DFC indireta e a direta: a sigla as separa
+UNIDADE_DO_ANEXO = "R$"
+
+
+def anexo_dfc_dva(linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A DFC e a DVA da ficha (uma linha por conta e exercício) no formato do anexo de anos: uma
+    conta por linha, uma coluna por exercício (do mais antigo ao mais novo), vazio onde falta.
+
+    A descrição da conta é a do exercício mais novo; a DFC vem antes da DVA, cada uma pelo código.
+    """
+    anos = sorted({str(linha["exercicio"]) for linha in linhas})
+    por_conta: dict[tuple[int, str], dict[str, Any]] = {}
+    for linha in sorted(linhas, key=lambda linha: linha["exercicio"]):
+        sigla = SIGLA_DA_DEMONSTRACAO.get(linha["demonstracao"], linha["demonstracao"])
+        ordem = list(SIGLA_DA_DEMONSTRACAO).index(linha["demonstracao"])
+        da_conta = por_conta.setdefault(
+            (ordem, linha["conta"]), {ano: None for ano in anos}
+        )
+        da_conta["conta"] = f"{sigla} {linha['conta']} · {linha['descricao']}"
+        da_conta[str(linha["exercicio"])] = linha["valor"]
+    return [
+        {"conta": da_conta.pop("conta"), "unidade": UNIDADE_DO_ANEXO, **da_conta}
+        for _, da_conta in sorted(por_conta.items())
+    ]
+
+
 def secoes_da_ficha(ficha: Ficha) -> list[Secao]:
     """As seções do relatório, com os números escritos e a fonte (a atribuição que a licença pede)."""
     secoes = []
@@ -1343,8 +1403,10 @@ def secoes_da_ficha(ficha: Ficha) -> list[Secao]:
         tabelas = {
             chave: _escrever_tabela(chave, linhas, ficha.gerado_em)
             for chave, linhas in secao.tabelas.items()
-            if linhas
+            if linhas and chave != TABELA_DA_DFC_E_DVA
         }
+        if secao.tabelas.get(TABELA_DA_DFC_E_DVA):
+            tabelas[ANEXO_DFC_DVA] = anexo_dfc_dva(secao.tabelas[TABELA_DA_DFC_E_DVA])
         secoes.append(
             Secao(
                 secao.chave, secao.titulo, itens, [*secao.paragrafos, *fontes], tabelas
