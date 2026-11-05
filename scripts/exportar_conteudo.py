@@ -364,7 +364,7 @@ def _app() -> dict[str, object]:
 
 def _catalogo() -> dict:
     """A página Dados: fontes, módulos e uma linha por tabela, tudo contado do contrato da base."""
-    catalogo = contrato.catalogo()
+    catalogo = vitrine.catalogo_publico(contrato.catalogo())
     frases = {nome: vitrine.primeira_frase(t.descricao) for nome, t in TABELAS.items()}
     fontes = vitrine.fontes_do_catalogo(catalogo)
     modulos_da_base = vitrine.modulos_do_catalogo(catalogo)

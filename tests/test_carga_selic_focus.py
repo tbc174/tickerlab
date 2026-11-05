@@ -88,6 +88,15 @@ def test_le_a_meta_como_o_banco_de_producao_a_guarda():
     assert set(obs["serie"]) == {"bcb-sgs-432"}
 
 
+def test_a_meta_nao_guarda_dias_depois_da_coleta():
+    """O SGS 432 devolve as semanas seguintes ao dia da coleta: valem só a partir do dia em que
+    aparecem (sem olhar o futuro)."""
+    futuro = META + [{"data": "04/11/2026", "valor": "14.25"}]
+    obs = bcb_selic_focus.observacoes_da_meta(json.dumps(futuro).encode(), AGORA)
+    assert len(obs) == len(META)
+    assert (obs["divulgado_em"] <= pd.Timestamp(AGORA.date())).all()
+
+
 def test_le_o_focus_com_a_safra_na_data_da_pesquisa():
     obs = bcb_selic_focus.observacoes_do_focus(json.dumps(FOCUS).encode(), AGORA)
     assert list(obs["referencia"]) == [
