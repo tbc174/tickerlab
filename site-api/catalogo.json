@@ -1,0 +1,63 @@
+{
+  "companies": {
+    "fontes": {
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "data_situacao_cadastral",
+      "matriz",
+      "mes_do_retrato",
+      "motivo_situacao",
+      "situacao_cadastral"
+    ]
+  },
+  "financials": {
+    "fontes": {
+      "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-itr": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "ate",
+      "conta",
+      "demonstracao",
+      "descricao",
+      "documento",
+      "fim",
+      "grupo",
+      "inicio",
+      "origem",
+      "referencia",
+      "valor",
+      "versao"
+    ]
+  },
+  "funds": {
+    "fontes": {
+      "cvm-cadastros": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-cda-recente": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-cda": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "classe",
+      "codigo",
+      "com_taxa",
+      "competencia",
+      "data_do_patrimonio_liquido",
+      "emissor",
+      "ficou_com_a_taxa",
+      "fracao_do_resultado",
+      "isin",
+      "nome",
+      "patrimonio_liquido",
+      "quantidade",
+      "sem_taxa",
+      "situacao",
+      "taxa_administracao_pct_ao_ano",
+      "taxa_performance_pct",
+      "texto_taxa_administracao",
+      "texto_taxa_performance",
+      "tipo",
+      "valor"
+    ]
+  }
+}

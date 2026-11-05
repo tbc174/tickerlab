@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Documentação · TickerLab Data</title>
+<meta name="description" content="Como chamar a API da TickerLab Data: chave, rotas, known_at, lotes, erros e licenças. Nada é recomendação de investimento.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/estatico/simbolo.svg">
+<script src="/estatico/sol.js"></script>
+<script>(function(){var raiz=document.documentElement,escolha="auto";raiz.classList.add("com-js");try{escolha=localStorage.getItem("tema")||"auto"}catch(e){}var sol=window.TickerLabSol;var tema=escolha!=="auto"?escolha:sol?sol.temaDoMomento(new Date(),sol.fusoDoAparelho()):"claro";raiz.dataset.escolha=escolha;if(tema==="escuro")raiz.dataset.tema="escuro";})();</script>
+<link rel="preload" href="/estatico/Manrope-VariableFont_wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/estatico/estilo.css"><link rel="stylesheet" href="/estatico/v2.css"><link rel="stylesheet" href="/estatico/api.css">
+<script src="/estatico/v2.js" defer></script>
+</head><body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="topo escura"><div class="faixa">
+  <a class="marca" href="/" aria-label="TickerLab Data, página inicial"><svg xmlns="http://www.w3.org/2000/svg" viewBox="9 14 60 60" width="32" height="32" aria-hidden="true"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="currentColor"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg><span>Ticker<b>Lab</b></span><span class="api">Data</span></a>
+  <nav aria-label="Principal"><a href="/#catalogo">Catálogo</a><a href="/#regras">Regras</a><a href="/#precos">Preços</a><a href="/docs/">Documentação</a><a class="voltar" href="https://tickerlab.com.br/">tickerlab.com.br ↗</a></nav>
+</div></header>
+<main id="conteudo">
+<div class="faixa secao documentacao">
+  <p class="olho">Documentação · API v1</p>
+  <h1>Integre sozinho, pela documentação</h1>
+  <p class="subtitulo">Endereço base: <code>https://api.tickerlab.com.br/data/v1</code>. Tudo é JSON. Datas em ISO (<code>AAAA-MM-DD</code>). Nomes de campos, parâmetros e códigos de erro em inglês.</p>
+
+  <h2 id="comecar">Começar</h2>
+  <p>No beta, as chaves são dadas por contrato a quem vai integrar: não há cadastro automático nem cobrança. Para pedir uma, escreva para <a href="mailto:contato@tickerlab.com.br">contato@tickerlab.com.br</a> dizendo quem é a organização e o que pretende consultar. A chave pertence à organização, e as chaves dela dividem a mesma cota.</p>
+  <p>Com a chave, a primeira chamada mostra o que ela pode pedir:</p>
+<pre class="bloco"><code>curl -H "Authorization: Bearer $TICKERLAB_CHAVE" \
+  https://api.tickerlab.com.br/data/v1/catalog</code></pre>
+  <p>O catálogo não gasta cota. Ele lista, só para a sua chave, os conjuntos, os campos, a licença e a frase de atribuição de cada fonte.</p>
+
+  <h2 id="autenticacao">Autenticação</h2>
+  <p>A chave vai <b>só no cabeçalho</b>: <code>Authorization: Bearer &lt;chave&gt;</code> ou <code>X-API-Key: &lt;chave&gt;</code>. Pela URL ela iria parar nos logs do servidor e da Cloudflare, então um pedido com a chave na URL (<code>api_key</code>, <code>key</code>, <code>token</code>…) é recusado com <code>400 api_key_in_url</code>, sem repetir o valor. Chave inválida, vencida ou sem contrato dá sempre o mesmo <code>401 invalid_api_key</code>: a resposta não diz qual foi o motivo.</p>
+
+  <h2 id="rotas">Rotas</h2>
+  <table class="tabela-docs">
+    <thead><tr><th>Rota</th><th>O que devolve</th><th>Parâmetros</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /companies/{cnpj}</code></td><td>Situação cadastral do estabelecimento na Receita (situação, data, motivo, matriz, mês do retrato)</td><td><code>known_at</code></td></tr>
+      <tr><td><code>GET /companies/{cnpj}/financials</code></td><td>DFP e ITR da CVM: um valor por conta e período, com documento, versão e origem</td><td><code>known_at</code>, <code>period_end</code></td></tr>
+      <tr><td><code>GET /funds/{cnpj}</code></td><td>Cadastro e taxas do fundo, carteira da competência mais nova já pública e, com <code>assumed_return</code>, o custo da taxa em 5 e 20 anos</td><td><code>known_at</code>, <code>assumed_return</code></td></tr>
+      <tr><td><code>POST /companies/batch</code></td><td>O mesmo de <code>/companies/{cnpj}</code> para até 100 CNPJs</td><td>corpo: <code>cnpjs</code>, <code>known_at</code></td></tr>
+      <tr><td><code>POST /funds/batch</code></td><td>O mesmo de <code>/funds/{cnpj}</code> para até 100 CNPJs</td><td>corpo: <code>cnpjs</code>, <code>known_at</code>, <code>assumed_return</code></td></tr>
+      <tr><td><code>GET /catalog</code></td><td>O que a sua chave pode pedir hoje</td><td>nenhum</td></tr>
+      <tr><td><code>GET /usage</code></td><td>Seu consumo do mês, limites do plano e o que falta da cota</td><td>nenhum</td></tr>
+    </tbody>
+  </table>
+  <p>O <code>{cnpj}</code> vai só com os 14 dígitos, com o dígito verificador certo. CPF nunca é aceito. <code>assumed_return</code> é um retorno anual que <b>você</b> informa (por exemplo <code>0.08</code>); o custo da taxa é uma conta sobre esse número, não uma previsão de rentabilidade.</p>
+
+  <h2 id="como-era">Como era na data: <code>known_at</code></h2>
+  <p>Toda rota de dado aceita <code>known_at=AAAA-MM-DD</code>. A resposta traz só o que já era público naquele dia: empresas reapresentam balanços, e a base guarda cada versão com o dia em que ficou pública. Sem o parâmetro, vale hoje. Data no futuro é recusada (<code>400 invalid_known_at</code>). É o que deixa um backtest honesto.</p>
+
+  <h2 id="resposta">Formato da resposta</h2>
+  <p>Cada valor vem num envelope com a origem:</p>
+<pre class="bloco"><code>{
+  "value": …,
+  "source": "cvm-hist-dfp",
+  "published_at": "2025-02-27",   // o dia em que ficou público
+  "observed_at": null             // quando o TickerLab o viu, se a base sabe
+}</code></pre>
+  <p>No fim da resposta, <code>sources</code> traz uma vez cada fonte usada, com <code>license</code> e <code>attribution</code>. As licenças abertas (ODbL da CVM, CC BY da Receita) pedem que quem redistribui <b>cite a fonte</b>: use a frase de <code>attribution</code>. Nas demonstrações, <code>valid_until</code> é o dia em que outra versão tomou o lugar (vazio: vale até hoje) e <code>truncated: true</code> avisa que o limite de linhas do plano cortou a resposta.</p>
+
+  <h2 id="lotes">Lotes</h2>
+  <p>Os lotes aceitam até 100 CNPJs e um <code>known_at</code> (e, em fundos, um <code>assumed_return</code>) para todos. Conta um pedido da cota por CNPJ válido e distinto; item inválido volta com <code>status: invalid_cnpj</code> e não conta.</p>
+<pre class="bloco"><code>curl -X POST https://api.tickerlab.com.br/data/v1/companies/batch \
+  -H "Authorization: Bearer $TICKERLAB_CHAVE" -H "Content-Type: application/json" \
+  -d '{"cnpjs": ["33000167000101", "33592510000154"], "known_at": "2025-04-30"}'</code></pre>
+
+  <h2 id="erros">Erros e limites</h2>
+  <table class="tabela-docs">
+    <thead><tr><th>Status</th><th>Código</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td>400</td><td><code>api_key_in_url</code></td><td>Mande a chave no cabeçalho e troque a chave: ela já passou pela URL.</td></tr>
+      <tr><td>400</td><td><code>invalid_cnpj</code>, <code>invalid_known_at</code>, <code>invalid_assumed_return</code></td><td>Corrija o parâmetro (<code>assumed_return</code> maior que -1 e até 1).</td></tr>
+      <tr><td>401</td><td><code>invalid_api_key</code></td><td>Chave errada, vencida ou sem contrato. A resposta não diz qual.</td></tr>
+      <tr><td>404</td><td><code>not_available</code></td><td>O dado não existe, não pode sair pelo portão de direitos ou o CNPJ não é de uma empresa que a API serve. Os três casos respondem igual.</td></tr>
+      <tr><td>429</td><td><code>rate_limited</code>, <code>monthly_quota_exceeded</code></td><td>Espere o tempo do cabeçalho <code>Retry-After</code> (segundos).</td></tr>
+      <tr><td>503</td><td><code>service_unavailable</code></td><td>A base está fora do ar; o pedido não conta na cota. Tente de novo.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="versoes">Versões</h2>
+  <p>A versão está no endereço (<code>/data/v1</code>). Dentro da v1 não mudamos nome de campo, de parâmetro nem código de erro; podemos <b>acrescentar</b> campos e rotas. Qualquer quebra vira <code>/data/v2</code>, com aviso antes aos titulares de chave e a v1 convivendo por um período combinado.</p>
+
+  <h2 id="direitos">Direitos por fonte</h2>
+  <table class="tabela-docs">
+    <thead><tr><th>Fonte</th><th>Conjunto</th><th>Licença</th><th>Como citar</th></tr></thead>
+    <tbody>
+      <tr><td>CVM · DFP e ITR (<code>cvm-hist-dfp</code>, <code>cvm-hist-itr</code>)</td><td>financials</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
+      <tr><td>CVM · cadastro e carteiras de fundos (<code>cvm-cadastros</code>, <code>cvm-cda-recente</code>, <code>cvm-hist-cda</code>)</td><td>funds</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
+      <tr><td>Receita Federal · CNPJ (<code>rfb-cnpj</code>)</td><td>companies</td><td>CC BY</td><td>a frase de <code>attribution</code> da resposta</td></tr>
+    </tbody>
+  </table>
+  <p>A licença exata e a frase de atribuição de cada resposta vêm no campo <code>sources</code>; esta tabela é só um resumo. Uma fonte sem licença conhecida não sai pela API. A chave pode ser suspensa se o uso quebrar a licença de uma fonte.</p>
+
+  <h2 id="nao-entrega">O que a API não entrega</h2>
+  <ul>
+    <li>Preços e índices da B3: não há dado aberto, só com licença da B3.</li>
+    <li>Dado de pessoa física: nem de sócio, nem de dívida; empresário individual e MEI não saem.</li>
+    <li>Tabelas cuja fonte não autoriza redistribuir.</li>
+  </ul>
+  <p>Biblioteca Python, servidor MCP e especificação OpenAPI desta API externa <b>ainda não existem</b>; entram quando forem feitos. Os dados vêm das fontes oficiais e podem ter atraso ou erro da própria fonte. Nada aqui é recomendação de investimento.</p>
+</div>
+</main>
+<footer class="rodape escura"><div class="faixa"><div><a class="marca" href="/" aria-label="TickerLab Data, página inicial"><svg xmlns="http://www.w3.org/2000/svg" viewBox="9 14 60 60" width="32" height="32" aria-hidden="true"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="currentColor"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg><span>Ticker<b>Lab</b></span><span class="api">Data</span></a><p class="apagado">Dados das empresas brasileiras, da fonte, com data e licença.</p></div><nav aria-label="Rodapé"><a href="/docs/">Documentação</a><a href="https://tickerlab.com.br/dados.html">Fontes e licenças</a><a href="https://tickerlab.com.br/">TickerLab, o app</a><a href="https://tickerlab.com.br/termos.html">Termos de uso</a><a href="https://tickerlab.com.br/privacidade.html">Privacidade</a><a href="mailto:contato@tickerlab.com.br">contato@tickerlab.com.br</a></nav><p class="aviso">Nada aqui é recomendação de investimento. Os dados vêm das fontes oficiais citadas em cada resposta e podem ter atraso ou erros da própria fonte. Cada tabela tem a sua licença; cite a fonte.</p></div></footer>
+</body></html>

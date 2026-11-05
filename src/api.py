@@ -14,10 +14,12 @@ import logging
 import os
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import stripe
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api_externa import api_externa_ligada
 from src.api_v1 import api_v1_ligada
@@ -142,6 +144,30 @@ def sair_das_novidades(codigo: str = "") -> HTMLResponse:
     )
 
 
+SITE_DA_API = Path(__file__).resolve().parent.parent / "site-api"
+
+
+def _montar_site_da_api(app: FastAPI) -> None:
+    """O site da TickerLab Data (`site-api/`) na raiz da API: a página inicial, a documentação e os
+    arquivos em `/estatico`. Só essas três entradas: qualquer outro caminho segue respondendo o 404 da
+    API, e as rotas da API (registradas antes) nunca são cobertas."""
+    if not (SITE_DA_API / "index.html").is_file():
+        return
+
+    @app.get("/", include_in_schema=False)
+    def pagina_inicial() -> FileResponse:
+        return FileResponse(SITE_DA_API / "index.html", media_type="text/html")
+
+    @app.get("/docs/", include_in_schema=False)
+    @app.get("/docs", include_in_schema=False)
+    def documentacao() -> FileResponse:
+        return FileResponse(SITE_DA_API / "docs" / "index.html", media_type="text/html")
+
+    app.mount(
+        "/estatico", StaticFiles(directory=SITE_DA_API / "estatico"), name="estatico"
+    )
+
+
 @asynccontextmanager
 async def _ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
     configurar_logs()  # ao subir o serviço (nos testes, sem servidor, não mexe nos logs)
@@ -217,6 +243,7 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
 
         nova.include_router(router_da_api_externa)
         nova.include_router(router_da_api_externa, prefix="/api")
+    _montar_site_da_api(nova)
     return nova
 
 
