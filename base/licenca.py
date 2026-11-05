@@ -46,6 +46,7 @@ FAMILIA_DO_ENDERECO = {
     "www.sec.gov/": "sec",
     "data.sec.gov/": "sec",
     "api.bcb.gov.br/dados/serie/bcdata.sgs.189/": "bcb-sgs-189",  # IGP-M da FGV
+    "www.bcb.gov.br/content/estatisticas/estatistica_bancaria_estban/": "estban",  # ESTBAN (linha 659)
     "api.bcb.gov.br/": "bcb",
     "olinda.bcb.gov.br/": "bcb",
     "dadosabertos.bcb.gov.br/": "bcb",
@@ -98,6 +99,9 @@ FAMILIA_DO_ENDERECO = {
     "sistemas.tce.pe.gov.br/DadosAbertos": "tce-pe",  # contratos e aditivos (linha 652)
     "transparencia.tce.sp.gov.br/": "tce-sp",  # despesas por fornecedor CNPJ (linha 652)
     "dadosabertos.tce.ce.gov.br/": "tce-ce",  # contratos do SIM (linha 652)
+    "dadosabertos.go.gov.br/": "goias",  # licenças do Ipê (linha 658)
+    "dados.ms.gov.br/": "msestado",  # despesas por credor (linha 658)
+    "dados.prefeitura.sp.gov.br/": "spcapital",  # extrato de contratos (linha 658)
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",

@@ -84,7 +84,7 @@
       "orgao": "IBAMA (autos e embargos)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -99,7 +99,7 @@
       "orgao": "Ministério do Trabalho (Lista Suja)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -119,7 +119,7 @@
       "orgao": "GLEIF (identificador LEI)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-21",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -1902,6 +1902,58 @@
       "ritmo": "lida pelo app",
       "termos_lidos_em": null,
       "uso": "em_uso"
+    },
+    {
+      "coletas": [],
+      "familia": "estban",
+      "licencas": [
+        "BCB, ESTBAN: reprodução com fonte e integridade; a confirmar, só interno"
+      ],
+      "link": "https://www.bcb.gov.br/estatisticas/estatisticabancariamunicipios",
+      "marca": "a_confirmar",
+      "orgao": "Banco Central do Brasil (ESTBAN)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "goias",
+      "licencas": [
+        "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)"
+      ],
+      "link": "https://dadosabertos.go.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Goiás (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "msestado",
+      "licencas": [
+        "Despesas do MS por credor: a confirmar, só interno"
+      ],
+      "link": "https://dados.ms.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Governo de Mato Grosso do Sul (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "spcapital",
+      "licencas": [
+        "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)"
+      ],
+      "link": "https://dados.prefeitura.sp.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Prefeitura de São Paulo (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
     }
   ],
   "fontes": [
@@ -1918,7 +1970,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 63
+      "tabelas": 64
     },
     {
       "historico_desde": "2026-10-14",
@@ -1979,6 +2031,18 @@
       "tabelas": 3
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
       "historico_desde": "2025-01-01",
       "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
       "modulos": [
@@ -2009,18 +2073,6 @@
       ],
       "orgao": "ANEEL",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
-      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
     },
@@ -2068,6 +2120,18 @@
       "orgao": "Ministério da Saúde (DATASUS)",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "SUSEP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
       "tabelas": 2
     },
     {
@@ -2203,6 +2267,28 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "GLEIF",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "IBAMA",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1981-01-31",
       "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
       "modulos": [
@@ -2258,6 +2344,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MTE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
@@ -2277,17 +2374,6 @@
       "orgao": "PGFN",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "SUSEP",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
       "tabelas": 1
     },
     {
@@ -2346,21 +2432,106 @@
       "tabelas": 1
     }
   ],
+  "ligado_pelo_cnpj": {
+    "orgaos": 30,
+    "tabelas": 105,
+    "temas": [
+      {
+        "chave": "cvm",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da diretoria e ofertas de ações e de dívida.",
+        "titulo": "O que a companhia entrega à CVM"
+      },
+      {
+        "chave": "donos",
+        "orgaos": [
+          "Receita Federal",
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
+        "titulo": "Quem é dono e quem controla"
+      },
+      {
+        "chave": "cadastro",
+        "orgaos": [
+          "Receita Federal"
+        ],
+        "tabelas": 6,
+        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro.",
+        "titulo": "Cadastro e situação na Receita"
+      },
+      {
+        "chave": "riscos",
+        "orgaos": [
+          "PGFN",
+          "CGU",
+          "ANS",
+          "MTE",
+          "IBAMA",
+          "CNJ",
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "titulo": "Dívida, sanções e processos"
+      },
+      {
+        "chave": "licencas",
+        "orgaos": [
+          "ANS",
+          "SUSEP",
+          "Anvisa",
+          "ANP",
+          "ANTT",
+          "MAPA",
+          "Anatel",
+          "ANM",
+          "CMED (Anvisa)",
+          "Ancine",
+          "Ministério da Saúde (DATASUS)"
+        ],
+        "tabelas": 13,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "titulo": "Licenças e registros nas agências"
+      },
+      {
+        "chave": "dinheiro_publico",
+        "orgaos": [
+          "BNDES",
+          "Finep",
+          "MME",
+          "ANEEL",
+          "TCE-PE",
+          "TCE-SP",
+          "TCE-CE",
+          "TCE-RS",
+          "Banco Central"
+        ],
+        "tabelas": 10,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "titulo": "Dinheiro público e capital de fora"
+      }
+    ]
+  },
   "modulos": [
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 63
+      "tabelas": 64
     },
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 39
+      "tabelas": 43
     },
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 15
+      "tabelas": 16
     },
     {
       "chave": "macro",
@@ -6736,6 +6907,66 @@
     },
     {
       "atraso": null,
+      "frase": "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: ativas e canceladas (com a data e o motivo do descredenciamento).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_operadoras"
+    },
+    {
+      "atraso": null,
+      "frase": "Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência, capitalização).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SUSEP",
+      "situacao": "licenciada",
+      "tabela": "susep_cadastro"
+    },
+    {
+      "atraso": null,
+      "frase": "Cadastro de Empregadores do MTE (a \"lista suja\" do trabalho análogo ao escravo), só pessoa jurídica.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MTE",
+      "situacao": "em consulta",
+      "tabela": "mte_lista_suja"
+    },
+    {
+      "atraso": null,
+      "frase": "Termos de embargo do IBAMA por CNPJ do embargado, um por linha.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "IBAMA",
+      "situacao": "em consulta",
+      "tabela": "ibama_embargos"
+    },
+    {
+      "atraso": null,
+      "frase": "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês.",
+      "frequencia": "Mensal",
+      "historico_desde": "2025-10-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cvm_fiagro"
+    },
+    {
+      "atraso": null,
+      "frase": "A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ das entidades do Brasil: uma linha por valor diferente de cada par LEI e CNPJ.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "GLEIF",
+      "situacao": "licenciada",
+      "tabela": "gleif_ponte"
+    },
+    {
+      "atraso": null,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7216,11 +7447,11 @@
     }
   ],
   "totais": {
-    "familias": 104,
-    "familias_em_uso": 41,
-    "fontes": 39,
-    "fontes_em_consulta": 16,
+    "familias": 108,
+    "familias_em_uso": 44,
+    "fontes": 42,
+    "fontes_em_consulta": 18,
     "modulos": 6,
-    "tabelas": 134
+    "tabelas": 140
   }
 }

@@ -297,9 +297,7 @@ DESTINOS: dict[str, Destino] = {
     "cvm-cadastros": _tabela("cadastro_das_companhias", "cadastro_de_fundos"),
     "cvm-cri": _tabela(*_INFORME_DE_SECURITIZACAO),
     "cvm-cra": _tabela(*_INFORME_DE_SECURITIZACAO),
-    "cvm-fiagro": _planejada(
-        "serie-T/T4", "informe mensal do FIAGRO; a CVM só guarda os meses recentes"
-    ),
+    "cvm-fiagro": _tabela("cvm_fiagro"),
     "cvm-sancionador": _planejada(
         "serie-T/T4", "processos sancionadores (só PJ e a função)"
     ),
@@ -364,13 +362,9 @@ DESTINOS: dict[str, Destino] = {
     "anac-estatistico": _tabela("anac_estatistico"),
     "ans-beneficiarios": _tabela("ans_beneficiarios"),
     "ans-beneficiarios-operadora": _tabela("ans_beneficiarios"),
-    "ans-operadoras": _planejada(
-        "serie-T/T9", _SO_LIGA_HOJE + " (cadastro de operadoras)"
-    ),
+    "ans-operadoras": _tabela("ans_operadoras"),
     "susep-ses": _tabela("susep_seguros"),
-    "susep-cadastro": _planejada(
-        "serie-T/T9", _SO_LIGA_HOJE + " (entidades supervisionadas)"
-    ),
+    "susep-cadastro": _tabela("susep_cadastro"),
     "antt-pedagio": _planejada("serie-5/PR1", "praças de pedágio e tráfego"),
     "antt-siade": _tabela("antt_siade"),
     "comexstat": _tabela("comex_cafe", "comex_preco_medio"),
@@ -410,9 +404,9 @@ DESTINOS: dict[str, Destino] = {
         "sinais/PR2-3", "empenhos, liquidações e pagamentos dos municípios do Paraná"
     ),
     "ibama-autos": _planejada("serie-T/T5", "autos de infração ambiental por CNPJ"),
-    "ibama-embargos": _planejada("serie-T/T5", "embargos ambientais por CNPJ"),
-    "mte-lista-suja": _planejada("serie-T/T5", "cadastro de empregadores (só PJ)"),
-    "gleif-br": _planejada("serie-T/T9", _SO_LIGA_HOJE + " (CNPJ e LEI)"),
+    "ibama-embargos": _tabela("ibama_embargos"),
+    "mte-lista-suja": _tabela("mte_lista_suja"),
+    "gleif-br": _tabela("gleif_ponte"),
     # M&A e intradiários
     "assessoria-igc": _tabela(
         "ma_assessorias", "ma_datas", "ma_negocios", "ma_partes", "ma_regua"

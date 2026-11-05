@@ -58,6 +58,10 @@ LICENCAS = {
     "tce-pe": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
     "tce-sp": "TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)",
     "tce-ce": "TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)",
+    # linha 658 (fichas dos conjuntos no CKAN, lidas em 03/11/2026)
+    "goias": "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)",
+    "msestado": "Despesas do MS por credor: a confirmar, só interno (ADR 0102)",
+    "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
     "transparencia": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
@@ -129,6 +133,7 @@ LICENCAS = {
     "anm-cfem": "ANM, CFEM: licença não declarada; a confirmar, só interno (ADR 0102)",
     "anm-sigbm": "ANM, SIGBM: licença não declarada; a confirmar, só interno (ADR 0102)",
     "anm-amb": "ANM, Anuário: licença não declarada; a confirmar, só interno (ADR 0102)",
+    "estban": "BCB, ESTBAN: reprodução com fonte e integridade; a confirmar, só interno",
     "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
@@ -289,6 +294,9 @@ REVENDA = {
     "tce-pe": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-PE, uso interno
     "tce-sp": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-SP, uso interno
     "tce-ce": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-CE, uso interno
+    "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
+    "msestado": A_CONFIRMAR,  # linha 658: nada perguntado ao MS; entra como "a confirmar"
+    "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
@@ -350,6 +358,7 @@ REVENDA = {
     "anm-cfem": A_CONFIRMAR,
     "anm-sigbm": A_CONFIRMAR,
     "anm-amb": A_CONFIRMAR,
+    "estban": A_CONFIRMAR,  # ESTBAN do BCB (linha 659): nada perguntado ao BC, uso interno
     "ancine": VENDAVEL_COM_ATRIBUICAO,
     "mme": A_CONFIRMAR,
     "finep": A_CONFIRMAR,
@@ -552,6 +561,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-rs-empenhos",
             "chirps",  # Disallow: / ; domínio público
             "rfb-cnpj",  # Disallow: / ; CC BY na ficha do dados.gov.br
+            "goias",  # Disallow: /api/ e Crawl-Delay: 10 (04/11/2026); CC BY
+            "spcapital",  # Disallow: / (04/11/2026); CC0
         ),
         _ROBOTS_FECHA_COM_LICENCA,
     ),
@@ -608,6 +619,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
+            "msestado",  # host dados.ms.gov.br não resolveu em 04/11/2026; robots.txt não lido
             "mte",
             "comexstat",
             "wayback",
@@ -696,6 +708,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "anm-cfem",  # linha 657: licença não declarada, a confirmar
             "anm-sigbm",
             "anm-amb",
+            "estban",  # linha 659: termos do BC lidos em 04/11/2026 (reprodução com fonte), a confirmar
             "ancine",
             # preços da CMED (04/11): os termos das listas são os do portal da Anvisa, ainda não lidos
             "anvisa-cmed",

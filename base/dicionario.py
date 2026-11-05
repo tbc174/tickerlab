@@ -1410,6 +1410,358 @@ def _tabelas_da_cmed() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
+    """Os cadastros que a fonte publica inteiros a cada vez (`base/cadastros_em_retrato.py`, linha 679):
+    operadoras da ANS, entidades da SUSEP, Cadastro de Empregadores do MTE e embargos do IBAMA."""
+    controle = {
+        "consta": (
+            (
+                "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu "
+                "dele"
+            ),
+            SIM_OU_NAO,
+        ),
+        "trata_como_pessoa": (
+            (
+                "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                "Receita guardada não tem (ADR 0075); sem CNPJ, falso"
+            ),
+            SIM_OU_NAO,
+        ),
+        "visto_em": ("Dia do arquivo em que esta versão da linha foi vista", DATA),
+        "disponivel_em": (
+            (
+                "Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a "
+                "fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em "
+                "que a mudança apareceu"
+            ),
+            DATA,
+        ),
+        **_ORIGEM_SEM_ANO,
+    }
+    comum = (
+        "Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale "
+        "desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com "
+        "`consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). "
+        "Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca "
+        "entram, nem o nome de pessoa física; empresário individual e MEI ficam com "
+        "`trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é "
+        "arquivo cortado da fonte, não registro que acabou."
+    )
+    atraso = (
+        "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato "
+        "público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a "
+        "história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+    )
+    identificacao = {
+        "id_na_fonte": ("O que identifica o registro na fonte", TEXTO),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+    }
+
+    def tabela(
+        nome: str,
+        arquivo: str,
+        descricao: str,
+        fonte: str,
+        familia: str,
+        frequencia: str,
+        colunas: dict[str, tuple[str, str]],
+        modulo: str,
+    ) -> Tabela:
+        return Tabela(
+            descricao=descricao + " " + comum,
+            fonte=f"{fonte} (`base/{modulo}.py`)",
+            familia_da_fonte=familia,
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                f"Parquet em `<acervo>/base/{nome}/{arquivo}.parquet` (servidor de casa, "
+                "`base/cadastros_em_retrato.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={**identificacao, **colunas, **controle},
+        )
+
+    return {
+        "ans_operadoras": tabela(
+            "ans_operadoras",
+            "<situacao>",
+            (
+                "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: "
+                "`ativas` e `canceladas` (com a data e o motivo do descredenciamento). O contato "
+                "e o representante legal não chegam ao acervo."
+            ),
+            "ANS: dados abertos, cadastro de operadoras",
+            "ans",
+            "Mensal (a ANS recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+            {
+                "razao_social": (
+                    "Razão social da operadora, como a ANS escreve",
+                    TEXTO,
+                ),
+                "nome_fantasia": ("Nome fantasia, quando a ANS informa", TEXTO),
+                "modalidade": (
+                    "Modalidade (Medicina de Grupo, Cooperativa Médica...)",
+                    TEXTO,
+                ),
+                "uf": ("UF da sede", TEXTO),
+                "registrada_em": ("Data do registro na ANS", DATA),
+                "descredenciada_em": (
+                    "Data do descredenciamento (só nas canceladas)",
+                    DATA,
+                ),
+                "motivo_do_descredenciamento": (
+                    "Motivo, como a ANS escreve (só nas canceladas)",
+                    TEXTO,
+                ),
+                "situacao": (
+                    "`ativas` ou `canceladas`: o arquivo de onde a linha veio",
+                    TEXTO,
+                ),
+            },
+            "ans_operadoras",
+        ),
+        "susep_cadastro": tabela(
+            "susep_cadastro",
+            "entidades",
+            (
+                "Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência, "
+                "capitalização). Entidade estrangeira (ressegurador admitido) não tem CNPJ: a linha "
+                "fica, com `cnpj` vazio. Endereço e telefone não chegam ao acervo."
+            ),
+            "SUSEP: serviço DadosCadastrais (dados abertos)",
+            "susep",
+            "Mensal (a SUSEP devolve a lista inteira; o arquivista guarda só o que mudou)",
+            {
+                "codigo_do_mercado": (
+                    "Código do mercado da SUSEP (1 a 8 e 99), como vem",
+                    NUMERO,
+                ),
+                "nome": ("Nome da entidade, como a SUSEP escreve", TEXTO),
+                "autorizada_em": ("Data da autorização para funcionar", DATA),
+            },
+            "susep_cadastro",
+        ),
+        "mte_lista_suja": tabela(
+            "mte_lista_suja",
+            "empregadores",
+            (
+                'Cadastro de Empregadores do MTE (a "lista suja" do trabalho análogo ao '
+                "escravo), só pessoa jurídica. Quando a página do MTE linka CSVs de layouts "
+                "diferentes, vale o do arquivo baixado mais recentemente. A chave é CNPJ + ano da "
+                "ação fiscal + estabelecimento: o `ID` do arquivo é só a posição na lista. Ser "
+                "citado no cadastro não é condenação criminal."
+            ),
+            "MTE: Cadastro de Empregadores (dados abertos)",
+            "mte",
+            "Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)",
+            {
+                "ano_da_acao": ("Ano da ação fiscal", NUMERO),
+                "uf": ("UF do estabelecimento", TEXTO),
+                "empregador": ("Razão social do empregador pessoa jurídica", TEXTO),
+                "estabelecimento": (
+                    "Endereço do estabelecimento, como a fonte escreve",
+                    TEXTO,
+                ),
+                "cnae": ("CNAE do estabelecimento, como a fonte escreve", TEXTO),
+                "trabalhadores": ("Trabalhadores envolvidos na ação", NUMERO),
+                "incluida_em": (
+                    "Data da inclusão no cadastro (a 1ª, se a fonte traz um período)",
+                    DATA,
+                ),
+            },
+            "mte_lista_suja",
+        ),
+        "ibama_embargos": tabela(
+            "ibama_embargos",
+            "termos",
+            (
+                "Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, "
+                "quando e em que situação: a geometria da área e o texto livre não chegam ao "
+                "acervo. Data de embargo fora de 1980 até o dia do arquivo (a fonte traz anos "
+                "impossíveis) fica vazia, nunca corrigida. Embargo não é condenação."
+            ),
+            "IBAMA: dados abertos, termos de embargo",
+            "ibama",
+            "Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)",
+            {
+                "numero_do_termo": ("Número do termo de embargo", TEXTO),
+                "nome": ("Nome do embargado pessoa jurídica", TEXTO),
+                "situacao_do_termo": ("Situação do termo, como o IBAMA escreve", TEXTO),
+                "cancelado": (
+                    "Marca de cancelamento do termo, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "codigo_do_municipio": ("Código do município (IBGE) do embargo", TEXTO),
+                "uf": ("UF do embargo", TEXTO),
+                "desembargado": ("Marca de desembargo, como o IBAMA escreve", TEXTO),
+                "numero_do_auto": (
+                    "Número do auto de infração que gerou o embargo",
+                    TEXTO,
+                ),
+                "area_embargada_ha": ("Área embargada, em hectares", NUMERO_DECIMAL),
+                "embargada_em": ("Data do embargo", DATA),
+                "desembargada_em": ("Data do desembargo", DATA),
+            },
+            "ibama_embargos",
+        ),
+    }
+
+
+def _tabelas_do_fiagro_e_gleif() -> dict[str, Tabela]:
+    """O informe mensal dos Fiagro (`base/cvm_fiagro.py`) e a ponte LEI e CNPJ do GLEIF (`base/gleif.py`),
+    as duas da linha 679."""
+    return {
+        "cvm_fiagro": Tabela(
+            descricao=(
+                "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias "
+                "Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e "
+                "dividend yield do mês, taxas e a carteira por tipo de ativo (imóveis rurais, CRA, "
+                "CRI, LCA, LCI). Uma linha por classe, mês e versão do informe: o reenvio traz "
+                "`versao` maior e não apaga a anterior (quem quer o vigente fica com a maior). "
+                "Contato, nome do administrador e do gestor e as subclasses ficam de fora; "
+                "administrador e gestor entram só pelo CNPJ. Só classe com CNPJ de dígito certo. "
+                "A CVM só mantém os meses recentes: a história daqui em diante é a do acervo"
+            ),
+            fonte="CVM: informe mensal de Fiagro (`base/cvm_fiagro.py`)",
+            familia_da_fonte="cvm",
+            frequencia="Mensal (um ZIP por mês; o arquivista olha toda semana)",
+            atraso=(
+                "`disponivel_em` é a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca a "
+                "referência; sem ela, vale o dia em que o ZIP foi guardado"
+            ),
+            onde="Parquet em `<acervo>/base/cvm_fiagro/informe.parquet` (servidor de casa, `base/cvm_fiagro.py`)",
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={
+                "cnpj": _EMPRESA["cnpj"],
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a classe", TEXTO),
+                "referencia": (
+                    "Mês a que o informe se refere (a `Data_Referencia`)",
+                    DATA,
+                ),
+                "versao": ("Versão do informe; o reenvio traz número maior", NUMERO),
+                "nome_da_classe": ("Nome da classe, como a CVM escreve", TEXTO),
+                "publico_alvo": ("Público-alvo da classe, como a CVM escreve", TEXTO),
+                "codigo_isin": ("Código ISIN da cota, quando informado", TEXTO),
+                "mercado_de_negociacao": (
+                    "Mercado em que a cota negocia, como a CVM escreve",
+                    TEXTO,
+                ),
+                "cnpj_administrador": (
+                    "CNPJ do administrador (só o CNPJ, sem o nome)",
+                    TEXTO,
+                ),
+                "cnpj_gestor": ("CNPJ do gestor (só o CNPJ, sem o nome)", TEXTO),
+                "cotistas": ("Número de cotistas", NUMERO),
+                "valor_do_ativo": ("Valor do ativo, em reais", NUMERO_DECIMAL),
+                "patrimonio_liquido": ("Patrimônio líquido, em reais", NUMERO_DECIMAL),
+                "cotas_emitidas": ("Cotas emitidas", NUMERO_DECIMAL),
+                "valor_patrimonial_da_cota": (
+                    "Valor patrimonial da cota, em reais",
+                    NUMERO_DECIMAL,
+                ),
+                "taxa_de_administracao_pct": (
+                    "Despesa com taxa de administração, em % do patrimônio",
+                    NUMERO_DECIMAL,
+                ),
+                "taxa_de_gestao_pct": (
+                    "Despesa com taxa de gestão, em % do patrimônio",
+                    NUMERO_DECIMAL,
+                ),
+                "rentabilidade_efetiva_no_mes": (
+                    "Rentabilidade efetiva do mês, como a CVM informa",
+                    NUMERO_DECIMAL,
+                ),
+                "rentabilidade_patrimonial_no_mes": (
+                    "Rentabilidade patrimonial do mês, como a CVM informa",
+                    NUMERO_DECIMAL,
+                ),
+                "dividend_yield_no_mes": (
+                    "Dividend yield do mês, como a CVM informa",
+                    NUMERO_DECIMAL,
+                ),
+                "total_investido": ("Total investido, em reais", NUMERO_DECIMAL),
+                "imoveis_rurais": (
+                    "Investido em imóveis rurais, em reais",
+                    NUMERO_DECIMAL,
+                ),
+                "cra": ("Investido em CRA, em reais", NUMERO_DECIMAL),
+                "cri": ("Investido em CRI, em reais", NUMERO_DECIMAL),
+                "lca": ("Investido em LCA, em reais", NUMERO_DECIMAL),
+                "lci": ("Investido em LCI, em reais", NUMERO_DECIMAL),
+                "total_do_passivo": ("Total do passivo, em reais", NUMERO_DECIMAL),
+                "disponivel_em": (
+                    "Desde quando o informe era público: a `Data_Entrega` (nunca depois do dia em que o ZIP foi guardado)",
+                    DATA,
+                ),
+                **_ORIGEM_SEM_ANO,
+            },
+        ),
+        "gleif_ponte": Tabela(
+            descricao=(
+                "A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ das "
+                "entidades do Brasil: uma linha por valor diferente de cada par LEI e CNPJ, a cada "
+                "cópia semanal do GLEIF (`consta` falso quando o par some da cópia). Só CNPJ inteiro "
+                "de dígito certo: CPF, NIRE e vazio ficam fora (o LEI fica sem ponte). Empresário "
+                "individual (`SOLE_PROPRIETOR`) e LEI marcado `DUPLICATE` pelo GLEIF não entram. "
+                "`conflito` marca o CNPJ com dois LEIs na mesma cópia: a resolução não liga por ele. "
+                "Cópia com menos da metade dos pares da anterior é pulada (cópia cortada)"
+            ),
+            fonte="GLEIF: base global de LEI, registros do Brasil (`base/gleif.py`)",
+            familia_da_fonte="gleif",
+            frequencia="Semanal (uma cópia por semana; o arquivista guarda só o que mudou)",
+            atraso=(
+                "No 1º arquivo guardado, `disponivel_em` é a data da cópia do GLEIF "
+                "(`goldenCopy.publishDate`), nunca depois do dia em que foi guardada; depois, o dia "
+                "da cópia em que a mudança apareceu"
+            ),
+            onde="Parquet em `<acervo>/base/gleif_ponte/ponte.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)",
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={
+                "id_na_fonte": (
+                    "O par: LEI e CNPJ (só os dígitos) juntos por `|`",
+                    TEXTO,
+                ),
+                "lei": ("LEI (20 caracteres)", TEXTO),
+                "cnpj": _EMPRESA["cnpj"],
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+                "nome": ("Nome legal da entidade, como o GLEIF escreve", TEXTO),
+                "autoridade": (
+                    "Autoridade de registro que informou o CNPJ (`RA000681` é a Receita)",
+                    TEXTO,
+                ),
+                "categoria": (
+                    "Categoria da entidade no GLEIF (`GENERAL`, `FUND`, `BRANCH`...)",
+                    TEXTO,
+                ),
+                "situacao_do_lei": ("Situação do LEI (`ISSUED`, `LAPSED`...)", TEXTO),
+                "conflito": (
+                    "Verdadeiro quando o CNPJ aparece em mais de um LEI na cópia",
+                    SIM_OU_NAO,
+                ),
+                "consta": (
+                    "Verdadeiro enquanto o par está na cópia; falso na linha do dia em que saiu",
+                    SIM_OU_NAO,
+                ),
+                "trata_como_pessoa": (
+                    "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+                    SIM_OU_NAO,
+                ),
+                "visto_em": (
+                    "Dia da cópia em que esta versão da linha foi vista",
+                    DATA,
+                ),
+                "disponivel_em": (
+                    "Desde quando a linha vale para a base (ver o atraso)",
+                    DATA,
+                ),
+                **_ORIGEM_SEM_ANO,
+            },
+        ),
+    }
+
+
 def _tabelas_do_cnes() -> dict[str, Tabela]:
     """O CNES por competência (`base/cnes.py`, linha 654): os estabelecimentos e a situação de cada competência."""
     atraso = (
@@ -5660,6 +6012,8 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_incentivos(),
     **_tabelas_dos_financiamentos(),
     **_tabelas_da_cmed(),
+    **_tabelas_dos_cadastros_em_retrato(),
+    **_tabelas_do_fiagro_e_gleif(),
     **_tabelas_do_cnes(),
     **_tabelas_dos_tces(),
     **_tabelas_da_anm(),
@@ -7820,6 +8174,7 @@ _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no a
 _FINANCIAMENTOS = "2026-11-04"
 _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
 _ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
+_CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pelo arquivista desde este dia; MTE e IBAMA, desde `_GOVERNO`
 _CNES = (
     "2026-11-04"  # o CNES por competência entrou no arquivista neste dia (linha 654)
 )
@@ -7947,6 +8302,40 @@ _CONTRATO = {
         historico_desde=_CMED,
         granularidade_do_publico_em="mes",
     ),
+    "ans_operadoras": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("situacao", "id_na_fonte", "visto_em"),
+        datas={"aconteceu_em": "registrada_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_CADASTROS_227,
+        granularidade_do_publico_em="mes",
+    ),
+    "susep_cadastro": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"aconteceu_em": "autorizada_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_CADASTROS_227,
+        granularidade_do_publico_em="mes",
+    ),
+    "mte_lista_suja": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"aconteceu_em": "incluida_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_GOVERNO,
+        granularidade_do_publico_em="mes",
+    ),
+    "ibama_embargos": _contrato(
+        modulo="governo_e_sancoes",
+        pessoa=True,
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"aconteceu_em": "embargada_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_GOVERNO,
+        granularidade_do_publico_em="mes",
+    ),
+    "cvm_fiagro": _contrato(modulo=_FIDC, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2025-10-01"),
+    "gleif_ponte": _contrato(modulo=_ME, pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="dia"),
     "financiamentos_finep": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
@@ -8143,6 +8532,33 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "cmed_precos",
         "nao_nulas": ("lista", "id_na_fonte", "cnpj", "cnpj_basico", "ggrem", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {c: _SEM_NEGATIVO for c in _colunas_de_preco_da_cmed()},
+    },
+    "ans_operadoras": {
+        "pasta": "ans_operadoras",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "situacao"),
+    },
+    "susep_cadastro": {
+        "pasta": "susep_cadastro",
+        "nao_nulas": ("id_na_fonte", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "mte_lista_suja": {
+        "pasta": "mte_lista_suja",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {"trabalhadores": _SEM_NEGATIVO},
+    },
+    "ibama_embargos": {
+        "pasta": "ibama_embargos",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {"area_embargada_ha": _SEM_NEGATIVO},
+    },
+    "cvm_fiagro": {
+        "pasta": "cvm_fiagro",
+        "nao_nulas": ("cnpj", "cnpj_basico", "referencia", "versao", "disponivel_em"),
+        "faixas": {"cotistas": _SEM_NEGATIVO, "patrimonio_liquido": _SEM_NEGATIVO},
+    },
+    "gleif_ponte": {
+        "pasta": "gleif_ponte",
+        "nao_nulas": ("id_na_fonte", "lei", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "financiamentos_finep": {
         "pasta": "financiamentos_finep",

@@ -200,6 +200,7 @@ class LinhaDeDireito(NamedTuple):
 # B-32a: o beta da API externa (A5 do lançamento API primeiro)
 BETA_COMECA_EM = date(2026, 11, 3)
 _PROVA_CVM = "ADR 0108 D2.2 e D3: dados abertos da CVM, ODbL, revenda com atribuição"
+_PROVA_RECEITA = "ADR 0108 D2.2 e D3: dados abertos do CNPJ da Receita, CC BY, revenda com atribuição"
 
 
 def _campos(
@@ -228,10 +229,24 @@ def _campos(
 
 
 # Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
-# (D10, `base/prontidao.py`). O conjunto de empresas (Receita) entra com a rota dele: as tabelas do CNPJ
-# têm uma linha por CNPJ, MEI e empresário individual inclusive, e só a rota tira por linha quem é
-# pessoa (ADR 0106); a linha de direito vale para o campo inteiro e não sabe fazer esse corte.
+# (D10, `base/prontidao.py`). Do CNPJ da Receita só sai a situação cadastral, e só em `companies`: a tabela
+# tem uma linha por CNPJ, MEI e empresário individual inclusive, e a linha de direito vale para o campo
+# inteiro; quem tira por linha quem é pessoa (ADR 0106) é a rota (`src/api_externa/conjuntos/empresas.py`).
+# Nome, natureza jurídica e Simples esperam o histórico datado: a base só os guarda como são hoje.
 DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
+    *_campos(
+        ("rfb-cnpj",),
+        "companies",
+        ("cnpj_situacao_cadastral",),
+        (
+            "situacao_cadastral",
+            "data_situacao_cadastral",
+            "motivo_situacao",
+            "matriz",
+            "mes_do_retrato",
+        ),
+        _PROVA_RECEITA,
+    ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),
         "financials",

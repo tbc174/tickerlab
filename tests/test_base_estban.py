@@ -156,3 +156,12 @@ def test_por_municipio_soma_as_instituicoes():
 
 def test_endereco_da_competencia():
     assert estban.endereco_da_competencia(202606).endswith("/202606_ESTBAN_AG.csv.zip")
+
+
+def test_mesmo_codigo_de_agencia_em_instituicoes_diferentes_nao_e_repetida():
+    """No arquivo real de 202602, 4 instituições têm a agência `00000000000191` em Brasília."""
+    linhas = [
+        "202512;DF;35800;BRASILIA;04902979;BCO DA AMAZONIA S.A.;'00000000000191;10;0;0;0;5300108",
+        "202512;DF;35800;BRASILIA;13009717;BCO DO EST. DE SE S.A.;'00000000000191;20;0;0;0;5300108",
+    ]
+    assert len(estban.ler_competencia(_zip(linhas))) == 2
