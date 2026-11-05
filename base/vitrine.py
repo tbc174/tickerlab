@@ -449,6 +449,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cnpj_situacao_especial",
             "cnpj_simples",
             "cnpj_simples_mudancas",
+            "cnpj_simples_historico",
+            "cnpj_empresas_historico",
         ),
     ),
     TemaDoCnpj(
