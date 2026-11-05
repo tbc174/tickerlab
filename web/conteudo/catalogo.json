@@ -206,7 +206,7 @@
       "orgao": "CCEE (comercialização de energia)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-21",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -7458,7 +7458,7 @@
   ],
   "totais": {
     "familias": 108,
-    "familias_em_uso": 41,
+    "familias_em_uso": 42,
     "fontes": 42,
     "fontes_em_consulta": 18,
     "modulos": 6,
