@@ -58,6 +58,8 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"do MME\b", "MME"),
     (r"do BNDES\b", "BNDES"),
     (r"da Finep\b", "Finep"),
+    (r"empregadores do MTE", "MTE"),
+    (r"do IBAMA\b", "IBAMA"),
     (r"da SUSEP\b", "SUSEP"),
     (r"Receita", "Receita Federal"),
     (r"da PGFN\b", "PGFN"),
@@ -451,12 +453,15 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
-        "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, processos "
+        "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
+        "empregadores do MTE, os embargos do IBAMA, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
             "pgfn_divida",
             "sancoes_cgu",
             "ans_penalidades",
+            "mte_lista_suja",
+            "ibama_embargos",
             "processos_partes",
             "processos_nas_notas",
         ),
@@ -466,8 +471,10 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "Licenças e registros nas agências",
         "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, "
         "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
-        "a Ancine e os estabelecimentos de saúde do CNES.",
+        "a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
         (
+            "ans_operadoras",
+            "susep_cadastro",
             "anvisa_registros",
             "anp_concessionarios",
             "antt_rntrc",

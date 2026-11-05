@@ -17,11 +17,18 @@ Sem Streamlit; pandas só.
 """
 
 import io
+from collections.abc import Collection
+from datetime import datetime
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import sqlalchemy as sa
 
+from base import cadastros_em_retrato
 from base import cnpj as cnpjs
 from base import retratos as motor
+from base.arquivo.fontes import ARQUIVOS_DO_CADASTRO_DA_ANS
 
 FONTE = "ans-operadoras"
 ATIVAS = "ativas"
@@ -108,3 +115,34 @@ def juntar_retratos(
 ) -> tuple[pd.DataFrame, int]:
     """Os retratos lidos (do mais antigo ao mais novo) numa tabela de valores, e quantos foram pulados."""
     return motor.juntar(lidos, VALORES, disponivel_no_primeiro)
+
+
+TABELA = "ans_operadoras"
+CADASTROS = tuple(
+    cadastros_em_retrato.Cadastro(
+        tabela=TABELA,
+        nome=situacao,
+        fonte=FONTE,
+        ler=lambda retrato, situacao=situacao: ler_retrato(
+            motor.original(retrato.caminho), situacao
+        ),
+        juntar=juntar_retratos,
+        colunas=tuple(COLUNAS),
+        datas=tuple(DATAS),
+        url_termina_em="/" + arquivo,
+    )
+    for situacao, arquivo in ARQUIVOS_DO_CADASTRO_DA_ANS.items()
+)
+
+
+def montar(
+    conexao: sa.Connection,
+    pasta: Path,
+    agora: datetime,
+    pessoas: Collection[str] | np.ndarray | None = None,
+    refazer: bool = False,
+) -> dict[str, dict[str, int]]:
+    """`<pasta>/ans_operadoras/{ativas,canceladas}.parquet` (um retrato por baixada, só CNPJ)."""
+    return cadastros_em_retrato.montar(
+        CADASTROS, conexao, pasta, agora, pessoas, refazer
+    )
