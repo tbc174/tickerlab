@@ -3813,6 +3813,54 @@ Termos aditivos dos contratos do TCE-PE por contratado. Só pessoa jurídica (CN
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `tce_pe_licitacoes`
+
+Licitações do TCE-PE por licitante vencedor (`LicitacoesDetalhes`; só a linha do vencedor pessoa jurídica). Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
+
+- **Fonte:** TCE-PE, API Dados Abertos (`LicitacoesDetalhes`)
+- **Licença:** TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Anual, fatiado por ano e modalidade (um pedido por fatia, com pausa); refazer o ano corrente a cada trimestre
+- **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `codigo_licitacao`, `cnpj`
+- **Três datas:** aconteceu_em = `data_homologacao`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-04 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/tce_pe_licitacoes/<ano>.parquet` (`scripts/carga_tces.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo_licitacao` | Código do processo licitatório no TCE-PE | texto |
+| `numero_processo` | Número do processo | texto |
+| `ano_processo` | Ano do processo | texto |
+| `numero_modalidade` | Número da licitação na modalidade | texto |
+| `ano_modalidade` | Ano da licitação na modalidade | texto |
+| `codigo_modalidade` | Código da modalidade, como a fonte codifica | texto |
+| `modalidade` | Nome da modalidade, como a fonte escreve | texto |
+| `codigo_ug` | Código da unidade gestora | texto |
+| `unidade_gestora` | Nome da unidade gestora (órgão público) | texto |
+| `codigo_municipio` | Código do município no TCE-PE | texto |
+| `natureza` | Natureza do objeto, como a fonte escreve | texto |
+| `fundamento_legal` | Código do fundamento legal, como a fonte codifica | texto |
+| `situacao` | Situação da licitação, como a fonte escreve | texto |
+| `estagio` | Estágio da licitação, como a fonte escreve | texto |
+| `quantidade_licitantes` | Quantidade de licitantes | texto |
+| `link` | Endereço do documento na fonte | texto |
+| `data_edital` | Dia da emissão do edital | data (dia) |
+| `data_homologacao` | Dia da publicação da homologação | data (dia) |
+| `valor_estimado` | Valor estimado do orçamento, em reais | número com decimais, na unidade da fonte |
+| `valor_adjudicado` | Total adjudicado ao vencedor (a linha é a do licitante vencedor), em reais | número com decimais, na unidade da fonte |
+| `tribunal` | Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs` | texto |
+| `tabela` | Assunto da linha dentro do tribunal (contratos, aditivos, despesas) | texto |
+| `cnpj` | CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados | texto |
+| `disponivel_em` | Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `tce_sp_despesas`
 
 Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.

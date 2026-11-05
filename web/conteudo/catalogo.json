@@ -2065,6 +2065,17 @@
       "tabelas": 3
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-PE: licença não localizada; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-PE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 3
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "modulos": [
@@ -2132,17 +2143,6 @@
       "orgao": "SUSEP",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-11-04",
-      "licenca": "TCE-PE: licença não localizada; a confirmar, só interno",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "TCE-PE",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
       "tabelas": 2
     },
     {
@@ -2434,7 +2434,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 30,
-    "tabelas": 105,
+    "tabelas": 106,
     "temas": [
       {
         "chave": "cvm",
@@ -2511,7 +2511,7 @@
           "TCE-RS",
           "Banco Central"
         ],
-        "tabelas": 10,
+        "tabelas": 11,
         "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
         "titulo": "Dinheiro público e capital de fora"
       }
@@ -2526,7 +2526,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 43
+      "tabelas": 44
     },
     {
       "chave": "credito_e_fidc",
@@ -7007,6 +7007,16 @@
     },
     {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Licitações do TCE-PE por licitante vencedor (LicitacoesDetalhes; só a linha do vencedor pessoa jurídica).",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "em consulta",
+      "tabela": "tce_pe_licitacoes"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
       "frase": "Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7452,6 +7462,6 @@
     "fontes": 42,
     "fontes_em_consulta": 18,
     "modulos": 6,
-    "tabelas": 140
+    "tabelas": 141
   }
 }
