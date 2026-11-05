@@ -158,8 +158,10 @@ def test_uso_da_familia(catalogo):
     )  # uso citado sem cobrança
     assert registro.uso_da_familia("nasa", catalogo) == "guardada"
     # tabela no catálogo sem tela que a leia não é uso (linha 663)
-    for familia in ("ccee", "djen", "faostat"):
+    for familia in ("djen", "faostat"):
         assert registro.uso_da_familia(familia, catalogo) == "guardada", familia
+    # a CCEE saiu da lista: o PLD está no relatório do setor das elétricas (linha 664, a)
+    assert registro.uso_da_familia("ccee", catalogo) == "em_uso"
     assert registro.uso_da_familia("kraken", catalogo) == "guardada"
     assert (
         registro.uso_da_familia("iex", catalogo) == "guardada"

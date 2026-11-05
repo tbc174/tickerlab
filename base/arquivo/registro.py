@@ -259,7 +259,6 @@ FONTES_LIDAS_PELO_APP: dict[str, tuple[str, str]] = {
 # ligar uma tela a ela tira o nome daqui; um teste procura o nome em `src/`, `telas/` e `web/src/`.
 TABELAS_SEM_LEITOR: frozenset[str] = frozenset(
     {
-        "ccee_pld",  # CCEE: preço de liquidação das diferenças
         "faostat_cafe",  # FAOSTAT: café
         "processos",  # DJEN: carga e conferência no servidor, sem tela
         "processos_comunicacoes",
