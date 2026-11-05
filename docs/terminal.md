@@ -20,10 +20,13 @@ Precisa de PowerShell 7 (`pwsh`), Windows Terminal, Git, GitHub CLI (`gh auth lo
 O instalador acrescenta uma linha `Import-Module` ao perfil do PowerShell 7 (o do usuário, para todas as janelas),
 importa o módulo já na janela em que rodou e, com `-PastaPrivada`, grava a variável de ambiente
 `TICKERLAB_PASTA_PRIVADA` (a pasta que tem `projeto-acoes/fila.md`). O repositório é público, por isso nenhum caminho
-do PC entra nele: a pasta privada chega só por essa variável. As janelas do PowerShell que já estavam abertas (o painel
-Terminal do app do Claude Code também) carregaram o perfil antes da linha e respondem "tl não é reconhecido": abra uma
-janela nova ou rode nelas `. $PROFILE.CurrentUserAllHosts`. Só no PowerShell 7 (`pwsh`): no Windows PowerShell 5.1
-(`powershell.exe`) o `tl` não existe. Para experimentar sem instalar: `Import-Module .\scripts\terminal\TickerLab.psd1`.
+do PC entra nele: a pasta privada chega só por essa variável. No Windows, ele também deixa o `tl` no Windows PowerShell
+5.1 (`powershell.exe`, o azul que o Windows abre por padrão e que no menu Iniciar se chama "Windows PowerShell"; o 7 é
+só "PowerShell"): o perfil do 5.1 passa a carregar `scripts/terminal/ponte-windows-powershell.ps1`, um `tl` que roda
+cada comando num `pwsh` sem perfil, com os mesmos argumentos, porque o módulo exige o PowerShell 7. As janelas que já
+estavam abertas (dos dois PowerShells e o painel Terminal do app do Claude Code também) carregaram o perfil antes da
+linha e respondem "tl não é reconhecido": abra uma janela nova ou rode nelas `. $PROFILE.CurrentUserAllHosts`. Para
+experimentar sem instalar: `Import-Module .\scripts\terminal\TickerLab.psd1`.
 
 ## Comandos
 
@@ -86,7 +89,9 @@ pwsh -NoProfile -File scripts/terminal/testes/rodar.ps1                 # os tes
 
 As regras (nomes, leitores da fila, das sessões, das cópias e dos PRs, argumentos do `claude` e do `wt`, o prompt
 de abertura, as candidatas à limpeza) são funções puras com teste em `scripts/terminal/testes/rodar.ps1`, com
-exemplos em `testes/exemplos/`. As funções que chamam programas (`git`, `gh`, `claude`, `wt`) só buscam texto.
+exemplos em `testes/exemplos/`. As funções que chamam programas (`git`, `gh`, `claude`, `wt`) só buscam texto. O
+instalador e a ponte do Windows PowerShell são testados num `pwsh` filho, com perfis temporários (e, num PC com
+Windows, também a partir do `powershell.exe` de verdade).
 
 ## Decisões
 
@@ -95,3 +100,6 @@ exemplos em `testes/exemplos/`. As funções que chamam programas (`git`, `gh`, 
 - **Módulo em `scripts/terminal/`**, não num repositório à parte: mesma regra, mesmo CI, mesma revisão.
 - **O nome da conversa é o elo.** O `claude agents --json` dá o nome de cada conversa, mas não a cópia (todas as do
   app apontam para a pasta principal). Por isso `tl limpar` compara o nome da conversa com o nome da cópia.
+- **Ponte para o Windows PowerShell 5.1, não uma segunda versão.** O módulo é do PowerShell 7; o 5.1, que o Windows
+  ainda abre por padrão, ganha só uma função `tl` que repassa cada comando ao `pwsh` (`ponte-windows-powershell.ps1` e
+  `ponte-pwsh.ps1`). Um código só, e o painel funciona em qualquer janela.
