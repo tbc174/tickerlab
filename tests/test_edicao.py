@@ -18,7 +18,7 @@ def test_sem_momento_diz_que_ainda_nao_foi_coletado():
 
 
 def test_momento_sem_fuso_e_lido_como_utc():
-    momento = datetime(2026, 11, 5, 15, 30)
+    momento = datetime(2026, 11, 5, 15, 30)  # noqa: DTZ001 (sem fuso é o caso testado)
     assert quando_foi_coletado(momento) == "coletado em 05/11/2026 às 12:30"
 
 
