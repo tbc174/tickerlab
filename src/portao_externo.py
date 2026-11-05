@@ -231,10 +231,11 @@ def _campos(
 
 
 # Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
-# (D10, `base/prontidao.py`). Do CNPJ da Receita só sai a situação cadastral, e só em `companies`: a tabela
-# tem uma linha por CNPJ, MEI e empresário individual inclusive, e a linha de direito vale para o campo
-# inteiro; quem tira por linha quem é pessoa (ADR 0106) é a rota (`src/api_externa/conjuntos/empresas.py`).
-# Nome, natureza jurídica e Simples esperam o histórico datado: a base só os guarda como são hoje.
+# (D10, `base/prontidao.py`). Do CNPJ da Receita só sai `companies`: a situação cadastral e, do histórico
+# datado (linha 686, "pode 8" do Tiago em 05/11/2026), a razão social, a natureza jurídica e o Simples como
+# eram na data. As tabelas têm MEI e empresário individual, e a linha de direito vale para o campo inteiro;
+# quem tira por linha quem é pessoa (ADR 0106) é a rota (`src/api_externa/conjuntos/empresas.py`). Os
+# campos do MEI não têm linha: "mei" nunca sai, e a rota não serve quem é MEI.
 DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
@@ -247,6 +248,20 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "matriz",
             "mes_do_retrato",
         ),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "companies",
+        ("cnpj_empresas_historico",),
+        ("razao_social", "natureza_juridica"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "companies",
+        ("cnpj_simples_historico",),
+        ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
         _PROVA_RECEITA,
     ),
     *_campos(

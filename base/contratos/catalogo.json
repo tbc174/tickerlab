@@ -6652,6 +6652,150 @@
       "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
       "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
     },
+    "cnpj_simples_historico": {
+      "tabela": "cnpj_simples_historico",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "mes_do_retrato": {
+          "descricao": "Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá",
+          "unidade": "AAAA-MM"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "optante_simples": {
+          "descricao": "Verdadeiro se a empresa é optante do Simples Nacional",
+          "unidade": "verdadeiro ou falso"
+        },
+        "data_opcao_simples": {
+          "descricao": "Data da opção pelo Simples; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "data_exclusao_simples": {
+          "descricao": "Data da exclusão do Simples; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "optante_mei": {
+          "descricao": "Verdadeiro se a empresa é MEI",
+          "unidade": "verdadeiro ou falso"
+        },
+        "data_opcao_mei": {
+          "descricao": "Data do enquadramento como MEI; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "data_exclusao_mei": {
+          "descricao": "Data do desenquadramento do MEI; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_basico",
+        "mes_do_retrato"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "data_opcao_simples": "aconteceu_em",
+        "data_exclusao_simples": "ate",
+        "data_opcao_mei": "aconteceu_em",
+        "data_exclusao_mei": "ate",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam",
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram"
+    },
+    "cnpj_empresas_historico": {
+      "tabela": "cnpj_empresas_historico",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "mes_do_retrato": {
+          "descricao": "Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá",
+          "unidade": "AAAA-MM"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "natureza_juridica": {
+          "descricao": "Código da natureza jurídica (tabela da Receita, 4 dígitos: 2062 limitada, 2054 S.A. fechada, 2046 S.A. aberta, 2135 empresário individual)",
+          "unidade": "texto"
+        },
+        "razao_social": {
+          "descricao": "Razão social como a Receita publica; vazia para empresário individual, MEI e grupo 4 (é o nome da pessoa)",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_basico",
+        "mes_do_retrato"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam",
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram"
+    },
     "pgfn_divida": {
       "tabela": "pgfn_divida",
       "modulo": "governo_e_sancoes",
@@ -6766,7 +6910,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
       "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
@@ -7222,7 +7366,7 @@
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": false,
       "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
       "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
@@ -7309,7 +7453,7 @@
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": false,
       "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
       "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
@@ -7407,7 +7551,7 @@
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
       "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": false,
       "frequencia": "Semanal (a semana fechada de cada companhia; o histórico desde 2025 aos poucos)",
       "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN (`disponivel_em`); a consulta da semana roda depois do domingo, e o histórico desde 2025 entra aos poucos"
@@ -8564,7 +8708,7 @@
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
       "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Mensal (a fonte recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
       "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
@@ -9166,7 +9310,7 @@
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
       "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Mensal (a fonte reescreve o arquivo inteiro)",
       "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu"
@@ -9638,7 +9782,7 @@
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "mes",
       "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Mensal (a CMED republica as listas inteiras)",
       "atraso": "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`"
@@ -10422,8 +10566,8 @@
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "mes",
-      "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "revenda": "vendável com atribuição à fonte",
       "pessoa": true,
       "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
       "atraso": "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
@@ -10482,8 +10626,8 @@
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
-      "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "revenda": "vendável com atribuição à fonte",
       "pessoa": false,
       "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
       "atraso": "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
@@ -10605,8 +10749,8 @@
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
-      "licenca": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "TCE-PE: licença não localizada; risco assumido (ADR 0122)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Anual (um pedido por ano; refazer o ano corrente a cada trimestre)",
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
@@ -10722,8 +10866,8 @@
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
-      "licenca": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "TCE-PE: licença não localizada; risco assumido (ADR 0122)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Anual (um pedido por ano; refazer o ano corrente a cada trimestre)",
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
@@ -10865,8 +11009,8 @@
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
-      "licenca": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "TCE-PE: licença não localizada; risco assumido (ADR 0122)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Anual, fatiado por ano e modalidade (um pedido por fatia, com pausa); refazer o ano corrente a cada trimestre",
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
@@ -10960,8 +11104,8 @@
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
-      "licenca": "TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "TCE-SP: licença não localizada; risco assumido (ADR 0122)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Mensal por município (645 x 12 pedidos por ano, com pausa)",
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
@@ -11078,8 +11222,8 @@
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
-      "licenca": "TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "TCE-CE: licença não localizada; risco assumido (ADR 0122)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Sem rotina: carga manual de arquivos baixados",
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
@@ -11203,7 +11347,7 @@
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
       "licenca": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
       "frequencia": "Mensal (índice do CKAN e um ZIP por órgão, com retomada)",
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
@@ -14673,7 +14817,7 @@
       "historico_desde": "2026-02-05",
       "granularidade_do_publico_em": "dia",
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento (ADR 0102)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": false,
       "frequencia": "Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista",
       "atraso": "O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento"
@@ -14969,7 +15113,7 @@
       "historico_desde": "1985-12-31",
       "granularidade_do_publico_em": "dia",
       "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": false,
       "frequencia": "Anual",
       "atraso": "Anual; a regra de \"como era na data\" usa 31/10 do ano seguinte, quando a PAM já saiu (setembro ou outubro); a coleção do MapBiomas sai uma vez por ano com todos os anos refeitos"
