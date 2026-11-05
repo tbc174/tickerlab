@@ -268,6 +268,17 @@ SERIES_DAS_AGENCIAS = (
         "mil m³",
         (("unidade", "mil m³"),),
     ),
+    SerieDaAgencia(
+        "antt_toneladas",
+        "antt-siade",
+        "antt_siade",
+        "ferrovia",
+        "toneladas_uteis",
+        SOMA_DO_ANO,
+        "Carga transportada pelas ferrovias (ANTT)",
+        "toneladas úteis",
+        como_era=True,
+    ),
 )
 
 
@@ -415,6 +426,8 @@ SETORES_DO_LANCAMENTO = (
         mercado_regional=True,
     ),
     SetorDoLancamento("aviacao", "Aviação", "ANAC", ("anac_passageiros",)),
+    SetorDoLancamento("combustiveis", "Combustíveis", "ANP", ("anp_vendas",)),
+    SetorDoLancamento("ferrovias", "Ferrovias", "ANTT", ("antt_toneladas",)),
 )
 
 

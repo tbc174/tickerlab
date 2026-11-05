@@ -153,13 +153,15 @@ _COMUNS = (
 )  # fmt: skip
 _DO_BANCO_DO_APP = tuple(k for k in _COMUNS if k.tabela == DO_BANCO_DO_APP)
 _DA_GERACAO_DE_CAIXA = next(k for k in _COMUNS if k.tabela == DA_FICHA)
-_B, _S, _E, _H, _T, _A = (
+_B, _S, _E, _H, _T, _A, _C, _F = (
     ("bancos",),
     ("seguros",),
     ("eletricas",),
     ("saude_suplementar",),
     ("telecom",),
     ("aviacao",),
+    ("combustiveis",),
+    ("ferrovias",),
 )
 _DRE_DO_BANCO = "conta da DRE do banco: nem toda linha vem igual em todos"
 _DOS_BANCOS = (
@@ -245,6 +247,20 @@ _DA_AVIACAO = (
     _falta("pontualidade", "Pontualidade", _A, DE_PEDIDO),
     _falta("querosene", "Querosene", _A, DE_PEDIDO),
 )  # fmt: skip
+_DOS_COMBUSTIVEIS = (
+    _tem("vendas_das_distribuidoras", "Vendas das distribuidoras de combustíveis líquidos", _C, "anp_vendas", "anp_vendas"),
+    _tem("vendas_por_produto_e_regiao", "Vendas por produto e região", _C, "anp_vendas"),
+    _tem("contratos_de_e_p", "Contratos de exploração e produção", _C, "anp_concessionarios"),
+    _falta("margem_de_distribuicao", "Margem de distribuição por litro", _C, DO_RELEASE),
+    _falta("precos_nas_bombas", "Preços nas bombas", _C, DE_PEDIDO),
+)  # fmt: skip
+_DAS_FERROVIAS = (
+    _tem("carga_transportada", "Carga transportada (toneladas úteis)", _F, "antt_siade", "antt_toneladas"),
+    _tem("tku", "Tonelada-quilômetro útil (TKU)", _F, "antt_siade"),
+    _tem("carga_por_mercadoria", "Carga por mercadoria e corredor", _F, "antt_siade"),
+    _falta("receita_por_tku", "Receita por TKU", _F, DO_RELEASE),
+    _falta("custo_por_tku", "Custo por TKU", _F, DO_RELEASE),
+)  # fmt: skip
 KPIS_DO_SETOR: tuple[KpiDoSetor, ...] = (
     *_COMUNS,
     *_DOS_BANCOS,
@@ -253,6 +269,8 @@ KPIS_DO_SETOR: tuple[KpiDoSetor, ...] = (
     *_DA_SAUDE,
     *_DAS_TELES,
     *_DA_AVIACAO,
+    *_DOS_COMBUSTIVEIS,
+    *_DAS_FERROVIAS,
 )
 
 
