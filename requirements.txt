@@ -79,7 +79,7 @@ starlette==1.7.0
 streamlit==1.66.1
 tenacity==9.2.1
 toml==0.10.2
-tornado==6.5.10
+tornado==6.6
 traitlets==5.16.1
 truststore==0.10.5
 typing_extensions==4.16.0
@@ -116,7 +116,7 @@ contourpy==1.4.0
 cycler==0.12.1
 kiwisolver==1.5.1
 pyparsing==3.3.3
-pypdf==6.21.2
+pypdf==6.21.4
 # prévia do Report Studio: páginas do PDF viram imagens (PDFium; BSD-3 e Apache-2.0)
 pypdfium2==5.14.0
 # rapidocr + onnxruntime: OCR de reserva do leitor de fatos relevantes, só quando o PDF volta
