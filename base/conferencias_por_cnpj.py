@@ -28,11 +28,21 @@ mostra estas seções para empresário individual e MEI, para não dizer nada da
 
 **Grupo.** As ligações por sócia pessoa jurídica do QSA vigente da vista do CNPJ (`base/rede/grupo_do_qsa.py`),
 para o portal andar o grupo do mesmo jeito; sem pessoa física, sem pseudônimo e sem nome.
+
+**Processos judiciais** (plano dos processos de 03/11/2026, PR 4; ADR 0121). Só o DJEN do CNJ (`base/processos.py`),
+nunca o DataJud (só uso interno). Duas fontes: `processos` (cada processo em que a companhia é parte, com
+tribunal, órgão, classe, ramo, o polo e o dia da primeira comunicação que a liga a ele, o dia da comunicação mais
+nova e a certidão oficial dela no DJEN) e `processos_por_ano` (as contagens de `processos.contagens`: por ano da
+ligação, polo e ramo). Sem o nome das partes, sem advogados e sem o link do tribunal. `conferido_ate` é o dia da
+comunicação mais nova vista: a ficha diz "não encontrado até" esse dia, nunca que a empresa não tem processos (ADR
+0103). Limites: só companhias abertas (o cadastro da CVM), ligadas pelo nome; só o que saiu no DJEN desde 2025;
+sem segredo de justiça, sem STF e sem a Justiça do Trabalho.
 """
 
 import json
+import re
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -40,6 +50,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+from base import processos, tpu
 from base.dicionario import TABELAS
 from base.parquet import gravar_atomico
 from base.porta import Porta, vista_do_cnpj
@@ -56,8 +67,12 @@ TEMAS = {
     "incentivos": "Incentivos e benefícios",
     "financiamentos": "Financiamentos do BNDES e da Finep",
     "precos": "Preços máximos de medicamentos (CMED)",
+    "processos": "Processos judiciais publicados no DJEN",
 }
 RAIZ_DA_FONTE = "raiz"  # a fonte só traz a raiz do CNPJ (o RDE-IED)
+# a certidão de cada comunicação (o PDF oficial do DJEN): `<endereço>/<hash>/certidao`
+CERTIDAO_DO_DJEN = "https://comunicaapi.pje.jus.br/api/v1/comunicacao"
+_HASH_DO_DJEN = re.compile(r"[A-Za-z0-9]+")
 
 _SANCOES = (
     "cadastro", "cnpj", "categoria", "situacao", "orgao", "uf_do_orgao", "esfera_do_orgao",
@@ -102,11 +117,142 @@ class Fonte:
     lista: str = ""
     # a coluna que decide entre linhas de `ordem` igual (a ordem fica estável)
     desempate: str = ""
+    # as outras tabelas que a fonte lê: sem alguma delas, a fonte fica "não conferida"
+    outras: tuple[str, ...] = ()
+    # o nome em `registros` quando não é o da tabela (duas fontes da mesma tabela)
+    arquivo: str = ""
+    # a montagem própria das linhas (raiz, colunas, em ordem) e do dia conferido; sem ela, as vigentes
+    linhas: "Callable[[duckdb.DuckDBPyConnection, Fonte, date], tuple[pd.DataFrame, str | None]] | None" = None
 
     @property
     def nome_no_arquivo(self) -> str:
         """Como a fonte aparece em `registros` e no estado: a tabela, e a lista quando há."""
+        if self.arquivo:
+            return self.arquivo
         return f"{self.tabela}_{self.lista}" if self.lista else self.tabela
+
+    @property
+    def lidas(self) -> tuple[str, ...]:
+        """Todas as tabelas da base que a fonte lê."""
+        return (self.tabela, *self.outras)
+
+
+_PROCESSOS = (
+    "cnpj", "numero_processo", "tribunal", "orgao", "classe", "ramo", "polo", "ligado_em",
+    "ultima_comunicacao", "certidao",
+)  # fmt: skip
+_POR_ANO = (
+    "ano",
+    "processos",
+    "como_autora",
+    "como_re",
+    *sorted(set(tpu.RAMOS.values())),
+    "sem_ramo",
+)
+
+
+def certidao_do_djen(id_na_fonte: object) -> str | None:
+    """A certidão da comunicação no DJEN (o PDF oficial) pelo hash dela; None sem hash: a comunicação
+    guardada só com o id numérico não tem certidão por esse endereço, e o texto vem de fora (não vira
+    caminho nem parâmetro)."""
+    texto = str(id_na_fonte or "")
+    if not _HASH_DO_DJEN.fullmatch(texto) or texto.isdigit():
+        return None
+    return f"{CERTIDAO_DO_DJEN}/{texto}/certidao"
+
+
+def _raiz(cnpj: pd.Series) -> pd.Series:
+    return (
+        cnpj.astype(str).str.upper().str.replace(r"[^0-9A-Z]", "", regex=True).str[:8]
+    )
+
+
+def _partes_das_companhias(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    """As partes que são companhia (com CNPJ), na ordem em que ficaram públicas: a primeira ligação
+    de cada processo sai de `processos.ligacoes`, a mesma regra das contagens."""
+    return con.execute(
+        "SELECT numero_processo, polo, tipo_parte, cnpj, CAST(disponivel_em AS DATE) AS disponivel_em "
+        f"FROM {_view(processos.TABELA_DAS_PARTES)} "
+        f"WHERE tipo_parte = '{processos.COMPANHIA}' AND cnpj IS NOT NULL "
+        "ORDER BY disponivel_em, id_na_fonte"
+    ).df()
+
+
+def _processos_publicos(con: duckdb.DuckDBPyConnection, dia: str) -> pd.DataFrame:
+    """Um processo por linha, já ligado a uma companhia no dia; a classe pela TPU, ou como o DJEN escreve."""
+    return con.execute(
+        "SELECT numero_processo, tribunal, orgao, coalesce(classe_tpu, classe) AS classe, ramo "
+        f"FROM {_view(processos.TABELA_DOS_PROCESSOS)} WHERE CAST(disponivel_em AS DATE) <= {dia}"
+    ).df()
+
+
+def _ultimas_comunicacoes(con: duckdb.DuckDBPyConnection, dia: str) -> pd.DataFrame:
+    """A comunicação mais nova de cada processo já pública no dia; a cancelada só se não há outra."""
+    return con.execute(
+        f"""
+        SELECT numero_processo, id_na_fonte, CAST(disponivel_em AS DATE) AS ultima_comunicacao FROM (
+            SELECT *, row_number() OVER (
+                PARTITION BY numero_processo
+                ORDER BY coalesce(CAST(cancelada_em AS DATE) <= {dia}, false),
+                         disponivel_em DESC, visto_em DESC, id_na_fonte DESC
+            ) AS n
+            FROM {_view(processos.TABELA_DAS_COMUNICACOES)} WHERE CAST(disponivel_em AS DATE) <= {dia}
+        ) WHERE n = 1
+        """
+    ).df()
+
+
+def _conferido_no_djen(con: duckdb.DuckDBPyConnection, dia: str) -> str | None:
+    """O dia da comunicação mais nova vista (a data da busca que a ficha mostra)."""
+    linha = con.execute(
+        f"SELECT max(CAST(visto_em AS DATE)) FROM {_view(processos.TABELA_DAS_COMUNICACOES)} "
+        f"WHERE CAST(disponivel_em AS DATE) <= {dia}"
+    ).fetchone()
+    return linha[0].isoformat() if linha and linha[0] else None
+
+
+def _linhas_dos_processos(
+    con: duckdb.DuckDBPyConnection, fonte: "Fonte", hoje: date
+) -> tuple[pd.DataFrame, str | None]:
+    """Cada processo de cada raiz, com a comunicação mais nova primeiro."""
+    dia = f"DATE '{hoje.isoformat()}'"
+    ligadas = processos.ligacoes(_partes_das_companhias(con), hoje)
+    ligadas = ligadas.assign(raiz=_raiz(ligadas["cnpj"])).drop_duplicates(
+        ["raiz", "numero_processo"]
+    )
+    tabela = (
+        ligadas.rename(columns={"disponivel_em": "ligado_em"})
+        .merge(_processos_publicos(con, dia), on="numero_processo", how="left")
+        .merge(_ultimas_comunicacoes(con, dia), on="numero_processo", how="left")
+    )
+    tabela = tabela.assign(certidao=tabela["id_na_fonte"].map(certidao_do_djen))
+    tabela = tabela.sort_values(
+        ["raiz", "ultima_comunicacao", "numero_processo"],
+        ascending=[True, False, False],
+        na_position="last",
+        kind="stable",
+    )
+    return tabela[["raiz", *fonte.colunas]], _conferido_no_djen(con, dia)
+
+
+def _linhas_por_ano(
+    con: duckdb.DuckDBPyConnection, fonte: "Fonte", hoje: date
+) -> tuple[pd.DataFrame, str | None]:
+    """As contagens de `processos.contagens` por raiz e ano (o mais novo primeiro), sem as citações
+    nas notas da DFP (outra fonte, que a ficha ainda não mostra)."""
+    dia = f"DATE '{hoje.isoformat()}'"
+    sem_citacoes = pd.DataFrame(columns=["cnpj", "numero_processo", "disponivel_em"])
+    contagem = processos.contagens(
+        _partes_das_companhias(con), _processos_publicos(con, dia), sem_citacoes, hoje
+    )
+    contados = [c for c in fonte.colunas if c != "ano"]
+    tabela = (
+        contagem.assign(raiz=_raiz(contagem["cnpj"]))
+        .groupby(["raiz", "ano"], as_index=False)[contados]
+        .sum()
+        .sort_values(["raiz", "ano"], ascending=[True, False], kind="stable")
+    )
+    return tabela[["raiz", *fonte.colunas]], _conferido_no_djen(con, dia)
 
 
 FONTES = (
@@ -154,6 +300,14 @@ FONTES = (
     Fonte("cmed_precos", "precos", "Preço Fábrica e Preço Máximo de Venda ao Governo (PF e PMVG)",
           "CMED (Anvisa)", "https://dados.anvisa.gov.br/dados/", _cmed("pmvg"), "pf_0",
           lista="governo", desempate="id_na_fonte"),
+    Fonte("processos", "processos", "Processos em que a companhia é parte, a comunicação mais nova primeiro",
+          "CNJ (DJEN)", "https://comunica.pje.jus.br/", _PROCESSOS, "ultima_comunicacao",
+          outras=(processos.TABELA_DAS_PARTES, processos.TABELA_DAS_COMUNICACOES),
+          linhas=_linhas_dos_processos),
+    Fonte("processos", "processos", "Processos por ano da ligação, polo e ramo", "CNJ (DJEN)",
+          "https://comunica.pje.jus.br/", _POR_ANO, "ano",
+          outras=(processos.TABELA_DAS_PARTES, processos.TABELA_DAS_COMUNICACOES),
+          arquivo="processos_por_ano", linhas=_linhas_por_ano),
 )  # fmt: skip
 
 _CNPJ_LIMPO = "regexp_replace(upper(CAST(cnpj AS VARCHAR)), '[^0-9A-Z]', '', 'g')"
@@ -314,9 +468,10 @@ def montar(
             with Porta(base) as porta:
                 existem = views(porta.con)
                 for fonte in FONTES:
-                    if nome_da_view(fonte.tabela) not in existem:
+                    if any(nome_da_view(t) not in existem for t in fonte.lidas):
                         continue
-                    tabela, conferido = _linhas_da_fonte(porta.con, fonte, hoje)
+                    montagem = fonte.linhas or _linhas_da_fonte
+                    tabela, conferido = montagem(porta.con, fonte, hoje)
                     if fonte.lista and conferido is None:
                         continue  # a lista ainda não montada fica "não conferida", nunca zero
                     linhas = list(_por_raiz(tabela))

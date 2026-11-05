@@ -506,3 +506,227 @@ def test_cmed_limite_de_linhas_pelo_preco_numerico_e_conta_todas(tmp_path):
     assert len(linhas) == conferencias.LINHAS_POR_FONTE
     valores = [Decimal(linha["pf_0"]) for linha in linhas]
     assert valores[0] == Decimal("59.50") and valores == sorted(valores, reverse=True)
+
+
+# --- processos judiciais do DJEN (plano dos processos de 03/11/2026, PR 4) ------------------------
+
+PROCESSO_A = "0000011-00.2019.8.26.0100"
+PROCESSO_B = "0000012-00.2019.8.26.0100"
+PROCESSO_FUTURO = "0000013-00.2019.8.26.0100"
+HASH_VELHA, HASH_NOVA, HASH_CANCELADA = "AbC123xyz0", "DeF456uvw1", "GhI789rst2"
+
+
+def _parte(numero: str, id_na_fonte: str, dia: str, **campos) -> dict:
+    return {
+        "id_na_fonte": id_na_fonte,
+        "numero_processo": numero,
+        "polo": campos.get("polo", "passivo"),
+        "tipo_parte": campos.get("tipo", "companhia"),
+        "parte": campos.get("parte", "EMPRESA DE TESTE S.A."),
+        "cnpj": campos.get("cnpj", _cnpj(RAIZ)),
+        "empresa": "EMPRESA DE TESTE S.A.",
+        "orgao_publico": None,
+        "disponivel_em": pd.Timestamp(dia),
+        "visto_em": pd.Timestamp(campos.get("visto", dia)),
+    }
+
+
+def _comunicacao_djen(numero: str, id_na_fonte: str, dia: str, **campos) -> dict:
+    cancelada = campos.get("cancelada")
+    return {
+        "id_na_fonte": id_na_fonte,
+        "numero_processo": numero,
+        "tribunal": "TJSP",
+        "link": "https://pje.tribunal.exemplo/validacao/123",
+        "advogados": 3,
+        "cancelada_em": pd.Timestamp(cancelada) if cancelada else pd.NaT,
+        "disponivel_em": pd.Timestamp(dia),
+        "visto_em": pd.Timestamp(campos.get("visto", dia)),
+    }
+
+
+def _processo(numero: str, dia: str, **campos) -> dict:
+    return {
+        "numero_processo": numero,
+        "ano_do_processo": 2019,
+        "justica": "Justiça Estadual",
+        "tribunal": "TJSP",
+        "orgao": "1ª Vara Cível",
+        "classe_codigo": "1116",
+        "classe": "EXECUÇÃO FISCAL",
+        "classe_tpu": campos.get("classe_tpu", "Execução Fiscal"),
+        "ramo": campos.get("ramo", "execucao_fiscal"),
+        "disponivel_em": pd.Timestamp(dia),
+        "visto_em": pd.Timestamp(dia),
+    }
+
+
+@pytest.fixture
+def base_com_processos(base):
+    _gravar(
+        base,
+        "processos_partes",
+        [
+            _parte(PROCESSO_A, HASH_VELHA, "2025-03-01"),
+            _parte(PROCESSO_A, HASH_NOVA, "2026-10-01", polo="ativo"),  # a mesma ligação
+            _parte(PROCESSO_A, HASH_VELHA, "2025-03-01", tipo="pessoa_ou_desconhecida",
+                   parte="FULANO DE TAL", cnpj=None, polo="ativo"),
+            _parte(PROCESSO_B, "id-b", "2026-06-01", polo="ativo"),
+            _parte(PROCESSO_FUTURO, "id-f", "2026-11-01"),  # depois do dia da montagem
+        ],
+    )  # fmt: skip
+    _gravar(
+        base,
+        "processos_comunicacoes",
+        [
+            _comunicacao_djen(PROCESSO_A, HASH_VELHA, "2025-03-01"),
+            _comunicacao_djen(PROCESSO_A, HASH_NOVA, "2026-10-01"),
+            _comunicacao_djen(PROCESSO_B, "771885778", "2026-06-01"),  # sem hash, só o id
+            _comunicacao_djen(PROCESSO_B, HASH_CANCELADA, "2026-07-01", cancelada="2026-07-05"),
+            _comunicacao_djen(PROCESSO_FUTURO, "id-f", "2026-11-01"),
+        ],
+    )  # fmt: skip
+    _gravar(
+        base,
+        "processos",
+        [
+            _processo(PROCESSO_A, "2025-03-01"),
+            _processo(PROCESSO_B, "2026-06-01", classe_tpu=None, ramo=None),
+            _processo(PROCESSO_FUTURO, "2026-11-01"),
+        ],
+    )
+    return base
+
+
+def test_processos_com_tribunal_classe_polo_datas_e_a_certidao_do_djen(
+    base_com_processos, tmp_path
+):
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base_com_processos, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    total, linhas = _registros(banco, RAIZ, "processos")
+    assert total == 2  # o processo que só ficou público depois do dia não entra
+    a, b = linhas  # a comunicação mais nova primeiro
+    assert a == {
+        "cnpj": _cnpj(RAIZ),
+        "numero_processo": PROCESSO_A,
+        "tribunal": "TJSP",
+        "orgao": "1ª Vara Cível",
+        "classe": "Execução Fiscal",
+        "ramo": "execucao_fiscal",
+        "polo": "passivo",  # o da primeira comunicação que liga o processo à companhia
+        "ligado_em": "2025-03-01",
+        "ultima_comunicacao": "2026-10-01",
+        "certidao": f"{conferencias.CERTIDAO_DO_DJEN}/{HASH_NOVA}/certidao",
+    }
+    assert b["numero_processo"] == PROCESSO_B and b["polo"] == "ativo"
+    assert b["classe"] == "EXECUÇÃO FISCAL"  # sem a TPU, a classe como o DJEN escreve
+    assert b["ramo"] is None
+
+
+def test_certidao_e_so_a_da_comunicacao_valida_e_com_hash(base_com_processos, tmp_path):
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base_com_processos, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    _, linhas = _registros(banco, RAIZ, "processos")
+    b = linhas[1]
+    # a de julho foi cancelada; a de junho só tem o id numérico, sem endereço de certidão
+    assert b["ultima_comunicacao"] == "2026-06-01"
+    assert b["certidao"] is None
+
+
+def test_certidao_so_com_hash_de_letras_e_numeros():
+    assert conferencias.certidao_do_djen(HASH_NOVA).endswith(f"/{HASH_NOVA}/certidao")
+    for estranho in ("771885778", "", None, "abc/../x", "abc?x=1", "a b"):
+        assert conferencias.certidao_do_djen(estranho) is None
+
+
+def test_processos_por_ano_contam_polo_e_ramo(base_com_processos, tmp_path):
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base_com_processos, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    total, linhas = _registros(banco, RAIZ, "processos_por_ano")
+    assert total == 2
+    assert [linha["ano"] for linha in linhas] == [
+        2026,
+        2025,
+    ]  # o ano mais novo primeiro
+    ano_2026, ano_2025 = linhas
+    assert (ano_2026["processos"], ano_2026["como_autora"], ano_2026["como_re"]) == (
+        1,
+        1,
+        0,
+    )
+    assert ano_2026["sem_ramo"] == 1
+    assert (
+        ano_2025["processos"],
+        ano_2025["como_re"],
+        ano_2025["execucao_fiscal"],
+    ) == (1, 1, 1)
+
+
+def test_processos_sem_nome_de_pessoa_nem_advogado_nem_link_do_tribunal(
+    base_com_processos, tmp_path
+):
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base_com_processos, destino, agora=AGORA)
+    conteudo = "\n".join(
+        str(linha)
+        for linha in sqlite3.connect(destino).execute("SELECT * FROM registros")
+    )
+    assert "FULANO" not in conteudo and "EMPRESA DE TESTE" not in conteudo
+    assert "advogados" not in conteudo and "pje.tribunal.exemplo" not in conteudo
+
+
+def test_processos_tem_tema_proprio_licenca_do_djen_e_a_data_da_busca(
+    base_com_processos, tmp_path
+):
+    estado = conferencias.montar(base_com_processos, tmp_path / "c.sqlite", agora=AGORA)
+    assert estado["temas"]["processos"].startswith("Processos judiciais")
+    fontes = {f["tabela"]: f for f in estado["fontes"] if f["tema"] == "processos"}
+    assert set(fontes) == {"processos", "processos_por_ano"}
+    for fonte in fontes.values():
+        assert fonte["orgao"] == "CNJ (DJEN)"
+        assert fonte["licenca"].startswith("DJEN do CNJ")
+        # "não encontrado" só com a data da busca: a comunicação mais nova vista até o dia
+        assert fonte["conferido_ate"] == "2026-10-01"
+    assert (
+        fontes["processos"]["empresas"] == 1 and fontes["processos"]["registros"] == 2
+    )
+    assert estado["esquema"] == "1"
+
+
+def test_processos_sem_as_tabelas_ficam_nao_conferidos(base, tmp_path):
+    estado = conferencias.montar(base, tmp_path / "a.sqlite", agora=AGORA)
+    assert not [f for f in estado["fontes"] if f["tema"] == "processos"]
+    _gravar(base, "processos_partes", [_parte(PROCESSO_A, HASH_VELHA, "2025-03-01")])
+    estado = conferencias.montar(base, tmp_path / "b.sqlite", agora=AGORA)
+    assert not [
+        f for f in estado["fontes"] if f["tema"] == "processos"
+    ]  # faltam as outras
+
+
+def test_processos_limite_de_linhas_mostra_os_mais_novos_e_conta_todos(tmp_path):
+    base = tmp_path / "base"
+    numeros = [
+        f"{i:07d}-00.2019.8.26.0100" for i in range(conferencias.LINHAS_POR_FONTE + 5)
+    ]
+    dias = [
+        (pd.Timestamp("2025-01-01") + pd.Timedelta(days=i)).date().isoformat()
+        for i in range(len(numeros))
+    ]
+    pares = list(enumerate(zip(numeros, dias, strict=True)))
+    _gravar(base, "processos_partes", [_parte(n, f"h{i}", d) for i, (n, d) in pares])
+    _gravar(
+        base,
+        "processos_comunicacoes",
+        [_comunicacao_djen(n, f"h{i}", d) for i, (n, d) in pares],
+    )
+    _gravar(base, "processos", [_processo(n, d) for _, (n, d) in pares])
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    total, linhas = _registros(banco, RAIZ, "processos")
+    assert total == conferencias.LINHAS_POR_FONTE + 5
+    assert len(linhas) == conferencias.LINHAS_POR_FONTE
+    assert linhas[0]["numero_processo"] == numeros[-1]
