@@ -106,9 +106,13 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
         assert linha.campo in colunas, linha
 
 
-def test_do_cnpj_so_a_situacao_cadastral_tem_direito_e_so_na_rota_que_tira_quem_e_pessoa():
+def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
     # ADR 0106: MEI e empresário individual estão nas tabelas do CNPJ; o corte é por linha, na rota de
-    # `companies` (`conjuntos/empresas.py`). Nome, natureza jurídica e Simples esperam o histórico datado.
+    # `companies` (`conjuntos/empresas.py`): a situação cadastral e o histórico datado (linha 686).
+    servidos = {
+        empresas.TABELA: empresas.CAMPOS,
+        **{historico.tabela: historico.campos for historico in empresas.HISTORICOS},
+    }
     do_cnpj = [
         linha
         for linha in DIREITOS_DA_API_EXTERNA
@@ -118,11 +122,20 @@ def test_do_cnpj_so_a_situacao_cadastral_tem_direito_e_so_na_rota_que_tira_quem_
     assert do_cnpj
     for linha in do_cnpj:
         assert linha.conjunto == empresas.CONJUNTO, linha
-        assert linha.tabelas == (empresas.TABELA,), linha
-        assert linha.campo in empresas.CAMPOS, linha
+        (tabela,) = linha.tabelas
+        assert linha.campo in servidos[tabela], linha
+    assert {linha.tabelas[0] for linha in do_cnpj} == set(empresas.TABELAS)
     for linha in DIREITOS_DA_API_EXTERNA:
         if linha.conjunto == empresas.CONJUNTO:
             assert linha in do_cnpj, linha
+
+
+def test_o_historico_do_cnpj_so_tem_direito_com_a_data_de_cada_versao():
+    # sem olhar o futuro: só sai na API o histórico com `publico_em` por versão, nunca o vigente
+    for historico in empresas.HISTORICOS:
+        tabela = TABELAS[historico.tabela]
+        assert tabela.datas.get("publico_em") == "disponivel_em", historico
+        assert "mes_do_retrato" in tabela.chaves, historico
 
 
 def test_nenhum_campo_de_pessoa_tem_direito():
