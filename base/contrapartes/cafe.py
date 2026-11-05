@@ -81,6 +81,19 @@ VEDADAS = (
     "seguro",
     "confiável",
 )
+# a lista única da ADR 0103 (item 7): a do café mais a da 0085. Os textos de outras fichas (dossiê) a
+# usam nos testes; o código do café continua olhando só `VEDADAS`.
+VEDADAS_DA_ADR_0103 = (
+    *VEDADAS,
+    "fraudador",
+    "corrupção",
+    "cartel",
+    "conluio",
+    "laranja",
+    "superfaturamento",
+    "direcionamento",
+    "suspeito",
+)
 ENDERECO_DO_CNPJ = (
     "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/"
 )

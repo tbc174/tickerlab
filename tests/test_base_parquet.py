@@ -397,3 +397,34 @@ def test_sem_lapide_nada_muda(tmp_path, monkeypatch):
     assert parquet.regravar_por_lapide(destino, {"P" + "9" * 20}, "2026-10-16") == []
     assert parquet.regravar_por_lapide(destino, set(), "2026-10-16") == []
     assert {p.name: p.read_bytes() for p in destino.parent.iterdir()} == antes
+
+
+def test_gravar_atomico_duas_threads_na_mesma_tabela(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    destino = tmp_path / "t.parquet"
+    barreira = Barrier(2)
+
+    def escritor(valor: int) -> None:
+        def gravar(caminho):
+            pd.DataFrame({"x": [valor]}).to_parquet(caminho, index=False)
+            barreira.wait(timeout=10)  # as duas já têm o temporário aberto
+
+        parquet.gravar_atomico(destino, gravar)
+
+    with ThreadPoolExecutor(2) as pool:
+        for futuro in [pool.submit(escritor, 1), pool.submit(escritor, 2)]:
+            futuro.result()
+    assert pd.read_parquet(destino)["x"].iloc[0] in (1, 2)
+    assert not list(tmp_path.glob("*.parcial"))
+
+
+def test_gravar_atomico_apaga_o_temporario_se_a_gravacao_falha(tmp_path):
+    def gravar(caminho):
+        caminho.write_bytes(b"pela metade")
+        raise OSError("disco cheio")
+
+    with pytest.raises(OSError):
+        parquet.gravar_atomico(tmp_path / "t.parquet", gravar)
+    assert not list(tmp_path.iterdir())
