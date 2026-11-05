@@ -68,10 +68,18 @@
         "ticker": null
       },
       {
-        "descricao": "Digite o CNPJ de uma companhia aberta e veja de que grupo ela faz parte e os fatos públicos, com data e fonte.",
+        "descricao": "Digite o CNPJ de qualquer empresa: da companhia aberta, o grupo e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que mudou em 12 meses. Com data e fonte.",
         "disponivel": true,
         "nome": "Busca por CNPJ",
         "pagina_do_app": "busca-por-cnpj",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "Quem está no setor, o tamanho do mercado, a concentração (CR4 e HHI) e as empresas lado a lado, com a fonte de cada número.",
+        "disponivel": true,
+        "nome": "Relatório do setor",
+        "pagina_do_app": "relatorio-do-setor",
         "pagina_do_site": null,
         "ticker": null
       },
@@ -276,6 +284,14 @@
         "ticker": null
       },
       {
+        "descricao": "Os documentos de cada operação num lugar cifrado, só da sua conta, com a origem de cada número e o que falta.",
+        "disponivel": true,
+        "nome": "Sala de dados",
+        "pagina_do_app": "sala-de-dados",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
         "descricao": "Um link privado, com prazo e revogável, para a ficha \"Foi sorte?\" ou um PDF.",
         "disponivel": true,
         "nome": "Compartilhamento seguro",
@@ -312,6 +328,38 @@
         "disponivel": false,
         "nome": "Cotações",
         "pagina_do_app": null,
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI, com a fonte e a data.",
+        "disponivel": true,
+        "nome": "Preços de referência",
+        "pagina_do_app": "precos-de-referencia",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "Preço de referência, câmbio, fundos, exportações, safra da CONAB, clima e calendário do café.",
+        "disponivel": true,
+        "nome": "Painel do café",
+        "pagina_do_app": "painel-do-cafe",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "Onde se produz arábica e conilon, município a município, e a chuva e a geada contra a normal.",
+        "disponivel": true,
+        "nome": "Mapa do café",
+        "pagina_do_app": "mapa-do-cafe",
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "A sua produção em cada safra desde 2000: sem travar, a termo, no futuro e com opção. Nada do que você digita é guardado.",
+        "disponivel": true,
+        "nome": "Simulador de trava do café",
+        "pagina_do_app": "simulador-de-trava",
         "pagina_do_site": null,
         "ticker": null
       },

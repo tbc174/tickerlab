@@ -157,6 +157,9 @@ def test_uso_da_familia(catalogo):
         registro.uso_da_familia("pgfn", catalogo) == "em_uso"
     )  # uso citado sem cobrança
     assert registro.uso_da_familia("nasa", catalogo) == "guardada"
+    # tabela no catálogo sem tela que a leia não é uso (linha 663)
+    for familia in ("ccee", "djen", "faostat"):
+        assert registro.uso_da_familia(familia, catalogo) == "guardada", familia
     assert registro.uso_da_familia("kraken", catalogo) == "guardada"
     assert (
         registro.uso_da_familia("iex", catalogo) == "guardada"
@@ -224,3 +227,23 @@ def test_divida_do_tesouro_nacional_nao_leva_a_licenca_dos_eua():
     for f in FONTES:
         if f.id.startswith("tesouro-br"):
             assert "Tesouro Nacional" in licenca_da_fonte(f.id), f.id
+
+
+def test_tabela_sem_leitor_existe_no_catalogo_e_nenhuma_tela_a_le(catalogo):
+    """O selo "em uso" só vale para tabela que uma tela lê: se um módulo passar a citar a tabela, o nome
+    sai de `TABELAS_SEM_LEITOR` (e a família volta a aparecer "em uso")."""
+    assert set(catalogo["tabelas"]) >= registro.TABELAS_SEM_LEITOR
+    codigo = {
+        arquivo: arquivo.read_text(encoding="utf-8", errors="ignore")
+        for pasta, padrao in (("src", "*.py"), ("telas", "*.py"), ("web/src", "*.ts*"))
+        for arquivo in (RAIZ / pasta).rglob(padrao)
+    }
+    for tabela in registro.TABELAS_SEM_LEITOR:
+        leitores = [
+            a.name
+            for a, texto in codigo.items()
+            if re.search(rf"[\"'`]{tabela}[\"'`]", texto)
+        ]
+        assert not leitores, (
+            f"{tabela} já é lida por {leitores}: tire de TABELAS_SEM_LEITOR"
+        )

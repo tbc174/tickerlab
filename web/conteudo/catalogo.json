@@ -206,7 +206,7 @@
       "orgao": "CCEE (comercialização de energia)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-21",
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -665,7 +665,7 @@
       "orgao": "FAO (FAOSTAT)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-21",
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -1158,7 +1158,7 @@
       "orgao": "CNJ (Diário de Justiça Eletrônico Nacional)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -7458,7 +7458,7 @@
   ],
   "totais": {
     "familias": 108,
-    "familias_em_uso": 44,
+    "familias_em_uso": 41,
     "fontes": 42,
     "fontes_em_consulta": 18,
     "modulos": 6,

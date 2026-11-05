@@ -535,7 +535,7 @@ describe("Raio-X do choque de 26/10/2026 (pode do Tiago para publicar, 26/10)", 
     const rodape = trecho(html, '<footer class="rodape escura">', "</footer>");
     expect(semTags(rodape)).toContain("Os preços deste estudo são da B3");
     expect(semTags(rodape)).not.toContain("Yahoo");
-    expect(semTags(renderizar("index.html"))).toContain("Os dados vêm do Yahoo Finance");
+    expect(semTags(renderizar("index.html"))).toContain("Os dados vêm de fontes públicas");
   });
 
   it("o estilo do estudo fica preso dentro dele (classes rx-)", () => {

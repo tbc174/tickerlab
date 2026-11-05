@@ -254,6 +254,20 @@ FONTES_LIDAS_PELO_APP: dict[str, tuple[str, str]] = {
     "fmi": ("src/commodities/painel_de_precos.py", "FMI"),  # preços de referência
 }
 
+# tabela do catálogo que nenhuma tela, relatório ou rota da API lê ainda (ela existe na base e na porta
+# de dados, mas não chega ao usuário): não conta para o selo "em uso" da página Dados (linha 663). Quem
+# ligar uma tela a ela tira o nome daqui; um teste procura o nome em `src/`, `telas/` e `web/src/`.
+TABELAS_SEM_LEITOR: frozenset[str] = frozenset(
+    {
+        "ccee_pld",  # CCEE: preço de liquidação das diferenças
+        "faostat_cafe",  # FAOSTAT: café
+        "processos",  # DJEN: carga e conferência no servidor, sem tela
+        "processos_comunicacoes",
+        "processos_partes",
+        "processos_nas_notas",
+    }
+)
+
 Uso = Literal["em_uso", "guardada"]
 
 
@@ -275,12 +289,16 @@ def _fontes_da_familia(familia: str) -> list[str]:
 
 
 def _licencas_do_catalogo(catalogo: dict) -> set[str]:
-    return {t["licenca"] for t in catalogo["tabelas"].values()}
+    return {
+        t["licenca"]
+        for nome, t in catalogo["tabelas"].items()
+        if nome not in TABELAS_SEM_LEITOR
+    }
 
 
 def uso_da_familia(familia: str, catalogo: dict) -> Uso:
-    """ "em_uso" se algum número do TickerLab sai da família: tabela do catálogo com a licença de uma
-    coleta dela, uso citado sem cobrança (`USOS_SEM_COBRANCA`) ou módulo do app que a lê."""
+    """ "em_uso" se algum número do TickerLab sai da família: tabela do catálogo que alguma tela lê
+    (`TABELAS_SEM_LEITOR` fica de fora) com a licença de uma coleta dela, uso citado sem cobrança (`USOS_SEM_COBRANCA`) ou módulo do app que a lê."""
     no_catalogo = _licencas_do_catalogo(catalogo)
     if any(licenca_da_fonte(f) in no_catalogo for f in _fontes_da_familia(familia)):
         return "em_uso"

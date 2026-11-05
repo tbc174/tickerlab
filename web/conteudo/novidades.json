@@ -1,5 +1,25 @@
 [
   {
+    "correcoes": [
+      "Página Dados: o selo \"Em uso\" passou a valer só para fonte que uma tela lê. CCEE, DJEN e FAOSTAT estão guardadas no nosso acervo e voltaram a aparecer assim."
+    ],
+    "data": "2026-11-05",
+    "novidades": [
+      "Relatório do setor: escolha um setor e veja quem está nele, o tamanho do mercado, a concentração (CR4 e HHI, com a faixa do CADE), as empresas lado a lado e o que ainda não temos, com a fonte de cada número.",
+      "Painel do café: arábica ou conilon, com preço de referência, câmbio, fundos, exportações, safra da CONAB, clima e calendário, cada número com a data e a fonte.",
+      "Mapa do café: onde se produz arábica e conilon, município a município (IBGE), e a chuva e a geada de cada região contra a normal.",
+      "Simulador de trava do café: a sua produção em cada safra desde 2000, sem travar, a termo, no futuro e com opção, lado a lado com os riscos de cada caminho. Nada do que você digita é guardado.",
+      "Preços de referência: café (arábica e robusta), algodão e fertilizantes, o preço mensal do Banco Mundial e do FMI, com a fonte e a data de cada número.",
+      "Pregão do dia: o resumo de cada dia útil no site, a partir do fechamento oficial da B3, com o Ibovespa e os contratos de juros e dólar. Mostra o que o mercado fez, não por quê.",
+      "Raio-X do choque de 26/10: o estudo do dia do circuit breaker, com o PDF para baixar.",
+      "Relatório da empresa: a mínima e a máxima de 52 semanas e a variação em 12 meses do preço, e o anexo com as linhas da demonstração de fluxo de caixa (DFC) e da demonstração do valor adicionado (DVA).",
+      "Busca por CNPJ: além das companhias abertas, agora mostra o cadastro da Receita, o Simples e o MEI, os sócios e o que mudou em 12 meses, com a data e a fonte de cada linha.",
+      "Sala de dados: os documentos de cada operação num lugar cifrado, visível só para a sua conta, com a origem de cada número e o checklist do que falta."
+    ],
+    "resumo": "Telas novas para entender um setor e o mercado do café, o resumo do pregão no site, a faixa de 52 semanas no relatório da empresa e a busca por CNPJ para empresas que não são de capital aberto. Cada número tem a data e a fonte.",
+    "titulo": "Relatório do setor, café, preços de referência, pregão do dia e busca por CNPJ ampliada"
+  },
+  {
     "correcoes": [],
     "data": "2026-10-19",
     "novidades": [
