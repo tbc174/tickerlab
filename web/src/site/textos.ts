@@ -46,7 +46,7 @@ export const PASSOS: [string, string, string][] = [
   ],
   [
     "A porta",
-    "Os dados da base são consultados por data: a consulta só enxerga o que já era público naquele dia. A API aberta, para consultar de fora, está em construção.",
+    "Os dados da base são consultados por data: a consulta só enxerga o que já era público naquele dia. Cada tabela pode ser consultada e baixada em CSV na própria página Dados, sem login; a API com chave, para quem integra, vem depois.",
     "Um dado só é usado a partir do dia em que ficou público. Cortar o futuro não muda o passado: há teste automático que confere isso em cada versão do código.",
   ],
   [

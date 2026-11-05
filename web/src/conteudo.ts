@@ -328,6 +328,7 @@ export interface TabelaDaBase {
   frequencia: string;
   atraso: string | null;
   historico_desde: string;
+  consultavel: boolean; // dá para consultar e exportar pela página Dados e pela API aberta
 }
 
 /** Um cartão do "ligado pelo CNPJ" (`TemaDoCnpj` de base/vitrine.py): os órgãos e a contagem vêm do catálogo. */

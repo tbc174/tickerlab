@@ -47,6 +47,7 @@ from base.cnpj import formatar, raiz
 from base.contrapartes.cafe import ENDERECO_DO_CNPJ, VEICULO_DO_CNPJ
 from base.dicionario import TABELAS
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
+from base.porta.duckdb import servida_pela_porta
 from base.rede.ligacoes_das_fontes import (
     AUDITA,
     COLIGADA_DE,
@@ -115,6 +116,13 @@ def pode_mostrar(nome_da_tabela: str) -> bool:
     if tabela is None or tabela.pessoa:
         return False
     return pode_usar(MOSTRAR, tabela.familia_da_fonte)
+
+
+def pode_consultar(nome_da_tabela: str) -> bool:
+    """A tabela pode ser consultada e exportada de fora (API aberta e página Dados)? Só a que pode
+    ser mostrada e que a porta serve por Parquet do acervo; as de `FORA_DA_PORTA` e as conferidas no
+    repositório ficam só na ficha do app."""
+    return pode_mostrar(nome_da_tabela) and servida_pela_porta(nome_da_tabela)
 
 
 def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:

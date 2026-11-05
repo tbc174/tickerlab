@@ -6,6 +6,7 @@ import { baseEmNumeros, catalogo } from "../../src/conteudo";
 import { arquivosFixos, renderizar } from "../../src/entry-server";
 import { ROTAS } from "../../src/rotas";
 import { ComoFoiCalculado } from "../../src/site/ComoFoiCalculado";
+import { enderecoDaConsulta } from "../../src/site/ConsultaDaBase";
 
 const pagina = () => renderizar("dados.html");
 const semTags = (html: string) => html.replace(/<[^>]+>/g, "");
@@ -88,5 +89,31 @@ describe("página Dados", () => {
   it("não cita concorrente nem promete mais dados (ADR 0099)", () => {
     const texto = semTags(pagina());
     expect(/Bloomberg|FactSet|Refinitiv|Economatica|mais dados que/i.test(texto)).toBe(false);
+  });
+
+  it("cada tabela consultável tem o botão Consultar e o link do CSV; as outras ficam só no app", () => {
+    const html = pagina();
+    const consultaveis = catalogo.tabelas.filter((t) => t.consultavel);
+    expect(consultaveis.length).toBeGreaterThan(50);
+    expect(consultaveis.length).toBeLessThan(catalogo.tabelas.length);
+    expect(html.match(/data-consultar="/g)?.length).toBe(consultaveis.length);
+    for (const t of consultaveis) {
+      expect(html, t.tabela).toContain(`data-consultar="${t.tabela}"`);
+      expect(html, t.tabela).toContain(`href="${enderecoDaConsulta(t.tabela, "", "csv")}"`);
+    }
+    expect(html.match(/>só no app</g)?.length).toBe(catalogo.tabelas.length - consultaveis.length);
+    expect(html).toContain("<th>Consulta</th>");
+  });
+
+  it("o painel de consulta vem depois da lista e antes das fontes, e a página carrega o ferramentas.js", () => {
+    const html = pagina();
+    const painel = html.indexOf('data-consulta-base=""');
+    expect(painel).toBeGreaterThan(html.lastIndexOf('data-modulo-da-lista=""'));
+    expect(painel).toBeLessThan(html.search(/<h2 id="[^"]+">De onde vêm os dados<\/h2>/));
+    expect(html).toContain('id="consulta-da-base"');
+    expect(html).toMatch(/<script src="\/ferramentas\.js\?v=[0-9a-f]{12}" defer="">/);
+    // sem JavaScript, o painel só explica como usar; nenhuma linha vem pronta no HTML
+    expect(semTags(html)).toContain("Escolha uma tabela");
+    expect(semTags(html)).toContain("sem login");
   });
 });

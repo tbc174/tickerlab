@@ -11,6 +11,7 @@ import {
   catalogo,
 } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
+import { ConsultaDaBase, enderecoDaConsulta } from "../site/ConsultaDaBase";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
 import { REGRAS_DA_BASE } from "../site/textos";
 
@@ -21,6 +22,7 @@ export const DADOS = {
     "A base do TickerLab: cada tabela com a fonte, a licença e a data em que o dado ficou público, " +
     "para quem analisa empresas no Brasil.",
   atual: "/dados.html",
+  ferramenta: true, // o ferramentas.js liga o painel de consulta (site/ConsultaDaBase.tsx)
 };
 
 const SECOES = [
@@ -48,6 +50,8 @@ const RITMOS: Record<RegistroDeFonte["ritmo"], string> = {
 };
 
 const SEM_RESPOSTA = "licença em consulta";
+// tabela que a consulta aberta ainda não serve (fora da porta ou conferida no repositório)
+const SEM_CONSULTA = "Ainda sem consulta aberta: esta tabela aparece pela ficha no app.";
 
 function dataPorExtenso(iso: string): string {
   const [ano, mes, dia] = iso.split("-");
@@ -85,6 +89,20 @@ function LinhaDaTabela({ t }: { t: TabelaDaBase }) {
         ) : null}
       </td>
       <td>{dataPorExtenso(t.historico_desde)}</td>
+      <td className="dados-consulta">
+        {t.consultavel ? (
+          <>
+            <button type="button" className="dados-consultar" data-consultar={t.tabela}>
+              Consultar
+            </button>{" "}
+            <a href={enderecoDaConsulta(t.tabela, "", "csv")}>CSV</a>
+          </>
+        ) : (
+          <span className="dados-frase" title={SEM_CONSULTA}>
+            só no app
+          </span>
+        )}
+      </td>
     </tr>
   );
 }
@@ -104,6 +122,7 @@ function TabelasDoModulo({ chave, nome }: { chave: string; nome: string }) {
               <th>Fonte</th>
               <th>Atualização</th>
               <th>Desde</th>
+              <th>Consulta</th>
             </tr>
           </thead>
           <tbody>
@@ -263,7 +282,7 @@ export function Dados() {
 
       <h2 id={ancora(SECOES[2])}>{SECOES[2]}</h2>
       <p>
-        {`As ${totais.tabelas} tabelas em ${totais.modulos} módulos. "Desde" é o começo do histórico guardado; "atualização" é a frequência com que a fonte publica.`}
+        {`As ${totais.tabelas} tabelas em ${totais.modulos} módulos. "Desde" é o começo do histórico guardado; "atualização" é a frequência com que a fonte publica. "Consulta" mostra as primeiras linhas da tabela aqui mesmo, sem login; "CSV" baixa a tabela inteira, cada linha com a fonte, a licença e o dia em que ficou pública.`}
       </p>
       <p>
         <input
@@ -281,6 +300,9 @@ export function Dados() {
       {modulos.map((m) => (
         <TabelasDoModulo key={m.chave} chave={m.chave} nome={m.nome} />
       ))}
+      <div data-consulta-base="">
+        <ConsultaDaBase />
+      </div>
 
       <h2 id={ancora(SECOES[3])}>{SECOES[3]}</h2>
       <p>

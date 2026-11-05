@@ -23,7 +23,7 @@ mesmo da tela antiga.
 |---|---|
 | Rotas das páginas do app | `src/api_v1/rotas.py` |
 | Conta (login, sair, termos) e entrada por código | `src/api_v1/conta.py`, `src/api_v1/entrada.py`, `src/api_v1/sessao.py` |
-| Rotas públicas do site (sem login) | `src/api_v1/ferramentas.py`, `src/api_v1/estudos.py`, `src/api_v1/base_publica.py` |
+| Rotas públicas do site (sem login) | `src/api_v1/ferramentas.py`, `src/api_v1/estudos.py`, `src/api_v1/base_publica.py`, `src/api_v1/base_tabelas.py` |
 | Links compartilhados e sala de dados | `src/api_v1/compartilhados.py`, `src/api_v1/sala*.py` |
 | Formato das respostas | `src/api_v1/esquemas.py` (Pydantic) |
 | Sessão, chave liga/desliga e limite de pedidos | `src/api_v1/acesso.py` |
@@ -91,8 +91,30 @@ Fora do esquema publicado, de propósito: o link compartilhado (`/api/v1/compart
 de dados por operação (`/api/v1/operacoes/...`, aberta a toda conta logada; outra conta recebe 404).
 
 **Rotas públicas do site** (sem login, com limite por IP): `GET /api/v1/ferramentas/quanto-daria`, o
-pregão do dia (`GET /api/v1/estudos/pregao/ultimo` e `/{data}`) e os destaques da busca por companhia
-(`GET /api/v1/base/destaques`).
+pregão do dia (`GET /api/v1/estudos/pregao/ultimo` e `/{data}`), os destaques da busca por companhia
+(`GET /api/v1/base/destaques`) e a consulta às tabelas da base (abaixo).
+
+### Consulta e exportação das tabelas da base
+
+A página Dados do site consulta e exporta cada tabela da base por estas rotas (`src/api_v1/base_tabelas.py`;
+virada de 5/11/2026, fase 1, PR 3). Elas servem só o que a porta da base serve (`base/porta`): nenhuma
+tabela de pessoa natural, nenhuma linha marcada como de pessoa, e cada resposta traz a origem (fonte,
+licença e a data em que cada linha ficou pública).
+
+| Rota | O que devolve |
+|---|---|
+| `GET /api/v1/base/tabelas` | as tabelas consultáveis, cada uma com as colunas (nome, tipo e descrição), as chaves, a versão do contrato, a fonte, a licença e o começo do histórico; cache público de 1 hora |
+| `GET /api/v1/base/tabelas/{nome}` | uma página de linhas em JSON, na ordem das chaves do contrato, com `total`, `colunas`, `linhas` e a origem; `cnpj` filtra (14 dígitos ou com pontuação), `como_era_em` mostra a base como era naquele dia (só o que já era público), `limite` (padrão 100, até 1.000) e `deslocamento` paginam |
+| `GET /api/v1/base/tabelas/{nome}.csv` | a tabela inteira (mesmos filtros), em fluxo, UTF-8 com BOM (o Excel abre com acento certo), até 100.000 linhas; o teto vai no cabeçalho `X-TickerLab-Teto` |
+
+Erros: 404 para tabela que não existe, de pessoa, barrada ou fora da porta (a mesma resposta, para
+não revelar o que existe); 422 para entrada inválida (CNPJ, data futura, limite fora da faixa); 429
+quando o IP passa do limite por minuto; 503 quando a porta não abre ou a tabela não está nesta base.
+
+**Em produção isto ainda não responde:** a API v1 está desligada (`TICKERLAB_API_V1=1` liga) e o
+contêiner da API (`compose.yaml`, serviço `tickerlab-api`) não monta o acervo da base; para a página
+Dados consultar de verdade, a API precisa de `TICKERLAB_ACERVO` apontando para a cópia da base montada
+no contêiner. Até lá, o painel da página diz que a consulta está indisponível e o link do CSV não abre.
 
 Sem `taxa`, a taxa livre de risco é o CDI do período (zero se o Banco Central não responder), como
 na tela. Toda resposta traz `ativo` com o período real, a origem dos preços (`atual`,

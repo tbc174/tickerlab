@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from base.cnpj import normalizar_cnpj
-from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar
+from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import FONTES_SO_INTERNAS, licenca_da_fonte
 
@@ -145,6 +145,9 @@ class TabelaDoSite:
     frequencia: str
     atraso: str | None
     historico_desde: str
+    consultavel: (
+        bool  # dá para consultar e exportar pela página Dados e pela API aberta
+    )
 
 
 def orgao_da_licenca(licenca: str) -> str:
@@ -250,6 +253,7 @@ def tabelas_do_catalogo(catalogo: dict, frases: dict[str, str]) -> list[TabelaDo
             frequencia=frequencia_do_site(t["frequencia"]),
             atraso=atraso_do_site(t["atraso"]),
             historico_desde=t["historico_desde"],
+            consultavel=pode_consultar(nome),
         )
         for nome, t in catalogo["tabelas"].items()
     ]
