@@ -624,7 +624,7 @@ LIMITES = {
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
         "controlada, pelo FRE). A participação é sobre o total da agência no ano."
     ),
-    "setor": (METODOLOGIA_DO_SETOR + " " + METODOLOGIA_DOS_BANCOS),
+    "setor": METODOLOGIA_DO_SETOR,  # a ficha usa `metodologia_do_setor(chave)`: o IF.data é só dos bancos
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
         "reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. "
@@ -699,33 +699,45 @@ def _item(
     publicado_em: str | None,
     fontes: Iterable[str] = (),
     origem: "Origem | None" = None,
+    entradas: Iterable[dict[str, Any]] = (),
 ) -> dict[str, Any]:
     """Um item da ficha com o rastro; `publicado_em` é obrigatório para ninguém esquecer de pensar nele
     (None só nos `ITENS_SEM_DATA_DE_PUBLICACAO`, ou quando as linhas não trazem a data). `origem`: só
-    quando a chave repete a de outra seção (as relações da rede); senão, a de `ORIGEM_DOS_ITENS`."""
+    quando a chave repete a de outra seção (as relações da rede); senão, a de `ORIGEM_DOS_ITENS`.
+    `entradas`: as contas da demonstração que entram no número (`_entradas_do_caixa`), quando há."""
     return {
         "chave": chave,
         "nome": nome,
         "valor": valor,
         "unidade": unidade,
         "base": base,
-        "rastro": _rastro(origem or ORIGEM_DOS_ITENS[chave], publicado_em, fontes),
+        "rastro": _rastro(
+            origem or ORIGEM_DOS_ITENS[chave], publicado_em, fontes, entradas
+        ),
     }
 
 
 def _rastro(
-    origem: "Origem", publicado_em: str | None, fontes: Iterable[str]
+    origem: "Origem",
+    publicado_em: str | None,
+    fontes: Iterable[str],
+    entradas: Iterable[dict[str, Any]] = (),
 ) -> dict[str, Any]:
     """O rastro do item como vai no JSON. `fontes`: as famílias, quando o item junta mais de uma (a
-    rede); sem elas, a da tabela. Chave sem origem é erro de código (a seção quebra no teste)."""
+    rede); sem elas, a da tabela. `entradas`: as contas usadas, como em `src.rastro.Entrada`. Chave sem origem é erro de código (a seção quebra no teste)."""
     familias = list(dict.fromkeys(fontes)) or [TABELAS[origem.tabela].familia_da_fonte]
-    return {
+    rastro: dict[str, Any] = {
         "formula": origem.formula,
         "versao_do_calculo": CALCULO_DO_DOSSIE,
         "fonte_id": familias[0],
         "outras_fontes": familias[1:],
         "publicado_em": publicado_em,
     }
+    if entradas := list(
+        entradas
+    ):  # sem a chave quando o número não tem contas (ficha de antes)
+        rastro["entradas"] = entradas
+    return rastro
 
 
 def _publicado(linhas: pd.DataFrame, tabela: str) -> str | None:
@@ -748,6 +760,7 @@ def _secao(
     tabelas: Mapping[str, pd.DataFrame],
     paragrafos: list[str] | None = None,
     fontes: list[str] | None = None,
+    limites: str | None = None,
 ) -> dict[str, Any]:
     registro = _SECAO_POR_CHAVE[chave]
     return {
@@ -755,7 +768,7 @@ def _secao(
         "titulo": registro.titulo,
         "itens": itens,
         "tabelas": {nome: _registros(t) for nome, t in tabelas.items() if not t.empty},
-        "paragrafos": [*(paragrafos or []), LIMITES[chave]],
+        "paragrafos": [*(paragrafos or []), limites or LIMITES[chave]],
         "fontes": fontes_das_tabelas(registro.tabelas) if fontes is None else fontes,
     }
 
@@ -1283,6 +1296,37 @@ def _dfc_e_dva_por_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
     )[COLUNAS_DA_DFC_E_DVA].reset_index(drop=True)
 
 
+NOMES_DAS_CONTAS_DO_CAIXA = {  # a conta no TickerLab de cada parte do EBITDA, do capex e do FCF
+    "ebit": "ebit",
+    "depreciacao_amortizacao": "depreciacao_amortizacao",
+    "caixa_operacional": "caixa_operacional",
+    "capex": "capex",
+}
+
+
+def _entradas_do_caixa(
+    publicas: pd.DataFrame, fim: object, numero: str
+) -> list[dict[str, Any]]:
+    """As linhas da DRE, DFC e DVA que entram em `numero`, com o valor guardado e a entrega à CVM de
+    onde vieram (o mesmo formato de `src.rastro.Entrada`: quem confere refaz a conta)."""
+    linhas = t1.contas_do_numero(publicas, fim, numero)
+    return [
+        {
+            "conta": NOMES_DAS_CONTAS_DO_CAIXA[linha.conta_do_numero],
+            "codigo": linha.conta,
+            "nome": f"{linha.descricao} ({linha.demonstracao})",
+            "valor": float(linha.valor),
+            "periodo": "exercicio",
+            "documento": linha.documento,
+            "referencia": _data(linha.referencia),
+            "versao": int(linha.versao),
+            "publicado_em": _data(linha.divulgado_em),
+        }
+        for linha in linhas.itertuples()
+        if pd.notna(linha.valor)
+    ]
+
+
 def secao_geracao_de_caixa(
     como_era: pd.DataFrame, hoje: pd.Timestamp
 ) -> dict[str, Any] | None:
@@ -1301,7 +1345,15 @@ def secao_geracao_de_caixa(
     base = _data(ultimo["fim"])
     publicado = _publicado(tabela.iloc[[0]], "demonstracoes_como_era")
     itens = [
-        _item(chave, nome, float(ultimo[chave]), "R$", base, publicado_em=publicado)
+        _item(
+            chave,
+            nome,
+            float(ultimo[chave]),
+            "R$",
+            base,
+            publicado_em=publicado,
+            entradas=_entradas_do_caixa(publicas, ultimo["fim"], chave),
+        )
         for chave, nome in NUMEROS_DO_CAIXA.items()
         if pd.notna(ultimo[chave])
     ]
@@ -2750,7 +2802,14 @@ def secao_setor(
         *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
         *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),
     ]
-    return _secao("setor", itens, tabelas, paragrafos, fontes=fontes_do_setor(usadas))
+    return _secao(
+        "setor",
+        itens,
+        tabelas,
+        paragrafos,
+        fontes=fontes_do_setor(usadas),
+        limites=metodologia_do_setor(setor.chave),
+    )
 
 
 # --- negócios ------------------------------------------------------------------------------------

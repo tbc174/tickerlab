@@ -843,3 +843,136 @@ def test_fatos_da_base_vem_da_fotografia():
 def test_fotografia_dos_cruzamentos_volta_igual():
     cruzamentos = _cruzamentos()
     assert vitrine.cruzamentos_da_fotografia(asdict(cruzamentos)) == cruzamentos
+
+
+# --- ligado pelo CNPJ: o que a base junta de cada empresa (página inicial, 04/11/2026) -----------
+
+
+def _com_colunas(nome: str, modulo: str, licenca: str, *colunas: str) -> dict:
+    return {
+        **_tabela(nome, modulo, licenca, "2020-01-01"),
+        "colunas": {c: {} for c in colunas},
+    }
+
+
+def test_coluna_de_cnpj():
+    for coluna in (
+        "cnpj",
+        "cnpj_basico",
+        "cnpj_raiz",
+        "auditor_cnpj",
+        "raiz",
+        "CNPJ_FUNDO",
+        "CPF_CNPJ_GESTOR",
+    ):
+        assert vitrine.e_coluna_de_cnpj(coluna), coluna
+    # a cobertura conta CNPJs, não liga uma linha a uma empresa
+    for coluna in (
+        "valor_com_cnpj",
+        "fracao_com_cnpj",
+        "cnpjota",
+        "competencia",
+        "tipo",
+    ):
+        assert not vitrine.e_coluna_de_cnpj(coluna), coluna
+
+
+def test_tabelas_ligadas_pelo_cnpj_incluem_a_rede():
+    catalogo = {
+        "tabelas": {
+            "a": _com_colunas("a", "mercado_e_empresas", CVM, "cnpj", "valor"),
+            "b": _com_colunas("b", "macro", BCB, "data", "valor_com_cnpj"),
+            "ligacoes": _com_colunas("ligacoes", "rede", CVM, "de", "para"),
+        }
+    }
+
+    assert vitrine.tabelas_ligadas_pelo_cnpj(catalogo) == ["a", "ligacoes"]
+
+
+def test_ligado_pelo_cnpj_conta_tabelas_e_orgaos_do_catalogo():
+    tema = vitrine.TemaDoCnpj("donos", "Quem é dono", "Sócios.", ("a", "c"))
+    catalogo = {
+        "tabelas": {
+            "a": _com_colunas("a", "mercado_e_empresas", CVM, "cnpj"),
+            "b": _com_colunas("b", "mercado_e_empresas", CVM, "data"),
+            "c": _com_colunas("c", "governo_e_sancoes", PGFN, "cnpj_basico"),
+        }
+    }
+
+    ligado = vitrine.ligado_pelo_cnpj(catalogo, (tema,))
+
+    assert ligado == {
+        "tabelas": 2,
+        "orgaos": 2,
+        "temas": [
+            {
+                "chave": "donos",
+                "titulo": "Quem é dono",
+                "texto": "Sócios.",
+                "orgaos": ["CVM", "PGFN"],
+                "tabelas": 2,
+            }
+        ],
+    }
+
+
+def test_tema_com_tabela_fora_do_catalogo_acusa():
+    tema = vitrine.TemaDoCnpj("x", "X", "X.", ("sumiu",))
+
+    with pytest.raises(ValueError, match="sumiu"):
+        vitrine.ligado_pelo_cnpj({"tabelas": {}}, (tema,))
+
+
+def test_tema_com_tabela_sem_cnpj_acusa():
+    tema = vitrine.TemaDoCnpj("x", "X", "X.", ("b",))
+    catalogo = {"tabelas": {"b": _com_colunas("b", "macro", BCB, "data")}}
+
+    with pytest.raises(ValueError, match="sem coluna de CNPJ: b"):
+        vitrine.ligado_pelo_cnpj(catalogo, (tema,))
+
+
+def test_temas_do_cnpj_valem_no_catalogo_real():
+    catalogo = _catalogo_real()
+
+    ligado = vitrine.ligado_pelo_cnpj(catalogo)
+
+    assert [t["chave"] for t in ligado["temas"]] == [
+        t.chave for t in vitrine.TEMAS_DO_CNPJ
+    ]
+    assert 0 < ligado["tabelas"] < len(catalogo["tabelas"])
+    assert ligado["orgaos"] <= len(vitrine.fontes_do_catalogo(catalogo))
+    # nenhuma tabela em dois temas: a soma dos cartões não conta duas vezes
+    nomes = [n for t in vitrine.TEMAS_DO_CNPJ for n in t.tabelas]
+    assert len(nomes) == len(set(nomes))
+
+
+def test_tabela_sem_tema_so_cobra_os_modulos_dos_orgaos_publicos():
+    tema = vitrine.TemaDoCnpj("x", "X", "X.", ("a",))
+    catalogo = {
+        "tabelas": {
+            "a": _com_colunas("a", "governo_e_sancoes", PGFN, "cnpj"),
+            "b": _com_colunas("b", "governo_e_sancoes", PGFN, "cnpj_basico"),
+            "c": _com_colunas("c", "mercado_e_empresas", CVM, "cnpj"),
+            "d": _com_colunas("d", "governo_e_sancoes", PGFN, "data"),
+        }
+    }
+
+    assert vitrine.tabelas_sem_tema(catalogo, (tema,)) == ["b"]
+
+
+def test_toda_tabela_nova_de_orgao_publico_com_cnpj_entra_num_tema():
+    sem_tema = vitrine.tabelas_sem_tema(_catalogo_real())
+
+    assert not sem_tema, (
+        f"tabela nova ligada pelo CNPJ fora da página inicial: {', '.join(sem_tema)}. Ponha-a num "
+        "tema de base/vitrine.py::TEMAS_DO_CNPJ (e o órgão na frase do tema), rode os geradores do "
+        "site e faça o commit junto"
+    )
+
+
+def test_temas_do_cnpj_sem_numero_digitado_nem_conversa_interna():
+    for tema in vitrine.TEMAS_DO_CNPJ:
+        for texto in (tema.titulo, tema.texto):
+            assert not re.search(r"\d", texto), tema.chave
+            assert not re.search(r"\w+_\w+|\bADR\b|servidor", texto), tema.chave
+        assert tema.texto.endswith("."), tema.chave

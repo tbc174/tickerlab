@@ -5,6 +5,7 @@
     "pdf": "/relatorio/setor-eletricas.pdf"
   },
   "aviso": "Nada aqui é recomendação de investimento. Os números descrevem o que as companhias e as agências entregaram, sem dizer o que vai acontecer.",
+  "aviso_rodape": "Nada aqui é recomendação de investimento. Os dados vêm de FRE (https://dados.cvm.gov.br/dataset/cia_aberta-doc-fre); ANEEL (https://dadosabertos.aneel.gov.br/), cada número com a data do dado.",
   "dados_de": "19/10/2026",
   "destaques": [
     {

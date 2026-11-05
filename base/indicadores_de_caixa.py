@@ -125,39 +125,55 @@ def _da_dfc(linhas: pd.DataFrame) -> pd.Series:
     return linhas["demonstracao"].isin(DFC)
 
 
-def _ebit(linhas: pd.DataFrame) -> pd.DataFrame:
-    ebit = linhas[
+def _linhas_do_ebit(linhas: pd.DataFrame) -> pd.DataFrame:
+    return linhas[
         (linhas["demonstracao"] == DRE)
         & (linhas["conta"] == EBIT)
         & linhas["s"].str.contains(E_EBIT)
     ]
+
+
+def _ebit(linhas: pd.DataFrame) -> pd.DataFrame:
+    ebit = _linhas_do_ebit(linhas)
     tabela = ebit.set_index(PERIODO)[["valor", "divulgado_em"]]
     return tabela.rename(columns={"valor": "ebit", "divulgado_em": "divulgado_ebit"})
 
 
+def _linhas_do_caixa(linhas: pd.DataFrame) -> pd.DataFrame:
+    return linhas[_da_dfc(linhas) & (linhas["conta"] == CAIXA_OPERACIONAL)]
+
+
 def _caixa_operacional(linhas: pd.DataFrame) -> pd.DataFrame:
-    caixa = linhas[_da_dfc(linhas) & (linhas["conta"] == CAIXA_OPERACIONAL)]
+    caixa = _linhas_do_caixa(linhas)
     tabela = caixa.set_index(PERIODO)[["valor", "divulgado_em"]]
     return tabela.rename(
         columns={"valor": "caixa_operacional", "divulgado_em": "divulgado_caixa"}
     )
 
 
-def _depreciacao(linhas: pd.DataFrame) -> pd.DataFrame:
-    """A D&A da DVA (positiva); sem DVA no período, a das linhas da DFC."""
-    da_dva = linhas[
+def _linhas_da_depreciacao_na_dva(linhas: pd.DataFrame) -> pd.DataFrame:
+    return linhas[
         (linhas["demonstracao"] == DVA)
         & (linhas["conta"].str.count(r"\.") == 2)
         & linhas["s"].str.startswith("deprecia")
     ]
-    dva = _somar(da_dva, "da").assign(da=lambda t: t["da"].abs())
-    da_dfc = linhas[
+
+
+def _linhas_da_depreciacao_na_dfc(linhas: pd.DataFrame) -> pd.DataFrame:
+    return linhas[
         _da_dfc(linhas)
         & linhas["conta"].str.startswith("6.01.01.")
         & linhas["s"].str.contains(DEPRECIACAO)
         & ~linhas["s"].str.contains(NAO_E_DEPRECIACAO)
     ]
-    dfc = _somar(da_dfc, "da")
+
+
+def _depreciacao(linhas: pd.DataFrame) -> pd.DataFrame:
+    """A D&A da DVA (positiva); sem DVA no período, a das linhas da DFC."""
+    dva = _somar(_linhas_da_depreciacao_na_dva(linhas), "da").assign(
+        da=lambda t: t["da"].abs()
+    )
+    dfc = _somar(_linhas_da_depreciacao_na_dfc(linhas), "da")
     tabela = pd.concat([dva, dfc[~dfc.index.isin(dva.index)]])
     return tabela.rename(
         columns={
@@ -168,14 +184,17 @@ def _depreciacao(linhas: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _capex(linhas: pd.DataFrame) -> pd.DataFrame:
-    capex = linhas[
+def _linhas_do_capex(linhas: pd.DataFrame) -> pd.DataFrame:
+    return linhas[
         _da_dfc(linhas)
         & linhas["conta"].str.startswith("6.02.")
         & linhas["s"].str.contains(IMOBILIZADO)
         & ~linhas["s"].str.contains(NAO_E_CAPEX)
     ]
-    tabela = _somar(capex, "capex", sinal=-1.0)
+
+
+def _capex(linhas: pd.DataFrame) -> pd.DataFrame:
+    tabela = _somar(_linhas_do_capex(linhas), "capex", sinal=-1.0)
     return tabela.rename(columns={"contas_capex": "contas_do_capex"})
 
 
@@ -221,3 +240,42 @@ def indicadores_de_caixa(contas: pd.DataFrame) -> pd.DataFrame:
     textos = ["fonte_da_depreciacao", "contas_do_capex", "contas_dos_dividendos"]
     tabela[textos] = tabela[textos].astype(object).where(tabela[textos].notna(), None)
     return tabela.reset_index()[list(COLUNAS)].reset_index(drop=True)
+
+
+def _linhas_da_depreciacao(linhas: pd.DataFrame) -> pd.DataFrame:
+    """As linhas da D&A: as da DVA e, só se o período não tem DVA, as da DFC (como em `_depreciacao`)."""
+    da_dva = _linhas_da_depreciacao_na_dva(linhas)
+    return da_dva if not da_dva.empty else _linhas_da_depreciacao_na_dfc(linhas)
+
+
+_LINHAS_DE_CADA_CONTA = {
+    "ebit": _linhas_do_ebit,
+    "depreciacao_amortizacao": _linhas_da_depreciacao,
+    "caixa_operacional": _linhas_do_caixa,
+    "capex": _linhas_do_capex,
+}
+_CONTAS_DE_CADA_NUMERO = {
+    "ebitda": ("ebit", "depreciacao_amortizacao"),
+    "capex": ("capex",),
+    "fcf": ("caixa_operacional", "capex"),
+}
+
+
+def contas_do_numero(contas: pd.DataFrame, fim: object, numero: str) -> pd.DataFrame:
+    """As linhas de `contas` (as de um grupo) que entram em `numero` ("ebitda", "capex" ou "fcf") no
+    período que termina em `fim`, com a conta que cada uma é (`conta_do_numero`), a mesma escolha de
+    `indicadores_de_caixa` e a mesma versão mais nova de cada linha."""
+    linhas = _preparar(contas)
+    linhas = linhas[linhas["fim"] == fim]
+    partes = [
+        _sem_as_filhas_das_escolhidas(_LINHAS_DE_CADA_CONTA[nome](linhas)).assign(
+            conta_do_numero=nome
+        )
+        for nome in _CONTAS_DE_CADA_NUMERO[numero]
+    ]
+    return pd.concat(partes).sort_values(["conta_do_numero", "demonstracao", "conta"])
+
+
+def _sem_as_filhas_das_escolhidas(linhas: pd.DataFrame) -> pd.DataFrame:
+    """Linha mãe e filhas não somam duas vezes (como em `_somar`)."""
+    return linhas if linhas.empty else _so_as_mais_altas(linhas)

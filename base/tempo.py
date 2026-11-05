@@ -34,14 +34,17 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "data_dispensa_oferta", "data_emissao", "data_inicio_oferta", "data_protocolo",
         "data_registro", "data_registro_oferta", "data_requerimento",
         "DT_CONST", "DT_REG", "DT_INI_ATIV", "DT_INI_CLASSE", "DT_INI_SIT",
+        "DT_INI_GESTOR", "DT_INI_ADMIN",
         "registro", "registrada_desde", "inicio_listagem", "inicio_negociacao",
         "entrada_em_operacao", "entrada_em_teste", "fechamento_em", "infracao_em",
         "primeira_inscricao", "ultima_inscricao", "ultima_alteracao_em", "instante",
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
+        "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
+        "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
     ),
     "ate": (
-        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "desativada_em", "fim_listagem",
-        "fim_negociacao", "data_encerramento", "data_encerramento_oferta",
+        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",
+        "vigencia_fim", "fim_negociacao", "desembargada_em", "descredenciada_em", "data_encerramento", "data_encerramento_oferta",
         "data_exclusao_mei", "data_exclusao_mei_antes", "data_exclusao_mei_depois",
         "data_exclusao_simples", "data_exclusao_simples_antes", "data_exclusao_simples_depois",
     ),
@@ -59,11 +62,13 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "balanco_publico_em", "receita_publico_em", "conhecido_em_do_negocio",
         "primeira_entrega", "primeiro_recebido_em", "primeiro_visto",
         "disponibilizada_em", "primeira_comunicacao",
+        "lista_publicada_em",  # a CMED: o Last-Modified do arquivo no portal da Anvisa
     ),
     "ate_publico_em": ("ate_publico_em",),
     "visto_em": ("visto_em",),
     "coletado_em": (
         "coletado_em", "origem_coletada_em", "conferido_em", "confirmacao_em", "wayback_em",
+        "teor_conferido_em",
     ),
 }  # fmt: skip
 
@@ -73,7 +78,9 @@ COLUNAS_A_CONFERIR = frozenset(
         "atualizado_em",
         "base_de",
         "calculado_em",
+        "classificado_em",  # SIGBM: data da declaração que informou o CRI e o DPA
         "confidencial_ate",
+        "criado_em",  # CFEM: dia em que a ANM criou a linha (vira disponivel_em)
         "data",
         "data_da_previsao",
         "data_de_corte",

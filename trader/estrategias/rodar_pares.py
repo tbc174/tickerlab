@@ -25,7 +25,7 @@ import pandas as pd
 
 from trader import avaliacao, criterio_quant
 from trader.criterio import Item, Veredito
-from trader.estrategias import dados_pares, pares
+from trader.estrategias import dados_congelados, dados_pares, pares
 from trader.estrategias import fatores_b3 as fb
 from trader.estrategias.carteira_rp import p_valor_do_acaso
 from trader.registro import Registro
@@ -107,6 +107,7 @@ def executar(
     dados: pares.Dados,
     registro: Registro,
     parametros: pares.Parametros | None = None,
+    marca_dos_dados: str | None = None,
 ) -> dict:
     """Registra a tentativa, simula tudo, avalia o candidato e guarda no registro.
 
@@ -124,6 +125,8 @@ def executar(
         "inicio": datas.min().date().isoformat(),
         "fim": datas.max().date().isoformat(),
     }
+    if marca_dos_dados is not None:  # os arquivos congelados (`dados_congelados`)
+        comum["dados"] = marca_dos_dados
     tentativa = registro.registrar(
         FICHA, CANDIDATO, {**comum, **parametros.especificacao()}
     )
@@ -411,8 +414,10 @@ def main(pasta: Path = dados_pares.PASTA_DA_FICHA) -> int:
     if faltas:
         print(MENSAGEM_SEM_BASE.format(pasta=pasta, faltas=", ".join(faltas)))
         return SAIDA_SEM_BASE
+    marca = dados_congelados.congelar_hoje()
     dados = dados_pares.carregar_tabelas(pasta)
-    saida = executar(dados, abrir_registro())
+    saida = executar(dados, abrir_registro(), marca_dos_dados=marca)
+    dados_congelados.exigir_a_mesma_marca(marca)
     print(escrever_relatorio(saida).read_text(encoding="utf-8"))
     return 0
 

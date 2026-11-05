@@ -47,7 +47,9 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "ocde": date(2026, 10, 22),
     "eurostat": date(2026, 10, 22),
     "worldbank": date(2026, 10, 22),
-    "bis": date(2026, 10, 22),
+    "bis": date(
+        2026, 11, 3
+    ),  # relido em 03/11 (linha 639): data.bis.org/help/legal e robots.txt
     "nasa": date(2026, 10, 22),
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
@@ -152,6 +154,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 TERMOS_LIDOS_EM |= dict.fromkeys(("epo", "wipo"), date(2026, 10, 22))
 # lote acervos históricos (rodada 4, linha 292): IPEADATA sem termos publicados, lido em 22/10/2026
 TERMOS_LIDOS_EM |= dict.fromkeys(("ipea",), date(2026, 10, 22))
+# base de CNPJ (família "rfb", fonte `rfb-cnpj`): ficha do conjunto lida em 20/10/2026 e rodapé em
+# 21/10/2026 na auditoria N0; vale a leitura completa. O portão olha a família (o id até o 1º hífen)
+TERMOS_LIDOS_EM["rfb"] = date(2026, 10, 21)
 
 # parêntese que cita decisão interna ("(ADRs 0019 e 0073)"): fica fora do site aberto
 _DECISAO_INTERNA = re.compile(r"\s*\([^)]*\bADRs?\b[^)]*\)")
@@ -225,6 +230,12 @@ FONTES_DE_FORA_DO_ARQUIVISTA = (
     "kraken",
     "mb",
     "btc",
+    "ms",  # CNES: carga mensal por `scripts/carga_cnes.py`, fora do arquivista (linha 654)
+    "estban",  # ESTBAN do BCB: carga mensal por `scripts/carga_estban.py`, fora do arquivista (linha 659)
+    # linha 658: carga por `scripts/carga_go_ms_sp.py`, fora do arquivista
+    "goias",
+    "msestado",
+    "spcapital",
 )
 RITMO_DE_FORA = "lida pelo app"
 

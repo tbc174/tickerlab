@@ -94,6 +94,12 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "carteira": "holdings",
     "posicoes": "positions",
     "cortada": "truncated",
+    # companies: a situação cadastral da Receita
+    "situacao_cadastral": "registration_status",
+    "data_situacao_cadastral": "registration_status_date",
+    "motivo_situacao": "registration_status_reason",
+    "matriz": "head_office",
+    "mes_do_retrato": "snapshot_month",
 }
 
 

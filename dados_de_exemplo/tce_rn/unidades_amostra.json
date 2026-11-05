@@ -1,0 +1,42 @@
+[
+ {
+  "identificadorUnidade": 2,
+  "codigoOrgao": "AGN",
+  "nomeOrgao": "AGÊNCIA DE FOMENTO DO RN S/A",
+  "cnpj": "03848103000102",
+  "dataInicioAtividade": "2000-05-29T00:00:00",
+  "dataTerminoAtividade": null
+ },
+ {
+  "identificadorUnidade": 555,
+  "codigoOrgao": "ARSBMN",
+  "nomeOrgao": "AGÊNCIA REGULADORA DE SANEAMENTO BÁSICO DO MUNICÍPIO DE NATAL",
+  "cnpj": "05007443000128",
+  "dataInicioAtividade": "2000-01-01T00:00:00",
+  "dataTerminoAtividade": null
+ },
+ {
+  "identificadorUnidade": 3,
+  "codigoOrgao": "ARSEP",
+  "nomeOrgao": "AGÊNCIA REGULADORA DE SERVIÇOS PÚBLICOS DO RN",
+  "cnpj": "03191909000162",
+  "dataInicioAtividade": "1999-03-02T00:00:00",
+  "dataTerminoAtividade": null
+ },
+ {
+  "identificadorUnidade": 554,
+  "codigoOrgao": "URBANA",
+  "nomeOrgao": "COMPANHIA DE SERVIÇOS URBANOS DE NATAL",
+  "cnpj": null,
+  "dataInicioAtividade": "2000-01-01T00:00:00",
+  "dataTerminoAtividade": null
+ },
+ {
+  "identificadorUnidade": 669,
+  "codigoOrgao": "ESMARN",
+  "nomeOrgao": "ESCOLA DA MAGISTRATURA DO RN",
+  "cnpj": null,
+  "dataInicioAtividade": "2010-03-03T00:00:00",
+  "dataTerminoAtividade": null
+ }
+]

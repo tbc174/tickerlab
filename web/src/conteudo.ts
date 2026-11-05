@@ -252,6 +252,7 @@ export const relatorioSemanalEletricas: {
   titulo: string;
   dados_de: string; // DD/MM/AAAA
   aviso: string;
+  aviso_rodape: string; // o rodapé da página: as bases de onde vêm os dados do setor
   arquivos: { pdf: string; apresentacao_pdf: string; apresentacao_pptx: string };
   destaques: { titulo: string; texto: string; fonte: string; data: string }[];
   tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];
@@ -329,6 +330,22 @@ export interface TabelaDaBase {
   historico_desde: string;
 }
 
+/** Um cartão do "ligado pelo CNPJ" (`TemaDoCnpj` de base/vitrine.py): os órgãos e a contagem vêm do catálogo. */
+export interface TemaDoCnpj {
+  chave: string;
+  titulo: string;
+  texto: string;
+  orgaos: string[];
+  tabelas: number;
+}
+
+/** As tabelas da base que se juntam pelo CNPJ, contadas pelas colunas do catálogo. */
+export interface LigadoPeloCnpj {
+  tabelas: number;
+  orgaos: number;
+  temas: TemaDoCnpj[];
+}
+
 /** O catálogo de contratos da base, contado pelo Python: a página Dados não digita número. */
 export const catalogo: {
   totais: {
@@ -344,6 +361,7 @@ export const catalogo: {
   familias_de_fontes: FamiliaDeFonte[];
   modulos: ModuloDaBase[];
   tabelas: TabelaDaBase[];
+  ligado_pelo_cnpj: LigadoPeloCnpj;
 } = catalogoJson as never;
 
 /** Os números medidos na base (`base/vitrine.py`, fotografia do servidor de casa): a página Dados não digita número. */

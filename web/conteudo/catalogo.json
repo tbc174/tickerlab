@@ -84,7 +84,7 @@
       "orgao": "IBAMA (autos e embargos)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -99,7 +99,7 @@
       "orgao": "Ministério do Trabalho (Lista Suja)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -119,7 +119,7 @@
       "orgao": "GLEIF (identificador LEI)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-21",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -133,7 +133,7 @@
       "marca": "vendavel",
       "orgao": "Receita Federal (CNPJ)",
       "ritmo": null,
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-10-21",
       "uso": "em_uso"
     },
     {
@@ -441,14 +441,16 @@
     {
       "coletas": [
         "anvisa-empresas",
-        "anvisa-produtos"
+        "anvisa-produtos",
+        "anvisa-cmed"
       ],
       "familia": "anvisa",
       "licencas": [
-        "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)"
+        "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+        "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)"
       ],
       "link": "https://dados.anvisa.gov.br/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "Anvisa (vigilância sanitária)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-29",
@@ -512,6 +514,21 @@
       "orgao": "Ministério de Minas e Energia (REIDI)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-29",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "finep-contratacao"
+      ],
+      "familia": "finep",
+      "licencas": [
+        "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)"
+      ],
+      "link": "https://www.finep.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Finep (financiamento à inovação)",
+      "ritmo": null,
+      "termos_lidos_em": null,
       "uso": "em_uso"
     },
     {
@@ -811,7 +828,7 @@
       "marca": "vendavel",
       "orgao": "BIS (Banco de Compensações Internacionais)",
       "ritmo": null,
-      "termos_lidos_em": "2026-10-22",
+      "termos_lidos_em": "2026-11-03",
       "uso": "guardada"
     },
     {
@@ -1387,7 +1404,7 @@
       "orgao": "BNDES",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -1872,6 +1889,71 @@
       "ritmo": "lida pelo app",
       "termos_lidos_em": null,
       "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "ms",
+      "licencas": [
+        "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno"
+      ],
+      "link": "https://opendatasus.saude.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [],
+      "familia": "estban",
+      "licencas": [
+        "BCB, ESTBAN: reprodução com fonte e integridade; a confirmar, só interno"
+      ],
+      "link": "https://www.bcb.gov.br/estatisticas/estatisticabancariamunicipios",
+      "marca": "a_confirmar",
+      "orgao": "Banco Central do Brasil (ESTBAN)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "goias",
+      "licencas": [
+        "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)"
+      ],
+      "link": "https://dadosabertos.go.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Goiás (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "msestado",
+      "licencas": [
+        "Despesas do MS por credor: a confirmar, só interno"
+      ],
+      "link": "https://dados.ms.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Governo de Mato Grosso do Sul (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "spcapital",
+      "licencas": [
+        "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)"
+      ],
+      "link": "https://dados.prefeitura.sp.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Prefeitura de São Paulo (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
     }
   ],
   "fontes": [
@@ -1888,7 +1970,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 61
+      "tabelas": 64
     },
     {
       "historico_desde": "2026-10-14",
@@ -1900,6 +1982,17 @@
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 8
+    },
+    {
+      "historico_desde": "2002-01-01",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "ANM",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 6
     },
     {
       "historico_desde": "2010-01-01",
@@ -1933,6 +2026,18 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
@@ -1973,18 +2078,6 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
       "modulos": [
         "governo_e_sancoes",
@@ -2019,23 +2112,46 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "SUSEP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-PE: licença não localizada; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-PE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
       "modulos": [
         "mercado_e_empresas"
       ],
       "orgao": "ANAC",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "ANM",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -2059,6 +2175,17 @@
       ],
       "orgao": "Anvisa",
       "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "BNDES",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -2096,6 +2223,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CMED (Anvisa)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-02-05",
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
       "modulos": [
@@ -2115,6 +2253,39 @@
       "orgao": "FAO",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Finep",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "GLEIF",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "IBAMA",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -2173,6 +2344,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MTE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
@@ -2195,14 +2377,36 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-CE: licença não localizada; a confirmar, só interno",
       "modulos": [
-        "mercado_e_empresas"
+        "governo_e_sancoes"
       ],
-      "orgao": "SUSEP",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
+      "orgao": "TCE-CE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-RS",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-SP: licença não localizada; a confirmar, só interno",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-SP",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -2228,21 +2432,106 @@
       "tabelas": 1
     }
   ],
+  "ligado_pelo_cnpj": {
+    "orgaos": 30,
+    "tabelas": 105,
+    "temas": [
+      {
+        "chave": "cvm",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da diretoria e ofertas de ações e de dívida.",
+        "titulo": "O que a companhia entrega à CVM"
+      },
+      {
+        "chave": "donos",
+        "orgaos": [
+          "Receita Federal",
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
+        "titulo": "Quem é dono e quem controla"
+      },
+      {
+        "chave": "cadastro",
+        "orgaos": [
+          "Receita Federal"
+        ],
+        "tabelas": 6,
+        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro.",
+        "titulo": "Cadastro e situação na Receita"
+      },
+      {
+        "chave": "riscos",
+        "orgaos": [
+          "PGFN",
+          "CGU",
+          "ANS",
+          "MTE",
+          "IBAMA",
+          "CNJ",
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "titulo": "Dívida, sanções e processos"
+      },
+      {
+        "chave": "licencas",
+        "orgaos": [
+          "ANS",
+          "SUSEP",
+          "Anvisa",
+          "ANP",
+          "ANTT",
+          "MAPA",
+          "Anatel",
+          "ANM",
+          "CMED (Anvisa)",
+          "Ancine",
+          "Ministério da Saúde (DATASUS)"
+        ],
+        "tabelas": 13,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "titulo": "Licenças e registros nas agências"
+      },
+      {
+        "chave": "dinheiro_publico",
+        "orgaos": [
+          "BNDES",
+          "Finep",
+          "MME",
+          "ANEEL",
+          "TCE-PE",
+          "TCE-SP",
+          "TCE-CE",
+          "TCE-RS",
+          "Banco Central"
+        ],
+        "tabelas": 10,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "titulo": "Dinheiro público e capital de fora"
+      }
+    ]
+  },
   "modulos": [
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 63
+      "tabelas": 64
     },
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 24
+      "tabelas": 43
     },
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 13
+      "tabelas": 16
     },
     {
       "chave": "macro",
@@ -2742,7 +3031,7 @@
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "pgfn-divida",
@@ -2983,6 +3272,13 @@
       "termos_lidos_em": "2026-10-29"
     },
     {
+      "id": "anvisa-cmed",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
       "id": "antt-rntrc",
       "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
       "marca": "vendavel",
@@ -3037,6 +3333,13 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "finep-contratacao",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
     },
     {
       "id": "b3-negocios",
@@ -3274,49 +3577,49 @@
       "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-cambio-efetivo-real",
       "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-juro-dos-bancos-centrais",
       "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-preco-de-imoveis",
       "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-inflacao-longa",
       "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-cambio",
       "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-lacuna-de-credito",
       "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
       "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "fmi-cambio",
@@ -5873,6 +6176,26 @@
       "tabela": "cadastro_de_fundos"
     },
     {
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "frase": "O gestor de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_gestor_hist"
+    },
+    {
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "frase": "O administrador de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_admin_hist"
+    },
+    {
       "atraso": null,
       "frase": "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ).",
       "frequencia": "Mensal",
@@ -6554,6 +6877,216 @@
     },
     {
       "atraso": null,
+      "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "BNDES",
+      "situacao": "licenciada",
+      "tabela": "financiamentos_bndes"
+    },
+    {
+      "atraso": null,
+      "frase": "Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e descentralizado, pelos agentes financeiros).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Finep",
+      "situacao": "em consulta",
+      "tabela": "financiamentos_finep"
+    },
+    {
+      "atraso": null,
+      "frase": "Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas duas listas que a Anvisa publica.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CMED (Anvisa)",
+      "situacao": "em consulta",
+      "tabela": "cmed_precos"
+    },
+    {
+      "atraso": null,
+      "frase": "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: ativas e canceladas (com a data e o motivo do descredenciamento).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_operadoras"
+    },
+    {
+      "atraso": null,
+      "frase": "Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência, capitalização).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SUSEP",
+      "situacao": "licenciada",
+      "tabela": "susep_cadastro"
+    },
+    {
+      "atraso": null,
+      "frase": "Cadastro de Empregadores do MTE (a \"lista suja\" do trabalho análogo ao escravo), só pessoa jurídica.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MTE",
+      "situacao": "em consulta",
+      "tabela": "mte_lista_suja"
+    },
+    {
+      "atraso": null,
+      "frase": "Termos de embargo do IBAMA por CNPJ do embargado, um por linha.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "IBAMA",
+      "situacao": "em consulta",
+      "tabela": "ibama_embargos"
+    },
+    {
+      "atraso": null,
+      "frase": "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês.",
+      "frequencia": "Mensal",
+      "historico_desde": "2025-10-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cvm_fiagro"
+    },
+    {
+      "atraso": null,
+      "frase": "A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ das entidades do Brasil: uma linha por valor diferente de cada par LEI e CNPJ.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "GLEIF",
+      "situacao": "licenciada",
+      "tabela": "gleif_ponte"
+    },
+    {
+      "atraso": null,
+      "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "em consulta",
+      "tabela": "cnes_estabelecimentos"
+    },
+    {
+      "atraso": null,
+      "frase": "Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "em consulta",
+      "tabela": "cnes_competencias"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Contratos do TCE-PE (estaduais e municipais) por contratado.",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "em consulta",
+      "tabela": "tce_pe_contratos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Termos aditivos dos contratos do TCE-PE por contratado.",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "em consulta",
+      "tabela": "tce_pe_aditivos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-SP",
+      "situacao": "em consulta",
+      "tabela": "tce_sp_despesas"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-CE",
+      "situacao": "em consulta",
+      "tabela": "tce_ce_contratos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "frase": "Contratos do LicitaCon do TCE-RS por contratado (só contrato.csv; pessoas.csv nunca é aberto).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-RS",
+      "situacao": "em consulta",
+      "tabela": "tce_rs_contratos"
+    },
+    {
+      "atraso": "A linha vale desde a data em que a ANM a criou",
+      "frase": "CFEM (royalty da mineração) recolhida por titular do processo, substância e município.",
+      "frequencia": "Mensal",
+      "historico_desde": "2002-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_cfem_arrecadacao"
+    },
+    {
+      "atraso": "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial (DPA) como o empreendedor declarou.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_sigbm_barragens"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_bruta"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Produção mineral beneficiada do Anuário Mineral por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_beneficiada"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "frase": "Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_agua_mineral"
+    },
+    {
+      "atraso": null,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -6914,11 +7447,11 @@
     }
   ],
   "totais": {
-    "familias": 102,
-    "familias_em_uso": 38,
-    "fontes": 31,
-    "fontes_em_consulta": 9,
+    "familias": 108,
+    "familias_em_uso": 44,
+    "fontes": 42,
+    "fontes_em_consulta": 18,
     "modulos": 6,
-    "tabelas": 117
+    "tabelas": 140
   }
 }

@@ -39,6 +39,8 @@ from base.contratos_tces import (
 )
 
 SEPARADORES_DO_CSV = (",", ";", "\t")
+LINHAS_DE_TITULO_MAX = 10  # até onde procurar o cabeçalho
+CELULAS_MINIMAS_DO_CABECALHO = 2  # título tem 0 ou 1 célula cheia; cabeçalho tem várias
 NAO_ALFANUMERICO = re.compile(r"[^a-z0-9]+")
 
 # GO: a chave é o nome na fonte; o valor é o nome na linha
@@ -86,21 +88,23 @@ APELIDOS_SP = {
         "processo",
         "n_processo",
         "num_processo",
+        "processo_administrativo",
     ),
     "modalidade": ("modalidade", "modalidade_licitacao"),
-    "orgao": ("orgao", "secretaria", "unidade", "orgao_contratante"),
+    "orgao": ("orgao", "nome_do_orgao", "secretaria", "unidade", "orgao_contratante"),
 }
 DATAS_SP = {
     "data_assinatura": (
         "data_assinatura",
         "data_de_assinatura",
+        "data_da_assinatura",
         "dt_assinatura",
         "data_contrato",
     ),
     "vigencia_inicio": ("inicio_vigencia", "data_inicio_vigencia", "vigencia_inicio"),
     "vigencia_fim": ("fim_vigencia", "data_fim_vigencia", "vigencia_fim"),
 }
-VALORES_SP = ("valor_total", "valor_contrato", "valor", "valor_global")
+VALORES_SP = ("valor_total", "valor_contrato", "valor", "valor_global", "valor_r")
 
 
 def _decodificar(corpo: bytes) -> str:
@@ -110,13 +114,23 @@ def _decodificar(corpo: bytes) -> str:
         return corpo.decode("cp1252", errors="replace")
 
 
+def _sem_titulo(texto: str) -> str:
+    """Tira as linhas de título que alguns extratos (SP capital) têm antes do cabeçalho."""
+    linhas = texto.splitlines(keepends=True)
+    for posicao, linha in enumerate(linhas[:LINHAS_DE_TITULO_MAX]):
+        celulas = [c for c in re.split(r"[,;\t]", linha) if c.strip(' "\r\n')]
+        if len(celulas) >= CELULAS_MINIMAS_DO_CABECALHO:
+            return "".join(linhas[posicao:])
+    return texto
+
+
 def _separador(texto: str) -> str:
     cabecalho = texto.split("\n", 1)[0]
     return max(SEPARADORES_DO_CSV, key=cabecalho.count)
 
 
 def _linhas_do_csv(corpo: bytes) -> list[dict[str, str]]:
-    texto = _decodificar(corpo)
+    texto = _sem_titulo(_decodificar(corpo))
     leitor = csv.DictReader(io.StringIO(texto), delimiter=_separador(texto))
     return [
         {chave: valor for chave, valor in item.items() if chave and valor is not None}

@@ -36,6 +36,7 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos",
     ),
     "ans": Orgao("ANS (planos de saúde)", "https://dadosabertos.ans.gov.br/"),
+    "ms": Orgao("Ministério da Saúde (DATASUS)", "https://opendatasus.saude.gov.br/"),
     "antt": Orgao("ANTT (transportes terrestres)", "https://dados.antt.gov.br/"),
     "anvisa": Orgao("Anvisa (vigilância sanitária)", "https://dados.anvisa.gov.br/"),
     "ccee": Orgao(
@@ -47,7 +48,12 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "susep": Orgao("SUSEP (seguros)", "https://dados.susep.gov.br/"),
     # Brasil: governo federal, bancos públicos e tribunais
     "bcb": Orgao("Banco Central do Brasil", "https://dadosabertos.bcb.gov.br/"),
+    "estban": Orgao(
+        "Banco Central do Brasil (ESTBAN)",
+        "https://www.bcb.gov.br/estatisticas/estatisticabancariamunicipios",
+    ),
     "bndes": Orgao("BNDES", "https://dadosabertos.bndes.gov.br/"),
+    "finep": Orgao("Finep (financiamento à inovação)", "https://www.finep.gov.br/"),
     "cgu": Orgao("CGU (cadastros de sanções)", "https://portaldatransparencia.gov.br/"),
     "djen": Orgao(
         "CNJ (Diário de Justiça Eletrônico Nacional)", "https://comunica.pje.jus.br/"
@@ -117,6 +123,16 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     ),
     "senado": Orgao("Senado Federal (Agência Senado)", "https://www12.senado.leg.br/"),
     "tce": Orgao("TCE-PR (Tribunal de Contas do Paraná)", "https://pit.tce.pr.gov.br/"),
+    # linha 658: portais CKAN estaduais e da capital de SP
+    "goias": Orgao(
+        "Governo de Goiás (dados abertos)", "https://dadosabertos.go.gov.br/"
+    ),
+    "msestado": Orgao(
+        "Governo de Mato Grosso do Sul (dados abertos)", "https://dados.ms.gov.br/"
+    ),
+    "spcapital": Orgao(
+        "Prefeitura de São Paulo (dados abertos)", "https://dados.prefeitura.sp.gov.br/"
+    ),
     "mapbiomas": Orgao("MapBiomas (uso da terra)", "https://brasil.mapbiomas.org/"),
     # café e agricultura
     "cecafe": Orgao("Cecafé (exportadores de café)", "https://www.cecafe.com.br/"),

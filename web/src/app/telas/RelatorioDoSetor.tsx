@@ -8,6 +8,7 @@ import { CabecalhoDaTela } from "../CabecalhoDaTela";
 import { ErroDaApi, baixar } from "../api";
 import { Carregando } from "../Carregando";
 import { useConta } from "../conta";
+import { TextoComLinks } from "../TextoComLinks";
 import { formatarData } from "../formatar";
 import type { RelatorioDoSetorV1, SetoresV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
@@ -107,7 +108,7 @@ function NaoTemos({ dados }: { dados: RelatorioDoSetorV1 }) {
         {dados.nao_temos.map((falta) => (
           <li key={falta.kpi}>
             <strong>{falta.kpi}</strong>: {falta.motivo}
-            <span className="apagado"> · Fonte: {falta.fonte}</span>
+            <span className="apagado"> · Fonte: <TextoComLinks texto={falta.fonte} /></span>
           </li>
         ))}
       </ul>
@@ -144,7 +145,7 @@ function Relatorio({ dados }: { dados: RelatorioDoSetorV1 }) {
         </div>
       ))}
       <NaoTemos dados={dados} />
-      {dados.fontes.length > 0 ? <p className="apagado">Fontes: {dados.fontes.join("; ")}.</p> : null}
+      {dados.fontes.length > 0 ? <p className="apagado">Fontes: <TextoComLinks texto={dados.fontes.join("; ")} />.</p> : null}
       <Lista id="limites-do-setor" titulo="Limites e cuidados" itens={dados.limites} />
     </>
   );
