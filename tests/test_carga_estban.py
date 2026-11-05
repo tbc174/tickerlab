@@ -103,7 +103,9 @@ def test_rodada_baixa_o_que_falta_e_so_as_6_mais_novas_publicadas_de_novo(
     )
     assert primeira[202512] == GRAVADO
     assert primeira[202601] == carga_estban.NAO_PUBLICADA
-    assert primeira[202302] == carga_estban.NAO_PUBLICADA  # a mais antiga, fora do dublê
+    assert (
+        primeira[202302] == carga_estban.NAO_PUBLICADA
+    )  # a mais antiga, fora do dublê
     pedidos.clear()
     segunda = carga_estban.rodar(
         None, tmp_path, date(2027, 1, 20), _servidor(publicadas, pedidos), pausa=0
