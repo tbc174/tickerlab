@@ -190,7 +190,11 @@ def test_ms_usa_o_endereco_com_www_e_os_termos_estao_datados():
     from base.licenca import familia_do_endereco
 
     assert carga.PORTAIS["ms"][0] == "https://www.dados.ms.gov.br"
-    assert (ORGAO_DA_FAMILIA["msestado"].link or "").startswith("https://www.dados.ms.gov.br")
-    assert familia_do_endereco("https://www.dados.ms.gov.br/dataset/x.csv") == "msestado"
+    assert (ORGAO_DA_FAMILIA["msestado"].link or "").startswith(
+        "https://www.dados.ms.gov.br"
+    )
+    assert (
+        familia_do_endereco("https://www.dados.ms.gov.br/dataset/x.csv") == "msestado"
+    )
     for familia in ("goias", "msestado", "spcapital"):
         assert TERMOS_LIDOS_EM[familia].isoformat() == "2026-11-05"
