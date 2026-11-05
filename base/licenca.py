@@ -63,6 +63,7 @@ FAMILIA_DO_ENDERECO = {
     "portaldatransparencia.gov.br/": "cgu",
     "comunicaapi.pje.jus.br/": "djen",
     "gateway.cloud.pje.jus.br/tpu/": "cnj",
+    "api-publica.datajud.cnj.jus.br/": "datajud",  # só uso interno (`coletas.FONTES_SO_INTERNAS`)
     "dadosabertos-download.cgu.gov.br/": "transparencia",
     "dadosabertos.bndes.gov.br/": "bndes",
     "download.finep.gov.br/": "finep",
