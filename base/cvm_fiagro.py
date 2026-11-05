@@ -10,15 +10,25 @@
 - **Sem olhar o futuro**: `disponivel_em` é a `Data_Entrega` do informe (o dia em que ele chegou à CVM),
   nunca a `Data_Referencia` (o mês a que ele se refere).
 
+`montar` (linha 679) junta os ZIPs guardados numa tabela só: uma linha por classe, mês e versão do informe
+(o reenvio não apaga a versão anterior; quem quer o vigente fica com a maior `versao`). A CVM só guarda os
+meses recentes, então o acervo é que carrega a história.
+
 Sem Streamlit; pandas só.
 """
 
 import io
 import zipfile
+from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
+import sqlalchemy as sa
 
 from base import cnpj as cnpjs
+from base import retratos as motor
+from base.parquet import LINHAGEM, gravar_se_mudou, origens_gravadas
+from src.versao_do_codigo import versao_do_codigo
 
 FONTE = "cvm-fiagro"
 SEPARADOR = ";"
@@ -134,3 +144,58 @@ def ler_mes(conteudo: bytes) -> tuple[pd.DataFrame, dict[str, int]]:
         "versao_antiga": antiga,
     }
     return pronta, contagem
+
+
+TABELA = "cvm_fiagro"
+CHAVE = ["cnpj", "referencia", "versao"]
+JA_MONTADO = {"ja_montado": 1}
+
+
+def _lidos(achados: list[motor.Retrato]) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Os informes de todos os ZIPs, cada linha com o original onde foi vista pela primeira vez."""
+    tabelas, contagem = [], {"linhas": 0, "cnpj_invalido": 0, "versao_antiga": 0}
+    for retrato in achados:
+        informe, parcial = ler_mes(motor.original(retrato.caminho))
+        for chave, valor in parcial.items():
+            contagem[chave] += valor
+        tabelas.append(
+            informe.assign(
+                origem_sha256=retrato.sha256,
+                origem_coletada_em=pd.Timestamp(retrato.baixado_em).isoformat(),
+                _dia=pd.Timestamp(retrato.dia),
+            )
+        )
+    tabela = pd.concat(tabelas, ignore_index=True) if tabelas else pd.DataFrame()
+    return tabela, contagem
+
+
+def montar(
+    conexao: sa.Connection, pasta: Path, agora: datetime, refazer: bool = False
+) -> dict[str, dict[str, int]]:
+    """`<pasta>/cvm_fiagro/informe.parquet`; sem ZIP novo desde a última montagem, nada muda."""
+    achados = motor.retratos(conexao, FONTE, ".zip")
+    if not achados:
+        return {}
+    destino = pasta / TABELA / "informe"
+    origens = [{"url": r.url, "sha256": r.sha256} for r in achados]
+    if not refazer and origens_gravadas(destino) == origens:
+        return {"informe": JA_MONTADO}
+    tabela, contagem = _lidos(achados)
+    # o mesmo informe em dois ZIPs vale o primeiro; o `Data_Entrega` dele é a data pública
+    unica = tabela.drop_duplicates(CHAVE, keep="first")
+    pronta = (
+        unica.assign(
+            referencia=pd.to_datetime(unica["referencia"]).dt.date,
+            # sem `Data_Entrega` (ou com data depois do arquivo), vale o dia em que o ZIP foi guardado
+            disponivel_em=pd.to_datetime(unica["disponivel_em"])
+            .fillna(unica["_dia"])
+            .clip(upper=unica["_dia"])
+            .dt.date,
+            montado_em=agora.isoformat(),
+            versao_do_codigo=versao_do_codigo(),
+        )[[*COLUNAS, "origem_sha256", "origem_coletada_em", *LINHAGEM[2:]]]
+        .sort_values(CHAVE, kind="stable")
+        .reset_index(drop=True)
+    )
+    gravar_se_mudou(pronta, destino, origens, CHAVE, carimbos=LINHAGEM)
+    return {"informe": {**contagem, "zips": len(achados), "na_tabela": len(pronta)}}

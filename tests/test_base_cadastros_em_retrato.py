@@ -4,13 +4,22 @@ para MEI, um endereço por cadastro e nada novo quando não há retrato novo. Ar
 formato conferido em 04/11/2026."""
 
 import hashlib
+import io
 import json
+import zipfile
 from datetime import UTC, date, datetime
 
 import pandas as pd
 import sqlalchemy as sa
 
-from base import ans_operadoras, ibama_embargos, mte_lista_suja, susep_cadastro
+from base import (
+    ans_operadoras,
+    cvm_fiagro,
+    gleif,
+    ibama_embargos,
+    mte_lista_suja,
+    susep_cadastro,
+)
 from base import cadastros_em_retrato as montagem
 from base import cnpj as cnpjs
 from base.ancoragem import parquets_sem_manifesto
@@ -224,3 +233,142 @@ def test_ibama_le_so_o_arquivo_do_termo_de_embargo(banco, tmp_path):
     assert resumo["retratos"] == 1
     tabela = pd.read_parquet(tmp_path / "base/ibama_embargos/termos.parquet")
     assert tabela["area_embargada_ha"].iloc[0] == 12.5
+
+
+def _gleif_pagina(publicada: str, *pares: tuple[str, str, str]) -> bytes:
+    dados = [
+        {
+            "attributes": {
+                "lei": lei,
+                "entity": {
+                    "registeredAs": cnpj,
+                    "category": categoria,
+                    "legalName": {"name": f"EMPRESA {lei}"},
+                    "registeredAt": {"id": "RA000681"},
+                },
+                "registration": {"status": "ISSUED"},
+            }
+        }
+        for lei, cnpj, categoria in pares
+    ]
+    return json.dumps(
+        {"meta": {"goldenCopy": {"publishDate": publicada}}, "data": dados}
+    ).encode()
+
+
+def test_gleif_junta_as_paginas_da_copia_e_nao_deixa_entrar_empresario_individual(
+    banco, tmp_path
+):
+    cnpj = cnpjs.formatar(EMPRESA)
+    _coletar(
+        banco,
+        "gleif-br",
+        fontes.endereco_gleif(1),
+        _gleif_pagina(
+            "2026-11-02T00:00:00Z",
+            ("5493001KJTIIGC8Y1R12", cnpj, "GENERAL"),
+            ("5493001KJTIIGC8Y1R13", cnpjs.formatar(OUTRA), "SOLE_PROPRIETOR"),
+        ),
+        PRIMEIRO_DIA,
+    )
+    _coletar(
+        banco,
+        "gleif-br",
+        fontes.endereco_gleif(2),
+        _gleif_pagina(
+            "2026-11-02T00:00:00Z",
+            ("5493001KJTIIGC8Y1R14", cnpjs.formatar(MEI), "GENERAL"),
+        ),
+        PRIMEIRO_DIA,
+    )
+    resumo = _montar(gleif, banco, tmp_path, pessoas={MEI[:8]})["ponte"]
+    assert resumo["retratos"] == 1 and resumo["na_tabela"] == 2
+    tabela = pd.read_parquet(tmp_path / "base/gleif_ponte/ponte.parquet")
+    assert dict(zip(tabela["lei"], tabela["trata_como_pessoa"], strict=True)) == {
+        "5493001KJTIIGC8Y1R12": False,
+        "5493001KJTIIGC8Y1R14": True,
+    }
+    assert set(tabela["cnpj_basico"]) == {EMPRESA[:8], MEI[:8]}
+    assert (tabela["disponivel_em"] <= PRIMEIRO_DIA).all()  # sem olhar o futuro
+
+
+def test_gleif_copia_nova_acrescenta_e_o_que_some_ganha_consta_falso(banco, tmp_path):
+    cnpj = cnpjs.formatar(EMPRESA)
+    outro = cnpjs.formatar(OUTRA)
+    primeira = _gleif_pagina(
+        "2026-11-02T00:00:00Z",
+        ("5493001KJTIIGC8Y1R12", cnpj, "GENERAL"),
+        ("5493001KJTIIGC8Y1R15", outro, "GENERAL"),
+    )
+    _coletar(banco, "gleif-br", fontes.endereco_gleif(1), primeira, PRIMEIRO_DIA)
+    _montar(gleif, banco, tmp_path)
+    assert _montar(gleif, banco, tmp_path)["ponte"] == montagem.JA_MONTADO
+    _coletar(
+        banco,
+        "gleif-br",
+        fontes.endereco_gleif(1),
+        _gleif_pagina(
+            "2026-11-30T00:00:00Z", ("5493001KJTIIGC8Y1R12", cnpj, "GENERAL")
+        ),
+        SEGUNDO_DIA,
+    )
+    _montar(gleif, banco, tmp_path)
+    tabela = pd.read_parquet(tmp_path / "base/gleif_ponte/ponte.parquet")
+    saiu = tabela[tabela["lei"] == "5493001KJTIIGC8Y1R15"].sort_values("visto_em")
+    assert list(saiu["consta"]) == [True, False]
+    assert saiu["disponivel_em"].iloc[-1] == SEGUNDO_DIA
+
+
+def _fiagro_zip(*linhas: tuple[str, str, str, str]) -> bytes:
+    cabecalho = (
+        "CNPJ_Classe;Nome_Classe;Data_Referencia;Versao;Data_Entrega;Numero_Cotistas;"
+        "Patrimonio_Liquido;CNPJ_Administrador;CNPJ_Gestor"
+    )
+    corpo = "\n".join(
+        f"{c};FIAGRO {c[:2]};{ref};{versao};{entrega};10;1000,5;{c};{c}".replace(
+            ",", "."
+        )
+        for c, ref, versao, entrega in linhas
+    )
+    memoria = io.BytesIO()
+    with zipfile.ZipFile(memoria, "w") as arquivo:
+        arquivo.writestr(
+            "inf_mensal_fiagro_202610.csv", f"{cabecalho}\n{corpo}".encode("latin-1")
+        )
+        arquivo.writestr("inf_mensal_fiagro_subclasse_202610.csv", b"X\n1")
+    return memoria.getvalue()
+
+
+def test_fiagro_grava_uma_linha_por_versao_e_vale_a_data_de_entrega(banco, tmp_path):
+    classe = cnpjs.formatar(EMPRESA)
+    _coletar(
+        banco,
+        "cvm-fiagro",
+        "https://dados.cvm.gov.br/x/inf_mensal_fiagro_202610.zip",
+        _fiagro_zip(
+            (classe, "2026-10-31", "1", "2026-11-03"),
+            ("11.111.111/1111-11", "2026-10-31", "1", "2026-11-03"),  # DV errado
+        ),
+        PRIMEIRO_DIA,
+    )
+    _coletar(
+        banco,
+        "cvm-fiagro",
+        "https://dados.cvm.gov.br/x/inf_mensal_fiagro_202610.zip",
+        _fiagro_zip(
+            (classe, "2026-10-31", "1", "2026-11-03"),
+            (classe, "2026-10-31", "2", "2026-11-20"),
+        ),
+        SEGUNDO_DIA,
+    )
+    with banco.connect() as conexao:
+        resumo = cvm_fiagro.montar(conexao, tmp_path / "base", AGORA)["informe"]
+    assert resumo["zips"] == 2 and resumo["cnpj_invalido"] == 1
+    tabela = pd.read_parquet(tmp_path / "base/cvm_fiagro/informe.parquet")
+    assert list(tabela["versao"]) == [1, 2]
+    assert list(tabela["disponivel_em"]) == [date(2026, 11, 3), date(2026, 11, 20)]
+    assert parquets_sem_manifesto(tmp_path / "base") == []
+    with banco.connect() as conexao:
+        assert cvm_fiagro.montar(conexao, tmp_path / "base", AGORA)["informe"] == (
+            cvm_fiagro.JA_MONTADO
+        )
