@@ -99,3 +99,32 @@ def test_nos_canais_do_app_o_datajud_so_treina(canal):
     treinar = decidir(_pedido(canal, Finalidade.TREINO), HOJE)
     assert mostrar == Decisao(False, portao.Motivo.REGRA_DO_APP)
     assert treinar == Decisao(True, portao.Motivo.REGRA_DO_APP)
+
+
+# --- o site público -------------------------------------------------------------------------------
+
+TABELAS_DO_DATAJUD = ("processos_datajud", "processos_datajud_movimentos")
+
+
+def test_o_catalogo_publico_tira_as_tabelas_so_internas():
+    from base import vitrine
+    from base.contrato import catalogo
+
+    completo = catalogo()
+    publico = vitrine.catalogo_publico(completo)
+    assert set(TABELAS_DO_DATAJUD) <= set(completo["tabelas"])
+    assert not set(TABELAS_DO_DATAJUD) & set(publico["tabelas"])
+    assert "processos_comunicacoes" in publico["tabelas"]  # o DJEN continua
+
+
+def test_a_pagina_dados_nao_mostra_o_datajud():
+    """Nem o nome da tabela: o site não anuncia dado que não pode sair."""
+    import json
+
+    from scripts import exportar_conteudo as exp
+
+    pagina = exp.conteudo()["catalogo"]
+    for parte in ("tabelas", "modulos", "fontes", "ligado_pelo_cnpj"):
+        texto = json.dumps(pagina[parte], ensure_ascii=False)
+        assert "processos_datajud" not in texto, parte
+        assert coletas.licenca_da_fonte("datajud") not in texto, parte

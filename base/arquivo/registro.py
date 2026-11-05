@@ -264,6 +264,9 @@ TABELAS_SEM_LEITOR: frozenset[str] = frozenset(
         "processos_comunicacoes",
         "processos_partes",
         "processos_nas_notas",
+        # DataJud: só uso interno (`coletas.FONTES_SO_INTERNAS`); nenhuma tela pode ler, nunca
+        "processos_datajud",
+        "processos_datajud_movimentos",
     }
 )
 

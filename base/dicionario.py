@@ -850,6 +850,142 @@ def _tabelas_dos_processos() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_do_datajud() -> dict[str, Tabela]:
+    """Os processos do DJEN completados pelo DataJud (`base/processos_datajud.py`). **Só uso interno**
+    (`coletas.FONTES_SO_INTERNAS`): treinam e rotulam, e nenhuma tela, relatório, API ou exportação
+    as lê."""
+    comum = (
+        " **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso "
+        "comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) "
+        "e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma "
+        "companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud "
+        "não traz as partes: nenhum nome de pessoa."
+    )
+    atraso = (
+        "O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha "
+        "vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado "
+        "ficou público"
+    )
+    fonte = (
+        "CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, "
+        "`base/processos_datajud.py`)"
+    )
+    frequencia = "Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)"
+    numero = (
+        "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+        TEXTO,
+    )
+    grau = ("Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP...", TEXTO)
+    visto = ("Dia da consulta guardada que trouxe esta versão da linha", DATA)
+    retratos = {
+        "numero_processo": numero,
+        "ano_do_processo": (
+            "Ano em que o processo foi ajuizado (o AAAA do número)",
+            "ano",
+        ),
+        "justica": (
+            "A justiça pelo J do número (Justiça Estadual, Justiça Federal...)",
+            TEXTO,
+        ),
+        "tribunal": ("Sigla do tribunal no DataJud (TJSP, TRF3...)", TEXTO),
+        "grau": grau,
+        "classe_codigo": (
+            "Código da classe (Tabelas Processuais Unificadas do CNJ)",
+            TEXTO,
+        ),
+        "classe": ("Nome da classe, como o DataJud escreve", TEXTO),
+        "assuntos_codigos": ("Códigos dos assuntos na TPU, separados por `;`", TEXTO),
+        "assuntos": ("Nomes dos assuntos, separados por `; `", TEXTO),
+        "orgao_julgador_codigo": ("Código do órgão julgador no CNJ", TEXTO),
+        "orgao_julgador": ("Vara, câmara ou turma, como o DataJud escreve", TEXTO),
+        "ajuizado_em": ("Dia do ajuizamento (`dataAjuizamento`)", DATA),
+        "atualizado_na_fonte_em": (
+            "Última atualização do processo no DataJud",
+            MOMENTO,
+        ),
+        "nivel_sigilo": ("Nível de sigilo no DataJud (0: público)", NUMERO),
+        "sistema": ("Sistema processual do tribunal (PJe, eproc, SAJ...)", TEXTO),
+        "formato": ("Eletrônico ou físico", TEXTO),
+        "movimentos": ("Quantos movimentos a consulta trouxe", NUMERO),
+        "ultimo_movimento_codigo": (
+            "Código TPU do movimento mais recente da consulta",
+            TEXTO,
+        ),
+        "ultimo_movimento_em": (
+            "Quando aconteceu o movimento mais recente da consulta",
+            MOMENTO,
+        ),
+        "disponivel_em": (
+            "Dia da consulta: desde quando a linha vale para a base",
+            DATA,
+        ),
+        "visto_em": visto,
+        **_ORIGEM_SEM_ANO,
+    }
+    movimentos = {
+        "numero_processo": numero,
+        "grau": grau,
+        "movimento_codigo": (
+            "Código do movimento (Tabelas Processuais Unificadas do CNJ)",
+            TEXTO,
+        ),
+        "movimento": ("Nome do movimento, como o DataJud escreve", TEXTO),
+        "complementos": (
+            "Complementos tabelados do CNJ, `nome: descrição`, separados por `; ` (texto vazio: sem complemento)",
+            TEXTO,
+        ),
+        "aconteceu_em": (
+            "Quando o movimento aconteceu, como o tribunal informou",
+            MOMENTO,
+        ),
+        "disponivel_em": (
+            (
+                "Primeiro dia em que uma consulta mostrou o movimento: desde quando a linha vale "
+                "(o movimento pode ter acontecido muito antes)"
+            ),
+            DATA,
+        ),
+        "visto_em": ("Dia da primeira consulta que trouxe o movimento", DATA),
+        **_ORIGEM_SEM_ANO,
+    }
+    return {
+        "processos_datajud": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta, pelo DataJud: um retrato de cada processo, "
+                "por grau, a cada consulta (classe, assuntos, órgão julgador, ajuizamento)."
+                + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="datajud",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_datajud/datajud.parquet` (servidor de casa, "
+                "`scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=retratos,
+        ),
+        "processos_datajud_movimentos": Tabela(
+            descricao=(
+                "Processos judiciais por companhia aberta, pelo DataJud: os movimentos de cada "
+                "processo (distribuição, sentença, recurso, trânsito em julgado), uma linha por "
+                "movimento." + comum
+            ),
+            fonte=fonte,
+            familia_da_fonte="datajud",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                "Parquet em `<acervo>/base/processos_datajud_movimentos/datajud.parquet` (servidor "
+                "de casa, `scripts/carga_processos.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas=movimentos,
+        ),
+    }
+
+
 def _tabelas_das_licencas() -> dict[str, Tabela]:
     """As licenças e registros por CNPJ (`base/licencas.py`, Ficha Clara): uma tabela por órgão, com
     as mesmas colunas, para a ficha da empresa ler todas do mesmo jeito."""
@@ -6044,6 +6180,7 @@ TABELAS: dict[str, Tabela] = {
     ),
     **_tabelas_das_sancoes(),
     **_tabelas_dos_processos(),
+    **_tabelas_do_datajud(),
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
     **_tabelas_dos_financiamentos(),
@@ -8206,6 +8343,7 @@ _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas nes
 _PROCESSOS = (
     "2025-01-01"  # o histórico do DJEN que a coleta busca (`djen.HISTORICO_DESDE`)
 )
+_DATAJUD = "2026-11-05"  # o DataJud (só uso interno) entrou no arquivista neste dia
 _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no arquivista neste dia
 _FINANCIAMENTOS = "2026-11-04"
 _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
@@ -8308,6 +8446,8 @@ _CONTRATO = {
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "processos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo",), datas={"aconteceu_em": "primeira_comunicacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
+    "processos_datajud": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo", "grau", "visto_em"), datas={"aconteceu_em": "ajuizado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_DATAJUD),
+    "processos_datajud_movimentos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo", "grau", "aconteceu_em", "movimento_codigo", "complementos"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_DATAJUD),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -8535,6 +8675,15 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "processos": {
         "pasta": "processos",
         "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "primeira_comunicacao", "disponivel_em", "visto_em"),
+    },
+    "processos_datajud": {
+        "pasta": "processos_datajud",
+        "nao_nulas": ("numero_processo", "ano_do_processo", "justica", "grau", "movimentos", "disponivel_em", "visto_em"),
+        "faixas": {"movimentos": _SEM_NEGATIVO, "nivel_sigilo": _SEM_NEGATIVO},
+    },
+    "processos_datajud_movimentos": {
+        "pasta": "processos_datajud_movimentos",
+        "nao_nulas": ("numero_processo", "grau", "movimento_codigo", "disponivel_em", "visto_em"),
     },
     "anvisa_registros": {
         "pasta": "anvisa_registros",

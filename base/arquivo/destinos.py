@@ -379,9 +379,7 @@ DESTINOS: dict[str, Destino] = {
     ),
     "cnj-tpu": _tabela("processos"),
     # só uso interno (`coletas.FONTES_SO_INTERNAS`): a tabela nunca sai em tela, API nem exportação
-    "datajud-processos": _planejada(
-        "processos judiciais, PR 3", "tabela interna processos_datajud"
-    ),
+    "datajud-processos": _tabela("processos_datajud", "processos_datajud_movimentos"),
     "antt-autos-de-transito": _planejada(
         "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
     ),
