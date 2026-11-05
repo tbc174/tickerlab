@@ -2036,6 +2036,17 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MDIC",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "modulos": [
         "mercado_e_empresas"
@@ -2122,17 +2133,6 @@
         "mercado_e_empresas"
       ],
       "orgao": "Anatel",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "MDIC",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2536,7 +2536,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 64
+      "tabelas": 66
     },
     {
       "chave": "governo_e_sancoes",
@@ -6378,6 +6378,26 @@
       "tabela": "comex_preco_medio"
     },
     {
+      "atraso": null,
+      "frase": "Nome de cada URF (unidade da Receita: porto, aeroporto ou posto) do Comex Stat, para ler o código que comex_preco_medio guarda (coluna urf).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "licenciada",
+      "tabela": "comex_urf"
+    },
+    {
+      "atraso": null,
+      "frase": "Nome de cada via de transporte do Comex Stat, para ler o código que comex_preco_medio guarda (a via de transporte dos CSVs do MDIC).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "licenciada",
+      "tabela": "comex_via"
+    },
+    {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
       "frase": "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003.",
       "frequencia": "Mensal",
@@ -7504,6 +7524,6 @@
     "fontes": 42,
     "fontes_em_consulta": 18,
     "modulos": 6,
-    "tabelas": 143
+    "tabelas": 145
   }
 }
