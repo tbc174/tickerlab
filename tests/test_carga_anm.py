@@ -152,9 +152,9 @@ def test_o_download_e_pedido_pelo_agente_do_tickerlab(monkeypatch: pytest.Monkey
         anm.FONTE_AMB_AGUA,
     ],
 )
-def test_as_fontes_da_anm_sao_a_confirmar_e_so_uso_interno(fonte: str):
-    assert "a confirmar" in coletas.licenca_da_fonte(fonte)
-    assert coletas.revenda_da_fonte(fonte) == coletas.A_CONFIRMAR
+def test_as_fontes_da_anm_sao_vendaveis_por_risco_assumido(fonte: str):
+    assert "risco assumido (ADR 0122)" in coletas.licenca_da_fonte(fonte)
+    assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_RISCO_ASSUMIDO
 
 
 def test_o_cadastro_mineiro_continua_com_a_licenca_propria():
