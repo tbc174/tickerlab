@@ -155,6 +155,22 @@ def test_retorno_mensal_igual_a_tela(cliente):
     assert dados["retorno_mensal"] == _json(esquemas.de_retorno_mensal(mensal))
 
 
+@pytest.mark.parametrize("periodo", ["6mo", "1y", "2y", "5y"])
+@pytest.mark.parametrize("ticker", ["PETR4.SA", "AAPL", "VALE3.SA"])
+def test_meses_compostos_dao_o_retorno_total_da_visao_geral(cliente, ticker, periodo):
+    """Um número só: juntar os meses da tela Retorno mensal dá o "Retorno total" da Visão geral
+    (e o fim da curva em base 100), e juntar os anos da tabela também (regressão do item 7)."""
+    params = {"ticker": ticker, "periodo": periodo, "taxa": TAXA}
+    geral = cliente.get("/api/v1/visao-geral", params=params).json()
+    mensal = cliente.get("/api/v1/retorno-mensal", params=params).json()["retorno_mensal"]
+    total = geral["painel"]["retorno_total"]
+    dos_meses = pd.Series([m["retorno"] for m in mensal["meses"]])
+    assert (1 + dos_meses).prod() - 1 == pytest.approx(total, abs=1e-9)
+    dos_anos = pd.Series([a["total"] for a in mensal["tabela"]])
+    assert (1 + dos_anos).prod() - 1 == pytest.approx(total, abs=1e-9)
+    assert geral["curva"]["valores"][-1] / 100 - 1 == pytest.approx(total, abs=1e-9)
+
+
 def test_comparacao_igual_a_tela_e_avisa_quem_ficou_de_fora(cliente):
     resposta = cliente.get(
         "/api/v1/comparacao",
