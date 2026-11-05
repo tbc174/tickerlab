@@ -1609,6 +1609,159 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_do_fiagro_e_gleif() -> dict[str, Tabela]:
+    """O informe mensal dos Fiagro (`base/cvm_fiagro.py`) e a ponte LEI e CNPJ do GLEIF (`base/gleif.py`),
+    as duas da linha 679."""
+    return {
+        "cvm_fiagro": Tabela(
+            descricao=(
+                "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias "
+                "Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e "
+                "dividend yield do mês, taxas e a carteira por tipo de ativo (imóveis rurais, CRA, "
+                "CRI, LCA, LCI). Uma linha por classe, mês e versão do informe: o reenvio traz "
+                "`versao` maior e não apaga a anterior (quem quer o vigente fica com a maior). "
+                "Contato, nome do administrador e do gestor e as subclasses ficam de fora; "
+                "administrador e gestor entram só pelo CNPJ. Só classe com CNPJ de dígito certo. "
+                "A CVM só mantém os meses recentes: a história daqui em diante é a do acervo"
+            ),
+            fonte="CVM: informe mensal de Fiagro (`base/cvm_fiagro.py`)",
+            familia_da_fonte="cvm",
+            frequencia="Mensal (um ZIP por mês; o arquivista olha toda semana)",
+            atraso=(
+                "`disponivel_em` é a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca a "
+                "referência; sem ela, vale o dia em que o ZIP foi guardado"
+            ),
+            onde="Parquet em `<acervo>/base/cvm_fiagro/informe.parquet` (servidor de casa, `base/cvm_fiagro.py`)",
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={
+                "cnpj": _EMPRESA["cnpj"],
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a classe", TEXTO),
+                "referencia": (
+                    "Mês a que o informe se refere (a `Data_Referencia`)",
+                    DATA,
+                ),
+                "versao": ("Versão do informe; o reenvio traz número maior", NUMERO),
+                "nome_da_classe": ("Nome da classe, como a CVM escreve", TEXTO),
+                "publico_alvo": ("Público-alvo da classe, como a CVM escreve", TEXTO),
+                "codigo_isin": ("Código ISIN da cota, quando informado", TEXTO),
+                "mercado_de_negociacao": (
+                    "Mercado em que a cota negocia, como a CVM escreve",
+                    TEXTO,
+                ),
+                "cnpj_administrador": (
+                    "CNPJ do administrador (só o CNPJ, sem o nome)",
+                    TEXTO,
+                ),
+                "cnpj_gestor": ("CNPJ do gestor (só o CNPJ, sem o nome)", TEXTO),
+                "cotistas": ("Número de cotistas", NUMERO),
+                "valor_do_ativo": ("Valor do ativo, em reais", NUMERO_DECIMAL),
+                "patrimonio_liquido": ("Patrimônio líquido, em reais", NUMERO_DECIMAL),
+                "cotas_emitidas": ("Cotas emitidas", NUMERO_DECIMAL),
+                "valor_patrimonial_da_cota": (
+                    "Valor patrimonial da cota, em reais",
+                    NUMERO_DECIMAL,
+                ),
+                "taxa_de_administracao_pct": (
+                    "Despesa com taxa de administração, em % do patrimônio",
+                    NUMERO_DECIMAL,
+                ),
+                "taxa_de_gestao_pct": (
+                    "Despesa com taxa de gestão, em % do patrimônio",
+                    NUMERO_DECIMAL,
+                ),
+                "rentabilidade_efetiva_no_mes": (
+                    "Rentabilidade efetiva do mês, como a CVM informa",
+                    NUMERO_DECIMAL,
+                ),
+                "rentabilidade_patrimonial_no_mes": (
+                    "Rentabilidade patrimonial do mês, como a CVM informa",
+                    NUMERO_DECIMAL,
+                ),
+                "dividend_yield_no_mes": (
+                    "Dividend yield do mês, como a CVM informa",
+                    NUMERO_DECIMAL,
+                ),
+                "total_investido": ("Total investido, em reais", NUMERO_DECIMAL),
+                "imoveis_rurais": (
+                    "Investido em imóveis rurais, em reais",
+                    NUMERO_DECIMAL,
+                ),
+                "cra": ("Investido em CRA, em reais", NUMERO_DECIMAL),
+                "cri": ("Investido em CRI, em reais", NUMERO_DECIMAL),
+                "lca": ("Investido em LCA, em reais", NUMERO_DECIMAL),
+                "lci": ("Investido em LCI, em reais", NUMERO_DECIMAL),
+                "total_do_passivo": ("Total do passivo, em reais", NUMERO_DECIMAL),
+                "disponivel_em": (
+                    "Desde quando o informe era público: a `Data_Entrega` (nunca depois do dia em que o ZIP foi guardado)",
+                    DATA,
+                ),
+                **_ORIGEM_SEM_ANO,
+            },
+        ),
+        "gleif_ponte": Tabela(
+            descricao=(
+                "A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ das "
+                "entidades do Brasil: uma linha por valor diferente de cada par LEI e CNPJ, a cada "
+                "cópia semanal do GLEIF (`consta` falso quando o par some da cópia). Só CNPJ inteiro "
+                "de dígito certo: CPF, NIRE e vazio ficam fora (o LEI fica sem ponte). Empresário "
+                "individual (`SOLE_PROPRIETOR`) e LEI marcado `DUPLICATE` pelo GLEIF não entram. "
+                "`conflito` marca o CNPJ com dois LEIs na mesma cópia: a resolução não liga por ele. "
+                "Cópia com menos da metade dos pares da anterior é pulada (cópia cortada)"
+            ),
+            fonte="GLEIF: base global de LEI, registros do Brasil (`base/gleif.py`)",
+            familia_da_fonte="gleif",
+            frequencia="Semanal (uma cópia por semana; o arquivista guarda só o que mudou)",
+            atraso=(
+                "No 1º arquivo guardado, `disponivel_em` é a data da cópia do GLEIF "
+                "(`goldenCopy.publishDate`), nunca depois do dia em que foi guardada; depois, o dia "
+                "da cópia em que a mudança apareceu"
+            ),
+            onde="Parquet em `<acervo>/base/gleif_ponte/ponte.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)",
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={
+                "id_na_fonte": (
+                    "O par: LEI e CNPJ (só os dígitos) juntos por `|`",
+                    TEXTO,
+                ),
+                "lei": ("LEI (20 caracteres)", TEXTO),
+                "cnpj": _EMPRESA["cnpj"],
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+                "nome": ("Nome legal da entidade, como o GLEIF escreve", TEXTO),
+                "autoridade": (
+                    "Autoridade de registro que informou o CNPJ (`RA000681` é a Receita)",
+                    TEXTO,
+                ),
+                "categoria": (
+                    "Categoria da entidade no GLEIF (`GENERAL`, `FUND`, `BRANCH`...)",
+                    TEXTO,
+                ),
+                "situacao_do_lei": ("Situação do LEI (`ISSUED`, `LAPSED`...)", TEXTO),
+                "conflito": (
+                    "Verdadeiro quando o CNPJ aparece em mais de um LEI na cópia",
+                    SIM_OU_NAO,
+                ),
+                "consta": (
+                    "Verdadeiro enquanto o par está na cópia; falso na linha do dia em que saiu",
+                    SIM_OU_NAO,
+                ),
+                "trata_como_pessoa": (
+                    "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+                    SIM_OU_NAO,
+                ),
+                "visto_em": (
+                    "Dia da cópia em que esta versão da linha foi vista",
+                    DATA,
+                ),
+                "disponivel_em": (
+                    "Desde quando a linha vale para a base (ver o atraso)",
+                    DATA,
+                ),
+                **_ORIGEM_SEM_ANO,
+            },
+        ),
+    }
+
+
 def _tabelas_do_cnes() -> dict[str, Tabela]:
     """O CNES por competência (`base/cnes.py`, linha 654): os estabelecimentos e a situação de cada competência."""
     atraso = (
@@ -5860,6 +6013,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_financiamentos(),
     **_tabelas_da_cmed(),
     **_tabelas_dos_cadastros_em_retrato(),
+    **_tabelas_do_fiagro_e_gleif(),
     **_tabelas_do_cnes(),
     **_tabelas_dos_tces(),
     **_tabelas_da_anm(),
@@ -8180,6 +8334,8 @@ _CONTRATO = {
         historico_desde=_GOVERNO,
         granularidade_do_publico_em="mes",
     ),
+    "cvm_fiagro": _contrato(modulo=_FIDC, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2025-10-01"),
+    "gleif_ponte": _contrato(modulo=_ME, pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="dia"),
     "financiamentos_finep": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
@@ -8394,6 +8550,15 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "ibama_embargos",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {"area_embargada_ha": _SEM_NEGATIVO},
+    },
+    "cvm_fiagro": {
+        "pasta": "cvm_fiagro",
+        "nao_nulas": ("cnpj", "cnpj_basico", "referencia", "versao", "disponivel_em"),
+        "faixas": {"cotistas": _SEM_NEGATIVO, "patrimonio_liquido": _SEM_NEGATIVO},
+    },
+    "gleif_ponte": {
+        "pasta": "gleif_ponte",
+        "nao_nulas": ("id_na_fonte", "lei", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "financiamentos_finep": {
         "pasta": "financiamentos_finep",

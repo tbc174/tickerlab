@@ -35,6 +35,7 @@ Leitor = Callable[[motor.Retrato], tuple[pd.DataFrame, dict[str, int]]]
 Juntador = Callable[
     [list[tuple[motor.Retrato, pd.DataFrame]]], tuple[pd.DataFrame, int]
 ]
+Achador = Callable[[sa.Connection], tuple[list[motor.Retrato], int]]
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,9 @@ class Cadastro:
     colunas: tuple[str, ...]
     datas: tuple[str, ...]
     url_termina_em: str | None = None
+    achar: Achador | None = (
+        None  # quando o cadastro não é um arquivo por retrato (o GLEIF: páginas)
+    )
 
 
 def _do_endereco_mais_novo(
@@ -79,17 +83,17 @@ def _lidos(
     return lidos
 
 
-def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
+def como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
     if isinstance(pessoas, np.ndarray):
         return pessoas
     return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(pessoas), dtype=str)))
 
 
-def _raizes(tabela: pd.DataFrame) -> pd.Series:
+def raizes(tabela: pd.DataFrame) -> pd.Series:
     return tabela["cnpj_basico"].dropna().drop_duplicates().astype(str)
 
 
-def _de_pessoa(tabela: pd.DataFrame, pessoas: np.ndarray) -> pd.Series:
+def de_pessoa(tabela: pd.DataFrame, pessoas: np.ndarray) -> pd.Series:
     """Para cada linha, se a raiz do CNPJ é de pessoa (sem CNPJ: falso)."""
     com_cnpj = tabela["cnpj_basico"].notna()
     resposta = pd.Series(False, index=tabela.index)
@@ -105,7 +109,7 @@ def _para_gravar(
     datas = [*cadastro.datas, "visto_em", "disponivel_em"]
     return (
         tabela.assign(
-            trata_como_pessoa=_de_pessoa(tabela, pessoas),
+            trata_como_pessoa=de_pessoa(tabela, pessoas),
             **{c: pd.to_datetime(tabela[c]).dt.date for c in datas},
             consta=tabela["consta"].astype(bool),
             montado_em=agora.isoformat(),
@@ -131,8 +135,12 @@ def montar(
     """
     resumo: dict[str, dict[str, int]] = {}
     for cadastro in cadastros:
-        achados, ignorados = _do_endereco_mais_novo(
-            motor.retratos(conexao, cadastro.fonte, cadastro.url_termina_em)
+        achados, ignorados = (
+            cadastro.achar(conexao)
+            if cadastro.achar
+            else _do_endereco_mais_novo(
+                motor.retratos(conexao, cadastro.fonte, cadastro.url_termina_em)
+            )
         )
         if not achados:
             continue
@@ -143,13 +151,13 @@ def montar(
         contagem: dict[str, int] = {}
         tabela, pulados = cadastro.juntar(_lidos(achados, cadastro, contagem))
         if pessoas is None:
-            de_pessoa = pessoas_pela_receita(
-                conexao, cnpjs.ordenados(cnpjs.raizes_em_numeros(_raizes(tabela)))
+            sabidas = pessoas_pela_receita(
+                conexao, cnpjs.ordenados(cnpjs.raizes_em_numeros(raizes(tabela)))
             )
         else:
-            de_pessoa = _como_numeros(pessoas)
+            sabidas = como_numeros(pessoas)
         gravar_se_mudou(
-            _para_gravar(tabela, cadastro, de_pessoa, agora),
+            _para_gravar(tabela, cadastro, sabidas, agora),
             destino,
             _origens(achados),
             ORDEM,
