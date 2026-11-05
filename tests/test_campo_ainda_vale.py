@@ -1,7 +1,5 @@
 """`_campo_ainda_vale`: o que uma simulação guardada pode devolver às telas de hoje."""
 
-import pytest
-
 from src.carteiras import ESTRATEGIAS_DE_CARTEIRA
 from src.estrategias import ESTRATEGIAS
 from telas.dados_da_conta import ESPERAS_DEPOIS_DO_STOP, _campo_ainda_vale
@@ -53,8 +51,7 @@ def test_parametro_numerico_respeita_a_faixa_e_recusa_bool():
 
 def test_parametro_de_carteira_usa_o_prefixo_proprio():
     achado = _primeiro_parametro(ESTRATEGIAS_DE_CARTEIRA, com_opcoes=False)
-    if achado is None:
-        pytest.skip("nenhuma carteira com parâmetro numérico")
+    assert achado is not None
     nome, p = achado
     chave = f"carteira_{nome}_{p.nome}"
     assert _campo_ainda_vale(chave, p.minimo)
@@ -63,8 +60,7 @@ def test_parametro_de_carteira_usa_o_prefixo_proprio():
 
 def test_parametro_com_opcoes_so_aceita_as_opcoes():
     achado = _primeiro_parametro(ESTRATEGIAS, com_opcoes=True)
-    if achado is None:
-        pytest.skip("nenhuma estratégia com parâmetro de escolha")
+    assert achado is not None
     nome, p = achado
     chave = f"parametro_{nome}_{p.nome}"
     assert _campo_ainda_vale(chave, p.opcoes[0])
