@@ -128,3 +128,23 @@ def test_a_pagina_dados_nao_mostra_o_datajud():
         texto = json.dumps(pagina[parte], ensure_ascii=False)
         assert "processos_datajud" not in texto, parte
         assert coletas.licenca_da_fonte("datajud") not in texto, parte
+
+
+# --- o Ficha Clara e a vista do CNPJ --------------------------------------------------------------
+
+
+def test_o_ficha_clara_e_a_vista_do_cnpj_nao_leem_tabela_so_interna():
+    """As duas saídas por CNPJ leem listas fixas de tabelas: nenhuma pode ser de fonte só interna."""
+    from base.conferencias_por_cnpj import FONTES
+    from base.dicionario import TABELAS
+    from base.porta import vista_do_cnpj
+
+    lidas = {fonte.tabela for fonte in FONTES} | set(vista_do_cnpj.MUDANCAS)
+    lidas.add(vista_do_cnpj.PARTICIPACOES)
+    internas = {
+        nome
+        for nome in lidas
+        if nome in TABELAS and so_interna(TABELAS[nome].familia_da_fonte)
+    }
+    assert not internas
+    assert not set(TABELAS_DO_DATAJUD) & lidas
