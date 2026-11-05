@@ -328,6 +328,20 @@ def ler_ce(contratados: bytes, contratos: bytes, coletado_em: date) -> Leitura:
     return leitura
 
 
+def municipios_ce(corpo: bytes) -> list[str]:
+    """Códigos dos municípios do SIM (`municipios`), sem repetir e na ordem da fonte."""
+    codigos = (_texto(m.get("codigo_municipio")) for m in _elementos(corpo))
+    return list(dict.fromkeys(c for c in codigos if c))
+
+
+def proxima_pagina_ce(corpo: bytes) -> str | None:
+    """O `href` do link `next` da resposta do SIM (começa em `?`), ou None na última página."""
+    for link in json.loads(corpo.decode("utf-8")).get("links", []):
+        if link.get("rel") == "next" and str(link.get("href", "")).startswith("?"):
+            return str(link["href"])
+    return None
+
+
 def _elementos(corpo: bytes) -> list[dict[str, object]]:
     return json.loads(corpo.decode("utf-8")).get("elements", [])
 
