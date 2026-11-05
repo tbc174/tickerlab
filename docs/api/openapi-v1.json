@@ -7048,6 +7048,41 @@
         "summary": "Relatorio Da Empresa Em Deck"
       }
     },
+    "/v1/relatorio-empresa/markdown": {
+      "get": {
+        "description": "A ficha da empresa em Markdown para ler com uma IA: o mesmo texto do botão da página (as seções\nna ordem da tela, \"Limites e cuidados\" e o anexo de como cada número foi calculado), com o mesmo\nacesso e o mesmo plano da rota JSON. O nome do arquivo vem do ticker da própria ficha.",
+        "operationId": "relatorio_da_empresa_em_markdown_v1_relatorio_empresa_markdown_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Da Empresa Em Markdown"
+      }
+    },
     "/v1/relatorio-setor": {
       "get": {
         "description": "O relatório do setor, montado para o plano da conta: quem está no setor e o que não temos\nvêm sempre; os números da base vêm trancados sem o dossiê da base no plano.",

@@ -310,6 +310,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/relatorio-setor/pdf",
         "/v1/relatorio-setor/apresentacao",
         "/v1/relatorio-empresa/apresentacao",
+        "/v1/relatorio-empresa/markdown",
         "/v1/eu",
         "/v1/conta",
         "/v1/sair",
