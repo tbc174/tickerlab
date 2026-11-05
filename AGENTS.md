@@ -86,19 +86,24 @@ cd web; npm run site                                        # páginas, CSS e JS
 
 - **Nunca** commitar na `main` direto, nem `push --force`, nem reescrever histórico publicado.
   Trabalho em ramos `feat/...`, `fix/...`, `docs/...`, `test/...`; entra na `main` por PR com o
-  CI verde. Push e PR são livres. **Merge:** com CI verde, dentro de um plano aceito e fora das áreas
-  sensíveis (login, contas e admins, cobrança, limites dos planos, migração que apaga, renomeia ou altera
-  dado, segredos, apagar dado), a sessão mescla e registra a decisão (alçadas da ADR 0101, na pasta
-  privada); nessas áreas, só com o "pode" do Tiago e depois da revisão de segurança. Migração que só
-  acrescenta (tabela, coluna anulável ou com padrão, índice) e tem `downgrade` testado é da sessão, mas
-  também passa pela revisão de segurança antes do merge (ADR 0101, Emenda 2).
+  CI verde. Push e PR são livres. **Merge:** com CI verde e dentro de um pedido do Tiago ou de um plano
+  aceito, a sessão mescla e registra a decisão (alçadas da ADR 0101, na pasta privada). **Áreas sensíveis**
+  (login, contas e admins, cobrança, limites dos planos, migração, segredos, apagar dado) e **nível 1**
+  (texto público, licença de dado, LGPD, nome de pessoa) também mesclam sozinhos (ADR 0101, Emenda 3,
+  05/11/2026), mas só depois de: (1) a revisão de segurança (`revisar-seguranca-pr`) sem achado
+  bloqueante, com o resumo no corpo do PR; (2) a revisão cruzada por outro modelo sem P0 nem P1 aberto.
+  Seguem como na Emenda 2: migração que só acrescenta (tabela, coluna anulável ou com padrão, índice) e tem
+  `downgrade` testado precisa só da revisão de segurança; correção de digitação ou de link quebrado em texto
+  público já aprovado, sem mudar sentido, número, preço, promessa, nome nem texto legal, não precisa de nenhuma.
+  O Tiago fica sabendo pelo registro e pelo relato do dia, não aprovando. **Continua só do Tiago**
+  (não é merge de PR): gasto, inclusive o PR que liga um gasto novo; contrato; e-mail ou pedido a
+  terceiro; segredo num servidor; e o que leva o nome ou o CNPJ dele.
 - **Ordens da Diretoria:** a conversa da Diretoria que toca a fila única pode mandar ordens às outras sessões
   (mensagem entre sessões ou, para a IA que não recebe mensagens, escrita na passagem da tarefa), citando as
-  palavras do Tiago (autorização dele em 20/10/2026). Fora do nível 1 da ADR 0101, essa ordem vale como a do
-  Tiago para push, PR, merge com auto-merge e o próximo passo da passagem. No nível 1 (as áreas sensíveis acima,
-  texto público, gasto, licença de dado e LGPD), só vale o "pode" que o Tiago escreve na própria conversa.
-  Correção de digitação ou de link quebrado em texto público já aprovado, sem mudar sentido, número, preço,
-  promessa, nome nem texto legal, não é nível 1 (ADR 0101, Emenda 2).
+  palavras do Tiago (autorização dele em 20/10/2026). Essa ordem vale como a do Tiago para push, PR, merge
+  com auto-merge (nas áreas sensíveis, com as duas revisões acima) e o próximo passo da passagem. Para o
+  que continua só do Tiago (gasto, contrato, terceiro, segredo num servidor), só vale o que ele escreve na
+  própria conversa.
 - **Merge automático:** quando o merge está autorizado (pela alçada ou pelo Tiago), ative o auto-merge do PR (ele
   mescla sozinho quando o CI fica verde), em vez de esperar o CI para voltar e mesclar. CI vermelho
   não mescla: corrija e faça o push de novo.
@@ -123,7 +128,7 @@ cd web; npm run site                                        # páginas, CSS e JS
   (`exportar_conteudo`, `gerar_site`, `npm run site`, `npm run app`) e faça o commit junto.
 - **A página inicial acompanha a base** (pedido do Tiago, 04/11/2026): tabela ou fonte nova no catálogo pede
   os geradores do site; se é de órgão público e tem CNPJ, entra num tema de `base/vitrine.py::TEMAS_DO_CNPJ`
-  (há teste que cobra), com o órgão na frase. Frase nova na página é texto público: nível 1.
+  (há teste que cobra), com o órgão na frase. Frase nova na página é texto público: passa pelas duas revisões.
 
 ## Várias IAs no mesmo projeto
 
@@ -142,9 +147,10 @@ O Tiago trabalha com mais de uma IA (decisão na pasta privada, ADR 0110). Para 
    `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, `Co-Authored-By: Codex (GPT-6) <noreply@openai.com>`),
    e o corpo do PR termina com `Feito por: <IA e modelo>`. Assim cada linha da `main` diz quem a escreveu.
 5. **Mesmas regras, mesmas travas.** Nenhuma IA tem mais permissão que a outra: mesmas alçadas, mesmo CI,
-   mesmo portão, mesmas áreas sensíveis que só andam com o "pode" do Tiago.
-6. **Revisão cruzada.** PR em área sensível feito por uma IA é revisado pela outra antes do "pode" do Tiago:
-   modelos diferentes erram em lugares diferentes (ver "Quando a tarefa é só auditar").
+   mesmo portão, mesmas áreas sensíveis e as mesmas duas revisões antes do merge.
+6. **Revisão cruzada.** PR em área sensível ou de nível 1 feito por uma IA é revisado por outro modelo (a
+   outra IA ou outro modelo do Claude) antes do merge, e o merge espera não haver P0 nem P1 aberto: modelos
+   diferentes erram em lugares diferentes (ver "Quando a tarefa é só auditar").
 7. **Ferramenta diferente, mesmo objetivo.** Quando uma regra cita uma ferramenta que você não tem (o
    Auto-fix ou as mensagens entre sessões do Claude, por exemplo), cumpra o objetivo dela pelo caminho que
    você tem, e diga qual usou.
