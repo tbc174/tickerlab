@@ -25,6 +25,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import IO, Any
 
+from base import cnpj as cnpjs
 from base.arquivo.coleta import Cliente, Obter, SemArquivo
 
 DIGITOS_DO_CNPJ = 14
@@ -71,9 +72,13 @@ def e_pessoal(nome: str) -> bool:
 
 
 def e_pessoa_juridica(valor: object) -> bool:
-    """Documento em branco (sem fornecedor identificado) ou com 14 dígitos; CPF e máscara de fora."""
+    """Documento em branco (sem fornecedor identificado), com 14 dígitos ou CNPJ alfanumérico de dígito
+    verificador certo (desde julho de 2026); CPF e máscara de fora."""
     texto = "" if valor is None else str(valor).strip()
-    return not texto or len(NAO_DIGITO.sub("", texto)) == DIGITOS_DO_CNPJ
+    if not texto or len(NAO_DIGITO.sub("", texto)) == DIGITOS_DO_CNPJ:
+        return True
+    cnpj = cnpjs.completo(texto)
+    return cnpj is not None and cnpjs.dv_confere(cnpj)
 
 
 def sem_pessoas(valor: object) -> object:
