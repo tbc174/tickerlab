@@ -17,10 +17,13 @@ Precisa de PowerShell 7 (`pwsh`), Windows Terminal, Git, GitHub CLI (`gh auth lo
 .\scripts\terminal\instalar.ps1 -PastaPrivada 'C:\caminho\da\pasta-privada'   # instala e aponta a fila
 ```
 
-O instalador acrescenta uma linha `Import-Module` ao perfil do PowerShell e, com `-PastaPrivada`, grava a variável
-de ambiente `TICKERLAB_PASTA_PRIVADA` (a pasta que tem `projeto-acoes/fila.md`). O repositório é público, por isso
-nenhum caminho do PC entra nele: a pasta privada chega só por essa variável. Depois, abra um PowerShell novo e
-digite `tl`. Para experimentar sem instalar: `Import-Module .\scripts\terminal\TickerLab.psd1`.
+O instalador acrescenta uma linha `Import-Module` ao perfil do PowerShell 7 (o do usuário, para todas as janelas),
+importa o módulo já na janela em que rodou e, com `-PastaPrivada`, grava a variável de ambiente
+`TICKERLAB_PASTA_PRIVADA` (a pasta que tem `projeto-acoes/fila.md`). O repositório é público, por isso nenhum caminho
+do PC entra nele: a pasta privada chega só por essa variável. As janelas do PowerShell que já estavam abertas (o painel
+Terminal do app do Claude Code também) carregaram o perfil antes da linha e respondem "tl não é reconhecido": abra uma
+janela nova ou rode nelas `. $PROFILE.CurrentUserAllHosts`. Só no PowerShell 7 (`pwsh`): no Windows PowerShell 5.1
+(`powershell.exe`) o `tl` não existe. Para experimentar sem instalar: `Import-Module .\scripts\terminal\TickerLab.psd1`.
 
 ## Comandos
 
