@@ -100,7 +100,8 @@ FAMILIA_DO_ENDERECO = {
     "transparencia.tce.sp.gov.br/": "tce-sp",  # despesas por fornecedor CNPJ (linha 652)
     "dadosabertos.tce.ce.gov.br/": "tce-ce",  # contratos do SIM (linha 652)
     "dadosabertos.go.gov.br/": "goias",  # licenças do Ipê (linha 658)
-    "dados.ms.gov.br/": "msestado",  # despesas por credor (linha 658)
+    "www.dados.ms.gov.br/": "msestado",  # despesas por credor (linhas 658 e 688)
+    "dados.ms.gov.br/": "msestado",
     "dados.prefeitura.sp.gov.br/": "spcapital",  # extrato de contratos (linha 658)
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",

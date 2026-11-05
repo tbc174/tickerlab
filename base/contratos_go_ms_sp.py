@@ -14,7 +14,7 @@ Cada leitor copia só os campos da lista da sua fonte.
 Formatos conferidos em 03/11/2026 (rodada de aprofundamento de fontes, `evidencias/territorio_n_co`):
 - **GO, licenças do Ipê** (CKAN dadosabertos.go.gov.br, CSV mensal, vírgula, UTF-8, CC BY): `cpf_cnpj` vem
   com CPF mascarado nas pessoas físicas. As datas não foram vistas (evidência reduzida ao cabeçalho).
-- **MS, despesas por credor** (CKAN dados.ms.gov.br, dump CSV mensal desde 2012): coluna `Cpf/Cnpj`; o
+- **MS, despesas por credor** (CKAN www.dados.ms.gov.br, dump CSV mensal desde 2012): coluna `Cpf/Cnpj`; o
   `Credor` (nome) nunca é lido. O mês vem do nome do recurso, por isso é argumento.
 - **SP capital, extrato de contrato** (CKAN dados.prefeitura.sp.gov.br, CSV anual, CC0): o CSV não foi
   amostrado; os cabeçalhos são procurados por apelidos e a primeira carga confere o mapa.

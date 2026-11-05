@@ -295,7 +295,7 @@ REVENDA = {
     "tce-sp": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-SP, uso interno
     "tce-ce": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-CE, uso interno
     "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
-    "msestado": A_CONFIRMAR,  # linha 658: nada perguntado ao MS; entra como "a confirmar"
+    "msestado": A_CONFIRMAR,  # CC BY visto no CKAN (05/11/2026), mas só interno até o "pode" do Tiago (linha 688; nada perguntado ao MS)
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
@@ -619,7 +619,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
-            "msestado",  # host dados.ms.gov.br não resolveu em 04/11/2026; robots.txt não lido
+            "msestado",  # www.dados.ms.gov.br; robots.txt lido em 05/11/2026: Disallow /api/, Crawl-Delay 10; CC BY no CKAN (a confirmar)
             "mte",
             "comexstat",
             "wayback",

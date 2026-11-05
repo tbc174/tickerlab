@@ -1926,7 +1926,7 @@
       "marca": "vendavel",
       "orgao": "Governo de Goiás (dados abertos)",
       "ritmo": "lida pelo app",
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-05",
       "uso": "guardada"
     },
     {
@@ -1935,11 +1935,11 @@
       "licencas": [
         "Despesas do MS por credor: a confirmar, só interno"
       ],
-      "link": "https://dados.ms.gov.br/",
+      "link": "https://www.dados.ms.gov.br/",
       "marca": "a_confirmar",
       "orgao": "Governo de Mato Grosso do Sul (dados abertos)",
       "ritmo": "lida pelo app",
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-05",
       "uso": "guardada"
     },
     {
@@ -1952,7 +1952,7 @@
       "marca": "vendavel",
       "orgao": "Prefeitura de São Paulo (dados abertos)",
       "ritmo": "lida pelo app",
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-05",
       "uso": "guardada"
     }
   ],
