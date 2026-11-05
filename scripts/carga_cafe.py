@@ -1,6 +1,6 @@
 """Carga das tabelas do café para a base (plano do café; ADR 0077): o que o `gerar_pacotes_do_cafe` empacota.
 
-    python -m scripts.carga_cafe                       (as cinco tabelas, na base do acervo)
+    python -m scripts.carga_cafe                       (as seis tabelas, na base do acervo)
     python -m scripts.carga_cafe comex conab           (só estas)
     python -m scripts.carga_cafe --base <pasta>        (a pasta com empresa_serie/, ensaio fora do acervo)
 
@@ -13,6 +13,7 @@ manifesto e versões (`gravar_com_versoes`: com as mesmas origens, nada é lido 
   "Publicado em" da página do levantamento (fonte `conab-cafe-publicacao`); sem ele, a 1ª coleta que viu a
   planilha, com `divulgado_aproximado` verdadeiro;
 - `usda`: `usda_psd/<dia da baixada>.parquet`, uma fotografia por baixada;
+- `faostat`: `faostat_cafe/<dia da baixada>.parquet`, uma fotografia por baixada (café verde da FAO);
 - `clima`: `clima_regiao_cafe/<ano>.parquet`, INMET (estações) e CHIRPS (satélite) por região, com a
   normal de 1991–2020;
 - `area`: `area_cafe_municipio/municipios.parquet`, a PAM (SIDRA, fonte `ibge-sidra`) e o MapBiomas.
@@ -44,6 +45,7 @@ from base.commodities import (
     clima_regiao,
     comex_cafe,
     conab_cafe,
+    faostat_cafe,
     usda_psd,
 )
 from base.parquet import gravar_com_versoes, origens_gravadas
@@ -234,6 +236,20 @@ def carregar_usda(conexao: sa.Connection, base: Path) -> None:
             log.info("usda_psd %s: %s", dia, resultado)
 
 
+# --- FAOSTAT ---------------------------------------------------------------------------------------
+def carregar_faostat(conexao: sa.Connection, base: Path) -> None:
+    """Uma fotografia do café verde da FAO por baixada do zip do FAOSTAT."""
+    for linha in _da_fonte(conexao, faostat_cafe.FONTE):
+        for baixado_em, sha256, conteudo in coletas_guardadas(conexao, linha.url):
+            dia = _dia(baixado_em)
+            resultado = gravar_com_versoes(
+                lambda c=conteudo, d=dia: faostat_cafe.ler(c, d),
+                base / PASTA / "faostat_cafe" / dia.isoformat(),
+                [{"url": linha.url, "sha256": sha256}], faostat_cafe.CHAVE,
+            )  # fmt: skip
+            log.info("faostat_cafe %s: %s", dia, resultado)
+
+
 # --- clima por região -------------------------------------------------------------------------------
 def _malha(conexao: sa.Connection) -> dict:
     """A malha municipal das UFs com café: o original mais novo de cada UF, numa coleção só."""
@@ -384,6 +400,7 @@ CARGAS: dict[str, Callable[[sa.Connection, Path], None]] = {
     "comex": carregar_comex,
     "conab": carregar_conab,
     "usda": carregar_usda,
+    "faostat": carregar_faostat,
     "clima": carregar_clima,
     "area": carregar_area,
 }

@@ -16,7 +16,14 @@ from base.arquivo import lote_licitacoes, obter_pj, registro
 from base.arquivo.coleta import ErroDeDescoberta, Resposta, SemArquivo
 from base.arquivo.destinos import DESTINOS
 from base.arquivo.fontes import FONTES, POR_ID
-from src.banco.coletas import Marca, licenca_da_fonte, marca_da_fonte
+from src.banco.coletas import (
+    VENDAVEL_COM_ATRIBUICAO,
+    VENDAVEL_RISCO_ASSUMIDO,
+    Marca,
+    licenca_da_fonte,
+    marca_da_fonte,
+    revenda_da_fonte,
+)
 
 AGORA = datetime(2026, 10, 22, 14, tzinfo=UTC)
 DUBLES = Path(__file__).parent / "arquivos" / "licitacoes"
@@ -105,14 +112,15 @@ def test_toda_fonte_do_lote_tem_licenca_marca_data_dos_termos_e_destino(fonte):
         "seges-pesquisa-precos",
         "transferegov-especiais-pagamentos",
     }
-    esperada = Marca.A_CONFIRMAR if sem_licenca_escrita else Marca.VENDAVEL
-    assert marca_da_fonte(fonte) == esperada
+    # sem licença escrita: vendável por risco assumido (ADR 0122, 05/11/2026)
+    assert marca_da_fonte(fonte) == Marca.VENDAVEL
+    assert (revenda_da_fonte(fonte) == VENDAVEL_RISCO_ASSUMIDO) == sem_licenca_escrita
     assert fonte in DESTINOS
 
 
-def test_o_preco_de_referencia_da_seges_nao_herda_a_marca_vendavel_da_familia():
-    assert marca_da_fonte("seges-pncp-compras") == Marca.VENDAVEL
-    assert marca_da_fonte("seges-pesquisa-precos") == Marca.A_CONFIRMAR
+def test_o_preco_de_referencia_da_seges_nao_herda_a_licenca_escrita_da_familia():
+    assert revenda_da_fonte("seges-pncp-compras") == VENDAVEL_COM_ATRIBUICAO
+    assert revenda_da_fonte("seges-pesquisa-precos") == VENDAVEL_RISCO_ASSUMIDO
 
 
 def test_fontes_da_seges_conferem_a_assinatura_antes_de_baixar():

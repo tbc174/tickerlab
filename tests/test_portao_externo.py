@@ -140,8 +140,8 @@ def test_linha_fora_da_vigencia_nega() -> None:
 
 
 def test_revenda_que_nao_e_vendavel_nega() -> None:
-    linha = _linha(fonte="sec-10k")  # SEC: só uso interno
-    decisao = decidir(_pedido(fonte="sec-10k"), HOJE, _regras(linha))
+    linha = _linha(fonte="wipo-patentes")  # WIPO: não revender, só uso interno
+    decisao = decidir(_pedido(fonte="wipo-patentes"), HOJE, _regras(linha))
     assert decisao.motivo is Motivo.REVENDA_NAO_VENDAVEL
 
 
@@ -265,12 +265,10 @@ def test_conab_sai_so_como_publicada(monkeypatch: pytest.MonkeyPatch) -> None:
     assert decidir(derivado, HOJE, regras).motivo is Motivo.SO_COMO_PUBLICADO
 
 
-def test_conab_hoje_e_a_confirmar_e_nao_sai() -> None:
+def test_conab_vendavel_por_risco_assumido_sai_sem_forcar_a_marca() -> None:
+    """ADR 0122 (05/11/2026): a CONAB passou a vendável por risco assumido; antes era a confirmar."""
     regras = _regras(_linha(fonte="conab"))
-    assert (
-        decidir(_pedido(fonte="conab"), HOJE, regras).motivo
-        is Motivo.REVENDA_NAO_VENDAVEL
-    )
+    assert decidir(_pedido(fonte="conab"), HOJE, regras).libera
 
 
 # --- D2.4: o que nunca sai pela API externa, qualquer que seja a marca ---
@@ -478,7 +476,7 @@ def test_toda_negacao_tem_o_mesmo_codigo_publico_sem_fonte_nem_campo() -> None:
         decidir(_pedido(campo="cpf"), HOJE, _regras(_linha(campo="cpf"))),
         decidir(_pedido(fonte="b3-negocios"), HOJE, _regras()),
         decidir(_pedido(), HOJE, _regras()),
-        decidir(_pedido(fonte="sec-10k"), HOJE, _regras(_linha(fonte="sec-10k"))),
+        decidir(_pedido(fonte="wipo-x"), HOJE, _regras(_linha(fonte="wipo-x"))),
         decidir(_pedido(), HOJE, _regras(_linha(), termos_lidos_em={})),
         decidir(_pedido(), HOJE, _regras(_linha(tabelas=()))),
         decidir(_pedido(), HOJE, _regras(_linha(), prontidao={})),
