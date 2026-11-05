@@ -103,6 +103,7 @@ from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
 from src.relatorio_do_setor_pdf import relatorio_do_setor as pdf_do_setor
 from src.relatorio_empresa import Relatorio
 from src.relatorio_empresa import montar as montar_relatorio
+from src.relatorio_empresa_markdown import relatorio_em_markdown
 from src.simulacoes import (
     endereco_no_app_novo,
     restaurar_estado,
@@ -1044,6 +1045,23 @@ def relatorio_da_empresa_em_deck(
         lambda agora: apresentacao.da_ficha(relatorio, agora),
         formato,
         f"ficha-{sigla}-tickerlab",
+    )
+
+
+@router.get("/relatorio-empresa/markdown", response_class=Response)
+def relatorio_da_empresa_em_markdown(conta: Conta, ticker: Ticker) -> Response:
+    """A ficha da empresa em Markdown para ler com uma IA: o mesmo texto do botão da página (as seções
+    na ordem da tela, "Limites e cuidados" e o anexo de como cada número foi calculado), com o mesmo
+    acesso e o mesmo plano da rota JSON. O nome do arquivo vem do ticker da própria ficha."""
+    relatorio = _relatorio_da_empresa_do_ticker(conta, ticker)
+    sigla = relatorio.ticker.removesuffix(".SA")
+    return Response(
+        content=relatorio_em_markdown(relatorio),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="tickerlab-empresa-{sigla}.md"',
+            "Cache-Control": "no-store",
+        },
     )
 
 

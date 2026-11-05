@@ -80,7 +80,7 @@ As principais páginas:
 | Juros e inflação | `GET /api/v1/juros-e-inflacao` | `JurosEInflacaoV1` |
 | Linha do tempo | `GET /api/v1/linha-do-tempo?ticker=PETR4&materialidade_minima=50` | `LinhaDoTempoDoAtivoV1` |
 | Simulações guardadas | `GET /api/v1/simulacoes`, `POST /api/v1/salvar-simulacao`, `POST /api/v1/apagar-simulacao` | as simulações da conta |
-| Relatório da empresa | `GET /api/v1/relatorio-empresa` (e `/apresentacao`) | a ficha da companhia |
+| Relatório da empresa | `GET /api/v1/relatorio-empresa` (e `/apresentacao`, `/markdown`) | a ficha da companhia |
 | Busca por CNPJ | `POST /api/v1/busca-por-cnpj` (e `/pdf`) | o que a base sabe de um CNPJ |
 | Setores | `GET /api/v1/setores`, `GET /api/v1/relatorio-setor` (e `/pdf`, `/apresentacao`) | o relatório do setor |
 | Pulse | `GET /api/v1/pulse` | o que mudou desde a última visita |
