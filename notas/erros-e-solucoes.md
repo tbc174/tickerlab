@@ -670,3 +670,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `order_by("cnpj")` resolveu o nome para a tabela associada (`setores_cvm`), embora o `SELECT DISTINCT` retornasse o CNPJ de `tickers_dos_emissores`. PostgreSQL exige que a expressão ordenada esteja na seleção; SQLite aceita essa consulta e ocultou o erro nos testes locais.
 - **Solução:** ordenar pelas próprias `selected_columns` da consulta. Os três modos de busca e a eliminação de duplicatas passaram a ser exercitados também pelo PostgreSQL no conjunto `test_banco.py` do CI. A falha foi reproduzida por consulta de leitura antes da correção.
 - **Data:** 26/10/2026
+
+## Página com contrato em `src/paginas.py` sem a tela em React no mesmo PR (`esqueleto`, `moldura`)
+- **Sintoma:** PR que só traz a rota da API de uma página nova fica com os testes web `web/testes/app/esqueleto.test.tsx` ("toda página com contrato já tem a tela em React") e `web/testes/app/moldura.test.tsx` vermelhos.
+- **Causa:** dar contrato à página em `src/paginas.py` a põe em `paginasDoApp`, e esses testes exigem que toda página com contrato tenha a tela em React.
+- **Solução:** a tela entra no mesmo PR do contrato. Se o PR é só da rota, não dê contrato de página: ponha a rota em `ROTAS_DA_CONTA` (`src/api_v1/acesso.py`), que `test_toda_rota_da_v1_tem_contrato_ou_e_da_conta` aceita. Exemplos: molde B (#477) e molde D (#505).
+- **Data:** 03/11/2026

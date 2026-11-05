@@ -1193,7 +1193,7 @@ PRIMEIRO_ANO_DO_INMET = (
     2000  # as estações automáticas começam aí; zip por ano, ~100 MB nos recentes
 )
 CHIRPS_MENSAL = (
-    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/"
+    "https://data.chc.ucsb.edu/products/CHIRPS/v2.0/global_monthly/tifs/"
     "chirps-v2.0.{ano}.{mes:02d}.tif.gz"
 )
 PRIMEIRO_ANO_DO_CHIRPS = 1991  # início da normal climatológica de 1991–2020 (OMM)
