@@ -4259,6 +4259,67 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "comex_urf": Tabela(
+        descricao=(
+            "Nome de cada URF (unidade da Receita: porto, aeroporto ou posto) do Comex Stat, para ler o código que `comex_preco_medio` guarda "
+            "(coluna `urf`). Tabela de apoio da fonte (`URF.csv`), "
+            "sem data própria: o primeiro valor vale desde o dia da coleta, e um nome que o MDIC "
+            "mude depois vira linha nova, desde o dia em que foi visto. Dados abertos de uso livre, "
+            "inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC"
+        ),
+        fonte="MDIC: Comex Stat, tabela auxiliar `URF.csv`",
+        familia_da_fonte="comexstat",
+        frequencia="Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)",
+        atraso="Sem data própria: vale desde o dia da coleta do arquivista",
+        onde="Parquet em `<acervo>/base/setoriais/comex_urf/urf.parquet` (`scripts/carga_setoriais.py`; leitor `base/setoriais/comex_tabelas.py`)",
+        linhagem=(
+            "O `.json` do arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código."
+        ),
+        colunas={
+            "urf": ("Código da URF, o mesmo de `comex_preco_medio.urf`", TEXTO),
+            "nome": (
+                "Nome da unidade, sem o código repetido na frente (`IRF ILHEUS`)",
+                TEXTO,
+            ),
+            "disponivel_em": (
+                "Desde quando o nome era público (o dia da coleta que o trouxe)",
+                DATA,
+            ),
+            "visto_em": (
+                "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+                DATA,
+            ),
+        },
+    ),
+    "comex_via": Tabela(
+        descricao=(
+            "Nome de cada via de transporte do Comex Stat, para ler o código que `comex_preco_medio` guarda "
+            "(a via de transporte dos CSVs do MDIC). Tabela de apoio da fonte (`VIA.csv`), "
+            "sem data própria: o primeiro valor vale desde o dia da coleta, e um nome que o MDIC "
+            "mude depois vira linha nova, desde o dia em que foi visto. Dados abertos de uso livre, "
+            "inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC"
+        ),
+        fonte="MDIC: Comex Stat, tabela auxiliar `VIA.csv`",
+        familia_da_fonte="comexstat",
+        frequencia="Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)",
+        atraso="Sem data própria: vale desde o dia da coleta do arquivista",
+        onde="Parquet em `<acervo>/base/setoriais/comex_via/via.parquet` (`scripts/carga_setoriais.py`; leitor `base/setoriais/comex_tabelas.py`)",
+        linhagem=(
+            "O `.json` do arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código."
+        ),
+        colunas={
+            "via": ("Código da via (`01` marítima, `04` aérea...)", TEXTO),
+            "nome": ("Nome da via, como o MDIC escreve (`MARITIMA`)", TEXTO),
+            "disponivel_em": (
+                "Desde quando o nome era público (o dia da coleta que o trouxe)",
+                DATA,
+            ),
+            "visto_em": (
+                "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+                DATA,
+            ),
+        },
+    ),
     "aneel_samp": Tabela(
         descricao=(
             "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de "
@@ -8509,6 +8570,8 @@ _CONTRATO = {
     "anp_concessionarios": _contrato(modulo=_ME, chaves=("numero_do_contrato", "cnpj", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "antt_siade": _contrato(modulo=_ME, chaves=("competencia", "ferrovia", "mercadoria", "estacao_de_origem", "estacao_de_destino", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "comex_preco_medio": _contrato(modulo=_ME, chaves=("fluxo", "competencia", "ncm", "urf", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "comex_urf": _contrato(modulo=_ME, chaves=("urf", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "comex_via": _contrato(modulo=_ME, chaves=("via", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
