@@ -24,12 +24,7 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from base.cnpj import normalizar_cnpj
-from base.dossie import (
-    CONTAS_DA_DRE,
-    TABELAS_SO_EM_CONTAGEM,
-    exigir_que_pode_contar,
-    exigir_que_pode_mostrar,
-)
+from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import FONTES_SO_INTERNAS, licenca_da_fonte
 
@@ -682,7 +677,6 @@ REMUNERACAO = "fre_remuneracao"
 PROVENTOS = "proventos"
 PARECERES = "pareceres_dfp"
 INSOLVENCIA = "insolvencia"
-# o atraso só entra como contagem (`TABELAS_SO_EM_CONTAGEM`, em `base/dossie.py`)
 TABELAS_DOS_CRUZAMENTOS = (
     DEMONSTRACOES,
     TROCAS_DE_AUDITOR,
@@ -1181,16 +1175,13 @@ def parecer_e_insolvencia(
 
 def medir_cruzamentos(porta: PortaQueLe, catalogo: dict, ate: date) -> Cruzamentos:
     """Mede os cruzamentos pela porta, só com o que era público em `ate`. Tabela fora do catálogo ou que
-    a licença não deixa mostrar dá erro, como nos números da página Dados; o atraso só pode ser contado."""
+    a licença não deixa mostrar dá erro, como nos números da página Dados."""
     ausentes = [t for t in TABELAS_DOS_CRUZAMENTOS if t not in catalogo["tabelas"]]
     if ausentes:
         raise ValueError(
             f"fora do catálogo, não vira fato público: {', '.join(ausentes)}"
         )
-    exigir_que_pode_mostrar(
-        t for t in TABELAS_DOS_CRUZAMENTOS if t not in TABELAS_SO_EM_CONTAGEM
-    )
-    exigir_que_pode_contar(TABELAS_SO_EM_CONTAGEM)
+    exigir_que_pode_mostrar(TABELAS_DOS_CRUZAMENTOS)
     lucros = linhas_do_lucro(porta, ate)
     balancos = balancos_anuais(lucros)
     lucro = lucro_por_exercicio(lucros)

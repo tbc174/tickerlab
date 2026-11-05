@@ -87,15 +87,16 @@ def _textos(secao: dict) -> str:
 
 
 @pytest.mark.parametrize("tabela", ["insolvencia", "cnpj_situacao_especial"])
-def test_a_d2_libera_so_as_duas_tabelas(tabela: str) -> None:
+def test_a_d2_liberou_as_duas_tabelas(tabela: str) -> None:
     assert dossie.pode_mostrar(tabela)
 
 
 @pytest.mark.parametrize("tabela", ["pgfn_divida", "rotulos_atraso"])
-def test_a_divida_ativa_e_o_rotulo_de_atraso_seguem_fora(tabela: str) -> None:
-    """P-44: a ADR 0103 (D2) só desbloqueia a insolvência e a situação especial."""
-    assert not dossie.pode_mostrar(tabela)
-    assert tabela in dossie.TABELAS_PROIBIDAS
+def test_a_virada_liberou_a_divida_ativa_e_o_rotulo_de_atraso(tabela: str) -> None:
+    """5/11/2026 (`docs/virada-empresas-fechadas.md`): toda a base vai a público, sem esperar o parecer
+    (P-44); as duas saem como fato datado, com fonte, data pública e link."""
+    assert dossie.pode_mostrar(tabela)
+    assert not hasattr(dossie, "TABELAS_PROIBIDAS")
 
 
 def test_a_secao_esta_registrada_com_as_duas_tabelas() -> None:

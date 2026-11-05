@@ -9,9 +9,9 @@ Os dez de hoje: fundos entrando e saindo, número refeito no balanço seguinte, 
 de dentro comprando e vendendo (só o agregado, sem nomes: ADR 0103), remuneração da diretoria subindo em
 ano de lucro menor, dividendo acima do lucro, parecer com ressalva ou dúvida de continuidade, rating
 rebaixado, assembleias de debenturistas de aperto e aumento de capital com dividendo no mesmo exercício
-(plano "mais cruzamentos da base", 29/10/2026). A dívida ativa de quem cede recebíveis a FIDC fica de
-fora: a ADR 0103 a bloqueia até o ponto 9 (direito de resposta), e nada deste módulo lê `pgfn_divida`
-nem `rotulos_atraso`.
+(plano "mais cruzamentos da base", 29/10/2026). A dívida ativa de quem cede recebíveis a FIDC ainda não
+é um cruzamento: a virada de 5/11/2026 liberou a `pgfn_divida` e a `rotulos_atraso`
+(`docs/virada-empresas-fechadas.md`), mas nada deste módulo as lê.
 
 Sem olhar o futuro: `hoje` corta tudo o que tem data depois dele; o resultado de uma data passada é o
 mesmo se a ficha trouxer linhas de depois.

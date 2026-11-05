@@ -17,7 +17,7 @@ CAMPOS_DA_P6 = {
     "sinonimos_de_tempo",
 }  # fmt: skip
 # só aparecem quando há: o catálogo das tabelas sem elas não muda
-CAMPOS_OPCIONAIS = {"renomeadas", "prontidao"}
+CAMPOS_OPCIONAIS = {"renomeadas", "prontidao", "linhas_de_pessoa"}
 PROVA = Prova(date(2026, 10, 15), "placar-2026-10-15", "mesmo documento, outro canal")
 PRONTA = Prontidao(1, PROVA, PROVA._replace(independencia=""), None)
 
