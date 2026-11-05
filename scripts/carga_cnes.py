@@ -4,7 +4,8 @@
     python -m scripts.carga_cnes --competencia 202607 --competencia 202608 --pasta /tmp/base --forcar
     python -m scripts.carga_cnes                                      (as competências dos últimos meses)
 
-Lê a API de dados abertos do DATASUS (`base/cnes.py`) e grava, com manifesto e versões
+Lê o FTP do DATASUS em DBC (padrão, `--fonte ftp`: 27 UFs, layout conferido no STAC2608.dbc real) ou a API de dados
+abertos (`--fonte api`) por `base/cnes.py` e grava, com manifesto e versões
 (`base/parquet.py::gravar_com_versoes`), um arquivo por competência:
 - `cnes_estabelecimentos/<AAAAMM>.parquet`: um estabelecimento por linha, com o CNPJ dele e o da mantenedora
   em colunas separadas; competência vazia não grava estabelecimentos;
@@ -38,6 +39,8 @@ TEMPO_LIMITE = 120
 COMPETENCIAS_PADRAO = (
     3  # a mais recente com dado costuma ficar 1 a 3 meses atrás da data
 )
+FONTE_API = "api"
+FONTE_FTP = "ftp"
 ORDEM_DOS_ESTABELECIMENTOS = list(cnes.CHAVE)
 ORDEM_DA_SITUACAO = ["competencia"]
 
@@ -59,10 +62,13 @@ def competencias_recentes(hoje: date, quantas: int = COMPETENCIAS_PADRAO) -> lis
     return sorted((m // 12) * 100 + m % 12 + 1 for m in reversed(meses))
 
 
-def _origem(competencia: int) -> dict[str, str]:
-    """A origem de uma competência. A API não manda o conteúdo bruto: o resumo é do pedido, e a tabela
-    (que muda quando o dado muda) é comparada pelo conteúdo em `_gravar`."""
-    pedido = f"{cnes.URL_DA_API}?nu_comp={competencia}"
+def _origem(competencia: int, fonte: str = FONTE_API) -> dict[str, str]:
+    """A origem de uma competência. Nem a API nem o FTP (27 arquivos) dão um conteúdo bruto único: o resumo é
+    do pedido, e a tabela (que muda quando o dado muda) é comparada pelo conteúdo em `_gravar`."""
+    if fonte == FONTE_FTP:
+        pedido = f"ftp://{cnes.SERVIDOR_FTP}{cnes.PASTA_NO_FTP}/ST*{competencia % 10000:04d}.dbc"
+    else:
+        pedido = f"{cnes.URL_DA_API}?nu_comp={competencia}"
     return {"url": pedido, "sha256": hashlib.sha256(pedido.encode()).hexdigest()}
 
 
@@ -72,9 +78,16 @@ def carregar_competencia(
     coletado_em: date,
     buscar: cnes.Buscador = buscar_na_api,
     forcar: bool = False,
+    fonte: str = FONTE_API,
+    baixar: cnes.BaixadorDeDbc = cnes.baixar_dbc_se_publicado,
 ) -> tuple[str, str]:
     """Coleta e grava uma competência; devolve o que aconteceu com os estabelecimentos e com a situação."""
-    tabela, situacao = cnes.coletar_competencia(buscar, competencia, coletado_em)
+    if fonte == FONTE_FTP:
+        tabela, situacao = cnes.coletar_competencia_ftp(
+            competencia, coletado_em, baixar
+        )
+    else:
+        tabela, situacao = cnes.coletar_competencia(buscar, competencia, coletado_em)
     log.info(
         "CNES %s: %s (%d estabelecimentos)",
         competencia,
@@ -84,11 +97,11 @@ def carregar_competencia(
     registro = pd.DataFrame([situacao], columns=list(cnes.COLUNAS_DA_SITUACAO))
     estabelecimentos = _gravar(
         tabela, saida / "cnes_estabelecimentos" / str(competencia), competencia,
-        ORDEM_DOS_ESTABELECIMENTOS, ("disponivel_em",), forcar,
+        ORDEM_DOS_ESTABELECIMENTOS, ("disponivel_em",), forcar, fonte,
     )  # fmt: skip
     situacao_gravada = _gravar(
         registro, saida / "cnes_competencias" / str(competencia), competencia,
-        ORDEM_DA_SITUACAO, ("coletado_em",), forcar,
+        ORDEM_DA_SITUACAO, ("coletado_em",), forcar, fonte,
     )  # fmt: skip
     return estabelecimentos, situacao_gravada
 
@@ -100,6 +113,7 @@ def _gravar(
     ordem: list[str],
     carimbos: tuple[str, ...],
     forcar: bool,
+    fonte: str = FONTE_API,
 ) -> str:
     """Grava a competência só se o conteúdo mudou, sem contar a data da coleta.
 
@@ -116,7 +130,7 @@ def _gravar(
         if igual:
             return IGUAL
     return gravar_com_versoes(
-        lambda: tabela, destino, [_origem(competencia)], ordem, forcar=True
+        lambda: tabela, destino, [_origem(competencia, fonte)], ordem, forcar=True
     )
 
 
@@ -125,6 +139,12 @@ def main(argv: list[str] | None = None) -> int:
     argumentos.add_argument("--competencia", type=int, action="append", default=None)
     argumentos.add_argument("--pasta", type=Path, default=None)
     argumentos.add_argument("--forcar", action="store_true")
+    argumentos.add_argument(
+        "--fonte",
+        choices=(FONTE_FTP, FONTE_API),
+        default=FONTE_FTP,
+        help="ftp (DBC por UF, ~2 competências à frente, sem nomes) ou api (JSON, com nomes)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -140,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     for competencia in competencias:
         try:
             resultado = carregar_competencia(
-                competencia, saida, hoje, forcar=opcoes.forcar
+                competencia, saida, hoje, forcar=opcoes.forcar, fonte=opcoes.fonte
             )
         except (TypeError, ValueError, OSError) as erro:
             log.error("CNES %s falhou: %s", competencia, erro)

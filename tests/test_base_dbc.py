@@ -215,3 +215,71 @@ class TestCnesPeloDbc:
             chamadas[-1] == "RETR /dissemin/publicos/CNES/200508_/Dados/ST/STAC2609.dbc"
         )
         assert chamadas[:2] == ["ftp.datasus.gov.br", "login"]
+
+
+class TestColetaDoPaisPeloFtp:
+    """`coletar_competencia_ftp`: 27 UFs, uma tabela; nenhuma publicada = vazia; parcial = erro."""
+
+    @staticmethod
+    def _baixador(publicadas: dict[str, str]):
+        def baixar(uf: str, competencia: int) -> bytes:
+            if uf not in publicadas:
+                raise FileNotFoundError(uf)
+            return montar_dbc(CAMPOS, [_registro(publicadas[uf], HOSPITAL)])
+
+        return baixar
+
+    def test_junta_as_ufs_numa_tabela(self):
+        todas = {uf: f"{i:07d}" for i, uf in enumerate(cnes.UFS, start=1)}
+        tabela, situacao = cnes.coletar_competencia_ftp(
+            202608, date(2026, 11, 5), self._baixador(todas)
+        )
+        assert len(tabela) == len(cnes.UFS)
+        assert situacao["situacao"] == cnes.COMPETENCIA_COM_DADOS
+        assert situacao["linhas"] == len(cnes.UFS)
+
+    def test_nenhuma_uf_publicada_e_competencia_vazia(self):
+        tabela, situacao = cnes.coletar_competencia_ftp(
+            202609, date(2026, 11, 5), self._baixador({})
+        )
+        assert tabela.empty
+        assert list(tabela.columns) == list(cnes.COLUNAS)
+        assert situacao["situacao"] == cnes.COMPETENCIA_VAZIA
+
+    def test_so_algumas_ufs_publicadas_e_erro(self):
+        with pytest.raises(ValueError, match="ausente"):
+            cnes.coletar_competencia_ftp(
+                202609, date(2026, 11, 5), self._baixador({"AC": "0000001"})
+            )
+
+    def test_mesmo_cnes_em_duas_ufs_e_erro(self):
+        todas = dict.fromkeys(cnes.UFS, "0000001")
+        with pytest.raises(ValueError, match="repetido"):
+            cnes.coletar_competencia_ftp(
+                202608, date(2026, 11, 5), self._baixador(todas)
+            )
+
+    def test_arquivo_inexistente_no_ftp_vira_file_not_found(self, monkeypatch):
+        def sem_arquivo(*_args, **_kwargs):
+            raise cnes.ftplib.error_perm("550 No such file")
+
+        monkeypatch.setattr(cnes, "baixar_dbc", sem_arquivo)
+        with pytest.raises(FileNotFoundError):
+            cnes.baixar_dbc_se_publicado("AC", 202609)
+
+    def test_outro_erro_do_ftp_nao_vira_competencia_vazia(self, monkeypatch):
+        def negado(*_args, **_kwargs):
+            raise cnes.ftplib.error_perm("530 Login incorrect")
+
+        monkeypatch.setattr(cnes, "baixar_dbc", negado)
+        with pytest.raises(cnes.ftplib.error_perm):
+            cnes.baixar_dbc_se_publicado("AC", 202609)
+
+    def test_layout_real_do_stac2608_tem_as_colunas_lidas(self):
+        """Nomes conferidos no STAC2608.dbc real (05/11/2026): o CNPJ do estabelecimento é `CPF_CNPJ`."""
+        real = [
+            "CNES", "CODUFMUN", "COD_CEP", "CPF_CNPJ", "PF_PJ", "NIV_DEP", "CNPJ_MAN", "TPGESTAO",
+            "TP_UNID", "DT_ATUAL", "COMPETEN", "NAT_JUR",
+        ]  # fmt: skip
+        assert set(cnes.COLUNAS_DO_DBC) <= set(real)
+        assert "CPF_CNPJ" in real
