@@ -74,6 +74,9 @@ TAMANHO_DO_DIA = 10  # "2025-12-31" (ou "2025-12-31T00:00:00", que perde a hora)
 FRACAO = "fração"  # a unidade de um número entre 0 e 1 (o índice de Basileia, a CR4)
 
 TITULOS_DAS_TABELAS = {
+    "pld_mensal": "PLD médio por mês e submercado",
+    "curtailment_mensal": "Eólicas e solares: energia não gerada por ordem do operador",
+    "capacidade_por_tipo": "Capacidade instalada em operação, por tipo de usina",
     "pareceres_do_auditor": "Parecer do auditor nos últimos exercícios",
     "trocas_de_auditor": "Trocas de auditor",
     "controladas": "Controladas e coligadas no FRE mais recente",
@@ -683,6 +686,28 @@ def _dia_ate_a_ficha(valor: object, gerado_em: datetime | None = None) -> str:
 # cada coluna de cada tabela da ficha: (coluna, rótulo, como escrever); o que não está aqui não sai
 Coluna = tuple[str, str, Any]
 COLUNAS: dict[str, list[Coluna]] = {
+    "pld_mensal": [
+        ("referencia", "Mês", mes),
+        ("submercado", "Submercado", lambda v: str(v).capitalize()),
+        ("pld", "PLD médio (R$/MWh)", lambda v: decimal(v, 2)),
+        ("disponivel_em", "Público em", dia),
+    ],
+    "curtailment_mensal": [
+        ("mes", "Mês", mes),
+        (
+            "tipo",
+            "Fonte",
+            lambda v: "Eólica" if v == "eolica" else "Solar fotovoltaica",
+        ),
+        ("mwh", "Energia não gerada (MWh)", inteiro),
+        ("disponivel_em", "Público em", dia),
+    ],
+    "capacidade_por_tipo": [
+        ("tipo_de_usina", "Tipo de usina", lambda v: str(v).capitalize()),
+        ("unidades", "Unidades", inteiro),
+        ("potencia_mw", "Potência efetiva (MW)", inteiro),
+        ("disponivel_em", "Última entrada em", dia),
+    ],
     "pareceres_do_auditor": [
         ("referencia", "Exercício", dia),
         ("versao", "Versão", inteiro),

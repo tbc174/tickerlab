@@ -30,7 +30,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from base import contestacoes as contestacoes_da_base
-from base import dossie
+from base import dossie, mercado_de_energia
 from base import indicadores_de_caixa as t1
 from base.dicionario import TABELAS
 from base.porta import Porta
@@ -135,6 +135,8 @@ class Entradas:
     hoje: pd.Timestamp  # o dia da ficha, sem fuso, para comparar com as datas da base
     # o M&A das assessorias de cada empresa (raiz do CNPJ), como era conhecido em `hoje`
     negocios_de_ma: dict[str, pd.DataFrame] = field(default_factory=dict)
+    # PLD, curtailment e capacidade das elétricas, já resumidos como eram em `hoje` (mercado, sem empresa)
+    mercado_de_energia: dict[str, pd.DataFrame] = field(default_factory=dict)
     # insolvência (CVM) e situação especial (Receita) por raiz de CNPJ; None: a base não tem a tabela
     # (a ficha diz "não consultamos"). As contestações vêm do CSV conferido à mão, por raiz.
     insolvencia: dict[str, pd.DataFrame] | None = None
@@ -446,6 +448,7 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         rede=_rede(leitor, hoje, entidades, controladas),
         hoje=_dia(hoje),
         negocios_de_ma=_negocios_de_ma(leitor, _dia(hoje)),
+        mercado_de_energia=_mercado_de_energia(leitor, _dia(hoje)),
         insolvencia=_por_raiz(
             _ler_se_existe(leitor, "insolvencia", COLUNAS_DA_INSOLVENCIA), "cnpj"
         ),
@@ -519,6 +522,40 @@ def _por_raiz(
         return {}
     raizes = dossie.digitos(tabela[coluna]).str[:RAIZ_DO_CNPJ]
     return {str(r): g for r, g in tabela.groupby(raizes)}
+
+
+def _mercado_de_energia(leitor: Leitor, hoje: pd.Timestamp) -> dict[str, pd.DataFrame]:
+    """PLD, curtailment e capacidade das elétricas como eram no dia (vazio: a base ainda não tem a
+    tabela). O curtailment é somado por hora na porta: a tabela é de milhões de linhas."""
+    pld = leitor.ler(
+        "ccee_pld",
+        ["granularidade", "submercado", "referencia", "pld", "disponivel_em"],
+        filtros={"granularidade": "mes"},
+        como_era_em=hoje,
+    )
+    horas = leitor.somar(
+        "ons_restricao",
+        ["instante", "tipo"],
+        "nao_realizada_mwmed",
+        {},
+        como_era_em=hoje,
+    )
+    capacidade = leitor.ler(
+        "ons_capacidade",
+        [
+            "tipo_de_usina",
+            "potencia_efetiva_mw",
+            "entrada_em_operacao",
+            "entrada_em_teste",
+            "desativada_em",
+        ],
+        como_era_em=hoje,
+    )
+    return {
+        "pld_mensal": mercado_de_energia.pld_mensal(pld, hoje),
+        "curtailment_mensal": mercado_de_energia.curtailment_mensal(horas, hoje),
+        "capacidade_por_tipo": mercado_de_energia.capacidade_por_tipo(capacidade, hoje),
+    }
 
 
 def _negocios_de_ma(leitor: Leitor, hoje: pd.Timestamp) -> dict[str, pd.DataFrame]:
@@ -678,7 +715,12 @@ def montar_setores(entradas: Entradas) -> tuple[list[SetorMontado], list[str]]:
             if membros.empty:  # nenhuma companhia da base no setor: nada a montar
                 continue
             secao = dossie.secao_setor(
-                setor, membros, entradas.series, ligacoes, entradas.grupos
+                setor,
+                membros,
+                entradas.series,
+                ligacoes,
+                entradas.grupos,
+                entradas.mercado_de_energia,
             )
         except Exception as erro:  # noqa: BLE001 (um setor não derruba a noite)
             falhas.append(f"setor {setor.chave}: {type(erro).__name__}: {erro}")
