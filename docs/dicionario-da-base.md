@@ -1032,6 +1032,54 @@ Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB �
 | `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
 | `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
 
+## `comex_urf`
+
+Nome de cada URF (unidade da Receita: porto, aeroporto ou posto) do Comex Stat, para ler o código que `comex_preco_medio` guarda (coluna `urf`). Tabela de apoio da fonte (`URF.csv`), sem data própria: o primeiro valor vale desde o dia da coleta, e um nome que o MDIC mude depois vira linha nova, desde o dia em que foi visto. Dados abertos de uso livre, inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC
+
+- **Fonte:** MDIC: Comex Stat, tabela auxiliar `URF.csv`
+- **Licença:** Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)
+- **Atraso de divulgação:** Sem data própria: vale desde o dia da coleta do arquivista
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `urf`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/comex_urf/urf.parquet` (`scripts/carga_setoriais.py`; leitor `base/setoriais/comex_tabelas.py`)
+- **Linhagem:** O `.json` do arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `urf` | Código da URF, o mesmo de `comex_preco_medio.urf` | texto |
+| `nome` | Nome da unidade, sem o código repetido na frente (`IRF ILHEUS`) | texto |
+| `disponivel_em` | Desde quando o nome era público (o dia da coleta que o trouxe) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
+## `comex_via`
+
+Nome de cada via de transporte do Comex Stat, para ler o código que `comex_preco_medio` guarda (a via de transporte dos CSVs do MDIC). Tabela de apoio da fonte (`VIA.csv`), sem data própria: o primeiro valor vale desde o dia da coleta, e um nome que o MDIC mude depois vira linha nova, desde o dia em que foi visto. Dados abertos de uso livre, inclusive comercial (resposta do MDIC em 21/10/2026): citar Secex/MDIC
+
+- **Fonte:** MDIC: Comex Stat, tabela auxiliar `VIA.csv`
+- **Licença:** Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)
+- **Atraso de divulgação:** Sem data própria: vale desde o dia da coleta do arquivista
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `via`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/comex_via/via.parquet` (`scripts/carga_setoriais.py`; leitor `base/setoriais/comex_tabelas.py`)
+- **Linhagem:** O `.json` do arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `via` | Código da via (`01` marítima, `04` aérea...) | texto |
+| `nome` | Nome da via, como o MDIC escreve (`MARITIMA`) | texto |
+| `disponivel_em` | Desde quando o nome era público (o dia da coleta que o trouxe) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
 ## `aneel_samp`
 
 Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece

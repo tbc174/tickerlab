@@ -372,7 +372,7 @@ DESTINOS: dict[str, Destino] = {
     "susep-cadastro": _tabela("susep_cadastro"),
     "antt-pedagio": _planejada("serie-5/PR1", "praças de pedágio e tráfego"),
     "antt-siade": _tabela("antt_siade"),
-    "comexstat": _tabela("comex_cafe", "comex_preco_medio"),
+    "comexstat": _tabela("comex_cafe", "comex_preco_medio", "comex_urf", "comex_via"),
     # governo, sanções e identificadores
     "cgu-ceis": _tabela("sancoes_cgu"),
     "cgu-cnep": _tabela("sancoes_cgu"),
