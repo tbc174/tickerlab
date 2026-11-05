@@ -1905,6 +1905,19 @@
     },
     {
       "coletas": [],
+      "familia": "estban",
+      "licencas": [
+        "BCB, ESTBAN: reprodução com fonte e integridade; a confirmar, só interno"
+      ],
+      "link": "https://www.bcb.gov.br/estatisticas/estatisticabancariamunicipios",
+      "marca": "a_confirmar",
+      "orgao": "Banco Central do Brasil (ESTBAN)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
       "familia": "goias",
       "licencas": [
         "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)"
@@ -7434,7 +7447,7 @@
     }
   ],
   "totais": {
-    "familias": 107,
+    "familias": 108,
     "familias_em_uso": 44,
     "fontes": 42,
     "fontes_em_consulta": 18,
