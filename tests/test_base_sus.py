@@ -291,6 +291,21 @@ class TestPessoaFisicaFora:
         tabela, _ = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
         assert uma_linha(tabela, "1234567")["cnpj"] == cnpj
 
+    @pytest.mark.parametrize(
+        "documento", ["52998224799", "00052998224799", "11222333000199"]
+    )
+    def test_documento_com_dv_errado_nunca_e_publicado(self, documento):
+        """CPF digitado com o DV errado não passa por pessoa física, mas também não vira `cnpj`."""
+        linhas = [internacao(cnpj=documento, mantenedora=PREFEITURA) for _ in range(10)]
+        tabela, _ = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
+        linha = uma_linha(tabela, "1234567")
+        assert linha["cnpj"] == "" and linha["cnpj_mantenedora"] == PREFEITURA
+
+    def test_mantenedora_com_dv_errado_tambem_nao(self):
+        linhas = [internacao(cnpj="", mantenedora="00052998224799") for _ in range(10)]
+        tabela, situacao = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
+        assert tabela.empty and situacao.iloc[0]["fora_sem_cnpj"] == 1
+
 
 class TestArquivosDaCompetencia:
     def test_nomes_do_sih(self):
@@ -313,6 +328,11 @@ class TestArquivosDaCompetencia:
             "PASP2607a.dbc",
             "PASP2607b.dbc",
         ]
+
+    def test_nome_com_quebra_de_linha_nao_passa(self):
+        """O `$` do `re` aceita uma quebra de linha no fim; o nome vai para o comando RETR do FTP."""
+        nomes = ["RDAC2607.dbc\n", "RDAC2607.dbc\r\nDELE x"]
+        assert sus.nomes_dos_arquivos(sus.SIH, "AC", COMPETENCIA, nomes) == []
 
     def test_sih_nao_aceita_partes(self):
         assert (

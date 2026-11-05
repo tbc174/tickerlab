@@ -142,6 +142,9 @@ SIA = Sistema(
 )
 SISTEMAS = {SIH.nome: SIH, SIA.nome: SIA}
 
+# A situação é de uso interno (conferência com o TabNet e o painel das coletas): `registros` por UF, menos a
+# soma publicada, revelaria a célula suprimida de uma UF com um só estabelecimento abaixo de 10. Não sai
+# na API, no site nem na ficha.
 COLUNAS_DA_SITUACAO = (
     "competencia",
     "uf",
@@ -184,9 +187,10 @@ def nomes_dos_arquivos(
     """Os arquivos da UF e da competência (com as partes, no SIA), em ordem."""
     partes = "[a-z]?" if sistema.aceita_partes else ""
     forma = re.compile(
-        rf"^{sistema.prefixo}{uf}{competencia % 10000:04d}{partes}\.dbc$", re.IGNORECASE
+        rf"{sistema.prefixo}{uf}{competencia % 10000:04d}{partes}\.dbc", re.IGNORECASE
     )
-    return sorted((n for n in nomes_na_pasta if forma.match(n)), key=str.lower)
+    # `fullmatch`, não `$`: o `$` aceita uma quebra de linha no fim, e o nome vai para o RETR do FTP
+    return sorted((n for n in nomes_na_pasta if forma.fullmatch(n)), key=str.lower)
 
 
 def e_pessoa_fisica(documento: str) -> bool:
@@ -258,13 +262,23 @@ def somar_registros(
         documento = registro[sistema.coluna_documento]
         if documento and e_pessoa_fisica(documento):
             estabelecimento.pessoa_fisica = True
-        estabelecimento.documentos[cnpj.completo(documento) or ""] += 1
+        estabelecimento.documentos[_cnpj_publicavel(documento)] += 1
         estabelecimento.mantenedoras[
-            cnpj.completo(registro[sistema.coluna_mantenedora]) or ""
+            _cnpj_publicavel(registro[sistema.coluna_mantenedora])
         ] += 1
         estabelecimento.municipios[registro[sistema.coluna_municipio]] += 1
         somar(estabelecimento, registro)
     return lidos
+
+
+def _cnpj_publicavel(documento: str) -> str:
+    """O CNPJ só quando o DV confere; o resto vira vazio.
+
+    Um CPF digitado com o DV errado não é reconhecido como pessoa física por `e_pessoa_fisica`, mas
+    também não pode sair na coluna `cnpj`: só o que é CNPJ de verdade é publicado.
+    """
+    valor = cnpj.completo(documento)
+    return valor if valor and cnpj.dv_confere(valor) else ""
 
 
 def _mais_frequente(contagem: Counter[str]) -> str:
