@@ -28,7 +28,7 @@ HOJE = date(2026, 11, 5)
 
 
 def test_o_datajud_e_a_unica_fonte_so_interna():
-    assert FONTES_SO_INTERNAS == frozenset({"datajud"})
+    assert frozenset({"datajud"}) == FONTES_SO_INTERNAS
     assert USOS_INTERNOS == ("treinar", "rotular")
     assert set(USOS_INTERNOS) < set(coletas.USOS)
 
