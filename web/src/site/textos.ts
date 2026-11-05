@@ -10,8 +10,8 @@ export const BETA_FECHADO = false;
 export const TICKER_DO_EXEMPLO = "PETR4.SA";
 
 export const AVISO =
-  "Nada aqui é recomendação de investimento. Os dados vêm do Yahoo " +
-  "Finance e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.";
+  "Nada aqui é recomendação de investimento. Os dados vêm de fontes públicas, cada número com a sua " +
+  "fonte e a sua data, e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.";
 
 // a assinatura institucional do manual de identidade
 export const ASSINATURA = "Dados auditáveis para quem analisa empresas no Brasil.";
