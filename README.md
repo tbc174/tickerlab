@@ -579,7 +579,7 @@ novo/                 app novo em React, servido na raiz de app.tickerlab.com.br
 static/               fontes e símbolo servidos pelo próprio site
 conteudo/             glossário, estratégias, catálogo de ativos, termos e privacidade
 migracoes/            migrações do banco (Alembic)
-scripts/              deploy, coletas, cargas da base, âncora, site, golden, imagens do README
+scripts/              deploy, coletas, cargas da base, âncora, site, golden, imagens do README, painel do terminal (`tl`)
 tests/                testes automatizados (pytest)
 docs/                 padrões de código, base de dados, API, pré-registros e imagens
 notas/, guias/, estudos/   caderno de estudos do autor
