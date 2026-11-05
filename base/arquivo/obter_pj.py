@@ -48,13 +48,14 @@ DOCUMENTOS = frozenset(
         "idcontratado",
         "identificacao_empresa_executora_instrumento_contratual",
         "identificacao_fornecedor_licitacao_vrpl",
+        "numero_documento_beneficiario_subtransacao_gestao_financeira",
     }
 )
 SO_COMECO_DO_CNPJ = re.compile(r"basico|raiz")
 # colunas e campos de pessoa (servidor, parlamentar, contato, conta bancária): saem de qualquer arquivo
 PESSOAL = re.compile(
     r"cpf|usuario|responsavel|_resp_|logado|parlamentar|mail|telefone|fax|nmfiscal|nmrep"
-    r"|no_adjudic|no_hom$|nome_vencedor_pf|banco|agencia|numero_conta|dv_conta|dado_bancario",
+    r"|no_adjudic|no_hom$|nome_vencedor_pf|banco|agencia|numero_conta|codigo_conta|dv_conta|dado_bancario",
     re.IGNORECASE,
 )
 NAO_DIGITO = re.compile(r"\D")

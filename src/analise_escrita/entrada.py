@@ -11,12 +11,14 @@ liberou o preço do Yahoo na tela e no PDF da ficha, não no texto publicado da 
 
 import hashlib
 import json
+from collections import Counter
 from collections.abc import Iterator
 from datetime import date
 from typing import Any
 
 from base import dossie as dossie_da_base
 from src.analise_escrita import numeros
+from src.enderecos_das_fontes import paragrafo_sem_endereco, separar
 from src.relatorio_empresa import (
     ANEXO_DE_ANOS,
     COMO_SAI_O_DY,
@@ -118,12 +120,16 @@ def _sem_vazios(campos: dict[str, Any]) -> dict[str, Any]:
 
 def _linha_do_item(secao: str, item: dict[str, Any]) -> dict[str, Any]:
     campos = {destino: item.get(origem) for origem, destino in CAMPOS_DO_ITEM.items()}
+    if campos.get(
+        "fonte"
+    ):  # o endereço é da tela: a análise e o hash não dependem dele
+        campos["fonte"] = separar(campos["fonte"])[0]
     return {"id": f"{secao}.{item['chave']}", "tipo": "numero", **_sem_vazios(campos)}
 
 
 def _usa_o_preco(item: dict[str, Any]) -> bool:
     """O número sai do preço da ação (o DY, fora da seção de valuation)."""
-    return item.get("fonte") == FONTE_DOS_MULTIPLOS
+    return separar(item.get("fonte") or "")[0] == FONTE_DOS_MULTIPLOS
 
 
 def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
@@ -147,7 +153,7 @@ def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
                     k: v for k, v in celulas.items() if k not in COLUNAS_FORA_DA_ENTRADA
                 },
             }
-    for i, texto in enumerate(secao["paragrafos"]):
+    for i, texto in enumerate(map(paragrafo_sem_endereco, secao["paragrafos"])):
         if TRECHO_DO_PRECO not in texto and texto not in (
             COMO_SAI_O_DY,
             COMO_SAI_O_DY_MEDIO,
@@ -281,9 +287,11 @@ def entrada_da_ficha(
     linhas = _linhas_da_ficha(ficha)
     _marcar_so_pro(linhas, sem_dossie)
     linhas += _lacunas(relatorio.setor)
-    ids = [linha["id"] for linha in linhas]
-    if len(ids) != len(set(ids)):
-        raise ValueError("id repetido na entrada")
+    repetidos = sorted(
+        id_ for id_, n in Counter(linha["id"] for linha in linhas).items() if n > 1
+    )
+    if repetidos:
+        raise ValueError(f"id repetido na entrada: {', '.join(repetidos[:5])}")
     conferir_corte(linhas, corte)
     entrada = {
         "versao": VERSAO,
@@ -293,7 +301,7 @@ def entrada_da_ficha(
         "setor": relatorio.setor,
         "grupo": relatorio.grupo,
         "corte": corte.isoformat(),
-        "fontes": [f for f in relatorio.fontes if TRECHO_DO_PRECO not in f],
+        "fontes": [separar(f)[0] for f in relatorio.fontes if TRECHO_DO_PRECO not in f],
         "secoes": {
             s["chave"]: s["titulo"]
             for s in ficha["secoes"]

@@ -208,3 +208,35 @@ def test_cadastro_com_ficha_ausente_ou_de_outra_empresa_nao_vaza(
         m.setattr(base_publica, "_ficha", lambda *a: ficha)
         assert cliente.get(ROTA, params={"q": CNPJ}).status_code == 404
         assert base_publica._resposta("00000000000000", base_publica.hoje()) is None
+
+
+def test_nome_de_grupo_poe_a_listada_primeiro_e_mostra_a_filial_como_candidata(
+    cliente, banco
+):
+    """Regressão da linha 603: "Equatorial" devolvia a filial só porque vinha antes no alfabeto."""
+    filial = "04.895.728/0001-80"
+    with banco.begin() as c:
+        c.execute(sa.insert(setores_cvm).values(cnpj=filial, setor="Energia"))
+        c.execute(
+            sa.insert(tickers_dos_emissores).values(
+                ticker="CPFA12.SA",
+                codigo="CPFA12",
+                cnpj=filial,
+                empresa="CPFL ENERGIA DISTRIBUIDORA S.A.",
+                valor_mobiliario="Debêntures",
+                atualizado_em=datetime.now(UTC),
+            )
+        )
+    from src.api_v1 import base_publica
+
+    achadas = base_publica._companhias("CPFL ENERGIA", False, base_publica.hoje())
+    assert [c.cnpj for c in achadas] == [CNPJ, filial]  # a filial vem antes no alfabeto
+    corpo = cliente.get(ROTA, params={"q": "cpfl energia"}).json()
+    assert corpo["cnpj"] == CNPJ
+    assert corpo["candidatas"] == [
+        {
+            "cnpj": filial,
+            "empresa": "CPFL ENERGIA DISTRIBUIDORA S.A.",
+            "listada": False,
+        }
+    ]

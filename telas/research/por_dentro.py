@@ -23,7 +23,13 @@ from telas.research.busca_na_sec import (
 )
 from telas.research.comum import _ainda_nao_coletado, _sem_banco_agora
 
-JANELAS_DE_NEGOCIACOES = {90: "3 meses", 180: "6 meses", 365: "12 meses"}
+JANELAS_DE_NEGOCIACOES = {
+    90: "3 meses",
+    180: "6 meses",
+    365: "12 meses",
+    730: "2 anos",
+    1826: "5 anos",
+}
 
 
 BOLSAS_DAS_NEGOCIACOES = {
@@ -35,7 +41,7 @@ BOLSAS_DAS_NEGOCIACOES = {
 CARGOS_DE_QUEM_DECIDE = ("diretoria", "conselho")  # o padrão da pesquisa acadêmica
 
 
-TAMANHO_DO_RANKING = 10
+TAMANHOS_DO_RANKING = (10, 25, 50)
 
 
 def _ler_negociacoes(desde, cnpjs=None):
@@ -161,7 +167,7 @@ def _ranking_formatado(saldo, tickers):
 
 
 def _ranking_do_mercado(janela):
-    col_bolsa, col_cargos = st.columns([1, 2])
+    col_bolsa, col_cargos, col_tamanho = st.columns([1, 2, 1])
     fonte = col_bolsa.segmented_control(
         "Bolsa",
         list(BOLSAS_DAS_NEGOCIACOES),
@@ -179,6 +185,13 @@ def _ranking_do_mercado(janela):
         help="Diretoria e conselho são o padrão dos estudos. Controladores costumam aparecer "
         "em ofertas de ações e reorganizações, que não são decisões do dia a dia.",
     )
+    tamanho = col_tamanho.segmented_control(
+        "Empresas por lista",
+        TAMANHOS_DO_RANKING,
+        default=TAMANHOS_DO_RANKING[0],
+        required=True,
+        key="dentro_tamanho",
+    )
     desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
     tabela, erro = _ler_negociacoes(desde)
     if tabela is None:
@@ -191,8 +204,8 @@ def _ranking_do_mercado(janela):
         return
     with obter_engine().connect() as conexao:
         tickers = tickers_das_empresas(conexao, saldo["cnpj"])
-    compradores = saldo[saldo["saldo"] > 0].head(TAMANHO_DO_RANKING)
-    vendedores = saldo[saldo["saldo"] < 0].sort_values("saldo").head(TAMANHO_DO_RANKING)
+    compradores = saldo[saldo["saldo"] > 0].head(tamanho)
+    vendedores = saldo[saldo["saldo"] < 0].sort_values("saldo").head(tamanho)
     st.markdown("##### Mais compras do que vendas")
     if compradores.empty:
         st.caption("Nenhuma empresa com saldo comprador no período.")
@@ -213,6 +226,21 @@ def _ranking_do_mercado(janela):
     )
 
 
+def _avisar_se_a_base_comeca_depois(janela):
+    """Uma linha quando o período escolhido começa antes da negociação mais antiga coletada."""
+    desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
+    try:
+        with obter_engine().connect() as conexao:
+            primeira = repo_negociacoes.primeira_entrega(conexao)
+    except sa_exc.SQLAlchemyError:
+        return  # sem a base, as abas já explicam o que falta
+    if primeira is not None and primeira > desde:
+        st.caption(
+            f"A base tem negociações tornadas públicas desde {primeira:%d/%m/%Y}: "
+            "o período escolhido mostra o que há a partir dessa data."
+        )
+
+
 def pagina_por_dentro():
     cabecalho_da_pagina("por_dentro")
     mostrar_resultado_da_busca_na_sec()
@@ -225,6 +253,7 @@ def pagina_por_dentro():
         required=True,
         key="dentro_janela",
     )
+    _avisar_se_a_base_comeca_depois(janela)
     aba_ativo, aba_mercado = st.tabs(["Do ativo do topo", "No mercado"])
     with aba_ativo:
         _negociacoes_do_ativo(normalizar_ticker(c.ticker), janela)

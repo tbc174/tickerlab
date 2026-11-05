@@ -22,13 +22,17 @@ from base import indices_b3, intradiario_b3, tce_pr
 from base.arquivo import (
     assessorias,
     chirps_v3,
+    cnj_tpu,
     contrapartes,
+    djen,
+    finep,
     lote_acervos,
     lote_atencao,
     lote_bcb,
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_commodities,
     lote_cvm,
     lote_eua,
     lote_licitacoes,
@@ -36,6 +40,7 @@ from base.arquivo import (
     lote_patentes,
     lote_reguladores,
     lote_sec,
+    lote_selic,
     lote_setoriais,
     lote_tesouro,
     wayback,
@@ -275,6 +280,46 @@ COLUNAS_DOS_PRODUTOS_DA_ANVISA = (
     "DT_VENCIMENTO_PRODUTO", "DT_VENCIMENTO_REGISTRO", "VALIDADE_SITUACAO", "DATA_CANCELAMENTO",
     "DT_CANCELAMENTO", "CANCELAMENTO", "DT_ATUALIZACAO", "DATA_ULTIMA_ATUALIZACAO", "DT_CARGA_ETL",
 )  # fmt: skip
+# preços máximos da CMED (lista de preços de medicamentos, Anvisa; 04/11/2026): uma linha por
+# apresentação (CNPJ + código GGREM), na lista ao consumidor (PF e PMC) e na de compras públicas (PF e
+# PMVG). UTF-8 com BOM. Sai o nome do laboratório (a razão social); "COMERCIALIZAÇÃO 2025" muda de
+# nome todo ano e "DESTINAÇÃO COMERCIAL" vem vazia, então ficam de fora até terem um nome estável.
+# Licença: a da Anvisa (CC BY); a desta lista em particular está "a confirmar" (ADR 0102, Emenda 2)
+PRECOS_DA_CMED = "https://dados.anvisa.gov.br/dados/"
+ALIQUOTAS_DA_CMED = (
+    "12", "17", "17,5", "18", "19", "19,5", "20", "20,5", "21", "22", "22,5", "23",
+)  # fmt: skip
+COLUNAS_DE_IDENTIDADE_DA_CMED = (
+    "SUBSTÂNCIA", "CNPJ", "CÓDIGO GGREM", "REGISTRO", "EAN 1", "EAN 2", "EAN 3", "PRODUTO",
+    "APRESENTAÇÃO", "CLASSE TERAPÊUTICA", "TIPO DE PRODUTO (STATUS DO PRODUTO)", "REGIME DE PREÇO",
+)  # fmt: skip
+COLUNAS_DE_MARCAS_DA_CMED = (
+    "RESTRIÇÃO HOSPITALAR", "CAP", "CONFAZ 87", "ICMS 0%", "ANÁLISE RECURSAL",
+    "LISTA DE CONCESSÃO DE CRÉDITO TRIBUTÁRIO (PIS/COFINS)", "TARJA",
+)  # fmt: skip
+
+
+def colunas_de_preco_da_cmed(referencia: str) -> tuple[str, ...]:
+    """As colunas de um preço ("PF", "PMC" ou "PMVG") como a CMED as escreve, na ordem do arquivo.
+
+    A alíquota zero do PF vem sem espaço ("PF 0%") e a do PMC e do PMVG com espaço ("PMC 0 %"); a
+    área de livre comércio (ALC) tem dois espaços antes ("PF 12 %  ALC").
+    """
+    zero = "0%" if referencia == "PF" else "0 %"
+    colunas = [f"{referencia} Sem Impostos", f"{referencia} {zero}"]
+    for aliquota in ALIQUOTAS_DA_CMED:
+        colunas += [f"{referencia} {aliquota} %", f"{referencia} {aliquota} %  ALC"]
+    return tuple(colunas)
+
+
+LISTAS_DA_CMED = {
+    "consumidor": "PMC",
+    "governo": "PMVG",
+}  # a lista e o preço máximo dela
+ARQUIVOS_DA_CMED = {
+    "consumidor": "TA_PRECO_MEDICAMENTO.csv",
+    "governo": "TA_PRECO_MEDICAMENTO_GOV.csv",
+}
 # RNTRC (transportadores de carga): um CSV por mês (~160 MB), e cada um é o cadastro inteiro daquele
 # mês; basta o mais novo (o arquivista guarda o histórico a partir daqui)
 COLUNAS_DO_RNTRC = (
@@ -872,6 +917,18 @@ CADASTROS_DE_PRODUTOS_DA_ANVISA = tuple(
     )
     for nome in ARQUIVOS_DE_PRODUTOS_DA_ANVISA
 )
+CADASTROS_DE_PRECOS_DA_CMED = tuple(
+    CsvDeCadastro(
+        PRECOS_DA_CMED + ARQUIVOS_DA_CMED[lista],
+        COLUNAS_DE_IDENTIDADE_DA_CMED
+        + colunas_de_preco_da_cmed("PF")
+        + colunas_de_preco_da_cmed(maximo)
+        + COLUNAS_DE_MARCAS_DA_CMED,
+        "CNPJ",
+        "utf-8-sig",
+    )
+    for lista, maximo in LISTAS_DA_CMED.items()
+)
 CADASTROS_DO_SIPEAGRO = (
     CsvDeCadastro(
         PRODUTO_VETERINARIO_DO_SIPEAGRO, COLUNAS_DO_SIPEAGRO, "CNPJ", "utf-8"
@@ -1431,6 +1488,7 @@ FONTES: list[Fonte] = [
         _cadastros(*CADASTROS_DE_PRODUTOS_DA_ANVISA),
         pesada=True,
     ),
+    Fonte("anvisa-cmed", "mensal", _cadastros(*CADASTROS_DE_PRECOS_DA_CMED)),
     Fonte("antt-rntrc", "mensal", descobrir_rntrc, pesada=True),
     Fonte("mapa-sipeagro", "mensal", _cadastros(*CADASTROS_DO_SIPEAGRO)),
     Fonte(
@@ -1445,6 +1503,8 @@ FONTES: list[Fonte] = [
     Fonte("mme-reidi", "mensal", _cadastros(REIDI_FILTRADO)),
     Fonte("aneel-cde", "mensal", descobrir_cde, pesada=True),
     Fonte("bcb-rde-ied", "mensal", descobrir_rde_ied, "json"),
+    # financiamentos por CNPJ (linha 469): só as abas de crédito, sem nome, título nem resumo
+    Fonte("finep-contratacao", "mensal", finep.descobrir_contratacao),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",
@@ -1526,9 +1586,18 @@ FONTES: list[Fonte] = [
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
+    # comunicações processuais do DJEN em que cada companhia aberta é parte, sem a Justiça do Trabalho
+    # (plano de 03/11/2026 dos processos judiciais; "pode" do Tiago na mesma data)
+    djen.fonte(),
+    # e cada processo já ligado a uma companhia, pelo número (acha a comunicação que só intima a outra
+    # parte; PR 1b)
+    djen.fonte_dos_processos(),
+    # as classes processuais da TPU do CNJ, para o nome e o ramo da classe de cada processo (PR 1b)
+    cnj_tpu.fonte(),
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),
+    *lote_selic.fontes(),
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)
     *lote_setoriais.fontes(),
@@ -1550,6 +1619,9 @@ FONTES: list[Fonte] = [
     # lote clima e fogo (rodada 4, linha 290): INPE Queimadas, NASA FIRMS, TerraBrasilis (WFS), NOAA,
     # ECMWF, MapBiomas, ONS, Climate TRACE, EDGAR e Carbon Monitor
     *lote_clima.fontes(),
+    # lote café, commodities e clima (linha 204): USDA PSD inteiro, FAOSTAT, I-CIP da OIC, séries e boletins da
+    # CONAB, outras famílias do COT, CHIRTS, SPEI e SPI do CHC, normais do INMET e MapBiomas por bioma
+    *lote_commodities.fontes(),
     # ponte da troca do CHIRPS v2 (acaba em dez/2026): a v3 `rnl` pela cópia Zarr do Hugging Face, que o
     # robots.txt do CHC não deixa coletar direto; fonte própria, nunca soma com a v2 (linha 126 da fila)
     *chirps_v3.fontes(),

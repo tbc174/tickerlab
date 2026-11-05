@@ -68,6 +68,7 @@
         "carteira_b3",
         "juros_e_inflacao",
         "precos_de_referencia",
+        "simulador_de_trava",
         "busca_por_cnpj",
         "relatorio_do_setor",
         "newsletter",

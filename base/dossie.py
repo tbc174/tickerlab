@@ -515,6 +515,40 @@ SECOES = (
 )
 _SECAO_POR_CHAVE = {secao.chave: secao for secao in SECOES}
 
+METODOLOGIA_DO_SETOR = (
+    "Concentração pelo HHI (a soma dos quadrados das participações em %, de 0 a 10.000) e pela "
+    "CR4 (a participação somada das 4 maiores), sobre o total nacional que a agência publica no "
+    "ano (o estoque do último mês ou a soma dos meses). Faixas do Guia para Análise de Atos de "
+    "Concentração Horizontal do CADE (2016): abaixo de 1.500 pontos, não concentrado; de 1.500 a "
+    "2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é "
+    "o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está "
+    "ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria "
+    "entidade. A variação do HHI só compara dois anos seguidos e completos."
+)
+METODOLOGIA_DOS_BANCOS = (
+    "Bancos: o IF.data do Banco Central, com todas as instituições do sistema financeiro e cada "
+    "conglomerado prudencial como um participante (o BC já junta as instituições do grupo; a "
+    "companhia aberta se liga ao conglomerado pela base), a mesma base do Relatório de Economia "
+    "Bancária (REB). O estoque é o da última data-base do ano (são 4 por ano), que sai 120 dias "
+    "depois dela. A carteira de crédito é a carteira classificada (desde 2025, a carteira de "
+    "crédito da contabilidade nova) e o REB usa a carteira ativa: a participação de cada banco "
+    "muda um pouco, mas a CR4 de crédito fica perto da publicada (2022: 58,7% contra 58,6%; "
+    "2023: 57,8% contra 57,8%; 2024: 57,3% contra 57,9%). O ativo é o total (o REB tira as "
+    "aplicações interfinanceiras) e as captações são mais largas que os depósitos do REB. O REB "
+    "mede com a régua do BC (o HHI normalizado); aqui, com a do CADE. Quando o BC revisa uma "
+    "data-base, vale a revisão, com a data da primeira publicação: a base não guarda o dia da "
+    "revisão. Basileia e carteira por modalidade são de cada conglomerado, sem somar; a carteira "
+    "por modalidade só existe desde 2025."
+)
+
+
+def metodologia_do_setor(chave: str) -> str:
+    """A metodologia do relatório do setor: a regra comum e, só nos bancos, a do IF.data."""
+    return METODOLOGIA_DO_SETOR + (
+        " " + METODOLOGIA_DOS_BANCOS if chave == "bancos" else ""
+    )
+
+
 LIMITES = {
     "auditor_e_controladas": (
         "Parecer: o relatório do auditor independente sobre a DFP, como a CVM o publica; vale a partir do "
@@ -590,29 +624,7 @@ LIMITES = {
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
         "controlada, pelo FRE). A participação é sobre o total da agência no ano."
     ),
-    "setor": (
-        "Concentração pelo HHI (a soma dos quadrados das participações em %, de 0 a 10.000) e pela "
-        "CR4 (a participação somada das 4 maiores), sobre o total nacional que a agência publica no "
-        "ano (o estoque do último mês ou a soma dos meses). Faixas do Guia para Análise de Atos de "
-        "Concentração Horizontal do CADE (2016): abaixo de 1.500 pontos, não concentrado; de 1.500 a "
-        "2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é "
-        "o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está "
-        "ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria "
-        "entidade. A variação do HHI só compara dois anos seguidos e completos. "
-        "Bancos: o IF.data do Banco Central, com todas as instituições do sistema financeiro e cada "
-        "conglomerado prudencial como um participante (o BC já junta as instituições do grupo; a "
-        "companhia aberta se liga ao conglomerado pela base), a mesma base do Relatório de Economia "
-        "Bancária (REB). O estoque é o da última data-base do ano (são 4 por ano), que sai 120 dias "
-        "depois dela. A carteira de crédito é a carteira classificada (desde 2025, a carteira de "
-        "crédito da contabilidade nova) e o REB usa a carteira ativa: a participação de cada banco "
-        "muda um pouco, mas a CR4 de crédito fica perto da publicada (2022: 58,7% contra 58,6%; "
-        "2023: 57,8% contra 57,8%; 2024: 57,3% contra 57,9%). O ativo é o total (o REB tira as "
-        "aplicações interfinanceiras) e as captações são mais largas que os depósitos do REB. O REB "
-        "mede com a régua do BC (o HHI normalizado); aqui, com a do CADE. Quando o BC revisa uma "
-        "data-base, vale a revisão, com a data da primeira publicação: a base não guarda o dia da "
-        "revisão. Basileia e carteira por modalidade são de cada conglomerado, sem somar; a carteira "
-        "por modalidade só existe desde 2025."
-    ),
+    "setor": METODOLOGIA_DO_SETOR,  # a ficha usa `metodologia_do_setor(chave)`: o IF.data é só dos bancos
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
         "reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. "
@@ -692,33 +704,45 @@ def _item(
     publicado_em: str | None,
     fontes: Iterable[str] = (),
     origem: "Origem | None" = None,
+    entradas: Iterable[dict[str, Any]] = (),
 ) -> dict[str, Any]:
     """Um item da ficha com o rastro; `publicado_em` é obrigatório para ninguém esquecer de pensar nele
     (None só nos `ITENS_SEM_DATA_DE_PUBLICACAO`, ou quando as linhas não trazem a data). `origem`: só
-    quando a chave repete a de outra seção (as relações da rede); senão, a de `ORIGEM_DOS_ITENS`."""
+    quando a chave repete a de outra seção (as relações da rede); senão, a de `ORIGEM_DOS_ITENS`.
+    `entradas`: as contas da demonstração que entram no número (`_entradas_do_caixa`), quando há."""
     return {
         "chave": chave,
         "nome": nome,
         "valor": valor,
         "unidade": unidade,
         "base": base,
-        "rastro": _rastro(origem or ORIGEM_DOS_ITENS[chave], publicado_em, fontes),
+        "rastro": _rastro(
+            origem or ORIGEM_DOS_ITENS[chave], publicado_em, fontes, entradas
+        ),
     }
 
 
 def _rastro(
-    origem: "Origem", publicado_em: str | None, fontes: Iterable[str]
+    origem: "Origem",
+    publicado_em: str | None,
+    fontes: Iterable[str],
+    entradas: Iterable[dict[str, Any]] = (),
 ) -> dict[str, Any]:
     """O rastro do item como vai no JSON. `fontes`: as famílias, quando o item junta mais de uma (a
-    rede); sem elas, a da tabela. Chave sem origem é erro de código (a seção quebra no teste)."""
+    rede); sem elas, a da tabela. `entradas`: as contas usadas, como em `src.rastro.Entrada`. Chave sem origem é erro de código (a seção quebra no teste)."""
     familias = list(dict.fromkeys(fontes)) or [TABELAS[origem.tabela].familia_da_fonte]
-    return {
+    rastro: dict[str, Any] = {
         "formula": origem.formula,
         "versao_do_calculo": CALCULO_DO_DOSSIE,
         "fonte_id": familias[0],
         "outras_fontes": familias[1:],
         "publicado_em": publicado_em,
     }
+    if entradas := list(
+        entradas
+    ):  # sem a chave quando o número não tem contas (ficha de antes)
+        rastro["entradas"] = entradas
+    return rastro
 
 
 def _publicado(linhas: pd.DataFrame, tabela: str) -> str | None:
@@ -741,6 +765,7 @@ def _secao(
     tabelas: Mapping[str, pd.DataFrame],
     paragrafos: list[str] | None = None,
     fontes: list[str] | None = None,
+    limites: str | None = None,
 ) -> dict[str, Any]:
     registro = _SECAO_POR_CHAVE[chave]
     return {
@@ -748,7 +773,7 @@ def _secao(
         "titulo": registro.titulo,
         "itens": itens,
         "tabelas": {nome: _registros(t) for nome, t in tabelas.items() if not t.empty},
-        "paragrafos": [*(paragrafos or []), LIMITES[chave]],
+        "paragrafos": [*(paragrafos or []), limites or LIMITES[chave]],
         "fontes": fontes_das_tabelas(registro.tabelas) if fontes is None else fontes,
     }
 
@@ -1252,6 +1277,61 @@ def _caixa_por_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
     return tabela[COLUNAS_DO_CAIXA].head(ANOS_NAS_SERIES).reset_index(drop=True)
 
 
+COLUNAS_DA_DFC_E_DVA = ["demonstracao", "conta", "descricao", "exercicio", "valor"]
+
+
+def _dfc_e_dva_por_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
+    """Cada conta da DFC e da DVA dos últimos exercícios, na versão mais nova já divulgada.
+
+    Uma linha por demonstração, conta e exercício (o mais novo primeiro). Conta sem valor não entra:
+    vazio não vira zero.
+    """
+    contas = linhas[linhas["demonstracao"].isin([*t1.DFC, t1.DVA])]
+    contas = contas.sort_values("divulgado_em").drop_duplicates(
+        [*t1.PERIODO, "demonstracao", "conta"], keep="last"
+    )
+    contas = contas.dropna(subset=["valor"]).assign(
+        exercicio=lambda t: pd.to_datetime(t["fim"]).dt.year
+    )
+    if contas.empty:
+        return contas[COLUNAS_DA_DFC_E_DVA]
+    recentes = contas[contas["exercicio"] > contas["exercicio"].max() - ANOS_NAS_SERIES]
+    return recentes.sort_values(
+        ["demonstracao", "conta", "exercicio"], ascending=[True, True, False]
+    )[COLUNAS_DA_DFC_E_DVA].reset_index(drop=True)
+
+
+NOMES_DAS_CONTAS_DO_CAIXA = {  # a conta no TickerLab de cada parte do EBITDA, do capex e do FCF
+    "ebit": "ebit",
+    "depreciacao_amortizacao": "depreciacao_amortizacao",
+    "caixa_operacional": "caixa_operacional",
+    "capex": "capex",
+}
+
+
+def _entradas_do_caixa(
+    publicas: pd.DataFrame, fim: object, numero: str
+) -> list[dict[str, Any]]:
+    """As linhas da DRE, DFC e DVA que entram em `numero`, com o valor guardado e a entrega à CVM de
+    onde vieram (o mesmo formato de `src.rastro.Entrada`: quem confere refaz a conta)."""
+    linhas = t1.contas_do_numero(publicas, fim, numero)
+    return [
+        {
+            "conta": NOMES_DAS_CONTAS_DO_CAIXA[linha.conta_do_numero],
+            "codigo": linha.conta,
+            "nome": f"{linha.descricao} ({linha.demonstracao})",
+            "valor": float(linha.valor),
+            "periodo": "exercicio",
+            "documento": linha.documento,
+            "referencia": _data(linha.referencia),
+            "versao": int(linha.versao),
+            "publicado_em": _data(linha.divulgado_em),
+        }
+        for linha in linhas.itertuples()
+        if pd.notna(linha.valor)
+    ]
+
+
 def secao_geracao_de_caixa(
     como_era: pd.DataFrame, hoje: pd.Timestamp
 ) -> dict[str, Any] | None:
@@ -1262,18 +1342,30 @@ def secao_geracao_de_caixa(
     """
     if como_era.empty:
         return None
-    tabela = _caixa_por_exercicio(_publicas_no_dia(como_era, hoje))
+    publicas = _publicas_no_dia(como_era, hoje)
+    tabela = _caixa_por_exercicio(publicas)
     if tabela.empty:
         return None
     ultimo = tabela.iloc[0]
     base = _data(ultimo["fim"])
     publicado = _publicado(tabela.iloc[[0]], "demonstracoes_como_era")
     itens = [
-        _item(chave, nome, float(ultimo[chave]), "R$", base, publicado_em=publicado)
+        _item(
+            chave,
+            nome,
+            float(ultimo[chave]),
+            "R$",
+            base,
+            publicado_em=publicado,
+            entradas=_entradas_do_caixa(publicas, ultimo["fim"], chave),
+        )
         for chave, nome in NUMEROS_DO_CAIXA.items()
         if pd.notna(ultimo[chave])
     ]
-    tabelas = {"caixa_por_exercicio": tabela.astype(object).where(tabela.notna(), None)}
+    tabelas = {
+        "caixa_por_exercicio": tabela.astype(object).where(tabela.notna(), None),
+        "dfc_dva_por_exercicio": _dfc_e_dva_por_exercicio(publicas),
+    }
     return _secao("geracao_de_caixa", itens, tabelas)
 
 
@@ -2716,7 +2808,14 @@ def secao_setor(
         *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
         *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),
     ]
-    return _secao("setor", itens, tabelas, paragrafos, fontes=fontes_do_setor(usadas))
+    return _secao(
+        "setor",
+        itens,
+        tabelas,
+        paragrafos,
+        fontes=fontes_do_setor(usadas),
+        limites=metodologia_do_setor(setor.chave),
+    )
 
 
 # --- negócios ------------------------------------------------------------------------------------
@@ -3010,6 +3109,10 @@ def secao_insolvencia(
 
     Os dois quadros já são só da empresa da ficha; `contestacoes` também (`base.contestacoes`). Um fato
     contestado ganha `situacao: contestada` e o texto da empresa ao lado.
+
+    O desfecho (vigente, encerrada) não sai daqui: a CVM e a Receita só dizem que o fato existiu, e o
+    código não o deduz da idade do fato nem de ele sumir do retrato seguinte. `situacao` é vazia ou
+    `contestada`; um desfecho só entra quando uma fonte oficial o disser (despacho do processo).
     """
     if insolvencia is None and situacao_especial is None:
         return None

@@ -6,7 +6,8 @@ operação, **só com o que a CVM publica**, e diz o que não dá para observar 
 
 - **FIDC** (`fidc_informe`, quadro I, mês a mês, e `cadastro_de_fundos`): o fundo (`emissor` das
   cotas), o `administrador` e os `cedente`s (só CNPJ válido) de cada mês, com o primeiro e o último
-  mês em que apareceram e o dia em que o primeiro ficou público; o `gestor` vem do cadastro.
+  mês em que apareceram e o dia em que o primeiro ficou público; o `gestor` vem do cadastro (hoje) ou
+  do histórico do cadastro (`cadastro_gestor_hist`, com `como_era_em`).
 - **CRI e CRA** (`ofertas_antigas` e `ofertas_resolucao_160`): a `securitizadora`, que na CVM é o
   emissor do certificado, por oferta. CRI e CRA não têm administrador nem gestor.
 - **Cedente e devedor de CRI, CRA e OTS** (`securitizacao_cedente_devedor`, o informe mensal da CVM, e
@@ -18,8 +19,9 @@ Um vínculo é uma linha de `COLUNAS`. `referencia_desde` e `referencia_ate` sã
 mês (ou dia da oferta) em que a CVM mostrou o vínculo: não são a data em que ele começou nem acabou.
 `publico_em` é o dia em que a primeira dessas linhas ficou pública. Com `como_era_em=D`, só entra o
 que já era público em D (o futuro não muda o passado; há teste). O cadastro de fundos é um retrato
-do dia da coleta, sem data pública por linha: com `como_era_em`, o gestor sai do mapa e a lacuna
-diz isso. A ANBIMA fica de fora (termos).
+do dia da coleta, sem data pública por linha: com `como_era_em`, o gestor vem do histórico, pelo início e
+o fim que a CVM declara para ele (`_gestores_em`); a CVM não dá o dia em que cada linha do histórico
+ficou pública, e a lacuna diz isso. A ANBIMA fica de fora (termos).
 
 A busca é pelo CNPJ em qualquer papel que a fonte permita achar sem varrer a base: o próprio fundo,
 o administrador, o gestor, a securitizadora e, nos certificados, o cedente e o devedor. O inverso do
@@ -52,6 +54,7 @@ COLUNAS = (
 )
 INFORME = "fidc_informe"
 CADASTRO = "cadastro_de_fundos"
+GESTOR_NO_TEMPO = "cadastro_gestor_hist"
 CEDENTE_DEVEDOR = "securitizacao_cedente_devedor"
 CERTIFICADOS = "securitizacao_certificados"
 OFERTAS = {"ofertas_antigas": "antigas", "ofertas_resolucao_160": "160"}
@@ -66,6 +69,10 @@ LACUNAS_FIXAS = (
         "informe não preenche são não observável por aqui"
     ),
     "CRI e CRA: não têm administrador nem gestor; o emissor na CVM é a securitizadora",
+    (
+        'CRI e CRA: a oferta que a CVM chama só de "Certificados de Recebíveis", sem dizer se é '
+        "imobiliário ou do agronegócio, fica fora do mapa"
+    ),
     "ANBIMA fora do mapa: os termos dela proíbem o uso sem autorização escrita",
 )
 
@@ -232,6 +239,75 @@ def _gestores(porta: Porta, cnpj: str) -> tuple[pd.DataFrame, list[str]]:
     return vinculos, avisos
 
 
+def _cobrindo(historico: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
+    """As linhas do histórico que já tinham começado em `dia` e ainda não tinham terminado.
+
+    O fim só decide se a linha cobre `dia`: o que veio depois (outro gestor, um fim posterior) não
+    entra, então cortar o futuro não muda o resultado."""
+    inicio = pd.to_datetime(historico["DT_INI_GESTOR"], errors="coerce")
+    fim = pd.to_datetime(historico["DT_FIM_GESTOR"], errors="coerce")
+    return historico[(inicio <= dia) & (fim.isna() | (fim >= dia))]
+
+
+def _gestores_em(
+    porta: Porta, cnpj: str, dia: object
+) -> tuple[pd.DataFrame, list[str]]:
+    """O gestor de cada FIDC (do fundo `cnpj` ou do gestor `cnpj`) no dia, pelo histórico do cadastro."""
+    colunas = ["CNPJ_FUNDO", "CPF_CNPJ_GESTOR", "GESTOR"]
+    colunas += ["DT_INI_GESTOR", "DT_FIM_GESTOR"]
+    achados = [
+        _ler(porta, GESTOR_NO_TEMPO, {filtro: cnpj}, colunas, None)
+        for filtro in ("CNPJ_FUNDO", "CPF_CNPJ_GESTOR")
+    ]
+    if any(a is None for a in achados):
+        return _vazio(), [
+            f"gestor em {dia}: a base não tem o histórico do cadastro de fundos"
+        ]
+    historico = pd.concat([a for a in achados if a is not None]).drop_duplicates()
+    historico = _cobrindo(historico, pd.Timestamp(dia))
+    historico = historico[historico["CPF_CNPJ_GESTOR"].notna()]
+    fundos = _fidc_do_cadastro(porta, sorted(set(historico["CNPJ_FUNDO"])))
+    historico = historico[historico["CNPJ_FUNDO"].isin(fundos.index)]
+    vinculos = pd.DataFrame(
+        {
+            "tipo": FIDC,
+            "operacao": historico["CNPJ_FUNDO"],
+            "cnpj_operacao": historico["CNPJ_FUNDO"],
+            "nome_operacao": historico["CNPJ_FUNDO"].map(fundos),
+            "papel": "gestor",
+            "cnpj_papel": historico["CPF_CNPJ_GESTOR"],
+            "nome_papel": historico["GESTOR"],
+            "referencia_desde": pd.to_datetime(
+                historico["DT_INI_GESTOR"], errors="coerce"
+            ),
+            "referencia_ate": pd.NaT,
+            "publico_em": pd.NaT,
+            "fonte": GESTOR_NO_TEMPO,
+            "campo": "CPF_CNPJ_GESTOR",
+        }
+    )
+    return vinculos, []
+
+
+def _fidc_do_cadastro(porta: Porta, cnpjs: list[str]) -> pd.Series:
+    """Os fundos de `cnpjs` que são FIDC no cadastro, com o nome (o cadastro só diz o tipo e o nome)."""
+    if not cnpjs:
+        return pd.Series(dtype=object)
+    cadastro = _ler(
+        porta,
+        CADASTRO,
+        {"CNPJ_FUNDO": cnpjs},
+        ["CNPJ_FUNDO", "DENOM_SOCIAL", "TP_FUNDO"],
+        None,
+    )
+    if cadastro is None:
+        return pd.Series(dtype=object)
+    cadastro = cadastro[cadastro["TP_FUNDO"].fillna("").str.startswith(FIDC)]
+    return cadastro.drop_duplicates("CNPJ_FUNDO").set_index("CNPJ_FUNDO")[
+        "DENOM_SOCIAL"
+    ]
+
+
 def _tipo_do_certificado(texto: object) -> str | None:
     if not isinstance(texto, str):
         return None
@@ -376,8 +452,9 @@ def _lacuna_do_gestor(dia: object) -> list[str]:
         ]
     return [
         (
-            f"gestor em {dia}: o cadastro da CVM é um retrato sem data pública por linha; "
-            "o gestor de uma data passada não é observável e fica fora do mapa"
+            f"gestor em {dia}: vem do histórico do cadastro da CVM, pelo início e o fim que ela declara; "
+            "a CVM não diz o dia em que cada linha do histórico ficou pública, então uma correção "
+            "feita depois pode estar aqui"
         )
     ]
 
@@ -401,8 +478,10 @@ def mapa_de_operacoes(porta: Porta, cnpj: str, como_era_em: object = None) -> Ma
         partes.append(informe)
     if como_era_em is None:
         gestores, avisos = _gestores(porta, formatado)
-        partes.append(gestores)
-        lacunas += avisos
+    else:
+        gestores, avisos = _gestores_em(porta, formatado, como_era_em)
+    partes.append(gestores)
+    lacunas += avisos
     lacunas += _lacuna_do_gestor(como_era_em)
     securitizados = _cedentes_e_devedores(porta, formatado, como_era_em)
     if securitizados is None:

@@ -2546,6 +2546,11 @@
           "por_que": {
             "$ref": "#/components/schemas/FraseDaAnaliseV1"
           },
+          "secao": {
+            "default": "",
+            "title": "Secao",
+            "type": "string"
+          },
           "tipo": {
             "title": "Tipo",
             "type": "string"
@@ -4230,7 +4235,9 @@
               "6mo",
               "1y",
               "2y",
-              "5y"
+              "5y",
+              "10y",
+              "max"
             ],
             "title": "Periodo",
             "type": "string"
@@ -5382,6 +5389,14 @@
             "title": "Frases",
             "type": "array"
           },
+          "graficos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraficoDaAnaliseV1"
+            },
+            "title": "Graficos",
+            "type": "array"
+          },
           "limites": {
             "items": {
               "type": "string"
@@ -6377,7 +6392,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -6668,7 +6685,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7176,7 +7195,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7290,7 +7311,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7485,7 +7508,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"

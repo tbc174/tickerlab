@@ -20,8 +20,16 @@ por valor diferente de cada registro; o que some do arquivo ganha `consta=False`
 
 Limites conhecidos: o arquivista começou a guardar estes cadastros em 29/10/2026, então nada aqui vale
 antes do primeiro retrato; a situação "Sim/Não" do Cadastro Mineiro fica de fora (o sentido não está
-no dicionário da ANM); vários registros da mesma chave (as apresentações de um medicamento, a linha
-repetida do SIPEAGRO) ficam com o primeiro do arquivo (`id_repetido` no resumo).
+no dicionário da ANM); vários registros da mesma chave (a linha repetida do SIPEAGRO) ficam com o
+primeiro do arquivo (`id_repetido` no resumo).
+
+Medicamentos: a chave é o tipo de autorização + o `CO_SEQ_PRODUTO` (`REGISTRADO|937`), porque o mesmo
+número é um produto registrado de uma empresa e um notificado de outra (o ID 937 apagava o ATENOCLOR da
+Vitamedic). As várias apresentações do produto viram uma linha sem depender da ordem do arquivo, com
+todas as situações delas ("Ativo / Inativo", `situacao_divergente` no resumo): a situação de cada
+apresentação não está no arquivo. Se a chave um dia aparecer com outro CNPJ, registro ou processo, as
+duas ficam, com a identidade na chave (`identidade_em_conflito`); linha sem o tipo fica sem ele
+(`sem_tipo`), nunca adivinhado.
 """
 
 import io
@@ -53,6 +61,9 @@ DIA_MES_ANO = "%d/%m/%Y"
 MES_DIA_ANO = "%m/%d/%Y"  # a AFE e o CBPF da Anvisa escrevem as datas à americana
 MES_ANO = (
     "%m%Y"  # o vencimento dos alimentos da Anvisa vem como "022009" (o 1º dia do mês)
+)
+SEPARADOR_DAS_SITUACOES = (
+    " / "  # "Ativo / Inativo": as apresentações do produto discordam
 )
 JA_MONTADO = {"ja_montado": 1}  # no resumo: nenhum retrato novo desde a última montagem
 
@@ -102,6 +113,10 @@ class Cadastro:
     formatos: tuple[str, ...] = (DIA_MES_ANO,)
     codificacao: str = LATIN1
     url_termina_em: str | None = None  # a fonte guarda outros arquivos além deste
+    # o que não pode mudar dentro da chave: se mudar, entra nela (as duas linhas ficam) e a contagem avisa
+    identidade: tuple[str, ...] = ()
+    # as linhas repetidas da chave viram uma só sem depender da ordem do arquivo, com todas as situações
+    situacoes_juntas: bool = False
 
 
 _AFE: Colunas = {
@@ -130,6 +145,8 @@ _CBPF: Colunas = {
 # os cinco arquivos de produtos trazem colunas diferentes para a mesma coisa
 _PRODUTOS: Colunas = {
     "id": ("CO_SEQ_PRODUTO",),
+    # o mesmo CO_SEQ_PRODUTO é um produto registrado de uma empresa e um notificado de outra
+    "tipo": ("TIPO_AUTORIZACAO",),
     "registro": (
         "NU_REGISTRO_PRODUTO",
         "NU_REGISTRO",
@@ -211,7 +228,13 @@ _ANCINE: Colunas = {
 }
 
 
-def _produto(nome: str, arquivo: str, chave: tuple[str, ...]) -> Cadastro:
+def _produto(
+    nome: str,
+    arquivo: str,
+    chave: tuple[str, ...],
+    identidade: tuple[str, ...] = (),
+    situacoes_juntas: bool = False,
+) -> Cadastro:
     return Cadastro(
         nome,
         "anvisa-produtos",
@@ -221,6 +244,8 @@ def _produto(nome: str, arquivo: str, chave: tuple[str, ...]) -> Cadastro:
         chave,
         formatos=(DIA_MES_ANO, MES_ANO),
         url_termina_em=f"/TA_CONSULTA_{arquivo}.CSV",
+        identidade=identidade,
+        situacoes_juntas=situacoes_juntas,
     )
 
 
@@ -253,7 +278,15 @@ CADASTROS: dict[str, Cadastro] = {
                 ("cbpf_medicamento", "TA_CONSULTA_CBPF_MEDICAMENTO"),
             )
         ),
-        _produto("medicamentos", "MEDICAMENTOS", ("id",)),
+        # o tipo de autorização + o ID separou as 43.566 identidades do arquivo de 13/10/2026; uma linha
+        # por apresentação, e as apresentações do mesmo produto podem ter situações diferentes
+        _produto(
+            "medicamentos",
+            "MEDICAMENTOS",
+            ("tipo", "id"),
+            identidade=("cnpj", "registro", "processo"),
+            situacoes_juntas=True,
+        ),
         # saneantes e cosméticos não têm o código do produto: o processo e o nome
         _produto("saneantes", "SANEANTES", ("processo", "descricao")),
         _produto("cosmeticos", "COSMETICOS", ("processo", "descricao")),
@@ -386,7 +419,11 @@ def ler_retrato(
         bruta
     )  # o documento que não é CNPJ (um CPF que escapou da coleta) não passa daqui
     tabela = nossas[valido].assign(cnpj=cnpj[valido])
-    tabela["id_na_fonte"] = motor.chave(tabela, cadastro.chave)
+    tabela["id_na_fonte"], em_conflito = _identificar(tabela, cadastro)
+    contagem_da_chave = _contagem_da_chave(tabela, cadastro, em_conflito)
+    if cadastro.situacoes_juntas:
+        tabela, divergentes = _juntar_situacoes(tabela)
+        contagem_da_chave["situacao_divergente"] = divergentes
     repetido = tabela["id_na_fonte"].duplicated(keep="first")
     tabela = tabela[~repetido]
     padrao = tabela.reindex(columns=[*TEXTOS, *DATAS], fill_value="")
@@ -404,8 +441,51 @@ def ler_retrato(
         "linhas": linhas,
         "cnpj_invalido": int((~valido).sum()),
         "id_repetido": int(repetido.sum()),
+        **contagem_da_chave,
     }
     return pronta, contagem
+
+
+def _identificar(
+    tabela: pd.DataFrame, cadastro: Cadastro
+) -> tuple[pd.Series, pd.Series]:
+    """A chave de cada linha e onde ela está em conflito: a mesma chave com outra identidade (outro
+    CNPJ, registro ou processo). Aí a identidade entra na chave, para nenhuma das duas sumir."""
+    chave = motor.chave(tabela, cadastro.chave)
+    if not cadastro.identidade:
+        return chave, pd.Series(False, index=tabela.index)
+    identidade = motor.chave(tabela, cadastro.identidade)
+    em_conflito = identidade.groupby(chave).transform("nunique").gt(1)
+    completa = chave.str.cat(identidade, sep=motor.SEPARADOR_DA_CHAVE)
+    return chave.where(~em_conflito, completa), em_conflito
+
+
+def _contagem_da_chave(
+    tabela: pd.DataFrame, cadastro: Cadastro, em_conflito: pd.Series
+) -> dict[str, int]:
+    """Os avisos da chave: chaves em conflito e linhas sem o tipo de autorização (arquivo antigo ou
+    linha incompleta: fica sem o tipo, nunca adivinhado pelo nome ou pelo registro)."""
+    contagem: dict[str, int] = {}
+    if cadastro.identidade:
+        chave = motor.chave(tabela, cadastro.chave)
+        contagem["identidade_em_conflito"] = int(chave[em_conflito].nunique())
+    if "tipo" in cadastro.chave:
+        contagem["sem_tipo"] = int(tabela["tipo"].eq("").sum())
+    return contagem
+
+
+def _juntar_situacoes(tabela: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Cada chave com todas as situações dela, em ordem alfabética e sem repetir, e as linhas em
+    ordem fixa: a ordem do arquivo não decide qual linha fica. Devolve também quantas chaves têm mais
+    de uma situação (nenhuma vence: nem a primeira, nem a última, nem a "ativa")."""
+    situacoes = tabela.groupby("id_na_fonte")["situacao"].agg(
+        lambda valores: SEPARADOR_DAS_SITUACOES.join(sorted(set(valores) - {""}))
+    )
+    juntas = tabela.assign(situacao=tabela["id_na_fonte"].map(situacoes))
+    ordenada = juntas.sort_values(list(juntas.columns), kind="stable")
+    return ordenada, int(
+        situacoes.str.contains(SEPARADOR_DAS_SITUACOES, regex=False).sum()
+    )
 
 
 def _disponivel_no_primeiro(novos: pd.DataFrame, dia: pd.Timestamp) -> pd.Series:

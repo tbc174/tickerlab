@@ -165,3 +165,38 @@ def test_legenda_do_item_diz_o_mes_e_a_fonte(banco):
     assert (
         painel.legenda_do_item(item) == "Média de 09/2026, Pink Sheet do Banco Mundial."
     )
+
+
+def _gravar_desde(banco, codigo: str, inicio: str):
+    meses = pd.date_range(inicio, "2026-09-01", freq="MS")
+    serie = pd.Series(range(1, len(meses) + 1), index=meses, dtype=float)
+    with banco.begin() as conexao:
+        acervo.garantir_serie(conexao, precos.serie_do_acervo(codigo))
+        acervo.gravar(conexao, codigo, serie, date(2026, 10, 5))
+
+
+def test_historico_traz_todo_o_acervo_e_nao_so_5_anos(banco):
+    _gravar_desde(banco, "bm-pink-ureia", "1960-01-01")
+    historico = _item(_montar(banco), "ureia").historico
+    assert historico[0].mes == date(1960, 1, 1)
+    assert historico[-1].mes == date(2026, 9, 1)
+
+
+def test_grafico_abre_nos_ultimos_10_anos_com_botoes_ate_tudo(banco):
+    _gravar_desde(banco, "bm-pink-ureia", "1960-01-01")
+    figura = graficos.criar_grafico_preco_de_referencia(_item(_montar(banco), "ureia"))
+    eixo = figura.layout.xaxis
+    assert [b.label for b in eixo.rangeselector.buttons] == [
+        "1A",
+        "2A",
+        "5A",
+        "10A",
+        "Tudo",
+    ]
+    assert pd.Timestamp(eixo.range[0]) == pd.Timestamp("2016-09-01")
+
+
+def test_grafico_curto_abre_inteiro(banco):
+    _gravar(banco, "bm-pink-ureia", [400.0, 410.0, 420.0])
+    figura = graficos.criar_grafico_preco_de_referencia(_item(_montar(banco), "ureia"))
+    assert figura.layout.xaxis.range is None

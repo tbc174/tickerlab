@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { useConta } from "../conta";
+import { TextoComLinks } from "../TextoComLinks";
 import { ErroDaApi, baixar } from "../api";
 import type {
   AnaliseDaEmpresaV1,
@@ -33,7 +34,7 @@ function Item({ item }: { item: ItemDoRelatorioV1 }) {
         <span className="legenda-do-numero">Base: {item.base}</span>
       ) : null}
       {item.fonte ? (
-        <span className="legenda-do-numero">Fonte: {item.fonte}</span>
+        <span className="legenda-do-numero">Fonte: <TextoComLinks texto={item.fonte} /></span>
       ) : null}
       {item.motivo ? (
         <span className="legenda-do-numero">{item.motivo}</span>
@@ -95,7 +96,7 @@ function Pontos({ pontos }: { pontos: PontoDoRelatorioV1[] }) {
             <ul>
               {doLado.map((p) => (
                 <li key={p.indicador}>
-                  {p.texto} <span className="apagado">Fonte: {p.tabela}.</span>
+                  {p.texto} <span className="apagado">Fonte: <TextoComLinks texto={p.tabela} />.</span>
                 </li>
               ))}
             </ul>
@@ -189,7 +190,7 @@ function NotaAberta({ nota }: { nota: NotaDaAnaliseV1 }) {
       </strong>{" "}
       {nota.texto}
       {nota.medido_em ? <span> Medido em {nota.medido_em}.</span> : null}
-      {nota.fonte ? <span> Fonte: {nota.fonte}.</span> : null}
+      {nota.fonte ? <span> Fonte: <TextoComLinks texto={nota.fonte} />.</span> : null}
       {nota.comparacao ? <span> {nota.comparacao}.</span> : null}
     </aside>
   );
@@ -339,7 +340,7 @@ function Resultado({ relatorio, rota }: { relatorio: RelatorioDaEmpresaV1; rota:
         </div>
       ))}
       <p className="apagado">
-        Fontes: {relatorio.fontes.join("; ")}. Nada aqui é recomendação.
+        Fontes: <TextoComLinks texto={relatorio.fontes.join("; ")} />. Nada aqui é recomendação.
       </p>
     </>
   );

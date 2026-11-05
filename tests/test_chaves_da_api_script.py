@@ -235,6 +235,68 @@ def test_conceder_suspender_e_reativar_direito(banco, admin, capsys):
     assert permite()
 
 
+def test_suspender_e_reativar_conjunto_para_todas_as_organizacoes(banco, admin, capsys):
+    organizacao_id = _criar_organizacao(capsys)
+    _rodar(
+        capsys,
+        "conceder-direito",
+        str(organizacao_id),
+        "--conjunto",
+        "cvm-dfp-itr",
+        "--finalidade",
+        "analise",
+        "--desde",
+        HOJE.isoformat(),
+    )
+
+    def permite():
+        with banco.connect() as conexao:
+            return cb.contrato_permite(
+                conexao,
+                organizacao_id,
+                conjunto="cvm-dfp-itr",
+                finalidade="analise",
+                dia=HOJE,
+            )
+
+    suspender = ("suspender-conjunto", "cvm-dfp-itr", "--motivo", "fonte")
+    codigo, saida, _ = _rodar(capsys, *suspender)
+    assert codigo == 0
+    assert "cvm-dfp-itr" in saida
+    assert "1 contrato" in saida  # quantos o botão alcançou: nome errado aparece como 0
+    assert not permite()
+    codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
+    assert codigo == 0
+    assert "cvm-dfp-itr" in saida and "fonte" in saida
+    codigo, _, erro = _rodar(capsys, *suspender)
+    assert codigo == 1  # já estava: nada mudou
+    assert "já estava" in erro
+    assert _rodar(capsys, "reativar-conjunto", "cvm-dfp-itr")[0] == 0
+    assert permite()
+    codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
+    assert codigo == 0
+    assert "Nenhum conjunto suspenso" in saida
+
+
+def test_suspender_conjunto_sem_contrato_avisa_que_nao_alcancou_ninguem(
+    banco, admin, capsys
+):
+    # um nome digitado errado (DFP em vez de dfp) não pode parecer que parou alguma coisa
+    codigo, saida, _ = _rodar(
+        capsys, "suspender-conjunto", "CVM-DFP-ITR", "--motivo", "fonte"
+    )
+    assert codigo == 0  # suspender antes do primeiro contrato vale
+    assert "nenhum contrato" in saida
+
+
+def test_motivo_do_conjunto_fora_da_lista_e_recusado_pelo_argparse(
+    banco, admin, capsys
+):
+    with pytest.raises(SystemExit) as saida:
+        _rodar(capsys, "suspender-conjunto", "cvm-dfp-itr", "--motivo", "porque sim")
+    assert saida.value.code == 2
+
+
 def test_finalidade_treino_nunca_e_concedida(banco, admin, capsys):
     organizacao_id = _criar_organizacao(capsys)
     with pytest.raises(SystemExit):
@@ -318,6 +380,24 @@ def test_recusa_quem_esta_na_lista_mas_nao_e_admin_no_banco(
     )
     assert codigo == 2
     assert "administrador" in erro
+
+
+def test_suspender_conjunto_recusa_quem_nao_e_admin_no_banco(
+    banco, admin, capsys, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_ADMINS", f"{ADMIN},nunca-entrou@exemplo.com")
+    codigo, _, erro = _rodar(
+        capsys,
+        "suspender-conjunto",
+        "cvm-dfp-itr",
+        "--motivo",
+        "fonte",
+        admin="nunca-entrou@exemplo.com",
+    )
+    assert codigo == 2
+    assert "administrador" in erro
+    with banco.connect() as conexao:
+        assert cb.conjuntos_suspensos_agora(conexao) == []
 
 
 def test_sem_admin_usa_o_unico_da_lista(banco, admin, capsys):
