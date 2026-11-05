@@ -97,12 +97,19 @@ cd web; npm run site                                        # páginas, CSS e JS
   público já aprovado, sem mudar sentido, número, preço, promessa, nome nem texto legal, não precisa de nenhuma.
   O Tiago fica sabendo pelo registro e pelo relato do dia, não aprovando. **Continua só do Tiago**
   (não é merge de PR): gasto, inclusive o PR que liga um gasto novo; contrato; e-mail ou pedido a
-  terceiro; segredo num servidor; e o que leva o nome ou o CNPJ dele.
+  terceiro; segredo num servidor; e o que leva o nome ou o CNPJ dele. O resto do nível 1 que não é merge
+  passa pela Diretoria (abaixo).
 - **Ordens da Diretoria:** a conversa da Diretoria que toca a fila única pode mandar ordens às outras sessões
   (mensagem entre sessões ou, para a IA que não recebe mensagens, escrita na passagem da tarefa), citando as
   palavras do Tiago (autorização dele em 20/10/2026). Essa ordem vale como a do Tiago para push, PR, merge
-  com auto-merge (nas áreas sensíveis, com as duas revisões acima) e o próximo passo da passagem. Para o
-  que continua só do Tiago (gasto, contrato, terceiro, segredo num servidor), só vale o que ele escreve na
+  com auto-merge (nas áreas sensíveis, com as duas revisões acima) e o próximo passo da passagem. **O "pode"
+  do nível 1 que não é merge** (rodar algo no servidor de casa ou no VPS fora da rotina, repetir carga, mudar o
+  crontab, texto público, licença de dado, apagar dado com cópia conferida) **é dado pela Diretoria** (ADR 0101,
+  Emenda 4, 05/11/2026; Tiago: "não quero mais dar pode, você a partir de agora pode tomar essa decisão"): a
+  sessão pede à Diretoria por mensagem, com a recomendação; a resposta dela, citando a Emenda 4, vale como o
+  "pode" do Tiago na conversa de destino, e a Diretoria registra cada uma em `decisoes-delegadas.md`. Para o que
+  continua só do Tiago (gasto, contrato, CNPJ, terceiro, Stripe fora do modo de teste, dado pessoal novo,
+  segredo num servidor, a lista do lançamento e o que leva o nome ou o CNPJ dele), só vale o que ele escreve na
   própria conversa.
 - **Merge automático:** quando o merge está autorizado (pela alçada ou pelo Tiago), ative o auto-merge do PR (ele
   mescla sozinho quando o CI fica verde), em vez de esperar o CI para voltar e mesclar. CI vermelho
