@@ -36,7 +36,7 @@ from typing import Any, NamedTuple
 
 import pandas as pd
 
-from base import concentracao
+from base import concentracao, mercado_de_energia
 from base import indicadores_de_caixa as t1
 from base.bcb_ifdata import DIAS_ATE_FICAR_PUBLICO, MESES_DA_DATA_BASE
 from base.cnpj import formatar, raiz
@@ -435,6 +435,13 @@ class SecaoDaBase:
 
 # o M&A das assessorias (série 5 da base): as partes, o negócio, a data em que ficou conhecido
 TABELAS_DO_MA = ("ma_assessorias", "ma_partes", "ma_negocios", "ma_datas")
+# o mercado de energia das elétricas (PLD, curtailment, capacidade): preço e oferta de um mercado, sem empresa
+TABELAS_DO_MERCADO_DE_ENERGIA = ("ccee_pld", "ons_restricao", "ons_capacidade")
+TABELA_DO_MERCADO_DE_ENERGIA = {  # a tabela da ficha → a da base de onde sai
+    "pld_mensal": "ccee_pld",
+    "curtailment_mensal": "ons_restricao",
+    "capacidade_por_tipo": "ons_capacidade",
+}
 
 SECOES = (
     SecaoDaBase(
@@ -501,6 +508,7 @@ SECOES = (
                     _SERIE_POR_NOME[nome].tabela,
                 )
             ),
+            *TABELAS_DO_MERCADO_DE_ENERGIA,
         ),
     ),
     SecaoDaBase("negocios", "Negócios e eventos", ("eventos", *TABELAS_DO_MA)),
@@ -2750,12 +2758,69 @@ def _tabelas_lado_a_lado(
     return tabelas
 
 
+def _publicado_em(coluna: pd.Series) -> str | None:
+    return _data(coluna.max()) if not coluna.empty else None
+
+
+def _itens_do_mercado_de_energia(
+    mercado: Mapping[str, pd.DataFrame],
+) -> list[dict[str, Any]]:
+    """Os números da ponta de cada tabela de `mercado_de_energia` (a mais nova, já fechada)."""
+    itens = []
+    pld = mercado.get("pld_mensal", pd.DataFrame())
+    referencia = (
+        pld[
+            pld["submercado"].str.casefold()
+            == mercado_de_energia.SUBMERCADO_DE_REFERENCIA.casefold()
+        ]
+        if not pld.empty
+        else pld
+    )
+    if not referencia.empty:
+        ultimo = referencia.sort_values("referencia").iloc[-1]
+        itens.append(
+            _item("pld_mensal", f"PLD médio de {_mes_e_ano(ultimo['referencia'])}, {mercado_de_energia.SUBMERCADO_DE_REFERENCIA}", float(ultimo["pld"]), "R$/MWh", _data(ultimo["referencia"]), publicado_em=_data(ultimo["disponivel_em"]))
+        )  # fmt: skip
+    corte = mercado.get("curtailment_mensal", pd.DataFrame())
+    if not corte.empty:
+        mes = corte["mes"].max()
+        do_mes = corte[corte["mes"] == mes]
+        itens.append(
+            _item("curtailment_mensal", f"Energia eólica e solar não gerada por ordem do operador em {_mes_e_ano(mes)}", float(do_mes["mwh"].sum()), "MWh", _data(mes), publicado_em=_publicado_em(do_mes["disponivel_em"]))
+        )  # fmt: skip
+    capacidade = mercado.get("capacidade_por_tipo", pd.DataFrame())
+    if not capacidade.empty:
+        itens.append(
+            _item("capacidade_instalada", "Capacidade instalada em operação (todas as fontes)", float(capacidade["potencia_mw"].sum()), "MW", None, publicado_em=_publicado_em(capacidade["disponivel_em"]))
+        )  # fmt: skip
+    return itens
+
+
+def _do_mercado_de_energia(
+    setor: SetorDoLancamento, mercado: Mapping[str, pd.DataFrame]
+) -> dict[str, pd.DataFrame]:
+    """As tabelas do mercado de energia, só para as elétricas e só as que têm linhas."""
+    if setor.chave != "eletricas":
+        return {}
+    return {nome: tabela for nome, tabela in mercado.items() if not tabela.empty}
+
+
+def _fontes_do_mercado(do_mercado: Mapping[str, pd.DataFrame]) -> list[str]:
+    tabelas = [
+        base
+        for nome, base in TABELA_DO_MERCADO_DE_ENERGIA.items()
+        if nome in do_mercado
+    ]
+    return fontes_das_tabelas(tabelas) if tabelas else []
+
+
 def secao_setor(
     setor: SetorDoLancamento,
     membros: pd.DataFrame,
     series: Mapping[str, pd.DataFrame],
     empresa_serie: pd.DataFrame,
     grupos: Mapping[str, pd.DataFrame],
+    mercado: Mapping[str, pd.DataFrame] | None = None,
 ) -> dict[str, Any] | None:
     """O mercado do setor: tamanho, CR4 e HHI por ano, a participação dos membros e quem são
     (None: setor sem membros ou sem série).
@@ -2803,6 +2868,9 @@ def secao_setor(
     lado_a_lado = _tabelas_lado_a_lado(setor, series, membros, empresa_serie)
     tabelas |= lado_a_lado
     usadas += [nome.removeprefix("lado_a_lado_") for nome in lado_a_lado]
+    do_mercado = _do_mercado_de_energia(setor, mercado or {})
+    itens += _itens_do_mercado_de_energia(do_mercado)
+    tabelas |= {nome: tabela for nome, tabela in do_mercado.items() if not tabela.empty}
     paragrafos = [
         *avisos_de_ano_parcial,
         *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
@@ -2813,7 +2881,7 @@ def secao_setor(
         itens,
         tabelas,
         paragrafos,
-        fontes=fontes_do_setor(usadas),
+        fontes=sorted({*fontes_do_setor(usadas), *_fontes_do_mercado(do_mercado)}),
         limites=metodologia_do_setor(setor.chave),
     )
 
@@ -3661,6 +3729,9 @@ _ORIGENS_FIXAS = {
     "membros": Origem(
         "empresa_serie", "companhias abertas da base com entidade ligada à agência do setor"
     ),
+    "pld_mensal": Origem("ccee_pld", "média mensal do PLD no submercado Sudeste (a que a CCEE publica), último mês fechado já público"),
+    "curtailment_mensal": Origem("ons_restricao", "soma da energia não realizada por ordem do operador (eólicas e fotovoltaicas), último mês fechado, na revisão que era pública no dia"),
+    "capacidade_instalada": Origem("ons_capacidade", "soma da potência efetiva das unidades em operação no dia (entraram até o dia e não foram desativadas)"),
     "negocios": Origem(
         "eventos",
         "fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão ou reorganização",

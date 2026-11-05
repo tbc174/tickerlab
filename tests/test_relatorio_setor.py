@@ -218,7 +218,8 @@ def test_kpi_parcial_diz_o_que_falta() -> None:
 def test_kpi_proprio_que_sai_no_relatorio_e_serie_do_setor() -> None:
     series = set(dossie.SERIES_DO_SETOR)
     proprios = [k for k in rs.KPIS_DO_SETOR if rs.TODOS not in k.setores]
-    assert all(k.no_relatorio in series for k in proprios if k.no_relatorio), proprios
+    saem = series | set(rs.TABELAS_DO_MERCADO_DE_ENERGIA)
+    assert all(k.no_relatorio in saem for k in proprios if k.no_relatorio), proprios
 
 
 def test_ids_dos_kpis_sao_unicos() -> None:
@@ -400,7 +401,9 @@ def test_sem_numeros_bastantes_nao_ha_frase() -> None:
 
 def test_relatorio_do_setor_ordem_das_secoes(noite) -> None:
     relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "pro", HOJE)
-    assert [s.chave for s in relatorio.secoes] == list(rs.ORDEM_DAS_SECOES)
+    # o mercado de energia só aparece quando a noite o trouxe (tests/test_mercado_de_energia.py)
+    esperadas = [c for c in rs.ORDEM_DAS_SECOES if c != "mercado_de_energia"]
+    assert [s.chave for s in relatorio.secoes] == esperadas
     assert relatorio.como_era_em == noite.dia
     assert relatorio.frases and relatorio.fontes and not relatorio.avisos
     assert next(s for s in relatorio.secoes if s.chave == "metodologia").recolhida
@@ -423,7 +426,7 @@ def test_secoes_trazem_as_tabelas_da_noite(noite) -> None:
 def test_sem_o_plano_vem_trancado(noite) -> None:
     relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "gratuito", HOJE)
     trancadas = [s for s in relatorio.secoes if s.trancada]
-    assert {s.chave for s in trancadas} == rs.DA_BASE
+    assert {s.chave for s in trancadas} == rs.DA_BASE - {"mercado_de_energia"}
     assert all(not s.itens and not s.tabelas and s.paragrafos for s in trancadas)
     assert relatorio.frases == []
     assert not any(
@@ -450,7 +453,8 @@ def test_nao_temos_diz_o_parcial_e_o_que_a_base_ja_tem() -> None:
     faltas = {f.kpi: f for f in rs.nao_temos("eletricas")}
     assert faltas["Perdas de energia"].motivo.startswith("Parcial:")
     assert faltas["Geração por usina"].fonte == "base do TickerLab (tabela ons_geracao)"
-    assert faltas["PLD e CMO"].fonte == "série T6 da mesa Dados"
+    assert faltas["CMO"].fonte == "série T6 da mesa Dados"
+    assert "PLD" not in faltas  # o PLD sai no relatório (mercado de energia)
     assert "Consumidores atendidos" not in faltas  # esse sai no relatório
 
 

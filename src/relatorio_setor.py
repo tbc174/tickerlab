@@ -198,9 +198,10 @@ _DAS_ELETRICAS = (
     _tem("energia_vendida", "Energia vendida e mercado faturado", _E, "aneel_samp"),
     _tem("geracao_por_usina", "Geração por usina", _E, "ons_geracao"),
     _parcial("perdas", "Perdas de energia", _E, "aneel_samp", "só o que a SAMP dá"),
-    _falta("pld_cmo", "PLD e CMO", _E, _da_serie("T6")),
-    _falta("curtailment", "Curtailment", _E, _da_serie("T6")),
-    _falta("capacidade", "Capacidade instalada", _E, _da_serie("T6")),
+    _tem("pld", "PLD", _E, "ccee_pld", "pld_mensal"),
+    _falta("cmo", "CMO", _E, _da_serie("T6")),
+    _tem("curtailment", "Curtailment", _E, "ons_restricao", "curtailment_mensal"),
+    _tem("capacidade", "Capacidade instalada", _E, "ons_capacidade", "capacidade_por_tipo"),
     _falta("gsf", "GSF", _E, _da_serie("S8")),
     _falta("ena_ear", "ENA e EAR", _E, _da_serie("S8")),
     _falta("dec_fec", "DEC e FEC", _E, _da_serie("S8")),
@@ -667,6 +668,7 @@ TITULOS = {
     "tamanho": "Tamanho do setor",
     "concentracao": "Concentração",
     "participacao": "Participação de cada companhia aberta",
+    "mercado_de_energia": "Mercado de energia",
     "lado_a_lado": "Empresas lado a lado",
     "cruzamentos": "Cruzamentos",
     "o_que_os_dados_mostram": "O que os dados mostram",
@@ -680,6 +682,7 @@ DA_BASE = frozenset(
         "tamanho",
         "concentracao",
         "participacao",
+        "mercado_de_energia",
         "lado_a_lado",
         "cruzamentos",
         "o_que_os_dados_mostram",
@@ -874,6 +877,42 @@ def _secao_da_participacao(e: EntradasDoSetor, noite: dossie.SecaoDoSetor) -> Se
     )
 
 
+TABELAS_DO_MERCADO_DE_ENERGIA = (
+    "pld_mensal",
+    "curtailment_mensal",
+    "capacidade_por_tipo",
+)
+ITENS_DO_MERCADO_DE_ENERGIA = (
+    "pld_mensal",
+    "curtailment_mensal",
+    "capacidade_instalada",
+)
+SOBRE_O_MERCADO_DE_ENERGIA = (
+    "PLD, curtailment e capacidade são de um mercado, não de uma companhia: valem para o setor "
+    "inteiro, não para a empresa que você abriu. O CMO ainda não está na base."
+)
+
+
+def _secao_do_mercado_de_energia(noite: dossie.SecaoDoSetor) -> Secao | None:
+    """PLD, energia eólica e solar não gerada por ordem do operador e capacidade em operação; só as
+    elétricas têm (None: a noite não trouxe nenhuma das tabelas)."""
+    tabelas = {
+        chave: dossie.escrever_linhas(dossie.colunas_da_tabela(chave) or [], linhas)
+        for chave in TABELAS_DO_MERCADO_DE_ENERGIA
+        if (linhas := noite.secao.tabelas.get(chave))
+    }
+    if not tabelas:
+        return None
+    itens = [noite.itens[c] for c in ITENS_DO_MERCADO_DE_ENERGIA if c in noite.itens]
+    return Secao(
+        "mercado_de_energia",
+        TITULOS["mercado_de_energia"],
+        itens,
+        [SOBRE_O_MERCADO_DE_ENERGIA, *_fontes_da_noite(noite)],
+        tabelas,
+    )
+
+
 def _aviso_de_quem_ficou_de_fora(
     membros: list[Membro], participacao: list[dict[str, Any]]
 ) -> list[str]:
@@ -980,10 +1019,12 @@ def _secao_da_metodologia(chave: str) -> Secao:
 def _secoes_da_noite(e: EntradasDoSetor) -> list[Secao]:
     if e.da_noite is None:
         return []
+    mercado = _secao_do_mercado_de_energia(e.da_noite)
     return [
         _secao_do_tamanho(e, e.da_noite),
         _secao_da_concentracao(e, e.da_noite),
         _secao_da_participacao(e, e.da_noite),
+        *([mercado] if mercado else []),
     ]
 
 
