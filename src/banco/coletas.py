@@ -60,7 +60,7 @@ LICENCAS = {
     "tce-ce": "TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)",
     # linha 658 (fichas dos conjuntos no CKAN, lidas em 03/11/2026)
     "goias": "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)",
-    "msestado": "Despesas do MS por credor: a confirmar, só interno (ADR 0102)",
+    "msestado": "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)",
     "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
@@ -298,7 +298,7 @@ REVENDA = {
     "tce-sp": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-SP, uso interno
     "tce-ce": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-CE, uso interno
     "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
-    "msestado": A_CONFIRMAR,  # linha 658: nada perguntado ao MS; entra como "a confirmar"
+    "msestado": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN; uso público com a fonte: "pode" do Tiago em 05/11/2026 (linha 688)
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
@@ -567,6 +567,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "rfb-cnpj",  # Disallow: / ; CC BY na ficha do dados.gov.br
             "goias",  # Disallow: /api/ e Crawl-Delay: 10 (04/11/2026); CC BY
             "spcapital",  # Disallow: / (04/11/2026); CC0
+            "msestado",  # www.dados.ms.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN
         ),
         _ROBOTS_FECHA_COM_LICENCA,
     ),
@@ -625,7 +626,6 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
-            "msestado",  # host dados.ms.gov.br não resolveu em 04/11/2026; robots.txt não lido
             "mte",
             "comexstat",
             "wayback",

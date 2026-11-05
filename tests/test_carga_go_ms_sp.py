@@ -181,3 +181,20 @@ def test_mapa_do_sp_sem_numero_do_contrato_para_a_carga(tmp_path: Path) -> None:
 
 def test_carga_sem_registro_de_download_sai_com_1(tmp_path: Path) -> None:
     assert carga.main(["--origem", str(tmp_path)]) == 1
+
+
+def test_ms_usa_o_endereco_com_www_e_os_termos_estao_datados():
+    """O host do MS só resolve com `www.` (linha 688); os termos dos três portais têm data."""
+    from base.arquivo.orgaos import ORGAO_DA_FAMILIA
+    from base.arquivo.registro import TERMOS_LIDOS_EM
+    from base.licenca import familia_do_endereco
+
+    assert carga.PORTAIS["ms"][0] == "https://www.dados.ms.gov.br"
+    assert (ORGAO_DA_FAMILIA["msestado"].link or "").startswith(
+        "https://www.dados.ms.gov.br"
+    )
+    assert (
+        familia_do_endereco("https://www.dados.ms.gov.br/dataset/x.csv") == "msestado"
+    )
+    for familia in ("goias", "msestado", "spcapital"):
+        assert TERMOS_LIDOS_EM[familia].isoformat() == "2026-11-05"
