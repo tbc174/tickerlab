@@ -25,7 +25,7 @@
       <a class="v2-pilula" href="#precos"><span class="v2-ponto" aria-hidden="true"></span>Beta fechado · sem cobrança<span class="v2-pilula-seta" aria-hidden="true">→</span></a>
       <h1 id="titulo-heroi">Dados das empresas brasileiras, <span class="v2-degrade">da fonte</span>, com data e licença.</h1>
       <p class="subtitulo">Balanços, cadastros, dívidas e fundos lidos direto da CVM, da Receita, do Banco Central e das agências. Cada número vem com o documento de onde saiu, o dia em que ficou público e a licença da tabela.</p>
-      <div class="api-botoes"><a class="botao primario" href="/docs/">Documentação</a><a class="botao secundario" href="/docs/#comecar">Como pedir uma chave</a><a class="botao secundario" href="#chat">Perguntar à IA</a></div>
+      <div class="api-botoes"><a class="botao primario" href="/documentacao/">Documentação</a><a class="botao secundario" href="/documentacao/#comecar">Como pedir uma chave</a><a class="botao secundario" href="#chat">Perguntar à IA</a></div>
       <ul class="api-prova"><li>JSON</li><li>Chave no cabeçalho</li><li>“Como era na data” em toda rota</li></ul>
     </div>
 
@@ -209,7 +209,7 @@ linha = r.json()[<span class="s">"rows"</span>][0]</code></pre>
   <div class="planos">
     <article class="plano beta"><p class="olho">Agora</p><h3>Beta</h3><p class="preco">R$ 0 <small>durante o beta</small></p>
       <ul><li>Os três conjuntos e as rotas acima</li><li>Cota mensal e limite por minuto por organização, no <code>/data/v1/usage</code></li><li>Chat de IA quando ligar: 50 perguntas por chave por mês, até 10 por dia</li><li>JSON</li><li>Licença da fonte em cada resposta; citar a fonte é obrigatório</li><li>Chave pode ser suspensa se o uso quebrar a licença de uma fonte</li></ul>
-      <a class="botao primario" href="/docs/#comecar">Como pedir uma chave</a></article>
+      <a class="botao primario" href="/documentacao/#comecar">Como pedir uma chave</a></article>
     <article class="plano depois"><p class="olho">Depois do beta</p><h3>Planos por uso</h3><p>A ideia é simples como a de quem faz isso bem: uma faixa grátis sem cartão, planos mensais por volume e um estimador para você saber o custo antes de usar. Os números só entram aqui quando forem decisão tomada.</p></article>
   </div>
 </section>
@@ -221,12 +221,12 @@ linha = r.json()[<span class="s">"rows"</span>][0]</code></pre>
   <p class="subtitulo">O objetivo do beta é este: um piloto de fora integra sem falar com a gente. Se precisou perguntar, a documentação falhou e a gente conserta. Biblioteca Python e servidor MCP ainda não existem.</p>
   <div class="docs">
     <div class="docs-lista">
-      <a href="/docs/#comecar"><span class="icone">01</span><span><b>Começar</b><span>Como pedir a chave, a primeira chamada, limites do beta.</span></span></a>
-      <a href="/docs/#autenticacao"><span class="icone">key</span><span><b>Autenticação</b><span>Chave só no cabeçalho; o que acontece quando é recusada.</span></span></a>
-      <a href="/docs/#versoes"><span class="icone">v1</span><span><b>Versões</b><span>O que muda com aviso e o que nunca muda.</span></span></a>
-      <a href="/docs/#direitos"><span class="icone">©</span><span><b>Direitos por fonte</b><span>Fonte por fonte: licença e como citar.</span></span></a>
-      <a href="/docs/#erros"><span class="icone">4xx</span><span><b>Erros e limites</b><span>Os códigos de erro e o que fazer com cada um.</span></span></a>
-      <a href="/docs/#lotes"><span class="icone">[ ]</span><span><b>Lotes</b><span>Até 100 CNPJs por pedido.</span></span></a>
+      <a href="/documentacao/#comecar"><span class="icone">01</span><span><b>Começar</b><span>Como pedir a chave, a primeira chamada, limites do beta.</span></span></a>
+      <a href="/documentacao/#autenticacao"><span class="icone">key</span><span><b>Autenticação</b><span>Chave só no cabeçalho; o que acontece quando é recusada.</span></span></a>
+      <a href="/documentacao/#versoes"><span class="icone">v1</span><span><b>Versões</b><span>O que muda com aviso e o que nunca muda.</span></span></a>
+      <a href="/documentacao/#direitos"><span class="icone">©</span><span><b>Direitos por fonte</b><span>Fonte por fonte: licença e como citar.</span></span></a>
+      <a href="/documentacao/#erros"><span class="icone">4xx</span><span><b>Erros e limites</b><span>Os códigos de erro e o que fazer com cada um.</span></span></a>
+      <a href="/documentacao/#lotes"><span class="icone">[ ]</span><span><b>Lotes</b><span>Até 100 CNPJs por pedido.</span></span></a>
     </div>
     <div class="instalar"><header><span>Primeira chamada</span><span>HTTP</span></header>
 <pre><code><span class="cmd">$</span> export TICKERLAB_CHAVE=…
@@ -235,8 +235,8 @@ linha = r.json()[<span class="s">"rows"</span>][0]</code></pre>
   </div>
 </section>
 
-<div class="escura v2-final-fundo"><div class="v2-horizonte v2-horizonte-alto" aria-hidden="true"></div><section class="faixa secao final api-final" aria-labelledby="titulo-final"><h2 id="titulo-final">Comece pela documentação</h2><p class="subtitulo">A primeira resposta já vem com fonte, data e licença.</p><a class="botao primario" href="/docs/">Abrir a documentação</a></section></div>
+<div class="escura v2-final-fundo"><div class="v2-horizonte v2-horizonte-alto" aria-hidden="true"></div><section class="faixa secao final api-final" aria-labelledby="titulo-final"><h2 id="titulo-final">Comece pela documentação</h2><p class="subtitulo">A primeira resposta já vem com fonte, data e licença.</p><a class="botao primario" href="/documentacao/">Abrir a documentação</a></section></div>
 </main>
-<footer class="rodape escura"><div class="faixa"><div><a class="marca" href="/" aria-label="TickerLab Data, página inicial"><svg xmlns="http://www.w3.org/2000/svg" viewBox="9 14 60 60" width="32" height="32" aria-hidden="true"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="currentColor"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg><span>Ticker<b>Lab</b></span><span class="api">Data</span></a><p class="apagado">Dados das empresas brasileiras, da fonte, com data e licença.</p></div><nav aria-label="Rodapé"><a href="/docs/">Documentação</a><a href="https://tickerlab.com.br/dados.html">Fontes e licenças</a><a href="https://tickerlab.com.br/">TickerLab, o app</a><a href="https://tickerlab.com.br/termos.html">Termos de uso</a><a href="https://tickerlab.com.br/privacidade.html">Privacidade</a><a href="mailto:contato@tickerlab.com.br">contato@tickerlab.com.br</a></nav><p class="aviso">Nada aqui é recomendação de investimento. Os dados vêm das fontes oficiais citadas em cada resposta e podem ter atraso ou erros da própria fonte. Cada tabela tem a sua licença; cite a fonte.</p></div></footer>
+<footer class="rodape escura"><div class="faixa"><div><a class="marca" href="/" aria-label="TickerLab Data, página inicial"><svg xmlns="http://www.w3.org/2000/svg" viewBox="9 14 60 60" width="32" height="32" aria-hidden="true"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="currentColor"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg><span>Ticker<b>Lab</b></span><span class="api">Data</span></a><p class="apagado">Dados das empresas brasileiras, da fonte, com data e licença.</p></div><nav aria-label="Rodapé"><a href="/documentacao/">Documentação</a><a href="https://tickerlab.com.br/dados.html">Fontes e licenças</a><a href="https://tickerlab.com.br/">TickerLab, o app</a><a href="https://tickerlab.com.br/termos.html">Termos de uso</a><a href="https://tickerlab.com.br/privacidade.html">Privacidade</a><a href="mailto:contato@tickerlab.com.br">contato@tickerlab.com.br</a></nav><p class="aviso">Nada aqui é recomendação de investimento. Os dados vêm das fontes oficiais citadas em cada resposta e podem ter atraso ou erros da própria fonte. Cada tabela tem a sua licença; cite a fonte.</p></div></footer>
 <a class="chat-flutuante" href="#chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-4.6A8 8 0 1 1 21 12z"/></svg><span>Perguntar à IA</span></a>
 </body></html>

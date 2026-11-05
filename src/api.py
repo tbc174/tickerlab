@@ -158,10 +158,12 @@ def _montar_site_da_api(app: FastAPI) -> None:
     def pagina_inicial() -> FileResponse:
         return FileResponse(SITE_DA_API / "index.html", media_type="text/html")
 
-    @app.get("/docs/", include_in_schema=False)
-    @app.get("/docs", include_in_schema=False)
+    @app.get("/documentacao/", include_in_schema=False)
+    @app.get("/documentacao", include_in_schema=False)
     def documentacao() -> FileResponse:
-        return FileResponse(SITE_DA_API / "docs" / "index.html", media_type="text/html")
+        return FileResponse(
+            SITE_DA_API / "documentacao" / "index.html", media_type="text/html"
+        )
 
     app.mount(
         "/estatico", StaticFiles(directory=SITE_DA_API / "estatico"), name="estatico"

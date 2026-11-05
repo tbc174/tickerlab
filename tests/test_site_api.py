@@ -12,7 +12,7 @@ from src import api
 from src.api_externa.rotas import router
 
 PASTA = Path(__file__).resolve().parent.parent / "site-api"
-PAGINAS = (PASTA / "index.html", PASTA / "docs" / "index.html")
+PAGINAS = (PASTA / "index.html", PASTA / "documentacao" / "index.html")
 SCRIPTS = tuple((PASTA / "estatico").glob("*.js"))
 
 
@@ -28,7 +28,7 @@ def test_catalogo_do_site_esta_em_dia_com_o_portao():
 
 
 def test_todo_conjunto_e_toda_fonte_do_portao_aparecem_na_documentacao():
-    docs = (PASTA / "docs" / "index.html").read_text(encoding="utf-8")
+    docs = (PASTA / "documentacao" / "index.html").read_text(encoding="utf-8")
     for conjunto, dono in catalogo_do_site().items():
         assert conjunto in docs
         for fonte in dono["fontes"]:  # type: ignore[attr-defined]
@@ -89,8 +89,8 @@ def cliente():
 def test_site_e_servido_na_raiz_da_api(cliente):
     assert cliente.get("/").status_code == 200
     assert "TickerLab" in cliente.get("/").text
-    assert cliente.get("/docs/").status_code == 200
-    assert cliente.get("/docs").status_code == 200
+    assert cliente.get("/documentacao/").status_code == 200
+    assert cliente.get("/documentacao").status_code == 200
     assert cliente.get("/estatico/api.css").status_code == 200
     fonte = cliente.get("/estatico/Manrope-VariableFont_wght.woff2")
     assert fonte.status_code == 200
