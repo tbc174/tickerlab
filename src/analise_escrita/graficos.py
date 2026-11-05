@@ -17,6 +17,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from src.analise_escrita import numeros, saida
+from src.analise_escrita.porta1 import ANO_PARCIAL
 
 TEMPO, CATEGORIA = "tempo", "categoria"
 MAXIMO_DE_GRAFICOS = 5
@@ -200,10 +201,13 @@ ESQUEMA: dict[str, Any] = esquema()
 
 
 def tabelas_da_entrada(entrada: dict[str, Any]) -> dict[str, list[LinhaDaTabela]]:
-    """As linhas de tabela da entrada juntadas pela tabela (`secao.tabela`), na ordem da ficha."""
+    """As linhas de tabela da entrada juntadas pela tabela (`secao.tabela`), na ordem da ficha.
+
+    A linha de um ano que a fonte ainda não fechou (`ano_parcial`) fica fora: não se compara com os
+    anos inteiros, e o desenho dela ao lado deles contaria uma história que o texto não conta."""
     tabelas: dict[str, list[LinhaDaTabela]] = {}
     for linha in entrada["linhas"]:
-        if linha.get("tipo") != "linha":
+        if linha.get("tipo") != "linha" or linha.get(ANO_PARCIAL):
             continue
         tabela = linha["id"].rsplit(".", 1)[0]
         tabelas.setdefault(tabela, []).append(

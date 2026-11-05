@@ -554,6 +554,7 @@ export interface GraficoDaAnaliseV1 {
   origem: "modelo" | "regras"; // regras: a reserva
   pontos: PontosDoGraficoV1;
   escala: EscalaDoGraficoV1;
+  secao?: string; // só no setor: o gráfico entra no fim desta seção, sem parágrafo âncora
 }
 
 /** Uma seção da ficha puxada para perto de uma parte do texto. */
@@ -645,6 +646,7 @@ export interface RelatorioDoSetorV1 {
   fontes: string[];
   limites: string[]; // "Limites e cuidados": sempre presentes
   avisos: string[];
+  graficos?: GraficoDaAnaliseV1[]; // o cardápio da análise com as tabelas do setor
 }
 
 /** Uma camada do Mapa do café: o que pinta os municípios, com o "o que é isto" e a fonte. */

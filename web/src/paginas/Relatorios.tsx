@@ -2,7 +2,8 @@
 // para quem analisa, 18/10/2026). Cada cartão usa o título e a descrição da própria página.
 import { pregaoDoDia } from "../conteudo";
 import { TopoDaPagina } from "../site/Fundo";
-import { DADOS as DADOS_DO_PREGAO, dataDoPregao } from "./PregaoDoDia";
+import { DataDoPregao } from "../site/CorpoDoPregao";
+import { DADOS as DADOS_DO_PREGAO } from "./PregaoDoDia";
 import { DADOS as DADOS_DO_RAIO_X, MOMENTO_DO_RAIO_X, RAIO_X } from "./RaioXDoChoque";
 import { DADOS as DADOS_DA_EMPRESA } from "./RelatorioExemplo";
 import { DADOS as DADOS_DO_SETOR } from "./RelatorioSemanalEletricas";
@@ -14,6 +15,7 @@ export const DADOS = {
   titulo: "Relatórios",
   descricao: FRASE,
   atual: "/relatorios.html",
+  ferramenta: true, // o ferramentas.js troca a data do cartão do pregão pela do mais novo
 };
 
 // o olho de cada cartão é o mesmo do topo da página do relatório
@@ -33,7 +35,7 @@ function UltimoPregao() {
         <p className="olho">Todo dia útil, depois do fechamento</p>
         <h3>
           <a href={DADOS_DO_PREGAO.caminho}>
-            O pregão de {dataDoPregao(pregaoDoDia.pregao.pregao)}
+            O pregão de <DataDoPregao dados={pregaoDoDia} />
           </a>
         </h3>
         <p>{DADOS_DO_PREGAO.descricao}</p>

@@ -8,6 +8,8 @@ import { PREVIAS } from "../../src/ferramentas/previas";
 import { ROTAS } from "../../src/rotas";
 
 const PAGINAS_DE_FERRAMENTA = FERRAMENTAS_DO_SITE.map((f) => f.arquivo);
+// a busca aberta da inicial e o pregão mais novo, que o script pede à API (site/PregaoAoVivo.tsx)
+const OUTRAS_COM_SCRIPT = ["index.html", "pregao-do-dia.html", "relatorios.html"];
 
 describe("páginas das ferramentas", () => {
   it("cada ferramenta da vitrine tem uma rota que carrega o script das calculadoras", () => {
@@ -18,10 +20,10 @@ describe("páginas das ferramentas", () => {
     }
   });
 
-  it("as calculadoras e a busca aberta carregam o ferramentas.js", () => {
+  it("as calculadoras, a busca aberta e o pregão do dia carregam o ferramentas.js", () => {
     for (const arquivo of arquivos) {
       const carrega = /<script src="\/ferramentas\.js\?v=[0-9a-f]{12}" defer="">/.test(renderizar(arquivo));
-      expect(carrega, arquivo).toBe(arquivo === "index.html" || PAGINAS_DE_FERRAMENTA.includes(arquivo));
+      expect(carrega, arquivo).toBe(OUTRAS_COM_SCRIPT.includes(arquivo) || PAGINAS_DE_FERRAMENTA.includes(arquivo));
     }
   });
 

@@ -912,6 +912,7 @@ class GraficoDaAnaliseV1(BaseModel):
     origem: str  # "modelo" (escolhido pela IA) ou "regras" (a reserva)
     pontos: PontosDoGraficoV1
     escala: EscalaDoGraficoV1
+    secao: str = ""  # no relatório do setor: a seção em cujo fim o gráfico entra
 
 
 class DestaqueDaAnaliseV1(BaseModel):
@@ -966,7 +967,7 @@ def _tabela_do_relatorio(chave: str, linhas: list[dict]) -> TabelaDoRelatorioV1:
         titulo=_titulo_da_tabela(chave),
         colunas=[relatorio_empresa.rotulo_da_coluna(c) for c in colunas],
         linhas=[
-            [relatorio_empresa.escrever_celula(linha.get(c)) for c in colunas]
+            [relatorio_empresa.escrever_celula(linha.get(c), c) for c in colunas]
             for linha in linhas
         ],
     )
@@ -1078,6 +1079,8 @@ class RelatorioDoSetorV1(BaseModel):
     fontes: list[str]
     limites: list[str]
     avisos: list[str]
+    # escolhidos para o setor, cada um no fim da seção `secao`; vazia sem seção com tabela
+    graficos: list[GraficoDaAnaliseV1] = []
 
 
 def _tabela_ja_escrita(chave: str, linhas: list[dict[str, str]]) -> TabelaDoRelatorioV1:

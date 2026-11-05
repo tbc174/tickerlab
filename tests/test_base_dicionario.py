@@ -425,13 +425,16 @@ def test_contrato_comeca_na_versao_1():
     (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas), e
     `ifdata_valores` 2.0.0 (21/10/2026), a chave ganhou o `visto_em` (a revisão do BC é linha nova da
     mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado), e `ifdata_cadastro` e
-    `scr_credito` 2.0.0 (25/10/2026), o mesmo: a chave ganhou o `visto_em`."""
+    `scr_credito` 2.0.0 (25/10/2026), o mesmo: a chave ganhou o `visto_em`, e `demonstracoes_como_era` 3.0.0 e
+    `dmpl_como_era` 2.0.0 (03/11/2026, API A3), a chave ganhou `ordem`, `inicio` e `fim` (a DRE do ITR traz o
+    trimestre e o acumulado; sem elas a chave se repetia em milhões de linhas)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
     assert maiores.pop("cnpj_situacao_especial") == "2"
-    assert maiores.pop("demonstracoes_como_era") == "2"
+    assert maiores.pop("demonstracoes_como_era") == "3"
+    assert maiores.pop("dmpl_como_era") == "2"
     assert maiores.pop("ifdata_valores") == "2"
     assert maiores.pop("ifdata_cadastro") == "2"
     assert maiores.pop("scr_credito") == "2"

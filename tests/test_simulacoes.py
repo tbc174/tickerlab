@@ -80,7 +80,7 @@ def test_restaurar_ignora_chaves_de_outros_tipos_e_desconhecidas():
 
 
 @pytest.mark.parametrize(
-    "ruim", [{"ticker": "<script>"}, {"periodo": "10y"}, {"taxa": "Outra"}]
+    "ruim", [{"ticker": "<script>"}, {"periodo": "20y"}, {"taxa": "Outra"}]
 )
 def test_topo_invalido_e_ignorado(ruim):
     assert restaurar_estado(ruim, "backtest") == {}

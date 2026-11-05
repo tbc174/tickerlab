@@ -15,6 +15,7 @@ from src import relatorio_empresa as re_
 from src import relatorio_setor as rs
 from src.apresentacao_pdf import apresentacao_em_pdf
 from src.apresentacao_pptx import apresentacao_em_pptx
+from src.enderecos_das_fontes import separar
 from src.estilos_pdf import ESTILOS
 from tests.test_relatorio_empresa import _entradas as entradas_da_empresa
 from tests.test_relatorio_empresa import dados_da_weg  # noqa: F401
@@ -72,7 +73,7 @@ def test_ficha_tem_os_numeros_da_tela_com_a_fonte(ficha) -> None:
     linha = next(
         linha for s in numeros for linha in s.linhas if linha[0] == receita.nome
     )
-    assert linha[1] == receita.texto and linha[3] == (receita.fonte or "—")
+    assert linha[1] == receita.texto and linha[3] == (separar(receita.fonte)[0] or "—")
     for texto in (
         _texto_do_pdf(apresentacao_em_pdf(deck, GERADO_EM)),
         _texto_do_pptx(apresentacao_em_pptx(deck, GERADO_EM)),
@@ -125,7 +126,7 @@ def test_setor_tem_as_secoes_da_tela_na_ordem_e_as_fontes(setor) -> None:
 
 def test_tabela_larga_fica_com_a_primeira_coluna_e_as_mais_recentes() -> None:
     linhas = [{f"c{i}": f"v{i}" for i in range(10)}]
-    cabecalho, corpo = ap._tabela_de_texto(linhas, str, str)
+    cabecalho, corpo = ap._tabela_de_texto(linhas, lambda v, _coluna: str(v), str)
     assert len(cabecalho) == ap.COLUNAS_NA_TABELA
     assert cabecalho[0] == "c0" and cabecalho[-1] == "c9"
     assert corpo == [("v0", "v5", "v6", "v7", "v8", "v9")]

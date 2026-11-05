@@ -27,7 +27,7 @@ from base.cripto.atencao import (
     ler_gdelt,
     ler_wikipedia,
 )
-from base.cripto.cftc import endereco_do_ano, ler_tff
+from base.cripto.cftc import endereco_do_ano, ler_tff, ler_tff_inteiro
 from base.cripto.diario import resumo_diario
 from base.cripto.leitura import (
     FonteDeBlocos,
@@ -114,19 +114,31 @@ def carregar_arquivo_kraken(pasta: Path, agora: datetime, conteudo_csv: bytes) -
 
 
 def coletar_cftc(pasta: Path, agora: datetime, baixar: Baixar) -> int:
-    """Relatórios TFF: na primeira vez desde 2017; depois o ano anterior e o atual (correções)."""
+    """Relatórios TFF: na primeira vez desde 2017; depois o ano anterior e o atual (correções).
+
+    Cada arquivo anual baixado alimenta duas tabelas: `cftc` (só os futuros de Bitcoin, a que o resto
+    da base de cripto lê) e `cftc_tff` (todos os contratos e as cinco categorias de participante).
+    """
     destino = pasta / "cftc"
+    destino_inteiro = pasta / "cftc_tff"
     ano_atual = agora.year
     primeiro = (
         PRIMEIRO_ANO_DA_CFTC
         if ler_tabela(destino, "relatorio").empty
+        or ler_tabela(destino_inteiro, "relatorio").empty
         else ano_atual - 1
     )
     novas = 0
     for ano in range(primeiro, ano_atual + 1):
-        tabela = ler_tff(baixar(endereco_do_ano(ano)))
+        conteudo = baixar(endereco_do_ano(ano))
         novas += _gravar_por_ano(
-            destino, tabela, "relatorio", ["relatorio", "contrato"]
+            destino, ler_tff(conteudo), "relatorio", ["relatorio", "contrato"]
+        )
+        _gravar_por_ano(
+            destino_inteiro,
+            ler_tff_inteiro(conteudo),
+            "relatorio",
+            ["relatorio", "codigo"],
         )
     return novas
 

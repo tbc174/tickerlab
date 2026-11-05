@@ -1,0 +1,117 @@
+{
+  "tabela": "anm_amb_agua_mineral",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "ano": {
+      "descricao": "Ano-base do Anuário Mineral",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla do estado",
+      "unidade": "texto"
+    },
+    "classe": {
+      "descricao": "Classe da substância (metálicos, não metálicos...)",
+      "unidade": "texto"
+    },
+    "substancia": {
+      "descricao": "Substância mineral, como a ANM escreve",
+      "unidade": "texto"
+    },
+    "litros_garrafao": {
+      "descricao": "Litros vendidos em garrafão",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "litros_garrafa_plastica": {
+      "descricao": "Litros vendidos em garrafa plástica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "litros_garrafa_vidro": {
+      "descricao": "Litros vendidos em garrafa de vidro",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "litros_copo": {
+      "descricao": "Litros vendidos em copo",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "litros_outras": {
+      "descricao": "Litros vendidos em outras embalagens",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "litros_industrializados": {
+      "descricao": "Litros vendidos em composição de produtos industrializados",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_garrafao": {
+      "descricao": "Valor das vendas em garrafão, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_garrafa_plastica": {
+      "descricao": "Valor das vendas em garrafa plástica, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_garrafa_vidro": {
+      "descricao": "Valor das vendas em garrafa de vidro, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_copo": {
+      "descricao": "Valor das vendas em copo, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_outras": {
+      "descricao": "Valor das vendas em outras embalagens, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_industrializados": {
+      "descricao": "Valor das vendas em composição de produtos industrializados, em reais (R$)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "unidade": {
+      "descricao": "Unidade de medida declarada pela ANM",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que a coleta viu essa versão da linha pela primeira vez: o Anuário é sobrescrito pela ANM, e `ano` (o ano-base) nunca serve de disponibilidade",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "ano",
+    "uf",
+    "substancia"
+  ],
+  "datas": {
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (o Anuário é anual e a ANM sobrescreve o arquivo)",
+  "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu. A licença da ANM não é declarada no portal: a confirmar, só uso interno; nada foi perguntado à fonte"
+}

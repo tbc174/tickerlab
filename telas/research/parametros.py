@@ -35,7 +35,15 @@ NOMES_DOS_ESCOPOS_NA_TELA = {
 }
 
 
-DOMINIOS_QUE_JA_MUDAM_NUMEROS = ("quant", "tecnica")
+LEGENDAS_DOS_DOMINIOS = {
+    "fundamentalista": "Usados na página Fundamentos (horizonte, ROIC mínimo e P/L máximo). A "
+    "janela dos proventos fica travada até o dividend yield entrar.",
+    "relevancia": "Ordenam o Pulse, os Acontecimentos e a edição do Research.",
+    "editorial": "Por enquanto não mudam números: a edição é montada pela relevância e pelos "
+    "temas. Ficam travados até a edição ter uma parte para cada assunto.",
+    "newsletter": "Frequência, itens por edição e temas já valem na edição. O canal fica travado: "
+    "por enquanto a edição só sai no site.",
+}
 
 
 def _chave_do_campo(escopo, alvo, versao, chave):
@@ -58,13 +66,20 @@ def _campo_do_parametro(parametro, chave_do_campo, inicial):
             list(inicial) if parametro.tipo == "temas" else inicial
         )
     rotulo = parametro.rotulo + (f" ({parametro.unidade})" if parametro.unidade else "")
+    travado = parametro.chave in research_parametros.AINDA_SEM_EFEITO
+    ajuda = (
+        f"{parametro.ajuda} {research_parametros.AVISO_SEM_EFEITO}"
+        if travado
+        else parametro.ajuda
+    )
     if parametro.tipo == "temas":
         st.multiselect(
             rotulo,
             list(parametro.opcoes),
             format_func=lambda o: ROTULOS_DAS_OPCOES.get(o, o),
             key=chave_do_campo,
-            help=parametro.ajuda,
+            help=ajuda,
+            disabled=travado,
         )
     elif parametro.tipo == "escolha" or parametro.opcoes:
         st.selectbox(
@@ -72,7 +87,8 @@ def _campo_do_parametro(parametro, chave_do_campo, inicial):
             list(parametro.opcoes),
             format_func=lambda o: ROTULOS_DAS_OPCOES.get(o, str(o)),
             key=chave_do_campo,
-            help=parametro.ajuda,
+            help=ajuda,
+            disabled=travado,
         )
     elif parametro.tipo == "inteiro":
         st.number_input(
@@ -81,7 +97,8 @@ def _campo_do_parametro(parametro, chave_do_campo, inicial):
             max_value=int(parametro.maximo),
             step=1,
             key=chave_do_campo,
-            help=parametro.ajuda,
+            help=ajuda,
+            disabled=travado,
         )
     else:
         st.number_input(
@@ -91,7 +108,8 @@ def _campo_do_parametro(parametro, chave_do_campo, inicial):
             step=0.1,
             format="%.2f",
             key=chave_do_campo,
-            help=parametro.ajuda,
+            help=ajuda,
+            disabled=travado,
         )
 
 
@@ -293,16 +311,8 @@ def _campos_por_dominio(campos, proprio, herdado):
     )
     for aba, dominio in zip(abas, research_parametros.DOMINIOS, strict=True):
         with aba:
-            if dominio == "fundamentalista":
-                st.caption(
-                    "Usados na página Fundamentos (horizonte, ROIC mínimo e P/L máximo). A "
-                    "janela dos proventos entra numa próxima etapa."
-                )
-            elif dominio not in DOMINIOS_QUE_JA_MUDAM_NUMEROS:
-                st.caption(
-                    "Estes parâmetros serão usados pelo Research (eventos e newsletter) nas "
-                    "próximas etapas; por enquanto não mudam números."
-                )
+            if dominio in LEGENDAS_DOS_DOMINIOS:
+                st.caption(LEGENDAS_DOS_DOMINIOS[dominio])
             for parametro in research_parametros.PARAMETROS:
                 if parametro.dominio != dominio:
                     continue

@@ -3,6 +3,7 @@
 // Não usa hydrateRoot: o HTML do site sai de renderToStaticMarkup, sem as marcas que o React usa
 // para religar; montar por cima dá o mesmo desenho (o estado começa nos mesmos valores de exemplo).
 import { BuscaDaBase } from "../site/BuscaDaBase";
+import { ligarPregao } from "../site/PregaoAoVivo";
 import { createRoot } from "react-dom/client";
 import { PrefixoDoId } from "../idUnico";
 import { ligarContinuacoes } from "./continuar";
@@ -39,4 +40,5 @@ if (typeof document !== "undefined" && !import.meta.env?.VITEST) {
   } else {
     ligarFerramentas();
   }
+  void ligarPregao(document);
 }

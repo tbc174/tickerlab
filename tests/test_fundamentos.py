@@ -514,6 +514,24 @@ def test_coleta_sem_internet_e_arquivo_que_ainda_nao_existe(tmp_path, monkeypatc
         assert c.execute(sa.text("select count(*) from setores_cvm")).scalar() == 4
 
 
+@pytest.mark.parametrize(("anos", "itr_esperados"), [("2", 2), ("10", 10)])
+def test_carga_longa_traz_o_itr_dos_mesmos_anos_do_dfp(
+    tmp_path, monkeypatch, anos, itr_esperados
+):
+    monkeypatch.setenv(
+        "TICKERLAB_DATABASE_URL", f"sqlite:///{(tmp_path / 's.sqlite').as_posix()}"
+    )
+    pedidos: list[str] = []
+
+    def baixar_falso(endereco: str) -> bytes | None:
+        pedidos.append(endereco)
+        return None  # tudo 404: só conta o que foi pedido
+
+    monkeypatch.setattr(atualizar_fundamentos, "baixar", baixar_falso)
+    assert atualizar_fundamentos.main(["--anos", anos]) == 0
+    assert sum("itr_cia_aberta" in p for p in pedidos) == itr_esperados
+
+
 def test_migracao_0010_vai_e_volta(tmp_path):
     url = f"sqlite:///{(tmp_path / 'm.sqlite').as_posix()}"
     migrar_para("head", url=url)

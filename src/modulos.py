@@ -197,7 +197,8 @@ MODULOS = (
             ),
             Funcionalidade(
                 "Testes de robustez",
-                "A mesma estratégia com parâmetros e períodos diferentes.",
+                "Treino e teste, walk-forward e o mapa de parâmetros da mesma estratégia, na ficha do Backtest.",
+                "backtest",
             ),
         ),
     ),
@@ -353,7 +354,9 @@ MODULOS = (
                 "Guia e glossário", "Os termos do app explicados em português.", "guia"
             ),
             Funcionalidade(
-                "Trilhas", "Sequências curtas, do primeiro ativo ao primeiro relatório."
+                "Trilhas",
+                "Três caminhos guiados na página inicial: a primeira análise, a carteira e o primeiro relatório.",
+                "inicio",
             ),
         ),
     ),
