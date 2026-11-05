@@ -4,10 +4,15 @@
       "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
     },
     "campos": [
+      "data_exclusao_simples",
+      "data_opcao_simples",
       "data_situacao_cadastral",
       "matriz",
       "mes_do_retrato",
       "motivo_situacao",
+      "natureza_juridica",
+      "optante_simples",
+      "razao_social",
       "situacao_cadastral"
     ]
   },
