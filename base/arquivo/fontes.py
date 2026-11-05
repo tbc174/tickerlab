@@ -24,6 +24,7 @@ from base.arquivo import (
     chirps_v3,
     cnj_tpu,
     contrapartes,
+    datajud,
     djen,
     finep,
     lote_acervos,
@@ -1592,6 +1593,8 @@ FONTES: list[Fonte] = [
     # e cada processo já ligado a uma companhia, pelo número (acha a comunicação que só intima a outra
     # parte; PR 1b)
     djen.fonte_dos_processos(),
+    # e cada um desses processos no DataJud, só para uso interno (PR 3; `coletas.FONTES_SO_INTERNAS`)
+    datajud.fonte(),
     # as classes processuais da TPU do CNJ, para o nome e o ramo da classe de cada processo (PR 1b)
     cnj_tpu.fonte(),
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos

@@ -140,6 +140,8 @@ NEGADAS_DESDE_O_PRIMEIRO_DIA = frozenset(
         "termos",
         "ico",
         "bcb-sgs-189",
+        # só uso interno (termo do DataJud, itens 3.3 e 3.8; `coletas.FONTES_SO_INTERNAS`)
+        "datajud",
     }
 )
 # CC BY-ND: a CONAB sai como publicada, sem recorte, soma ou derivado (D2.3)

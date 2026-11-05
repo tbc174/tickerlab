@@ -2777,6 +2777,83 @@ Processos judiciais por companhia aberta: uma linha por processo, com o que a pr
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `processos_datajud`
+
+Processos judiciais por companhia aberta, pelo DataJud: um retrato de cada processo, por grau, a cada consulta (classe, assuntos, órgão julgador, ajuizamento). **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud não traz as partes: nenhum nome de pessoa.
+
+- **Fonte:** CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, `base/processos_datajud.py`)
+- **Licença:** DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)
+- **Atraso de divulgação:** O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado ficou público
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`, `grau`, `visto_em`
+- **Três datas:** aconteceu_em = `ajuizado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-05 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_datajud/datajud.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `ano_do_processo` | Ano em que o processo foi ajuizado (o AAAA do número) | ano |
+| `justica` | A justiça pelo J do número (Justiça Estadual, Justiça Federal...) | texto |
+| `tribunal` | Sigla do tribunal no DataJud (TJSP, TRF3...) | texto |
+| `grau` | Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP... | texto |
+| `classe_codigo` | Código da classe (Tabelas Processuais Unificadas do CNJ) | texto |
+| `classe` | Nome da classe, como o DataJud escreve | texto |
+| `assuntos_codigos` | Códigos dos assuntos na TPU, separados por `;` | texto |
+| `assuntos` | Nomes dos assuntos, separados por `; ` | texto |
+| `orgao_julgador_codigo` | Código do órgão julgador no CNJ | texto |
+| `orgao_julgador` | Vara, câmara ou turma, como o DataJud escreve | texto |
+| `ajuizado_em` | Dia do ajuizamento (`dataAjuizamento`) | data (dia) |
+| `atualizado_na_fonte_em` | Última atualização do processo no DataJud | data e hora (UTC) |
+| `nivel_sigilo` | Nível de sigilo no DataJud (0: público) | número inteiro |
+| `sistema` | Sistema processual do tribunal (PJe, eproc, SAJ...) | texto |
+| `formato` | Eletrônico ou físico | texto |
+| `movimentos` | Quantos movimentos a consulta trouxe | número inteiro |
+| `ultimo_movimento_codigo` | Código TPU do movimento mais recente da consulta | texto |
+| `ultimo_movimento_em` | Quando aconteceu o movimento mais recente da consulta | data e hora (UTC) |
+| `disponivel_em` | Dia da consulta: desde quando a linha vale para a base | data (dia) |
+| `visto_em` | Dia da consulta guardada que trouxe esta versão da linha | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `processos_datajud_movimentos`
+
+Processos judiciais por companhia aberta, pelo DataJud: os movimentos de cada processo (distribuição, sentença, recurso, trânsito em julgado), uma linha por movimento. **Só uso interno:** o termo de uso da API Pública do DataJud (itens 3.3 e 3.8) veda o uso comercial e a consultoria, então a tabela só treina e rotula (`coletas.FONTES_SO_INTERNAS`) e não sai em tela, relatório, API nem exportação. Só os processos que o DJEN ligou a uma companhia aberta pelo nome (`processos_comunicacoes`), sem a Justiça do Trabalho. O DataJud não traz as partes: nenhum nome de pessoa.
+
+- **Fonte:** CNJ: DataJud, API Pública, um índice por tribunal (`base/arquivo/datajud.py`, `base/processos_datajud.py`)
+- **Licença:** DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)
+- **Atraso de divulgação:** O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado ficou público
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`, `grau`, `aconteceu_em`, `movimento_codigo`, `complementos`
+- **Três datas:** aconteceu_em = `aconteceu_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-05 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/processos_datajud_movimentos/datajud.parquet` (servidor de casa, `scripts/carga_processos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido | texto |
+| `grau` | Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP... | texto |
+| `movimento_codigo` | Código do movimento (Tabelas Processuais Unificadas do CNJ) | texto |
+| `movimento` | Nome do movimento, como o DataJud escreve | texto |
+| `complementos` | Complementos tabelados do CNJ, `nome: descrição`, separados por `; ` (texto vazio: sem complemento) | texto |
+| `aconteceu_em` | Quando o movimento aconteceu, como o tribunal informou | data e hora (UTC) |
+| `disponivel_em` | Primeiro dia em que uma consulta mostrou o movimento: desde quando a linha vale (o movimento pode ter acontecido muito antes) | data (dia) |
+| `visto_em` | Dia da primeira consulta que trouxe o movimento | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `anvisa_registros`
 
 Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados (medicamentos, saneantes, cosméticos, produtos para saúde e alimentos). Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
