@@ -3,9 +3,10 @@ estabelecimento e o da mantenedora.
 
 **Fonte escolhida: a API de dados abertos do DATASUS** (`/assistencia-a-saude/cnes-estabelecimentos`, JSON,
 `nu_comp=AAAAMM`, `limit` até 1000 e `offset` em itens). O FTP em DBC (`CNES/200508_/Dados/ST`) chega duas
-competências à frente (2609, contra 202607 da API em 03/11/2026), mas nunca foi lido: exige descompressão
-PKWare (blast) e o layout não foi conferido. A API tem os dois CNPJs, formato conferido ao vivo e nada a
-instalar; o FTP fica para a B4b.
+competências à frente (2609, contra 202607 da API em 03/11/2026) e é a fonte padrão da carga desde a
+conferência do layout no `STAC2608.dbc` real (05/11/2026, linha 684): o CNPJ do estabelecimento vem em
+`CPF_CNPJ` e as demais colunas lidas (`CNES`, `CODUFMUN`, `CNPJ_MAN`, `TPGESTAO`, `TP_UNID`, `NAT_JUR`)
+existem. O DBC não traz razão social, nome fantasia nem coordenadas; a API traz e fica como `--fonte api`.
 
 - **Os dois CNPJs são campos diferentes.** `nu_cnpj` é do estabelecimento (vem nulo na unidade pública, que
   não tem CNPJ próprio) e `nu_cnpj_mantenedora` é de quem mantém (a prefeitura, a rede). Um não substitui o
@@ -63,7 +64,7 @@ COLUNAS_DO_DBC = ("CNES", "CODUFMUN", "CNPJ_MAN", "TPGESTAO", "TP_UNID", "NAT_JU
 COLUNAS_DO_CNPJ_DO_DBC = (
     "CNPJ",
     "CPF_CNPJ",
-)  # o nome muda com a versão do layout; CPF_CNPJ mistura CPF
+)  # conferido no STAC2608.dbc real (05/11/2026): a coluna é CPF_CNPJ (mistura CPF; só 14 dígitos entram)
 
 COMPETENCIA_COM_DADOS = "com_dados"
 COMPETENCIA_VAZIA = "vazia"
@@ -254,6 +255,53 @@ def situacao_da_competencia(
         "situacao": COMPETENCIA_COM_DADOS if linhas else COMPETENCIA_VAZIA,
         "coletado_em": pd.Timestamp(coletado_em),
     }
+
+
+BaixadorDeDbc = Callable[[str, int], bytes]
+"""`(uf, competencia)` -> bytes do DBC; levanta `FileNotFoundError` se o arquivo não foi publicado."""
+
+
+def baixar_dbc_se_publicado(uf: str, competencia: int) -> bytes:
+    """`baixar_dbc` que traduz "arquivo inexistente" (resposta 550 do FTP) em `FileNotFoundError`."""
+    try:
+        return baixar_dbc(uf, competencia)
+    except ftplib.error_perm as erro:
+        if str(erro).startswith("550"):
+            raise FileNotFoundError(caminho_no_ftp(uf, competencia)) from erro
+        raise
+
+
+def coletar_competencia_ftp(
+    competencia: int,
+    coletado_em: date,
+    baixar: BaixadorDeDbc = baixar_dbc_se_publicado,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """A tabela do país (27 UFs) pelo FTP e o registro da situação da competência.
+
+    Nenhuma UF publicada = competência `vazia`. Só algumas publicadas é ValueError: a competência
+    incompleta nunca pode passar por "o país inteiro".
+    """
+    tabelas: list[pd.DataFrame] = []
+    ausentes: list[str] = []
+    for uf in UFS:
+        try:
+            conteudo = baixar(uf, competencia)
+        except FileNotFoundError:
+            ausentes.append(uf)
+            continue
+        tabelas.append(tabela_do_dbc(conteudo, competencia))
+    if tabelas and ausentes:
+        raise ValueError(
+            f"CNES {competencia}: DBC ausente no FTP para {', '.join(ausentes)}"
+        )
+    tabela = (
+        pd.concat(tabelas, ignore_index=True)
+        if tabelas
+        else pd.DataFrame(columns=list(COLUNAS))
+    )
+    if tabela.duplicated(CHAVE).any():
+        raise ValueError(f"CNES {competencia}: estabelecimento repetido entre UFs")
+    return tabela, situacao_da_competencia(competencia, len(tabela), coletado_em)
 
 
 def coletar_competencia(

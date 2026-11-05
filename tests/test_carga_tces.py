@@ -37,6 +37,36 @@ def _zip_rs(linhas: list[str]) -> bytes:
     return saida.getvalue()
 
 
+CHAVE_CE = {"codigo_municipio": "002", "numero_contrato": "1/2025"}
+
+
+def _ce(endereco: str) -> bytes:
+    """Dublê do SIM do TCE-CE: um município; `contratados` em duas páginas (a 1ª traz o link `next`)."""
+    if endereco.endswith("/sim/municipios"):
+        return json.dumps(
+            {"elements": [{"codigo_municipio": "002", "nome_municipio": "X"}]}
+        ).encode()
+    chave = {**CHAVE_CE, "data_contrato": "2025-02-04T00:00:00"}
+    if "/contratos?" in endereco:
+        itens = [{**chave, "valor_total_contrato": 10.0}]
+        return json.dumps({"elements": itens, "links": []}).encode()
+    if "start_index=1000" in endereco:
+        itens = [
+            {
+                **chave,
+                "numero_contrato": "2/2025",
+                "numero_documento_negociante": CNPJ_RUIM,
+            }
+        ]
+        return json.dumps({"elements": itens, "links": []}).encode()
+    itens = [
+        {**chave, "numero_documento_negociante": CNPJ, "nome_negociante": "NÃO ENTRA"}
+    ]
+    proxima = "?data_inicio=20250101&data_fim=20251231&%24start_index=1000&codigo_municipio=002&%24count=1000"
+    links = [{"rel": "next", "href": proxima}]
+    return json.dumps({"elements": itens, "links": links}).encode()
+
+
 class _Fonte:
     """Dublê das APIs dos tribunais: devolve respostas pequenas e conta os pedidos."""
 
@@ -49,6 +79,8 @@ class _Fonte:
 
     def __call__(self, endereco: str) -> bytes:
         self.pedidos.append(endereco)
+        if "api-dados-abertos.tce.ce.gov.br" in endereco:
+            return _ce(endereco)
         if "DadosAbertos/Contratos!" in endereco:
             ano = endereco.rsplit("=", 1)[-1]
             return _pe(
@@ -206,6 +238,7 @@ def test_carregar_grava_uma_tabela_por_ano_so_com_cnpj_e_a_segunda_vez_e_igual(
         "tce_pe_licitacoes/2025",
         "tce_sp_despesas/2025",
         "tce_rs_contratos/2025",
+        "tce_ce_contratos/2025",
     }
     assert set(primeira.values()) == {"gravado"}
     assert set(carga.carregar(origem, saida).values()) == {"igual"}
@@ -245,6 +278,47 @@ def test_ce_le_os_pares_postos_a_mao(tmp_path: Path) -> None:
     assert list(
         pd.read_parquet(saida / "tce_ce_contratos" / "2025.parquet")["cnpj"]
     ) == [CNPJ]
+
+
+def test_baixar_ce_segue_as_paginas_e_a_carga_junta_tudo(tmp_path: Path) -> None:
+    origem, saida = tmp_path / "baixado", tmp_path / "base"
+    fonte = _baixar(origem, tribunais=["ce"])
+    base = "https://api-dados-abertos.tce.ce.gov.br/sim"
+    assert (
+        f"{base}/contratados?codigo_municipio=002&data_inicio=20250101&data_fim=20251231"
+        in fonte.pedidos
+    )
+    assert any(
+        "/sim/contratados?" in p and "start_index=1000" in p for p in fonte.pedidos
+    )
+    assert sorted(a.name for a in (origem / "ce").glob("contratados_*")) == [
+        "contratados_002_2025_1.json",
+        "contratados_002_2025_2.json",
+    ]
+    assert carga.carregar(origem, saida) == {"tce_ce_contratos/2025": "gravado"}
+    tabela = pd.read_parquet(saida / "tce_ce_contratos" / "2025.parquet")
+    assert list(tabela["cnpj"]) == [CNPJ]  # o CNPJ de DV errado da 2ª página cai
+    assert list(tabela["valor"]) == [10.0]
+    assert set(tabela["disponivel_em"]) == {"2026-11-04"}
+    assert "NÃO ENTRA" not in tabela.to_json()
+    antes = len(fonte.pedidos)
+    _baixar(origem, fonte, tribunais=["ce"])
+    assert len(fonte.pedidos) == antes
+    assert set(carga.carregar(origem, saida).values()) == {"igual"}
+
+
+def test_baixar_ce_para_se_o_link_da_proxima_pagina_nunca_acaba(tmp_path: Path) -> None:
+    def sempre_proxima(endereco: str) -> bytes:
+        if endereco.endswith("/sim/municipios"):
+            return _ce(endereco)
+        return json.dumps(
+            {"elements": [], "links": [{"rel": "next", "href": "?x=1"}]}
+        ).encode()
+
+    with pytest.raises(SystemExit, match="páginas"):
+        carga.baixar(
+            tmp_path / "novo", ["ce"], [2025], pausa=0, buscar=sempre_proxima, hoje=HOJE
+        )
 
 
 def test_carga_sem_registro_de_download_sai_com_1(tmp_path: Path) -> None:
