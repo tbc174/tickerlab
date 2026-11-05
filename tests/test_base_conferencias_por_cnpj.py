@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pandas as pd
+import pyarrow as pa
 import pytest
 
 from base import conferencias_por_cnpj as conferencias
@@ -340,3 +341,168 @@ def test_ordem_pelo_valor_decimal_e_a_do_numero_e_nao_a_do_texto(tmp_path):
     banco, _ = _abrir(destino)
     _, linhas = _registros(banco, RAIZ, "pgfn_divida")
     assert [linha["valor_consolidado"] for linha in linhas] == ["1000.00", "99.00"]
+
+
+# ---- preços máximos da CMED: uma fonte por lista ---------------------------------------------
+PRECOS_DA_CMED = (
+    "pf_sem_impostos", "pf_0", "pf_18", "pmc_sem_impostos", "pmc_0", "pmc_18",
+    "pmvg_sem_impostos", "pmvg_0", "pmvg_18",
+)  # fmt: skip
+
+
+def _apresentacao(raiz: str, id_na_fonte: str, visto: str, **campos) -> dict:
+    lista = campos.get("lista", "consumidor")
+    pf = Decimal(campos.get("pf", "2123.68"))
+    maximo = {"pmc": None, "pmvg": None}
+    maximo["pmc" if lista == "consumidor" else "pmvg"] = campos.get("maximo")
+    return {
+        "lista": lista,
+        "id_na_fonte": id_na_fonte,
+        "cnpj": _cnpj(raiz, campos.get("filial", "0001")),
+        "cnpj_basico": raiz,
+        "ggrem": f"5{id_na_fonte:0>14}",
+        "registro": "1018004200017",
+        "produto": "PRODUTO DE TESTE",
+        "apresentacao": "250 MG PO LIOF SOL INJ CT FA VD TRANS",
+        "substancia": "SUBSTÂNCIA DE TESTE",
+        "tipo_de_produto": "Biológico",
+        "regime_de_preco": "Regulado",
+        "pf_sem_impostos": pf,
+        "pf_0": pf,
+        "pf_18": (pf * Decimal("1.2195")).quantize(Decimal("0.01")),
+        **{
+            f"{sigla}_{sufixo}": maximo[sigla]
+            for sigla in maximo
+            for sufixo in ("sem_impostos", "0")
+        },
+        "pmc_18": None,
+        "pmvg_18": None,
+        "precos_com_asterisco": False,
+        "restricao_hospitalar": True,
+        "cap": False,
+        "confaz_87": True,
+        "lista_publicada_em": pd.Timestamp("2026-10-09").date(),
+        "consta": campos.get("consta", True),
+        "trata_como_pessoa": campos.get("pessoa", False),
+        "visto_em": pd.Timestamp(visto),
+        "disponivel_em": pd.Timestamp(campos.get("disponivel", visto)),
+    }
+
+
+def _gravar_cmed(base, lista: str, linhas: list[dict]) -> None:
+    """Como a carga grava: um Parquet por lista, os preços em decimal exato."""
+    pasta = base / "cmed_precos"
+    pasta.mkdir(parents=True, exist_ok=True)
+    decimal = pd.ArrowDtype(pa.decimal128(18, 2))
+    tabela = pd.DataFrame(linhas)
+    tabela = tabela.astype({c: decimal for c in PRECOS_DA_CMED})
+    tabela.to_parquet(pasta / f"{lista}.parquet", index=False)
+
+
+@pytest.fixture
+def base_com_cmed(base):
+    _gravar_cmed(
+        base,
+        "consumidor",
+        [
+            _apresentacao(RAIZ, "1", "2026-09-01", pf="2000.00"),
+            _apresentacao(RAIZ, "1", "2026-10-01", maximo=Decimal("2935.98")),
+            _apresentacao(
+                RAIZ, "1", "2026-11-01", pf="9999.99"
+            ),  # reajuste ainda não público
+            _apresentacao(RAIZ, "2", "2026-10-01", filial="0002", pf="10.50"),
+            _apresentacao(RAIZ, "3", "2026-10-01", consta=False),  # saiu da lista
+            _apresentacao(MEI, "4", "2026-10-01", pessoa=True),
+        ],
+    )
+    _gravar_cmed(
+        base,
+        "governo",
+        [
+            _apresentacao(
+                RAIZ, "1", "2026-09-01", lista="governo", maximo=Decimal("1666.43")
+            ),
+        ],
+    )
+    return base
+
+
+def test_cmed_cada_lista_e_uma_fonte_com_o_proprio_total(base_com_cmed, tmp_path):
+    destino = tmp_path / "c.sqlite"
+    estado = conferencias.montar(base_com_cmed, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    total, linhas = _registros(banco, RAIZ, "cmed_precos_consumidor")
+    assert total == 2  # a que saiu da lista não conta; o reajuste do futuro não duplica
+    assert [linha["cnpj"] for linha in linhas] == [_cnpj(RAIZ), _cnpj(RAIZ, "0002")]
+    governo_total, (governo,) = _registros(banco, RAIZ, "cmed_precos_governo")
+    assert governo_total == 1 and governo["pmvg_0"] == "1666.43"
+    assert "pmc_0" not in governo and "pmvg_0" not in linhas[0]
+    assert _registros(banco, MEI, "cmed_precos_consumidor") is None  # pessoa não entra
+    fontes = {f["tabela"]: f for f in estado["fontes"]}
+    assert fontes["cmed_precos_consumidor"]["conferido_ate"] == "2026-10-01"
+    assert (
+        fontes["cmed_precos_governo"]["conferido_ate"] == "2026-09-01"
+    )  # a da própria lista
+    assert fontes["cmed_precos_governo"]["empresas"] == 1
+
+
+def test_cmed_valor_em_texto_exato_sem_o_icms_de_cada_estado(base_com_cmed, tmp_path):
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base_com_cmed, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    _, (orencia, filial) = _registros(banco, RAIZ, "cmed_precos_consumidor")
+    assert orencia["pf_0"] == "2123.68" and orencia["pf_sem_impostos"] == "2123.68"
+    assert orencia["pmc_0"] == "2935.98"  # nunca 2935.9799999
+    assert filial["pmc_0"] is None  # sem PMC fica vazio, nunca zero
+    assert "pf_18" not in orencia and "pmc_18" not in orencia  # alíquotas ficam na base
+    assert orencia["lista_publicada_em"] == "2026-10-09"
+    assert orencia["publico_desde"] == "2026-10-01"
+    assert orencia["restricao_hospitalar"] is True and orencia["confaz_87"] is True
+    assert "id_na_fonte" not in orencia and "consta" not in orencia
+
+
+def test_cmed_tem_tema_proprio_e_a_licenca_a_confirmar(base_com_cmed, tmp_path):
+    estado = conferencias.montar(base_com_cmed, tmp_path / "c.sqlite", agora=AGORA)
+    assert estado["temas"]["precos"].startswith("Preços máximos")
+    fontes = {f["tabela"]: f for f in estado["fontes"]}
+    for nome in ("cmed_precos_consumidor", "cmed_precos_governo"):
+        assert (
+            fontes[nome]["tema"] == "precos"
+            and fontes[nome]["orgao"] == "CMED (Anvisa)"
+        )
+        assert "a confirmar" in fontes[nome]["licenca"]  # não a CC BY da Anvisa
+    assert estado["esquema"] == "1"  # fonte nova não muda o esquema
+
+
+def test_cmed_ausente_ou_sem_arquivo_fica_nao_conferida(base, tmp_path):
+    estado = conferencias.montar(base, tmp_path / "a.sqlite", agora=AGORA)
+    assert not [f for f in estado["fontes"] if f["tema"] == "precos"]
+    (base / "cmed_precos").mkdir()  # a pasta existe, mas nenhuma lista foi montada
+    estado = conferencias.montar(base, tmp_path / "b.sqlite", agora=AGORA)
+    assert not [f for f in estado["fontes"] if f["tema"] == "precos"]
+    _gravar_cmed(
+        base, "governo", [_apresentacao(OUTRA, "9", "2026-10-01", lista="governo")]
+    )
+    estado = conferencias.montar(base, tmp_path / "c.sqlite", agora=AGORA)
+    temas = {f["tabela"] for f in estado["fontes"] if f["tema"] == "precos"}
+    assert temas == {"cmed_precos_governo"}  # a lista que falta não vira zero
+
+
+def test_cmed_limite_de_linhas_pelo_preco_numerico_e_conta_todas(tmp_path):
+    base = tmp_path / "base"
+    _gravar_cmed(
+        base,
+        "consumidor",
+        [
+            _apresentacao(RAIZ, str(i), "2026-10-01", pf=f"{i}.50")
+            for i in range(conferencias.LINHAS_POR_FONTE + 10)
+        ],
+    )
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(base, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    total, linhas = _registros(banco, RAIZ, "cmed_precos_consumidor")
+    assert total == conferencias.LINHAS_POR_FONTE + 10
+    assert len(linhas) == conferencias.LINHAS_POR_FONTE
+    valores = [Decimal(linha["pf_0"]) for linha in linhas]
+    assert valores[0] == Decimal("59.50") and valores == sorted(valores, reverse=True)

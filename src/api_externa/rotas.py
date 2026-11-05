@@ -26,7 +26,13 @@ from base import porta as porta_da_base
 from base.porta import Porta
 from src.api_externa import acesso, lote
 from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organizacao
-from src.api_externa.conjuntos import Permitido, Servido, demonstracoes, fundos
+from src.api_externa.conjuntos import (
+    Permitido,
+    Servido,
+    demonstracoes,
+    empresas,
+    fundos,
+)
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import traduzir_chaves
 from src.banco.chaves_da_api import registrar_consumo
@@ -154,26 +160,32 @@ class LoteDeFundos(BaseModel):
     assumed_return: float | None = None
 
 
-# o lote vem antes de `/funds/{cnpj}` só por clareza: um é POST, o outro GET
-@router.post("/funds/batch")
-def lote_de_fundos(pedido: LoteDeFundos, contexto: Chave) -> object:
-    """O mesmo de `/funds/{cnpj}` para cada CNPJ; conta um pedido por CNPJ válido e distinto."""
+# lê um CNPJ já validado: None se nada sai dele
+LerUm = Callable[[str], Servido | None]
+
+
+def _lote(
+    contexto: ContextoDaChave,
+    conjunto: str,
+    cnpjs: list[object],
+    dia: date,
+    leitor: Callable[[sa.Connection, Porta], LerUm],
+) -> object:
+    """Um lote de dado: cada CNPJ como na rota de um, com a situação de cada item; conta um pedido por
+    CNPJ válido e distinto. O lote inteiro cabe na quota ou volta 429 antes de ler qualquer CNPJ."""
     try:
-        lido = lote.ler_lote(pedido.cnpjs)
+        lido = lote.ler_lote(cnpjs)
     except lote.LoteInvalidoError as erro:
         raise _recusa("invalid_batch") from erro
-    dia = _dia_pedido(pedido.known_at)
-    retorno = _retorno_pedido(pedido.assumed_return)
     itens: list[dict] = []
     fontes: set[str] = set()
     linhas = 0
     with obter_engine().begin() as conexao:
-        # o lote inteiro cabe na quota ou volta 429 antes de ler qualquer fundo
         acesso.exigir_quota(conexao, contexto, lido.pedidos, acesso.agora())
         with _porta(conexao) as porta:
-            leitor = _leitor(conexao, porta, contexto)
+            ler = leitor(conexao, porta)
             for cnpj in lido.validos:
-                servido = leitor.fundo(cnpj, dia, retorno)
+                servido = ler(cnpj)
                 if servido is None:
                     itens.append({"cnpj": cnpj, "situacao_do_item": NAO_DISPONIVEL})
                     continue
@@ -181,7 +193,7 @@ def lote_de_fundos(pedido: LoteDeFundos, contexto: Chave) -> object:
                 fontes |= servido.fontes
                 linhas += servido.linhas
         registrar_consumo(
-            conexao, contexto, conjunto=fundos.CONJUNTO, finalidade=FINALIDADE,
+            conexao, contexto, conjunto=conjunto, finalidade=FINALIDADE,
             linhas=linhas, pedidos=lido.pedidos, agora=acesso.agora(),
         )  # fmt: skip
     itens += [
@@ -194,6 +206,20 @@ def lote_de_fundos(pedido: LoteDeFundos, contexto: Chave) -> object:
         "fontes": fontes_da_resposta(fontes),
     }
     return traduzir_chaves(corpo)
+
+
+# o lote vem antes de `/funds/{cnpj}` só por clareza: um é POST, o outro GET
+@router.post("/funds/batch")
+def lote_de_fundos(pedido: LoteDeFundos, contexto: Chave) -> object:
+    """O mesmo de `/funds/{cnpj}` para cada CNPJ; conta um pedido por CNPJ válido e distinto."""
+    dia = _dia_pedido(pedido.known_at)
+    retorno = _retorno_pedido(pedido.assumed_return)
+
+    def leitor(conexao: sa.Connection, porta: Porta) -> LerUm:
+        fundos_ = _leitor(conexao, porta, contexto)
+        return lambda cnpj: fundos_.fundo(cnpj, dia, retorno)
+
+    return _lote(contexto, fundos.CONJUNTO, pedido.cnpjs, dia, leitor)
 
 
 def _um_pedido(
@@ -265,3 +291,46 @@ def demonstracoes_da_empresa(
         return leitor.demonstracoes(numeros, dia, period_end)
 
     return _um_pedido(contexto, demonstracoes.CONJUNTO, ler)
+
+
+class LoteDeEmpresas(BaseModel):
+    """O corpo do lote: até 100 CNPJs e um `known_at` para todos."""
+
+    cnpjs: list[object]
+    known_at: date | None = None
+
+
+def _leitor_de_empresas(
+    conexao: sa.Connection, porta: Porta, contexto: ContextoDaChave
+) -> empresas.LeitorDeEmpresas:
+    return empresas.LeitorDeEmpresas(
+        porta, _portao(conexao, contexto, empresas.CONJUNTO)
+    )
+
+
+# antes de `/companies/{cnpj}` só por clareza: um é POST, o outro GET
+@router.post("/companies/batch")
+def lote_de_empresas(pedido: LoteDeEmpresas, contexto: Chave) -> object:
+    """O mesmo de `/companies/{cnpj}` para cada CNPJ; conta um pedido por CNPJ válido e distinto."""
+    dia = _dia_pedido(pedido.known_at)
+
+    def leitor(conexao: sa.Connection, porta: Porta) -> LerUm:
+        empresas_ = _leitor_de_empresas(conexao, porta, contexto)
+        return lambda cnpj: empresas_.empresa(cnpj, dia)
+
+    return _lote(contexto, empresas.CONJUNTO, pedido.cnpjs, dia, leitor)
+
+
+@router.get("/companies/{cnpj}")
+def empresa(cnpj: str, contexto: Chave, known_at: date | None = None) -> object:
+    """A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais
+    novo já público); MEI, empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    return _um_pedido(
+        contexto,
+        empresas.CONJUNTO,
+        lambda conexao, porta: _leitor_de_empresas(conexao, porta, contexto).empresa(
+            numeros, dia
+        ),
+    )

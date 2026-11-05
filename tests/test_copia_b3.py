@@ -349,6 +349,15 @@ def _fixar_relogio_do_script(monkeypatch, agora: datetime) -> None:
     monkeypatch.setattr(copiar_b3_negocios, "agora", lambda: agora)
 
 
+def _fixar_disco_com_folga(monkeypatch) -> None:
+    """Disco falso folgado: o do CI às vezes tem menos livre que o freio do VPS (04/11/2026, 7 GB)."""
+    from scripts import copiar_b3_negocios
+
+    monkeypatch.setattr(
+        copiar_b3_negocios, "espaco_do_disco", lambda _: (96 * 1024**3, 80 * 1024**3)
+    )
+
+
 def _fixar_relogio_da_reconciliacao(monkeypatch, agora: datetime) -> None:
     from scripts import reconciliar_b3_vps
 
@@ -360,6 +369,7 @@ def test_script_do_vps_guarda_e_sai_com_zero(tmp_path, monkeypatch, agora):
     from scripts import copiar_b3_negocios
 
     _fixar_relogio_do_script(monkeypatch, agora)
+    _fixar_disco_com_folga(monkeypatch)
     dia = _hoje_util(agora)
     url = fontes.NEGOCIOS_DA_B3.format(dia=dia.isoformat())
     monkeypatch.setattr(
@@ -375,6 +385,7 @@ def test_script_do_vps_avisa_a_falha_numa_linha(tmp_path, monkeypatch, capsys, a
     from scripts import copiar_b3_negocios
 
     _fixar_relogio_do_script(monkeypatch, agora)
+    _fixar_disco_com_folga(monkeypatch)
     dia = _hoje_util(agora)
     url = fontes.NEGOCIOS_DA_B3.format(dia=dia.isoformat())
     monkeypatch.setattr(

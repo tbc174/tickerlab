@@ -47,7 +47,9 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "ocde": date(2026, 10, 22),
     "eurostat": date(2026, 10, 22),
     "worldbank": date(2026, 10, 22),
-    "bis": date(2026, 10, 22),
+    "bis": date(
+        2026, 11, 3
+    ),  # relido em 03/11 (linha 639): data.bis.org/help/legal e robots.txt
     "nasa": date(2026, 10, 22),
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
@@ -229,6 +231,11 @@ FONTES_DE_FORA_DO_ARQUIVISTA = (
     "mb",
     "btc",
     "ms",  # CNES: carga mensal por `scripts/carga_cnes.py`, fora do arquivista (linha 654)
+    "estban",  # ESTBAN do BCB: carga mensal por `scripts/carga_estban.py`, fora do arquivista (linha 659)
+    # linha 658: carga por `scripts/carga_go_ms_sp.py`, fora do arquivista
+    "goias",
+    "msestado",
+    "spcapital",
 )
 RITMO_DE_FORA = "lida pelo app"
 
