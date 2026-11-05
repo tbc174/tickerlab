@@ -639,6 +639,9 @@ def test_certidao_so_com_hash_de_letras_e_numeros():
     assert conferencias.certidao_do_djen(HASH_NOVA).endswith(f"/{HASH_NOVA}/certidao")
     for estranho in ("771885778", "", None, "abc/../x", "abc?x=1", "a b"):
         assert conferencias.certidao_do_djen(estranho) is None
+    # O merge sem comunicação pública no dia deixa NaN, que vira "nan" no texto: nunca um link.
+    for vazio in (float("nan"), pd.NA, pd.NaT):
+        assert conferencias.certidao_do_djen(vazio) is None
 
 
 def test_processos_por_ano_contam_polo_e_ramo(base_com_processos, tmp_path):
@@ -779,6 +782,20 @@ def test_sem_o_cadastro_so_as_empresas_com_processo(base_com_processos, tmp_path
     assert _registros(banco, OUTRA, "processos") is None  # sem saber quem foi buscado
     fonte = next(f for f in estado["fontes"] if f["tabela"] == "processos")
     assert fonte["buscadas"] is None
+
+
+def test_sem_data_da_busca_ninguem_fica_nao_encontrado(base_com_processos, tmp_path):
+    """Antes da primeira comunicação pública não há data da busca: sem ela, nenhuma companhia vira
+    "não encontrado até" (a ficha mostraria "busca até Não informado")."""
+    destino = tmp_path / "c.sqlite"
+    conferencias.montar(
+        base_com_processos,
+        destino,
+        agora=datetime(2020, 1, 1, tzinfo=UTC),
+        cadastro=pd.DataFrame([_companhia(OUTRA, registro="2000-01-01")]),
+    )
+    banco, _ = _abrir(destino)
+    assert _registros(banco, OUTRA, "processos") is None
 
 
 def test_comando_passa_o_cadastro_da_cvm_do_acervo(

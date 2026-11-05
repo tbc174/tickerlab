@@ -159,8 +159,8 @@ _POR_ANO = (
 def certidao_do_djen(id_na_fonte: object) -> str | None:
     """A certidão da comunicação no DJEN (o PDF oficial) pelo hash dela; None sem hash: a comunicação
     guardada só com o id numérico não tem certidão por esse endereço, e o texto vem de fora (não vira
-    caminho nem parâmetro)."""
-    texto = str(id_na_fonte or "")
+    caminho nem parâmetro). Só texto é hash: o vazio do merge (NaN) viraria "nan"."""
+    texto = id_na_fonte if isinstance(id_na_fonte, str) else ""
     if not _HASH_DO_DJEN.fullmatch(texto) or texto.isdigit():
         return None
     return f"{CERTIDAO_DO_DJEN}/{texto}/certidao"
@@ -475,7 +475,10 @@ def _gravar_fonte(
     if fonte.lista and conferido is None:
         return None
     linhas = list(_por_raiz(tabela))
-    buscadas = abertas if fonte.so_companhias_abertas else None
+    # Sem a data da busca não há como dizer "não encontrado até": ninguém ganha o total 0.
+    buscadas = (
+        abertas if fonte.so_companhias_abertas and conferido is not None else None
+    )
     com_linhas = {raiz for raiz, _, _ in linhas}
     sem_linhas = sorted((buscadas or set()) - com_linhas)
     banco.executemany(
