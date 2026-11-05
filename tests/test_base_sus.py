@@ -10,15 +10,18 @@ from decimal import Decimal
 
 import pandas as pd
 import pytest
-from hypothesis import given, settings
+from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
 
+from base import cnpj as cnpj_de_teste
 from base import dbc, sus
 from tests.test_base_dbc import montar_dbc
 
 HOSPITAL = "11222333000181"
 PREFEITURA = "11444777000161"
 CPF = "52998224725"  # CPF de exemplo com DVs válidos (nenhuma pessoa)
+# sorteado: com "000" na frente também passa no DV de CNPJ, e a "filial" não é 0001
+CPF_AMBIGUO = "74055068107"
 COMPETENCIA = 202607
 COLETADO_EM = date(2026, 11, 5)
 
@@ -305,6 +308,56 @@ class TestPessoaFisicaFora:
         linhas = [internacao(cnpj="", mantenedora="00052998224799") for _ in range(10)]
         tabela, situacao = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
         assert tabela.empty and situacao.iloc[0]["fora_sem_cnpj"] == 1
+
+    def test_cpf_com_zeros_que_tambem_passa_como_cnpj_e_pessoa(self):
+        """1,4% dos CPFs com "000" na frente também têm o DV de CNPJ: fora da matriz, vale o CPF."""
+        documento = "000" + CPF_AMBIGUO
+        linhas = [internacao(cnpj=documento, mantenedora=PREFEITURA) for _ in range(15)]
+        tabela, situacao = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
+        assert tabela.empty and situacao.iloc[0]["fora_pessoa_fisica"] == 1
+
+    def test_mantenedora_que_parece_cpf_fica_vazia(self):
+        linhas = [internacao(mantenedora="000" + CPF_AMBIGUO) for _ in range(10)]
+        tabela, _ = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
+        linha = uma_linha(tabela, "1234567")
+        assert linha["cnpj"] == HOSPITAL and linha["cnpj_mantenedora"] == ""
+
+    @settings(max_examples=60, deadline=None)
+    @given(st.integers(min_value=10**8, max_value=10**9 - 1), st.booleans())
+    @example(
+        int(CPF_AMBIGUO[:9]), True
+    )  # o caso raro (1,4%) que o sorteio quase nunca acha
+    def test_propriedade_nenhum_cpf_sai_nas_colunas_de_cnpj(self, base, com_zeros):
+        """Para qualquer CPF válido, puro ou com "000", os 11 dígitos não aparecem em `cnpj` nem em
+        `cnpj_mantenedora`; a única exceção é a matriz (filial 0001) que também é CNPJ válido."""
+        validos = [
+            f"{base}{dv:02d}"
+            for dv in range(100)
+            if cnpj_de_teste.cpf_confere(f"{base}{dv:02d}")
+        ]
+        assume(validos)  # 111111111 e afins não têm CPF válido
+        cpf = validos[0]
+        documento = "000" + cpf if com_zeros else cpf
+        linhas = [internacao(cnpj=HOSPITAL, mantenedora=documento) for _ in range(10)]
+        linhas += [
+            internacao(cnes="7654321", cnpj=documento, mantenedora=PREFEITURA)
+            for _ in range(10)
+        ]
+        tabela, _ = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
+        matriz = ("000" + cpf)[8:12] == "0001"
+        publicados = set(tabela["cnpj"]) | set(tabela["cnpj_mantenedora"])
+        if not matriz:
+            assert not any(valor.endswith(cpf) for valor in publicados)
+
+    def test_registro_sem_cnes_nao_vira_estabelecimento(self):
+        """Sem o código, não há como saber de qual hospital é: não se soma num "estabelecimento" vazio."""
+        linhas = [internacao(cnes="") for _ in range(12)] + [
+            internacao() for _ in range(10)
+        ]
+        tabela, situacao = coletar(sus.SIH, {"RDAC2607.dbc": dbc_do_sih(linhas)})
+        assert list(tabela["codigo_cnes"]) == ["1234567"]
+        assert uma_linha(tabela, "1234567")["internacoes"] == 10
+        assert situacao.iloc[0]["fora_sem_cnes"] == 12
 
 
 class TestArquivosDaCompetencia:

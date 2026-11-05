@@ -38,6 +38,8 @@ TEMPO_LIMITE_DO_FTP = 300  # o SIA de SP tem partes de mais de 100 MB comprimida
 UFS = cnes.UFS
 MINIMO_PARA_PUBLICAR = 10
 MINIMO_PARA_OBITOS = 20
+FILIAL_DA_MATRIZ = "0001"
+_FILIAL = slice(8, 12)  # no CNPJ: 8 da raiz, 4 da filial, 2 do DV
 LONGA_PERMANENCIA = (
     "5"  # IDENT da AIH de longa permanência (continuação de uma internação)
 )
@@ -156,6 +158,7 @@ COLUNAS_DA_SITUACAO = (
     "suprimidos",
     "fora_pessoa_fisica",
     "fora_sem_cnpj",
+    "fora_sem_cnes",
     "situacao",
     "coletado_em",
 )
@@ -194,17 +197,22 @@ def nomes_dos_arquivos(
 
 
 def e_pessoa_fisica(documento: str) -> bool:
-    """O documento próprio do estabelecimento é um CPF (com ou sem zeros à esquerda)?
+    """O documento é um CPF (com ou sem zeros à esquerda)?
 
-    CNPJ cujo DV confere é empresa, mesmo com a raiz cheia de zeros; só o que não é CNPJ válido e tem os
-    DVs de um CPF é tratado como pessoa.
+    Os 11 dígitos finais com DV de CPF e só zeros antes: pessoa. O caso ambíguo é o CPF com "000" na
+    frente que, por coincidência, também tem o DV de CNPJ (1,4% deles; achado da revisão cruzada de
+    05/11): só vale como empresa quando a filial é a matriz (`0001`), como o Banco do Brasil
+    (`00000000000191`). Na dúvida, fica fora: um CPF publicado não se desfaz.
     """
     digitos = documento.strip()
-    if len(digitos) == cnpj.TAMANHO and cnpj.dv_confere(digitos):
-        return False
-    return cnpj.cpf_confere(digitos[-cnpj.TAMANHO_DO_CPF :]) and set(
+    cpf_no_fim = cnpj.cpf_confere(digitos[-cnpj.TAMANHO_DO_CPF :]) and set(
         digitos[: -cnpj.TAMANHO_DO_CPF]
     ) <= {"0"}
+    if not cpf_no_fim:
+        return False
+    if len(digitos) == cnpj.TAMANHO and cnpj.dv_confere(digitos):
+        return digitos[_FILIAL] != FILIAL_DA_MATRIZ
+    return True
 
 
 def _inteiro(registro: dict[str, str], coluna: str) -> int:
@@ -251,13 +259,19 @@ def somar_registros(
     registros: Iterator[dict[str, str]],
     uf: str,
     acumulado: dict[str, _Estabelecimento],
-) -> int:
-    """Soma os registros no `acumulado` (um por CNES); devolve quantos registros passaram."""
+) -> tuple[int, int]:
+    """Soma os registros no `acumulado` (um por CNES); devolve quantos passaram e quantos vieram sem CNES.
+
+    Registro sem o código do estabelecimento não é somado: não há como saber de qual hospital é.
+    """
     somar = _SOMAS[sistema.nome]
-    lidos = 0
+    lidos = sem_cnes = 0
     for registro in registros:
         lidos += 1
         codigo = registro[sistema.coluna_cnes]
+        if not codigo:
+            sem_cnes += 1
+            continue
         estabelecimento = acumulado.setdefault(codigo, _Estabelecimento(uf))
         documento = registro[sistema.coluna_documento]
         if documento and e_pessoa_fisica(documento):
@@ -268,7 +282,7 @@ def somar_registros(
         ] += 1
         estabelecimento.municipios[registro[sistema.coluna_municipio]] += 1
         somar(estabelecimento, registro)
-    return lidos
+    return lidos, sem_cnes
 
 
 def _cnpj_publicavel(documento: str) -> str:
@@ -278,7 +292,9 @@ def _cnpj_publicavel(documento: str) -> str:
     também não pode sair na coluna `cnpj`: só o que é CNPJ de verdade é publicado.
     """
     valor = cnpj.completo(documento)
-    return valor if valor and cnpj.dv_confere(valor) else ""
+    if not valor or not cnpj.dv_confere(valor) or e_pessoa_fisica(valor):
+        return ""
+    return valor
 
 
 def _mais_frequente(contagem: Counter[str]) -> str:
@@ -393,18 +409,20 @@ def coletar_competencia(
             f"SUS {sistema.nome} {competencia}: UFs ainda sem arquivo: {', '.join(faltando)}"
         )
     acumulado: dict[str, _Estabelecimento] = {}
-    lidos: dict[str, tuple[list[str], int]] = {}
+    lidos: dict[str, tuple[list[str], int, int]] = {}
     for uf, nomes in arquivos.items():
         hashes: list[str] = []
-        registros = 0
+        registros = sem_cnes = 0
         for nome in nomes:
             conteudo = baixar(sistema.pasta_no_ftp, nome)
             hashes.append(hashlib.sha256(conteudo).hexdigest())
-            registros += somar_registros(
+            somados, sem_codigo = somar_registros(
                 sistema, dbc.ler_dbc(conteudo, sistema.colunas), uf, acumulado
             )
+            registros += somados
+            sem_cnes += sem_codigo
             del conteudo  # o arquivo com as linhas dos pacientes não sobrevive à soma
-        lidos[uf] = (hashes, registros)
+        lidos[uf] = (hashes, registros, sem_cnes)
     tabela, contagens = montar_tabela(sistema, acumulado, competencia, coletado_em)
     situacao = pd.DataFrame(
         [
@@ -431,6 +449,7 @@ def _situacao_da_uf(
     nomes: list[str],
     hashes: list[str],
     registros: int,
+    sem_cnes: int,
     contagem: _Contagem,
     coletado_em: date,
 ) -> dict[str, object]:
@@ -445,6 +464,7 @@ def _situacao_da_uf(
         "suprimidos": contagem.suprimidos,
         "fora_pessoa_fisica": contagem.fora_pessoa_fisica,
         "fora_sem_cnpj": contagem.fora_sem_cnpj,
+        "fora_sem_cnes": sem_cnes,
         "situacao": COMPETENCIA_COM_DADOS if nomes else COMPETENCIA_VAZIA,
         "coletado_em": pd.Timestamp(coletado_em),
     }
