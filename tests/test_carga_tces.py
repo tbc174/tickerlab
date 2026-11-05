@@ -40,9 +40,12 @@ def _zip_rs(linhas: list[str]) -> bytes:
 class _Fonte:
     """Dublê das APIs dos tribunais: devolve respostas pequenas e conta os pedidos."""
 
-    def __init__(self, tamanho_pe: int | None = None) -> None:
+    def __init__(
+        self, tamanho_pe: int | None = None, tamanho_licitacoes: int | None = None
+    ) -> None:
         self.pedidos: list[str] = []
         self.tamanho_pe = tamanho_pe
+        self.tamanho_licitacoes = tamanho_licitacoes
 
     def __call__(self, endereco: str) -> bytes:
         self.pedidos.append(endereco)
@@ -69,6 +72,24 @@ class _Fonte:
                         "NumeroTermoAditivo": "001",
                     }
                 ]
+            )
+        if "LicitacoesDetalhes!" in endereco:
+            vencedor = {
+                "NUMERODOCUMENTOAJUSTADO": f"{CNPJ}   ",
+                "ADJUDICADA": "Vencedor",
+                "CODIGOPL": f"pl-{endereco[-5:]}",
+                "TOTALADJUDICADOLICITANTE": "4000.0000",
+                "DATAPUBLICACAOHOMOLOGACAO": "2025-06-10 03:00:00.0",
+                "RAZAOSOCIAL": "NÃO ENTRA",
+                "DESCRICAOOBJETO": "NÃO ENTRA",
+            }
+            return _pe(
+                [
+                    vencedor,
+                    {**vencedor, "ADJUDICADA": "Não Vencedor"},
+                    {**vencedor, "NUMERODOCUMENTOAJUSTADO": "***.***.004-02"},
+                ],
+                self.tamanho_licitacoes,
             )
         if endereco.endswith("/municipios"):
             return json.dumps([{"municipio": "adamantina"}]).encode()
@@ -134,6 +155,39 @@ def test_baixar_para_quando_a_resposta_do_pe_chega_no_teto(tmp_path: Path) -> No
         _baixar(tmp_path / "novo", _Fonte(tamanho_pe=carga.TETO_DO_PEDIDO_PE))
 
 
+def test_baixar_fatia_as_licitacoes_do_pe_por_ano_e_modalidade(tmp_path: Path) -> None:
+    fonte = _baixar(tmp_path / "novo", tribunais=["pe"])
+    base = "https://sistemas.tce.pe.gov.br/DadosAbertos/LicitacoesDetalhes!json"
+    pedidos = [p for p in fonte.pedidos if p.startswith(base)]
+    assert f"{base}?ANOMODALIDADE=2025&CODIGOMODALIDADE=8" in pedidos
+    assert len(pedidos) == len(carga.MODALIDADES_PE)
+
+
+def test_baixar_para_quando_uma_fatia_de_licitacoes_chega_no_teto(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SystemExit, match="modalidade 1"):
+        _baixar(
+            tmp_path / "novo",
+            _Fonte(tamanho_licitacoes=carga.TETO_DO_PEDIDO_PE),
+            tribunais=["pe"],
+        )
+
+
+def test_licitacoes_do_pe_so_o_vencedor_pessoa_juridica(tmp_path: Path) -> None:
+    origem, saida = tmp_path / "baixado", tmp_path / "base"
+    _baixar(origem, tribunais=["pe"])
+    carga.carregar(origem, saida)
+    lic = pd.read_parquet(saida / "tce_pe_licitacoes" / "2025.parquet")
+    assert set(lic["cnpj"]) == {CNPJ}
+    assert len(lic) == len(
+        carga.MODALIDADES_PE
+    )  # uma linha por fatia (o código da PL muda)
+    assert set(lic["valor_adjudicado"]) == {4000.0}
+    assert set(lic["data_homologacao"]) == {"2025-06-10"}
+    assert set(lic["disponivel_em"]) == {"2026-11-04"}
+
+
 def test_baixar_recusa_pasta_que_nao_esta_vazia(tmp_path: Path) -> None:
     (tmp_path / "algo.txt").write_text("x")
     with pytest.raises(SystemExit):
@@ -149,6 +203,7 @@ def test_carregar_grava_uma_tabela_por_ano_so_com_cnpj_e_a_segunda_vez_e_igual(
     assert set(primeira) == {
         "tce_pe_contratos/2025",
         "tce_pe_aditivos/2025",
+        "tce_pe_licitacoes/2025",
         "tce_sp_despesas/2025",
         "tce_rs_contratos/2025",
     }
