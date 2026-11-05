@@ -29,6 +29,8 @@ from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.contestacao import com_a_contestacao
+from src.enderecos_das_fontes import fonte_com_endereco, paragrafo_com_endereco
+from src.faixa_de_preco import FaixaDePreco
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao, Numero
@@ -143,6 +145,10 @@ ROTULOS_DAS_COLUNAS = {  # o cabeçalho que a regra geral (`rotulo_da_coluna`) e
     "inicio": "Início",
     "mes": "Mês",
     "mudanca": "Mudança",
+    # as contagens de ações (a sensibilidade do DCF e o histórico)
+    "acoes": "Ações",
+    "acoes_ajustadas": "Ações ajustadas",
+    "acoes_em_circulacao": "Ações em circulação",
 }
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
@@ -163,6 +169,10 @@ NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "socios_da_receita": "Quadro de sócios",
     "mudancas_da_receita": "O que mudou nos últimos 12 meses",
 }
+COLUNAS_DE_ANO = frozenset(
+    {"ano", "exercicio", "exercicio_do_caixa"}
+)  # 2024, não "R$ 2,0 mil"
+COLUNAS_DE_CONTAGEM = frozenset({"acoes", "acoes_ajustadas", "acoes_em_circulacao"})
 MIL = 1_000  # daqui para cima, a célula é dinheiro (R$ mil, mi, bi)
 QUANTOS_EVENTOS = 15
 FONTES = ("CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",)
@@ -298,9 +308,12 @@ class Secao:
     def tabelas_a_mostrar(self) -> dict[str, list[dict]]:
         """As tabelas que a página, o PDF e a API mostram: o anexo de anos toma o lugar da tabela
         de anos nas linhas, que fica na seção só porque a análise escrita cita as linhas dela."""
+        escondidas = {
+            ANEXO_DFC_DVA
+        }  # a caminho do anexo de anos, onde `com_a_dfc_e_a_dva` a põe
         if ANEXO_DE_ANOS in self.tabelas:
-            return {k: v for k, v in self.tabelas.items() if k != TABELA_DE_ANOS}
-        return self.tabelas
+            escondidas.add(TABELA_DE_ANOS)
+        return {k: v for k, v in self.tabelas.items() if k not in escondidas}
 
 
 @dataclass(frozen=True)
@@ -376,6 +389,7 @@ class Entradas:
         None  # codigo, valor_mobiliario, atualizado_em (do FCA)
     )
     premissas: Premissas = field(default_factory=Premissas)
+    faixa_de_preco: FaixaDePreco | None = None  # 52 semanas e 12 meses, sem ajuste
 
 
 # --- números escritos ------------------------------------------------------------------------------
@@ -418,14 +432,19 @@ def rotulo_da_coluna(coluna: str) -> str:
     return str(coluna).replace("_", " ").capitalize()
 
 
-def escrever_celula(valor: object) -> str:
-    """Uma célula das tabelas do relatório, igual na página e no PDF (valores em reais acima de
-    mil viram "R$ 1,2 bi"; frações e contagens ficam com duas casas)."""
+def escrever_celula(valor: object, coluna: str | None = None) -> str:
+    """Uma célula das tabelas do relatório, igual na página e no PDF. Pela coluna: ano sai como
+    "2024" e contagem de ações como "1.152.254.440"; sem coluna, ou em outra, o número acima de
+    mil é dinheiro ("R$ 1,2 bi") e frações ficam com duas casas."""
     if valor is None or (isinstance(valor, float) and not math.isfinite(valor)):
         return "—"
     if isinstance(valor, bool):
         return "sim" if valor else "não"
     if isinstance(valor, int | float):
+        if coluna in COLUNAS_DE_ANO:
+            return str(int(valor))
+        if coluna in COLUNAS_DE_CONTAGEM:
+            return _acoes(valor)
         if abs(valor) >= MIL:
             return formatar_valor(float(valor), "BRL")
         return f"{valor:.2f}".replace(".", ",")
@@ -927,6 +946,8 @@ def _valuation(c: _Calculos, e: Entradas) -> Secao:
             "no DCF. São um ponto de partida declarado, não uma opinião sobre a empresa."
         )
     ]
+    if e.faixa_de_preco is not None:
+        paragrafos.append(e.faixa_de_preco.texto())
     tabelas: dict[str, list[dict]] = {}
     livre = c.indicadores.get("caixa_livre")
     acoes, divida = _acoes_e_divida(c)
@@ -1100,6 +1121,10 @@ UNIDADES_DIFERENTES = {
     "lpa_basico": "R$ por ação"
 }  # as demais contas da DFP vêm em reais
 ANEXO_DE_ANOS = "anexo_de_anos"
+ANEXO_DFC_DVA = (
+    "anexo_dfc_dva"  # as linhas da DFC e da DVA da ficha da noite, no formato do anexo
+)
+COLUNAS_FIXAS_DO_ANEXO = ("conta", "unidade")
 TABELA_DE_ANOS = (
     "contas"  # um ano por linha: a que a análise escrita cita (`historico.contas.N`)
 )
@@ -1121,6 +1146,50 @@ def anexo_de_anos(contas: pd.DataFrame) -> list[dict]:
             **{str(ano): para_json(valor) for ano, valor in serie.items()},
         }
         for conta, serie in contas.items()
+    ]
+
+
+def _anos_do_anexo(linhas: list[dict]) -> list[str]:
+    return sorted(
+        {k for linha in linhas for k in linha if k not in COLUNAS_FIXAS_DO_ANEXO}
+    )
+
+
+def _no_formato_do_anexo(linha: dict, anos: list[str]) -> dict:
+    return {
+        **{coluna: linha[coluna] for coluna in COLUNAS_FIXAS_DO_ANEXO},
+        **{ano: linha.get(ano) for ano in anos},
+    }
+
+
+def com_a_dfc_e_a_dva(secoes: list[Secao]) -> list[Secao]:
+    """Passa as linhas da DFC e da DVA (que a ficha da noite traz na seção de caixa) para o anexo de
+    anos do histórico, nos mesmos anos das contas; sem histórico ou sem as linhas, nada muda.
+
+    O PDF lê as colunas da primeira linha do anexo: toda linha sai com os mesmos anos, vazios onde
+    a conta não existe naquele ano.
+    """
+    da_ficha = next((s for s in secoes if ANEXO_DFC_DVA in s.tabelas), None)
+    historico = next((s for s in secoes if s.chave == "historico"), None)
+    if da_ficha is None or historico is None:
+        return secoes
+    contas = historico.tabelas.get(ANEXO_DE_ANOS, [])
+    novas = da_ficha.tabelas[ANEXO_DFC_DVA]
+    anos = _anos_do_anexo(contas) or _anos_do_anexo(novas)
+    do_anexo = [
+        linha
+        for linha in (_no_formato_do_anexo(n, anos) for n in novas)
+        if any(linha[ano] is not None for ano in anos)
+    ]
+    sem_a_tabela = {k: v for k, v in da_ficha.tabelas.items() if k != ANEXO_DFC_DVA}
+    anexo = [_no_formato_do_anexo(linha, anos) for linha in contas] + do_anexo
+    return [
+        replace(s, tabelas=sem_a_tabela)
+        if s is da_ficha
+        else replace(s, tabelas={**s.tabelas, ANEXO_DE_ANOS: anexo})
+        if s is historico
+        else s
+        for s in secoes
     ]
 
 
@@ -1799,6 +1868,19 @@ def fontes_do_relatorio(e: Entradas) -> tuple[str, ...]:
     return (FONTE_DA_CVM, *([FONTE_DO_PRECO] if com_preco else []))
 
 
+def com_enderecos_das_fontes(secoes: list[Secao]) -> list[Secao]:
+    """As seções com o endereço público da fonte em cada número e em cada parágrafo "Fonte: ..."
+    (linha 601): a página, o PDF, o Markdown e a API mostram o mesmo texto."""
+    return [
+        replace(
+            s,
+            itens=[replace(i, fonte=fonte_com_endereco(i.fonte)) for i in s.itens],
+            paragrafos=[paragrafo_com_endereco(p) for p in s.paragrafos],
+        )
+        for s in secoes
+    ]
+
+
 def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     """O relatório completo de uma empresa, pronto para a página, o PDF e a API.
 
@@ -1848,15 +1930,15 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
             paragrafos=com_a_contestacao([*limites, *em_aberto]),
         )
     )
-    secoes = na_ordem(secoes)
+    secoes = na_ordem(com_a_dfc_e_a_dva(secoes))
     return Relatorio(
         empresa=entradas.empresa,
         cnpj=entradas.cnpj,
         ticker=entradas.ticker,
         setor=entradas.dados.setor,
         grupo=NOMES.get(c.grupo, c.grupo),
-        secoes=secoes,
-        fontes=tuple(dict.fromkeys(fontes)),
+        secoes=com_enderecos_das_fontes(secoes),
+        fontes=tuple(dict.fromkeys(fonte_com_endereco(f) for f in fontes)),
         aviso_das_notas=notas.AVISO,
         em_conferencia=bool(entradas.achados),
     )

@@ -20,10 +20,13 @@ import sqlalchemy as sa
 from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src import cruzamentos, dossie, fundamentalista, fundamentos
+from src.analise_escrita.exibicao_do_setor import graficos_do_setor
+from src.analise_escrita.modelo_da_tela import GraficoDaTela
 from src.banco.demonstracoes import dados_da_empresa
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
 from src.contestacao import com_a_contestacao
 from src.dossie import Ficha
+from src.enderecos_das_fontes import fonte_com_endereco
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
     AINDA_SEM_DADO,
@@ -37,6 +40,7 @@ from src.relatorio_empresa import (
     Dossie,
     Item,
     Secao,
+    com_enderecos_das_fontes,
     data_do_dossie,
     escrever,
     para_json,
@@ -751,6 +755,8 @@ class RelatorioDoSetor:
     fontes: list[str]
     limites: list[str]
     avisos: list[str] = field(default_factory=list)
+    # os gráficos escolhidos para este setor (plano de 23/10/2026, PR 4); entram no fim da seção
+    graficos: tuple[GraficoDaTela, ...] = ()
 
     def como_dict(self) -> dict:
         return para_json(asdict(self))  # type: ignore[return-value]
@@ -868,6 +874,30 @@ def _secao_da_participacao(e: EntradasDoSetor, noite: dossie.SecaoDoSetor) -> Se
     )
 
 
+def _aviso_de_quem_ficou_de_fora(
+    membros: list[Membro], participacao: list[dict[str, Any]]
+) -> list[str]:
+    """Quem tem parte do mercado na base e não está no lado a lado (sem ticker, não é membro): o
+    "N" da frase da parte do mercado e o dos membros não são o mesmo número."""
+    dos_membros = {m.cnpj for m in membros}
+    de_fora = {
+        _so_digitos(str(l["cnpj"])): str(l["empresa"])
+        for l in participacao
+        if _so_digitos(str(l["cnpj"])) not in dos_membros
+    }
+    if not de_fora:
+        return []
+    com_parte = {_so_digitos(str(l["cnpj"])) for l in participacao}
+    quantas = "1 está" if len(de_fora) == 1 else f"{len(de_fora)} estão"
+    nomes = ", ".join(sorted(de_fora.values()))
+    texto = (
+        f"{len(com_parte)} têm parte do mercado na base e {quantas} fora desta tabela por não "
+        f"terem ticker na base: {nomes}. A parte do mercado delas entra nas somas da participação "
+        "e nas frases acima, não nas linhas daqui."
+    )
+    return [texto]
+
+
 def _secao_do_lado_a_lado(e: EntradasDoSetor) -> Secao:
     noite = e.da_noite
     participacao = (
@@ -887,7 +917,11 @@ def _secao_do_lado_a_lado(e: EntradasDoSetor) -> Secao:
         "lado_a_lado",
         TITULOS["lado_a_lado"],
         [],
-        [SOBRE_O_LADO_A_LADO, *fontes],
+        [
+            SOBRE_O_LADO_A_LADO,
+            *_aviso_de_quem_ficou_de_fora(e.membros, participacao),
+            *fontes,
+        ],
         tabelas,
     )
 
@@ -934,11 +968,11 @@ def _secao_do_que_nao_temos(faltas: list[FaltaNoSetor]) -> Secao:
     )
 
 
-def _secao_da_metodologia() -> Secao:
+def _secao_da_metodologia(chave: str) -> Secao:
     return Secao(
         "metodologia",
         TITULOS["metodologia"],
-        paragrafos=[dossie_da_base.LIMITES["setor"]],
+        paragrafos=[dossie_da_base.metodologia_do_setor(chave)],
         recolhida=True,
     )
 
@@ -983,7 +1017,7 @@ def montar_relatorio_do_setor(
         _secao_dos_cruzamentos(e, hoje),
         _secao_das_frases(frases),
         _secao_do_que_nao_temos(faltas),
-        _secao_da_metodologia(),
+        _secao_da_metodologia(e.setor.chave),
     ]
     motivo = motivo_sem_acesso(plano, DOSSIE_DA_BASE)
     if motivo is None and noite is not None:
@@ -999,10 +1033,10 @@ def montar_relatorio_do_setor(
         nome=e.setor.nome,
         como_era_em=noite.dia if noite else None,
         membros=e.membros,
-        secoes=secoes,
+        secoes=com_enderecos_das_fontes(secoes),
         frases=frases,
         nao_temos=faltas,
-        fontes=list(dict.fromkeys(fontes)),
+        fontes=list(dict.fromkeys(fonte_com_endereco(f) for f in fontes)),
         limites=com_a_contestacao(list(LIMITES_DO_SETOR)),
         avisos=[] if noite else [SEM_A_NOITE],
     )
@@ -1051,7 +1085,10 @@ def relatorio_do_setor(
 ) -> RelatorioDoSetor:
     """O relatório do setor para o plano de quem pede; `SetorDesconhecidoError` fora da lista."""
     entradas = entradas_do_setor(conexao, chave, pasta)
-    return montar_relatorio_do_setor(entradas, plano, hoje or datetime.now(FUSO).date())
+    hoje = hoje or datetime.now(FUSO).date()
+    relatorio = montar_relatorio_do_setor(entradas, plano, hoje)
+    graficos = graficos_do_setor(relatorio.como_dict(), hoje)
+    return replace(relatorio, graficos=graficos)
 
 
 @dataclass(frozen=True)

@@ -8,7 +8,8 @@ vêm do React (`web/`, com `npm run site`). Aqui fica só o que depende do códi
 - fontes, marca e o cálculo do sol do tema, copiados de `static/` (sem Google Fonts);
 - o relatório de exemplo (PDF) e as imagens das duas primeiras páginas em cada estilo, gerados agora
   pelo mesmo código do app, com os dados de exemplo guardados no projeto (rotulados como exemplo);
-- o catálogo da busca do topo (`conteudo/catalogo_de_ativos.csv`).
+- o catálogo da busca do topo (`conteudo/catalogo_de_ativos.csv`);
+- o `ads.txt` (a linha do Google AdSense).
 
 O site inteiro, do zero: `python -m scripts.gerar_site`, `python -m scripts.exportar_conteudo` e, em
 `web/`, `npm run site`. Há testes que conferem que cada parte de `site/` está em dia.
@@ -24,7 +25,14 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from src import amostra_do_relatorio, catalogo, previa_pdf, relatorios
+from src import (
+    amostra_do_relatorio,
+    catalogo,
+    previa_pdf,
+    relatorio_semanal,
+    relatorio_semanal_arquivos,
+    relatorios,
+)
 from src.estilos_pdf import ESTILOS
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -52,7 +60,10 @@ COPIADOS = (
 )
 # pastas e arquivos de site/ que são deste script (o resto é do React)
 PASTAS_DO_PYTHON = ("fontes", "marca", "tema", "relatorio", "estudos")
-ARQUIVOS_DO_PYTHON = ("catalogo.json",)
+ARQUIVOS_DO_PYTHON = ("catalogo.json", "ads.txt")
+# a linha do AdSense (conta PJ do TickerLab, plano mestre §9); é a mesma que o Calcula Dinheiro e o
+# Ficha Clara publicam. O Google lê `/ads.txt` na raiz do domínio.
+ADS_TXT = "google.com, pub-4178012487609221, DIRECT, f08c47fec0942fa0\n"
 
 
 def dados_de_exemplo(ticker: str) -> pd.DataFrame:
@@ -90,6 +101,22 @@ def gerar_relatorio_de_exemplo(destino: Path) -> list[str]:
     return estilos
 
 
+def gerar_arquivos_do_relatorio_de_setor(destino: Path) -> None:
+    """O PDF e o deck (PDF e PPTX) do relatório de setor da página pública, do mesmo conteúdo dela."""
+    conteudo = relatorio_semanal.para_o_site()
+    gerado_em = relatorio_semanal.gerado_em_do_retrato()
+    caminhos = relatorio_semanal.CAMINHOS_DOS_ARQUIVOS
+    arquivos = {
+        "pdf": relatorio_semanal_arquivos.relatorio_em_pdf,
+        "apresentacao_pdf": relatorio_semanal_arquivos.apresentacao_em_pdf_do_relatorio,
+        "apresentacao_pptx": relatorio_semanal_arquivos.apresentacao_em_pptx_do_relatorio,
+    }
+    for chave, escrever in arquivos.items():
+        (destino / caminhos[chave].lstrip("/")).write_bytes(
+            escrever(conteudo, gerado_em)
+        )
+
+
 def arquivos_do_python(pasta: Path) -> set[Path]:
     """Os arquivos de `pasta` que este script gera (caminhos relativos)."""
     arquivos = {Path(n) for n in ARQUIVOS_DO_PYTHON if (pasta / n).exists()}
@@ -111,9 +138,13 @@ def gerar(destino: Path = DESTINO) -> None:
         for nome in nomes:
             shutil.copyfile(RAIZ / "static" / pasta / nome, destino / pasta / nome)
     gerar_relatorio_de_exemplo(destino)
+    gerar_arquivos_do_relatorio_de_setor(destino)
     (destino / amostra_do_relatorio.CAMINHO_DO_PDF.lstrip("/")).write_bytes(
         amostra_do_relatorio.pdf()
     )
+    (destino / "ads.txt").write_bytes(
+        ADS_TXT.encode("utf-8")
+    )  # bytes: sem CRLF no Windows
     tabela = catalogo.carregar().reset_index()
     (destino / "catalogo.json").write_text(
         json.dumps(

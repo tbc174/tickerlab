@@ -570,8 +570,10 @@ def p_valor_do_acaso(
     Conta simples: o peso do fechamento de ontem rende o retorno de hoje, o que não está alocado
     rende o CDI e cada real negociado paga `custo_por_lado`. Sharpe do excesso sobre o CDI.
     """
-    ativos = list(pesos.columns)
-    w = pesos.fillna(0.0).to_numpy(float)
+    # Só os ativos que tiveram peso: os outros não mudam a conta, e um retorno infinito de papel
+    # sem peso (preço zero no arquivo) viraria NaN em infinito × 0.
+    ativos = list(pesos.columns[pesos.fillna(0.0).ne(0.0).any()])
+    w = pesos[ativos].fillna(0.0).to_numpy(float)
     r = retornos[ativos].reindex(pesos.index).fillna(0.0).to_numpy(float)
     c = cdi.reindex(pesos.index).fillna(0.0).to_numpy(float)
 

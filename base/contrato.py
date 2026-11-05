@@ -4,7 +4,9 @@ O dicionário (`base/dicionario.py`) diz o que cada tabela é; aqui ele vira tr�
 consome a base (o app, o Capital, um parceiro) pode confiar:
 
 - `base/contratos/catalogo.json`: uma entrada por tabela com módulo, dono, versão, colunas, chaves,
-  as três datas, histórico, licença e revenda (gerado, o teste reclama se estiver velho);
+  as três datas, histórico, licença e revenda (gerado, o teste reclama se estiver velho), e a
+  `prontidao` da tabela pronta para a API externa (`base/prontidao.py`, ADR 0108, D10), que fica só
+  aqui: muda sem mudar o contrato;
 - `base/contratos/v<maior>/<tabela>.json`: o contrato **congelado** da versão maior. O gerador
   nunca regrava um que já exista: mudar o contrato de verdade exige subir a versão maior;
 - `docs/CHANGELOG-da-base.md`: o que mudou em cada tabela desde o contrato congelado.
@@ -15,9 +17,11 @@ que muda exigem versão **maior** (1.x.x → 2.0.0); coluna nova exige ao menos 
 """
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 from base.dicionario import TABELAS, Tabela
+from base.prontidao import PRONTIDAO, Prontidao, Prova
 from base.tempo import sinonimos_de_tempo
 from src.banco.coletas import licenca_da_fonte, revenda_da_fonte
 
@@ -61,9 +65,45 @@ def contrato_da_tabela(nome: str, tabela: Tabela) -> dict:
     }
 
 
-def catalogo(tabelas: dict[str, Tabela] = TABELAS) -> dict:
+def _prova_publicada(prova: Prova | None) -> dict | None:
+    if prova is None:
+        return None
+    publicada = {"data": prova.data.isoformat(), "prova": prova.prova}
+    return publicada | (
+        {"independencia": prova.independencia} if prova.independencia else {}
+    )
+
+
+def _prontidao_publicada(registro: Prontidao) -> dict:
     return {
-        "tabelas": {nome: contrato_da_tabela(nome, t) for nome, t in tabelas.items()},
+        "versao_maior": registro.versao_maior,
+        "cruzada": _prova_publicada(registro.cruzada),
+        "qualidade": _prova_publicada(registro.qualidade),
+        "dicionario": _prova_publicada(registro.dicionario),
+    }
+
+
+def _entrada_do_catalogo(
+    nome: str, tabela: Tabela, prontidao: Mapping[str, Prontidao]
+) -> dict:
+    entrada = contrato_da_tabela(nome, tabela)
+    if (
+        nome in prontidao
+    ):  # só quando há: o catálogo das tabelas ainda não prontas não muda
+        entrada["prontidao"] = _prontidao_publicada(prontidao[nome])
+    return entrada
+
+
+def catalogo(
+    tabelas: dict[str, Tabela] = TABELAS,
+    prontidao: Mapping[str, Prontidao] | None = None,
+) -> dict:
+    """O catálogo publicado; `prontidao` vazio usa o registro de `base/prontidao.py`."""
+    registro = PRONTIDAO if prontidao is None else prontidao
+    return {
+        "tabelas": {
+            nome: _entrada_do_catalogo(nome, t, registro) for nome, t in tabelas.items()
+        },
     }
 
 

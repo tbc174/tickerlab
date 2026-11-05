@@ -321,6 +321,21 @@ def test_p_valor_do_acaso_ve_quem_sabe_o_futuro():
     assert acaso["p_valor"] < 0.05
 
 
+def test_p_valor_do_acaso_ignora_retorno_infinito_de_papel_sem_peso():
+    """Achado da tentativa 1 da P0-4: um preço zero no arquivo (BGIP4) dava retorno infinito, e
+    infinito × peso zero virava NaN em todos os sorteios."""
+    precos = _precos()
+    cdi = _cdi()
+    resultado = rp.simular(precos, cdi, VOLUMES, rp.Parametros())
+    retornos = precos.pct_change().fillna(0.0)
+    esperado = rp.p_valor_do_acaso(resultado.pesos, retornos, cdi, 0.0003, sorteios=50)
+    pesos = resultado.pesos.assign(SEM_PESO=0.0)
+    retornos = retornos.assign(SEM_PESO=0.0)
+    retornos.iloc[10, -1] = np.inf
+    acaso = rp.p_valor_do_acaso(pesos, retornos, cdi, 0.0003, sorteios=50)
+    assert acaso == esperado
+
+
 def test_janela_sem_variacao_e_recusada_em_vez_de_virar_nan():
     """Achado da tentativa 1 real: a NTN-B ficou parada por 80 pregões (buraco na curva) e o
     risk parity virou 0/0 em silêncio na rodada que olha o futuro."""

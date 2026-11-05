@@ -24,7 +24,7 @@ from telas.comum import (
 )
 from telas.research.comum import _ainda_nao_coletado, _dinheiro, _numero_br
 
-TAMANHO_DA_LISTA_DO_MERCADO = 10
+TAMANHOS_DA_LISTA_DO_MERCADO = (10, 25, 50)
 
 
 def _ler_detentores(fonte, codigo):
@@ -178,11 +178,11 @@ def _detentores_do_ativo(ticker):
         )
 
 
-def _lista_do_mercado(tabela, crescente):
+def _lista_do_mercado(tabela, crescente, tamanho):
     escolhidas = tabela.dropna(subset=["variacao"]).sort_values(
         "variacao", ascending=crescente
     )
-    escolhidas = escolhidas.head(TAMANHO_DA_LISTA_DO_MERCADO)
+    escolhidas = escolhidas.head(tamanho)
     return pd.DataFrame(
         {
             "Ativo": escolhidas["codigo"],
@@ -197,13 +197,21 @@ def _lista_do_mercado(tabela, crescente):
 
 
 def _detentores_no_mercado():
-    bolsa = st.segmented_control(
+    col_bolsa, col_tamanho = st.columns([2, 1])
+    bolsa = col_bolsa.segmented_control(
         "Bolsa",
         ["BRL", "USD"],
         format_func={"BRL": "B3 (fundos, CVM)", "USD": "EUA (gestores, 13F)"}.get,
         default="BRL",
         required=True,
         key="donos_bolsa",
+    )
+    tamanho = col_tamanho.segmented_control(
+        "Ativos por lista",
+        TAMANHOS_DA_LISTA_DO_MERCADO,
+        default=TAMANHOS_DA_LISTA_DO_MERCADO[0],
+        required=True,
+        key="donos_tamanho",
     )
     fonte, quem, periodo, _ = FONTES_DOS_DETENTORES[bolsa]
     try:
@@ -229,15 +237,19 @@ def _detentores_no_mercado():
         "eles têm, sem o efeito do preço."
     )
     st.markdown(f"##### Mais {quem} entraram")
-    st.dataframe(_lista_do_mercado(tabela, False), hide_index=True, width="stretch")
+    st.dataframe(
+        _lista_do_mercado(tabela, False, tamanho), hide_index=True, width="stretch"
+    )
     st.markdown(f"##### Mais {quem} saíram")
-    st.dataframe(_lista_do_mercado(tabela, True), hide_index=True, width="stretch")
+    st.dataframe(
+        _lista_do_mercado(tabela, True, tamanho), hide_index=True, width="stretch"
+    )
     if fonte == fundos_cvm.FONTE_CDA:
         st.markdown("##### Mais vendidas pelos fundos (vendido ÷ comprado)")
         apostas = tabela[tabela["valor"] > 0].sort_values(
             "fatia_vendida", ascending=False
         )
-        apostas = apostas.head(TAMANHO_DA_LISTA_DO_MERCADO)
+        apostas = apostas.head(tamanho)
         st.dataframe(
             pd.DataFrame(
                 {

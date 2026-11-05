@@ -135,7 +135,7 @@ def test_sem_medias_nao_mostra_legenda():
 def test_grafico_de_preco_tem_botoes_de_periodo():
     figura = criar_grafico_preco(_ohlcv())
     rotulos = [b.label for b in figura.layout.xaxis.rangeselector.buttons]
-    assert rotulos == ["1M", "3M", "6M", "1A", "YTD", "Tudo"]
+    assert rotulos == ["1M", "3M", "6M", "1A", "2A", "5A", "10A", "YTD", "Tudo"]
 
 
 def test_zoom_do_preco_e_do_volume_andam_juntos():
@@ -200,7 +200,7 @@ def test_config_acompanha_a_opcao_de_zoom_com_a_roda_do_mouse():
 def test_graficos_de_risco_tem_botoes_de_periodo_e_linha_guia():
     fechamento = _fechamento()
     figura = criar_grafico_drawdown(calcular_drawdown(fechamento))
-    assert len(figura.layout.xaxis.rangeselector.buttons) == 6
+    assert len(figura.layout.xaxis.rangeselector.buttons) == 9
     assert figura.layout.xaxis.showspikes is True
 
 
@@ -299,6 +299,24 @@ def test_velas_de_mais_de_um_ano_viram_semanais():
     media = next(tr for tr in figura.data if tr.name == "MM 20")
     diaria = dados["Close"].rolling(20).mean()
     assert media.y[-1] == pytest.approx(diaria.loc[semanas.index[-1]])
+
+
+def test_velas_de_mais_de_5_anos_viram_mensais():
+    dados = _ohlcv(6 * 252)
+    figura = criar_grafico_preco(dados, tipo="velas", janelas_medias=(20,))
+    meses = graficos.velas_mensais(dados)
+    vela = figura.data[0]
+    assert len(vela.x) == len(meses)
+    assert "Variação no mês" in vela.hovertext[1]
+    primeiro_mes = dados[dados.index.to_period("M") == dados.index[0].to_period("M")]
+    assert meses.iloc[0]["High"] == primeiro_mes["High"].max()
+    assert meses.index[0] == primeiro_mes.index[-1]  # no último pregão do mês
+
+
+def test_velas_de_5_anos_continuam_semanais():
+    dados = _ohlcv(6 * 252)
+    figura = criar_grafico_preco(dados, tipo="velas", dias_visiveis=5 * 252)
+    assert "Variação na semana" in figura.data[0].hovertext[1]
 
 
 def test_velas_de_um_ano_continuam_diarias():

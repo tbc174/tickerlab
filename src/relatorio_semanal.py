@@ -14,11 +14,14 @@ página com o motivo (`de_fora`).
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from src import dossie, relatorio_setor
 from src.amostra_do_relatorio import conferir
+from src.enderecos_das_fontes import enderecos_da_fonte, fonte_com_endereco
+from src.relatorio_empresa_pdf import FUSO
 
 PASTA = Path(__file__).resolve().parent.parent / "conteudo" / "relatorios_semanais"
 CHAVE_DO_SETOR = "eletricas"
@@ -29,6 +32,18 @@ FONTE_DOS_CONSUMIDORES = (
 FONTE_DO_AUDITOR = (
     "ODbL (dados abertos da CVM; citar a fonte): Formulário de Referência"
 )
+FONTES_DOS_DADOS = (
+    FONTE_DOS_CONSUMIDORES,
+    FONTE_DO_AUDITOR,
+)  # o rodapé da página lê daqui
+HORA_DO_ARQUIVO = (
+    18  # os arquivos levam a data do retrato (não mudam a cada geração), como a amostra
+)
+CAMINHOS_DOS_ARQUIVOS = {
+    "pdf": f"/relatorio/setor-{CHAVE_DO_SETOR}.pdf",
+    "apresentacao_pdf": f"/relatorio/setor-{CHAVE_DO_SETOR}-apresentacao.pdf",
+    "apresentacao_pptx": f"/relatorio/setor-{CHAVE_DO_SETOR}-apresentacao.pptx",
+}
 QUATRO_MAIORES = 4
 CASAS_DA_PARTICIPACAO = 1
 AUDITORES = (  # trecho do nome em minúsculas → nome curto
@@ -38,6 +53,7 @@ AUDITORES = (  # trecho do nome em minúsculas → nome curto
     ("ernst", "EY"),
 )
 ANO_DA_TROCA_EM_DESTAQUE = "2022"
+RODAPE_DA_PAGINA = "Nada aqui é recomendação de investimento."
 RODAPE = (
     "Nada aqui é recomendação de investimento. Os números descrevem o que as companhias e as agências "
     "entregaram, sem dizer o que vai acontecer."
@@ -115,6 +131,13 @@ def ler_retrato(caminho: Path | None = None) -> dict[str, Any]:
     """O retrato guardado (a semana 1, por padrão)."""
     caminho = caminho or PASTA / f"{CHAVE_DO_SETOR}.json"
     return json.loads(caminho.read_text(encoding="utf-8"))
+
+
+def gerado_em_do_retrato(retrato: dict[str, Any] | None = None) -> datetime:
+    """O instante que os arquivos do relatório carregam: o dia do retrato, no fuso de Brasília."""
+    retrato = retrato or ler_retrato()
+    dia = datetime.fromisoformat(retrato["dados_de"][:10])
+    return dia.replace(hour=HORA_DO_ARQUIVO, tzinfo=FUSO)
 
 
 # --- os números do cruzamento ----------------------------------------------------------------------
@@ -201,7 +224,7 @@ def _destaques(retrato: dict[str, Any], grupos: list[Grupo]) -> list[dict[str, s
                 f"{len(grupos)} companhias abertas desta página, com as distribuidoras que a base liga a "
                 f"cada uma, somam {_milhoes(soma)}: {_percentual(soma / total)} do total."
             ),
-            "fonte": FONTE_DOS_CONSUMIDORES,
+            "fonte": fonte_com_endereco(FONTE_DOS_CONSUMIDORES),
             "data": f"{base} (ficha de {dados_de})",
         },
         {
@@ -211,7 +234,7 @@ def _destaques(retrato: dict[str, Any], grupos: list[Grupo]) -> list[dict[str, s
                 f"{_milhoes(sum(g.consumidores for g in maiores))} de consumidores, "
                 f"{_percentual(sum(g.consumidores for g in maiores) / soma)} do que as {len(grupos)} somam."
             ),
-            "fonte": FONTE_DOS_CONSUMIDORES,
+            "fonte": fonte_com_endereco(FONTE_DOS_CONSUMIDORES),
             "data": f"{base} (ficha de {dados_de})",
         },
         {
@@ -223,7 +246,7 @@ def _destaques(retrato: dict[str, Any], grupos: list[Grupo]) -> list[dict[str, s
                 f"têm o auditor atual desde {ANO_DA_TROCA_EM_DESTAQUE}, segundo o formulário de referência. "
                 f"Juntas, atendem {_percentual(peso_2022 / total)} dos consumidores do país."
             ),
-            "fonte": FONTE_DO_AUDITOR,
+            "fonte": fonte_com_endereco(FONTE_DO_AUDITOR),
             "data": f"ficha de {dados_de} (formulário mais recente)",
         },
     ]
@@ -323,6 +346,16 @@ def _fonte_publica(fonte: str) -> str:
     )
 
 
+def _aviso_do_rodape(fontes: tuple[str, ...]) -> str:
+    """O rodapé da página: as bases de onde vêm os dados, lidas das mesmas fontes dos números (o
+    rodapé padrão do site fala do Yahoo Finance, que o relatório do setor não usa; linha 602)."""
+    bases = dict.fromkeys(par for fonte in fontes for par in enderecos_da_fonte(fonte))
+    citadas = "; ".join(f"{rotulo} ({endereco})" for rotulo, endereco in bases)
+    return (
+        f"{RODAPE_DA_PAGINA} Os dados vêm de {citadas}, cada número com a data do dado."
+    )
+
+
 def para_o_site(retrato: dict[str, Any] | None = None) -> dict[str, Any]:
     """O JSON da página `relatorio-de-setor-eletricas.html` (web/conteudo/relatorio_semanal_eletricas.json)."""
     retrato = retrato or ler_retrato()
@@ -333,6 +366,8 @@ def para_o_site(retrato: dict[str, Any] | None = None) -> dict[str, Any]:
         "titulo": "Elétricas: quem atende os consumidores do país e quem audita",
         "dados_de": _data_escrita(retrato["dados_de"]),
         "aviso": RODAPE,
+        "aviso_rodape": _aviso_do_rodape(FONTES_DOS_DADOS),
+        "arquivos": CAMINHOS_DOS_ARQUIVOS,
         "destaques": _destaques(retrato, grupos),
         "tabelas": [
             _tabela_dos_consumidores(retrato, grupos),
@@ -340,7 +375,11 @@ def para_o_site(retrato: dict[str, Any] | None = None) -> dict[str, Any]:
             _tabela_do_peso_por_auditor(retrato, grupos),
         ],
         "nao_temos": [
-            {"kpi": f.kpi, "motivo": f.motivo, "fonte": _fonte_publica(f.fonte)}
+            {
+                "kpi": f.kpi,
+                "motivo": f.motivo,
+                "fonte": fonte_com_endereco(_fonte_publica(f.fonte)),
+            }
             for f in faltas
         ],
         "limites": _limites(retrato),

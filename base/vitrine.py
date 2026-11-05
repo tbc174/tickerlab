@@ -45,15 +45,27 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da ANEEL\b", "ANEEL"),
     (r"da Anatel\b", "Anatel"),
     (r"da ANS\b", "ANS"),
+    (r"\bCMED\b", "CMED (Anvisa)"),  # antes da Anvisa: as listas não têm a licença dela
+    (r"CNES do Ministério da Saúde", "Ministério da Saúde (DATASUS)"),
+    (r"TCE-PE:", "TCE-PE"),
+    (r"TCE-SP:", "TCE-SP"),
+    (r"TCE-CE:", "TCE-CE"),
+    (r"LicitaCon do TCE-RS", "TCE-RS"),
     (r"da Anvisa\b", "Anvisa"),
     (r"do MAPA\b", "MAPA"),
     (r"da ANM\b", "ANM"),
     (r"da Ancine\b", "Ancine"),
     (r"do MME\b", "MME"),
+    (r"do BNDES\b", "BNDES"),
+    (r"da Finep\b", "Finep"),
+    (r"empregadores do MTE", "MTE"),
+    (r"do IBAMA\b", "IBAMA"),
+    (r"\(GLEIF,", "GLEIF"),
     (r"da SUSEP\b", "SUSEP"),
     (r"Receita", "Receita Federal"),
     (r"da PGFN\b", "PGFN"),
     (r"da CGU\b", "CGU"),
+    (r"do CNJ\b", "CNJ"),
     (r"Tesouro", "Tesouro Nacional"),
     (r"Internet Archive", "Internet Archive"),
     (r"a CFTC\b", "CFTC"),
@@ -367,6 +379,207 @@ def base_em_numeros(fotografia: Path = FOTOGRAFIA) -> dict:
     """O `web/conteudo/base.json`: a fotografia como está e a data curta que a página mostra."""
     numeros = numeros_da_fotografia(json.loads(fotografia.read_text(encoding="utf-8")))
     return {"numeros": asdict(numeros), "medido_em_curto": dia_e_mes(numeros.medido_em)}
+
+
+# --- ligado pelo CNPJ: o que a base junta de cada empresa (página inicial, pedido do Tiago, 04/11/2026)
+# A contagem sai das colunas do catálogo; só os temas (o título, a frase e quais tabelas) são escritos à
+# mão, e tabela de tema que some do catálogo ou não tem CNPJ **dá erro**, em vez de sumir do cartão.
+
+# cnpj, cnpj_basico, cnpj_raiz, auditor_cnpj, CPF_CNPJ_GESTOR, raiz...
+_COLUNA_DE_CNPJ = re.compile(r"(^|_)cnpj(_|$)|(^|_)raiz$", re.IGNORECASE)
+# a cobertura dos fundos conta CNPJs ("valor_com_cnpj"): não liga a linha a uma empresa
+_COLUNA_QUE_CONTA_CNPJ = re.compile(r"_com_cnpj$", re.IGNORECASE)
+# a rede liga as entidades pelos identificadores (CNPJ, raiz, ticker), não por uma coluna de CNPJ
+MODULO_DA_REDE = "rede"
+# os módulos dos órgãos públicos: toda tabela deles ligada pelo CNPJ tem de estar num tema, para a página
+# inicial acompanhar a base (pedido do Tiago, 04/11/2026); o teste do catálogo real cobra
+MODULOS_COM_TEMA_OBRIGATORIO = ("governo_e_sancoes", MODULO_DA_REDE)
+
+
+@dataclass(frozen=True)
+class TemaDoCnpj:
+    """Um cartão do "ligado pelo CNPJ": o que a base junta de uma empresa, de um grupo de órgãos."""
+
+    chave: str
+    titulo: str
+    texto: str  # sem número: os números saem do catálogo
+    tabelas: tuple[str, ...]
+
+
+TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
+    TemaDoCnpj(
+        "cvm",
+        "O que a companhia entrega à CVM",
+        "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da "
+        "diretoria e ofertas de ações e de dívida.",
+        (
+            "demonstracoes_como_era",
+            "eventos",
+            "auditores",
+            "pareceres_dfp",
+            "fre_remuneracao",
+            "ofertas_resolucao_160",
+            "ofertas_antigas",
+        ),
+    ),
+    TemaDoCnpj(
+        "donos",
+        "Quem é dono e quem controla",
+        "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de "
+        "controladas e coligadas, com a data de cada ligação.",
+        (
+            "cnpj_qsa",
+            "cnpj_qsa_mudancas",
+            "fre_acionistas",
+            "controladas",
+            "entidades",
+            "identificadores",
+            "ligacoes",
+        ),
+    ),
+    TemaDoCnpj(
+        "cadastro",
+        "Cadastro e situação na Receita",
+        "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples "
+        "Nacional e o que mudou de um mês para o outro.",
+        (
+            "cnpj_estabelecimentos",
+            "cnpj_estabelecimentos_mudancas",
+            "cnpj_situacao_cadastral",
+            "cnpj_situacao_especial",
+            "cnpj_simples",
+            "cnpj_simples_mudancas",
+        ),
+    ),
+    TemaDoCnpj(
+        "riscos",
+        "Dívida, sanções e processos",
+        "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
+        "empregadores do MTE, os embargos do IBAMA, processos "
+        "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        (
+            "pgfn_divida",
+            "sancoes_cgu",
+            "ans_penalidades",
+            "mte_lista_suja",
+            "ibama_embargos",
+            "processos_partes",
+            "processos_nas_notas",
+        ),
+    ),
+    TemaDoCnpj(
+        "licencas",
+        "Licenças e registros nas agências",
+        "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, "
+        "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
+        "a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        (
+            "ans_operadoras",
+            "susep_cadastro",
+            "anvisa_registros",
+            "anp_concessionarios",
+            "antt_rntrc",
+            "mapa_sipeagro",
+            "anatel_outorgas",
+            "anm_titulos",
+            "anm_sigbm_barragens",
+            "anm_cfem_arrecadacao",
+            "cmed_precos",
+            "ancine_agentes",
+            "cnes_estabelecimentos",
+        ),
+    ),
+    TemaDoCnpj(
+        "dinheiro_publico",
+        "Dinheiro público e capital de fora",
+        "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados "
+        "e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco "
+        "Central.",
+        (
+            "financiamentos_bndes",
+            "financiamentos_finep",
+            "mme_reidi",
+            "aneel_cde",
+            "tce_pe_contratos",
+            "tce_pe_aditivos",
+            "tce_sp_despesas",
+            "tce_ce_contratos",
+            "tce_rs_contratos",
+            "bcb_rde_ied",
+        ),
+    ),
+)
+
+
+def e_coluna_de_cnpj(coluna: str) -> bool:
+    """A coluna guarda o CNPJ (ou a raiz dele) de quem a linha fala."""
+    return bool(_COLUNA_DE_CNPJ.search(coluna)) and not _COLUNA_QUE_CONTA_CNPJ.search(
+        coluna
+    )
+
+
+def tabelas_ligadas_pelo_cnpj(catalogo: dict) -> list[str]:
+    """As tabelas que se juntam pelo CNPJ: uma coluna de CNPJ, ou a rede de entidades."""
+    return [
+        nome
+        for nome, t in catalogo["tabelas"].items()
+        if t["modulo"] == MODULO_DA_REDE or any(map(e_coluna_de_cnpj, t["colunas"]))
+    ]
+
+
+def tabelas_sem_tema(
+    catalogo: dict, temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ
+) -> list[str]:
+    """As tabelas de órgão público ligadas pelo CNPJ que nenhum cartão da página inicial conta."""
+    nos_temas = {nome for tema in temas for nome in tema.tabelas}
+    return [
+        nome
+        for nome in tabelas_ligadas_pelo_cnpj(catalogo)
+        if catalogo["tabelas"][nome]["modulo"] in MODULOS_COM_TEMA_OBRIGATORIO
+        and nome not in nos_temas
+    ]
+
+
+def _orgaos(catalogo: dict, tabelas: Sequence[str]) -> list[str]:
+    """Os órgãos das tabelas, na ordem em que aparecem, sem repetir."""
+    return list(
+        dict.fromkeys(
+            orgao_da_licenca(catalogo["tabelas"][t]["licenca"]) for t in tabelas
+        )
+    )
+
+
+def ligado_pelo_cnpj(
+    catalogo: dict, temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ
+) -> dict:
+    """O "ligado pelo CNPJ" da página inicial: quantas tabelas e órgãos e um cartão por tema."""
+    ligadas = tabelas_ligadas_pelo_cnpj(catalogo)
+    cartoes = []
+    for tema in temas:
+        fora = [t for t in tema.tabelas if t not in catalogo["tabelas"]]
+        if fora:
+            raise ValueError(
+                f"tema {tema.chave} com tabela fora do catálogo: {', '.join(fora)}"
+            )
+        sem_cnpj = [t for t in tema.tabelas if t not in ligadas]
+        if sem_cnpj:
+            raise ValueError(
+                f"tema {tema.chave} com tabela sem coluna de CNPJ: {', '.join(sem_cnpj)}"
+            )
+        cartoes.append(
+            {
+                "chave": tema.chave,
+                "titulo": tema.titulo,
+                "texto": tema.texto,
+                "orgaos": _orgaos(catalogo, tema.tabelas),
+                "tabelas": len(tema.tabelas),
+            }
+        )
+    return {
+        "tabelas": len(ligadas),
+        "orgaos": len(_orgaos(catalogo, ligadas)),
+        "temas": cartoes,
+    }
 
 
 # --- vagas da vitrine da página inicial (plano do site para quem analisa, PR 5, tarefa 8) --------

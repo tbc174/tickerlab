@@ -7,6 +7,7 @@ só com ele. A ANP escreve o nome atual da distribuidora também no passado ("VI
 2010, quando era BR Distribuidora): o CNPJ é o mesmo, e a ligação pela B13 usa esse nome.
 """
 
+import codecs
 import io
 import re
 import unicodedata
@@ -57,10 +58,15 @@ def _nome_da_coluna(coluna: str) -> str:
 
 def _ler_membro(arquivo: zipfile.ZipFile, nome: str) -> tuple[pd.DataFrame, str | None]:
     """O CSV de vendas, com as colunas da base, e a unidade escrita no cabeçalho (se houver)."""
-    primeira = arquivo.open(nome).readline().decode(CODIFICACAO, errors="replace")
+    primeira_linha = arquivo.open(nome).readline()
+    # a ANP passou a gravar alguns arquivos em UTF-8 com BOM; os antigos são latin-1
+    codificacao = (
+        "utf-8-sig" if primeira_linha.startswith(codecs.BOM_UTF8) else CODIFICACAO
+    )
+    primeira = primeira_linha.decode(codificacao, errors="replace")
     com_cabecalho = _simples(primeira.split(";")[0]) == "ano"
     bruto = pd.read_csv(
-        arquivo.open(nome), sep=";", encoding=CODIFICACAO, encoding_errors="replace",
+        arquivo.open(nome), sep=";", encoding=codificacao, encoding_errors="replace",
         dtype=str, keep_default_na=False, header=0 if com_cabecalho else None,
     )  # fmt: skip
     if not com_cabecalho:
