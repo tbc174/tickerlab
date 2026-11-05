@@ -297,3 +297,10 @@ def test_preco_medio_do_comex_soma_os_dois_fluxos_sem_ligar_a_empresa(ambiente):
         pd.read_parquet(ambiente / "setoriais" / "buracos.parquet")["fonte"]
         == comex_preco_medio.FONTE
     ).any()
+
+
+def test_ccee_e_lida_mesmo_com_o_endereco_do_portal_sem_extensao():
+    """O portal da CCEE entrega o CSV em `.../content`, sem `.csv` no endereço: o leitor tem de valer
+    para toda coleta da fonte (a carga ignorava as 20 coletas do PLD)."""
+    linha = type("Linha", (), {"url": "https://pda-download.ccee.org.br/abc/content"})()
+    assert carga_setoriais._leitor(ccee.FONTE, linha) is ccee.ler

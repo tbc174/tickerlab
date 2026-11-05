@@ -1,8 +1,10 @@
 """Cache persistente de preços em SQLite: o app consulta menos o Yahoo e sobrevive a uma queda dele.
 
-Duas tabelas:
+Três tabelas:
 - `precos`: uma linha por ticker e dia (abertura, máxima, mínima, fechamento e volume);
-- `consultas`: quando o Yahoo foi consultado pela última vez para cada ticker.
+- `consultas`: quando o Yahoo foi consultado pela última vez para cada ticker;
+- `historicos_inteiros`: os tickers guardados com todo o histórico do Yahoo (o período "Tudo").
+  Sem essa marca, um guardado de 2 anos não se distingue do histórico inteiro de um ativo novo.
 
 O arquivo do banco fica fora do Git (veja `.gitignore`) e pode ser apagado a qualquer momento: o
 app recria tudo e baixa de novo.
@@ -68,6 +70,9 @@ def _conectar(caminho: Path | None) -> sqlite3.Connection:
                consultado_em TEXT NOT NULL
            )"""
     )
+    conexao.execute(
+        "CREATE TABLE IF NOT EXISTS historicos_inteiros (ticker TEXT PRIMARY KEY)"
+    )
     return conexao
 
 
@@ -78,6 +83,10 @@ INSERIR_PRECOS = (
 REGISTRAR_CONSULTA = (
     "INSERT OR REPLACE INTO consultas (ticker, consultado_em) VALUES (?, ?)"
 )
+MARCAR_HISTORICO_INTEIRO = (
+    "INSERT OR IGNORE INTO historicos_inteiros (ticker) VALUES (?)"
+)
+DESMARCAR_HISTORICO_INTEIRO = "DELETE FROM historicos_inteiros WHERE ticker = ?"
 
 
 def _instante(momento: datetime) -> str:
@@ -126,11 +135,13 @@ def substituir_precos(
     dados: pd.DataFrame,
     agora: datetime | None = None,
     caminho: Path | None = None,
+    historico_inteiro: bool = False,
 ) -> int:
     """Troca o histórico inteiro do ticker pelo recebido, numa transação só.
 
     Ou o histórico novo fica inteiro no lugar do antigo, ou (se algo falhar no meio) o antigo
-    continua lá: nunca sobra um ticker sem histórico nem um histórico misturado.
+    continua lá: nunca sobra um ticker sem histórico nem um histórico misturado. A marca de
+    histórico inteiro passa a dizer o que chegou agora (`historico_inteiro`).
     """
     if dados.empty:
         raise ValueError("Histórico vazio: o guardado não pode ser trocado por nada.")
@@ -140,7 +151,25 @@ def substituir_precos(
         conexao.execute("DELETE FROM precos WHERE ticker = ?", (ticker,))
         conexao.executemany(INSERIR_PRECOS, linhas)
         conexao.execute(REGISTRAR_CONSULTA, (ticker, _instante(agora)))
+        conexao.execute(DESMARCAR_HISTORICO_INTEIRO, (ticker,))
+        if historico_inteiro:
+            conexao.execute(MARCAR_HISTORICO_INTEIRO, (ticker,))
     return len(linhas)
+
+
+def marcar_historico_inteiro(ticker: str, caminho: Path | None = None) -> None:
+    """Anota que o guardado do ticker é todo o histórico do Yahoo (veio de um pedido "max")."""
+    with closing(_conectar(caminho)) as conexao, conexao:
+        conexao.execute(MARCAR_HISTORICO_INTEIRO, (ticker,))
+
+
+def tem_historico_inteiro(ticker: str, caminho: Path | None = None) -> bool:
+    """O guardado do ticker é todo o histórico do Yahoo (cobre o período "Tudo")?"""
+    with closing(_conectar(caminho)) as conexao:
+        linha = conexao.execute(
+            "SELECT 1 FROM historicos_inteiros WHERE ticker = ?", (ticker,)
+        ).fetchone()
+    return linha is not None
 
 
 def registrar_consulta(
@@ -189,6 +218,7 @@ def apagar_tickers_esquecidos(
         conexao.executemany(
             "DELETE FROM precos WHERE ticker = ?", [(t,) for t in esquecidos]
         )
+        conexao.executemany(DESMARCAR_HISTORICO_INTEIRO, [(t,) for t in esquecidos])
     if esquecidos:
         log.info("Saíram do guardado %d tickers sem consulta.", len(esquecidos))
     return len(esquecidos)

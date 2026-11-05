@@ -7,6 +7,7 @@ fontes, marca, relatório de exemplo e catálogo vêm de `scripts/gerar_site.py`
 import html
 import json
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -43,13 +44,24 @@ def esc(texto: str) -> str:
     return html.escape(texto, quote=True)
 
 
+def _conteudo(caminho: Path) -> object:
+    """Os bytes do arquivo; do .pptx, o texto de cada parte menos as imagens: o Pillow do PC e o do CI
+    recodificam a marca de jeitos diferentes, e isso não muda nenhum slide."""
+    if caminho.suffix != ".pptx":
+        return caminho.read_bytes()
+    with zipfile.ZipFile(caminho) as pptx:
+        return {
+            n: pptx.read(n) for n in pptx.namelist() if not n.startswith("ppt/media/")
+        }
+
+
 def test_parte_do_python_esta_em_dia(regerado):
     """Mudou a marca, o relatório de exemplo ou o catálogo? Rode `python -m scripts.gerar_site`."""
     novos = gs.arquivos_do_python(regerado)
     atuais = gs.arquivos_do_python(SITE)
     assert novos == atuais
     diferentes = [
-        str(c) for c in novos if (regerado / c).read_bytes() != (SITE / c).read_bytes()
+        str(c) for c in novos if _conteudo(regerado / c) != _conteudo(SITE / c)
     ]
     assert not diferentes, f"Rode python -m scripts.gerar_site: {diferentes}"
 
@@ -105,7 +117,7 @@ def test_nada_vem_de_terceiros():
     """Sem Google Fonts, sem rastreadores: fontes, imagens e scripts são do próprio site."""
     for arquivo in [
         *PAGINAS_HTML,
-        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js")),
+        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js", "origem.js")),
     ]:
         texto = arquivo.read_text(encoding="utf-8")
         assert "googleapis" not in texto and "gstatic" not in texto
@@ -194,6 +206,12 @@ def test_catalogo_da_busca_e_o_do_app():
     assert all(len(a) == 5 for a in ativos)
 
 
+def test_ads_txt_e_gerado_com_a_linha_do_adsense(regerado):
+    esperado = "google.com, pub-4178012487609221, DIRECT, f08c47fec0942fa0\n"
+    assert (regerado / "ads.txt").read_bytes() == esperado.encode()
+    assert (SITE / "ads.txt").read_bytes() == esperado.encode()
+
+
 def test_relatorio_de_exemplo_e_um_pdf_de_verdade_marcado_como_exemplo():
     from io import BytesIO
 
@@ -257,7 +275,7 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
     um deploy recebe o HTML novo com o estilo antigo."""
     import hashlib
 
-    for nome in ("estilo.css", "site.js", "movimento.js"):
+    for nome in ("estilo.css", "site.js", "movimento.js", "origem.js"):
         conteudo = (SITE / nome).read_text(
             encoding="utf-8"
         )  # quebras de linha iguais em todo SO
@@ -497,3 +515,24 @@ def test_security_txt_existe_e_nao_esta_perto_de_vencer():
     assert vence - datetime.now(UTC) > timedelta(days=30), (
         "renove o Expires do security.txt"
     )
+
+
+def test_toda_pagina_do_site_com_dados_da_base_leva_o_selo_da_data():
+    """Linha 605: página que diz "Dados da base de" tem de trazer o selo com a mesma data (DD/MM/AAAA)."""
+    import re
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parent.parent / "site"
+    selo = re.compile(r'data-data-da-base="(\d{2}/\d{2}/\d{4})"')
+    dados = re.compile(r"Dados da base de (\d{2}/\d{2}/\d{4})")
+    com_dados = [
+        p for p in raiz.glob("*.html") if dados.search(p.read_text(encoding="utf-8"))
+    ]
+    assert com_dados, (
+        "nenhuma página com 'Dados da base de': o teste deixou de olhar o site"
+    )
+    for pagina in com_dados:
+        html = pagina.read_text(encoding="utf-8")
+        assert selo.findall(html) == dados.findall(html), (
+            f"{pagina.name} sai sem o selo da data da base"
+        )

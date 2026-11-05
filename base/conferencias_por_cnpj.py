@@ -6,9 +6,21 @@ nem Parquet (o mesmo jeito dos contratos do PNCP). Uma seção por tema na ficha
 - **não consta**: a fonte está no arquivo (`meta.estado`, com a data até onde foi conferida) e a raiz não;
 - **não conferido**: a fonte não está no arquivo. A ficha nunca confunde isso com "não consta".
 
-**Vigente.** Nas tabelas de retratos (sanções, licenças e incentivos), o valor mais novo de cada registro já
+**Vigente.** Nas tabelas de retratos (sanções, licenças, incentivos e financiamentos), o valor mais novo de cada registro já
 público no dia da montagem (`como_era_em`) e só se ainda consta na fonte. Na dívida ativa, o retrato mais novo
 já público de cada tipo de dívida. Nada do futuro: a linha que ainda não era pública fica de fora.
+
+**Financiamentos.** O histórico de contratações do BNDES e da Finep (linha 469): cada operação com o valor
+contratado e o desembolsado como a fonte divulga, em texto exato ("250.04"), nunca somados nem tomados por
+saldo; a liquidada continua (é o histórico), com a situação ao lado. Uma fonte por banco, cada uma com a sua
+licença (`licenca` no estado: a do BNDES é ODbL e pede a atribuição).
+
+**Preços da CMED.** As duas listas de preços máximos (`cmed_precos`), cada uma uma fonte: `consumidor` (PF e
+PMC) e `governo` (PF e PMVG). Uma linha por apresentação com o CNPJ inteiro (a filial não se mistura dentro da
+raiz), os preços sem impostos e com ICMS de 0% em texto exato (os de cada alíquota ficam na base), as marcas e as
+datas; `total` conta as apresentações. É teto regulatório, não preço praticado nem faturamento; e "vigente na
+lista" não quer dizer "registro ativo na Anvisa": a situação sanitária não é conferida aqui. A licença própria
+das listas está a confirmar (é a do `licenca` da fonte).
 
 **Sem pessoa física.** A linha marcada `trata_como_pessoa` (empresário individual e MEI, ADR 0075) não entra,
 nem coluna de texto livre que possa levar nome (assunto, origem da informação, complemento). A ficha também não
@@ -34,6 +46,7 @@ from base.porta import Porta, vista_do_cnpj
 from base.porta.duckdb import nome_da_view
 from base.porta.rede import views
 from base.rede import grupo_do_qsa
+from src.banco.coletas import licenca_da_fonte
 
 ESQUEMA = "1"  # o portal recusa outro: campo novo só entra com o contrato da integração
 LINHAS_POR_FONTE = 50  # por raiz e fonte; `total` diz quantas há
@@ -41,6 +54,8 @@ TEMAS = {
     "sinais": "Sanções, penalidades e dívida ativa",
     "licencas": "Licenças e registros",
     "incentivos": "Incentivos e benefícios",
+    "financiamentos": "Financiamentos do BNDES e da Finep",
+    "precos": "Preços máximos de medicamentos (CMED)",
 }
 RAIZ_DA_FONTE = "raiz"  # a fonte só traz a raiz do CNPJ (o RDE-IED)
 
@@ -53,6 +68,22 @@ _LICENCAS = (
     "cadastro", "cnpj", "registro", "categoria", "descricao", "situacao", "uf", "municipio",
     "concedido_em", "vence_em", "cancelado_em",
 )  # fmt: skip
+_FINANCIAMENTOS = (
+    "cnpj", "modalidade", "contrato", "convenio_do_agente", "contratado_em", "valor_contratado",
+    "valor_desembolsado", "contrapartida", "financiador", "forma_de_apoio", "produto",
+    "custo_financeiro", "juros", "carencia_meses", "amortizacao_meses", "situacao", "situacao_classe",
+    "uf",
+)  # fmt: skip
+
+
+def _cmed(maximo: str) -> tuple[str, ...]:
+    """As colunas de uma lista da CMED na ficha: o PF e o preço máximo dela (`pmc` ou `pmvg`)."""
+    return (
+        "cnpj", "ggrem", "registro", "produto", "apresentacao", "substancia", "tipo_de_produto",
+        "regime_de_preco", "pf_sem_impostos", "pf_0", f"{maximo}_sem_impostos", f"{maximo}_0",
+        "precos_com_asterisco", "restricao_hospitalar", "cap", "confaz_87", "lista_publicada_em",
+        "publico_desde",
+    )  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -67,6 +98,15 @@ class Fonte:
     colunas: tuple[str, ...]  # só estas vão para o arquivo
     ordem: str  # a linha mais nova (ou maior) primeiro
     chave: str = "cnpj"  # "cnpj" (a raiz sai do CNPJ inteiro) ou `RAIZ_DA_FONTE`
+    # só as linhas desta `lista` da tabela (a CMED: uma fonte por lista)
+    lista: str = ""
+    # a coluna que decide entre linhas de `ordem` igual (a ordem fica estável)
+    desempate: str = ""
+
+    @property
+    def nome_no_arquivo(self) -> str:
+        """Como a fonte aparece em `registros` e no estado: a tabela, e a lista quando há."""
+        return f"{self.tabela}_{self.lista}" if self.lista else self.tabela
 
 
 FONTES = (
@@ -104,6 +144,16 @@ FONTES = (
     Fonte("bcb_rde_ied", "incentivos", "Registros de investimento estrangeiro direto (RDE-IED)",
           "Banco Central", "https://dadosabertos.bcb.gov.br",
           ("codigo_rde", "uf", "pais", "ocorrencia", "mes"), "mes", RAIZ_DA_FONTE),
+    Fonte("financiamentos_bndes", "financiamentos", "Operações de crédito não automáticas do BNDES",
+          "BNDES", "https://dadosabertos.bndes.gov.br/", _FINANCIAMENTOS, "contratado_em"),
+    Fonte("financiamentos_finep", "financiamentos", "Crédito direto e descentralizado da Finep", "Finep",
+          "https://www.finep.gov.br/", _FINANCIAMENTOS, "contratado_em"),
+    Fonte("cmed_precos", "precos", "Preço Fábrica e Preço Máximo ao Consumidor (PF e PMC)",
+          "CMED (Anvisa)", "https://dados.anvisa.gov.br/dados/", _cmed("pmc"), "pf_0",
+          lista="consumidor", desempate="id_na_fonte"),
+    Fonte("cmed_precos", "precos", "Preço Fábrica e Preço Máximo de Venda ao Governo (PF e PMVG)",
+          "CMED (Anvisa)", "https://dados.anvisa.gov.br/dados/", _cmed("pmvg"), "pf_0",
+          lista="governo", desempate="id_na_fonte"),
 )  # fmt: skip
 
 _CNPJ_LIMPO = "regexp_replace(upper(CAST(cnpj AS VARCHAR)), '[^0-9A-Z]', '', 'g')"
@@ -111,6 +161,11 @@ _CNPJ_LIMPO = "regexp_replace(upper(CAST(cnpj AS VARCHAR)), '[^0-9A-Z]', '', 'g'
 
 def _view(tabela: str) -> str:
     return '"' + nome_da_view(tabela).replace('"', '""') + '"'
+
+
+def _da_lista(fonte: Fonte) -> str:
+    """O filtro da `lista` da fonte (vazio sem lista); o nome vem de `FONTES`, nunca de fora."""
+    return f"AND lista = '{fonte.lista}'" if fonte.lista else ""
 
 
 def _vigentes_sql(fonte: Fonte, hoje: date) -> str:
@@ -134,14 +189,14 @@ def _vigentes_sql(fonte: Fonte, hoje: date) -> str:
     return f"""
         SELECT {raiz} AS raiz, *, CAST(disponivel_em AS DATE) AS publico_desde FROM (
             SELECT *, {janela} AS n FROM {_view(fonte.tabela)}
-            WHERE CAST(disponivel_em AS DATE) <= {dia}
+            WHERE CAST(disponivel_em AS DATE) <= {dia} {_da_lista(fonte)}
         )
         WHERE {condicao} AND NOT coalesce(trata_como_pessoa, false) {filtro_cnpj}
     """
 
 
 def _valor(valor: object) -> object:
-    """Um valor de célula em tipo de JSON: data em ISO, vazio em None."""
+    """Um valor de célula em tipo de JSON: data em ISO, vazio em None, `Decimal` em texto exato."""
     if valor is None or (not isinstance(valor, str) and pd.isna(valor)):  # type: ignore[arg-type]
         return None
     if isinstance(valor, pd.Timestamp | datetime | date):
@@ -156,16 +211,30 @@ def _linhas_da_fonte(
 ) -> tuple[pd.DataFrame, str | None]:
     """As linhas vigentes (só as colunas da ficha e a raiz) e o dia mais novo conferido na fonte."""
     con.execute(f"CREATE OR REPLACE TEMP VIEW vigentes AS {_vigentes_sql(fonte, hoje)}")
-    presentes = {linha[0] for linha in con.execute("DESCRIBE vigentes").fetchall()}
-    colunas = [c for c in fonte.colunas if c in presentes]
-    selecao = ", ".join(["raiz", *colunas])
+    tipos = {
+        linha[0]: linha[1] for linha in con.execute("DESCRIBE vigentes").fetchall()
+    }
+    colunas = [c for c in fonte.colunas if c in tipos]
+    # o decimal sai em texto ("250.04"): o DataFrame do DuckDB o faria float e perderia o valor exato
+    selecao = ", ".join(
+        [
+            "raiz",
+            *(
+                f"CAST({c} AS VARCHAR) AS {c}" if tipos[c].startswith("DECIMAL") else c
+                for c in colunas
+            ),
+        ]
+    )
+    # a ordem é a da coluna da view (o número), não a do texto da seleção ("99.00" > "1000.00")
+    desempate = f", vigentes.{fonte.desempate}" if fonte.desempate else ""
     tabela = con.execute(
-        f"SELECT {selecao} FROM vigentes ORDER BY raiz, {fonte.ordem} DESC NULLS LAST"
+        f"SELECT {selecao} FROM vigentes "
+        f"ORDER BY raiz, vigentes.{fonte.ordem} DESC NULLS LAST{desempate}"
     ).df()
     dia = "data_do_retrato" if fonte.tabela == "pgfn_divida" else "visto_em"
     conferido = con.execute(
         f"SELECT max(CAST({dia} AS DATE)) FROM {_view(fonte.tabela)} "
-        f"WHERE CAST(disponivel_em AS DATE) <= DATE '{hoje.isoformat()}'"
+        f"WHERE CAST(disponivel_em AS DATE) <= DATE '{hoje.isoformat()}' {_da_lista(fonte)}"
     ).fetchone()
     ultimo = conferido[0] if conferido else None
     return tabela, (ultimo.isoformat() if ultimo else None)
@@ -225,7 +294,8 @@ def montar(
 ) -> dict:
     """Grava o arquivo das conferências em `destino` (troca no fim) e devolve o estado gravado.
 
-    Só entra a fonte que tem arquivo na `base`: a que falta fica "não conferida" na ficha.
+    Só entra a fonte que tem arquivo na `base` (e, com `lista`, linha dessa lista já pública): a
+    que falta fica "não conferida" na ficha.
     """
     agora = agora or datetime.now(UTC)
     hoje = agora.date()
@@ -247,15 +317,21 @@ def montar(
                     if nome_da_view(fonte.tabela) not in existem:
                         continue
                     tabela, conferido = _linhas_da_fonte(porta.con, fonte, hoje)
+                    if fonte.lista and conferido is None:
+                        continue  # a lista ainda não montada fica "não conferida", nunca zero
                     linhas = list(_por_raiz(tabela))
                     banco.executemany(
                         "INSERT INTO registros VALUES (?, ?, ?, ?)",
-                        [(raiz, fonte.tabela, total, js) for raiz, total, js in linhas],
+                        [
+                            (raiz, fonte.nome_no_arquivo, total, js)
+                            for raiz, total, js in linhas
+                        ],
                     )
                     estado["fontes"].append(
                         {
-                            "tabela": fonte.tabela, "tema": fonte.tema, "nome": fonte.nome,
+                            "tabela": fonte.nome_no_arquivo, "tema": fonte.tema, "nome": fonte.nome,
                             "orgao": fonte.orgao, "endereco": fonte.endereco,
+                            "licenca": licenca_da_fonte(TABELAS[fonte.tabela].familia_da_fonte),
                             "conferido_ate": conferido, "empresas": len(linhas),
                             "registros": len(tabela),
                         }

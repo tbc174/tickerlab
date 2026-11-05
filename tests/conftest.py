@@ -97,6 +97,14 @@ def limites_de_depois_do_lancamento():
 
 
 @pytest.fixture(autouse=True)
+def sem_a_faixa_de_preco_do_yahoo(monkeypatch):
+    """Nenhum teste vai ao Yahoo buscar a faixa de 52 semanas da ficha; o que quiser a usa por conta."""
+    monkeypatch.setattr(
+        "src.faixa_de_preco.baixar_fechamento_sem_ajuste", lambda *_: None
+    )
+
+
+@pytest.fixture(autouse=True)
 def banco_de_precos_isolado(tmp_path, monkeypatch):
     """Cada teste usa um banco SQLite novo: nenhum teste lê ou escreve o banco de verdade."""
     monkeypatch.setenv(VARIAVEL_DO_CAMINHO, str(tmp_path / "precos_de_teste.sqlite"))

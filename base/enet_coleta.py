@@ -4,6 +4,9 @@
   prova do ENET (13/10/2026). Cada pacote tem de 13 a 33 MB, quase tudo do PDF.
 - **Retomável** (`baixar_em_fila`): o que já está guardado é pulado; o que falhou fica para a
   próxima vez, sem parar a fila.
+- **Pacote que chegou e não se lê** (formato sem leitor, zip estragado) fica registrado e é deixado
+  de lado por um mês (`deixados_de_lado`): baixá-lo toda noite não muda nada (04/11/2026: os mesmos
+  47 pacotes, 11 minutos e ~1 GB da CVM por noite). Falha de rede nunca é deixada de lado.
 - **O que vai para o acervo é o XML limpo** (`base.enet.limpar_xml`: sem o PDF e sem os dados de
   quem entregou), registrado pelo SHA-256 dele. Nos pacotes de formato antigo (`.dfp`,
   `base/enet_antigo.py`) é um zip enxuto com os três XMLs que importam. O SHA-256 do pacote não serve: o ENET monta o zip
@@ -18,7 +21,7 @@ import time
 import zipfile
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from xml.etree.ElementTree import ParseError
 
 import requests
@@ -47,6 +50,9 @@ TEMPO_LIMITE = 120  # segundos por pacote
 CABECALHO = {"User-Agent": AGENTE}
 # o XML do documento dentro do pacote: 014206DFP31-12-2022v1.xml, 001023ITR31-03-2026v1.xml
 NOME_DO_XML = re.compile(r"^\d+(DFP|ITR)\d{2}-\d{2}-\d{4}v\d+\.xml$", re.IGNORECASE)
+# um pacote é deixado de lado quando o leitor não conhece o formato ou depois de tantas falhas
+FALHAS_ANTES_DE_DEIXAR_DE_LADO = 3
+TEMPO_DEIXADO_DE_LADO = timedelta(days=30)  # depois disso, tenta uma vez de novo
 # o que um pacote ruim pode causar (rede, zip estragado, XML inválido ou malicioso, valor estranho);
 # erro do banco não está aqui: ele se repetiria em todos e para a fila
 ERROS_DE_UM_PACOTE = (
@@ -106,11 +112,12 @@ def baixar_em_fila(
     ja_feitos: set[str],
     ao_baixar: Callable[[str, bytes], object],
     continuar: Callable[[], bool] = lambda: True,
+    ao_falhar: Callable[[str, Exception], object] = lambda link, erro: None,
 ) -> ResultadoDaFila:
     """Baixa e entrega a `ao_baixar` cada link que ainda não está em `ja_feitos`.
 
-    Um link que falha (no download ou ao guardar) vai para `falhas` e a fila segue. Antes de cada
-    download pergunta a `continuar` (a janela da madrugada); se não, para e marca `interrompida`.
+    Um link que falha (no download ou ao guardar) vai para `falhas` e para `ao_falhar`, e a fila
+    segue. Antes de cada download pergunta a `continuar` (a janela da madrugada); se não, para e marca `interrompida`.
     """
     resultado = ResultadoDaFila()
     for link in links:
@@ -127,6 +134,7 @@ def baixar_em_fila(
             if isinstance(erro, FormatoNaoLido):
                 resultado.falhas_de_formato.add(link)
             resultado.falhas[link] = f"{type(erro).__name__}: {erro}"[:300]
+            ao_falhar(link, erro)
             continue
         resultado.baixados.append(link)
     return resultado
@@ -194,6 +202,11 @@ def guardar(
     return documento
 
 
+def falha_de_rede(erro: BaseException) -> bool:
+    """A falha foi da rede (ou do disco), e não do pacote? Essa passa sozinha: nunca se deixa de lado."""
+    return isinstance(erro, OSError)  # inclui os erros do requests
+
+
 def registrar_falha(
     conexao: sa.Connection, link: str, erro: BaseException, agora: datetime
 ) -> None:
@@ -206,5 +219,42 @@ def ja_guardados(conexao: sa.Connection) -> set[str]:
     """Os links do ENET já guardados com sucesso (a fila pula esses)."""
     consulta = sa.select(coletas.c.url).where(
         coletas.c.fonte == FONTE, coletas.c.situacao == "ok"
+    )
+    return set(conexao.execute(consulta).scalars())
+
+
+def _falhas_sem_sucesso() -> sa.Select:
+    """Os links do ENET com falha registrada e nunca guardados, um por linha."""
+    guardados = sa.select(coletas.c.url).where(
+        coletas.c.fonte == FONTE, coletas.c.situacao == "ok"
+    )
+    return (
+        sa.select(coletas.c.url)
+        .where(
+            coletas.c.fonte == FONTE,
+            coletas.c.situacao == "falhou",
+            coletas.c.url.not_in(guardados),
+        )
+        .group_by(coletas.c.url)
+    )
+
+
+def ja_falharam(conexao: sa.Connection) -> set[str]:
+    """Os links do ENET que já falharam alguma vez e nunca foram guardados."""
+    return set(conexao.execute(_falhas_sem_sucesso()).scalars())
+
+
+def deixados_de_lado(conexao: sa.Connection, agora: datetime) -> set[str]:
+    """Os links que a fila pula por enquanto: o leitor não conhece o formato, ou falharam
+    `FALHAS_ANTES_DE_DEIXAR_DE_LADO` vezes. Voltam `TEMPO_DEIXADO_DE_LADO` depois da última falha.
+
+    Conta só o que está registrado: quem registra deixa de fora a falha de rede (`falha_de_rede`).
+    """
+    sem_leitor = sa.func.max(
+        sa.case((coletas.c.detalhe == FormatoNaoLido.__name__, 1), else_=0)
+    )
+    consulta = _falhas_sem_sucesso().having(
+        sa.or_(sem_leitor == 1, sa.func.count() >= FALHAS_ANTES_DE_DEIXAR_DE_LADO),
+        sa.func.max(coletas.c.baixado_em) > agora - TEMPO_DEIXADO_DE_LADO,
     )
     return set(conexao.execute(consulta).scalars())

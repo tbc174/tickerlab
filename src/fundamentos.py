@@ -52,6 +52,7 @@ NAO_SE_APLICA_A_FINANCEIRAS = (
 )
 REAIS, FRACAO, VEZES, REAIS_POR_ACAO = "reais", "fração", "vezes", "reais por ação"
 SEM_RECEITA = "Sem receita positiva no período."
+RECEITA_NEGATIVA = "Receita negativa nos 12 meses: os períodos publicados não são comparáveis (reclassificação)."
 SEM_DIVIDENDOS_NO_CAIXA = (
     "O fluxo de caixa não traz linha de dividendos ou JCP pagos: não dá para saber se a "
     "empresa não pagou ou se a linha tem outro nome."
@@ -652,7 +653,8 @@ class _Lista:
 
 def _resultado(lista: _Lista, ttm: dict, base: str, financeira: bool) -> None:
     receita, lucro_total = ttm.get("receita"), ttm.get("lucro_liquido")
-    lista.add("receita", "Receita (12 meses)", receita, REAIS, base)
+    negativa = RECEITA_NEGATIVA if receita is not None and receita < 0 else ""
+    lista.add("receita", "Receita (12 meses)", receita, REAIS, base, negativa)
     lista.add("lucro", "Lucro dos acionistas (12 meses)", _lucro(ttm), REAIS, base)
     sem_receita = "" if _positivo(receita) else SEM_RECEITA
     for chave, nome, conta in (

@@ -10,6 +10,7 @@ import pytest
 
 from base.conferencia import (
     REGRA_POR_UNIDADE,
+    _datas_fora_de_ordem,
     conferir,
     tabela_do_destino,
 )
@@ -163,6 +164,22 @@ def test_fato_anunciado_antes_de_acontecer_passa_onde_o_dicionario_permite():
     assert _problemas(tabela) == []
 
 
+def test_ma_candidatos_aceita_referencia_depois_da_entrega():
+    # no IPE a `referencia` é a data que a companhia informa (a assembleia que vai aprovar a
+    # operação, por exemplo) e pode vir depois da entrega à CVM: não é erro de leitura
+    tabela = TABELAS["ma_candidatos"]
+    assert tabela.anuncia_o_futuro
+    datas = {
+        "referencia": pd.Series([pd.Timestamp("2024-04-30")]),
+        "publico_em": pd.Series([pd.Timestamp("2024-03-02")]),
+        "origem_coletada_em": pd.Series([pd.Timestamp("2024-03-03")]),
+    }
+    assert _datas_fora_de_ordem(tabela, datas) == []
+    # a regra segue valendo para as outras datas: público depois de coletado reprova
+    datas["publico_em"] = pd.Series([pd.Timestamp("2024-03-05")])
+    assert len(_datas_fora_de_ordem(tabela, datas)) == 1
+
+
 def test_data_antes_de_1900_reprova():
     tabela = _eventos()
     tabela.loc[0, "referencia"] = date(1024, 3, 1)
@@ -236,3 +253,84 @@ def test_conferencia_que_falha_nao_para_a_montagem(tmp_path, monkeypatch):
         "aprovada": False,
         "erro": "RuntimeError: defeito no conferidor",
     }
+
+
+def _balanco_e_dre() -> pd.DataFrame:
+    """Duas linhas de `demonstracoes_como_era`: o balanço (sem `inicio`) e a DRE do trimestre e do acumulado."""
+    linhas = [
+        ("BPA", "1", None, "2024-03-31", "ultimo"),
+        ("DRE", "3.01", "2024-01-01", "2024-03-31", "ultimo"),
+        ("DRE", "3.01", "2024-03-01", "2024-03-31", "ultimo"),
+    ]
+    colunas = TABELAS["demonstracoes_como_era"].colunas
+    quadro = pd.DataFrame(
+        [
+            {
+                **{c: None for c in colunas},
+                "cnpj": "00.000.000/0001-91",
+                "empresa": "X",
+                "grupo": "con",
+                "demonstracao": demonstracao,
+                "conta": conta,
+                "descricao": "c",
+                "inicio": inicio,
+                "fim": fim,
+                "valor": 1.0,
+                "documento": "123",
+                "referencia": "2024-03-31",
+                "versao": 1,
+                "ordem": ordem,
+                "origem": "dados_abertos",
+                "divulgado_em": "2024-05-10",
+                "ate": None,
+            }
+            for demonstracao, conta, inicio, fim, ordem in linhas
+        ]
+    )
+    for coluna in ("inicio", "fim", "referencia", "divulgado_em", "ate"):
+        quadro[coluna] = pd.to_datetime(quadro[coluna])
+    return quadro
+
+
+def test_chave_das_demonstracoes_aceita_inicio_vazio_e_separa_trimestre_de_acumulado():
+    resultado = conferir(_balanco_e_dre(), "demonstracoes_como_era", hoje=HOJE)
+    assert not [p for p in resultado.problemas if "vazio" in p or "duplicada" in p]
+
+
+def test_chave_das_demonstracoes_reprova_linha_repetida():
+    quadro = _balanco_e_dre()
+    repetida = pd.concat([quadro, quadro.iloc[[1]]], ignore_index=True)
+    resultado = conferir(repetida, "demonstracoes_como_era", hoje=HOJE)
+    assert any("chave duplicada" in p for p in resultado.problemas)
+
+
+def test_chave_que_nao_aceita_vazio_continua_reprovando_o_vazio():
+    quadro = _balanco_e_dre()
+    quadro.loc[0, "fim"] = pd.NaT  # `fim` está na chave e não está liberada
+    resultado = conferir(quadro, "demonstracoes_como_era", hoje=HOJE)
+    assert any("fim: 1 vazio" in p for p in resultado.problemas)
+
+
+@pytest.mark.parametrize(
+    ("destino", "tabela"),
+    [
+        ("acervo/base/demonstracoes/2024.parquet", "demonstracoes_como_era"),
+        ("acervo/base/dmpl/2024.parquet", "dmpl_como_era"),
+        (
+            "acervo/base/cnpj/vigente/estabelecimentos/00.parquet",
+            "cnpj_estabelecimentos",
+        ),
+        ("acervo/base/cnpj/vigente/simples/00.parquet", "cnpj_simples"),
+        ("acervo/base/cnpj/vigente/qsa/00.parquet", "cnpj_qsa"),
+        (
+            "acervo/base/cnpj/mudancas/estabelecimentos/2024-06.parquet",
+            "cnpj_estabelecimentos_mudancas",
+        ),
+        ("acervo/base/cnpj/mudancas/simples/2024-06.parquet", "cnpj_simples_mudancas"),
+        ("acervo/base/cnpj/mudancas/qsa/2024-06.parquet", "cnpj_qsa_mudancas"),
+    ],
+)
+def test_pastas_da_api_apontam_para_a_tabela_certa(destino, tabela):
+    from pathlib import PurePath
+
+    assert tabela_do_destino(PurePath(destino)) == tabela

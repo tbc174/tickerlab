@@ -354,3 +354,24 @@ def test_ativo_sem_cadastro(banco, da_cvm):
     app = _abrir("BTC-USD")
     assert not app.exception
     assert any("não tem cadastro na CVM nem na SEC" in i.value for i in app.info)
+
+
+def test_primeira_entrega_e_a_negociacao_mais_antiga(banco, da_cvm):
+    with banco.begin() as c:
+        assert repo.primeira_entrega(c) is None
+    _coletar(banco, da_cvm)
+    with banco.connect() as c:
+        assert repo.primeira_entrega(c) == datetime.now(FUSO).date() - timedelta(days=5)
+
+
+def test_periodos_de_2_e_5_anos_e_lista_maior(banco, da_cvm):
+    _coletar(banco, da_cvm)
+    app = _abrir()
+    app.button_group(key="dentro_janela").set_value(1826).run()
+    assert not app.exception
+    assert any(
+        "A base tem negociações tornadas públicas desde" in c.value for c in app.caption
+    )
+    app.button_group(key="dentro_tamanho").set_value(50).run()
+    assert not app.exception
+    assert [t for t in app.dataframe if "Saldo" in t.value.columns]

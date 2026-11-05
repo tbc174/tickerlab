@@ -14,8 +14,8 @@ from src.banco.coletas import Coleta, Guarda
 HOJE = date(2026, 10, 26)
 
 # Famílias que passam as marcas do portão externo (revenda, guarda, coleta, leitura dos termos).
-# Ficam de fora, de propósito: `bm`, `cgu` e `cftc` (revenda só uso interno); `rfb-cnpj` (coleta
-# `robots_fecha` com as duas condições, mas `TERMOS_LIDOS_EM` ainda não tem a data da leitura)
+# Ficam de fora, de propósito: `bm`, `cgu` e `cftc` (revenda só uso interno). `rfb-cnpj` passa desde
+# que `TERMOS_LIDOS_EM` ganhou a data da leitura (coleta `robots_fecha` com as duas condições).
 PASSAM_AS_MARCAS = {
     "antt",
     "bcb",
@@ -42,6 +42,8 @@ PASSAM_AS_MARCAS = {
     "susep",
     "usda",
     "faostat",
+    "bis",
+    "rfb-cnpj",
 }
 
 
@@ -74,7 +76,7 @@ def test_o_que_a_auditoria_vedou_nao_sai() -> None:
 
 
 def test_familia_que_a_auditoria_nao_leu_continua_negada() -> None:
-    for familia in ("mb", "ibge", "inmet", "pgfn", "comexstat", "bis", "ebc"):
+    for familia in ("mb", "ibge", "inmet", "pgfn", "comexstat", "ebc"):
         resposta = coletas.COLETA_E_GUARDA[familia]
         assert resposta.coleta is Coleta.NAO_LIDA, familia
         assert resposta.guarda is Guarda.NAO_DIZ, familia
@@ -96,3 +98,14 @@ def test_nenhuma_marca_de_revenda_mudou() -> None:
     assert coletas.marca_da_fonte("kraken") is coletas.Marca.NAO_COMERCIAL
     assert coletas.marca_da_fonte("gdelt") is coletas.Marca.VENDAVEL
     assert coletas.marca_da_fonte("cftc") is coletas.Marca.VENDAVEL
+
+
+def test_bis_foi_lido_em_03_11_e_coleta_aberta_sem_prazo() -> None:
+    """Linha 639: `data.bis.org/help/legal` libera o uso e o robots.txt não fecha a API (ADR 0121)."""
+    from base.arquivo.registro import TERMOS_LIDOS_EM
+
+    resposta = coletas.COLETA_E_GUARDA["bis"]
+    assert resposta.coleta is Coleta.ABERTA
+    assert resposta.guarda is Guarda.SEM_PRAZO
+    assert TERMOS_LIDOS_EM["bis"] == date(2026, 11, 3)
+    assert coletas.marca_da_fonte("bis") is coletas.Marca.VENDAVEL

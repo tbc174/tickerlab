@@ -548,3 +548,45 @@ def test_entradas_do_setor_com_o_banco(banco, tmp_path) -> None:
     assert set(entradas.indicadores) == {m.cnpj for m in entradas.membros}
     bancos = next(s for s in disponiveis if s.chave == "bancos")
     assert bancos.empresas == len(entradas.membros) and bancos.como_era_em is None
+
+
+# --- linha 172: a metodologia é do setor e o lado a lado avisa quem ficou de fora ------------------
+
+
+def _metodologia(relatorio: rs.RelatorioDoSetor) -> str:
+    return " ".join(
+        next(s for s in relatorio.secoes if s.chave == "metodologia").paragrafos
+    )
+
+
+def test_metodologia_das_eletricas_nao_leva_o_paragrafo_dos_bancos(noite) -> None:
+    texto = _metodologia(rs.montar_relatorio_do_setor(_entradas(noite), "pro", HOJE))
+    assert "IF.data" not in texto and "REB" not in texto and "Basileia" not in texto
+    assert "HHI" in texto and "CADE" in texto
+
+
+def test_metodologia_dos_bancos_leva_o_if_data(noite) -> None:
+    entradas = rs.EntradasDoSetor(rs.setor_do_relatorio("bancos"), [], noite, {}, {})
+    texto = _metodologia(rs.montar_relatorio_do_setor(entradas, "pro", HOJE))
+    assert "IF.data" in texto and "HHI" in texto
+
+
+def _aviso_do_lado_a_lado(relatorio: rs.RelatorioDoSetor) -> list[str]:
+    secao = next(s for s in relatorio.secoes if s.chave == "lado_a_lado")
+    return [p for p in secao.paragrafos if "fora desta tabela" in p]
+
+
+def test_lado_a_lado_avisa_quem_tem_parte_do_mercado_e_nao_e_membro(noite) -> None:
+    so_a_cpfl = rs.juntar_membros(noite.secao.tabelas["membros"], {}, {CPFL: ["CPFE3"]})
+    entradas = rs.EntradasDoSetor(
+        rs.setor_do_relatorio("eletricas"), so_a_cpfl, noite, {}, {}
+    )
+    avisos = _aviso_do_lado_a_lado(rs.montar_relatorio_do_setor(entradas, "pro", HOJE))
+    assert len(avisos) == 1
+    assert "OUTRA ENERGIA" in avisos[0] and "CPFL" not in avisos[0]
+    assert "2 têm parte do mercado" in avisos[0] and "1 está" in avisos[0]
+
+
+def test_lado_a_lado_sem_ninguem_de_fora_nao_avisa(noite) -> None:
+    relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "pro", HOJE)
+    assert _aviso_do_lado_a_lado(relatorio) == []

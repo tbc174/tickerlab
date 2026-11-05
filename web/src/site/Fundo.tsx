@@ -67,7 +67,7 @@ export function TopoDaPagina({
 }: {
   olho?: string;
   linkDoOlho?: string; // o olho vira link (a vitrine, nas páginas de cada calculadora)
-  titulo: string;
+  titulo: ReactNode;
   subtitulo?: string;
   classe?: string;
   antesDoTitulo?: ReactNode;

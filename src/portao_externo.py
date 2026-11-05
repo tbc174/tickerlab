@@ -11,7 +11,10 @@ positivo escrito**. Um campo só sai quando, ao mesmo tempo:
 3. há uma linha em `DIREITOS_DA_API_EXTERNA` para aquela fonte, conjunto, campo, canal e finalidade,
    dentro da vigência (D2.2);
 4. as marcas da família (`src/banco/coletas.py`, um lugar só) dizem revenda vendável, guarda permitida,
-   coleta limpa (ou `robots_fecha` nas condições do D5.3) e leitura dos termos em dia (D3).
+   coleta limpa (ou `robots_fecha` nas condições do D5.3) e leitura dos termos em dia (D3);
+5. toda tabela de onde o campo sai (`LinhaDeDireito.tabelas`) está **pronta** (Emenda 1, D10): tem as
+   provas das exigências 6, 7 e 8 da ADR 0027 em `base/prontidao.py`, a da 6 e a da 7 com até 90 dias, e
+   a versão maior do contrato é a que foi conferida.
 
 Quem nega não explica para fora (D2.2): toda negação tem o mesmo `codigo_publico`, para não revelar se
 o dado existe; o motivo (`Motivo`, lista fechada) fica para o log. Ainda sem rota pública: a B-32 (API
@@ -25,7 +28,9 @@ from datetime import date, timedelta
 from enum import StrEnum
 from typing import NamedTuple
 
+from base import prontidao
 from base.arquivo.registro import TERMOS_LIDOS_EM
+from base.prontidao import Prontidao, negacao_da_prontidao
 from src.banco.coletas import (
     COLETA_E_GUARDA,
     MOSTRAR,
@@ -112,6 +117,11 @@ class Motivo(StrEnum):
     CONSULTA_PROIBIDA = "consulta_proibida"  # busca reversa por pessoa ou por nome
     # N7 (D8): a organização não tem linha de contrato vigente para o conjunto e a finalidade
     SEM_CONTRATO_DA_ORGANIZACAO = "sem_contrato_da_organizacao"
+    # D10: a qualidade da tabela (os mesmos valores de `base.prontidao.Falta`)
+    SEM_TABELA = "sem_tabela"  # a linha não diz de que tabela o campo sai
+    SEM_PRONTIDAO = "sem_prontidao"  # tabela sem as três provas (6, 7 e 8 da ADR 0027)
+    PRONTIDAO_VENCIDA = "prontidao_vencida"  # prova da 6 ou da 7 com mais de 90 dias
+    CONTRATO_MUDOU = "contrato_mudou"  # versão maior diferente da conferida
 
 
 # D2.3 (auditoria N0): sair desta lista pede decisão nova. Vale a fonte e o que começa por ela
@@ -183,10 +193,110 @@ class LinhaDeDireito(NamedTuple):
     vigente_desde: date
     prova: str  # a decisão ou o documento que dá o direito
     vigente_ate: date | None = None
+    # D10.3: de que tabelas do catálogo o campo sai (mais de uma se for calculado); vazio nega
+    tabelas: tuple[str, ...] = ()
 
 
-# Nenhum campo sai ainda: a B-32 escreve aqui cada campo que a rota externa servir, com a prova.
-DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = ()
+# B-32a: o beta da API externa (A5 do lançamento API primeiro)
+BETA_COMECA_EM = date(2026, 11, 3)
+_PROVA_CVM = "ADR 0108 D2.2 e D3: dados abertos da CVM, ODbL, revenda com atribuição"
+_PROVA_RECEITA = "ADR 0108 D2.2 e D3: dados abertos do CNPJ da Receita, CC BY, revenda com atribuição"
+
+
+def _campos(
+    fontes: tuple[str, ...],
+    conjunto: str,
+    tabelas: tuple[str, ...],
+    campos: tuple[str, ...],
+    prova: str,
+) -> tuple[LinhaDeDireito, ...]:
+    """Uma linha por fonte e campo: fato de empresa, para análise, pela API externa, desde o beta."""
+    return tuple(
+        LinhaDeDireito(
+            fonte,
+            conjunto,
+            campo,
+            Canal.API_EXTERNA,
+            Finalidade.ANALISE,
+            Categoria.FATO_DE_PJ,
+            BETA_COMECA_EM,
+            prova,
+            tabelas=tabelas,
+        )
+        for fonte in fontes
+        for campo in campos
+    )
+
+
+# Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
+# (D10, `base/prontidao.py`). Do CNPJ da Receita só sai a situação cadastral, e só em `companies`: a tabela
+# tem uma linha por CNPJ, MEI e empresário individual inclusive, e a linha de direito vale para o campo
+# inteiro; quem tira por linha quem é pessoa (ADR 0106) é a rota (`src/api_externa/conjuntos/empresas.py`).
+# Nome, natureza jurídica e Simples esperam o histórico datado: a base só os guarda como são hoje.
+DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
+    *_campos(
+        ("rfb-cnpj",),
+        "companies",
+        ("cnpj_situacao_cadastral",),
+        (
+            "situacao_cadastral",
+            "data_situacao_cadastral",
+            "motivo_situacao",
+            "matriz",
+            "mes_do_retrato",
+        ),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("cvm-hist-dfp", "cvm-hist-itr"),
+        "financials",
+        ("demonstracoes_como_era",),
+        (
+            "demonstracao",
+            "grupo",
+            "conta",
+            "descricao",
+            "valor",
+            "inicio",
+            "fim",
+            "documento",
+            "referencia",
+            "versao",
+            "origem",
+            "ate",
+        ),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-cadastros",),
+        "funds",
+        ("cadastro_de_fundos",),
+        (
+            "nome",
+            "classe",
+            "situacao",
+            "taxa_administracao_pct_ao_ano",
+            "texto_taxa_administracao",
+            "taxa_performance_pct",
+            "texto_taxa_performance",
+            "patrimonio_liquido",
+            "data_do_patrimonio_liquido",
+            # o custo da taxa: conta nossa sobre o cadastro (o raio-x do fundo)
+            "sem_taxa",
+            "com_taxa",
+            "ficou_com_a_taxa",
+            "fracao_do_resultado",
+        ),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-cda", "cvm-cda-recente"),
+        "funds",
+        ("carteiras_dos_fundos",),
+        ("competencia", "codigo", "isin", "emissor", "tipo", "quantidade", "valor"),
+        _PROVA_CVM,
+    ),
+)
 
 
 class Pedido(NamedTuple):
@@ -222,6 +332,10 @@ class Regras:
     coleta_e_guarda: Mapping[str, ColetaEGuarda]
     termos_lidos_em: Mapping[str, date]
     robots_fecha_sai: bool
+    prontidao: Mapping[str, Prontidao]  # D10: o registro de `base/prontidao.py`
+    versoes_maiores: Mapping[
+        str, int
+    ]  # a versão maior de hoje de cada tabela do dicionário
 
 
 def regras_vigentes() -> Regras:
@@ -235,6 +349,8 @@ def regras_vigentes() -> Regras:
         coleta_e_guarda=COLETA_E_GUARDA,
         termos_lidos_em=TERMOS_LIDOS_EM,
         robots_fecha_sai=ROBOTS_FECHA_SAI_PROVISORIO,
+        prontidao=prontidao.PRONTIDAO,
+        versoes_maiores=prontidao.versoes_maiores(),
     )
 
 
@@ -268,8 +384,10 @@ def _vigente(linha: LinhaDeDireito, hoje: date) -> bool:
     )
 
 
-def _categorias_do_pedido(pedido: Pedido, hoje: date, regras: Regras) -> set[Categoria]:
-    """As categorias de todas as linhas vigentes do pedido: com duas linhas, vale a mais restrita."""
+def _linhas_do_pedido(
+    pedido: Pedido, hoje: date, regras: Regras
+) -> list[LinhaDeDireito]:
+    """Todas as linhas vigentes do pedido (pode haver mais de uma para o mesmo campo)."""
     chave = (
         pedido.fonte,
         pedido.conjunto,
@@ -277,11 +395,14 @@ def _categorias_do_pedido(pedido: Pedido, hoje: date, regras: Regras) -> set[Cat
         pedido.canal,
         pedido.finalidade,
     )
-    return {
-        linha.categoria
-        for linha in regras.linhas
-        if linha[:5] == chave and _vigente(linha, hoje)
-    }
+    return [
+        linha for linha in regras.linhas if linha[:5] == chave and _vigente(linha, hoje)
+    ]
+
+
+def _categorias_do_pedido(pedido: Pedido, hoje: date, regras: Regras) -> set[Categoria]:
+    """As categorias de todas as linhas vigentes do pedido: com duas linhas, vale a mais restrita."""
+    return {linha.categoria for linha in _linhas_do_pedido(pedido, hoje, regras)}
 
 
 def _negacao_da_linha(pedido: Pedido, hoje: date, regras: Regras) -> Motivo | None:
@@ -339,6 +460,19 @@ def _negacao_das_marcas(fonte: str, hoje: date, regras: Regras) -> Motivo | None
     return _negacao_da_leitura(fonte, respostas, hoje, regras)
 
 
+def _negacao_da_qualidade(pedido: Pedido, hoje: date, regras: Regras) -> Motivo | None:
+    """D10: toda tabela de toda linha vigente do pedido está pronta (como na categoria, vale a mais
+    restrita). Uma linha sem `tabelas` nega, mesmo que outra traga as dela."""
+    linhas = _linhas_do_pedido(pedido, hoje, regras)
+    if not linhas or any(not linha.tabelas for linha in linhas):
+        return Motivo.SEM_TABELA
+    tabelas = dict.fromkeys(tabela for linha in linhas for tabela in linha.tabelas)
+    falta = negacao_da_prontidao(
+        tabelas, regras.prontidao, regras.versoes_maiores, hoje
+    )
+    return None if falta is None else Motivo(falta.value)
+
+
 def _decidir_no_app(pedido: Pedido) -> Decisao:
     """Nos canais do app a regra é a da ADR 0102, sem tirar nem pôr."""
     uso = "treinar" if pedido.finalidade == Finalidade.TREINO else MOSTRAR
@@ -350,6 +484,7 @@ def _decidir_na_api_externa(pedido: Pedido, hoje: date, regras: Regras) -> Decis
         _negacao_absoluta(pedido, regras)
         or _negacao_da_linha(pedido, hoje, regras)
         or _negacao_das_marcas(pedido.fonte, hoje, regras)
+        or _negacao_da_qualidade(pedido, hoje, regras)
     )
     if motivo is not None:
         return Decisao(False, motivo)

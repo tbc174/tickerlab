@@ -177,6 +177,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "momentum",
                 "juros_e_inflacao",
                 "precos_de_referencia",
+                "simulador_de_trava",
                 "parametros",
                 "mapa_do_cafe",
                 "painel_do_cafe",

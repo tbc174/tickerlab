@@ -9,6 +9,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
+from base.prontidao import PRAZO_DA_PROVA, Prontidao, Prova
 from src import portao_externo as portao
 from src.banco import coletas
 from src.banco.coletas import Coleta, ColetaEGuarda, Guarda
@@ -30,6 +31,11 @@ RAIZ = Path(__file__).resolve().parents[1]
 HOJE = date(2026, 10, 21)
 LIDO_EM = date(2026, 10, 1)
 ABERTA = ColetaEGuarda(Coleta.ABERTA, Guarda.SEM_PRAZO)
+TABELA = (
+    "demonstracoes"  # a tabela de onde sai o campo do teste (um registro de mentira)
+)
+PROVA = Prova(date(2026, 10, 15), "placar-2026-10-15", "mesmo documento, outro canal")
+PRONTA = Prontidao(versao_maior=2, cruzada=PROVA, qualidade=PROVA, dicionario=PROVA)
 
 
 def _linha(
@@ -47,6 +53,7 @@ def _linha(
         "categoria": categoria,
         "vigente_desde": date(2026, 10, 1),
         "prova": "teste",
+        "tabelas": (TABELA,),
     }
     return LinhaDeDireito(**{**base, **outros})  # type: ignore[arg-type]
 
@@ -76,6 +83,8 @@ def _regras(*linhas: LinhaDeDireito, **outros: object) -> Regras:
         linhas=linhas,
         coleta_e_guarda=dict.fromkeys(familias, ABERTA),
         termos_lidos_em=dict.fromkeys(familias, LIDO_EM),
+        prontidao={TABELA: PRONTA},
+        versoes_maiores={TABELA: PRONTA.versao_maior},
     )
     return dataclasses.replace(base, **outros)
 
@@ -197,8 +206,11 @@ def test_termos_sem_data_de_leitura_nega() -> None:
 
 
 def test_leitura_dos_termos_vale_180_dias_ou_ate_o_revisar_em() -> None:
-    regras = _regras(_linha())
     ultimo_dia = LIDO_EM + timedelta(days=180)
+    # o placar renovou a prova (D10): só a leitura dos termos decide aqui
+    nova = PROVA._replace(data=ultimo_dia)
+    renovada = PRONTA._replace(cruzada=nova, qualidade=nova)
+    regras = _regras(_linha(), prontidao={TABELA: renovada})
     assert decidir(_pedido(), ultimo_dia, regras).libera
     assert (
         decidir(_pedido(), ultimo_dia + timedelta(days=1), regras).motivo
@@ -371,6 +383,92 @@ def test_propriedade_campo_com_palavra_proibida_nunca_sai(
     assert not decisao.libera
 
 
+# --- D10 (Emenda 1): só sai tabela pronta ---
+
+
+def test_linha_sem_tabelas_nega() -> None:
+    """O padrão vazio de `tabelas` nega: a B-32a escreve de que tabela cada campo sai."""
+    regras = _regras(_linha(tabelas=()))
+    assert decidir(_pedido(), HOJE, regras).motivo is Motivo.SEM_TABELA
+
+
+def test_tabela_sem_prontidao_nega_mesmo_com_direito_e_marcas_em_ordem() -> None:
+    regras = _regras(_linha(), prontidao={})
+    assert decidir(_pedido(), HOJE, regras).motivo is Motivo.SEM_PRONTIDAO
+
+
+@pytest.mark.parametrize("exigencia", ["cruzada", "qualidade", "dicionario"])
+def test_falta_uma_exigencia_nega(exigencia: str) -> None:
+    regras = _regras(_linha(), prontidao={TABELA: PRONTA._replace(**{exigencia: None})})
+    assert decidir(_pedido(), HOJE, regras).motivo is Motivo.SEM_PRONTIDAO
+
+
+def test_prova_com_91_dias_nega_e_com_90_libera() -> None:
+    regras = _regras(_linha())
+    limite = PROVA.data + PRAZO_DA_PROVA
+    assert decidir(_pedido(), limite, regras).libera
+    vencida = decidir(_pedido(), limite + timedelta(days=1), regras)
+    assert vencida.motivo is Motivo.PRONTIDAO_VENCIDA
+
+
+def test_versao_maior_diferente_nega() -> None:
+    regras = _regras(_linha(), versoes_maiores={TABELA: PRONTA.versao_maior + 1})
+    assert decidir(_pedido(), HOJE, regras).motivo is Motivo.CONTRATO_MUDOU
+
+
+def test_campo_de_duas_tabelas_exige_as_duas() -> None:
+    linha = _linha(tabelas=(TABELA, "cadastro"))
+    so_uma = _regras(linha)
+    as_duas = _regras(
+        linha,
+        prontidao={TABELA: PRONTA, "cadastro": PRONTA},
+        versoes_maiores={TABELA: 2, "cadastro": 2},
+    )
+    assert decidir(_pedido(), HOJE, so_uma).motivo is Motivo.SEM_PRONTIDAO
+    assert decidir(_pedido(), HOJE, as_duas).libera
+
+
+def test_duas_linhas_vigentes_valem_as_tabelas_das_duas() -> None:
+    """Como na categoria (vale a mais restrita): a outra linha do mesmo campo traz uma tabela que
+    não está pronta, e o campo não sai."""
+    regras = _regras(_linha(), _linha(tabelas=("cadastro",)))
+    assert decidir(_pedido(), HOJE, regras).motivo is Motivo.SEM_PRONTIDAO
+
+
+def test_linha_fora_da_vigencia_nao_traz_tabela() -> None:
+    vencida = _linha(tabelas=("cadastro",), vigente_ate=HOJE)
+    assert decidir(_pedido(), HOJE, _regras(_linha(), vencida)).libera
+
+
+def test_direito_nega_antes_da_qualidade() -> None:
+    """A qualidade é a última conferência: sem direito, o motivo no log continua o do direito."""
+    regras = _regras(_linha(campo="ativo_total"), prontidao={})
+    assert decidir(_pedido(), HOJE, regras).motivo is Motivo.SEM_LINHA_DE_DIREITO
+
+
+def test_motivos_da_qualidade_sao_os_da_prontidao() -> None:
+    from base.prontidao import Falta
+
+    assert {falta.value for falta in Falta} <= {motivo.value for motivo in Motivo}
+
+
+def test_regras_vigentes_leem_o_registro_e_o_dicionario() -> None:
+    from base import prontidao
+
+    regras = portao.regras_vigentes()
+    assert regras.prontidao is prontidao.PRONTIDAO
+    assert regras.versoes_maiores == prontidao.versoes_maiores()
+
+
+@pytest.mark.parametrize("canal", sorted(portao.CANAIS_DO_APP))
+def test_canais_do_app_ignoram_prontidao(canal: Canal) -> None:
+    sem_nada = _regras(_linha(tabelas=()), prontidao={}, versoes_maiores={})
+    decisao = decidir(_pedido(canal=canal), HOJE, sem_nada)
+    assert decisao == Decisao(
+        coletas.pode_usar(coletas.MOSTRAR, "cvm-dfp"), Motivo.REGRA_DO_APP
+    )
+
+
 # --- D2.2: negar não vaza o dado ---
 
 
@@ -381,6 +479,10 @@ def test_toda_negacao_tem_o_mesmo_codigo_publico_sem_fonte_nem_campo() -> None:
         decidir(_pedido(), HOJE, _regras()),
         decidir(_pedido(fonte="sec-10k"), HOJE, _regras(_linha(fonte="sec-10k"))),
         decidir(_pedido(), HOJE, _regras(_linha(), termos_lidos_em={})),
+        decidir(_pedido(), HOJE, _regras(_linha(tabelas=()))),
+        decidir(_pedido(), HOJE, _regras(_linha(), prontidao={})),
+        decidir(_pedido(), HOJE + timedelta(days=90), _regras(_linha())),
+        decidir(_pedido(), HOJE, _regras(_linha(), versoes_maiores={TABELA: 3})),
         consulta_permitida("cpf"),
     ]
     assert len({n.motivo for n in negacoes}) == len(
@@ -430,6 +532,17 @@ linhas = st.builds(
     vigente_desde=DATAS,
     prova=st.just("teste"),
     vigente_ate=st.none() | DATAS,
+    tabelas=st.sampled_from([(), (TABELA,), (TABELA, "cadastro"), ("cadastro",)]),
+)
+provas = st.builds(
+    Prova, data=DATAS, prova=st.just("placar"), independencia=st.sampled_from(["", "x"])
+)
+prontidoes = st.builds(
+    Prontidao,
+    versao_maior=st.integers(min_value=1, max_value=3),
+    cruzada=st.none() | provas,
+    qualidade=st.none() | provas,
+    dicionario=st.none() | provas,
 )
 respostas = st.builds(
     ColetaEGuarda,
@@ -450,6 +563,10 @@ def regras_quaisquer(draw: st.DrawFn) -> Regras:
         coleta_e_guarda=draw(st.dictionaries(familias, respostas, max_size=5)),
         termos_lidos_em=draw(st.dictionaries(familias, DATAS, max_size=5)),
         robots_fecha_sai=draw(st.booleans()),
+        prontidao=draw(
+            st.dictionaries(st.sampled_from([TABELA, "cadastro"]), prontidoes)
+        ),
+        versoes_maiores={TABELA: 2, "cadastro": 1},
     )
 
 
@@ -457,7 +574,7 @@ def regras_quaisquer(draw: st.DrawFn) -> Regras:
 def apertos(draw: st.DrawFn, regras: Regras) -> Regras:
     """Uma regra de negar a mais: lista, palavra, agregado, P-49, linha restrita ou resposta pior."""
     fonte = draw(st.sampled_from([*FONTES, "cvm", "bcb", "rfb"]))
-    tipo = draw(st.integers(min_value=0, max_value=6))
+    tipo = draw(st.integers(min_value=0, max_value=8))
     if tipo == 0:
         return dataclasses.replace(regras, negadas=regras.negadas | {fonte})
     if tipo == 1:
@@ -480,6 +597,14 @@ def apertos(draw: st.DrawFn, regras: Regras) -> Regras:
             categoria=draw(st.sampled_from(sorted(portao.NUNCA_SAEM)))
         )
         return dataclasses.replace(regras, linhas=(*regras.linhas, restrita))
+    if tipo == 7:  # tirar a prontidão de uma tabela (D10.5, nível 3)
+        tirada = draw(st.sampled_from([TABELA, "cadastro"]))
+        resto = {k: v for k, v in regras.prontidao.items() if k != tirada}
+        return dataclasses.replace(regras, prontidao=resto)
+    if tipo == 8:  # o contrato de uma tabela sobe a versão maior
+        tabela = draw(st.sampled_from([TABELA, "cadastro"]))
+        versoes = {**regras.versoes_maiores, tabela: regras.versoes_maiores[tabela] + 1}
+        return dataclasses.replace(regras, versoes_maiores=versoes)
     # a resposta de uma família piora (não some: sem a da fonte, vale a da família, como na revenda)
     familia = draw(familias)
     piores = {

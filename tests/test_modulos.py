@@ -123,3 +123,10 @@ def test_compartilhamento_seguro_disponivel_na_biblioteca():
     """Onda 4: o link da ficha (backtest) e do PDF (biblioteca do Report Studio)."""
     f = _funcionalidade("relatorios", "Compartilhamento seguro")
     assert f.disponivel and f.pagina_do_app == "relatorio"
+
+
+def test_trilhas_e_testes_de_robustez_levam_ao_que_ja_existe():
+    """As trilhas são os três caminhos guiados do Início; a robustez, a ficha do Backtest."""
+    assert _funcionalidade("aprender", "Trilhas").pagina_do_app == "inicio"
+    robustez = _funcionalidade("estrategias", "Testes de robustez")
+    assert robustez.pagina_do_app == "backtest"
