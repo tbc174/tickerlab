@@ -18,6 +18,7 @@ HOJE = date(2026, 10, 26)
 # que `TERMOS_LIDOS_EM` ganhou a data da leitura (coleta `robots_fecha` com as duas condições).
 PASSAM_AS_MARCAS = {
     "antt",
+    "conab",  # vendável por risco assumido (ADR 0122, 05/11/2026)
     "bcb",
     "ccee",
     "chirps",
@@ -94,7 +95,8 @@ def test_familias_que_passam_o_portao_externo_pelas_marcas() -> None:
 
 def test_nenhuma_marca_de_revenda_mudou() -> None:
     """A linha 159 só preenche coleta e guarda; a revenda é da Emenda 5 (linha 161)."""
-    assert coletas.marca_da_fonte("mapbiomas") is coletas.Marca.A_CONFIRMAR
+    # a ADR 0122 (05/11/2026) mudou o MapBiomas para vendável por risco assumido; o Kraken não mudou
+    assert coletas.revenda_da_fonte("mapbiomas") == coletas.VENDAVEL_RISCO_ASSUMIDO
     assert coletas.marca_da_fonte("kraken") is coletas.Marca.NAO_COMERCIAL
     assert coletas.marca_da_fonte("gdelt") is coletas.Marca.VENDAVEL
     assert coletas.marca_da_fonte("cftc") is coletas.Marca.VENDAVEL

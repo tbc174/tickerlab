@@ -12,11 +12,11 @@ from base.arquivo import lote_acervos as lote
 from base.arquivo.coleta import ErroDeDescoberta, Resposta
 from base.arquivo.registro import TERMOS_LIDOS_EM
 from src.banco.coletas import (
-    A_CONFIRMAR,
     NAO_COMERCIAL,
     SEM_LICENCA_CONHECIDA,
     VENDAVEL_COM_ATRIBUICAO,
     VENDAVEL_ODBL,
+    VENDAVEL_RISCO_ASSUMIDO,
     licenca_da_fonte,
     revenda_da_fonte,
 )
@@ -80,8 +80,8 @@ def test_marca_de_cada_familia():
     assert revenda_da_fonte("tesouro-br-divida-emissoes-diretas") == (
         VENDAVEL_COM_ATRIBUICAO
     )
-    assert revenda_da_fonte("ipea-odata-series") == A_CONFIRMAR
-    assert revenda_da_fonte("ipea-odata-metadados") == A_CONFIRMAR
+    assert revenda_da_fonte("ipea-odata-series") == VENDAVEL_RISCO_ASSUMIDO
+    assert revenda_da_fonte("ipea-odata-metadados") == VENDAVEL_RISCO_ASSUMIDO
 
 
 def test_ritmo_o_que_nunca_muda_so_roda_pelo_id():

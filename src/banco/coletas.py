@@ -51,13 +51,13 @@ LICENCAS = {
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
-    "rfb-renuncias": "DIRBI e ECF da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
-    "rfb-transacoes": "Transações da Receita: sem licença escrita; a confirmar, só interno (ADR 0102)",
-    "ms": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno",
-    "tce-rn": "TCE-RN: licença não localizada; a confirmar, só interno (ADR 0102)",
-    "tce-pe": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
-    "tce-sp": "TCE-SP: licença não localizada; a confirmar, só interno (ADR 0102)",
-    "tce-ce": "TCE-CE: licença não localizada; a confirmar, só interno (ADR 0102)",
+    "rfb-renuncias": "DIRBI e ECF da Receita: sem licença escrita; risco assumido (ADR 0122)",
+    "rfb-transacoes": "Transações da Receita: sem licença escrita; risco assumido (ADR 0122)",
+    "ms": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+    "tce-rn": "TCE-RN: licença não localizada; risco assumido (ADR 0122)",
+    "tce-pe": "TCE-PE: licença não localizada; risco assumido (ADR 0122)",
+    "tce-sp": "TCE-SP: licença não localizada; risco assumido (ADR 0122)",
+    "tce-ce": "TCE-CE: licença não localizada; risco assumido (ADR 0122)",
     # linha 658 (fichas dos conjuntos no CKAN, lidas em 03/11/2026)
     "goias": "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)",
     "msestado": "Despesas do MS por credor: a confirmar, só interno (ADR 0102)",
@@ -130,10 +130,10 @@ LICENCAS = {
     "anvisa-cmed": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
     "mapa": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
     "anm": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
-    "anm-cfem": "ANM, CFEM: licença não declarada; a confirmar, só interno (ADR 0102)",
-    "anm-sigbm": "ANM, SIGBM: licença não declarada; a confirmar, só interno (ADR 0102)",
-    "anm-amb": "ANM, Anuário: licença não declarada; a confirmar, só interno (ADR 0102)",
-    "estban": "BCB, ESTBAN: reprodução com fonte e integridade; a confirmar, só interno",
+    "anm-cfem": "ANM, CFEM: licença não declarada; risco assumido (ADR 0122)",
+    "anm-sigbm": "ANM, SIGBM: licença não declarada; risco assumido (ADR 0122)",
+    "anm-amb": "ANM, Anuário: licença não declarada; risco assumido (ADR 0122)",
+    "estban": "BCB, ESTBAN: reprodução com fonte e integridade; risco assumido (ADR 0122)",
     "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
@@ -249,6 +249,12 @@ VENDAVEL_ODBL = (
     "está na curadoria, nas versões e na qualidade)"
 )
 VENDAVEL_COM_ATRIBUICAO = "vendável com atribuição à fonte"
+# sem resposta escrita sobre uso comercial e sem termo que proíba: o Tiago assumiu o risco de vender
+# citando a fonte (ADR 0122, 05/11/2026). A licença em `LICENCAS` continua dizendo o que a fonte escreveu
+VENDAVEL_RISCO_ASSUMIDO = (
+    "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem "
+    "resposta escrita sobre uso comercial"
+)
 SO_USO_INTERNO = "só uso interno (entra em modelo; nunca vender nem exportar o dado)"
 A_CONFIRMAR = (
     "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
@@ -267,17 +273,17 @@ REVENDA = {
     # v3 pela cópia do Hugging Face: a licença do dado é a do CHC (domínio público + CC BY 4.0, lida em
     # 28/10/2026); o termo de uso do Hugging Face não foi lido (notas de pesquisa, parte 4)
     "chirps3": VENDAVEL_COM_ATRIBUICAO,
-    "mapbiomas": A_CONFIRMAR,  # CC BY-SA (termos do site, 21/10/2026): revenda a confirmar até a P-52
+    "mapbiomas": VENDAVEL_RISCO_ASSUMIDO,  # CC BY-SA (termos do site, 21/10/2026): compartilhar igual
     "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
     "fmi": SO_USO_INTERNO,  # uso comercial pede permissão por escrito do FMI; preços de referência não se distribuem (ADR 0008)
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
     # treino de ML permitido por escrito (licencas-por-fonte.md, 13/10/2026); revenda ainda sem resposta
-    "sec": SO_USO_INTERNO,  # os arquivos são escritos pelas empresas
+    "sec": VENDAVEL_RISCO_ASSUMIDO,  # os arquivos são escritos pelas empresas
     "iex": SO_USO_INTERNO,  # com a atribuição "Data provided for free by IEX"
     "cftc": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA (17 U.S.C. §105), Emenda 5
-    "wiki": SO_USO_INTERNO,  # CC0
-    "btc": SO_USO_INTERNO,  # blockchain pública lida por nó próprio
-    "rfb": A_CONFIRMAR,  # planilha de cripto da Receita: perguntar a licença
+    "wiki": VENDAVEL_COM_ATRIBUICAO,  # CC0 (ADR 0122)
+    "btc": VENDAVEL_RISCO_ASSUMIDO,  # blockchain pública lida por nó próprio
+    "rfb": VENDAVEL_RISCO_ASSUMIDO,  # planilha de cripto da Receita: sem licença escrita
     "gdelt": VENDAVEL_COM_ATRIBUICAO,  # uso livre citando e linkando o GDELT, Emenda 5
     "yahoo": NAO_COMERCIAL,  # termos do Yahoo: uso pessoal
     # sem termo de dados: não comercial (a exceção da ADR 0045 ao clima de risco do Bitcoin perdeu
@@ -287,17 +293,20 @@ REVENDA = {
     # a ficha do conjunto no dados.gov.br declara CC BY (o CC BY-ND é do rodapé do site gov.br
     # inteiro); Tiago, "Pode", 20/10/2026 (ADR 0106, item 2). Sócio pessoa física segue fora do app.
     "rfb-cnpj": VENDAVEL_COM_ATRIBUICAO,
-    "rfb-renuncias": A_CONFIRMAR,  # DIRBI e ECF (linha 660): nada perguntado à Receita, uso interno
-    "rfb-transacoes": A_CONFIRMAR,  # transações (linha 661): nada perguntado à Receita, uso interno
-    "ms": A_CONFIRMAR,  # CNES (linha 654): nada perguntado ao DATASUS, uso interno
-    "tce-rn": A_CONFIRMAR,  # linha 662: nada perguntado ao TCE-RN, uso interno
-    "tce-pe": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-PE, uso interno
-    "tce-sp": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-SP, uso interno
-    "tce-ce": A_CONFIRMAR,  # linha 652: nada perguntado ao TCE-CE, uso interno
+    "rfb-renuncias": VENDAVEL_RISCO_ASSUMIDO,  # DIRBI e ECF (linha 660): nada perguntado à Receita
+    "rfb-transacoes": VENDAVEL_RISCO_ASSUMIDO,  # transações (linha 661): nada perguntado à Receita
+    # Fala.BR 25072.067487/2026-35, resposta do Ministério da Saúde em 05/11/2026: uso comercial, inclusive
+    # por assinatura, de CNES, SIH, SIA, CIHA e Painel-Oncologia, citando a fonte, sem a marca do Ministério e
+    # sem identificar pessoas (nem por cruzamento ou recorte pequeno); treino de ML não foi confirmado
+    "ms": VENDAVEL_COM_ATRIBUICAO,
+    "tce-rn": VENDAVEL_RISCO_ASSUMIDO,  # linha 662: nada perguntado ao TCE-RN
+    "tce-pe": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-PE
+    "tce-sp": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-SP
+    "tce-ce": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-CE
     "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
-    "msestado": A_CONFIRMAR,  # linha 658: nada perguntado ao MS; entra como "a confirmar"
+    "msestado": VENDAVEL_RISCO_ASSUMIDO,  # linha 658: nada perguntado ao governo do MS
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
-    "pgfn": A_CONFIRMAR,
+    "pgfn": VENDAVEL_RISCO_ASSUMIDO,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
     "transparencia": VENDAVEL_COM_ATRIBUICAO,
@@ -307,16 +316,16 @@ REVENDA = {
     "mte": SO_USO_INTERNO,
     "gleif": VENDAVEL_COM_ATRIBUICAO,
     "termos": SO_USO_INTERNO,
-    "catalogo": SO_USO_INTERNO,
+    "catalogo": VENDAVEL_RISCO_ASSUMIDO,
     "bcb-sgs-189": NAO_COMERCIAL,  # IGP-M da FGV: uso comercial pede autorização da FGV
     "ccee": VENDAVEL_COM_ATRIBUICAO,
     "seges": VENDAVEL_COM_ATRIBUICAO,
-    "seges-pesquisa-precos": A_CONFIRMAR,  # preço de referência (ADR 0008)
-    "transferegov-especiais-pagamentos": A_CONFIRMAR,  # API nova sem licença lida (rodada de 03/11/2026): uso interno
+    "seges-pesquisa-precos": VENDAVEL_RISCO_ASSUMIDO,  # preço de referência (ADR 0008)
+    "transferegov-especiais-pagamentos": VENDAVEL_RISCO_ASSUMIDO,  # API nova sem licença lida (rodada de 03/11/2026)
     "comprasgov": VENDAVEL_COM_ATRIBUICAO,
     "transferegov": VENDAVEL_COM_ATRIBUICAO,
-    "pncp": A_CONFIRMAR,
-    "tcu": A_CONFIRMAR,
+    "pncp": VENDAVEL_RISCO_ASSUMIDO,
+    "tcu": VENDAVEL_RISCO_ASSUMIDO,
     "govmg": VENDAVEL_COM_ATRIBUICAO,
     "govsc": VENDAVEL_COM_ATRIBUICAO,
     "antt": VENDAVEL_COM_ATRIBUICAO,
@@ -351,17 +360,17 @@ REVENDA = {
     "ons": VENDAVEL_COM_ATRIBUICAO,
     "anatel": VENDAVEL_COM_ATRIBUICAO,
     "anvisa": VENDAVEL_COM_ATRIBUICAO,
-    "anvisa-cmed": A_CONFIRMAR,
+    "anvisa-cmed": VENDAVEL_RISCO_ASSUMIDO,
     "mapa": VENDAVEL_COM_ATRIBUICAO,
     "anm": VENDAVEL_COM_ATRIBUICAO,
-    # CFEM, SIGBM e AMB (linha 657): nada perguntado à ANM, uso interno
-    "anm-cfem": A_CONFIRMAR,
-    "anm-sigbm": A_CONFIRMAR,
-    "anm-amb": A_CONFIRMAR,
-    "estban": A_CONFIRMAR,  # ESTBAN do BCB (linha 659): nada perguntado ao BC, uso interno
+    # CFEM, SIGBM e AMB (linha 657): nada perguntado à ANM
+    "anm-cfem": VENDAVEL_RISCO_ASSUMIDO,
+    "anm-sigbm": VENDAVEL_RISCO_ASSUMIDO,
+    "anm-amb": VENDAVEL_RISCO_ASSUMIDO,
+    "estban": VENDAVEL_RISCO_ASSUMIDO,  # ESTBAN do BCB (linha 659): nada perguntado ao BC
     "ancine": VENDAVEL_COM_ATRIBUICAO,
-    "mme": A_CONFIRMAR,
-    "finep": A_CONFIRMAR,
+    "mme": VENDAVEL_RISCO_ASSUMIDO,
+    "finep": VENDAVEL_RISCO_ASSUMIDO,
     "aneel": VENDAVEL_ODBL,
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": VENDAVEL_COM_ATRIBUICAO,  # resposta do MDIC em 21/10/2026
@@ -376,15 +385,15 @@ REVENDA = {
     "tce-pr-pit": VENDAVEL_COM_ATRIBUICAO,
     "tce-pr-despesa": VENDAVEL_COM_ATRIBUICAO,
     "tce-rs-empenhos": VENDAVEL_COM_ATRIBUICAO,  # CC BY
-    "tce-rs": A_CONFIRMAR,  # LicitaCon: esperando a Ouvidoria
-    "conab": A_CONFIRMAR,  # CC BY-ND 3.0; sem pedido à CONAB (ADR 0102): uso citando a CONAB e a data
+    "tce-rs": VENDAVEL_RISCO_ASSUMIDO,  # LicitaCon: sem resposta da Ouvidoria
+    "conab": VENDAVEL_RISCO_ASSUMIDO,  # CC BY-ND 3.0; sem pedido à CONAB (ADR 0102): uso citando a CONAB e a data
     "usda": VENDAVEL_COM_ATRIBUICAO,  # domínio público ou CC BY: as duas permitem
     "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "ico": NAO_COMERCIAL,  # PDF sem termos lidos; coleta e uso com a fonte citada (ADR 0102)
     "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
     # o CNJ não escreve licença de reuso da API; sem pedido ao CNJ (ADR 0102 Emenda 2): uso citando a fonte
-    "djen": A_CONFIRMAR,
-    "cnj": A_CONFIRMAR,  # a TPU também não tem licença de reuso escrita (ADR 0102 Emenda 2)
+    "djen": VENDAVEL_RISCO_ASSUMIDO,
+    "cnj": VENDAVEL_RISCO_ASSUMIDO,  # a TPU também não tem licença de reuso escrita (ADR 0102 Emenda 2)
     "bce": VENDAVEL_COM_ATRIBUICAO,  # "Source: ECB statistics"
     "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
@@ -392,9 +401,9 @@ REVENDA = {
     "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
-    "inpe": A_CONFIRMAR,  # sem licença escrita no INPE Queimadas
+    "inpe": VENDAVEL_RISCO_ASSUMIDO,  # sem licença escrita no INPE Queimadas
     "firms": VENDAVEL_COM_ATRIBUICAO,  # dados abertos da NASA
-    "terrabrasilis": SO_USO_INTERNO,  # CC BY-SA 4.0 (compartilhar igual): revenda a confirmar
+    "terrabrasilis": VENDAVEL_RISCO_ASSUMIDO,  # CC BY-SA 4.0 (compartilhar igual)
     "ecmwf": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "climatetrace": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "edgar": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (JRC)
@@ -427,13 +436,13 @@ REVENDA = {
     "ebc": A_CONFIRMAR,
     "senado": A_CONFIRMAR,
     "camara": A_CONFIRMAR,
-    "inep": A_CONFIRMAR,
-    "senatran": A_CONFIRMAR,
-    "inpi": A_CONFIRMAR,
+    "inep": VENDAVEL_RISCO_ASSUMIDO,
+    "senatran": VENDAVEL_RISCO_ASSUMIDO,
+    "inpi": VENDAVEL_RISCO_ASSUMIDO,
     "epo": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; "not designed to provide a backend database service"
-    "ipea": A_CONFIRMAR,  # sem termos; cada série herda a fonte de origem (BM&FBovespa, Bacen, IBGE)
+    "ipea": VENDAVEL_RISCO_ASSUMIDO,  # sem termos; cada série herda a fonte de origem (BM&FBovespa, Bacen, IBGE)
     "wipo": SO_USO_INTERNO,  # "not republish or commercially re-sell"; citar "WIPO Statistics Database"
-    "ans-demonstracoes": A_CONFIRMAR,
+    "ans-demonstracoes": VENDAVEL_RISCO_ASSUMIDO,
 }
 
 
@@ -449,6 +458,7 @@ class Marca(StrEnum):
 MARCA_DA_REVENDA = {
     VENDAVEL_ODBL: Marca.VENDAVEL,
     VENDAVEL_COM_ATRIBUICAO: Marca.VENDAVEL,
+    VENDAVEL_RISCO_ASSUMIDO: Marca.VENDAVEL,
     SO_USO_INTERNO: Marca.USO_INTERNO,
     A_CONFIRMAR: Marca.A_CONFIRMAR,
     NAO_COMERCIAL: Marca.NAO_COMERCIAL,
@@ -835,8 +845,8 @@ USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
         "pgfn",
         "dívida ativa da União na ficha da empresa",
         "resposta escrita da PGFN sobre a licença (pedido LAI da ADR 0086); sem ela, desligar",
-        "Dívida ativa: dados abertos da PGFN (licença a confirmar; mostrado com a fonte citada "
-        "enquanto o TickerLab não cobra)",
+        "Dívida ativa: dados abertos da PGFN (sem licença escrita; mostrado e vendido com a fonte "
+        "citada, risco assumido, ADR 0122)",
     ),
     UsoSemCobranca(
         "assessoria",
@@ -890,11 +900,19 @@ FRASE_DA_FAO = (
 )
 # crédito que a Receita pede (CC BY), em toda tela, API ou PDF com dado do CNPJ aberto
 FRASE_DA_RECEITA = "Fonte: Receita Federal, dados abertos do CNPJ (CC BY)"
+# condição da resposta do Ministério da Saúde (Fala.BR, 05/11/2026): citar a fonte e não sugerir endosso
+FRASE_DO_DATASUS = (
+    "Fonte: Ministério da Saúde, DATASUS (dados abertos, com a competência de cada número; o "
+    "Ministério da Saúde não endossa o TickerLab)"
+)
 FRASES_DAS_FONTES = {
     "iex": FRASE_DA_IEX,
     "faostat": FRASE_DA_FAO,
     "rfb-cnpj": FRASE_DA_RECEITA,
+    "ms": FRASE_DO_DATASUS,
 }
+# a fonte vendida por risco assumido (ADR 0122) continua levando a frase de citação dela
+_VENDAVEIS_COM_LICENCA_ESCRITA = (VENDAVEL_ODBL, VENDAVEL_COM_ATRIBUICAO)
 
 
 class LicencaNaoPermiteError(Exception):
@@ -992,14 +1010,18 @@ def exigir_licenca(uso: str, fontes: Iterable[str], onde: str = "") -> None:
 
 def citacoes_das_fontes(fontes: Iterable[str]) -> list[str]:
     """As frases que a tela, o relatório e o PDF escrevem pelas fontes restritas que usam, sem
-    repetir: a citação de cada uso sem cobrança (Emenda 3) e a frase da IEX (Emenda 2, item 6)."""
+    repetir: a citação de cada uso sem cobrança (Emenda 3), também quando a fonte é vendida por risco
+    assumido (ADR 0122), e a frase da IEX (Emenda 2, item 6), da FAO, da Receita e do DATASUS."""
     citacoes: dict[str, None] = {}
     for fonte in fontes:
         frase = FRASES_DAS_FONTES.get(fonte) or FRASES_DAS_FONTES.get(_familia(fonte))
         uso = uso_sem_cobranca(fonte)
         if frase:
             citacoes[frase] = None
-        elif uso is not None and marca_da_fonte(fonte) != Marca.VENDAVEL:
+        elif (
+            uso is not None
+            and revenda_da_fonte(fonte) not in _VENDAVEIS_COM_LICENCA_ESCRITA
+        ):
             citacoes[uso.citacao] = None
     return list(citacoes)
 
