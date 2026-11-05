@@ -2518,6 +2518,70 @@ O que mudou de um mês para o outro em `cnpj_qsa`: uma linha por entrada, saída
 | `pais_antes` | Antes da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
 | `pais_depois` | Depois da mudança. Código do país do sócio estrangeiro; vazio no resto | texto |
 
+## `cnpj_simples_historico`
+
+Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com `disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do CNPJ; a última versão de cada raiz é conferida com o vigente. Sem dado de pessoa além do próprio CNPJ. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, `Simples.zip` (`scripts/montar_historico_do_cnpj.py simples`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_simples_historico/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá | AAAA-MM |
+| `disponivel_em` | Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês | data (dia) |
+| `consta` | Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios) | verdadeiro ou falso |
+| `optante_simples` | Verdadeiro se a empresa é optante do Simples Nacional | verdadeiro ou falso |
+| `data_opcao_simples` | Data da opção pelo Simples; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_simples` | Data da exclusão do Simples; vazio quando a Receita põe zero | data (dia) |
+| `optante_mei` | Verdadeiro se a empresa é MEI | verdadeiro ou falso |
+| `data_opcao_mei` | Data do enquadramento como MEI; vazio quando a Receita põe zero | data (dia) |
+| `data_exclusao_mei` | Data do desenquadramento do MEI; vazio quando a Receita põe zero | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `cnpj_empresas_historico`
+
+Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública. Montada mês a mês dos `Empresas*.zip`. **A razão social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor (ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do responsável e ente federativo não são lidos. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, `Empresas*.zip` (`scripts/montar_historico_do_cnpj.py empresas`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_empresas_historico/<2 primeiros caracteres da raiz>.parquet` (servidor de casa; `meses.json` diz os meses já acrescentados e o SHA-256 de cada ZIP)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá | AAAA-MM |
+| `disponivel_em` | Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês | data (dia) |
+| `consta` | Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios) | verdadeiro ou falso |
+| `natureza_juridica` | Código da natureza jurídica (tabela da Receita, 4 dígitos: 2062 limitada, 2054 S.A. fechada, 2046 S.A. aberta, 2135 empresário individual) | texto |
+| `razao_social` | Razão social como a Receita publica; vazia para empresário individual, MEI e grupo 4 (é o nome da pessoa) | texto |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.

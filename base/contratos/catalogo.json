@@ -6652,6 +6652,150 @@
       "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
       "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
     },
+    "cnpj_simples_historico": {
+      "tabela": "cnpj_simples_historico",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "mes_do_retrato": {
+          "descricao": "Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá",
+          "unidade": "AAAA-MM"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "optante_simples": {
+          "descricao": "Verdadeiro se a empresa é optante do Simples Nacional",
+          "unidade": "verdadeiro ou falso"
+        },
+        "data_opcao_simples": {
+          "descricao": "Data da opção pelo Simples; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "data_exclusao_simples": {
+          "descricao": "Data da exclusão do Simples; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "optante_mei": {
+          "descricao": "Verdadeiro se a empresa é MEI",
+          "unidade": "verdadeiro ou falso"
+        },
+        "data_opcao_mei": {
+          "descricao": "Data do enquadramento como MEI; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "data_exclusao_mei": {
+          "descricao": "Data do desenquadramento do MEI; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_basico",
+        "mes_do_retrato"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "data_opcao_simples": "aconteceu_em",
+        "data_exclusao_simples": "ate",
+        "data_opcao_mei": "aconteceu_em",
+        "data_exclusao_mei": "ate",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam",
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram"
+    },
+    "cnpj_empresas_historico": {
+      "tabela": "cnpj_empresas_historico",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "mes_do_retrato": {
+          "descricao": "Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá",
+          "unidade": "AAAA-MM"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Falso quando a raiz saiu do arquivo naquele mês (os campos vêm vazios)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "natureza_juridica": {
+          "descricao": "Código da natureza jurídica (tabela da Receita, 4 dígitos: 2062 limitada, 2054 S.A. fechada, 2046 S.A. aberta, 2135 empresário individual)",
+          "unidade": "texto"
+        },
+        "razao_social": {
+          "descricao": "Razão social como a Receita publica; vazia para empresário individual, MEI e grupo 4 (é o nome da pessoa)",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_basico",
+        "mes_do_retrato"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "montado_em": "a_conferir"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam",
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram"
+    },
     "pgfn_divida": {
       "tabela": "pgfn_divida",
       "modulo": "governo_e_sancoes",
