@@ -78,6 +78,8 @@ TITULOS_DAS_TABELAS = {
     "curtailment_mensal": "Eólicas e solares: energia não gerada por ordem do operador",
     "capacidade_por_tipo": "Capacidade instalada em operação, por tipo de usina",
     "pareceres_do_auditor": "Parecer do auditor nos últimos exercícios",
+    "pareceres_do_itr": "Revisão do auditor nos últimos ITRs",
+    "dmpl_por_exercicio": "Patrimônio líquido por componente (DMPL) nos últimos exercícios",
     "trocas_de_auditor": "Trocas de auditor",
     "controladas": "Controladas e coligadas no FRE mais recente",
     "controladoras": "Quem controla a companhia",
@@ -718,6 +720,21 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("continuidade_operacional", "Continuidade", _sim_ou_nao_do_parecer),
         ("disponivel_em", "Publicado em", dia),
     ],
+    "pareceres_do_itr": [
+        ("referencia", "Trimestre", dia),
+        ("versao", "Versão", inteiro),
+        ("opiniao", "Conclusão", _opiniao_do_auditor),
+        ("enfase", "Ênfase", _sim_ou_nao_do_parecer),
+        ("continuidade_operacional", "Continuidade", _sim_ou_nao_do_parecer),
+        ("disponivel_em", "Publicado em", dia),
+    ],
+    "dmpl_por_exercicio": [
+        ("referencia", "Exercício", dia),
+        ("demonstracao", "Demonstração", _texto),
+        ("componente", "Componente", _texto),
+        ("valor", "Saldo final", reais),
+        ("publicado_em", "Publicado em", dia),
+    ],
     "trocas_de_auditor": [
         ("efetiva_em", "Desde", dia),
         ("anterior", "Auditor anterior", _texto),
@@ -1112,9 +1129,13 @@ _DA_DFP = "DFP entregue à CVM: DRE, DFC e DVA, como eram públicas no dia (tabe
 _DO_MA = "negócios de M&A publicados por assessorias independentes (tabelas ma_assessorias, ma_partes, ma_negocios e ma_datas)"
 _DOS_RATINGS = "relatórios das agências de rating e comunicados da companhia entregues à CVM (tabela ratings)"
 _DO_PARECER = "relatório do auditor independente sobre a DFP entregue à CVM (tabela pareceres_dfp)"
+_DO_PARECER_DO_ITR = "revisão especial do auditor independente sobre o ITR entregue à CVM (tabela pareceres_itr)"
 FONTES_DOS_ITENS = {
     "parecer_opiniao": _DO_PARECER,
     "parecer_enfase": _DO_PARECER,
+    "parecer_itr_opiniao": _DO_PARECER_DO_ITR,
+    "parecer_itr_enfase": _DO_PARECER_DO_ITR,
+    "parecer_itr_continuidade": _DO_PARECER_DO_ITR,
     "parecer_continuidade": _DO_PARECER,
     "auditor_atual": f"{_DO_FRE} (tabela auditores)",
     "auditor_desde": f"{_DO_FRE} (tabela trocas_de_auditor)",
