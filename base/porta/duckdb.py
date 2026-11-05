@@ -117,6 +117,8 @@ ARQUIVOS: dict[str, str] = {
     "susep_cadastro": "susep_cadastro/*.parquet",
     "mte_lista_suja": "mte_lista_suja/*.parquet",
     "ibama_embargos": "ibama_embargos/*.parquet",
+    "cvm_fiagro": "cvm_fiagro/*.parquet",
+    "gleif_ponte": "gleif_ponte/*.parquet",
     "cnes_estabelecimentos": "cnes_estabelecimentos/*.parquet",
     "cnes_competencias": "cnes_competencias/*.parquet",
     "anm_cfem_arrecadacao": "anm_cfem_arrecadacao/*.parquet",

@@ -297,9 +297,7 @@ DESTINOS: dict[str, Destino] = {
     "cvm-cadastros": _tabela("cadastro_das_companhias", "cadastro_de_fundos"),
     "cvm-cri": _tabela(*_INFORME_DE_SECURITIZACAO),
     "cvm-cra": _tabela(*_INFORME_DE_SECURITIZACAO),
-    "cvm-fiagro": _planejada(
-        "serie-T/T4", "informe mensal do FIAGRO; a CVM só guarda os meses recentes"
-    ),
+    "cvm-fiagro": _tabela("cvm_fiagro"),
     "cvm-sancionador": _planejada(
         "serie-T/T4", "processos sancionadores (só PJ e a função)"
     ),
@@ -408,7 +406,7 @@ DESTINOS: dict[str, Destino] = {
     "ibama-autos": _planejada("serie-T/T5", "autos de infração ambiental por CNPJ"),
     "ibama-embargos": _tabela("ibama_embargos"),
     "mte-lista-suja": _tabela("mte_lista_suja"),
-    "gleif-br": _planejada("serie-T/T9", _SO_LIGA_HOJE + " (CNPJ e LEI)"),
+    "gleif-br": _tabela("gleif_ponte"),
     # M&A e intradiários
     "assessoria-igc": _tabela(
         "ma_assessorias", "ma_datas", "ma_negocios", "ma_partes", "ma_regua"
