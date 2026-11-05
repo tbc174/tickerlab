@@ -92,3 +92,29 @@ def test_arquivo_sem_linhas_devolve_leitura_vazia() -> None:
     lido = t.ler_go_licencas(b"cpf_cnpj,numero_licenca\n", HOJE)
     assert lido.linhas == []
     assert lido.descartadas == 0
+
+
+def test_sp_capital_pula_as_linhas_de_titulo_e_le_o_cabecalho_real_de_2024() -> None:
+    vazia = ";".join(['""'] * 9)
+    corpo = _csv(
+        '﻿"PREFEITURA DO MUNICÍPIO DE SÃO PAULO";"";"";"";"";"";"";"";""',
+        '"Contratos da Prefeitura do Município de São Paulo";"";"";"";"";"";"";"";""',
+        vazia,
+        '"Nome do Órgão";"Contrato";"Data da Assinatura";"Vigência (dias/mês)";"Objeto";'
+        '"Modalidade";"Processo Administrativo";"CNPJ/CPF";"Fornecedor e Nome de Fantasia";'
+        '"Valor(R$)"',
+        '"SECRETARIA X";"273";"21/12/2023";"12 M";"OBJETO NAO ENTRA";"DISPENSA  ";'
+        '"6022.2023/0005315-6";"11.222.333/0001-81";"EMPRESA NAO ENTRA";"36.500,00"',
+        '"SECRETARIA X";"274";"21/12/2023";"12 M";"OBJ";"DISPENSA";"6022.2023/1";'
+        '"123.456.789-09";"PF NAO ENTRA";"10,00"',
+    )
+    lido = t.ler_sp_capital_contratos(corpo, HOJE)
+    assert lido.descartadas == 1
+    (linha,) = lido.linhas
+    assert linha["cnpj"] == CNPJ
+    assert linha["numero_contrato"] == "273"
+    assert linha["orgao"] == "SECRETARIA X"
+    assert linha["numero_processo"] == "6022.2023/0005315-6"
+    assert linha["data_assinatura"] == "2023-12-21"
+    assert linha["valor"] == 36500.0
+    assert "NAO ENTRA" not in str(linha.values())

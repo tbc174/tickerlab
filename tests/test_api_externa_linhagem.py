@@ -16,6 +16,7 @@ from base.dossie import COLUNAS_DE_PESSOA
 from base.prontidao import Prontidao, Prova, prova_publicavel
 from base.raio_x_de_fundo import CADASTRO, CAMPOS_DO_CADASTRO
 from src import portao_externo as portao
+from src.api_externa.conjuntos import empresas
 from src.banco.coletas import Marca, marca_da_fonte
 from src.portao_externo import (
     DIREITOS_DA_API_EXTERNA,
@@ -30,7 +31,7 @@ from src.portao_externo import (
 )
 
 # "companies" entra com a rota dele (PR 4), que tira MEI e empresário individual linha a linha
-CONJUNTOS_DO_BETA = {"financials", "funds"}
+CONJUNTOS_DO_BETA = {"companies", "financials", "funds"}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
 CAMPOS_DO_CUSTO = {"sem_taxa", "com_taxa", "ficou_com_a_taxa", "fracao_do_resultado"}
 DEPOIS_DO_COMECO = date(2026, 11, 10)
@@ -105,11 +106,23 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
         assert linha.campo in colunas, linha
 
 
-def test_nenhuma_tabela_do_cnpj_tem_direito_sem_a_rota_que_tira_quem_e_pessoa():
-    # ADR 0106: MEI e empresário individual estão nas tabelas do CNPJ; o corte é por linha, na rota
+def test_do_cnpj_so_a_situacao_cadastral_tem_direito_e_so_na_rota_que_tira_quem_e_pessoa():
+    # ADR 0106: MEI e empresário individual estão nas tabelas do CNPJ; o corte é por linha, na rota de
+    # `companies` (`conjuntos/empresas.py`). Nome, natureza jurídica e Simples esperam o histórico datado.
+    do_cnpj = [
+        linha
+        for linha in DIREITOS_DA_API_EXTERNA
+        if _da_familia(linha.fonte, "rfb")
+        or any(tabela.startswith("cnpj_") for tabela in linha.tabelas)
+    ]
+    assert do_cnpj
+    for linha in do_cnpj:
+        assert linha.conjunto == empresas.CONJUNTO, linha
+        assert linha.tabelas == (empresas.TABELA,), linha
+        assert linha.campo in empresas.CAMPOS, linha
     for linha in DIREITOS_DA_API_EXTERNA:
-        assert not _da_familia(linha.fonte, "rfb"), linha
-        assert not any(tabela.startswith("cnpj_") for tabela in linha.tabelas), linha
+        if linha.conjunto == empresas.CONJUNTO:
+            assert linha in do_cnpj, linha
 
 
 def test_nenhum_campo_de_pessoa_tem_direito():
