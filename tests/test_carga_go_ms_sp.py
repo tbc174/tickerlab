@@ -32,12 +32,24 @@ CSV_SP = (
 )
 
 
-def _indice(*recursos: tuple[str, str], nome: str) -> bytes:
+def _indice(
+    *recursos: tuple[str, str],
+    nome: str,
+    outros: list[tuple[str, str]] = (),  # type: ignore[assignment]
+) -> bytes:
+    """Índice CKAN com um pacote; `outros` são pacotes extras (nome, endereço) de um recurso "2025-03"."""
     pacote = {
         "name": nome,
         "resources": [{"name": n, "url": u, "format": "CSV"} for n, u in recursos],
     }
-    return json.dumps({"result": {"results": [pacote]}}).encode()
+    extras = [
+        {
+            "name": n,
+            "resources": [{"name": "Outro 2025-03", "url": u, "format": "CSV"}],
+        }
+        for n, u in outros
+    ]
+    return json.dumps({"result": {"results": [pacote, *extras]}}).encode()
 
 
 class _Fonte:
@@ -50,11 +62,13 @@ class _Fonte:
     def __call__(self, endereco: str) -> bytes:
         self.pedidos.append(endereco)
         if "dadosabertos.go.gov.br" in endereco and "package_search" in endereco:
+            # o pacote do SGA (outro sistema) vem no mesmo índice e não pode ser baixado
             return _indice(
                 ("Licenças 2025-03", "https://go.exemplo/a.csv"),
                 ("Licenças 2019-03", "https://go.exemplo/velho.csv"),
                 ("Licenças sem data", "https://go.exemplo/x.csv"),
                 nome="licencas-ambientais-ipe",
+                outros=[("licencas-ambientais-sga", "https://go.exemplo/sga.csv")],
             )
         if "dados.ms.gov.br" in endereco and "package_search" in endereco:
             return _indice(
@@ -64,7 +78,7 @@ class _Fonte:
         if "dados.prefeitura.sp.gov.br" in endereco and "package_search" in endereco:
             return _indice(
                 ("Contratos 2025", "https://sp.exemplo/c.csv"),
-                nome="contratos-extrato",
+                nome="base-de-compras-e-licitacoes",
             )
         if endereco.startswith("https://go."):
             return CSV_GO.encode()
