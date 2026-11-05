@@ -1,0 +1,11 @@
+worktree C:/Users/alguem/projetos/analise-acoes
+HEAD ff93ecc1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+branch refs/heads/main
+
+worktree C:/Users/alguem/projetos/analise-acoes-dados-tce-ce
+HEAD 1111111111111111111111111111111111111111
+branch refs/heads/feat/tce-ce-coleta
+
+worktree C:/Users/alguem/projetos/analise-acoes-produto-ficha-md
+HEAD 2222222222222222222222222222222222222222
+branch refs/heads/feat/api-ficha-markdown

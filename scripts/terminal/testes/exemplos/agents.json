@@ -1,0 +1,29 @@
+[
+  {
+    "pid": 101,
+    "cwd": "C:/Users/alguem/projetos/analise-acoes",
+    "kind": "desktop",
+    "startedAt": 1762340000000,
+    "sessionId": "a1",
+    "name": "Dados · TCE-CE coleta automática (682)",
+    "status": "busy"
+  },
+  {
+    "pid": 102,
+    "cwd": "C:/Users/alguem/projetos/analise-acoes",
+    "kind": "desktop",
+    "startedAt": 1762340000000,
+    "sessionId": "a2",
+    "name": "Agente · Recepção do Slack",
+    "status": "waiting",
+    "waitingFor": "permission"
+  },
+  {
+    "pid": 103,
+    "cwd": "C:/Users/alguem/projetos/analise-acoes",
+    "kind": "background",
+    "startedAt": 1762340000000,
+    "sessionId": "a3",
+    "status": "idle"
+  }
+]
