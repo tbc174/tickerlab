@@ -57,6 +57,7 @@ PASTAS_DA_RAIZ = frozenset(
         "migracoes",
         "notas",
         "novo",
+        "pesquisa",
         "scripts",
         "site",
         "site-api",
