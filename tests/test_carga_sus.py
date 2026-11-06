@@ -182,3 +182,49 @@ def test_fonte_e_do_datasus_e_nao_treina():
     for sistema in (sus.SIH, sus.SIA):
         assert sistema.fonte.startswith("ms-")
         assert coletas.licenca_da_fonte(sistema.fonte)
+        assert not coletas.pode_usar("treinar", sistema.fonte)
+        assert coletas.pode_usar(coletas.MOSTRAR, sistema.fonte)
+
+
+def test_manifesto_leva_a_familia_ms_pelo_endereco_do_ftp(tmp_path: Path):
+    """As origens são `ftp://ftp.datasus.gov.br/...`: a licença do manifesto sai do DATASUS, não "a confirmar"."""
+    import json
+
+    _carregar(
+        sus.SIH, {"RDAC2607.dbc": dbc_do_sih([internacao()] * 12)}, tmp_path, PRIMEIRA
+    )
+    manifesto = json.loads(
+        (tmp_path / "sus_internacoes" / "202607.json").read_text(encoding="utf-8")
+    )
+    assert list(manifesto["licenca"]["fontes"]) == ["ms"]
+    assert "sem_fonte" not in manifesto["licenca"]
+
+
+def test_dicionario_diz_os_limites_da_supressao_de_base_sus():
+    """O dicionário não importa `base/sus.py`: o texto dos limites tem de bater com as constantes."""
+    from base.dicionario import TABELAS
+
+    texto = " ".join(
+        descricao
+        for nome in ("sus_internacoes", "sus_ambulatorial")
+        for descricao, _ in TABELAS[nome].colunas.values()
+    )
+    assert f"menos de {sus.MINIMO_PARA_PUBLICAR} " in texto
+    assert f"menos de {sus.MINIMO_PARA_OBITOS}" in texto
+
+
+def test_situacao_das_coletas_e_so_interna():
+    """`registros` menos a soma publicada revelaria a célula suprimida: fora do site, da porta e da API."""
+    from base import vitrine
+    from base.contrato import catalogo
+    from base.porta.duckdb import ARQUIVOS, FORA_DA_PORTA
+
+    completo = catalogo()
+    publico = vitrine.catalogo_publico(completo)
+    assert carga_sus.PASTA_DA_SITUACAO in completo["tabelas"]
+    assert carga_sus.PASTA_DA_SITUACAO not in publico["tabelas"]
+    assert carga_sus.PASTA_DA_SITUACAO in FORA_DA_PORTA
+    assert carga_sus.PASTA_DA_SITUACAO not in ARQUIVOS
+    for pasta in carga_sus.PASTA_DA_TABELA.values():
+        assert pasta in publico["tabelas"]
+        assert pasta in ARQUIVOS
