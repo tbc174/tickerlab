@@ -2051,6 +2051,51 @@
       "uso": "guardada"
     },
     {
+      "coletas": [
+        "divida-documental"
+      ],
+      "familia": "divida",
+      "licencas": [
+        "PDF guardado só como prova; fato com página e link"
+      ],
+      "link": null,
+      "marca": "a_confirmar",
+      "orgao": "Publicações legais, FNET e prospectos (dívida de empresas fechadas)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "sudeco-fdco"
+      ],
+      "familia": "sudeco",
+      "licencas": [
+        "Sudeco (FDCO), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudeco e a data"
+      ],
+      "link": "https://www.gov.br/sudeco/",
+      "marca": "vendavel",
+      "orgao": "Sudeco (FDCO, fundo do Centro-Oeste)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-04",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "sudam-fda"
+      ],
+      "familia": "sudam",
+      "licencas": [
+        "Sudam (FDA), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudam e a data"
+      ],
+      "link": "https://www.gov.br/sudam/",
+      "marca": "vendavel",
+      "orgao": "Sudam (FDA, fundo da Amazônia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-04",
+      "uso": "guardada"
+    },
+    {
       "coletas": [],
       "familia": "yahoo",
       "licencas": [
@@ -6768,6 +6813,27 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "divida-documental",
+      "licenca": "PDF guardado só como prova; fato com página e link",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "sudeco-fdco",
+      "licenca": "Sudeco (FDCO), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudeco e a data",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-04"
+    },
+    {
+      "id": "sudam-fda",
+      "licenca": "Sudam (FDA), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudam e a data",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-04"
     }
   ],
   "tabelas": [
@@ -8412,7 +8478,7 @@
     }
   ],
   "totais": {
-    "familias": 123,
+    "familias": 126,
     "familias_em_uso": 43,
     "fontes": 43,
     "fontes_em_consulta": 7,

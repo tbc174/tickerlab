@@ -52,7 +52,7 @@ LICENCAS = {
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
-    "rfb-renuncias": "DIRBI e ECF da Receita: sem licença escrita; risco assumido (ADR 0122)",
+    "rfb-renuncias": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)",
     "rfb-transacoes": "Transações da Receita: sem licença escrita; risco assumido (ADR 0122)",
     "ms": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
     "tce-rn": "TCE-RN: licença não localizada; risco assumido (ADR 0122)",
@@ -176,6 +176,12 @@ LICENCAS = {
     "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
+    # fontes pouco visíveis (plano de 05/11/2026, ADR 0124): rodapé do gov.br lido em 04/11/2026
+    "sudeco": "Sudeco (FDCO), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudeco e a data",
+    "sudam": "Sudam (FDA), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudam e a data",
+    # PDFs de dívida de empresas fechadas (publicações legais, FNET, prospecto): sem licença de
+    # republicação achada; o PDF é prova interna, o fato sai nas nossas palavras com o link
+    "divida": "PDF guardado só como prova; fato com página e link (ADR 0124)",
     # comunicações processuais do DJEN (plano de 03/11/2026 dos processos; ADR 0121): pública pela
     # Resolução CNJ 455/2022; a Justiça do Trabalho fica de fora pela Resolução CNJ 121/2010, art. 4º,
     # § 1º, II (proíbe a consulta pública pelo nome da parte)
@@ -414,6 +420,11 @@ REVENDA = {
     "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "ico": NAO_COMERCIAL,  # PDF sem termos lidos; coleta e uso com a fonte citada (ADR 0102)
     "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
+    # CC BY-ND 3.0 (rodapé do gov.br, 04/11/2026): o número sai com a fonte, sem obra derivada do PDF
+    "sudeco": VENDAVEL_RISCO_ASSUMIDO,
+    "sudam": VENDAVEL_RISCO_ASSUMIDO,
+    # sem licença de republicação achada: o PDF é prova interna (ADR 0124)
+    "divida": A_CONFIRMAR,
     # o CNJ não escreve licença de reuso da API; sem pedido ao CNJ (ADR 0102 Emenda 2): uso citando a fonte
     "djen": VENDAVEL_RISCO_ASSUMIDO,
     "cnj": VENDAVEL_RISCO_ASSUMIDO,  # a TPU também não tem licença de reuso escrita (ADR 0102 Emenda 2)
@@ -630,6 +641,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
         Coleta.TERMO_VEDA, Guarda.NAO_DIZ
     ),  # BDI veda; VPS 90 dias, casa sem prazo
     "contrapartes": ColetaEGuarda(Coleta.TERMO_VEDA, Guarda.SO_PROVA),
+    # PDFs de sites diferentes (diário oficial da PB, jornal, FNET, securitizadora): termos não lidos
+    # um a um; guarda só como prova (ADR 0124)
+    "divida": ColetaEGuarda(Coleta.NAO_LIDA, Guarda.SO_PROVA),
     # o robots.txt da API libera tudo (lido em 03/11/2026) e a Resolução CNJ 455/2022 faz do DJEN a
     # publicação oficial; nenhum termo diz por quanto tempo guardar
     "djen": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
@@ -784,6 +798,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "mme",
             # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos
             "finep",
+            # fontes pouco visíveis (05/11): rodapé CC BY-ND lido, robots.txt do gov.br ainda não
+            "sudeco",
+            "sudam",
             # lote Europa e RBA (05/11): termos lidos em 29/10; o SNB só tem a marca (sem coleta)
             "statat",
             "statbel",
