@@ -45,6 +45,7 @@ PASSAM_AS_MARCAS = {
     "faostat",
     "bis",
     "dgagri",  # CC BY 4.0 da Comissão Europeia, lido em 24/10/2026 (linha 396)
+    "boc",  # Bank of Canada: livre citando o Banco, termos relidos em 05/11/2026 (linha 396)
     "riksbank",  # reuso livre citando a fonte, termos lidos em 29/10/2026 (linha 511)
     "rfb-cnpj",
     "goias",  # CC BY, termos relidos em 05/11/2026 (linha 688)

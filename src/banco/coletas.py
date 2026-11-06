@@ -191,6 +191,7 @@ LICENCAS = {
     "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
     # lote commodities oficiais (linha 396; termos lidos em 24/10/2026, licencas-por-fonte.md)
     "dgagri": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+    "boc": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
     "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
@@ -418,6 +419,9 @@ REVENDA = {
     "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
     "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
     "dgagri": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 da Comissão Europeia: crédito e indicação de mudanças
+    # Bank of Canada (termos relidos em 05/11/2026): cita o Banco e indica mudança; quem vende o conteúdo
+    # avisa o comprador de que ele é grátis no site do Banco
+    "boc": VENDAVEL_COM_ATRIBUICAO,
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
     "norges": A_CONFIRMAR,  # "no changes may be made" + Content-Signal ai-train=no: leitura humana antes de vender (ADR 0102 Emenda 2)
@@ -641,6 +645,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # DG AGRI: aviso legal da Comissão (CC BY 4.0, lido em 24/10/2026); o robots.txt de `ec.europa.eu` não
     # fecha `/agrifood/api` (conferido em 05/11/2026) e a coleta tem pausa e se identifica
     "dgagri": _ABERTA_SEM_PRAZO,
+    # Bank of Canada (Valet, sem chave): termos de uso relidos em 05/11/2026; o robots.txt só fecha o wp-admin.
+    # Os termos proíbem burlar o limite de pedidos da Valet: 8 pedidos por rodada e pausa de 2 s
+    "boc": _ABERTA_SEM_PRAZO,
     # Riksbank (SWEA, sem chave) e Norges Bank (SDMX, sem chave): termos lidos em 29/10/2026 (linha 511).
     # O Norges Bank traz `Content-Signal: ai-train=no` no robots.txt (05/11/2026), que não fecha a API
     "riksbank": _ABERTA_SEM_PRAZO,
