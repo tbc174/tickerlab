@@ -206,6 +206,9 @@ LICENCAS = {
     # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
     "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
     "dst": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+    "scb": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+    "statfi": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+    "statice": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
     "norges": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
     # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
@@ -444,6 +447,9 @@ REVENDA = {
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
     "dst": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (termos da API do StatBank, lidos em 29/10/2026)
+    "scb": VENDAVEL_COM_ATRIBUICAO,  # CC0 ("We use the licence CC0", lido em 29/10/2026)
+    "statfi": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0, "Source: Statistics Finland" (lido em 29/10/2026)
+    "statice": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0, dados abertos (lido em 29/10/2026)
     "norges": A_CONFIRMAR,  # "no changes may be made" + Content-Signal ai-train=no: leitura humana antes de vender (ADR 0102 Emenda 2)
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
     "inpe": VENDAVEL_RISCO_ASSUMIDO,  # sem licença escrita no INPE Queimadas
@@ -681,6 +687,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     "riksbank": _ABERTA_SEM_PRAZO,
     "norges": _ABERTA_GUARDA_NAO_DIZ,
     "dst": _ABERTA_SEM_PRAZO,  # CC BY 4.0, API pública sem chave
+    "scb": _ABERTA_SEM_PRAZO,  # CC0, API pública sem chave
+    "statfi": _ABERTA_SEM_PRAZO,  # CC BY 4.0, API pública sem chave
+    "statice": _ABERTA_SEM_PRAZO,  # CC BY 4.0, API pública sem chave
     # a N0 diz retenção sim, coleta "não diz" ou não lida
     "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
     "mapbiomas": ColetaEGuarda(
