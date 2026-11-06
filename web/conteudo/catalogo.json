@@ -6730,6 +6730,7 @@
   "tabelas": [
     {
       "atraso": "DFP: até 3 meses depois do fim do exercício",
+      "consultavel": true,
       "frase": "Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6740,6 +6741,7 @@
     },
     {
       "atraso": "DFP: até 3 meses depois do fim do exercício",
+      "consultavel": true,
       "frase": "A demonstração das mutações do patrimônio líquido (DMPL) como era em cada data: uma linha por valor diferente que cada célula (conta × coluna do patrimônio) de cada período já teve.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -6750,6 +6752,7 @@
     },
     {
       "atraso": "O do documento conferido",
+      "consultavel": false,
       "frase": "Os achados das regras fixas do selo \"dado em conferência\": o número que chamou a atenção, o esperado e o porquê.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6760,6 +6763,7 @@
     },
     {
       "atraso": "Dias, entre o ato e a publicação",
+      "consultavel": false,
       "frase": "Cada registro de companhia aberta na CVM, inclusive as que saíram, com a data e o motivo.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6770,6 +6774,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu, juntando todos os anos do formulário cadastral (FCA): código que sumiu continua aqui.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -6780,6 +6785,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), com a data de entrega de cada versão.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -6790,6 +6796,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o último ano do FCA em que apareceu.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -6800,6 +6807,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Códigos de negociação informados fora do formato de ticker (a CSN informa \"4030\"): não viram ligação e vão para o relatório de buracos.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -6810,6 +6818,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "As posições em ações de todos os fundos registrados na CVM, por mês, desde 2005 (CDA, bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6820,6 +6829,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA (\"demais ativos não codificados\"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6830,6 +6840,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "As cotas de fundos que cada fundo tem, do bloco 2 do CDA (\"cotas de fundos\"): quem compra cotas de FIDC, de FIP, de FII e de outros fundos.",
       "frequencia": "Mensal",
       "historico_desde": "2005-01-31",
@@ -6840,6 +6851,7 @@
     },
     {
       "atraso": "Entregue em até 15 dias",
+      "consultavel": true,
       "frase": "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (tab_I a tab_X_7) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6850,6 +6862,7 @@
     },
     {
       "atraso": "Do dia: é um retrato do cadastro na data da coleta",
+      "consultavel": false,
       "frase": "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6860,6 +6873,7 @@
     },
     {
       "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "consultavel": false,
       "frase": "O gestor de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6870,6 +6884,7 @@
     },
     {
       "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "consultavel": false,
       "frase": "O administrador de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6880,6 +6895,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6890,6 +6906,7 @@
     },
     {
       "atraso": "O do CDA",
+      "consultavel": false,
       "frase": "Por mês desde 2005, quanto do valor comprado pelos fundos chega a um CNPJ de empresa pela ligação do painel (a meta da tabela conferida é 95% em cada ano).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6900,6 +6917,7 @@
     },
     {
       "atraso": "O do CDA",
+      "consultavel": false,
       "frase": "Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o menor.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6910,6 +6928,7 @@
     },
     {
       "atraso": "Nenhum",
+      "consultavel": false,
       "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de propósito, cada um com o motivo.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -6920,6 +6939,7 @@
     },
     {
       "atraso": "Nenhum: a ligação vale para o período em que o emissor aparece nas carteiras",
+      "consultavel": false,
       "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que saíram da bolsa ou mudaram de código antes de 2018 (e a CSN, que informa \"4030\"), ligados ao CNPJ pelo cadastro de companhias da CVM.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -6930,6 +6950,7 @@
     },
     {
       "atraso": "Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras",
+      "consultavel": false,
       "frase": "Tabela conferida à mão: códigos de empresas da bolsa que o FCA traz fora do formato (o BTG informa \"000000\" nas units, a Marisa \"022055\").",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -6940,6 +6961,7 @@
     },
     {
       "atraso": "Mensal",
+      "consultavel": true,
       "frase": "Estatístico do transporte aéreo da ANAC por empresa, mês e par de aeroportos (passageiros, carga, assentos, ASK, RPK, combustível...), desde 2000, no formato da fonte.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -6950,6 +6972,7 @@
     },
     {
       "atraso": "Mensal",
+      "consultavel": true,
       "frase": "Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por mês, agente, produto, origem, destino e mercado, desde 2007, no formato da fonte.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -6960,6 +6983,7 @@
     },
     {
       "atraso": "O mês fecha cerca de 60 dias depois",
+      "consultavel": true,
       "frase": "Exportações de café por mês, NCM, UF de origem e país de destino, recortadas do Comex Stat (NCMs 09011110, 09011190, 09012100 e 21011110).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-18",
@@ -6970,6 +6994,7 @@
     },
     {
       "atraso": "O dia seguinte",
+      "consultavel": true,
       "frase": "Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte.",
       "frequencia": "Diária",
       "historico_desde": "2026-10-14",
@@ -6980,6 +7005,7 @@
     },
     {
       "atraso": "O preço do dia sai no dia anterior e a regra usa o dia + 1",
+      "consultavel": true,
       "frase": "PLD (preço de liquidação das diferenças) da CCEE, em R$/MWh, por submercado: por hora e por dia desde 01/2021, por mês desde 2001 e, de 06/2001 a 12/2020.",
       "frequencia": "Diária",
       "historico_desde": "2026-10-14",
@@ -6990,6 +7016,7 @@
     },
     {
       "atraso": "O instante + 2 dias",
+      "consultavel": true,
       "frase": "Restrição de geração eólica e solar do ONS (curtailment): quanto cada usina ou conjunto deixou de gerar por ordem do operador, uma linha por usina e hora.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7000,6 +7027,7 @@
     },
     {
       "atraso": "A regra usa a data de entrada em operação",
+      "consultavel": true,
       "frase": "Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (MW), proprietário, operador, entrada em teste, entrada em operação e desativação.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7010,6 +7038,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7020,6 +7049,7 @@
     },
     {
       "atraso": "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido",
+      "consultavel": true,
       "frase": "Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilômetro útil (TKU) por mês, ferrovia, mercadoria e par de estações (origem e destino), de 2006 em diante.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7030,6 +7060,7 @@
     },
     {
       "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC",
+      "consultavel": true,
       "frase": "Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7040,6 +7071,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Nome de cada URF (unidade da Receita: porto, aeroporto ou posto) do Comex Stat, para ler o código que comex_preco_medio guarda (coluna urf).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
@@ -7050,6 +7082,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Nome de cada via de transporte do Comex Stat, para ler o código que comex_preco_medio guarda (a via de transporte dos CSVs do MDIC).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
@@ -7060,6 +7093,7 @@
     },
     {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
+      "consultavel": true,
       "frase": "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7070,6 +7104,7 @@
     },
     {
       "atraso": "Agosto/2026 estava publicado em 14/10/2026",
+      "consultavel": true,
       "frase": "Acessos de banda larga fixa, telefonia móvel e TV por assinatura da Anatel por prestadora (CNPJ), mês e UF, desde 2005 (móvel), 2007 (banda larga) e 2012 (TV), somados os municípios.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7080,6 +7115,7 @@
     },
     {
       "atraso": "Medido: o arquivo de 08/08/2026 trazia até junho/2026",
+      "consultavel": true,
       "frase": "Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidade, cobertura, vigência do plano, contratação e financiamento, desde 2017, no formato da fonte.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
@@ -7090,6 +7126,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Conselho de administração, diretoria e conselho fiscal por companhia e versão do FRE: quantos membros, suplentes, independentes, eleitos pelo controlador e pelos minoritários, desde 2010.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7100,6 +7137,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Comitês (auditoria, risco, remuneração...) por companhia e versão do FRE: quantos membros e suplentes, desde 2010.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7110,6 +7148,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Remuneração total da administração por órgão e exercício (salário, benefícios, bônus, participação nos resultados, ações...), como a CVM publica no FRE, desde 2010, sem os textos livres.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7120,6 +7159,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "A maior, a menor e a média da remuneração individual por órgão e exercício, como a CVM publica no FRE, desde 2010 (sem a observação em texto livre).",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7130,6 +7170,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Gênero, raça e pessoas com deficiência na administração por órgão, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores).",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7140,6 +7181,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Capital social de cada FRE (integralizado, subscrito, emitido e autorizado), com as ações ordinárias e preferenciais, as classes e os títulos conversíveis em ação.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7150,6 +7192,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Empregados por região (recorte local) e por posição, liderança ou não (recorte posicao), com gênero, raça, faixa etária, PCD e região, como a CVM publica no FRE de 2023 em diante.",
       "frequencia": "Anual",
       "historico_desde": "2023-01-01",
@@ -7160,6 +7203,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7170,6 +7214,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7180,6 +7225,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação, os montantes, a taxa e a posição da companhia.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7190,6 +7236,7 @@
     },
     {
       "atraso": "Nenhum além das datas da própria oferta",
+      "consultavel": true,
       "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -7200,6 +7247,7 @@
     },
     {
       "atraso": "Nenhum além das datas da própria oferta",
+      "consultavel": true,
       "frase": "Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por CNPJ do emissor, no formato da CVM, sem os textos livres (devedores, garantias, lastro, destinação dos recursos).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -7210,6 +7258,7 @@
     },
     {
       "atraso": "Agosto/2026 estava publicado em 16/10/2026",
+      "consultavel": true,
       "frase": "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7220,6 +7269,7 @@
     },
     {
       "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
+      "consultavel": false,
       "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -7230,6 +7280,7 @@
     },
     {
       "atraso": "Nenhum",
+      "consultavel": false,
       "frase": "Os códigos das fontes setoriais.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
@@ -7240,6 +7291,7 @@
     },
     {
       "atraso": "Jun/2026 estava publicado em 14/10",
+      "consultavel": true,
       "frase": "Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e conglomerado, por trimestre desde 2000, no formato longo da fonte (uma linha por instituição, relatório, conta e coluna).",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -7250,6 +7302,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidade, conglomerados e CNPJ do líder de cada instituição e conglomerado, com a raiz do CNPJ que liga à bolsa.",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -7260,6 +7313,7 @@
     },
     {
       "atraso": "O do cadastro do IF.data",
+      "consultavel": false,
       "frase": "Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por data-base.",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -7270,6 +7324,7 @@
     },
     {
       "atraso": "Publicado ~30 dias depois do fim do mês",
+      "consultavel": true,
       "frase": "Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, modalidade.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -7280,6 +7335,7 @@
     },
     {
       "atraso": "O do balanço mais novo de cada empresa até o corte",
+      "consultavel": false,
       "frase": "Os padrões por setor das notas: os percentis de cada indicador entre as empresas de cada grupo de setores, calculados só com os balanços que eram públicos na data de corte.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -7290,6 +7346,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Dividendos e juros sobre capital próprio de cada exercício, como a empresa informou no Formulário de Referência (FRE).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7300,6 +7357,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital informados no FRE, para ajustar a quantidade de ações (sem confundir desdobramento com diluição).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7310,6 +7368,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7320,6 +7379,7 @@
     },
     {
       "atraso": "Até 10 dias depois do fim do mês da negociação",
+      "consultavel": true,
       "frase": "Compras e vendas de ações e units por controladores, diretores, conselheiros e pela própria companhia (tesouraria), declaradas à CVM no VLMO desde 2018.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7330,6 +7390,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7340,6 +7401,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7350,6 +7412,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7360,6 +7423,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
+      "consultavel": false,
       "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7370,6 +7434,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
+      "consultavel": false,
       "frase": "Situação cadastral de cada estabelecimento do CNPJ (nula, ativa, suspensa, inapta ou baixada), um retrato por mês guardado: o histórico \"como era na data\" nasce da sequência dos retratos.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7380,6 +7445,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação cadastral, datas, atividade (CNAE), endereço e situação especial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7390,6 +7456,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "O que mudou de um mês para o outro em cnpj_estabelecimentos: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7400,6 +7467,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa do CNPJ aberto da Receita, o retrato mais recente, com as datas de opção e de exclusão.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7410,6 +7478,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "O que mudou de um mês para o outro em cnpj_simples: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7420,6 +7489,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "Quadro de sócios e administradores das empresas do CNPJ aberto da Receita, o retrato mais recente.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7430,6 +7500,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "O que mudou de um mês para o outro em cnpj_qsa: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7440,6 +7511,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
+      "consultavel": true,
       "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com disponivel_em até D.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7450,6 +7522,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
+      "consultavel": true,
       "frase": "Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7460,6 +7533,7 @@
     },
     {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
+      "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
       "frequencia": "Trimestral",
       "historico_desde": "2026-10-14",
@@ -7470,6 +7544,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punidas pela Lei Anticorrupção, com o valor da multa).",
       "frequencia": "Diária",
       "historico_desde": "2026-10-14",
@@ -7480,6 +7555,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tipo do processo, a situação da demanda, as datas da 1ª instância e a multa final.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7490,6 +7566,7 @@
     },
     {
       "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "consultavel": true,
       "frase": "Processos judiciais por companhia aberta: as comunicações.",
       "frequencia": "Semanal",
       "historico_desde": "2025-01-01",
@@ -7500,6 +7577,7 @@
     },
     {
       "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "consultavel": true,
       "frase": "Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo.",
       "frequencia": "Semanal",
       "historico_desde": "2025-01-01",
@@ -7510,6 +7588,7 @@
     },
     {
       "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "consultavel": true,
       "frase": "Processos judiciais por companhia aberta: uma linha por processo, com o que a primeira comunicação diz e a classe pela TPU do CNJ.",
       "frequencia": "Semanal",
       "historico_desde": "2025-01-01",
@@ -7520,6 +7599,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7530,6 +7610,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7540,6 +7621,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7550,6 +7632,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Prestadoras de telecomunicações com outorga da Anatel, por CNPJ e serviço notificado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7560,6 +7643,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Títulos e requerimentos minerários da ANM por CNPJ do titular (Cadastro Mineiro, um arquivo por tipo de título).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7570,6 +7654,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Agentes econômicos registrados na Ancine, por CNPJ.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7580,6 +7665,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Projetos de geração e transmissão de energia enquadrados no REIDI (MME), por CNPJ, com a portaria, a execução e o benefício fiscal.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7590,6 +7676,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Descontos tarifários pagos pela Conta de Desenvolvimento Energético (CDE, ANEEL), somados por CNPJ, mês, distribuidora, classe.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
@@ -7600,6 +7687,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela raiz do CNPJ da empresa que recebeu, de nov/2011 a dez/2022 (a série parou aí).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-29",
@@ -7610,6 +7698,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7620,6 +7709,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e descentralizado, pelos agentes financeiros).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7630,6 +7720,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas duas listas que a Anvisa publica.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7640,6 +7731,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: ativas e canceladas (com a data e o motivo do descredenciamento).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-16",
@@ -7650,6 +7742,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência, capitalização).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-16",
@@ -7660,6 +7753,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Cadastro de Empregadores do MTE (a \"lista suja\" do trabalho análogo ao escravo), só pessoa jurídica.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-14",
@@ -7670,6 +7764,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Termos de embargo do IBAMA por CNPJ do embargado, um por linha.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-14",
@@ -7680,6 +7775,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês.",
       "frequencia": "Mensal",
       "historico_desde": "2025-10-01",
@@ -7690,6 +7786,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ das entidades do Brasil: uma linha por valor diferente de cada par LEI e CNPJ.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-14",
@@ -7700,6 +7797,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7710,6 +7808,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7720,6 +7819,7 @@
     },
     {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
       "frase": "Contratos do TCE-PE (estaduais e municipais) por contratado.",
       "frequencia": "Anual",
       "historico_desde": "2026-11-04",
@@ -7730,6 +7830,7 @@
     },
     {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
       "frase": "Termos aditivos dos contratos do TCE-PE por contratado.",
       "frequencia": "Anual",
       "historico_desde": "2026-11-04",
@@ -7740,6 +7841,7 @@
     },
     {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
       "frase": "Licitações do TCE-PE por licitante vencedor (LicitacoesDetalhes; só a linha do vencedor pessoa jurídica).",
       "frequencia": "Anual",
       "historico_desde": "2026-11-04",
@@ -7750,6 +7852,7 @@
     },
     {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
       "frase": "Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7760,6 +7863,7 @@
     },
     {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
       "frase": "Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-11-04",
@@ -7770,6 +7874,7 @@
     },
     {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
       "frase": "Contratos do LicitaCon do TCE-RS por contratado (só contrato.csv; pessoas.csv nunca é aberto).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7780,6 +7885,7 @@
     },
     {
       "atraso": "A linha vale desde a data em que a ANM a criou",
+      "consultavel": true,
       "frase": "CFEM (royalty da mineração) recolhida por titular do processo, substância e município.",
       "frequencia": "Mensal",
       "historico_desde": "2002-01-01",
@@ -7790,6 +7896,7 @@
     },
     {
       "atraso": "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
       "frase": "Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial (DPA) como o empreendedor declarou.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7800,6 +7907,7 @@
     },
     {
       "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
       "frase": "Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por ano, UF e substância.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7810,6 +7918,7 @@
     },
     {
       "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
       "frase": "Produção mineral beneficiada do Anuário Mineral por ano, UF e substância.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7820,6 +7929,7 @@
     },
     {
       "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
       "frase": "Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e substância.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -7830,6 +7940,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -7840,6 +7951,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados.",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -7850,6 +7962,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início e fim).",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7860,6 +7973,7 @@
     },
     {
       "atraso": "A entrega à CVM",
+      "consultavel": true,
       "frase": "Parecer do auditor de cada DFP desde 2010, lido do CSV de pareceres da CVM (relatório do auditor independente): tipo de opinião (campo da CVM).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -7870,6 +7984,7 @@
     },
     {
       "atraso": "A entrega à CVM",
+      "consultavel": true,
       "frase": "Parecer do auditor de cada ITR desde 2011, lido do CSV de pareceres da CVM (relatório da revisão especial): tipo de opinião (campo da CVM).",
       "frequencia": "Mensal",
       "historico_desde": "2011-01-01",
@@ -7880,6 +7995,7 @@
     },
     {
       "atraso": "A entrega do informe à CVM",
+      "consultavel": true,
       "frase": "Um certificado de recebíveis (CRI, CRA ou outro título de securitização, OTS) por mês, lido do informe mensal da CVM (quadro geral): a securitizadora, o código do certificado, a emissão.",
       "frequencia": "Semanal",
       "historico_desde": "2019-01-01",
@@ -7890,6 +8006,7 @@
     },
     {
       "atraso": "A entrega do informe à CVM",
+      "consultavel": true,
       "frase": "Cedente e devedor de cada certificado (CRI, CRA e OTS) por mês, do quadro cedente_devedor do informe mensal da CVM.",
       "frequencia": "Semanal",
       "historico_desde": "2019-01-01",
@@ -7900,6 +8017,7 @@
     },
     {
       "atraso": "A entrega à CVM",
+      "consultavel": false,
       "frase": "Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7910,6 +8028,7 @@
     },
     {
       "atraso": "O da DFP: cada versão vale a partir da própria entrega à CVM",
+      "consultavel": true,
       "frase": "Processos judiciais que a própria companhia cita nas notas explicativas da DFP: uma linha por número de processo e página de cada versão.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7920,6 +8039,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7930,6 +8050,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Rótulo \"trocou de auditor\": cada troca de firma, montada de todos os anos de auditores na ordem de entrega dos FCAs (uma troca nunca é reescrita depois).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7940,6 +8061,7 @@
     },
     {
       "atraso": "Um dia útil: o arquivo do Tesouro sai na manhã seguinte",
+      "consultavel": true,
       "frase": "Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (Tesouro IPCA+) e inflação implícita, nos vértices de 6 meses a 20 anos, só com os títulos sem cupom.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -7950,6 +8072,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com a safra: cada revisão é uma linha a mais, que passa a valer em divulgado_em.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7960,6 +8083,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "O que a empresa disse no press-release de resultado contra o que entregou à CVM no ITR ou na DFP do mesmo período: receita líquida, lucro líquido dos controladores e resultado operacional.",
       "frequencia": "Semanal",
       "historico_desde": "2010-01-01",
@@ -7970,6 +8094,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Um fato por linha para as notas de dado: resultado trimestral (ITR e DFP), fato relevante (IPE) e reunião do Copom.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -7980,6 +8105,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Um número por linha de cada fato de noticias_fatos, com a conta, o período, a versão e a data pública de onde saiu, e o cálculo quando o valor não é o publicado (trimestre isolado).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -7990,6 +8116,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": true,
       "frase": "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8000,6 +8127,7 @@
     },
     {
       "atraso": "O rótulo de um documento existe a partir do prazo",
+      "consultavel": true,
       "frase": "Rótulo do modelo de atraso na entrega: uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8010,6 +8138,7 @@
     },
     {
       "atraso": "Cada coluna usa só o que era público na véspera da previsão",
+      "consultavel": false,
       "frase": "Colunas do modelo de atraso na entrega como eram na data da previsão: uma linha por exemplo de rotulos_atraso (mesma chave).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8020,6 +8149,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "De que companhia listada é cada entidade que os reguladores enxergam.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8030,6 +8160,7 @@
     },
     {
       "atraso": "O da fonte mais lenta de cada entidade",
+      "consultavel": true,
       "frase": "Uma linha por entidade da rede: empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8040,6 +8171,7 @@
     },
     {
       "atraso": "O ticker vale da entrega do FCA que o trouxe",
+      "consultavel": true,
       "frase": "Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (codigo_<fonte>).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8050,6 +8182,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Uma linha por relação entre duas entidades da rede, com as três datas: sociedade controlada, coligada ou participada da companhia (FRE).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -8060,6 +8193,7 @@
     },
     {
       "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando",
+      "consultavel": false,
       "frase": "Negócios de M&A do middle market tirados dos posts das assessorias independentes, uma linha por página de negócio: as empresas, o tipo e o sentido.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -8070,6 +8204,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Documentos que as companhias abertas entregam à CVM no IPE desde 2003 e que podem anunciar uma operação de M&A, uma linha por versão entregue: fatos relevantes escolhidos pelo assunto.",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -8080,6 +8215,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "As empresas de cada negócio de M&A das assessorias (ma_assessorias), uma linha por empresa de cada página, ligadas à rede de entidades só por regras exatas.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -8090,6 +8226,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Uma linha por página de negócio de M&A com o id_negocio, o mesmo para as páginas do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo negócio): mesmas partes.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -8100,6 +8237,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Quando cada negócio de M&A das assessorias ficou público, provado, e a confirmação por fonte oficial; uma linha por página.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -8110,6 +8248,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -8120,6 +8259,7 @@
     },
     {
       "atraso": "Divulgado na sexta-feira",
+      "consultavel": true,
       "frase": "Posição dos fundos e dos produtores nos futuros de café (Coffee C), açúcar, soja, milho, boi gordo e algodão, por semana, desde 2006, no formato do relatório Disaggregated da CFTC.",
       "frequencia": "Semanal",
       "historico_desde": "2006-06-13",
@@ -8130,6 +8270,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento (1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-02-05",
@@ -8140,6 +8281,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-18",
@@ -8150,6 +8292,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Café verde por país e ano da FAO (FAOSTAT): produção em toneladas, área colhida em hectares e rendimento em kg por hectare, desde 1961.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-19",
@@ -8160,6 +8303,7 @@
     },
     {
       "atraso": "Mensal",
+      "consultavel": true,
       "frase": "Clima do mês por região produtora de café: chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia.",
       "frequencia": "Mensal",
       "historico_desde": "1981-01-31",
@@ -8170,6 +8314,7 @@
     },
     {
       "atraso": "Anual",
+      "consultavel": true,
       "frase": "Área e produção de café por município e ano, pela PAM do IBGE e pela cobertura de café do MapBiomas, lado a lado.",
       "frequencia": "Anual",
       "historico_desde": "1985-12-31",
@@ -8180,6 +8325,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings de café (faturamento, sobras, sacas recebidas, pedido de recuperação judicial, apuração pública), cada um com fonte.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2004-07-01",

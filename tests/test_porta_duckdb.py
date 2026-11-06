@@ -11,7 +11,8 @@ import pandas as pd
 import pytest
 
 from base.contrato import contrato_da_tabela
-from base.dicionario import DATA, MOMENTO, TABELAS, TEXTO, Tabela
+from base.dicionario import DATA, MOMENTO, NUMERO, REAIS_EXATOS, TABELAS, TEXTO, Tabela
+from base.porta import Porta
 from base.porta import duckdb as porta_duckdb
 from base.porta.duckdb import (
     ARQUIVOS,
@@ -552,3 +553,276 @@ def test_conferida_lida_do_repositorio(tmp_path):
         ).fetchone()
     assert linhas > 0
     assert isinstance(conferidas_em, date)
+
+
+# --- ler_pagina e contar: a consulta aberta pela API e pelo site (virada de 5/11, fase 1, PR 3) ---
+SALDOS = _tabela(
+    colunas={
+        "cnpj": ("CNPJ", TEXTO),
+        "ano": ("Ano", NUMERO),
+        "valor": ("Saldo", REAIS_EXATOS),
+        "disponivel_em": ("Público em", DATA),
+    },
+    chaves=("cnpj", "ano"),
+    datas={"publico_em": "disponivel_em"},
+)
+# revisão gravada como linha nova da mesma chave, como a ANS e a Anatel (`base/setoriais/revisoes.py`)
+REVISADOS = _tabela(
+    colunas={
+        "cnpj": ("CNPJ", TEXTO),
+        "mes": ("Mês", TEXTO),
+        "valor": ("Valor", NUMERO),
+        "visto_em": ("Visto em", DATA),
+    },
+    chaves=("cnpj", "mes", "visto_em"),
+    datas={"publico_em": "visto_em"},
+)
+
+
+def _porta_paginada(pasta) -> Porta:
+    # dois arquivos fora de ordem: a página só é estável se a ordem vem das chaves, não do arquivo
+    _gravar(
+        pasta,
+        "saldos/2024.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["B", "A", "C"],
+                "ano": [2024, 2024, 2024],
+                "valor": [20.0, 10.0, 30.0],
+                "disponivel_em": pd.to_datetime(
+                    ["2024-06-30", "2024-03-01", "2024-06-30"]
+                ),
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "saldos/2023.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["A", "B"],
+                "ano": [2023, 2023],
+                "valor": [1.0, 2.0],
+                "disponivel_em": pd.to_datetime(["2024-01-15", "2024-01-15"]),
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "revisados/tudo.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["A", "A", "B"],
+                "mes": ["2024-01"] * 3,
+                "valor": [1, 2, 3],
+                "visto_em": pd.to_datetime(["2024-02-10", "2024-03-10", "2024-02-10"]),
+            }
+        ),
+    )
+    return Porta(
+        pasta,
+        tabelas={"saldos": SALDOS, "revisados": REVISADOS},
+        arquivos={"saldos": "saldos/*.parquet", "revisados": "revisados/*.parquet"},
+        contratos=pasta / "contratos",
+    )
+
+
+def test_ler_pagina_ordena_pelas_chaves_e_corta_no_sql(tmp_path):
+    """A página vem na ordem das chaves do contrato (não na do arquivo), do tamanho pedido; a seguinte
+    continua de onde a anterior parou; depois do fim vem vazia, com as mesmas colunas."""
+    with _porta_paginada(tmp_path) as p:
+        primeira = p.ler_pagina("saldos", limite=2)
+        segunda = p.ler_pagina("saldos", limite=2, deslocamento=2)
+        resto = p.ler_pagina("saldos", limite=2, deslocamento=4)
+        vazia = p.ler_pagina("saldos", limite=2, deslocamento=10)
+        so_valor = p.ler_pagina("saldos", colunas=["valor"], limite=5)
+        assert p.contar("saldos") == 5
+
+    def chaves(pagina):
+        return list(zip(pagina["cnpj"], pagina["ano"], strict=True))
+
+    assert chaves(primeira) == [("A", 2023), ("A", 2024)]
+    assert chaves(segunda) == [("B", 2023), ("B", 2024)]
+    assert chaves(resto) == [("C", 2024)]
+    assert vazia.empty and list(vazia.columns) == list(primeira.columns)
+    assert (
+        "publico_em" in primeira.columns
+    )  # a página traz os apelidos das datas, como `ler`
+    # só a coluna pedida, ainda assim na ordem das chaves
+    assert list(so_valor.columns) == ["valor"]
+    assert list(so_valor["valor"]) == [1.0, 10.0, 2.0, 20.0, 30.0]
+
+
+def test_ler_pagina_recusa_o_que_nao_existe(tmp_path):
+    """Filtro ou coluna que a tabela não tem é recusado antes de virar SQL; limite e deslocamento fora
+    da faixa também; tabela fora do dicionário é KeyError."""
+    with _porta_paginada(tmp_path) as p:
+        with pytest.raises(ValueError, match="coluna 'nao_existe'"):
+            p.ler_pagina("saldos", filtros={"nao_existe": 1}, limite=10)
+        with pytest.raises(ValueError, match="coluna 'nao_existe'"):
+            p.ler_pagina("saldos", colunas=["nao_existe"], limite=10)
+        with pytest.raises(ValueError, match="coluna 'nao_existe'"):
+            p.contar("saldos", filtros={"nao_existe": 1})
+        with pytest.raises(ValueError, match="limite"):
+            p.ler_pagina("saldos", limite=0)
+        with pytest.raises(ValueError, match="deslocamento"):
+            p.ler_pagina("saldos", limite=1, deslocamento=-1)
+        with pytest.raises(KeyError):
+            p.ler_pagina("nao_existe", limite=1)
+
+
+def test_ler_pagina_e_contar_respeitam_como_era_em_e_os_filtros(tmp_path):
+    """ "Como era em D" só enxerga o que já era público em D, e `contar` conta exatamente as linhas
+    que as páginas trazem, com os mesmos filtros."""
+    with _porta_paginada(tmp_path) as p:
+        em_marco = p.ler_pagina("saldos", como_era_em="2024-03-01", limite=10)
+        total_em_marco = p.contar("saldos", como_era_em="2024-03-01")
+        antes = p.contar("saldos", como_era_em="2023-12-31")
+        so_a = p.ler_pagina("saldos", filtros={"cnpj": "A"}, limite=10)
+        total_a = p.contar("saldos", filtros={"cnpj": "A"})
+        total_a_em_janeiro = p.contar(
+            "saldos", filtros={"cnpj": "A"}, como_era_em="2024-01-31"
+        )
+        # `ao_menos` continua valendo, junto com os filtros
+        grandes = p.contar("saldos", ao_menos={"valor": 10}, filtros={"ano": 2024})
+    assert list(zip(em_marco["cnpj"], em_marco["ano"], strict=True)) == [
+        ("A", 2023),
+        ("A", 2024),
+        ("B", 2023),
+    ]
+    assert total_em_marco == 3 and antes == 0
+    assert list(so_a["ano"]) == [2023, 2024] and total_a == 2
+    assert total_a_em_janeiro == 1
+    assert grandes == 3
+
+
+def test_contar_com_como_era_em_fica_so_com_a_revisao_mais_nova(tmp_path):
+    """Numa foto de D, de cada chave fica a revisão mais nova já pública (como em `ler`): `contar`
+    conta depois desse corte, senão o total não bate com as páginas."""
+    with _porta_paginada(tmp_path) as p:
+        tudo = p.contar("revisados")
+        fevereiro = p.ler_pagina("revisados", como_era_em="2024-02-28", limite=10)
+        marco = p.ler_pagina("revisados", como_era_em="2024-03-31", limite=10)
+        totais = (
+            p.contar("revisados", como_era_em="2024-02-28"),
+            p.contar("revisados", como_era_em="2024-03-31"),
+        )
+    assert tudo == 3
+    assert list(zip(fevereiro["cnpj"], fevereiro["valor"], strict=True)) == [
+        ("A", 1),
+        ("B", 3),
+    ]
+    assert list(zip(marco["cnpj"], marco["valor"], strict=True)) == [("A", 2), ("B", 3)]
+    assert totais == (len(fevereiro), len(marco)) == (2, 2)
+
+
+def test_tipos_diz_o_que_e_dia_o_que_e_momento_e_o_que_e_texto(tmp_path):
+    """Quem serve a tabela em JSON ou CSV separa o dia (`DATE`), o momento e o texto pelos tipos do
+    DuckDB, sem ler linha nenhuma; o apelido `publico_em` é sempre um dia."""
+    with _porta_paginada(tmp_path) as porta:
+        tipos = porta.tipos("saldos")
+        assert list(tipos) == porta.colunas("saldos")
+    assert set(tipos) == set(SALDOS.colunas) | {"publico_em"}
+    assert tipos["cnpj"] == "VARCHAR"
+    assert tipos["ano"] == "BIGINT"
+    assert tipos["valor"] == "DOUBLE"
+    assert tipos["disponivel_em"].startswith("TIMESTAMP")  # o arquivo guarda o momento
+    assert tipos["publico_em"] == "DATE"  # o apelido entrega só o dia
+
+
+REPETIDOS = _tabela(
+    colunas={
+        "cnpj": ("CNPJ", TEXTO),
+        "valor": ("Valor", NUMERO),
+        "nota": ("Nota", TEXTO),
+        "disponivel_em": ("Público em", DATA),
+    },
+    chaves=(
+        "cnpj",
+    ),  # a chave do contrato que se repete na base (negociacoes, controladas...)
+    datas={"publico_em": "disponivel_em"},
+)
+LINHAS_EM_LOTES = 5_000  # mais que dois vetores do DuckDB (2.048 linhas): vários lotes
+
+
+def _porta_com_chave_repetida(pasta) -> Porta:
+    # a mesma chave em vários arquivos e fora de ordem, como na base real
+    for parte, valores in enumerate([[3.0, 1.0], [2.0, 5.0], [4.0]]):
+        _gravar(
+            pasta,
+            f"repetidos/{parte}.parquet",
+            pd.DataFrame(
+                {
+                    "cnpj": ["A"] * len(valores),
+                    "valor": valores,
+                    "nota": ["x"] * len(valores),
+                    "disponivel_em": pd.to_datetime(["2024-01-15"] * len(valores)),
+                }
+            ),
+        )
+    _gravar(
+        pasta,
+        "muitos/tudo.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [f"C{i % 7}" for i in range(LINHAS_EM_LOTES)],
+                "valor": [float(LINHAS_EM_LOTES - i) for i in range(LINHAS_EM_LOTES)],
+                "nota": ["y"] * LINHAS_EM_LOTES,
+                "disponivel_em": pd.to_datetime(
+                    ["2024-01-15", "2025-01-15"] * (LINHAS_EM_LOTES // 2)
+                ),
+            }
+        ),
+    )
+    return Porta(
+        pasta,
+        tabelas={"repetidos": REPETIDOS, "muitos": REPETIDOS},
+        arquivos={"repetidos": "repetidos/*.parquet", "muitos": "muitos/*.parquet"},
+        contratos=pasta / "contratos",
+    )
+
+
+def test_ler_pagina_desempata_a_chave_repetida_pelas_outras_colunas(tmp_path):
+    """Regressão (revisão do PR 3): com a chave repetida, cada página era uma consulta com empate, e o
+    DuckDB não repete a ordem entre empatadas; o CSV de 5.000 em 5.000 perdia umas linhas e repetia
+    outras, com o total certo. A ordem total (chaves e depois as outras colunas) percorre a tabela
+    inteira, sem repetir, e do mesmo jeito em toda leitura."""
+    with _porta_com_chave_repetida(tmp_path) as p:
+        uma_a_uma = pd.concat(
+            [p.ler_pagina("repetidos", limite=1, deslocamento=k) for k in range(5)]
+        )
+        inteira = p.ler("repetidos")
+        so_valor = p.ler_pagina("repetidos", colunas=["valor"], limite=10)
+    assert list(uma_a_uma["valor"]) == [1.0, 2.0, 3.0, 4.0, 5.0]
+    assert sorted(uma_a_uma["valor"]) == sorted(inteira["valor"])
+    assert list(so_valor["valor"]) == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+
+def test_ler_em_lotes_traz_numa_consulta_o_que_as_paginas_trazem(tmp_path):
+    """Os lotes, juntos, são as primeiras `limite` linhas na ordem de `ler_pagina`, sem `OFFSET`;
+    `como_era_em` e os filtros valem do mesmo jeito; depois do último lote não vem nada."""
+    with _porta_com_chave_repetida(tmp_path) as p:
+        lotes = list(p.ler_em_lotes("muitos", limite=LINHAS_EM_LOTES))
+        juntos = pd.concat(lotes, ignore_index=True)
+        paginas = p.ler_pagina("muitos", limite=LINHAS_EM_LOTES)
+        cortados = pd.concat(p.ler_em_lotes("muitos", limite=10), ignore_index=True)
+        em_2024 = pd.concat(
+            p.ler_em_lotes(
+                "muitos",
+                como_era_em="2024-12-31",
+                filtros={"cnpj": "C1"},
+                colunas=["cnpj", "valor"],
+                limite=LINHAS_EM_LOTES,
+            ),
+            ignore_index=True,
+        )
+        assert p.contar("muitos", como_era_em="2024-12-31", filtros={"cnpj": "C1"}) == (
+            len(em_2024)
+        )
+        with pytest.raises(ValueError, match="limite"):
+            next(p.ler_em_lotes("muitos", limite=0))
+    assert len(lotes) > 1
+    pd.testing.assert_frame_equal(juntos, paginas)
+    pd.testing.assert_frame_equal(cortados, paginas.head(10))
+    assert list(em_2024.columns) == ["cnpj", "valor"]
+    assert set(em_2024["cnpj"]) == {"C1"} and em_2024["valor"].is_monotonic_increasing
