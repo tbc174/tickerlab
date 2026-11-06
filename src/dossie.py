@@ -100,6 +100,7 @@ TITULOS_DAS_TABELAS = {
     "dfc_dva_por_exercicio": "DFC e DVA de cada exercício (DFP)",
     "governanca_por_ano": "Conselho, comitês e diversidade em cada FRE",
     "comites": "Comitês no FRE mais recente",
+    "free_float_por_ano": "Free float e acionistas declarados em cada FRE",
     "capital_social": "Capital social no FRE mais recente",
     "empregados_do_fre": "Empregados no FRE mais recente",
     "remuneracao_por_exercicio": "Remuneração da administração por exercício",
@@ -857,6 +858,16 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("comite", "Comitê", _texto),
         ("membros", "Membros", inteiro),
     ],
+    "free_float_por_ano": [
+        ("ano", "FRE", _ano),
+        ("entregue_em", "Entregue em", dia),
+        ("assembleia_em", "Assembleia de", dia),
+        ("free_float", "Free float", fracao),
+        ("acoes_em_circulacao", "Ações em circulação", inteiro),
+        ("acionistas_pf", "Pessoas físicas", inteiro),
+        ("acionistas_pj", "Pessoas jurídicas", inteiro),
+        ("acionistas_institucionais", "Institucionais", inteiro),
+    ],
     "capital_social": [
         ("tipo_capital", "Capital", lambda v: str(v).capitalize()),
         ("valor_capital", "Valor", reais),
@@ -1165,6 +1176,7 @@ FONTES_DOS_ITENS = {
     "conselho_eleitos_por_minoritarios": f"{_DO_FRE} (tabela fre_conselho)",
     "comites": f"{_DO_FRE} (tabela fre_comites)",
     "acoes_integralizadas": f"{_DO_FRE} (tabela fre_capital_social)",
+    "free_float": f"{_DO_FRE} (tabela fre_distribuicao_capital, item 15.7)",
     "empregados": f"{_DO_FRE} (tabela fre_empregados)",
     "mulheres_no_conselho": f"{_DO_FRE} (tabela fre_diversidade)",
     "remuneracao_da_administracao": f"{_DO_FRE} (tabelas fre_remuneracao e fre_remuneracao_extremos)",
@@ -1382,6 +1394,9 @@ _COMPARACOES = (
         "fcf": _contra_o_ano_anterior("caixa_por_exercicio", "fcf", "exercicio"),
         "remuneracao_da_administracao": _contra_o_ano_anterior(
             "remuneracao_por_exercicio", "total", "exercicio"
+        ),
+        "free_float": _contra_o_ano_anterior(
+            "free_float_por_ano", "free_float", "ano", "no FRE de"
         ),
         "auditor_atual": _contra_o_auditor_anterior,
         "auditor_desde": _contra_o_auditor_anterior,

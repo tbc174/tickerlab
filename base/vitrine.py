@@ -434,12 +434,13 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "donos",
         "Quem é dono e quem controla",
-        "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de "
-        "controladas e coligadas, com a data de cada ligação.",
+        "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de "
+        "referência e a rede de controladas e coligadas, com a data de cada ligação.",
         (
             "cnpj_qsa",
             "cnpj_qsa_mudancas",
             "fre_acionistas",
+            "fre_distribuicao_capital",
             "controladas",
             "entidades",
             "identificadores",

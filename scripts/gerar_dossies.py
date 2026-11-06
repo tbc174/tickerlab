@@ -205,6 +205,10 @@ COLUNAS_DA_GOVERNANCA = {  # tabela do FRE → as colunas que a seção usa (nun
         *_DO_FRE, "recorte", "grupo", "genero_feminino", "genero_masculino", "genero_nao_binario",
         "genero_outros", "genero_sem_resposta",
     ),
+    "fre_distribuicao_capital": (
+        *_DO_FRE, "acionistas_pf", "acionistas_pj", "acionistas_institucionais",
+        "circulacao_total", "percentual_total", "ultima_assembleia_em",
+    ),
 }  # fmt: skip
 COLUNAS_DA_INSOLVENCIA = (
     "cnpj", "rotulo", "evento", "protocolo", "versao", "referencia", "conhecido_em", "link",
@@ -660,6 +664,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             hoje,
             do_fre["fre_capital_social"],
             do_fre["fre_empregados"],
+            do_fre["fre_distribuicao_capital"],
         )
 
     def ofertas_e_fundos(cnpj: str) -> dict | None:
