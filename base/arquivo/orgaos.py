@@ -200,6 +200,7 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "Bank of Canada (índice de preços de commodities)",
         "https://www.bankofcanada.ca/rates/price-indexes/bcpi/",
     ),
+    "ssb": Orgao("SSB (Statistics Norway, Noruega)", "https://www.ssb.no/en"),
     "cbs": Orgao(
         "CBS (Statistics Netherlands, Países Baixos)", "https://opendata.cbs.nl/"
     ),
