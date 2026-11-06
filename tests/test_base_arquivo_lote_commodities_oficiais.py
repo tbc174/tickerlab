@@ -1,15 +1,20 @@
 """Lote commodities oficiais (base/arquivo/lote_commodities_oficiais.py): DG AGRI e, nos PRs seguintes, as outras
 fontes oficiais da linha 396 da fila. Nada vai à internet: a descoberta só monta endereços e não pede nada."""
 
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from base.arquivo import coleta, fontes
+from base.arquivo import coleta, fontes, lote_organismos
 from base.arquivo import lote_commodities_oficiais as lote
 from base.arquivo.coleta import Fonte
+from base.arquivo.lote_organismos import (
+    FILTRO_DE_PAIS_DO_EUROSTAT,
+    PAISES_DO_EUROSTAT,
+)
 from src.banco.coletas import SEM_LICENCA_CONHECIDA, licenca_da_fonte, revenda_da_fonte
 
 AGORA = datetime(2026, 11, 5, 22, tzinfo=UTC)
@@ -190,3 +195,37 @@ def test_bcpi_semanal_roda_toda_semana_e_o_resto_uma_vez_por_mes():
 
 def test_bcpi_vigia_os_termos_do_banco():
     assert lote.termos()["termos-boc"] == "https://www.bankofcanada.ca/terms/"
+
+
+# ---- Eurostat: preços agrícolas e de energia (família `eurostat`, só a UE) -----------------------
+EUROSTAT = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data"
+CONJUNTOS_DO_EUROSTAT = {
+    "eurostat-precos-agricolas": "apri_ap_crpouta",
+    "eurostat-preco-do-gas": "nrg_pc_202",
+}
+
+
+@pytest.mark.parametrize(("id_", "conjunto"), CONJUNTOS_DO_EUROSTAT.items())
+def test_eurostat_guarda_so_os_paises_da_ue_que_a_licenca_cobre(id_, conjunto):
+    (alvo,) = _alvos(id_)
+    assert alvo.url.startswith(f"{EUROSTAT}/{conjunto}?")
+    paises = set(re.findall(r"geo=([A-Z0-9_]+)", alvo.url))
+    assert paises == set(PAISES_DO_EUROSTAT)
+    assert alvo.url.endswith("&lang=EN")
+
+
+def test_eurostat_usa_o_mesmo_filtro_de_pais_das_outras_series_da_familia():
+    """Um lugar só para a lista de países: quem muda a lista em lote_organismos muda aqui também."""
+    for id_ in CONJUNTOS_DO_EUROSTAT:
+        assert FILTRO_DE_PAIS_DO_EUROSTAT in _alvos(id_)[0].url
+
+
+def test_eurostat_e_json_leve_com_pausa_e_sem_repetir_id_de_outro_lote():
+    organismos = {f.id for f in lote_organismos.fontes()}
+    for id_ in CONJUNTOS_DO_EUROSTAT:
+        fonte = _fonte(id_)
+        assert id_ not in organismos
+        assert fonte.tipo == "json"
+        assert not fonte.pesada
+        assert fonte.pausa_minima >= 2.0
+        assert fonte.grupo == "mensal"  # os dois conjuntos saem por ano ou semestre

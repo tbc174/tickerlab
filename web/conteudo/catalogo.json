@@ -863,7 +863,9 @@
         "eurostat-desemprego",
         "eurostat-pib",
         "eurostat-juro-longo",
-        "eurostat-producao-industrial"
+        "eurostat-producao-industrial",
+        "eurostat-precos-agricolas",
+        "eurostat-preco-do-gas"
       ],
       "familia": "eurostat",
       "licencas": [
@@ -6512,6 +6514,20 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "eurostat-precos-agricolas",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-preco-do-gas",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "chirps3-rnl-mensal",
