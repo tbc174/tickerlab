@@ -11,6 +11,9 @@ Escolhas (testes em `tests/test_base_arquivo_lote_sefaz_pe.py`):
   `Crawl-Delay: 10` (lido em 05/11/2026). A página do conjunto, que o robots deixa aberta, lista os
   links de download; a fonte leva a pausa de 10 segundos. Um CSV por ano: o JSON do mesmo ano e o
   arquivo de metadados ficam de fora;
+- **Só do próprio portal:** link da página é dado, não ordem; baixa-se apenas de `https://dados.pe.gov.br/`
+  (link relativo é resolvido, o de outro host ou esquema é ignorado), para a página não mandar o
+  arquivista a um endereço interno ou alheio;
 - **LGPD (ADR 0088): só pessoa jurídica.** Fica a linha cujo `cnpj` tem 14 caracteres, e a razão social
   (`empresa`) **sai de todas**: firma individual tem o nome da pessoa (o CSV de 2008 traz "JOAO ... CUNHA"),
   e o nome da empresa se lê na Receita pelo CNPJ. Linha com CPF no meio do texto também sai;
@@ -27,6 +30,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import IO
+from urllib.parse import urljoin
 
 from base.arquivo.coleta import Alvo, Cliente, ErroDeDescoberta, Fonte
 from base.arquivo.lote_brasil2 import e_cnpj, tem_cpf_no_texto
@@ -109,11 +113,15 @@ def alvo_do_csv(url: str) -> Alvo:
 
 
 def descobrir(cliente: Cliente, _agora: datetime) -> list[Alvo]:
-    """Os CSVs do conjunto, na ordem da página (o ano mais novo primeiro), sem repetir."""
-    pagina = cliente.ler(f"{PORTAL}/dataset/{PACOTE}").conteudo.decode(
-        "utf-8", errors="replace"
-    )
-    enderecos = list(dict.fromkeys(CSV_DO_ANO.findall(pagina)))
+    """Os CSVs do conjunto, na ordem da página (o ano mais novo primeiro), sem repetir.
+
+    Link da página é dado, não ordem: só se baixa do próprio portal (https, mesmo host); link
+    relativo é resolvido contra a página, e o de outro host ou esquema é ignorado.
+    """
+    endereco_da_pagina = f"{PORTAL}/dataset/{PACOTE}"
+    pagina = cliente.ler(endereco_da_pagina).conteudo.decode("utf-8", errors="replace")
+    resolvidos = (urljoin(endereco_da_pagina, h) for h in CSV_DO_ANO.findall(pagina))
+    enderecos = list(dict.fromkeys(e for e in resolvidos if e.startswith(f"{PORTAL}/")))
     if not enderecos:
         raise ErroDeDescoberta(f"{PACOTE}: nenhum CSV na página do conjunto de dados")
     return [alvo_do_csv(e) for e in enderecos]

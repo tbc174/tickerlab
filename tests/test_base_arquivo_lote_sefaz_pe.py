@@ -104,6 +104,30 @@ def test_descobre_pela_pagina_so_o_csv_de_cada_ano_e_nunca_pela_api():
     assert not any("/api/" in pedido for pedido in servidor.pedidos)
 
 
+def test_so_baixa_do_proprio_portal_e_resolve_link_relativo():
+    """Link vindo da página é dado, não ordem: de outro host ou de outro esquema, não se baixa."""
+    relativo = "/dataset/cd0c/resource/a/download/beneficios_fiscais_2025_.csv"
+    servidor = Servidor(
+        {
+            PAGINA: _pagina(
+                relativo,
+                "https://outro.exemplo/dataset/x/download/beneficios_fiscais_2024_.csv",
+                "http://127.0.0.1/dataset/x/download/beneficios_fiscais_2023_.csv",
+                "http://dados.pe.gov.br/dataset/x/download/beneficios_fiscais_2022_.csv",
+                f"{PORTAL}.outro.exemplo/dataset/x/download/beneficios_fiscais_2021_.csv",
+            )
+        }
+    )
+    alvos = lote_sefaz_pe.descobrir(servidor, AGORA)
+    assert [a.url for a in alvos] == [f"{PORTAL}{relativo}"]
+
+
+def test_pagina_so_com_link_de_fora_e_erro_de_descoberta():
+    servidor = Servidor({PAGINA: _pagina("https://outro.exemplo/download/a.csv")})
+    with pytest.raises(ErroDeDescoberta, match="nenhum CSV"):
+        lote_sefaz_pe.descobrir(servidor, AGORA)
+
+
 def test_pagina_sem_csv_e_erro_de_descoberta():
     servidor = Servidor({PAGINA: _pagina(f"{PORTAL}/dataset/x/download/a.json")})
     with pytest.raises(ErroDeDescoberta, match="nenhum CSV"):
