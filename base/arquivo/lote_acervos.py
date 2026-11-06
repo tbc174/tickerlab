@@ -31,7 +31,9 @@ Cinco famílias (a família decide a licença e a marca em `src/banco/coletas.py
   estados). Ficam de fora `contratos-divida` (PDFs de contratos, sem licença escrita) e
   `relatorios-da-divida-contratual-da-uniao` (sem licença escrita);
 - **IPEADATA OData** (`ipea-odata-*`; sem termos, `a_confirmar`: séries de terceiros herdam a fonte): o catálogo
-  de metadados e seis séries longas, com o `SERCODIGO` de origem e a fonte original dentro do próprio arquivo.
+  de metadados e as séries de `ipeadata_series.py` (89 em 05/11/2026, linha 388: juros e crédito, câmbio,
+  inflação, atividade, contas públicas, setor externo e bolsa), com o `SERCODIGO` de origem e a fonte original
+  dentro do próprio arquivo.
 
 Regras (testes em `tests/test_base_arquivo_lote_acervos.py`):
 - **LGPD (ADR 0088): nenhuma destas fontes traz pessoa física.** O FRE da CVM (diretores e administradores),
@@ -49,6 +51,7 @@ from datetime import date, datetime
 from urllib.parse import urljoin
 
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
+from base.arquivo.ipeadata_series import SERIES, descricao
 from base.arquivo.lote_brasil2 import descobrir_ckan
 
 MENSAL = "mensal"
@@ -270,15 +273,8 @@ def _pacote_do_tesouro(pacote: str, formatos: tuple[str, ...]) -> Descobrir:
 RAIZ_DO_IPEADATA = "http://www.ipeadata.gov.br/api/odata4/"
 METADADOS_DO_IPEADATA = RAIZ_DO_IPEADATA + "Metadados"
 SERIE_DO_IPEADATA = RAIZ_DO_IPEADATA + "ValoresSerie(SERCODIGO='{codigo}')"
-# SERCODIGO -> o que é (a fonte original vem dentro do arquivo, em `Metadados`)
-SERIES_DO_IPEADATA = {
-    "GM366_IBVSP366": "Ibovespa, fechamento diário desde 27/04/1993 (BM&FBovespa; 1995 com valores implausíveis)",
-    "GM366_IBVSPV366": "Ibovespa, volatilidade diária desde 1985 (calculada pelo Ipea)",
-    "BM12_TJOVER12": "Selic over, mensal desde 1974 (Bacen)",
-    "BM12_ERV12": "Câmbio R$/US$ comercial venda, média mensal desde 1930 (Bacen)",
-    "PRECOS12_IPCA12": "IPCA geral, índice mensal desde 12/1979 (IBGE)",
-    "PRECOS12_INPC12": "INPC geral, índice mensal desde 03/1979 (IBGE)",
-}
+# SERCODIGO -> o que é e a fonte original (a lista e a regra de escolha: `ipeadata_series.py`, linha 388)
+SERIES_DO_IPEADATA = {codigo: descricao(codigo) for codigo in SERIES}
 
 
 def descobrir_metadados_do_ipeadata(cliente: Cliente, agora: datetime) -> list[Alvo]:
