@@ -23,6 +23,7 @@ leitura depois de uma reorganização. Se o nó correr demais à frente da leitu
 """
 
 import os
+import zipfile
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -263,16 +264,34 @@ def _salvar_ponto(pasta: Path, estado: Estado) -> None:
     arquivo = pasta / PASTA_DOS_PONTOS / f"ponto-{estado.altura:09d}.npz"
     arquivo.parent.mkdir(parents=True, exist_ok=True)
     provisorio = arquivo.with_name(arquivo.stem + ".provisorio.npz")
-    np.savez_compressed(
-        provisorio,
-        altura=estado.altura,
-        hash=estado.hash,
-        histograma=estado.histograma[:quantas],
-        horas=estado.horas[:quantas],
-        dia_aberto=estado.dia_aberto.isoformat() if estado.dia_aberto else "",
-        regras=VERSAO_DAS_REGRAS_DO_PONTO,
-    )
+    with provisorio.open("wb") as destino:
+        np.savez_compressed(
+            destino,
+            altura=estado.altura,
+            hash=estado.hash,
+            histograma=estado.histograma[:quantas],
+            horas=estado.horas[:quantas],
+            dia_aberto=estado.dia_aberto.isoformat() if estado.dia_aberto else "",
+            regras=VERSAO_DAS_REGRAS_DO_PONTO,
+        )
+        destino.flush()
+        os.fsync(
+            destino.fileno()
+        )  # sem isso, queda de energia deixa o ponto com 0 byte
     os.replace(provisorio, arquivo)
+    _sincronizar_pasta(arquivo.parent)
+
+
+def _sincronizar_pasta(pasta: Path) -> None:
+    """Grava no disco o renomeio do ponto (no Windows não há como abrir a pasta: segue sem)."""
+    try:
+        descritor = os.open(pasta, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(descritor)
+    finally:
+        os.close(descritor)
 
 
 def _carregar_ponto(arquivo: Path) -> Estado:
@@ -310,10 +329,24 @@ def _altura_do_ponto(arquivo: Path) -> int:
     return int(arquivo.stem.removeprefix("ponto-"))
 
 
+def _pontos_legiveis(pasta: Path) -> list[Path]:
+    """Os pontos que abrem. O ilegível (0 byte depois de uma queda de energia, por exemplo) vai para
+    o lado, renomeado e nunca apagado, e vale o ponto anterior."""
+    legiveis = []
+    for ponto in _listar_pontos(pasta):
+        try:
+            _carregar_ponto(ponto)
+        except (OSError, EOFError, ValueError, KeyError, zipfile.BadZipFile):
+            ponto.rename(ponto.with_name(ponto.stem + ".ilegivel"))
+        else:
+            legiveis.append(ponto)
+    return legiveis
+
+
 def _estado_valido(no: FonteDeBlocos, pasta: Path, agora: datetime) -> Estado:
     """O ponto mais novo que a cadeia do nó ainda tem. Se não for o último gravado, a rede trocou
     blocos: o que foi lido depois dele vai para `reorganizacoes/`."""
-    pontos = _listar_pontos(pasta)
+    pontos = _pontos_legiveis(pasta)
     if not pontos:
         return Estado()
     for posicao in range(len(pontos) - 1, -1, -1):
