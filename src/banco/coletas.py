@@ -193,6 +193,7 @@ LICENCAS = {
     "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
     # lote commodities oficiais (linha 396; termos lidos em 24/10/2026, licencas-por-fonte.md)
     "dgagri": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+    "dgener": "CC BY 4.0 (Comissão, DG ENER): citar a fonte e indicar mudanças",
     "boc": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
     "ssb": "CC BY 4.0 (Statistics Norway): citar o SSB, a licença e as mudanças",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
@@ -427,6 +428,7 @@ REVENDA = {
     # Bank of Canada (termos relidos em 05/11/2026): cita o Banco e indica mudança; quem vende o conteúdo
     # avisa o comprador de que ele é grátis no site do Banco
     "boc": VENDAVEL_COM_ATRIBUICAO,
+    "dgener": VENDAVEL_COM_ATRIBUICAO,  # Oil Bulletin: "reprodução autorizada citando a fonte" (06/11/2026)
     "ssb": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (ssb.no/en/diverse/lisens, lido em 06/11/2026)
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
@@ -653,6 +655,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # DG AGRI: aviso legal da Comissão (CC BY 4.0, lido em 24/10/2026); o robots.txt de `ec.europa.eu` não
     # fecha `/agrifood/api` (conferido em 05/11/2026) e a coleta tem pausa e se identifica
     "dgagri": _ABERTA_SEM_PRAZO,
+    "dgener": _ABERTA_SEM_PRAZO,  # robots.txt de energy.ec.europa.eu só fecha /core/, /admin/, /search/ etc. (06/11)
     # Bank of Canada (Valet, sem chave): termos de uso relidos em 05/11/2026; o robots.txt só fecha o wp-admin.
     # Os termos proíbem burlar o limite de pedidos da Valet: 8 pedidos por rodada e pausa de 2 s
     "boc": _ABERTA_SEM_PRAZO,
