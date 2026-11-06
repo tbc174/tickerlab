@@ -17,6 +17,7 @@ from base import cnpj as cnpjs
 from base import incentivos
 from base.ancoragem import parquets_sem_manifesto
 from base.arquivo import lote_sefaz_pe
+from base.dicionario import TABELAS
 from base.setoriais.revisoes import como_era_em
 from tests.test_base_incentivos import (
     AGORA,
@@ -195,3 +196,10 @@ def test_comando_monta_tambem_a_sefaz_pe(banco, tmp_path, monkeypatch):
         tmp_path / "b" / "sefaz_pe_beneficios" / "beneficios-fiscais-2025.parquet"
     )
     assert tabela["trata_como_pessoa"].all()  # sem a Receita guardada: o conservador
+
+
+def test_o_historico_do_catalogo_nao_comeca_antes_de_a_fonte_entrar():
+    """A SEFAZ-PE entrou no arquivista em 05/11/2026 (termos lidos nesse dia): o catálogo público
+    não pode prometer histórico de 29/10, o dia dos outros três incentivos."""
+    assert TABELAS["sefaz_pe_beneficios"].historico_desde == "2026-11-05"
+    assert TABELAS["mme_reidi"].historico_desde == "2026-10-29"

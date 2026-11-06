@@ -3369,7 +3369,7 @@ Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas 
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
 - **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `vigencia_inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
-- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Histórico desde:** 2026-11-05 (`publico_em` por mes)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/sefaz_pe_beneficios/<arquivo>.parquet` (servidor de casa, `scripts/carga_incentivos.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).

@@ -8564,6 +8564,7 @@ _CNES = (
 )
 _TCES = "2026-11-04"  # os contratos dos TCEs entraram na base neste dia (linha 652)
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
+_SEFAZ_PE = "2026-11-05"  # os benefícios fiscais de Pernambuco entraram no arquivista neste dia (linha 578)
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -8791,7 +8792,7 @@ _CONTRATO = {
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
-    "sefaz_pe_beneficios": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
+    "sefaz_pe_beneficios": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFAZ_PE, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),

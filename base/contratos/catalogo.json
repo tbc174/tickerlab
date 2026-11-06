@@ -9099,9 +9099,9 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
-      "historico_desde": "2026-10-29",
+      "historico_desde": "2026-11-05",
       "granularidade_do_publico_em": "mes",
       "licenca": "CC BY, benefícios fiscais da SEFAZ de Pernambuco (citar a fonte). Só CNPJ, sem a razão social",
       "revenda": "vendável com atribuição à fonte",

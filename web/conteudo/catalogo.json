@@ -2453,7 +2453,7 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-29",
+      "historico_desde": "2026-11-05",
       "licenca": "CC BY, benefícios fiscais da SEFAZ de Pernambuco (citar a fonte). Só CNPJ, sem a razão social",
       "modulos": [
         "governo_e_sancoes"
@@ -7161,7 +7161,7 @@
       "atraso": null,
       "frase": "Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas pesadas...) por CNPJ, com o CACEPE e o prazo de cada um.",
       "frequencia": "Mensal",
-      "historico_desde": "2026-10-29",
+      "historico_desde": "2026-11-05",
       "modulo": "governo_e_sancoes",
       "orgao": "SEFAZ-PE",
       "situacao": "licenciada",
