@@ -58,6 +58,7 @@ FAMILIA_DO_ENDERECO = {
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
     "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
     "apidadosabertos.saude.gov.br/assistencia-a-saude/cnes": "ms",  # CNES por competência
+    "ftp.datasus.gov.br/": "ms",  # SIH RD e SIA PA por competência (`scripts/carga_sus.py`, linha 698)
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
@@ -104,11 +105,19 @@ FAMILIA_DO_ENDERECO = {
     "dadosabertos.go.gov.br/": "goias",  # licenças do Ipê (linha 658)
     "www.dados.ms.gov.br/": "msestado",  # despesas por credor (linhas 658 e 688)
     "dados.ms.gov.br/": "msestado",
+    "dados.pe.gov.br/": "sefazpe",  # benefícios fiscais da SEFAZ-PE (linha 578)
     "dados.prefeitura.sp.gov.br/": "spcapital",  # extrato de contratos (linha 658)
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",
     "www.gov.br/conab/": "conab",
+    # fontes pouco visíveis (ADR 0124): FDCO da Sudeco, FDA da Sudam e PDFs de dívida documental
+    "www.gov.br/sudeco/": "sudeco",
+    "www.gov.br/sudam/": "sudam",
+    "auniao.pb.gov.br/": "divida",
+    "digital.jornaldocomercio.com/": "divida",
+    "ecoagro.agr.br/": "divida",
+    "fnet.bmfbovespa.com.br/": "divida",
     "apps.fas.usda.gov/": "usda",
     "bulks-faostat.fao.org/": "faostat",
     "www.fao.org/": "faostat",

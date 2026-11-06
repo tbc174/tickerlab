@@ -568,6 +568,14 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   .v2-estudo { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* a inicial para quem analisa: a linha de para quem é, o que o app acrescenta e as últimas novidades */
+.v2-para-quem { margin: .9rem 0 0; font-size: .95rem; line-height: 1.55; color: var(--apagado); }
+.v2-no-app-rodape { margin-top: 1.25rem; }
+.v2-no-app-rodape a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+.v2-ultimas .cartao h3 { font-size: 1.05rem; }
+.v2-ultimas .cartao p { font-size: .92rem; }
+.v2-ultimas > .seta { display: inline-block; margin-top: 1.25rem; }
+
 .busca-base { margin-top: 1.6rem; scroll-margin-top: 6rem; }
 .busca-base label { display: block; margin-bottom: .5rem; font-weight: 650; }
 .busca-base-campos { display: flex; gap: .55rem; }
@@ -582,5 +590,31 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .busca-base-resultado small { color: var(--apagado); font-size: .72rem; }
 .busca-base [role="alert"] { font-size: .86rem; line-height: 1.5; }
 @media (max-width: 440px) { .busca-base-campos { flex-direction: column; } }
+
+/* Dados: a coluna "Consulta" da lista e o painel que mostra a amostra de uma tabela (site/ConsultaDaBase.tsx) */
+.dados-consulta { white-space: nowrap; }
+/* escondidos até a API responder (mostrarSeAConsultaResponde): nenhuma regra de display os reabre */
+[data-com-consulta][hidden] { display: none !important; }
+.dados-consultar { font: 600 .85rem "Manrope", sans-serif; color: var(--azul-texto); background: transparent;
+  border: 1px solid var(--linha); border-radius: .45rem; padding: .3rem .6rem; cursor: pointer; }
+.dados-consultar:hover { border-color: var(--azul-texto); }
+.dados-consultar:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.consulta-base { margin-top: 2rem; padding: 1rem 1.2rem; border: 1px solid var(--linha); border-radius: .7rem;
+  background: var(--fundo); scroll-margin-top: 6rem; }
+.consulta-base label { display: block; margin: .6rem 0 .4rem; font-weight: 650; }
+.consulta-base-campos { display: flex; gap: .55rem; }
+.consulta-base input { min-width: 0; flex: 1; max-width: 18rem; border: 1px solid var(--linha); border-radius: .55rem;
+  padding: .7rem .8rem; color: var(--texto); background: var(--fundo); font: inherit; }
+.consulta-base input:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.consulta-base-tabela { margin: 0 0 .4rem; }
+.consulta-base-limite, .consulta-base-origem { font-size: .85rem; color: var(--apagado); line-height: 1.6; margin: .6rem 0 0; }
+.consulta-base [role="alert"] { font-size: .9rem; line-height: 1.5; }
+.consulta-base-linhas { margin-top: .8rem; overflow-x: auto; }
+.consulta-base-linhas table { font-size: .82rem; }
+.consulta-base-linhas th, .consulta-base-linhas td { white-space: nowrap; }
+@media (max-width: 440px) {
+  .consulta-base-campos { flex-direction: column; }
+  .consulta-base input { max-width: none; }
+}
 `;
 }

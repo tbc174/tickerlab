@@ -24,9 +24,14 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from base.cnpj import normalizar_cnpj
-from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar
+from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
-from src.banco.coletas import FONTES_SO_INTERNAS, licenca_da_fonte
+from src.banco.coletas import (
+    FONTES_SO_INTERNAS,
+    PARENTESES_INTERNO,
+    licenca_da_fonte,
+    licenca_do_site,
+)
 
 # o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
 ORGAOS: tuple[tuple[str, str], ...] = (
@@ -44,6 +49,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"\bCMED\b", "CMED (Anvisa)"),  # antes da Anvisa: as listas não têm a licença dela
     (r"CNES do Ministério da Saúde", "Ministério da Saúde (DATASUS)"),
     (r"TCE-PE:", "TCE-PE"),
+    (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
     (r"TCE-SP:", "TCE-SP"),
     (r"TCE-CE:", "TCE-CE"),
     (r"LicitaCon do TCE-RS", "TCE-RS"),
@@ -97,11 +103,6 @@ _INTERNO = re.compile(
     re.IGNORECASE,
 )
 _ENTRE_PARENTESES = re.compile(r"\s*\([^)]*\)")
-# o parêntese que cita uma decisão (ADR 0075, PR 2) ou um arquivo do repositório (base/regras.py)
-_PARENTESES_INTERNO = re.compile(
-    r"\s*\((?:(?:ADR|PR|passo|série|modelo)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)",
-    re.IGNORECASE,
-)
 _INTERNO_NA_FRASE = re.compile(
     r"servidor|VPS|\bADR\b|\b\w+/\w+\.py|lista de trabalho|\bdo app\b|\bdo Capital\b|\bB13\b",
     re.IGNORECASE,
@@ -145,6 +146,9 @@ class TabelaDoSite:
     frequencia: str
     atraso: str | None
     historico_desde: str
+    consultavel: (
+        bool  # dá para consultar e exportar pela página Dados e pela API aberta
+    )
 
 
 def orgao_da_licenca(licenca: str) -> str:
@@ -169,27 +173,27 @@ def situacao_da_licenca(licenca: str, revenda: str) -> str:
     return LICENCIADA
 
 
-def licenca_do_site(licenca: str) -> str:
-    """O texto da licença sem a decisão interna entre parênteses ("(ADR 0082)")."""
-    sem_decisao = _PARENTESES_INTERNO.sub("", licenca)
-    return sem_decisao.replace("perguntar a licença", "reuso em consulta")
-
-
 def repasse_do_site(licenca: str, situacao: str) -> str:
     if situacao == EM_CONSULTA:
         return REPASSE_EM_CONSULTA
     return REPASSE_ODBL if "ODbL" in licenca else REPASSE_COM_ATRIBUICAO
 
 
+# Tabelas só internas de uma fonte que sai: a situação das coletas do SUS (linha 698), onde `registros`
+# por UF menos a soma publicada revelaria a célula suprimida (ADR 0081, item 4). Também fora da porta.
+TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
+
+
 def catalogo_publico(catalogo: dict) -> dict:
     """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
-    DataJud). Elas estão no contrato e no dicionário do repositório, mas o site não anuncia dado que
-    não pode sair em tela, relatório, API nem exportação."""
+    DataJud) nem as só internas de uma fonte que sai (`TABELAS_SO_INTERNAS`). Elas estão no contrato e
+    no dicionário do repositório, mas o site não anuncia dado que não pode sair em tela, relatório,
+    API nem exportação."""
     internas = {licenca_da_fonte(familia) for familia in FONTES_SO_INTERNAS}
     tabelas = {
         nome: tabela
         for nome, tabela in catalogo["tabelas"].items()
-        if tabela["licenca"] not in internas
+        if tabela["licenca"] not in internas and nome not in TABELAS_SO_INTERNAS
     }
     return {**catalogo, "tabelas": tabelas}
 
@@ -250,6 +254,7 @@ def tabelas_do_catalogo(catalogo: dict, frases: dict[str, str]) -> list[TabelaDo
             frequencia=frequencia_do_site(t["frequencia"]),
             atraso=atraso_do_site(t["atraso"]),
             historico_desde=t["historico_desde"],
+            consultavel=pode_consultar(nome),
         )
         for nome, t in catalogo["tabelas"].items()
     ]
@@ -282,7 +287,7 @@ def _fim_da_primeira_frase(texto: str) -> int:
 
 def primeira_frase(texto: str) -> str:
     """A primeira frase da descrição, sem código, sem número de ADR e com até `LIMITE_DA_FRASE` letras."""
-    limpo = _PARENTESES_INTERNO.sub("", texto.replace("`", "")).strip()
+    limpo = PARENTESES_INTERNO.sub("", texto.replace("`", "")).strip()
     frase = limpo[: _fim_da_primeira_frase(limpo)].strip()
     interno = _INTERNO_NA_FRASE.search(frase)
     if interno:  # fica o que vem antes da última vírgula que precede o termo interno
@@ -434,12 +439,13 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "donos",
         "Quem é dono e quem controla",
-        "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de "
-        "controladas e coligadas, com a data de cada ligação.",
+        "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de "
+        "referência e a rede de controladas e coligadas, com a data de cada ligação.",
         (
             "cnpj_qsa",
             "cnpj_qsa_mudancas",
             "fre_acionistas",
+            "fre_distribuicao_capital",
             "controladas",
             "entidades",
             "identificadores",
@@ -501,11 +507,18 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         ),
     ),
     TemaDoCnpj(
+        "saude",
+        "Atendimento pelo SUS",
+        "Internações e procedimentos ambulatoriais que o SUS pagou a cada hospital e clínica, mês "
+        "a mês, nos dados abertos do DATASUS, sem nada do paciente.",
+        ("sus_internacoes", "sus_ambulatorial"),
+    ),
+    TemaDoCnpj(
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
-        "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados "
-        "e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco "
-        "Central.",
+        "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
+        "Pernambuco, contratos com estados e municípios nos tribunais de contas e o investimento "
+        "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
             "financiamentos_finep",
@@ -518,6 +531,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "tce_ce_contratos",
             "tce_rs_contratos",
             "bcb_rde_ied",
+            "sefaz_pe_beneficios",
         ),
     ),
 )

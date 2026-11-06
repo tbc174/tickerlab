@@ -51,6 +51,21 @@ TERMOS_LIDOS_EM: dict[str, date] = {
         2026, 11, 3
     ),  # relido em 03/11 (linha 639): data.bis.org/help/legal e robots.txt
     "nasa": date(2026, 10, 22),
+    "dgagri": date(
+        2026, 10, 24
+    ),  # aviso legal da Comissão, lido na rodada de 24/10 (linha 396)
+    "dgener": date(
+        2026, 11, 6
+    ),  # aviso na planilha: reprodução autorizada citando a fonte (linha 396)
+    "ssb": date(2026, 11, 6),  # CC BY 4.0, página de licença lida na hora (linha 396)
+    "boc": date(2026, 11, 5),  # termos do Banco relidos na hora (linha 396)
+    # bancos centrais nórdicos (linha 511; termos lidos na rodada recorrente de 29/10/2026)
+    "riksbank": date(2026, 10, 29),
+    "norges": date(2026, 10, 29),
+    "dst": date(2026, 10, 29),
+    "scb": date(2026, 10, 29),
+    "statfi": date(2026, 10, 29),
+    "statice": date(2026, 10, 29),
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
     "treasury": date(2026, 10, 22),
@@ -98,6 +113,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 # rodada 1 da pesquisa de dados escondidos (licencas-por-fonte.md): BCB e Tesouro Transparente
 # relidos em 22/10/2026, depois da auditoria; vale o dia mais novo
 TERMOS_LIDOS_EM |= dict.fromkeys(("bcb", "tesouro"), date(2026, 10, 22))
+# fontes pouco visíveis (ADR 0124): rodapés do gov.br da Sudeco e da Sudam lidos em 04/11/2026; a
+# família "divida" fica sem data porque os termos dos sites dos PDFs não foram lidos um a um
+TERMOS_LIDOS_EM |= dict.fromkeys(("sudeco", "sudam"), date(2026, 11, 4))
 # lote setoriais Brasil (licencas-por-fonte.md): as licenças lidas na rodada 3 (ANS, ANAC), na
 # rodada 1 (EPE, INEP, Senatran, INPI, ANEEL e Comex Stat); Anatel e ANP seguem o balanço prévio de
 # 14/10/2026 (licença declarada no conjunto do dados.gov.br)
@@ -116,6 +134,9 @@ TERMOS_LIDOS_EM["mme"] = date(2026, 10, 29)
 # linhas 658 e 688: robots.txt e licença dos CKAN de GO (CC BY), MS (CC BY no conjunto; uso a confirmar) e
 # SP capital (CC0) lidos em 05/11/2026; GO e MS: Disallow /api/ e Crawl-Delay 10; SP: Disallow /
 TERMOS_LIDOS_EM |= dict.fromkeys(("goias", "msestado", "spcapital"), date(2026, 11, 5))
+# linha 578: benefícios fiscais da SEFAZ-PE; licença CC BY lida em 03/11/2026, robots.txt (Disallow /api/,
+# Crawl-Delay 10) em 05/11/2026
+TERMOS_LIDOS_EM["sefazpe"] = date(2026, 11, 5)
 # lote licitações e contratos (licencas-por-fonte.md, rodada 4, lido em 22/10/2026)
 TERMOS_LIDOS_EM |= dict.fromkeys(
     ("seges", "comprasgov", "transferegov", "pncp", "tcu", "govmg", "govsc"),
@@ -155,6 +176,12 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 # lote patentes e marcas (licencas-por-fonte.md, rodada 4): EPO e WIPO lidos em 22/10/2026; o INPI já
 # tem a data da rodada 1
 TERMOS_LIDOS_EM |= dict.fromkeys(("epo", "wipo"), date(2026, 10, 22))
+# lote Europa e RBA (linha 512): licenças lidas na fonte primária em 29/10/2026 (pesquisa recorrente, tema 2);
+# o SNB só ganha a marca não comercial (aviso do site), sem coleta
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    ("statat", "statbel", "cbs", "cso", "ines", "istat", "rba", "snb"),
+    date(2026, 10, 29),
+)
 # lote acervos históricos (rodada 4, linha 292): IPEADATA sem termos publicados, lido em 22/10/2026
 TERMOS_LIDOS_EM |= dict.fromkeys(("ipea",), date(2026, 10, 22))
 # base de CNPJ (família "rfb", fonte `rfb-cnpj`): ficha do conjunto lida em 20/10/2026 e rodapé em

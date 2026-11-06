@@ -44,10 +44,20 @@ PASSAM_AS_MARCAS = {
     "usda",
     "faostat",
     "bis",
+    "dst",  # CC BY 4.0, termos lidos em 29/10/2026 (linha 511)
+    "dgener",  # Weekly Oil Bulletin: reprodução autorizada citando a fonte, lido em 06/11/2026 (linha 396)
+    "dgagri",  # CC BY 4.0 da Comissão Europeia, lido em 24/10/2026 (linha 396)
+    "ssb",  # CC BY 4.0 do SSB, lido em 06/11/2026 (linha 396)
+    "boc",  # Bank of Canada: livre citando o Banco, termos relidos em 05/11/2026 (linha 396)
+    "scb",  # CC0, termos lidos em 29/10/2026 (linha 511)
+    "statfi",  # CC BY 4.0, termos lidos em 29/10/2026 (linha 511)
+    "statice",  # CC BY 4.0, termos lidos em 29/10/2026 (linha 511)
+    "riksbank",  # reuso livre citando a fonte, termos lidos em 29/10/2026 (linha 511)
     "rfb-cnpj",
     "goias",  # CC BY, termos relidos em 05/11/2026 (linha 688)
     "spcapital",  # CC0, termos relidos em 05/11/2026 (linha 688)
     "msestado",  # CC BY, "pode" do Tiago em 05/11/2026 (linha 688)
+    "sefazpe",  # CC BY, linha 578 (nível 2: fonte já licenciada)
 }
 
 

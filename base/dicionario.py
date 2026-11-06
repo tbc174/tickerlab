@@ -2128,6 +2128,187 @@ def _tabelas_do_cnes() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_do_sus() -> dict[str, Tabela]:
+    """Os totais do SUS por estabelecimento e mês (`base/sus.py`, linha 698): internações (SIH RD), produção
+    ambulatorial (SIA PA) e a situação de cada competência, que é **só interna**."""
+    atraso = (
+        "O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a "
+        "competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um "
+        "número vira versão nova com a data nova"
+    )
+    onde = "Parquet em `<acervo>/base/{pasta}/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_sus.py`)"
+    identificacao = {
+        "competencia": (
+            (
+                "Competência do arquivo (mês de processamento do DATASUS), no formato AAAAMM; não é o mês "
+                "da alta nem do atendimento"
+            ),
+            NUMERO,
+        ),
+        "codigo_cnes": (
+            "Código do estabelecimento no CNES (7 dígitos); liga a `cnes_estabelecimentos`",
+            TEXTO,
+        ),
+        "cnpj": (
+            (
+                "CNPJ do próprio estabelecimento, só os 14 dígitos com DV conferido; vazio na unidade "
+                "pública sem CNPJ próprio. CPF nunca entra: o estabelecimento de pessoa física fica fora"
+            ),
+            TEXTO,
+        ),
+        "cnpj_mantenedora": (
+            (
+                "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos com DV "
+                "conferido. Não substitui o `cnpj`"
+            ),
+            TEXTO,
+        ),
+        "codigo_ibge_municipio": (
+            "Código IBGE do município do estabelecimento (6 dígitos)",
+            TEXTO,
+        ),
+        "uf": ("UF do arquivo do DATASUS", TEXTO),
+    }
+    suprimida = (
+        (
+            "Verdadeiro quando o mês teve menos de 10 e os números saíram vazios (ADR 0081, item 4): a "
+            "célula pequena nunca chega ao acervo"
+        ),
+        SIM_OU_NAO,
+    )
+    disponivel = (
+        (
+            "Dia em que a coleta viu a competência pela primeira vez com esses números (o DATASUS não "
+            "diz quando publicou); `competencia` nunca serve de disponibilidade"
+        ),
+        DATA,
+    )
+    internacoes = {
+        **identificacao,
+        "internacoes": (
+            "AIH pagas no mês, sem as de longa permanência (como o TabNet); vazio se suprimida",
+            NUMERO,
+        ),
+        "valor_total": (
+            "Valor total das AIH do mês, todas as AIH; vazio se suprimida",
+            REAIS_EXATOS,
+        ),
+        "valor_uti": ("Parte do valor que é de UTI; vazio se suprimida", REAIS_EXATOS),
+        "dias_permanencia": (
+            "Dias de permanência somados de todas as AIH; vazio se suprimida",
+            NUMERO,
+        ),
+        "obitos": (
+            "Óbitos nas internações do mês; vazio se suprimida ou com menos de 20",
+            NUMERO,
+        ),
+        "suprimida": suprimida,
+        "obitos_suprimidos": (
+            "Verdadeiro quando os óbitos saíram vazios por serem menos de 20 no mês",
+            SIM_OU_NAO,
+        ),
+        "disponivel_em": disponivel,
+    }
+    ambulatorial = {
+        **identificacao,
+        "quantidade_apresentada": (
+            "Procedimentos apresentados no mês; vazio se suprimida",
+            NUMERO,
+        ),
+        "quantidade_aprovada": (
+            "Procedimentos aprovados no mês (a supressão olha esta); vazio se suprimida",
+            NUMERO,
+        ),
+        "valor_apresentado": (
+            "Valor apresentado dos procedimentos; vazio se suprimida",
+            REAIS_EXATOS,
+        ),
+        "valor_aprovado": (
+            "Valor aprovado dos procedimentos; vazio se suprimida",
+            REAIS_EXATOS,
+        ),
+        "suprimida": suprimida,
+        "disponivel_em": disponivel,
+    }
+    situacao = {
+        "competencia": ("Competência olhada, no formato AAAAMM", NUMERO),
+        "uf": ("UF olhada", TEXTO),
+        "sistema": ("`sih` ou `sia`", TEXTO),
+        "arquivos": ("Nomes dos DBC lidos no FTP, separados por vírgula", TEXTO),
+        "sha256": ("SHA-256 de cada DBC, na ordem de `arquivos`", TEXTO),
+        "registros": ("Quantas linhas dos DBC foram somadas", NUMERO),
+        "estabelecimentos": ("Quantos estabelecimentos saíram na tabela", NUMERO),
+        "suprimidos": ("Quantos saíram com os números vazios", NUMERO),
+        "fora_pessoa_fisica": (
+            "Quantos ficaram fora por serem de pessoa física (CPF)",
+            NUMERO,
+        ),
+        "fora_sem_cnpj": ("Quantos ficaram fora por não terem CNPJ nenhum", NUMERO),
+        "fora_sem_cnes": (
+            "Linhas do DBC sem código do estabelecimento, que não se somam",
+            NUMERO,
+        ),
+        "situacao": (
+            "`com_dados` ou `vazia`. `vazia` é o DATASUS ainda não ter publicado a competência",
+            TEXTO,
+        ),
+        "coletado_em": ("Dia em que a competência foi vista com essa situação", DATA),
+    }
+    linhagem = (
+        "O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada DBC do FTP "
+        "somado e a versão do código que gravou. O DBC não fica no acervo: é lido na memória, somado e "
+        "descartado, e a linha do paciente nunca chega ao disco (ADR 0088, Emenda 1)."
+    )
+    comum = {
+        "familia_da_fonte": "ms",
+        "frequencia": "Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)",
+        "atraso": atraso,
+        "linhagem": linhagem,
+    }
+    sem_treino = " Não treina modelo (`coletas.FONTES_SEM_TREINO`, ADR 0122)."
+    return {
+        "sus_internacoes": Tabela(
+            descricao=(
+                "Internações do SUS por estabelecimento e mês (SIH, AIH reduzida), com o CNPJ do "
+                "estabelecimento e o da mantenedora. Só o total do mês: nada do paciente. Mês com menos de "
+                "10 internações sai suprimido; estabelecimento de pessoa física fica fora."
+                + sem_treino
+            ),
+            fonte="Ministério da Saúde, DATASUS, FTP do SIH/SUS, arquivos RD (`base/sus.py`)",
+            onde=onde.format(pasta="sus_internacoes"),
+            colunas=internacoes,
+            **comum,
+        ),
+        "sus_ambulatorial": Tabela(
+            descricao=(
+                "Produção ambulatorial do SUS por estabelecimento e mês (SIA, arquivos PA), com o CNPJ do "
+                "estabelecimento e o da mantenedora. Só o total do mês: nada do paciente. Mês com menos de "
+                "10 procedimentos aprovados sai suprimido; estabelecimento de pessoa física fica fora."
+                + sem_treino
+            ),
+            fonte="Ministério da Saúde, DATASUS, FTP do SIA/SUS, arquivos PA (`base/sus.py`)",
+            onde=onde.format(pasta="sus_ambulatorial"),
+            colunas=ambulatorial,
+            **comum,
+        ),
+        "sus_competencias": Tabela(
+            descricao=(
+                "Uma linha por sistema, competência e UF olhados pela coleta do SUS: os arquivos lidos, "
+                "quantos registros se somaram e quantos estabelecimentos saíram suprimidos ou fora. **Só "
+                "interna:** `registros` menos a soma publicada revelaria a célula suprimida, então a "
+                "tabela não sai no site, na API nem na ficha (`vitrine.TABELAS_SO_INTERNAS`)."
+            ),
+            fonte="Ministério da Saúde, DATASUS, FTP do SIH/SUS e do SIA/SUS (`base/sus.py`)",
+            onde=(
+                "Parquet em `<acervo>/base/sus_competencias/<sistema>-<AAAAMM>.parquet` (servidor de "
+                "casa, `scripts/carga_sus.py`)"
+            ),
+            colunas=situacao,
+            **comum,
+        ),
+    }
+
+
 def _tabelas_dos_tces() -> dict[str, Tabela]:
     """Contratos e despesas por CNPJ dos TCEs de PE, SP, CE e RS (`base/contratos_tces.py`, linha 652)."""
     comum = {
@@ -2581,7 +2762,7 @@ def _tabelas_da_anm() -> dict[str, Tabela]:
 
 
 def _tabelas_dos_incentivos() -> dict[str, Tabela]:
-    """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE e RDE-IED."""
+    """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE, RDE-IED e SEFAZ-PE."""
     situacao = {
         "consta": (
             "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
@@ -2702,6 +2883,28 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
         "ocorrencia": ("`REGISTRO EFETUADO` ou `REGISTRO ENCERRADO`", TEXTO),
         "mes": ("Mês da ocorrência (o 1º dia do mês)", DATA),
     }
+    pe = {
+        "arquivo": ("O ano do arquivo da SEFAZ-PE de onde a linha veio", TEXTO),
+        "id_na_fonte": (
+            "O programa, o CNPJ, o CACEPE e o início do prazo juntos por `|`",
+            TEXTO,
+        ),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "programa": (
+            "Programa estadual do benefício (PRODEPE, PEAP, máquinas pesadas...), como a fonte escreve",
+            TEXTO,
+        ),
+        "cacepe": ("Cadastro da empresa na SEFAZ-PE (CACEPE)", TEXTO),
+        "vigencia_inicio": (
+            "Início do prazo do benefício (não é quando a base soube)",
+            DATA,
+        ),
+        "vigencia_fim": (
+            "Fim do prazo do benefício; a prorrogação vira linha nova (vazio quando a fonte não diz)",
+            DATA,
+        ),
+    }
     return {
         "mme_reidi": tabela(
             "mme_reidi",
@@ -2741,6 +2944,20 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
             "bcb",
             "Parada desde dez/2022 (o arquivista confere todo mês)",
             rde,
+        ),
+        "sefaz_pe_beneficios": tabela(
+            "sefaz_pe_beneficios",
+            (
+                "Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas "
+                "pesadas...) por CNPJ, com o CACEPE e o prazo de cada um. Um Parquet por ano da "
+                "fonte (`arquivo`); a razão social não é guardada. O prazo prorrogado vira linha "
+                "nova, e o prazo (`vigencia_inicio`, `vigencia_fim`) não é a data em que a base "
+                "soube do benefício (`disponivel_em`)."
+            ),
+            "SEFAZ-PE: dados abertos (dados.pe.gov.br), benefícios fiscais, CC BY",
+            "sefazpe",
+            "Mensal (um arquivo por ano; o arquivista guarda só o que mudou)",
+            pe,
         ),
     }
 
@@ -4848,6 +5065,52 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "fre_distribuicao_capital": Tabela(
+        descricao=(
+            "Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie, e quantos acionistas pessoa física, pessoa jurídica e investidor institucional a companhia declara. Só contagens e percentuais, sem nome nem documento"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_distribuicao_capital/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "acionistas_pf": ("Número de acionistas pessoa física", NUMERO),
+            "acionistas_pj": ("Número de acionistas pessoa jurídica", NUMERO),
+            "acionistas_institucionais": (
+                "Número de investidores institucionais",
+                NUMERO,
+            ),
+            "circulacao_ordinarias": ("Ações ordinárias em circulação", ACOES),
+            "percentual_ordinarias": (
+                "Percentual das ordinárias em circulação, de 0 a 100 como a CVM escreve",
+                NUMERO_DECIMAL,
+            ),
+            "circulacao_preferenciais": ("Ações preferenciais em circulação", ACOES),
+            "percentual_preferenciais": (
+                "Percentual das preferenciais em circulação, de 0 a 100 como a CVM escreve",
+                NUMERO_DECIMAL,
+            ),
+            "circulacao_total": ("Total de ações em circulação", ACOES),
+            "percentual_total": (
+                "Percentual do total de ações em circulação (o free float declarado), de 0 a 100 como a CVM escreve; a CVM tem linhas fora dessa faixa",
+                NUMERO_DECIMAL,
+            ),
+            "ultima_assembleia_em": (
+                "Data da última assembleia geral a que a distribuição se refere",
+                DATA,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
     "fre_acionistas": Tabela(
         descricao=(
             "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física, com as ações e o percentual de cada espécie, desde 2010. Empresa e fundo entram com nome e CNPJ; pessoa física (ou CPF, ou nome sem cara de empresa) só somada por grupo, sem nome, CPF, UF nem nacionalidade (ADR 0075, item 5); o representante legal nem é lido"
@@ -6362,6 +6625,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_cadastros_em_retrato(),
     **_tabelas_do_fiagro_e_gleif(),
     **_tabelas_do_cnes(),
+    **_tabelas_do_sus(),
     **_tabelas_dos_tces(),
     **_tabelas_da_anm(),
     "debentures_assembleias": Tabela(
@@ -8526,8 +8790,12 @@ _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pel
 _CNES = (
     "2026-11-04"  # o CNES por competência entrou no arquivista neste dia (linha 654)
 )
+_SUS = (
+    "2026-11-06"  # os totais do SIH e do SIA entraram no catálogo neste dia (linha 698)
+)
 _TCES = "2026-11-04"  # os contratos dos TCEs entraram na base neste dia (linha 652)
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
+_SEFAZ_PE = "2026-11-05"  # os benefícios fiscais de Pernambuco entraram no arquivista neste dia (linha 578)
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -8586,6 +8854,7 @@ _CONTRATO = {
     "fre_diversidade": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_capital_social": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_capital_social'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_empregados": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'recorte', 'grupo'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde="2023-01-01"),
+    "fre_distribuicao_capital": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_documento'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_acionistas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'id_acionista'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_partes_relacionadas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'linha'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
@@ -8715,6 +8984,22 @@ _CONTRATO = {
         datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
         historico_desde=_CNES,
     ),
+    **{
+        nome: _contrato(
+            modulo="governo_e_sancoes",
+            chaves=("competencia", "codigo_cnes"),
+            datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"},
+            historico_desde=_SUS,
+            granularidade_do_publico_em="mes",
+        )
+        for nome in ("sus_internacoes", "sus_ambulatorial")
+    },
+    "sus_competencias": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("sistema", "competencia", "uf"),
+        datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
+        historico_desde=_SUS,
+    ),
     "anm_cfem_arrecadacao": _contrato(
         modulo="governo_e_sancoes",
         chaves=("ano", "mes", "processo", "ano_processo", "cnpj", "substancia", "municipio", "criado_em"),
@@ -8755,6 +9040,7 @@ _CONTRATO = {
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
+    "sefaz_pe_beneficios": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFAZ_PE, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
@@ -8940,6 +9226,20 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "cnes_competencias",
         "nao_nulas": ("situacao", "linhas", "coletado_em"),
     },
+    "sus_internacoes": {
+        "pasta": "sus_internacoes",
+        "nao_nulas": ("competencia", "codigo_cnes", "uf", "suprimida", "obitos_suprimidos", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("internacoes", "dias_permanencia", "obitos")},
+    },
+    "sus_ambulatorial": {
+        "pasta": "sus_ambulatorial",
+        "nao_nulas": ("competencia", "codigo_cnes", "uf", "suprimida", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("quantidade_apresentada", "quantidade_aprovada")},
+    },
+    "sus_competencias": {
+        "pasta": "sus_competencias",
+        "nao_nulas": ("competencia", "uf", "sistema", "registros", "situacao", "coletado_em"),
+    },
     "anm_cfem_arrecadacao": {
         "pasta": "anm_cfem_arrecadacao",
         "nao_nulas": ("ano", "mes", "processo", "cnpj", "disponivel_em"),
@@ -8971,6 +9271,10 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "bcb_rde_ied": {
         "pasta": "bcb_rde_ied",
         "nao_nulas": ("id_na_fonte", "cnpj_basico", "codigo_rde", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "sefaz_pe_beneficios": {
+        "pasta": "sefaz_pe_beneficios",
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "programa", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "ans_penalidades": {
         "pasta": "ans_penalidades",

@@ -49,3 +49,7 @@ dados_p2/
 pesquisa_p2/
 # Registro, cache e relatórios das estratégias quant P0 (pesquisa_quant/, fora do Git como as outras)
 pesquisa_quant/
+
+# Configuração local do Claude (traz permissões e endereço do servidor) e arquivos cifrados: nunca no repositório público
+.claude/
+*.age

@@ -59,19 +59,30 @@ def _mes_atras(hoje: date, meses: int) -> tuple[int, int]:
     return indice // 12, indice % 12 + 1
 
 
+def _trimestre_do(mes: int) -> int:
+    return (mes - 1) // ibge_sidra.MESES_DO_TRIMESTRE + 1
+
+
 def periodo_da_coleta(coleta: Coleta, hoje: date, primeira_vez: bool) -> str:
-    """O período pedido: tudo desde 2010 na primeira vez, a janela de revisão nas seguintes."""
+    """O período pedido: tudo desde 2010 na primeira vez, a janela de revisão nas seguintes.
+    Nas trimestrais o período é AAAATT (o trimestre em que cai o mês de início e o de hoje)."""
     if coleta.frequencia == "anual":
         inicio = PRIMEIRO_ANO if primeira_vez else hoje.year - ANOS_DE_REVISAO
         return f"{inicio}-{hoje.year}"
     ano, mes = (PRIMEIRO_ANO, 1) if primeira_vez else _mes_atras(hoje, MESES_DE_REVISAO)
+    if coleta.frequencia == "trimestral":
+        return (
+            f"{ano}{_trimestre_do(mes):02d}-{hoje.year}{_trimestre_do(hoje.month):02d}"
+        )
     return f"{ano}{mes:02d}-{hoje.year}{hoje.month:02d}"
 
 
-def _ler_pedido(url: str, buscar: Callable[..., requests.Response]) -> list[Valor]:
+def _ler_pedido(
+    url: str, buscar: Callable[..., requests.Response], frequencia: str = "mensal"
+) -> list[Valor]:
     resposta = buscar(url, timeout=TEMPO_LIMITE)
     resposta.raise_for_status()
-    return ibge_sidra.ler_resposta(resposta.json())
+    return ibge_sidra.ler_resposta(resposta.json(), frequencia)
 
 
 def _gravar(motor: sa.Engine, coleta: Coleta, valores: list[Valor], safra: date) -> int:
@@ -85,7 +96,10 @@ def _gravar(motor: sa.Engine, coleta: Coleta, valores: list[Valor], safra: date)
             acervo_de_series.garantir_serie(
                 conexao,
                 ibge_sidra.serie_do_acervo(
-                    coleta.tabela, da_serie[0], coleta.frequencia
+                    coleta.tabela,
+                    da_serie[0],
+                    coleta.frequencia,
+                    coleta.rotulo_do_periodo,
                 ),
             )
             serie = pd.Series(
@@ -107,7 +121,9 @@ def coletar_tabela(
         primeira_vez = not _ja_coletada(conexao, coleta.tabela)
     novas = 0
     for url in coleta.urls(periodo_da_coleta(coleta, hoje, primeira_vez)):
-        valores = ibge_sidra.cortar_futuro(_ler_pedido(url, buscar), hoje)
+        valores = ibge_sidra.cortar_futuro(
+            _ler_pedido(url, buscar, coleta.frequencia), hoje
+        )
         if coleta.soma_o_total_do_cafe:
             valores = ibge_sidra.somar_total_do_cafe(valores)
         if coleta.descarta_series_vazias:

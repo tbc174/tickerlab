@@ -1460,6 +1460,41 @@ Empregados por região (recorte `local`) e por posição, liderança ou não (re
 | `regiao_exterior` | Só no recorte `posicao`: como a CVM publica (`regiao_exterior`) | número com decimais, na unidade da fonte |
 | `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
 
+## `fre_distribuicao_capital`
+
+Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie, e quantos acionistas pessoa física, pessoa jurídica e investidor institucional a companhia declara. Só contagens e percentuais, sem nome nem documento
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `id_documento`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_distribuicao_capital/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `acionistas_pf` | Número de acionistas pessoa física | número inteiro |
+| `acionistas_pj` | Número de acionistas pessoa jurídica | número inteiro |
+| `acionistas_institucionais` | Número de investidores institucionais | número inteiro |
+| `circulacao_ordinarias` | Ações ordinárias em circulação | ações |
+| `percentual_ordinarias` | Percentual das ordinárias em circulação, de 0 a 100 como a CVM escreve | número com decimais, na unidade da fonte |
+| `circulacao_preferenciais` | Ações preferenciais em circulação | ações |
+| `percentual_preferenciais` | Percentual das preferenciais em circulação, de 0 a 100 como a CVM escreve | número com decimais, na unidade da fonte |
+| `circulacao_total` | Total de ações em circulação | ações |
+| `percentual_total` | Percentual do total de ações em circulação (o free float declarado), de 0 a 100 como a CVM escreve; a CVM tem linhas fora dessa faixa | número com decimais, na unidade da fonte |
+| `ultima_assembleia_em` | Data da última assembleia geral a que a distribuição se refere | data (dia) |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
 ## `fre_acionistas`
 
 Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física, com as ações e o percentual de cada espécie, desde 2010. Empresa e fundo entram com nome e CNPJ; pessoa física (ou CPF, ou nome sem cara de empresa) só somada por grupo, sem nome, CPF, UF nem nacionalidade (ADR 0075, item 5); o representante legal nem é lido
@@ -3357,6 +3392,42 @@ Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela rai
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `sefaz_pe_beneficios`
+
+Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas pesadas...) por CNPJ, com o CACEPE e o prazo de cada um. Um Parquet por ano da fonte (`arquivo`); a razão social não é guardada. O prazo prorrogado vira linha nova, e o prazo (`vigencia_inicio`, `vigencia_fim`) não é a data em que a base soube do benefício (`disponivel_em`). Só pessoa jurídica: CPF e nome (do cliente, do agente, do investidor, da empresa) saem na coleta; empresário individual e MEI ficam com `trata_como_pessoa`.
+
+- **Fonte:** SEFAZ-PE: dados abertos (dados.pe.gov.br), benefícios fiscais, CC BY (`base/incentivos.py`)
+- **Licença:** CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (um arquivo por ano; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `vigencia_inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-05 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sefaz_pe_beneficios/<arquivo>.parquet` (servidor de casa, `scripts/carga_incentivos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `arquivo` | O ano do arquivo da SEFAZ-PE de onde a linha veio | texto |
+| `id_na_fonte` | O programa, o CNPJ, o CACEPE e o início do prazo juntos por `|` | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `programa` | Programa estadual do benefício (PRODEPE, PEAP, máquinas pesadas...), como a fonte escreve | texto |
+| `cacepe` | Cadastro da empresa na SEFAZ-PE (CACEPE) | texto |
+| `vigencia_inicio` | Início do prazo do benefício (não é quando a base soube) | data (dia) |
+| `vigencia_fim` | Fim do prazo do benefício; a prorrogação vira linha nova (vazio quando a fonte não diz) | data (dia) |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `financiamentos_bndes`
 
 Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas). **Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.
@@ -3918,6 +3989,105 @@ Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `sus_internacoes`
+
+Internações do SUS por estabelecimento e mês (SIH, AIH reduzida), com o CNPJ do estabelecimento e o da mantenedora. Só o total do mês: nada do paciente. Mês com menos de 10 internações sai suprimido; estabelecimento de pessoa física fica fora. Não treina modelo (`coletas.FONTES_SEM_TREINO`, ADR 0122).
+
+- **Fonte:** Ministério da Saúde, DATASUS, FTP do SIH/SUS, arquivos RD (`base/sus.py`)
+- **Licença:** CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)
+- **Atraso de divulgação:** O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `codigo_cnes`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sus_internacoes/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_sus.py`)
+- **Linhagem:** O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada DBC do FTP somado e a versão do código que gravou. O DBC não fica no acervo: é lido na memória, somado e descartado, e a linha do paciente nunca chega ao disco (ADR 0088, Emenda 1).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Competência do arquivo (mês de processamento do DATASUS), no formato AAAAMM; não é o mês da alta nem do atendimento | número inteiro |
+| `codigo_cnes` | Código do estabelecimento no CNES (7 dígitos); liga a `cnes_estabelecimentos` | texto |
+| `cnpj` | CNPJ do próprio estabelecimento, só os 14 dígitos com DV conferido; vazio na unidade pública sem CNPJ próprio. CPF nunca entra: o estabelecimento de pessoa física fica fora | texto |
+| `cnpj_mantenedora` | CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos com DV conferido. Não substitui o `cnpj` | texto |
+| `codigo_ibge_municipio` | Código IBGE do município do estabelecimento (6 dígitos) | texto |
+| `uf` | UF do arquivo do DATASUS | texto |
+| `internacoes` | AIH pagas no mês, sem as de longa permanência (como o TabNet); vazio se suprimida | número inteiro |
+| `valor_total` | Valor total das AIH do mês, todas as AIH; vazio se suprimida | reais (R$) |
+| `valor_uti` | Parte do valor que é de UTI; vazio se suprimida | reais (R$) |
+| `dias_permanencia` | Dias de permanência somados de todas as AIH; vazio se suprimida | número inteiro |
+| `obitos` | Óbitos nas internações do mês; vazio se suprimida ou com menos de 20 | número inteiro |
+| `suprimida` | Verdadeiro quando o mês teve menos de 10 e os números saíram vazios (ADR 0081, item 4): a célula pequena nunca chega ao acervo | verdadeiro ou falso |
+| `obitos_suprimidos` | Verdadeiro quando os óbitos saíram vazios por serem menos de 20 no mês | verdadeiro ou falso |
+| `disponivel_em` | Dia em que a coleta viu a competência pela primeira vez com esses números (o DATASUS não diz quando publicou); `competencia` nunca serve de disponibilidade | data (dia) |
+
+## `sus_ambulatorial`
+
+Produção ambulatorial do SUS por estabelecimento e mês (SIA, arquivos PA), com o CNPJ do estabelecimento e o da mantenedora. Só o total do mês: nada do paciente. Mês com menos de 10 procedimentos aprovados sai suprimido; estabelecimento de pessoa física fica fora. Não treina modelo (`coletas.FONTES_SEM_TREINO`, ADR 0122).
+
+- **Fonte:** Ministério da Saúde, DATASUS, FTP do SIA/SUS, arquivos PA (`base/sus.py`)
+- **Licença:** CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)
+- **Atraso de divulgação:** O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `codigo_cnes`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sus_ambulatorial/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_sus.py`)
+- **Linhagem:** O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada DBC do FTP somado e a versão do código que gravou. O DBC não fica no acervo: é lido na memória, somado e descartado, e a linha do paciente nunca chega ao disco (ADR 0088, Emenda 1).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Competência do arquivo (mês de processamento do DATASUS), no formato AAAAMM; não é o mês da alta nem do atendimento | número inteiro |
+| `codigo_cnes` | Código do estabelecimento no CNES (7 dígitos); liga a `cnes_estabelecimentos` | texto |
+| `cnpj` | CNPJ do próprio estabelecimento, só os 14 dígitos com DV conferido; vazio na unidade pública sem CNPJ próprio. CPF nunca entra: o estabelecimento de pessoa física fica fora | texto |
+| `cnpj_mantenedora` | CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos com DV conferido. Não substitui o `cnpj` | texto |
+| `codigo_ibge_municipio` | Código IBGE do município do estabelecimento (6 dígitos) | texto |
+| `uf` | UF do arquivo do DATASUS | texto |
+| `quantidade_apresentada` | Procedimentos apresentados no mês; vazio se suprimida | número inteiro |
+| `quantidade_aprovada` | Procedimentos aprovados no mês (a supressão olha esta); vazio se suprimida | número inteiro |
+| `valor_apresentado` | Valor apresentado dos procedimentos; vazio se suprimida | reais (R$) |
+| `valor_aprovado` | Valor aprovado dos procedimentos; vazio se suprimida | reais (R$) |
+| `suprimida` | Verdadeiro quando o mês teve menos de 10 e os números saíram vazios (ADR 0081, item 4): a célula pequena nunca chega ao acervo | verdadeiro ou falso |
+| `disponivel_em` | Dia em que a coleta viu a competência pela primeira vez com esses números (o DATASUS não diz quando publicou); `competencia` nunca serve de disponibilidade | data (dia) |
+
+## `sus_competencias`
+
+Uma linha por sistema, competência e UF olhados pela coleta do SUS: os arquivos lidos, quantos registros se somaram e quantos estabelecimentos saíram suprimidos ou fora. **Só interna:** `registros` menos a soma publicada revelaria a célula suprimida, então a tabela não sai no site, na API nem na ficha (`vitrine.TABELAS_SO_INTERNAS`).
+
+- **Fonte:** Ministério da Saúde, DATASUS, FTP do SIH/SUS e do SIA/SUS (`base/sus.py`)
+- **Licença:** CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)
+- **Atraso de divulgação:** O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `sistema`, `competencia`, `uf`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `coletado_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sus_competencias/<sistema>-<AAAAMM>.parquet` (servidor de casa, `scripts/carga_sus.py`)
+- **Linhagem:** O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada DBC do FTP somado e a versão do código que gravou. O DBC não fica no acervo: é lido na memória, somado e descartado, e a linha do paciente nunca chega ao disco (ADR 0088, Emenda 1).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Competência olhada, no formato AAAAMM | número inteiro |
+| `uf` | UF olhada | texto |
+| `sistema` | `sih` ou `sia` | texto |
+| `arquivos` | Nomes dos DBC lidos no FTP, separados por vírgula | texto |
+| `sha256` | SHA-256 de cada DBC, na ordem de `arquivos` | texto |
+| `registros` | Quantas linhas dos DBC foram somadas | número inteiro |
+| `estabelecimentos` | Quantos estabelecimentos saíram na tabela | número inteiro |
+| `suprimidos` | Quantos saíram com os números vazios | número inteiro |
+| `fora_pessoa_fisica` | Quantos ficaram fora por serem de pessoa física (CPF) | número inteiro |
+| `fora_sem_cnpj` | Quantos ficaram fora por não terem CNPJ nenhum | número inteiro |
+| `fora_sem_cnes` | Linhas do DBC sem código do estabelecimento, que não se somam | número inteiro |
+| `situacao` | `com_dados` ou `vazia`. `vazia` é o DATASUS ainda não ter publicado a competência | texto |
+| `coletado_em` | Dia em que a competência foi vista com essa situação | data (dia) |
 
 ## `tce_pe_contratos`
 

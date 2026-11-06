@@ -1,17 +1,21 @@
 // Página inicial para quem analisa empresas (plano do site para quem analisa, 18/10/2026, PR 5): a
 // assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
-// estudo do dia, a vitrine das análises abertas, o que a base liga pelo CNPJ, os cruzamentos da base (PR 6), as quatro regras
-// da base, as fontes com licença e os planos. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
+// estudo do dia, a vitrine das análises abertas, o que o app acrescenta (páginas do catálogo), o que a
+// base liga pelo CNPJ, os cruzamentos da base (PR 6), as quatro regras da base, as fontes com licença, as
+// últimas novidades e os planos. A pílula do herói e a faixa de novidades leem a atualização mais nova de
+// src/novidades.py: nada envelhece à mão. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
 import { BuscaDaBase } from "../site/BuscaDaBase";
-import { baseEmNumeros, catalogo } from "../conteudo";
+import type { Funcionalidade } from "../conteudo";
+import { baseEmNumeros, catalogo, modulos, novidades } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { Cruzamentos } from "../site/Cruzamentos";
-import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
+import { AvisoDeAcesso, ChamadaFinal, linkDaFuncionalidade } from "../site/comum";
 import { Fundo } from "../site/Fundo";
 import { ancora } from "../site/Leitura";
 import { LigadoPeloCnpj } from "../site/LigadoPeloCnpj";
-import { ASSINATURA, REGRAS_DA_BASE, linkDoApp } from "../site/textos";
+import { ASSINATURA, REGRAS_DA_BASE, URL_DA_API, linkDoApp } from "../site/textos";
 import { Vitrine } from "../site/Vitrine";
+import { dataPorExtenso } from "./Novidades";
 import {
   DADOS as RAIO_X_DO_CHOQUE,
   MOMENTO_DO_RAIO_X,
@@ -34,7 +38,23 @@ const SUBTITULO =
   "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +
   "caminho até o original.";
 const SEM_RESPOSTA = "licença em consulta";
+// para quem o site fala (ADR 0099): quem analisa empresas, do M&A à sala de aula
+const PARA_QUEM =
+  "Para M&A, crédito e FIDC, research e sala de aula: números para citar, com a fonte ao lado.";
+// a atualização mais nova das Novidades: alimenta a faixa "O que entrou por último", no fim da página
+const ULTIMA = novidades[0];
+// as páginas do app que a inicial destaca para quem analisa; o texto de cada uma vem do catálogo
+// (src/modulos.py). Backtest, carteira e calculadoras ficam fora da inicial (ADR 0099).
+const PAGINAS_DO_APP_EM_DESTAQUE = ["relatorio-empresa", "busca-por-cnpj", "relatorio-do-setor"];
 const milhares = (n: number) => n.toLocaleString("pt-BR");
+
+function funcionalidadePelaPagina(pagina: string): Funcionalidade {
+  for (const modulo of modulos) {
+    const achada = modulo.funcionalidades.find((f) => f.pagina_do_app === pagina);
+    if (achada) return achada;
+  }
+  throw new Error(`Página do app fora do catálogo: ${pagina}`);
+}
 
 /** Os quatro números da abertura, cada um com a conta recolhida ao lado. */
 function PainelDaBase() {
@@ -127,6 +147,7 @@ function Heroi() {
             {depois}
           </h1>
           <p className="subtitulo">{SUBTITULO}</p>
+          <p className="v2-para-quem">{PARA_QUEM}</p>
           <div className="acoes">
             <a className="botao primario" href="/dados.html">
               Ver os dados
@@ -232,19 +253,91 @@ function FontesDaBase() {
   );
 }
 
+/** O que o app acrescenta às análises abertas: três páginas do catálogo, com o texto do Python. */
+function NoApp() {
+  return (
+    <section className="faixa secao v2-no-app" aria-labelledby="titulo-no-app">
+      <p className="olho">No app, com a sua conta</p>
+      <h2 id="titulo-no-app">Da análise aberta ao relatório completo</h2>
+      <p className="subtitulo">
+        As análises acima não pedem login. Com a conta, você escolhe a empresa ou o setor, gera o
+        relatório com a fonte de cada número e guarda o PDF.
+      </p>
+      <div className="grade tres">
+        {PAGINAS_DO_APP_EM_DESTAQUE.map(funcionalidadePelaPagina).map((f) => (
+          <article key={f.nome} className="cartao">
+            <h3>{f.nome}</h3>
+            <p>{f.descricao}</p>
+            <a className="seta" href={linkDaFuncionalidade(f)}>
+              Abrir no app
+            </a>
+          </article>
+        ))}
+      </div>
+      <p className="contagem v2-no-app-rodape">
+        Tudo o que o app tem, módulo a módulo, está em <a href="/produto.html">Produto</a>. Para o
+        seu sistema, a mesma base sai pela{" "}
+        <a href={URL_DA_API} rel="noopener">
+          TickerLab Data
+        </a>
+        , a API de dados: beta fechado, documentação aberta.
+      </p>
+    </section>
+  );
+}
+
+/** Os três itens mais novos das Novidades: a página mostra que o produto anda, sem texto que envelhece. */
+/** "Relatório do setor: escolha um setor..." → título e descrição, que vira frase (maiúscula). */
+function tituloEDescricao(texto: string): [string, string] {
+  const corte = texto.indexOf(": ");
+  if (corte <= 0) return [texto, ""];
+  const descricao = texto.slice(corte + 2);
+  return [texto.slice(0, corte), descricao.charAt(0).toUpperCase() + descricao.slice(1)];
+}
+
+function UltimasNovidades() {
+  const itens = ULTIMA.novidades.slice(0, 3).map(tituloEDescricao);
+  return (
+    <section className="faixa secao v2-ultimas" aria-labelledby="titulo-ultimas">
+      <p className="olho">{`Novidades · ${dataPorExtenso(ULTIMA.data)}`}</p>
+      <h2 id="titulo-ultimas">O que entrou por último</h2>
+      <p className="subtitulo">
+        O que mudou na última atualização. A lista completa, com as correções, fica na página de
+        novidades.
+      </p>
+      <div className="grade tres">
+        {itens.map(([titulo, texto], i) => (
+          <article key={`${i}-${titulo}`} className="cartao">
+            <h3>{titulo}</h3>
+            <p>{texto}</p>
+          </article>
+        ))}
+      </div>
+      <a className="seta" href={`/novidades.html#${ULTIMA.data}`}>
+        Todas as novidades
+      </a>
+    </section>
+  );
+}
+
 export function Inicio() {
   return (
     <>
       <Heroi />
       <EstudoDoDia />
       <Vitrine />
+      <NoApp />
       <LigadoPeloCnpj />
       <Cruzamentos />
       <RegrasDaBase />
       <FontesDaBase />
+      <UltimasNovidades />
       <ChamadaFinal
         titulo="Comece pelo Gratuito"
-        subtitulo="O plano Gratuito não pede cartão. O que cada plano inclui está na página de planos."
+        subtitulo={
+          "O plano Gratuito não pede cartão e, até o lançamento, toda conta usa os limites do " +
+          "plano mais completo. O que cada plano inclui está na página de planos."
+        }
       >
         <div className="acoes">
           <a className="botao primario" href={linkDoApp()}>

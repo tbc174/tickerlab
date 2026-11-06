@@ -3,6 +3,8 @@
 export const URL_DO_SITE = "https://tickerlab.com.br";
 export const URL_DO_APP = "https://app.tickerlab.com.br";
 export const URL_DO_CODIGO = "https://github.com/tbc174/tickerlab";
+// a API de dados (TickerLab Data): o site e a documentação dela ficam na raiz da própria API
+export const URL_DA_API = "https://api.tickerlab.com.br";
 export const EMAIL_DE_CONTATO = "contato@tickerlab.com.br";
 
 // Beta fechado: só contas convidadas entram (o aviso aparece no topo da página inicial)
@@ -31,7 +33,7 @@ export function linkDoApp(pagina = "", parametros: Record<string, string> = {}):
 export const PASSOS: [string, string, string][] = [
   [
     "A fonte",
-    "Coletamos de órgãos públicos, como a CVM, a B3, o Banco Central e a SEC. Cada tabela da base diz de qual fonte vem e com que licença.",
+    "Coletamos de órgãos públicos: a CVM, a Receita Federal, o Banco Central, as agências reguladoras, os tribunais de contas e outros. Cada tabela da base diz de qual fonte vem e com que licença.",
     "A coleta lê o que o órgão publica e anota a hora em que leu. A licença é a que a própria fonte publica; onde ela ainda não respondeu por escrito sobre uso comercial, a página Dados avisa.",
   ],
   [
@@ -46,7 +48,7 @@ export const PASSOS: [string, string, string][] = [
   ],
   [
     "A porta",
-    "Os dados da base são consultados por data: a consulta só enxerga o que já era público naquele dia. A API aberta, para consultar de fora, está em construção.",
+    "Os dados da base são consultados por data: a consulta só enxerga o que já era público naquele dia. A mesma porta atende, de fora, a TickerLab Data, a API de dados: em beta fechado, com a documentação aberta.",
     "Um dado só é usado a partir do dia em que ficou público. Cortar o futuro não muda o passado: há teste automático que confere isso em cada versão do código.",
   ],
   [
@@ -59,7 +61,7 @@ export const PASSOS: [string, string, string][] = [
 export const PUBLICOS: [string, string][] = [
   [
     "Quem analisa empresas",
-    "Analistas e equipes de análise que conferem o que uma empresa e o grupo dela dizem contra as bases públicas, com a data de cada fonte e o que não foi achado.",
+    "Analistas de M&A, crédito e research, e as equipes que conferem o que uma empresa e o grupo dela dizem contra as bases públicas, com a data de cada fonte e o que não foi achado.",
   ],
   [
     "Estudantes e pesquisadores",
@@ -74,7 +76,7 @@ export const PUBLICOS: [string, string][] = [
 export const CONFIANCA: [string, string][] = [
   [
     "Dados",
-    "Documentos oficiais da CVM, da B3, do Banco Central e da SEC, cada um com fonte, data e licença. Os preços diários vêm do Yahoo Finance, ajustados por dividendos e desdobramentos; não são tempo real e podem ter atraso, falhas e ajustes posteriores.",
+    "Documentos oficiais da CVM, da Receita Federal, do Banco Central, da SEC e de dezenas de outros órgãos públicos, cada um com fonte, data e licença. No app, os preços diários vêm do Yahoo Finance, ajustados por dividendos e desdobramentos; não são tempo real e podem ter atraso, falhas e ajustes posteriores. O pregão do dia, no site, usa o fechamento oficial da B3.",
   ],
   [
     "Original e versões",
@@ -118,6 +120,12 @@ export const PERGUNTAS: [string, string][] = [
     "Preciso pagar?",
     "Não para começar: o plano Gratuito não pede cartão. Hoje a cobrança dos planos " +
       "pagos está em modo de teste, sem dinheiro real.",
+  ],
+  [
+    "Dá para usar os dados fora do app, no meu sistema ou numa IA?",
+    "Sim, pela TickerLab Data, a API de dados: a mesma base, consultada por data, com fonte, " +
+      "data e licença em cada resposta. Está em beta fechado e sem cobrança; a documentação " +
+      "está aberta em api.tickerlab.com.br.",
   ],
   [
     "Como apago a minha conta?",

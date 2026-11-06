@@ -282,8 +282,8 @@
       "sinonimos_de_tempo": {
         "referencia": "referencia",
         "valido_desde": "aconteceu_em",
-        "calculado_em": "a_conferir",
-        "fechado_em": "a_conferir"
+        "calculado_em": "coletado_em",
+        "fechado_em": "ate_publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -407,7 +407,7 @@
       },
       "sinonimos_de_tempo": {
         "primeiro_visto": "publico_em",
-        "ultimo_visto": "a_conferir",
+        "ultimo_visto": "publico_em",
         "valido_ate": "ate",
         "inicio_negociacao": "aconteceu_em",
         "fim_negociacao": "ate"
@@ -721,7 +721,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "confidencial_ate": "a_conferir",
+        "confidencial_ate": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em"
       },
@@ -816,7 +816,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "confidencial_ate": "a_conferir",
+        "confidencial_ate": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em"
       },
@@ -903,7 +903,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "confidencial_ate": "a_conferir",
+        "confidencial_ate": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em"
       },
@@ -1413,8 +1413,8 @@
       ],
       "datas": {},
       "sinonimos_de_tempo": {
-        "primeira": "a_conferir",
-        "ultima": "a_conferir"
+        "primeira": "referencia",
+        "ultima": "referencia"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -1600,8 +1600,8 @@
         "coletado_em": "conferido_em"
       },
       "sinonimos_de_tempo": {
-        "primeiro_no_cda": "a_conferir",
-        "ultimo_no_cda": "a_conferir",
+        "primeiro_no_cda": "referencia",
+        "ultimo_no_cda": "referencia",
         "conferido_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
@@ -1789,7 +1789,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "atualizado_em": "a_conferir",
+        "atualizado_em": "aconteceu_em",
         "disponivel_em": "publico_em"
       },
       "historico_desde": "2026-10-14",
@@ -2724,7 +2724,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "gerado_em": "a_conferir",
+        "gerado_em": "aconteceu_em",
         "disponivel_em": "publico_em",
         "visto_em": "visto_em"
       },
@@ -2933,7 +2933,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "base_de": "a_conferir",
+        "base_de": "visto_em",
         "disponivel_em": "publico_em",
         "visto_em": "visto_em"
       },
@@ -3668,6 +3668,96 @@
       "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
       "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
     },
+    "fre_distribuicao_capital": {
+      "tabela": "fre_distribuicao_capital",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia (como a CVM escreve)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_documento": {
+          "descricao": "Identificador do documento na CVM",
+          "unidade": "texto"
+        },
+        "acionistas_pf": {
+          "descricao": "Número de acionistas pessoa física",
+          "unidade": "número inteiro"
+        },
+        "acionistas_pj": {
+          "descricao": "Número de acionistas pessoa jurídica",
+          "unidade": "número inteiro"
+        },
+        "acionistas_institucionais": {
+          "descricao": "Número de investidores institucionais",
+          "unidade": "número inteiro"
+        },
+        "circulacao_ordinarias": {
+          "descricao": "Ações ordinárias em circulação",
+          "unidade": "ações"
+        },
+        "percentual_ordinarias": {
+          "descricao": "Percentual das ordinárias em circulação, de 0 a 100 como a CVM escreve",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "circulacao_preferenciais": {
+          "descricao": "Ações preferenciais em circulação",
+          "unidade": "ações"
+        },
+        "percentual_preferenciais": {
+          "descricao": "Percentual das preferenciais em circulação, de 0 a 100 como a CVM escreve",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "circulacao_total": {
+          "descricao": "Total de ações em circulação",
+          "unidade": "ações"
+        },
+        "percentual_total": {
+          "descricao": "Percentual do total de ações em circulação (o free float declarado), de 0 a 100 como a CVM escreve; a CVM tem linhas fora dessa faixa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "ultima_assembleia_em": {
+          "descricao": "Data da última assembleia geral a que a distribuição se refere",
+          "unidade": "data (dia)"
+        },
+        "conhecido_em": {
+          "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao",
+        "id_documento"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "ultima_assembleia_em": "aconteceu_em",
+        "conhecido_em": "publico_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+      "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+    },
     "fre_acionistas": {
       "tabela": "fre_acionistas",
       "modulo": "mercado_e_empresas",
@@ -4241,7 +4331,7 @@
         "data_inicio_oferta": "aconteceu_em",
         "data_encerramento_oferta": "ate",
         "data_emissao": "aconteceu_em",
-        "data_vencimento": "a_conferir",
+        "data_vencimento": "ate",
         "data_comunicado": "aconteceu_em",
         "anunciada_em": "aconteceu_em",
         "disponivel_em": "publico_em"
@@ -4803,7 +4893,7 @@
         "aconteceu_em": "data"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "referencia",
         "registrada_desde": "aconteceu_em",
         "primeira_entrega": "publico_em",
         "balanco_fim": "referencia",
@@ -4855,8 +4945,8 @@
       ],
       "datas": {},
       "sinonimos_de_tempo": {
-        "primeira": "a_conferir",
-        "ultima": "a_conferir"
+        "primeira": "referencia",
+        "ultima": "referencia"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -5298,8 +5388,8 @@
         "coletado_em": "calculado_em"
       },
       "sinonimos_de_tempo": {
-        "data_de_corte": "a_conferir",
-        "calculado_em": "a_conferir"
+        "data_de_corte": "referencia",
+        "calculado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5446,7 +5536,7 @@
         "coletado_em": "coletado_em"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "referencia": "referencia",
         "coletado_em": "coletado_em"
       },
@@ -5550,7 +5640,7 @@
         "referencia": "referencia",
         "publicado_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5675,11 +5765,11 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "referencia": "referencia",
         "entregue_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5765,7 +5855,7 @@
         "referencia": "referencia",
         "exercicio": "referencia",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5855,9 +5945,9 @@
       },
       "sinonimos_de_tempo": {
         "referencia": "referencia",
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5965,7 +6055,7 @@
         "conhecido_em": "publico_em",
         "referencia": "referencia",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -6043,7 +6133,7 @@
         "data_situacao_especial": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6121,7 +6211,7 @@
         "data_situacao_cadastral": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6433,7 +6523,7 @@
         "publico_em": "mes"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "visto_em",
         "data_situacao_cadastral_antes": "aconteceu_em",
         "data_situacao_cadastral_depois": "aconteceu_em",
         "data_inicio_atividade_antes": "aconteceu_em",
@@ -6582,7 +6672,7 @@
         "publico_em": "mes"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "visto_em",
         "data_opcao_simples_antes": "aconteceu_em",
         "data_opcao_simples_depois": "aconteceu_em",
         "data_exclusao_simples_antes": "ate",
@@ -6726,7 +6816,7 @@
         "publico_em": "mes"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "visto_em",
         "data_entrada_antes": "aconteceu_em",
         "data_entrada_depois": "aconteceu_em"
       },
@@ -6810,7 +6900,7 @@
         "data_exclusao_simples": "ate",
         "data_opcao_mei": "aconteceu_em",
         "data_exclusao_mei": "ate",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6872,7 +6962,7 @@
       },
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6988,10 +7078,10 @@
         "primeira_inscricao": "aconteceu_em",
         "ultima_inscricao": "aconteceu_em",
         "data_do_retrato": "referencia",
-        "gerado_em": "a_conferir",
+        "gerado_em": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -7140,7 +7230,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -7288,7 +7378,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -7448,7 +7538,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7535,7 +7625,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7633,7 +7723,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7767,7 +7857,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-05",
       "granularidade_do_publico_em": "dia",
@@ -7849,7 +7939,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-05",
       "granularidade_do_publico_em": "dia",
@@ -7985,7 +8075,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8121,7 +8211,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8257,7 +8347,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8393,7 +8483,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8529,7 +8619,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8665,7 +8755,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8790,7 +8880,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8906,12 +8996,12 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
-        "gerado_em": "a_conferir",
+        "mes": "referencia",
+        "gerado_em": "aconteceu_em",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8998,11 +9088,11 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "referencia",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -9010,6 +9100,103 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": true,
       "frequencia": "Parada desde dez/2022 (o arquivista confere todo mês)",
+      "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
+    },
+    "sefaz_pe_beneficios": {
+      "tabela": "sefaz_pe_beneficios",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "arquivo": {
+          "descricao": "O ano do arquivo da SEFAZ-PE de onde a linha veio",
+          "unidade": "texto"
+        },
+        "id_na_fonte": {
+          "descricao": "O programa, o CNPJ, o CACEPE e o início do prazo juntos por `|`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "programa": {
+          "descricao": "Programa estadual do benefício (PRODEPE, PEAP, máquinas pesadas...), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "cacepe": {
+          "descricao": "Cadastro da empresa na SEFAZ-PE (CACEPE)",
+          "unidade": "texto"
+        },
+        "vigencia_inicio": {
+          "descricao": "Início do prazo do benefício (não é quando a base soube)",
+          "unidade": "data (dia)"
+        },
+        "vigencia_fim": {
+          "descricao": "Fim do prazo do benefício; a prorrogação vira linha nova (vazio quando a fonte não diz)",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "arquivo",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "vigencia_inicio",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "vigencia_inicio": "aconteceu_em",
+        "vigencia_fim": "ate",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-05",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": true,
+      "frequencia": "Mensal (um arquivo por ano; o arquivista guarda só o que mudou)",
       "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
     },
     "financiamentos_bndes": {
@@ -9197,7 +9384,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -9392,7 +9579,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -9864,7 +10051,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "mes",
@@ -9973,7 +10160,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "mes",
@@ -10060,7 +10247,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "mes",
@@ -10163,7 +10350,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -10283,7 +10470,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -10442,7 +10629,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-10-01",
       "granularidade_do_publico_em": "dia",
@@ -10539,7 +10726,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -10649,7 +10836,7 @@
         "competencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "mes",
@@ -10709,7 +10896,7 @@
         "competencia": "referencia",
         "coletado_em": "coletado_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -10718,6 +10905,244 @@
       "pessoa": false,
       "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
       "atraso": "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
+    },
+    "sus_internacoes": {
+      "tabela": "sus_internacoes",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Competência do arquivo (mês de processamento do DATASUS), no formato AAAAMM; não é o mês da alta nem do atendimento",
+          "unidade": "número inteiro"
+        },
+        "codigo_cnes": {
+          "descricao": "Código do estabelecimento no CNES (7 dígitos); liga a `cnes_estabelecimentos`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ do próprio estabelecimento, só os 14 dígitos com DV conferido; vazio na unidade pública sem CNPJ próprio. CPF nunca entra: o estabelecimento de pessoa física fica fora",
+          "unidade": "texto"
+        },
+        "cnpj_mantenedora": {
+          "descricao": "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos com DV conferido. Não substitui o `cnpj`",
+          "unidade": "texto"
+        },
+        "codigo_ibge_municipio": {
+          "descricao": "Código IBGE do município do estabelecimento (6 dígitos)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF do arquivo do DATASUS",
+          "unidade": "texto"
+        },
+        "internacoes": {
+          "descricao": "AIH pagas no mês, sem as de longa permanência (como o TabNet); vazio se suprimida",
+          "unidade": "número inteiro"
+        },
+        "valor_total": {
+          "descricao": "Valor total das AIH do mês, todas as AIH; vazio se suprimida",
+          "unidade": "reais (R$)"
+        },
+        "valor_uti": {
+          "descricao": "Parte do valor que é de UTI; vazio se suprimida",
+          "unidade": "reais (R$)"
+        },
+        "dias_permanencia": {
+          "descricao": "Dias de permanência somados de todas as AIH; vazio se suprimida",
+          "unidade": "número inteiro"
+        },
+        "obitos": {
+          "descricao": "Óbitos nas internações do mês; vazio se suprimida ou com menos de 20",
+          "unidade": "número inteiro"
+        },
+        "suprimida": {
+          "descricao": "Verdadeiro quando o mês teve menos de 10 e os números saíram vazios (ADR 0081, item 4): a célula pequena nunca chega ao acervo",
+          "unidade": "verdadeiro ou falso"
+        },
+        "obitos_suprimidos": {
+          "descricao": "Verdadeiro quando os óbitos saíram vazios por serem menos de 20 no mês",
+          "unidade": "verdadeiro ou falso"
+        },
+        "disponivel_em": {
+          "descricao": "Dia em que a coleta viu a competência pela primeira vez com esses números (o DATASUS não diz quando publicou); `competencia` nunca serve de disponibilidade",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "codigo_cnes"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em"
+      },
+      "historico_desde": "2026-11-06",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)",
+      "atraso": "O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova"
+    },
+    "sus_ambulatorial": {
+      "tabela": "sus_ambulatorial",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Competência do arquivo (mês de processamento do DATASUS), no formato AAAAMM; não é o mês da alta nem do atendimento",
+          "unidade": "número inteiro"
+        },
+        "codigo_cnes": {
+          "descricao": "Código do estabelecimento no CNES (7 dígitos); liga a `cnes_estabelecimentos`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ do próprio estabelecimento, só os 14 dígitos com DV conferido; vazio na unidade pública sem CNPJ próprio. CPF nunca entra: o estabelecimento de pessoa física fica fora",
+          "unidade": "texto"
+        },
+        "cnpj_mantenedora": {
+          "descricao": "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos com DV conferido. Não substitui o `cnpj`",
+          "unidade": "texto"
+        },
+        "codigo_ibge_municipio": {
+          "descricao": "Código IBGE do município do estabelecimento (6 dígitos)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF do arquivo do DATASUS",
+          "unidade": "texto"
+        },
+        "quantidade_apresentada": {
+          "descricao": "Procedimentos apresentados no mês; vazio se suprimida",
+          "unidade": "número inteiro"
+        },
+        "quantidade_aprovada": {
+          "descricao": "Procedimentos aprovados no mês (a supressão olha esta); vazio se suprimida",
+          "unidade": "número inteiro"
+        },
+        "valor_apresentado": {
+          "descricao": "Valor apresentado dos procedimentos; vazio se suprimida",
+          "unidade": "reais (R$)"
+        },
+        "valor_aprovado": {
+          "descricao": "Valor aprovado dos procedimentos; vazio se suprimida",
+          "unidade": "reais (R$)"
+        },
+        "suprimida": {
+          "descricao": "Verdadeiro quando o mês teve menos de 10 e os números saíram vazios (ADR 0081, item 4): a célula pequena nunca chega ao acervo",
+          "unidade": "verdadeiro ou falso"
+        },
+        "disponivel_em": {
+          "descricao": "Dia em que a coleta viu a competência pela primeira vez com esses números (o DATASUS não diz quando publicou); `competencia` nunca serve de disponibilidade",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "codigo_cnes"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "disponivel_em": "publico_em"
+      },
+      "historico_desde": "2026-11-06",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)",
+      "atraso": "O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova"
+    },
+    "sus_competencias": {
+      "tabela": "sus_competencias",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Competência olhada, no formato AAAAMM",
+          "unidade": "número inteiro"
+        },
+        "uf": {
+          "descricao": "UF olhada",
+          "unidade": "texto"
+        },
+        "sistema": {
+          "descricao": "`sih` ou `sia`",
+          "unidade": "texto"
+        },
+        "arquivos": {
+          "descricao": "Nomes dos DBC lidos no FTP, separados por vírgula",
+          "unidade": "texto"
+        },
+        "sha256": {
+          "descricao": "SHA-256 de cada DBC, na ordem de `arquivos`",
+          "unidade": "texto"
+        },
+        "registros": {
+          "descricao": "Quantas linhas dos DBC foram somadas",
+          "unidade": "número inteiro"
+        },
+        "estabelecimentos": {
+          "descricao": "Quantos estabelecimentos saíram na tabela",
+          "unidade": "número inteiro"
+        },
+        "suprimidos": {
+          "descricao": "Quantos saíram com os números vazios",
+          "unidade": "número inteiro"
+        },
+        "fora_pessoa_fisica": {
+          "descricao": "Quantos ficaram fora por serem de pessoa física (CPF)",
+          "unidade": "número inteiro"
+        },
+        "fora_sem_cnpj": {
+          "descricao": "Quantos ficaram fora por não terem CNPJ nenhum",
+          "unidade": "número inteiro"
+        },
+        "fora_sem_cnes": {
+          "descricao": "Linhas do DBC sem código do estabelecimento, que não se somam",
+          "unidade": "número inteiro"
+        },
+        "situacao": {
+          "descricao": "`com_dados` ou `vazia`. `vazia` é o DATASUS ainda não ter publicado a competência",
+          "unidade": "texto"
+        },
+        "coletado_em": {
+          "descricao": "Dia em que a competência foi vista com essa situação",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "sistema",
+        "competencia",
+        "uf"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "coletado_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "coletado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-06",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)",
+      "atraso": "O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova"
     },
     "tce_pe_contratos": {
       "tabela": "tce_pe_contratos",
@@ -10832,7 +11257,7 @@
         "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -10949,7 +11374,7 @@
         "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11092,7 +11517,7 @@
         "data_homologacao": "a_conferir",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11187,7 +11612,7 @@
         "data_emissao": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11305,7 +11730,7 @@
         "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11429,7 +11854,7 @@
         "data_assinatura": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11541,7 +11966,7 @@
         "criado_em": "a_conferir",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2002-01-01",
       "granularidade_do_publico_em": "dia",
@@ -11666,7 +12091,7 @@
         "classificado_em": "a_conferir",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11772,7 +12197,7 @@
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11894,7 +12319,7 @@
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -12011,7 +12436,7 @@
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -12148,7 +12573,7 @@
         "referencia": "referencia",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12271,7 +12696,7 @@
         "data_acao": "aconteceu_em",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12378,7 +12803,7 @@
         "inicio": "referencia",
         "fim": "referencia",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12469,7 +12894,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12560,7 +12985,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2011-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12665,7 +13090,7 @@
         "disponivel_em": "publico_em",
         "data_emissao": "aconteceu_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2019-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12760,7 +13185,7 @@
         "data_entrega": "publico_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2019-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12844,7 +13269,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12933,7 +13358,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13024,7 +13449,7 @@
         "referencia": "referencia",
         "conhecido_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13101,7 +13526,7 @@
       "sinonimos_de_tempo": {
         "conhecido_em": "publico_em",
         "efetiva_em": "aconteceu_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13176,7 +13601,7 @@
         "data_base": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13244,7 +13669,7 @@
         "divulgado_em": "publico_em",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13390,7 +13815,7 @@
         "documento_entregue_em": "publico_em",
         "disponivel_em": "publico_em",
         "publico_em": "publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13659,7 +14084,7 @@
         "referencia": "referencia",
         "conhecido_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13748,10 +14173,10 @@
       },
       "sinonimos_de_tempo": {
         "referencia": "referencia",
-        "data_da_previsao": "a_conferir",
-        "prazo": "a_conferir",
+        "data_da_previsao": "referencia",
+        "prazo": "aconteceu_em",
         "primeira_entrega": "publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13903,8 +14328,8 @@
       },
       "sinonimos_de_tempo": {
         "referencia": "referencia",
-        "data_da_previsao": "a_conferir",
-        "montado_em": "a_conferir"
+        "data_da_previsao": "referencia",
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -14011,7 +14436,7 @@
         "ultima_referencia": "referencia",
         "ate": "ate",
         "ate_publico_em": "ate_publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -14435,7 +14860,7 @@
         "referencia": "referencia",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
@@ -14756,7 +15181,7 @@
         "fechamento_em": "aconteceu_em",
         "receita_exercicio_fim": "referencia",
         "receita_publico_em": "publico_em",
-        "porte_publico_em": "a_conferir"
+        "porte_publico_em": "coletado_em"
       },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
@@ -15283,7 +15708,7 @@
         "coletado_em": "conferido_em"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "divulgado_em": "publico_em",
         "conferido_em": "coletado_em"
       },

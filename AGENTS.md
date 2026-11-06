@@ -122,6 +122,7 @@ Pedido do Tiago (05/11/2026): crescer organizado, sem deixar coisa sem uso. Quat
   (não é merge de PR): gasto, inclusive o PR que liga um gasto novo; contrato; e-mail ou pedido a
   terceiro; segredo num servidor; e o que leva o nome ou o CNPJ dele. O resto do nível 1 que não é merge
   passa pela Diretoria (abaixo).
+- **Nada espera parecer jurídico** (Tiago, 06/11/2026: "Eu não quero esperar parecer jurídico pra mais nada"). Trava, tarefa ou texto que dizia "espera parecer" passa a ser decidido pela **nossa leitura do texto da norma**, com artigo e data, escrita no PR. Diante de dúvida, a leitura mais estreita. Não muda: as duas revisões antes do merge, as travas de licença (resposta do dono do dado), o que é só do Tiago e a LGPD (pessoa física continua fora). Score de crédito só de quem não emite valor mobiliário (leitura da CVM 9). Detalhe em `docs/virada-empresas-fechadas.md`.
 - **Ordens da Diretoria:** a conversa da Diretoria que toca a fila única pode mandar ordens às outras sessões
   (mensagem entre sessões ou, para a IA que não recebe mensagens, escrita na passagem da tarefa), citando as
   palavras do Tiago (autorização dele em 20/10/2026). Essa ordem vale como a do Tiago para push, PR, merge

@@ -45,8 +45,10 @@ from base import indicadores_de_caixa as t1
 from base.bcb_ifdata import DIAS_ATE_FICAR_PUBLICO, MESES_DA_DATA_BASE
 from base.cnpj import formatar, raiz
 from base.contrapartes.cafe import ENDERECO_DO_CNPJ, VEICULO_DO_CNPJ
+from base.dias_uteis import dias_uteis
 from base.dicionario import TABELAS
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
+from base.porta.duckdb import servida_pela_porta
 from base.rede.ligacoes_das_fontes import (
     AUDITA,
     COLIGADA_DE,
@@ -57,8 +59,16 @@ from base.rede.ligacoes_das_fontes import (
 )
 from base.rede.vistas import vista_publicada
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
-from src.banco.coletas import MOSTRAR, licenca_da_fonte, pode_usar
-from src.negociacoes import CARGOS
+from src.banco.coletas import MOSTRAR, licenca_da_fonte, licenca_do_site, pode_usar
+from src.links_das_fontes import link_da_fonte
+from src.negociacoes import CARGOS, formatar_valor
+from src.prazos import (
+    ATRASO_GRAVE,
+    DIAS_DO_ITR,
+    MESES_DO_DFP,
+    MESES_DO_DFP_ESTRANGEIRO,
+    ZONA_CINZENTA,
+)
 
 VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
 # sobe quando a conta de um item muda (o gabarito de `tests/test_dossie_rastro.py` quebra se não subir)
@@ -85,6 +95,13 @@ AUDITOR_PESSOA = "Auditor pessoa física (nome não mostrado)"
 DIGITOS_DO_CNPJ = 14
 SOMA_DO_ANO, ULTIMO_MES = "soma do ano", "último mês do ano"
 CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
+# Cobrem todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma pessoa
+# natural), e não têm a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da
+# PGFN). A regra de mostrar (`pode_mostrar`) não muda; a consulta em lote (API aberta e CSV) espera a
+# marca na montagem, para não publicar a falência ou a baixa de uma pessoa (ADR 0075).
+ESPERAM_A_MARCA_DE_PESSOA = frozenset(
+    {"cnpj_situacao_especial", "cnpj_situacao_cadastral"}
+)
 COLUNAS_DE_PESSOA = frozenset(
     {"cpf", "administrador", "conselheiro", "diretor", "nome_pessoa", "socio"}
 )
@@ -117,6 +134,27 @@ def pode_mostrar(nome_da_tabela: str) -> bool:
     return pode_usar(MOSTRAR, tabela.familia_da_fonte)
 
 
+def tem_dia_publico(nome_da_tabela: str) -> bool:
+    """A tabela diz em cada linha o dia em que ela ficou pública (`publico_em`, coluna ou apelido)?"""
+    tabela = TABELAS.get(nome_da_tabela)
+    return tabela is not None and (
+        "publico_em" in tabela.colunas or "publico_em" in tabela.datas
+    )
+
+
+def pode_consultar(nome_da_tabela: str) -> bool:
+    """A tabela pode ser consultada e exportada de fora (API aberta e página Dados)? Só a que pode
+    ser mostrada, que a porta serve por Parquet do acervo, que diz o dia em que cada linha ficou
+    pública (a consulta corta o futuro por ele, e a virada pede o dia em toda linha exposta) e que
+    não mistura MEI e empresário individual sem a marca de pessoa. As outras ficam só na ficha do app."""
+    return (
+        pode_mostrar(nome_da_tabela)
+        and servida_pela_porta(nome_da_tabela)
+        and tem_dia_publico(nome_da_tabela)
+        and nome_da_tabela not in ESPERAM_A_MARCA_DE_PESSOA
+    )
+
+
 def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:
     """Levanta `TabelaProibidaError` com as tabelas que não podem ser mostradas."""
     proibidas = [nome for nome in tabelas if not pode_mostrar(nome)]
@@ -125,9 +163,14 @@ def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:
 
 
 def fontes_das_tabelas(tabelas: Iterable[str]) -> list[str]:
-    """As licenças das fontes das tabelas, sem repetir: vão na seção (a atribuição que a licença pede)."""
+    """As licenças das fontes das tabelas, sem repetir: vão na seção (a atribuição que a licença pede),
+    no texto que o público lê (`licenca_do_site`): sem a decisão interna entre parênteses nem a
+    pendência "perguntar a licença", que `LICENCAS` guarda para a equipe."""
     return sorted(
-        {licenca_da_fonte(TABELAS[nome].familia_da_fonte) for nome in tabelas}
+        {
+            licenca_do_site(licenca_da_fonte(TABELAS[nome].familia_da_fonte))
+            for nome in tabelas
+        }
     )
 
 
@@ -476,6 +519,7 @@ SECOES = (
             "fre_diversidade",
             "fre_capital_social",
             "fre_empregados",
+            "fre_distribuicao_capital",
         ),
     ),
     SecaoDaBase("credito", "Crédito", ("ratings", "debentures_assembleias")),
@@ -506,6 +550,15 @@ SECOES = (
         "insolvencia",
         "Registros de insolvência e situação especial",
         ("insolvencia", "cnpj_situacao_especial"),
+    ),
+    # virada de 5/11/2026 (fase 1): a dívida ativa e a entrega no prazo entram como fato datado
+    SecaoDaBase(
+        "divida_com_a_uniao", "Dívida ativa com a União (PGFN)", ("pgfn_divida",)
+    ),
+    SecaoDaBase(
+        "entrega_das_demonstracoes",
+        "Entrega das demonstrações no prazo",
+        ("rotulos_atraso",),
     ),
     SecaoDaBase(
         "rede", "Ligações na rede", ("ligacoes", "entidades", "identificadores")
@@ -608,7 +661,12 @@ LIMITES = {
         "remuneração da Diretoria Estatutária por exercício é o total do órgão em cada FRE, sem nomes. "
         "Diversidade e empregados só existem no FRE de 2023 em diante; o total de empregados é a soma das "
         "respostas de gênero. O capital é o do FRE mais novo: valor e ações por tipo, sem as condições "
-        "de conversão (texto livre)."
+        "de conversão (texto livre). O free float é o percentual de ações em circulação que a "
+        "companhia declara no item 15.7 do FRE (fora o controlador, os administradores e a "
+        "tesouraria), na data da última assembleia que ela informa, que pode ser mais antiga que a "
+        "entrega; declarar zero ou mais de 100% é preenchimento que não faz sentido: o item some, em "
+        "vez de recuar para um FRE mais velho. Não é o capital integralizado "
+        "do item 17: os dois podem diferir por serem de datas diferentes."
     ),
     "credito": (
         "Ratings: os relatórios das agências e os comunicados da companhia entregues à CVM, lidos "
@@ -650,12 +708,33 @@ LIMITES = {
         "ficou público. Quando a empresa contesta um fato, a contestação aparece ao lado dele. "
         "Sócios e administradores não aparecem."
     ),
+    "divida_com_a_uniao": (
+        "Só o que a PGFN publica nos dados abertos da dívida ativa da União, copiado com a data do "
+        "retrato, o dia em que ficou público, o veículo, o link e o código do original no acervo; a "
+        "ficha descreve, não avalia: não é avaliação de crédito, não é opinião nem recomendação. A "
+        "PGFN publica um retrato por trimestre e mantém no site só o mais novo; a base guarda os que "
+        "viu, e o valor é o consolidado na data de cada retrato. A inscrição pode estar em discussão, "
+        "parcelada, garantida ou suspensa (a situação diz), e a empresa pode contestar um fato pelo "
+        "contato do TickerLab. Pessoas (sócios, administradores, devedores pessoa física) não aparecem."
+    ),
+    "entrega_das_demonstracoes": (
+        "Só o fato de cada DFP e ITR ter sido entregue à CVM até o prazo ou depois dele, com o prazo, "
+        "a primeira entrega, os dias úteis de atraso e a regra que deu o rótulo; o rótulo é uma regra "
+        "do TickerLab sobre o índice público da CVM, não uma avaliação, uma opinião nem uma "
+        "recomendação. O prazo é o da regra geral da CVM com as prorrogações gerais conhecidas: uma "
+        "prorrogação individual ou um feriado local pode explicar um atraso curto, e a empresa pode "
+        "contestar um fato pelo contato do TickerLab. A tabela rotula só as companhias do cadastro de "
+        "companhias abertas da CVM: o emissor estrangeiro, que entrega DFP e ITR com prazo próprio "
+        f"({MESES_DO_DFP_ESTRANGEIRO} meses para a DFP), fica de fora, e a ficha dele diz isso. "
+        "Pessoas não aparecem."
+    ),
     "rede": (
         "Ligações da rede de entidades do TickerLab, montada com o Formulário de Referência (FRE), o "
         "Formulário Cadastral e as carteiras dos fundos entregues à CVM e com o IF.data do Banco "
         "Central. Uma ligação do FRE só aparece quando o FRE mais recente da companhia que a informa é "
         "dos últimos 2 anos e ainda a lista. A data é a do primeiro documento que mostrou a ligação. "
-        "Pessoas (sócios, administradores) e sinais negativos (sanções, dívidas) não aparecem."
+        "Pessoas (sócios, administradores) e sanções não aparecem; a dívida ativa com a União tem "
+        "seção própria, como fato datado."
     ),
 }
 
@@ -1913,6 +1992,12 @@ def secao_capital_e_acionistas(
 
 # no FRE o conselheiro que também é diretor vem como "Pertence à Diretoria e ao Conselho de Administração"
 DO_CONSELHO = re.compile(r"conselho de administra", re.IGNORECASE)
+PERCENTUAL_CHEIO = (
+    100.0  # a CVM escreve o percentual de 0 a 100; a ficha guarda a fração
+)
+CASAS_DO_FREE_FLOAT = (
+    8  # a CVM dá o percentual com até 6 casas; a fração, 8: só tira o ruído do float
+)
 ANOS_DA_GOVERNANCA = 5  # quantos FREs (e exercícios da remuneração) as tabelas mostram
 ITENS_DA_GOVERNANCA = (  # chave do item, coluna de `governanca_por_ano`, nome, unidade
     ("conselho_membros", "conselho", "Membros do conselho de administração", "pessoas"),
@@ -2112,6 +2197,52 @@ def _empregados_do_fre(empregados: pd.DataFrame) -> pd.DataFrame:
     return tabela.sort_values(["recorte", "grupo"], ignore_index=True)
 
 
+def _free_float_por_ano(distribuicao: pd.DataFrame) -> pd.DataFrame:
+    """Um FRE por linha (o mais novo primeiro): o free float declarado (fração de 0 a 1), as ações
+    em circulação e os acionistas por tipo. O percentual que não faz sentido (zero ou acima de
+    100%: a companhia não preencheu direito) vira vazio no `free_float`, mas a linha do FRE fica:
+    quem decide o item é o FRE mais novo, nunca um mais velho no lugar dele."""
+    if distribuicao.empty:
+        return pd.DataFrame()
+    # o mesmo FRE pode ter dois documentos na mesma versão: vale o entregue por último
+    unico = distribuicao.sort_values(["referencia", "conhecido_em"]).drop_duplicates(
+        "referencia", keep="last"
+    )
+    por_ano = unico.sort_values("referencia", ascending=False).head(ANOS_DA_GOVERNANCA)
+    percentual = por_ano["percentual_total"]
+    com_sentido = percentual.gt(0) & percentual.le(PERCENTUAL_CHEIO)
+    return pd.DataFrame(
+        {
+            "ano": pd.to_datetime(por_ano["referencia"]).dt.year,
+            "entregue_em": pd.to_datetime(por_ano["conhecido_em"]),
+            "assembleia_em": pd.to_datetime(por_ano["ultima_assembleia_em"]),
+            "free_float": (percentual.where(com_sentido) / PERCENTUAL_CHEIO).round(
+                CASAS_DO_FREE_FLOAT
+            ),
+            "acoes_em_circulacao": por_ano["circulacao_total"],
+            "acionistas_pf": por_ano["acionistas_pf"],
+            "acionistas_pj": por_ano["acionistas_pj"],
+            "acionistas_institucionais": por_ano["acionistas_institucionais"],
+        }
+    ).reset_index(drop=True)
+
+
+def _item_do_free_float(por_ano: pd.DataFrame) -> list[dict[str, Any]]:
+    """O free float do FRE mais novo, se o que ele declara faz sentido (entre 0, exclusive, e 100%);
+    a data-base é a entrega do FRE. Se o mais novo não preencheu, não há item: um FRE mais velho
+    no lugar mostraria um número que o FRE atual contradiz."""
+    if por_ano.empty:
+        return []
+    mais_novo = por_ano.iloc[0]
+    if pd.isna(mais_novo["free_float"]):
+        return []
+    base = _data(mais_novo["entregue_em"])
+    return [_item(
+        "free_float", "Free float (ações em circulação)", float(mais_novo["free_float"]),
+        "fração", base, publicado_em=base,
+    )]  # fmt: skip
+
+
 def _itens_do_capital_e_dos_empregados(
     capital: pd.DataFrame, empregados: pd.DataFrame
 ) -> list[dict[str, Any]]:
@@ -2161,10 +2292,11 @@ def secao_governanca(
     hoje: pd.Timestamp,
     capital: pd.DataFrame | None = None,
     empregados: pd.DataFrame | None = None,
+    distribuicao: pd.DataFrame | None = None,
 ) -> dict[str, Any] | None:
-    """Conselho, comitês, remuneração, diversidade, capital social e empregados pelo FRE, só
-    contagens e somas (None: nada)."""
-    conselho, comites, diversidade, capital, empregados = (
+    """Conselho, comitês, remuneração, diversidade, capital social, empregados e free float pelo
+    FRE, só contagens e somas (None: nada)."""
+    conselho, comites, diversidade, capital, empregados, distribuicao = (
         _entregues(tabela, hoje)
         for tabela in (
             conselho,
@@ -2172,8 +2304,10 @@ def secao_governanca(
             diversidade,
             pd.DataFrame() if capital is None else capital,
             pd.DataFrame() if empregados is None else empregados,
+            pd.DataFrame() if distribuicao is None else distribuicao,
         )
     )
+    free_float = _free_float_por_ano(distribuicao)
     por_ano = _governanca_por_ano(conselho, comites, diversidade)
     itens_da_remuneracao, tabelas_da_remuneracao = _remuneracao(
         remuneracao, extremos, hoje
@@ -2182,6 +2316,7 @@ def secao_governanca(
         *_itens_da_governanca(por_ano),
         *itens_da_remuneracao,
         *_itens_do_capital_e_dos_empregados(capital, empregados),
+        *_item_do_free_float(free_float),
     ]
     if not itens:
         return None
@@ -2190,6 +2325,9 @@ def secao_governanca(
         "comites": _comites_do_fre(comites),
         "capital_social": _capital_do_fre(capital),
         "empregados_do_fre": _empregados_do_fre(empregados),
+        "free_float_por_ano": free_float.dropna(subset=["free_float"])
+        if not free_float.empty
+        else free_float,
         **tabelas_da_remuneracao,
     }
     return _secao("governanca", itens, tabelas)
@@ -3179,6 +3317,8 @@ def _itens_e_tabelas_da_cvm(
     ].sort_values("publicado_em", ascending=False)
     if negocios.empty:
         return [], {}
+    # o link vem cru do arquivo do IPE e vai para a coluna "Fonte original": só o endereço seguro
+    negocios = negocios.assign(link=negocios["link"].map(link_da_fonte))
     por_ano = (
         negocios.groupby(negocios["publicado_em"].dt.year.rename("ano"))
         .size()
@@ -3260,8 +3400,8 @@ NAO_CONSULTADO_NA_RECEITA = (
     "essa fonte no dia da ficha."
 )
 O_QUE_NAO_SABEMOS_DA_INSOLVENCIA = (
-    "O que não sabemos: não lemos processos nos tribunais, diários oficiais, notícias nem a dívida "
-    "ativa da União; a falta de registro nas fontes lidas não prova que não exista."
+    "O que não sabemos: não lemos processos nos tribunais, diários oficiais nem notícias (a dívida "
+    "ativa da União tem seção própria); a falta de registro nas fontes lidas não prova que não exista."
 )
 
 
@@ -3282,7 +3422,8 @@ def _fatos_da_cvm(insolvencia: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame
             "aconteceu_em": pd.to_datetime(primeiras["referencia"]),
             "publico_em": primeiras["conhecido_em"],
             "veiculo": VEICULO_DA_CVM,
-            "link": primeiras["link"],
+            # o link vem cru do arquivo do IPE: só o endereço seguro vira "Fonte original"
+            "link": primeiras["link"].map(link_da_fonte),
         },
         columns=COLUNAS_DOS_FATOS,
     )
@@ -3396,6 +3537,335 @@ def secao_insolvencia(
     fontes = fontes_das_tabelas(t for t, lida in lidas.items() if lida is not None)
     return _secao(
         "insolvencia", [], {"registros_de_insolvencia": linhas}, paragrafos, fontes
+    )
+
+
+# --- dívida ativa com a União e entrega das demonstrações (virada de 5/11/2026, fase 1, PR 2) -----
+# As duas tabelas entram como fato datado, no molde da D2: cada linha com a fonte, o dia em que ficou
+# pública e o link para o original; o rótulo derivado mostra a regra que o produziu. Nenhum julgamento:
+# a ficha copia o que a PGFN e a CVM publicaram, e a empresa pode contestar pelo contato do TickerLab.
+
+ENDERECO_DA_PGFN = "https://dadosabertos.pgfn.gov.br/"
+VEICULO_DA_PGFN = "PGFN (dados abertos da dívida ativa)"
+ENDERECO_DAS_ENTREGAS = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/"
+ENDERECOS_DAS_ENTREGAS = {d: f"{ENDERECO_DAS_ENTREGAS}{d}/" for d in ("DFP", "ITR")}
+VEICULO_DAS_ENTREGAS = "CVM (dados abertos: entregas de DFP e ITR)"
+COLUNAS_DA_DIVIDA = (
+    "tipo_divida", "tipo_situacao", "situacao_inscricao", "ajuizado", "inscricoes",
+    "valor_consolidado", "regiao", "tipo_devedor", "data_do_retrato", "disponivel_em", "origem_sha256",
+)  # fmt: skip
+COLUNAS_DAS_INSCRICOES = [
+    "tipo_divida", "tipo_situacao", "situacao_inscricao", "ajuizado", "inscricoes",
+    "valor_consolidado", "regiao", "tipo_devedor", "aconteceu_em", "publico_em", "veiculo", "link",
+    "origem",
+]  # fmt: skip
+NOMES_DOS_TIPOS_DE_DIVIDA = {
+    "nao_previdenciaria": "não previdenciária",
+    "previdenciaria": "previdenciária",
+    "fgts": "FGTS",
+}
+SEM_DIVIDA_COM_A_UNIAO = (
+    "Sem inscrição em dívida ativa da União nos retratos públicos da PGFN até {dia}."
+)
+O_QUE_NAO_SABEMOS_DA_DIVIDA = (
+    "O que não sabemos: só lemos os retratos públicos da PGFN (um por trimestre; o site guarda só o "
+    "mais novo), e o valor de um retrato é o daquela data, não o saldo de hoje; a falta de inscrição "
+    "nos retratos lidos não prova que não exista dívida com a União."
+)
+COLUNAS_DAS_ENTREGAS = (
+    "documento", "referencia", "prazo", "primeira_entrega", "dias_uteis_de_atraso", "atrasou",
+    "atraso_grave", "zona_cinzenta", "montado_em",
+)  # fmt: skip
+DATAS_DAS_ENTREGAS = ("referencia", "prazo", "primeira_entrega", "montado_em")
+SEM_ENTREGA_DEVIDA = "Sem DFP ou ITR com prazo de entrega até {dia} nos dados abertos da CVM lidos pela base."
+# a empresa sem linha na tabela: a base não a rotula (o emissor estrangeiro fica fora do cadastro de
+# companhias abertas da CVM, e a tabela só rotula quem está nele), o que não diz que nada era devido
+SEM_ROTULO_DA_COMPANHIA = (
+    "A base não rotula as entregas desta companhia: a tabela cobre só as companhias do cadastro de "
+    "companhias abertas da CVM, e a falta de linha não diz que nenhuma DFP ou ITR era devida nem que "
+    "todas foram entregues."
+)
+# a tabela é montada de vez em quando e a ficha, toda noite: o documento com prazo depois da montagem
+# ainda não foi conferido (nem entregue nem em falta) e não aparece
+CONFERIDA_ATE = (
+    "A tabela de entregas foi conferida até {dia}: DFP ou ITR com prazo depois desse dia ainda não "
+    "aparece aqui."
+)
+NO_PRAZO, ATRASOU = "no prazo", "atrasou"
+ATRASO_GRAVE_NO_ROTULO, ZONA_CINZENTA_NO_ROTULO = "atraso grave", "zona cinzenta"
+NAO_ENTREGUE = "não entregue até {dia}"
+# a regra em palavras, fiel ao código (`base/modelos/atraso/rotulo.py` e `src/prazos.py`): o rótulo
+# compara datas (entrega depois do dia do prazo é atraso) e conta os dias úteis do prazo até a entrega
+REGRA_DO_ATRASO = (
+    f"Regra do TickerLab sobre o índice público da CVM: o prazo da DFP é {MESES_DO_DFP} meses depois "
+    f"do fim do exercício e o do ITR, "
+    f"{DIAS_DO_ITR} dias depois do fim do trimestre; prazo em fim de semana ou feriado nacional passa "
+    "para o dia útil seguinte, e as prorrogações gerais da CVM (pandemia de 2020, enchentes do Rio "
+    "Grande do Sul em 2024) entram. Conta a primeira entrega: 'no prazo' quando ela não passa do dia "
+    "do prazo; 'atrasou' quando passa, com os dias úteis do prazo até a entrega; 'atraso grave' quando "
+    f"a entrega vem mais de {ATRASO_GRAVE} dias corridos depois do prazo; 'zona cinzenta' quando o "
+    f"atraso é de até {ZONA_CINZENTA} dias úteis (um feriado local pode explicar). Documento com o "
+    "prazo vencido e sem entrega aparece como 'não entregue até' o último dia que a base conferiu (o "
+    "dia da ficha ou, se a tabela de rótulos é mais antiga, o dia em que ela foi montada), sem data "
+    "inventada."
+)
+
+
+def _publicas_da_pgfn(pgfn: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
+    """As linhas da PGFN já públicas em `dia`, do retrato mais novo ao mais antigo e, nele, por tipo."""
+    linhas = pgfn.reindex(columns=COLUNAS_DA_DIVIDA)
+    retrato = _sem_fuso_da_coluna(linhas["data_do_retrato"]).dt.normalize()
+    publico = _sem_fuso_da_coluna(linhas["disponivel_em"]).dt.normalize()
+    publicas = linhas.assign(data_do_retrato=retrato, disponivel_em=publico)[
+        publico <= dia
+    ]
+    return publicas.sort_values(
+        ["data_do_retrato", "tipo_divida"], ascending=[False, True]
+    )
+
+
+def _inscricoes_como_fatos(publicas: pd.DataFrame) -> pd.DataFrame:
+    """Cada linha da PGFN como fato datado: quando aconteceu (a data do retrato), quando ficou
+    público, o veículo, o link dos dados abertos e o código do original no acervo."""
+    fatos = publicas.rename(
+        columns={
+            "data_do_retrato": "aconteceu_em",
+            "disponivel_em": "publico_em",
+            "origem_sha256": "origem",
+        }
+    )
+    com_a_fonte = fatos.assign(veiculo=VEICULO_DA_PGFN, link=ENDERECO_DA_PGFN)
+    return com_a_fonte[COLUNAS_DAS_INSCRICOES]
+
+
+def _inscricoes_em_palavras(quantas: object) -> str:
+    if pd.isna(quantas):
+        return "inscrições sem contagem na fonte"
+    n = int(quantas)  # type: ignore[call-overload]
+    return "1 inscrição" if n == 1 else f"{n} inscrições"
+
+
+def _valor_em_reais(valor: object) -> str:
+    if pd.isna(valor):
+        return "valor não informado"
+    return formatar_valor(float(valor), "BRL")  # type: ignore[arg-type]
+
+
+def _nome_do_tipo_de_divida(tipo: object) -> str:
+    return NOMES_DOS_TIPOS_DE_DIVIDA.get(str(tipo), str(tipo))
+
+
+def _resumo_do_retrato_mais_novo(publicas: pd.DataFrame) -> str:
+    """Uma frase com o que o retrato mais novo diz: inscrições e valor consolidado, no total e por
+    tipo de dívida, com a data do retrato (o valor é o daquele dia, não o saldo de hoje)."""
+    mais_novo = publicas[
+        publicas["data_do_retrato"] == publicas["data_do_retrato"].max()
+    ]
+    somas = ["inscricoes", "valor_consolidado"]
+    por_tipo = mais_novo.groupby("tipo_divida", sort=True)[somas].sum(min_count=1)
+    partes = "; ".join(
+        f"{_nome_do_tipo_de_divida(tipo)}: {_inscricoes_em_palavras(soma['inscricoes'])}, "
+        f"{_valor_em_reais(soma['valor_consolidado'])}"
+        for tipo, soma in por_tipo.iterrows()
+    )
+    retrato = mais_novo["data_do_retrato"].iloc[0]
+    publico = mais_novo["disponivel_em"].min()
+    return (
+        f"Retrato mais novo da PGFN, de {retrato:%d/%m/%Y} (público desde {publico:%d/%m/%Y}): "
+        f"{_inscricoes_em_palavras(mais_novo['inscricoes'].sum(min_count=1))} em dívida ativa da "
+        f"União, {_valor_em_reais(mais_novo['valor_consolidado'].sum(min_count=1))} de valor "
+        f"consolidado na data do retrato; por tipo: {partes}."
+    )
+
+
+def secao_divida_com_a_uniao(
+    pgfn: pd.DataFrame | None, hoje: pd.Timestamp
+) -> dict[str, Any] | None:
+    """Dívida ativa com a União: cada linha dos retratos da PGFN já públicos em `hoje`, como fato
+    datado (data do retrato, dia em que ficou público, veículo, link e código do original), sem
+    julgamento. Sem linha, diz "sem inscrição" com o dia; None: a base não tem a tabela (sem seção,
+    sem promessa, como na D2).
+
+    O parágrafo resume o retrato mais novo (inscrições e valor consolidado, no total e por tipo), com
+    a data dele. A porta já esconde as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075): aqui
+    só chegam empresas.
+    """
+    if pgfn is None:
+        return None
+    dia = pd.Timestamp(hoje).normalize()
+    publicas = _publicas_da_pgfn(pgfn, dia)
+    resumo = (
+        SEM_DIVIDA_COM_A_UNIAO.format(dia=f"{dia:%d/%m/%Y}")
+        if publicas.empty
+        else _resumo_do_retrato_mais_novo(publicas)
+    )
+    return _secao(
+        "divida_com_a_uniao",
+        [],
+        {"inscricoes_na_divida_ativa": _inscricoes_como_fatos(publicas)},
+        [resumo, O_QUE_NAO_SABEMOS_DA_DIVIDA],
+    )
+
+
+def _com_as_datas_das_entregas(rotulos: pd.DataFrame) -> pd.DataFrame:
+    """As colunas de `rotulos_atraso` que a seção lê, com as datas sem fuso e no começo do dia."""
+    linhas = rotulos.reindex(columns=COLUNAS_DAS_ENTREGAS)
+    datas = {
+        c: _sem_fuso_da_coluna(linhas[c]).dt.normalize() for c in DATAS_DAS_ENTREGAS
+    }
+    return linhas.assign(**datas)
+
+
+def _dia_conferido(rotulos: pd.DataFrame, dia: pd.Timestamp) -> pd.Timestamp:
+    """O último dia que a tabela conferiu para a ficha de `dia`: `dia` ou, se a tabela foi montada
+    antes, o dia da montagem (sem `montado_em`, `dia`)."""
+    montagem = _com_as_datas_das_entregas(rotulos)["montado_em"].max()
+    return dia if pd.isna(montagem) else min(pd.Timestamp(montagem), dia)
+
+
+def _entregas_conhecidas_em(rotulos: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
+    """As linhas de `rotulos_atraso` que a ficha de `dia` pode mostrar, do prazo mais novo ao mais
+    antigo: a entrega com prazo vencido até `dia` e, sem entrega, o documento com prazo vencido até
+    `conferido_ate`, o último dia em que a base conferiu a falta (`dia` ou, se a tabela é mais antiga
+    que a ficha, o dia da montagem). A tabela é montada de vez em quando e a ficha toda noite: o
+    documento que falta não some da ficha no dia seguinte à montagem, mas também não ganha data que a
+    tabela não conferiu (revisão cruzada do PR 2 da virada de 5/11/2026).
+
+    A tabela é lida sem `como_era_em` (o documento sem entrega não tem `publico_em`, e a porta o
+    esconderia): a regra da data fica aqui, e `_linha_da_entrega` esconde a entrega que ainda era
+    futura em `dia`.
+    """
+    linhas = _com_as_datas_das_entregas(rotulos)
+    # `clip` mantém o nulo: sem `montado_em`, a comparação abaixo é falsa e não há dia a dizer
+    linhas = linhas.assign(conferido_ate=linhas["montado_em"].clip(upper=dia))
+    entregues = linhas["primeira_entrega"].notna() & (linhas["prazo"] <= dia)
+    em_falta = linhas["primeira_entrega"].isna() & (
+        linhas["prazo"] <= linhas["conferido_ate"]
+    )
+    conhecidas = linhas[entregues | em_falta]
+    return conhecidas.sort_values(["prazo", "documento"], ascending=[False, True])
+
+
+def _sim(valor: object) -> bool:
+    return False if pd.isna(valor) else bool(valor)
+
+
+def _rotulo_da_tabela(linha: pd.Series) -> str:
+    """O rótulo que a tabela deu à entrega, pelas colunas booleanas dela (a ficha não recalcula)."""
+    if not _sim(linha["atrasou"]):
+        return NO_PRAZO
+    if _sim(linha["atraso_grave"]):
+        return ATRASO_GRAVE_NO_ROTULO
+    if _sim(linha["zona_cinzenta"]):
+        return ZONA_CINZENTA_NO_ROTULO
+    return ATRASOU
+
+
+def _dias_uteis_em_palavras(dias: int) -> str:
+    return "1 dia útil" if dias == 1 else f"{dias} dias úteis"
+
+
+def _regra_da_entrega(rotulo: str, dias: int | None) -> str:
+    """A regra que deu o rótulo, numa frase curta, com os dias úteis que a tabela contou."""
+    contados = (
+        "" if dias is None else f" {_dias_uteis_em_palavras(dias)} depois do prazo"
+    )
+    if rotulo == NO_PRAZO:
+        return f"{NO_PRAZO}: a primeira entrega não passou do dia do prazo"
+    if rotulo == ATRASO_GRAVE_NO_ROTULO:
+        return f"{rotulo}: entregou{contados}, mais de {ATRASO_GRAVE} dias corridos depois dele"
+    if rotulo == ZONA_CINZENTA_NO_ROTULO:
+        return (
+            f"{rotulo}: entregou{contados} (até {ZONA_CINZENTA} dias úteis; um feriado local "
+            "pode explicar)"
+        )
+    return f"{rotulo}: entregou{contados}"
+
+
+def _inteiro_ou_none(valor: object) -> int | None:
+    return None if pd.isna(valor) else int(valor)  # type: ignore[call-overload]
+
+
+def _dias_uteis_desde(prazo: pd.Timestamp, dia: pd.Timestamp) -> int:
+    """Os dias úteis do prazo (conta) até `dia` (não conta), como a tabela conta até a entrega."""
+    contados = dias_uteis(pd.Series([prazo]), pd.Series([dia]))[0]
+    return max(int(contados), 0)
+
+
+def _linha_da_entrega(linha: pd.Series, dia: pd.Timestamp) -> dict[str, Any]:
+    """Uma entrega como a ficha de `dia` a conhece: entregue até `dia`, com o rótulo e a regra da
+    tabela; entregue depois de `dia`, só o fato "não entregue até" `dia`; sem entrega na tabela, "não
+    entregue até" o último dia em que a base conferiu (`conferido_ate`), sem data inventada."""
+    entrega = linha["primeira_entrega"]
+    entregue = not pd.isna(entrega) and entrega <= dia
+    if entregue:
+        rotulo = _rotulo_da_tabela(linha)
+        dias = _inteiro_ou_none(linha["dias_uteis_de_atraso"])
+        regra = _regra_da_entrega(rotulo, dias)
+    else:
+        ate = dia if not pd.isna(entrega) else linha["conferido_ate"]
+        rotulo = NAO_ENTREGUE.format(dia=f"{ate:%d/%m/%Y}")
+        dias = _dias_uteis_desde(linha["prazo"], ate)
+        regra = f"{rotulo}: {_dias_uteis_em_palavras(dias)} desde o prazo"
+    documento = str(linha["documento"])
+    return {
+        "documento": documento,
+        "referencia": _data(linha["referencia"]),
+        "prazo": _data(linha["prazo"]),
+        "primeira_entrega": _data(entrega) if entregue else None,
+        "publico_em": _data(entrega) if entregue else None,
+        "dias_uteis_de_atraso": dias,
+        "rotulo": rotulo,
+        "regra": regra,
+        "veiculo": VEICULO_DAS_ENTREGAS,
+        "link": ENDERECOS_DAS_ENTREGAS.get(documento, ENDERECO_DAS_ENTREGAS),
+    }
+
+
+def _avisos_das_entregas(
+    rotulos: pd.DataFrame, linhas: pd.DataFrame, dia: pd.Timestamp
+) -> list[str]:
+    """Os parágrafos antes da regra: a companhia que a tabela não rotula não ganha a frase de que nada
+    era devido (a base só sabe que não a rotulou); a tabela mais velha que a ficha diz até que dia
+    conferiu, e a frase de que nada era devido vale só até esse dia."""
+    if rotulos.empty:
+        return [SEM_ROTULO_DA_COMPANHIA]
+    conferido = _dia_conferido(rotulos, dia)
+    avisos = (
+        [] if conferido >= dia else [CONFERIDA_ATE.format(dia=f"{conferido:%d/%m/%Y}")]
+    )
+    if linhas.empty:
+        avisos.insert(0, SEM_ENTREGA_DEVIDA.format(dia=f"{conferido:%d/%m/%Y}"))
+    return avisos
+
+
+def secao_entrega_das_demonstracoes(
+    rotulos: pd.DataFrame | None, hoje: pd.Timestamp
+) -> dict[str, Any] | None:
+    """Entrega das demonstrações no prazo: cada DFP e ITR devido até `hoje`, com o prazo da CVM, a
+    primeira entrega, os dias úteis de atraso, o rótulo que a tabela deu e a regra que o produziu
+    (`REGRA_DO_ATRASO`), sem recalcular nada. None: a base não tem a tabela (sem seção, como na D2).
+
+    Sem olhar o futuro: a entrega que ainda não tinha acontecido em `hoje` não aparece (a linha diz
+    "não entregue até" esse dia), e o documento sem entrega aparece como "não entregue até" o último
+    dia que a tabela conferiu (`hoje` ou o dia da montagem, o que vier antes; a tabela mais velha que
+    a ficha diz esse dia, `CONFERIDA_ATE`). Com linhas da companhia mas nenhuma devida até o dia
+    conferido, diz que não havia documento devido até ele; sem linha nenhuma, diz que a base não
+    rotula a companhia (`SEM_ROTULO_DA_COMPANHIA`: o emissor estrangeiro fica fora da tabela).
+    """
+    if rotulos is None:
+        return None
+    dia = pd.Timestamp(hoje).normalize()
+    conhecidas = _entregas_conhecidas_em(rotulos, dia)
+    linhas = pd.DataFrame(
+        [_linha_da_entrega(linha, dia) for _, linha in conhecidas.iterrows()],
+        dtype=object,
+    )
+    return _secao(
+        "entrega_das_demonstracoes",
+        [],
+        {"entregas_de_dfp_e_itr": linhas},
+        [*_avisos_das_entregas(rotulos, linhas, dia), REGRA_DO_ATRASO],
     )
 
 
@@ -3914,6 +4384,11 @@ _ORIGENS_FIXAS = {
     ),
     "acoes_integralizadas": Origem(
         "fre_capital_social", "ações do capital integralizado no FRE mais novo entregue"
+    ),
+    "free_float": Origem(
+        "fre_distribuicao_capital",
+        "percentual total de ações em circulação declarado no FRE mais novo já entregue (item "
+        "15.7), se for maior que 0 e no máximo 100%",
     ),
     "empregados": Origem(
         "fre_empregados",

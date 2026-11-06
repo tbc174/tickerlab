@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# Backup cifrado do acervo no Google Drive (ADR 0123 e Emenda 1; linha 251 da fila). Roda NA VM do servidor de
+# casa (a fonte é a VM, nunca a cópia do PC nem o Drive para Desktop), todo dia pelo cron, via rodar-tarefa.sh.
+#
+# - O acervo (`bruto`, `manifesto`, `ancoras`) e os backups grandes (`tickerlab-pc`, `tickerlab-acervo`) sobem
+#   em PACOTES .tar imutáveis pelo `empacotar_acervo_drive.py` (um arquivo por fonte e período fechado, com
+#   índice cifrado ao lado; Emenda 1 da ADR 0123, "Empacotar em .tar", Tiago, 06/11): o `client_id`
+#   compartilhado do rclone só aguenta ~15 arquivos pequenos por minuto, e são centenas de milhares.
+# - Os backups pequenos (`tickerlab`, `tickerlab-acessos`, `casa`, `base-antes-manifestos`) seguem arquivo a
+#   arquivo, por `rclone copy --backup-dir` datado: copia o que é novo ou mudou; o que mudou ou sumiu da origem
+#   NUNCA é apagado do Drive (a versão antiga de um arquivo alterado vai para `_versoes/AAAA-MM-DD/<parte>`).
+#   Não existe `sync` aqui: o script não sabe apagar do destino.
+# - O destino é um remoto `crypt` (nomes e conteúdo cifrados) sobre uma pasta própria do Drive. A senha e o
+#   sal ficam no gerenciador de senhas do Tiago, no cofre de segredos dele (fora do repositório) e no rclone.conf do
+#   servidor (600). Este script não lê nem imprime nenhum dos dois.
+# - `restrito/` NÃO sobe (licença de dado, ADR 0115; pode próprio) e a sala de dados também não (documento de
+#   cliente): o script recusa qualquer origem com esses nomes e filtra as duas pastas em qualquer profundidade.
+#   As fontes com nome de pessoa que ainda estão em `bruto/` (`FONTES_SO_NO_RESTRITO`) também ficam de fora.
+# - O `client_id` compartilhado do rclone tem cota de requisições por minuto que muita gente divide: com 4 envios e
+#   8 conferências o Google devolvia 403 (rateLimitExceeded) e o rclone reenviava os mesmos arquivos sem terminar
+#   (05/11); por isso poucos envios ao mesmo tempo e `--tpslimit`. Com `client_id` próprio (fila 729) dá para subir.
+# - Ritmo limitado (BWLIMIT) para não travar a internet de casa; só um envio por vez (flock): se o anterior
+#   ainda está subindo, este sai sem erro e o próximo cron continua de onde parou.
+# - Cada parte é independente: se uma falha, as outras ainda sobem. No fim sai com 1 e a linha "FALHAS: ..."
+#   (o rodar-tarefa.sh copia a linha para a marca e avisa o monitor push do Kuma).
+#
+# Variáveis (todas têm padrão): ACERVO, PASTA_DE_BACKUPS, BACKUPS_QUE_SOBEM, PARTES_DO_ACERVO (partes enviadas
+# arquivo a arquivo; vazio por padrão, o acervo vai em pacotes), EMPACOTADOR (comando do empacotador; vazio
+# desliga), RCLONE, RCLONE_CONFIG, REMOTO, PASTA_DE_VERSOES, BWLIMIT, LOG, DATA_DAS_VERSOES.
+set -uo pipefail
+umask 077
+
+ACERVO=${ACERVO:-/mnt/dados/tickerlab-acervo}
+PASTA_DE_BACKUPS=${PASTA_DE_BACKUPS:-/mnt/dados/backups}
+# Partes do acervo enviadas arquivo a arquivo: nenhuma, o acervo vai em pacotes (as partes do empacotador estão
+# no `empacotar_acervo_drive.py`). Mais pastas só com o "pode" do Tiago.
+PARTES_DO_ACERVO=${PARTES_DO_ACERVO-""}
+# Pastas pequenas de /mnt/dados/backups que sobem arquivo a arquivo (`tickerlab-pc` e `tickerlab-acervo` vão em
+# pacotes). A sala de dados (tickerlab-sala) fica de fora de propósito.
+BACKUPS_QUE_SOBEM=${BACKUPS_QUE_SOBEM-"tickerlab tickerlab-acessos casa base-antes-manifestos"}
+# Empacotador: um comando (a variável é dividida em palavras de propósito).
+EMPACOTADOR=${EMPACOTADOR-"python3 $HOME/bin/empacotar_acervo_drive.py"}
+RCLONE=${RCLONE:-$HOME/bin/rclone}
+export RCLONE_CONFIG=${RCLONE_CONFIG:-$HOME/.config/tickerlab/backup-drive/rclone.conf}
+REMOTO=${REMOTO:-cripto}
+PASTA_DE_VERSOES=${PASTA_DE_VERSOES:-_versoes}
+# Faixa de horas: de dia sobe devagar, de madrugada solto (a internet de casa fica livre para a casa).
+BWLIMIT=${BWLIMIT:-"07:00,4M 23:00,off"}
+LOG=${LOG:-$HOME/logs/backup-acervo-drive.log}
+DATA_DAS_VERSOES=${DATA_DAS_VERSOES:-$(date +%F)}
+NOMES_PROIBIDOS="restrito tickerlab-sala . .."
+
+# Fontes cujo original traz nome de pessoa ou é só de uso interno (`acervo.FONTES_COM_PESSOA` e
+# `coletas.FONTES_SO_INTERNAS`): o lugar delas é `restrito/`, mas enquanto o `mover_acervo_restrito` não rodou
+# ainda há cópia delas em `bruto/`. Não sobem de jeito nenhum (LGPD: o que sobe nunca mais sai do Drive).
+# Há teste que compara esta lista com a do código.
+FONTES_SO_NO_RESTRITO="rfb-cnpj pgfn-divida mte-lista-suja ibama-autos ibama-embargos cvm-enet-notas antt-autos-de-transito djen-partes djen-processos datajud"
+# Filtros sem âncora: valem em qualquer profundidade da origem, não só na raiz.
+FILTROS_DE_EXCLUSAO=(--exclude "restrito/**" --exclude "tickerlab-sala/**")
+for fonte in $FONTES_SO_NO_RESTRITO; do
+    FILTROS_DE_EXCLUSAO+=(--exclude "$fonte/**")
+done
+
+mkdir -p "$(dirname "$LOG")"
+
+exec 9>"${TMPDIR:-/tmp}/tickerlab-backup-acervo-drive.lock"
+if ! flock -n 9; then
+    echo "$(date -Is) o envio anterior ainda está subindo; este sai sem fazer nada"
+    exit 0
+fi
+
+falhas=()
+
+# Lista vazia nunca pode virar "tudo certo": sem nenhuma parte não há backup.
+if [ -z "${PARTES_DO_ACERVO// /}" ] && [ -z "${BACKUPS_QUE_SOBEM// /}" ] && [ -z "${EMPACOTADOR// /}" ]; then
+    echo "FALHAS: sem-partes-para-subir"
+    exit 1
+fi
+
+# Recusa origem que tenha um nome proibido em qualquer pedaço do caminho.
+origem_permitida() {
+    local origem=$1 nome pedaco
+    for nome in $NOMES_PROIBIDOS; do
+        for pedaco in ${origem//\// }; do
+            [ "$pedaco" = "$nome" ] && return 1
+        done
+    done
+    return 0
+}
+
+# subir NOME ORIGEM DESTINO_NO_REMOTO
+subir() {
+    local nome=$1 origem=$2 destino=$3
+    if ! origem_permitida "$origem"; then
+        echo "$(date -Is) RECUSADO ($nome): $origem tem nome proibido" | tee -a "$LOG"
+        falhas+=("$nome")
+        return
+    fi
+    if [ ! -d "$origem" ]; then
+        echo "$(date -Is) FALTA a origem de $nome" | tee -a "$LOG"
+        falhas+=("$nome")
+        return
+    fi
+    echo "$(date -Is) início: $nome" >> "$LOG"
+    "$RCLONE" copy "$origem" "$REMOTO:$destino" \
+        --backup-dir "$REMOTO:$PASTA_DE_VERSOES/$DATA_DAS_VERSOES/$nome" \
+        "${FILTROS_DE_EXCLUSAO[@]}" \
+        --min-age 5m \
+        --bwlimit "$BWLIMIT" \
+        --transfers 2 --checkers 4 --tpslimit 6 \
+        --drive-chunk-size 128M --drive-stop-on-upload-limit \
+        --retries 3 --low-level-retries 10 \
+        --stats 10m --stats-one-line --stats-log-level NOTICE --log-level NOTICE --log-file "$LOG"
+    local codigo=$?
+    if [ "$codigo" -ne 0 ]; then
+        echo "$(date -Is) FALHOU: $nome (rclone saiu com $codigo)" >> "$LOG"
+        falhas+=("$nome")
+    else
+        echo "$(date -Is) fim: $nome" >> "$LOG"
+    fi
+}
+
+# Primeiro o que é pequeno e insubstituível (backups do banco e do PC); o `bruto`, que é o grosso, por último:
+# se a internet cair no meio da primeira subida, o importante já está lá.
+for pasta in $BACKUPS_QUE_SOBEM; do
+    subir "backups-$pasta" "$PASTA_DE_BACKUPS/$pasta" "backups/$pasta"
+done
+for parte in $PARTES_DO_ACERVO; do
+    subir "acervo-$parte" "$ACERVO/$parte" "acervo/$parte"
+done
+
+# Pacotes (acervo e backups grandes). O empacotador usa as mesmas variáveis (ACERVO, PASTA_DE_BACKUPS, RCLONE,
+# REMOTO, BWLIMIT, LOG), tem as próprias exclusões e imprime "FALHAS: ..." se algum pacote falhar.
+if [ -n "${EMPACOTADOR// /}" ]; then
+    export ACERVO PASTA_DE_BACKUPS RCLONE REMOTO BWLIMIT LOG
+    echo "$(date -Is) início: pacotes" >> "$LOG"
+    # shellcheck disable=SC2086
+    saida=$($EMPACOTADOR subir 2>>"$LOG")
+    codigo=$?
+    printf '%s\n' "$saida" | grep -v '^FALHAS:'
+    itens=$(printf '%s\n' "$saida" | sed -n 's/^FALHAS: *//p')
+    if [ -n "$itens" ]; then
+        # shellcheck disable=SC2206
+        falhas+=($itens)
+    elif [ "$codigo" -ne 0 ]; then
+        falhas+=("pacotes")
+    fi
+fi
+
+if [ "${#falhas[@]}" -gt 0 ]; then
+    echo "FALHAS: ${falhas[*]}"
+    exit 1
+fi
+echo "$(date -Is) backup do acervo no Drive: tudo certo"

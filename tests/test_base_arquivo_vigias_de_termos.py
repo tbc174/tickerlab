@@ -79,6 +79,7 @@ _SEM_VIGIA = {
             "tce-ce",
             "goias",
             "msestado",
+            "sefazpe",  # linha 578: licença CC BY na ficha do conjunto, sem página de termos
             "spcapital",
             "conab",
             "comexstat",
@@ -175,7 +176,20 @@ _SEM_VIGIA = {
     "termos": "são as próprias cópias das páginas vigiadas",
     "contrapartes": "páginas de terceiros guardadas como prova, sem coleta recorrente do termo",
     "djen": "a regra é a Resolução CNJ 455/2022 (norma publicada); a API não tem página de termos",
+    # lote Europa e RBA (linha 512, 05/11/2026): as páginas de termos conhecidas deram 404 ou ficam atrás de
+    # desafio anti-robô (sem contorno); a licença foi lida à mão em 29/10/2026
+    **dict.fromkeys(
+        ("statat", "statbel", "cso", "ines"),
+        "a página de termos não responde ao nosso agente (404 ou desafio anti-robô); licença lida à mão em 29/10/2026",
+    ),
+    "snb": "sem coleta: só a marca não comercial; os termos do portal data.snb.ch são um app JavaScript",
     "cnj": "a regra é a Resolução CNJ 46/2007 (norma publicada); o serviço da TPU não tem termos",
+    # fontes pouco visíveis (ADR 0124)
+    **dict.fromkeys(
+        ("sudeco", "sudam"),
+        "a licença (CC BY-ND 3.0) está no rodapé de cada página do gov.br, sem página de termos própria",
+    ),
+    "divida": "PDFs de sites diferentes guardados só como prova; não há uma página de termos a vigiar",
 }
 
 

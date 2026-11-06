@@ -88,6 +88,7 @@ ARQUIVOS: dict[str, str] = {
     "fre_capital_social": "fre_capital_social/*.parquet",
     "fre_empregados": "fre_empregados/*.parquet",
     "fre_acionistas": "fre_acionistas/*.parquet",
+    "fre_distribuicao_capital": "fre_distribuicao_capital/*.parquet",
     "fre_partes_relacionadas": "fre_partes_relacionadas/*.parquet",
     "ofertas_antigas": "ofertas/antigas.parquet",
     "ofertas_resolucao_160": "ofertas/resolucao_160.parquet",
@@ -128,6 +129,8 @@ ARQUIVOS: dict[str, str] = {
     "gleif_ponte": "gleif_ponte/*.parquet",
     "cnes_estabelecimentos": "cnes_estabelecimentos/*.parquet",
     "cnes_competencias": "cnes_competencias/*.parquet",
+    "sus_internacoes": "sus_internacoes/*.parquet",
+    "sus_ambulatorial": "sus_ambulatorial/*.parquet",
     "anm_cfem_arrecadacao": "anm_cfem_arrecadacao/*.parquet",
     "anm_sigbm_barragens": "anm_sigbm_barragens/*.parquet",
     "anm_amb_producao_bruta": "anm_amb_producao_bruta/*.parquet",
@@ -142,6 +145,7 @@ ARQUIVOS: dict[str, str] = {
     "mme_reidi": "mme_reidi/*.parquet",
     "aneel_cde": "aneel_cde/*.parquet",
     "bcb_rde_ied": "bcb_rde_ied/*.parquet",
+    "sefaz_pe_beneficios": "sefaz_pe_beneficios/*.parquet",
     "ratings": "ratings/*.parquet",
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",
@@ -192,6 +196,10 @@ FORA_DA_PORTA: dict[str, str] = {
     "padroes_setoriais": _NO_BANCO,
     "fre_proventos": _NO_BANCO,
     "fre_eventos_de_capital": _NO_BANCO,
+    "sus_competencias": (
+        "só interna (`vitrine.TABELAS_SO_INTERNAS`): `registros` menos a soma publicada revelaria a célula "
+        "suprimida; a conferência com o TabNet lê o Parquet direto"
+    ),
     "cadastro_das_companhias": (
         "não é Parquet da base: é lido do original no acervo (`base/cadastro.py::ler_cadastro`)"
     ),
@@ -234,6 +242,12 @@ def nome_da_view(tabela: str, versao: str | None = None) -> str:
     if versao is None:
         return tabela
     return f"{tabela}__v{str(versao).split('.')[0]}"
+
+
+def servida_pela_porta(tabela: str) -> bool:
+    """Se a porta serve a tabela por Parquet do acervo (`ARQUIVOS`): as conferidas no repositório e
+    as de `FORA_DA_PORTA` ficam de fora da consulta aberta (API e site)."""
+    return tabela in ARQUIVOS
 
 
 def arquivos_da_tabela(pasta: Path, padrao: str) -> list[Path]:

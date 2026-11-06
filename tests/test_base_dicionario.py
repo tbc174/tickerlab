@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas
+from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas, sus
 from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
@@ -95,6 +95,7 @@ def _colunas_das_ofertas_e_conselhos() -> dict[str, list[str]]:
         "fre_capital_social": list(fre_governanca.COLUNAS_DO_CAPITAL),
         "fre_empregados": list(fre_governanca.COLUNAS_DOS_EMPREGADOS),
         "fre_acionistas": list(fre_governanca.COLUNAS_DOS_ACIONISTAS),
+        "fre_distribuicao_capital": list(fre_governanca.COLUNAS_DA_DISTRIBUICAO),
         "fre_partes_relacionadas": list(fre_governanca.COLUNAS_DAS_PARTES),
         "ofertas_antigas": list(ofertas.ler_antigas(ofertas_zip).columns),
         "ofertas_resolucao_160": list(ofertas.ler_resolucao_160(ofertas_zip).columns),
@@ -129,6 +130,9 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "comex_urf": [*setoriais_comex_tabelas.COLUNAS_DA_URF, "visto_em"],
         "comex_via": [*setoriais_comex_tabelas.COLUNAS_DA_VIA, "visto_em"],
         "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),
+        "sus_internacoes": list(sus.SIH.colunas_da_tabela),
+        "sus_ambulatorial": list(sus.SIA.colunas_da_tabela),
+        "sus_competencias": list(sus.COLUNAS_DA_SITUACAO),
         "amostra_painel": [
             *amostra_universo.COLUNAS,
             *amostra_demonstracoes.COLUNAS[2:],
