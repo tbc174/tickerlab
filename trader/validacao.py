@@ -128,6 +128,24 @@ class CPCV:
         return caminhos
 
 
+CONFIANCA_DO_BOOTSTRAP = 0.90  # o intervalo padrão: 5º e 95º percentis
+
+
+def _percentis_do_intervalo(confianca: float) -> tuple[float, float]:
+    """Percentis de baixo e de cima de um intervalo central com essa confiança (0,90 → 5 e 95).
+
+    O arredondamento tira o ruído de ponto flutuante (1 - 0,9 não dá 0,1 exato): sem ele, o 5
+    viraria 4,999999999999999 e o limite do critério A5/A7 mudaria na última casa.
+    """
+    abaixo = round(50 * (1 - confianca), 10)
+    return abaixo, round(100 - abaixo, 10)
+
+
+def nome_do_limite(confianca: float, lado: str) -> str:
+    """Chave do limite do intervalo nos resultados do bootstrap: `ic90_inferior`, `ic95_superior`..."""
+    return f"ic{round(confianca * 100)}_{lado}"
+
+
 def _sharpe(r: np.ndarray, dias_por_ano: int) -> float:
     desvio = r.std(ddof=1)
     return float(r.mean() / desvio * np.sqrt(dias_por_ano)) if desvio > 0 else np.nan
@@ -140,8 +158,9 @@ def bootstrap_diferenca_de_sharpe(
     sorteios: int = SORTEIOS_DO_BOOTSTRAP,
     semente: int = 0,
     dias_por_ano: int = 252,
+    confianca: float = CONFIANCA_DO_BOOTSTRAP,
 ) -> dict:
-    """Sharpe(candidato) - Sharpe(referência), com intervalo de 90% por bootstrap em blocos.
+    """Sharpe(candidato) - Sharpe(referência), com intervalo (90%, ou `confianca`) por bootstrap em blocos.
 
     Só usa as datas em que as duas séries existem; sorteia os MESMOS blocos para as duas.
     """
@@ -162,10 +181,11 @@ def bootstrap_diferenca_de_sharpe(
             b[indices], dias_por_ano
         )
     diferencas = diferencas[~np.isnan(diferencas)]
+    abaixo, acima = _percentis_do_intervalo(confianca)
     return {
         "diferenca": _sharpe(a, dias_por_ano) - _sharpe(b, dias_por_ano),
-        "ic90_inferior": float(np.percentile(diferencas, 5)),
-        "ic90_superior": float(np.percentile(diferencas, 95)),
+        nome_do_limite(confianca, "inferior"): float(np.percentile(diferencas, abaixo)),
+        nome_do_limite(confianca, "superior"): float(np.percentile(diferencas, acima)),
         "fracao_menor_ou_igual_a_zero": float((diferencas <= 0).mean()),
         "dias": n,
         "sorteios": len(diferencas),
@@ -178,8 +198,9 @@ def bootstrap_do_sharpe(
     sorteios: int = SORTEIOS_DO_BOOTSTRAP,
     semente: int = 0,
     dias_por_ano: int = 252,
+    confianca: float = CONFIANCA_DO_BOOTSTRAP,
 ) -> dict:
-    """Sharpe de uma série só, com intervalo de 90% por bootstrap em blocos.
+    """Sharpe de uma série só, com intervalo (90%, ou `confianca`) por bootstrap em blocos.
 
     Para a régua sem risco (o CDI): o excesso dela é zero, então a diferença de Sharpes vira o
     Sharpe do excesso do candidato.
@@ -196,10 +217,11 @@ def bootstrap_do_sharpe(
         indices = ((inicios[:, None] + np.arange(bloco)) % n).ravel()[:n]
         sharpes[i] = _sharpe(valores[indices], dias_por_ano)
     sharpes = sharpes[~np.isnan(sharpes)]
+    abaixo, acima = _percentis_do_intervalo(confianca)
     return {
         "sharpe": _sharpe(valores, dias_por_ano),
-        "ic90_inferior": float(np.percentile(sharpes, 5)),
-        "ic90_superior": float(np.percentile(sharpes, 95)),
+        nome_do_limite(confianca, "inferior"): float(np.percentile(sharpes, abaixo)),
+        nome_do_limite(confianca, "superior"): float(np.percentile(sharpes, acima)),
         "dias": n,
         "sorteios": len(sharpes),
     }
