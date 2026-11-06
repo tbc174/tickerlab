@@ -11,6 +11,9 @@
 # - `restrito/` NÃO sobe (licença de dado, ADR 0115; pode próprio) e a sala de dados também não (documento de
 #   cliente): o script recusa qualquer origem com esses nomes e filtra as duas pastas em qualquer profundidade.
 #   As fontes com nome de pessoa que ainda estão em `bruto/` (`FONTES_SO_NO_RESTRITO`) também ficam de fora.
+# - O `client_id` compartilhado do rclone tem cota de requisições por minuto que muita gente divide: com 4 envios e
+#   8 conferências o Google devolvia 403 (rateLimitExceeded) e o rclone reenviava os mesmos arquivos sem terminar
+#   (05/11); por isso poucos envios ao mesmo tempo e `--tpslimit`. Com `client_id` próprio (fila 729) dá para subir.
 # - Ritmo limitado (BWLIMIT) para não travar a internet de casa; só um envio por vez (flock): se o anterior
 #   ainda está subindo, este sai sem erro e o próximo cron continua de onde parou.
 # - Cada parte é independente: se uma falha, as outras ainda sobem. No fim sai com 1 e a linha "FALHAS: ..."
@@ -94,10 +97,10 @@ subir() {
         "${FILTROS_DE_EXCLUSAO[@]}" \
         --min-age 5m \
         --bwlimit "$BWLIMIT" \
-        --transfers 4 --checkers 8 \
+        --transfers 2 --checkers 4 --tpslimit 6 \
         --drive-chunk-size 128M --drive-stop-on-upload-limit \
-        --retries 3 --low-level-retries 20 \
-        --stats 10m --stats-one-line --log-level NOTICE --log-file "$LOG"
+        --retries 3 --low-level-retries 10 \
+        --stats 10m --stats-one-line --stats-log-level NOTICE --log-level NOTICE --log-file "$LOG"
     local codigo=$?
     if [ "$codigo" -ne 0 ]; then
         echo "$(date -Is) FALHOU: $nome (rclone saiu com $codigo)" >> "$LOG"
