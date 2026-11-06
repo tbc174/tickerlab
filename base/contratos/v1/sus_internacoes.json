@@ -1,0 +1,83 @@
+{
+  "tabela": "sus_internacoes",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Competência do arquivo (mês de processamento do DATASUS), no formato AAAAMM; não é o mês da alta nem do atendimento",
+      "unidade": "número inteiro"
+    },
+    "codigo_cnes": {
+      "descricao": "Código do estabelecimento no CNES (7 dígitos); liga a `cnes_estabelecimentos`",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do próprio estabelecimento, só os 14 dígitos com DV conferido; vazio na unidade pública sem CNPJ próprio. CPF nunca entra: o estabelecimento de pessoa física fica fora da tabela",
+      "unidade": "texto"
+    },
+    "cnpj_mantenedora": {
+      "descricao": "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos com DV conferido. Não substitui o `cnpj`",
+      "unidade": "texto"
+    },
+    "codigo_ibge_municipio": {
+      "descricao": "Código IBGE do município do estabelecimento (6 dígitos)",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF do arquivo do DATASUS",
+      "unidade": "texto"
+    },
+    "internacoes": {
+      "descricao": "AIH pagas no mês, sem as de longa permanência (como o TabNet); vazio se suprimida",
+      "unidade": "número inteiro"
+    },
+    "valor_total": {
+      "descricao": "Valor total das AIH do mês, todas as AIH; vazio se suprimida",
+      "unidade": "reais (R$)"
+    },
+    "valor_uti": {
+      "descricao": "Parte do valor que é de UTI; vazio se suprimida",
+      "unidade": "reais (R$)"
+    },
+    "dias_permanencia": {
+      "descricao": "Dias de permanência somados de todas as AIH; vazio se suprimida",
+      "unidade": "número inteiro"
+    },
+    "obitos": {
+      "descricao": "Óbitos nas internações do mês; vazio se suprimida ou com menos de 20",
+      "unidade": "número inteiro"
+    },
+    "suprimida": {
+      "descricao": "Verdadeiro quando o mês teve menos de 10 e os números saíram vazios (ADR 0081, item 4): a célula pequena nunca chega ao acervo",
+      "unidade": "verdadeiro ou falso"
+    },
+    "obitos_suprimidos": {
+      "descricao": "Verdadeiro quando os óbitos saíram vazios por serem menos de 20 no mês",
+      "unidade": "verdadeiro ou falso"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que a coleta viu a competência pela primeira vez com esses números (o DATASUS não diz quando publicou); `competencia` nunca serve de disponibilidade",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "codigo_cnes"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "sinonimos_de_tempo": {
+    "competencia": "referencia",
+    "disponivel_em": "publico_em"
+  },
+  "historico_desde": "2026-11-06",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)",
+  "atraso": "O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova"
+}

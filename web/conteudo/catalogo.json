@@ -2265,6 +2265,17 @@
       "tabelas": 4
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "modulos": [
@@ -2352,17 +2363,6 @@
         "mercado_e_empresas"
       ],
       "orgao": "Anatel",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-11-04",
-      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Ministério da Saúde (DATASUS)",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2668,7 +2668,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 30,
-    "tabelas": 109,
+    "tabelas": 111,
     "temas": [
       {
         "chave": "cvm",
@@ -2733,6 +2733,15 @@
         "titulo": "Licenças e registros nas agências"
       },
       {
+        "chave": "saude",
+        "orgaos": [
+          "Ministério da Saúde (DATASUS)"
+        ],
+        "tabelas": 2,
+        "texto": "Internações e procedimentos ambulatoriais que o SUS pagou a cada hospital e clínica, mês a mês, nos dados abertos do DATASUS, sem nada do paciente.",
+        "titulo": "Atendimento pelo SUS"
+      },
+      {
         "chave": "dinheiro_publico",
         "orgaos": [
           "BNDES",
@@ -2760,7 +2769,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 46
+      "tabelas": 48
     },
     {
       "chave": "credito_e_fidc",
@@ -7690,6 +7699,26 @@
       "tabela": "cnes_competencias"
     },
     {
+      "atraso": null,
+      "frase": "Internações do SUS por estabelecimento e mês (SIH, AIH reduzida), com o CNPJ do estabelecimento e o da mantenedora.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "licenciada",
+      "tabela": "sus_internacoes"
+    },
+    {
+      "atraso": null,
+      "frase": "Produção ambulatorial do SUS por estabelecimento e mês (SIA, arquivos PA), com o CNPJ do estabelecimento e o da mantenedora.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "licenciada",
+      "tabela": "sus_ambulatorial"
+    },
+    {
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
       "frase": "Contratos do TCE-PE (estaduais e municipais) por contratado.",
       "frequencia": "Anual",
@@ -8166,6 +8195,6 @@
     "fontes": 42,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 146
+    "tabelas": 148
   }
 }

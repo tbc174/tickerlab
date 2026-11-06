@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas
+from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas, sus
 from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
@@ -130,6 +130,9 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "comex_urf": [*setoriais_comex_tabelas.COLUNAS_DA_URF, "visto_em"],
         "comex_via": [*setoriais_comex_tabelas.COLUNAS_DA_VIA, "visto_em"],
         "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),
+        "sus_internacoes": list(sus.SIH.colunas_da_tabela),
+        "sus_ambulatorial": list(sus.SIA.colunas_da_tabela),
+        "sus_competencias": list(sus.COLUNAS_DA_SITUACAO),
         "amostra_painel": [
             *amostra_universo.COLUNAS,
             *amostra_demonstracoes.COLUNAS[2:],

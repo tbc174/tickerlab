@@ -2128,6 +2128,187 @@ def _tabelas_do_cnes() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_do_sus() -> dict[str, Tabela]:
+    """Os totais do SUS por estabelecimento e mês (`base/sus.py`, linha 698): internações (SIH RD), produção
+    ambulatorial (SIA PA) e a situação de cada competência, que é **só interna**."""
+    atraso = (
+        "O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a "
+        "competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um "
+        "número vira versão nova com a data nova"
+    )
+    onde = "Parquet em `<acervo>/base/{pasta}/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_sus.py`)"
+    identificacao = {
+        "competencia": (
+            (
+                "Competência do arquivo (mês de processamento do DATASUS), no formato AAAAMM; não é o mês "
+                "da alta nem do atendimento"
+            ),
+            NUMERO,
+        ),
+        "codigo_cnes": (
+            "Código do estabelecimento no CNES (7 dígitos); liga a `cnes_estabelecimentos`",
+            TEXTO,
+        ),
+        "cnpj": (
+            (
+                "CNPJ do próprio estabelecimento, só os 14 dígitos com DV conferido; vazio na unidade "
+                "pública sem CNPJ próprio. CPF nunca entra: o estabelecimento de pessoa física fica fora"
+            ),
+            TEXTO,
+        ),
+        "cnpj_mantenedora": (
+            (
+                "CNPJ de quem mantém o estabelecimento (a prefeitura, a rede), só os 14 dígitos com DV "
+                "conferido. Não substitui o `cnpj`"
+            ),
+            TEXTO,
+        ),
+        "codigo_ibge_municipio": (
+            "Código IBGE do município do estabelecimento (6 dígitos)",
+            TEXTO,
+        ),
+        "uf": ("UF do arquivo do DATASUS", TEXTO),
+    }
+    suprimida = (
+        (
+            "Verdadeiro quando o mês teve menos de 10 e os números saíram vazios (ADR 0081, item 4): a "
+            "célula pequena nunca chega ao acervo"
+        ),
+        SIM_OU_NAO,
+    )
+    disponivel = (
+        (
+            "Dia em que a coleta viu a competência pela primeira vez com esses números (o DATASUS não "
+            "diz quando publicou); `competencia` nunca serve de disponibilidade"
+        ),
+        DATA,
+    )
+    internacoes = {
+        **identificacao,
+        "internacoes": (
+            "AIH pagas no mês, sem as de longa permanência (como o TabNet); vazio se suprimida",
+            NUMERO,
+        ),
+        "valor_total": (
+            "Valor total das AIH do mês, todas as AIH; vazio se suprimida",
+            REAIS_EXATOS,
+        ),
+        "valor_uti": ("Parte do valor que é de UTI; vazio se suprimida", REAIS_EXATOS),
+        "dias_permanencia": (
+            "Dias de permanência somados de todas as AIH; vazio se suprimida",
+            NUMERO,
+        ),
+        "obitos": (
+            "Óbitos nas internações do mês; vazio se suprimida ou com menos de 20",
+            NUMERO,
+        ),
+        "suprimida": suprimida,
+        "obitos_suprimidos": (
+            "Verdadeiro quando os óbitos saíram vazios por serem menos de 20 no mês",
+            SIM_OU_NAO,
+        ),
+        "disponivel_em": disponivel,
+    }
+    ambulatorial = {
+        **identificacao,
+        "quantidade_apresentada": (
+            "Procedimentos apresentados no mês; vazio se suprimida",
+            NUMERO,
+        ),
+        "quantidade_aprovada": (
+            "Procedimentos aprovados no mês (a supressão olha esta); vazio se suprimida",
+            NUMERO,
+        ),
+        "valor_apresentado": (
+            "Valor apresentado dos procedimentos; vazio se suprimida",
+            REAIS_EXATOS,
+        ),
+        "valor_aprovado": (
+            "Valor aprovado dos procedimentos; vazio se suprimida",
+            REAIS_EXATOS,
+        ),
+        "suprimida": suprimida,
+        "disponivel_em": disponivel,
+    }
+    situacao = {
+        "competencia": ("Competência olhada, no formato AAAAMM", NUMERO),
+        "uf": ("UF olhada", TEXTO),
+        "sistema": ("`sih` ou `sia`", TEXTO),
+        "arquivos": ("Nomes dos DBC lidos no FTP, separados por vírgula", TEXTO),
+        "sha256": ("SHA-256 de cada DBC, na ordem de `arquivos`", TEXTO),
+        "registros": ("Quantas linhas dos DBC foram somadas", NUMERO),
+        "estabelecimentos": ("Quantos estabelecimentos saíram na tabela", NUMERO),
+        "suprimidos": ("Quantos saíram com os números vazios", NUMERO),
+        "fora_pessoa_fisica": (
+            "Quantos ficaram fora por serem de pessoa física (CPF)",
+            NUMERO,
+        ),
+        "fora_sem_cnpj": ("Quantos ficaram fora por não terem CNPJ nenhum", NUMERO),
+        "fora_sem_cnes": (
+            "Linhas do DBC sem código do estabelecimento, que não se somam",
+            NUMERO,
+        ),
+        "situacao": (
+            "`com_dados` ou `vazia`. `vazia` é o DATASUS ainda não ter publicado a competência",
+            TEXTO,
+        ),
+        "coletado_em": ("Dia em que a competência foi vista com essa situação", DATA),
+    }
+    linhagem = (
+        "O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada DBC do FTP "
+        "somado e a versão do código que gravou. O DBC não fica no acervo: é lido na memória, somado e "
+        "descartado, e a linha do paciente nunca chega ao disco (ADR 0088, Emenda 1)."
+    )
+    comum = {
+        "familia_da_fonte": "ms",
+        "frequencia": "Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)",
+        "atraso": atraso,
+        "linhagem": linhagem,
+    }
+    sem_treino = " Não treina modelo (`coletas.FONTES_SEM_TREINO`, ADR 0122)."
+    return {
+        "sus_internacoes": Tabela(
+            descricao=(
+                "Internações do SUS por estabelecimento e mês (SIH, AIH reduzida), com o CNPJ do "
+                "estabelecimento e o da mantenedora. Só o total do mês: nada do paciente. Mês com menos de "
+                "10 internações sai suprimido; estabelecimento de pessoa física fica fora."
+                + sem_treino
+            ),
+            fonte="Ministério da Saúde, DATASUS, FTP do SIH/SUS, arquivos RD (`base/sus.py`)",
+            onde=onde.format(pasta="sus_internacoes"),
+            colunas=internacoes,
+            **comum,
+        ),
+        "sus_ambulatorial": Tabela(
+            descricao=(
+                "Produção ambulatorial do SUS por estabelecimento e mês (SIA, arquivos PA), com o CNPJ do "
+                "estabelecimento e o da mantenedora. Só o total do mês: nada do paciente. Mês com menos de "
+                "10 procedimentos aprovados sai suprimido; estabelecimento de pessoa física fica fora."
+                + sem_treino
+            ),
+            fonte="Ministério da Saúde, DATASUS, FTP do SIA/SUS, arquivos PA (`base/sus.py`)",
+            onde=onde.format(pasta="sus_ambulatorial"),
+            colunas=ambulatorial,
+            **comum,
+        ),
+        "sus_competencias": Tabela(
+            descricao=(
+                "Uma linha por sistema, competência e UF olhados pela coleta do SUS: os arquivos lidos, "
+                "quantos registros se somaram e quantos estabelecimentos saíram suprimidos ou fora. **Só "
+                "interna:** `registros` menos a soma publicada revelaria a célula suprimida, então a "
+                "tabela não sai no site, na API nem na ficha (`vitrine.TABELAS_SO_INTERNAS`)."
+            ),
+            fonte="Ministério da Saúde, DATASUS, FTP do SIH/SUS e do SIA/SUS (`base/sus.py`)",
+            onde=(
+                "Parquet em `<acervo>/base/sus_competencias/<sistema>-<AAAAMM>.parquet` (servidor de "
+                "casa, `scripts/carga_sus.py`)"
+            ),
+            colunas=situacao,
+            **comum,
+        ),
+    }
+
+
 def _tabelas_dos_tces() -> dict[str, Tabela]:
     """Contratos e despesas por CNPJ dos TCEs de PE, SP, CE e RS (`base/contratos_tces.py`, linha 652)."""
     comum = {
@@ -6408,6 +6589,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_cadastros_em_retrato(),
     **_tabelas_do_fiagro_e_gleif(),
     **_tabelas_do_cnes(),
+    **_tabelas_do_sus(),
     **_tabelas_dos_tces(),
     **_tabelas_da_anm(),
     "debentures_assembleias": Tabela(
@@ -8572,6 +8754,9 @@ _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pel
 _CNES = (
     "2026-11-04"  # o CNES por competência entrou no arquivista neste dia (linha 654)
 )
+_SUS = (
+    "2026-11-06"  # os totais do SIH e do SIA entraram no catálogo neste dia (linha 698)
+)
 _TCES = "2026-11-04"  # os contratos dos TCEs entraram na base neste dia (linha 652)
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
@@ -8761,6 +8946,22 @@ _CONTRATO = {
         chaves=("competencia",),
         datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
         historico_desde=_CNES,
+    ),
+    **{
+        nome: _contrato(
+            modulo="governo_e_sancoes",
+            chaves=("competencia", "codigo_cnes"),
+            datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"},
+            historico_desde=_SUS,
+            granularidade_do_publico_em="mes",
+        )
+        for nome in ("sus_internacoes", "sus_ambulatorial")
+    },
+    "sus_competencias": _contrato(
+        modulo="governo_e_sancoes",
+        chaves=("sistema", "competencia", "uf"),
+        datas={"aconteceu_em": "competencia", "publico_em": "coletado_em"},
+        historico_desde=_SUS,
     ),
     "anm_cfem_arrecadacao": _contrato(
         modulo="governo_e_sancoes",
@@ -8986,6 +9187,20 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "cnes_competencias": {
         "pasta": "cnes_competencias",
         "nao_nulas": ("situacao", "linhas", "coletado_em"),
+    },
+    "sus_internacoes": {
+        "pasta": "sus_internacoes",
+        "nao_nulas": ("competencia", "codigo_cnes", "uf", "suprimida", "obitos_suprimidos", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("internacoes", "dias_permanencia", "obitos")},
+    },
+    "sus_ambulatorial": {
+        "pasta": "sus_ambulatorial",
+        "nao_nulas": ("competencia", "codigo_cnes", "uf", "suprimida", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("quantidade_apresentada", "quantidade_aprovada")},
+    },
+    "sus_competencias": {
+        "pasta": "sus_competencias",
+        "nao_nulas": ("competencia", "uf", "sistema", "registros", "situacao", "coletado_em"),
     },
     "anm_cfem_arrecadacao": {
         "pasta": "anm_cfem_arrecadacao",

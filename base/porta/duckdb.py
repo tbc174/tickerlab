@@ -129,6 +129,8 @@ ARQUIVOS: dict[str, str] = {
     "gleif_ponte": "gleif_ponte/*.parquet",
     "cnes_estabelecimentos": "cnes_estabelecimentos/*.parquet",
     "cnes_competencias": "cnes_competencias/*.parquet",
+    "sus_internacoes": "sus_internacoes/*.parquet",
+    "sus_ambulatorial": "sus_ambulatorial/*.parquet",
     "anm_cfem_arrecadacao": "anm_cfem_arrecadacao/*.parquet",
     "anm_sigbm_barragens": "anm_sigbm_barragens/*.parquet",
     "anm_amb_producao_bruta": "anm_amb_producao_bruta/*.parquet",
@@ -193,6 +195,10 @@ FORA_DA_PORTA: dict[str, str] = {
     "padroes_setoriais": _NO_BANCO,
     "fre_proventos": _NO_BANCO,
     "fre_eventos_de_capital": _NO_BANCO,
+    "sus_competencias": (
+        "só interna (`vitrine.TABELAS_SO_INTERNAS`): `registros` menos a soma publicada revelaria a célula "
+        "suprimida; a conferência com o TabNet lê o Parquet direto"
+    ),
     "cadastro_das_companhias": (
         "não é Parquet da base: é lido do original no acervo (`base/cadastro.py::ler_cadastro`)"
     ),
