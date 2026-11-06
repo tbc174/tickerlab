@@ -32,6 +32,10 @@ Regras (testes em `tests/test_base_arquivo_lote_commodities_oficiais.py`), uma f
   `lote_organismos.FILTRO_DE_PAIS_DO_EUROSTAT`, um lugar só): `eurostat-precos-agricolas` (`apri_ap_crpouta`,
   preços de produtos agrícolas, 193 KB) e `eurostat-preco-do-gas` (`nrg_pc_202`, gás para consumidores
   domésticos, 262 KB). Um pedido cada, mensal (os dois saem por ano ou semestre).
+- **SSB** (Statistics Norway, CC BY 4.0 citando o SSB, com o link da licença e a indicação de mudanças; lido em
+  06/11/2026): a tabela 03024, exportação semanal de salmão de cativeiro (peso e preço por quilo, fresco e
+  congelado, desde 2000). Um pedido GET à API nova (`pxwebapi/v2`), que sem `valueCodes` devolve só a última
+  semana; com todos os valores de cada dimensão vêm as 1.400 semanas em 80 KB. Fonte `ssb-salmao-semanal`.
 """
 
 import re
@@ -165,10 +169,28 @@ def _fonte_do_eurostat(id_: str) -> Fonte:
     )
 
 
+# ---- SSB: exportação semanal de salmão (tabela 03024; CC BY 4.0) -----------------------------------
+SSB_SALMAO = (
+    "https://data.ssb.no/api/pxwebapi/v2/tables/03024/data?lang=en&outputFormat=json-stat2"
+    "&valueCodes%5BVareGrupper2%5D=*&valueCodes%5BContentsCode%5D=*&valueCodes%5BTid%5D=*"
+)
+
+
+def _fonte_do_ssb() -> Fonte:
+    return Fonte(
+        "ssb-salmao-semanal",
+        "semanal",  # o SSB publica toda semana; o SHA-256 decide o que é novo
+        lambda _cliente, _agora: [Alvo(SSB_SALMAO, ".json")],
+        "json",
+        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS,
+    )
+
+
 # avisos legais lidos: o vigia avisa quando o texto muda (Comissão em 24/10/2026, Bank of Canada em 05/11/2026)
 TERMOS_DOS_ORGAOS = {
     "termos-dgagri": "https://commission.europa.eu/legal-notice_en",
     "termos-boc": "https://www.bankofcanada.ca/terms/",
+    "termos-ssb": "https://www.ssb.no/en/diverse/lisens",
 }
 
 
@@ -184,4 +206,5 @@ def fontes() -> list[Fonte]:
         *(_fonte_do_dg_agri(produto) for produto in produtos),
         *(_fonte_do_bcpi(id_) for id_ in GRUPOS_DO_BCPI),
         *(_fonte_do_eurostat(id_) for id_ in CONJUNTOS_DO_EUROSTAT),
+        _fonte_do_ssb(),
     ]

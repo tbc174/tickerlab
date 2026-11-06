@@ -229,3 +229,28 @@ def test_eurostat_e_json_leve_com_pausa_e_sem_repetir_id_de_outro_lote():
         assert not fonte.pesada
         assert fonte.pausa_minima >= 2.0
         assert fonte.grupo == "mensal"  # os dois conjuntos saem por ano ou semestre
+
+
+# ---- SSB (Statistics Norway): exportação semanal de salmão, tabela 03024 -----------------------
+SSB = "https://data.ssb.no/api/pxwebapi/v2/tables/03024/data"
+
+
+def test_ssb_pede_a_tabela_inteira_de_salmao_numa_resposta_so():
+    """O endereço sem `valueCodes` devolve só a semana mais recente: o histórico (2000 até hoje, 80 KB) pede
+    todos os valores de cada dimensão. É GET porque o cliente do arquivista não manda corpo."""
+    (alvo,) = _alvos("ssb-salmao-semanal")
+    assert alvo.url.startswith(f"{SSB}?lang=en&outputFormat=json-stat2")
+    for dimensao in ("VareGrupper2", "ContentsCode", "Tid"):
+        assert f"valueCodes%5B{dimensao}%5D=*" in alvo.url
+
+
+def test_ssb_e_json_leve_semanal_e_com_pausa():
+    fonte = _fonte("ssb-salmao-semanal")
+    assert fonte.tipo == "json"
+    assert fonte.grupo == "semanal"
+    assert not fonte.pesada
+    assert fonte.pausa_minima >= 2.0
+
+
+def test_ssb_vigia_a_licenca_do_instituto():
+    assert lote.termos()["termos-ssb"] == "https://www.ssb.no/en/diverse/lisens"
