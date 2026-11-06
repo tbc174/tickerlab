@@ -189,6 +189,8 @@ LICENCAS = {
     "eurostat": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
     "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
     "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+    # lote commodities oficiais (linha 396; termos lidos em 24/10/2026, licencas-por-fonte.md)
+    "dgagri": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
     "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
@@ -415,6 +417,7 @@ REVENDA = {
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
     "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
     "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
+    "dgagri": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 da Comissão Europeia: crédito e indicação de mudanças
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
     "norges": A_CONFIRMAR,  # "no changes may be made" + Content-Signal ai-train=no: leitura humana antes de vender (ADR 0102 Emenda 2)
@@ -635,6 +638,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # de guarda: o uso "unrestricted" cobre guardar, e o silêncio fica registrado aqui. A API tem termo
     # próprio (o BIS pode limitar o IP e suspender), sem proibir ler os dados.
     "bis": _ABERTA_SEM_PRAZO,
+    # DG AGRI: aviso legal da Comissão (CC BY 4.0, lido em 24/10/2026); o robots.txt de `ec.europa.eu` não
+    # fecha `/agrifood/api` (conferido em 05/11/2026) e a coleta tem pausa e se identifica
+    "dgagri": _ABERTA_SEM_PRAZO,
     # Riksbank (SWEA, sem chave) e Norges Bank (SDMX, sem chave): termos lidos em 29/10/2026 (linha 511).
     # O Norges Bank traz `Content-Signal: ai-train=no` no robots.txt (05/11/2026), que não fecha a API
     "riksbank": _ABERTA_SEM_PRAZO,
