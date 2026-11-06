@@ -1,4 +1,4 @@
-"""Lote nórdico (base/arquivo/lote_nordicos.py): Riksbank e Norges Bank. Nada vai à internet."""
+"""Lote nórdico (base/arquivo/lote_nordicos.py): bancos centrais e institutos de estatística. Nada vai à internet."""
 
 import json
 from datetime import UTC, datetime
@@ -19,7 +19,8 @@ from src.banco.coletas import (
 )
 
 AGORA = datetime(2026, 11, 5, 13, tzinfo=UTC)
-FAMILIAS = {"riksbank", "norges", "dst"}
+CRLF = bytes([13, 10])
+FAMILIAS = {"riksbank", "norges", "dst", "scb", "statfi", "statice"}
 
 
 def test_ids_sem_duplicata_no_lote_e_no_catalogo():
@@ -94,12 +95,19 @@ def test_ritmo_respeita_a_api_anonima_do_riksbank():
 
 def test_o_lote_nao_pega_o_que_esta_fora_do_escopo():
     ids = {f.id for f in lote.fontes()}
-    fora = ("ssb", "nationalbank", "bankoffinland", "sedlabanki", "scb")
+    fora = ("ssb", "nationalbank", "bankoffinland", "sedlabanki")
     assert not [i for i in ids if i.split("-")[0] in fora]
 
 
 def test_paginas_de_termos_sao_vigiadas():
-    assert set(lote.termos()) == {"termos-riksbank", "termos-norges", "termos-dst"}
+    assert set(lote.termos()) == {
+        "termos-riksbank",
+        "termos-norges",
+        "termos-dst",
+        "termos-scb",
+        "termos-statfi",
+        "termos-statice",
+    }
     assert set(lote.termos()) <= set(fontes.TERMOS)
 
 
@@ -173,3 +181,89 @@ def test_dst_tableinfo_inesperado_e_falha():
     cliente.corpo = b'{"erro": 1}'
     with pytest.raises(ErroDeDescoberta):
         lote.descobrir_serie(_tabela_da_dst("ipc"))(cliente, AGORA)
+
+
+class MetadadosFixos:
+    """Responde os metadados do SCB (PxWebApi v2beta) com dimensões fixas e guarda os pedidos."""
+
+    def __init__(self, ids: list[str], tamanhos: list[int]):
+        self.corpo = json.dumps({"id": ids, "size": tamanhos}).encode()
+        self.pedidos: list[str] = []
+
+    def ler(self, url, *, metodo="GET", cabecalhos=None, corpo=None):
+        self.pedidos.append(url)
+        return Resposta(url, self.corpo, {})
+
+
+def _serie(identificador: str):
+    return next(s for s in lote.SERIES if s.id == identificador)
+
+
+def test_scb_e_cc0_e_vendavel():
+    for fonte in lote.fontes():
+        if fonte.id.startswith("scb-"):
+            assert marca_da_fonte(fonte.id) == Marca.VENDAVEL, fonte.id
+            assert revenda_da_fonte(fonte.id) == VENDAVEL_COM_ATRIBUICAO, fonte.id
+    assert "CC0" in licenca_da_fonte("scb-ipc")
+
+
+def test_scb_pede_todos_os_valores_de_cada_dimensao():
+    cliente = MetadadosFixos(["ContentsCode", "Tid"], [1, 1353])
+    (alvo,) = lote.descobrir_serie(_serie("scb-ipc"))(cliente, AGORA)
+    assert cliente.pedidos == [
+        "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB2075/metadata?lang=en"
+    ]
+    assert alvo.url == (
+        "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB2075/data?lang=en"
+        "&outputFormat=csv&valueCodes%5BContentsCode%5D=*&valueCodes%5BTid%5D=*"
+    )
+    assert alvo.extensao == ".csv"
+
+
+def test_scb_tabela_acima_do_limite_de_celulas_da_api_e_falha():
+    """A API recusa mais de 150 mil células; melhor falhar na descoberta que baixar um erro."""
+    cliente = MetadadosFixos(["A", "Tid"], [1000, 151])
+    with pytest.raises(ErroDeDescoberta):
+        lote.descobrir_serie(_serie("scb-desemprego"))(cliente, AGORA)
+
+
+def test_scb_metadados_inesperados_sao_falha():
+    cliente = MetadadosFixos([], [])
+    cliente.corpo = b'{"erro": 1}'
+    with pytest.raises(ErroDeDescoberta):
+        lote.descobrir_serie(_serie("scb-ipc"))(cliente, AGORA)
+
+
+@pytest.mark.parametrize("familia", ["statfi", "statice"])
+def test_institutos_com_credito_sao_vendaveis_citando_a_fonte(familia):
+    ids = [f.id for f in lote.fontes() if f.id.startswith(f"{familia}-")]
+    assert ids
+    for identificador in ids:
+        assert marca_da_fonte(identificador) == Marca.VENDAVEL, identificador
+        assert revenda_da_fonte(identificador) == VENDAVEL_COM_ATRIBUICAO
+        assert "CC BY 4.0" in licenca_da_fonte(identificador)
+
+
+class PxWebFixo:
+    """Guarda o POST feito ao PxWeb e devolve um CSV fixo."""
+
+    def __init__(self):
+        self.chamadas: list[tuple[str, str, bytes | None]] = []
+
+    def ler(self, url, *, metodo="GET", cabecalhos=None, corpo=None):
+        self.chamadas.append((url, metodo, corpo))
+        csv = b'"Month","Valor"' + CRLF + b'"2026M01",1' + CRLF
+        return Resposta(url, csv, {"ETag": "x"})
+
+
+@pytest.mark.parametrize("identificador", ["statfi-ipc", "statice-ipc"])
+def test_pxweb_pede_a_tabela_inteira_em_csv_por_post(tmp_path, identificador):
+    (alvo,) = lote.descobrir_serie(_serie(identificador))(object(), AGORA)
+    cliente = PxWebFixo()
+    destino = tmp_path / "tabela.csv"
+    cabecalhos = alvo.obter(cliente, destino)
+    (url, metodo, corpo) = cliente.chamadas[0]
+    assert (url, metodo) == (alvo.url, "POST")
+    assert json.loads(corpo) == {"query": [], "response": {"format": "csv"}}
+    assert destino.read_bytes().startswith(b'"Month"')
+    assert cabecalhos == {"ETag": "x"}

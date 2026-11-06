@@ -235,6 +235,11 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "fmi": Orgao("FMI", "https://www.imf.org/"),
     "gleif": Orgao("GLEIF (identificador LEI)", "https://www.gleif.org/"),
     "dst": Orgao("Statistics Denmark (Danmarks Statistik)", "https://www.dst.dk/en/"),
+    "scb": Orgao("Statistics Sweden (SCB, Suécia)", "https://www.scb.se/en/"),
+    "statfi": Orgao("Statistics Finland (Finlândia)", "https://stat.fi/en"),
+    "statice": Orgao(
+        "Statistics Iceland (Hagstofa, Islândia)", "https://www.statice.is/"
+    ),
     "norges": Orgao("Norges Bank (Noruega)", "https://www.norges-bank.no/en/"),
     "ocde": Orgao("OCDE", "https://www.oecd.org/"),
     "ofsi": Orgao("OFSI (sanções, Reino Unido)", "https://sanctionslist.fcdo.gov.uk/"),

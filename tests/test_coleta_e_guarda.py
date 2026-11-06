@@ -48,6 +48,9 @@ PASSAM_AS_MARCAS = {
     "dgagri",  # CC BY 4.0 da Comissão Europeia, lido em 24/10/2026 (linha 396)
     "ssb",  # CC BY 4.0 do SSB, lido em 06/11/2026 (linha 396)
     "boc",  # Bank of Canada: livre citando o Banco, termos relidos em 05/11/2026 (linha 396)
+    "scb",  # CC0, termos lidos em 29/10/2026 (linha 511)
+    "statfi",  # CC BY 4.0, termos lidos em 29/10/2026 (linha 511)
+    "statice",  # CC BY 4.0, termos lidos em 29/10/2026 (linha 511)
     "riksbank",  # reuso livre citando a fonte, termos lidos em 29/10/2026 (linha 511)
     "rfb-cnpj",
     "goias",  # CC BY, termos relidos em 05/11/2026 (linha 688)

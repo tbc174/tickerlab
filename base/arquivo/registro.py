@@ -60,6 +60,9 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "riksbank": date(2026, 10, 29),
     "norges": date(2026, 10, 29),
     "dst": date(2026, 10, 29),
+    "scb": date(2026, 10, 29),
+    "statfi": date(2026, 10, 29),
+    "statice": date(2026, 10, 29),
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
     "treasury": date(2026, 10, 22),
