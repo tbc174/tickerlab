@@ -16,6 +16,8 @@ CONVENCAO_DE_NOMES = {
 }
 
 PAPEIS = ("usuario", "admin")
+# por que uma conta foi bloqueada no incidente (0045): só o código, nunca texto livre
+MOTIVOS_DO_BLOQUEIO = ("abuso", "acesso_de_terceiro", "incidente", "pedido_do_titular")
 PLANOS = ("gratuito", "plus", "pro")
 TIPOS_DE_RELATORIO = (
     "ativo",
@@ -66,8 +68,20 @@ usuarios = sa.Table(
     # versão dos termos de uso e da política de privacidade que a pessoa aceitou, e quando
     sa.Column("termos_versao", sa.String(20)),
     sa.Column("termos_aceitos_em", sa.DateTime(timezone=True)),
+    # bloqueio de uma conta só, no incidente (0045): o login e as sessões param, nada se apaga
+    sa.Column("bloqueada_em", sa.DateTime(timezone=True)),
+    sa.Column("motivo_do_bloqueio", sa.String(30)),
     sa.CheckConstraint("papel IN ('usuario', 'admin')", name="papel"),
     sa.CheckConstraint("plano IN ('gratuito', 'plus', 'pro')", name="plano"),
+    sa.CheckConstraint(
+        "motivo_do_bloqueio IS NULL OR motivo_do_bloqueio IN ("
+        + ", ".join(f"'{m}'" for m in MOTIVOS_DO_BLOQUEIO)
+        + ")",
+        name="motivo_do_bloqueio",
+    ),
+    sa.CheckConstraint(
+        "(bloqueada_em IS NULL) = (motivo_do_bloqueio IS NULL)", name="bloqueio"
+    ),
 )
 sa.Index("ix_usuarios_email", usuarios.c.email)
 

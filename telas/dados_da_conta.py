@@ -26,6 +26,7 @@ from src.planos import LimiteDoPlanoError, descrever_limite, limites_do
 from src.simulacoes import NOMES_DOS_TIPOS, capturar_estado, restaurar_estado
 from telas.comum import cabecalho_da_pagina
 from telas.conta.assinatura import mostrar_planos
+from telas.conta.guarda import so_com_a_conta_valendo
 
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
 log_da_conta = logging.getLogger("tickerlab.conta")
@@ -115,6 +116,7 @@ def _campo_ainda_vale(chave, valor):
     return not chave.startswith("parametro_")  # parâmetro desconhecido: não volta
 
 
+@so_com_a_conta_valendo
 def _salvar_simulacao(usuario, tipo, nome_sugerido, resumo, chave_da_ficha=None):
     nome = st.session_state.get(f"salvar_nome_{tipo}", "").strip() or nome_sugerido
     guardada = st.session_state.get(chave_da_ficha) if chave_da_ficha else None
@@ -191,6 +193,7 @@ def _reabrir_simulacao(simulacao):
     )
 
 
+@so_com_a_conta_valendo
 def _apagar_simulacao(usuario, simulacao):
     try:
         with obter_engine().begin() as conexao:

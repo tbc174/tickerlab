@@ -98,3 +98,41 @@ def test_a_pagina_de_administracao_nao_abre_no_modo_local():
     app.run()
     assert "admin" not in _urls_do_menu(app)
     _ = ir_para  # (sem página a visitar: ela nem existe no menu)
+
+
+def test_administrador_bloqueia_e_desbloqueia_pelo_painel(banco, monkeypatch):
+    """Bloqueio no incidente (linha 306): o painel mostra o id e o bloqueio, e o botão grava."""
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    abrir_app()
+    _virar_admin(monkeypatch, banco, "chefe", "chefe@exemplo.com")
+    app = abrir_app("admin")
+    ana = id_do_usuario(banco, "ana")
+    tabela = app.dataframe[0].value
+    assert str(ana) in set(tabela["Id"])
+
+    app.selectbox(key="admin_alvo").select(ana).run()
+    app.selectbox(key="admin_motivo").select("acesso_de_terceiro").run()
+    app.button(key="admin_bloquear").click().run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        assert buscar_por_id(conexao, ana).motivo_do_bloqueio == "acesso_de_terceiro"
+        registro = auditoria.listar_recentes(conexao)[0]
+    assert registro.acao == auditoria.ACAO_CONTA_BLOQUEADA
+    linha = app.dataframe[0].value.set_index("Id").loc[str(ana)]
+    assert "acesso_de_terceiro" in linha["Bloqueada"]
+
+    app.button(key="admin_desbloquear").click().run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        assert buscar_por_id(conexao, ana).bloqueada_em is None
+
+
+def test_administrador_nao_se_bloqueia_pelo_painel(banco, monkeypatch):
+    _virar_admin(monkeypatch, banco, "chefe", "chefe@exemplo.com")
+    app = abrir_app("admin")
+    chefe = id_do_usuario(banco, "chefe")
+    app.selectbox(key="admin_alvo").select(chefe).run()
+    app.button(key="admin_bloquear").click().run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        assert buscar_por_id(conexao, chefe).bloqueada_em is None

@@ -170,6 +170,11 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 "versao": perfil.termos_versao,
                 "em": _texto(perfil.termos_aceitos_em),
             },
+            # o bloqueio do incidente (0045) também é dado sobre a pessoa: vai junto, só o código
+            "bloqueio": {
+                "em": _texto(perfil.bloqueada_em),
+                "motivo": perfil.motivo_do_bloqueio,
+            },
         },
         "preferencias": dict(prefs.dados) if prefs else {},
         "tentativas_por_ativo": contar_por_ativo(conexao, usuario_id),

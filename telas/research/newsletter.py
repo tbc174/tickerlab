@@ -20,6 +20,7 @@ from telas.comum import (
     cabecalho_da_pagina,
     parametros_em_vigor,
 )
+from telas.conta.guarda import so_com_a_conta_valendo
 from telas.research.comum import (
     _carteira_da_lista,
     _listas_do_research,
@@ -77,6 +78,7 @@ def _mostrar_secao_da_newsletter(secao):
             st.caption("Por que aparece: " + " · ".join(item.razoes))
 
 
+@so_com_a_conta_valendo
 def _inscrever_na_newsletter(usuario):
     lista = st.session_state["newsletter_email_lista"]
     cadencia = st.session_state["newsletter_email_cadencia"]
@@ -94,6 +96,7 @@ def _inscrever_na_newsletter(usuario):
     )
 
 
+@so_com_a_conta_valendo
 def _cancelar_a_newsletter(usuario):
     with obter_engine().begin() as conexao:
         newsletter_por_email.cancelar(conexao, usuario.id)

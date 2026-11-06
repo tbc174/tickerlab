@@ -6,6 +6,7 @@ acesso e abre a sessão de 30 dias. `POST /v1/sair-de-todos` encerra as sessões
 """
 
 import logging
+from datetime import datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
@@ -13,9 +14,10 @@ import sqlalchemy as sa
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, entrada, sessao
 from src.banco import sessoes
 from src.banco.modelo import identidades
-from src.banco.usuarios import buscar_por_identidade, entrar
+from src.banco.usuarios import TEXTO_DA_CONTA_BLOQUEADA, buscar_por_identidade, entrar
 from src.conformidade import registrar_aceite
 from tests.ajudantes_da_api import cliente_do_gateway
+from tests.ajudantes_da_conta import bloquear_pelo_admin
 
 DO_SITE = {"X-TickerLab-Pedido": "1", "Origin": "http://testserver"}
 EMAIL = "carla@exemplo.com"
@@ -330,3 +332,117 @@ def test_sair_de_todos_de_fora_do_site_403_e_nada_encerra(cliente, banco):
     resposta = cliente.post("/api/v1/sair-de-todos", headers=_com_cookie(do_pc))
     assert resposta.status_code == 403
     assert cliente.get("/api/v1/eu", headers=_com_cookie(do_pc)).status_code == 200
+
+
+# --- conta bloqueada (incidente, linha 306) ------------------------------------------------
+
+
+def test_conta_bloqueada_nao_entra_pelo_codigo_403_com_o_texto(
+    cliente, banco, enviados
+):
+    ana = _conta_google(banco)
+    bloquear_pelo_admin(banco, ana.id)
+    _pedir(cliente, "ana@exemplo.com")
+    ((_, codigo),) = enviados
+    resposta = _confirmar(cliente, "ana@exemplo.com", codigo)
+    assert resposta.status_code == 403
+    assert resposta.json()["detail"] == TEXTO_DA_CONTA_BLOQUEADA
+    assert not [
+        c
+        for c in resposta.headers.get_list("set-cookie")
+        if c.startswith(sessao.NOME_DO_COOKIE) and "max-age=0" not in c.lower()
+    ]
+    with banco.connect() as conexao:
+        assert buscar_por_identidade(conexao, "email", "ana@exemplo.com") is None
+
+
+def test_o_cookie_da_conta_bloqueada_para_de_valer_e_o_da_outra_continua(
+    cliente, banco
+):
+    do_pc, do_celular, da_bia = _duas_contas(banco)
+    with banco.connect() as conexao:
+        ana_id = sessoes.conta_da_sessao(conexao, do_pc).id
+    bloquear_pelo_admin(banco, ana_id)
+    assert cliente.get("/api/v1/eu", headers=_com_cookie(do_pc)).status_code == 401
+    assert cliente.get("/api/v1/eu", headers=_com_cookie(do_celular)).status_code == 401
+    assert cliente.get("/api/v1/eu", headers=_com_cookie(da_bia)).status_code == 200
+
+
+def test_codigo_conferido_antes_do_bloqueio_nao_abre_sessao_depois_do_desbloqueio(
+    cliente, banco, enviados, monkeypatch
+):
+    """2ª revisão cruzada do Codex no #659, pelo código por e-mail: a conta é bloqueada e
+    desbloqueada entre a entrada na conta e a abertura da sessão. Essa entrada não vale; a
+    seguinte, toda depois do desbloqueio, entra."""
+    from src.administracao import desbloquear_conta
+    from src.banco.usuarios import buscar_por_google_sub
+
+    ana = _conta_google(banco)
+    original = entrada._entrar_pelo_email
+
+    def entrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        bloquear_pelo_admin(banco, ana.id)
+        with banco.begin() as conexao:
+            chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+            desbloquear_conta(conexao, chefe.id, ana.id)
+        return resultado
+
+    monkeypatch.setattr(entrada, "_entrar_pelo_email", entrar_e_pausar)
+    _pedir(cliente, "ana@exemplo.com")
+    ((_, codigo),) = enviados
+    resposta = _confirmar(cliente, "ana@exemplo.com", codigo)
+    assert resposta.status_code == 409
+    assert not [
+        c
+        for c in resposta.headers.get_list("set-cookie")
+        if c.startswith(sessao.NOME_DO_COOKIE) and "max-age=0" not in c.lower()
+    ]
+
+    monkeypatch.setattr(entrada, "_entrar_pelo_email", original)
+    _pedir(cliente, "ana@exemplo.com")
+    (_, (_, codigo)) = enviados
+    resposta = _confirmar(cliente, "ana@exemplo.com", codigo)
+    assert resposta.status_code == 200
+    assert (
+        cliente.get(
+            "/api/v1/eu", headers=_com_cookie(_cookie_da_sessao(resposta))
+        ).status_code
+        == 200
+    )
+
+
+class _RelogioAtrasado(datetime):
+    """O relógio de quem bloqueia, 2 s atrás do da API."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return datetime.now(tz) - timedelta(seconds=2)
+
+
+def test_relogio_atrasado_de_quem_bloqueia_nao_deixa_o_codigo_abrir_sessao(
+    cliente, banco, enviados, monkeypatch
+):
+    """3ª revisão cruzada do Codex no #659, pelo código por e-mail: o bloqueio e o desbloqueio
+    caem entre a entrada na conta e a abertura da sessão, com o relógio do admin atrasado."""
+    from src import auditoria as registro_de_auditoria
+    from src.administracao import desbloquear_conta
+    from src.banco.usuarios import buscar_por_google_sub
+
+    ana = _conta_google(banco)
+    original = entrada._entrar_pelo_email
+
+    def entrar_e_pausar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        bloquear_pelo_admin(banco, ana.id)
+        with banco.begin() as conexao:
+            chefe = buscar_por_google_sub(conexao, "g-chefe-do-bloqueio")
+            desbloquear_conta(conexao, chefe.id, ana.id)
+        return resultado
+
+    monkeypatch.setattr(entrada, "_entrar_pelo_email", entrar_e_pausar)
+    monkeypatch.setattr(registro_de_auditoria, "datetime", _RelogioAtrasado)
+    _pedir(cliente, "ana@exemplo.com")
+    ((_, codigo),) = enviados
+    resposta = _confirmar(cliente, "ana@exemplo.com", codigo)
+    assert resposta.status_code == 409

@@ -33,6 +33,7 @@ from src.planos import (
     texto_do_uso,
 )
 from telas.comum import PAGINAS_DO_MENU, cabecalho_da_pagina, plano_atual
+from telas.conta.guarda import so_com_a_conta_valendo
 
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
 log_da_conta = logging.getLogger("tickerlab.conta")
@@ -48,6 +49,7 @@ def mostrar_planos():
     st.dataframe(pd.DataFrame(tabela_de_planos()).set_index("Recurso"), width="stretch")
 
 
+@so_com_a_conta_valendo
 def _preparar_link_de_pagamento(onde):
     """Cria a página de pagamento do Stripe e guarda o endereço para o botão de link."""
     usuario = st.session_state["usuario"]
@@ -72,6 +74,7 @@ def _preparar_link_de_pagamento(onde):
     st.session_state["link_de_pagamento"] = (onde, url)
 
 
+@so_com_a_conta_valendo
 def _preparar_link_do_portal(onde):
     assinatura = st.session_state.get("assinatura")
     if assinatura is None:

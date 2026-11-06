@@ -202,3 +202,49 @@ def test_sem_aceitar_os_termos_novos_ainda_apaga_a_conta(banco, monkeypatch):
     assert saiu == [True]
     with banco.connect() as conexao:
         assert buscar_por_id(conexao, ana) is None
+
+
+# --- conta bloqueada no incidente (linha 306; revisão cruzada do Codex no #659) ---
+def _aba_aberta_de_quem_vai_ser_bloqueada(banco, monkeypatch):
+    """A aba de Meus dados aberta antes do bloqueio, com o botão de apagar já liberado."""
+    from tests.ajudantes_da_conta import bloquear_pelo_admin
+
+    monkeypatch.setattr(st, "logout", lambda: None)
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app("meus_dados")
+    ana = id_do_usuario(banco, "ana")
+    app.text_input(key="confirmar_exclusao").input("APAGAR").run()
+    bloquear_pelo_admin(banco, ana)
+    return app, ana
+
+
+def test_aba_aberta_da_conta_bloqueada_nao_apaga_a_conta(banco, monkeypatch):
+    """O callback roda antes do corpo do app (onde a releitura para a conta bloqueada): sem a
+    conferência no próprio callback, a aba aberta apagaria a conta e as provas do incidente.
+    Vale mesmo dentro do minuto em que a aba ainda não releu a conta."""
+    from src.banco.usuarios import TEXTO_DA_CONTA_BLOQUEADA
+
+    app, ana = _aba_aberta_de_quem_vai_ser_bloqueada(banco, monkeypatch)
+    app.button(key="apagar_minha_conta").click().run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        assert buscar_por_id(conexao, ana) is not None
+    assert [e.value for e in app.error] == [TEXTO_DA_CONTA_BLOQUEADA]
+
+
+def test_aba_aberta_da_conta_bloqueada_nao_exporta(banco, monkeypatch):
+    app, _ = _aba_aberta_de_quem_vai_ser_bloqueada(banco, monkeypatch)
+    app.button(key="preparar_exportacao").click().run()
+    assert not app.exception
+    assert "exportacao_json" not in app.session_state
+
+
+def test_os_pdfs_da_conta_bloqueada_nao_saem(banco, monkeypatch):
+    """O .zip dos PDFs é montado no clique do download, sem passar pelo corpo do app."""
+    import pytest
+
+    from telas.conta import meus_dados
+
+    _, ana = _aba_aberta_de_quem_vai_ser_bloqueada(banco, monkeypatch)
+    with pytest.raises(PermissionError):
+        meus_dados._meus_pdfs_em_zip(ana)

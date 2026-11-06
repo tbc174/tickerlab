@@ -21,7 +21,7 @@ import sqlalchemy as sa
 
 from src import compartilhamentos as regras
 from src.banco import pdfs_originais as pdfs
-from src.banco.modelo import compartilhamentos, pdfs_originais, relatorios
+from src.banco.modelo import compartilhamentos, pdfs_originais, relatorios, usuarios
 from src.compartilhamentos import FichaCongelada
 from src.planos import conferir_links
 
@@ -284,10 +284,14 @@ def _linha_valendo(
     if not regras.codigo_valido(codigo):
         return None
     assert isinstance(codigo, str)
+    # o link da conta bloqueada no incidente para de abrir (e volta no desbloqueio)
     return conexao.execute(
-        sa.select(compartilhamentos).where(
+        sa.select(compartilhamentos)
+        .join(usuarios, usuarios.c.id == compartilhamentos.c.usuario_id)
+        .where(
             compartilhamentos.c.codigo_hash == regras.hash_do_codigo(codigo),
             _valendo(agora),
+            usuarios.c.bloqueada_em.is_(None),
         )
     ).first()
 

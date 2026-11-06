@@ -62,6 +62,9 @@ ACAO_DIREITO_SUSPENSO = "direito_suspenso"
 ACAO_DIREITO_REATIVADO = "direito_reativado"
 ACAO_CONJUNTO_SUSPENSO = "conjunto_suspenso"
 ACAO_CONJUNTO_REATIVADO = "conjunto_reativado"
+# bloqueio de uma conta no incidente (0045): detalhes só com o motivo (código) e quantas sessões
+ACAO_CONTA_BLOQUEADA = "conta_bloqueada"
+ACAO_CONTA_DESBLOQUEADA = "conta_desbloqueada"
 
 
 @dataclass(frozen=True)
@@ -91,6 +94,19 @@ def registrar(
             criado_em=datetime.now(UTC),
         )
     )
+
+
+def contar(conexao: sa.Connection, acoes: tuple[str, ...]) -> int:
+    """Quantos registros dessas ações a auditoria tem, de todas as contas.
+
+    Serve de marca que só cresce: a auditoria não apaga registro (nem a exclusão da conta). Duas
+    leituras diferentes dizem que uma dessas ações aconteceu entre elas, sem depender do relógio
+    de quem a registrou."""
+    return conexao.execute(
+        sa.select(sa.func.count())
+        .select_from(auditoria)
+        .where(auditoria.c.acao.in_(acoes))
+    ).scalar_one()
 
 
 def listar_recentes(conexao: sa.Connection, limite: int = 50) -> list[Registro]:
