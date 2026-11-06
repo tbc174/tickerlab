@@ -35,6 +35,12 @@ function Selo({ funcionalidade }: { funcionalidade: Funcionalidade }) {
   );
 }
 
+/** O endereço que uma funcionalidade abre: a ferramenta do site ou a página do app (com o ticker). */
+export function linkDaFuncionalidade(f: Funcionalidade): string {
+  if (f.pagina_do_site) return `/${f.pagina_do_site}`;
+  return linkDoApp(f.pagina_do_app ?? "", f.ticker ? { ticker: f.ticker } : {});
+}
+
 /** Cartão com o selo; só o que já existe leva ao app ou à ferramenta do site (o resto não tem link). */
 function CartaoDaFuncionalidade({ f }: { f: Funcionalidade }) {
   if (!f.disponivel) {
@@ -47,22 +53,15 @@ function CartaoDaFuncionalidade({ f }: { f: Funcionalidade }) {
       </article>
     );
   }
-  const parametros: Record<string, string> = f.ticker ? { ticker: f.ticker } : {};
   return (
     <article className="cartao">
       <h3>
         {f.nome} <Selo funcionalidade={f} />
       </h3>
       <p>{f.descricao}</p>
-      {f.pagina_do_site ? (
-        <a className="seta" href={`/${f.pagina_do_site}`}>
-          Abrir a ferramenta
-        </a>
-      ) : (
-        <a className="seta" href={linkDoApp(f.pagina_do_app ?? "", parametros)}>
-          Abrir no app
-        </a>
-      )}
+      <a className="seta" href={linkDaFuncionalidade(f)}>
+        {f.pagina_do_site ? "Abrir a ferramenta" : "Abrir no app"}
+      </a>
     </article>
   );
 }
