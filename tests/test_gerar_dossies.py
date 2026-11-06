@@ -962,3 +962,39 @@ def test_ficha_traz_a_divida_e_as_entregas_so_com_fatos_ja_publicos(
         ("DFP", "2026-03-31", "no prazo", "2026-03-27"),
     ]
     assert "2026-10-20" not in json.dumps(secoes["entrega_das_demonstracoes"])
+
+
+def test_a_pgfn_e_lida_so_para_as_companhias_da_ficha(tmp_path: Path) -> None:
+    """A `pgfn_divida` tem milhões de linhas (toda empresa com dívida ativa): a noite lê só as raízes
+    de CNPJ das companhias com ticker, pela porta, em vez de carregar a tabela inteira e separá-la em
+    um DataFrame por raiz (revisão cruzada do PR 2)."""
+    _mini_base(tmp_path / "base")
+    _divida_e_entregas_da_cpfl(tmp_path / "base")
+    _gravar(
+        tmp_path / "base",
+        "pgfn_divida/2026-09/sida-1-1.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["99999999000199"],
+                "cnpj_basico": ["99999999"],
+                "tipo_divida": ["fgts"],
+                "regiao": ["RJ"],
+                "tipo_devedor": ["principal"],
+                "tipo_situacao": ["Em cobrança"],
+                "situacao_inscricao": ["ATIVA EM COBRANCA"],
+                "ajuizado": [False],
+                "inscricoes": [1],
+                "valor_consolidado": [1.0],
+                "data_do_retrato": [D("2026-09-30")],
+                "disponivel_em": [D("2026-10-10")],
+                "trata_como_pessoa": [False],
+                "origem_sha256": ["c" * 64],
+            }
+        ),
+    )
+    with Porta(tmp_path / "base") as porta:
+        entradas = gerar_dossies.ler_entradas(
+            gerar_dossies.Leitor(porta), D("2026-10-17 07:00")
+        )
+    assert entradas.pgfn_divida is not None
+    assert set(entradas.pgfn_divida) == {CPFL_DIGITOS[:8]}  # a Sem Nada não tem linha

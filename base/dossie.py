@@ -58,7 +58,8 @@ from base.rede.ligacoes_das_fontes import (
 )
 from base.rede.vistas import vista_publicada
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
-from src.banco.coletas import MOSTRAR, licenca_da_fonte, pode_usar
+from src.banco.coletas import MOSTRAR, licenca_da_fonte, licenca_do_site, pode_usar
+from src.links_das_fontes import link_da_fonte
 from src.negociacoes import CARGOS, formatar_valor
 from src.prazos import (
     ATRASO_GRAVE,
@@ -133,9 +134,14 @@ def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:
 
 
 def fontes_das_tabelas(tabelas: Iterable[str]) -> list[str]:
-    """As licenças das fontes das tabelas, sem repetir: vão na seção (a atribuição que a licença pede)."""
+    """As licenças das fontes das tabelas, sem repetir: vão na seção (a atribuição que a licença pede),
+    no texto que o público lê (`licenca_do_site`): sem a decisão interna entre parênteses nem a
+    pendência "perguntar a licença", que `LICENCAS` guarda para a equipe."""
     return sorted(
-        {licenca_da_fonte(TABELAS[nome].familia_da_fonte) for nome in tabelas}
+        {
+            licenca_do_site(licenca_da_fonte(TABELAS[nome].familia_da_fonte))
+            for nome in tabelas
+        }
     )
 
 
@@ -682,7 +688,10 @@ LIMITES = {
         "do TickerLab sobre o índice público da CVM, não uma avaliação, uma opinião nem uma "
         "recomendação. O prazo é o da regra geral da CVM com as prorrogações gerais conhecidas: uma "
         "prorrogação individual ou um feriado local pode explicar um atraso curto, e a empresa pode "
-        "contestar um fato pelo contato do TickerLab. Pessoas não aparecem."
+        "contestar um fato pelo contato do TickerLab. A tabela rotula só as companhias do cadastro de "
+        "companhias abertas da CVM: o emissor estrangeiro, que entrega DFP e ITR com prazo próprio "
+        f"({MESES_DO_DFP_ESTRANGEIRO} meses para a DFP), fica de fora, e a ficha dele diz isso. "
+        "Pessoas não aparecem."
     ),
     "rede": (
         "Ligações da rede de entidades do TickerLab, montada com o Formulário de Referência (FRE), o "
@@ -3214,6 +3223,8 @@ def _itens_e_tabelas_da_cvm(
     ].sort_values("publicado_em", ascending=False)
     if negocios.empty:
         return [], {}
+    # o link vem cru do arquivo do IPE e vai para a coluna "Fonte original": só o endereço seguro
+    negocios = negocios.assign(link=negocios["link"].map(link_da_fonte))
     por_ano = (
         negocios.groupby(negocios["publicado_em"].dt.year.rename("ano"))
         .size()
@@ -3317,7 +3328,8 @@ def _fatos_da_cvm(insolvencia: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame
             "aconteceu_em": pd.to_datetime(primeiras["referencia"]),
             "publico_em": primeiras["conhecido_em"],
             "veiculo": VEICULO_DA_CVM,
-            "link": primeiras["link"],
+            # o link vem cru do arquivo do IPE: só o endereço seguro vira "Fonte original"
+            "link": primeiras["link"].map(link_da_fonte),
         },
         columns=COLUNAS_DOS_FATOS,
     )
@@ -3472,6 +3484,19 @@ COLUNAS_DAS_ENTREGAS = (
 )  # fmt: skip
 DATAS_DAS_ENTREGAS = ("referencia", "prazo", "primeira_entrega", "montado_em")
 SEM_ENTREGA_DEVIDA = "Sem DFP ou ITR com prazo de entrega até {dia} nos dados abertos da CVM lidos pela base."
+# a empresa sem linha na tabela: a base não a rotula (o emissor estrangeiro fica fora do cadastro de
+# companhias abertas da CVM, e a tabela só rotula quem está nele), o que não diz que nada era devido
+SEM_ROTULO_DA_COMPANHIA = (
+    "A base não rotula as entregas desta companhia: a tabela cobre só as companhias do cadastro de "
+    "companhias abertas da CVM, e a falta de linha não diz que nenhuma DFP ou ITR era devida nem que "
+    "todas foram entregues."
+)
+# a tabela é montada de vez em quando e a ficha, toda noite: o documento com prazo depois da montagem
+# ainda não foi conferido (nem entregue nem em falta) e não aparece
+CONFERIDA_ATE = (
+    "A tabela de entregas foi conferida até {dia}: DFP ou ITR com prazo depois desse dia ainda não "
+    "aparece aqui."
+)
 NO_PRAZO, ATRASOU = "no prazo", "atrasou"
 ATRASO_GRAVE_NO_ROTULO, ZONA_CINZENTA_NO_ROTULO = "atraso grave", "zona cinzenta"
 NAO_ENTREGUE = "não entregue até {dia}"
@@ -3479,15 +3504,16 @@ NAO_ENTREGUE = "não entregue até {dia}"
 # compara datas (entrega depois do dia do prazo é atraso) e conta os dias úteis do prazo até a entrega
 REGRA_DO_ATRASO = (
     f"Regra do TickerLab sobre o índice público da CVM: o prazo da DFP é {MESES_DO_DFP} meses depois "
-    f"do fim do exercício ({MESES_DO_DFP_ESTRANGEIRO} para emissor estrangeiro) e o do ITR, "
+    f"do fim do exercício e o do ITR, "
     f"{DIAS_DO_ITR} dias depois do fim do trimestre; prazo em fim de semana ou feriado nacional passa "
     "para o dia útil seguinte, e as prorrogações gerais da CVM (pandemia de 2020, enchentes do Rio "
     "Grande do Sul em 2024) entram. Conta a primeira entrega: 'no prazo' quando ela não passa do dia "
     "do prazo; 'atrasou' quando passa, com os dias úteis do prazo até a entrega; 'atraso grave' quando "
     f"a entrega vem mais de {ATRASO_GRAVE} dias corridos depois do prazo; 'zona cinzenta' quando o "
     f"atraso é de até {ZONA_CINZENTA} dias úteis (um feriado local pode explicar). Documento com o "
-    "prazo vencido e sem entrega até o dia da ficha aparece como 'não entregue até' esse dia, sem "
-    "data inventada."
+    "prazo vencido e sem entrega aparece como 'não entregue até' o último dia que a base conferiu (o "
+    "dia da ficha ou, se a tabela de rótulos é mais antiga, o dia em que ela foi montada), sem data "
+    "inventada."
 )
 
 
@@ -3587,22 +3613,42 @@ def secao_divida_com_a_uniao(
     )
 
 
+def _com_as_datas_das_entregas(rotulos: pd.DataFrame) -> pd.DataFrame:
+    """As colunas de `rotulos_atraso` que a seção lê, com as datas sem fuso e no começo do dia."""
+    linhas = rotulos.reindex(columns=COLUNAS_DAS_ENTREGAS)
+    datas = {
+        c: _sem_fuso_da_coluna(linhas[c]).dt.normalize() for c in DATAS_DAS_ENTREGAS
+    }
+    return linhas.assign(**datas)
+
+
+def _dia_conferido(rotulos: pd.DataFrame, dia: pd.Timestamp) -> pd.Timestamp:
+    """O último dia que a tabela conferiu para a ficha de `dia`: `dia` ou, se a tabela foi montada
+    antes, o dia da montagem (sem `montado_em`, `dia`)."""
+    montagem = _com_as_datas_das_entregas(rotulos)["montado_em"].max()
+    return dia if pd.isna(montagem) else min(pd.Timestamp(montagem), dia)
+
+
 def _entregas_conhecidas_em(rotulos: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
-    """As linhas de `rotulos_atraso` que a ficha de `dia` pode mostrar: prazo vencido até `dia` e, sem
-    entrega, só enquanto a tabela ainda sabia (`dia` até a montagem); do prazo mais novo ao mais antigo.
+    """As linhas de `rotulos_atraso` que a ficha de `dia` pode mostrar, do prazo mais novo ao mais
+    antigo: a entrega com prazo vencido até `dia` e, sem entrega, o documento com prazo vencido até
+    `conferido_ate`, o último dia em que a base conferiu a falta (`dia` ou, se a tabela é mais antiga
+    que a ficha, o dia da montagem). A tabela é montada de vez em quando e a ficha toda noite: o
+    documento que falta não some da ficha no dia seguinte à montagem, mas também não ganha data que a
+    tabela não conferiu (revisão cruzada do PR 2 da virada de 5/11/2026).
 
     A tabela é lida sem `como_era_em` (o documento sem entrega não tem `publico_em`, e a porta o
     esconderia): a regra da data fica aqui, e `_linha_da_entrega` esconde a entrega que ainda era
     futura em `dia`.
     """
-    linhas = rotulos.reindex(columns=COLUNAS_DAS_ENTREGAS)
-    datas = {
-        c: _sem_fuso_da_coluna(linhas[c]).dt.normalize() for c in DATAS_DAS_ENTREGAS
-    }
-    linhas = linhas.assign(**datas)
-    devidas = linhas["prazo"] <= dia
-    sabidas = linhas["primeira_entrega"].notna() | (dia <= linhas["montado_em"])
-    conhecidas = linhas[devidas & sabidas]
+    linhas = _com_as_datas_das_entregas(rotulos)
+    # `clip` mantém o nulo: sem `montado_em`, a comparação abaixo é falsa e não há dia a dizer
+    linhas = linhas.assign(conferido_ate=linhas["montado_em"].clip(upper=dia))
+    entregues = linhas["primeira_entrega"].notna() & (linhas["prazo"] <= dia)
+    em_falta = linhas["primeira_entrega"].isna() & (
+        linhas["prazo"] <= linhas["conferido_ate"]
+    )
+    conhecidas = linhas[entregues | em_falta]
     return conhecidas.sort_values(["prazo", "documento"], ascending=[False, True])
 
 
@@ -3654,7 +3700,8 @@ def _dias_uteis_desde(prazo: pd.Timestamp, dia: pd.Timestamp) -> int:
 
 def _linha_da_entrega(linha: pd.Series, dia: pd.Timestamp) -> dict[str, Any]:
     """Uma entrega como a ficha de `dia` a conhece: entregue até `dia`, com o rótulo e a regra da
-    tabela; sem entrega até `dia`, só o fato "não entregue até" esse dia, sem data inventada."""
+    tabela; entregue depois de `dia`, só o fato "não entregue até" `dia`; sem entrega na tabela, "não
+    entregue até" o último dia em que a base conferiu (`conferido_ate`), sem data inventada."""
     entrega = linha["primeira_entrega"]
     entregue = not pd.isna(entrega) and entrega <= dia
     if entregue:
@@ -3662,8 +3709,9 @@ def _linha_da_entrega(linha: pd.Series, dia: pd.Timestamp) -> dict[str, Any]:
         dias = _inteiro_ou_none(linha["dias_uteis_de_atraso"])
         regra = _regra_da_entrega(rotulo, dias)
     else:
-        rotulo = NAO_ENTREGUE.format(dia=f"{dia:%d/%m/%Y}")
-        dias = _dias_uteis_desde(linha["prazo"], dia)
+        ate = dia if not pd.isna(entrega) else linha["conferido_ate"]
+        rotulo = NAO_ENTREGUE.format(dia=f"{ate:%d/%m/%Y}")
+        dias = _dias_uteis_desde(linha["prazo"], ate)
         regra = f"{rotulo}: {_dias_uteis_em_palavras(dias)} desde o prazo"
     documento = str(linha["documento"])
     return {
@@ -3680,6 +3728,23 @@ def _linha_da_entrega(linha: pd.Series, dia: pd.Timestamp) -> dict[str, Any]:
     }
 
 
+def _avisos_das_entregas(
+    rotulos: pd.DataFrame, linhas: pd.DataFrame, dia: pd.Timestamp
+) -> list[str]:
+    """Os parágrafos antes da regra: a companhia que a tabela não rotula não ganha a frase de que nada
+    era devido (a base só sabe que não a rotulou); a tabela mais velha que a ficha diz até que dia
+    conferiu, e a frase de que nada era devido vale só até esse dia."""
+    if rotulos.empty:
+        return [SEM_ROTULO_DA_COMPANHIA]
+    conferido = _dia_conferido(rotulos, dia)
+    avisos = (
+        [] if conferido >= dia else [CONFERIDA_ATE.format(dia=f"{conferido:%d/%m/%Y}")]
+    )
+    if linhas.empty:
+        avisos.insert(0, SEM_ENTREGA_DEVIDA.format(dia=f"{conferido:%d/%m/%Y}"))
+    return avisos
+
+
 def secao_entrega_das_demonstracoes(
     rotulos: pd.DataFrame | None, hoje: pd.Timestamp
 ) -> dict[str, Any] | None:
@@ -3688,8 +3753,11 @@ def secao_entrega_das_demonstracoes(
     (`REGRA_DO_ATRASO`), sem recalcular nada. None: a base não tem a tabela (sem seção, como na D2).
 
     Sem olhar o futuro: a entrega que ainda não tinha acontecido em `hoje` não aparece (a linha diz
-    "não entregue até" esse dia), e o documento sem entrega só aparece enquanto a tabela ainda sabia
-    dele (`hoje` até a montagem). Sem linha, diz que não havia documento devido até o dia.
+    "não entregue até" esse dia), e o documento sem entrega aparece como "não entregue até" o último
+    dia que a tabela conferiu (`hoje` ou o dia da montagem, o que vier antes; a tabela mais velha que
+    a ficha diz esse dia, `CONFERIDA_ATE`). Com linhas da companhia mas nenhuma devida até o dia
+    conferido, diz que não havia documento devido até ele; sem linha nenhuma, diz que a base não
+    rotula a companhia (`SEM_ROTULO_DA_COMPANHIA`: o emissor estrangeiro fica fora da tabela).
     """
     if rotulos is None:
         return None
@@ -3699,12 +3767,11 @@ def secao_entrega_das_demonstracoes(
         [_linha_da_entrega(linha, dia) for _, linha in conhecidas.iterrows()],
         dtype=object,
     )
-    aviso = [SEM_ENTREGA_DEVIDA.format(dia=f"{dia:%d/%m/%Y}")] if linhas.empty else []
     return _secao(
         "entrega_das_demonstracoes",
         [],
         {"entregas_de_dfp_e_itr": linhas},
-        [*aviso, REGRA_DO_ATRASO],
+        [*_avisos_das_entregas(rotulos, linhas, dia), REGRA_DO_ATRASO],
     )
 
 

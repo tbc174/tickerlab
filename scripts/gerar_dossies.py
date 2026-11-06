@@ -422,10 +422,11 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         tabela: leitor.ler(tabela, [*colunas])
         for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
     }
+    empresas = _empresas(
+        leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
+    )
     return Entradas(
-        empresas=_empresas(
-            leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
-        ),
+        empresas=empresas,
         auditores=leitor.ler("auditores"),
         trocas=leitor.ler("trocas_de_auditor"),
         controladas=controladas,
@@ -482,9 +483,7 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             "cnpj_basico",
         ),
         contestacoes=contestacoes_da_base.ler(),
-        pgfn_divida=_por_raiz(
-            _ler_se_existe(leitor, "pgfn_divida", COLUNAS_DA_DIVIDA), "cnpj_basico"
-        ),
+        pgfn_divida=_divida_das_companhias(leitor, empresas),
         rotulos_atraso=_por_raiz(
             _ler_se_existe(leitor, "rotulos_atraso", COLUNAS_DAS_ENTREGAS), "cnpj"
         ),
@@ -553,6 +552,25 @@ def _ler_se_existe(
     if not leitor.tem_coluna(tabela, colunas[0]):
         return None
     return leitor.ler(tabela, [*colunas])
+
+
+def _divida_das_companhias(
+    leitor: Leitor, empresas: pd.DataFrame
+) -> dict[str, pd.DataFrame] | None:
+    """A `pgfn_divida` só das raízes de CNPJ das companhias da ficha, por raiz; None sem a tabela.
+
+    A tabela tem toda empresa com dívida ativa (milhões de linhas por retrato): o filtro vai à porta,
+    em vez de ler tudo e separar um DataFrame por raiz (revisão cruzada do PR 2 da virada de 5/11).
+    """
+    if not leitor.tem_coluna("pgfn_divida", COLUNAS_DA_DIVIDA[0]):
+        return None
+    raizes = sorted(set(dossie.digitos(empresas["cnpj"]).str[:RAIZ_DO_CNPJ]))
+    if not raizes:
+        return {}
+    divida = leitor.ler(
+        "pgfn_divida", [*COLUNAS_DA_DIVIDA], filtros={"cnpj_basico": raizes}
+    )
+    return _por_raiz(divida, "cnpj_basico")
 
 
 def _por_raiz(

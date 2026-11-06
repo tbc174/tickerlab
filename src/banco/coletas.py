@@ -7,6 +7,7 @@ este registro. Um problema no registro nunca derruba a coleta (fica no log).
 
 import hashlib
 import logging
+import re
 import uuid
 from collections.abc import Callable, Iterable
 from datetime import UTC, date, datetime
@@ -950,6 +951,21 @@ def licenca_da_fonte(fonte: str) -> str:
         if licenca:
             return licenca
     return SEM_LICENCA_CONHECIDA
+
+
+# o parêntese que cita uma decisão (ADR 0075, PR 2) ou um arquivo do repositório (base/regras.py)
+PARENTESES_INTERNO = re.compile(
+    r"\s*\((?:(?:ADR|PR|passo|série|modelo)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)",
+    re.IGNORECASE,
+)
+
+
+def licenca_do_site(licenca: str) -> str:
+    """O texto da licença que o público lê (site, ficha, relatório): sem a decisão interna entre
+    parênteses ("(ADR 0082)") e sem a pendência "perguntar a licença", que `LICENCAS` guarda para a
+    equipe."""
+    sem_decisao = PARENTESES_INTERNO.sub("", licenca)
+    return sem_decisao.replace("perguntar a licença", "reuso em consulta")
 
 
 def revenda_da_fonte(fonte: str) -> str:

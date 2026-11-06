@@ -323,7 +323,30 @@ def test_sem_documento_devido_diz_o_dia_e_a_regra() -> None:
         dossie.REGRA_DO_ATRASO,
         dossie.LIMITES["entrega_das_demonstracoes"],
     ]
-    assert _entregas(pd.DataFrame())["tabelas"] == {}  # a empresa sem linha na tabela
+
+
+def test_a_empresa_sem_linha_na_tabela_nao_ganha_a_frase_de_que_nada_era_devido() -> (
+    None
+):
+    """O emissor estrangeiro entrega DFP e ITR, mas fica fora do cadastro de companhias abertas e a
+    tabela não o rotula (revisão cruzada do PR 2): a ficha diz que a base não rotula a companhia, em
+    vez de afirmar que não havia documento devido."""
+    secao = _entregas(pd.DataFrame())
+    assert secao["tabelas"] == {}
+    assert secao["paragrafos"] == [
+        dossie.SEM_ROTULO_DA_COMPANHIA,
+        dossie.REGRA_DO_ATRASO,
+        dossie.LIMITES["entrega_das_demonstracoes"],
+    ]
+    assert "Sem DFP ou ITR" not in json.dumps(secao, ensure_ascii=False)
+    assert "cadastro de companhias abertas" in dossie.SEM_ROTULO_DA_COMPANHIA
+    assert "emissor estrangeiro" in dossie.LIMITES["entrega_das_demonstracoes"]
+
+
+def test_a_regra_nao_descreve_o_prazo_do_emissor_estrangeiro_que_a_tabela_nao_rotula() -> (
+    None
+):
+    assert "estrangeiro" not in dossie.REGRA_DO_ATRASO
 
 
 def test_cada_entrega_leva_prazo_rotulo_regra_e_fonte() -> None:
@@ -411,12 +434,53 @@ def test_o_documento_com_prazo_depois_de_hoje_fica_fora() -> None:
     assert len(com_o_futuro) == 1
 
 
-def test_o_documento_sem_entrega_so_aparece_enquanto_a_tabela_sabia_dele() -> None:
+def test_o_documento_sem_entrega_fica_na_ficha_ate_o_dia_em_que_a_tabela_foi_montada() -> (
+    None
+):
+    """A tabela de rótulos é montada de vez em quando e a ficha, toda noite (revisão cruzada do PR 2):
+    depois da montagem, o documento vencido e sem entrega continua na ficha como "não entregue até" o
+    dia da montagem (o último que a tabela conferiu), sem data inventada e sem sumir em silêncio."""
     rotulos = _rotulos(VENCIDA_SEM_ENTREGA)  # montada em 21/10
     no_dia_da_montagem = _linhas(_entregas(rotulos, D("2026-10-21")))
     assert [l["rotulo"] for l in no_dia_da_montagem] == ["não entregue até 21/10/2026"]
-    assert _linhas(_entregas(rotulos, D("2026-10-22"))) == []  # a tabela já não sabe
-    assert _linhas(_entregas(rotulos.assign(montado_em=None))) == []
+    assert _linhas(_entregas(rotulos, D("2026-10-22"))) == no_dia_da_montagem
+    (linha,) = _linhas(_entregas(rotulos, D("2026-11-05")))
+    assert linha["regra"] == "não entregue até 21/10/2026: 46 dias úteis desde o prazo"
+    assert "Sem DFP ou ITR" not in json.dumps(_entregas(rotulos, D("2026-11-05")))
+
+
+def test_o_documento_sem_entrega_cujo_prazo_venceu_depois_da_montagem_fica_fora() -> (
+    None
+):
+    """A tabela montada antes do prazo não sabe se o documento foi entregue: sem linha, e sem a frase
+    de que nada era devido quando é esse o único documento; sem `montado_em`, não há dia a dizer."""
+    rotulos = _rotulos(PRAZO_NO_FUTURO)  # prazo 16/11, montada em 21/10
+    assert _linhas(_entregas(rotulos, D("2026-11-20"))) == []
+    assert (
+        _linhas(_entregas(_rotulos(VENCIDA_SEM_ENTREGA).assign(montado_em=None))) == []
+    )
+
+
+def test_a_tabela_mais_velha_que_a_ficha_diz_ate_que_dia_conferiu() -> None:
+    """Depois da montagem, a ficha diz o dia que a tabela conferiu, e a frase de que nada era devido
+    vale só até ele: o ITR com prazo em 16/11 e a tabela de 21/10 não dão "nada devido até 20/11"
+    (revisão cruzada do PR 2)."""
+    conferida = dossie.CONFERIDA_ATE.format(dia="21/10/2026")
+    so_o_futuro = _entregas(_rotulos(PRAZO_NO_FUTURO), D("2026-11-20"))
+    assert so_o_futuro["paragrafos"][:2] == [
+        dossie.SEM_ENTREGA_DEVIDA.format(dia="21/10/2026"),
+        conferida,
+    ]
+    em_falta = _entregas(_rotulos(VENCIDA_SEM_ENTREGA), D("2026-11-05"))
+    assert em_falta["paragrafos"][0] == conferida
+    no_dia = _entregas(_rotulos(VENCIDA_SEM_ENTREGA), D("2026-10-21"))
+    assert conferida not in no_dia["paragrafos"]
+
+
+def test_sem_montado_em_o_aviso_fica_no_dia_da_ficha() -> None:
+    secao = _entregas(_rotulos(PRAZO_NO_FUTURO).assign(montado_em=None))
+    assert secao["paragrafos"][0] == dossie.SEM_ENTREGA_DEVIDA.format(dia="17/10/2026")
+    assert secao["paragrafos"][1] == dossie.REGRA_DO_ATRASO
 
 
 def test_as_entregas_saem_do_prazo_mais_novo_ao_mais_antigo() -> None:
@@ -450,6 +514,57 @@ def test_toda_linha_exposta_tem_veiculo_dia_publico_e_link() -> None:
         assert linha["publico_em"] or linha.get("rotulo", "").startswith(
             "não entregue até"
         )
+
+
+def test_a_fonte_da_secao_nao_leva_a_nota_interna_da_licenca() -> None:
+    """A licença da PGFN em `LICENCAS` guarda a decisão interna ("perguntar a licença"); a ficha, como
+    o site, mostra só a atribuição (revisão cruzada do PR 2). Vale para toda tabela da base."""
+    assert _divida(_pgfn())["fontes"] == [
+        "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)"
+    ]
+    for nome in dossie.TABELAS:
+        for fonte in dossie.fontes_das_tabelas([nome]):
+            assert "perguntar" not in fonte and "ADR" not in fonte, (nome, fonte)
+
+
+def test_o_link_vindo_do_dado_so_vira_fonte_original_depois_do_filtro() -> None:
+    """Negócios e insolvência carregam o link do arquivo da fonte (IPE), que agora aparece na coluna
+    "Fonte original": um endereço fora da CVM e da SEC, ou com outro esquema, não vira link
+    (`src/links_das_fontes`), como já valia para ratings e assembleias (revisão cruzada do PR 2)."""
+    links = [
+        "https://www.rad.cvm.gov.br/doc/1",
+        "javascript:alert(1)",
+        "https://cvm.gov.br.golpe.example/login",
+    ]
+    eventos = pd.DataFrame(
+        {
+            "rotulo": ["Fato relevante"] * 3,
+            "assunto": ["Aquisição da Enercan"] * 3,
+            "publicado_em": [D("2025-03-01"), D("2025-02-01"), D("2025-01-01")],
+            "link": links,
+        }
+    )
+    negocios = dossie.secao_negocios(eventos)
+    assert negocios is not None
+    assert [l["link"] for l in negocios["tabelas"]["negocios"]] == [
+        links[0],
+        None,
+        None,
+    ]
+    fatos = dossie._fatos_da_cvm(
+        pd.DataFrame(
+            {
+                "rotulo": ["recuperacao_judicial"] * 3,
+                "protocolo": ["P1", "P2", "P3"],
+                "referencia": [D("2025-03-10")] * 3,
+                "conhecido_em": [D("2025-03-12")] * 3,
+                "link": links,
+            }
+        ),
+        HOJE,
+    )
+    assert fatos["link"].iloc[0] == links[0]
+    assert fatos["link"].iloc[1:].isna().all()
 
 
 def test_as_secoes_nao_julgam_nem_citam_pessoa() -> None:
