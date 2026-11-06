@@ -9,7 +9,8 @@
 #   sal ficam no gerenciador de senhas do Tiago, no cofre `ServidorNotebook-Segredos` e no rclone.conf do
 #   servidor (600). Este script não lê nem imprime nenhum dos dois.
 # - `restrito/` NÃO sobe (licença de dado, ADR 0115; pode próprio) e a sala de dados também não (documento de
-#   cliente): o script recusa qualquer origem com esses nomes.
+#   cliente): o script recusa qualquer origem com esses nomes e filtra as duas pastas em qualquer profundidade.
+#   As fontes com nome de pessoa que ainda estão em `bruto/` (`FONTES_SO_NO_RESTRITO`) também ficam de fora.
 # - Ritmo limitado (BWLIMIT) para não travar a internet de casa; só um envio por vez (flock): se o anterior
 #   ainda está subindo, este sai sem erro e o próximo cron continua de onde parou.
 # - Cada parte é independente: se uma falha, as outras ainda sobem. No fim sai com 1 e a linha "FALHAS: ..."
@@ -34,7 +35,18 @@ PASTA_DE_VERSOES=${PASTA_DE_VERSOES:-_versoes}
 BWLIMIT=${BWLIMIT:-"07:00,4M 23:00,off"}
 LOG=${LOG:-$HOME/logs/backup-acervo-drive.log}
 DATA_DAS_VERSOES=${DATA_DAS_VERSOES:-$(date +%F)}
-NOMES_PROIBIDOS="restrito tickerlab-sala"
+NOMES_PROIBIDOS="restrito tickerlab-sala . .."
+
+# Fontes cujo original traz nome de pessoa ou é só de uso interno (`acervo.FONTES_COM_PESSOA` e
+# `coletas.FONTES_SO_INTERNAS`): o lugar delas é `restrito/`, mas enquanto o `mover_acervo_restrito` não rodou
+# ainda há cópia delas em `bruto/`. Não sobem de jeito nenhum (LGPD: o que sobe nunca mais sai do Drive).
+# Há teste que compara esta lista com a do código.
+FONTES_SO_NO_RESTRITO="rfb-cnpj pgfn-divida mte-lista-suja ibama-autos ibama-embargos cvm-enet-notas antt-autos-de-transito djen-partes djen-processos datajud"
+# Filtros sem âncora: valem em qualquer profundidade da origem, não só na raiz.
+FILTROS_DE_EXCLUSAO=(--exclude "restrito/**" --exclude "tickerlab-sala/**")
+for fonte in $FONTES_SO_NO_RESTRITO; do
+    FILTROS_DE_EXCLUSAO+=(--exclude "$fonte/**")
+done
 
 mkdir -p "$(dirname "$LOG")"
 
@@ -45,6 +57,12 @@ if ! flock -n 9; then
 fi
 
 falhas=()
+
+# Lista vazia nunca pode virar "tudo certo": sem nenhuma parte não há backup.
+if [ -z "${PARTES_DO_ACERVO// /}" ] && [ -z "${BACKUPS_QUE_SOBEM// /}" ]; then
+    echo "FALHAS: sem-partes-para-subir"
+    exit 1
+fi
 
 # Recusa origem que tenha um nome proibido em qualquer pedaço do caminho.
 origem_permitida() {
@@ -73,7 +91,7 @@ subir() {
     echo "$(date -Is) início: $nome" >> "$LOG"
     "$RCLONE" copy "$origem" "$REMOTO:$destino" \
         --backup-dir "$REMOTO:$PASTA_DE_VERSOES/$DATA_DAS_VERSOES/$nome" \
-        --exclude "/restrito/**" \
+        "${FILTROS_DE_EXCLUSAO[@]}" \
         --min-age 5m \
         --bwlimit "$BWLIMIT" \
         --transfers 4 --checkers 8 \

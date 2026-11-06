@@ -14,6 +14,12 @@ Nada neste arquivo é segredo: a senha e o sal do `crypt` ficam só no gerenciad
 
 **Não sobe:** `restrito/` (licença de dado, ADR 0115; só com "pode" próprio) e a sala de dados
 (`tickerlab-sala`, documento de cliente). Os scripts recusam essas origens e há teste que cobra.
+
+Também **não sobem** as fontes com nome de pessoa ou só de uso interno (`rfb-cnpj`, `pgfn-divida`, `mte-lista-suja`,
+`ibama-autos`, `ibama-embargos`, `cvm-enet-notas`, `antt-autos-de-transito`, `djen-partes`, `djen-processos`,
+`datajud`) que ainda estiverem dentro de `bruto/` (o `mover_acervo_restrito` as leva para `restrito/` quando o
+autor der o "pode"): o que sobe ao Drive nunca mais sai (LGPD). Os filtros valem em qualquer profundidade e há
+teste que compara a lista com `acervo.FONTES_COM_PESSOA` e `coletas.FONTES_SO_INTERNAS`.
 Outras pastas do acervo (`base/`, `derivados/`, `intradiario/`...) só entram com o "pode" do autor: basta
 listá-las em `PARTES_DO_ACERVO`.
 
@@ -37,7 +43,8 @@ listá-las em `PARTES_DO_ACERVO`.
 
 `scripts/conferir-backup-acervo-drive.sh` (cron: dia 3, 10h): por parte, arquivos e bytes na origem e no Drive e
 `rclone cryptcheck` (compara o hash do arquivo cifrado guardado no Drive com o que a origem geraria, sem
-baixar nada). Passa quando **toda a origem está no Drive** e nenhuma diferença aparece.
+baixar nada). Passa quando **toda a origem está no Drive** e nenhuma diferença aparece. Só confere arquivos com mais de 7 horas
+(`MIN_IDADE`), para o que foi coletado depois do envio das 3h15 não acusar falta à toa.
 
 ## Teste de restauração (todo mês)
 

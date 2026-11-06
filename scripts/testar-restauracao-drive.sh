@@ -16,15 +16,28 @@ export RCLONE_CONFIG=${RCLONE_CONFIG:-$HOME/.config/tickerlab/backup-drive/rclon
 REMOTO=${REMOTO:-cripto}
 TAMANHO_DA_AMOSTRA=${TAMANHO_DA_AMOSTRA:-15}
 TAMANHO_MAXIMO=${TAMANHO_MAXIMO:-100M}
+# Só sorteia arquivo com idade para já ter subido (ver conferir-backup-acervo-drive.sh).
+MIN_IDADE=${MIN_IDADE:-7h}
 LOG=${LOG:-$HOME/logs/testar-restauracao-drive.log}
 mkdir -p "$(dirname "$LOG")"
+
+# Fontes cujo original traz nome de pessoa ou é só de uso interno (`acervo.FONTES_COM_PESSOA` e
+# `coletas.FONTES_SO_INTERNAS`): o lugar delas é `restrito/`, mas enquanto o `mover_acervo_restrito` não rodou
+# ainda há cópia delas em `bruto/`. Não sobem de jeito nenhum (LGPD: o que sobe nunca mais sai do Drive).
+# Há teste que compara esta lista com a do código.
+FONTES_SO_NO_RESTRITO="rfb-cnpj pgfn-divida mte-lista-suja ibama-autos ibama-embargos cvm-enet-notas antt-autos-de-transito djen-partes djen-processos datajud"
+# Filtros sem âncora: valem em qualquer profundidade da origem, não só na raiz.
+FILTROS_DE_EXCLUSAO=(--exclude "restrito/**" --exclude "tickerlab-sala/**")
+for fonte in $FONTES_SO_NO_RESTRITO; do
+    FILTROS_DE_EXCLUSAO+=(--exclude "$fonte/**")
+done
 
 temporaria=$(mktemp -d)
 trap 'rm -rf "$temporaria"' EXIT
 
 lista="$temporaria/lista.txt"
 for parte in $PARTES_DO_ACERVO; do
-    "$RCLONE" lsf -R --files-only --max-size "$TAMANHO_MAXIMO" "$ACERVO/$parte" 2>>"$LOG" \
+    "$RCLONE" lsf -R --files-only --max-size "$TAMANHO_MAXIMO" --min-age "$MIN_IDADE" "${FILTROS_DE_EXCLUSAO[@]}" "$ACERVO/$parte" 2>>"$LOG" \
         | sed "s|^|$parte/|" >> "$lista"
 done
 if [ ! -s "$lista" ]; then

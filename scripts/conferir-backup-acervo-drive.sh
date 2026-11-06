@@ -20,6 +20,20 @@ RCLONE=${RCLONE:-$HOME/bin/rclone}
 export RCLONE_CONFIG=${RCLONE_CONFIG:-$HOME/.config/tickerlab/backup-drive/rclone.conf}
 REMOTO=${REMOTO:-cripto}
 LOG=${LOG:-$HOME/logs/conferir-backup-acervo-drive.log}
+# Só confere o que já tinha idade para ter subido no último envio (o das 3h15 pega o que tem mais de 5 min):
+# 7 horas depois das 10h são 3h, antes do envio. Sem isso, arquivo coletado depois do envio acusaria falha à toa.
+MIN_IDADE=${MIN_IDADE:-7h}
+
+# Fontes cujo original traz nome de pessoa ou é só de uso interno (`acervo.FONTES_COM_PESSOA` e
+# `coletas.FONTES_SO_INTERNAS`): o lugar delas é `restrito/`, mas enquanto o `mover_acervo_restrito` não rodou
+# ainda há cópia delas em `bruto/`. Não sobem de jeito nenhum (LGPD: o que sobe nunca mais sai do Drive).
+# Há teste que compara esta lista com a do código.
+FONTES_SO_NO_RESTRITO="rfb-cnpj pgfn-divida mte-lista-suja ibama-autos ibama-embargos cvm-enet-notas antt-autos-de-transito djen-partes djen-processos datajud"
+# Filtros sem âncora: valem em qualquer profundidade da origem, não só na raiz.
+FILTROS_DE_EXCLUSAO=(--exclude "restrito/**" --exclude "tickerlab-sala/**")
+for fonte in $FONTES_SO_NO_RESTRITO; do
+    FILTROS_DE_EXCLUSAO+=(--exclude "$fonte/**")
+done
 mkdir -p "$(dirname "$LOG")"
 
 falhas=()
@@ -36,13 +50,13 @@ numero_do_json() {
 # conferir NOME ORIGEM DESTINO_NO_REMOTO
 conferir() {
     local nome=$1 origem=$2 destino=$3 json_o json_d ao bo ad bd diferencas
-    json_o=$("$RCLONE" size "$origem" --json --min-age 5m --exclude "/restrito/**" 2>>"$LOG")
+    json_o=$("$RCLONE" size "$origem" --json --min-age "$MIN_IDADE" "${FILTROS_DE_EXCLUSAO[@]}" 2>>"$LOG")
     json_d=$("$RCLONE" size "$REMOTO:$destino" --json 2>>"$LOG")
     ao=$(printf '%s' "$json_o" | numero_do_json count)
     bo=$(printf '%s' "$json_o" | numero_do_json bytes)
     ad=$(printf '%s' "$json_d" | numero_do_json count)
     bd=$(printf '%s' "$json_d" | numero_do_json bytes)
-    "$RCLONE" cryptcheck "$origem" "$REMOTO:$destino" --one-way --min-age 5m --exclude "/restrito/**" \
+    "$RCLONE" cryptcheck "$origem" "$REMOTO:$destino" --one-way --min-age "$MIN_IDADE" "${FILTROS_DE_EXCLUSAO[@]}" \
         --combined - 2>>"$LOG" | grep -v '^= ' > "$LOG.diferencas.$$"
     local codigo=${PIPESTATUS[0]}
     diferencas=$(wc -l < "$LOG.diferencas.$$")
@@ -66,6 +80,9 @@ for pasta in $BACKUPS_QUE_SOBEM; do
 done
 
 echo "TOTAL origem $total_arquivos_origem arquivos / $total_bytes_origem bytes; Drive $total_arquivos_drive arquivos / $total_bytes_drive bytes"
+if [ "$total_arquivos_origem" -eq 0 ]; then
+    falhas+=("origem-vazia")  # nada para conferir não é "tudo certo"
+fi
 if [ "${#falhas[@]}" -gt 0 ]; then
     echo "FALHAS: ${falhas[*]}"
     exit 1

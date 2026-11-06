@@ -108,6 +108,10 @@ def test_script_nao_sabe_apagar_nem_espelhar_e_nao_carrega_segredo(
         "delete",
         "deletefile",
         "rmdirs",
+        " move ",
+        "moveto",
+        "dedupe",
+        "cleanup",
         "--password",
         "pass=",
         "token",
@@ -136,11 +140,42 @@ def test_restrito_e_sala_de_dados_nunca_sobem(
         origem = Path(chamada.split()[1]).relative_to(tmp_path)
         assert "restrito" not in origem.parts
         assert "tickerlab-sala" not in origem.parts
-        assert "--exclude /restrito/**" in chamada
+        assert "--exclude restrito/**" in chamada
+        assert "--exclude tickerlab-sala/**" in chamada
+
+
+def _fontes_do_script(script: Path) -> set[str]:
+    for linha in script.read_text().splitlines():
+        if linha.startswith("FONTES_SO_NO_RESTRITO="):
+            return set(linha.split("=", 1)[1].strip('"').split())
+    raise AssertionError(f"{script.name} não define FONTES_SO_NO_RESTRITO")
+
+
+@pytest.mark.parametrize("script", TODOS, ids=lambda s: s.name)
+def test_fontes_com_pessoa_nao_sobem_e_a_lista_acompanha_o_codigo(script: Path) -> None:
+    """O que traz nome de pessoa nunca sobe ao Drive (o que sobe nunca mais sai), mesmo se ainda estiver em
+    `bruto/`; se o código ganhar uma fonte restrita nova, esta lista tem de acompanhar."""
+    from src import acervo
+    from src.banco import coletas
+
+    esperadas = set(acervo.FONTES_COM_PESSOA) | set(coletas.FONTES_SO_INTERNAS)
+    assert _fontes_do_script(script) == esperadas
 
 
 @precisa_de_bash
-@pytest.mark.parametrize("proibida", ["restrito", "bruto/restrito"])
+def test_fontes_com_pessoa_entram_como_filtro_em_toda_subida(
+    ambiente: dict[str, str],
+) -> None:
+    rodar(BACKUP, ambiente)
+    feitas = chamadas(ambiente)
+    assert feitas
+    for chamada in feitas:
+        for fonte in _fontes_do_script(BACKUP):
+            assert f"--exclude {fonte}/**" in chamada
+
+
+@precisa_de_bash
+@pytest.mark.parametrize("proibida", ["restrito", "bruto/restrito", ".", ".."])
 def test_recusa_origem_com_nome_proibido(
     ambiente: dict[str, str], proibida: str
 ) -> None:
@@ -152,6 +187,16 @@ def test_recusa_origem_com_nome_proibido(
             "PARTES_DO_ACERVO": proibida,
             "BACKUPS_QUE_SOBEM": "tickerlab-sala",
         },
+    )
+    assert resultado.returncode == 1
+    assert "FALHAS:" in resultado.stdout
+    assert chamadas(ambiente) == []
+
+
+@precisa_de_bash
+def test_lista_vazia_nao_vira_tudo_certo(ambiente: dict[str, str]) -> None:
+    resultado = rodar(
+        BACKUP, {**ambiente, "PARTES_DO_ACERVO": "", "BACKUPS_QUE_SOBEM": ""}
     )
     assert resultado.returncode == 1
     assert "FALHAS:" in resultado.stdout
@@ -235,6 +280,21 @@ def test_conferencia_passa_quando_tudo_bate(ambiente: dict[str, str]) -> None:
         "TOTAL origem 2 arquivos / 10 bytes; Drive 2 arquivos / 10 bytes"
         in resultado.stdout
     )
+
+
+@precisa_de_bash
+def test_conferencia_com_origem_vazia_nao_passa(ambiente: dict[str, str]) -> None:
+    rclone = Path(ambiente["RCLONE"])
+    rclone.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [ "$1" = size ]; then echo \'{"count":0,"bytes":0}\'; exit 0; fi\n'
+        "exit 0\n"
+    )
+    resultado = rodar(
+        CONFERENCIA, {**ambiente, "PARTES_DO_ACERVO": "bruto", "BACKUPS_QUE_SOBEM": ""}
+    )
+    assert resultado.returncode == 1
+    assert "origem-vazia" in resultado.stdout
 
 
 @precisa_de_bash
