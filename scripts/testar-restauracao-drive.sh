@@ -10,7 +10,10 @@ set -uo pipefail
 umask 077
 
 ACERVO=${ACERVO:-/mnt/dados/tickerlab-acervo}
-PARTES_DO_ACERVO=${PARTES_DO_ACERVO-"bruto manifesto ancoras"}
+PARTES_DO_ACERVO=${PARTES_DO_ACERVO-""}
+# O acervo vai em pacotes: o empacotador baixa alguns pacotes inteiros e arquivos avulsos (pelo índice), decifra
+# e confere o sha256 contra a origem. Vazio desliga.
+EMPACOTADOR=${EMPACOTADOR-"python3 $HOME/bin/empacotar_acervo_drive.py"}
 RCLONE=${RCLONE:-$HOME/bin/rclone}
 export RCLONE_CONFIG=${RCLONE_CONFIG:-$HOME/.config/tickerlab/backup-drive/rclone.conf}
 REMOTO=${REMOTO:-cripto}
@@ -35,18 +38,37 @@ done
 temporaria=$(mktemp -d)
 trap 'rm -rf "$temporaria"' EXIT
 
+pacotes_com_problema=0
+if [ -n "${EMPACOTADOR// /}" ]; then
+    export ACERVO RCLONE REMOTO
+    # shellcheck disable=SC2086
+    $EMPACOTADOR amostra 2>>"$LOG" | grep -v '^FALHAS:'
+    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+        pacotes_com_problema=1
+    fi
+fi
+
 lista="$temporaria/lista.txt"
+: > "$lista"
 for parte in $PARTES_DO_ACERVO; do
     "$RCLONE" lsf -R --files-only --max-size "$TAMANHO_MAXIMO" --min-age "$MIN_IDADE" "${FILTROS_DE_EXCLUSAO[@]}" "$ACERVO/$parte" 2>>"$LOG" \
         | sed "s|^|$parte/|" >> "$lista"
 done
 if [ ! -s "$lista" ]; then
+    if [ -n "${EMPACOTADOR// /}" ]; then
+        # só pacotes: o resultado é o da amostra do empacotador
+        if [ "$pacotes_com_problema" -ne 0 ]; then
+            echo "FALHAS: restauracao-drive"
+            exit 1
+        fi
+        exit 0
+    fi
     echo "FALHAS: sem arquivo para testar"
     exit 1
 fi
 
 baixados=0
-falhas=0
+falhas=$pacotes_com_problema
 while IFS= read -r arquivo; do
     destino="$temporaria/baixado"
     rm -rf "$destino"

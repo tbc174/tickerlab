@@ -14,8 +14,12 @@ umask 077
 
 ACERVO=${ACERVO:-/mnt/dados/tickerlab-acervo}
 PASTA_DE_BACKUPS=${PASTA_DE_BACKUPS:-/mnt/dados/backups}
-PARTES_DO_ACERVO=${PARTES_DO_ACERVO-"bruto manifesto ancoras"}
-BACKUPS_QUE_SOBEM=${BACKUPS_QUE_SOBEM-"tickerlab tickerlab-pc tickerlab-acervo tickerlab-acessos casa base-antes-manifestos"}
+PARTES_DO_ACERVO=${PARTES_DO_ACERVO-""}
+BACKUPS_QUE_SOBEM=${BACKUPS_QUE_SOBEM-"tickerlab tickerlab-acessos casa base-antes-manifestos"}
+# O acervo e os backups grandes vão em pacotes: quem os confere é o empacotador (mesma conta: arquivos e bytes
+# origem × Drive pelos índices, tamanho de cada pacote no Drive; `--completo` relê tudo e confere o sha256).
+EMPACOTADOR=${EMPACOTADOR-"python3 $HOME/bin/empacotar_acervo_drive.py"}
+CONFERENCIA_DOS_PACOTES=${CONFERENCIA_DOS_PACOTES:-conferir}
 RCLONE=${RCLONE:-$HOME/bin/rclone}
 export RCLONE_CONFIG=${RCLONE_CONFIG:-$HOME/.config/tickerlab/backup-drive/rclone.conf}
 REMOTO=${REMOTO:-cripto}
@@ -79,9 +83,28 @@ for pasta in $BACKUPS_QUE_SOBEM; do
     conferir "backups-$pasta" "$PASTA_DE_BACKUPS/$pasta" "backups/$pasta"
 done
 
-echo "TOTAL origem $total_arquivos_origem arquivos / $total_bytes_origem bytes; Drive $total_arquivos_drive arquivos / $total_bytes_drive bytes"
-if [ "$total_arquivos_origem" -eq 0 ]; then
-    falhas+=("origem-vazia")  # nada para conferir não é "tudo certo"
+if [ -n "${PARTES_DO_ACERVO// /}${BACKUPS_QUE_SOBEM// /}" ]; then
+    echo "TOTAL origem $total_arquivos_origem arquivos / $total_bytes_origem bytes; Drive $total_arquivos_drive arquivos / $total_bytes_drive bytes"
+    if [ "$total_arquivos_origem" -eq 0 ]; then
+        falhas+=("origem-vazia")  # nada para conferir não é "tudo certo"
+    fi
+fi
+
+if [ -n "${EMPACOTADOR// /}" ]; then
+    export ACERVO PASTA_DE_BACKUPS RCLONE REMOTO
+    # shellcheck disable=SC2086
+    saida=$($EMPACOTADOR $CONFERENCIA_DOS_PACOTES 2>>"$LOG")
+    codigo=$?
+    printf '%s\n' "$saida" | grep -v '^FALHAS:'
+    itens=$(printf '%s\n' "$saida" | sed -n 's/^FALHAS: *//p')
+    if [ -n "$itens" ]; then
+        # shellcheck disable=SC2206
+        falhas+=($itens)
+    elif [ "$codigo" -ne 0 ]; then
+        falhas+=("pacotes")
+    fi
+elif [ -z "${PARTES_DO_ACERVO// /}${BACKUPS_QUE_SOBEM// /}" ]; then
+    falhas+=("sem-partes-para-conferir")
 fi
 if [ "${#falhas[@]}" -gt 0 ]; then
     echo "FALHAS: ${falhas[*]}"
