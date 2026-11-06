@@ -20,6 +20,7 @@ from base.arquivo import (
     lote_eua,
     lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
     lote_patentes,
     lote_reguladores,
     lote_sec,
@@ -156,6 +157,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
         "noaa", "ao", "nao", "pna", "teleconexoes"
     ),
 }
+
+_LOTE_NORDICOS_SO_ARQUIVO = (
+    "juros e câmbio dos bancos centrais nórdicos guardados como a fonte publica; a tabela com contrato "
+    "no catálogo ainda não existe"
+)
 
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
@@ -555,11 +561,17 @@ DESTINOS: dict[str, Destino] = {
             "termos-banco-mundial",
             *lote_eua.termos(),
             *lote_europa_rba.termos(),
+            *lote_nordicos.termos(),
             *lote_cadastros.termos(),
             *lote_atencao.termos(),
             *lote_clima.termos(),
             *lote_patentes.termos(),
         )
+    },
+    # lote nórdico (linha 511, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/nordicos", _LOTE_NORDICOS_SO_ARQUIVO)
+        for f in lote_nordicos.fontes()
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
     # publicam; a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria

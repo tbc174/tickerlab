@@ -38,6 +38,7 @@ from base.arquivo import (
     lote_eua,
     lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
     lote_organismos,
     lote_patentes,
     lote_reguladores,
@@ -128,6 +129,7 @@ TERMOS = {
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    **lote_nordicos.termos(),  # Riksbank e Norges Bank (linha 511, 05/11/2026)
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
     **lote_europa_rba.termos(),  # CBS, Istat e RBA (linha 512, 05/11/2026)
@@ -1574,6 +1576,7 @@ FONTES: list[Fonte] = [
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY-SA, termos do site de 21/10/2026, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
+    *lote_nordicos.fontes(),  # Riksbank e Norges Bank: juros e câmbio (linha 511)
     *lote_organismos.fontes(),  # BCE, OCDE, Eurostat, BIS, FMI, Banco Mundial, NASA, NOAA, GLEIF
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
