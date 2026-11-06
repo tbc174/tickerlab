@@ -173,11 +173,12 @@ def test_fatos_da_cvm_com_conhecido_em_utc():
             "protocolo": ["p1", "p2"],
             "referencia": ["2026-02-01", "2026-06-01"],
             "conhecido_em": _utc(ANTES, DEPOIS),
-            "link": ["l1", "l2"],
+            # endereço da CVM: o link do IPE passa pelo filtro de `src/links_das_fontes`
+            "link": ["https://www.rad.cvm.gov.br/1", "https://www.rad.cvm.gov.br/2"],
         }
     )
     fatos = dossie._fatos_da_cvm(insolvencia, HOJE)
-    assert fatos["link"].tolist() == ["l1"]
+    assert fatos["link"].tolist() == ["https://www.rad.cvm.gov.br/1"]
 
 
 def test_fatos_da_receita_com_disponivel_em_utc():
