@@ -79,6 +79,7 @@ _SEM_VIGIA = {
             "tce-ce",
             "goias",
             "msestado",
+            "sefazpe",  # linha 578: licença CC BY na ficha do conjunto, sem página de termos
             "spcapital",
             "conab",
             "comexstat",
