@@ -103,7 +103,7 @@
     "coletado_em": "origem_coletada_em"
   },
   "sinonimos_de_tempo": {
-    "inscrito_em": "a_conferir",
+    "inscrito_em": "aconteceu_em",
     "atualizado_em": "aconteceu_em",
     "visto_em": "visto_em",
     "disponivel_em": "publico_em",

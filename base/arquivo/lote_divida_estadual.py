@@ -40,6 +40,8 @@ SEMANAL = "semanal"
 SEPARADOR_GUARDADO = ";"
 CODIFICACAO = "utf-8-sig"  # o "-sig" tira a marca de ordem de bytes, se houver
 LIMITE_DO_CAMPO = 1024**2
+# a coluna do documento só tem o CNPJ (dígitos, "*" e pontuação), nunca "CNPJ - razão social"
+SO_O_DOCUMENTO = re.compile(r"[0-9*./\-]{14,18}")
 
 # ---- Paraná (Sefa-PR) ----
 PORTAL_DO_PR = "https://listadevedores.sefa.pr.gov.br"
@@ -97,8 +99,10 @@ def filtrar_csv_do_pr(origem: IO[bytes], destino: IO[bytes]) -> int:
     for linha in leitor:
         if len(linha) != len(cabecalho):
             continue
-        if not e_cnpj(linha[documento]) or tem_cpf_no_texto(
-            linha[i] for i in de_pessoa
+        if (
+            not SO_O_DOCUMENTO.fullmatch(linha[documento].strip())
+            or not e_cnpj(linha[documento])
+            or tem_cpf_no_texto(linha[i] for i in de_pessoa)
         ):
             continue
         escritor.writerow([linha[i] for i in mantidas])
@@ -121,6 +125,9 @@ def alvo_do_zip_do_pr(url: str) -> Alvo:
 
     def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
         bruto = destino.with_name(destino.name + ".bruto")
+        bruto.unlink(
+            missing_ok=True
+        )  # sobra de uma rodada morta à força: tem CPF e nome
         try:
             cabecalhos = cliente.baixar(url, bruto)
             with (

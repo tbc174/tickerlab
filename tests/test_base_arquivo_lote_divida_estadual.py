@@ -153,6 +153,18 @@ def test_filtro_guarda_so_cnpj_sem_nome_e_sem_cpf():
         assert nome_ou_cpf not in guardado
 
 
+def test_filtro_recusa_documento_com_texto_junto_do_cnpj():
+    """A coluna do documento é gravada como veio: "CNPJ - razão social" levaria o nome ao disco."""
+    bruto = (
+        CABECALHO
+        + _linha("1", f"{EMPRESA} - FULANO 029.037.377-89")
+        + _linha("2", EMPRESA)
+    )
+    guardado = _filtrar(bruto)
+    assert len(guardado.strip().splitlines()) == 2
+    assert "FULANO" not in guardado and "029.037" not in guardado
+
+
 def test_filtro_mantem_datas_e_valores_como_a_fonte_escreve():
     guardado = _filtrar(CABECALHO + _linha("1", EMPRESA))
     assert '"18/06/1973"' in guardado and '"1787.10"' in guardado
@@ -196,6 +208,15 @@ def test_obter_nao_deixa_arquivo_quando_o_zip_muda_de_forma(tmp_path, conteudo):
     with pytest.raises((ValueError, zipfile.BadZipFile)):
         lote.alvo_do_zip_do_pr(ZIP).obter(servidor, tmp_path / "saida.csv")  # type: ignore[misc]
     assert list(tmp_path.iterdir()) == []
+
+
+def test_obter_apaga_o_bruto_que_sobrou_de_uma_rodada_morta(tmp_path):
+    destino = tmp_path / "saida.csv"
+    sobra = tmp_path / "saida.csv.bruto"
+    sobra.write_bytes(b"CPF e nome de rodada anterior")
+    servidor = Servidor({ZIP: _zip(CABECALHO + _linha("1", EMPRESA))})
+    lote.alvo_do_zip_do_pr(ZIP).obter(servidor, destino)  # type: ignore[misc]
+    assert [p.name for p in tmp_path.iterdir()] == ["saida.csv"]
 
 
 def test_obter_recusa_zip_com_dois_csvs(tmp_path):
