@@ -97,24 +97,35 @@ pregão do dia (`GET /api/v1/estudos/pregao/ultimo` e `/{data}`), os destaques d
 ### Consulta e exportação das tabelas da base
 
 A página Dados do site consulta e exporta cada tabela da base por estas rotas (`src/api_v1/base_tabelas.py`;
-virada de 5/11/2026, fase 1, PR 3). Elas servem só o que a porta da base serve (`base/porta`): nenhuma
-tabela de pessoa natural, nenhuma linha marcada como de pessoa, e cada resposta traz a origem (fonte,
-licença e a data em que cada linha ficou pública).
+virada de 5/11/2026, fase 1, PR 3). Só sai tabela que `base.dossie.pode_consultar` deixa: que pode ser
+mostrada, que a porta da base (`base/porta`) serve por Parquet, que diz em `publico_em` o dia em que
+cada linha ficou pública e que separa as linhas de pessoa (a situação especial e a cadastral do CNPJ, que
+cobrem MEI e empresário individual sem essa marca, esperam por ela). Nenhuma tabela de pessoa natural,
+nenhuma linha marcada como de pessoa, e cada resposta traz a origem (fonte e licença; o dia público e a
+linhagem são colunas da própria tabela).
+
+A consulta corta o futuro sempre: sem `como_era_em`, vale hoje (a linha que só fica pública depois não
+sai), e a data nunca pode ser futura. A ordem é total: as chaves do contrato e, para desempatar, as
+demais colunas, então páginas seguidas não perdem nem repetem linha.
 
 | Rota | O que devolve |
 |---|---|
 | `GET /api/v1/base/tabelas` | as tabelas consultáveis, cada uma com as colunas (nome, tipo e descrição), as chaves, a versão do contrato, a fonte, a licença e o começo do histórico; cache público de 1 hora |
-| `GET /api/v1/base/tabelas/{nome}` | uma página de linhas em JSON, na ordem das chaves do contrato, com `total`, `colunas`, `linhas` e a origem; `cnpj` filtra (14 dígitos ou com pontuação), `como_era_em` mostra a base como era naquele dia (só o que já era público), `limite` (padrão 100, até 1.000) e `deslocamento` paginam |
-| `GET /api/v1/base/tabelas/{nome}.csv` | a tabela inteira (mesmos filtros), em fluxo, UTF-8 com BOM (o Excel abre com acento certo), até 100.000 linhas; o teto vai no cabeçalho `X-TickerLab-Teto` |
+| `GET /api/v1/base/tabelas/{nome}` | uma página de linhas em JSON, na ordem das chaves do contrato, com `total`, `colunas`, `linhas` e a origem; `cnpj` filtra (14 dígitos ou com pontuação), `como_era_em` mostra a base como era naquele dia (só o que já era público; padrão: hoje), `limite` (padrão 100, até 1.000) e `deslocamento` (até 100.000; para ir além, filtre por CNPJ) paginam; `teto_do_csv` diz quantas linhas o CSV leva |
+| `GET /api/v1/base/tabelas/{nome}.csv` | a mesma consulta (mesmos filtros) em CSV, de uma consulta só, em fluxo, UTF-8 com BOM (o Excel abre com acento certo), até 100.000 linhas; cada linha leva no fim `fonte_do_dado` e `licenca_do_dado`; o teto vai no cabeçalho `X-TickerLab-Teto`. Quando o arquivo para antes do fim, a última linha começa com `#` e diz por quê: "Arquivo cortado em 100000 linhas" (a tabela tem mais) ou "Arquivo incompleto" (a leitura falhou no meio, com a resposta já em 200) |
 
 Erros: 404 para tabela que não existe, de pessoa, barrada ou fora da porta (a mesma resposta, para
 não revelar o que existe); 422 para entrada inválida (CNPJ, data futura, limite fora da faixa); 429
-quando o IP passa do limite por minuto; 503 quando a porta não abre ou a tabela não está nesta base.
+quando o IP passa do limite por minuto; 503 quando a porta não abre, a tabela não está nesta base ou
+as portas ao mesmo tempo estão todas ocupadas (no máximo 2 por processo, cada uma com 512MB e 2
+threads do DuckDB: o contêiner é pequeno e serve também o webhook).
 
 **Em produção isto ainda não responde:** a API v1 está desligada (`TICKERLAB_API_V1=1` liga) e o
 contêiner da API (`compose.yaml`, serviço `tickerlab-api`) não monta o acervo da base; para a página
 Dados consultar de verdade, a API precisa de `TICKERLAB_ACERVO` apontando para a cópia da base montada
-no contêiner. Até lá, o painel da página diz que a consulta está indisponível e o link do CSV não abre.
+no contêiner. Até lá, a página Dados não mostra a coluna "Consulta", a frase nem o painel: eles nascem
+escondidos e só aparecem quando `GET /api/v1/base/tabelas` responde. A `fidc_informe` (410 colunas)
+não cabe nos 512MB da porta nem numa leitura simples: a consulta dela dá 503 até um PR próprio.
 
 Sem `taxa`, a taxa livre de risco é o CDI do período (zero se o Banco Central não responder), como
 na tela. Toda resposta traz `ativo` com o período real, a origem dos preços (`atual`,

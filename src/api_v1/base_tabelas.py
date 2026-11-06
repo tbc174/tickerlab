@@ -8,20 +8,27 @@ inexistente responde o mesmo 404, sem dizer o motivo. As colunas de pessoa
 (`base.dossie.COLUNAS_DE_PESSOA`) nunca saem, e a view da porta já esconde as linhas de pessoa
 (ADR 0075).
 
-Toda linha sai com a origem: a fonte e a licença vão no envelope; o dia em que a linha ficou pública
-(`publico_em`) e a linhagem (`origem_sha256`, `origem_coletada_em`...) são colunas da própria tabela.
-`como_era_em` corta o futuro: só o que já era público naquele dia, e a data nunca pode ser futura.
+Toda linha sai com a origem: a fonte e a licença vão no envelope do JSON e em duas colunas de cada
+linha do CSV (`fonte_do_dado`, `licenca_do_dado`); o dia em que a linha ficou pública (`publico_em`)
+e a linhagem (`origem_sha256`, `origem_coletada_em`...) são colunas da própria tabela. A consulta
+corta o futuro sempre: `como_era_em` (hoje, quando não vem) deixa só o que já era público naquele
+dia, e a data nunca pode ser futura.
 
-A porta abre a cada pedido (uma conexão do DuckDB não se compartilha entre threads) e a página é
-cortada no SQL (`LIMIT`/`OFFSET`): o contêiner da API tem pouca memória, e o CSV sai em partes.
+A porta abre a cada pedido (uma conexão do DuckDB não se compartilha entre threads), com pouca
+memória, poucas threads e no máximo `PORTAS_AO_MESMO_TEMPO` abertas: o contêiner da API é pequeno e
+serve também o webhook. A página do JSON é cortada no SQL (`LIMIT`/`OFFSET`, até
+`DESLOCAMENTO_MAXIMO`); o CSV sai de uma consulta só, em lotes, até `TETO_DO_CSV` linhas, e quando
+para antes do fim (teto ou falha da base) a última linha do arquivo diz isso.
 """
 
 import csv
 import io
+import itertools
 import json
 import math
+import threading
 from collections.abc import Iterator, Mapping
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from datetime import date, datetime
 from decimal import Decimal
 from functools import lru_cache
@@ -29,7 +36,7 @@ from functools import lru_cache
 import duckdb
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from base import cnpj as cnpjs
@@ -45,14 +52,34 @@ from src.banco.coletas import licenca_da_fonte
 
 LIMITE_PADRAO = 100
 LIMITE_MAXIMO = 1000
-LINHAS_POR_PAGINA_DO_CSV = 5_000
 TETO_DO_CSV = 100_000
+# a paginação do JSON vai até onde o CSV vai: além disso, filtre por CNPJ (o OFFSET alto ordena tudo)
+DESLOCAMENTO_MAXIMO = TETO_DO_CSV
+VETORES_POR_LOTE_DO_CSV = 2  # cada vetor do DuckDB tem 2.048 linhas
 CABECALHO_DO_TETO = "X-TickerLab-Teto"
-# o contêiner da API tem 1536m (`compose.yaml`): a porta fica com pouco e a página é cortada no SQL
+# o contêiner da API tem 1536m e meia CPU (`compose.yaml`): a porta fica com pouca memória e poucas
+# threads (o DuckDB vê os núcleos da máquina, não a cota, e reserva memória por thread; com 2, o CSV
+# de 100 mil linhas da `demonstracoes_como_era` cabe nos 512MB, medido no acervo em 5/11/2026)
 MEMORIA_DA_PORTA = "512MB"
+THREADS_DA_PORTA = 2
+PORTAS_AO_MESMO_TEMPO = (
+    2  # 2 × 512MB nos 1536m, com folga para o resto da API e o webhook
+)
 CACHE_PUBLICO = "public, max-age=3600"  # a base muda uma vez por dia
 NAO_ENCONTRADA = "Tabela não encontrada."
 INDISPONIVEL = "A consulta à base está indisponível agora. Tente novamente mais tarde."
+OCUPADA = "A consulta à base está ocupada agora. Tente de novo em alguns segundos."
+# a origem em cada linha do CSV: o arquivo repassado leva a atribuição que a licença pede
+COLUNAS_DA_ORIGEM = ("fonte_do_dado", "licenca_do_dado")
+AVISO_DO_TETO = (
+    "# Arquivo cortado em {teto} linhas (o teto do CSV): a tabela tem mais linhas. "
+    "Filtre por CNPJ para baixar menos."
+)
+AVISO_DA_FALHA = (
+    "# Arquivo incompleto: a leitura da base falhou depois de {linhas} linhas. "
+    "Baixe de novo mais tarde."
+)
+ERROS_DA_BASE = (duckdb.Error, OSError, KeyError)
 AVISO = (
     "Cada linha diz quando ficou pública (publico_em) e de onde veio (fonte e licença). "
     "Nada aqui é recomendação de investimento."
@@ -62,7 +89,7 @@ APELIDOS_DAS_DATAS = {
     "publico_em": "Dia em que a linha ficou pública: um dado só entra a partir dele",
     "coletado_em": "Dia em que o TickerLab coletou a linha",
 }
-BOM = "﻿"  # o Excel abre UTF-8 com acento certo quando o arquivo começa com o BOM
+BOM = "\ufeff"  # o Excel abre UTF-8 com acento certo quando o arquivo começa com o BOM
 
 router = APIRouter(
     prefix="/v1/base/tabelas",
@@ -70,9 +97,13 @@ router = APIRouter(
 )
 
 
+# as vagas valem para o processo inteiro (todas as threads do servidor), não para um pedido
+_VAGAS = threading.BoundedSemaphore(PORTAS_AO_MESMO_TEMPO)
+
+
 def abrir_porta() -> Porta:
     """A porta da base, uma por pedido (os testes trocam esta função)."""
-    return porta_da_base.abrir(memoria=MEMORIA_DA_PORTA)
+    return porta_da_base.abrir(memoria=MEMORIA_DA_PORTA, threads=THREADS_DA_PORTA)
 
 
 def limpar_cache() -> None:
@@ -154,10 +185,11 @@ def _lista() -> tuple[dict[str, object], ...]:
 
 
 # --- o pedido -------------------------------------------------------------------------------------
-def _dia_pedido(request: Request, como_era_em: str | None) -> date | None:
-    """O `como_era_em` como data; 422 se não é AAAA-MM-DD ou está no futuro (nada do futuro sai)."""
+def _dia_pedido(request: Request, como_era_em: str | None) -> date:
+    """O `como_era_em` como data (hoje, quando não vem: a linha que só fica pública depois não sai);
+    422 se não é AAAA-MM-DD ou está no futuro (nada do futuro sai)."""
     if como_era_em is None:
-        return None
+        return base_publica.hoje()
     try:
         dia = date.fromisoformat(como_era_em)
     except ValueError:
@@ -172,8 +204,12 @@ def _dia_pedido(request: Request, como_era_em: str | None) -> date | None:
 def _conferir_pagina(request: Request, limite: int, deslocamento: int) -> None:
     if not 1 <= limite <= LIMITE_MAXIMO:
         raise recusar(request, 422, f"limite: um número de 1 a {LIMITE_MAXIMO}.")
-    if deslocamento < 0:
-        raise recusar(request, 422, "deslocamento: zero ou mais.")
+    if not 0 <= deslocamento <= DESLOCAMENTO_MAXIMO:
+        raise recusar(
+            request,
+            422,
+            f"deslocamento: de 0 a {DESLOCAMENTO_MAXIMO}; para ir além, filtre por CNPJ.",
+        )
 
 
 def _filtro_do_cnpj(
@@ -201,6 +237,18 @@ def _filtro_do_cnpj(
 
 
 # --- a porta --------------------------------------------------------------------------------------
+@contextmanager
+def _vaga(request: Request) -> Iterator[None]:
+    """Uma das `PORTAS_AO_MESMO_TEMPO` vagas, devolvida no fim; 503 se estão todas ocupadas (não
+    espera: o pedido que esperasse prenderia uma thread do servidor)."""
+    if not _VAGAS.acquire(blocking=False):
+        raise recusar(request, 503, OCUPADA)
+    try:
+        yield
+    finally:
+        _VAGAS.release()
+
+
 def _abrir(request: Request) -> Porta:
     """A porta aberta; 503, sem dizer onde nem por quê, se a base não está neste servidor."""
     try:
@@ -215,7 +263,7 @@ def _porta(request: Request) -> Iterator[Porta]:
     with _abrir(request) as porta:
         try:
             yield porta
-        except (duckdb.Error, OSError, KeyError) as erro:
+        except ERROS_DA_BASE as erro:
             raise recusar(request, 503, INDISPONIVEL) from erro
 
 
@@ -265,22 +313,30 @@ def _texto_csv(valor: object, tipo: str) -> str:
     return str(convertido)
 
 
-def _linhas_csv(pagina: pd.DataFrame, tipos: Mapping[str, str]) -> bytes:
-    """As linhas da página em CSV (vírgula, aspas quando preciso), sem cabeçalho."""
+def _linhas_csv(
+    pagina: pd.DataFrame, tipos: Mapping[str, str], origem: tuple[str, str]
+) -> bytes:
+    """As linhas da página em CSV (vírgula, aspas quando preciso), cada uma com a fonte e a licença
+    no fim, sem cabeçalho."""
     saida = io.StringIO()
     escritor = csv.writer(saida)
     nomes = [str(c) for c in pagina.columns]
     for linha in pagina.itertuples(index=False, name=None):
-        escritor.writerow(
-            [_texto_csv(v, tipos.get(c, "")) for c, v in zip(nomes, linha, strict=True)]
-        )
+        celulas = [
+            _texto_csv(v, tipos.get(c, "")) for c, v in zip(nomes, linha, strict=True)
+        ]
+        escritor.writerow([*celulas, *origem])
     return saida.getvalue().encode("utf-8")
 
 
-def _cabecalho_csv(colunas: list[str]) -> bytes:
+def _linha_csv(celulas: list[str], comeco: str = "") -> bytes:
     saida = io.StringIO()
-    csv.writer(saida).writerow(colunas)
-    return (BOM + saida.getvalue()).encode("utf-8")
+    csv.writer(saida).writerow(celulas)
+    return (comeco + saida.getvalue()).encode("utf-8")
+
+
+def _cabecalho_csv(colunas: list[str]) -> bytes:
+    return _linha_csv([*colunas, *COLUNAS_DA_ORIGEM], BOM)
 
 
 # --- as rotas -------------------------------------------------------------------------------------
@@ -297,62 +353,74 @@ def listar(request: Request) -> JSONResponse:
     )
 
 
-def _pagina_do_csv(
+def _lotes_do_csv(
     porta: Porta,
     nome: str,
-    dia: date | None,
+    dia: date,
     filtros: Mapping[str, object],
     colunas: list[str],
-    deslocamento: int,
-) -> pd.DataFrame:
-    return porta.ler_pagina(
+) -> Iterator[pd.DataFrame]:
+    """Uma linha a mais que o teto: se ela vem, a tabela tem mais e o arquivo diz que cortou."""
+    return porta.ler_em_lotes(
         nome,
         como_era_em=dia,
         filtros=filtros,
         colunas=colunas,
-        limite=LINHAS_POR_PAGINA_DO_CSV,
-        deslocamento=deslocamento,
+        limite=TETO_DO_CSV + 1,
+        vetores_por_lote=VETORES_POR_LOTE_DO_CSV,
     )
 
 
 def _comeco_do_csv(
-    request: Request, porta: Porta, nome: str, dia: date | None, cnpj: str | None
-) -> tuple[list[str], dict[str, object], dict[str, str], pd.DataFrame]:
-    """As colunas, o filtro, os tipos e a primeira página, lidos antes de responder: base que falha
-    dá 503, não um CSV cortado no meio."""
+    request: Request, porta: Porta, nome: str, dia: date, cnpj: str | None
+) -> tuple[list[str], dict[str, str], Iterator[pd.DataFrame]]:
+    """As colunas, os tipos e os lotes, com o primeiro já lido antes de responder: base que falha
+    logo dá 503, não um CSV vazio com 200."""
     try:
         colunas = _colunas_na_base(porta, nome)
         filtros = _filtro_do_cnpj(request, nome, cnpj, colunas)
         tipos = porta.tipos(nome)
-        primeira = _pagina_do_csv(porta, nome, dia, filtros, colunas, 0)
-    except (duckdb.Error, OSError, KeyError) as erro:
+        lotes = _lotes_do_csv(porta, nome, dia, filtros, colunas)
+        primeiro = next(lotes, None)
+    except ERROS_DA_BASE as erro:
         raise recusar(request, 503, INDISPONIVEL) from erro
-    return colunas, filtros, tipos, primeira
+    lidos = [] if primeiro is None else [primeiro]
+    return colunas, tipos, itertools.chain(lidos, lotes)
 
 
 def _csv(
-    porta: Porta,
-    nome: str,
-    dia: date | None,
-    filtros: Mapping[str, object],
     colunas: list[str],
     tipos: Mapping[str, str],
-    primeira: pd.DataFrame,
+    origem: tuple[str, str],
+    lotes: Iterator[pd.DataFrame],
 ) -> Iterator[bytes]:
-    """O CSV em partes: BOM e cabeçalho, a primeira página já lida e as seguintes até o fim ou o teto;
-    a porta fecha no fim, mesmo se quem pediu desligou no meio."""
+    """O CSV em partes: BOM e cabeçalho, os lotes até o fim ou o teto e, se parou antes do fim (o
+    teto, ou a base que falhou no meio, com a resposta já em 200), uma última linha que diz isso."""
+    yield _cabecalho_csv(colunas)
+    enviadas = 0
     try:
-        yield _cabecalho_csv(colunas)
-        pagina, enviadas = primeira, 0
-        while not pagina.empty:
-            pagina = pagina.head(TETO_DO_CSV - enviadas)
-            yield _linhas_csv(pagina, tipos)
-            enviadas += len(pagina)
-            if enviadas >= TETO_DO_CSV or len(pagina) < LINHAS_POR_PAGINA_DO_CSV:
-                break
-            pagina = _pagina_do_csv(porta, nome, dia, filtros, colunas, enviadas)
-    finally:
-        porta.fechar()
+        for lote in lotes:
+            cabem = TETO_DO_CSV - enviadas
+            yield _linhas_csv(lote.head(cabem), tipos, origem)
+            enviadas += min(len(lote), cabem)
+            if len(lote) > cabem:
+                yield _linha_csv([AVISO_DO_TETO.format(teto=TETO_DO_CSV)])
+                return
+    except ERROS_DA_BASE:
+        yield _linha_csv([AVISO_DA_FALHA.format(linhas=enviadas)])
+
+
+def _fechando(pilha: ExitStack, partes: Iterator[bytes]) -> Iterator[bytes]:
+    """As partes do CSV, já começadas: a primeira sai aqui, e daí em diante descartar o fluxo (quem
+    pediu desligou, mesmo antes do primeiro pedaço) fecha a porta e devolve a vaga. Um gerador que
+    nunca começou não roda o `with`, e a vaga se perderia até reiniciar a API."""
+
+    def fluxo() -> Iterator[bytes]:
+        with pilha:
+            yield from partes
+
+    iniciado = fluxo()
+    return itertools.chain([next(iniciado)], iniciado)
 
 
 @router.get("/{nome}.csv")
@@ -362,27 +430,29 @@ def exportar(
     cnpj: str | None = None,
     como_era_em: str | None = None,
 ) -> StreamingResponse:
-    """A tabela em CSV (UTF-8 com BOM, vírgula), página a página, até `TETO_DO_CSV` linhas."""
-    _tabela_consultavel(request, nome)
+    """A tabela em CSV (UTF-8 com BOM, vírgula), em lotes, até `TETO_DO_CSV` linhas. Qualquer erro
+    antes de responder fecha a porta e devolve a vaga (a pilha só passa ao fluxo quando ele começa)."""
+    tabela = _tabela_consultavel(request, nome)
     dia = _dia_pedido(request, como_era_em)
-    porta = _abrir(request)
-    try:
-        colunas, filtros, tipos, primeira = _comeco_do_csv(
-            request, porta, nome, dia, cnpj
+    origem = _origem(nome, tabela)
+    with ExitStack() as pilha:
+        pilha.enter_context(_vaga(request))
+        porta = pilha.enter_context(_abrir(request))
+        colunas, tipos, lotes = _comeco_do_csv(request, porta, nome, dia, cnpj)
+        partes = _csv(
+            colunas, tipos, (str(origem["fonte"]), str(origem["licenca"])), lotes
         )
-    except HTTPException:
-        porta.fechar()
-        raise
-    return StreamingResponse(
-        _csv(porta, nome, dia, filtros, colunas, tipos, primeira),
-        media_type="text/csv; charset=utf-8",
-        headers={
-            **cabecalhos_do_site(request),
-            "Cache-Control": CACHE_PUBLICO,
-            "Content-Disposition": f'attachment; filename="{nome}.csv"',
-            CABECALHO_DO_TETO: str(TETO_DO_CSV),
-        },
-    )
+        fluxo = _fechando(pilha.pop_all(), partes)
+        return StreamingResponse(
+            fluxo,
+            media_type="text/csv; charset=utf-8",
+            headers={
+                **cabecalhos_do_site(request),
+                "Cache-Control": CACHE_PUBLICO,
+                "Content-Disposition": f'attachment; filename="{nome}.csv"',
+                CABECALHO_DO_TETO: str(TETO_DO_CSV),
+            },
+        )
 
 
 @router.get("/{nome}")
@@ -398,7 +468,7 @@ def consultar(
     tabela = _tabela_consultavel(request, nome)
     dia = _dia_pedido(request, como_era_em)
     _conferir_pagina(request, limite, deslocamento)
-    with _porta(request) as porta:
+    with _vaga(request), _porta(request) as porta:
         colunas = _colunas_na_base(porta, nome)
         filtros = _filtro_do_cnpj(request, nome, cnpj, colunas)
         total = porta.contar(nome, como_era_em=dia, filtros=filtros)
@@ -413,12 +483,13 @@ def consultar(
         tipos = porta.tipos(nome)
     corpo = {
         **_origem(nome, tabela),
-        "como_era_em": dia.isoformat() if dia else None,
+        "como_era_em": dia.isoformat(),
         "total": total,
         "limite": limite,
         "deslocamento": deslocamento,
         "colunas": colunas,
         "linhas": _linhas_json(pagina, tipos),
+        "teto_do_csv": TETO_DO_CSV,
         "aviso": AVISO,
     }
     return JSONResponse(

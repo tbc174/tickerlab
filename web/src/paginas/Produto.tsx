@@ -36,9 +36,8 @@ const BLOCOS = [
     id: "bloco-exportar",
     titulo: "Exportar",
     texto:
-      "O relatório sai em PDF, e o original que você gerou fica guardado para baixar de novo. Cada " +
-      "tabela da base pode ser consultada e baixada em CSV na página Dados, sem login; a API com " +
-      "chave, para quem integra, ainda está em construção, sem data marcada.",
+      "O relatório sai em PDF, e o original que você gerou fica guardado para baixar de novo. A " +
+      "exportação da base em tabela e a API aberta ainda estão em construção, sem data marcada.",
     link: "/metodologia.html#relatorios-em-pdf",
     rotulo: "Como os relatórios são feitos",
   },

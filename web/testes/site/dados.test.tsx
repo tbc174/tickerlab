@@ -102,7 +102,20 @@ describe("página Dados", () => {
       expect(html, t.tabela).toContain(`href="${enderecoDaConsulta(t.tabela, "", "csv")}"`);
     }
     expect(html.match(/>só no app</g)?.length).toBe(catalogo.tabelas.length - consultaveis.length);
-    expect(html).toContain("<th>Consulta</th>");
+    expect(html).toMatch(/<th data-com-consulta="" hidden="">Consulta<\/th>/);
+  });
+
+  it("a coluna, a frase e o painel da consulta nascem escondidos: só aparecem quando a API responde (revisão do PR 3)", () => {
+    const html = pagina();
+    const marcados = html.match(/<[a-z0-9]+ [^>]*data-com-consulta=""[^>]*>/g) ?? [];
+    const modulos = html.match(/data-modulo-da-lista=""/g)?.length ?? 0;
+    // um cabeçalho por módulo, uma célula por tabela, a frase e o painel
+    expect(marcados.length).toBe(modulos + catalogo.tabelas.length + 2);
+    for (const tag of marcados) expect(tag).toContain('hidden=""');
+    expect(html).toMatch(/<div [^>]*data-com-consulta=""[^>]*><div data-consulta-base="">/);
+    // nada promete a tabela inteira: o CSV tem teto, e a última linha do arquivo avisa quando corta
+    expect(semTags(html)).not.toMatch(/tabela inteira/);
+    expect(semTags(html)).toContain("a última linha do arquivo avisa");
   });
 
   it("o painel de consulta vem depois da lista e antes das fontes, e a página carrega o ferramentas.js", () => {

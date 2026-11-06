@@ -52,6 +52,13 @@ const RITMOS: Record<RegistroDeFonte["ritmo"], string> = {
 const SEM_RESPOSTA = "licença em consulta";
 // tabela que a consulta aberta ainda não serve (fora da porta ou conferida no repositório)
 const SEM_CONSULTA = "Ainda sem consulta aberta: esta tabela aparece pela ficha no app.";
+// a coluna, a frase e o painel da consulta nascem escondidos e só aparecem quando a API responde
+// (`mostrarSeAConsultaResponde`, ligada pelo ferramentas.js): sem ela, a página não promete a consulta
+const COM_CONSULTA = { "data-com-consulta": "", hidden: true } as const;
+const FRASE_DA_CONSULTA =
+  '"Consulta" mostra as primeiras linhas da tabela aqui mesmo, sem login; "CSV" baixa a mesma consulta, ' +
+  "cada linha com a fonte, a licença e o dia em que ficou pública, até o teto de linhas da API (o painel " +
+  "mostra quanto); se a tabela tiver mais, a última linha do arquivo avisa.";
 
 function dataPorExtenso(iso: string): string {
   const [ano, mes, dia] = iso.split("-");
@@ -89,7 +96,7 @@ function LinhaDaTabela({ t }: { t: TabelaDaBase }) {
         ) : null}
       </td>
       <td>{dataPorExtenso(t.historico_desde)}</td>
-      <td className="dados-consulta">
+      <td className="dados-consulta" {...COM_CONSULTA}>
         {t.consultavel ? (
           <>
             <button type="button" className="dados-consultar" data-consultar={t.tabela}>
@@ -122,7 +129,7 @@ function TabelasDoModulo({ chave, nome }: { chave: string; nome: string }) {
               <th>Fonte</th>
               <th>Atualização</th>
               <th>Desde</th>
-              <th>Consulta</th>
+              <th {...COM_CONSULTA}>Consulta</th>
             </tr>
           </thead>
           <tbody>
@@ -282,8 +289,9 @@ export function Dados() {
 
       <h2 id={ancora(SECOES[2])}>{SECOES[2]}</h2>
       <p>
-        {`As ${totais.tabelas} tabelas em ${totais.modulos} módulos. "Desde" é o começo do histórico guardado; "atualização" é a frequência com que a fonte publica. "Consulta" mostra as primeiras linhas da tabela aqui mesmo, sem login; "CSV" baixa a tabela inteira, cada linha com a fonte, a licença e o dia em que ficou pública.`}
+        {`As ${totais.tabelas} tabelas em ${totais.modulos} módulos. "Desde" é o começo do histórico guardado; "atualização" é a frequência com que a fonte publica.`}
       </p>
+      <p {...COM_CONSULTA}>{FRASE_DA_CONSULTA}</p>
       <p>
         <input
           type="search"
@@ -300,8 +308,10 @@ export function Dados() {
       {modulos.map((m) => (
         <TabelasDoModulo key={m.chave} chave={m.chave} nome={m.nome} />
       ))}
-      <div data-consulta-base="">
-        <ConsultaDaBase />
+      <div {...COM_CONSULTA}>
+        <div data-consulta-base="">
+          <ConsultaDaBase />
+        </div>
       </div>
 
       <h2 id={ancora(SECOES[3])}>{SECOES[3]}</h2>

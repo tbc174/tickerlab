@@ -728,3 +728,101 @@ def test_tipos_diz_o_que_e_dia_o_que_e_momento_e_o_que_e_texto(tmp_path):
     assert tipos["valor"] == "DOUBLE"
     assert tipos["disponivel_em"].startswith("TIMESTAMP")  # o arquivo guarda o momento
     assert tipos["publico_em"] == "DATE"  # o apelido entrega só o dia
+
+
+REPETIDOS = _tabela(
+    colunas={
+        "cnpj": ("CNPJ", TEXTO),
+        "valor": ("Valor", NUMERO),
+        "nota": ("Nota", TEXTO),
+        "disponivel_em": ("Público em", DATA),
+    },
+    chaves=(
+        "cnpj",
+    ),  # a chave do contrato que se repete na base (negociacoes, controladas...)
+    datas={"publico_em": "disponivel_em"},
+)
+LINHAS_EM_LOTES = 5_000  # mais que dois vetores do DuckDB (2.048 linhas): vários lotes
+
+
+def _porta_com_chave_repetida(pasta) -> Porta:
+    # a mesma chave em vários arquivos e fora de ordem, como na base real
+    for parte, valores in enumerate([[3.0, 1.0], [2.0, 5.0], [4.0]]):
+        _gravar(
+            pasta,
+            f"repetidos/{parte}.parquet",
+            pd.DataFrame(
+                {
+                    "cnpj": ["A"] * len(valores),
+                    "valor": valores,
+                    "nota": ["x"] * len(valores),
+                    "disponivel_em": pd.to_datetime(["2024-01-15"] * len(valores)),
+                }
+            ),
+        )
+    _gravar(
+        pasta,
+        "muitos/tudo.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [f"C{i % 7}" for i in range(LINHAS_EM_LOTES)],
+                "valor": [float(LINHAS_EM_LOTES - i) for i in range(LINHAS_EM_LOTES)],
+                "nota": ["y"] * LINHAS_EM_LOTES,
+                "disponivel_em": pd.to_datetime(
+                    ["2024-01-15", "2025-01-15"] * (LINHAS_EM_LOTES // 2)
+                ),
+            }
+        ),
+    )
+    return Porta(
+        pasta,
+        tabelas={"repetidos": REPETIDOS, "muitos": REPETIDOS},
+        arquivos={"repetidos": "repetidos/*.parquet", "muitos": "muitos/*.parquet"},
+        contratos=pasta / "contratos",
+    )
+
+
+def test_ler_pagina_desempata_a_chave_repetida_pelas_outras_colunas(tmp_path):
+    """Regressão (revisão do PR 3): com a chave repetida, cada página era uma consulta com empate, e o
+    DuckDB não repete a ordem entre empatadas; o CSV de 5.000 em 5.000 perdia umas linhas e repetia
+    outras, com o total certo. A ordem total (chaves e depois as outras colunas) percorre a tabela
+    inteira, sem repetir, e do mesmo jeito em toda leitura."""
+    with _porta_com_chave_repetida(tmp_path) as p:
+        uma_a_uma = pd.concat(
+            [p.ler_pagina("repetidos", limite=1, deslocamento=k) for k in range(5)]
+        )
+        inteira = p.ler("repetidos")
+        so_valor = p.ler_pagina("repetidos", colunas=["valor"], limite=10)
+    assert list(uma_a_uma["valor"]) == [1.0, 2.0, 3.0, 4.0, 5.0]
+    assert sorted(uma_a_uma["valor"]) == sorted(inteira["valor"])
+    assert list(so_valor["valor"]) == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+
+def test_ler_em_lotes_traz_numa_consulta_o_que_as_paginas_trazem(tmp_path):
+    """Os lotes, juntos, são as primeiras `limite` linhas na ordem de `ler_pagina`, sem `OFFSET`;
+    `como_era_em` e os filtros valem do mesmo jeito; depois do último lote não vem nada."""
+    with _porta_com_chave_repetida(tmp_path) as p:
+        lotes = list(p.ler_em_lotes("muitos", limite=LINHAS_EM_LOTES))
+        juntos = pd.concat(lotes, ignore_index=True)
+        paginas = p.ler_pagina("muitos", limite=LINHAS_EM_LOTES)
+        cortados = pd.concat(p.ler_em_lotes("muitos", limite=10), ignore_index=True)
+        em_2024 = pd.concat(
+            p.ler_em_lotes(
+                "muitos",
+                como_era_em="2024-12-31",
+                filtros={"cnpj": "C1"},
+                colunas=["cnpj", "valor"],
+                limite=LINHAS_EM_LOTES,
+            ),
+            ignore_index=True,
+        )
+        assert p.contar("muitos", como_era_em="2024-12-31", filtros={"cnpj": "C1"}) == (
+            len(em_2024)
+        )
+        with pytest.raises(ValueError, match="limite"):
+            next(p.ler_em_lotes("muitos", limite=0))
+    assert len(lotes) > 1
+    pd.testing.assert_frame_equal(juntos, paginas)
+    pd.testing.assert_frame_equal(cortados, paginas.head(10))
+    assert list(em_2024.columns) == ["cnpj", "valor"]
+    assert set(em_2024["cnpj"]) == {"C1"} and em_2024["valor"].is_monotonic_increasing

@@ -6201,7 +6201,7 @@
     },
     {
       "atraso": "Do dia: é um retrato do cadastro na data da coleta",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6212,7 +6212,7 @@
     },
     {
       "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O gestor de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6223,7 +6223,7 @@
     },
     {
       "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O administrador de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -6245,7 +6245,7 @@
     },
     {
       "atraso": "O do CDA",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Por mês desde 2005, quanto do valor comprado pelos fundos chega a um CNPJ de empresa pela ligação do painel (a meta da tabela conferida é 95% em cada ano).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6256,7 +6256,7 @@
     },
     {
       "atraso": "O do CDA",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o menor.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6597,7 +6597,7 @@
     },
     {
       "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -6608,7 +6608,7 @@
     },
     {
       "atraso": "Nenhum",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Os códigos das fontes setoriais.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
@@ -6641,7 +6641,7 @@
     },
     {
       "atraso": "O do cadastro do IF.data",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por data-base.",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -6718,7 +6718,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -6729,7 +6729,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -6751,7 +6751,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -6762,7 +6762,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Situação cadastral de cada estabelecimento do CNPJ (nula, ativa, suspensa, inapta ou baixada), um retrato por mês guardado: o histórico \"como era na data\" nasce da sequência dos retratos.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7466,7 +7466,7 @@
     },
     {
       "atraso": "Cada coluna usa só o que era público na véspera da previsão",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Colunas do modelo de atraso na entrega como eram na data da previsão: uma linha por exemplo de rotulos_atraso (mesma chave).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7477,7 +7477,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "De que companhia listada é cada entidade que os reguladores enxergam.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -7521,7 +7521,7 @@
     },
     {
       "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Negócios de M&A do middle market tirados dos posts das assessorias independentes, uma linha por página de negócio: as empresas, o tipo e o sentido.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -7543,7 +7543,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "As empresas de cada negócio de M&A das assessorias (ma_assessorias), uma linha por empresa de cada página, ligadas à rede de entidades só por regras exatas.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -7554,7 +7554,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Uma linha por página de negócio de M&A com o id_negocio, o mesmo para as páginas do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo negócio): mesmas partes.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",

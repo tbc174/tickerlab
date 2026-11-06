@@ -9,6 +9,7 @@ import {
   ConsultaDaBase,
   LINHAS_DA_AMOSTRA,
   enderecoDaConsulta,
+  mostrarSeAConsultaResponde,
 } from "../../src/site/ConsultaDaBase";
 
 afterEach(() => {
@@ -27,7 +28,8 @@ const pagina = {
   total: 3,
   limite: LINHAS_DA_AMOSTRA,
   deslocamento: 0,
-  como_era_em: null,
+  como_era_em: "2025-05-01",
+  teto_do_csv: 100_000,
   colunas: ["cnpj", "tipo_divida", "ajuizado", "valor_consolidado", "publico_em"],
   linhas: [
     { cnpj: "02.429.144/0001-93", tipo_divida: "Previdenciário", ajuizado: false, valor_consolidado: 99.99, publico_em: "2025-01-31" },
@@ -135,4 +137,62 @@ it("o HTML pronto só explica como usar: sem linhas, com o botão desligado até
   expect(html).not.toContain("<table");
   expect(html).toMatch(/<button[^>]*disabled=""/);
   expect(html).toContain('id="consulta-da-base"');
+});
+
+it("o link do CSV é o da consulta mostrada, não o CNPJ que se digita depois (revisão do PR 3)", async () => {
+  vi.stubGlobal("fetch", responder({ ...pagina, total: 1, linhas: [pagina.linhas[0]] }));
+  render(<ConsultaDaBase />);
+  const campo = screen.getByLabelText("CNPJ (opcional)");
+  fireEvent.change(campo, { target: { value: "02.429.144/0001-93" } });
+  fireEvent.click(botaoDaLista());
+  expect(await screen.findByText("1 linha")).toBeTruthy();
+  fireEvent.change(campo, { target: { value: "11.222.333/0001-81" } });
+  expect(screen.getByRole("link", { name: "Baixar a tabela em CSV" }).getAttribute("href")).toBe(
+    `${ROTA}/pgfn_divida.csv?cnpj=02.429.144%2F0001-93`,
+  );
+});
+
+it("o painel diz o teto do CSV e que a última linha avisa quando corta, sem prometer a tabela inteira", async () => {
+  vi.stubGlobal("fetch", responder(pagina));
+  const { container } = render(<ConsultaDaBase />);
+  fireEvent.click(botaoDaLista());
+  expect(await screen.findByText("3 linhas")).toBeTruthy();
+  expect(screen.getByText(/O CSV leva até 100\.000 linhas/)).toBeTruthy();
+  expect(screen.getByText(/a última linha do arquivo avisa/)).toBeTruthy();
+  expect(container.textContent).not.toMatch(/tabela inteira/);
+});
+
+/** Os lugares da página Dados que só aparecem com a consulta no ar (coluna, frase e painel). */
+function lugaresDaConsulta() {
+  document.body.innerHTML =
+    '<p data-com-consulta="" hidden>frase</p><div data-com-consulta="" hidden>painel</div><p>resto</p>';
+  return [...document.querySelectorAll<HTMLElement>("[data-com-consulta]")];
+}
+
+it("a consulta só aparece na página quando a API responde (revisão do PR 3: em produção ela está desligada)", async () => {
+  const lugares = lugaresDaConsulta();
+  const buscar = responder({ tabelas: [] });
+  expect(await mostrarSeAConsultaResponde(document, buscar)).toBe(true);
+  expect(lugares.map((l) => l.hidden)).toEqual([false, false]);
+  expect(buscar.mock.calls[0][0]).toBe(ROTA);
+  expect(buscar.mock.calls[0][1].credentials).toBe("omit");
+});
+
+it("API desligada (404), fora do ar ou resposta estranha: a consulta continua escondida", async () => {
+  for (const buscar of [
+    responder({ detail: "Not Found" }, 404),
+    vi.fn().mockRejectedValue(new Error("offline")),
+    responder({ outra: "coisa" }),
+  ]) {
+    const lugares = lugaresDaConsulta();
+    expect(await mostrarSeAConsultaResponde(document, buscar)).toBe(false);
+    expect(lugares.map((l) => l.hidden)).toEqual([true, true]);
+  }
+});
+
+it("página sem a consulta não pede nada à API", async () => {
+  document.body.innerHTML = "<p>outra página</p>";
+  const buscar = responder({ tabelas: [] });
+  expect(await mostrarSeAConsultaResponde(document, buscar)).toBe(false);
+  expect(buscar).not.toHaveBeenCalled();
 });

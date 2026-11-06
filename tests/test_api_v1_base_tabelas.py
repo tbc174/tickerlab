@@ -6,15 +6,25 @@ A porta é uma base de mentira em `tmp_path/base`, com Parquets de tabelas reais
 pessoa). A `insolvencia` é consultável, mas não tem arquivo nesta base.
 """
 
+import csv
+import gc
+import io
 import re
-from datetime import UTC, date, datetime
+import threading
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
+import duckdb
 import pandas as pd
 import pytest
 
 from base.dicionario import TABELAS
-from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
+from base.dossie import (
+    COLUNAS_DE_PESSOA,
+    ESPERAM_A_MARCA_DE_PESSOA,
+    pode_consultar,
+    tem_dia_publico,
+)
 from base.porta import Porta
 from base.porta.duckdb import ARQUIVOS
 from src.api_v1 import VARIAVEL_DA_CHAVE, base_tabelas
@@ -229,7 +239,9 @@ def test_pagina_vem_na_ordem_das_chaves_com_total_e_origem(cliente):
     )
     assert corpo["orgao"] == "PGFN" and corpo["fonte"] and corpo["licenca"]
     assert (corpo["total"], corpo["limite"], corpo["deslocamento"]) == (3, 100, 0)
-    assert corpo["como_era_em"] is None
+    # sem data, vale hoje: o que só fica público depois não sai (ver o teste do futuro, abaixo)
+    assert corpo["como_era_em"] == base_tabelas.base_publica.hoje().isoformat()
+    assert corpo["teto_do_csv"] == base_tabelas.TETO_DO_CSV
     assert _chaves(corpo) == [
         (CPFL, "Previdenciário"),
         (EMPRESA, "FGTS"),
@@ -288,6 +300,9 @@ def test_paginacao_com_limite_e_deslocamento(cliente):
         {"limite": 0},
         {"limite": base_tabelas.LIMITE_MAXIMO + 1},
         {"deslocamento": -1},
+        {
+            "deslocamento": base_tabelas.TETO_DO_CSV + 1
+        },  # o OFFSET alto ordena tudo: filtre
         {"limite": "muitos"},
         {"como_era_em": "ontem"},
         {"como_era_em": "2999-01-01"},  # o futuro não se consulta
@@ -360,7 +375,7 @@ def test_csv_com_bom_cabecalho_aspas_e_nome_do_arquivo(cliente):
     assert r.headers["content-disposition"] == 'attachment; filename="pgfn_divida.csv"'
     assert r.headers[base_tabelas.CABECALHO_DO_TETO] == str(base_tabelas.TETO_DO_CSV)
     assert r.headers["access-control-allow-origin"] == "https://tickerlab.com.br"
-    assert r.content.startswith("﻿".encode())
+    assert r.content.startswith("\ufeff".encode())
     linhas = r.content.decode("utf-8-sig").splitlines()
     cabecalho = linhas[0].split(",")
     assert cabecalho[:3] == ["cnpj", "cnpj_basico", "tipo_divida"]
@@ -395,22 +410,89 @@ def test_csv_respeita_os_filtros_e_recusa_os_invalidos(cliente):
     )
 
 
-def test_csv_sai_pagina_a_pagina_ate_o_teto(cliente, monkeypatch):
-    """Páginas de uma linha: o CSV junta todas até o fim; com o teto em duas, para nelas e avisa."""
-    monkeypatch.setattr(base_tabelas, "LINHAS_POR_PAGINA_DO_CSV", 1)
-    tudo = cliente.get(f"{ROTA}/pgfn_divida.csv")
+def _linhas_do_csv(resposta) -> list[list[str]]:
+    return list(csv.reader(io.StringIO(resposta.content.decode("utf-8-sig"))))
+
+
+def test_csv_que_bate_no_teto_diz_na_ultima_linha_que_cortou(cliente, monkeypatch):
+    """Regressão (revisão do PR 3): o CSV parava no teto sem nada no arquivo, e o site dizia "a
+    tabela inteira". Agora a última linha diz que cortou; a tabela que cabe sai sem aviso."""
+    monkeypatch.setattr(base_tabelas, "TETO_DO_CSV", 3)
+    inteira = _linhas_do_csv(cliente.get(f"{ROTA}/pgfn_divida.csv"))
     monkeypatch.setattr(base_tabelas, "TETO_DO_CSV", 2)
     cortado = cliente.get(f"{ROTA}/pgfn_divida.csv")
-    assert len(tudo.content.decode("utf-8-sig").splitlines()) == 1 + 3
-    assert len(cortado.content.decode("utf-8-sig").splitlines()) == 1 + 2
+    linhas = _linhas_do_csv(cortado)
+    assert len(inteira) == 1 + 3 and not inteira[-1][0].startswith("#")
+    assert len(linhas) == 1 + 2 + 1
+    assert linhas[1:3] == inteira[1:3]
+    assert linhas[-1] == [base_tabelas.AVISO_DO_TETO.format(teto=2)]
+    assert linhas[-1][0].startswith("# Arquivo cortado em 2 linhas")
     assert cortado.headers[base_tabelas.CABECALHO_DO_TETO] == "2"
+
+
+def test_csv_leva_a_fonte_e_a_licenca_em_cada_linha(cliente):
+    """Regressão (revisão do PR 3): o arquivo saía sem fonte nem licença, e repassado perdia a
+    atribuição que a licença pede. As duas vão no fim de cada linha, iguais às do JSON."""
+    origem = cliente.get(f"{ROTA}/pgfn_divida").json()
+    linhas = _linhas_do_csv(cliente.get(f"{ROTA}/pgfn_divida.csv"))
+    assert linhas[0][-2:] == list(base_tabelas.COLUNAS_DA_ORIGEM)
+    assert all(
+        linha[-2:] == [origem["fonte"], origem["licenca"]] for linha in linhas[1:]
+    )
+    assert origem["fonte"] and origem["licenca"]
+
+
+def test_nenhuma_tabela_consultavel_tem_coluna_com_o_nome_da_origem():
+    """As duas colunas da origem no CSV não podem repetir o nome de uma coluna da tabela."""
+    for nome in TABELAS:
+        if pode_consultar(nome):
+            colunas = set(TABELAS[nome].colunas) | set(TABELAS[nome].datas)
+            assert not colunas & set(base_tabelas.COLUNAS_DA_ORIGEM), nome
+
+
+class _PortaQueFalhaNoMeio(Porta):
+    """Lê o primeiro lote (ou a primeira página) e falha no seguinte, como o DuckDB sem memória."""
+
+    def ler_em_lotes(self, tabela, **opcoes):
+        lotes = super().ler_em_lotes(tabela, **{**opcoes, "vetores_por_lote": 1})
+        yield next(lotes).head(1)
+        raise duckdb.OutOfMemoryException("sem memória")
+
+    def ler_pagina(self, tabela, **opcoes):
+        if opcoes.get("deslocamento"):
+            raise duckdb.OutOfMemoryException("sem memória")
+        return super().ler_pagina(tabela, **opcoes)
+
+
+def test_csv_que_falha_no_meio_diz_na_ultima_linha_que_esta_incompleto(
+    cliente, base, monkeypatch
+):
+    """Regressão (revisão do PR 3): a base que falhava depois da primeira parte (o DuckDB sem
+    memória no OFFSET alto) cortava o fluxo já em 200, e o arquivo parecia inteiro. Agora a última
+    linha diz que está incompleto, e a porta fecha."""
+    abertas: list[Porta] = []
+
+    def abrir() -> Porta:
+        abertas.append(_PortaQueFalhaNoMeio(base))
+        return abertas[-1]
+
+    monkeypatch.setattr(base_tabelas, "abrir_porta", abrir)
+    monkeypatch.setattr(base_tabelas, "LINHAS_POR_PAGINA_DO_CSV", 1, raising=False)
+    r = cliente.get(f"{ROTA}/pgfn_divida.csv")
+    linhas = _linhas_do_csv(r)
+    assert r.status_code == 200
+    assert linhas[-1] == [base_tabelas.AVISO_DA_FALHA.format(linhas=1)]
+    assert len(linhas) == 1 + 1 + 1
+    with pytest.raises(Exception, match="closed"):
+        abertas[0].con.execute("SELECT 1")
 
 
 def test_csv_vazio_tem_so_o_cabecalho(cliente):
     r = cliente.get(f"{ROTA}/pgfn_divida.csv", params={"como_era_em": "2024-12-31"})
     assert r.status_code == 200
+    colunas = cliente.get(f"{ROTA}/pgfn_divida").json()["colunas"]
     assert r.content.decode("utf-8-sig").splitlines() == [
-        ",".join(cliente.get(f"{ROTA}/pgfn_divida").json()["colunas"])
+        ",".join([*colunas, *base_tabelas.COLUNAS_DA_ORIGEM])
     ]
 
 
@@ -476,3 +558,134 @@ def test_porta_fecha_depois_do_csv(cliente, base, monkeypatch):
     for porta in abertas:
         with pytest.raises(Exception, match="closed"):
             porta.con.execute("SELECT 1")
+
+
+# --- regressões da revisão cruzada do PR 3 --------------------------------------------------------
+def test_sem_como_era_em_vale_hoje_e_a_linha_ainda_nao_publica_nao_sai(
+    cliente, monkeypatch
+):
+    """Regressão: sem `como_era_em`, a porta lia sem o filtro de `publico_em`, e o JSON e o CSV
+    traziam linhas que a própria base diz que só ficam públicas depois de hoje. Com "hoje" em
+    28/02/2025, a dívida de FGTS (pública em 30/04/2025) não sai, nem no total, nem no CSV."""
+    monkeypatch.setattr(base_tabelas.base_publica, "hoje", lambda: date(2025, 2, 28))
+    corpo = cliente.get(f"{ROTA}/pgfn_divida").json()
+    linhas = _linhas_do_csv(cliente.get(f"{ROTA}/pgfn_divida.csv"))
+    assert corpo["como_era_em"] == "2025-02-28"
+    assert corpo["total"] == len(corpo["linhas"]) == 2
+    assert all(linha["publico_em"] <= "2025-02-28" for linha in corpo["linhas"])
+    assert "FGTS" not in {linha["tipo_divida"] for linha in corpo["linhas"]}
+    assert len(linhas) == 1 + 2 and not any("FGTS" in linha for linha in linhas)
+    amanha = (date(2025, 2, 28) + timedelta(days=1)).isoformat()
+    assert (
+        cliente.get(f"{ROTA}/pgfn_divida", params={"como_era_em": amanha}).status_code
+        == 422
+    )
+
+
+def test_so_e_consultavel_a_tabela_que_diz_o_dia_publico_e_separa_a_pessoa(cliente):
+    """Regressão: 15 tabelas sem `publico_em` saíam sem o dia em que cada linha ficou pública (e
+    `como_era_em` nelas dava 500); a situação especial e a cadastral do CNPJ, que cobrem MEI e
+    empresário individual sem a marca de pessoa, saíam em lote. Agora todas dão o mesmo 404."""
+    consultaveis = [nome for nome in TABELAS if pode_consultar(nome)]
+    assert all(tem_dia_publico(nome) for nome in consultaveis)
+    assert not set(consultaveis) & ESPERAM_A_MARCA_DE_PESSOA
+    assert len(consultaveis) > 50
+    for nome in ["proventos", "cadastro_de_fundos", *sorted(ESPERAM_A_MARCA_DE_PESSOA)]:
+        assert not pode_consultar(nome), nome
+        assert cliente.get(
+            f"{ROTA}/{nome}", params={"como_era_em": "2025-01-01"}
+        ).json() == {"detail": base_tabelas.NAO_ENCONTRADA}
+        assert cliente.get(f"{ROTA}/{nome}.csv").status_code == 404
+    assert tem_dia_publico("pgfn_divida") and not tem_dia_publico("proventos")
+
+
+class _PortaQueFalhaNosTipos(Porta):
+    def tipos(self, tabela, versao=None):
+        raise ValueError("erro que não é da base")
+
+
+def test_erro_inesperado_antes_do_csv_fecha_a_porta_e_devolve_a_vaga(
+    cliente, base, monkeypatch
+):
+    """Regressão: no CSV, só a recusa (HTTPException) fechava a porta; outro erro antes do fluxo a
+    deixava aberta, com até 512MB, até o coletor de lixo passar."""
+    abertas: list[Porta] = []
+
+    def abrir() -> Porta:
+        abertas.append(_PortaQueFalhaNosTipos(base))
+        return abertas[-1]
+
+    monkeypatch.setattr(base_tabelas, "abrir_porta", abrir)
+    with pytest.raises(ValueError, match="não é da base"):
+        cliente.get(f"{ROTA}/pgfn_divida.csv")
+    with pytest.raises(Exception, match="closed"):
+        abertas[0].con.execute("SELECT 1")
+    vagas = base_tabelas._VAGAS
+    assert all(
+        vagas.acquire(blocking=False) for _ in range(base_tabelas.PORTAS_AO_MESMO_TEMPO)
+    )
+    for _ in range(base_tabelas.PORTAS_AO_MESMO_TEMPO):
+        vagas.release()
+
+
+def test_portas_ao_mesmo_tempo_tem_teto_e_a_vaga_volta(cliente, monkeypatch):
+    """Regressão (negação de serviço): cada pedido abria uma porta de até 512MB, sem limite de
+    pedidos ao mesmo tempo, no contêiner que serve o webhook. Sem vaga, 503 na hora (sem esperar);
+    a vaga volta no fim do JSON e do CSV."""
+    vagas = threading.BoundedSemaphore(1)
+    monkeypatch.setattr(base_tabelas, "_VAGAS", vagas, raising=False)
+    assert vagas.acquire(blocking=False)
+    ocupada = cliente.get(f"{ROTA}/pgfn_divida", headers=SITE)
+    assert ocupada.status_code == 503, ocupada.text
+    assert ocupada.json()["detail"] == base_tabelas.OCUPADA
+    assert ocupada.headers["access-control-allow-origin"] == "https://tickerlab.com.br"
+    assert cliente.get(f"{ROTA}/pgfn_divida.csv").status_code == 503
+    vagas.release()
+    assert cliente.get(f"{ROTA}/pgfn_divida").status_code == 200
+    assert cliente.get(f"{ROTA}/pgfn_divida.csv").status_code == 200
+    assert vagas.acquire(blocking=False)  # as duas devolveram a vaga
+    vagas.release()
+
+
+def test_a_porta_da_api_abre_com_pouca_memoria_e_poucas_threads(monkeypatch):
+    """O DuckDB vê os núcleos da máquina, não a cota do contêiner: sem `threads`, reserva memória
+    para 16 e estoura os 512MB já na primeira página de tabela larga."""
+    pedidos: list[dict] = []
+    monkeypatch.setattr(
+        base_tabelas.porta_da_base, "abrir", lambda **opcoes: pedidos.append(opcoes)
+    )
+    base_tabelas.abrir_porta()
+    assert pedidos == [
+        {
+            "memoria": base_tabelas.MEMORIA_DA_PORTA,
+            "threads": base_tabelas.THREADS_DA_PORTA,
+        }
+    ]
+
+
+def test_csv_que_nunca_e_lido_fecha_a_porta_e_devolve_a_vaga(
+    cliente, base, monkeypatch
+):
+    """Quem pede o CSV e desliga antes do primeiro pedaço: o servidor descarta o fluxo sem lê-lo. O
+    fluxo já começou antes de responder, então descartá-lo fecha a porta e devolve a vaga (um
+    gerador que nunca começou não roda o `finally`, e as vagas acabariam até reiniciar a API)."""
+    abertas: list[Porta] = []
+
+    def abrir() -> Porta:
+        abertas.append(Porta(base))
+        return abertas[-1]
+
+    class _RespostaQueDescartaOFluxo(base_tabelas.StreamingResponse):
+        def __init__(self, content, **opcoes):
+            super().__init__(iter([b""]), **opcoes)
+
+    monkeypatch.setattr(base_tabelas, "abrir_porta", abrir)
+    monkeypatch.setattr(base_tabelas, "StreamingResponse", _RespostaQueDescartaOFluxo)
+    vagas = threading.BoundedSemaphore(1)
+    monkeypatch.setattr(base_tabelas, "_VAGAS", vagas, raising=False)
+    assert cliente.get(f"{ROTA}/pgfn_divida.csv").status_code == 200
+    gc.collect()
+    with pytest.raises(Exception, match="closed"):
+        abertas[0].con.execute("SELECT 1")
+    assert vagas.acquire(blocking=False)
+    vagas.release()
