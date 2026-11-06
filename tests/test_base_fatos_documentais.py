@@ -37,7 +37,7 @@ def _documento(
         data_declarada=date(2025, 12, 31),
         formato="pdf",
         paginas=34,
-        familia="divida-documental",
+        familia="divida",
         guardado_em="originais/fatos_documentais/76405c85.pdf",
         licenca="só prova interna (ADR 0124)",
     )

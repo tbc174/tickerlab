@@ -35,6 +35,7 @@ from base.arquivo import (
     lote_clima,
     lote_commodities,
     lote_cvm,
+    lote_documentais,
     lote_eua,
     lote_licitacoes,
     lote_organismos,
@@ -1634,6 +1635,8 @@ FONTES: list[Fonte] = [
     # lote acervos históricos (rodada 4, linha 292): COTAHIST anual da B3, relatórios e SGS antigo do BCB,
     # FTP do IBGE, pacotes de dívida do Tesouro e IPEADATA; nenhuma fonte com pessoa física
     *lote_acervos.fontes(),
+    # fontes pouco visíveis (plano de 05/11/2026, ADR 0124): PDFs de dívida documental, FDCO e FDA
+    *lote_documentais.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
