@@ -21,6 +21,13 @@ Regras (testes em `tests/test_base_arquivo_lote_commodities_oficiais.py`), uma f
   - o açúcar ignora as datas e devolve sempre o retrato inteiro (170 KB): um endereço só;
   - **sem filtro de país**: a licença é da Comissão para todos os Estados-membros;
   - a carne (`meat`) dá 404 e `beef` ainda não foi pedido (nota no fim da fila), então fica fora.
+- **Bank of Canada, índice de preços de commodities (BCPI)** pela API Valet, sem chave. Termos lidos de novo em
+  05/11/2026: uso, cópia e distribuição livres citando o Banco como fonte e indicando as mudanças; quem
+  vende o conteúdo avisa o comprador de que ele é grátis no site; é **proibido burlar o limite de pedidos da
+  Valet**. Uma fonte por grupo de séries (`boc-bcpi-semanal`, `-mensal`, `-anual` e `-pesos`), cada uma com
+  dois endereços: as observações do grupo (de 31 KB a 1,5 MB) e a descrição das séries (nome, unidade). São
+  8 pedidos por rodada, com pausa de 2 s. O mensal traz o total (`M.BCPI`) e os subíndices de energia
+  (`M.ENER`), metais (`M.MTLS`) e não energia (`M.BCNE`); o semanal traz `W.BCPI`.
 """
 
 import re
@@ -100,8 +107,41 @@ def _fonte_do_dg_agri(produto: str) -> Fonte:
     )
 
 
-# aviso legal da Comissão (reuso CC BY 4.0, lido em 24/10/2026): o vigia avisa quando o texto muda
-TERMOS_DOS_ORGAOS = {"termos-dgagri": "https://commission.europa.eu/legal-notice_en"}
+# ---- Bank of Canada, BCPI (API Valet; termos de uso do Banco) -------------------------------------
+VALET = "https://www.bankofcanada.ca/valet"
+# id da fonte -> (grupo da Valet, quando roda); a Valet limita os pedidos, então são poucos e com pausa
+GRUPOS_DO_BCPI = {
+    "boc-bcpi-semanal": ("BCPI_WEEKLY", "semanal"),
+    "boc-bcpi-mensal": ("BCPI_MONTHLY", "mensal"),
+    "boc-bcpi-anual": ("BCPI_ANNUAL", "mensal"),
+    "boc-bcpi-pesos": ("BCPI_WEIGHTS", "mensal"),
+}
+
+
+def alvos_do_bcpi(grupo: str) -> list[Alvo]:
+    """As observações do grupo e a descrição das séries (nome e unidade de cada uma)."""
+    return [
+        Alvo(f"{VALET}/observations/group/{grupo}/json", ".json"),
+        Alvo(f"{VALET}/groups/{grupo}/json", ".json"),
+    ]
+
+
+def _fonte_do_bcpi(id_: str) -> Fonte:
+    grupo, quando = GRUPOS_DO_BCPI[id_]
+    return Fonte(
+        id_,
+        quando,
+        lambda _cliente, _agora: alvos_do_bcpi(grupo),
+        "json",
+        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS,
+    )
+
+
+# avisos legais lidos: o vigia avisa quando o texto muda (Comissão em 24/10/2026, Bank of Canada em 05/11/2026)
+TERMOS_DOS_ORGAOS = {
+    "termos-dgagri": "https://commission.europa.eu/legal-notice_en",
+    "termos-boc": "https://www.bankofcanada.ca/terms/",
+}
 
 
 def termos() -> dict[str, str]:
@@ -112,4 +152,7 @@ def termos() -> dict[str, str]:
 def fontes() -> list[Fonte]:
     """Todas as fontes do lote, para o `FONTES` do arquivista."""
     produtos = (*PRIMEIRO_ANO_DO_DG_AGRI, *PRODUTOS_SEM_JANELA_DO_DG_AGRI)
-    return [_fonte_do_dg_agri(produto) for produto in produtos]
+    return [
+        *(_fonte_do_dg_agri(produto) for produto in produtos),
+        *(_fonte_do_bcpi(id_) for id_ in GRUPOS_DO_BCPI),
+    ]

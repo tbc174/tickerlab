@@ -81,6 +81,8 @@ ORDEM_DAS_SECOES = (
     "eventos",
     "negocios",  # negócios e acontecimentos
     "insolvencia",  # registros de insolvência e situação especial (ADR 0103, D2)
+    "divida_com_a_uniao",  # dívida ativa com a União, como fato datado (virada de 5/11/2026, fase 1)
+    "entrega_das_demonstracoes",  # entrega de DFP e ITR no prazo (idem)
     *list(SECOES)[list(SECOES).index("notas_classicas") :],
 )
 # uma seção nova da base, que a ordem ainda não conhece, vai com os negócios e acontecimentos
