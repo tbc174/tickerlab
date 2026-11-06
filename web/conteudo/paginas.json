@@ -1,5 +1,6 @@
 [
   {
+    "area": "inicio",
     "chave": "inicio",
     "contrato": null,
     "descricao": "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
@@ -11,6 +12,7 @@
     "url": "inicio"
   },
   {
+    "area": "ativo",
     "chave": "relatorio",
     "contrato": null,
     "descricao": "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
@@ -22,6 +24,7 @@
     "url": "relatorio"
   },
   {
+    "area": "ajuda",
     "chave": "guia",
     "contrato": null,
     "descricao": "Como os números são calculados, os limites do app e cada termo explicado em português.",
@@ -33,6 +36,7 @@
     "url": "guia"
   },
   {
+    "area": "ajuda",
     "chave": "termos",
     "contrato": null,
     "descricao": "As regras de uso do TickerLab e o que ele não é: não há recomendação de investimento.",
@@ -44,6 +48,7 @@
     "url": "termos"
   },
   {
+    "area": "ajuda",
     "chave": "privacidade",
     "contrato": null,
     "descricao": "Quais dados pessoais o TickerLab guarda, para quê, por quanto tempo e quais são os seus direitos.",
@@ -55,6 +60,7 @@
     "url": "privacidade"
   },
   {
+    "area": "ajuda",
     "chave": "trade",
     "contrato": null,
     "descricao": "A pesquisa de trading quantitativo do TickerLab: o que está sendo testado e em que fase está.",
@@ -66,6 +72,7 @@
     "url": "trade"
   },
   {
+    "area": "ativo",
     "chave": "visao_geral",
     "contrato": {
       "entradas": [
@@ -89,7 +96,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -128,6 +137,7 @@
     "url": "visao-geral"
   },
   {
+    "area": "ativo",
     "chave": "risco",
     "contrato": {
       "entradas": [
@@ -151,7 +161,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -190,6 +202,7 @@
     "url": "risco"
   },
   {
+    "area": "ativo",
     "chave": "retorno_mensal",
     "contrato": {
       "entradas": [
@@ -213,7 +226,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -242,6 +257,7 @@
     "url": "retorno-mensal"
   },
   {
+    "area": "ativo",
     "chave": "comparar",
     "contrato": {
       "entradas": [
@@ -275,7 +291,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -304,6 +322,7 @@
     "url": "comparar"
   },
   {
+    "area": "ativo",
     "chave": "correlacao",
     "contrato": null,
     "descricao": "Quanto o ativo anda junto com outros e com o mercado (o beta mede essa sensibilidade).",
@@ -315,6 +334,7 @@
     "url": "correlacao"
   },
   {
+    "area": "estrategias",
     "chave": "backtest",
     "contrato": {
       "entradas": [
@@ -338,7 +358,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -427,6 +449,7 @@
     "url": "backtest"
   },
   {
+    "area": "estrategias",
     "chave": "ranking",
     "contrato": null,
     "descricao": "Todas as estratégias no mesmo ativo, da melhor à pior, e quanto do resultado pode ser sorte.",
@@ -438,6 +461,7 @@
     "url": "ranking"
   },
   {
+    "area": "estrategias",
     "chave": "carteira",
     "contrato": null,
     "descricao": "Várias ações ao mesmo tempo, com regras para dividir o dinheiro entre elas.",
@@ -449,6 +473,7 @@
     "url": "carteira"
   },
   {
+    "area": "estrategias",
     "chave": "experimentos",
     "contrato": null,
     "descricao": "Perguntas clássicas respondidas com dados: aportar de uma vez ou aos poucos, rebalancear, virada do mês.",
@@ -460,6 +485,7 @@
     "url": "experimentos"
   },
   {
+    "area": "estrategias",
     "chave": "regimes",
     "contrato": null,
     "descricao": "Como uma estratégia se comporta em fases calmas e agitadas, e proteções contra quedas fortes.",
@@ -471,6 +497,7 @@
     "url": "regimes"
   },
   {
+    "area": "estrategias",
     "chave": "aprendizado",
     "contrato": null,
     "descricao": "Modelos que tentam prever o mercado, com validação honesta do que realmente funciona.",
@@ -482,6 +509,7 @@
     "url": "aprendizado"
   },
   {
+    "area": "estrategias",
     "chave": "pares",
     "contrato": null,
     "descricao": "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
@@ -493,6 +521,7 @@
     "url": "pares"
   },
   {
+    "area": "acompanhar",
     "chave": "research",
     "contrato": null,
     "descricao": "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, com o documento original de cada item.",
@@ -504,9 +533,26 @@
     "url": "research"
   },
   {
+    "area": "inicio",
     "chave": "pulse",
-    "contrato": null,
-    "descricao": "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM e na SEC e a variação do preço.",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O início da janela que a aba já mostrava (data e hora com fuso), para o F5 não encolher a janela; vale até 30 dias atrás.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "desde",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "PulseV1",
+      "rota": "/v1/pulse"
+    },
+    "descricao": "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM e na SEC, a variação do preço e o veredito das suas estratégias salvas.",
     "e_pro": false,
     "grupo": "Research",
     "no_menu": true,
@@ -515,6 +561,7 @@
     "url": "pulse"
   },
   {
+    "area": "acompanhar",
     "chave": "diario_de_teses",
     "contrato": null,
     "descricao": "O que você pensa de cada ativo, com a data em que escreveu, ligado aos backtests que você salvou.",
@@ -526,6 +573,7 @@
     "url": "diario-de-teses"
   },
   {
+    "area": "acompanhar",
     "chave": "carteira_b3",
     "contrato": null,
     "descricao": "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos que você escolher, proventos recebidos e custo médio.",
@@ -537,6 +585,7 @@
     "url": "carteira-b3"
   },
   {
+    "area": "acompanhar",
     "chave": "juros_e_inflacao",
     "contrato": {
       "entradas": [],
@@ -553,6 +602,36 @@
     "url": "juros-e-inflacao"
   },
   {
+    "area": "acompanhar",
+    "chave": "precos_de_referencia",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "PrecosDeReferenciaV1",
+      "rota": "/v1/precos-de-referencia"
+    },
+    "descricao": "Café (arábica e robusta), algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI, com a fonte e a data de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Preços de referência",
+    "url": "precos-de-referencia"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "simulador_de_trava",
+    "contrato": null,
+    "descricao": "A sua produção de café em cada safra desde 2000: sem travar, a termo, no futuro e com opção, lado a lado com os riscos, no preço mensal. Nada do que você digita é guardado.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Simulador de trava do café",
+    "url": "simulador-de-trava"
+  },
+  {
+    "area": "ativo",
     "chave": "linha_do_tempo",
     "contrato": {
       "entradas": [
@@ -576,7 +655,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -605,6 +686,7 @@
     "url": "linha-do-tempo"
   },
   {
+    "area": "ativo",
     "chave": "fundamentos",
     "contrato": null,
     "descricao": "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
@@ -616,8 +698,25 @@
     "url": "fundamentos"
   },
   {
+    "area": "ativo",
     "chave": "relatorio_empresa",
-    "contrato": null,
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O ativo: PETR4, AAPL, ^BVSP...",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ticker",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "RelatorioDaEmpresaV1",
+      "rota": "/v1/relatorio-empresa"
+    },
     "descricao": "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada número.",
     "e_pro": false,
     "grupo": "Research",
@@ -627,6 +726,63 @@
     "url": "relatorio-empresa"
   },
   {
+    "area": "acompanhar",
+    "chave": "busca_por_cnpj",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O CNPJ da empresa, com ou sem pontuação (aceita as letras do CNPJ novo).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "cnpj",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "POST",
+      "resposta": "BuscaPorCnpjV1",
+      "rota": "/v1/busca-por-cnpj"
+    },
+    "descricao": "Digite o CNPJ de uma empresa e veja quem é: da companhia aberta, o grupo, a rede de empresas e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que mudou em 12 meses. Com a data e a fonte de cada linha.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Busca por CNPJ",
+    "url": "busca-por-cnpj"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "relatorio_do_setor",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "A chave do setor do lançamento; a lista, com os nomes, vem de /v1/setores.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "setor",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "RelatorioDoSetorV1",
+      "rota": "/v1/relatorio-setor"
+    },
+    "descricao": "Escolha um setor e veja quem está nele, o tamanho do mercado, a concentração (CR4 e HHI com a faixa do CADE), as empresas lado a lado e o que ainda não temos, com a fonte de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Relatório do setor",
+    "url": "relatorio-do-setor"
+  },
+  {
+    "area": "ativo",
     "chave": "por_dentro",
     "contrato": null,
     "descricao": "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
@@ -638,6 +794,7 @@
     "url": "por-dentro"
   },
   {
+    "area": "ativo",
     "chave": "donos",
     "contrato": null,
     "descricao": "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto está vendido. Carteiras oficiais entregues à CVM e à SEC.",
@@ -649,6 +806,7 @@
     "url": "donos"
   },
   {
+    "area": "acompanhar",
     "chave": "newsletter",
     "contrato": null,
     "descricao": "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o documento de cada item. Na tela ou em PDF.",
@@ -660,6 +818,7 @@
     "url": "newsletter"
   },
   {
+    "area": "acompanhar",
     "chave": "carteira_research",
     "contrato": null,
     "descricao": "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) para o Research e a Newsletter darem mais destaque às maiores posições.",
@@ -671,6 +830,7 @@
     "url": "carteira-research"
   },
   {
+    "area": "acompanhar",
     "chave": "alertas",
     "contrato": null,
     "descricao": "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
@@ -682,6 +842,7 @@
     "url": "alertas"
   },
   {
+    "area": "acompanhar",
     "chave": "parametros",
     "contrato": null,
     "descricao": "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só para um, e veja o efeito antes de salvar.",
@@ -693,8 +854,14 @@
     "url": "parametros"
   },
   {
+    "area": "conta",
     "chave": "simulacoes",
-    "contrato": null,
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "MinhasSimulacoesV1",
+      "rota": "/v1/simulacoes"
+    },
     "descricao": "As simulações que você guardou: reabra para recalcular com os dados de hoje ou apague.",
     "e_pro": false,
     "grupo": "Minha conta",
@@ -704,6 +871,7 @@
     "url": "simulacoes"
   },
   {
+    "area": "acompanhar",
     "chave": "momentum",
     "contrato": null,
     "descricao": "Seus ativos favoritos ordenados pela força da tendência recente (momentum).",
@@ -715,6 +883,7 @@
     "url": "momentum"
   },
   {
+    "area": "conta",
     "chave": "meus_dados",
     "contrato": {
       "entradas": [],
@@ -731,6 +900,7 @@
     "url": "meus-dados"
   },
   {
+    "area": "conta",
     "chave": "planos",
     "contrato": {
       "entradas": [],
@@ -747,14 +917,109 @@
     "url": "planos"
   },
   {
-    "chave": "admin",
-    "contrato": null,
-    "descricao": "Usuários, planos, assinaturas e o registro de ações de administrador.",
+    "area": "conta",
+    "chave": "sala_de_dados",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "SalaV1",
+      "rota": "/v1/sala"
+    },
+    "descricao": "Os documentos de cada operação num lugar cifrado, com a origem de cada número, as contradições entre documentos e o checklist do que falta.",
     "e_pro": false,
-    "grupo": "Administração",
+    "grupo": "Minha conta",
     "no_menu": true,
-    "somente_admin": true,
-    "titulo": "Administração",
-    "url": "admin"
+    "somente_admin": false,
+    "titulo": "Sala de dados",
+    "url": "sala-de-dados"
+  },
+  {
+    "area": "conta",
+    "chave": "boas_vindas_beta",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "BoasVindasDoBetaV1",
+      "rota": "/v1/beta/boas-vindas"
+    },
+    "descricao": "O roteiro dos 10 minutos para conhecer o TickerLab: o relatório do setor, o de uma empresa e a busca por CNPJ, com a fonte de cada número.",
+    "e_pro": false,
+    "grupo": "Minha conta",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Boas-vindas ao beta",
+    "url": "boas-vindas-beta"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "mapa_do_cafe",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O café do mapa: arábica ou conilon (robusta).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "tipo",
+          "obrigatoria": false,
+          "opcoes": [
+            "arabica",
+            "conilon"
+          ],
+          "padrao": "arabica",
+          "tipo": "opcao"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "MapaDoCafeV1",
+      "rota": "/v1/commodities/cafe/mapa"
+    },
+    "descricao": "Onde se produz café arábica e conilon, município a município (IBGE), e a chuva e a geada de cada região contra a normal, com a fonte e a data de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Mapa do café",
+    "url": "mapa-do-cafe"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "painel_do_cafe",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "Arábica ou conilon (robusta).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "tipo",
+          "obrigatoria": false,
+          "opcoes": [
+            "arabica",
+            "conilon"
+          ],
+          "padrao": "arabica",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "A região do clima e do calendário; vazia, a de maior área do tipo.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "regiao",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "PainelDoCafeV1",
+      "rota": "/v1/painel-do-cafe"
+    },
+    "descricao": "Café arábica ou conilon: preço de referência, câmbio, fundos, exportações, safra da CONAB, clima e calendário, cada número com a data e a fonte.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Painel do café",
+    "url": "painel-do-cafe"
   }
 ]

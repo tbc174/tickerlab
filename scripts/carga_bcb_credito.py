@@ -16,12 +16,15 @@ As 8 datas-base mais novas do IF.data e os 2 anos mais novos do SCR são baixado
 (o BC revisa os números; cada revisão vira versão). O resto vem do acervo se já estiver lá. Um pedido
 por vez, com pausa; se o firewall do BC bloquear, espera 5 minutos e tenta mais uma vez. Recusa rodar
 sem a versão do código (exigência 13 da ADR 0055).
+
+Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h15); citado em dicionario.py.
 """
 
 import argparse
 import calendar
 import hashlib
 import logging
+import re
 import sys
 import time
 from collections.abc import Callable
@@ -35,8 +38,13 @@ import sqlalchemy as sa
 
 from base import bcb_ifdata, bcb_scr
 from base.parquet import GRAVADO, IGUAL, gravar_com_versoes, gravar_tabela
-from src import acervo
-from src.banco.coletas import com_registro, original_mais_recente
+from base.publicacao import dia_da_coleta
+from src import acervo, rede
+from src.banco.coletas import (
+    coletas_guardadas,
+    com_registro,
+    original_mais_recente,
+)
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -58,11 +66,7 @@ ORDEM_DO_CADASTRO = ["cod_inst"]
 def _baixar_da_fonte(url: str) -> bytes | None:
     for tentativa in (1, 2):
         try:
-            resposta = requests.get(
-                url,
-                timeout=900,
-                headers={"User-Agent": "TickerLab (contato@tickerlab.com.br)"},
-            )
+            resposta = rede.get_com_agente(url, timeout=900)
             if resposta.status_code == NAO_ENCONTRADO:
                 return None
             resposta.raise_for_status()
@@ -102,6 +106,30 @@ def _data_da_base(data_base: int) -> date:
     return date(ano, mes, calendar.monthrange(ano, mes)[1])
 
 
+def _coletas_do_relatorio(
+    conexao: sa.Connection, url: str, lido: bytes
+) -> list[tuple[pd.Timestamp, bytes]]:
+    """Cada resposta guardada do relatório (o dia da baixada e o conteúdo). Sem nenhuma guardada
+    (acervo desligado), só a que foi lida agora, sem dia."""
+    guardadas = coletas_guardadas(conexao, url)
+    if not guardadas:
+        return [(pd.NaT, lido)]
+    return [(dia_da_coleta(baixado_em), c) for baixado_em, _, c in guardadas]
+
+
+def _valores_do_tipo(
+    coletas: dict[str, list[tuple[pd.Timestamp, bytes]]],
+) -> pd.DataFrame:
+    """Os relatórios de um tipo, cada um com as revisões do BC (uma coleta por baixada)."""
+    partes = []
+    for guardadas in coletas.values():
+        lidas = [(dia, bcb_ifdata.ler_valores(c)) for dia, c in guardadas]
+        lidas = [(dia, t) for dia, t in lidas if not t.empty]
+        if lidas:
+            partes.append(bcb_ifdata.valores_com_revisoes(lidas))
+    return pd.concat(partes, ignore_index=True)
+
+
 def carregar_ifdata_data(
     conexao: sa.Connection, data_base: int, pasta: Path, de_novo: bool
 ) -> str:
@@ -114,17 +142,18 @@ def carregar_ifdata_data(
             conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
             if conteudo is not None:
                 lidos.append((url, conteudo))
-        tabelas = [bcb_ifdata.ler_valores(c) for _, c in lidos]
-        tabelas = [t for t in tabelas if not t.empty]
-        if not tabelas:
+        coletas = {u: _coletas_do_relatorio(conexao, u, c) for u, c in lidos}
+        origens = [
+            _origem(u, c) for u, guardadas in coletas.items() for _, c in guardadas
+        ]
+        if all(bcb_ifdata.ler_valores(c).empty for _, c in lidos):
             resultados.append("vazio")
             continue
-        juntas = pd.concat(tabelas, ignore_index=True)
         resultados.append(
             gravar_com_versoes(
-                lambda t=juntas: t.assign(disponivel_em=bcb_ifdata.disponivel_em),
+                lambda c=coletas: _valores_do_tipo(c),
                 pasta / "ifdata" / "valores" / f"tipo_{tipo}" / str(data_base),
-                [_origem(u, c) for u, c in lidos],
+                origens,
                 ORDEM_DOS_VALORES,
             )
         )
@@ -133,12 +162,14 @@ def carregar_ifdata_data(
     url = bcb_ifdata.endereco_do_cadastro(data_base)
     conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
     if conteudo is not None:
-        cadastro = bcb_ifdata.ler_cadastro(conteudo)
+        guardadas = _coletas_do_relatorio(conexao, url, conteudo)
         resultados.append(
             gravar_com_versoes(
-                lambda: cadastro,
+                lambda: bcb_ifdata.cadastro_com_revisoes(
+                    [(dia, bcb_ifdata.ler_cadastro(c)) for dia, c in guardadas]
+                ),
                 pasta / "ifdata" / "cadastro" / str(data_base),
-                [_origem(url, conteudo)],
+                [_origem(url, c) for _, c in guardadas],
                 ORDEM_DO_CADASTRO,
             )
         )
@@ -147,10 +178,17 @@ def carregar_ifdata_data(
 
 def montar_ligacao(pasta: Path, pasta_do_fca: Path) -> int:
     """A ligação instituição → CNPJ → tickers, de todos os cadastros já gravados."""
-    arquivos = sorted((pasta / "ifdata" / "cadastro").glob("[0-9]*.parquet"))
+    # só o cadastro atual de cada data-base (`202506`), nunca as versões anteriores (`202506.v1`)
+    arquivos = sorted(
+        a
+        for a in (pasta / "ifdata" / "cadastro").glob("*.parquet")
+        if re.fullmatch(r"\d{6}", a.stem)
+    )
     if not arquivos:
         return 0
-    cadastro = pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+    cadastro = bcb_ifdata.cadastro_mais_novo(
+        pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+    )
     entradas = [pasta_do_fca / "emissores.parquet", pasta_do_fca / "tickers.parquet"]
     emissores, tickers = (pd.read_parquet(a) for a in entradas)
     ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, emissores, tickers)
@@ -177,12 +215,13 @@ def carregar_scr_ano(
     conteudo = _obter(conexao, url, baixar_scr, de_novo, PAUSA_SCR)
     if conteudo is None:
         return "sem arquivo"
+    guardadas = _coletas_do_relatorio(conexao, url, conteudo)
     return gravar_com_versoes(
-        lambda: (t := bcb_scr.ler_ano(conteudo)).assign(
-            disponivel_em=bcb_scr.disponivel_em(t)
+        lambda: bcb_scr.ano_com_revisoes(
+            [(dia, bcb_scr.ler_ano(c)) for dia, c in guardadas]
         ),
         pasta / "scr" / str(ano),
-        [_origem(url, conteudo)],
+        [_origem(url, c) for _, c in guardadas],
         list(bcb_scr.COLUNAS_DE_TEXTO),
     )
 

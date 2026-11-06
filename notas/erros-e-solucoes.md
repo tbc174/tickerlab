@@ -339,6 +339,7 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `novo/` (app em React) é um pacote minificado gerado e guardado no Git (o VPS não tem Node), com nome de arquivo que muda a cada build, e ele empacota `web/conteudo/paginas.json`. Todo PR que mexe numa página ou no React regrava os mesmos arquivos; o primeiro a entrar deixa os outros em conflito. Rebase não resolve: reescreve o ramo e exige push forçado (proibido pela trava).
 - **Solução:** `python -m scripts.juntar_main`: merge da `main` no ramo; conflito só em pasta gerada (`site/`, `novo/`, `web/conteudo/`) é resolvido partindo da versão da `main` e rodando todos os geradores por cima; conflito em código desfaz o merge e para. Depois, `git push` comum. Regra no `CLAUDE.md` (Git e GitHub).
 - **Detalhe:** numa cópia criada antes da regra `web/** eol=lf` do `.gitattributes`, o `web/app/index.html` tinha CRLF e o build do Windows punha uma linha em branco a mais no `novo/index.html` (o CI recusaria). Cópia nova (`git worktree add`) já sai com LF.
+- **Detalhe (17/10):** depois dos geradores (ou da trava do commit, que os roda), os `web/conteudo/*.json` podem aparecer como modificados só pelo fim de linha (`git diff --ignore-cr-at-eol` vazio). Antes de rodar o `juntar_main` ou um commit, `git checkout -- web/conteudo/` limpa esses arquivos; se um deles mudou de verdade (ex.: `paginas.json` com contrato novo), limpe só os outros e faça `git add` dele.
 - **Data:** 13/10/2026
 
 ## Duas sessões criam a migração com o mesmo número
@@ -424,3 +425,254 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o `novo/` é gerado pelo `npm run app` e o nome dos arquivos muda a cada build; os dois lados geraram arquivos diferentes.
 - **Solução:** não resolver à mão. Confirmar que **não** há conflito fora do `novo/`, apagar os `novo/assets/*` em conflito, ficar com o `index.html`/`sw.js` de qualquer lado e **regerar** (`cd web && npm run app`), depois `git add -A novo`. O CI confere que o `novo/` está em dia.
 - **Data:** 14/10/2026
+
+## Lista de sugestões da busca por baixo do "Experimente" (site, página inicial)
+- **Sintoma:** ao digitar um ativo na busca da página inicial, a lista de sugestões aparecia atrás dos exemplos ("Experimente:"), da linha decorativa do herói e da fita de ativos, e o fim dela era cortado. O `z-index: 4` da lista não resolvia.
+- **Causa:** contextos de empilhamento criados sem querer. (1) `animation-fill-mode: both` na animação de chegada (`tl-chegar`) deixa o `transform` final aplicado para sempre, e todo elemento com `transform` vira um contexto de empilhamento com `z-index: auto`: o `z-index` da lista passa a valer só dentro do pai dela, que perde para os irmãos que vêm depois no HTML. (2) O `movimento.js` põe `translate` na coluna de texto (paralaxe): mesmo efeito. (3) `overflow: hidden` no topo da página cortava o que descia dele. (4) A fita de ativos é `position: relative` e vem depois do herói: pinta por cima de tudo o que o herói deixa vazar.
+- **Solução:** `backwards` em vez de `both` nas animações de chegada (o estado final é o natural, então nada muda na tela); `z-index` explícito em quem precisa ficar por cima (`.busca`, `.heroi-texto`, `.topo-da-pagina`); as camadas de fundo que precisam de corte numa caixa própria (`.v2-camadas`, com `overflow: hidden`) em vez de cortar o topo inteiro. Para achar o culpado: no console, `getComputedStyle(el).transform`, `translate`, `filter`, `backdropFilter`, `opacity` e `isolation` de cada ancestral, e `document.elementsFromPoint(x, y)` para ver quem está por cima.
+- **Data:** 14/10/2026 (PR #244)
+
+## `StreamlitValueAssignmentNotAllowedError` ao clicar na Carteira da B3
+- **Sintoma:** na página Carteira da B3, o primeiro clique depois de abrir a página (ligar um exemplo, por exemplo) mostrava `st.session_state['carteira_b3_arquivo'] is read-only and cannot be assigned through session state`.
+- **Causa:** o `manter_estado` do `app.py` reatribui, a cada execução, toda chave com um dos prefixos que sobrevivem à troca de página (`carteira_`, `backtest_`...), para o Streamlit não esquecer os campos. As chaves dos campos de arquivo também começavam com `carteira_`, e o Streamlit proíbe escrever no valor de um `st.file_uploader`. Na primeira execução o campo aparece (com valor `None`); na seguinte, o `manter_estado` escreve `None` nele e o campo quebra. Os testes não pegavam porque ligavam o exemplo **antes** de abrir a página, então o campo de arquivo nunca chegava a aparecer.
+- **Solução:** a chave de todo campo de arquivo começa com `arquivo_` (fora dos prefixos do `manter_estado`), como o `arquivo_b3` já fazia. Teste de regressão: abrir a página, **depois** ligar o exemplo e rodar de novo (`test_ligar_um_exemplo_depois_de_abrir_a_pagina_nao_quebra`). Achado conferindo a tela no navegador.
+- **Data:** 14/10/2026 (PR #260)
+
+## Acento "errado" ao olhar um CSV do Banco Central no terminal (parecia latin-1)
+- **Sintoma:** ao abrir o `scrdata_AAAAMM.csv` do SCR.data, "Médio" e "salários mínimos" saíam com acento quebrado, e a primeira coluna vinha como `﻿data_base`; parecia que o arquivo era latin-1.
+- **Causa:** o arquivo é UTF-8 com BOM; quem quebrava o acento era a saída do terminal do Windows (cp1252), não a leitura.
+- **Solução:** ler com `encoding="utf-8-sig"` (tira a BOM) e conferir rodando o Python com `python -X utf8`. Teste com acento de verdade (`tests/test_base_bcb.py`).
+- **Data:** 14/10/2026 (PR #226)
+
+## SSH pelo nome do Tailscale: "Host key verification failed"
+- **Sintoma:** fora da rede de casa, `ssh <usuario>@servidor.<tailnet>.ts.net` recusava com "Host key verification failed", apesar de ser o mesmo servidor.
+- **Causa:** o `known_hosts` guarda a chave pelo IP da rede de casa (`<ip-da-rede-de-casa>`); o nome do Tailscale é outro nome para o mesmo servidor e não está lá.
+- **Solução:** `ssh -o HostKeyAlias=<ip-da-rede-de-casa> <usuario>@servidor.<tailnet>.ts.net` (confere a mesma chave, sem aceitar uma nova às cegas).
+- **Data:** 14/10/2026
+
+## Sessão SSH presa ao disparar uma carga longa com `setsid ... &`
+- **Sintoma:** o comando que disparava a carga no servidor de casa não voltava; a sessão SSH só terminou pelo limite de tempo.
+- **Causa:** não confirmada: a saída já estava redirecionada (`> ~/logs/x.log 2>&1 < /dev/null`) dentro do `setsid`; a suspeita é o `docker run -i` ou o `sleep 60; tail` na mesma chamada.
+- **Solução:** disparar numa chamada e conferir o log numa chamada separada. Mesmo com a sessão presa, a carga segue viva (o `setsid` a solta da sessão): conferir com `pgrep -af <script>` e o log.
+
+## Arquivista mensal falha no CNPJ com `RemoteDisconnected`, cada vez num arquivo diferente
+- **Sintoma:** `FALHAS: rfb-cnpj (1 arquivos; ...)` com `('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))`; em 14/10/2026 foram `Empresas4`, `Estabelecimentos0` e `Socios0` de manhã e `Qualificacoes` à noite. Baixado na mão com `curl`, o mesmo arquivo vinha inteiro.
+- **Causa:** o servidor da Receita fecha a conexão antes de responder de vez em quando. O `requests` tenta **zero** vezes de novo por padrão, e a única nova tentativa do arquivista era a da fonte inteira, 5 minutos depois. Com 37 arquivos no mês, quase sempre algum caía.
+- **Solução:** `HTTPAdapter(max_retries=Retry(...))` na sessão do `scripts/arquivar_fontes.py` (#257): repete o pedido na hora, até 3 vezes (0, 4 e 8 s), só quando a conexão cai ou não abre; resposta de erro (404, 500) não é repetida. O teste usa um servidor HTTP local que fecha a conexão sem responder. Lição: falha que muda de arquivo a cada rodada é da rede ou do servidor, não do arquivo; repetir a tarefa inteira à mão só esconde.
+- **Data:** 14/10/2026
+
+## CI vermelho: "novo/ está velho" depois de mexer só no site
+- **Sintoma:** no PR #254 (ferramentas v2), o job `web (React)` falhou com `novo/ está velho: rode 'npm run app' em web/ e faça o commit`, mesmo o PR sendo das ferramentas do site.
+- **Causa:** o app em React (`novo/`) usa o mesmo CSS (`web/src/estilo*.ts`) e alguns módulos comuns (a escala dos gráficos saiu de `web/src/app/graficos/` para `web/src/graficos/`). Mudou o CSS ou um módulo que o app importa, o build do app muda também. Rodei só o `npm run site`.
+- **Solução:** mexeu em `web/`, rode os dois: `npm run site` **e** `npm run app`, e faça o commit de `site/` e `novo/` juntos. O mesmo PR também caiu no `ruff format` (linhas longas num teste): rodar `ruff format` nos arquivos Python mudados antes do push.
+- **Data:** 14/10/2026 (PR #254)
+
+## O CI do PR não roda depois de um push novo
+- **Sintoma:** o push chega ao GitHub (o PR mostra o commit novo), mas nenhum "Testes e ruff" começa; `gh pr view --json mergeable` diz `UNKNOWN`.
+- **Causa:** a `main` andou e mexeu no mesmo arquivo (aqui, `tests/test_base_dicionario.py`): com conflito, o GitHub **não dispara** o evento `pull_request`.
+- **Solução:** `git merge-tree --write-tree --name-only HEAD origin/main` mostra o conflito sem mexer em nada; juntar a `main` no ramo (`git merge origin/main`), resolver, rodar os testes do arquivo e subir. O CI volta a rodar.
+- **Data:** 14/10/2026
+
+## Uma tabela da base aparecia em dobro depois da primeira carga mensal
+- **Sintoma:** a ligação dos bancos de 2026-06 tinha cada instituição duas vezes (11.730 linhas em vez de 5.865).
+- **Causa:** a montagem lia `glob("[0-9]*.parquet")`, e o padrão também pega as versões guardadas (`202506.v1.parquet`). As versões tinham nascido falsas: o BC devolve o cadastro com outros bytes e o mesmo conteúdo, e a regra de versões olhava só o SHA-256 do arquivo de origem.
+- **Solução:** ler só o arquivo cujo nome é a data (`re.fullmatch(r"\d{6}", arquivo.stem)`), e criar versão só quando o **conteúdo** muda (`sha256_da_tabela`), não quando os bytes do original mudam (#266). Toda leitura de uma pasta com versões precisa filtrar o nome.
+- **Data:** 14/10/2026
+
+## Fechamento da B3 errado nas barras: correção da B3 vira o "último negócio" do dia
+- **Sintoma:** em 25/09/2026 o fechamento do PETR4 nas barras saía 48,07, e o boletim oficial dizia 47,99. Volume e número de negócios batiam.
+- **Causa:** o arquivo de negócios da B3 traz correções no meio do dia: às 17h06 a B3 cancelou o negócio 346910 (2.700.000 ações, das 16h08) e lançou o 346911 (270.000) **com a hora da correção**. Ordenando pela hora, o substituto ficava depois do leilão de fechamento. Os identificadores andam de 10 em 10 por instrumento; final diferente de 0 é negócio inserido depois (correção ou registro tardio).
+- **Solução:** o negócio inserido herda o instante do negócio de dezena logo antes dele (`base/intradiario_b3.py`, `PASSO_DO_IDENTIFICADOR`), com teste dos dois casos reais (25/09 e 18/09). Lição: num arquivo de bolsa, conferir a ordem pelo identificador, não só pela hora.
+- **Data:** 14/10/2026
+
+## Volume da B3 "a mais" que o COTAHIST nas sextas, com o arquivo certo
+- **Sintoma:** nas sextas de vencimento de opções, ~11% das ações tinham alguns negócios a mais no arquivo do que no COTAHIST do dia, com preços 100% iguais.
+- **Causa:** o COTAHIST do dia deixa de fora registros tardios (lançados às 19h); o boletim PR (BVBG.086) os inclui e bate com o arquivo (PETR4 em 18/09: 31.339 negócios no arquivo e no PR, 31.321 no COTAHIST).
+- **Solução:** conferir contra o PR; usar o COTAHIST só para saber se houve pregão, quem é do à vista e o que falta no PR. Lição: antes de culpar o dado, conferir com uma segunda fonte oficial.
+- **Data:** 14/10/2026
+
+## Carga da IEX falha num feriado dos EUA com `404 Not Found`
+- **Sintoma:** a carga dos 12 meses parou em `2026-09-07: FALHOU ... 404 Client Error: Not Found for url: .../hist?date=20260907` e a marca virou `.falha`.
+- **Causa:** o coletor pedia todos os dias de segunda a sexta e contava que, num feriado, a IEX respondesse uma lista vazia. Ela responde **404**. 07/09/2026 foi Labor Day.
+- **Solução:** pedir só os pregões da NYSE (`src/calendario_nyse.py`: feriados pelas regras da bolsa e os fechamentos extras numa lista). Um 404 num dia de pregão continua sendo falha, para o alarme mostrar um fechamento que o calendário ainda não conhece (#264).
+- **Data:** 14/10/2026
+
+## GDELT responde `429 Too Many Requests` mesmo esperando entre os pedidos
+- **Sintoma:** a coleta do GDELT falhava todo dia com 429, até no primeiro pedido depois de 20 horas parada, mesmo com 6 s entre os pedidos (o GDELT pede 5 s).
+- **Causa:** em outubro/2026 o GDELT deixava passar só **um pedido a cada 10 a 20 minutos**, de casa e também do VPS (não era bloqueio só do endereço de casa). Pedindo um dia por vez, a carga desde 2017 levaria meses.
+- **Solução:** pedir 30 dias de uma vez (com mais de 3 dias o GDELT responde um ponto por dia, com os mesmos números), pausa de 60 s, esperas de 2 a 15 min no 429 e no máximo 4 horas por rodada (#264, #276). Para medir sem gastar a cota: um pedido só, com `curl -w "%{http_code}"`.
+- **Data:** 15/10/2026
+
+## Dia do GDELT guardado "pela metade"
+- **Sintoma:** 02/01/2017 aparecia na base com 5 notícias; os dias vizinhos tinham ~600.
+- **Causa:** o pedido de um dia (`startdatetime=20170101000000&enddatetime=20170102000000`) devolve também o ponto da meia-noite do dia seguinte. Esse quarto de hora virava uma linha do dia 2, e a rodada seguinte começava no dia 3.
+- **Solução:** guardar só os dias do período pedido (`dia < fim`) e, quando há dias novos, pedir de novo o último dia guardado (#276).
+- **Data:** 15/10/2026
+
+## Programa `ots` (OpenTimestamps) quebra no Windows com `TypeError: argument of type 'NoneType' is not iterable`
+- **Sintoma:** depois de `pip install opentimestamps-client`, qualquer comando `ots` parava em `bitcoin/core/key.py`, dentro de `ctypes.cdll.LoadLibrary`.
+- **Causa:** a `python-bitcoinlib` procura a biblioteca do OpenSSL (`libeay32`/`libssl`) por `ctypes` ao importar `bitcoin.rpc`; no Windows ela não acha e passa `None` como nome do arquivo. A biblioteca `opentimestamps` (o núcleo) não importa essa parte e funciona.
+- **Solução:** usar a biblioteca `opentimestamps` direto em `scripts/ancorar_base.py` (o recibo `.ots` é o mesmo formato); o programa `ots` fica para quem confere com Linux e um nó do Bitcoin (#287).
+- **Data:** 15/10/2026
+
+## Valor que chega dos dados do dia apaga o número que veio de um link
+- **Sintoma:** o link "continue a conta" do "quanto daria" abria a correção pela inflação com outra data de início; a inflação que a pessoa digitava no juro real antes de os dados do BC chegarem voltava para o IPCA.
+- **Causa:** o `sugerir` do `useCamposNoEndereco` (usado para pôr o IPCA ou o último mês quando os dados chegam) trocava os campos sem saber quais tinham vindo do endereço ou sido mudados pela pessoa; cada tela remendava isso checando uma chave fixa do endereço (`anoFinal`), e a chave que o link trazia era outra.
+- **Solução:** o gancho guarda o conjunto de campos "fixados" (lidos do endereço ao ligar ou mudados pela pessoa) e o `sugerir` nunca passa por cima deles. Regra: valor sugerido por dado externo nunca vence o que a pessoa ou o link escolheu.
+- **Data:** 15/10/2026
+
+## Financiamento pela Price não zera o saldo com taxa alta
+- **Sintoma:** com 10% ao mês em 600 meses, a tabela terminava com o saldo inteiro (R$ 300 mil) e amortização zero em todos os meses; o Hypothesis achou resíduo também em casos menores.
+- **Causa:** `(1 + taxa)^−meses` some na precisão do float, então a parcela calculada fica igual ao juro do mês e o resíduo de arredondamento se acumula.
+- **Solução:** no último mês do prazo, a amortização é o saldo que sobrou (`amortizacao = saldo`), em Python e no TypeScript; o teste de propriedade "as amortizações somam o valor financiado" pega a volta do erro.
+- **Data:** 15/10/2026
+
+## Manifesto que não confere com o próprio Parquet (`1.0` na memória, `1` no arquivo)
+- **Sintoma:** ao remontar `eventos_de_capital` com manifesto, cada ano virou versão `.v1` sem o dado ter mudado, e `conferir_tabela` dava `False` logo depois de gravar.
+- **Causa:** o leitor deixa colunas `object` com float do Python. O `to_csv(float_format=...)` do hash não formata coluna `object` (`1.0`), mas o Parquet devolve `float64`, que sai `1`. O hash feito na memória era de um texto diferente do arquivo gravado.
+- **Solução:** o hash do manifesto é sempre da tabela como volta do disco (`base/parquet.py::como_no_disco`), e a comparação "o dado mudou?" também; manifesto que não confere é refeito sem versão (#299). Regra: hash de conferência se calcula sobre o que foi gravado, nunca sobre o objeto em memória.
+- **Data:** 15/10/2026
+
+## Script do servidor esperou 2 h por um merge que já tinha acontecido
+- **Sintoma:** o `ma-coletor-no-servidor.sh` (#313) ficou no laço "esperando o merge" e saiu com "não entrou na main em 2 h", embora `git log origin/main --oneline | grep '(#313)'` achasse o commit quando rodado à mão.
+- **Causa:** o script tem `set -euo pipefail`. No laço `until git log ... | grep -q '(#313)'`, o `grep -q` termina assim que acha a linha; o `git log` ainda está escrevendo, leva SIGPIPE e sai com 141. Com `pipefail`, o pipeline inteiro conta como falha, então o `until` nunca via o merge.
+- **Solução:** perguntar direto ao Git, sem pipeline: `git merge-base --is-ancestor <commit> origin/main` (sai 0 se o commit já está na `main`). Regra geral: com `pipefail`, não pôr `grep -q` (ou `head`) depois de um comando que escreve muito.
+- **Data:** 16/10/2026
+## Carga da IEX para no meio com `ProtocolError: Connection broken: IncompleteRead(...)`
+- **Sintoma:** a tarefa `iex-carga` do VPS termina com saída 1 e um traceback da `urllib3` no log; o Kuma ("Tarefas do VPS") fica vermelho e o selo da rodada não roda.
+- **Causa:** a conexão com a IEX caiu no meio do arquivo do dia (~17 GB). O coletor lê o `resposta.raw` direto, então o erro vem da `urllib3`, que não é `requests.RequestException` nem `OSError` e escapava do `except`.
+- **Solução:** `scripts/coletar_iex_do_dia.py` baixa o dia de novo uma vez; se cair de novo, o dia falha sozinho ("FALHOU, nada gravado") e a rodada segue (PR #322). Lição: quem lê `.raw` de uma resposta do `requests` precisa tratar os erros da `urllib3` também.
+- **Data:** 16/10/2026
+
+## Carga da PGFN passa de 2,7 GB no servidor de casa (milhões de linhas em texto)
+- **Sintoma:** a 1ª montagem da `pgfn_divida` (#339) chegou a 2,7 GB no contêiner; o vigia de memória pôs o Kuma de casa em "down" (728 MB livres) e a carga foi parada à mão.
+- **Causa:** três coisas, medidas por fases com os dados reais: (1) 6,8 milhões de raízes de CNPJ num `set` de textos do Python (~60 bytes cada, mais o conjunto) e o `isin(set)` refeito a cada pedaço da Receita; (2) a conversão das raízes para número feita no lote inteiro de uma vez (cópias de 64 bits de tudo: 2,3 GB); (3) o maior CSV (2,28 milhões de linhas) gravado de uma vez, com a linhagem (SHA-256, datas, commit) repetida como texto em cada linha, e o hash do manifesto relendo e ordenando a tabela inteira (2,4 GB).
+- **Solução (#342):** raiz como número de 8 bytes (`base/cnpj.py::raizes_em_numeros`, base 36, aceita o CNPJ com letras) e busca por ordenação (`contem`), em pedaços de 1 milhão; cada CSV gravado em 11 Parquets pelo 1º caractere do CNPJ, com a linhagem só no pedaço que está sendo gravado. Pico de 1,96 GB. **Lição:** antes de rodar uma carga nova no servidor de casa, um ensaio só de leitura com `ru_maxrss` por fase; pandas 3 guarda texto em Arrow, mas texto repetido em milhões de linhas ainda pesa.
+- **Data:** 16/10/2026
+
+## Script do servidor some sem mensagem depois de `cmd | grep -q`
+- **Sintoma:** um script com `set -euo pipefail` para no meio sem escrever nada no log; o passo seguinte nunca roda (17/10/2026, `~/bin/ma-religar-356.sh`: fez o `git pull` e parou antes do `docker tag`).
+- **Causa:** `git log --oneline -15 | grep -q "(#356)"`: o `grep -q` sai assim que acha, o `git log` ainda escrevendo leva SIGPIPE e sai com 141; com `pipefail` o pipe inteiro vale 141 e o `set -e` encerra o script, sem mensagem.
+- **Solução:** não pôr `grep -q` (nem `head`) no fim de um pipe com `pipefail`. Guardar a saída numa variável e testar: `ultimos=$(git log --oneline -15)` e `[[ "$ultimos" == *"(#356)"* ]]`.
+- **Data:** 17/10/2026
+
+## A mesma base dá fichas diferentes na 15ª casa decimal (soma em DOUBLE no DuckDB)
+- **Sintoma:** no ensaio do dossiê pela porta (#381), duas rodadas seguidas sobre a mesma base deram 4 fichas diferentes, só na 15ª casa decimal de somas (ex.: acessos da Anatel).
+- **Causa:** o DuckDB soma em paralelo. Em ponto flutuante (DOUBLE), a ordem da soma muda o arredondamento (0,1 + 0,2 dá 0,30000000000000004), e a ordem muda de uma rodada para outra.
+- **Solução:** a `Porta.somar` soma em `DECIMAL(38, 10)`, que é exato, e só no fim volta para DOUBLE (`test_somar_e_exato`). Regra: em resultado que precisa se reproduzir (ADR 0078), somar em decimal.
+- **Data:** 17/10/2026
+
+## Arquivo esparso passa pelo limite de tamanho do tar
+- **Sintoma:** numa revisão de segurança de um recebedor de arquivos por tar, um tar de 10 KB passava no limite de tamanho e abria um arquivo de 3 GB.
+- **Causa:** um arquivo esparso (com "buracos") ocupa quase nada no tar, mas o tamanho aparente dele, que é o que o app leria, é enorme. O limite só olhava o tar.
+- **Solução:** depois de extrair, conferir também `du -s --apparent-size --block-size=1` da pasta contra o limite. Regra: limite de tamanho vale para o que entra e para o que sai aberto.
+- **Data:** 17/10/2026
+
+## `cat > arquivo` antes de um heredoc engole o texto
+- **Sintoma:** o teste novo não apareceu em `tests/test_porta.py`, embora o comando tivesse "rodado".
+- **Causa:** no comando `cat > x.py; python - <<'EOF' ...`, o `cat` sem entrada própria leu o heredoc que era do Python e o gravou no arquivo; o Python não recebeu nada.
+- **Solução:** editar arquivo com a ferramenta de edição (ou um único `python - <<'EOF'` sem nada antes). Regra: um heredoc por comando, e só no comando que deve lê-lo.
+- **Data:** 17/10/2026
+
+## Variável local com o nome de um módulo importado (`'list' object has no attribute ...`)
+- **Sintoma:** a 1ª montagem das colunas do modelo 8 no servidor (17/10, depois do #384) caiu com `AttributeError: 'list' object has no attribute 'contas_do_balanco'`, embora todos os testes passassem.
+- **Causa:** o montador faz `from base.modelos.atraso import colunas` (o módulo). Dentro de `_demonstracoes`, uma lista de campos também se chamava `colunas`, e dentro da função esse nome passou a ser a lista; `colunas.contas_do_balanco(...)` procurou a função na lista. A troca automática de nomes (`contas_do_balanco` → `colunas.contas_do_balanco`) ao mover o código criou o choque. Os testes não pegaram porque nenhum gravava demonstrações na pasta, então o laço nunca rodava.
+- **Solução:** a lista virou `campos`, e o teste da montagem passou a gravar demonstrações (com o código velho, ele falha com o mesmo erro). Regras: não dar a uma variável o nome de um módulo importado; o teste de montagem precisa ter pelo menos uma linha de cada fonte; e, depois de mover código com troca automática de nomes, ensaiar contra a base real antes do merge.
+- **Data:** 17/10/2026
+
+## CI: `test_qualquer_texto_de_plano_decide_igual_e_vale_como_gratuito` falha só no CI do #390
+- **Sintoma:** localmente os testes de planos passavam; no CI, `test_limites_iguais.py` dizia que o Gratuito abria todas as páginas (`motivo == None`).
+- **Causa:** ordem das fixtures do pytest. A fixture `no_gratuito` tem `scope="module"` e é montada **antes** das fixtures de cada teste; a que desligava a trava do pré-lançamento era por teste (`monkeypatch`). Então `no_gratuito` foi calculada com tudo liberado.
+- **Solução:** a fixture que desliga a trava passou a valer para a sessão inteira (`scope="session"`, com `pytest.MonkeyPatch.context()`), e assim já está ativa antes de qualquer fixture de módulo. Regra: o que muda uma configuração global para os testes deve ter o escopo mais largo de quem lê essa configuração.
+- **Data:** 17/10/2026
+
+## CI: `Pagina.__init__() missing 1 required positional argument: 'area'` (#402)
+- **Sintoma:** os testes das páginas passavam localmente; no CI, `tests/test_api_v1_acesso.py` nem carregava.
+- **Causa:** o campo obrigatório novo (`area`) entrou na dataclass `Pagina` e em todas as páginas de `src/paginas.py`, mas um teste cria uma página própria (`PAGINA_PAGA`) e ficou sem a área. Só os testes de `paginas` tinham rodado antes do push.
+- **Solução:** dar a área à página do teste. Regra: ao pôr um campo obrigatório numa classe, procurar toda chamada dela no repositório (`Grep "Pagina("`), inclusive nos testes, ou rodar a suíte inteira antes do push.
+- **Data:** 17/10/2026
+
+## CI: check "web (React)" vermelho num PR que só mudou a base (#427)
+- **Sintoma:** o PR mexia só em `base/` e no catálogo da base; o `site.test.tsx` acusou `site/dados.html` diferente do que o React gera.
+- **Causa:** a página Dados do site é gerada a partir de `web/conteudo/catalogo.json`. O catálogo foi refeito (`exportar_conteudo`), mas `site/` não (`npm run site`); o CLAUDE.md só mandava rodar os geradores quando `src/paginas.py`, `src/modulos.py` ou `web/` mudassem.
+- **Solução:** `npm run site` em `web/` depois do `exportar_conteudo` e commit do `site/dados.html` (#428). Regra: tabela nova no dicionário = catálogo novo = site refeito. Cuidado no Windows: o `npm run site` reescreve os 34 arquivos de `site/` com CRLF; confira com `git diff --ignore-cr-at-eol --stat` e descarte os que só mudaram de quebra de linha.
+- **Data:** 19/10/2026
+
+## Conflito falso ao juntar a `main` depois de um squash do próprio PR anterior
+- **Sintoma:** `scripts.juntar_main` parou com conflito em 12 arquivos de código, embora o ramo da parte 2 já contivesse tudo o que a parte 1 tinha.
+- **Causa:** a parte 1 entrou na `main` por squash (um commit novo); o ramo da parte 2 tinha os commits originais da parte 1 e mais os seus. Para o Git, os dois lados mudaram os mesmos trechos.
+- **Solução:** conferir que `git diff <ponta da parte 1> origin/main -- <arquivos>` é vazio e então `git merge --no-commit origin/main` + `git checkout --ours` nesses arquivos (`--theirs` nas pastas geradas, que se refazem). Antes disso, `git checkout -- web/conteudo` nos arquivos que só diferiam na quebra de linha, senão o `juntar_main` nem começa.
+- **Data:** 19/10/2026
+
+## Tabela nova do IPE sai "fora do contrato" no servidor, com os testes verdes (`ma_candidatos`, #431)
+- **Sintoma:** a 1ª montagem de `ma_candidatos` no servidor avisou `datas: 479 linhas com aconteceu_em (referencia) depois de publico_em`; o manifesto ficou com `aprovada: false`.
+- **Causa:** a data de referência que a companhia informa ao IPE pode ser o evento anunciado (a assembleia que ainda vai aprovar a operação). Os dados de teste só tinham referência igual à entrega.
+- **Solução:** `"anuncia_o_futuro": True` na entrada da tabela em `_CONFERENCIA` (`base/dicionario.py`), como `eventos` e `debentures_assembleias`, e um teste com referência depois da entrega. Regra: tabela que vem do IPE (ou de qualquer documento que anuncia algo) precisa de um caso de teste com data futura.
+- **Data:** 18/10/2026
+
+## Extração de M&A descarta o nome certo porque o trecho usa o nome curto
+- **Sintoma:** na amostra de ouro, o Sonnet "não leu" o comprador ou o alvo em 11 documentos, mas a resposta bruta tinha o nome certo; o descarte era `nome_fora_do_trecho`.
+- **Causa:** a conferência exigia o nome inteiro dentro do trecho. O documento define o nome uma vez ("Duane do Brasil S.A. (“Duane”)") e depois só usa o curto; o modelo copia o trecho que prova o papel ("passou a ser detida totalmente pela Duane"), sem o nome inteiro.
+- **Solução:** `_nome_provado` em `base/ma_extracao.py`: vale o nome inteiro no trecho **ou** toda palavra que distingue o nome está no documento e o trecho tem uma delas (palavra genérica como "Companhia" não conta). Achado comparando o descarte com a resposta bruta, antes de culpar o modelo.
+- **Data:** 18/10/2026
+
+## Extração de M&A descarta o nome quando o trecho usa o apelido definido no documento
+- **Sintoma:** com o guia v2, o Sonnet passou a perder a Eletrobras (vendedora) e a 3R (compradora), embora a resposta bruta trouxesse as duas; descarte `nome_fora_do_trecho`.
+- **Causa:** o guia v2 manda olhar do ponto de vista de quem publicou, e o modelo copiou o trecho da ação ("a Eletrobras transferiu…"). O apelido "Eletrobras" não é palavra do nome inteiro ("Centrais Elétricas Brasileiras S/A"), e "3R" tem só 2 letras (a regra do #435 ignora palavras curtas).
+- **Solução:** `_apelidos` em `base/ma_extracao.py`: vale o apelido entre aspas que o documento define logo depois do nome inteiro, em um ou dois parênteses e em qualquer ordem ('(“Eletrobras”) (B3: ELET3)'); apelido só de palavra genérica ("Companhia") continua sem valer. A 1ª versão aceitava só o código da bolsa antes da definição e não pegava a Eletrobras: o teste agora tem as duas ordens.
+- **Data:** 18/10/2026
+
+## Tela nova da API cai nas travas do CI: campo `preco` e nome com `ler_tabela` (Painel do café, #452)
+- **Sintoma:** no CI, `test_nenhum_esquema_entrega_preco_bruto` acusou `('PainelDoCafeV1', {'preco'})` e `test_codigo_novo_so_le_a_base_pela_porta` acusou `src/commodities/cafe/painel.py`, embora a leitura já fosse pela `base.porta`.
+- **Causa:** as duas travas olham nomes, não o que o código faz. A da licença (ADR 0008) recusa campo de esquema chamado `preco`, `close`, `fechamento` etc. A da porta procura o texto `ler_tabela` no arquivo, e a função se chamava `ler_tabelas_da_base`.
+- **Solução:** o bloco virou `preco_de_referencia` (como o #451, que usa `ultimo_valor`, `bm` e `fmi`) e a função virou `tabelas_pela_porta`. Antes de abrir um PR com esquema novo ou leitura da base, rode `pytest tests/test_api_v1_esquemas.py tests/test_porta_unica.py`.
+- **Data:** 18/10/2026
+
+## Teste "arquivo repetido" da sala falha às vezes no CI: o PDF de teste muda a cada chamada (#553)
+- **Sintoma:** `tests/test_sala_documentos.py::test_o_mesmo_arquivo_duas_vezes_na_sala_e_recusado` falha com `DID NOT RAISE DocumentoRepetidoError` em uma rodada e passa na seguinte, sem mudança no código (a `main` ficou vermelha em `fe418e3e`, um commit só de docs).
+- **Causa:** `tests/ajudantes_da_sala.pdf` (fpdf2) grava `/CreationDate` ao segundo (e o `/ID`, derivado dele) dentro do PDF. Duas chamadas que caem em segundos diferentes dão bytes diferentes, o SHA-256 muda e a sala não vê "repetido".
+- **Solução:** gerar o conteúdo uma vez e enviar os mesmos bytes nas duas chamadas. Regra geral: teste que compara dois PDFs gerados (igualdade, hash, "repetido") gera uma vez e reaproveita os bytes; nunca chama o gerador duas vezes esperando o mesmo resultado.
+- **Data:** 21/10/2026
+
+## Vigia da licença do CNPJ falha todo dia: rota e campos do dados.gov.br mudaram (`termos-cnpj-licenca`)
+- **Sintoma:** `arquivo-diaria` vermelha; a fonte `termos-cnpj-licenca` dava 401 mesmo com a chave do portal no `.env`.
+- **Causa:** a ficha do conjunto mudou de endereço: agora começa com `/dados/api/publico/...` (sem o `/dados`, o portal dá 401 para qualquer chave). A resposta também mudou de formato: saíram os campos do CKAN (`license_id`, `title`, `license_title`) e entraram campos em português (`licenca`, `nome`, `titulo`).
+- **Solução:** rota nova em `base/arquivo/fontes.py` e campos novos em `CAMPOS_DA_LICENCA_DA_FICHA` (`base/arquivo/obter.py`). O `emailResponsavel` fica de fora, porque é dado de pessoa. O teste prende a rota com `/dados`. Regra: quando uma API dá 401 mesmo com a chave certa, confira o endereço na documentação antes de culpar a chave.
+- **Data:** 24/10/2026
+
+## Coletor do IEX falha às 5h: o pregão de ontem ainda não saiu (`iex-intradiario`)
+- **Sintoma:** `2026-10-22: FALHOU, nada gravado (HTTPError: 404 ... hist?date=20261022)` às 5h de 23/10; a carga das 0h30 seguintes baixou o mesmo dia sem erro.
+- **Causa:** a IEX só publica o dia na tarde seguinte. Antes disso, a lista do HIST responde 404, e não lista vazia. O coletor tratava todo 404 de dia de pregão como falha.
+- **Solução:** `endereco_do_tops(..., pode_faltar=True)` só no último pregão: ali o 404 vira "ainda não publicado". Nos dias anteriores, o 404 continua sendo falha, então um dia que nunca sai ainda dispara o alarme, só que um dia depois.
+- **Data:** 24/10/2026
+
+## Âncora da base acusa milhares de Parquets "sem manifesto" durante a carga do CNPJ (`ancoras`)
+- **Sintoma:** `FALHAS: 8689 Parquet(s) sem manifesto, fora da âncora: cnpj/_novo/estabelecimentos/00/00000-0.parquet ...`
+- **Causa:** a carga do CNPJ (`scripts/carga_receita_mes.py`) monta o mês em `cnpj/_novo/` e só no fim troca pelo vigente. A âncora lia essa pasta de trabalho como se fosse a base, e ancoraria um mês pela metade.
+- **Solução:** `base/ancoragem.py` ignora as pastas que começam com `_` (`PREFIXO_DA_PASTA_DE_TRABALHO`), tanto nos manifestos quanto na lista dos soltos.
+- **Data:** 24/10/2026
+
+## Boletim da base sai calado desde 21/10: a lista `TAREFAS=` saiu do conferir-tarefas (`boletim-base`)
+- **Sintoma:** `boletim-base` com saída 1 e nenhuma linha no log.
+- **Causa:** o `~/bin/boletim-da-base.sh` tirava as tarefas diárias com `grep '^TAREFAS='` do `conferir-tarefas-casa.sh`. Desde o D1 do painel das coletas (21/10), esse arquivo lê o `estado.json` do vigia e não tem mais essa linha. Com `set -euo pipefail`, o `grep` vazio encerra o script antes de qualquer `echo`.
+- **Solução:** o script lê as diárias (prazo de até 26 h) do `~/painel-das-coletas/estado.json` e, se a lista vier vazia, sai com uma linha `FALHAS:`. A cópia antiga ficou em `~/bin/boletim-da-base.sh.antes-diarias-20261024`. Regra: ao mudar a origem de um dado no servidor, procure quem mais o lia (`grep -l` em `~/bin`).
+- **Data:** 24/10/2026
+
+### Carga histórica do CNPJ: ZIP cortado da Receita e memória estourada no mês grande
+- **Erro:** `BadZipFile` em 2023-08 e OOM (kill do contêiner de 4 GB) em 2024-10, o mês com 8,4 milhões de mudanças nos estabelecimentos e 9,7 milhões nos sócios.
+- **Causa:** a Receita publica `Estabelecimentos6/7.zip` cortados em 2023-08 (a cópia inteira vem com sufixo `-RF…`); e as mudanças do mês eram montadas todas de uma vez na memória.
+- **Solução:** o download confere `zipfile.is_zipfile` e o `Content-Length`, repete e usa a cópia `-RF…` (#619); as mudanças saem uma tabela por vez (#634) e um arquivo por prefixo, com pasta `<AAAA-MM>/<xx>.parquet` quando o mês passa de 2 milhões de linhas (#644). Pico medido: 3,8 GB no pior mês; contêiner com 5 GB e swap.
+- **Data:** 25/10/2026
+
+
+## Busca aberta por nome ou ticker devolvia 503 no PostgreSQL
+- **Sintoma:** CNPJ funcionava, mas nome e ticker devolviam 503 após a publicação.
+- **Causa:** `order_by("cnpj")` resolveu o nome para a tabela associada (`setores_cvm`), embora o `SELECT DISTINCT` retornasse o CNPJ de `tickers_dos_emissores`. PostgreSQL exige que a expressão ordenada esteja na seleção; SQLite aceita essa consulta e ocultou o erro nos testes locais.
+- **Solução:** ordenar pelas próprias `selected_columns` da consulta. Os três modos de busca e a eliminação de duplicatas passaram a ser exercitados também pelo PostgreSQL no conjunto `test_banco.py` do CI. A falha foi reproduzida por consulta de leitura antes da correção.
+- **Data:** 26/10/2026
+
+## Página com contrato em `src/paginas.py` sem a tela em React no mesmo PR (`esqueleto`, `moldura`)
+- **Sintoma:** PR que só traz a rota da API de uma página nova fica com os testes web `web/testes/app/esqueleto.test.tsx` ("toda página com contrato já tem a tela em React") e `web/testes/app/moldura.test.tsx` vermelhos.
+- **Causa:** dar contrato à página em `src/paginas.py` a põe em `paginasDoApp`, e esses testes exigem que toda página com contrato tenha a tela em React.
+- **Solução:** a tela entra no mesmo PR do contrato. Se o PR é só da rota, não dê contrato de página: ponha a rota em `ROTAS_DA_CONTA` (`src/api_v1/acesso.py`), que `test_toda_rota_da_v1_tem_contrato_ou_e_da_conta` aceita. Exemplos: molde B (#477) e molde D (#505).
+- **Data:** 03/11/2026

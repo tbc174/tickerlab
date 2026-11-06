@@ -1,0 +1,87 @@
+{
+  "tabela": "cnpj_simples_mudancas",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "mes": {
+      "descricao": "Mês do retrato em que a mudança apareceu",
+      "unidade": "AAAA-MM"
+    },
+    "tipo": {
+      "descricao": "entrou, saiu ou mudou, de um mês para o seguinte",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "ordem": {
+      "descricao": "Número da linha dentro da chave quando ela se repete (ordenada pelo conteúdo)",
+      "unidade": "número inteiro"
+    },
+    "optante_simples_antes": {
+      "descricao": "Antes da mudança. Verdadeiro se a empresa é optante do Simples Nacional",
+      "unidade": "verdadeiro ou falso"
+    },
+    "optante_simples_depois": {
+      "descricao": "Depois da mudança. Verdadeiro se a empresa é optante do Simples Nacional",
+      "unidade": "verdadeiro ou falso"
+    },
+    "data_opcao_simples_antes": {
+      "descricao": "Antes da mudança. Data da opção pelo Simples; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_opcao_simples_depois": {
+      "descricao": "Depois da mudança. Data da opção pelo Simples; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_exclusao_simples_antes": {
+      "descricao": "Antes da mudança. Data da exclusão do Simples; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_exclusao_simples_depois": {
+      "descricao": "Depois da mudança. Data da exclusão do Simples; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "optante_mei_antes": {
+      "descricao": "Antes da mudança. Verdadeiro se a empresa é MEI",
+      "unidade": "verdadeiro ou falso"
+    },
+    "optante_mei_depois": {
+      "descricao": "Depois da mudança. Verdadeiro se a empresa é MEI",
+      "unidade": "verdadeiro ou falso"
+    },
+    "data_opcao_mei_antes": {
+      "descricao": "Antes da mudança. Data do enquadramento como MEI; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_opcao_mei_depois": {
+      "descricao": "Depois da mudança. Data do enquadramento como MEI; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_exclusao_mei_antes": {
+      "descricao": "Antes da mudança. Data do desenquadramento do MEI; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_exclusao_mei_depois": {
+      "descricao": "Depois da mudança. Data do desenquadramento do MEI; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "mes",
+    "cnpj_basico",
+    "ordem"
+  ],
+  "datas": {
+    "publico_em": "mes"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+  "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+}

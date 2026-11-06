@@ -6,6 +6,10 @@ não ocupa mais espaço, e qualquer cópia pode ser conferida contra o registro 
 (JSON, XML, CSV, HTML) é guardado em gzip (`.json.gz`; o SHA-256 é sempre o do original); zip e PDF
 já vêm comprimidos. Gravação atômica: o arquivo só aparece completo.
 
+Fonte que traz nome de pessoa natural (`FONTES_COM_PESSOA`, ADR 0106) ou que é só de uso interno
+(`coletas.FONTES_SO_INTERNAS`) vai para `restrito/<fonte>/...`,
+pasta que nenhum pacote, exportação ou cópia pública leva (`PASTAS_PUBLICAS` é a lista do que pode sair).
+
 `TICKERLAB_ACERVO` escolhe a pasta; `desligado` para de guardar (o registro de coletas continua).
 """
 
@@ -31,8 +35,34 @@ EXTENSOES_CONHECIDAS = {
     ".html",
     ".pdf",
 }
+PASTA_PUBLICA = "bruto"
+PASTA_RESTRITA = "restrito"
+PASTAS_PUBLICAS = (PASTA_PUBLICA,)
+FONTES_COM_PESSOA = frozenset(
+    {
+        "rfb-cnpj",
+        "pgfn-divida",
+        "mte-lista-suja",
+        "ibama-autos",
+        "ibama-embargos",
+        "cvm-enet-notas",  # o texto das notas da DFP traz nomes (administradores, auditor)
+        "antt-autos-de-transito",  # o autuado pode ser pessoa física (motorista autônomo)
+        "djen-partes",  # as partes e o texto da comunicação trazem pessoas físicas
+        "djen-processos",  # as mesmas comunicações, achadas pelo número do processo
+    }
+)
 SEM_EXTENSAO = ".bin"
 JA_COMPRIMIDOS = {".zip", ".pdf"}  # o resto é texto (ou desconhecido) e vai em gzip
+
+
+def _restrita(fonte: str) -> bool:
+    """Fonte com pessoa natural ou só de uso interno (`coletas.FONTES_SO_INTERNAS`, o DataJud): o
+    original fica em `restrito/`, que nenhum pacote nem exportação leva."""
+    from src.banco.coletas import (
+        so_interna,
+    )  # import tardio: `coletas` importa este módulo
+
+    return fonte in FONTES_COM_PESSOA or so_interna(fonte)
 
 
 def pasta_do_acervo() -> Path | None:
@@ -52,7 +82,7 @@ def extensao_da_url(url: str) -> str:
 def caminho_relativo(
     fonte: str, url: str, conteudo: bytes, quando: datetime, extensao: str | None = None
 ) -> str:
-    """`bruto/<fonte>/<ano>/<sha256>.<ext>[.gz]`, com barras normais (vai para o registro).
+    """`bruto/<fonte>/<ano>/<sha256>.<ext>[.gz]` (`restrito/` se a fonte traz pessoa), com barras normais.
 
     `extensao` vale mais que a do endereço (o ENET entrega XML por um endereço `.aspx`).
     """
@@ -66,7 +96,8 @@ def _relativo_pelo_sha(
     extensao = extensao or extensao_da_url(url)
     if extensao not in JA_COMPRIMIDOS:
         extensao += ".gz"
-    return f"bruto/{fonte}/{quando.year}/{sha256}{extensao}"
+    pasta = PASTA_RESTRITA if _restrita(fonte) else PASTA_PUBLICA
+    return f"{pasta}/{fonte}/{quando.year}/{sha256}{extensao}"
 
 
 def ler_original(relativo: str) -> bytes | None:

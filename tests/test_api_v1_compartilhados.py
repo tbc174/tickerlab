@@ -13,7 +13,7 @@ from src.banco import compartilhamentos as links
 from src.banco import dados_do_usuario as repo
 from src.banco import pdfs_originais as pdfs
 from src.banco.usuarios import entrar, mudar_plano
-from tests.ajudantes_da_api import AGORA
+from tests.ajudantes_da_api import AGORA, cliente_do_gateway
 from tests.test_compartilhamentos import _congelada
 
 PDF = b"%PDF-1.7 relatorio de exemplo"
@@ -30,7 +30,7 @@ def cliente(banco, monkeypatch):
     monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
     monkeypatch.setattr(acesso, "agora", lambda: AGORA)
     compartilhados.LIMITE_POR_IP.zerar()
-    return TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
+    return cliente_do_gateway({VARIAVEL_DA_CHAVE: "1"})
 
 
 @pytest.fixture

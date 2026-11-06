@@ -1,0 +1,123 @@
+{
+  "tabela": "tce_pe_contratos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "codigo_contrato": {
+      "descricao": "Código do contrato no TCE-PE",
+      "unidade": "texto"
+    },
+    "numero_contrato": {
+      "descricao": "Número do contrato, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "ano_contrato": {
+      "descricao": "Ano do contrato",
+      "unidade": "texto"
+    },
+    "codigo_ug": {
+      "descricao": "Código da unidade gestora",
+      "unidade": "texto"
+    },
+    "codigo_efisco_ug": {
+      "descricao": "Código e-Fisco da unidade gestora",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município da unidade gestora, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "Situação, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "estagio": {
+      "descricao": "Estágio, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "link": {
+      "descricao": "Endereço do documento na fonte",
+      "unidade": "texto"
+    },
+    "vigencia_inicio": {
+      "descricao": "Início da vigência (a fonte traz o período numa frase)",
+      "unidade": "data (dia)"
+    },
+    "vigencia_fim": {
+      "descricao": "Fim da vigência",
+      "unidade": "data (dia)"
+    },
+    "esfera": {
+      "descricao": "Esfera (estadual ou municipal), como a fonte escreve",
+      "unidade": "texto"
+    },
+    "tipo_processo": {
+      "descricao": "Tipo do processo de contratação, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "numero_processo": {
+      "descricao": "Número do processo de contratação",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "Valor do contrato, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "tribunal": {
+      "descricao": "Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs`",
+      "unidade": "texto"
+    },
+    "tabela": {
+      "descricao": "Assunto da linha dentro do tribunal (contratos, aditivos, despesas)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "codigo_contrato",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "vigencia_inicio",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "vigencia_inicio": "a_conferir",
+    "vigencia_fim": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": true,
+  "frequencia": "Anual (um pedido por ano; refazer o ano corrente a cada trimestre)",
+  "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
+}

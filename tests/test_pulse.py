@@ -353,3 +353,185 @@ def test_texto_da_tese_ligada_traz_a_data_e_um_trecho_curto():
     texto = pulse.texto_da_tese_ligada(tese)
     assert texto.startswith("Sua tese sobre PETR4 em 10/10/2026 às 18h00: “palavra")
     assert texto.endswith("…”") and len(texto) < 280
+
+
+# --- o Pulse pela API (Workspace, PR 2): a janela da aba e o selo da mudança ------------------
+
+
+def test_janela_da_aba_sem_desde_e_a_de_sempre():
+    visita = AGORA - timedelta(days=2)
+    assert pulse.janela_da_aba(visita, AGORA, None) == pulse.janela(visita, AGORA)
+    assert pulse.janela_da_aba(None, AGORA, None) == pulse.janela(None, AGORA)
+
+
+def test_janela_da_aba_com_desde_so_amplia():
+    """O F5 reenvia o início que a aba mostrava: a janela volta a ele, nunca encolhe."""
+    visita = AGORA - timedelta(minutes=10)
+    inicio_da_aba = AGORA - timedelta(days=7, minutes=10)
+    j = pulse.janela_da_aba(visita, AGORA, inicio_da_aba)
+    assert (j.desde, j.ate) == (inicio_da_aba, AGORA)
+    assert j.guardada_na_aba and not j.primeira_vez
+    assert pulse.texto_da_janela(j) == (
+        "O que mudou desde 06/10/2026 às 17h50 (a janela que esta aba já mostrava)."
+    )
+    # um `desde` depois da última visita não encurta a janela
+    tarde = pulse.janela_da_aba(visita, AGORA, AGORA - timedelta(minutes=1))
+    assert tarde == pulse.janela(visita, AGORA)
+
+
+def test_janela_da_aba_corta_em_30_dias_e_recusa_sem_fuso():
+    j = pulse.janela_da_aba(AGORA, AGORA, AGORA - timedelta(days=400))
+    assert j.desde == AGORA - pulse.JANELA_MAXIMA_DA_ABA
+    assert timedelta(days=30) == pulse.JANELA_MAXIMA_DA_ABA
+    with pytest.raises(ValueError, match="fuso"):
+        pulse.janela_da_aba(None, AGORA, datetime(2026, 10, 1))  # noqa: DTZ001 (sem fuso de propósito)
+
+
+def _conferidos(agora_de: dict[str, str | None], vistos: dict[str, str] | None = None):
+    simulacoes = [_Simulacao(i, nome=i) for i in agora_de]
+    salvas, _, _ = pulse.estrategias_salvas(simulacoes, maximo=len(simulacoes))
+    return [pulse.comparar(e, vistos or {}, agora_de[e.id]) for e in salvas]
+
+
+def test_acompanhar_poe_o_que_mudou_primeiro_e_as_nao_conferidas_por_ultimo():
+    j = pulse.janela(AGORA - timedelta(days=1), AGORA)
+    conferidos = _conferidos({"falhou": None, "igual": "passou", "mudou": "não passou"})
+    acompanhadas, mudancas = pulse.acompanhar(conferidos, {}, j)
+    assert [a.estrategia.id for a in acompanhadas] == ["mudou", "igual", "falhou"]
+    mudou, igual, falhou = acompanhadas
+    assert (mudou.antes, mudou.agora, mudou.mudou, mudou.conferido_em) == (
+        "passou",
+        "não passou",
+        True,
+        AGORA,
+    )
+    assert (igual.mudou, igual.conferido_em) == (False, AGORA)
+    assert (falhou.agora, falhou.mudou, falhou.conferido_em) == (None, False, None)
+    assert mudancas == {"mudou": pulse.Mudanca("passou", "não passou", AGORA)}
+
+
+def test_acompanhar_mantem_o_selo_da_mudanca_vista_dentro_da_janela():
+    """No F5 o visto já é o veredito novo; a mudança guardada (dentro da janela) segura o selo."""
+    vista_em = AGORA - timedelta(minutes=30)
+    guardadas = {"a": pulse.Mudanca("passou", "não passou", vista_em)}
+    conferidos = _conferidos({"a": "não passou"}, vistos={"a": "não passou"})
+    dentro = pulse.janela_da_aba(vista_em, AGORA, AGORA - timedelta(days=7))
+    [a], mudancas = pulse.acompanhar(conferidos, guardadas, dentro)
+    assert (a.antes, a.agora, a.mudou, a.conferido_em) == (
+        "passou",
+        "não passou",
+        True,
+        vista_em,
+    )
+    assert mudancas == guardadas
+    # a visita seguinte começa depois da mudança: sem selo (a mudança fica guardada um tempo)
+    [a], _ = pulse.acompanhar(conferidos, guardadas, pulse.janela(vista_em, AGORA))
+    assert (a.antes, a.mudou, a.conferido_em) == ("não passou", False, AGORA)
+
+
+def test_acompanhar_esquece_mudanca_velha_desfeita_ou_de_estrategia_apagada():
+    velha = pulse.Mudanca("passou", "não passou", AGORA - timedelta(days=31))
+    desfeita = pulse.Mudanca("passou", "não passou", AGORA - timedelta(hours=1))
+    apagada = pulse.Mudanca("passou", "não passou", AGORA - timedelta(hours=1))
+    conferidos = _conferidos(
+        {"velha": "não passou", "desfeita": "passou"},
+        vistos={"velha": "não passou", "desfeita": "passou"},
+    )
+    j = pulse.janela_da_aba(AGORA, AGORA, AGORA - timedelta(days=30))
+    acompanhadas, mudancas = pulse.acompanhar(
+        conferidos, {"velha": velha, "desfeita": desfeita, "apagada": apagada}, j
+    )
+    assert [a.mudou for a in acompanhadas] == [False, False]
+    assert mudancas == {}
+
+
+def test_mudancas_vao_e_voltam_do_banco_e_o_estranho_fica_de_fora():
+    mudancas = {"a": pulse.Mudanca("passou", "não passou", AGORA)}
+    guardadas = pulse.mudancas_para_guardar(mudancas)
+    assert guardadas == {
+        "a": {"antes": "passou", "agora": "não passou", "em": AGORA.isoformat()}
+    }
+    assert pulse.ler_mudancas(guardadas) == mudancas
+    estranhas = {
+        "sem_fuso": {
+            "antes": "passou",
+            "agora": "não passou",
+            "em": "2026-10-01T10:00",
+        },
+        "igual": {"antes": "passou", "agora": "passou", "em": AGORA.isoformat()},
+        "inventado": {"antes": "ótimo", "agora": "passou", "em": AGORA.isoformat()},
+        "data_ruim": {"antes": "passou", "agora": "não passou", "em": "ontem"},
+        "texto": "passou",
+        "x" * 100: {"antes": "passou", "agora": "não passou", "em": AGORA.isoformat()},
+    }
+    assert pulse.ler_mudancas(estranhas) == {}
+    assert pulse.ler_mudancas(None) == {}
+
+
+def _estrategia(retrato=None, pedido=None):
+    salva = _Simulacao(
+        "a", parametros=retrato or {"ticker": "PETR4.SA", "periodo": "2y"}
+    )
+    if pedido is not None:
+        salva.resultado = {"ficha": {"pedido": pedido, "veredito": "passou"}}
+    (estrategia,), _, _ = pulse.estrategias_salvas([salva])
+    return estrategia
+
+
+def _sem_cdi(*_args):
+    raise AssertionError("este pedido não usa o CDI")
+
+
+def test_veredito_de_hoje_e_o_da_ficha_com_os_precos_de_hoje():
+    """A tela e a API passam cada uma o seu jeito de baixar os preços; o cálculo é um só."""
+    from src import ficha
+    from src.dados import baixar_dados
+
+    precos = baixar_dados("PETR4.SA", "2y", forcar_exemplo=True)
+    pedido = ficha.PedidoDaFicha(
+        dados=precos,
+        estrategia="Cruzamento de médias",
+        parametros={"curta": 10, "longa": 40},
+        custo_por_operacao=0.001,
+        capital_inicial=10_000,
+        livres=("curta", "longa"),
+    )
+    esperado = ficha.montar_ficha(pedido).veredito.resultado.value
+    pedidos = []
+
+    def carregar(ticker, periodo, em_reais):
+        pedidos.append((ticker, periodo, em_reais))
+        return precos
+
+    estrategia = _estrategia(pedido=ficha.pedido_para_guardar(pedido))
+    assert pulse.veredito_de_hoje(estrategia, carregar, _sem_cdi) == esperado
+    assert pedidos == [("PETR4.SA", "2y", False)]
+
+
+def test_veredito_de_hoje_sem_dar_para_conferir_e_none():
+    from src.dados import DadosIndisponiveisError
+
+    def sem_dados(*_args):
+        raise DadosIndisponiveisError("fora do ar")
+
+    def cambio_falhou(*_args):
+        dados = pd.DataFrame({"Close": [1.0]}, index=pd.to_datetime(["2026-10-09"]))
+        dados.attrs = {"cambio_falhou": True}
+        return dados
+
+    def quebrou(*_args):
+        raise RuntimeError("inesperado")
+
+    sem_ticker = _estrategia(retrato={"periodo": "2y"})
+    assert pulse.veredito_de_hoje(sem_ticker, sem_dados, _sem_cdi) is None
+    assert pulse.veredito_de_hoje(_estrategia(), sem_dados, _sem_cdi) is None
+    assert pulse.veredito_de_hoje(_estrategia(), cambio_falhou, _sem_cdi) is None
+    assert pulse.veredito_de_hoje(_estrategia(), quebrou, _sem_cdi) is None
+
+    def precos(*_args):
+        return pd.DataFrame(
+            {"Close": [1.0, 2.0]}, index=pd.to_datetime(["2026-10-08", "2026-10-09"])
+        )
+
+    estragado = _estrategia(pedido={"versao": 99})
+    assert pulse.veredito_de_hoje(estragado, precos, _sem_cdi) is None

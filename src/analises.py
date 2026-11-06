@@ -153,6 +153,15 @@ def aviso_da_origem(origem: str, ate: str | None) -> str | None:
     return None
 
 
+def aviso_do_cambio(ate: str | None) -> str:
+    """O aviso quando o dólar da conversão para reais não veio atualizado (cache antigo ou
+    exemplo): os preços em reais usam a última cotação guardada (achado 5d do Codex)."""
+    return (
+        "Não consegui o dólar atualizado (USDBRL=X): a conversão para reais usa a cotação "
+        f"guardada, até {ate}. Dias do ativo mais de 5 dias depois dela ficam de fora."
+    )
+
+
 @dataclass(frozen=True)
 class RiscoAoLongoDoTempo:
     """A queda desde o topo dia a dia, a pior delas e a volatilidade numa janela móvel."""

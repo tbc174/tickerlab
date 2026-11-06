@@ -126,6 +126,12 @@ def test_dia_sem_noticia_tem_tom_vazio():
     assert dia["tom"] != dia["tom"]  # NaN: sem notícia, não há tom
 
 
+def test_endereco_gdelt_de_varios_dias():
+    assert endereco_gdelt(
+        "bitcoin", "timelinetone", date(2017, 1, 1), date(2017, 1, 31)
+    ).endswith("&startdatetime=20170101000000&enddatetime=20170131000000")
+
+
 def test_endereco_gdelt_de_um_dia():
     assert endereco_gdelt("bitcoin", "timelinevolraw", date(2017, 1, 1)) == (
         "https://api.gdeltproject.org/api/v2/doc/doc?query=bitcoin&mode=timelinevolraw"

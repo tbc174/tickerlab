@@ -6,6 +6,8 @@
 Roda fora do app (no servidor, uma vez por dia); o app só lê. Grava as negociações e um evento por
 documento, cargo e operação (página Acontecimentos). Um arquivo que ainda não existe na CVM (o do
 ano novo, em janeiro) é pulado; outras falhas param a coleta sem apagar nada.
+
+Roda: cron do VPS (todo dia às 7h30); citado em negociacoes.py, por_dentro.py.
 """
 
 import argparse
@@ -19,6 +21,7 @@ import sqlalchemy as sa
 
 from src import negociacoes as ng
 from src import negociacoes_cvm as vlmo
+from src import rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.eventos import gravar_eventos
@@ -32,7 +35,7 @@ NAO_ENCONTRADO = 404
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

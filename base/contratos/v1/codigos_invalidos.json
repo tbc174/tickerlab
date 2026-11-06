@@ -1,0 +1,48 @@
+{
+  "tabela": "codigos_invalidos",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FCA",
+      "unidade": "data (dia)"
+    },
+    "recebido_em": {
+      "descricao": "Data de entrega do FCA à CVM (DT_RECEB)",
+      "unidade": "data (dia)"
+    },
+    "valor_mobiliario": {
+      "descricao": "Tipo do papel, como a empresa informa",
+      "unidade": "texto"
+    },
+    "codigo_informado": {
+      "descricao": "O código como a empresa escreveu",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "referencia",
+    "codigo_informado"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "recebido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos",
+  "atraso": "Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017"
+}

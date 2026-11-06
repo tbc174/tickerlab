@@ -1,0 +1,39 @@
+{
+  "tabela": "buracos_dos_fundos",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "emissor": {
+      "descricao": "As 4 posições do emissor sem CNPJ",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "Valor comprado somado em todos os meses",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "primeira": {
+      "descricao": "Primeiro mês em que aparece",
+      "unidade": "data (dia)"
+    },
+    "ultima": {
+      "descricao": "Último mês em que aparece",
+      "unidade": "data (dia)"
+    },
+    "descricao": {
+      "descricao": "Descrição do ativo no CDA (a pista para a conferência)",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "emissor"
+  ],
+  "datas": {},
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Mensal, montada junto com o painel dos fundos",
+  "atraso": "O do CDA"
+}

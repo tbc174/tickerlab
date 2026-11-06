@@ -4,12 +4,15 @@ o que foi divulgado depois."""
 
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from base.contas_cvm import COLUNAS
 from base.ponto_no_tempo import (
     COLUNAS_DA_BASE,
     com_divulgacao,
     como_era_em,
+    divulgacao_publica,
     gravar_parquet,
     ler_parquet,
     montar_base,
@@ -18,6 +21,7 @@ from base.ponto_no_tempo import (
 A = "11.111.111/0001-11"
 DFP_2022 = pd.Timestamp("2022-12-31")
 DFP_2023 = pd.Timestamp("2023-12-31")
+SEM_CADASTRO = pd.DataFrame(columns=["cnpj", "registro", "cancelamento"])
 
 
 def _conta(
@@ -185,7 +189,9 @@ def test_com_divulgacao_usa_a_data_de_cada_versao():
             "recebido_em": [pd.Timestamp("2023-03-17"), pd.Timestamp("2023-05-02")],
         }
     )
-    publicadas = com_divulgacao(contas.astype({"versao": "Int64"}), indice, "enet")
+    publicadas = com_divulgacao(
+        contas.astype({"versao": "Int64"}), indice, "enet", cadastro=SEM_CADASTRO
+    )
     assert publicadas.sort_values("versao")["divulgado_em"].tolist() == [
         pd.Timestamp("2023-03-17"),
         pd.Timestamp("2023-05-02"),
@@ -199,7 +205,9 @@ def test_com_divulgacao_sem_a_versao_no_indice_e_recusado():
     ].astype({"versao": "Int64"})
     indice = pd.DataFrame(columns=["cnpj", "referencia", "versao", "recebido_em"])
     with pytest.raises(ValueError, match="divulga"):
-        montar_base(com_divulgacao(contas, indice, "dados_abertos"))
+        montar_base(
+            com_divulgacao(contas, indice, "dados_abertos", cadastro=SEM_CADASTRO)
+        )
 
 
 def test_parquet_por_ano_volta_igual(tmp_path):
@@ -259,7 +267,7 @@ def test_publicadas_do_enet_usam_o_recorte_e_a_data_de_cada_versao():
         ler_xml_enet(_dfp(versao=1)),
         ler_xml_enet(_dfp(versao=2, lucro="12.345")),
     ]
-    publicadas = publicadas_do_enet(documentos, _indice_do_brb())
+    publicadas = publicadas_do_enet(documentos, _indice_do_brb(), cadastro=SEM_CADASTRO)
     assert set(publicadas["origem"]) == {"enet"}
     assert "1.01" in set(publicadas["conta"])  # balanço inteiro
     assert set(publicadas.loc[publicadas["demonstracao"] == "DRE", "conta"]) == {
@@ -314,6 +322,13 @@ def test_refazer_a_base_dos_originais_da_os_mesmos_hashes(tmp_path):
     assert manifesto["linhas"] == 2 and manifesto["origens"] == origens
     assert manifesto["sha256_da_base"] == hash_da_base(uma[uma["fim"].dt.year == 2022])
     assert conferir_pasta(tmp_path / "base") == {"2021": True, "2022": True}
+    # a âncora no Bitcoin aceita o manifesto (ADR 0078): tem o hash da tabela inteira
+    from base.ancoragem import folhas_da_base, parquets_sem_manifesto
+    from base.parquet import conferir_tabela
+
+    assert parquets_sem_manifesto(tmp_path / "base") == []
+    assert list(folhas_da_base(tmp_path / "base")) == ["2021", "2022"]
+    assert conferir_tabela(tmp_path / "base" / "2022.parquet")
 
 
 def test_hash_muda_quando_um_numero_muda(tmp_path):
@@ -329,3 +344,153 @@ def test_hash_muda_quando_um_numero_muda(tmp_path):
         tmp_path / "base" / "2021.parquet", index=False
     )
     assert conferir_pasta(tmp_path / "base")["2021"] is False
+
+
+# --- entregas do pedido de registro (conferência da data de entrega da CVM, 15/10/2026) ----------
+# Com a empresa ainda sem registro, o DT_RECEB é o dia em que o documento chegou à CVM, não o dia em
+# que o público o viu (3 semanas a 3 meses depois, perto do registro). A base usa o registro seguinte.
+MANAUS = "09.584.854/0001-37"
+TURBI = "26.982.634/0001-80"
+NATURA_CO = "32.785.497/0001-97"
+B = "22.222.222/0001-22"
+CADASTRO = pd.DataFrame(
+    {
+        "cnpj": [MANAUS, TURBI, NATURA_CO, B, B, A],
+        "registro": pd.to_datetime(
+            [
+                "2022-03-29",
+                "2023-05-11",
+                "2019-09-25",
+                "1995-01-01",
+                "2021-06-01",
+                "2001-01-01",
+            ]
+        ),
+        "cancelamento": pd.to_datetime(
+            [None, None, None, "2021-01-10", None, "2020-06-30"]
+        ),
+    }
+)
+
+
+@pytest.mark.parametrize(
+    ("cnpj", "recebido_em", "esperado"),
+    [
+        (MANAUS, "2021-12-21", "2022-03-29"),  # ITR de 31/03/2021, ID_DOC 110848
+        (TURBI, "2023-04-13", "2023-05-11"),  # DFP de 2022, ID_DOC 125242
+        (NATURA_CO, "2019-07-26", "2019-09-25"),  # ITR de 31/03/2019
+        (TURBI, "2023-05-15", "2023-05-15"),  # já registrada: o DT_RECEB vale
+        (MANAUS, "2022-03-29", "2022-03-29"),  # no próprio dia do registro
+        (B, "2021-03-01", "2021-06-01"),  # entre dois registros: o seguinte
+        (A, "2020-08-10", "2020-08-10"),  # cancelada, sem registro depois: fica
+        ("99.999.999/0001-99", "2021-03-01", "2021-03-01"),  # fora do cadastro: fica
+    ],
+)
+def test_entrega_fora_do_registro_vale_a_partir_do_registro_seguinte(
+    cnpj, recebido_em, esperado
+):
+    datas = divulgacao_publica(
+        pd.Series([cnpj]), pd.Series([pd.Timestamp(recebido_em)]), CADASTRO
+    )
+    assert datas.tolist() == [pd.Timestamp(esperado)]
+
+
+def test_com_divulgacao_usa_o_registro_seguinte_na_entrega_do_pedido_de_registro():
+    itr = pd.Timestamp("2021-03-31")
+    contas = pd.DataFrame([_conta(7.0, "2000-01-01", referencia=itr, cnpj=MANAUS)])[
+        list(COLUNAS)
+    ].astype({"versao": "Int64"})
+    indice = pd.DataFrame(
+        {
+            "cnpj": [MANAUS],
+            "referencia": [itr],
+            "versao": pd.array([1], dtype="Int64"),
+            "recebido_em": [pd.Timestamp("2021-12-21")],
+        }
+    )
+    publicadas = com_divulgacao(contas, indice, "dados_abertos", cadastro=CADASTRO)
+    assert publicadas["divulgado_em"].tolist() == [pd.Timestamp("2022-03-29")]
+
+
+# --- série T1: DFC, DVA e DRA na mesma tabela ------------------------------------------------------
+def _dfc_do_itr(valor, divulgado_em, versao):
+    """O caixa operacional acumulado do 1º semestre de 2023, num ITR."""
+    return _conta(
+        valor, divulgado_em, referencia=pd.Timestamp("2023-06-30"), versao=versao
+    ) | {
+        "documento": "ITR",
+        "demonstracao": "DFC_MI",
+        "conta": "6.01",
+        "descricao": "Caixa Líquido Atividades Operacionais",
+        "inicio": pd.Timestamp("2023-01-01"),
+    }
+
+
+def test_itr_versao_2_so_vale_a_partir_da_propria_divulgacao():
+    base = montar_base(
+        _publicadas(
+            _dfc_do_itr(300.0, "2023-08-10", versao=1),
+            _dfc_do_itr(280.0, "2023-09-20", versao=2),
+        )
+    )
+    assert como_era_em(base, "2023-08-09").empty
+    assert como_era_em(base, "2023-09-19")["valor"].tolist() == [300.0]
+    assert como_era_em(base, "2023-09-20")["valor"].tolist() == [280.0]
+    assert set(base["demonstracao"]) == {"DFC_MI"}
+
+
+def test_publicadas_do_enet_trazem_dfc_dva_e_dra_inteiras():
+    from base.enet import ler_xml_enet
+    from base.ponto_no_tempo import publicadas_do_enet
+    from tests.test_base_enet import _dfp
+
+    publicadas = publicadas_do_enet(
+        [ler_xml_enet(_dfp(versao=1))], _indice_do_brb(), cadastro=SEM_CADASTRO
+    )
+    assert {"DFC_MI", "DFC_MD", "DVA", "DRA"} <= set(publicadas["demonstracao"])
+    assert "7.04.01" in set(publicadas["conta"])  # a D&A da DVA, para o EBITDA
+    assert "DMPL" not in set(publicadas["demonstracao"])
+
+
+# --- sem olhar o futuro (propriedade) ----------------------------------------------------------------
+PRIMEIRO_DIA = pd.Timestamp("2023-01-02")
+CONTAS_DO_SORTEIO = ("1", "3.11", "6.01", "7.04.01")
+
+
+@st.composite
+def _publicacoes(desenho):
+    """Até 8 publicações de 4 contas (balanço, DRE, DFC e DVA) em 20 dias, com valores repetidos,
+    em branco e versões no mesmo dia: o gerador procura a combinação que vaza o futuro."""
+    quantas = desenho(st.integers(min_value=1, max_value=8))
+    linhas = []
+    for versao in range(1, quantas + 1):
+        conta = desenho(st.sampled_from(CONTAS_DO_SORTEIO))
+        valor = desenho(st.sampled_from([1.0, 2.0, 3.0, float("nan")]))
+        dia = PRIMEIRO_DIA + pd.Timedelta(days=desenho(st.integers(0, 20)))
+        linha = _conta(valor, dia, versao=versao, conta=conta)
+        if conta.startswith(("6", "7")):
+            linha["demonstracao"] = "DFC_MI" if conta.startswith("6") else "DVA"
+        linhas.append(linha)
+    return pd.DataFrame(linhas)
+
+
+def _sem_ate(foto):
+    return (
+        foto.drop(columns="ate")
+        .sort_values(["conta", "divulgado_em"])
+        .reset_index(drop=True)
+    )
+
+
+@settings(max_examples=60, deadline=None)
+@given(publicadas=_publicacoes(), dias=st.integers(0, 22))
+def test_cortar_o_futuro_nao_muda_o_passado(publicadas, dias):
+    """A foto de um dia é a mesma com ou sem as publicações que vieram depois dele."""
+    dia = PRIMEIRO_DIA + pd.Timedelta(days=dias)
+    inteira = como_era_em(montar_base(publicadas), dia)
+    so_o_passado = publicadas[publicadas["divulgado_em"] <= dia]
+    if so_o_passado.empty:
+        assert inteira.empty
+        return
+    cortada = como_era_em(montar_base(so_o_passado), dia)
+    pd.testing.assert_frame_equal(_sem_ate(inteira), _sem_ate(cortada))

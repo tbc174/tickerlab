@@ -7,6 +7,9 @@ Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
+
+Roda: hook do Claude Code no PC (travas.py); outro script (gerar_site.py, juntar_main.py,
+markdown_simples.py); citado em amostra_do_relatorio.py, metodologia_das_notas.py.
 """
 
 import json
@@ -16,9 +19,13 @@ from pathlib import Path
 
 import numpy as np
 
+from base import contrato, vitrine
+from base.arquivo import registro
+from base.dicionario import TABELAS
 from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
 from src import (
+    amostra_do_relatorio,
     analises,
     catalogo,
     cobranca,
@@ -34,12 +41,14 @@ from src import (
     planos,
     qualidade_texto,
     regras_de_imposto,
+    relatorio_semanal,
+    texto_do_pregao,
 )
+from src import autenticacao as aut
 from src import graficos_pdf as gp
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
-from src.autenticacao import AVISO_DA_ENTRADA
 from src.conteudo import carregar_glossario
 from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
@@ -50,26 +59,6 @@ RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
 # pontos do desenho do painel da página inicial (cinco anos: um ponto a cada ~4 semanas)
 PONTOS_DO_PAINEL = 64
-# a fita da página inicial: só o código (do catálogo) e um nome curto, nenhum preço
-ATIVOS_DA_FITA = (
-    ("PETR4.SA", "Petrobras"),
-    ("VALE3.SA", "Vale"),
-    ("ITUB4.SA", "Itaú Unibanco"),
-    ("WEGE3.SA", "WEG"),
-    ("BBAS3.SA", "Banco do Brasil"),
-    ("TAEE11.SA", "Taesa"),
-    ("HGLG11.SA", "Pátria Log · FII"),
-    ("IVVB11.SA", "iShares S&P 500 · ETF"),
-    ("^BVSP", "Ibovespa"),
-    ("^GSPC", "S&P 500"),
-    ("AAPL", "Apple"),
-    ("MSFT", "Microsoft"),
-    ("NVDA", "Nvidia"),
-    ("GOOGL", "Alphabet"),
-    ("BTC-USD", "Bitcoin"),
-    ("ETH-USD", "Ethereum"),
-    ("BRL=X", "Dólar em reais"),
-)
 
 
 def _modulos() -> list[dict]:
@@ -96,6 +85,9 @@ def _modulos() -> list[dict]:
 
 
 def _paginas() -> list[dict]:
+    """As páginas que o app em React conhece. As `somente_admin` ficam de fora de propósito: o
+    bundle é público, e o catálogo da área de administração não deve estar nele (a tela de admin
+    é só do Streamlit; o servidor continua sendo quem autoriza)."""
     return [
         {
             "chave": p.chave,
@@ -103,12 +95,31 @@ def _paginas() -> list[dict]:
             "url": p.url,
             "grupo": p.grupo,
             "descricao": p.descricao,
+            "area": p.area,
             "e_pro": p.e_pro,
             "no_menu": p.no_menu,
             "somente_admin": p.somente_admin,
             "contrato": asdict(p.contrato) if p.contrato else None,
         }
         for p in paginas.PAGINAS
+        if not p.somente_admin
+    ]
+
+
+def _areas() -> list[dict]:
+    """As áreas do menu do app novo (ADR 0096), na ordem, com as páginas de cada uma na ordem do
+    menu. As de administração ficam de fora pelo mesmo motivo de `_paginas`."""
+    return [
+        {
+            "chave": chave,
+            "rotulo": area.rotulo,
+            "icone": area.icone,
+            "frase": area.frase,
+            "paginas": [
+                p.chave for p in paginas.paginas_da_area(chave) if not p.somente_admin
+            ],
+        }
+        for chave, area in paginas.AREAS.items()
     ]
 
 
@@ -135,11 +146,13 @@ def _planos() -> dict:
     return {
         "tabela": planos.tabela_de_planos(),
         "com_cobranca": list(planos.COM_COBRANCA),
-        "nomes": [planos.limites_do(p).nome for p in planos.PLANOS],
-        "nomes_com_cobranca": [planos.limites_do(p).nome for p in planos.COM_COBRANCA],
+        "nomes": [planos.LIMITES_DOS_PLANOS[p].nome for p in planos.PLANOS],
+        "nomes_com_cobranca": [
+            planos.LIMITES_DOS_PLANOS[p].nome for p in planos.COM_COBRANCA
+        ],
         # pagos que ainda não estão à venda (os limites já valem)
         "nomes_em_breve": [
-            planos.limites_do(p).nome
+            planos.LIMITES_DOS_PLANOS[p].nome
             for p in planos.PLANOS
             if p != "gratuito" and p not in planos.COM_COBRANCA
         ],
@@ -147,22 +160,31 @@ def _planos() -> dict:
 
 
 def _site() -> dict:
-    """O que só o site usa e vem do app: os estilos do Report Studio, os ativos de exemplo e a fita
-    e o total de ativos da busca da página inicial."""
-    tabela = catalogo.carregar()
+    """O que só o site usa e vem do app: os estilos do Report Studio."""
     return {
-        "total_de_ativos": len(tabela),
-        "fita": [
-            {"simbolo": s, "codigo": tabela.loc[s, "codigo"], "nome": nome}
-            for s, nome in ATIVOS_DA_FITA
-        ],
         "estilos_do_relatorio": [
             {"chave": chave, "nome": estilo.nome} for chave, estilo in ESTILOS.items()
         ],
-        "exemplos": [
-            {"simbolo": s, "rotulo": catalogo.codigo(s)} for s in catalogo.EXEMPLOS
-        ],
     }
+
+
+def _ativos() -> list[dict[str, str]]:
+    """O catálogo da busca do campo Ativo (o mesmo do Streamlit), com o rótulo que a lista mostra.
+
+    Vai num JSON à parte que o app carrega só quando o campo aparece (ADR 0048): é estático, muda
+    só quando `scripts/gerar_catalogo.py` roda, e não precisa de rota na API.
+    """
+    tabela = catalogo.carregar()
+    return [
+        {
+            "simbolo": simbolo,
+            "codigo": linha["codigo"],
+            "nome": linha["nome"],
+            "tipo": linha["tipo"],
+            "rotulo": catalogo.rotulo(simbolo),
+        }
+        for simbolo, linha in tabela.iterrows()
+    ]
 
 
 def _variacao(valor: float) -> dict[str, float | str]:
@@ -259,6 +281,7 @@ def _app() -> dict[str, object]:
         ]
     )
     return {
+        "areas": _areas(),
         "painel": {
             "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
             "legenda": analises.LEGENDA_DO_PAINEL,
@@ -307,7 +330,13 @@ def _app() -> dict[str, object]:
                 "explicacao": ficha.EXPLICACAO,
             },
         },
-        "entrada": {"aviso": AVISO_DA_ENTRADA},
+        "entrada": {
+            "titulo": aut.TITULO_DA_ENTRADA,
+            "explicacao": aut.EXPLICACAO_DA_ENTRADA,
+            "lembrete_da_versao_classica": aut.LEMBRETE_DA_VERSAO_CLASSICA,
+            "pontos": list(aut.PONTOS_DA_ENTRADA),
+            "aviso": aut.AVISO_DA_ENTRADA,
+        },
         "assinatura": {
             "retorno_ok": cobranca.RETORNO_DO_PAGAMENTO_OK,
             "retorno_cancelado": cobranca.RETORNO_DO_PAGAMENTO_CANCELADO,
@@ -317,6 +346,10 @@ def _app() -> dict[str, object]:
             "titulo": conformidade.TITULO_DO_ACEITE,
             "introducao": conformidade.INTRODUCAO_DO_ACEITE,
             "caixa": conformidade.CAIXA_DO_ACEITE,
+            "sem_o_aceite": {
+                "titulo": conformidade.TITULO_SEM_O_ACEITE,
+                "explicacao": conformidade.EXPLICACAO_SEM_O_ACEITE,
+            },
             "novidades": {
                 "texto": f"Opcional: {TEXTO_DAS_NOVIDADES}",
                 "versao": VERSAO_DAS_NOVIDADES,
@@ -330,6 +363,38 @@ def _app() -> dict[str, object]:
             "padrao": ldt.MATERIALIDADE_PADRAO,
         },
     }
+
+
+def _catalogo() -> dict:
+    """A página Dados: fontes, módulos e uma linha por tabela, tudo contado do contrato da base."""
+    catalogo = vitrine.catalogo_publico(contrato.catalogo())
+    frases = {nome: vitrine.primeira_frase(t.descricao) for nome, t in TABELAS.items()}
+    fontes = vitrine.fontes_do_catalogo(catalogo)
+    modulos_da_base = vitrine.modulos_do_catalogo(catalogo)
+    familias = registro.familias_para_o_site(catalogo)
+    return {
+        "totais": {
+            "tabelas": len(catalogo["tabelas"]),
+            "fontes": len(fontes),
+            "fontes_em_consulta": sum(
+                f.situacao == vitrine.EM_CONSULTA for f in fontes
+            ),
+            "modulos": len(modulos_da_base),
+            "familias": len(familias),
+            "familias_em_uso": sum(f["uso"] == "em_uso" for f in familias),
+        },
+        "fontes": [asdict(f) for f in fontes],
+        "registro_de_fontes": registro.para_o_site(),
+        "familias_de_fontes": familias,
+        "modulos": [asdict(m) for m in modulos_da_base],
+        "tabelas": [asdict(t) for t in vitrine.tabelas_do_catalogo(catalogo, frases)],
+        "ligado_pelo_cnpj": vitrine.ligado_pelo_cnpj(catalogo),
+    }
+
+
+def _base() -> dict:
+    """A faixa de números da página Dados: a fotografia medida no servidor de casa, com o "medido em"."""
+    return vitrine.base_em_numeros()
 
 
 def conteudo() -> dict[str, object]:
@@ -347,7 +412,16 @@ def conteudo() -> dict[str, object]:
         "formatacao": formatos.casos_de_formatacao(),
         "novidades": novidades.como_lista(),
         "exemplo": painel_de_exemplo(),
+        "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
+        "relatorio_semanal_eletricas": relatorio_semanal.para_o_site(),
+        "pregao_do_dia": texto_do_pregao.para_o_site(),
+        "catalogo": _catalogo(),
+        "base": _base(),
+        "vitrine": [asdict(v) for v in vitrine.VAGAS_DA_VITRINE],
+        "fatos_da_base": vitrine.fatos_da_base(),
+        "ativos": _ativos(),
+        "empresas_da_base": vitrine.empresas_da_base(),
     }
 
 

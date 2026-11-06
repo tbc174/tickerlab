@@ -1,0 +1,226 @@
+"""Vigias de termos (linha 124 da fila): toda família com licença registrada tem vigia ou um motivo escrito."""
+
+from datetime import date
+
+import pytest
+
+from base.arquivo.fontes import CATALOGOS, FONTES, TERMOS
+from base.arquivo.registro import TERMOS_LIDOS_EM
+from src.banco.coletas import LICENCAS
+
+# id do vigia (depois de "termos-") → família do `LICENCAS` cujo termo ele vigia, quando os nomes diferem
+_FAMILIA_DO_VIGIA = {"banco-mundial": "bm", "igc": "assessoria", "cnpj": "rfb-cnpj"}
+
+_FONTES_NOVAS = {
+    "termos-kraken": "kraken",
+    "termos-yahoo": "yahoo",
+    "termos-gdelt": "gdelt",
+    "termos-gleif": "gleif",
+    "termos-faostat": "faostat",
+    "termos-chirps": "chirps",
+    "termos-mapbiomas": "mapbiomas",
+    "termos-iex": "iex",
+    "termos-banco-mundial": "bm",
+}
+
+# família sem vigia de termos → por quê (o motivo precisa ser verdadeiro hoje; trocar por vigia quando mudar)
+_SEM_VIGIA = {
+    # licença dita no catálogo do dados.gov.br ou no portal CKAN, sem página de termos própria
+    **dict.fromkeys(
+        (
+            "anac",
+            "anatel",
+            "aneel",
+            "anp",
+            "ans",
+            "antt",
+            # Ficha Clara, licenças e registros (licença lida na ficha do dados.gov.br em 29/10/2026)
+            "anvisa",
+            "mapa",
+            "anm",
+            "anm-amb",  # linha 657: sem licença declarada no portal, a confirmar
+            "anm-cfem",
+            "anm-sigbm",
+            "estban",  # linha 659: termos gerais do BC lidos em 04/11/2026, sem página própria do ESTBAN
+            "ancine",
+            # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
+            "mme",
+            "susep",
+            "ibama",
+            "mte",
+            "ons",
+            "bndes",
+            "inss",
+            "cvm",
+            "bcb",
+            "tesouro",
+            "tesouro-br",
+            "tesouro-br-direto",
+            "tesouro-br-divida",
+            "tesouro-br-leiloes",
+            "tesouro-br-siconfi-dca",
+            "tesouro-br-siconfi-entes",
+            "tesouro-br-siconfi-entregas",
+            "tesouro-br-siconfi-rgf",
+            "tesouro-br-siconfi-rreo",
+            "tce-pr",
+            "tce-pr-despesa",
+            "tce-pr-pit",
+            "tce-rs",
+            "tce-rs-empenhos",
+            "cgu",
+            "pgfn",
+            "rfb-renuncias",
+            "rfb-transacoes",
+            "ms",
+            "tce-rn",
+            "tce-pe",
+            "tce-sp",
+            "tce-ce",
+            "goias",
+            "msestado",
+            "sefazpe",  # linha 578: licença CC BY na ficha do conjunto, sem página de termos
+            "spcapital",
+            "conab",
+            "comexstat",
+        ),
+        "a licença está na ficha do catálogo ou no rodapé do portal, não numa página de termos",
+    ),
+    "transparencia": "as páginas de termos do portaldatransparencia.gov.br respondem 405 ao nosso agente (WAF); não se contorna",
+    "bcb-sgs-189": "a licença é da FGV IBRE (IGP-M), sem página própria lida",
+    "sec-company-tickers": "a lista de tickers é obra da SEC (domínio público); `termos-sec` já vigia a página da SEC",
+    # a página de termos não abre com o nosso agente; não se contorna (fila)
+    "fmi": "imf.org responde 403 (Akamai) ao nosso agente",
+    "ccee": "dadosabertos.ccee.org.br responde 403 ao nosso agente",
+    "ocde": "oecd.org/termsandconditions responde 403 (Cloudflare) ao nosso agente; não se contorna",
+    "worldbank": "os termos do Banco Mundial já são vigiados por `termos-banco-mundial` (família bm)",
+    "mb": "mercadobitcoin.com.br/termos-de-uso respondeu 403 ao leitor",
+    "wayback": "a página de termos do Internet Archive veio vazia",
+    "cftc": "a página de política da CFTC deu 404 (domínio público, obra do governo dos EUA)",
+    "usda": "usda.gov e fas.usda.gov respondem 403 (domínio público pela política do USDA)",
+    "chirps3": "a licença (CC BY 4.0) está na ficha do dataset no Hugging Face, cópia de terceiro; os termos do Hugging Face não foram lidos (PR da ponte, 28/10/2026)",
+    "ico": "ico.org não publica termos, só o aviso de copyright",
+    "finep": "a planilha de contratações da Finep não diz licença nem aponta termos (a confirmar, linha 469)",
+    "anvisa-cmed": "as listas de preços da CMED não dizem licença própria nem apontam termos (a confirmar)",
+    # lote Tesouro (23/10/2026): a licença ODbL está na ficha de cada pacote do CKAN; o catálogo já é vigiado
+    **dict.fromkeys(
+        (
+            "tesouro-br-rtn",
+            "tesouro-br-receitas",
+            "tesouro-br-despesas",
+            "tesouro-br-restos-a-pagar",
+            "tesouro-br-fatores-divida",
+            "tesouro-br-paf",
+            "tesouro-br-bspn",
+            "tesouro-br-limites-lrf",
+            "tesouro-br-dividendos-estatais",
+            "tesouro-br-subsidios-bndes",
+            "tesouro-br-garantias",
+            "tesouro-br-transferencias",
+            "tesouro-br-capag-municipios",
+            "tesouro-br-td-vendas",
+            "tesouro-br-td-resgates",
+            "tesouro-br-td-estoque",
+        ),
+        "a licença ODbL está na ficha do pacote no CKAN do Tesouro, sem página de termos própria; `catalogo-tesouro` vigia o catálogo",
+    ),
+    # lote EUA (22/10/2026): obra do governo federal dos EUA, sem página de termos própria achada (fila)
+    **dict.fromkeys(
+        ("treasury", "tic", "ofr", "census"),
+        "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
+    ),
+    # lote setoriais Brasil (22/10/2026)
+    **dict.fromkeys(
+        ("inep", "senatran", "inpi"),
+        "a licença é o rodapé CC BY-ND do site gov.br, que vale para o site inteiro, não uma página de termos do conjunto",
+    ),
+    "ans-demonstracoes": "as demonstrações contábeis não declaram licença: não há texto de termos a vigiar",
+    # lote acervos históricos (24/10/2026): o IPEADATA não publica termos; séries de terceiros herdam a fonte
+    "ipea": "o IPEADATA não publica página de termos (rodada 4, 22/10/2026); a série herda a fonte de origem",
+    # lote cadastros globais (22/10/2026): obra do governo dos EUA, sem página de termos própria
+    "ofac": "obra do governo dos EUA em domínio público; sem página de termos própria a vigiar",
+    # lote atenção e texto (23/10/2026): a marca está no id inteiro; o termo é vigiado pela família do mesmo provedor
+    "gdelt-gkg": "o termo do GDELT é vigiado por `termos-gdelt` (família `gdelt`)",
+    "wiki-pageviews-empresas": "licença CC0 dita na documentação da API, sem página de termos própria a vigiar",
+    # lote atenção e texto (23/10/2026): as agências não publicam página de termos (404 na sonda)
+    **dict.fromkeys(
+        ("ebc", "camara"),
+        "a agência não publica página de termos (404 na sonda de 22/10/2026)",
+    ),
+    "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
+    # lote licitações e contratos (rodada 4, 22/10/2026)
+    **dict.fromkeys(
+        (
+            "seges",
+            "seges-pesquisa-precos",
+            "comprasgov",
+            "transferegov",
+            "transferegov-especiais-pagamentos",
+        ),
+        "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
+    ),
+    "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",
+    "tcu": "a lista de inidôneos não declara licença: não há texto de termos a vigiar",
+    **dict.fromkeys(
+        ("govmg", "govsc"),
+        "a licença (CC BY) está na ficha do conjunto no portal CKAN, sem página de termos própria",
+    ),
+    # lote clima e fogo (rodada 4, 23/10/2026)
+    "inpe": "o INPE Queimadas não publica licença nem página de termos (a confirmar): nada a vigiar",
+    "terrabrasilis": "a licença (CC BY-SA 4.0) está na ficha dos conjuntos, sem página de termos própria",
+    "edgar": "a licença (CC BY 4.0) está na ficha de cada conjunto do JRC, sem página de termos própria",
+    # não há página de termos de terceiro a vigiar
+    "btc": "nó próprio, sem terceiro",
+    "rfb": "a página da Receita pede login",
+    "wiki": "a documentação da API deu 502 e as páginas lidas não dizem a licença",
+    "termos": "são as próprias cópias das páginas vigiadas",
+    "contrapartes": "páginas de terceiros guardadas como prova, sem coleta recorrente do termo",
+    "djen": "a regra é a Resolução CNJ 455/2022 (norma publicada); a API não tem página de termos",
+    # lote Europa e RBA (linha 512, 05/11/2026): as páginas de termos conhecidas deram 404 ou ficam atrás de
+    # desafio anti-robô (sem contorno); a licença foi lida à mão em 29/10/2026
+    **dict.fromkeys(
+        ("statat", "statbel", "cso", "ines"),
+        "a página de termos não responde ao nosso agente (404 ou desafio anti-robô); licença lida à mão em 29/10/2026",
+    ),
+    "snb": "sem coleta: só a marca não comercial; os termos do portal data.snb.ch são um app JavaScript",
+    "cnj": "a regra é a Resolução CNJ 46/2007 (norma publicada); o serviço da TPU não tem termos",
+    # fontes pouco visíveis (ADR 0124)
+    **dict.fromkeys(
+        ("sudeco", "sudam"),
+        "a licença (CC BY-ND 3.0) está no rodapé de cada página do gov.br, sem página de termos própria",
+    ),
+    "divida": "PDFs de sites diferentes guardados só como prova; não há uma página de termos a vigiar",
+}
+
+
+def _familias_vigiadas() -> set[str]:
+    familias = {"catalogo"} if CATALOGOS else set()
+    for fonte in FONTES:
+        if fonte.vigia and fonte.id.startswith("termos-"):
+            nome = fonte.id.removeprefix("termos-")
+            primeiro = nome.split("-", 1)[0]
+            familias.add(
+                _FAMILIA_DO_VIGIA.get(nome) or _FAMILIA_DO_VIGIA.get(primeiro, primeiro)
+            )
+    return familias
+
+
+@pytest.mark.parametrize("vigia, familia", sorted(_FONTES_NOVAS.items()))
+def test_vigia_novo_tem_endereco_e_a_familia_tem_data_de_leitura(vigia, familia):
+    assert TERMOS[vigia].startswith("https://")
+    assert TERMOS_LIDOS_EM[familia] == date(2026, 10, 21)
+    assert vigia in {f.id for f in FONTES if f.vigia}
+
+
+def test_toda_familia_de_licenca_tem_vigia_ou_motivo_escrito():
+    vigiadas = _familias_vigiadas()
+    sem_nada = sorted(f for f in LICENCAS if f not in vigiadas and f not in _SEM_VIGIA)
+    assert not sem_nada, (
+        f"família sem vigia de termos e sem motivo em _SEM_VIGIA: {sem_nada}"
+    )
+
+
+def test_o_motivo_escrito_nao_sobra_numa_familia_que_ja_tem_vigia():
+    vigiadas = _familias_vigiadas()
+    assert sorted(f for f in _SEM_VIGIA if f in vigiadas) == []
+    assert sorted(f for f in _SEM_VIGIA if f not in LICENCAS) == []

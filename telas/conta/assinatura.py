@@ -16,16 +16,17 @@ from src.cobranca import (
     NOTA_DO_CARTAO_DE_TESTE,
     RETORNO_DO_PAGAMENTO_CANCELADO,
     RETORNO_DO_PAGAMENTO_OK,
+    AssinaturaJaExisteError,
     CobrancaIndisponivelError,
+    abrir_pagamento,
     acao_da_assinatura,
     cobranca_esta_configurada,
-    criar_pagina_de_pagamento,
     criar_portal_da_assinatura,
     pode_assinar,
 )
 from src.paginas import motivo_da_pagina, pagina
 from src.planos import (
-    AVISO_DO_MODO_DE_TESTE,
+    aviso_da_pagina_de_planos,
     frase_da_assinatura,
     limites_do,
     tabela_de_planos,
@@ -54,13 +55,13 @@ def _preparar_link_de_pagamento(onde):
     if not pode_assinar(usuario.e_admin):
         st.toast(AVISO_DE_PLANOS_EM_BREVE)
         return
-    assinatura = st.session_state.get("assinatura")
     try:
-        url = criar_pagina_de_pagamento(
-            usuario.id,
-            usuario.email,
-            assinatura.stripe_customer_id if assinatura else None,
-        )
+        # confere no banco (não na sessão) se já há assinatura e usa o cliente guardado
+        url = abrir_pagamento(obter_engine(), usuario.id, usuario.email)
+    except AssinaturaJaExisteError:
+        st.toast('Você já tem uma assinatura: use "Gerenciar a assinatura".')
+        _recarregar_o_plano()
+        return
     except CobrancaIndisponivelError:
         st.toast("O pagamento não está disponível agora.")
         return
@@ -206,5 +207,5 @@ def pagina_planos():
             st.caption(frase)
     st.subheader("O que cada plano inclui")
     mostrar_planos()
-    st.caption(AVISO_DO_MODO_DE_TESTE)
+    st.caption(aviso_da_pagina_de_planos())
     mostrar_assinatura("planos")

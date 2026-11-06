@@ -11,6 +11,8 @@ from scripts.mudou_so_texto import e_so_texto, mudou_so_texto
         "README.md",
         "CLAUDE.md",
         "trader/CLAUDE.md",
+        "AGENTS.md",
+        "trader/AGENTS.md",
         "notas/erros-e-solucoes.md",
         "docs/padroes-de-codigo.md",
         "docs/imagens/inicio.png",

@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 import subprocess
 from collections.abc import Callable
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -28,6 +30,14 @@ TENTATIVAS_POR_AJUSTE = 25  # mudar o critério depois de aprovado soma isto
 # baselines, linear, árvores, meta-rotulagem, deep learning e séries temporais clássicas (v0.2)
 FAMILIAS = ("H0", "H1", "H2", "H3", "H4", "H5")
 FASES = ("desenvolvimento", "holdout")
+
+# A pesquisa da carteira própria (P0) fica fora das cópias do repositório: em 03/11/2026 a cópia
+# (worktree) de uma conversa foi apagada logo depois do merge e levou junto o registro de tentativas
+# e os dados baixados. As duas variáveis trocam os lugares; as cópias vão para o OneDrive quando ele
+# existe, para que um disco ou uma pasta apagada não leve a contagem do DSR.
+VARIAVEL_DA_PESQUISA_QUANT = "TICKERLAB_PESQUISA_QUANT"
+VARIAVEL_DAS_COPIAS = "TICKERLAB_COPIAS_DA_PESQUISA"
+MAXIMO_DE_COPIAS = 50  # cada cópia tem uns 100 KB; 50 cobrem semanas de rodadas
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS tentativas (
@@ -49,6 +59,18 @@ CREATE TABLE IF NOT EXISTS ajustes (
     motivo TEXT NOT NULL,
     tentativas_extras INTEGER NOT NULL,
     registrado_em TEXT NOT NULL
+);
+"""
+# Quem escreveu cada hipótese (ideia "proveniência" do Vibe-Trading, 20/10/2026). Fica numa tabela à
+# parte, de propósito: a identidade da tentativa é o hash da especificação, e anotar o autor não pode
+# fazer a mesma configuração contar de novo. Bancos antigos ganham a tabela vazia ao abrir.
+ESQUEMA_DA_PROVENIENCIA = """
+CREATE TABLE IF NOT EXISTS proveniencia (
+    tentativa_id INTEGER PRIMARY KEY REFERENCES tentativas (id),
+    autor TEXT NOT NULL,
+    modelo TEXT,
+    commit_do_codigo TEXT NOT NULL,
+    registrada_em TEXT NOT NULL
 );
 """
 
@@ -85,6 +107,25 @@ def commit_atual() -> str:
     return f"{curto}+alterado" if sujo else curto
 
 
+def pasta_da_pesquisa_quant() -> Path:
+    """Onde ficam o registro, os dados e os relatórios da pesquisa P0 (fora do Git e das cópias)."""
+    escolhida = os.environ.get(VARIAVEL_DA_PESQUISA_QUANT)
+    if escolhida:
+        return Path(escolhida)
+    return Path.home() / "TickerLab-Pesquisa" / "pesquisa_quant"
+
+
+def pasta_das_copias() -> Path:
+    """Onde o registro da pesquisa P0 guarda as cópias: no OneDrive quando existe, senão ao lado."""
+    escolhida = os.environ.get(VARIAVEL_DAS_COPIAS)
+    if escolhida:
+        return Path(escolhida)
+    onedrive = Path.home() / "OneDrive"
+    if onedrive.is_dir():
+        return onedrive / "TickerLab-Pesquisa" / "copias"
+    return pasta_da_pesquisa_quant() / "copias"
+
+
 class OrcamentoEstouradoError(RuntimeError):
     """Mais tentativas do que o orçamento aprovado (não bloqueia: só avisa e penaliza o DSR)."""
 
@@ -97,26 +138,55 @@ class Registro:
         caminho: Path = CAMINHO_PADRAO,
         commit_fn: Callable[[], str] = commit_atual,
         agora_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
+        familias: tuple[str, ...] = FAMILIAS,
+        orcamento: int = ORCAMENTO_DE_TENTATIVAS,
+        copias: Path | None = None,
     ) -> None:
         self.caminho = Path(caminho)
+        self.copias = Path(copias) if copias is not None else None
+        self.familias = familias
+        self.orcamento = orcamento
         self._commit_fn = commit_fn
         self._agora_fn = agora_fn
         self.caminho.parent.mkdir(parents=True, exist_ok=True)
         with self._conectar() as c:
             c.executescript(ESQUEMA)
+            c.executescript(ESQUEMA_DA_PROVENIENCIA)
 
     def _conectar(self) -> sqlite3.Connection:
         c = sqlite3.connect(self.caminho)
         c.row_factory = sqlite3.Row
         return c
 
+    def _guardar_copia(self) -> None:
+        """Copia o banco inteiro para `copias` depois de cada escrita e apaga as mais antigas."""
+        if self.copias is None:
+            return
+        self.copias.mkdir(parents=True, exist_ok=True)
+        carimbo = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
+        destino = self.copias / f"registro_{carimbo}.db"
+        # fechar as duas conexões: no Windows, um arquivo aberto não pode ser apagado depois
+        with (
+            closing(self._conectar()) as origem,
+            closing(sqlite3.connect(destino)) as copia,
+        ):
+            origem.backup(copia)
+        for antiga in sorted(self.copias.glob("registro_*.db"))[:-MAXIMO_DE_COPIAS]:
+            antiga.unlink()
+
     # --- escrever ----------------------------------------------------------------------------
     def registrar(
         self, familia: str, nome: str, spec: dict, fase: str = "desenvolvimento"
     ) -> int:
-        """Anota a tentativa e devolve o id. A mesma especificação na mesma fase não conta de novo."""
-        if familia not in FAMILIAS:
-            raise ValueError(f"Família desconhecida: {familia}. Use uma de {FAMILIAS}.")
+        """Anota a tentativa e devolve o id.
+
+        A mesma especificação na mesma fase é a mesma linha, com `execucoes` somado: no DSR e no
+        orçamento toda execução conta (pré-registro v0.1, seção 9).
+        """
+        if familia not in self.familias:
+            raise ValueError(
+                f"Família desconhecida: {familia}. Use uma de {self.familias}."
+            )
         if fase not in FASES:
             raise ValueError(f"Fase desconhecida: {fase}. Use uma de {FASES}.")
         if not nome.strip():
@@ -132,21 +202,35 @@ class Registro:
                     "UPDATE tentativas SET execucoes = execucoes + 1 WHERE id = ?",
                     (existente["id"],),
                 )
-                return int(existente["id"])
-            cursor = c.execute(
-                "INSERT INTO tentativas (hash, familia, nome, fase, spec_json,"
-                " commit_do_codigo, criada_em) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    hash_,
-                    familia,
-                    nome,
-                    fase,
-                    texto,
-                    self._commit_fn(),
-                    self._agora_fn().isoformat(),
-                ),
-            )
-            return int(cursor.lastrowid)
+                tentativa_id = int(existente["id"])
+            else:
+                tentativa_id = self._inserir(c, hash_, familia, nome, fase, texto)
+        self._guardar_copia()
+        return tentativa_id
+
+    def _inserir(
+        self,
+        c: sqlite3.Connection,
+        hash_: str,
+        familia: str,
+        nome: str,
+        fase: str,
+        texto: str,
+    ) -> int:
+        cursor = c.execute(
+            "INSERT INTO tentativas (hash, familia, nome, fase, spec_json,"
+            " commit_do_codigo, criada_em) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                hash_,
+                familia,
+                nome,
+                fase,
+                texto,
+                self._commit_fn(),
+                self._agora_fn().isoformat(),
+            ),
+        )
+        return int(cursor.lastrowid)
 
     def salvar_resultado(self, tentativa_id: int, resultado: dict) -> None:
         with self._conectar() as c:
@@ -156,6 +240,41 @@ class Registro:
             ).rowcount
         if not alteradas:
             raise KeyError(f"Não existe a tentativa {tentativa_id}.")
+        self._guardar_copia()
+
+    def registrar_proveniencia(
+        self, tentativa_id: int, autor: str, modelo: str | None = None
+    ) -> None:
+        """Anota quem escreveu a hipótese: a pessoa (`autor`) e, se veio de um LLM, o `modelo`.
+
+        É um fato do passado: repetir a mesma anotação não faz nada, e uma anotação diferente
+        para a mesma tentativa é recusada (não se reescreve quem escreveu).
+        """
+        if not autor.strip():
+            raise ValueError("A proveniência precisa de um autor.")
+        modelo = modelo.strip() if modelo and modelo.strip() else None
+        self.obter(tentativa_id)  # KeyError se a tentativa não existe
+        anterior = self.obter_proveniencia(tentativa_id)
+        if anterior is not None:
+            if (anterior["autor"], anterior["modelo"]) != (autor.strip(), modelo):
+                raise ValueError(
+                    f"A tentativa {tentativa_id} já tem autor ({anterior['autor']}); "
+                    "a proveniência não se reescreve."
+                )
+            return
+        with self._conectar() as c:
+            c.execute(
+                "INSERT INTO proveniencia (tentativa_id, autor, modelo, commit_do_codigo,"
+                " registrada_em) VALUES (?, ?, ?, ?, ?)",
+                (
+                    tentativa_id,
+                    autor.strip(),
+                    modelo,
+                    self._commit_fn(),
+                    self._agora_fn().isoformat(),
+                ),
+            )
+        self._guardar_copia()
 
     def registrar_ajuste_do_criterio(self, versao: str, motivo: str) -> None:
         """Mudar o critério depois de aprovado é permitido, mas custa tentativas (seção 7)."""
@@ -165,6 +284,7 @@ class Registro:
                 " VALUES (?, ?, ?, ?)",
                 (versao, motivo, TENTATIVAS_POR_AJUSTE, self._agora_fn().isoformat()),
             )
+        self._guardar_copia()
 
     # --- ler ---------------------------------------------------------------------------------
     def obter(self, tentativa_id: int) -> dict:
@@ -179,6 +299,16 @@ class Registro:
         bruto = dados.pop("resultado_json")
         dados["resultado"] = json.loads(bruto) if bruto else None
         return dados
+
+    def obter_proveniencia(self, tentativa_id: int) -> dict | None:
+        """Quem escreveu a tentativa, ou `None` se ninguém anotou (nunca se adivinha)."""
+        with self._conectar() as c:
+            linha = c.execute(
+                "SELECT autor, modelo, commit_do_codigo, registrada_em FROM proveniencia"
+                " WHERE tentativa_id = ?",
+                (tentativa_id,),
+            ).fetchone()
+        return dict(linha) if linha else None
 
     def contar(self, fase: str = "desenvolvimento") -> int:
         """Configurações distintas testadas na fase (sem os ajustes do critério)."""
@@ -197,19 +327,29 @@ class Registro:
                 ).fetchone()[0]
             )
 
+    def execucoes(self, fase: str = "desenvolvimento") -> int:
+        """Execuções na fase, reexecuções incluídas (cada uma é uma tentativa)."""
+        with self._conectar() as c:
+            return int(
+                c.execute(
+                    "SELECT COALESCE(SUM(execucoes), 0) FROM tentativas WHERE fase = ?",
+                    (fase,),
+                ).fetchone()[0]
+            )
+
     def total_para_o_dsr(self) -> int:
-        """O número de tentativas que o Sharpe deflacionado deve usar: desenvolvimento + ajustes."""
-        return self.contar("desenvolvimento") + self.tentativas_extras()
+        """O número de tentativas que o Sharpe deflacionado deve usar: execuções + ajustes."""
+        return self.execucoes("desenvolvimento") + self.tentativas_extras()
 
     def orcamento_restante(self) -> int:
-        """Negativo quando o orçamento de 300 foi ultrapassado."""
-        return ORCAMENTO_DE_TENTATIVAS - self.total_para_o_dsr()
+        """Negativo quando o orçamento (300 na M2) foi ultrapassado."""
+        return self.orcamento - self.total_para_o_dsr()
 
     def exigir_orcamento(self) -> None:
         """Para quem quiser parar de verdade ao estourar; o padrão é só avisar e penalizar."""
         if self.orcamento_restante() < 0:
             raise OrcamentoEstouradoError(
-                f"{self.total_para_o_dsr()} tentativas, orçamento de {ORCAMENTO_DE_TENTATIVAS}."
+                f"{self.total_para_o_dsr()} tentativas, orçamento de {self.orcamento}."
             )
 
     def listar(self, fase: str | None = None) -> list[dict]:

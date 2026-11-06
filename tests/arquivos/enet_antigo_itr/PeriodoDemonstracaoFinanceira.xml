@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<ArrayOfPeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira><NumeroIdentificacaoPeriodo>1</NumeroIdentificacaoPeriodo><DataInicioPeriodo>2016-01-01T00:00:00</DataInicioPeriodo><DataFimPeriodo>2016-12-31T00:00:00</DataFimPeriodo></PeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira><NumeroIdentificacaoPeriodo>2</NumeroIdentificacaoPeriodo><DataInicioPeriodo>2016-04-01T00:00:00</DataInicioPeriodo><DataFimPeriodo>2016-06-30T00:00:00</DataFimPeriodo></PeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira><NumeroIdentificacaoPeriodo>3</NumeroIdentificacaoPeriodo><DataInicioPeriodo>2015-01-01T00:00:00</DataInicioPeriodo><DataFimPeriodo>2015-12-31T00:00:00</DataFimPeriodo></PeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira><NumeroIdentificacaoPeriodo>4</NumeroIdentificacaoPeriodo><DataInicioPeriodo>2016-01-01T00:00:00</DataInicioPeriodo><DataFimPeriodo>2016-06-30T00:00:00</DataFimPeriodo></PeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira><NumeroIdentificacaoPeriodo>5</NumeroIdentificacaoPeriodo><DataInicioPeriodo>2015-04-01T00:00:00</DataInicioPeriodo><DataFimPeriodo>2015-06-30T00:00:00</DataFimPeriodo></PeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira><NumeroIdentificacaoPeriodo>6</NumeroIdentificacaoPeriodo><DataInicioPeriodo>2015-01-01T00:00:00</DataInicioPeriodo><DataFimPeriodo>2015-06-30T00:00:00</DataFimPeriodo></PeriodoDemonstracaoFinanceira>
+</ArrayOfPeriodoDemonstracaoFinanceira>

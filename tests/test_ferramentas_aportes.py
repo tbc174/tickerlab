@@ -91,3 +91,60 @@ def test_aporte_para_meta_desfaz_o_valor_futuro(
     meta = aportes.valor_futuro(inicial, aporte, taxa, meses, no_inicio)
     volta = aportes.aporte_para_meta(meta, inicial, taxa, meses, no_inicio)
     assert volta == pytest.approx(aporte, rel=1e-6, abs=1e-6)
+
+
+# --- ferramentas v2: reajuste anual do aporte e a "virada" -------------------------------------
+def test_aporte_com_reajuste_sobe_a_cada_12_meses():
+    # 500 por mês no 1º ano e 550 no 2º (10%), a 0,5% ao mês: 6.167,8 viram 6.548,2 no 2º ano,
+    # mais 550 × 12,3356 = 6.784,6
+    assert aportes.valor_futuro(
+        0, 500, 0.005, 24, reajuste_anual=0.10
+    ) == pytest.approx(13332.755739184153, rel=1e-12)
+
+
+def test_reajuste_zero_e_a_conta_de_sempre():
+    assert aportes.valor_futuro(1000, 500, 0.008, 120, reajuste_anual=0.0) == (
+        aportes.valor_futuro(1000, 500, 0.008, 120)
+    )
+
+
+def test_evolucao_com_reajuste_soma_o_que_saiu_do_bolso():
+    linhas = aportes.evolucao(1000, 500, 0.005, 24, reajuste_anual=0.10)
+    assert linhas[12].aportado == pytest.approx(1000 + 500 * 12)
+    assert linhas[24].aportado == pytest.approx(1000 + 500 * 12 + 550 * 12)
+    assert linhas[24].saldo == pytest.approx(
+        aportes.valor_futuro(1000, 500, 0.005, 24, reajuste_anual=0.10)
+    )
+
+
+@given(
+    st.floats(min_value=1, max_value=1e6),
+    st.floats(min_value=0, max_value=1e5),
+    st.floats(min_value=0, max_value=0.02),
+    st.integers(min_value=1, max_value=480),
+    st.floats(min_value=0, max_value=0.2),
+    st.booleans(),
+)
+def test_aporte_para_meta_com_reajuste_volta_ao_aporte(
+    aporte, inicial, taxa, meses, reajuste, no_inicio
+):
+    meta = aportes.valor_futuro(inicial, aporte, taxa, meses, no_inicio, reajuste)
+    achado = aportes.aporte_para_meta(meta, inicial, taxa, meses, no_inicio, reajuste)
+    assert achado == pytest.approx(aporte, rel=1e-6)
+
+
+def test_meses_ate_meta_com_reajuste_chega_antes():
+    sem = aportes.meses_ate_meta(100000, 0, 500, 0.005)
+    com = aportes.meses_ate_meta(100000, 0, 500, 0.005, reajuste_anual=0.05)
+    assert sem is not None and com is not None
+    assert com < sem
+
+
+def test_mes_da_virada_e_quando_os_juros_do_mes_passam_o_aporte():
+    # a 0,5% ao mês, os juros do mês passam R$ 500 quando o saldo passa de R$ 100 mil: mês 140
+    assert aportes.mes_da_virada(0, 500, 0.005, 1200) == 140
+
+
+def test_sem_juros_ou_sem_aporte_nao_ha_virada():
+    assert aportes.mes_da_virada(0, 500, 0.0, 600) is None
+    assert aportes.mes_da_virada(0, 500, 0.005, 100) is None  # o prazo acaba antes

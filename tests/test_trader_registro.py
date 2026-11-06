@@ -47,10 +47,13 @@ def test_registrar_conta_uma_tentativa_e_guarda_tudo(r):
 
 
 def test_mesma_configuracao_nao_e_tentativa_nova_mas_conta_a_execucao(r):
+    """Toda execução conta no DSR e no orçamento (pré-registro v0.1, seção 9), mas é a mesma linha."""
     a = r.registrar("H1", "logistica_v1", SPEC)
     b = r.registrar("H1", "outro nome, mesma spec", dict(reversed(list(SPEC.items()))))
     assert a == b and r.contar() == 1
     assert r.obter(a)["execucoes"] == 2
+    assert r.total_para_o_dsr() == 2
+    assert r.orcamento_restante() == r.orcamento - 2
 
 
 def test_mudar_um_valor_e_tentativa_nova(r):
@@ -129,3 +132,131 @@ def test_commit_atual_devolve_texto_mesmo_sem_git(monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", quebra)
     assert reg.commit_atual() == "desconhecido"
+
+
+# --- proveniência: quem escreveu cada tentativa (ideia 11 do Vibe-Trading) -------------------
+
+
+def test_proveniencia_nao_muda_o_hash_nem_a_contagem(r):
+    sem = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(sem, autor="Tiago", modelo="claude-opus-5-5")
+    de_novo = r.registrar("H1", "logistica_v1", SPEC)
+    assert de_novo == sem
+    assert r.obter(sem)["hash"] == reg.hash_da_especificacao(SPEC)
+    assert r.contar() == 1
+
+
+def test_proveniencia_guarda_autor_modelo_e_commit(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(tid, autor="Tiago", modelo="claude-opus-5-5")
+    assert r.obter_proveniencia(tid) == {
+        "autor": "Tiago",
+        "modelo": "claude-opus-5-5",
+        "commit_do_codigo": "abc1234",
+        "registrada_em": "2026-10-11T12:00:00+00:00",
+    }
+
+
+def test_hipotese_escrita_por_pessoa_fica_sem_modelo(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(tid, autor="Tiago")
+    assert r.obter_proveniencia(tid)["modelo"] is None
+
+
+def test_proveniencia_ausente_e_none_e_nunca_inventada(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    assert r.obter_proveniencia(tid) is None
+
+
+def test_proveniencia_exige_autor_e_tentativa_existente(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    with pytest.raises(ValueError):
+        r.registrar_proveniencia(tid, autor="  ")
+    with pytest.raises(KeyError):
+        r.registrar_proveniencia(999, autor="Tiago")
+
+
+def test_proveniencia_nao_se_reescreve(r):
+    """Quem escreveu é um fato do passado: a segunda anotação diferente é recusada."""
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(tid, autor="Tiago")
+    r.registrar_proveniencia(tid, autor="Tiago")  # a mesma de novo não é erro
+    with pytest.raises(ValueError):
+        r.registrar_proveniencia(tid, autor="Outra pessoa")
+
+
+def test_banco_antigo_ganha_a_tabela_de_proveniencia(tmp_path):
+    import sqlite3
+
+    caminho = tmp_path / "antigo.db"
+    with sqlite3.connect(caminho) as c:
+        c.executescript(reg.ESQUEMA)  # o esquema de antes, sem a tabela nova
+    velho = Registro(caminho, commit_fn=lambda: "abc1234")
+    tid = velho.registrar("H1", "logistica_v1", SPEC)
+    assert velho.obter_proveniencia(tid) is None
+
+
+# --- pesquisa P0 fora das cópias do repositório, com cópia de segurança -----------------------------
+
+
+def test_registro_com_copias_guarda_o_banco_a_cada_escrita(tmp_path):
+    copias = tmp_path / "copias"
+    r = Registro(tmp_path / "registro.db", commit_fn=lambda: "c1", copias=copias)
+    tentativa = r.registrar("H1", "a", SPEC)
+    r.salvar_resultado(tentativa, {"sharpe": 0.1})
+    r.registrar_ajuste_do_criterio("v0.2", "teste")
+    guardadas = sorted(copias.glob("registro_*.db"))
+    assert len(guardadas) == 3
+    ultima = Registro(guardadas[-1], commit_fn=lambda: "c1")
+    assert ultima.contar() == 1
+    assert ultima.obter(tentativa)["resultado"] == {"sharpe": 0.1}
+    assert ultima.tentativas_extras() == reg.TENTATIVAS_POR_AJUSTE
+
+
+def test_copias_ficam_nas_mais_recentes(tmp_path, monkeypatch):
+    monkeypatch.setattr(reg, "MAXIMO_DE_COPIAS", 2)
+    copias = tmp_path / "copias"
+    r = Registro(tmp_path / "registro.db", commit_fn=lambda: "c1", copias=copias)
+    for numero in range(4):
+        r.registrar("H1", f"t{numero}", {**SPEC, "c": numero})
+    guardadas = sorted(copias.glob("registro_*.db"))
+    assert len(guardadas) == 2
+    assert Registro(guardadas[-1], commit_fn=lambda: "c1").contar() == 4
+
+
+def test_registro_sem_copias_nao_cria_pasta(tmp_path):
+    Registro(tmp_path / "registro.db", commit_fn=lambda: "c1").registrar(
+        "H1", "a", SPEC
+    )
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["registro.db"]
+
+
+def test_pesquisa_quant_fica_fora_das_copias_do_repositorio(monkeypatch):
+    monkeypatch.delenv(reg.VARIAVEL_DA_PESQUISA_QUANT, raising=False)
+    pasta = reg.pasta_da_pesquisa_quant()
+    assert pasta.name == "pesquisa_quant"
+    assert not pasta.is_relative_to(reg.RAIZ)
+
+
+def test_variaveis_trocam_os_lugares_da_pesquisa(tmp_path, monkeypatch):
+    monkeypatch.setenv(reg.VARIAVEL_DA_PESQUISA_QUANT, str(tmp_path / "pesquisa"))
+    monkeypatch.setenv(reg.VARIAVEL_DAS_COPIAS, str(tmp_path / "copias"))
+    assert reg.pasta_da_pesquisa_quant() == tmp_path / "pesquisa"
+    assert reg.pasta_das_copias() == tmp_path / "copias"
+
+
+@pytest.mark.parametrize("tem_onedrive", [True, False])
+def test_copias_vao_para_o_onedrive_quando_ele_existe(
+    tmp_path, monkeypatch, tem_onedrive
+):
+    monkeypatch.delenv(reg.VARIAVEL_DA_PESQUISA_QUANT, raising=False)
+    monkeypatch.delenv(reg.VARIAVEL_DAS_COPIAS, raising=False)
+    monkeypatch.setattr(reg.Path, "home", classmethod(lambda cls: tmp_path))
+    if tem_onedrive:
+        (tmp_path / "OneDrive").mkdir()
+        assert (
+            reg.pasta_das_copias()
+            == tmp_path / "OneDrive" / "TickerLab-Pesquisa" / "copias"
+        )
+    else:
+        assert reg.pasta_das_copias() == reg.pasta_da_pesquisa_quant() / "copias"

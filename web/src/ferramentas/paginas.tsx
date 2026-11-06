@@ -1,6 +1,8 @@
 // As páginas das ferramentas grátis e a vitrine delas. Os números dos exemplos do texto saem das
 // mesmas contas da calculadora (nada digitado à mão que possa ficar diferente).
-import { regrasDeImposto } from "../conteudo";
+import type { ReactNode } from "react";
+import { type Modulo, exemplo, regrasDeImposto, site } from "../conteudo";
+import { contagem, disponiveis, moduloPelaChave } from "../site/comum";
 import { TopoDaPagina } from "../site/Fundo";
 import { AnuncioDaCasa } from "./AnuncioDaCasa";
 import { altaParaRecuperar, custoDaTaxa } from "./contas/custos";
@@ -12,6 +14,7 @@ import { SEMENTE_INICIAL } from "./SorteEmSerie";
 import { formatarDecimal } from "../app/formatar";
 import { formatarPorcentagem, formatarReais } from "./numeros";
 import { PaginaDeFerramenta } from "./Pagina";
+import { GraficoDaPrevia, PREVIAS } from "./previas";
 
 export interface FerramentaDoSite {
   arquivo: string;
@@ -70,6 +73,69 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     arquivo: "calculadora-de-correcao-pela-inflacao.html",
     nome: "Correção pela inflação",
     descricao: "Quanto um valor do passado vale hoje, corrigido pelo IPCA.",
+  },
+  {
+    arquivo: "calculadora-de-preco-medio.html",
+    nome: "Preço médio de ações e FIIs",
+    descricao: "O preço médio com as taxas, o resultado de cada venda, bonificação, desdobro e amortização de FII.",
+  },
+  {
+    arquivo: "fundo-ou-cdb.html",
+    nome: "Fundo ou CDB",
+    descricao: "Um fundo de renda fixa com taxas e come-cotas contra um CDB do mesmo prazo.",
+  },
+  {
+    arquivo: "simulador-de-financiamento.html",
+    nome: "Financiamento SAC × Price",
+    descricao: "As parcelas e os juros dos dois sistemas lado a lado, e o efeito de uma amortização extra.",
+  },
+  {
+    arquivo: "quanto-daria.html",
+    nome: "Quanto daria? Foi sorte?",
+    descricao: "R$ 1.000 desde uma data no CDI, na poupança, no dólar, no Ibovespa e em bitcoin, e se a data foi de sorte.",
+  },
+];
+
+export interface GrupoDaVitrine {
+  nome: string;
+  descricao: string;
+  arquivos: string[]; // de FERRAMENTAS_DO_SITE, cada uma num grupo só
+}
+
+export const GRUPOS_DA_VITRINE: GrupoDaVitrine[] = [
+  {
+    nome: "Planejar",
+    descricao: "Quanto juntar, quanto o tempo faz pelo dinheiro e quanto custa pagar a prazo.",
+    arquivos: [
+      "calculadora-de-juros-compostos.html",
+      "calculadora-de-aportes-e-metas.html",
+      "calculadora-viver-de-renda.html",
+      "simulador-de-financiamento.html",
+    ],
+  },
+  {
+    nome: "Comparar investimentos",
+    descricao: "O mesmo dinheiro em lugares diferentes, pelo mesmo prazo e já sem o imposto e as taxas.",
+    arquivos: ["calculadora-de-renda-fixa.html", "fundo-ou-cdb.html", "custo-das-taxas-e-da-queda.html"],
+  },
+  {
+    nome: "Impostos",
+    descricao: "O imposto sobre ações do mês e do ano, e o preço médio que a Receita pede.",
+    arquivos: ["calculadora-de-darf.html", "calculadora-de-preco-medio.html"],
+  },
+  {
+    nome: "Inflação e câmbio",
+    descricao: "Quanto um valor do passado vale hoje, quanto rende de verdade e quanto vale em outra moeda.",
+    arquivos: [
+      "calculadora-de-correcao-pela-inflacao.html",
+      "calculadora-de-juro-real.html",
+      "conversor-de-moedas.html",
+    ],
+  },
+  {
+    nome: "Sorte ou habilidade",
+    descricao: "Um resultado bom pode ser só sorte: duas formas de ver isso com os números.",
+    arquivos: ["sorte-em-serie.html", "quanto-daria.html"],
   },
 ];
 
@@ -187,8 +253,7 @@ export const DADOS_DOS_CUSTOS = {
   caminho: `/${CUSTOS}`,
   titulo: "Custo das taxas e da queda",
   descricao:
-    "Calcule quanto uma taxa de administração leva do seu patrimônio em 20 anos e quanto um " +
-    "investimento precisa subir para recuperar uma queda. Grátis e sem cadastro.",
+    "Veja quanto uma taxa de administração leva do seu patrimônio em 20 anos e quanto é preciso subir para recuperar uma queda. Grátis.",
   atual: "/ferramentas.html",
   ferramenta: true,
 };
@@ -309,8 +374,7 @@ export const DADOS_DA_SORTE = {
   caminho: `/${SORTE}`,
   titulo: "Sorte em série",
   descricao:
-    "Simule 100 estratégias de cara ou coroa e veja a melhor parecer genial por puro acaso: o " +
-    "problema de testar muitas ideias e mostrar só a melhor. Grátis e sem cadastro.",
+    "Simule 100 estratégias de cara ou coroa e veja a melhor parecer genial por puro acaso: o risco de mostrar só a melhor. Grátis.",
   atual: "/ferramentas.html",
   ferramenta: true,
 };
@@ -375,8 +439,7 @@ export const DADOS_DO_DARF = {
   caminho: `/${DARF}`,
   titulo: "Calculadora de DARF de ações",
   descricao:
-    "Calcule o imposto sobre ações do mês: swing trade e day trade, isenção de R$ 20 mil, " +
-    "prejuízo a compensar, IR retido e o DARF 6015. Regras da Receita, grátis e sem cadastro.",
+    "Calcule o DARF 6015 das ações do mês: swing e day trade, isenção de R$ 20 mil, prejuízo a compensar e IR retido. Grátis e sem cadastro.",
   atual: "/ferramentas.html",
   ferramenta: true,
 };
@@ -509,8 +572,8 @@ export function PaginaDaRendaFixa() {
       codigo={codigo(RENDA_FIXA)}
       anuncio="cadastro"
       foraDaConta={[
-        "o CDI de amanhã: a conta usa o de hoje durante todo o prazo",
-        "a taxa de custódia da B3 no Tesouro e o IOF dos resgates em menos de 30 dias",
+        "o CDI que vier de verdade: a conta usa o de hoje ou o caminho que o Focus espera",
+        "a marcação a mercado: vender o Tesouro antes do vencimento pode dar mais ou menos",
         "o risco de cada emissor e a garantia do FGC",
       ]}
       fonte={FONTE_DO_BC}
@@ -624,7 +687,125 @@ export const DADOS_DA_VITRINE = {
   atual: "/ferramentas.html",
 };
 
+const ESTILOS = site.estilos_do_relatorio;
+
+// ilustrações dos cartões largos do bento (enfeite: escondidas dos leitores de tela)
+const ILUSTRACOES: Record<string, ReactNode> = {
+  research: (
+    <div className="v2-mini v2-mini-doc" aria-hidden="true">
+      <span className="v2-doc-titulo">Fato relevante · CVM</span>
+      <i />
+      <i />
+      <i className="curta" />
+      <span className="v2-doc-selo">Explicado em português</span>
+    </div>
+  ),
+  estrategias: (
+    <svg className="v2-mini" viewBox="0 0 200 90" aria-hidden="true">
+      <polyline className="ref" points="0,70 30,66 60,68 90,58 120,62 150,50 180,54 200,48" />
+      <polyline
+        className="est"
+        pathLength={1}
+        points="0,74 30,64 60,60 90,46 120,50 150,34 180,30 200,20"
+      />
+      <text x="200" y="14" textAnchor="end">
+        estratégia
+      </text>
+      <text x="200" y="64" textAnchor="end" className="ref-t">
+        comprar e segurar
+      </text>
+    </svg>
+  ),
+};
+
+function CartaoDoBento({ modulo }: { modulo: Modulo }) {
+  const destino = `/produto.html#${modulo.chave}`;
+  if (disponiveis(modulo) === 0) {
+    return (
+      <article className="cartao v2-faixa-cartao breve">
+        <div>
+          <p className="olho">{modulo.objetivo}</p>
+          <h3>
+            {modulo.nome} <span className="selo breve">em breve</span>
+          </h3>
+          <p>{modulo.frase}</p>
+        </div>
+        <a className="seta" href={destino}>
+          Ver o que vem
+        </a>
+      </article>
+    );
+  }
+  const texto = (
+    <>
+      <p className="olho">{modulo.objetivo}</p>
+      <h3>{modulo.nome}</h3>
+      <p>{modulo.frase}</p>
+      <p className="contagem">{contagem(modulo)}</p>
+      <a className="seta" href={destino}>
+        Ver o que tem
+      </a>
+    </>
+  );
+  const ilustracao = ILUSTRACOES[modulo.chave];
+  return ilustracao ? (
+    <article className="cartao v2-larga">
+      <div>{texto}</div>
+      {ilustracao}
+    </article>
+  ) : (
+    <article className="cartao">{texto}</article>
+  );
+}
+
+/** O Report Studio: imagens do PDF de verdade, trocando estilo e página (o site.js troca). */
+export function EstudioDeRelatorios() {
+  const primeiro = ESTILOS[0].chave;
+  return (
+    <div className="vitrine" data-vitrine="">
+      <div className="controles" role="group" aria-label="Estilo do relatório">
+        {ESTILOS.map((e, i) => (
+          <button
+            key={e.chave}
+            type="button"
+            data-estilo={e.chave}
+            aria-pressed={i === 0 ? "true" : "false"}
+          >
+            {e.nome}
+          </button>
+        ))}
+      </div>
+      <div className="folhas">
+        <img
+          src={`/relatorio/${primeiro}-1.webp`}
+          width={560}
+          height={792}
+          loading="lazy"
+          alt={`Capa do relatório de exemplo de ${exemplo.ticker}`}
+          data-pagina="1"
+        />
+        <img
+          src={`/relatorio/${primeiro}-2.webp`}
+          width={560}
+          height={792}
+          loading="lazy"
+          alt="Segunda página do relatório de exemplo, com o resumo executivo e os números-chave"
+          data-pagina="2"
+        />
+      </div>
+      <p className="legenda">
+        Imagens do PDF real gerado pelo app, com dados de exemplo guardados no projeto. Só as
+        cores mudam entre os estilos: os números são os mesmos.
+      </p>
+    </div>
+  );
+}
+
+/** O que a vitrine mostra do app: as frentes de backtest e carteira e o Report Studio. */
+const FRENTES_NO_APP = ["estrategias", "carteira"];
+
 export function Vitrine() {
+  const porArquivo = new Map(FERRAMENTAS_DO_SITE.map((f) => [f.arquivo, f]));
   return (
     <>
       <TopoDaPagina
@@ -632,22 +813,234 @@ export function Vitrine() {
         titulo="Ferramentas grátis"
         subtitulo="Calculadoras abertas para todos, sem cadastro, com cada conta explicada."
       />
-      <section className="faixa secao" aria-label="Ferramentas">
-        <div className="grade tres">
-          {FERRAMENTAS_DO_SITE.map((f) => (
-            <article className="cartao" key={f.arquivo}>
-              <h2 className="ferramenta-nome">{f.nome}</h2>
-              <p>{f.descricao}</p>
-              <a className="seta" href={`/${f.arquivo}`}>
-                Abrir a ferramenta
-              </a>
-            </article>
+      <section className="faixa secao" aria-labelledby="titulo-no-app">
+        <h2 id="titulo-no-app">No app</h2>
+        <div className="v2-bento">
+          {FRENTES_NO_APP.map((chave) => (
+            <CartaoDoBento key={chave} modulo={moduloPelaChave(chave)} />
           ))}
         </div>
+        <p className="olho">Report Studio</p>
+        <h3 id="titulo-estudio">Sua pesquisa merece mais que uma tela</h3>
+        <p className="subtitulo">
+          Modelo Executivo ou Pesquisa completa, seções na ordem que você quiser, três estilos e
+          a prévia do PDF de verdade antes de baixar. Toda versão tem resumo, metodologia e os
+          limites da análise.
+        </p>
+        <EstudioDeRelatorios />
       </section>
+      <section className="faixa secao" aria-labelledby="titulo-calculadoras">
+        <h2 id="titulo-calculadoras">Calculadoras</h2>
+      </section>
+      {GRUPOS_DA_VITRINE.map((grupo, k) => (
+        <section className="faixa secao vitrine-grupo" aria-labelledby={`grupo-${k}`} key={grupo.nome}>
+          <h3 id={`grupo-${k}`}>{grupo.nome}</h3>
+          <p className="apagado">{grupo.descricao}</p>
+          <div className={`grade ${grupo.arquivos.length === 4 ? "quatro" : "tres"}`}>
+            {grupo.arquivos.map((arquivo) => {
+              const f = porArquivo.get(arquivo)!;
+              return (
+                <article className="cartao cartao-de-ferramenta" key={arquivo}>
+                  <GraficoDaPrevia previa={PREVIAS[arquivo]()} />
+                  <h3 className="ferramenta-nome">{f.nome}</h3>
+                  <p>{f.descricao}</p>
+                  <a className="seta" href={`/${arquivo}`}>
+                    Abrir a ferramenta
+                  </a>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ))}
       <section className="faixa secao">
         <AnuncioDaCasa destino="ficha" ferramenta="vitrine" />
       </section>
     </>
+  );
+}
+
+// --- Quanto daria? Foi sorte? (ADR 0070) ------------------------------------------------------
+const PONTE = "quanto-daria.html";
+export const DADOS_DO_QUANTO_DARIA = pagina(
+  PONTE,
+  "Quanto daria? Foi sorte?",
+  "Quanto R$ 1.000 aplicados num mês do passado dariam hoje no CDI, na poupança, no dólar, no Ibovespa e em bitcoin. Grátis e sem cadastro.",
+);
+
+export function PaginaDoQuantoDaria() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Quanto daria? Foi sorte?"
+      subtitulo="R$ 1.000 desde um mês do passado no CDI, na poupança, no dólar, parados, no Ibovespa e em bitcoin. E a pergunta que quase ninguém faz: a data foi de sorte?"
+      ilha="quantoDaria"
+      codigo={codigo(PONTE)}
+      anuncio="ficha"
+      foraDaConta={[
+        "imposto de renda, taxas, corretagem e o spread de quem vende dólar e bitcoin",
+        "no Ibovespa, os dividendos já entram (o índice os reinveste); no bitcoin, o preço é de corretora internacional convertido pelo dólar do Banco Central",
+        "o dia exato: a conta vale do começo do mês escolhido ao começo do mês atual",
+      ]}
+      fonte="Banco Central (CDI, poupança, dólar e IPCA) e Yahoo Finance (Ibovespa e bitcoin). Mostramos só o resultado, nunca a série de preços."
+    >
+      <h2>Por que perguntar se foi sorte</h2>
+      <p>
+        "Quem pôs dinheiro em bitcoin em 2020 ficou rico" diz muito sobre a data e pouco sobre o
+        bitcoin. Com o mesmo prazo, começar alguns meses antes ou depois pode dar um resultado muito
+        diferente. Por isso a ferramenta refaz a conta para todas as datas de início possíveis com o
+        mesmo prazo e mostra onde a sua ficou: perto da pior, no meio ou perto da melhor.
+      </p>
+      <h2>Como ler a régua</h2>
+      <p>
+        A régua mostra posição, não valor: a pior data na ponta esquerda, a do meio no centro, a
+        melhor na ponta direita e a sua no lugar dela. "70% das datas dariam menos que a sua" quer
+        dizer que a sua foi melhor que a maioria. As janelas se sobrepõem (dois meses seguidos dividem
+        quase todo o prazo), então não são sorteios independentes: a régua mostra o quanto a data
+        pesa, não uma probabilidade.
+      </p>
+      <h2>No CDI, a data quase não importa</h2>
+      <p>
+        Na renda fixa pós-fixada, o resultado de um prazo depende pouco do dia em que se começa; no
+        Ibovespa e no bitcoin, depende muito. Essa diferença é a lição: o mesmo "rendeu X%" pode ser
+        habilidade, sorte da data ou só o risco que se correu.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Preço médio ---------------------------------------------------------------------------------
+const PRECO_MEDIO = "calculadora-de-preco-medio.html";
+export const DADOS_DO_PRECO_MEDIO = pagina(
+  PRECO_MEDIO,
+  "Calculadora de preço médio de ações e FIIs",
+  "Calcule o preço médio de ações e FIIs com as taxas no custo, o resultado de cada venda e eventos como desdobro. Grátis e sem cadastro.",
+);
+
+export function PaginaDoPrecoMedio() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora de preço médio"
+      subtitulo="Compras, vendas, bonificação, desdobro e amortização de FII: o preço médio de cada momento e o resultado de cada venda. Grátis e sem cadastro."
+      ilha="precoMedio"
+      codigo={codigo(PRECO_MEDIO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "o imposto: o resultado das vendas vai para a calculadora de DARF, mês a mês",
+        "operações em mais de uma corretora no mesmo dia em ordem diferente da real: a ordem da grade é a que vale",
+        "aluguel de ações, direitos de subscrição e operações de day trade (que não entram no preço médio)",
+      ]}
+    >
+      <h2>Por que as taxas entram no custo</h2>
+      <p>
+        A Receita manda somar ao custo de compra as despesas da operação, como a corretagem e os
+        emolumentos da B3. Por isso o preço médio aqui é um pouco maior que a média dos preços: ele
+        é o custo de verdade de cada ação.
+      </p>
+      <h2>Por que vender não muda o preço médio</h2>
+      <p>
+        Na venda, sai o custo das ações vendidas pelo preço médio do momento, e o que fica continua
+        com o mesmo preço médio. O lucro ou o prejuízo da venda é o que entrou, menos as taxas, menos
+        esse custo. Vendeu tudo? A próxima compra recomeça a conta.
+      </p>
+      <h2>Bonificação, desdobro e amortização</h2>
+      <p>
+        Na bonificação, as ações novas entram com o valor que a empresa atribuiu a cada uma (ele vem
+        no aviso aos acionistas). Desdobro e grupamento só mudam a quantidade: o custo total é o
+        mesmo. Na quantidade, ponha as ações que entram ou saem, não o total novo: com 100 ações num
+        desdobro de 1 para 2, entram 100; num grupamento de 10 para 1, saem 90. A amortização de um
+        FII devolve parte do capital: o custo cai, e a quantidade de cotas fica igual. Se ela passar
+        do custo que sobrava, o custo fica em zero e o que passou aparece como resultado: é ganho de
+        capital, e o administrador pode reter imposto (confira no informe do fundo).
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Financiamento SAC × Price -----------------------------------------------------------------
+const FINANCIAMENTO = "simulador-de-financiamento.html";
+export const DADOS_DO_FINANCIAMENTO = pagina(
+  FINANCIAMENTO,
+  "Simulador de financiamento SAC e Price",
+  "Compare parcelas e juros do financiamento pelo SAC e pela Tabela Price e veja o efeito de uma amortização extra. Grátis e sem cadastro.",
+);
+
+export function PaginaDoFinanciamento() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Simulador de financiamento SAC e Price"
+      subtitulo="As parcelas, os juros e o saldo dos dois sistemas lado a lado, e o que uma amortização extra muda. Grátis e sem cadastro."
+      ilha="financiamento"
+      codigo={codigo(FINANCIAMENTO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "os seguros (MIP e DFI) e a taxa de administração que o banco cobra junto com a parcela",
+        "a correção do saldo pela TR ou pelo IPCA, quando o contrato tem",
+        "a entrada e as despesas de cartório e ITBI: o valor aqui é o financiado",
+      ]}
+    >
+      <h2>SAC ou Price</h2>
+      <p>
+        No SAC, a amortização é a mesma todo mês: a parcela começa mais alta e cai, porque o juro é
+        sobre um saldo cada vez menor. Na Price, a parcela é a mesma todo mês: no começo quase tudo é
+        juro, e o saldo cai devagar. Por isso, com a mesma taxa e o mesmo prazo, a Price paga mais
+        juros no total.
+      </p>
+      <h2>Amortização extra: prazo ou parcela</h2>
+      <p>
+        Um pagamento extra abate o saldo. Reduzindo o prazo, a parcela fica e o financiamento termina
+        antes, o que costuma economizar mais juros. Reduzindo a parcela, o prazo fica e o que se paga
+        por mês cai.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Fundo ou CDB --------------------------------------------------------------------------------
+const FUNDO = "fundo-ou-cdb.html";
+export const DADOS_DO_FUNDO = pagina(
+  FUNDO,
+  "Fundo ou CDB: calculadora com come-cotas e taxas",
+  "Compare um fundo de renda fixa, com come-cotas e taxas, a um CDB do mesmo prazo e veja a que percentual do CDI ele equivale. Grátis.",
+);
+
+export function PaginaDoFundo() {
+  const { come_cotas_longo, come_cotas_curto, curto_prazo } = regrasDeImposto.fundos;
+  return (
+    <PaginaDeFerramenta
+      titulo="Fundo ou CDB: calculadora com come-cotas e taxas"
+      subtitulo="Um fundo de renda fixa, com as taxas e o come-cotas, contra um CDB do mesmo prazo. A que percentual do CDI o fundo equivale? Grátis e sem cadastro."
+      ilha="fundo"
+      codigo={codigo(FUNDO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "o CDI que vier de verdade: a conta usa o de hoje durante todo o prazo",
+        "a compensação de prejuízo entre fundos, a taxa de saída e o prazo de resgate (cotização)",
+        "o risco de crédito do que o fundo carrega e a garantia do FGC, que vale para o CDB e não para o fundo",
+      ]}
+      fonte={FONTE_DO_BC}
+    >
+      <h2>O que o fundo cobra</h2>
+      <p>
+        A taxa de administração é um percentual ao ano sobre todo o patrimônio, cobrado aos poucos,
+        todo dia, rendendo ou não. A taxa de performance é um percentual só do que o fundo rendeu
+        acima do CDI no semestre. Nas duas, o que aparece na cota já vem descontado.
+      </p>
+      <h2>Come-cotas</h2>
+      <p>
+        No último dia útil de maio e de novembro, o fundo retém o IR sobre o que rendeu desde a última
+        vez: {formatarPorcentagem(come_cotas_longo, 0)} nos fundos de longo prazo e{" "}
+        {formatarPorcentagem(come_cotas_curto, 0)} nos de curto prazo. Ele faz isso tirando cotas,
+        então esse dinheiro deixa de render até o resgate. No resgate, o IR pela tabela do fundo
+        (regressiva no longo prazo; no curto prazo, {formatarPorcentagem(curto_prazo.aliquotas[0], 1)} até{" "}
+        {curto_prazo.ate_dias} dias e {formatarPorcentagem(curto_prazo.aliquotas[1], 0)} depois) sai sobre
+        todo o ganho, menos o que o come-cotas já levou.
+      </p>
+      <h2>Como a conta é feita</h2>
+      <p>
+        O fundo e o CDB rendem um percentual do mesmo CDI, aplicado à taxa de cada dia útil. A conta
+        anda mês a mês, a partir do mês de hoje, e o resultado vira o percentual do CDI que um CDB
+        precisaria pagar para deixar o mesmo valor no bolso, depois do IR.
+      </p>
+    </PaginaDeFerramenta>
   );
 }

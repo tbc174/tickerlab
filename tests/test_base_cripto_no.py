@@ -125,3 +125,16 @@ def test_ligar_e_desligar_a_rede_do_no(cookie, pedidos):
 
     assert pedidos[0]["json"]["method"] == "setnetworkactive"
     assert pedidos[0]["json"]["params"] == [False]
+
+
+def test_cabecalho_pede_o_getblockheader_com_o_tempo_limite_dado(cookie, pedidos):
+    pedidos.respostas = [_resultado({"merkleroot": "ff", "time": 5})]
+
+    cabecalho = ClienteRPC(arquivo_do_cookie=cookie, tempo_limite=10).cabecalho(
+        "ab" * 32
+    )
+
+    assert cabecalho == {"merkleroot": "ff", "time": 5}
+    assert pedidos[0]["json"]["method"] == "getblockheader"
+    assert pedidos[0]["json"]["params"] == ["ab" * 32]
+    assert pedidos[0]["timeout"] == 10

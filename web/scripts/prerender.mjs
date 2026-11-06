@@ -5,7 +5,7 @@
 // Os outros arquivos de site/ (fontes, marca, relatório de exemplo, catálogo) vêm do Python
 // (scripts/gerar_site.py) e não são tocados aqui.
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const raiz = process.cwd(); // o npm roda os scripts dentro de web/
@@ -23,6 +23,7 @@ const saida = {
   ...servidor.arquivosFixos(),
 };
 for (const [nome, conteudo] of Object.entries(saida)) {
+  mkdirSync(dirname(join(destino, nome)), { recursive: true }); // ex.: .well-known/security.txt
   writeFileSync(join(destino, nome), conteudo, "utf8");
 }
 console.log(`${Object.keys(saida).length} arquivos em ${destino}`);

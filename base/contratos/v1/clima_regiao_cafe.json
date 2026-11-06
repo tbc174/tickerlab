@@ -1,0 +1,88 @@
+{
+  "tabela": "clima_regiao_cafe",
+  "modulo": "macro",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "regiao": {
+      "descricao": "Id da região produtora (`src/commodities/cafe/regioes.py`)",
+      "unidade": "texto"
+    },
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "fonte": {
+      "descricao": "inmet ou chirps",
+      "unidade": "texto"
+    },
+    "chuva_mm": {
+      "descricao": "Chuva acumulada no mês (média das estações, ou do satélite)",
+      "unidade": "mm"
+    },
+    "tmin_media_c": {
+      "descricao": "Média das temperaturas mínimas diárias (vazio no chirps)",
+      "unidade": "°C"
+    },
+    "dias_tmin_abaixo_de_2c": {
+      "descricao": "Dias do mês com Tmín abaixo de 2 °C (média das estações; vazio no chirps)",
+      "unidade": "dias"
+    },
+    "tmax_media_c": {
+      "descricao": "Média das temperaturas máximas diárias (vazio no chirps)",
+      "unidade": "°C"
+    },
+    "n_estacoes": {
+      "descricao": "Estações válidas no mês (80% dos dias com 20 horas de leitura); vazio no chirps",
+      "unidade": "número inteiro"
+    },
+    "chuva_normal_mm": {
+      "descricao": "Normal 1991–2020 da chuva do mês do ano (10 anos no mínimo)",
+      "unidade": "mm"
+    },
+    "chuva_anomalia_mm": {
+      "descricao": "chuva_mm menos a normal",
+      "unidade": "mm"
+    },
+    "tmin_normal_c": {
+      "descricao": "Normal 1991–2020 da Tmín média",
+      "unidade": "°C"
+    },
+    "tmin_anomalia_c": {
+      "descricao": "tmin_media_c menos a normal",
+      "unidade": "°C"
+    },
+    "tmax_normal_c": {
+      "descricao": "Normal 1991–2020 da Tmáx média",
+      "unidade": "°C"
+    },
+    "tmax_anomalia_c": {
+      "descricao": "tmax_media_c menos a normal",
+      "unidade": "°C"
+    },
+    "anos_na_normal": {
+      "descricao": "Anos que entraram na normal (vazio quando menos de 10)",
+      "unidade": "número inteiro"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (fim do mês + a folga da fonte)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "regiao",
+    "competencia",
+    "fonte"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "1981-01-31",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal",
+  "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 45 dias para o INMET e + 60 dias para o CHIRPS (folga conservadora, não medida: conferir com as baixadas do arquivista)"
+}

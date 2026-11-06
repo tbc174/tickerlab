@@ -84,7 +84,29 @@ MODULOS = (
                 "por-dentro",
             ),
             Funcionalidade(
-                "Pulse", "O resumo do que mudou nos seus ativos desde a última visita."
+                "Relatório da empresa",
+                "Resultado, dívida, caixa, notas clássicas e valuation de uma empresa da B3, com a fonte de cada número.",
+                "relatorio-empresa",
+            ),
+            Funcionalidade(
+                "Donos e fundos",
+                "Quais fundos e grandes gestores têm a ação, quem entrou e quem saiu.",
+                "donos",
+            ),
+            Funcionalidade(
+                "Busca por CNPJ",
+                "Digite o CNPJ de qualquer empresa: da companhia aberta, o grupo e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que mudou em 12 meses. Com data e fonte.",
+                "busca-por-cnpj",
+            ),
+            Funcionalidade(
+                "Relatório do setor",
+                "Quem está no setor, o tamanho do mercado, a concentração (CR4 e HHI) e as empresas lado a lado, com a fonte de cada número.",
+                "relatorio-do-setor",
+            ),
+            Funcionalidade(
+                "Pulse",
+                "O resumo do que mudou nos seus ativos desde a última visita.",
+                "pulse",
             ),
             Funcionalidade(
                 "Calendário", "Resultados, assembleias e proventos que vêm pela frente."
@@ -98,6 +120,7 @@ MODULOS = (
             Funcionalidade(
                 "Diário de Teses",
                 "Escreva por que acompanha um ativo e revisite a ideia depois.",
+                "diario-de-teses",
             ),
         ),
     ),
@@ -138,6 +161,7 @@ MODULOS = (
             Funcionalidade(
                 "Dividendos e custo médio",
                 "Proventos recebidos e preço médio por ativo.",
+                CARTEIRA_B3,
             ),
         ),
     ),
@@ -178,7 +202,8 @@ MODULOS = (
             ),
             Funcionalidade(
                 "Testes de robustez",
-                "A mesma estratégia com parâmetros e períodos diferentes.",
+                "Treino e teste, walk-forward e o mapa de parâmetros da mesma estratégia, na ficha do Backtest.",
+                "backtest",
             ),
         ),
     ),
@@ -203,7 +228,14 @@ MODULOS = (
                 "O arquivo exato que você gerou, para baixar de novo.",
                 "relatorio",
             ),
-            Funcionalidade("Newsletter", "Os acontecimentos da sua lista por e-mail."),
+            Funcionalidade(
+                "Newsletter", "Os acontecimentos da sua lista por e-mail.", "newsletter"
+            ),
+            Funcionalidade(
+                "Sala de dados",
+                "Os documentos de cada operação num lugar cifrado, só da sua conta, com a origem de cada número e o que falta.",
+                "sala-de-dados",
+            ),
             Funcionalidade(
                 "Compartilhamento seguro",
                 'Um link privado, com prazo e revogável, para a ficha "Foi sorte?" ou um PDF.',
@@ -231,8 +263,28 @@ MODULOS = (
                 "Cotações", "B3, EUA, câmbio e cripto, com o atraso de cada fonte."
             ),
             Funcionalidade(
-                "Qualidade dos dados",
-                "De onde veio cada número, quando foi conferido e o que está faltando.",
+                "Preços de referência",
+                "Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI, com a fonte e a data.",
+                "precos-de-referencia",
+            ),
+            Funcionalidade(
+                "Painel do café",
+                "Preço de referência, câmbio, fundos, exportações, safra da CONAB, clima e calendário do café.",
+                "painel-do-cafe",
+            ),
+            Funcionalidade(
+                "Mapa do café",
+                "Onde se produz arábica e conilon, município a município, e a chuva e a geada contra a normal.",
+                "mapa-do-cafe",
+            ),
+            Funcionalidade(
+                "Simulador de trava do café",
+                "A sua produção em cada safra desde 2000: sem travar, a termo, no futuro e com opção. Nada do que você digita é guardado.",
+                "simulador-de-trava",
+            ),
+            Funcionalidade(
+                "Qualidade do lucro",
+                "Reapresentações, troca de auditor e os números em conferência, cada um com a fonte e a data.",
                 "fundamentos",  # o selo "em conferência" dos documentos da CVM
                 EXEMPLO,
             ),
@@ -294,6 +346,26 @@ MODULOS = (
                 "O imposto do mês, a isenção de R$ 20 mil e o prejuízo a compensar.",
                 pagina_do_site="calculadora-de-darf.html",
             ),
+            Funcionalidade(
+                "Preço médio",
+                "O preço médio de ações e FIIs, com as mesmas regras do app.",
+                pagina_do_site="calculadora-de-preco-medio.html",
+            ),
+            Funcionalidade(
+                "Fundo ou CDB",
+                "Um fundo DI, com taxas e come-cotas, contra um CDB no mesmo prazo.",
+                pagina_do_site="fundo-ou-cdb.html",
+            ),
+            Funcionalidade(
+                "Financiamento SAC ou Price",
+                "As parcelas dos dois sistemas lado a lado, com amortização extra.",
+                pagina_do_site="simulador-de-financiamento.html",
+            ),
+            Funcionalidade(
+                "Quanto daria? Foi sorte?",
+                "Quanto um valor aplicado num mês teria virado, e se a data foi sorte.",
+                pagina_do_site="quanto-daria.html",
+            ),
         ),
     ),
     Modulo(
@@ -312,7 +384,9 @@ MODULOS = (
                 "Guia e glossário", "Os termos do app explicados em português.", "guia"
             ),
             Funcionalidade(
-                "Trilhas", "Sequências curtas, do primeiro ativo ao primeiro relatório."
+                "Trilhas",
+                "Três caminhos guiados na página inicial: a primeira análise, a carteira e o primeiro relatório.",
+                "inicio",
             ),
         ),
     ),

@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "result": {
+    "name": "arrecadacao-receita-publica",
+    "resources": [
+      {
+        "format": "HTML",
+        "url": "https://portaldatransparencia.gov.br/receitas/consulta?orgaos=OR25203&",
+        "name": "Receita Pública da CVM (HTML)"
+      },
+      {
+        "format": "CSV",
+        "url": "https://portaldatransparencia.gov.br/receitas/consulta/baixar?paginacaoSimples=true&direcaoOrdenacao=asc&orgaos=OR25203&colunasSelecionadas=ano%2CorgaoSuperior%2Corgao%2CunidadeGestora%2Ccategoria%2Corigem%2Cespecie%2Cdetalhamento%2CvalorPrevistoAtualizado%2CvalorRealizado%2CpercentualRealizado%2CvalorLancado",
+        "name": "Receita Pública da CVM (CSV)"
+      }
+    ]
+  }
+}

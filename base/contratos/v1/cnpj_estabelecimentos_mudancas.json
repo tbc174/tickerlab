@@ -1,0 +1,199 @@
+{
+  "tabela": "cnpj_estabelecimentos_mudancas",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "mes": {
+      "descricao": "Mês do retrato em que a mudança apareceu",
+      "unidade": "AAAA-MM"
+    },
+    "tipo": {
+      "descricao": "entrou, saiu ou mudou, de um mês para o seguinte",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ com os 14 caracteres (com letras no CNPJ novo)",
+      "unidade": "texto"
+    },
+    "ordem": {
+      "descricao": "Número da linha dentro da chave quando ela se repete (ordenada pelo conteúdo)",
+      "unidade": "número inteiro"
+    },
+    "cnpj_basico_antes": {
+      "descricao": "Antes da mudança. Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "cnpj_basico_depois": {
+      "descricao": "Depois da mudança. Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "matriz_antes": {
+      "descricao": "Antes da mudança. Verdadeiro na matriz, falso na filial",
+      "unidade": "verdadeiro ou falso"
+    },
+    "matriz_depois": {
+      "descricao": "Depois da mudança. Verdadeiro na matriz, falso na filial",
+      "unidade": "verdadeiro ou falso"
+    },
+    "situacao_cadastral_antes": {
+      "descricao": "Antes da mudança. Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada)",
+      "unidade": "texto"
+    },
+    "situacao_cadastral_depois": {
+      "descricao": "Depois da mudança. Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada)",
+      "unidade": "texto"
+    },
+    "data_situacao_cadastral_antes": {
+      "descricao": "Antes da mudança. Data da situação cadastral; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_situacao_cadastral_depois": {
+      "descricao": "Depois da mudança. Data da situação cadastral; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "motivo_situacao_antes": {
+      "descricao": "Antes da mudança. Código do motivo da situação cadastral, como a Receita publica",
+      "unidade": "texto"
+    },
+    "motivo_situacao_depois": {
+      "descricao": "Depois da mudança. Código do motivo da situação cadastral, como a Receita publica",
+      "unidade": "texto"
+    },
+    "pais_antes": {
+      "descricao": "Antes da mudança. Código do país, só para quem tem sede fora do Brasil; vazio no resto",
+      "unidade": "texto"
+    },
+    "pais_depois": {
+      "descricao": "Depois da mudança. Código do país, só para quem tem sede fora do Brasil; vazio no resto",
+      "unidade": "texto"
+    },
+    "data_inicio_atividade_antes": {
+      "descricao": "Antes da mudança. Data de início da atividade; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "data_inicio_atividade_depois": {
+      "descricao": "Depois da mudança. Data de início da atividade; vazio quando a Receita põe zero",
+      "unidade": "data (dia)"
+    },
+    "cnae_principal_antes": {
+      "descricao": "Antes da mudança. Código da atividade principal (CNAE fiscal, 7 dígitos)",
+      "unidade": "texto"
+    },
+    "cnae_principal_depois": {
+      "descricao": "Depois da mudança. Código da atividade principal (CNAE fiscal, 7 dígitos)",
+      "unidade": "texto"
+    },
+    "cnae_secundaria_antes": {
+      "descricao": "Antes da mudança. Códigos das atividades secundárias, separados por vírgula",
+      "unidade": "texto"
+    },
+    "cnae_secundaria_depois": {
+      "descricao": "Depois da mudança. Códigos das atividades secundárias, separados por vírgula",
+      "unidade": "texto"
+    },
+    "tipo_logradouro_antes": {
+      "descricao": "Antes da mudança. Tipo do logradouro (rua, avenida...); vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "tipo_logradouro_depois": {
+      "descricao": "Depois da mudança. Tipo do logradouro (rua, avenida...); vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "logradouro_antes": {
+      "descricao": "Antes da mudança. Logradouro; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "logradouro_depois": {
+      "descricao": "Depois da mudança. Logradouro; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "numero_antes": {
+      "descricao": "Antes da mudança. Número do endereço; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "numero_depois": {
+      "descricao": "Depois da mudança. Número do endereço; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "complemento_antes": {
+      "descricao": "Antes da mudança. Complemento do endereço; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "complemento_depois": {
+      "descricao": "Depois da mudança. Complemento do endereço; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "bairro_antes": {
+      "descricao": "Antes da mudança. Bairro; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "bairro_depois": {
+      "descricao": "Depois da mudança. Bairro; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "cep_antes": {
+      "descricao": "Antes da mudança. CEP; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "cep_depois": {
+      "descricao": "Depois da mudança. CEP; vazio nas raízes só com município",
+      "unidade": "texto"
+    },
+    "uf_antes": {
+      "descricao": "Antes da mudança. Sigla do estado",
+      "unidade": "texto"
+    },
+    "uf_depois": {
+      "descricao": "Depois da mudança. Sigla do estado",
+      "unidade": "texto"
+    },
+    "municipio_antes": {
+      "descricao": "Antes da mudança. Código do município na Receita (não é o código do IBGE)",
+      "unidade": "texto"
+    },
+    "municipio_depois": {
+      "descricao": "Depois da mudança. Código do município na Receita (não é o código do IBGE)",
+      "unidade": "texto"
+    },
+    "situacao_especial_antes": {
+      "descricao": "Antes da mudança. Situação especial, como a Receita escreve; vazio quando não há",
+      "unidade": "texto"
+    },
+    "situacao_especial_depois": {
+      "descricao": "Depois da mudança. Situação especial, como a Receita escreve; vazio quando não há",
+      "unidade": "texto"
+    },
+    "data_situacao_especial_antes": {
+      "descricao": "Antes da mudança. Data da situação especial informada",
+      "unidade": "data (dia)"
+    },
+    "data_situacao_especial_depois": {
+      "descricao": "Depois da mudança. Data da situação especial informada",
+      "unidade": "data (dia)"
+    },
+    "dv_confere_antes": {
+      "descricao": "Antes da mudança. Falso quando o dígito verificador do CNPJ não confere; a linha fica, não é descartada",
+      "unidade": "verdadeiro ou falso"
+    },
+    "dv_confere_depois": {
+      "descricao": "Depois da mudança. Falso quando o dígito verificador do CNPJ não confere; a linha fica, não é descartada",
+      "unidade": "verdadeiro ou falso"
+    }
+  },
+  "chaves": [
+    "mes",
+    "cnpj",
+    "ordem"
+  ],
+  "datas": {
+    "publico_em": "mes"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": true,
+  "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+  "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+}

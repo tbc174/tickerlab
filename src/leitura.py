@@ -15,14 +15,18 @@ A versão do algoritmo (`VERSAO`) vai junto de cada resultado: se a regra mudar,
 antigos podem ser refeitos.
 """
 
+import functools
+import logging
 import math
 import re
 import unicodedata
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from html.parser import HTMLParser
 from itertools import pairwise
 
+log = logging.getLogger("tickerlab.leitura")
 VERSAO = "1"
 FRASES_DO_RESUMO = 3
 MAX_PALAVRAS_POR_FRASE = 90  # frases maiores são cortadas no resumo (com "...")
@@ -350,9 +354,96 @@ def comparar_riscos(antes: str, agora: str) -> MudancaNosRiscos:
 
 
 # --- PDF ----------------------------------------------------------------------------------------
+# Formatos que a CVM devolve no lugar do PDF: a página de aviso de limite (HTML) e, raramente, um
+# arquivo do Word antigo (.doc) ou um .docx. Só os dois primeiros abaixo são "tente de novo amanhã".
+PDF = "pdf"
+PDF_CORTADO = (
+    "pdf cortado"  # começa como PDF e termina antes do fim: a conexão caiu no meio
+)
+HTML = "html"
+WORD = "word"  # .doc antigo (arquivo OLE), comum nos fatos relevantes de 2003 a 2014
+ZIP = "zip"  # .docx, .xlsx e afins (um zip)
+DESCONHECIDO = "desconhecido"
+FORMATOS_DE_LIMITE = frozenset({HTML, PDF_CORTADO})
+_ASSINATURA_OLE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
+# OCR de reserva (plano B leve, 18/10/2026): só quando o pypdfium2 devolve vazio ou embaralhado.
+TEXTO = "texto"  # a camada de texto do PDF (pypdfium2)
+OCR = "ocr"  # a imagem da página lida pelo RapidOCR
+MAX_PAGINAS_OCR = (
+    10  # um termo de 133 páginas levaria 15 min; o fato cabe nas primeiras
+)
+ESCALA_DO_OCR = 2  # 2 x 72 = 144 pontos por polegada: o bastante para letra de ofício
+SEPARADOR_DE_PAGINAS = (
+    "\f"  # entre as páginas no texto do OCR (o mesmo que o pdftotext usa)
+)
+# Uma página A4 de ofício tem até ~60 linhas; uma página de jornal em colunas rende 450 a 510
+# linhas no OCR (medido em 18/10/2026), com as colunas misturadas e o fato relevante, se houver,
+# numa parte pequena dela. Esse documento fica com o motivo, não com um assunto chutado.
+MAX_LINHAS_POR_PAGINA_DE_OCR = 150
+TENTATIVAS_DE_OCR = (
+    2  # uma falha isolada do motor (vista na medição de 18/10) ganha outra chance
+)
+# Porta de legibilidade (ADR 0069, "ilegível nunca vira chute"): texto que faz sentido tem uma
+# parte previsível de palavras comuns; a fonte embaralhada ("&RPSDQKLD$EHUWD") e o lixo do OCR
+# numa página de jornal ficam bem abaixo. Medido no relatório do docling (17/10/2026): 8% separa
+# os 3 embaralhados de 426 textos bons, com 1 falso alarme (uma tabela de votos).
+TAXA_MINIMA_DE_PALAVRAS_COMUNS = 0.08
+MIN_PALAVRAS_LEGIVEIS = (
+    50  # o OCR de uma página de jornal rende milhares de "palavras" soltas
+)
+PALAVRAS_COMUNS = _palavras_do_texto(
+    """
+    de a o que e do da em um para é com não uma os no se na por mais as dos como mas foi ao
+    ele das tem à seu sua ou ser quando muito há nos já está eu também só pelo pela até isso
+    ela entre era depois sem mesmo aos ter seus quem nas me esse eles estão você tinha foram
+    essa num nem suas meu às minha têm numa pelos elas havia seja qual será nós tenho lhe
+    deles essas esses pelas este fosse dele
+    the of and to in for is on that by with as at from or an be this are its
+    """
+)
+_PALAVRA = re.compile(r"[a-záéíóúâêôãõçàü]+")
+
+
+@dataclass(frozen=True)
+class TextoDoDocumento:
+    """O que o leitor conseguiu tirar de um documento: o texto e de onde veio, ou o motivo."""
+
+    texto: str
+    origem: str  # TEXTO, OCR ou "" (sem texto legível)
+    motivo: str | None  # por que não há texto legível (None quando há)
+    paginas: int
+    paginas_por_ocr: int = 0  # quantas páginas o OCR leu (0 quando não rodou)
+
+    @property
+    def legivel(self) -> bool:
+        return self.motivo is None
+
+
 def e_pdf(conteudo: bytes) -> bool:
     """O conteúdo é um PDF completo? (a CVM às vezes devolve uma página de aviso no lugar)."""
     return conteudo[:5] == b"%PDF-" and b"%%EOF" in conteudo[-2048:]
+
+
+def formato_do_documento(conteudo: bytes) -> str:
+    """O formato pelo começo do arquivo: PDF, PDF_CORTADO, HTML, WORD, ZIP ou DESCONHECIDO."""
+    if e_pdf(conteudo):
+        return PDF
+    if conteudo[:5] == b"%PDF-":
+        return PDF_CORTADO
+    inicio = conteudo[:1024].lstrip().lower()
+    if inicio.startswith(b"<") or b"<html" in inicio:
+        return HTML
+    if conteudo[:8] == _ASSINATURA_OLE:
+        return WORD
+    if conteudo[:2] == b"PK":
+        return ZIP
+    return DESCONHECIDO
+
+
+def parece_limite_da_cvm(formato: str) -> bool:
+    """Vale parar a fila e tentar amanhã? (página de aviso ou download pela metade)."""
+    return formato in FORMATOS_DE_LIMITE
 
 
 def texto_do_pdf(conteudo: bytes) -> str:
@@ -366,3 +457,161 @@ def texto_do_pdf(conteudo: bytes) -> str:
         )
     finally:
         documento.close()
+
+
+def numero_de_paginas(conteudo: bytes) -> int:
+    """Quantas páginas o PDF tem."""
+    return _texto_e_paginas(conteudo)[1]
+
+
+def _texto_e_paginas(conteudo: bytes) -> tuple[str, int]:
+    """O texto de todas as páginas e quantas são, abrindo o PDF uma vez só."""
+    import pypdfium2 as pdfium
+
+    documento = pdfium.PdfDocument(conteudo)
+    try:
+        paginas = len(documento)
+        return " ".join(
+            documento[i].get_textpage().get_text_range() for i in range(paginas)
+        ), paginas
+    finally:
+        documento.close()
+
+
+def taxa_de_palavras_comuns(texto: str) -> float:
+    """A fração das palavras do texto que são palavras comuns do português ou do inglês."""
+    palavras = _PALAVRA.findall(texto.lower())
+    if not palavras:
+        return 0.0
+    return sum(p in PALAVRAS_COMUNS for p in palavras) / len(palavras)
+
+
+def esta_embaralhado(texto: str) -> bool:
+    """Tem palavras, mas quase nenhuma é uma palavra de verdade (fonte com as letras trocadas)."""
+    return (
+        len(texto.split()) >= MIN_PALAVRAS_POR_FRASE
+        and taxa_de_palavras_comuns(texto) < TAXA_MINIMA_DE_PALAVRAS_COMUNS
+    )
+
+
+def e_legivel(texto: str) -> bool:
+    """A porta de legibilidade: tamanho mínimo e taxa mínima de palavras comuns."""
+    return (
+        len(texto.split()) >= MIN_PALAVRAS_LEGIVEIS
+        and taxa_de_palavras_comuns(texto) >= TAXA_MINIMA_DE_PALAVRAS_COMUNS
+    )
+
+
+@functools.cache
+def _motor_de_ocr():  # noqa: ANN202 (o tipo vem de um pacote opcional, importado aqui dentro)
+    from rapidocr import RapidOCR  # pacote opcional: só a coleta precisa
+
+    return RapidOCR(params={"Global.log_level": "warning"})
+
+
+def texto_por_ocr(conteudo: bytes, max_paginas: int = MAX_PAGINAS_OCR) -> str:
+    """O texto das primeiras páginas lido pelo OCR (RapidOCR) na imagem que o pypdfium2 desenha."""
+    import pypdfium2 as pdfium
+
+    motor = _motor_de_ocr()
+    documento = pdfium.PdfDocument(conteudo)
+    try:
+        paginas: list[str] = []
+        for i in range(min(len(documento), max_paginas)):
+            imagem = documento[i].render(scale=ESCALA_DO_OCR).to_numpy()
+            paginas.append("\n".join(motor(imagem).txts or ()))
+        return SEPARADOR_DE_PAGINAS.join(paginas)
+    finally:
+        documento.close()
+
+
+def parece_pagina_de_jornal(texto: str) -> bool:
+    """Alguma página do OCR tem linhas demais para ser um ofício (jornal em colunas)."""
+    return any(
+        pagina.count("\n") + 1 > MAX_LINHAS_POR_PAGINA_DE_OCR
+        for pagina in texto.split(SEPARADOR_DE_PAGINAS)
+    )
+
+
+def ler_documento(
+    conteudo: bytes, ocr: Callable[[bytes, int], str] | None = None
+) -> TextoDoDocumento:
+    """O texto do documento, pela camada de texto ou, se ela falta ou está embaralhada, pelo OCR;
+    o que não passa na porta de legibilidade volta sem texto e com o motivo.
+
+    `ocr` troca o motor (os testes passam um de mentira); o padrão é `texto_por_ocr`.
+    """
+    formato = formato_do_documento(conteudo)
+    if formato != PDF:
+        return TextoDoDocumento(
+            "", "", f"O documento não é PDF ({formato}): não lido.", 0
+        )
+    try:
+        texto, paginas = _texto_e_paginas(conteudo)
+    except Exception:  # noqa: BLE001 (PDF malformado: guarda o motivo e segue)
+        return TextoDoDocumento("", "", "PDF ilegível.", 0)
+    if len(texto.split()) >= MIN_PALAVRAS_POR_FRASE and not esta_embaralhado(texto):
+        return TextoDoDocumento(texto, TEXTO, None, paginas)
+    problema = (
+        "a fonte do PDF está embaralhada"
+        if texto.split()
+        else "o PDF é só imagem (escaneado)"
+    )
+    return _pelo_ocr(conteudo, ocr or texto_por_ocr, problema, paginas)
+
+
+def _pelo_ocr(
+    conteudo: bytes, ocr: Callable[[bytes, int], str], problema: str, paginas: int
+) -> TextoDoDocumento:
+    lidas = min(paginas, MAX_PAGINAS_OCR)
+    try:
+        texto = _ocr_com_outra_chance(conteudo, ocr)
+    except ImportError:
+        return TextoDoDocumento(
+            "", "", f"Sem texto: {problema} e o OCR não está instalado.", paginas
+        )
+    except Exception as erro:  # noqa: BLE001 (o OCR falhou: guarda o motivo e a fila segue)
+        log.warning(
+            "OCR falhou (%s: %.200s): o documento fica sem texto",
+            type(erro).__name__,
+            erro,
+        )
+        return TextoDoDocumento(
+            "", "", f"Sem texto: {problema} e o OCR falhou.", paginas
+        )
+    if parece_pagina_de_jornal(texto):
+        return TextoDoDocumento(
+            "",
+            "",
+            f"Sem texto legível: {problema} e o OCR leu uma página de jornal "
+            "(colunas misturadas).",
+            paginas,
+            lidas,
+        )
+    if e_legivel(texto):
+        return TextoDoDocumento(texto, OCR, None, paginas, lidas)
+    return TextoDoDocumento(
+        "",
+        "",
+        f"Sem texto legível: {problema} e o OCR não leu texto que faça sentido.",
+        paginas,
+        lidas,
+    )
+
+
+def _ocr_com_outra_chance(conteudo: bytes, ocr: Callable[[bytes, int], str]) -> str:
+    """Roda o OCR; uma falha isolada do motor ganha mais uma tentativa (falta do pacote, não)."""
+    for tentativa in range(1, TENTATIVAS_DE_OCR):
+        try:
+            return ocr(conteudo, MAX_PAGINAS_OCR)
+        except ImportError:
+            raise
+        except Exception as erro:  # noqa: BLE001 (a próxima tentativa decide)
+            log.warning(
+                "OCR falhou (%s: %.200s): tentativa %d de %d",
+                type(erro).__name__,
+                erro,
+                tentativa,
+                TENTATIVAS_DE_OCR,
+            )
+    return ocr(conteudo, MAX_PAGINAS_OCR)

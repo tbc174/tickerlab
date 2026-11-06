@@ -33,6 +33,17 @@ def url_sem_senha(url: str) -> str:
     return make_url(url).render_as_string(hide_password=True)
 
 
+VARIAVEL_DO_PRECO_NO_RELATORIO = "TICKERLAB_PRECO_NO_RELATORIO"
+
+
+def preco_no_relatorio_ligado() -> bool:
+    """Se o relatório da empresa usa o preço do Yahoo (DY, valor de mercado e múltiplos).
+
+    O Tiago aceitou o risco dos termos do Yahoo e da B3 em 20/10/2026 (D3 mudada), com a condição
+    de dar para desligar sem deploy: `TICKERLAB_PRECO_NO_RELATORIO=0` no `.env`."""
+    return os.environ.get(VARIAVEL_DO_PRECO_NO_RELATORIO, "1") != "0"
+
+
 def contato() -> str | None:
     """O e-mail de contato do TickerLab (`TICKERLAB_CONTATO`), ou None se não estiver configurado."""
     valor = (os.environ.get(VARIAVEL_DO_CONTATO) or "").strip()

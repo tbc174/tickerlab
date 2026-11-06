@@ -12,9 +12,9 @@ import stripe
 from src import auditoria, conformidade
 from src.banco import compartilhamentos as links
 from src.banco import dados_do_usuario as repo
-from src.banco import origens, pulse, tentativas
+from src.banco import origens, pulse, sessoes, tentativas
 from src.banco import teses as diario
-from src.banco.modelo import assinaturas, metadata
+from src.banco.modelo import assinaturas, identidades, metadata, sessoes_de_login
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
 from src.origem import Origem
@@ -166,7 +166,141 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     texto = conformidade.carregar_texto("privacidade")
     assert "Links compartilhados" in texto and "Quem tiver um link" in texto
     assert "os links compartilhados e a assinatura" in texto
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-13.7"
+
+
+def test_texto_14_descreve_a_ficha_de_originacao_e_as_garantias_da_sala():
+    """Texto 14 (22/10, linha 194): o que a sala guarda além dos documentos, sem novo aceite."""
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "versão 14" in privacidade
+    assert "**Ficha de originação e garantias:**" in privacidade
+    assert "a ficha **não envia nada**" in privacidade
+    assert "não são cifrados com a chave da operação" in privacidade
+    assert (
+        "e a ficha de originação, as exposições e as garantias de cada operação"
+        in privacidade
+    )
+    assert (
+        "as operações, os documentos, as fichas de originação e as garantias"
+        in privacidade
+    )
+
+
+def test_texto_15_diz_os_6_digitos_do_meio_do_cpf_so_com_homonimo():
+    """Texto 15 (23/10, linha 219): com homônimo no quadro da mesma empresa, só os 6 dígitos do meio.
+
+    O que o #586 faz (`base.pessoas.oposicoes.achar_titular`) a política passa a dizer: nunca o CPF
+    inteiro, só os dígitos que a Receita publica, só para casar o pedido com a linha certa. Sem novo
+    aceite: o parágrafo fala com o sócio da base, não com quem tem conta, e não cria uso novo.
+    """
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "versão 15" in privacidade
+    assert "dizendo qual empresa e o seu nome como a Receita o publica" in privacidade
+    assert "só os **6 dígitos do meio do seu CPF**" in privacidade
+    assert "**Nunca pedimos o CPF inteiro**" in privacidade
+    assert "guardamos com a nossa resposta por 5 anos" in privacidade
+
+
+def test_versao_13_dos_termos_diz_o_registro_de_acesso_ao_servidor_por_12_meses():
+    """Versão 13 (22/10): quem entra no servidor e usa sudo fica 12 meses, cifrado, em outro computador."""
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "usa privilégios de administrador" in privacidade
+    assert "guardado por **12 meses**, cifrado, em outro computador" in privacidade
+    assert "o comando executado" in privacidade
+
+
+def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais():
+    """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal.
+
+    Versão 9 (21/10): transferência internacional provedor por provedor (P-35): o Stripe tem
+    as cláusulas da ANPD, o Google e a Microsoft são responsáveis próprios no login e o IP de
+    quem só visita o site vai à Cloudflare.
+
+    Versão 10 (21/10): os sócios do cadastro público do CNPJ aparecem com o nome que a Receita
+    publica, só no quadro de sócios da empresa consultada, com as regras da ADR 0106 (sem busca
+    por pessoa, ligação sem dizer o sócio, um CNPJ por consulta, oposição em 15 dias).
+
+    Versão 11 (21/10): a sala de dados (B-20, D13): nos dados de terceiros dentro dos documentos
+    o cliente é o controlador e o TickerLab é o operador (LGPD, art. 39); os prazos e o apagamento
+    batem com `src/sala/retencao.py`; nenhum modelo lê os documentos; cópias de 14 dias; aviso
+    de incidente em 3 dias úteis. Termos e privacidade dizem a mesma coisa.
+
+    Versão 12 (22/10): as cópias de segurança do banco (linha 155 da fila): além das diárias,
+    apagadas em 14 dias, o recebedor guarda a primeira de cada mês por 12 meses e a primeira de
+    cada ano por 5 anos (antes o texto prometia só os 14 dias); o que foi apagado fica nelas sem
+    uso até vencerem e é apagado de novo numa restauração; a sala fica fora das cópias longas.
+    """
+    assert conformidade.VERSAO_DOS_TERMOS >= "2026-10-22.12"
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "Cada cópia é apagada depois de **14 dias**" not in privacidade
+    assert "não aparecem no app" not in privacidade
+    for trecho in (
+        "## A sala de dados",
+        "**Você é o controlador** dos dados de terceiros",
+        "**O TickerLab é o operador** (LGPD, art. 39)",
+        "**Nenhum modelo de linguagem** recebe os documentos da sala",
+        "**90, 180 ou 365 dias** (180, se não escolher)",
+        "mais **30 dias** para baixar",
+        "apagar a operação apaga a chave dela",
+        "separadas das do resto do app e apagadas depois de **14 dias**",
+        "**primeira cópia de cada mês, por 12 meses**",
+        "**primeira cópia de cada ano, por 5 anos**",
+        "as contas apagadas depois dela são apagadas de novo",
+        "ficam fora das cópias mensais e anuais",
+        "as operações, os documentos, as fichas de originação e as garantias da sala de dados",
+        "não consegue procurar documentos por nome nem por CPF",
+        "no quadro de sócios da empresa que você consulta pelo CNPJ",
+        "CPF mascarado como a Receita publica",
+        "têm um sócio em comum, sem dizer qual",
+        "uma empresa** de cada vez e fica registrada",
+        "legítimo interesse (LGPD, art. 7º, IX, e art. 10)",
+        "prospecção, marketing, montagem de perfil de pessoa ou revenda de listas",
+        "não tem busca por nome de pessoa nem por CPF",
+        "Fonte: Receita Federal, dados abertos do CNPJ",
+        "sai da tela e da API em até 15 dias",
+        "privacidade@tickerlab.com.br",
+        "Encarregado",
+        "__Host-tl_sessao",
+        "Base legal",
+        "tl_origem",
+        "Transferência internacional",
+        "Registros técnicos de acesso",
+        'O contrato do Stripe traz também as cláusulas-padrão da ANPD (LGPD, art. 33, II, "b"',
+        "o Google e a Microsoft tratam a sua conta como responsáveis próprios",
+        "Quem só visita o site, sem conta, tem o endereço IP",
+        "Os contratos da Cloudflare, do Resend e da Anthropic trazem só as cláusulas-padrão",
+    ):
+        assert trecho in privacidade, trecho
+    termos = conformidade.carregar_texto("termos")
+    assert "Pré-lançamento" in termos and "30 dias" in termos
+    assert "modelo de linguagem" in termos and "nunca são acusação" in termos
+    for trecho in (
+        "## Sala de dados",
+        "**você é o controlador** desses dados",
+        "O TickerLab é o **operador** (LGPD, art. 39)",
+        "**nunca** vão a um modelo nem a outro serviço",
+        "**90, 180 ou 365 dias** (180, se não escolher)",
+        "disponível para baixar por mais **30 dias**",
+        "apagar a operação apaga a chave dela",
+        "apagadas depois de **14 dias**",
+        "em até **3 dias úteis**",
+    ):
+        assert trecho in termos, trecho
+
+
+def test_os_prazos_da_sala_nos_textos_legais_batem_com_o_codigo():
+    """Os textos prometem os prazos de `src/sala/retencao.py`: quem mudar um, muda o outro."""
+    from src.sala import retencao
+
+    assert retencao.PRAZOS_DE_GUARDA_EM_DIAS == (90, 180, 365)
+    assert retencao.PRAZO_PADRAO_EM_DIAS == 180
+    assert retencao.DIAS_PARA_BAIXAR_DEPOIS_DE_ENCERRAR == 30
+    assert retencao.PRORROGACAO_MAXIMA_EM_DIAS == 365
+    for nome in ("termos", "privacidade"):
+        texto = conformidade.carregar_texto(nome)
+        assert "**90, 180 ou 365 dias** (180, se não escolher)" in texto, nome
+        assert "365 dias de cada vez" in texto and "**30 dias**" in texto, nome
 
 
 def test_politica_de_privacidade_cita_o_pulse():
@@ -222,6 +356,44 @@ def test_exportar_nao_vaza_ids_do_stripe(conexao, ana):
     assert "SECRETO" not in json.dumps(dados)
 
 
+def test_exportar_traz_as_formas_de_entrar_e_as_sessoes_sem_segredo(conexao, ana, bia):
+    sessoes.abrir(conexao, ana.id, "google")
+    sessoes.abrir(conexao, bia.id, "google")
+    dados = conformidade.exportar_meus_dados(conexao, ana.id)
+    (forma,) = dados["formas_de_entrar"]
+    assert forma["provedor"] == "google" and forma["email"] == "ana@exemplo.com"
+    assert set(forma) == {
+        "provedor",
+        "email",
+        "email_confirmado",
+        "criada_em",
+        "ultimo_uso",
+    }
+    (sessao,) = dados["sessoes_de_login"]
+    assert sessao["provedor"] == "google" and sessao["encerrada_em"] is None
+    assert set(sessao) == {
+        "provedor",
+        "criada_em",
+        "expira_em",
+        "ultimo_uso",
+        "encerrada_em",
+    }
+    texto = json.dumps(dados)
+    # nem o hash do token nem o identificador do provedor saem no arquivo
+    hashes = conexao.execute(sa.select(sessoes_de_login.c.hash_do_token)).scalars()
+    assert all(h not in texto for h in hashes)
+    assert '"ana"' not in texto and "bia@exemplo.com" not in texto
+
+
+def test_apagar_conta_apaga_as_formas_de_entrar_e_as_sessoes(conexao, ana, bia):
+    sessoes.abrir(conexao, ana.id, "google")
+    sessoes.abrir(conexao, bia.id, "google")
+    assert conformidade.apagar_conta(conexao, ana.id) is True
+    for tabela in (identidades, sessoes_de_login):
+        donos = conexao.execute(sa.select(tabela.c.usuario_id)).scalars().all()
+        assert donos == [bia.id]
+
+
 def test_exportar_de_quem_nao_existe(conexao):
     with pytest.raises(LookupError):
         conformidade.exportar_meus_dados(conexao, uuid.uuid4())
@@ -239,6 +411,14 @@ def test_apagar_conta_remove_tudo_da_pessoa_e_so_dela(conexao, ana, bia):
     assert repo.listar_favoritos(conexao, ana.id) == []
     assert repo.carregar_preferencias(conexao, ana.id) == {}
     assert len(repo.listar_simulacoes(conexao, bia.id)) == 1  # a da Bia continua
+
+
+def test_apagar_conta_apaga_a_origem_do_cadastro_e_so_a_dela(conexao, ana, bia):
+    origens.gravar_origem(conexao, ana.id, Origem(source="linkedin", ref="liga-ibmec"))
+    origens.gravar_origem(conexao, bia.id, Origem(source="instagram"))
+    assert conformidade.apagar_conta(conexao, ana.id) is True
+    assert origens.buscar_origem(conexao, ana.id) is None
+    assert origens.buscar_origem(conexao, bia.id) == Origem(source="instagram")
 
 
 def test_apagar_deixa_so_um_registro_sem_dado_pessoal(conexao, ana):

@@ -7,7 +7,13 @@ anterior. A base guarda uma linha por **valor diferente** de cada fato, com:
 
 - `divulgado_em`: o dia em que aquele valor ficou público (a entrega do documento à CVM, o
   `DT_RECEB` do índice). Vale a partir desse dia, inclusive. A CVM informa só o dia, não a hora:
-  quem decide no próprio dia deve olhar a véspera.
+  quem decide no próprio dia deve olhar a véspera. **Exceção:** documento entregue com a empresa
+  fora de qualquer registro na CVM (quase sempre durante o pedido de registro) vale a partir do
+  **registro seguinte** (`divulgacao_publica`). Nesse caso o `DT_RECEB` é o dia em que o documento
+  chegou à CVM, e o público só o viu no fim da análise do pedido: 21 a 102 dias depois em ~1 de 4
+  casos medidos, e alguns nunca (`reports/conferencia-data-de-entrega-cvm-2026-10-15.md`). O
+  registro vem depois do dia em que o público viu o documento: perde-se até ~2 meses, nunca se
+  olha o futuro.
 - `ate`: o dia em que outro valor tomou o lugar (vazio = vale até hoje).
 - de onde veio: documento, data, versão, coluna ("ultimo" ou "penultimo") e origem ("enet" ou
   "dados_abertos").
@@ -16,19 +22,27 @@ Regras: nenhuma linha sem data de divulgação (a base nunca adivinha a data); o
 publicado de novo não vira linha nova (vale desde a primeira vez); no mesmo dia, vale o documento
 mais novo e a versão maior; valor que some numa versão nova vira uma linha em branco.
 `como_era_em(base, data)` devolve um valor por fato, só com o que era público naquela data.
+
+**Formato:** as demonstrações (`demonstracoes_como_era`) e a DMPL (`dmpl_como_era`, que tem a
+coluna do patrimônio no fato; `base/dmpl.py`) usam as mesmas funções, com o `Formato` de cada uma.
 """
 
 import hashlib
 import json
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
-from base.contas_cvm import COLUNAS, so_as_contas_das_regras
-from base.enet import DocumentoEnet
-from base.parquet import gravar_atomico
+from base.contas_cvm import COLUNAS, so_as_contas_da_base, so_as_contas_das_regras
+from base.licenca import licenca_para_gravar
+from base.parquet import gravar_atomico, hash_da_tabela
 from src.versao_do_codigo import versao_do_codigo
+
+if TYPE_CHECKING:  # base/enet.py importa base/dmpl.py, que importa este módulo
+    from base.enet import DocumentoEnet
 
 FATO = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
 COLUNAS_DA_BASE = (
@@ -52,13 +66,73 @@ COLUNAS_DA_BASE = (
 SEM_DATA = "sem_data"  # arquivo dos fatos sem fim de período (não deveria acontecer)
 
 
-def com_divulgacao(
-    contas: pd.DataFrame, indice: pd.DataFrame, origem: str
-) -> pd.DataFrame:
-    """As contas com a data de entrega da **própria versão** (do índice da CVM) e a origem.
+@dataclass(frozen=True)
+class Formato:
+    """O que identifica um fato e as colunas de uma tabela "como era na data"."""
 
-    `indice` vem de `ler_indice` (todas as versões). Versão que não está no índice fica sem data, e
-    `montar_base` a recusa.
+    fato: tuple[str, ...]
+    colunas_lidas: tuple[
+        str, ...
+    ]  # as contas como saem do leitor (sem data nem origem)
+    colunas_da_base: tuple[str, ...]
+
+    @property
+    def ordem_da_tabela(self) -> list[str]:
+        return [*self.fato, "divulgado_em"]
+
+    @property
+    def ordem_canonica(self) -> list[str]:
+        """A ordem das linhas antes do hash e da escolha entre publicações do mesmo dia."""
+        return [*self.fato, "divulgado_em", "referencia", "versao"]
+
+
+DEMONSTRACOES = Formato(tuple(FATO), COLUNAS, COLUNAS_DA_BASE)
+
+
+def divulgacao_publica(
+    cnpj: pd.Series, recebido_em: pd.Series, cadastro: pd.DataFrame
+) -> pd.Series:
+    """O dia em que cada entrega ficou pública: o `recebido_em`, ou o registro seguinte da empresa.
+
+    `cadastro`: `base/cadastro.ler_cadastro` (`cnpj`, `registro`, `cancelamento`; uma linha por
+    registro). Fica o `recebido_em` quando a empresa estava registrada nesse dia, quando não há
+    registro depois (cancelada sem voltar) ou quando ela não está no cadastro (não dá para saber).
+    """
+    entregas = pd.DataFrame(
+        {"cnpj": cnpj.to_numpy(), "recebido_em": recebido_em.to_numpy()}
+    )
+    juntos = entregas.reset_index(names="linha").merge(
+        cadastro[["cnpj", "registro", "cancelamento"]], on="cnpj"
+    )
+    dia = juntos["recebido_em"]
+    registrada = (juntos["registro"].isna() | (juntos["registro"] <= dia)) & (
+        juntos["cancelamento"].isna() | (juntos["cancelamento"] > dia)
+    )
+    em_registro = registrada.groupby(juntos["linha"]).any()
+    seguinte = (
+        juntos["registro"]
+        .where(juntos["registro"] > dia)
+        .groupby(juntos["linha"])
+        .min()
+    )
+    trocar = seguinte[~em_registro & seguinte.notna()]
+    publica = entregas["recebido_em"].copy()
+    publica[trocar.index] = trocar
+    return pd.Series(publica.to_numpy(), index=recebido_em.index, name=recebido_em.name)
+
+
+def com_divulgacao(
+    contas: pd.DataFrame,
+    indice: pd.DataFrame,
+    origem: str,
+    *,
+    cadastro: pd.DataFrame,
+    formato: Formato = DEMONSTRACOES,
+) -> pd.DataFrame:
+    """As contas com o dia em que a **própria versão** ficou pública e a origem.
+
+    `indice` vem de `ler_indice` (todas as versões); `cadastro`, de `ler_cadastro` (ver
+    `divulgacao_publica`). Versão que não está no índice fica sem data, e `montar_base` a recusa.
     """
     entregas = (
         indice.groupby(["cnpj", "referencia", "versao"])["recebido_em"]
@@ -66,7 +140,10 @@ def com_divulgacao(
         .rename("divulgado_em")
         .reset_index()
     )
-    publicadas = contas[list(COLUNAS)].merge(
+    entregas["divulgado_em"] = divulgacao_publica(
+        entregas["cnpj"], entregas["divulgado_em"], cadastro
+    )
+    publicadas = contas[list(formato.colunas_lidas)].merge(
         entregas, on=["cnpj", "referencia", "versao"], how="left"
     )
     return publicadas.assign(origem=origem)
@@ -82,28 +159,41 @@ def versoes_antigas(indice: pd.DataFrame) -> pd.DataFrame:
 
 
 def publicadas_do_enet(
-    documentos: Iterable[DocumentoEnet], indice: pd.DataFrame
+    documentos: Iterable["DocumentoEnet"],
+    indice: pd.DataFrame,
+    *,
+    cadastro: pd.DataFrame,
+    recorte: Literal["regras", "base"] = "base",
 ) -> pd.DataFrame:
-    """As contas de cada versão lida do ENET, no recorte das regras, com a data dela."""
-    partes = [so_as_contas_das_regras(d.contas) for d in documentos]
+    """As contas de cada versão lida do ENET, no recorte pedido, com a data dela.
+
+    O recorte é o mesmo dos dados abertos (`base/contas_cvm.ler_contas`): senão uma conta que só o
+    ENET traz nunca seria substituída. A DMPL do mesmo documento vai para a tabela própria
+    (`base/dmpl.publicadas_do_enet`).
+    """
+    filtro = so_as_contas_da_base if recorte == "base" else so_as_contas_das_regras
+    partes = [filtro(d.contas) for d in documentos]
     contas = (
         pd.concat(partes, ignore_index=True)
         if partes
         else pd.DataFrame(columns=list(COLUNAS))
     )
-    return com_divulgacao(contas, indice, "enet")
+    return com_divulgacao(contas, indice, "enet", cadastro=cadastro)
 
 
 def _mesmo_valor(valor: pd.Series, anterior: pd.Series) -> pd.Series:
     return (valor == anterior) | (valor.isna() & anterior.isna())
 
 
-def montar_base(publicadas: pd.DataFrame) -> pd.DataFrame:
+def montar_base(
+    publicadas: pd.DataFrame, formato: Formato = DEMONSTRACOES
+) -> pd.DataFrame:
     """Uma linha por valor diferente de cada fato, com `divulgado_em` e `ate`.
 
-    `publicadas`: contas no formato de `base/contas_cvm.py` mais `divulgado_em` e `origem` (ver
-    `com_divulgacao`), de quantos documentos e versões houver.
+    `publicadas`: contas no formato de `base/contas_cvm.py` (ou da DMPL) mais `divulgado_em` e
+    `origem` (ver `com_divulgacao`), de quantos documentos e versões houver.
     """
+    fato = list(formato.fato)
     sem_data = publicadas["divulgado_em"].isna()
     if sem_data.any():
         exemplo = publicadas.loc[sem_data].iloc[0]
@@ -112,25 +202,27 @@ def montar_base(publicadas: pd.DataFrame) -> pd.DataFrame:
             f"{exemplo['documento']} {exemplo['referencia']:%d/%m/%Y} versão {exemplo['versao']})"
         )
     base = publicadas.sort_values(
-        [*FATO, "divulgado_em", "referencia", "versao"], na_position="first"
+        formato.ordem_canonica, na_position="first"
     ).reset_index(drop=True)
-    base["_fato"] = base.groupby(FATO, dropna=False, sort=False).ngroup()
+    base["_fato"] = base.groupby(fato, dropna=False, sort=False).ngroup()
     # no mesmo dia, fica a última publicação da ordem acima: o documento mais novo, a versão maior
     base = base.drop_duplicates(["_fato", "divulgado_em"], keep="last")
     anterior = base.groupby("_fato")["valor"].shift(1)
     primeira = base["_fato"].ne(base["_fato"].shift(1))
     base = base[primeira | ~_mesmo_valor(base["valor"], anterior)].copy()
     base["ate"] = base.groupby("_fato")["divulgado_em"].shift(-1)
-    return base.reindex(columns=list(COLUNAS_DA_BASE)).reset_index(drop=True)
+    return base.reindex(columns=list(formato.colunas_da_base)).reset_index(drop=True)
 
 
-def montar_ano(publicadas: pd.DataFrame, ano: int) -> pd.DataFrame:
+def montar_ano(
+    publicadas: pd.DataFrame, ano: int, formato: Formato = DEMONSTRACOES
+) -> pd.DataFrame:
     """A base dos fatos cujo período termina em `ano`.
 
     Um fato de 2022 sai no arquivo de 2022 (coluna "ultimo") e no de 2023 (coluna "penultimo"): quem
     chama junta os dois arquivos antes.
     """
-    return montar_base(publicadas[publicadas["fim"].dt.year == ano])
+    return montar_base(publicadas[publicadas["fim"].dt.year == ano], formato)
 
 
 def como_era_em(base: pd.DataFrame, data: object) -> pd.DataFrame:
@@ -140,17 +232,15 @@ def como_era_em(base: pd.DataFrame, data: object) -> pd.DataFrame:
     return base[valia].reset_index(drop=True)
 
 
-def hash_da_base(base: pd.DataFrame) -> str:
+def hash_da_base(base: pd.DataFrame, formato: Formato = DEMONSTRACOES) -> str:
     """SHA-256 do conteúdo da base, sem depender da ordem das linhas (exigência 9 da ADR 0027).
 
     As linhas são ordenadas pelo fato e pela data, e cada valor vira texto num formato fixo
     (números com 17 algarismos significativos, datas ISO), antes de calcular o hash.
     """
     canonica = (
-        base.reindex(columns=list(COLUNAS_DA_BASE))
-        .sort_values(
-            [*FATO, "divulgado_em", "referencia", "versao"], na_position="first"
-        )
+        base.reindex(columns=list(formato.colunas_da_base))
+        .sort_values(formato.ordem_canonica, na_position="first")
         .reset_index(drop=True)
     )
     texto = canonica.to_csv(index=False, float_format="%.17g", date_format="%Y-%m-%d")
@@ -158,7 +248,10 @@ def hash_da_base(base: pd.DataFrame) -> str:
 
 
 def gravar_parquet(
-    base: pd.DataFrame, pasta: Path, origens: list[dict[str, str]] | None = None
+    base: pd.DataFrame,
+    pasta: Path,
+    origens: list[dict[str, str]] | None = None,
+    formato: Formato = DEMONSTRACOES,
 ) -> list[Path]:
     """Um arquivo por ano do fim do período (`<pasta>/2022.parquet`), gravado sem ficar pela metade.
 
@@ -178,8 +271,14 @@ def gravar_parquet(
         manifesto = {
             "ano": ano,
             "linhas": len(parte),
-            "sha256_da_base": hash_da_base(parte),
+            "sha256_da_base": hash_da_base(parte, formato),
+            # o mesmo hash das outras tabelas da base, para a âncora no Bitcoin (ADR 0078)
+            "sha256_da_tabela": hash_da_tabela(parte, formato.ordem_da_tabela),
+            "ordem": formato.ordem_da_tabela,
             "origens": origens or [],
+            "licenca": licenca_para_gravar(
+                destino, origens or []
+            ),  # ADR 0008, Emenda 1
             "versao_do_codigo": versao,
         }
         texto = json.dumps(manifesto, ensure_ascii=False, indent=1)
@@ -191,7 +290,7 @@ def gravar_parquet(
     return arquivos
 
 
-def conferir_pasta(pasta: Path) -> dict[str, bool]:
+def conferir_pasta(pasta: Path, formato: Formato = DEMONSTRACOES) -> dict[str, bool]:
     """Para cada ano, se o Parquet ainda tem o hash anotado no `<ano>.json`."""
     resultado = {}
     for arquivo in sorted(pasta.glob("*.parquet")):
@@ -201,14 +300,14 @@ def conferir_pasta(pasta: Path) -> dict[str, bool]:
             if manifesto.exists()
             else {}
         )
-        atual = hash_da_base(pd.read_parquet(arquivo))
+        atual = hash_da_base(pd.read_parquet(arquivo), formato)
         resultado[arquivo.stem] = anotado.get("sha256_da_base") == atual
     return resultado
 
 
-def ler_parquet(pasta: Path) -> pd.DataFrame:
+def ler_parquet(pasta: Path, formato: Formato = DEMONSTRACOES) -> pd.DataFrame:
     """A base inteira de volta (todos os anos)."""
     partes = [pd.read_parquet(arquivo) for arquivo in sorted(pasta.glob("*.parquet"))]
     if not partes:
-        return pd.DataFrame(columns=list(COLUNAS_DA_BASE))
+        return pd.DataFrame(columns=list(formato.colunas_da_base))
     return pd.concat(partes, ignore_index=True)

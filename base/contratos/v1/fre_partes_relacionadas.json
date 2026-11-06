@@ -1,0 +1,97 @@
+{
+  "tabela": "fre_partes_relacionadas",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia (como a CVM escreve)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do FRE",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_documento": {
+      "descricao": "Identificador do documento na CVM",
+      "unidade": "texto"
+    },
+    "linha": {
+      "descricao": "Posição da transação no documento (\"1\", \"2\"...); nas pessoas somadas, \"pf:<tipo>:<relacao>\"",
+      "unidade": "texto"
+    },
+    "tipo_pessoa": {
+      "descricao": "PJ, PF ou `nao_informado`, como a companhia declara",
+      "unidade": "texto"
+    },
+    "contraparte": {
+      "descricao": "Nome da parte relacionada; vazio nas pessoas somadas",
+      "unidade": "texto"
+    },
+    "cnpj_contraparte": {
+      "descricao": "CNPJ da parte relacionada; vazio nas pessoas somadas",
+      "unidade": "texto"
+    },
+    "relacao": {
+      "descricao": "Categoria da relação com a companhia (controle_comum, controle_conjunto, controladora, controlada, coligada, administracao, familiar, acionista, outra, nao_informada), tirada do texto livre",
+      "unidade": "texto"
+    },
+    "data_transacao": {
+      "descricao": "Data da transação; vazio nas pessoas somadas",
+      "unidade": "data (dia)"
+    },
+    "montante_envolvido": {
+      "descricao": "Montante envolvido (soma nas pessoas somadas)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "saldo_existente": {
+      "descricao": "Saldo existente (soma nas pessoas somadas)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "montante_de_interesse": {
+      "descricao": "Montante de interesse da parte relacionada (soma nas pessoas somadas)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "emprestimo": {
+      "descricao": "É empréstimo ou dívida? (alguma, nas pessoas somadas)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "taxa_de_juros": {
+      "descricao": "Taxa de juros em % quando é um número (\"3,5%\"); \"CDI + 1%\" e \"N/A\" ficam vazios",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "posicao_contratual": {
+      "descricao": "`credor`, `devedor` ou `outra`: a posição da companhia",
+      "unidade": "texto"
+    },
+    "transacoes": {
+      "descricao": "Quantas transações a linha soma (1 fora das pessoas somadas)",
+      "unidade": "número inteiro"
+    },
+    "conhecido_em": {
+      "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "referencia",
+    "versao",
+    "linha"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": true,
+  "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+  "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+}

@@ -28,12 +28,14 @@ from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import (
     ACUMULADO,
     ACUMULADO_ANTERIOR,
+    CONTAS_DA_CVM,
     EXERCICIO,
     POSICAO,
     e_financeira,
 )
+from src.rastro import Entrada
 
-VERSAO_DOS_FUNDAMENTOS = "1"  # sobe quando uma fórmula abaixo mudar
+VERSAO_DOS_FUNDAMENTOS = "3"  # sobe quando uma fórmula abaixo mudar
 ALIQUOTA_DE_IR_CS = 0.34  # hipótese do ROIC (alíquota nominal de IR + CSLL no Brasil)
 ALIQUOTA_DOS_EUA = (
     0.21  # imposto federal sobre o lucro das empresas nos EUA (sem os estaduais)
@@ -49,6 +51,145 @@ NAO_SE_APLICA_A_FINANCEIRAS = (
     "(não há margem bruta, EBIT nem dívida comparáveis)."
 )
 REAIS, FRACAO, VEZES, REAIS_POR_ACAO = "reais", "fração", "vezes", "reais por ação"
+SEM_RECEITA = "Sem receita positiva no período."
+RECEITA_NEGATIVA = "Receita negativa nos 12 meses: os períodos publicados não são comparáveis (reclassificação)."
+SEM_DIVIDENDOS_NO_CAIXA = (
+    "O fluxo de caixa não traz linha de dividendos ou JCP pagos: não dá para saber se a "
+    "empresa não pagou ou se a linha tem outro nome."
+)
+# os de mercado que não servem a bancos (sem dívida nem receita comparáveis às das outras)
+DA_FIRMA = (
+    ("valor_da_firma", "Valor da firma (valor de mercado + dívida líquida)", REAIS),
+    ("ev_ebitda", "Valor da firma / EBITDA (12 meses)", VEZES),
+    ("ev_ebit", "Valor da firma / EBIT (12 meses)", VEZES),
+    ("p_receita", "Preço / receita (12 meses)", VEZES),
+    ("p_ebitda", "Preço / EBITDA (12 meses)", VEZES),
+    ("p_ebit", "Preço / EBIT (12 meses)", VEZES),
+    ("p_fcf", "Preço / caixa livre (12 meses)", VEZES),
+)
+# os que pedem o preço do ativo, além de P/L e P/VP (D3 mudada em 20/10/2026)
+DE_MERCADO = (
+    "valor_de_mercado",
+    "dividend_yield",
+    "dividend_yield_medio",
+    "p_ativo",
+    *(chave for chave, _, _ in DA_FIRMA),
+)
+ANOS_DO_CRESCIMENTO = 5  # o horizonte padrão do crescimento composto
+# a conta de cada indicador abaixo, para o rastro do número (`src/rastro.py`): mudou uma conta aqui,
+# suba `VERSAO_DOS_FUNDAMENTOS` (o gabarito de `tests/test_rastro.py` cobra)
+_12M = "(12 meses: último DFP + acumulado do ano no último ITR − o mesmo período do ano anterior)"
+_LUCRO = "lucro dos controladores (sem a divisão, o lucro consolidado)"
+_PL = "(patrimônio líquido − participação dos minoritários)"
+_ACOES = (
+    "ações em circulação (total − tesouraria, conferidas com o lucro por ação da DRE)"
+)
+FORMULAS = {
+    "receita": f"receita líquida {_12M}",
+    "lucro": f"{_LUCRO} {_12M}",
+    "margem_bruta": "resultado bruto ÷ receita (12 meses)",
+    "margem_ebit": "EBIT ÷ receita (12 meses)",
+    "margem_liquida": "lucro líquido consolidado ÷ receita (12 meses)",
+    "roe": f"{_LUCRO} (12 meses) ÷ {_PL} no balanço mais recente",
+    "roic": (
+        "EBIT (12 meses) × (1 − alíquota de IR e CSLL: 34% no Brasil, 21% nos EUA) ÷ (patrimônio "
+        "líquido + dívida bruta − caixa e aplicações) no balanço mais recente"
+    ),
+    "divida_bruta": "empréstimos e financiamentos de curto prazo + de longo prazo (balanço mais recente)",
+    "caixa": "caixa e equivalentes + aplicações financeiras (balanço mais recente)",
+    "divida_liquida": "dívida bruta − caixa e aplicações (balanço mais recente)",
+    "divida_sobre_pl": f"dívida líquida ÷ {_PL}",
+    "conversao_de_caixa": "caixa operacional (12 meses) ÷ lucro líquido consolidado (12 meses)",
+    "crescimento_receita": (
+        f"(receita do último DFP ÷ receita do DFP de {ANOS_DO_CRESCIMENTO} anos antes) ^ "
+        f"(1 ÷ {ANOS_DO_CRESCIMENTO}) − 1"
+    ),
+    "crescimento_lucro": (
+        f"({_LUCRO} do último DFP ÷ o do DFP de {ANOS_DO_CRESCIMENTO} anos antes) ^ "
+        f"(1 ÷ {ANOS_DO_CRESCIMENTO}) − 1"
+    ),
+    "lpa": f"{_LUCRO} (12 meses) ÷ {_ACOES}",
+    "vpa": f"{_PL} ÷ {_ACOES}",
+    "p_l": "preço da ação ÷ lucro por ação (o mesmo preço para todas as classes de ação)",
+    "p_vp": "preço da ação ÷ patrimônio por ação (o mesmo preço para todas as classes de ação)",
+    "valor_de_mercado": f"preço da ação × {_ACOES}",
+    "dividend_yield": (
+        "dividendos e JCP pagos em caixa (12 meses, fluxo de caixa) ÷ valor de mercado"
+    ),
+    "valor_da_firma": "valor de mercado + dívida líquida",
+    "ev_ebitda": "valor da firma ÷ (EBIT + depreciação e amortização) (12 meses)",
+    "ev_ebit": "valor da firma ÷ EBIT (12 meses)",
+    "p_receita": "valor de mercado ÷ receita (12 meses)",
+    "p_ebitda": "valor de mercado ÷ (EBIT + depreciação e amortização) (12 meses)",
+    "p_ebit": "valor de mercado ÷ EBIT (12 meses)",
+    "p_fcf": "valor de mercado ÷ (caixa operacional − capex) (12 meses, fluxo de caixa)",
+    "p_ativo": "valor de mercado ÷ ativo total (balanço mais recente)",
+    "dividend_yield_medio": (
+        f"média dos dividendos e JCP pagos em caixa nos {ANOS_DO_CRESCIMENTO} últimos exercícios "
+        "(DFP, fluxo de caixa) ÷ valor de mercado de hoje"
+    ),
+}
+
+# As contas que entram em cada indicador, e de onde: os 12 meses, o balanço mais recente, a conferência
+# da quantidade de ações (o último exercício da DFP), o primeiro e o último ano do crescimento ou os
+# exercícios da média; no `fundamentalista`, também o balanço de um ano antes (o saldo médio), todos os
+# exercícios (a diluição) e o último com o de N anos antes (o crescimento do dividendo); nas
+# `notas_classicas`, o último exercício e o anterior. É o que `entradas` cita no rastro; mudou uma
+# conta acima, mude aqui (o teste de `tests/test_rastro.py` refaz cada número só com as entradas).
+DOZE_MESES, BALANCO, CONFERENCIA, CRESCIMENTO, MEDIA_DOS_ANOS, UM_ANO_ANTES = (
+    "doze_meses", "balanco", "conferencia", "crescimento", "media_dos_anos", "um_ano_antes",
+)  # fmt: skip
+TODOS_OS_ANOS, COMECO_E_FIM, ANO_ANTERIOR = (
+    "todos_os_anos",
+    "comeco_e_fim",
+    "ano_anterior",
+)
+LUCRO = "lucro"  # o dos controladores; sem a divisão, o consolidado (como em `_lucro`)
+
+
+def _em(onde: str, *contas: str) -> tuple[tuple[str, str], ...]:
+    return tuple((onde, conta) for conta in contas)
+
+
+_DIVIDA_E_CAIXA = ("divida_cp", "divida_lp", "caixa", "aplicacoes")
+_PL_SEM_MINORITARIOS = ("patrimonio_liquido", "minoritarios")
+DAS_ACOES = _em(BALANCO, "acoes_total", "acoes_tesouraria") + _em(
+    CONFERENCIA, LUCRO, "lpa_basico", "acoes_total"
+)
+_DA_FIRMA = _em(BALANCO, *_DIVIDA_E_CAIXA) + DAS_ACOES
+_EBITDA = _em(DOZE_MESES, "ebit", "depreciacao")
+CONTAS_DOS_INDICADORES: dict[str, tuple[tuple[str, str], ...]] = {
+    "receita": _em(DOZE_MESES, "receita"),
+    "lucro": _em(DOZE_MESES, LUCRO),
+    "margem_bruta": _em(DOZE_MESES, "resultado_bruto", "receita"),
+    "margem_ebit": _em(DOZE_MESES, "ebit", "receita"),
+    "margem_liquida": _em(DOZE_MESES, "lucro_liquido", "receita"),
+    "roe": _em(DOZE_MESES, LUCRO) + _em(BALANCO, *_PL_SEM_MINORITARIOS),
+    "roic": _em(DOZE_MESES, "ebit")
+    + _em(BALANCO, "patrimonio_liquido", *_DIVIDA_E_CAIXA),
+    "divida_bruta": _em(BALANCO, "divida_cp", "divida_lp"),
+    "caixa": _em(BALANCO, "caixa", "aplicacoes"),
+    "divida_liquida": _em(BALANCO, *_DIVIDA_E_CAIXA),
+    "divida_sobre_pl": _em(BALANCO, *_DIVIDA_E_CAIXA, *_PL_SEM_MINORITARIOS),
+    "conversao_de_caixa": _em(DOZE_MESES, "fco", "lucro_liquido"),
+    "crescimento_receita": _em(CRESCIMENTO, "receita"),
+    "crescimento_lucro": _em(CRESCIMENTO, LUCRO),
+    "lpa": _em(DOZE_MESES, LUCRO) + DAS_ACOES,
+    "vpa": _em(BALANCO, *_PL_SEM_MINORITARIOS) + DAS_ACOES,
+    "p_l": _em(DOZE_MESES, LUCRO) + DAS_ACOES,
+    "p_vp": _em(BALANCO, *_PL_SEM_MINORITARIOS) + DAS_ACOES,
+    "valor_de_mercado": DAS_ACOES,
+    "dividend_yield": _em(DOZE_MESES, "dividendos_pagos") + DAS_ACOES,
+    "valor_da_firma": _DA_FIRMA,
+    "ev_ebitda": _EBITDA + _DA_FIRMA,
+    "ev_ebit": _em(DOZE_MESES, "ebit") + _DA_FIRMA,
+    "p_receita": _em(DOZE_MESES, "receita") + DAS_ACOES,
+    "p_ebitda": _EBITDA + DAS_ACOES,
+    "p_ebit": _em(DOZE_MESES, "ebit") + DAS_ACOES,
+    "p_fcf": _em(DOZE_MESES, "fco", "capex") + DAS_ACOES,
+    "p_ativo": _em(BALANCO, "ativo_total") + DAS_ACOES,
+    "dividend_yield_medio": _em(MEDIA_DOS_ANOS, "dividendos_pagos") + DAS_ACOES,
+}
 
 
 @dataclass(frozen=True)
@@ -91,6 +232,11 @@ def _data(d: date) -> str:
     return f"{d:%d/%m/%Y}"
 
 
+def um_ano_antes(d: date) -> date:
+    """O mesmo dia um ano antes (29/02 vira 28/02)."""
+    return d.replace(year=d.year - 1, day=28 if (d.month, d.day) == (2, 29) else d.day)
+
+
 def _contas_em(
     contas: pd.DataFrame, documento: str | None, referencia: date, periodo: str
 ) -> dict:
@@ -125,16 +271,21 @@ def anuais(contas: pd.DataFrame) -> pd.DataFrame:
     return tabela[~tabela.index.duplicated(keep="last")]
 
 
-def doze_meses(contas: pd.DataFrame) -> tuple[dict, str, list[tuple[str, date]]]:
-    """(contas dos últimos 12 meses, descrição da base, documentos usados)."""
+Parte = tuple[
+    str, date, str
+]  # (documento, referência, período): um pedaço da tabela de contas
+
+
+def janela_dos_doze_meses(contas: pd.DataFrame) -> tuple[tuple[Parte, ...], str]:
+    """(as partes que fazem os últimos 12 meses, descrição da base): a DFP sozinha, ou a DFP mais
+    o acumulado do ITR menos o acumulado do mesmo período do ano anterior."""
     dfp = contas[(contas["documento"] == "DFP") & (contas["periodo"] == EXERCICIO)]
     if dfp.empty:
-        return {}, "", []
+        return (), ""
     ultimo_dfp = max(dfp["referencia"])
     so_o_dfp = (
-        _contas_em(contas, "DFP", ultimo_dfp, EXERCICIO),
+        (("DFP", ultimo_dfp, EXERCICIO),),
         f"exercício encerrado em {_data(ultimo_dfp)}",
-        [("DFP", ultimo_dfp)],
     )
     itr = contas[(contas["documento"] == "ITR") & (contas["periodo"] == ACUMULADO)]
     mais_novo = max(itr["referencia"]) if not itr.empty else None
@@ -149,20 +300,30 @@ def doze_meses(contas: pd.DataFrame) -> tuple[dict, str, list[tuple[str, date]]]
     ]
     if not base:
         return so_o_dfp
-    base = [max(base)]
-    anual = _contas_em(contas, "DFP", base[0], EXERCICIO)
-    acumulado = _contas_em(contas, "ITR", mais_novo, ACUMULADO)
-    anterior = _contas_em(contas, "ITR", mais_novo, ACUMULADO_ANTERIOR)
+    partes = (
+        ("DFP", max(base), EXERCICIO),
+        ("ITR", mais_novo, ACUMULADO),
+        ("ITR", mais_novo, ACUMULADO_ANTERIOR),
+    )
+    return partes, f"12 meses até {_data(mais_novo)}"
+
+
+def doze_meses(contas: pd.DataFrame) -> tuple[dict, str, list[tuple[str, date]]]:
+    """(contas dos últimos 12 meses, descrição da base, documentos usados)."""
+    partes, base = janela_dos_doze_meses(contas)
+    usados = list(
+        dict.fromkeys((documento, referencia) for documento, referencia, _ in partes)
+    )
+    valores = [_contas_em(contas, *parte) for parte in partes]
+    if len(valores) <= 1:
+        return (valores[0] if valores else {}), base, usados
+    anual, acumulado, anterior = valores
     ttm = {
         conta: anual[conta] + acumulado[conta] - anterior[conta]
         for conta in anual
         if conta in acumulado and conta in anterior and conta != "lpa_basico"
     }
-    return (
-        ttm,
-        f"12 meses até {_data(mais_novo)}",
-        [("DFP", base[0]), ("ITR", mais_novo)],
-    )
+    return ttm, base, usados
 
 
 def balanco_mais_recente(contas: pd.DataFrame) -> tuple[dict, date | None, str]:
@@ -221,6 +382,250 @@ def acoes_em_circulacao(
     )
 
 
+def divida_e_caixa(saldo: dict) -> tuple[float | None, float | None]:
+    """(dívida bruta, caixa e aplicações) de um balanço; sem nenhuma das contas, `None`."""
+    divida = (
+        saldo.get("divida_cp", 0.0) + saldo.get("divida_lp", 0.0)
+        if "divida_cp" in saldo or "divida_lp" in saldo
+        else None
+    )
+    caixa = (
+        saldo.get("caixa", 0.0) + saldo.get("aplicacoes", 0.0)
+        if "caixa" in saldo or "aplicacoes" in saldo
+        else None
+    )
+    return divida, caixa
+
+
+# --- as entradas do rastro -----------------------------------------------------------------------
+_Linha = tuple[str, date, str, str]  # (documento, referência, período, conta)
+
+
+@dataclass(frozen=True)
+class _Lugares:
+    """Onde cada indicador lê as contas: as mesmas escolhas de `calcular`."""
+
+    guardadas: dict[
+        _Linha, tuple[float, int]
+    ]  # a linha da tabela de contas → (valor, versão)
+    doze_meses: tuple[Parte, ...]
+    balanco: Parte | None
+    tabela: pd.DataFrame  # a de `anuais`
+    referencia_do_ano: dict[int, date]  # a data da DFP de cada linha de `tabela`
+    # (dia, conta) → a linha do saldo naquele dia; com dois documentos no mesmo dia, o último da
+    # tabela, como no `_saldos_em` do `fundamentalista`
+    saldos: dict[tuple[date, str], _Linha]
+
+
+def _lugares(contas: pd.DataFrame) -> _Lugares:
+    colunas = ("documento", "referencia", "periodo", "conta", "valor", "versao")
+    guardadas, saldos = {}, {}
+    for documento, referencia, periodo, conta, valor, versao in zip(
+        *(contas[c] for c in colunas), strict=True
+    ):
+        guardadas[(documento, referencia, periodo, conta)] = (float(valor), int(versao))
+        if periodo == POSICAO:
+            saldos[(referencia, conta)] = (documento, referencia, periodo, conta)
+    _, referencia, documento = balanco_mais_recente(contas)
+    dfp = contas[
+        (contas["documento"] == "DFP") & contas["periodo"].isin([EXERCICIO, POSICAO])
+    ]
+    return _Lugares(
+        guardadas,
+        janela_dos_doze_meses(contas)[0],
+        (documento, referencia, POSICAO) if referencia else None,
+        anuais(contas),
+        {
+            r.year: r for r in sorted(dfp["referencia"].unique())
+        },  # como `anuais`: a última do ano
+        saldos,
+    )
+
+
+def _nos_doze_meses(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """A conta em cada parte dos 12 meses; se falta numa delas, a soma não a tem (nem o número)."""
+    partes = lugares.doze_meses
+
+    def em_todas(nome: str) -> bool:
+        return bool(partes) and all((*p, nome) in lugares.guardadas for p in partes)
+
+    if conta == LUCRO:
+        conta = (
+            "lucro_controladores"
+            if em_todas("lucro_controladores")
+            else "lucro_liquido"
+        )
+    return [(*p, conta) for p in partes] if em_todas(conta) else []
+
+
+def _no_balanco(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    linha = None if lugares.balanco is None else (*lugares.balanco, conta)
+    return [linha] if linha in lugares.guardadas else []
+
+
+def _no_ano_antes(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O saldo de um ano antes do balanço mais recente, que o saldo médio usa quando existe."""
+    if lugares.balanco is None or not _no_balanco(lugares, conta, anos):
+        return []
+    linha = lugares.saldos.get((um_ano_antes(lugares.balanco[1]), conta))
+    return [] if linha is None else [linha]
+
+
+def _da_dfp(lugares: _Lugares, ano: int, conta: str) -> list[_Linha]:
+    referencia = lugares.referencia_do_ano[int(ano)]
+    linhas = [("DFP", referencia, periodo, conta) for periodo in (EXERCICIO, POSICAO)]
+    return [linha for linha in linhas if linha in lugares.guardadas][:1]
+
+
+def _no_exercicio(lugares: _Lugares, ano: int, conta: str) -> list[_Linha]:
+    """A conta no exercício `ano`; o lucro, o dos controladores se aquele ano o tem (`_lucro`)."""
+    if conta == LUCRO:
+        tem = pd.notna(lugares.tabela.loc[ano].get("lucro_controladores"))
+        conta = "lucro_controladores" if tem else "lucro_liquido"
+    return _da_dfp(lugares, ano, conta)
+
+
+def _na_conferencia(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O lucro, o lucro por ação e as ações do último exercício (`acoes_em_circulacao`); é também o
+    ano que as notas clássicas leem."""
+    if lugares.tabela.empty:
+        return []
+    return _no_exercicio(lugares, lugares.tabela.index[-1], conta)
+
+
+def _no_ano_anterior(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O exercício antes do último, com que as notas clássicas comparam; sem ele, nenhuma linha."""
+    indice = lugares.tabela.index
+    if indice.empty or (indice.max() - 1) not in indice:
+        return []
+    return _no_exercicio(lugares, indice.max() - 1, conta)
+
+
+def _no_crescimento(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O primeiro e o último ano do crescimento composto (`_cagr`)."""
+    tabela = lugares.tabela
+    if conta == LUCRO:
+        conta = (
+            "lucro_controladores"
+            if "lucro_controladores" in tabela
+            else "lucro_liquido"
+        )
+    serie = tabela[conta].dropna() if conta in tabela else pd.Series(dtype=float)
+    if len(serie) < anos + 1:
+        return []
+    return [
+        *_da_dfp(lugares, serie.index[-(anos + 1)], conta),
+        *_da_dfp(lugares, serie.index[-1], conta),
+    ]
+
+
+def _na_media(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """Os exercícios da média (`_pagos_em_media`); com um ano sem a conta, não há média."""
+    tabela = lugares.tabela
+    if (
+        conta not in tabela
+        or len(tabela) < anos
+        or tabela[conta].iloc[-anos:].isna().any()
+    ):
+        return []
+    return [
+        linha for ano in tabela.index[-anos:] for linha in _da_dfp(lugares, ano, conta)
+    ]
+
+
+def _em_todos_os_anos(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """A conta em cada exercício da DFP: a diluição e os fatores das ações leem a série inteira."""
+    return [
+        linha for ano in lugares.tabela.index for linha in _da_dfp(lugares, ano, conta)
+    ]
+
+
+def _no_comeco_e_no_fim(lugares: _Lugares, conta: str, anos: int) -> list[_Linha]:
+    """O último exercício e o de `anos` antes, sem tirar os vazios (`_crescimento_do_dividendo`)."""
+    indice = lugares.tabela.index
+    if indice.empty or (indice.max() - anos) not in indice:
+        return []
+    ultimo = indice.max()
+    return [
+        *_da_dfp(lugares, ultimo - anos, conta),
+        *_da_dfp(lugares, ultimo, conta),
+    ]
+
+
+_ONDE = {
+    DOZE_MESES: _nos_doze_meses,
+    BALANCO: _no_balanco,
+    CONFERENCIA: _na_conferencia,
+    CRESCIMENTO: _no_crescimento,
+    MEDIA_DOS_ANOS: _na_media,
+    UM_ANO_ANTES: _no_ano_antes,
+    TODOS_OS_ANOS: _em_todos_os_anos,
+    COMECO_E_FIM: _no_comeco_e_no_fim,
+    ANO_ANTERIOR: _no_ano_anterior,
+}
+
+
+def _publicados_em(
+    documentos: pd.DataFrame,
+) -> dict[tuple[str, date, int], date | None]:
+    """(documento, referência, versão) → o dia em que a CVM recebeu o documento."""
+    if documentos.empty:
+        return {}
+    colunas = ("documento", "referencia", "versao", "recebido_em")
+    return {
+        (documento, referencia, int(versao)): None
+        if pd.isna(dia)
+        else pd.Timestamp(dia).date()
+        for documento, referencia, versao, dia in zip(
+            *(documentos[c] for c in colunas), strict=True
+        )
+    }
+
+
+def _entrada(linha: _Linha, guardada: tuple[float, int], publicados: dict) -> Entrada:
+    documento, referencia, periodo, conta = linha
+    (codigo, nome), (valor, versao) = CONTAS_DA_CVM[conta], guardada
+    publicado_em = publicados.get((documento, referencia, versao))
+    return Entrada(
+        conta, codigo, nome, valor, periodo, documento, referencia, versao, publicado_em
+    )
+
+
+def todas_as_entradas(
+    dados: DadosDaEmpresa,
+    anos: int = ANOS_DO_CRESCIMENTO,
+    contas_dos_indicadores: dict[
+        str, tuple[tuple[str, str], ...]
+    ] = CONTAS_DOS_INDICADORES,
+) -> dict[str, tuple[Entrada, ...]]:
+    """As entradas de cada indicador de `FORMULAS` (ou de outro módulo, pelas contas dele): as contas
+    guardadas que entram nele, com o valor, o código e o nome na CVM e o documento de onde vieram.
+    Só com elas, `calcular` refaz o número; a conta que o documento não traz fica de fora (e o
+    número sai indisponível)."""
+    if dados.contas.empty:
+        return {chave: () for chave in contas_dos_indicadores}
+    lugares, publicados = _lugares(dados.contas), _publicados_em(dados.documentos)
+    saida = {}
+    for chave, contas in contas_dos_indicadores.items():
+        linhas = [
+            linha
+            for onde, conta in contas
+            for linha in _ONDE[onde](lugares, conta, anos)
+        ]
+        saida[chave] = tuple(
+            _entrada(linha, lugares.guardadas[linha], publicados)
+            for linha in dict.fromkeys(linhas)
+        )
+    return saida
+
+
+def entradas(
+    chave: str, dados: DadosDaEmpresa, anos: int = ANOS_DO_CRESCIMENTO
+) -> tuple[Entrada, ...]:
+    """As entradas de um indicador (ver `todas_as_entradas`)."""
+    return todas_as_entradas(dados, anos)[chave]
+
+
 # --- indicadores ---------------------------------------------------------------------------------
 class _Lista:
     """Junta os indicadores, transformando ausência de dado em "indisponível com motivo"."""
@@ -248,9 +653,10 @@ class _Lista:
 
 def _resultado(lista: _Lista, ttm: dict, base: str, financeira: bool) -> None:
     receita, lucro_total = ttm.get("receita"), ttm.get("lucro_liquido")
-    lista.add("receita", "Receita (12 meses)", receita, REAIS, base)
+    negativa = RECEITA_NEGATIVA if receita is not None and receita < 0 else ""
+    lista.add("receita", "Receita (12 meses)", receita, REAIS, base, negativa)
     lista.add("lucro", "Lucro dos acionistas (12 meses)", _lucro(ttm), REAIS, base)
-    sem_receita = "" if _positivo(receita) else "Sem receita positiva no período."
+    sem_receita = "" if _positivo(receita) else SEM_RECEITA
     for chave, nome, conta in (
         ("margem_bruta", "Margem bruta", "resultado_bruto"),
         ("margem_ebit", "Margem EBIT", "ebit"),
@@ -302,16 +708,7 @@ def _retornos_e_divida(
                 chave, nome, None, unidade, base_balanco, NAO_SE_APLICA_A_FINANCEIRAS
             )
         return
-    divida = (
-        saldo.get("divida_cp", 0.0) + saldo.get("divida_lp", 0.0)
-        if "divida_cp" in saldo or "divida_lp" in saldo
-        else None
-    )
-    caixa = (
-        saldo.get("caixa", 0.0) + saldo.get("aplicacoes", 0.0)
-        if "caixa" in saldo or "aplicacoes" in saldo
-        else None
-    )
+    divida, caixa = divida_e_caixa(saldo)
     investido = (
         None
         if pl_total is None or divida is None or caixa is None
@@ -439,6 +836,113 @@ def _por_acao(
     )
 
 
+def _razao_positiva(
+    numerador: float | None, denominador: float | None, sem_denominador: str
+) -> tuple[float | None, str]:
+    """(numerador ÷ denominador, motivo): denominador ausente, zero ou negativo vira o motivo."""
+    if numerador is None or denominador is None:
+        return None, ""
+    if denominador <= 0:
+        return None, sem_denominador
+    return numerador / denominador, ""
+
+
+def _de_mercado(
+    lista: _Lista,
+    ttm: dict,
+    acoes: tuple,
+    preco: float | None,
+    bases: tuple[str, str],
+    financeira: bool,
+) -> None:
+    """Valor de mercado, valor da firma, dividend yield e múltiplos da firma (D3 mudada em
+    20/10/2026). O mesmo preço vale para todas as classes de ação; o DY usa o caixa pago em
+    dividendos e JCP nos 12 meses (DFC), que pode incluir o pago aos minoritários."""
+    quantidade, _, sem_acoes = acoes
+    base_12m, base_balanco = bases
+    sem_preco = "" if _positivo(preco) else "Sem o preço do ativo."
+    motivo = sem_preco or sem_acoes
+    mercado = None if motivo or preco is None else preco * quantidade
+    lista.add(
+        "valor_de_mercado", "Valor de mercado", mercado, REAIS, base_balanco, motivo
+    )
+    pagos = ttm.get("dividendos_pagos")
+    lista.add(
+        "dividend_yield", "Dividend yield (12 meses)",
+        None if mercado is None or pagos is None else abs(pagos) / mercado, FRACAO, base_12m,
+        motivo or ("" if pagos is not None else SEM_DIVIDENDOS_NO_CAIXA),
+    )  # fmt: skip
+    if financeira:
+        for chave, nome, unidade in DA_FIRMA:
+            lista.add(chave, nome, None, unidade, base_12m, NAO_SE_APLICA_A_FINANCEIRAS)
+        return
+    liquida = lista.itens["divida_liquida"].valor
+    firma = None if mercado is None or liquida is None else mercado + liquida
+    ebit, depreciacao = ttm.get("ebit"), ttm.get("depreciacao")
+    ebitda = None if ebit is None or depreciacao is None else ebit + depreciacao
+    fco, capex = ttm.get("fco"), ttm.get("capex")
+    livre = None if fco is None or capex is None else fco - abs(capex)
+    contas = (
+        ("valor_da_firma", firma, ""),
+        ("ev_ebitda", *_razao_positiva(firma, ebitda, "EBITDA negativo ou zero.")),
+        ("ev_ebit", *_razao_positiva(firma, ebit, "EBIT negativo ou zero.")),
+        ("p_receita", *_razao_positiva(mercado, ttm.get("receita"), SEM_RECEITA)),
+        ("p_ebitda", *_razao_positiva(mercado, ebitda, "EBITDA negativo ou zero.")),
+        ("p_ebit", *_razao_positiva(mercado, ebit, "EBIT negativo ou zero.")),
+        ("p_fcf", *_razao_positiva(mercado, livre, "Caixa livre negativo ou zero.")),
+    )
+    for (chave, nome, unidade), (_, valor, sem_conta) in zip(
+        DA_FIRMA, contas, strict=True
+    ):
+        base = (
+            base_balanco if chave == "valor_da_firma" else f"{base_12m}; {base_balanco}"
+        )
+        lista.add(chave, nome, valor, unidade, base, motivo or sem_conta)
+
+
+def _pagos_em_media(tabela: pd.DataFrame, anos: int) -> tuple[float | None, str, str]:
+    """(média dos dividendos e JCP pagos nos `anos` últimos exercícios, base, motivo). Só a DFP:
+    um exercício entra depois de publicado, então cortar o futuro não muda a média do passado."""
+    if tabela.empty or "dividendos_pagos" not in tabela:
+        return None, "", SEM_DIVIDENDOS_NO_CAIXA
+    if len(tabela) < anos:
+        return None, "", (
+            f"Só há {len(tabela)} exercícios de demonstrações guardados; a média pede {anos}."
+        )  # fmt: skip
+    ultimos = tabela["dividendos_pagos"].iloc[-anos:]
+    primeiro, ultimo = ultimos.index[0], ultimos.index[-1]
+    base = f"DFP de {primeiro}" if anos == 1 else f"DFP de {primeiro} a {ultimo}"
+    faltam = [str(ano) for ano, valor in ultimos.items() if pd.isna(valor)]
+    if faltam:
+        return None, base, (
+            f"O fluxo de caixa de {', '.join(faltam)} não traz a linha de dividendos ou JCP pagos."
+        )  # fmt: skip
+    return float(ultimos.abs().mean()), base, ""
+
+
+def _sobre_o_mercado(
+    lista: _Lista, saldo: dict, tabela: pd.DataFrame, anos: int, base_balanco: str
+) -> None:
+    """P/Ativo e dividend yield médio: o valor de mercado de hoje sobre o ativo do balanço e
+    sobre a média dos pagos nos exercícios (sem série de preço: o DY de cada ano pediria o preço
+    da época, e o do Yahoo vem ajustado pelos proventos)."""
+    mercado = lista.itens["valor_de_mercado"]
+    sem_mercado = mercado.motivo if mercado.valor is None else ""
+    ativo, sem_ativo = _razao_positiva(
+        mercado.valor, saldo.get("ativo_total"), "Sem o ativo total no balanço."
+    )
+    lista.add(
+        "p_ativo", "Preço / ativo total", ativo, VEZES, base_balanco,
+        sem_mercado or sem_ativo,
+    )  # fmt: skip
+    media, base, sem_media = _pagos_em_media(tabela, anos)
+    lista.add(
+        "dividend_yield_medio", f"Dividend yield médio ({anos} anos)",
+        None if mercado.valor is None or media is None else media / mercado.valor,
+        FRACAO, base, sem_mercado or sem_media,
+    )  # fmt: skip
+
+
 def _tabela_anual(tabela: pd.DataFrame) -> pd.DataFrame:
     """Receita, lucro, margem líquida, patrimônio e dívida líquida de cada ano (vazio = NaN)."""
     if tabela.empty:
@@ -489,7 +993,7 @@ def _filtros(
 def calcular(
     dados: DadosDaEmpresa,
     preco: float | None,
-    anos: int = 5,
+    anos: int = ANOS_DO_CRESCIMENTO,
     roic_minimo: float | None = None,
     pl_maximo: float | None = None,
     aliquota: float = ALIQUOTA_DE_IR_CS,
@@ -512,6 +1016,8 @@ def calcular(
     _retornos_e_divida(lista, ttm, saldo, base_12m, base_balanco, financeira, aliquota)
     _crescimento(lista, tabela, anos)
     _por_acao(lista, ttm, saldo, acoes, preco, (base_12m, base_balanco))
+    _de_mercado(lista, ttm, acoes, preco, (base_12m, base_balanco), financeira)
+    _sobre_o_mercado(lista, saldo, tabela, anos, base_balanco)
     docs = dados.documentos
     if not docs.empty:
         usados_set = set(usados)

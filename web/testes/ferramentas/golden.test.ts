@@ -2,49 +2,8 @@
 // Os casos e os resultados do Python ficam em testes/golden_ferramentas.json, gerado por
 // `python -m scripts.gerar_golden_ferramentas`; o pytest confere que o arquivo está em dia.
 import { describe, expect, it } from "vitest";
-import * as aleatorio from "../../src/ferramentas/contas/aleatorio";
-import * as aportes from "../../src/ferramentas/contas/aportes";
-import * as custos from "../../src/ferramentas/contas/custos";
-import * as darf from "../../src/ferramentas/contas/darf";
-import * as inflacao from "../../src/ferramentas/contas/inflacao";
-import * as juros from "../../src/ferramentas/contas/juros";
-import * as moedas from "../../src/ferramentas/contas/moedas";
-import * as rendaFixa from "../../src/ferramentas/contas/renda_fixa";
-import * as sorte from "../../src/ferramentas/contas/sorte_em_serie";
-import * as taxas from "../../src/ferramentas/contas/taxas";
-import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
+import { CONTAS } from "./contas_por_nome";
 import casos from "../golden_ferramentas.json";
-
-type Conta = (...argumentos: never[]) => unknown;
-
-const CONTAS: Record<string, Conta> = {
-  "juros.montante": juros.montante,
-  "juros.evolucao": juros.evolucao,
-  "juros.taxa_equivalente": juros.taxaEquivalente,
-  "juros.taxa_por_mes": juros.taxaPorMes,
-  "aportes.valor_futuro": aportes.valorFuturo,
-  "aportes.aporte_para_meta": aportes.aporteParaMeta,
-  "aportes.meses_ate_meta": aportes.mesesAteMeta,
-  "aportes.evolucao": aportes.evolucao,
-  "custos.custo_da_taxa": custos.custoDaTaxa,
-  "custos.evolucao_da_taxa": custos.evolucaoDaTaxa,
-  "custos.alta_para_recuperar": custos.altaParaRecuperar,
-  "viver_de_renda.patrimonio_necessario": viverDeRenda.patrimonioNecessario,
-  "viver_de_renda.duracao_em_meses": viverDeRenda.duracaoEmMeses,
-  "viver_de_renda.renda_da_regra_dos_4": viverDeRenda.rendaDaRegraDos4,
-  "aleatorio.sequencia": aleatorio.sequencia,
-  "sorte_em_serie.sharpe": sorte.sharpe,
-  "sorte_em_serie.simular": sorte.simular,
-  "darf.apurar_mes": darf.apurarMes,
-  "darf.apurar_meses": darf.apurarMeses,
-  "darf.vencimento": darf.vencimento,
-  "moedas.converter": moedas.converter,
-  "taxas.juro_real": taxas.juroReal,
-  "taxas.taxa_nominal": taxas.taxaNominal,
-  "inflacao.corrigir": inflacao.corrigir,
-  "inflacao.em_12_meses": inflacao.em12Meses,
-  "renda_fixa.comparar": rendaFixa.comparar,
-};
 
 const TOLERANCIA_RELATIVA = 1e-12;
 

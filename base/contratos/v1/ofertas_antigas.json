@@ -1,0 +1,336 @@
+{
+  "tabela": "ofertas_antigas",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "numero_processo": {
+      "descricao": "Como a CVM publica (`Numero_Processo`)",
+      "unidade": "texto"
+    },
+    "numero_registro_oferta": {
+      "descricao": "Como a CVM publica (`Numero_Registro_Oferta`)",
+      "unidade": "texto"
+    },
+    "tipo_oferta": {
+      "descricao": "Como a CVM publica (`Tipo_Oferta`)",
+      "unidade": "texto"
+    },
+    "tipo_componente_oferta_mista": {
+      "descricao": "Como a CVM publica (`Tipo_Componente_Oferta_Mista`)",
+      "unidade": "texto"
+    },
+    "tipo_ativo": {
+      "descricao": "Como a CVM publica (`Tipo_Ativo`)",
+      "unidade": "texto"
+    },
+    "cnpj_emissor": {
+      "descricao": "Como a CVM publica (`CNPJ_Emissor`)",
+      "unidade": "texto"
+    },
+    "nome_emissor": {
+      "descricao": "Como a CVM publica (`Nome_Emissor`)",
+      "unidade": "texto"
+    },
+    "cnpj_lider": {
+      "descricao": "Como a CVM publica (`CNPJ_Lider`)",
+      "unidade": "texto"
+    },
+    "nome_lider": {
+      "descricao": "Como a CVM publica (`Nome_Lider`)",
+      "unidade": "texto"
+    },
+    "cnpj_ofertante": {
+      "descricao": "Como a CVM publica (`CNPJ_Ofertante`)",
+      "unidade": "texto"
+    },
+    "nome_ofertante": {
+      "descricao": "Como a CVM publica (`Nome_Ofertante`)",
+      "unidade": "texto"
+    },
+    "rito_oferta": {
+      "descricao": "Como a CVM publica (`Rito_Oferta`)",
+      "unidade": "texto"
+    },
+    "modalidade_oferta": {
+      "descricao": "Como a CVM publica (`Modalidade_Oferta`)",
+      "unidade": "texto"
+    },
+    "modalidade_registro": {
+      "descricao": "Como a CVM publica (`Modalidade_Registro`)",
+      "unidade": "texto"
+    },
+    "modalidade_dispensa_registro": {
+      "descricao": "Como a CVM publica (`Modalidade_Dispensa_Registro`)",
+      "unidade": "texto"
+    },
+    "data_abertura_processo": {
+      "descricao": "Como a CVM publica (`Data_Abertura_Processo`)",
+      "unidade": "data (dia)"
+    },
+    "data_protocolo": {
+      "descricao": "Como a CVM publica (`Data_Protocolo`)",
+      "unidade": "data (dia)"
+    },
+    "data_dispensa_oferta": {
+      "descricao": "Como a CVM publica (`Data_Dispensa_Oferta`)",
+      "unidade": "data (dia)"
+    },
+    "data_registro_oferta": {
+      "descricao": "Como a CVM publica (`Data_Registro_Oferta`)",
+      "unidade": "data (dia)"
+    },
+    "data_inicio_oferta": {
+      "descricao": "Como a CVM publica (`Data_Inicio_Oferta`)",
+      "unidade": "data (dia)"
+    },
+    "data_encerramento_oferta": {
+      "descricao": "Como a CVM publica (`Data_Encerramento_Oferta`)",
+      "unidade": "data (dia)"
+    },
+    "emissao": {
+      "descricao": "Como a CVM publica (`Emissao`)",
+      "unidade": "texto"
+    },
+    "classe_ativo": {
+      "descricao": "Como a CVM publica (`Classe_Ativo`)",
+      "unidade": "texto"
+    },
+    "serie": {
+      "descricao": "Como a CVM publica (`Serie`)",
+      "unidade": "texto"
+    },
+    "especie_ativo": {
+      "descricao": "Como a CVM publica (`Especie_Ativo`)",
+      "unidade": "texto"
+    },
+    "forma_ativo": {
+      "descricao": "Como a CVM publica (`Forma_Ativo`)",
+      "unidade": "texto"
+    },
+    "data_emissao": {
+      "descricao": "Como a CVM publica (`Data_Emissao`)",
+      "unidade": "data (dia)"
+    },
+    "data_vencimento": {
+      "descricao": "Como a CVM publica (`Data_Vencimento`)",
+      "unidade": "data (dia)"
+    },
+    "quantidade_sem_lote_suplementar": {
+      "descricao": "Como a CVM publica (`Quantidade_Sem_Lote_Suplementar`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "quantidade_no_lote_suplementar": {
+      "descricao": "Como a CVM publica (`Quantidade_No_Lote_Suplementar`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "quantidade_total": {
+      "descricao": "Como a CVM publica (`Quantidade_Total`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "preco_unitario": {
+      "descricao": "Como a CVM publica (`Preco_Unitario`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_total": {
+      "descricao": "Como a CVM publica (`Valor_Total`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "oferta_inicial": {
+      "descricao": "Como a CVM publica (`Oferta_Inicial`)",
+      "unidade": "texto"
+    },
+    "oferta_incentivo_fiscal": {
+      "descricao": "Como a CVM publica (`Oferta_Incentivo_Fiscal`)",
+      "unidade": "texto"
+    },
+    "oferta_regime_fiduciario": {
+      "descricao": "Como a CVM publica (`Oferta_Regime_Fiduciario`)",
+      "unidade": "texto"
+    },
+    "atualizacao_monetaria": {
+      "descricao": "Como a CVM publica (`Atualizacao_Monetaria`)",
+      "unidade": "texto"
+    },
+    "juros": {
+      "descricao": "Como a CVM publica (`Juros`)",
+      "unidade": "texto"
+    },
+    "projeto_audiovisual": {
+      "descricao": "Como a CVM publica (`Projeto_Audiovisual`)",
+      "unidade": "texto"
+    },
+    "tipo_societario_emissor": {
+      "descricao": "Como a CVM publica (`Tipo_Societario_Emissor`)",
+      "unidade": "texto"
+    },
+    "tipo_fundo_investimento": {
+      "descricao": "Como a CVM publica (`Tipo_Fundo_Investimento`)",
+      "unidade": "texto"
+    },
+    "ultimo_comunicado": {
+      "descricao": "Como a CVM publica (`Ultimo_Comunicado`)",
+      "unidade": "texto"
+    },
+    "data_comunicado": {
+      "descricao": "Como a CVM publica (`Data_Comunicado`)",
+      "unidade": "data (dia)"
+    },
+    "nr_pessoa_fisica": {
+      "descricao": "Como a CVM publica (`Nr_Pessoa_Fisica`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_pessoa_fisica": {
+      "descricao": "Como a CVM publica (`Qtd_Pessoa_Fisica`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_clube_investimento": {
+      "descricao": "Como a CVM publica (`Nr_Clube_Investimento`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_clube_investimento": {
+      "descricao": "Como a CVM publica (`Qtd_Clube_Investimento`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_fundos_investimento": {
+      "descricao": "Como a CVM publica (`Nr_Fundos_Investimento`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_fundos_investimento": {
+      "descricao": "Como a CVM publica (`Qtd_Fundos_Investimento`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_entidade_previdencia_privada": {
+      "descricao": "Como a CVM publica (`Nr_Entidade_Previdencia_Privada`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_entidade_previdencia_privada": {
+      "descricao": "Como a CVM publica (`Qtd_Entidade_Previdencia_Privada`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_companhia_seguradora": {
+      "descricao": "Como a CVM publica (`Nr_Companhia_Seguradora`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_companhia_seguradora": {
+      "descricao": "Como a CVM publica (`Qtd_Companhia_Seguradora`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_investidor_estrangeiro": {
+      "descricao": "Como a CVM publica (`Nr_Investidor_Estrangeiro`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_investidor_estrangeiro": {
+      "descricao": "Como a CVM publica (`Qtd_Investidor_Estrangeiro`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_instit_intermed_partic_consorcio_distrib": {
+      "descricao": "Como a CVM publica (`Nr_Instit_Intermed_Partic_Consorcio_Distrib`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_instit_intermed_partic_consorcio_distrib": {
+      "descricao": "Como a CVM publica (`Qtd_Instit_Intermed_Partic_Consorcio_Distrib`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_instit_financ_emissora_partic_consorcio": {
+      "descricao": "Como a CVM publica (`Nr_Instit_Financ_Emissora_Partic_Consorcio`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_instit_financ_emissora_partic_consorcio": {
+      "descricao": "Como a CVM publica (`Qtd_Instit_Financ_Emissora_Partic_Consorcio`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_demais_instit_financ": {
+      "descricao": "Como a CVM publica (`Nr_Demais_Instit_Financ`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_demais_instit_financ": {
+      "descricao": "Como a CVM publica (`Qtd_Demais_Instit_Financ`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_demais_pessoa_juridica_emissora_partic_consorcio": {
+      "descricao": "Como a CVM publica (`Nr_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_demais_pessoa_juridica_emissora_partic_consorcio": {
+      "descricao": "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_demais_pessoa_juridica": {
+      "descricao": "Como a CVM publica (`Nr_Demais_Pessoa_Juridica`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_demais_pessoa_juridica": {
+      "descricao": "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+      "descricao": "Como a CVM publica (`Nr_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qdt_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+      "descricao": "Como a CVM publica (`Qdt_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nr_outros": {
+      "descricao": "Como a CVM publica (`Nr_Outros`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_outros": {
+      "descricao": "Como a CVM publica (`Qtd_Outros`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_cli_pessoa_fisica": {
+      "descricao": "Como a CVM publica (`Qtd_Cli_Pessoa_Fisica`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_cli_pessoa_juridica": {
+      "descricao": "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_cli_pessoa_juridica_ligada_adm": {
+      "descricao": "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica_Ligada_Adm`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_cli_demais_pessoa_juridica": {
+      "descricao": "Como a CVM publica (`QtD_Cli_Demais_Pessoa_Juridica`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_cli_investidor_estrangeiro": {
+      "descricao": "Como a CVM publica (`Qtd_Cli_Investidor_Estrangeiro`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "qtd_cli_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+      "descricao": "Como a CVM publica (`Qtd_Cli_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "anunciada_em": {
+      "descricao": "Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476)",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "numero_processo",
+    "numero_registro_oferta",
+    "cnpj_emissor",
+    "tipo_ativo",
+    "classe_ativo",
+    "serie",
+    "emissao"
+  ],
+  "datas": {
+    "aconteceu_em": "anunciada_em",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária (o ZIP é regerado todo dia)",
+  "atraso": "Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)"
+}

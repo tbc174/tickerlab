@@ -13,9 +13,11 @@ import streamlit as st
 from src import administracao as adm
 from src import exportacao_do_acervo as exp
 from src.administracao import OperacaoInvalidaError, PermissaoNegadaError
+from src.autenticacao import emails_de_admin
 from src.banco.conexao import obter_engine
 from src.banco.modelo import PAPEIS, PLANOS
 from telas.comum import cabecalho_da_pagina
+from telas.conta.admin_chaves import secao_de_chaves
 
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
 log_da_conta = logging.getLogger("tickerlab.conta")
@@ -29,7 +31,9 @@ def _admin_aplicar(usuario, tipo):
             if tipo == "plano":
                 adm.alterar_plano(conexao, usuario.id, alvo_id, valor)
             else:
-                adm.alterar_papel(conexao, usuario.id, alvo_id, valor)
+                adm.alterar_papel(
+                    conexao, usuario.id, alvo_id, valor, emails_de_admin()
+                )
     except (PermissaoNegadaError, OperacaoInvalidaError) as erro:
         st.toast(str(erro))
         return
@@ -218,3 +222,4 @@ def pagina_admin():
         st.caption("Nenhum evento recebido ainda.")
 
     _secao_de_exportacao(usuario)
+    secao_de_chaves(usuario)

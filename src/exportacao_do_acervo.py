@@ -4,7 +4,8 @@ Sai um zip com os dados (CSV ou Parquet, com todas as versões guardadas) e um L
 fonte e a licença de cada parte. Regras:
 
 - **Só fontes com licença que permite**: CVM, SEC, Banco Central, Tesouro dos EUA. As séries de uso
-  interno (preços do Yahoo) **nunca** saem, e o teste confere.
+  interno (preços do Yahoo, IGP-M) **nunca** saem, e o teste confere. Se uma fonte "não comercial"
+  ou "a confirmar" chegar até aqui, é erro, não exportação (ADR 0008, Emenda 1).
 - **ODbL** (CVM e Banco Central): citar a fonte; uma base derivada publicada continua sob a ODbL.
   O LEIA-ME diz isso.
 - Cada exportação fica na auditoria (quem, qual base, formato e quantas linhas; só ids).
@@ -21,7 +22,7 @@ import sqlalchemy as sa
 
 from src import auditoria
 from src.administracao import exigir_admin
-from src.banco.coletas import licenca_da_fonte
+from src.banco.coletas import exigir_licenca, licenca_da_fonte
 from src.banco.modelo import (
     demonstracoes_versoes,
     eventos_versoes,
@@ -120,6 +121,14 @@ def _familias(tabela: pd.DataFrame) -> list[str]:
     return sorted({_familia(f) for f in tabela["fonte"].dropna().unique()})
 
 
+def _fontes_da_trava(tabela: pd.DataFrame) -> list[str]:
+    """As fontes, sem juntar na família: a série "bcb-sgs-189" é o IGP-M da FGV, não o BC."""
+    if tabela.empty:
+        return []
+    coluna = "serie" if "serie" in tabela else "fonte"
+    return [str(f).replace("_", "-") for f in tabela[coluna].dropna().unique()]
+
+
 def leia_me(base: str, tabela: pd.DataFrame, agora: datetime) -> str:
     """O texto que acompanha os dados: o que é, de onde veio e sob qual licença."""
     familias = _familias(tabela)
@@ -159,6 +168,7 @@ def exportar(
         raise ExportacaoInvalidaError("Escolha uma base e um formato da lista.")
     agora = agora or datetime.now(UTC)
     tabela = ler_base(conexao, base)
+    exigir_licenca("exportar", _fontes_da_trava(tabela), onde=base)
     nome = f"tickerlab-{base}-{agora:%Y%m%d}"
     saida = io.BytesIO()
     with zipfile.ZipFile(saida, "w", zipfile.ZIP_DEFLATED) as arquivo:

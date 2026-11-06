@@ -1,0 +1,69 @@
+{
+  "tabela": "curva_juros",
+  "modulo": "macro",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "data_base": {
+      "descricao": "Dia das taxas",
+      "unidade": "data (dia)"
+    },
+    "curva": {
+      "descricao": "nominal, real ou implicita",
+      "unidade": "texto"
+    },
+    "prazo_anos": {
+      "descricao": "Vértice da curva (0,5 a 20)",
+      "unidade": "anos (base 252)"
+    },
+    "taxa": {
+      "descricao": "Taxa ao ano no vértice",
+      "unidade": "fração (0,25 = 25%)"
+    },
+    "titulos": {
+      "descricao": "Títulos usados na curva do dia",
+      "unidade": "número inteiro"
+    },
+    "maior_prazo_anos": {
+      "descricao": "Prazo do título mais longo do dia",
+      "unidade": "anos (base 252)"
+    },
+    "disponivel_em": {
+      "descricao": "Dia útil seguinte: quando a taxa ficou pública",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "data_base",
+    "curva",
+    "prazo_anos"
+  ],
+  "datas": {
+    "aconteceu_em": "data_base",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária (dias úteis)",
+  "atraso": "Um dia útil: o arquivo do Tesouro sai na manhã seguinte (`disponivel_em`)"
+}

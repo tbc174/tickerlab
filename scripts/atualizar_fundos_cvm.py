@@ -6,6 +6,8 @@
 Roda fora do app (no servidor, uma vez por dia); o app só lê. O arquivo de um mês sai cerca de 40
 dias depois e é refeito quando fundos atrasados entregam, por isso os meses recentes são lidos de
 novo a cada coleta (o mais novo substitui o guardado). Mês que ainda não existe é pulado.
+
+Roda: cron do VPS (todo dia às 7h40); citado em donos.py.
 """
 
 import argparse
@@ -18,6 +20,7 @@ import requests
 import sqlalchemy as sa
 
 from src import fundos_cvm as cda
+from src import rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.detentores import gravar_competencia
@@ -32,7 +35,7 @@ NAO_ENCONTRADO = 404
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

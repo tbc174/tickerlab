@@ -5,9 +5,8 @@ uma taxa livre de risco real no Sharpe, em vez de um número digitado.
 """
 
 import pandas as pd
-import requests
 
-from src import bcb
+from src import bcb, rede
 
 # fora de `bcb.SERIES` de propósito: a coleta do acervo percorre aquela lista
 SERIE_DO_CDI = bcb.Serie(12, "CDI", "% ao dia")
@@ -29,9 +28,12 @@ def baixar_cdi(
     if fim < inicio:
         raise ValueError("A data final deve vir depois da inicial.")
     try:
-        # `requests.get` lido agora, e não na definição, para os testes poderem trocá-lo
+        # `rede.get_com_agente` lido agora, e não na definição, para os testes poderem trocá-lo
         serie = bcb.baixar_sgs(
-            SERIE_DO_CDI, inicio.date(), fim.date(), buscar=buscar or requests.get
+            SERIE_DO_CDI,
+            inicio.date(),
+            fim.date(),
+            buscar=buscar or rede.get_com_agente,
         )
     except bcb.BcbIndisponivelError as erro:
         raise CDIIndisponivelError(

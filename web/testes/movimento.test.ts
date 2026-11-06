@@ -65,6 +65,30 @@ describe("movimento.js", () => {
     delete (window as { IntersectionObserver?: unknown }).IntersectionObserver;
   });
 
+  it("o que a rolagem rápida pulou não fica escondido acima da tela", () => {
+    // o IntersectionObserver só avisa quando o estado muda entre dois quadros: o que passou de baixo
+    // para cima da tela num pulo (âncora, rolagem rápida) nunca "apareceu"
+    window.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof IntersectionObserver;
+    abrir({
+      reduzirMovimento: false,
+      resto: `<section class="secao"><div class="grade"><article id="pulado"></article><article id="adiante"></article></div></section>`,
+    });
+    const pulado = document.getElementById("pulado")!;
+    const adiante = document.getElementById("adiante")!;
+    expect(pulado.classList.contains("v2-revelar")).toBe(true);
+    vi.spyOn(pulado, "getBoundingClientRect").mockReturnValue({ top: -900, bottom: -500 } as DOMRect);
+    vi.spyOn(adiante, "getBoundingClientRect").mockReturnValue({ top: 2000, bottom: 2400 } as DOMRect);
+    window.requestAnimationFrame = ((f: FrameRequestCallback) => { f(0); return 0; }) as typeof requestAnimationFrame;
+    window.dispatchEvent(new Event("scroll"));
+    expect(pulado.classList.contains("visivel")).toBe(true);
+    expect(adiante.classList.contains("visivel")).toBe(false);
+    delete (window as { IntersectionObserver?: unknown }).IntersectionObserver;
+  });
+
   it("sem 'reduzir movimento', o fundo começa a se mexer (controle do teste abaixo)", () => {
     const { quadros, botao } = abrir({ reduzirMovimento: false });
     expect(quadros).toHaveBeenCalled();

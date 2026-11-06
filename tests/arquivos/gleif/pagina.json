@@ -1,0 +1,269 @@
+{
+ "meta": {
+  "goldenCopy": {
+   "publishDate": "2026-10-13T16:00:00Z"
+  },
+  "pagination": {
+   "currentPage": 1,
+   "perPage": 200,
+   "from": 1,
+   "to": 9,
+   "total": 9,
+   "lastPage": 1
+  }
+ },
+ "data": [
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000RFB1",
+   "attributes": {
+    "lei": "LEI0000000000000RFB1",
+    "entity": {
+     "legalName": {
+      "name": "EMPRESA DA RECEITA S.A.",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000681",
+      "other": null
+     },
+     "registeredAs": "33.000.167/0001-01",
+     "category": "GENERAL",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "ISSUED"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000LET2",
+   "attributes": {
+    "lei": "LEI0000000000000LET2",
+    "entity": {
+     "legalName": {
+      "name": "EMPRESA NOVA LTDA",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000681",
+      "other": null
+     },
+     "registeredAs": "12.ABC.345/01DE-35",
+     "category": "GENERAL",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "ISSUED"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000FUN3",
+   "attributes": {
+    "lei": "LEI0000000000000FUN3",
+    "entity": {
+     "legalName": {
+      "name": "FUNDO DE MENTIRA FIDC",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000059",
+      "other": null
+     },
+     "registeredAs": "60872504000123",
+     "category": "FUND",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "ISSUED"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000CPF4",
+   "attributes": {
+    "lei": "LEI0000000000000CPF4",
+    "entity": {
+     "legalName": {
+      "name": "FULANO DE TAL",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000045",
+      "other": null
+     },
+     "registeredAs": "529.982.247-25",
+     "category": "GENERAL",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "ISSUED"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000EIN5",
+   "attributes": {
+    "lei": "LEI0000000000000EIN5",
+    "entity": {
+     "legalName": {
+      "name": "BELTRANO DA SILVA",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000681",
+      "other": null
+     },
+     "registeredAs": "11.222.333/0001-81",
+     "category": "SOLE_PROPRIETOR",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "ISSUED"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000NIR6",
+   "attributes": {
+    "lei": "LEI0000000000000NIR6",
+    "entity": {
+     "legalName": {
+      "name": "EMPRESA SO COM NIRE",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000061",
+      "other": null
+     },
+     "registeredAs": "NIRE 1720041345-1",
+     "category": "GENERAL",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "ISSUED"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000DUP7",
+   "attributes": {
+    "lei": "LEI0000000000000DUP7",
+    "entity": {
+     "legalName": {
+      "name": "EMPRESA DA RECEITA SA",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000681",
+      "other": null
+     },
+     "registeredAs": "33.000.167/0001-01",
+     "category": "GENERAL",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "DUPLICATE"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000DO18",
+   "attributes": {
+    "lei": "LEI0000000000000DO18",
+    "entity": {
+     "legalName": {
+      "name": "BANCO DE DOIS LEI S.A.",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA000681",
+      "other": null
+     },
+     "registeredAs": "CNPJ 60.746.948/0001-12",
+     "category": "GENERAL",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "ISSUED"
+    }
+   }
+  },
+  {
+   "type": "lei-records",
+   "id": "LEI0000000000000DO29",
+   "attributes": {
+    "lei": "LEI0000000000000DO29",
+    "entity": {
+     "legalName": {
+      "name": "BANCO DE DOIS LEI",
+      "language": "pt"
+     },
+     "registeredAt": {
+      "id": "RA888888",
+      "other": null
+     },
+     "registeredAs": "60746948000112",
+     "category": "GENERAL",
+     "status": "ACTIVE",
+     "legalForm": {
+      "id": "QHW1",
+      "other": null
+     }
+    },
+    "registration": {
+     "initialRegistrationDate": "2020-01-02T10:00:00Z",
+     "status": "LAPSED"
+    }
+   }
+  }
+ ]
+}

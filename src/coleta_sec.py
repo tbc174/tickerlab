@@ -22,7 +22,7 @@ import sqlalchemy as sa
 from defusedxml import DefusedXmlException
 
 from src import eventos_sec as sec
-from src import fundamentos_sec, leitura
+from src import fundamentos_sec, leitura, rede
 from src import negociacoes as ng
 from src import negociacoes_sec as form4
 from src.banco import leituras as repo_leituras
@@ -44,7 +44,7 @@ MAX_PAGINAS_ANTIGAS = 2  # sem 10-K em 2 páginas, a empresa não entrega 10-K t
 
 
 def baixar_da_sec(url: str, agente: str) -> bytes:
-    resposta = requests.get(
+    resposta = rede.obter(
         url,
         timeout=60,
         headers={"User-Agent": agente, "Accept-Encoding": "gzip, deflate"},

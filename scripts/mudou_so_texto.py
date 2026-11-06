@@ -5,6 +5,8 @@ Uso no CI: `git diff --name-only BASE HEAD | python3 scripts/mudou_so_texto.py` 
 
 Na dúvida, a resposta é `false` e a suíte inteira roda: um arquivo só entra em `SO_TEXTO` se nenhum
 teste e nenhuma parte do app o lê.
+
+Roda: CI (testes.yml); outro script (portao_do_agente.py).
 """
 
 import sys
@@ -16,6 +18,7 @@ SO_TEXTO = (
     "CLAUDE.md",
     "*/CLAUDE.md",
     "AGENTS.md",
+    "*/AGENTS.md",
     "SECURITY.md",
     "CONTRIBUTING.md",
     "notas/*.md",

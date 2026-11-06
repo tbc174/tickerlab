@@ -7,10 +7,13 @@ fontes, marca, relatório de exemplo e catálogo vêm de `scripts/gerar_site.py`
 import html
 import json
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
 
+from base.dicionario import TABELAS
+from base.dossie import pode_consultar
 from scripts import gerar_site as gs
 from scripts.markdown_simples import markdown_para_html
 from src import marca, planos
@@ -43,13 +46,24 @@ def esc(texto: str) -> str:
     return html.escape(texto, quote=True)
 
 
+def _conteudo(caminho: Path) -> object:
+    """Os bytes do arquivo; do .pptx, o texto de cada parte menos as imagens: o Pillow do PC e o do CI
+    recodificam a marca de jeitos diferentes, e isso não muda nenhum slide."""
+    if caminho.suffix != ".pptx":
+        return caminho.read_bytes()
+    with zipfile.ZipFile(caminho) as pptx:
+        return {
+            n: pptx.read(n) for n in pptx.namelist() if not n.startswith("ppt/media/")
+        }
+
+
 def test_parte_do_python_esta_em_dia(regerado):
     """Mudou a marca, o relatório de exemplo ou o catálogo? Rode `python -m scripts.gerar_site`."""
     novos = gs.arquivos_do_python(regerado)
     atuais = gs.arquivos_do_python(SITE)
     assert novos == atuais
     diferentes = [
-        str(c) for c in novos if (regerado / c).read_bytes() != (SITE / c).read_bytes()
+        str(c) for c in novos if _conteudo(regerado / c) != _conteudo(SITE / c)
     ]
     assert not diferentes, f"Rode python -m scripts.gerar_site: {diferentes}"
 
@@ -98,14 +112,31 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
         for pagina in re.findall(re.escape(URL_DO_APP) + r"/([a-z0-9\-]*)", texto):
-            assert pagina in urls, (arquivo.name, pagina)
+            # a API mora no endereço do app; o teste seguinte confere esses links
+            assert pagina in urls or pagina == "api", (arquivo.name, pagina)
+
+
+def test_links_para_a_api_sao_o_csv_das_tabelas_consultaveis():
+    """A página Dados aponta o CSV de cada tabela consultável para a API, que mora no endereço do app
+    (virada de 5/11/2026, fase 1, PR 3): só a rota de exportação, só tabela que a porta serve, e
+    toda tabela consultável tem o seu link."""
+    consultaveis = {nome for nome in TABELAS if pode_consultar(nome)}
+    exportacao = re.compile(r"v1/base/tabelas/([a-z0-9_]+)\.csv")
+    apontadas: set[str] = set()
+    for arquivo in PAGINAS_HTML:
+        texto = arquivo.read_text(encoding="utf-8")
+        for rota in re.findall(re.escape(URL_DO_APP) + r'/api/([^"]*)', texto):
+            tabela = exportacao.fullmatch(rota)
+            assert tabela and tabela.group(1) in consultaveis, (arquivo.name, rota)
+            apontadas.add(tabela.group(1))
+    assert apontadas == consultaveis
 
 
 def test_nada_vem_de_terceiros():
     """Sem Google Fonts, sem rastreadores: fontes, imagens e scripts são do próprio site."""
     for arquivo in [
         *PAGINAS_HTML,
-        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js")),
+        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js", "origem.js")),
     ]:
         texto = arquivo.read_text(encoding="utf-8")
         assert "googleapis" not in texto and "gstatic" not in texto
@@ -113,6 +144,21 @@ def test_nada_vem_de_terceiros():
         recursos = [u for u in externos if re.search(r"\.(?:js|css|woff2?|ttf)$", u)]
         assert not recursos, (arquivo.name, recursos)
         assert '<script src="http' not in texto
+
+
+def test_fontes_do_site_sao_woff2_leves_e_existem():
+    """Os TTF inteiros eram ~350 KB da primeira visita; o WOFF2 recortado (scripts/gerar_fontes_web)."""
+    css = (SITE / "estilo.css").read_text(encoding="utf-8")
+    fontes = re.findall(r'url\("/fontes/([^"]+)"\) format\("([^"]+)"\)', css)
+    assert {formato for _, formato in fontes} == {"woff2"}
+    precarregada = re.findall(
+        r'<link rel="preload" href="/fontes/([^"]+)" as="font" type="font/woff2"',
+        (SITE / "index.html").read_text(encoding="utf-8"),
+    )
+    assert precarregada and precarregada[0] in {nome for nome, _ in fontes}
+    total = sum((SITE / "fontes" / nome).stat().st_size for nome, _ in fontes)
+    assert total < 120 * 1024
+    assert not list((SITE / "fontes").glob("*.ttf"))
 
 
 def test_planos_do_site_sao_os_do_app():
@@ -139,6 +185,27 @@ def test_planos_do_site_sao_os_do_app():
     assert "modo de teste" in texto
 
 
+def test_precos_pessoa_e_casa_sem_preco():
+    """Plano do site para quem analisa (D1): Pessoa e Casa, uma faixa grátis, nenhum preço."""
+    texto = (SITE / "precos.html").read_text(encoding="utf-8")
+    sem_tags = html.unescape(re.sub(r"<[^>]+>", " ", texto))
+    for frase in (
+        "Para conhecer, de graça",
+        "Pessoa",
+        "Casa",
+        "por assento",
+        "em construção",
+        "definido antes do lançamento",  # ADR 0029, Emenda 1
+        "toda conta usa",
+    ):
+        assert frase in sem_tags, frase
+    assert "R$" not in texto
+    # nenhum valor em dinheiro: número seguido de "reais", "/mês", "por mês" ou "/ano"
+    assert not re.search(
+        r"\d\s*(reais|/\s*m[eê]s|por m[eê]s|/\s*ano|por ano)", sem_tags
+    )
+
+
 def test_precos_anunciam_mensal_de_verdade():
     """ADR 0054: mensal cobrado um mês por vez, sem fidelidade, e o cancelamento no próprio app."""
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
@@ -156,6 +223,12 @@ def test_catalogo_da_busca_e_o_do_app():
     simbolos = {a[0] for a in ativos}
     assert {"PETR4.SA", "AAPL", "^BVSP", "BTC-USD"} <= simbolos
     assert all(len(a) == 5 for a in ativos)
+
+
+def test_ads_txt_e_gerado_com_a_linha_do_adsense(regerado):
+    esperado = "google.com, pub-4178012487609221, DIRECT, f08c47fec0942fa0\n"
+    assert (regerado / "ads.txt").read_bytes() == esperado.encode()
+    assert (SITE / "ads.txt").read_bytes() == esperado.encode()
 
 
 def test_relatorio_de_exemplo_e_um_pdf_de_verdade_marcado_como_exemplo():
@@ -201,9 +274,19 @@ def test_o_site_abre_claro_e_tem_o_botao_do_tema_escuro():
 def test_o_site_usa_o_simbolo_e_a_assinatura_do_manual():
     inicio = (SITE / "index.html").read_text(encoding="utf-8")
     assert marca.TRACO_DO_TOPO in inicio and marca.TRACO_DA_HASTE in inicio
-    assert "Menos ruído. Mais inteligência para investir." in inicio
+    assert "Dados auditáveis para quem analisa empresas no Brasil." in inicio
     assert 'content="https://tickerlab.com.br/marca/compartilhamento.png"' in inicio
     assert (SITE / "marca" / "compartilhamento.png").exists()
+
+
+def test_assinatura_antiga_sumiu():
+    """ADR 0099: a assinatura é a nova em toda página; a antiga (para o investidor) não sobra."""
+    paginas = sorted(SITE.glob("*.html"))
+    assert paginas
+    for pagina in paginas:
+        texto = pagina.read_text(encoding="utf-8")
+        assert "Menos ruído" not in texto, pagina.name
+        assert "Mais inteligência para investir" not in texto, pagina.name
 
 
 def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
@@ -211,7 +294,7 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
     um deploy recebe o HTML novo com o estilo antigo."""
     import hashlib
 
-    for nome in ("estilo.css", "site.js", "movimento.js"):
+    for nome in ("estilo.css", "site.js", "movimento.js", "origem.js"):
         conteudo = (SITE / nome).read_text(
             encoding="utf-8"
         )  # quebras de linha iguais em todo SO
@@ -223,12 +306,75 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
             )
 
 
-def test_menu_da_versao_a_em_todas_as_paginas():
-    """Organização escolhida pelo Tiago em 13/10/2026 (protótipo A, por assunto)."""
+MENU_DO_TOPO = [
+    ("/dados.html", "Dados"),
+    ("/relatorios.html", "Relatórios"),
+    ("/como-funciona.html", "Como funciona"),
+    ("/precos.html", "Planos"),
+    ("/sobre.html", "Sobre"),
+]
+
+
+def _menu_principal(texto: str) -> list[tuple[str, str]]:
+    nav = texto.split('<nav id="menu-principal"')[1].split("</nav>")[0]
+    return re.findall(r'<a href="([^"]+)"[^>]*>([^<]+)</a>', nav)
+
+
+def test_menu_do_topo_tem_os_cinco_itens_do_plano_em_todas_as_paginas():
+    """Plano do site para quem analisa (18/10/2026, ADR 0099); "pode" do Tiago em 23/10/2026."""
+    for arquivo in PAGINAS_HTML:
+        assert _menu_principal(arquivo.read_text(encoding="utf-8")) == MENU_DO_TOPO, (
+            arquivo.name
+        )
+
+
+def test_o_que_saiu_do_topo_continua_no_rodape():
+    for arquivo in PAGINAS_HTML:
+        rodape = arquivo.read_text(encoding="utf-8").split('<footer class="rodape')[1]
+        for href, nome in (
+            ("/produto.html", "Produto"),
+            ("/dados.html", "Dados"),
+            ("/relatorios.html", "Relatórios"),
+            ("/ferramentas.html", "Ferramentas grátis"),
+            ("/aprender.html", "Aprender"),
+        ):
+            assert f'<a href="{href}">{nome}</a>' in rodape, (arquivo.name, nome)
+
+
+def test_toda_pagina_do_mapa_do_site_tem_link_de_outra_pagina():
+    """O dados.html e o relatório das elétricas ficaram sem link nenhum: só o Google chegava."""
+    linkadas = set()
+    for arquivo in PAGINAS_HTML:
+        for alvo in re.findall(
+            r'href="/([^"#?]*)', arquivo.read_text(encoding="utf-8")
+        ):
+            if (alvo or "index.html") != arquivo.name:
+                linkadas.add(alvo or "index.html")
+    mapa = (SITE / "sitemap.xml").read_text(encoding="utf-8")
+    for alvo in re.findall(r"<loc>https://tickerlab\.com\.br/([^<]*)</loc>", mapa):
+        assert (alvo or "index.html") in linkadas, alvo
+
+
+def test_olho_das_calculadoras_leva_a_vitrine():
+    """Ferramentas saiu do topo: quem chega numa calculadora pelo Google volta à vitrine por aqui."""
+    calculadoras = [
+        a for a in PAGINAS_HTML if "data-ferramenta=" in a.read_text(encoding="utf-8")
+    ]
+    assert len(calculadoras) >= 10
+    for arquivo in calculadoras:
+        texto = arquivo.read_text(encoding="utf-8")
+        assert (
+            '<a class="olho" href="/ferramentas.html">Ferramentas grátis</a>' in texto
+        ), arquivo.name
+
+
+def test_celular_tem_botao_que_abre_o_menu_em_todas_as_paginas():
+    """Sem ele, abaixo de 860 px o topo ficava só com a marca, o tema e "Abrir o app"."""
     for arquivo in PAGINAS_HTML:
         topo = arquivo.read_text(encoding="utf-8").split("</header>")[0]
-        for rotulo in ("Produto", "Como funciona", "Relatórios", "Planos", "Aprender"):
-            assert f">{rotulo}</a>" in topo, (arquivo.name, rotulo)
+        assert 'data-menu-botao=""' in topo, arquivo.name
+        assert 'aria-controls="menu-principal"' in topo, arquivo.name
+        assert '<nav id="menu-principal" aria-label="Principal">' in topo, arquivo.name
 
 
 def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
@@ -373,3 +519,39 @@ def test_novidades_no_rodape_de_todas_as_paginas_e_no_mapa_do_site():
     assert "https://tickerlab.com.br/novidades.html" in (
         SITE / "sitemap.xml"
     ).read_text(encoding="utf-8")
+
+
+def test_security_txt_existe_e_nao_esta_perto_de_vencer():
+    """RFC 9116: o `Expires` do security.txt vale um ano; quem lê ignora arquivo vencido.
+    Falha 30 dias antes: gere de novo com a data nova (SECURITY_TXT_EXPIRA em web/src/entry-server.tsx)."""
+    from datetime import UTC, datetime, timedelta
+
+    texto = (SITE / ".well-known" / "security.txt").read_text(encoding="utf-8")
+    assert "Contact: mailto:contato@tickerlab.com.br" in texto
+    expira = re.search(r"^Expires: (\S+)$", texto, re.MULTILINE)
+    assert expira, "falta o campo Expires"
+    vence = datetime.fromisoformat(expira.group(1).replace("Z", "+00:00"))
+    assert vence - datetime.now(UTC) > timedelta(days=30), (
+        "renove o Expires do security.txt"
+    )
+
+
+def test_toda_pagina_do_site_com_dados_da_base_leva_o_selo_da_data():
+    """Linha 605: página que diz "Dados da base de" tem de trazer o selo com a mesma data (DD/MM/AAAA)."""
+    import re
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parent.parent / "site"
+    selo = re.compile(r'data-data-da-base="(\d{2}/\d{2}/\d{4})"')
+    dados = re.compile(r"Dados da base de (\d{2}/\d{2}/\d{4})")
+    com_dados = [
+        p for p in raiz.glob("*.html") if dados.search(p.read_text(encoding="utf-8"))
+    ]
+    assert com_dados, (
+        "nenhuma página com 'Dados da base de': o teste deixou de olhar o site"
+    )
+    for pagina in com_dados:
+        html = pagina.read_text(encoding="utf-8")
+        assert selo.findall(html) == dados.findall(html), (
+            f"{pagina.name} sai sem o selo da data da base"
+        )

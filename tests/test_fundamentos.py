@@ -92,6 +92,22 @@ def test_dfp_traz_as_contas_das_notas_classicas():
     assert fluxos["despesas_administrativas"] == -1_513_882 * MIL
 
 
+def test_composicao_do_capital_traz_as_ordinarias_e_as_preferenciais():
+    """Linha 54 da fila: as ações por espécie para a ficha técnica (Petrobras tem ON e PN; a WEG,
+    só ON, com ações em tesouraria). Números do arquivo de composição do capital da CVM."""
+    contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
+    saldos = contas[contas["periodo"] == dm.POSICAO]
+    petr = saldos[saldos["cnpj"] == PETROBRAS].set_index("conta")["valor"]
+    weg = saldos[saldos["cnpj"] == WEG].set_index("conta")["valor"]
+    assert petr["acoes_ordinarias"] == 7_442_231_382
+    assert petr["acoes_preferenciais"] == 5_446_501_379
+    assert petr["acoes_ordinarias"] + petr["acoes_preferenciais"] == petr["acoes_total"]
+    assert weg["acoes_ordinarias_tesouraria"] == 1_622_025
+    assert (
+        weg["acoes_preferenciais"] == 0 and weg["acoes_preferenciais_tesouraria"] == 0
+    )
+
+
 def test_depreciacao_do_banco_nao_soma_juros_ao_custo_amortizado():
     """Regressão (fim da série 2): no Itaú, "Resultado de Juros ... ao Custo Amortizado" (−39,1 bi)
     entrava na depreciação, que saía −31,7 bi em vez dos 7,4 bi do PDF da DFP 2025."""
@@ -214,6 +230,38 @@ def test_banco_usa_outro_plano_de_contas_e_e_reconhecido():
     )  # sem EBIT: plano financeiro
 
 
+def test_cadastro_traz_situacao_categoria_e_registro():
+    """O registro ativo vence o cancelado; as datas viram `date` e a data torta vira nulo."""
+    setores = dm.ler_setores((PASTA / "cad_cia_aberta.csv").read_bytes()).set_index(
+        "cnpj"
+    )
+    itau = setores.loc[ITAU]
+    assert (itau["situacao"], itau["categoria"]) == ("ATIVO", "Categoria A")
+    assert itau["situacao_desde"] == date(2024, 2, 15)
+    assert itau["registro"] == date(1991, 5, 21)
+    torto = (
+        "CNPJ_CIA;DENOM_SOCIAL;DT_REG;SIT;DT_INI_SIT;SETOR_ATIV;CATEG_REG\n"
+        "11.111.111/0001-11;EMPRESA A;;CANCELADA;31/12/1999;Têxtil;\n"
+    ).encode("cp1252")
+    linha = dm.ler_setores(torto).iloc[0]
+    assert linha["situacao"] == "CANCELADA" and linha["categoria"] == ""
+    assert linha["situacao_desde"] is None and linha["registro"] is None
+
+
+def test_cadastro_so_com_o_setor_da_as_outras_colunas_vazias():
+    """Um arquivo antigo, só com SIT e SETOR_ATIV, ainda serve: o setor vem, o resto fica vazio."""
+    antigo = (
+        "CNPJ_CIA;DENOM_SOCIAL;SIT;SETOR_ATIV\n00.000.000/0001-91;BANCO DO BRASIL;ATIVO;Bancos\n"
+    ).encode("cp1252")
+    linha = dm.ler_setores(antigo).iloc[0]
+    assert (linha["setor"], linha["situacao"], linha["categoria"]) == (
+        "Bancos",
+        "ATIVO",
+        "",
+    )
+    assert linha["situacao_desde"] is None and linha["registro"] is None
+
+
 def test_itr_fica_com_a_versao_mais_nova_e_separa_os_acumulados():
     contas, documentos = _ler("itr_cia_aberta_2026.zip", "ITR")
     petr = contas[contas["cnpj"] == PETROBRAS]
@@ -281,6 +329,125 @@ def test_sem_preco_e_com_prejuizo_os_multiplos_explicam(banco):
     assert not f["conversao_de_caixa"].disponivel
 
 
+def test_dy_valor_de_mercado_e_multiplos_da_firma_pelas_formulas(banco):
+    """D3 mudada em 20/10/2026: DY e múltiplos de mercado com o preço do Yahoo."""
+    dados = _empresa(banco, PETROBRAS)
+    f = fu.calcular(dados, preco=37.5)
+    ttm, base_12m, _ = fu.doze_meses(dados.contas)
+    acoes = f["lucro"].valor / f["lpa"].valor
+    mercado = 37.5 * acoes
+    firma = mercado + f["divida_liquida"].valor
+    assert f["valor_de_mercado"].valor == pytest.approx(mercado)
+    assert f["valor_da_firma"].valor == pytest.approx(firma)
+    assert f["dividend_yield"].valor == pytest.approx(
+        abs(ttm["dividendos_pagos"]) / mercado
+    )
+    assert f["dividend_yield"].unidade == fu.FRACAO
+    assert f["dividend_yield"].base == base_12m
+    ebitda = ttm["ebit"] + ttm["depreciacao"]
+    assert f["ev_ebitda"].valor == pytest.approx(firma / ebitda)
+    assert f["ev_ebit"].valor == pytest.approx(firma / ttm["ebit"])
+    assert f["p_receita"].valor == pytest.approx(mercado / ttm["receita"])
+
+
+def test_multiplos_do_preco_sobre_resultado_caixa_e_ativo_pelas_formulas(banco):
+    """P/EBITDA, P/EBIT, P/FCF e P/Ativo: valor de mercado ÷ a conta (linha 55 da fila)."""
+    dados = _empresa(banco, PETROBRAS)
+    f = fu.calcular(dados, preco=37.5)
+    ttm, base_12m, _ = fu.doze_meses(dados.contas)
+    saldo, _, _ = fu.balanco_mais_recente(dados.contas)
+    mercado = f["valor_de_mercado"].valor
+    assert f["p_ebitda"].valor == pytest.approx(
+        mercado / (ttm["ebit"] + ttm["depreciacao"])
+    )
+    assert f["p_ebit"].valor == pytest.approx(mercado / ttm["ebit"])
+    assert f["p_fcf"].valor == pytest.approx(mercado / (ttm["fco"] - abs(ttm["capex"])))
+    assert f["p_ativo"].valor == pytest.approx(mercado / saldo["ativo_total"])
+    assert f["p_ativo"].base == f["valor_de_mercado"].base  # só o balanço
+    assert f["p_fcf"].base.startswith(base_12m)
+    for chave in ("p_ebitda", "p_ebit", "p_fcf", "p_ativo"):
+        assert f[chave].unidade == fu.VEZES and chave in fu.FORMULAS
+
+
+def test_dy_de_5_anos_e_a_media_dos_pagos_nos_exercicios_sobre_o_mercado_de_hoje(banco):
+    dados = _empresa(banco, WEG)
+    tabela = fu.anuais(dados.contas)
+    f = fu.calcular(dados, preco=50.0, anos=2)  # a amostra tem só 2 exercícios
+    media = tabela["dividendos_pagos"].abs().iloc[-2:].mean()
+    assert f["dividend_yield_medio"].valor == pytest.approx(
+        media / f["valor_de_mercado"].valor
+    )
+    assert f["dividend_yield_medio"].unidade == fu.FRACAO
+    assert f["dividend_yield_medio"].base == "DFP de 2024 a 2025"
+    curto = fu.calcular(dados, preco=50.0)["dividend_yield_medio"]
+    assert not curto.disponivel and "Só há 2 exercícios" in curto.motivo
+
+
+def test_dy_de_5_anos_sem_a_linha_num_ano_explica(banco):
+    dados = _empresa(banco, WEG)
+    contas = dados.contas
+    sem_2024 = ~(
+        (contas["conta"] == "dividendos_pagos")
+        & (contas["documento"] == "DFP")
+        & (contas["referencia"].map(lambda d: d.year) == 2024)
+    )
+    f = fu.calcular(replace(dados, contas=contas[sem_2024]), preco=50.0, anos=2)
+    medio = f["dividend_yield_medio"]
+    assert not medio.disponivel and "2024" in medio.motivo
+
+
+def test_dy_de_5_anos_nao_olha_o_futuro(banco):
+    """Cortar o último exercício não muda a média dos anteriores: só entram DFPs já publicadas."""
+    dados = _empresa(banco, WEG)
+    contas = dados.contas
+    ate_2024 = contas[contas["referencia"].map(lambda d: d.year) <= 2024]
+    f = fu.calcular(replace(dados, contas=ate_2024), preco=50.0, anos=1)
+    pagos_2024 = abs(fu.anuais(ate_2024)["dividendos_pagos"].iloc[-1])
+    assert f["dividend_yield_medio"].valor == pytest.approx(
+        pagos_2024 / f["valor_de_mercado"].valor
+    )
+    assert f["dividend_yield_medio"].base == "DFP de 2024"
+
+
+def test_banco_tem_dy_mas_nao_os_multiplos_da_firma(banco):
+    f = fu.calcular(_empresa(banco, ITAU), preco=38.0)
+    assert f["dividend_yield"].disponivel and f["valor_de_mercado"].disponivel
+    for chave in (
+        "valor_da_firma", "ev_ebitda", "ev_ebit", "p_receita", "p_ebitda", "p_ebit", "p_fcf",
+    ):  # fmt: skip
+        assert not f[chave].disponivel and "bancos" in f[chave].motivo
+    assert f["p_ativo"].disponivel  # o ativo total existe em qualquer balanço
+
+
+def test_sem_preco_os_de_mercado_explicam(banco):
+    f = fu.calcular(_empresa(banco, WEG), preco=None)
+    for chave in fu.DE_MERCADO:
+        assert not f[chave].disponivel and "preço" in f[chave].motivo
+
+
+def test_ebitda_negativo_ou_sem_dividendos_explicam(banco):
+    dados = _empresa(banco, WEG)
+    contas = dados.contas.copy()
+    contas.loc[contas["conta"] == "ebit", "valor"] = -1e12
+    contas = contas[contas["conta"] != "dividendos_pagos"]
+    f = fu.calcular(replace(dados, contas=contas), preco=50.0)
+    assert not f["ev_ebitda"].disponivel and "EBITDA" in f["ev_ebitda"].motivo
+    assert not f["ev_ebit"].disponivel and "EBIT" in f["ev_ebit"].motivo
+    assert not f["p_ebitda"].disponivel and "EBITDA" in f["p_ebitda"].motivo
+    assert not f["p_ebit"].disponivel and "EBIT" in f["p_ebit"].motivo
+    # sem a linha no caixa não dá para saber se não pagou ou se a linha tem outro nome
+    assert not f["dividend_yield"].disponivel
+    assert "dividendos" in f["dividend_yield"].motivo
+
+
+def test_caixa_livre_negativo_explica_o_p_fcf(banco):
+    dados = _empresa(banco, WEG)
+    contas = dados.contas.copy()
+    contas.loc[contas["conta"] == "capex", "valor"] = -1e13
+    f = fu.calcular(replace(dados, contas=contas), preco=50.0)
+    assert not f["p_fcf"].disponivel and "Caixa livre" in f["p_fcf"].motivo
+
+
 def test_crescimento_pede_anos_suficientes(banco):
     dados = _empresa(banco, WEG)
     curto = fu.calcular(dados, preco=50.0, anos=5)["crescimento_receita"]
@@ -345,6 +512,24 @@ def test_coleta_sem_internet_e_arquivo_que_ainda_nao_existe(tmp_path, monkeypatc
             == 4
         )
         assert c.execute(sa.text("select count(*) from setores_cvm")).scalar() == 4
+
+
+@pytest.mark.parametrize(("anos", "itr_esperados"), [("2", 2), ("10", 10)])
+def test_carga_longa_traz_o_itr_dos_mesmos_anos_do_dfp(
+    tmp_path, monkeypatch, anos, itr_esperados
+):
+    monkeypatch.setenv(
+        "TICKERLAB_DATABASE_URL", f"sqlite:///{(tmp_path / 's.sqlite').as_posix()}"
+    )
+    pedidos: list[str] = []
+
+    def baixar_falso(endereco: str) -> bytes | None:
+        pedidos.append(endereco)
+        return None  # tudo 404: só conta o que foi pedido
+
+    monkeypatch.setattr(atualizar_fundamentos, "baixar", baixar_falso)
+    assert atualizar_fundamentos.main(["--anos", anos]) == 0
+    assert sum("itr_cia_aberta" in p for p in pedidos) == itr_esperados
 
 
 def test_migracao_0010_vai_e_volta(tmp_path):

@@ -7,14 +7,17 @@ este registro. Um problema no registro nunca derruba a coleta (fica no log).
 
 import hashlib
 import logging
+import re
 import uuid
-from collections.abc import Callable
-from datetime import UTC, datetime
+from collections.abc import Callable, Iterable
+from datetime import UTC, date, datetime
+from enum import StrEnum
+from typing import NamedTuple
 
 import requests
 import sqlalchemy as sa
 
-from src import acervo
+from src import acervo, rede
 from src.banco.conexao import obter_engine
 from src.banco.modelo import coletas
 from src.versao_do_codigo import versao_do_codigo
@@ -27,20 +30,45 @@ LICENCAS = {
     "sec": "Acesso público (EDGAR, SEC)",
     "bcb": "ODbL (dados abertos do Banco Central; citar a fonte)",
     "ibge": "Domínio público (citar o IBGE)",
+    # clima e geografia do café (lidos em 18/10/2026): o INMET não publica licença escrita
+    "inmet": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+    "chirps": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+    "chirps3": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
+    "mapbiomas": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
+    # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
+    # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
+    "bm": "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles",
+    "fmi": "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI (ADR 0102)",
     "tesouro": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
     "iex": "Termos do IEX HIST (com atribuição)",
     "yahoo": "Uso pessoal: só interno, nunca exportar",
     # base de cripto (ADRs 0041 e 0045 do autor)
-    "cftc": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+    "cftc": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
     "rfb": "Dados abertos da Receita Federal (Decreto 8.777/2016; citar a Receita)",
     "wiki": "CC0 (acessos às páginas da Wikimedia)",
-    "gdelt": "GDELT (uso livre com citação; só contagem e tom, sem texto)",
+    "gdelt": "GDELT Project (citar e linkar gdeltproject.org); só contagem e tom",
     "btc": "Blockchain pública lida por nó próprio (Bitcoin Core, MIT)",
-    "kraken": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
+    "kraken": "Termo da Kraken (19/10/2026): só uso próprio; veda cópia, comércio e robôs",
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
-    "rfb-cnpj": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
+    "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+    "rfb-renuncias": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)",
+    "rfb-transacoes": "Transações da Receita: sem licença escrita; risco assumido (ADR 0122)",
+    "ms": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+    "tce-rn": "TCE-RN: licença não localizada; risco assumido (ADR 0122)",
+    "tce-pe": "TCE-PE: licença não localizada; risco assumido (ADR 0122)",
+    "tce-sp": "TCE-SP: licença não localizada; risco assumido (ADR 0122)",
+    "tce-ce": "TCE-CE: licença não localizada; risco assumido (ADR 0122)",
+    # linha 658 (fichas dos conjuntos no CKAN, lidas em 03/11/2026)
+    "goias": "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)",
+    "msestado": "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)",
+    "sefazpe": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+    "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
+    # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
+    "transparencia": "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ",
+    "bndes": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+    "inss": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
     "pgfn": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
     "ibama": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
     "mte": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
@@ -50,70 +78,1111 @@ LICENCAS = {
     # o SGS do BC repassa o IGP-M, mas a série é da FGV (termos do IBRE: comercial pede autorização)
     "bcb-sgs-189": "IGP-M da FGV IBRE (repassado pelo BC): uso comercial pede autorização da FGV",
     "ccee": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+    # licitações e contratos (lidos em 22/10/2026): só pessoa jurídica no acervo (LGPD, ADR 0088)
+    "seges": "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+    "seges-pesquisa-precos": "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)",
+    "transferegov-especiais-pagamentos": "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)",
+    "comprasgov": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+    "transferegov": "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+    "pncp": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+    "tcu": "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)",
+    "govmg": "CC BY 4.0 (dados abertos de Minas Gerais; citar o Governo de MG)",
+    "govsc": "CC BY (dados abertos de Santa Catarina; citar o Governo de SC)",
     "antt": "CC BY (dados abertos da ANTT; citar a ANTT)",
+    "tesouro-br": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-divida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-direto": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-leiloes": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    # SICONFI (rodada 1 da pesquisa de dados escondidos, lido em 22/10/2026): só estados e capitais,
+    # contas públicas sem pessoa física; o id leva "tesouro-br" para não cair na licença dos EUA
+    "tesouro-br-siconfi-entes": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-entregas": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-rreo": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-rgf": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-siconfi-dca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
+    # lote Tesouro (23/10/2026): o id leva "tesouro-br" pelo mesmo motivo
+    "tesouro-br-rtn": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-receitas": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-despesas": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-restos-a-pagar": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-fatores-divida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-paf": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-bspn": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-limites-lrf": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-dividendos-estatais": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-subsidios-bndes": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-garantias": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-transferencias": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-capag-municipios": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-td-vendas": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-td-resgates": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-td-estoque": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    # prévia do balanço (14/10/2026): licença declarada no conjunto no dados.gov.br (o rodapé CC
+    # BY-ND dos sites é do conteúdo das páginas); confirmação por escrito pedida às agências
+    "anp": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+    "anac": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+    "ans": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+    "ons": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+    "anatel": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+    # Ficha Clara, licenças e registros (licença lida na ficha do dados.gov.br em 29/10/2026); a coleta
+    # guarda só a linha de CNPJ inteiro, sem nome, endereço nem contato
+    "anvisa": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+    # preços da CMED (04/11/2026): publicados pela Anvisa, mas a licença própria das listas não está
+    # escrita (ADR 0102, Emenda 2): a confirmar, sem perguntar à fonte
+    "anvisa-cmed": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+    "mapa": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+    "anm": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+    "anm-cfem": "ANM, CFEM: licença não declarada; risco assumido (ADR 0122)",
+    "anm-sigbm": "ANM, SIGBM: licença não declarada; risco assumido (ADR 0122)",
+    "anm-amb": "ANM, Anuário: licença não declarada; risco assumido (ADR 0122)",
+    "estban": "BCB, ESTBAN: reprodução com fonte e integridade; risco assumido (ADR 0122)",
+    "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
+    # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
+    "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
+    "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+    # financiamentos por CNPJ (linha 469, 04/11/2026): a planilha não diz licença
+    "finep": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+    # série 4, PR 5b: "SES - Base de dados completa" com CC BY no dados.gov.br (lido em 15/10/2026);
+    # só os CSVs sem pessoas (nunca administradores, contatos ou acionistas)
+    "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+    # resposta escrita do MDIC em 21/10/2026 (LAI, NUP 52016.008755/2026-24): dados abertos do
+    # Decreto 8.777/2016, uso livre inclusive comercial, derivação e ML; o CC BY-ND do rodapé do
+    # gov.br é do site, não dos dados. Citar "Secex/MDIC" e separar o que é conta nossa
+    "comexstat": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+    # relatório mensal do Cecafé: robots.txt proíbe PDF e a página de termos veio vazia (18/10/2026)
+    "cecafe": "Cecafé: robots.txt veda PDF; coleta com ritmo, uso citando a fonte (ADR 0102)",
+    # termos lidos em 18/10/2026: uso pessoal e não comercial, vedam robô; coleta pela ADR 0102
+    "fnc": "FNC: só uso pessoal, veda robô; coleta com ritmo, cita a fonte (ADR 0102)",
+    # COTAHIST, arquivos públicos e carteiras dos índices: no produto com a fonte citada desde
+    # 22/10/2026 (ADR 0008, Emenda 6; risco assumido pelo Tiago); a marca segue "não comercial"
+    "b3": "Sem licença da B3; uso com a fonte citada, risco assumido (ADR 0008, Emenda 6)",
+    # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
+    "assessoria": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+    # termos lidos em 16/10/2026 (archive.org/about/terms); só a data das cópias entra na base
+    "wayback": "Internet Archive: 'for scholarship and research purposes only'; só datas",
+    # regras de utilização dos dados abertos do TCE-PR (lidas em 16/10/2026): "livre para qualquer
+    # finalidade ou atividade, no limite das restrições legais"; sem pessoas (ADR 0075)
+    "tce-pr": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
+    "tce-pr-pit": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
+    "tce-pr-despesa": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
+    "tce-rs-empenhos": "CC BY (empenhos do TCE-RS; citar o TCE-RS)",
+    "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
+    # site da CONAB lido em 18/10/2026 (rodapé: Creative Commons Atribuição-SemDerivações 3.0): mostrar
+    # "como publicado" com citação é permitido; recorte, soma ou gráfico derivado pode ser obra derivada
+    "conab": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento (ADR 0102)",
+    # balanço mundial do café (termos lidos em 18/10/2026, licencas-por-fonte.md)
+    "usda": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+    "faostat": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+    "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
+    # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
+    "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
+    # fontes pouco visíveis (plano de 05/11/2026, ADR 0124): rodapé do gov.br lido em 04/11/2026
+    "sudeco": "Sudeco (FDCO), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudeco e a data",
+    "sudam": "Sudam (FDA), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudam e a data",
+    # PDFs de dívida de empresas fechadas (publicações legais, FNET, prospecto): sem licença de
+    # republicação achada; o PDF é prova interna, o fato sai nas nossas palavras com o link
+    "divida": "PDF guardado só como prova; fato com página e link (ADR 0124)",
+    # comunicações processuais do DJEN (plano de 03/11/2026 dos processos; ADR 0121): pública pela
+    # Resolução CNJ 455/2022; a Justiça do Trabalho fica de fora pela Resolução CNJ 121/2010, art. 4º,
+    # § 1º, II (proíbe a consulta pública pelo nome da parte)
+    "djen": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+    # as Tabelas Processuais Unificadas (Resolução CNJ 46/2007): tabela pública de uso obrigatório
+    "cnj": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
+    # API Pública do DataJud (termo de uso lido em 03/11/2026): itens 3.3 e 3.8 vedam o uso comercial e a
+    # consultoria; entra só para uso interno (treinar e rotular), nunca em tela, API nem exportação
+    "datajud": "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)",
+    # lote organismos (termos lidos em 22/10/2026, licencas-por-fonte.md, rodadas 1 e 4)
+    "bce": "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)",
+    "ocde": "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data",
+    "eurostat": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+    "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+    "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+    # lote commodities oficiais (linha 396; termos lidos em 24/10/2026, licencas-por-fonte.md)
+    "dgagri": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+    "dgener": "CC BY 4.0 (Comissão, DG ENER): citar a fonte e indicar mudanças",
+    "boc": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+    "ssb": "CC BY 4.0 (Statistics Norway): citar o SSB, a licença e as mudanças",
+    "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+    # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
+    "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+    "dst": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+    "scb": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+    "statfi": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+    "statice": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
+    "norges": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+    "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
+    # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
+    "inpe": "INPE Queimadas: sem licença escrita; uso citando o INPE (ADR 0102)",
+    "firms": "Dados abertos da NASA (FIRMS); citar NASA FIRMS, chave só no ambiente",
+    "terrabrasilis": "CC BY-SA 4.0 (INPE, TerraBrasilis); citar e compartilhar igual",
+    "ecmwf": "CC BY 4.0 (ECMWF open data); citar o ECMWF",
+    "climatetrace": "CC BY 4.0 (Climate TRACE); citar o Climate TRACE",
+    "edgar": "CC BY 4.0 (EDGAR, JRC); sem o IEA-EDGAR CO2, que é CC BY-NC-ND",
+    "carbonmonitor": "CC BY 4.0 (Carbon Monitor); citar o Carbon Monitor",
+    # lote EUA (termos lidos em 22/10/2026): obra do governo federal dos EUA é domínio público; citar
+    # a agência. O Fed e o NY Fed avisam que há séries de terceiros dentro de alguns conjuntos
+    "treasury": "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)",
+    "fed": "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)",
+    "bls": "Domínio público (Bureau of Labor Statistics; citar a BLS)",
+    "eia": "Domínio público (Energy Information Administration; citar a EIA)",
+    "ofr": "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)",
+    "nyfed": "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)",
+    "tic": "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)",
+    "census": "Domínio público (U.S. Census Bureau; citar o Census Bureau)",
+    # lote cadastros globais (termos lidos em 22/10/2026, licencas-por-fonte.md, rodada 4): só pessoa
+    # jurídica; o `gleif` e o `sec` já existiam (a lista de tickers da SEC é obra da agência)
+    "sec-company-tickers": "Domínio público (lista de tickers da SEC; citar a SEC)",
+    "wikidata": "CC0 (Wikidata; citar Wikidata)",
+    "ofac": "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades",
+    "eufsf": "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas",
+    "ofsi": "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades",
+    # lote setoriais Brasil (termos lidos em 22/10/2026, licencas-por-fonte.md): EPE é CC BY 4.0;
+    # INEP, Senatran e INPI só têm o rodapé CC BY-ND 3.0 do site gov.br, que vale para o conteúdo do
+    # site e não para o conjunto: mostrar "como publicado" com a fonte citada (precedente da CONAB)
+    "epe": "CC BY 4.0 (dados abertos da EPE; citar a EPE)",
+    # lote atenção e texto (termos lidos em 22/10/2026, licencas-por-fonte.md, rodada 4): o `wiki` e o
+    # `gdelt` já existiam (cripto); as fontes novas têm id próprio e a marca da rodada 4
+    "wiki-pageviews-empresas": "CC0 (acessos por artigo, Wikimedia; citar a Wikimedia)",
+    "gdelt-gkg": "GDELT: uso livre citando e linkando o GDELT; só empresa, tema e tom",
+    "querido": "CC BY 4.0 (Querido Diário, Open Knowledge Brasil; citar)",
+    "crossref": "Metadados sem direitos de autor (Crossref); só contagens por afiliação",
+    "openalex": "CC0 (OpenAlex); só afiliações e contagens, sem autores",
+    "ebc": "Texto de terceiros (EBC): só índice (data, título, link) do RSS",
+    "senado": "Texto de terceiros (Agência Senado): só índice (data, título, link) do RSS",
+    "camara": "Texto de terceiros (Agência Câmara): só índice (data, título, link)",
+    "inep": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
+    "senatran": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
+    "inpi": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+    "epo": "CC BY 4.0 (EPO Linked open EP data); citar o EPO; um pedido por vez",
+    "wipo": "WIPO Statistics Database: não republicar nem revender; só uso interno, citando",
+    "ipea": "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea",
+    # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
+    "ans-demonstracoes": "Demonstrações da ANS: sem licença declarada; citar a ANS (ADR 0102)",
+    # lote Europa e RBA (lidas em 29/10/2026, linha 512)
+    "statat": "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'",
+    "statbel": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+    "cbs": "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands",
+    "cso": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+    "ines": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
+    "istat": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
+    "rba": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+    "snb": "SNB: só 'for non-commercial purposes'; uso comercial pede consentimento",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
-# Pode entrar num produto de dados? (ADR 0055 do autor, exigência 11; não é parecer jurídico: antes
-# de vender qualquer coisa, parecer e decisão nova)
+# A resposta sobre revenda de cada fonte (ADR 0055, exigência 11; ADR 0008, Emenda 1: as quatro
+# marcas, com a resposta por escrito no `licencas-por-fonte.md`). Desde a ADR 0102 (18/10/2026) a
+# marca é **informação**, gravada por fonte no contrato, no catálogo e na página Dados: ela não barra
+# coleta, modelo, tela nem exportação (`pode_usar`); a B3 entrou em 22/10/2026 (ADR 0008, Emenda 6) e
+# `FONTES_FORA_DOS_USOS` ficou vazia. Não é
+# parecer jurídico: antes de vender qualquer coisa, parecer e decisão nova.
 VENDAVEL_ODBL = (
     "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor "
     "está na curadoria, nas versões e na qualidade)"
 )
 VENDAVEL_COM_ATRIBUICAO = "vendável com atribuição à fonte"
-A_CONFIRMAR = (
-    "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)"
+# sem resposta escrita sobre uso comercial e sem termo que proíba: o Tiago assumiu o risco de vender
+# citando a fonte (ADR 0122, 05/11/2026). A licença em `LICENCAS` continua dizendo o que a fonte escreveu
+VENDAVEL_RISCO_ASSUMIDO = (
+    "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem "
+    "resposta escrita sobre uso comercial"
 )
-SO_USO_INTERNO = "só uso interno (nunca vender nem exportar)"
+SO_USO_INTERNO = "só uso interno (entra em modelo; nunca vender nem exportar o dado)"
+A_CONFIRMAR = (
+    "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
+    "comercial até a resposta)"
+)
+NAO_COMERCIAL = (
+    "não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; "
+    "nunca em modelo, rótulo ou exportação)"
+)
 REVENDA = {
     "cvm": VENDAVEL_ODBL,
     "bcb": VENDAVEL_ODBL,
     "ibge": VENDAVEL_COM_ATRIBUICAO,
+    "inmet": VENDAVEL_COM_ATRIBUICAO,  # sem licença escrita: confirmar por escrito antes de vender
+    "chirps": VENDAVEL_COM_ATRIBUICAO,  # domínio público
+    # v3 pela cópia do Hugging Face: a licença do dado é a do CHC (domínio público + CC BY 4.0, lida em
+    # 28/10/2026); o termo de uso do Hugging Face não foi lido (notas de pesquisa, parte 4)
+    "chirps3": VENDAVEL_COM_ATRIBUICAO,
+    "mapbiomas": VENDAVEL_RISCO_ASSUMIDO,  # CC BY-SA (termos do site, 21/10/2026): compartilhar igual
+    "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
+    "fmi": SO_USO_INTERNO,  # uso comercial pede permissão por escrito do FMI; preços de referência não se distribuem (ADR 0008)
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
-    "sec": A_CONFIRMAR,  # os arquivos são escritos pelas empresas
-    "iex": A_CONFIRMAR,
-    "cftc": A_CONFIRMAR,
-    "rfb": A_CONFIRMAR,
-    "wiki": A_CONFIRMAR,
-    "gdelt": A_CONFIRMAR,
-    "btc": A_CONFIRMAR,
-    "yahoo": SO_USO_INTERNO,
-    "kraken": SO_USO_INTERNO,
-    "mb": SO_USO_INTERNO,
-    # dado pessoal (sócios, autuados, empregadores pessoa física) ou licença a perguntar: só interno
-    "rfb-cnpj": SO_USO_INTERNO,
+    # treino de ML permitido por escrito (licencas-por-fonte.md, 13/10/2026); revenda ainda sem resposta
+    "sec": VENDAVEL_RISCO_ASSUMIDO,  # os arquivos são escritos pelas empresas
+    "iex": SO_USO_INTERNO,  # com a atribuição "Data provided for free by IEX"
+    "cftc": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA (17 U.S.C. §105), Emenda 5
+    "wiki": VENDAVEL_COM_ATRIBUICAO,  # CC0 (ADR 0122)
+    "btc": VENDAVEL_RISCO_ASSUMIDO,  # blockchain pública lida por nó próprio
+    "rfb": VENDAVEL_RISCO_ASSUMIDO,  # planilha de cripto da Receita: sem licença escrita
+    "gdelt": VENDAVEL_COM_ATRIBUICAO,  # uso livre citando e linkando o GDELT, Emenda 5
+    "yahoo": NAO_COMERCIAL,  # termos do Yahoo: uso pessoal
+    # sem termo de dados: não comercial (a exceção da ADR 0045 ao clima de risco do Bitcoin perdeu
+    # o sentido com a ADR 0102: a marca não barra mais)
+    "kraken": NAO_COMERCIAL,  # termo de 19/10/2026: só uso próprio; a coleta segue (Emenda 5)
+    "mb": NAO_COMERCIAL,
+    # a ficha do conjunto no dados.gov.br declara CC BY (o CC BY-ND é do rodapé do site gov.br
+    # inteiro); Tiago, "Pode", 20/10/2026 (ADR 0106, item 2). Sócio pessoa física segue fora do app.
+    "rfb-cnpj": VENDAVEL_COM_ATRIBUICAO,
+    "rfb-renuncias": VENDAVEL_RISCO_ASSUMIDO,  # DIRBI e ECF (linha 660): nada perguntado à Receita
+    "rfb-transacoes": VENDAVEL_RISCO_ASSUMIDO,  # transações (linha 661): nada perguntado à Receita
+    # Fala.BR 25072.067487/2026-35, resposta do Ministério da Saúde em 05/11/2026: uso comercial, inclusive
+    # por assinatura, de CNES, SIH, SIA, CIHA e Painel-Oncologia, citando a fonte, sem a marca do Ministério e
+    # sem identificar pessoas (nem por cruzamento ou recorte pequeno); treino de ML não foi confirmado
+    "ms": VENDAVEL_COM_ATRIBUICAO,
+    "tce-rn": VENDAVEL_RISCO_ASSUMIDO,  # linha 662: nada perguntado ao TCE-RN
+    "tce-pe": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-PE
+    "tce-sp": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-SP
+    "tce-ce": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-CE
+    "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
+    "msestado": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN; uso público com a fonte: "pode" do Tiago em 05/11/2026 (linha 688)
+    "sefazpe": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN (lida em 03/11/2026); coleta da linha 578 aberta pelo Tiago em 05/11/2026 ("Sim, abrir as 8"); nada perguntado à fonte (ADR 0102 Emenda 2)
+    "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
+    "pgfn": VENDAVEL_RISCO_ASSUMIDO,
+    # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
-    "pgfn": SO_USO_INTERNO,
+    "transparencia": VENDAVEL_COM_ATRIBUICAO,
+    "bndes": VENDAVEL_ODBL,
+    "inss": VENDAVEL_COM_ATRIBUICAO,
     "ibama": SO_USO_INTERNO,
     "mte": SO_USO_INTERNO,
     "gleif": VENDAVEL_COM_ATRIBUICAO,
     "termos": SO_USO_INTERNO,
-    "catalogo": SO_USO_INTERNO,
-    "bcb-sgs-189": SO_USO_INTERNO,
+    "catalogo": VENDAVEL_RISCO_ASSUMIDO,
+    "bcb-sgs-189": NAO_COMERCIAL,  # IGP-M da FGV: uso comercial pede autorização da FGV
     "ccee": VENDAVEL_COM_ATRIBUICAO,
+    "seges": VENDAVEL_COM_ATRIBUICAO,
+    "seges-pesquisa-precos": VENDAVEL_RISCO_ASSUMIDO,  # preço de referência (ADR 0008)
+    "transferegov-especiais-pagamentos": VENDAVEL_RISCO_ASSUMIDO,  # API nova sem licença lida (rodada de 03/11/2026)
+    "comprasgov": VENDAVEL_COM_ATRIBUICAO,
+    "transferegov": VENDAVEL_COM_ATRIBUICAO,
+    "pncp": VENDAVEL_RISCO_ASSUMIDO,
+    "tcu": VENDAVEL_RISCO_ASSUMIDO,
+    "govmg": VENDAVEL_COM_ATRIBUICAO,
+    "govsc": VENDAVEL_COM_ATRIBUICAO,
     "antt": VENDAVEL_COM_ATRIBUICAO,
+    "tesouro-br": VENDAVEL_ODBL,
     "tesouro-br-divida": VENDAVEL_ODBL,
     "tesouro-br-direto": VENDAVEL_ODBL,
     "tesouro-br-leiloes": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-entes": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-entregas": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-rreo": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-rgf": VENDAVEL_ODBL,
+    "tesouro-br-siconfi-dca": VENDAVEL_ODBL,
+    "tesouro-br-rtn": VENDAVEL_ODBL,
+    "tesouro-br-receitas": VENDAVEL_ODBL,
+    "tesouro-br-despesas": VENDAVEL_ODBL,
+    "tesouro-br-restos-a-pagar": VENDAVEL_ODBL,
+    "tesouro-br-fatores-divida": VENDAVEL_ODBL,
+    "tesouro-br-paf": VENDAVEL_ODBL,
+    "tesouro-br-bspn": VENDAVEL_ODBL,
+    "tesouro-br-limites-lrf": VENDAVEL_ODBL,
+    "tesouro-br-dividendos-estatais": VENDAVEL_ODBL,
+    "tesouro-br-subsidios-bndes": VENDAVEL_ODBL,
+    "tesouro-br-garantias": VENDAVEL_ODBL,
+    "tesouro-br-transferencias": VENDAVEL_ODBL,
+    "tesouro-br-capag-municipios": VENDAVEL_ODBL,
+    "tesouro-br-td-vendas": VENDAVEL_ODBL,
+    "tesouro-br-td-resgates": VENDAVEL_ODBL,
+    "tesouro-br-td-estoque": VENDAVEL_ODBL,
+    "anp": VENDAVEL_COM_ATRIBUICAO,
+    "anac": VENDAVEL_COM_ATRIBUICAO,
+    "ans": VENDAVEL_COM_ATRIBUICAO,
+    "ons": VENDAVEL_COM_ATRIBUICAO,
+    "anatel": VENDAVEL_COM_ATRIBUICAO,
+    "anvisa": VENDAVEL_COM_ATRIBUICAO,
+    "anvisa-cmed": VENDAVEL_RISCO_ASSUMIDO,
+    "mapa": VENDAVEL_COM_ATRIBUICAO,
+    "anm": VENDAVEL_COM_ATRIBUICAO,
+    # CFEM, SIGBM e AMB (linha 657): nada perguntado à ANM
+    "anm-cfem": VENDAVEL_RISCO_ASSUMIDO,
+    "anm-sigbm": VENDAVEL_RISCO_ASSUMIDO,
+    "anm-amb": VENDAVEL_RISCO_ASSUMIDO,
+    "estban": VENDAVEL_RISCO_ASSUMIDO,  # ESTBAN do BCB (linha 659): nada perguntado ao BC
+    "ancine": VENDAVEL_COM_ATRIBUICAO,
+    "mme": VENDAVEL_RISCO_ASSUMIDO,
+    "finep": VENDAVEL_RISCO_ASSUMIDO,
+    "aneel": VENDAVEL_ODBL,
+    "susep": VENDAVEL_COM_ATRIBUICAO,
+    "comexstat": VENDAVEL_COM_ATRIBUICAO,  # resposta do MDIC em 21/10/2026
+    "cecafe": NAO_COMERCIAL,  # o robots.txt veda PDF; coleta com ritmo e uso com a fonte citada (ADR 0102)
+    "fnc": NAO_COMERCIAL,  # termos só para uso pessoal; coleta com ritmo e uso com a fonte citada (ADR 0102)
+    "b3": NAO_COMERCIAL,  # informação, não trava: sem licença, uso com a fonte citada (ADR 0008, Emenda 6)
+    "assessoria": A_CONFIRMAR,  # vender, mostrar ou treinar só com o parecer (ADRs 0063 e 0082)
+    "wayback": NAO_COMERCIAL,  # "for scholarship and research purposes only"
+    # a família vem do endereço ("tce-pr") e a fonte do arquivista tem o próprio id ("tce-pr-pit"):
+    # o "tce" sozinho não diz qual tribunal
+    "tce-pr": VENDAVEL_COM_ATRIBUICAO,
+    "tce-pr-pit": VENDAVEL_COM_ATRIBUICAO,
+    "tce-pr-despesa": VENDAVEL_COM_ATRIBUICAO,
+    "tce-rs-empenhos": VENDAVEL_COM_ATRIBUICAO,  # CC BY
+    "tce-rs": VENDAVEL_RISCO_ASSUMIDO,  # LicitaCon: sem resposta da Ouvidoria
+    "conab": VENDAVEL_RISCO_ASSUMIDO,  # CC BY-ND 3.0; sem pedido à CONAB (ADR 0102): uso citando a CONAB e a data
+    "usda": VENDAVEL_COM_ATRIBUICAO,  # domínio público ou CC BY: as duas permitem
+    "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "ico": NAO_COMERCIAL,  # PDF sem termos lidos; coleta e uso com a fonte citada (ADR 0102)
+    "contrapartes": A_CONFIRMAR,  # cópia é prova interna; na ficha, fato nas nossas palavras e link (ADR 0102)
+    # CC BY-ND 3.0 (rodapé do gov.br, 04/11/2026): o número sai com a fonte, sem obra derivada do PDF
+    "sudeco": VENDAVEL_RISCO_ASSUMIDO,
+    "sudam": VENDAVEL_RISCO_ASSUMIDO,
+    # sem licença de republicação achada: o PDF é prova interna (ADR 0124)
+    "divida": A_CONFIRMAR,
+    # o CNJ não escreve licença de reuso da API; sem pedido ao CNJ (ADR 0102 Emenda 2): uso citando a fonte
+    "djen": VENDAVEL_RISCO_ASSUMIDO,
+    "cnj": VENDAVEL_RISCO_ASSUMIDO,  # a TPU também não tem licença de reuso escrita (ADR 0102 Emenda 2)
+    "datajud": SO_USO_INTERNO,  # o termo veda uso comercial e consultoria: trava em `FONTES_SO_INTERNAS`
+    "bce": VENDAVEL_COM_ATRIBUICAO,  # "Source: ECB statistics"
+    "ocde": VENDAVEL_COM_ATRIBUICAO,  # uso comercial livre com a citação da OCDE
+    "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
+    "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
+    "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
+    "dgagri": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 da Comissão Europeia: crédito e indicação de mudanças
+    # Bank of Canada (termos relidos em 05/11/2026): cita o Banco e indica mudança; quem vende o conteúdo
+    # avisa o comprador de que ele é grátis no site do Banco
+    "boc": VENDAVEL_COM_ATRIBUICAO,
+    "dgener": VENDAVEL_COM_ATRIBUICAO,  # Oil Bulletin: "reprodução autorizada citando a fonte" (06/11/2026)
+    "ssb": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (ssb.no/en/diverse/lisens, lido em 06/11/2026)
+    "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
+    "dst": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (termos da API do StatBank, lidos em 29/10/2026)
+    "scb": VENDAVEL_COM_ATRIBUICAO,  # CC0 ("We use the licence CC0", lido em 29/10/2026)
+    "statfi": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0, "Source: Statistics Finland" (lido em 29/10/2026)
+    "statice": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0, dados abertos (lido em 29/10/2026)
+    "norges": A_CONFIRMAR,  # "no changes may be made" + Content-Signal ai-train=no: leitura humana antes de vender (ADR 0102 Emenda 2)
+    "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
+    "inpe": VENDAVEL_RISCO_ASSUMIDO,  # sem licença escrita no INPE Queimadas
+    "firms": VENDAVEL_COM_ATRIBUICAO,  # dados abertos da NASA
+    "terrabrasilis": VENDAVEL_RISCO_ASSUMIDO,  # CC BY-SA 4.0 (compartilhar igual)
+    "ecmwf": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "climatetrace": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "edgar": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (JRC)
+    "carbonmonitor": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    # lote EUA: obra do governo dos EUA, domínio público; o dado do NY Fed leva a atribuição
+    "treasury": VENDAVEL_COM_ATRIBUICAO,
+    "fed": VENDAVEL_COM_ATRIBUICAO,
+    "bls": VENDAVEL_COM_ATRIBUICAO,
+    "eia": VENDAVEL_COM_ATRIBUICAO,
+    "ofr": VENDAVEL_COM_ATRIBUICAO,
+    "nyfed": VENDAVEL_COM_ATRIBUICAO,
+    "tic": VENDAVEL_COM_ATRIBUICAO,
+    "census": VENDAVEL_COM_ATRIBUICAO,
+    # lote cadastros globais: CC0, domínio público, reuso da UE e OGL v3 (rodada 4); só pessoa jurídica
+    "sec-company-tickers": VENDAVEL_COM_ATRIBUICAO,
+    "wikidata": VENDAVEL_COM_ATRIBUICAO,
+    "ofac": VENDAVEL_COM_ATRIBUICAO,
+    "eufsf": VENDAVEL_COM_ATRIBUICAO,
+    "ofsi": VENDAVEL_COM_ATRIBUICAO,
+    # lote setoriais Brasil: CC BY 4.0 (EPE); rodapé CC BY-ND do site gov.br e licença do conjunto
+    # não achada (INEP, Senatran, INPI, demonstrações da ANS): a confirmar, coleta e uso com a fonte citada
+    "epe": VENDAVEL_COM_ATRIBUICAO,
+    # lote atenção e texto: CC0, CC BY 4.0 e uso livre citando o GDELT (Emenda 5 da ADR 0008); o índice
+    # do RSS é texto de terceiros e fica a confirmar. `wiki` e `gdelt` (cripto) mantêm a marca antiga
+    "wiki-pageviews-empresas": VENDAVEL_COM_ATRIBUICAO,
+    "gdelt-gkg": VENDAVEL_COM_ATRIBUICAO,
+    "querido": VENDAVEL_COM_ATRIBUICAO,
+    "crossref": VENDAVEL_COM_ATRIBUICAO,
+    "openalex": VENDAVEL_COM_ATRIBUICAO,
+    "ebc": A_CONFIRMAR,
+    "senado": A_CONFIRMAR,
+    "camara": A_CONFIRMAR,
+    "inep": VENDAVEL_RISCO_ASSUMIDO,
+    "senatran": VENDAVEL_RISCO_ASSUMIDO,
+    "inpi": VENDAVEL_RISCO_ASSUMIDO,
+    "epo": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; "not designed to provide a backend database service"
+    "ipea": VENDAVEL_RISCO_ASSUMIDO,  # sem termos; cada série herda a fonte de origem (BM&FBovespa, Bacen, IBGE)
+    "wipo": SO_USO_INTERNO,  # "not republish or commercially re-sell"; citar "WIPO Statistics Database"
+    "ans-demonstracoes": VENDAVEL_RISCO_ASSUMIDO,
+    # lote Europa e RBA (lidas em 29/10/2026, linha 512): CC BY 4.0, citando a fonte
+    "statat": VENDAVEL_COM_ATRIBUICAO,
+    "statbel": VENDAVEL_COM_ATRIBUICAO,
+    "cbs": VENDAVEL_COM_ATRIBUICAO,
+    "cso": VENDAVEL_COM_ATRIBUICAO,
+    "ines": VENDAVEL_COM_ATRIBUICAO,
+    "istat": VENDAVEL_COM_ATRIBUICAO,
+    "rba": VENDAVEL_COM_ATRIBUICAO,  # só as tabelas próprias; sem a taxa oficial (F1) nem as do ABS
+    "snb": NAO_COMERCIAL,  # aviso do site; sem coleta (ADR 0102, Emenda 2: não pedir licença à fonte)
 }
+
+
+class Marca(StrEnum):
+    """As quatro marcas da Emenda 1 da ADR 0008, da menos para a mais restrita."""
+
+    VENDAVEL = "vendavel"
+    USO_INTERNO = "uso_interno"
+    A_CONFIRMAR = "a_confirmar"  # vale como não comercial até a resposta escrita
+    NAO_COMERCIAL = "nao_comercial"
+
+
+MARCA_DA_REVENDA = {
+    VENDAVEL_ODBL: Marca.VENDAVEL,
+    VENDAVEL_COM_ATRIBUICAO: Marca.VENDAVEL,
+    VENDAVEL_RISCO_ASSUMIDO: Marca.VENDAVEL,
+    SO_USO_INTERNO: Marca.USO_INTERNO,
+    A_CONFIRMAR: Marca.A_CONFIRMAR,
+    NAO_COMERCIAL: Marca.NAO_COMERCIAL,
+}
+
+
+class Coleta(StrEnum):
+    """Podemos baixar, e como? (ADR 0108, D3)."""
+
+    ABERTA = "aberta"  # o termo e o robots.txt permitem, ou não dizem nada
+    # API com chave ou conta, pelo caminho que o dono oferece
+    COM_CADASTRO = "com_cadastro"
+    # a licença do dado permite reuso, mas o robots.txt fecha o servidor ou o caminho que usamos
+    ROBOTS_FECHA = "robots_fecha"
+    TERMO_VEDA = "termo_veda"  # o termo veda robô, raspagem ou cópia
+    NAO_LIDA = "nao_lida"
+
+
+class Guarda(StrEnum):
+    """Podemos guardar, e por quanto tempo? (ADR 0108, D3)."""
+
+    SEM_PRAZO = "sem_prazo"
+    COM_PRAZO = "com_prazo"  # com o número de dias em `dias_de_guarda`
+    # cópia como prova interna, nunca mostrada (ADR 0102, ponto 3)
+    SO_PROVA = "so_prova"
+    NAO_GUARDAR = "nao_guardar"
+    NAO_DIZ = "nao_diz"
+
+
+class ColetaEGuarda(NamedTuple):
+    """As duas perguntas da ADR 0108 (D3) ao lado da revenda, por família do `LICENCAS`.
+
+    A data da leitura dos termos é a de `TERMOS_LIDOS_EM` (`base/arquivo/registro.py`), sem cópia
+    aqui; `revisar_em` vazio vale a leitura mais o prazo padrão do portão externo.
+    """
+
+    coleta: Coleta
+    guarda: Guarda
+    termo: str = ""  # endereço e hash da cópia guardada do termo
+    revisar_em: date | None = None
+    dias_de_guarda: int | None = None  # só com `Guarda.COM_PRAZO`
+    # as condições (a) e (b) do D5.3 da ADR 0108, que deixam `ROBOTS_FECHA` sair pela API externa:
+    # (a) licença escrita pelo próprio órgão permite reuso comercial (CC BY, ODbL, domínio público);
+    # (b) a coleta respeita o Crawl-delay e se identifica com o User-Agent do TickerLab
+    licenca_permite_reuso_comercial: bool = False
+    respeita_ritmo_e_se_identifica: bool = False
+
+
+# Coleta e guarda de cada família do `LICENCAS` (linha 159 da fila; ADR 0108, D3 e D5.3). As respostas
+# são as da auditoria N0 de 21/10/2026 (`auditoria-licitude-da-coleta-2026-10-21.md`, na pasta privada),
+# copiadas sem decidir de novo: "sim" é `aberta` e `sem_prazo`; "não" é `termo_veda` e `nao_guardar`;
+# "não diz" e "não lido" são `nao_lida` e `nao_diz`, que seguem negadas pelo portão externo (`src/
+# portao_externo.py`). Família que a N0 não cobriu (lotes de 22 e 23/10) também fica sem resposta.
+# `ROBOTS_FECHA` leva as duas condições do D5.3 pelo que a N0 e o código dizem: (a) a licença escrita
+# do órgão permite reuso comercial; (b) o arquivista lê o `Crawl-delay` e manda o `User-Agent` do
+# TickerLab (`base/arquivo/ritmo.py` e `agente.py`, PR 600). A data da leitura dos termos está em
+# `TERMOS_LIDOS_EM`; o app não lê esta tabela (ADR 0102).
+_NAO_RESPONDIDA = ColetaEGuarda(Coleta.NAO_LIDA, Guarda.NAO_DIZ)
+_ABERTA_SEM_PRAZO = ColetaEGuarda(Coleta.ABERTA, Guarda.SEM_PRAZO)
+_ABERTA_GUARDA_NAO_DIZ = ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ)
+_TERMO_VEDA_NAO_GUARDAR = ColetaEGuarda(Coleta.TERMO_VEDA, Guarda.NAO_GUARDAR)
+# o robots.txt fecha o portal (`Disallow: /api/` ou `/`), a licença escrita do órgão permite reuso
+# comercial e o arquivista respeita o ritmo e se identifica
+_ROBOTS_FECHA_COM_LICENCA = ColetaEGuarda(
+    Coleta.ROBOTS_FECHA,
+    Guarda.SEM_PRAZO,
+    licenca_permite_reuso_comercial=True,
+    respeita_ritmo_e_se_identifica=True,
+)
+
+COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
+    # a N0 diz: coleta sim, retenção sim
+    **dict.fromkeys(
+        (
+            "bm",
+            "tesouro",
+            "cftc",
+            "gdelt",
+            "btc",
+            "cgu",
+            "ibama",
+            "gleif",
+            "anp",
+            "anac",
+            "ans",
+            "anatel",
+            "susep",
+            "assessoria",
+            "conab",
+            "usda",
+            "faostat",
+            "tce-pr",
+            "tce-pr-pit",
+            "tce-pr-despesa",
+            "tesouro-br",
+            "tesouro-br-divida",
+            "tesouro-br-direto",
+            "tesouro-br-leiloes",
+        ),
+        _ABERTA_SEM_PRAZO,
+    ),
+    # robots.txt fecha o portal; licença ODbL, CC BY ou domínio público (D5.3)
+    **dict.fromkeys(
+        (
+            "cvm",
+            "bcb",
+            "ccee",
+            "antt",
+            "aneel",
+            "tce-rs-empenhos",
+            "chirps",  # Disallow: / ; domínio público
+            "rfb-cnpj",  # Disallow: / ; CC BY na ficha do dados.gov.br
+            "goias",  # Disallow: /api/ e Crawl-Delay: 10 (04/11/2026); CC BY
+            "spcapital",  # Disallow: / (04/11/2026); CC0
+            "sefazpe",  # dados.pe.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN; a coleta lê a página, não a API
+            "msestado",  # www.dados.ms.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN
+        ),
+        _ROBOTS_FECHA_COM_LICENCA,
+    ),
+    # a N0 diz coleta sim e retenção "não diz"
+    **dict.fromkeys(("sec", "bcb-sgs-189", "iex"), _ABERTA_GUARDA_NAO_DIZ),
+    # o termo veda a coleta e a cópia
+    **dict.fromkeys(("yahoo", "kraken", "fnc"), _TERMO_VEDA_NAO_GUARDAR),
+    "fmi": ColetaEGuarda(
+        Coleta.TERMO_VEDA, Guarda.NAO_DIZ
+    ),  # veda coleta em massa sem permissão
+    "b3": ColetaEGuarda(
+        Coleta.TERMO_VEDA, Guarda.NAO_DIZ
+    ),  # BDI veda; VPS 90 dias, casa sem prazo
+    "contrapartes": ColetaEGuarda(Coleta.TERMO_VEDA, Guarda.SO_PROVA),
+    # PDFs de sites diferentes (diário oficial da PB, jornal, FNET, securitizadora): termos não lidos
+    # um a um; guarda só como prova (ADR 0124)
+    "divida": ColetaEGuarda(Coleta.NAO_LIDA, Guarda.SO_PROVA),
+    # o robots.txt da API libera tudo (lido em 03/11/2026) e a Resolução CNJ 455/2022 faz do DJEN a
+    # publicação oficial; nenhum termo diz por quanto tempo guardar
+    "djen": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
+    # o servidor da TPU não tem robots.txt (404 em 03/11/2026) nem termo de uso
+    "cnj": ColetaEGuarda(Coleta.ABERTA, Guarda.NAO_DIZ),
+    # API com a chave pública que o CNJ publica na wiki; o termo não diz por quanto tempo guardar
+    "datajud": ColetaEGuarda(Coleta.COM_CADASTRO, Guarda.NAO_DIZ),
+    # robots.txt fecha o portal e a N0 não achou licença escrita que dê reuso comercial (ONS: "reuso e
+    # redistribuição" sem nome de licença; catálogo: só metadados; Cecafé: `Disallow: /*.pdf$`)
+    "ons": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
+    "catalogo": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.SEM_PRAZO),
+    "cecafe": ColetaEGuarda(Coleta.ROBOTS_FECHA, Guarda.NAO_DIZ),
+    # BIS: `data.bis.org/help/legal`, lido em 03/11/2026 (linha 639; ADR 0121, item 1). O texto libera o
+    # uso das estatísticas "unrestricted" sob seis condições (citar o BIS, avisar que a tradução não é
+    # oficial, não sugerir apoio do BIS, nenhum custo extra por elas, sem garantia, sem conselho de
+    # investimento) e oferece a API SDMX em `stats.bis.org`; o robots.txt do `data.bis.org` (para onde o
+    # `stats` redireciona) só fecha telas com filtro e ordenação, não a API. O texto não fala de prazo
+    # de guarda: o uso "unrestricted" cobre guardar, e o silêncio fica registrado aqui. A API tem termo
+    # próprio (o BIS pode limitar o IP e suspender), sem proibir ler os dados.
+    "bis": _ABERTA_SEM_PRAZO,
+    # DG AGRI: aviso legal da Comissão (CC BY 4.0, lido em 24/10/2026); o robots.txt de `ec.europa.eu` não
+    # fecha `/agrifood/api` (conferido em 05/11/2026) e a coleta tem pausa e se identifica
+    "dgagri": _ABERTA_SEM_PRAZO,
+    "dgener": _ABERTA_SEM_PRAZO,  # robots.txt de energy.ec.europa.eu só fecha /core/, /admin/, /search/ etc. (06/11)
+    # Bank of Canada (Valet, sem chave): termos de uso relidos em 05/11/2026; o robots.txt só fecha o wp-admin.
+    # Os termos proíbem burlar o limite de pedidos da Valet: 8 pedidos por rodada e pausa de 2 s
+    "boc": _ABERTA_SEM_PRAZO,
+    # SSB (API PxWeb v2, sem chave nem limite de pedidos na configuração): licença CC BY 4.0 lida em 06/11/2026;
+    # o robots.txt do ssb.no só fecha uma página de estatística
+    "ssb": _ABERTA_SEM_PRAZO,
+    # Riksbank (SWEA, sem chave) e Norges Bank (SDMX, sem chave): termos lidos em 29/10/2026 (linha 511).
+    # O Norges Bank traz `Content-Signal: ai-train=no` no robots.txt (05/11/2026), que não fecha a API
+    "riksbank": _ABERTA_SEM_PRAZO,
+    "norges": _ABERTA_GUARDA_NAO_DIZ,
+    "dst": _ABERTA_SEM_PRAZO,  # CC BY 4.0, API pública sem chave
+    "scb": _ABERTA_SEM_PRAZO,  # CC0, API pública sem chave
+    "statfi": _ABERTA_SEM_PRAZO,  # CC BY 4.0, API pública sem chave
+    "statice": _ABERTA_SEM_PRAZO,  # CC BY 4.0, API pública sem chave
+    # a N0 diz retenção sim, coleta "não diz" ou não lida
+    "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
+    "mapbiomas": ColetaEGuarda(
+        Coleta.NAO_LIDA, Guarda.SEM_PRAZO
+    ),  # CC BY-SA (termos do site, 21/10/2026)
+    "termos": ColetaEGuarda(
+        Coleta.NAO_LIDA, Guarda.SO_PROVA
+    ),  # cópias de termos; três são da B3
+    # a N0 não respondeu a coleta nem a guarda
+    **dict.fromkeys(
+        (
+            "ibge",
+            "inmet",
+            "rfb",
+            "wiki",
+            "mb",
+            "pgfn",
+            "rfb-renuncias",
+            "rfb-transacoes",
+            "ms",
+            "tce-rn",
+            "tce-pe",
+            "tce-sp",
+            "tce-ce",
+            "mte",
+            "comexstat",
+            "wayback",
+            "tce-rs",
+            "ico",
+            # famílias que a N0 não cobriu (lotes de 22 e 23/10)
+            "transparencia",
+            "bndes",
+            "inss",
+            "seges",
+            "seges-pesquisa-precos",
+            "comprasgov",
+            "transferegov",
+            "transferegov-especiais-pagamentos",
+            "pncp",
+            "tcu",
+            "govmg",
+            "govsc",
+            "tesouro-br-siconfi-entes",
+            "tesouro-br-siconfi-entregas",
+            "tesouro-br-siconfi-rreo",
+            "tesouro-br-siconfi-rgf",
+            "tesouro-br-siconfi-dca",
+            "tesouro-br-rtn",
+            "tesouro-br-receitas",
+            "tesouro-br-despesas",
+            "tesouro-br-restos-a-pagar",
+            "tesouro-br-fatores-divida",
+            "tesouro-br-paf",
+            "tesouro-br-bspn",
+            "tesouro-br-limites-lrf",
+            "tesouro-br-dividendos-estatais",
+            "tesouro-br-subsidios-bndes",
+            "tesouro-br-garantias",
+            "tesouro-br-transferencias",
+            "tesouro-br-capag-municipios",
+            "tesouro-br-td-vendas",
+            "tesouro-br-td-resgates",
+            "tesouro-br-td-estoque",
+            "bce",
+            "ocde",
+            "eurostat",
+            "worldbank",
+            "nasa",
+            "noaa",
+            "inpe",
+            "firms",
+            "terrabrasilis",
+            "ecmwf",
+            "climatetrace",
+            "edgar",
+            "carbonmonitor",
+            "treasury",
+            "fed",
+            "bls",
+            "eia",
+            "ofr",
+            "nyfed",
+            "tic",
+            "census",
+            "sec-company-tickers",
+            "wikidata",
+            "ofac",
+            "eufsf",
+            "ofsi",
+            "epe",
+            "wiki-pageviews-empresas",
+            "gdelt-gkg",
+            "querido",
+            "crossref",
+            "openalex",
+            "ebc",
+            "senado",
+            "camara",
+            "inep",
+            "senatran",
+            "inpi",
+            "epo",
+            "wipo",
+            "ipea",
+            "ans-demonstracoes",
+            # Ficha Clara, licenças e registros (29/10): termos e robots.txt ainda não lidos
+            "anvisa",
+            "mapa",
+            "anm",
+            "anm-cfem",  # linha 657: licença não declarada, a confirmar
+            "anm-sigbm",
+            "anm-amb",
+            "estban",  # linha 659: termos do BC lidos em 04/11/2026 (reprodução com fonte), a confirmar
+            "ancine",
+            # preços da CMED (04/11): os termos das listas são os do portal da Anvisa, ainda não lidos
+            "anvisa-cmed",
+            # Ficha Clara, incentivos (29/10): termos e robots.txt ainda não lidos
+            "mme",
+            # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos
+            "finep",
+            # fontes pouco visíveis (05/11): rodapé CC BY-ND lido, robots.txt do gov.br ainda não
+            "sudeco",
+            "sudam",
+            # lote Europa e RBA (05/11): termos lidos em 29/10; o SNB só tem a marca (sem coleta)
+            "statat",
+            "statbel",
+            "cbs",
+            "cso",
+            "ines",
+            "istat",
+            "rba",
+            "snb",
+        ),
+        _NAO_RESPONDIDA,
+    ),
+}
+MOSTRAR = "mostrar"  # em tela, relatório, PDF, API ou newsletter
+USOS = ("treinar", "rotular", "exportar", MOSTRAR)
+# As famílias fora dos quatro usos. Vazia desde 22/10/2026: a B3, a única que havia (ADR 0102; dado de
+# mercado pede contrato, ADRs 0019 e 0056), entrou com a fonte e a data citadas por decisão do Tiago
+# (ADR 0008, Emenda 6, risco assumido por ele). O mecanismo fica: pôr uma família aqui volta a barrá-la
+# em `pode_usar` e `exigir_licenca` (é o "como desfazer" da Emenda 6: pôr "b3" de volta).
+FONTES_FORA_DOS_USOS: frozenset[str] = frozenset()
+# As famílias que só entram nos usos internos (`USOS_INTERNOS`): treinar e rotular, nunca exportar nem
+# mostrar. O DataJud (plano dos processos de 03/11/2026, ADR 0121): o termo de uso da API Pública veda o uso
+# comercial e a consultoria (itens 3.3 e 3.8). Como a trava passa por `pode_usar`, vale para a vitrine, o
+# dossiê, a busca por CNPJ, o relatório, a exportação do acervo e o portão da API externa.
+FONTES_SO_INTERNAS: frozenset[str] = frozenset({"datajud"})
+USOS_INTERNOS = ("treinar", "rotular")
+# As famílias que mostram, rotulam e exportam, mas não treinam modelo. O DATASUS (ADR 0122, item 1): o
+# Ministério da Saúde liberou o uso comercial por escrito em 05/11/2026, e a resposta não fala de treino, que
+# fica a confirmar. Sai daqui quando houver resposta escrita sobre o treino.
+FONTES_SEM_TREINO: frozenset[str] = frozenset({"ms"})
+TREINAR = "treinar"
+
+
+class UsoSemCobranca(NamedTuple):
+    """Um uso de fonte restrita em tela, com a frase de citação (ADR 0008, Emenda 3, item 4)."""
+
+    fonte: str  # a fonte ou a família em `REVENDA` ("yahoo" vale para "yahoo-bvsp")
+    onde: str  # onde aparece no app ou no relatório
+    substituto: str  # o que entraria no lugar se a fonte um dia tiver de sair
+    citacao: str  # a frase que a tela, o relatório e o PDF escrevem como fonte
+
+
+class CaminhoDoYahoo(NamedTuple):
+    """Módulos que leem o preço do Yahoo, com o que entra no lugar quando ele sair (linha 413, Y2)."""
+
+    modulos: tuple[str, ...]  # caminho do arquivo a partir da raiz do repositório
+    onde: str
+    substituto: str
+
+
+_BASE_PROPRIA = (
+    "base própria de preços pelo COTAHIST da B3 (ações, FIIs e ETFs); EUA, índices e cripto "
+    "ficam sem preço ou com outra fonte"
+)
+# Emenda 3 da ADR 0008, item 4, completa ("pode" do Tiago em 25/10/2026, linha 413, Y2): todo módulo
+# que chega ao Yahoo, para o dia de trocar ou desligar a fonte (antes da 1ª cobrança, Y4 b). O teste
+# `tests/test_caminhos_do_yahoo.py` lê o código e falha se um módulo novo chegar ao Yahoo fora daqui.
+CAMINHOS_DO_YAHOO: tuple[CaminhoDoYahoo, ...] = (
+    CaminhoDoYahoo(
+        ("src/dados.py", "telas/comum.py", "src/api_v1/contexto.py"),
+        "a porta do preço: baixa do Yahoo, guarda no cache em SQLite (7 dias sem consulta e sai) e "
+        "serve as telas e a API",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        (
+            "telas/analise.py",
+            "telas/carteira_b3.py",
+            "telas/momentum.py",
+            "telas/estrategias/aprendizado.py",
+            "telas/estrategias/backtest.py",
+            "telas/estrategias/carteira.py",
+            "telas/estrategias/experimentos.py",
+            "telas/estrategias/pares.py",
+            "telas/estrategias/ranking.py",
+            "telas/estrategias/regimes.py",
+            "telas/relatorios/estudio.py",
+            "telas/relatorios/pagina.py",
+            "telas/research/alertas.py",
+            "telas/research/donos.py",
+            "telas/research/fundamentos.py",
+            "telas/research/linha_do_tempo.py",
+            "telas/research/parametros.py",
+            "telas/research/por_dentro.py",
+            "telas/research/pulse.py",
+        ),
+        "telas do app: a série do ticker do topo nos gráficos, no risco, no backtest, na carteira, "
+        "no momentum, no Research e no PDF do Estúdio",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        ("telas/research/relatorio_empresa.py",),
+        "ficha da empresa: DY, valor de mercado e múltiplos (atrás da trava "
+        "TICKERLAB_PRECO_NO_RELATORIO, que com =0 nem carrega a série)",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        ("src/api_v1/rotas.py",),
+        "API do app: /visao-geral, /risco, /retorno-mensal, /comparacao, /backtest e "
+        "/relatorio-empresa (este atrás da trava)",
+        _BASE_PROPRIA,
+    ),
+    CaminhoDoYahoo(
+        ("src/ferramentas/ponte_dados.py",),
+        "site: 'Quanto daria? Foi sorte?' com ^BVSP e BTC-USD; só o resultado sai (ADR 0070)",
+        "Ibovespa pelo arquivo de índices da B3; bitcoin pelas corretoras da ADR 0045",
+    ),
+    CaminhoDoYahoo(
+        ("scripts/atualizar_series_macro.py",),
+        "séries macro yahoo-bvsp e yahoo-gspc no banco, só de uso interno (nunca exportadas)",
+        "Ibovespa pelo arquivo de índices da B3; S&P 500 desligado",
+    ),
+    CaminhoDoYahoo(
+        ("scripts/atualizar_padroes.py",),
+        "P/L e P/VP nos padrões setoriais (só com --com-precos; a trava tira da ficha)",
+        _BASE_PROPRIA,
+    ),
+)
+
+
+# Emenda 3 da ADR 0008 (18/10/2026): os usos em tela das fontes "a confirmar" e "não comercial", cada
+# um com a frase de citação. Desde a ADR 0102 a lista **não decide** mais o que pode aparecer (tudo
+# pode): ela registra onde cada fonte restrita aparece, a frase que a tela, o relatório
+# e o PDF escrevem (`citacoes_das_fontes`) e o substituto, para o dia em que uma fonte tiver de sair.
+USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
+    UsoSemCobranca(
+        "yahoo",
+        "todo preço do app: ficha da empresa (DY e múltiplos), padrões setoriais, gráficos, "
+        "backtest, comparação, carteira, Estúdio de PDF, API e 'Quanto daria?' (ADR 0070); "
+        "caminho a caminho em CAMINHOS_DO_YAHOO",
+        "base própria de preços pelo COTAHIST da B3 (ADR 0008, Emenda 6); preços dos EUA "
+        "desligados na 1ª cobrança (Emenda 4)",
+        "Preço da ação: Yahoo Finance (uso pessoal; mostrado com a fonte citada enquanto o "
+        "TickerLab não cobra, ADR 0008 Emenda 3)",
+    ),
+    UsoSemCobranca(
+        "pgfn",
+        "dívida ativa da União na ficha da empresa",
+        "resposta escrita da PGFN sobre a licença (pedido LAI da ADR 0086); sem ela, desligar",
+        "Dívida ativa: dados abertos da PGFN (sem licença escrita; mostrado e vendido com a fonte "
+        "citada, risco assumido, ADR 0122)",
+    ),
+    UsoSemCobranca(
+        "assessoria",
+        "negócios de M&A do middle market (só fatos: partes, tipo e data; ADR 0082)",
+        "parecer jurídico sobre os posts das assessorias (ADR 0060); sem ele, desligar",
+        "Negócios de M&A: posts públicos das assessorias, só os fatos (ADR 0082; mostrado com a "
+        "fonte citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "bcb-sgs-189",
+        "IGP-M nas séries macro e nos deflatores",
+        "autorização da FGV IBRE para uso comercial; sem ela, IPCA (IBGE, domínio público)",
+        "IGP-M: FGV IBRE, repassado pelo SGS do Banco Central (uso comercial pede autorização "
+        "da FGV; mostrado com a fonte citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "wayback",
+        "data das cópias dos posts de M&A (`ma_datas`) e das páginas guardadas",
+        "data do próprio coletor (a primeira coleta nossa) ou a data declarada no post",
+        "Datas: cópias do Internet Archive (Wayback Machine; só pesquisa; mostrado com a fonte "
+        "citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "conab",
+        "safra de café (levantamentos da CONAB como publicados, termômetro e bienalidade) na área "
+        "de commodities, na API e nos PDFs",
+        "nenhum oficial: a CONAB é a única fonte da safra brasileira; sem ela, só o balanço do "
+        "USDA PSD (`usda_psd_cafe`)",
+        "Safra de café: CONAB, Acompanhamento da Safra Brasileira de Café, com a data do "
+        "levantamento em cada número (CC BY-ND 3.0; mostrado com a fonte citada, ADR 0102)",
+    ),
+    UsoSemCobranca(
+        "b3",
+        "preço de fim de dia (COTAHIST), arquivos públicos e carteiras dos índices da B3, onde a "
+        "base os mostrar (dossiê, ficha, DY e múltiplos de mercado, PDFs)",
+        "licença da B3 (contrato, nível 1); sem ela ou se a B3 reclamar, voltar `FONTES_FORA_DOS_USOS` "
+        "ao estado da Emenda 4 e tirar o dado da B3 das telas",
+        "Fonte: B3, com a data de cada número (sem licença da B3; mostrado com a fonte citada, "
+        "risco assumido, ADR 0008 Emenda 6)",
+    ),
+)
+# Emenda 2 da ADR 0008, item 6: em toda tela ou PDF com dado da IEX
+FRASE_DA_IEX = (
+    "Data provided for free by IEX. By accessing or using IEX Historical Data, "
+    "you agree to the IEX Historical Data Terms of Use."
+)
+# crédito no formato que a FAO pede (CC BY 4.0), em toda tela, API ou PDF com dado do FAOSTAT
+FRASE_DA_FAO = (
+    "FAO, FAOSTAT: Crops and livestock products (CC BY 4.0; acessado na data de cada número; "
+    "a FAO não endossa o TickerLab)"
+)
+# crédito que a Receita pede (CC BY), em toda tela, API ou PDF com dado do CNPJ aberto
+FRASE_DA_RECEITA = "Fonte: Receita Federal, dados abertos do CNPJ (CC BY)"
+# condição da resposta do Ministério da Saúde (Fala.BR, 05/11/2026): citar a fonte e não sugerir endosso
+FRASE_DO_DATASUS = (
+    "Fonte: Ministério da Saúde, DATASUS (dados abertos, com a competência de cada número; o "
+    "Ministério da Saúde não endossa o TickerLab)"
+)
+FRASES_DAS_FONTES = {
+    "iex": FRASE_DA_IEX,
+    "faostat": FRASE_DA_FAO,
+    "rfb-cnpj": FRASE_DA_RECEITA,
+    "ms": FRASE_DO_DATASUS,
+}
+# a fonte vendida por risco assumido (ADR 0122) continua levando a frase de citação dela
+_VENDAVEIS_COM_LICENCA_ESCRITA = (VENDAVEL_ODBL, VENDAVEL_COM_ATRIBUICAO)
+
+
+class LicencaNaoPermiteError(Exception):
+    """Treinar, rotular, exportar ou mostrar com fonte fora dos usos (`FONTES_FORA_DOS_USOS`, hoje vazia),
+    exportar e mostrar com fonte só interna (`FONTES_SO_INTERNAS`) ou treinar com fonte sem treino
+    (`FONTES_SEM_TREINO`)."""
+
+
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
 HTTP_NAO_ENCONTRADO = 404
 
 
 def licenca_da_fonte(fonte: str) -> str:
-    """A licença da fonte ("rfb-cnpj") ou da sua família ("cvm-ipe" → a da CVM)."""
-    return LICENCAS.get(fonte) or LICENCAS.get(
-        fonte.split("-", 1)[0], SEM_LICENCA_CONHECIDA
-    )
+    """A licença da fonte ("rfb-cnpj"), do prefixo mais longo que tem linha ("tesouro-br-divida-dotacao" →
+    a de "tesouro-br-divida") ou da família ("cvm-ipe" → a da CVM).
+
+    O prefixo vem antes da família porque "tesouro" é a chave do Tesouro dos EUA: sem ele, os pacotes
+    `tesouro-br-divida-*` levavam a licença americana (achado da linha 592, 03/11/2026).
+    """
+    partes = fonte.split("-")
+    for corte in range(len(partes), 0, -1):
+        licenca = LICENCAS.get("-".join(partes[:corte]))
+        if licenca:
+            return licenca
+    return SEM_LICENCA_CONHECIDA
+
+
+# o parêntese que cita uma decisão (ADR 0075, PR 2) ou um arquivo do repositório (base/regras.py)
+PARENTESES_INTERNO = re.compile(
+    r"\s*\((?:(?:ADR|PR|passo|série|modelo)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)",
+    re.IGNORECASE,
+)
+
+
+def licenca_do_site(licenca: str) -> str:
+    """O texto da licença que o público lê (site, ficha, relatório): sem a decisão interna entre
+    parênteses ("(ADR 0082)") e sem a pendência "perguntar a licença", que `LICENCAS` guarda para a
+    equipe."""
+    sem_decisao = PARENTESES_INTERNO.sub("", licenca)
+    return sem_decisao.replace("perguntar a licença", "reuso em consulta")
 
 
 def revenda_da_fonte(fonte: str) -> str:
-    """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, nunca."""
-    return REVENDA.get(fonte) or REVENDA.get(fonte.split("-", 1)[0], SO_USO_INTERNO)
+    """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, a confirmar
+    (fonte nova sem resposta escrita: ADR 0008, Emenda 1)."""
+    partes = fonte.split("-")
+    # a ANM tem subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem"), linha 657
+    subfamilia = REVENDA.get("-".join(partes[:2])) if partes[0] == "anm" else None
+    return REVENDA.get(fonte) or subfamilia or REVENDA.get(partes[0], A_CONFIRMAR)
+
+
+def marca_da_fonte(fonte: str) -> Marca:
+    """A marca da fonte ("yahoo-bvsp" → não comercial; "cvm-ipe" → vendável)."""
+    return MARCA_DA_REVENDA[revenda_da_fonte(fonte)]
+
+
+def marca_mais_restrita(marcas: Iterable[Marca]) -> Marca:
+    """A marca de uma tabela feita de várias fontes; sem nenhuma fonte conhecida, a confirmar."""
+    ordem = list(Marca)
+    return max(marcas, key=ordem.index, default=Marca.A_CONFIRMAR)
+
+
+def _familia(fonte: str) -> str:
+    return fonte.split("-", 1)[0]
+
+
+def uso_sem_cobranca(fonte: str) -> UsoSemCobranca | None:
+    """A entrada de `USOS_SEM_COBRANCA` da fonte ("yahoo-bvsp" → a do Yahoo), se houver."""
+    por_fonte = {uso.fonte: uso for uso in USOS_SEM_COBRANCA}
+    return por_fonte.get(fonte) or por_fonte.get(_familia(fonte))
+
+
+def fora_dos_usos(fonte: str) -> bool:
+    """A fonte ("b3-negocios") ou a família dela está fora dos quatro usos? Hoje nenhuma (a B3 saiu em 22/10/2026)."""
+    return _familia(fonte) in FONTES_FORA_DOS_USOS
+
+
+def so_interna(fonte: str) -> bool:
+    """A fonte ("datajud-processos") ou a família dela só entra em treinar e rotular?"""
+    return _familia(fonte) in FONTES_SO_INTERNAS
+
+
+def sem_treino(fonte: str) -> bool:
+    """A fonte ("ms-cnes") ou a família dela fica fora do treino de modelo (`FONTES_SEM_TREINO`)?"""
+    return _familia(fonte) in FONTES_SEM_TREINO
+
+
+def _barrada(uso: str, fonte: str) -> bool:
+    return (
+        fora_dos_usos(fonte)
+        or (so_interna(fonte) and uso not in USOS_INTERNOS)
+        or (sem_treino(fonte) and uso == TREINAR)
+    )
+
+
+def _conferir_uso(uso: str) -> None:
+    if uso not in USOS:
+        raise ValueError(f"uso {uso!r} não existe; use um de {USOS}")
+
+
+def pode_usar(uso: str, fonte: str) -> bool:
+    """A fonte pode `uso` ("treinar", "rotular", "exportar" ou "mostrar")? `exigir_licenca` sem o erro.
+
+    Pela ADR 0102 a marca não decide: toda fonte entra em qualquer uso, com a fonte e a data citadas
+    (`citacoes_das_fontes`); só entra em `FONTES_FORA_DOS_USOS` o que uma decisão nova barrar, e as
+    `FONTES_SO_INTERNAS` só treinam e rotulam; as `FONTES_SEM_TREINO` fazem tudo menos treinar. Vale para o app
+    (tela, PDF, newsletter e a v1 interna); a API externa tem outra regra, que nega por padrão:
+    `src/portao_externo.py` (ADR 0108).
+    """
+    _conferir_uso(uso)
+    return not _barrada(uso, fonte)
+
+
+def exigir_licenca(uso: str, fontes: Iterable[str], onde: str = "") -> None:
+    """Erro (não aviso) se alguma fonte está fora de `uso` ("treinar", "rotular", "exportar" ou "mostrar").
+
+    Barra o que está em `FONTES_FORA_DOS_USOS` (hoje nada) e, fora de treinar e rotular, as
+    `FONTES_SO_INTERNAS` e, no treino, as `FONTES_SEM_TREINO`; a marca é informação (ADR 0102). `onde` (a tabela, o script, o relatório) entra
+    na mensagem.
+    """
+    _conferir_uso(uso)
+    # As três conferências percorrem as fontes: um gerador se esgotaria na primeira e as outras
+    # passariam vazias (a trava de treino não pegaria).
+    fontes = list(fontes)
+    alvo = f" ({onde})" if onde else ""
+    internas = sorted({f for f in fontes if so_interna(f) and _barrada(uso, f)})
+    if internas:
+        raise LicencaNaoPermiteError(
+            f"{uso}{alvo} com fonte de só uso interno: {', '.join(internas)} (`FONTES_SO_INTERNAS`; "
+            "só treinar e rotular)"
+        )
+    sem_modelo = sorted({f for f in fontes if sem_treino(f) and _barrada(uso, f)})
+    if sem_modelo:
+        raise LicencaNaoPermiteError(
+            f"{uso}{alvo} com fonte sem treino: {', '.join(sem_modelo)} (`FONTES_SEM_TREINO`; "
+            "a resposta escrita não cobre o treino de modelos)"
+        )
+    barradas = sorted({f for f in fontes if fora_dos_usos(f)})
+    if barradas:
+        lista = ", ".join(f"{f} ({marca_da_fonte(f)})" for f in barradas)
+        raise LicencaNaoPermiteError(
+            f"{uso}{alvo} com fonte fora dos usos: {lista} (lista `FONTES_FORA_DOS_USOS` da "
+            "ADR 0008; Emenda 6 liberou a B3 em 22/10/2026)"
+        )
+
+
+def citacoes_das_fontes(fontes: Iterable[str]) -> list[str]:
+    """As frases que a tela, o relatório e o PDF escrevem pelas fontes restritas que usam, sem
+    repetir: a citação de cada uso sem cobrança (Emenda 3), também quando a fonte é vendida por risco
+    assumido (ADR 0122), e a frase da IEX (Emenda 2, item 6), da FAO, da Receita e do DATASUS."""
+    citacoes: dict[str, None] = {}
+    for fonte in fontes:
+        frase = FRASES_DAS_FONTES.get(fonte) or FRASES_DAS_FONTES.get(_familia(fonte))
+        uso = uso_sem_cobranca(fonte)
+        if frase:
+            citacoes[frase] = None
+        elif (
+            uso is not None
+            and revenda_da_fonte(fonte) not in _VENDAVEIS_COM_LICENCA_ESCRITA
+        ):
+            citacoes[uso.citacao] = None
+    return list(citacoes)
 
 
 def registrar(
@@ -197,6 +1266,71 @@ def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
     return acervo.ler_original(caminho) if caminho else None
 
 
+class Versao(NamedTuple):
+    baixado_em: datetime  # a primeira vez que este conteúdo foi baixado
+    sha256: str
+    caminho: str  # no acervo (`acervo.ler_original`)
+
+
+def versoes_guardadas(conexao: sa.Connection, url: str) -> list[Versao]:
+    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo, sem ler os
+    arquivos (o CDA tem ~25 MB por versão: quem usa lê um de cada vez)."""
+    linhas = conexao.execute(
+        sa.select(coletas.c.baixado_em, coletas.c.sha256, coletas.c.caminho_do_original)
+        .where(
+            coletas.c.url == url[:LIMITE_DA_URL],
+            coletas.c.situacao == "ok",
+            coletas.c.caminho_do_original.is_not(None),
+        )
+        .order_by(coletas.c.baixado_em)
+    ).all()
+    vistos: set[str] = set()
+    versoes = []
+    for baixado_em, sha256, caminho in linhas:
+        if sha256 not in vistos:
+            vistos.add(sha256)
+            versoes.append(Versao(baixado_em, sha256, caminho))
+    return versoes
+
+
+def ausente_antes(conexao: sa.Connection, url: str, quando: datetime) -> bool:
+    """Alguma coleta antes de `quando` achou `url` sem arquivo ("nao_encontrado", o 404 da fonte)?"""
+    return (
+        conexao.execute(
+            sa.select(coletas.c.id)
+            .where(
+                coletas.c.url == url[:LIMITE_DA_URL],
+                coletas.c.situacao == "nao_encontrado",
+                coletas.c.baixado_em < quando,
+            )
+            .limit(1)
+        ).first()
+        is not None
+    )
+
+
+def coletas_guardadas(
+    conexao: sa.Connection, url: str
+) -> list[tuple[datetime, str, bytes]]:
+    """Cada conteúdo diferente de `url` guardado no acervo (quando foi baixado pela primeira vez, o
+    SHA-256 e o conteúdo), do mais antigo ao mais novo (revisões das fontes setoriais, série 4, PR 5)."""
+    guardadas = []
+    for baixado_em, sha256, caminho in versoes_guardadas(conexao, url):
+        conteudo = acervo.ler_original(caminho)
+        if conteudo is not None:
+            guardadas.append((baixado_em, sha256, conteudo))
+    return guardadas
+
+
+def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
+    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo.
+
+    A fonte que regrava o arquivo no mesmo endereço (o FCA da CVM só publica a versão mais nova de cada
+    formulário) deixa no acervo as baixadas anteriores, que continuam valendo como versões.
+    """
+    return [conteudo for _, _, conteudo in coletas_guardadas(conexao, url)]
+
+
 def ultimas(
     conexao: sa.Connection, fonte: str | None = None, quantas: int = 50
 ) -> list[sa.Row]:
@@ -256,7 +1390,7 @@ def com_registro[Conteudo: (bytes, bytes | None)](
 
 
 def buscar_com_registro(
-    fonte: str, buscar: Callable[..., requests.Response] = requests.get
+    fonte: str, buscar: Callable[..., requests.Response] = rede.get_com_agente
 ) -> Callable[..., requests.Response]:
     """Como `com_registro`, para os leitores que recebem um `buscar` no lugar do `requests.get`
     (Banco Central, Tesouro dos EUA): registra o endereço completo (com a consulta) e a resposta."""

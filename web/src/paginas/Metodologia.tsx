@@ -1,25 +1,26 @@
 // Fontes e metodologia: de onde vêm os números, como são calculados e o que eles não dizem.
 // Era `metodologia()` de scripts/gerar_site.py.
 import { metodologia, qualidade } from "../conteudo";
+import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
-import { EMAIL_DE_CONTATO, URL_DO_CODIGO } from "../site/textos";
+import { EMAIL_DE_CONTATO, REGRAS_DA_BASE, URL_DO_CODIGO } from "../site/textos";
 
 export const DADOS = {
   caminho: "/metodologia.html",
   titulo: "Fontes e metodologia",
   descricao:
-    "De onde vêm os dados do TickerLab, como os números são calculados, as notas e os padrões " +
-    "do relatório de empresa, os limites dos testes de estratégia e a privacidade.",
+    "De onde vêm os dados do TickerLab, como a base guarda o que era público em cada data, como os números são calculados e os limites dos testes.",
   atual: "/metodologia.html",
 };
 
 // as seções, na ordem da página (o teste confere que nenhum h2 fica de fora)
 const SUMARIO = [
+  { id: ancora("Como era na data e linhagem"), texto: "Como era na data e linhagem" },
   { id: ancora("Dados de mercado"), texto: "Dados de mercado" },
   { id: ancora("Como os números são calculados"), texto: "Como os números são calculados" },
   { id: ancora("Testes de estratégia (backtest)"), texto: "Testes de estratégia (backtest)" },
   { id: ancora("Research: eventos e fundamentos"), texto: "Research: eventos e fundamentos" },
-  { id: qualidade.ancora, texto: "Qualidade dos dados" },
+  { id: qualidade.ancora, texto: "Qualidade do lucro" },
   { id: metodologia.ancora, texto: "Relatório da empresa" },
   { id: ancora("Carteira B3"), texto: "Carteira B3" },
   { id: ancora("Relatórios em PDF"), texto: "Relatórios em PDF" },
@@ -27,11 +28,44 @@ const SUMARIO = [
   { id: ancora("O que o TickerLab não é"), texto: "O que o TickerLab não é" },
 ];
 
+/** As duas regras da base que a Metodologia explica primeiro, com os mesmos textos da página inicial. */
+function ComoEraNaDataELinhagem() {
+  const [dataComoEra, linhagem] = REGRAS_DA_BASE;
+  return (
+    <>
+      <h2 id={ancora("Como era na data e linhagem")}>Como era na data e linhagem</h2>
+      <ul>
+        <li>
+          <strong>{dataComoEra[0]}:</strong> {dataComoEra[1]}
+        </li>
+        <li>
+          <strong>{linhagem[0]}:</strong> {linhagem[1]}
+        </li>
+        <li>
+          <strong>Original com hash:</strong> o arquivo da fonte é guardado como veio, com o
+          SHA-256 dele. Uma correção da fonte entra como versão nova; a anterior continua lá.
+        </li>
+      </ul>
+      <ComoFoiCalculado>
+        <p>
+          Cada versão de um dado guarda a data em que ficou público e a data em que o TickerLab
+          o viu. Uma consulta “em tal dia” usa só as versões que já eram públicas e já tinham
+          sido vistas até ali. Cortar o futuro não muda o passado, e há teste automático que
+          confere isso.
+        </p>
+      </ComoFoiCalculado>
+      <p>
+        Tabela por tabela, com a fonte e a licença de cada uma: <a href="/dados.html">página Dados</a>.
+      </p>
+    </>
+  );
+}
+
 /** O selo "dado em conferência" e as regras fixas, com os mesmos textos do app. */
 function QualidadeDosDados() {
   return (
     <>
-      <h2 id={qualidade.ancora}>Qualidade dos dados: o selo "{qualidade.titulo_do_selo}"</h2>
+      <h2 id={qualidade.ancora}>Qualidade do lucro: o selo "{qualidade.titulo_do_selo}"</h2>
       <p>{qualidade.explicacao}</p>
       <p>
         Todo dia, depois da coleta, regras fixas conferem as demonstrações da CVM (DFP e ITR). Na
@@ -84,13 +118,15 @@ function PadroesNotasEFormulas() {
         ))}
       </ul>
       <h3>Fórmulas</h3>
-      <ul>
-        {metodologia.formulas.map((f) => (
-          <li key={f.nome}>
-            <strong>{f.nome}:</strong> <code>{f.formula}</code>. {f.leitura}
-          </li>
-        ))}
-      </ul>
+      <ComoFoiCalculado resumo="Como foi calculado: as fórmulas">
+        <ul>
+          {metodologia.formulas.map((f) => (
+            <li key={f.nome}>
+              <strong>{f.nome}:</strong> <code>{f.formula}</code>. {f.leitura}
+            </li>
+          ))}
+        </ul>
+      </ComoFoiCalculado>
     </>
   );
 }
@@ -103,6 +139,8 @@ export function Metodologia() {
       subtitulo="De onde vêm os números, como são calculados e o que eles não dizem."
       sumario={SUMARIO}
     >
+      <ComoEraNaDataELinhagem />
+
       <h2 id="dados-de-mercado">Dados de mercado</h2>
       <ul>
         <li>
@@ -122,17 +160,25 @@ export function Metodologia() {
       </ul>
 
       <h2 id="como-os-numeros-sao-calculados">Como os números são calculados</h2>
-      <ul>
-        <li>Retornos diários a partir do fechamento; ano de 252 pregões.</li>
-        <li>Volatilidade: desvio padrão dos retornos diários, anualizado.</li>
-        <li>
-          Índice de Sharpe: retorno anualizado menos a taxa livre de risco, dividido pela
-          volatilidade anual.
-        </li>
-        <li>Maior queda (drawdown): a pior queda a partir de um topo anterior.</li>
-      </ul>
+      <p>Quatro medidas aparecem em toda a análise de preços; a conta de cada uma está recolhida.</p>
+      <ComoFoiCalculado resumo="Como foi calculado: retorno, volatilidade, Sharpe e maior queda">
+        <ul>
+          <li>Retornos diários a partir do fechamento; ano de 252 pregões.</li>
+          <li>Volatilidade: desvio padrão dos retornos diários, anualizado.</li>
+          <li>
+            Índice de Sharpe: retorno anualizado menos a taxa livre de risco, dividido pela
+            volatilidade anual.
+          </li>
+          <li>Maior queda (drawdown): a pior queda a partir de um topo anterior.</li>
+        </ul>
+      </ComoFoiCalculado>
 
       <h2 id="testes-de-estrategia-backtest">Testes de estratégia (backtest)</h2>
+      <p>
+        O teste de uma regra no passado vale pouco sem os limites. Os quatro cuidados estão abaixo,
+        com o que a simulação não faz.
+      </p>
+      <ComoFoiCalculado resumo="Como foi calculado: o teste de estratégia">
       <ul>
         <li>
           <strong>Sem olhar o futuro:</strong> a decisão tomada com o fechamento de um dia só vale
@@ -151,6 +197,7 @@ export function Metodologia() {
           ativos escolhidos hoje carregam viés de sobrevivência.
         </li>
       </ul>
+      </ComoFoiCalculado>
 
       <h2 id="research-eventos-e-fundamentos">Research: eventos e fundamentos</h2>
       <ul>

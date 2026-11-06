@@ -13,6 +13,7 @@ ficha "Foi sorte?" de um backtest ou o PDF original de um relatório da bibliote
 """
 
 import hashlib
+import json
 import math
 import re
 import secrets
@@ -44,9 +45,8 @@ CUSTO_MAXIMO = 0.2  # 20% por operação: acima disso não é um custo, é um er
 TENTATIVAS_MAXIMAS = 10_000_000
 
 
-ENDERECO_DA_PAGINA = (
-    "https://app.tickerlab.com.br/novo/c"  # a página pública (web/, PR 3)
-)
+# a página pública do app novo (web/src/app/telas/Compartilhado.tsx), na raiz desde o plano de 18/10
+ENDERECO_DA_PAGINA = "https://app.tickerlab.com.br/c"
 NOMES_DOS_TIPOS = {"ficha": 'Ficha "Foi sorte?"', "pdf": "PDF original"}
 O_QUE_FICA_VISIVEL = {
     "ficha": "Quem tiver o link vê esta ficha como está agora, com a data de hoje, sem o seu nome "
@@ -191,6 +191,17 @@ def congelar_ficha(
         "fonte": fonte,
         "calculada_em": agora.isoformat(),
     }
+
+
+def impressao_da_ficha(congelada: dict) -> str:
+    """O que identifica a ficha mostrada, sem a hora do cálculo: muda se o ativo ou a regra mudam.
+
+    A tela compara a impressão da ficha de agora com a do link criado: o link de outra ficha não
+    fica embaixo da ficha nova (achado 2a da auditoria do Codex, 17/10/2026).
+    """
+    sem_hora = {k: v for k, v in congelada.items() if k != "calculada_em"}
+    texto = json.dumps(sem_hora, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(texto.encode()).hexdigest()
 
 
 def _recusar(motivo: str) -> ValueError:

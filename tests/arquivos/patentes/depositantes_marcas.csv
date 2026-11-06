@@ -1,0 +1,4 @@
+codigo_interno,numero_inpi,nome,cnpj_cpf_titular,tipo_pfpj_titular,nome_representante_legal,cnpj_cpf_representante_legal,tipo_pfpj_representante_legal,estado,pais
+20,800000001,MARCA EMPRESA LTDA,11222333000181,PESSOA JURÍDICA,REPRESENTANTE EXEMPLO,***555666***,PESSOA FÍSICA,SP,BR
+21,800000002,FULANO EXEMPLO DA SILVA,****999****,PESSOA FÍSICA,,,,MG,BR
+22,800000003,FOREIGN BRAND INC,,NÃO RESIDENTE,ADVOGADO EXEMPLO,,PESSOA FÍSICA,,US

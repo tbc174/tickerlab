@@ -1,7 +1,10 @@
 """O conteúdo que o site em React lê (web/conteudo/*.json) vem do Python e não pode ficar velho."""
 
 import json
+import re
 
+from base import vitrine
+from base.contrato import PASTA
 from scripts import exportar_conteudo as exp
 from src import marca, modulos, planos
 
@@ -60,15 +63,28 @@ def test_marca_leva_as_cores_do_site_nos_dois_temas():
     ]
 
 
-def test_site_leva_os_estilos_do_relatorio_e_os_exemplos():
-    from src import catalogo
+def test_site_leva_os_estilos_do_relatorio():
     from src.estilos_pdf import ESTILOS
 
     site = exp.conteudo()["site"]
     assert [e["chave"] for e in site["estilos_do_relatorio"]] == list(ESTILOS)
     assert site["estilos_do_relatorio"][0]["nome"] == next(iter(ESTILOS.values())).nome
-    assert [e["simbolo"] for e in site["exemplos"]] == list(catalogo.EXEMPLOS)
-    assert site["exemplos"][0]["rotulo"] == catalogo.rotulo("PETR4.SA").split(" · ")[0]
+
+
+def test_ativos_levam_o_catalogo_inteiro_da_busca_com_o_rotulo_do_python():
+    """A busca do campo Ativo do app novo usa o mesmo catálogo e o mesmo rótulo da versão clássica."""
+    from src import catalogo
+
+    ativos = exp.conteudo()["ativos"]
+    assert [a["simbolo"] for a in ativos] == catalogo.simbolos()
+    petrobras = next(a for a in ativos if a["simbolo"] == "PETR4.SA")
+    assert petrobras == {
+        "simbolo": "PETR4.SA",
+        "codigo": "PETR4",
+        "nome": catalogo.carregar().loc["PETR4.SA", "nome"],
+        "tipo": "Ação",
+        "rotulo": catalogo.rotulo("PETR4.SA"),
+    }
 
 
 def test_planos_levam_os_nomes_para_a_tabela_e_a_cobranca():
@@ -121,6 +137,39 @@ def test_paginas_levam_o_contrato_para_a_tela_nova():
     assert [e["nome"] for e in visao["entradas"]] == [e.nome for e in original.entradas]
     assert visao["entradas"][1]["opcoes"] == list(original.entradas[1].opcoes)
     assert exportadas["inicio"]["contrato"] is None
+
+
+def test_paginas_e_areas_levam_a_area_para_o_menu_do_app_novo():
+    """O menu por áreas do React (ADR 0096) lê a área de cada página e a ordem de cada área daqui."""
+    from src.paginas import AREAS, POR_CHAVE, paginas_da_area
+
+    exportadas = {
+        p["chave"]: p for p in json.loads(exp.em_json(exp.conteudo()["paginas"]))
+    }
+    for chave, p in exportadas.items():
+        assert p["area"] == POR_CHAVE[chave].area
+    areas = json.loads(exp.em_json(exp.conteudo()["app"]))["areas"]
+    assert [a["chave"] for a in areas] == list(AREAS)
+    ativo = next(a for a in areas if a["chave"] == "ativo")
+    assert (
+        ativo["rotulo"] == AREAS["ativo"].rotulo
+        and ativo["frase"] == AREAS["ativo"].frase
+    )
+    assert ativo["paginas"] == [p.chave for p in paginas_da_area("ativo")]
+    conta = next(a for a in areas if a["chave"] == "conta")
+    assert (
+        "admin" not in conta["paginas"]
+    )  # o catálogo da administração fica fora do bundle
+
+
+def test_paginas_de_admin_ficam_fora_do_bundle_publico():
+    """O catálogo da administração não vai no JavaScript público (a tela é só do Streamlit)."""
+    from src.paginas import PAGINAS
+
+    assert any(p.somente_admin for p in PAGINAS)  # o teste só vale enquanto existir uma
+    texto = exp.em_json(exp.conteudo()["paginas"])
+    assert '"somente_admin": true' not in texto
+    assert "registro de ações de administrador" not in texto
 
 
 def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
@@ -246,14 +295,58 @@ def test_painel_vai_para_o_site_no_exemplo_json():
     assert exp.conteudo()["exemplo"] == exp.painel_de_exemplo()
 
 
-def test_site_leva_a_fita_e_o_total_de_ativos_da_busca():
-    """A fita da página inicial: código do catálogo e um nome curto, nenhum preço (ADR 0065)."""
-    from src import catalogo
+def test_site_nao_leva_mais_a_fita_nem_os_exemplos_da_busca():
+    """A página inicial fala com quem analisa (PR 5 do site): a fita e a busca de ativos saíram."""
+    assert set(exp.conteudo()["site"]) == {"estilos_do_relatorio"}
 
-    site = exp.conteudo()["site"]
-    tabela = catalogo.carregar()
-    assert site["total_de_ativos"] == len(tabela)
-    assert len(site["fita"]) >= 10
-    for item in site["fita"]:
-        assert set(item) == {"simbolo", "codigo", "nome"}
-        assert item["codigo"] == tabela.loc[item["simbolo"], "codigo"]
+
+def test_catalogo_do_site_vem_do_contrato():
+    """A página Dados conta as tabelas e as fontes do `catalogo.json`; nada é digitado à mão."""
+    contrato = vitrine.catalogo_publico(
+        json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    )["tabelas"]
+    catalogo = exp.conteudo()["catalogo"]
+
+    assert catalogo["totais"]["tabelas"] == len(contrato) == len(catalogo["tabelas"])
+    assert catalogo["totais"]["fontes"] == len(
+        {t["licenca"] for t in contrato.values()}
+    )
+    assert catalogo["totais"]["fontes"] == len(catalogo["fontes"])
+    assert catalogo["totais"]["modulos"] == len(catalogo["modulos"])
+    assert sum(m["tabelas"] for m in catalogo["modulos"]) == len(contrato)
+    assert catalogo["totais"]["fontes_em_consulta"] == sum(
+        f["situacao"] == "em consulta" for f in catalogo["fontes"]
+    )
+    for linha in catalogo["tabelas"]:
+        assert linha["modulo"] and linha["frase"] and linha["orgao"]
+        assert linha["frequencia"] and linha["historico_desde"]
+        assert linha["situacao"] in ("licenciada", "em consulta")
+
+
+def test_catalogo_do_site_nao_leva_conversa_interna():
+    """Servidor, ADR, código e passo de PR ficam no repositório; o site aberto lê só o resultado."""
+    catalogo = exp.conteudo()["catalogo"]
+    for t in catalogo["tabelas"]:
+        for texto in (t["frase"], t["atraso"] or "", t["frequencia"]):
+            assert not re.search(
+                r"servidor|VPS|arquivista|`|\bADR\b|\w+/\w+\.py", texto
+            ), texto
+        assert t["frase"].endswith((".", "…"))
+        assert t["frase"].count("(") == t["frase"].count(")"), t["frase"]
+    for f in catalogo["fontes"]:
+        assert "revenda" not in f
+        assert not re.search(
+            r"\bADR\b|perguntar|\bML\b", f["licenca"] + f["repasse"]
+        ), f
+
+
+def test_catalogo_leva_as_fontes_por_familia_com_os_totais():
+    """A página Dados conta as famílias em uso e guardadas do registro; nenhum número é digitado."""
+    catalogo = exp.conteudo()["catalogo"]
+    familias = catalogo["familias_de_fontes"]
+    assert catalogo["totais"]["familias"] == len(familias) >= 100
+    assert catalogo["totais"]["familias_em_uso"] == sum(
+        f["uso"] == "em_uso" for f in familias
+    )
+    for f in familias:
+        assert not re.search(r"servidor|VPS|arquivista|\bADR\b|\w+/\w+\.py", str(f)), f

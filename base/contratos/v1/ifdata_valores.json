@@ -1,0 +1,72 @@
+{
+  "tabela": "ifdata_valores",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "data_base": {
+      "descricao": "Fim do trimestre a que o número se refere",
+      "unidade": "data (dia)"
+    },
+    "tipo_instituicao": {
+      "descricao": "1 prudencial, 2 financeiro, 3 individual",
+      "unidade": "número inteiro"
+    },
+    "cod_inst": {
+      "descricao": "Código da instituição no BC (raiz do CNPJ ou C00... do conglomerado)",
+      "unidade": "texto"
+    },
+    "relatorio": {
+      "descricao": "Número do relatório (1 Resumo, 2 Ativo, 3 Passivo...)",
+      "unidade": "número inteiro"
+    },
+    "nome_relatorio": {
+      "descricao": "Nome do relatório",
+      "unidade": "texto"
+    },
+    "grupo": {
+      "descricao": "Grupo da linha, quando o relatório tem",
+      "unidade": "texto"
+    },
+    "conta": {
+      "descricao": "Código da conta no relatório",
+      "unidade": "texto"
+    },
+    "coluna": {
+      "descricao": "Nome da coluna, com a letra da nota (\"Disponibilidades (a)\")",
+      "unidade": "texto"
+    },
+    "descricao": {
+      "descricao": "Fórmula da coluna nas contas do Cosif",
+      "unidade": "texto"
+    },
+    "saldo": {
+      "descricao": "Valor da linha",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (como era na data)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "data_base",
+    "tipo_instituicao",
+    "cod_inst",
+    "relatorio",
+    "grupo",
+    "conta",
+    "coluna"
+  ],
+  "datas": {
+    "aconteceu_em": "data_base",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Trimestral (data-base em mar, jun, set e dez)",
+  "atraso": "Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira versão `<AAAAMM>.v<N>`"
+}

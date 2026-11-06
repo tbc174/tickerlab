@@ -1,0 +1,643 @@
+[
+ {
+  "conta": "juros.montante",
+  "argumentos": [
+   10000,
+   0.1,
+   10,
+   true
+  ],
+  "campo": "",
+  "esperado": 25937.42,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): M = C(1+i)^n; 1,1^10 = 2,5937424601"
+ },
+ {
+  "conta": "juros.montante",
+  "argumentos": [
+   10000,
+   0.0083333333333333,
+   120,
+   false
+  ],
+  "campo": "",
+  "esperado": 20000.0,
+  "tolerancia": 0.01,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): M = C(1+i·n); 10% ao ano ÷ 12 = 0,8333% ao mês, 120 meses: 10.000 + 10.000 de juros"
+ },
+ {
+  "conta": "juros.montante",
+  "argumentos": [
+   1000,
+   0.01,
+   12,
+   false
+  ],
+  "campo": "",
+  "esperado": 1120.0,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): M = C(1+i·n) = 1.000 × (1 + 0,01 × 12)"
+ },
+ {
+  "conta": "juros.montante",
+  "argumentos": [
+   1000,
+   0.01,
+   12,
+   true
+  ],
+  "campo": "",
+  "esperado": 1126.83,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): 1,01^12 = 1,126825"
+ },
+ {
+  "conta": "juros.taxa_por_mes",
+  "argumentos": [
+   0.1,
+   "ano",
+   false
+  ],
+  "campo": "",
+  "esperado": 0.008333333333333333,
+  "tolerancia": 1e-12,
+  "origem": "Taxa proporcional (juros simples): 10% ao ano ÷ 12 meses"
+ },
+ {
+  "conta": "juros.taxa_por_mes",
+  "argumentos": [
+   0.1,
+   "ano",
+   true
+  ],
+  "campo": "",
+  "esperado": 0.007974140428903764,
+  "tolerancia": 1e-09,
+  "origem": "Taxa equivalente (juros compostos): 1,10^(1/12) − 1"
+ },
+ {
+  "conta": "juros.taxa_por_mes",
+  "argumentos": [
+   0.01,
+   "mes",
+   false
+  ],
+  "campo": "",
+  "esperado": 0.01,
+  "tolerancia": 1e-12,
+  "origem": "Taxa já ao mês: não muda"
+ },
+ {
+  "conta": "juros.taxa_equivalente",
+  "argumentos": [
+   0.01,
+   1,
+   12
+  ],
+  "campo": "",
+  "esperado": 0.126825,
+  "tolerancia": 1e-06,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): (1,01)^12 − 1 = 12,6825% ao ano"
+ },
+ {
+  "conta": "juros.em_reais_de_hoje",
+  "argumentos": [
+   25937.42,
+   0.04,
+   120
+  ],
+  "campo": "",
+  "esperado": 17522.39,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): VP = VF / (1+inflação)^(meses/12) = 25.937,42 / 1,04^10"
+ },
+ {
+  "conta": "juros.liquido_de_ir",
+  "argumentos": [
+   10000,
+   10500,
+   6
+  ],
+  "campo": "",
+  "esperado": 10400.0,
+  "tolerancia": 0.005,
+  "origem": "Tabela regressiva do IR (Lei 11.033/2004, art. 1º): 6 meses ≈ 183 dias, faixa de 181 a 360 dias = 20% sobre o ganho de 500"
+ },
+ {
+  "conta": "juros.liquido_de_ir",
+  "argumentos": [
+   10000,
+   11000,
+   24
+  ],
+  "campo": "",
+  "esperado": 10850.0,
+  "tolerancia": 0.005,
+  "origem": "Tabela regressiva do IR (Lei 11.033/2004): 24 meses = 730 dias, acima de 720 dias = 15% sobre o ganho de 1.000"
+ },
+ {
+  "conta": "aportes.valor_futuro",
+  "argumentos": [
+   0,
+   500,
+   0.01,
+   12,
+   false
+  ],
+  "campo": "",
+  "esperado": 6341.25,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): FV = PMT·((1+i)^n − 1)/i, aportes no fim do mês"
+ },
+ {
+  "conta": "aportes.valor_futuro",
+  "argumentos": [
+   0,
+   500,
+   0.01,
+   12,
+   true
+  ],
+  "campo": "",
+  "esperado": 6404.66,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): série antecipada: a série postecipada × (1+i)"
+ },
+ {
+  "conta": "aportes.valor_futuro",
+  "argumentos": [
+   1000,
+   0,
+   0.01,
+   12,
+   false
+  ],
+  "campo": "",
+  "esperado": 1126.83,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): só o valor inicial: 1.000 × 1,01^12"
+ },
+ {
+  "conta": "aportes.aporte_para_meta",
+  "argumentos": [
+   100000,
+   0,
+   0.01,
+   120,
+   false
+  ],
+  "campo": "",
+  "esperado": 434.71,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): PMT = FV·i / ((1+i)^n − 1), com FV = 100.000, i = 1%, n = 120"
+ },
+ {
+  "conta": "aportes.meses_ate_meta",
+  "argumentos": [
+   100000,
+   0,
+   500,
+   0.01,
+   false
+  ],
+  "campo": "",
+  "esperado": 111,
+  "tolerancia": 0,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): n = ln(1 + FV·i/PMT) / ln(1+i) = 110,41, arredondado para cima"
+ },
+ {
+  "conta": "custos.custo_da_taxa",
+  "argumentos": [
+   100000,
+   0.08,
+   0.01,
+   20
+  ],
+  "campo": "sem_taxa",
+  "esperado": 466095.71,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): sem taxa: 100.000 × 1,08^20"
+ },
+ {
+  "conta": "custos.custo_da_taxa",
+  "argumentos": [
+   100000,
+   0.08,
+   0.01,
+   20
+  ],
+  "campo": "com_taxa",
+  "esperado": 381222.92,
+  "tolerancia": 0.005,
+  "origem": "Matemática financeira de livro-texto (Assaf Neto, Matemática Financeira e suas Aplicações): com taxa de 1% ao ano sobre o saldo: 100.000 × (1,08 × 0,99)^20"
+ },
+ {
+  "conta": "custos.alta_para_recuperar",
+  "argumentos": [
+   -0.5
+  ],
+  "campo": "",
+  "esperado": 1.0,
+  "tolerancia": 1e-12,
+  "origem": "Quem perde 50% precisa ganhar 100%: 1/(1−0,5) − 1"
+ },
+ {
+  "conta": "custos.alta_para_recuperar",
+  "argumentos": [
+   -0.2
+  ],
+  "campo": "",
+  "esperado": 0.25,
+  "tolerancia": 1e-12,
+  "origem": "Quem perde 20% precisa ganhar 25%: 1/(1−0,2) − 1"
+ },
+ {
+  "conta": "financiamento.parcela_price",
+  "argumentos": [
+   100000,
+   0.01,
+   12
+  ],
+  "campo": "",
+  "esperado": 8884.88,
+  "tolerancia": 0.005,
+  "origem": "Tabela Price: PMT = PV·i / (1 − (1+i)^−n); R$ 100.000 em 12 meses a 1% ao mês"
+ },
+ {
+  "conta": "financiamento.tabela",
+  "argumentos": [
+   "sac",
+   120000,
+   0.01,
+   12
+  ],
+  "campo": "0.parcela",
+  "esperado": 11200.0,
+  "tolerancia": 0.005,
+  "origem": "SAC: amortização de 120.000/12 = 10.000 mais juros de 1% sobre 120.000"
+ },
+ {
+  "conta": "financiamento.tabela",
+  "argumentos": [
+   "sac",
+   120000,
+   0.01,
+   12
+  ],
+  "campo": "11.parcela",
+  "esperado": 10100.0,
+  "tolerancia": 0.005,
+  "origem": "SAC: última parcela = 10.000 + 1% sobre o saldo de 10.000"
+ },
+ {
+  "conta": "financiamento.tabela",
+  "argumentos": [
+   "price",
+   100000,
+   0.01,
+   12
+  ],
+  "campo": "0.juros",
+  "esperado": 1000.0,
+  "tolerancia": 0.005,
+  "origem": "Price: juros do 1º mês = 1% sobre o saldo de 100.000"
+ },
+ {
+  "conta": "taxas.juro_real",
+  "argumentos": [
+   0.1,
+   0.05
+  ],
+  "campo": "",
+  "esperado": 0.047619047619,
+  "tolerancia": 1e-09,
+  "origem": "Equação de Fisher: (1+nominal)/(1+inflação) − 1 = 1,10/1,05 − 1"
+ },
+ {
+  "conta": "taxas.taxa_nominal",
+  "argumentos": [
+   0.05,
+   0.04
+  ],
+  "campo": "",
+  "esperado": 0.092,
+  "tolerancia": 1e-12,
+  "origem": "Equação de Fisher: 1,05 × 1,04 − 1"
+ },
+ {
+  "conta": "moedas.converter",
+  "argumentos": [
+   100,
+   "USD",
+   "BRL",
+   {
+    "USD": 5.0
+   }
+  ],
+  "campo": "",
+  "esperado": 500.0,
+  "tolerancia": 0.005,
+  "origem": "Câmbio direto: 100 dólares × R$ 5,00"
+ },
+ {
+  "conta": "moedas.converter",
+  "argumentos": [
+   100,
+   "USD",
+   "EUR",
+   {
+    "USD": 5.0,
+    "EUR": 6.0
+   }
+  ],
+  "campo": "",
+  "esperado": 83.33,
+  "tolerancia": 0.005,
+  "origem": "Câmbio cruzado pelo real: 100 × 5,00 ÷ 6,00"
+ },
+ {
+  "conta": "inflacao.corrigir",
+  "argumentos": [
+   1000,
+   "2024-11",
+   "2025-02",
+   [
+    [
+     "2024-11",
+     0.0039
+    ],
+    [
+     "2024-12",
+     0.0052
+    ],
+    [
+     "2025-01",
+     0.0016
+    ],
+    [
+     "2025-02",
+     0.0131
+    ]
+   ]
+  ],
+  "campo": "valor_corrigido",
+  "esperado": 1023.98,
+  "tolerancia": 0.005,
+  "origem": "Índice acumulado = produto de (1 + IPCA mensal) (Calculadora do Cidadão do BC): 1,0039 × 1,0052 × 1,0016 × 1,0131"
+ },
+ {
+  "conta": "preco_medio.calcular",
+  "argumentos": [
+   [
+    {
+     "tipo": "compra",
+     "quantidade": 100,
+     "preco": 10
+    },
+    {
+     "tipo": "compra",
+     "quantidade": 100,
+     "preco": 20
+    }
+   ]
+  ],
+  "campo": "1.preco_medio",
+  "esperado": 15.0,
+  "tolerancia": 1e-09,
+  "origem": "Preço médio = custo total ÷ quantidade = (1.000 + 2.000) ÷ 200"
+ },
+ {
+  "conta": "preco_medio.calcular",
+  "argumentos": [
+   [
+    {
+     "tipo": "compra",
+     "quantidade": 100,
+     "preco": 10,
+     "custos": 10
+    }
+   ]
+  ],
+  "campo": "0.preco_medio",
+  "esperado": 10.1,
+  "tolerancia": 1e-09,
+  "origem": "Receita Federal: corretagem e taxas somam ao custo de aquisição: (1.000 + 10) ÷ 100"
+ },
+ {
+  "conta": "preco_medio.calcular",
+  "argumentos": [
+   [
+    {
+     "tipo": "compra",
+     "quantidade": 100,
+     "preco": 10
+    },
+    {
+     "tipo": "compra",
+     "quantidade": 100,
+     "preco": 20
+    },
+    {
+     "tipo": "venda",
+     "quantidade": 50,
+     "preco": 25
+    }
+   ]
+  ],
+  "campo": "2.resultado",
+  "esperado": 500.0,
+  "tolerancia": 0.005,
+  "origem": "Resultado da venda = 50 × (25 − 15 de preço médio); a venda não muda o preço médio"
+ },
+ {
+  "conta": "darf.apurar_mes",
+  "argumentos": [
+   {
+    "vendas_comuns": 30000,
+    "resultado_comum": 1000,
+    "resultado_day_trade": 0,
+    "irrf_comum": 0,
+    "irrf_day_trade": 0
+   },
+   {}
+  ],
+  "campo": "darf",
+  "esperado": 150.0,
+  "tolerancia": 0.005,
+  "origem": "Lei 11.033/2004 e IN RFB 1.585/2015: 15% sobre o lucro das operações comuns (vendas acima de R$ 20.000 no mês)"
+ },
+ {
+  "conta": "darf.apurar_mes",
+  "argumentos": [
+   {
+    "vendas_comuns": 15000,
+    "resultado_comum": 1000,
+    "resultado_day_trade": 0,
+    "irrf_comum": 0,
+    "irrf_day_trade": 0
+   },
+   {}
+  ],
+  "campo": "darf",
+  "esperado": 0.0,
+  "tolerancia": 0.005,
+  "origem": "Isenção de ações: vendas comuns de até R$ 20.000 no mês (Lei 11.033/2004, art. 3º)"
+ },
+ {
+  "conta": "darf.apurar_mes",
+  "argumentos": [
+   {
+    "vendas_comuns": 0,
+    "resultado_comum": 0,
+    "resultado_day_trade": 1000,
+    "irrf_comum": 0,
+    "irrf_day_trade": 0
+   },
+   {}
+  ],
+  "campo": "darf",
+  "esperado": 200.0,
+  "tolerancia": 0.005,
+  "origem": "Day trade: 20% sobre o lucro (IN RFB 1.585/2015)"
+ },
+ {
+  "conta": "darf.apurar_mes",
+  "argumentos": [
+   {
+    "vendas_comuns": 30000,
+    "resultado_comum": 1000,
+    "resultado_day_trade": 0,
+    "irrf_comum": 0,
+    "irrf_day_trade": 0
+   },
+   {
+    "prejuizo_comum": 500
+   }
+  ],
+  "campo": "darf",
+  "esperado": 75.0,
+  "tolerancia": 0.005,
+  "origem": "Prejuízo de meses anteriores compensa o lucro: base 1.000 − 500 = 500, 15% = 75"
+ },
+ {
+  "conta": "darf.apurar_mes",
+  "argumentos": [
+   {
+    "vendas_comuns": 30000,
+    "resultado_comum": 50,
+    "resultado_day_trade": 0,
+    "irrf_comum": 0,
+    "irrf_day_trade": 0
+   },
+   {}
+  ],
+  "campo": "darf",
+  "esperado": 0.0,
+  "tolerancia": 0.005,
+  "origem": "DARF abaixo de R$ 10 não se paga (Lei 10.522/2002, art. 67): 15% de 50 = 7,50"
+ },
+ {
+  "conta": "darf.vencimento",
+  "argumentos": [
+   2026,
+   12
+  ],
+  "campo": "",
+  "esperado": "último dia útil de janeiro de 2027",
+  "tolerancia": 0,
+  "origem": "O DARF vence no último dia útil do mês seguinte (a virada do ano passa para janeiro)"
+ },
+ {
+  "conta": "viver_de_renda.renda_da_regra_dos_4",
+  "argumentos": [
+   1000000
+  ],
+  "campo": "",
+  "esperado": 3333.33,
+  "tolerancia": 0.005,
+  "origem": "Regra dos 4% (Estudo Trinity, Bengen 1994): 4% de 1.000.000 por ano ÷ 12"
+ },
+ {
+  "conta": "viver_de_renda.patrimonio_necessario",
+  "argumentos": [
+   5000,
+   0.06,
+   null
+  ],
+  "campo": "",
+  "esperado": 1032210.7,
+  "tolerancia": 0.01,
+  "origem": "Perpetuidade antecipada: renda·(1+i)/i, com i = 1,06^(1/12) − 1 = 0,48676% ao mês"
+ },
+ {
+  "conta": "renda_fixa.comparar",
+  "argumentos": [
+   10000,
+   365,
+   [
+    0.1
+   ],
+   1.0,
+   0.9,
+   0.005
+  ],
+  "campo": "0.liquido",
+  "esperado": 10825.0,
+  "tolerancia": 0.005,
+  "origem": "CDB a 100% do CDI com CDI de 10% ao ano por 365 dias: bruto 11.000; IR de 17,5% (361 a 720 dias) sobre 1.000"
+ },
+ {
+  "conta": "renda_fixa.comparar",
+  "argumentos": [
+   10000,
+   365,
+   [
+    0.1
+   ],
+   1.0,
+   0.9,
+   0.005
+  ],
+  "campo": "1.liquido",
+  "esperado": 10895.67,
+  "tolerancia": 0.005,
+  "origem": "LCI a 90% do CDI, isenta de IR: 10.000 × (1 + 0,9 × diária)^252"
+ },
+ {
+  "conta": "renda_fixa.comparar",
+  "argumentos": [
+   10000,
+   365,
+   [
+    0.1
+   ],
+   1.0,
+   0.9,
+   0.005
+  ],
+  "campo": "3.liquido",
+  "esperado": 10616.78,
+  "tolerancia": 0.005,
+  "origem": "Poupança: 0,5% a cada aniversário mensal (365 dias = 12 aniversários): 10.000 × 1,005^12"
+ },
+ {
+  "conta": "sorte_em_serie.erfc",
+  "argumentos": [
+   0.5
+  ],
+  "campo": "",
+  "esperado": 0.4795001222,
+  "tolerancia": 1e-06,
+  "origem": "Tabela da função erro complementar (Abramowitz e Stegun, tabela 7.1): erfc(0,5)"
+ },
+ {
+  "conta": "sorte_em_serie.erfc",
+  "argumentos": [
+   1.0
+  ],
+  "campo": "",
+  "esperado": 0.1572992071,
+  "tolerancia": 1e-06,
+  "origem": "Tabela da função erro complementar (Abramowitz e Stegun, tabela 7.1): erfc(1)"
+ }
+]

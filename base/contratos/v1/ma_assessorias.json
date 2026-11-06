@@ -1,0 +1,98 @@
+{
+  "tabela": "ma_assessorias",
+  "modulo": "ma",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "assessoria": {
+      "descricao": "Quem postou (`igc`)",
+      "unidade": "texto"
+    },
+    "url": {
+      "descricao": "Endereço da página do negócio",
+      "unidade": "texto"
+    },
+    "sha256": {
+      "descricao": "SHA-256 da página guardada no acervo",
+      "unidade": "texto"
+    },
+    "coletado_em": {
+      "descricao": "Quando o arquivista baixou a página",
+      "unidade": "data e hora (UTC)"
+    },
+    "tipo": {
+      "descricao": "Código da taxonomia de M&A (AQ_CONTROLE, AQ_MINORITARIA, FUSAO, JV, VENDA_ATIVO, PE_VC, DCM) ou desconhecido",
+      "unidade": "texto"
+    },
+    "regra": {
+      "descricao": "Qual regra do título deu o tipo (divida, fusao, jv, venda_de_ativo, minoritaria, majoritaria, participacao, financiamento, rodada, aquisicao); vazio se nenhuma",
+      "unidade": "texto"
+    },
+    "alvo": {
+      "descricao": "Empresa(s) comprada(s) ou que recebeu o investimento, separadas por `; `",
+      "unidade": "texto"
+    },
+    "comprador": {
+      "descricao": "Quem comprou ou investiu",
+      "unidade": "texto"
+    },
+    "vendedor": {
+      "descricao": "Quem vendeu, quando não é a própria alvo (controladora, dono do ativo)",
+      "unidade": "texto"
+    },
+    "outras_partes": {
+      "descricao": "Empresas da página sem papel dito no título (controladora de quem compra)",
+      "unidade": "texto"
+    },
+    "cliente": {
+      "descricao": "Empresa(s) que a assessoria diz ter assessorado (campo da página)",
+      "unidade": "texto"
+    },
+    "contraparte": {
+      "descricao": "A(s) outra(s) empresa(s) do negócio, como a página lista",
+      "unidade": "texto"
+    },
+    "papeis_por": {
+      "descricao": "titulo (os papéis vieram do título) ou pagina (algum nome não aparece no título e o lado veio do campo da página); vazio sem empresas",
+      "unidade": "texto"
+    },
+    "lado_da_assessoria": {
+      "descricao": "venda, compra, captacao (dívida ou empréstimo) ou parte (fusão, JV)",
+      "unidade": "texto"
+    },
+    "setor": {
+      "descricao": "Setor da alvo; vazio enquanto a página não diz (vem do CNPJ no passo 3)",
+      "unidade": "texto"
+    },
+    "paises": {
+      "descricao": "Países das partes (ISO 3166-1, separados por `;`), sem dizer de quem",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "Valor que o título escreve (quase sempre vazio; nas emissões de dívida, o volume)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "moeda": {
+      "descricao": "BRL ou USD, a do valor",
+      "unidade": "texto"
+    },
+    "conferencia": {
+      "descricao": "assessoria (fonte única: declarado por quem assessorou) ou confirmado",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "assessoria",
+    "url"
+  ],
+  "datas": {
+    "coletado_em": "coletado_em"
+  },
+  "historico_desde": "2026-10-16",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+  "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+  "pessoa": false,
+  "frequencia": "Semanal (a coleta é aos domingos); versão nova só quando uma página muda",
+  "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a base só sabe a data da nossa coleta"
+}

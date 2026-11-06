@@ -1,8 +1,42 @@
 // O CSS das ferramentas grátis do site (calculadoras), por cima de estilo.ts e estilo-v2.ts. Usa só as
 // variáveis da marca (--fundo, --superficie, --linha, --azul...), então segue o tema claro e o escuro.
+import { marca } from "./conteudo";
+
+// as cores das séries dos gráficos (marca.json, `series`), uma lista por tema; validadas para
+// daltonismo e contraste sobre o fundo e a superfície do site (ferramentas v2, 14/10/2026)
+const series = (cores: string[]) => cores.map((cor, i) => `--serie-${i + 1}: ${cor};`).join(" ");
 
 export function cssFerramentas(): string {
   return `/* --- ferramentas grátis (plano de 14/10/2026) ---------------------------------------------- */
+:root { ${series(marca.paleta_clara.series)} }
+:root[data-tema="escuro"] { ${series(marca.paleta_escura.series)} }
+.so-para-leitor { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* gráficos das ferramentas (web/src/graficos/) */
+.grafico-ferramenta { position: relative; margin: 1.25rem 0 0; min-width: 0; }
+.grafico-ferramenta svg { display: block; max-width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.grafico-ferramenta svg:focus-visible { outline: 2px solid var(--azul); outline-offset: 4px; border-radius: 6px; }
+.grafico-ferramenta text { fill: var(--apagado); font: 500 12px "Manrope", sans-serif; font-variant-numeric: tabular-nums; }
+.grafico-ferramenta-grade line { stroke: var(--linha); stroke-width: 1; }
+.grafico-ferramenta-zero { stroke: var(--linha-forte); stroke-width: 1; }
+.grafico-ferramenta-linha { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.grafico-ferramenta-area { opacity: .16; }
+.grafico-ferramenta-ponta, .grafico-ferramenta-mira circle { stroke: var(--fundo); stroke-width: 2; }
+.grafico-ferramenta-referencia line { stroke: var(--texto); stroke-width: 1; opacity: .55; }
+.grafico-ferramenta .grafico-ferramenta-referencia text { fill: var(--texto); font-weight: 700; }
+.ferramenta-destaque { margin: 1rem 0 0; padding: .75rem .9rem; border-radius: 10px; border-left: 3px solid var(--azul);
+  background: color-mix(in srgb, var(--azul) 8%, transparent); font-size: .92rem; }
+.grafico-ferramenta-mira line { stroke: var(--linha-forte); stroke-width: 1; }
+.grafico-ferramenta .grafico-ferramenta-nome { fill: var(--texto); font-weight: 600; font-size: 13px; }
+.grafico-ferramenta .grafico-ferramenta-valor { fill: var(--texto); font-weight: 700; font-size: 13px; }
+.grafico-ferramenta-dica { position: absolute; top: 0; transform: translateX(-50%); display: grid; gap: .15rem;
+  padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--linha-forte); background: var(--destaque);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--sombra) 60%, transparent); font-size: .82rem; white-space: nowrap;
+  pointer-events: none; font-variant-numeric: tabular-nums; }
+.grafico-ferramenta-dica i, .grafico-ferramenta-legenda i { display: inline-block; width: .7rem; height: .7rem;
+  border-radius: 3px; margin-right: .4rem; vertical-align: -.05rem; }
+.grafico-ferramenta-legenda { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .5rem 0 0; padding: 0;
+  list-style: none; font-size: .85rem; color: var(--apagado); }
 .ferramenta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start;
   padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--linha); border-radius: var(--raio);
   background: var(--superficie); box-shadow: 0 12px 40px color-mix(in srgb, var(--sombra) 35%, transparent); }
@@ -18,6 +52,21 @@ export function cssFerramentas(): string {
 .ferramenta input[type="text"] { flex: 1; font-variant-numeric: tabular-nums; }
 .ferramenta input[type="text"]:focus, .ferramenta select:focus { border-color: var(--azul); outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul) 35%, transparent); }
+/* deslizante desenhado aqui: o nativo tem trilho branco no tema escuro; --p (0 a 1) vem do campo */
+.ferramenta-deslizante { --bolinha: 18px; width: 100%; height: 1.5rem; margin: .2rem 0 0; background: transparent; cursor: pointer;
+  -webkit-appearance: none; appearance: none; }
+.ferramenta-deslizante::-webkit-slider-runnable-track { height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--azul) calc(var(--bolinha) / 2 + var(--p, 0) * (100% - var(--bolinha))), var(--linha-forte) 0); }
+.ferramenta-deslizante::-moz-range-track { height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--azul) calc(var(--bolinha) / 2 + var(--p, 0) * (100% - var(--bolinha))), var(--linha-forte) 0); }
+.ferramenta-deslizante::-webkit-slider-thumb { -webkit-appearance: none; width: var(--bolinha); height: var(--bolinha); margin-top: -6px;
+  border-radius: 50%; background: var(--azul); border: 3px solid var(--destaque); box-shadow: 0 1px 4px var(--sombra); }
+.ferramenta-deslizante::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--azul);
+  border: 3px solid var(--destaque); box-shadow: 0 1px 4px var(--sombra); }
+.ferramenta-atalhos { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .3rem; }
+.ferramenta-atalhos button { padding: .25rem .65rem; border-radius: 999px; border: 1px solid var(--linha-forte);
+  background: var(--fundo); color: var(--texto); font: 600 .8rem "Manrope", sans-serif; cursor: pointer; }
+.ferramenta-atalhos button:hover, .ferramenta-atalhos button:focus-visible { border-color: var(--azul); color: var(--azul-texto); }
 .ferramenta-alternativas { display: flex; flex-wrap: wrap; gap: .4rem .9rem; }
 .ferramenta-alternativas legend { width: 100%; margin-bottom: .35rem; }
 .ferramenta-alternativas label { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
@@ -43,11 +92,6 @@ export function cssFerramentas(): string {
 .ferramenta-nome { font-size: 1.12rem; }
 .ferramenta-rotulo { font-weight: 700; font-size: .92rem; }
 .ferramenta-bloco + .ferramenta-bloco { margin-top: 2.5rem; }
-.ferramenta-grafico { margin: 1.25rem 0 0; }
-.ferramenta-grafico svg { width: 100%; height: auto; display: block; }
-.ferramenta-grafico-base { stroke: var(--linha-forte); stroke-width: 1; stroke-dasharray: 4 4; }
-.ferramenta-grafico figcaption { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin-top: .5rem; font-size: .85rem; }
-.ferramenta-grafico figcaption i { display: inline-block; width: .9rem; height: .2rem; border-radius: 2px; vertical-align: middle; }
 .ferramenta-anteriores { display: grid; gap: 1rem; padding: .8rem 1rem; border: 1px dashed var(--linha-forte); border-radius: 10px; }
 .ferramenta-anteriores summary { cursor: pointer; font-weight: 700; color: var(--azul-texto); }
 .ferramenta-depois { margin-top: 1.25rem; }
@@ -56,12 +100,54 @@ export function cssFerramentas(): string {
 .ferramenta-velho { color: var(--atencao); }
 .ferramenta-comparacao { font-variant-numeric: tabular-nums; }
 .ferramenta-comparacao td { text-align: right; }
+.vitrine-grupo + .vitrine-grupo { padding-top: 0; }
+.continue-a-conta h2 { margin: 0 0 .75rem; font-size: 1.15rem; }
+.continue-a-conta ul { list-style: none; padding: 0; margin: 0 0 1.25rem; display: grid; gap: .6rem; }
+.vitrine-grupo > p { margin: .25rem 0 1.25rem; }
+.cartao-de-ferramenta .previa { display: block; width: 100%; height: 3.5rem; margin-bottom: .75rem; }
+.ferramenta-numeros + .ferramenta-rolagem { margin-top: 1rem; }
+.ferramenta-compartilhar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
+.ferramenta-compartilhar [role="status"] { font-size: .85rem; }
+.ferramenta-link-manual { display: grid; gap: .25rem; width: 100%; font-size: .85rem; }
+.ferramenta-link-manual input { width: 100%; padding: .5rem .6rem; border-radius: 8px; border: 1px solid var(--linha-forte);
+  background: var(--fundo); color: var(--texto); font: 500 .85rem "JetBrains Mono", monospace; }
+/* com gráfico embaixo, o resultado não gruda (passaria por cima do gráfico ao rolar) */
+.ferramenta:has(> .ferramenta-largo) > .ferramenta-resultado { position: static; }
+.ferramenta-largo { grid-column: 1 / -1; min-width: 0; border-top: 1px solid var(--linha); padding-top: .25rem; }
+.ferramenta-interruptor { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: .92rem; cursor: pointer; }
+.ferramenta-interruptor input { width: 1.1rem; height: 1.1rem; accent-color: var(--azul); }
+.ferramenta-cenario-b { display: grid; gap: .75rem; margin: 0; padding: .9rem 1rem; border: 1px dashed var(--linha-forte);
+  border-radius: 10px; }
+.ferramenta-cenario-b legend { padding: 0 .35rem; font-weight: 700; font-size: .88rem; color: var(--apagado); }
+.ferramenta-notas { margin: 1rem 0 0; padding-left: 1.1rem; font-size: .85rem; display: grid; gap: .35rem; }
+.ferramenta-largo .ferramenta-rolagem { margin-top: 1rem; }
+.ferramenta-largo .ferramenta-comparacao { width: 100%; }
+.ferramenta-inverter { justify-self: start; }
+/* DARF do ano: a grade rola de lado dentro dela, sem empurrar a página */
+.ferramenta-rolagem { overflow-x: auto; max-width: 100%; }
+.darf-do-ano table { font-size: .88rem; font-variant-numeric: tabular-nums; border-collapse: collapse; }
+.darf-do-ano th, .darf-do-ano td { padding: .3rem .4rem; white-space: nowrap; text-align: right; vertical-align: middle; }
+.darf-do-ano th[scope="row"] { text-align: left; }
+.darf-do-ano td input { width: 7.5rem; padding: .4rem .5rem; border-radius: 8px; border: 1px solid var(--linha-forte);
+  background: var(--fundo); color: var(--texto); font: 500 .88rem "Manrope", sans-serif; text-align: right; }
+.darf-do-ano ~ .ferramenta-resultado { grid-column: 1 / -1; }
+.faixa-de-posicao-regua { stroke: var(--linha-forte); stroke-width: 6; stroke-linecap: round; }
+.faixa-de-posicao-marca { stroke: var(--apagado); stroke-width: 2; }
+.faixa-de-posicao-sua { fill: var(--serie-1); stroke: var(--fundo); stroke-width: 3; }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }
 @media (max-width: 860px) {
   .ferramenta, .ferramenta-explicacao { grid-template-columns: 1fr; }
   .ferramenta-resultado { position: static; }
+}
+@media (max-width: 480px) {
+  /* a comparação de três colunas cabe em 375px (os valores em reais não quebram a linha); a que
+     tiver mais colunas (a renda fixa) rola dentro da .ferramenta-rolagem, não a página */
+  .ferramenta-comparacao { font-size: .85rem; }
+  .ferramenta-comparacao th, .ferramenta-comparacao td { padding: .5rem .2rem; }
+  .ferramenta { padding: .75rem; }
+  .ferramenta-resultado { padding: 1rem .85rem; }
 }
 `;
 }

@@ -7,19 +7,27 @@ Mudar um limite é mudar um número neste arquivo.
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.banco.modelo import PLANOS, TIPOS_DE_RELATORIO
+from src.banco.modelo import PLANOS, PLANOS_DA_API, TIPOS_DE_RELATORIO
 
 PLANO_DO_MODO_LOCAL = "pro"  # sem contas (desenvolvimento) não há o que limitar
+
+# Pré-lançamento (Tiago, 17/10/2026; emenda à ADR 0029): toda conta usa os limites do Pro, de
+# graça, para as pessoas conhecerem o app inteiro. O plano guardado no banco não muda. Desligar
+# (False) no mesmo PR que liga a cobrança real e troca `ASSINATURA_SO_PARA_ADMINS`.
+TUDO_LIBERADO_NO_PRE_LANCAMENTO = True
 
 APRENDIZADO_DE_MAQUINA = "aprendizado_de_maquina"
 PARES = "pares"
 CARTEIRA_NO_RESEARCH = (
     "carteira_no_research"  # Research, etapa 5 (PRD, seção 15: no Pro)
 )
+# relatório da empresa: as seções da base de ML (auditor, ofertas, setor regulado, negócios), ADR 0076
+DOSSIE_DA_BASE = "dossie_da_base"
 NOMES_DOS_RECURSOS = {
     APRENDIZADO_DE_MAQUINA: "Aprendizado de máquina",
     PARES: "Pairs trading",
     CARTEIRA_NO_RESEARCH: "Carteira no Research",
+    DOSSIE_DA_BASE: "Dossiê da base",
 }
 
 
@@ -45,6 +53,13 @@ class Limites:
     pdfs_guardados: int = 10
     # links compartilhados ativos (onda 4): vencidos e revogados não contam
     links_ativos: int = 3
+    # sala de dados por operação (B-20, D6 do plano): Plus e Pro com os números cheios; o Gratuito
+    # tem os menores (decisão do Tiago, 22/10/2026). O tamanho de cada arquivo e as 300 páginas
+    # ficam em src/sala/arquivos.py: são regra de segurança, não de plano
+    operacoes_na_sala: int = 20
+    documentos_por_operacao: int = 100
+    bytes_por_operacao: int = 250 * 1024 * 1024
+    envios_por_hora: int = 30
 
 
 LIMITES_DOS_PLANOS = {
@@ -59,6 +74,9 @@ LIMITES_DOS_PLANOS = {
         ativos_com_parametros=0,
         watchlists=1,
         ativos_por_watchlist=10,
+        operacoes_na_sala=3,
+        documentos_por_operacao=30,
+        bytes_por_operacao=50 * 1024 * 1024,
     ),
     "plus": Limites(
         nome="Plus",
@@ -80,7 +98,9 @@ LIMITES_DOS_PLANOS = {
         simulacoes=None,
         favoritos=20,
         ativos_na_carteira=8,
-        recursos=frozenset({APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH}),
+        recursos=frozenset(
+            {APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH, DOSSIE_DA_BASE}
+        ),
         relatorios_por_dia=None,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
         ativos_com_parametros=50,
@@ -101,7 +121,13 @@ class LimiteDoPlanoError(ValueError):
 
 
 def limites_do(plano: str | None) -> Limites:
-    """Os limites do plano. Um plano desconhecido ou vazio vale como Gratuito (o mais restrito)."""
+    """Os limites que valem para quem está no plano (todas as travas do app passam por aqui).
+
+    No pré-lançamento, os do Pro para todo mundo. Depois, um plano desconhecido ou vazio vale
+    como Gratuito (o mais restrito). A tabela de comparação lê `LIMITES_DOS_PLANOS` direto.
+    """
+    if TUDO_LIBERADO_NO_PRE_LANCAMENTO:
+        return LIMITES_DOS_PLANOS["pro"]
     return LIMITES_DOS_PLANOS.get(plano or "", LIMITES_DOS_PLANOS["gratuito"])
 
 
@@ -132,10 +158,53 @@ def descrever_limite(limite: int | None) -> str:
     return "Ilimitadas" if limite is None else str(limite)
 
 
+# API externa (N7, ADR 0108): as quotas de cada organização. O plano da API é do contrato com a
+# organização, não da conta de uma pessoa, e o pré-lançamento não mexe nele (sem "tudo liberado").
+@dataclass(frozen=True)
+class LimitesDaApi:
+    nome: str
+    pedidos_por_minuto: int
+    pedidos_por_mes: int
+    linhas_por_resposta: int
+    chaves_ativas: int  # a antiga de uma rotação e as revogadas não contam
+
+
+PLANO_DA_API_MAIS_RESTRITO = "piloto"
+LIMITES_DA_API = {
+    "piloto": LimitesDaApi(
+        nome="Piloto",
+        pedidos_por_minuto=60,
+        pedidos_por_mes=10_000,
+        linhas_por_resposta=1_000,
+        chaves_ativas=3,
+    ),
+}
+# um plano da API novo no banco exige quotas aqui
+assert set(LIMITES_DA_API) == set(PLANOS_DA_API)
+
+
+def limites_da_api(plano_da_api: str | None) -> LimitesDaApi:
+    """As quotas da organização; um plano desconhecido ou vazio vale o mais restrito."""
+    return LIMITES_DA_API.get(
+        plano_da_api or "", LIMITES_DA_API[PLANO_DA_API_MAIS_RESTRITO]
+    )
+
+
 # a página de planos (o Streamlit e o app novo mostram as mesmas frases)
 AVISO_DO_MODO_DE_TESTE = (
     "Pagamento em modo de teste do Stripe: nenhum dinheiro real é cobrado."
 )
+AVISO_DO_PRE_LANCAMENTO = (
+    "Pré-lançamento: todas as contas usam tudo o que o Pro inclui, de graça, até a "
+    "cobrança começar. A tabela mostra o que cada plano vai incluir depois."
+)
+
+
+def aviso_da_pagina_de_planos() -> str:
+    """O aviso no pé da página de planos (o Streamlit e o app novo mostram o mesmo)."""
+    if TUDO_LIBERADO_NO_PRE_LANCAMENTO:
+        return f"{AVISO_DO_PRE_LANCAMENTO} {AVISO_DO_MODO_DE_TESTE}"
+    return AVISO_DO_MODO_DE_TESTE
 
 
 def texto_do_uso(usados: int | None, limite: int | None) -> str:
@@ -267,7 +336,7 @@ COM_COBRANCA = ("pro",)  # o Plus existe, mas a assinatura dele ainda não está
 
 def tabela_de_planos() -> list[dict[str, str]]:
     """Linhas da tabela de comparação mostrada na tela (uma coluna por plano)."""
-    planos = [limites_do(p) for p in PLANOS]
+    planos = [LIMITES_DOS_PLANOS[p] for p in PLANOS]
 
     def linha(recurso: str, valor) -> dict[str, str]:  # noqa: ANN001 (função de cada linha)
         return {"Recurso": recurso, **{l.nome: valor(l) for l in planos}}
@@ -290,6 +359,7 @@ def tabela_de_planos() -> list[dict[str, str]]:
         linha("Aprendizado de máquina", sim_nao(APRENDIZADO_DE_MAQUINA)),
         linha("Pairs trading", sim_nao(PARES)),
         linha("Carteira no Research", sim_nao(CARTEIRA_NO_RESEARCH)),
+        linha("Dossiê da base", sim_nao(DOSSIE_DA_BASE)),
         linha("Parâmetros só para um ativo", lambda l: str(l.ativos_com_parametros)),
         linha(
             "Listas do Research",

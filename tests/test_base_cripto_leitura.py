@@ -6,10 +6,13 @@ leitura e uma reorganização (o fim da cadeia trocado por outro).
 """
 
 from datetime import UTC, date, datetime
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
+from base.ancoragem import parquets_sem_manifesto
 from base.cripto import leitura
 from base.cripto.blocos import para_satoshis
 from base.cripto.leitura import (
@@ -235,3 +238,64 @@ def test_freio_de_disco_desliga_e_religa_a_rede_do_no(
     ler_ate_o_topo(no, tmp_path, AGORA)
 
     assert no.rede == esperado
+
+
+def test_toda_tabela_do_no_tem_manifesto_e_rodada_sem_novidade_nao_regrava(tmp_path):
+    no = NoFalso(_cadeia(30))
+    ler_ate_o_topo(no, tmp_path, AGORA, blocos_por_ponto=5)
+    no.blocos = _cadeia(35, letra="b", base=no.blocos[:22])  # reorganização
+    ler_ate_o_topo(no, tmp_path, AGORA, blocos_por_ponto=5)
+    assert parquets_sem_manifesto(tmp_path) == []
+    assert not list(
+        tmp_path.rglob("*.v1.parquet")
+    )  # na cripto a última vence: sem versão
+
+    antes = {p: p.stat().st_mtime_ns for p in tmp_path.rglob("*.parquet")}
+    ler_ate_o_topo(no, tmp_path, AGORA, blocos_por_ponto=5)  # nada novo no topo
+    assert {p: p.stat().st_mtime_ns for p in tmp_path.rglob("*.parquet")} == antes
+
+
+def _ponto_da_versao_1(pasta, altura: int, histograma: np.ndarray) -> Path:
+    # como o ponto era gravado antes do campo `regras`
+    arquivo = pasta / "pontos" / f"ponto-{altura:09d}.npz"
+    arquivo.parent.mkdir(parents=True)
+    np.savez_compressed(
+        arquivo,
+        altura=altura,
+        hash="a" * 64,
+        histograma=histograma,
+        horas=np.zeros(altura + 1, np.int64),
+        dia_aberto="",
+    )
+    return arquivo
+
+
+def test_ponto_da_versao_1_perde_os_600_satoshis_do_bloco_360603(tmp_path):
+    # regressão da C7 (linha 35 da fila): a regra antiga contava o OP_RETURN quebrado do bloco 360.603
+    histograma = np.zeros(400_000, np.int64)
+    histograma[360_603] = 1_479_981_719
+    arquivo = _ponto_da_versao_1(tmp_path, 399_999, histograma)
+
+    estado = leitura._carregar_ponto(arquivo)
+
+    assert estado.histograma[360_603] == 1_479_981_119
+
+
+def test_ponto_gravado_hoje_nao_perde_os_600_satoshis_de_novo(tmp_path):
+    estado = leitura.Estado(
+        altura=399_999,
+        hash="a" * 64,
+        histograma=np.full(400_000, 1_000, np.int64),
+        horas=np.zeros(400_000, np.int64),
+    )
+    leitura._salvar_ponto(tmp_path, estado)
+
+    carregado = leitura._carregar_ponto(next((tmp_path / "pontos").iterdir()))
+
+    assert carregado.histograma[360_603] == 1_000
+
+
+def test_ponto_da_versao_1_antes_do_bloco_360603_fica_como_esta(tmp_path):
+    arquivo = _ponto_da_versao_1(tmp_path, 1_000, np.full(1_001, 5, np.int64))
+
+    assert leitura._carregar_ponto(arquivo).histograma.sum() == 5 * 1_001

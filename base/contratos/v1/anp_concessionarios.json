@@ -1,0 +1,72 @@
+{
+  "tabela": "anp_concessionarios",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "bid": {
+      "descricao": "Código da rodada de licitação (BID) do contrato",
+      "unidade": "texto"
+    },
+    "numero_do_contrato": {
+      "descricao": "Número do contrato na ANP (a chave, com o CNPJ)",
+      "unidade": "texto"
+    },
+    "fase": {
+      "descricao": "Exploração, Avaliação ou Produção",
+      "unidade": "texto"
+    },
+    "nome_fantasia": {
+      "descricao": "Nome do campo ou bloco",
+      "unidade": "texto"
+    },
+    "bacia": {
+      "descricao": "Bacia sedimentar",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do sócio, com 14 dígitos (liga à empresa)",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome do sócio, sem o prefixo de operador",
+      "unidade": "texto"
+    },
+    "operador": {
+      "descricao": "Verdadeiro na linha de quem opera o contrato",
+      "unidade": "verdadeiro ou falso"
+    },
+    "participacao_pct": {
+      "descricao": "Participação do sócio no contrato, em pontos percentuais (0 a 100)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "ambiente": {
+      "descricao": "Terra ou Mar",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (o dia da coleta que o trouxe)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da coleta em que este valor apareceu (a mudança vale desde aí)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "numero_do_contrato",
+    "cnpj",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "disponivel_em",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a ANP regera o arquivo inteiro)",
+  "atraso": "Sem data própria: vale desde o dia da coleta do arquivista"
+}

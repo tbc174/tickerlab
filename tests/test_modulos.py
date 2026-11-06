@@ -34,6 +34,10 @@ def test_toda_funcionalidade_disponivel_aponta_para_uma_pagina_que_existe():
         ("Renda fixa com IR", "calculadora-de-renda-fixa.html"),
         ("Juro real e taxas", "calculadora-de-juro-real.html"),
         ("Correção pela inflação", "calculadora-de-correcao-pela-inflacao.html"),
+        ("Preço médio", "calculadora-de-preco-medio.html"),
+        ("Fundo ou CDB", "fundo-ou-cdb.html"),
+        ("Financiamento SAC ou Price", "simulador-de-financiamento.html"),
+        ("Quanto daria? Foi sorte?", "quanto-daria.html"),
     ],
 )
 def test_calculadoras_levam_as_paginas_do_site(nome, pagina):
@@ -56,12 +60,24 @@ def _funcionalidade(chave_do_modulo, nome):
 
 
 def test_o_que_ainda_nao_existe_nao_diz_que_existe():
-    """Do Mercado, as Cotações ainda são ideia futura."""
+    """Do Mercado, as Cotações ainda são ideia futura; do Research, o Calendário."""
     disponiveis = [
         f.nome for f in modulos.POR_CHAVE["mercado"].funcionalidades if f.disponivel
     ]
-    assert disponiveis == ["Juros e inflação", "Qualidade dos dados"]
-    assert not _funcionalidade("carteira", "Dividendos e custo médio").disponivel
+    assert disponiveis == [
+        "Juros e inflação",
+        "Preços de referência",
+        "Painel do café",
+        "Mapa do café",
+        "Simulador de trava do café",
+        "Qualidade do lucro",
+    ]
+    research = [
+        f.nome
+        for f in modulos.POR_CHAVE["research"].funcionalidades
+        if not f.disponivel
+    ]
+    assert research == ["Calendário"]
 
 
 def test_juros_e_inflacao_e_linha_do_tempo_levam_as_paginas_da_onda_2():
@@ -82,6 +98,7 @@ def test_cuidar_da_carteira_leva_a_carteira_da_b3_e_nao_a_de_estrategias():
         "A carteira no passado",
         "Raio-X",
         "Rebalanceamento",
+        "Dividendos e custo médio",
     )
     for nome in da_planilha:
         assert _funcionalidade("carteira", nome).pagina_do_app == "carteira-b3", nome
@@ -99,7 +116,7 @@ def test_comparacoes_em_pdf_levam_ao_report_studio():
 
 def test_qualidade_dos_dados_leva_a_uma_acao_da_b3_nos_fundamentos():
     """O selo "em conferência" aparece na tela Fundamentos, e só para documentos da CVM."""
-    f = _funcionalidade("mercado", "Qualidade dos dados")
+    f = _funcionalidade("mercado", "Qualidade do lucro")
     assert f.pagina_do_app == "fundamentos"
     assert f.ticker is not None and f.ticker.endswith(".SA")
 
@@ -113,3 +130,10 @@ def test_compartilhamento_seguro_disponivel_na_biblioteca():
     """Onda 4: o link da ficha (backtest) e do PDF (biblioteca do Report Studio)."""
     f = _funcionalidade("relatorios", "Compartilhamento seguro")
     assert f.disponivel and f.pagina_do_app == "relatorio"
+
+
+def test_trilhas_e_testes_de_robustez_levam_ao_que_ja_existe():
+    """As trilhas são os três caminhos guiados do Início; a robustez, a ficha do Backtest."""
+    assert _funcionalidade("aprender", "Trilhas").pagina_do_app == "inicio"
+    robustez = _funcionalidade("estrategias", "Testes de robustez")
+    assert robustez.pagina_do_app == "backtest"

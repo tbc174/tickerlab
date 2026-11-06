@@ -5,6 +5,8 @@ import json
 import numpy as np
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from src import graficos, marca
 from src.graficos import (
@@ -33,6 +35,7 @@ from src.graficos import (
     criar_mapa_de_calor_de_correlacao,
     criar_mapa_de_calor_de_parametros,
     criar_mapa_de_calor_mensal,
+    dias_sem_pregao,
 )
 from src.indicadores import (
     NOMES_DOS_MESES,
@@ -132,7 +135,7 @@ def test_sem_medias_nao_mostra_legenda():
 def test_grafico_de_preco_tem_botoes_de_periodo():
     figura = criar_grafico_preco(_ohlcv())
     rotulos = [b.label for b in figura.layout.xaxis.rangeselector.buttons]
-    assert rotulos == ["1M", "3M", "6M", "1A", "YTD", "Tudo"]
+    assert rotulos == ["1M", "3M", "6M", "1A", "2A", "5A", "10A", "YTD", "Tudo"]
 
 
 def test_zoom_do_preco_e_do_volume_andam_juntos():
@@ -155,6 +158,30 @@ def test_dia_util_esconde_o_fim_de_semana_mas_cripto_nao():
     assert not cripto.layout.xaxis.rangebreaks
 
 
+def test_feriado_sem_pregao_nao_deixa_buraco_entre_as_velas():
+    # 07/09 (Independência) e 12/10 (Aparecida) caem em dia útil, mas a B3 não abre: o eixo
+    # precisa pular esses dias como pula o fim de semana, senão sobra um vão vazio no gráfico
+    datas = pd.bdate_range("2026-09-01", "2026-10-16")
+    feriados = pd.to_datetime(["2026-09-07", "2026-10-12"])
+    dados = _ohlcv(len(datas)).set_axis(datas).drop(feriados)
+
+    figura = criar_grafico_preco(dados, tipo="velas")
+
+    escondidos = [q for q in figura.layout.xaxis.rangebreaks if q.values]
+    assert len(escondidos) == 1
+    assert pd.to_datetime(list(escondidos[0].values)).equals(pd.DatetimeIndex(feriados))
+
+
+def test_dias_sem_pregao_so_os_dias_uteis_que_faltam():
+    datas = pd.bdate_range("2026-12-21", "2026-12-31").drop(
+        pd.to_datetime(["2026-12-24", "2026-12-25", "2026-12-31"])
+    )
+    faltam = dias_sem_pregao(pd.DatetimeIndex(datas))
+    # 31/12 não entra: é o último dia pedido, mas fica depois do último pregão
+    assert list(faltam) == list(pd.to_datetime(["2026-12-24", "2026-12-25"]))
+    assert dias_sem_pregao(pd.DatetimeIndex([])).empty
+
+
 def test_tipo_de_grafico_invalido():
     with pytest.raises(ValueError, match="Tipo de gráfico"):
         criar_grafico_preco(_ohlcv(), tipo="barras")
@@ -173,7 +200,7 @@ def test_config_acompanha_a_opcao_de_zoom_com_a_roda_do_mouse():
 def test_graficos_de_risco_tem_botoes_de_periodo_e_linha_guia():
     fechamento = _fechamento()
     figura = criar_grafico_drawdown(calcular_drawdown(fechamento))
-    assert len(figura.layout.xaxis.rangeselector.buttons) == 6
+    assert len(figura.layout.xaxis.rangeselector.buttons) == 9
     assert figura.layout.xaxis.showspikes is True
 
 
@@ -232,6 +259,100 @@ def test_variacao_do_dia_usa_o_fechamento_anterior():
     vela = criar_grafico_preco(dados, tipo="velas").data[0]
     assert "—" in vela.hovertext[0]  # primeiro dia: sem dia anterior
     assert "+10,00%" in vela.hovertext[1]  # 11 contra o fechamento anterior de 10
+
+
+# --- Velas semanais, escala log e legenda -------------------------------------------
+
+
+def test_velas_semanais_juntam_os_dias_de_cada_semana():
+    datas = pd.to_datetime(["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-12"])
+    dados = pd.DataFrame(
+        {
+            "Open": [10.0, 11.0, 12.0, 20.0],
+            "High": [11.0, 15.0, 13.0, 21.0],
+            "Low": [9.0, 8.0, 11.0, 19.0],
+            "Close": [10.5, 12.0, 12.5, 20.5],
+            "Volume": [100, 200, 300, 400],
+        },
+        index=datas,
+    )
+    semanas = graficos.velas_semanais(dados)
+    # cada semana fica no último dia que teve pregão (aqui uma quarta), não num sábado
+    assert list(semanas.index) == list(pd.to_datetime(["2026-01-07", "2026-01-12"]))
+    primeira = semanas.iloc[0]
+    assert primeira["Open"] == 10.0  # abertura do 1º dia
+    assert primeira["High"] == 15.0  # maior máxima da semana
+    assert primeira["Low"] == 8.0  # menor mínima da semana
+    assert primeira["Close"] == 12.5  # fechamento do último dia
+    assert primeira["Volume"] == 600  # soma do volume
+
+
+def test_velas_de_mais_de_um_ano_viram_semanais():
+    dados = _ohlcv(graficos.LIMITE_DE_VELAS_DIARIAS + 40)
+    figura = criar_grafico_preco(dados, tipo="velas", janelas_medias=(20,))
+    semanas = graficos.velas_semanais(dados)
+    vela, volume = figura.data[0], figura.data[-1]
+    assert len(vela.x) == len(semanas)
+    assert len(volume.x) == len(semanas)  # o volume acompanha (soma da semana)
+    assert "Variação na semana" in vela.hovertext[1]
+    # a média continua sendo de dias, lida no último dia de cada semana
+    media = next(tr for tr in figura.data if tr.name == "MM 20")
+    diaria = dados["Close"].rolling(20).mean()
+    assert media.y[-1] == pytest.approx(diaria.loc[semanas.index[-1]])
+
+
+def test_velas_de_mais_de_5_anos_viram_mensais():
+    dados = _ohlcv(6 * 252)
+    figura = criar_grafico_preco(dados, tipo="velas", janelas_medias=(20,))
+    meses = graficos.velas_mensais(dados)
+    vela = figura.data[0]
+    assert len(vela.x) == len(meses)
+    assert "Variação no mês" in vela.hovertext[1]
+    primeiro_mes = dados[dados.index.to_period("M") == dados.index[0].to_period("M")]
+    assert meses.iloc[0]["High"] == primeiro_mes["High"].max()
+    assert meses.index[0] == primeiro_mes.index[-1]  # no último pregão do mês
+
+
+def test_velas_de_5_anos_continuam_semanais():
+    dados = _ohlcv(6 * 252)
+    figura = criar_grafico_preco(dados, tipo="velas", dias_visiveis=5 * 252)
+    assert "Variação na semana" in figura.data[0].hovertext[1]
+
+
+def test_velas_de_um_ano_continuam_diarias():
+    dados = _ohlcv(graficos.LIMITE_DE_VELAS_DIARIAS + 40)
+    figura = criar_grafico_preco(dados, tipo="velas", dias_visiveis=252)
+    assert len(figura.data[0].x) == 252
+    assert "Variação no dia" in figura.data[0].hovertext[1]
+
+
+def test_linha_nunca_vira_semanal():
+    dados = _ohlcv(graficos.LIMITE_DE_VELAS_DIARIAS + 40)
+    figura = criar_grafico_preco(dados, tipo="linha")
+    assert len(figura.data[0].x) == len(dados)
+
+
+def test_escala_logaritmica_so_quando_pedida():
+    assert criar_grafico_preco(_ohlcv()).layout.yaxis.type != "log"
+    figura = criar_grafico_preco(_ohlcv(), escala_log=True)
+    assert figura.layout.yaxis.type == "log"
+    assert figura.layout.yaxis2.type != "log"  # o volume continua em escala normal
+
+
+def test_etiqueta_do_ultimo_preco_fica_no_lugar_certo_na_escala_log():
+    # No eixo logarítmico, o Plotly lê o "y" das anotações como log10 do valor: passar o
+    # preço direto (5,6) punha a etiqueta em 10^5,6 e esticava o eixo até 400 mil.
+    dados = _ohlcv()
+    figura = criar_grafico_preco(dados, escala_log=True)
+    etiqueta = figura.layout.annotations[0]
+    assert etiqueta.y == pytest.approx(np.log10(dados["Close"].iloc[-1]))
+
+
+def test_legenda_fica_abaixo_do_grafico_longe_dos_botoes_de_periodo():
+    # Em cima, a legenda ficava escondida atrás dos botões 1M a Tudo.
+    figura = criar_grafico_preco(_ohlcv(30), janelas_medias=(5,))
+    assert figura.layout.legend.y < 0
+    assert figura.layout.legend.yanchor == "top"
 
 
 # --- Mapa de calor do retorno mensal ---------------------------------------------
@@ -748,3 +869,26 @@ def test_botao_ativo_do_periodo_le_bem_no_claro():
     assert (
         seletor.activecolor == "#c7d6ff"
     )  # texto marinho sobre azul claro (no escuro: elétrico)
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    dias=st.integers(min_value=3, max_value=400),
+    sorteio=st.sets(st.integers(min_value=1, max_value=398), max_size=30),
+    tipo=st.sampled_from(["linha", "velas"]),
+)
+def test_nenhum_dia_util_fica_vazio_no_eixo(dias, sorteio, tipo):
+    # a regra que não pode voltar a falhar: entre o primeiro e o último pregão, todo dia útil
+    # ou tem vela/ponto, ou está escondido no eixo; e nenhum dia com pregão é escondido.
+    # Vale para velas diárias e semanais (acima de LIMITE_DE_VELAS_DIARIAS) e para a linha.
+    datas = pd.bdate_range("2024-01-02", periods=dias)
+    sem_pregao = datas[[i for i in sorted(sorteio) if i < dias - 1]]
+    dados = _ohlcv(dias).set_axis(datas).drop(sem_pregao)
+
+    figura = criar_grafico_preco(dados, tipo=tipo)
+
+    escondidos = pd.DatetimeIndex(
+        [d for q in figura.layout.xaxis.rangebreaks if q.values for d in q.values]
+    )
+    assert set(escondidos) == set(sem_pregao)
+    assert not set(escondidos) & set(pd.to_datetime(list(figura.data[0].x)))

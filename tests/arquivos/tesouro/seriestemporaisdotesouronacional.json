@@ -1,0 +1,13 @@
+{
+ "success": true,
+ "result": {
+  "name": "seriestemporaisdotesouronacional",
+  "resources": [
+   {
+    "format": "visualização",
+    "url": "https://www.tesourotransparente.gov.br/visualizacao/series-temporais-do-tesouro-nacional",
+    "size": 0
+   }
+  ]
+ }
+}

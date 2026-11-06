@@ -7,25 +7,45 @@ alembic==1.20.0
 # anthropic: o SDK oficial da API do Claude, para o leitor de fatos relevantes (ADR 0069); só é
 # usado com a chave configurada no servidor.
 anthropic==1.13.0
-Authlib==1.8.0
+Authlib==1.9.1
 # joserfc: confere os tokens do Google na API v1 (já vinha junto com a Authlib).
-joserfc==1.7.5
+joserfc==1.7.6
+# cryptography: cifra os arquivos da sala de dados (AES-256-GCM, src/sala/cofre.py); já vinha
+# junto com a Authlib, agora fixada (Apache-2.0 ou BSD-3).
+cryptography==50.0.2
 defusedxml==0.7.1
 fastapi==0.143.0
 fpdf2==2.8.9
+python-pptx==1.0.2
 pypdfium2==5.14.0
+# rapidocr + onnxruntime: OCR de reserva do leitor de fatos relevantes, só quando o PDF volta
+# vazio ou embaralhado (plano B leve, 18/10/2026); os modelos vêm dentro do pacote (sem download).
+rapidocr==3.10.0
+onnxruntime==1.31.0
+opencv-python-headless==5.0.0.93  # o rapidocr puxa sem fixar; fixado para a imagem ser igual à do PC
 httpx==0.28.1
 matplotlib==3.11.2
 numpy==2.5.3
 openpyxl==3.1.5
 pandas==3.0.6
+# duckdb + pyarrow: a busca por CNPJ lê a vista do CNPJ publicada no servidor pela porta da base
+# (base/porta/, que abre com o DuckDB) e em Parquet; o pyarrow já vinha com o Streamlit, agora fixado.
+duckdb==1.5.6
+pyarrow==25.0.1
+# certifi: fixado para a imagem não usar a lista com as raízes emSign comprometidas (corrigida na 2026.10.19); o requests puxa.
+certifi==2026.10.23
+# pillow: fixado para a imagem não voltar ao 12.x (8 CVEs; correção na 13.0.0); o fpdf2 e o streamlit puxam.
+pillow==13.0.0
 plotly==7.1.0
 pydantic==2.14.0
 psycopg-binary==3.3.6
 psycopg==3.3.6
 requests==2.34.2
 SQLAlchemy==2.1.4
-streamlit==1.65.0
+# tenacity: as coletas tentam de novo quando a fonte falha por um instante (src/rede.py).
+tenacity==9.2.1
+streamlit==1.66.1
 stripe==16.0.0
 uvicorn==0.54.0
 yfinance==1.7.0
+zstandard==0.25.0  # lê o Zarr do CHIRPS v3 (base/arquivo/chirps_v3.py)

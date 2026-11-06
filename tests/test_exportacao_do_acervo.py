@@ -28,7 +28,11 @@ CURVA = SerieDoAcervo("tesouro-eua-10a", "10 anos", "fração ao ano", "diária"
 def pessoas(banco):
     with banco.begin() as c:
         chefe = entrar(
-            c, "chefe", "chefe@exemplo.com", emails_de_admin=("chefe@exemplo.com",)
+            c,
+            "chefe",
+            "chefe@exemplo.com",
+            emails_de_admin=("chefe@exemplo.com",),
+            email_confirmado=True,
         )[0]
         ana = entrar(c, "ana", "ana@exemplo.com")[0]
         for serie, valor in ((IPCA, 0.44), (IBOV, 130_000.0), (CURVA, 0.041)):
@@ -121,3 +125,39 @@ def test_admin_prepara_e_baixa_pela_tela(banco, monkeypatch, pessoas):
     assert not app.exception
     with banco.connect() as c:
         assert auditoria.listar_recentes(c)[0].acao == exp.ACAO_ACERVO_EXPORTADO
+
+
+def _gravar_o_igpm(banco):
+    igpm = SerieDoAcervo("bcb-sgs-189", "IGP-M", "% no mês", "mensal")
+    with banco.begin() as c:
+        acervo_de_series.garantir_serie(c, igpm)
+        valores = pd.Series([0.5], index=[pd.Timestamp("2026-09-01")])
+        acervo_de_series.gravar(c, igpm.codigo, valores, date(2026, 10, 10))
+
+
+def test_serie_nao_comercial_sai_com_a_marca_registrada(banco, pessoas):
+    """ADR 0102: o IGP-M é da FGV ("não comercial"), mesmo vindo do SGS do BC; a marca fica
+    registrada e a série sai, com a fonte citada."""
+    from src.banco import coletas
+
+    chefe, _ = pessoas
+    _gravar_o_igpm(banco)
+    assert coletas.marca_da_fonte("bcb-sgs-189") == coletas.Marca.NAO_COMERCIAL
+    with banco.begin() as c:
+        _, conteudo = exp.exportar(c, chefe.id, "series", "csv", AGORA)
+    tabela = pd.read_csv(io.BytesIO(_abrir(conteudo)["tickerlab-series-20261013.csv"]))
+    assert "bcb-sgs-189" in set(tabela["serie"])
+
+
+def test_serie_com_fonte_fora_dos_usos_da_erro(banco, pessoas, monkeypatch):
+    """A trava das licenças segue viva para a lista `FONTES_FORA_DOS_USOS` (hoje só a B3)."""
+    from src.banco import coletas
+
+    chefe, _ = pessoas
+    _gravar_o_igpm(banco)
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3", "bcb"}))
+    with (
+        banco.begin() as c,
+        pytest.raises(coletas.LicencaNaoPermiteError, match="bcb-sgs-189"),
+    ):
+        exp.exportar(c, chefe.id, "series", "csv", AGORA)

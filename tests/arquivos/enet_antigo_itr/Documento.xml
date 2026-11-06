@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<Documento>
+  <CompanhiaAberta>
+    <NomeRazaoSocialCompanhiaAberta>EMPRESA DE TESTE S.A.</NomeRazaoSocialCompanhiaAberta>
+    <NumeroCnpjCompanhiaAberta>00070698000111</NumeroCnpjCompanhiaAberta>
+  </CompanhiaAberta>
+  <CodigoTipoDocumento>3</CodigoTipoDocumento>
+  <DataReferenciaDocumento>2016-06-30T00:00:00</DataReferenciaDocumento>
+  <NumeroVersaoDocumento>1</NumeroVersaoDocumento>
+  <CodigoEscalaMoeda>2</CodigoEscalaMoeda>
+</Documento>

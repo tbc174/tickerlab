@@ -3,9 +3,11 @@
 import json
 import logging
 import os
+import time
 import uuid
 from collections.abc import Callable
-from datetime import date, timedelta
+from dataclasses import asdict, replace
+from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, TypeVar
 
 import pandas as pd
@@ -13,11 +15,24 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from src import analises, catalogo, cobranca, conformidade, ficha
+from src import (
+    analises,
+    apresentacao,
+    catalogo,
+    cobranca,
+    conformidade,
+    ficha,
+    pulse,
+    relatorio_setor,
+    research,
+    topicos,
+)
 from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
-from src.api_v1 import esquemas
+from src import presets as research_presets
+from src.analise_escrita.exibicao import com_analise
+from src.api_v1 import contexto, esquemas
 from src.api_v1.acesso import (
     VARIAVEL_DO_CLIENT_ID,
     conta_com_acesso,
@@ -29,32 +44,70 @@ from src.api_v1.contexto import (
     carregar_ativo,
     cdi_entre,
 )
+from src.apresentacao import Apresentacao
+from src.apresentacao_pdf import apresentacao_em_pdf
+from src.apresentacao_pptx import apresentacao_em_pptx
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import compartilhamentos as links
+from src.banco import leituras as repo_leituras
+from src.banco import pulse as repo_pulse
 from src.banco import tentativas
+from src.banco import teses as repo_teses
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
+    TAMANHO_MAXIMO_DO_NOME,
+    DadosInvalidosError,
+    apagar_simulacao,
+    carregar_carteira,
     carregar_preferencias,
     contar_simulacoes,
     listar_favoritos,
+    listar_simulacoes,
+    listar_watchlists,
+    presets_atuais,
     salvar_preferencias,
+    salvar_simulacao,
 )
 from src.banco.eventos import Evento, eventos_dos_tickers
+from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
+from src.busca_por_cnpj import PedidoInvalidoError, RelatorioDoCnpj, buscar_por_cnpj
 from src.cdi import CDIIndisponivelError
 from src.cobranca import Assinatura, buscar_assinatura
+from src.commodities import painel_de_precos
+from src.commodities.cafe import pacote_do_mapa
+from src.commodities.cafe import painel as painel_do_cafe
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
+from src.configuracao import preco_no_relatorio_ligado
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
+from src.eventos import FONTE_IPE
+from src.eventos_sec import PREFIXO_DO_CIK
+from src.faixa_de_preco import faixa_de_preco_do_ticker
+from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
+from src.links_das_fontes import link_da_fonte
 from src.metricas import resumir_desempenho
+from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.planos import (
-    AVISO_DO_MODO_DE_TESTE,
+    CARTEIRA_NO_RESEARCH,
+    aviso_da_pagina_de_planos,
     frase_da_assinatura,
     limites_do,
+    pode_usar,
     tabela_de_planos,
     texto_do_uso,
+)
+from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
+from src.relatorio_do_setor_pdf import relatorio_do_setor as pdf_do_setor
+from src.relatorio_empresa import Relatorio
+from src.relatorio_empresa import montar as montar_relatorio
+from src.relatorio_empresa_markdown import relatorio_em_markdown
+from src.simulacoes import (
+    endereco_no_app_novo,
+    restaurar_estado,
+    retrato_do_app_novo,
 )
 from src.tentativas import TETO_POR_PESSOA, impressao
 from src.validacao import parametros_numericos
@@ -63,7 +116,14 @@ from src.validacao import parametros_numericos
 FORMATO_DO_TICKER = r"^[A-Za-z0-9^][A-Za-z0-9.^=\-]{0,19}$"
 CUSTO_MAXIMO = 0.05  # 5% por operação: acima disso é erro de digitação
 Ticker = Annotated[str, Query(pattern=FORMATO_DO_TICKER, max_length=20)]
-Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
+FormatoDoDeck = Annotated[Literal["pdf", "pptx"], Query()]
+TIPOS_DO_DECK = {
+    "pdf": "application/pdf",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
+Periodo = Literal[
+    "6mo", "1y", "2y", "5y", "10y", "max"
+]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
 SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o CDI à toa)
 # a ficha "Foi sorte?": o capital entra só no imposto da checagem 2 (o mesmo padrão do Streamlit)
@@ -75,6 +135,12 @@ MOTIVO_SEM_CONTAGEM = (
 )
 
 log = logging.getLogger(__name__)
+
+# ativo sem preço (código antigo, fora da bolsa): o Yahoo leva de 1,6 a 3,2 s para dizer que não tem
+# (medido no VPS em 17/10/2026); o Pulse lembra a resposta e não pergunta de novo nesse prazo
+VALIDADE_DO_SEM_PRECO = 3600  # segundos
+# ticker -> quando o Yahoo disse que não tem (time.monotonic)
+_sem_preco: dict[str, float] = {}
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
@@ -181,7 +247,7 @@ def meu_plano(conta: Conta) -> MeuPlanoV1:
         frase_da_assinatura=None
         if assinatura is None
         else frase_da_assinatura(assinatura.periodo_fim, assinatura.cancela_no_fim),
-        aviso=AVISO_DO_MODO_DE_TESTE,
+        aviso=aviso_da_pagina_de_planos(),
         tabela=tabela_de_planos(),
         acao=acao.tipo,
         texto_da_acao=acao.texto,
@@ -189,8 +255,9 @@ def meu_plano(conta: Conta) -> MeuPlanoV1:
     )
 
 
-# o Stripe devolve a pessoa para a página de planos do app novo (o app atual volta para "/")
-CAMINHO_DE_VOLTA_DO_APP_NOVO = "/novo/planos"
+# o Stripe devolve a pessoa para a página de planos do app novo, que é o principal na raiz de
+# app.tickerlab.com.br (a versão clássica volta para cobranca.CAMINHO_DE_VOLTA_DO_CLASSICO)
+CAMINHO_DE_VOLTA_DO_APP_NOVO = "/planos"
 STRIPE_FORA_DO_AR = "O pagamento não está disponível agora. Tente de novo em instantes."
 
 
@@ -213,18 +280,24 @@ def pagamento_da_assinatura(conta: Conta) -> EnderecoDoStripeV1:
 
     A rota confere tudo de novo, mesmo com o botão escondido: chamar direto não fura a trava.
     """
-    acao, assinatura = _acao_da_conta(conta)
+    acao, _ = _acao_da_conta(conta)
     if acao.tipo != "assinar":
         raise HTTPException(
             status_code=409, detail=acao.texto or "Você já está no plano Pro."
         )
     try:
-        url = cobranca.criar_pagina_de_pagamento(
+        url = cobranca.abrir_pagamento(
+            obter_engine(),
             conta.id,
             conta.email,
-            assinatura.stripe_customer_id if assinatura else None,
             caminho_de_volta=CAMINHO_DE_VOLTA_DO_APP_NOVO,
         )
+    except (
+        cobranca.AssinaturaJaExisteError
+    ) as erro:  # outra aba assinou nesse meio tempo
+        raise HTTPException(
+            status_code=409, detail="Esta conta já tem uma assinatura."
+        ) from erro
     except Exception as erro:
         log.exception("Falha ao criar a página de pagamento do Stripe")
         raise HTTPException(status_code=503, detail=STRIPE_FORA_DO_AR) from erro
@@ -462,6 +535,141 @@ def backtest(conta: Conta, pedido: PedidoDeBacktestV1) -> esquemas.BacktestDoAti
     )
 
 
+# --- Minhas simulações (ADR 0062, tela 3; Workspace, PR 1) ----------------------------------
+
+SEM_SIMULACOES = (
+    "Você ainda não guardou nenhuma simulação. Rode um backtest e clique em Salvar."
+)
+
+
+class PedidoDeSalvarSimulacaoV1(BaseModel):
+    """O backtest que a tela mostrou (o mesmo pedido de /v1/backtest) e o veredito da ficha."""
+
+    nome: str = Field(min_length=1, max_length=TAMANHO_MAXIMO_DO_NOME)
+    backtest: PedidoDeBacktestV1
+    veredito: str | None = Field(None, max_length=20)  # None: a tela ficou sem ficha
+
+
+class PedidoDeSimulacaoV1(BaseModel):
+    id: uuid.UUID
+
+
+def _minhas_simulacoes(
+    conexao: sa.Connection, conta: Usuario
+) -> esquemas.MinhasSimulacoesV1:
+    salvas = listar_simulacoes(conexao, conta.id)
+    limite = limites_do(conta.plano).simulacoes
+    return esquemas.MinhasSimulacoesV1(
+        simulacoes=[esquemas.de_simulacao(s) for s in salvas],
+        usadas=len(salvas),
+        limite=limite,
+        uso=texto_do_uso(len(salvas), limite),
+        sem_simulacoes=SEM_SIMULACOES,
+    )
+
+
+@router.get("/simulacoes")
+def minhas_simulacoes(conta: Conta) -> esquemas.MinhasSimulacoesV1:
+    """Minhas simulações: as guardadas na conta do token (as do app atual também), a mais nova
+    primeiro, com quantas o plano ainda deixa."""
+    with obter_engine().connect() as conexao:
+        return _minhas_simulacoes(conexao, conta)
+
+
+@router.post("/salvar-simulacao")
+def salvar_simulacao_da_tela(
+    conta: Conta, pedido: PedidoDeSalvarSimulacaoV1
+) -> esquemas.MinhasSimulacoesV1:
+    """Guarda o backtest da tela como o Streamlit guarda (telas/dados_da_conta.py): o retrato
+    das escolhas, os números formatados, até quando iam os dados e a ficha "Foi sorte?" (o
+    pedido e o veredito), que o Pulse recalcula depois.
+
+    O backtest roda de novo aqui (é barato) em vez de confiar nos números que a tela mandar; só
+    o veredito vem da tela, porque a ficha custa caro e ele serve só de "antes" na comparação do
+    Pulse. Além do limite do plano: 403 com o motivo "plano" (src/api.py).
+    """
+    b = pedido.backtest
+    if b.estrategia not in ESTRATEGIAS:
+        raise HTTPException(status_code=422, detail="Estratégia desconhecida.")
+    if pedido.veredito is not None and pedido.veredito not in esquemas.VEREDITOS:
+        raise HTTPException(status_code=422, detail="Veredito desconhecido.")
+    livres = _livres_do_pedido(b.estrategia, b.livres)
+    c = _com_o_ativo(b.ticker, b.periodo, b.taxa)
+    resposta = _ou_422(
+        lambda: montar_backtest(c, b.estrategia, b.parametros, b.custo_por_operacao)
+    )
+    numeros = {
+        nome: formatar(valor, formato_da_metrica(nome))
+        for nome, valor in resposta.backtest.metricas.items()
+    }
+    numeros["Operações"] = formatar(resposta.backtest.operacoes, "inteiro")
+    with obter_engine().begin() as conexao:
+        informada = b.tolerancia_de_queda
+        if informada is None:  # a guardada na conta, como a ficha usou
+            informada = carregar_preferencias(conexao, conta.id).get(
+                ficha.PREFERENCIA_DA_TOLERANCIA
+            )
+        tolerancia = ficha.normalizar_tolerancia(informada)
+        retrato = retrato_do_app_novo(
+            ticker=c.ticker,
+            periodo=c.periodo,
+            estrategia=b.estrategia,
+            parametros=resposta.parametros,
+            custo_por_operacao=b.custo_por_operacao,
+            capital_inicial=b.capital_inicial,
+            tolerancia_de_queda=tolerancia,
+            livres=livres,
+            taxa=b.taxa,
+        )
+        resumo: dict = {
+            "numeros": numeros,
+            "dados_ate": f"{c.dados.index[-1]:%d/%m/%Y}",
+        }
+        if pedido.veredito is not None:
+            da_pessoa = tentativas.contar_tentativas(conexao, conta.id, c.ticker)
+            pedido_da_ficha = _pedido_da_ficha(
+                c,
+                b.estrategia,
+                resposta.parametros,
+                b.custo_por_operacao,
+                b.capital_inicial,
+                livres,
+                tolerancia,
+                max(da_pessoa, 1),  # a tela contou esta tentativa; ao menos ela
+            )
+            resumo["ficha"] = {
+                "pedido": ficha.pedido_para_guardar(pedido_da_ficha),
+                "veredito": pedido.veredito,
+            }
+        try:
+            salvar_simulacao(
+                conexao,
+                conta.id,
+                "backtest",
+                pedido.nome,
+                retrato,
+                resumo,
+                plano=conta.plano,
+            )
+        except DadosInvalidosError as erro:
+            raise HTTPException(status_code=422, detail=str(erro)) from erro
+        return _minhas_simulacoes(conexao, conta)
+
+
+@router.post("/apagar-simulacao")
+def apagar_simulacao_da_conta(
+    conta: Conta, pedido: PedidoDeSimulacaoV1
+) -> esquemas.MinhasSimulacoesV1:
+    """Apaga uma simulação da própria conta; a de outra conta (ou já apagada) dá 404, sem dizer
+    qual é o caso."""
+    with obter_engine().begin() as conexao:
+        if not apagar_simulacao(conexao, conta.id, pedido.id):
+            raise HTTPException(
+                status_code=404, detail="Esta simulação não existe ou já foi apagada."
+            )
+        return _minhas_simulacoes(conexao, conta)
+
+
 def _livres_do_pedido(estrategia: str, livres: list[str] | None) -> tuple[str, ...]:
     """Os parâmetros que variam na ficha: só números da estratégia, sem repetir (senão 422)."""
     numericos = [p.nome for p in parametros_numericos(estrategia)]
@@ -557,7 +765,35 @@ def montar_ficha_do_backtest(
 ) -> esquemas.FichaV1:
     """A ficha de um ativo já carregado, com as tentativas já contadas (a rota e os testes do React
     usam). `ValueError` se não der para montar (pouco histórico, por exemplo)."""
-    pedido = ficha.PedidoDaFicha(
+    pedido = _pedido_da_ficha(
+        c,
+        estrategia,
+        parametros,
+        custo_por_operacao,
+        capital_inicial,
+        livres,
+        tolerancia_de_queda,
+        tentativas_da_pessoa,
+    )
+    resultado = ficha.montar_ficha(pedido)
+    texto = ficha.texto_das_tentativas(
+        tentativas_da_pessoa, catalogo.codigo(c.ticker), TETO_POR_PESSOA
+    )
+    return esquemas.de_ficha(resultado, pedido, texto)
+
+
+def _pedido_da_ficha(
+    c: ContextoDoAtivo,
+    estrategia: str,
+    parametros: dict[str, int | float | str],
+    custo_por_operacao: float,
+    capital_inicial: float,
+    livres: tuple[str, ...],
+    tolerancia_de_queda: float,
+    tentativas_da_pessoa: int,
+) -> ficha.PedidoDaFicha:
+    """Tudo o que a ficha precisa, com os preços (e o CDI) do ativo já carregado."""
+    return ficha.PedidoDaFicha(
         dados=c.dados,
         estrategia=estrategia,
         parametros=dict(parametros),
@@ -569,11 +805,6 @@ def montar_ficha_do_backtest(
         tolerancia_de_queda=tolerancia_de_queda,
         tentativas_da_pessoa=tentativas_da_pessoa,
     )
-    resultado = ficha.montar_ficha(pedido)
-    texto = ficha.texto_das_tentativas(
-        tentativas_da_pessoa, catalogo.codigo(c.ticker), TETO_POR_PESSOA
-    )
-    return esquemas.de_ficha(resultado, pedido, texto)
 
 
 def montar_backtest(
@@ -633,16 +864,65 @@ def juros_e_inflacao(_conta: Conta) -> esquemas.JurosEInflacaoV1:
     return esquemas.de_juros_e_inflacao(ji.montar_painel(lidas, cdi, hoje), hoje)
 
 
-def _eventos_do_ativo(ticker: str, desde: date) -> list[Evento]:
-    """Os acontecimentos do ativo desde `desde`; vazio se o banco não tem o Research."""
+def _painel_de_precos(dia: date) -> painel_de_precos.PainelDePrecos:
+    """O painel de preços de referência do acervo; vazio se o banco ainda não tem a tabela."""
     try:
         with obter_engine().connect() as conexao:
-            return eventos_dos_tickers(
-                conexao, [ticker], desde, limite=ldt.LIMITE_DE_EVENTOS
-            )
+            return painel_de_precos.montar_painel(conexao, dia)
     except Exception as erro:
         if tabela_inexistente(erro):
-            return []
+            return painel_de_precos.PainelDePrecos(itens=(), spread=())
+        raise
+
+
+@router.get("/precos-de-referencia")
+def precos_de_referencia(_conta: Conta) -> esquemas.PrecosDeReferenciaV1:
+    """Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI; 503 sem coleta."""
+    hoje = hoje_no_brasil()
+    lido = _painel_de_precos(hoje)
+    if not lido.itens:
+        raise HTTPException(status_code=503, detail=painel_de_precos.SEM_COLETA)
+    return esquemas.de_precos_de_referencia(lido, hoje)
+
+
+TipoDeCafe = Literal[
+    "arabica", "conilon"
+]  # os TIPOS_DO_MAPA do pacote do mapa e os TIPOS do painel
+
+
+@router.get("/commodities/cafe/mapa")
+def mapa_do_cafe(_conta: Conta, tipo: TipoDeCafe = "arabica") -> esquemas.MapaDoCafeV1:
+    """Produção e área de café por município (PAM) e o clima de cada região, como o pacote do dia
+    os deixou; 503 se o pacote ainda não chegou a este servidor."""
+    pacote = pacote_do_mapa.ler_pacote()
+    if pacote is None:
+        raise HTTPException(
+            status_code=503,
+            detail="O mapa do café ainda não foi montado neste servidor.",
+        )
+    vista = pacote_do_mapa.montar_vista(pacote, tipo, hoje_no_brasil().month)
+    return esquemas.MapaDoCafeV1.model_validate(asdict(vista))
+
+
+def _eventos_do_ativo(
+    ticker: str, desde: date
+) -> tuple[list[Evento], dict[str, topicos.LeituraDoTopico]]:
+    """Os acontecimentos do ativo desde `desde` e o assunto lido de cada fato relevante (leitor
+    v2, só regras); vazios se o banco não tem o Research."""
+    try:
+        with obter_engine().connect() as conexao:
+            eventos = eventos_dos_tickers(
+                conexao, [ticker], desde, limite=ldt.LIMITE_DE_EVENTOS
+            )
+            fatos = [
+                (e.protocolo, e.assunto)
+                for e in eventos
+                if e.fonte == FONTE_IPE and e.rotulo == topicos.ROTULO_DO_FATO_RELEVANTE
+            ]
+            return eventos, repo_leituras.topicos_dos_fatos(conexao, FONTE_IPE, fatos)
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            return [], {}
         raise
 
 
@@ -657,17 +937,247 @@ def linha_do_tempo(
 ) -> esquemas.LinhaDoTempoDoAtivoV1:
     """A curva em base 100 (nunca o preço bruto) e os documentos da CVM ou da SEC do período."""
     c = _com_o_ativo(ticker, periodo, SEM_TAXA)
-    eventos = _eventos_do_ativo(c.ticker, c.fechamento.index[0].date())
-    return montar_linha_do_tempo(c, eventos, materialidade_minima)
+    eventos, assuntos = _eventos_do_ativo(c.ticker, c.fechamento.index[0].date())
+    return montar_linha_do_tempo(c, eventos, materialidade_minima, assuntos)
 
 
 def montar_linha_do_tempo(
-    c: ContextoDoAtivo, eventos: list[Evento], materialidade_minima: int
+    c: ContextoDoAtivo,
+    eventos: list[Evento],
+    materialidade_minima: int,
+    assuntos: dict[str, topicos.LeituraDoTopico] | None = None,
 ) -> esquemas.LinhaDoTempoDoAtivoV1:
     """A resposta da linha do tempo de um ativo já carregado (a rota e os testes do React usam)."""
-    linha = ldt.montar_linha_do_tempo(c.fechamento, eventos, materialidade_minima)
+    linha = ldt.montar_linha_do_tempo(
+        c.fechamento, eventos, materialidade_minima, assuntos=assuntos
+    )
     return esquemas.LinhaDoTempoDoAtivoV1(
         ativo=esquemas.de_ativo(c), linha_do_tempo=esquemas.de_linha_do_tempo(linha)
+    )
+
+
+# --- Relatório da empresa (dossiê da base, PR 4) -----------------------------------------------
+
+SO_B3 = (
+    "O relatório completo é só das empresas da B3 (os padrões por setor e os proventos do FRE "
+    "vêm da CVM). Para empresas dos EUA, use os fundamentos."
+)
+SEM_DEMONSTRACOES = (
+    "Ainda não há demonstrações coletadas desta empresa. A coleta roda uma vez por dia."
+)
+SEM_COLETA = "As demonstrações ainda não foram coletadas neste servidor."
+PERIODO_DO_PRECO_NO_RELATORIO = "2y"
+
+
+def _preco_e_fechamentos(ticker: str) -> tuple[float | None, pd.Series | None]:
+    """O último preço e a série que o valuation e os múltiplos usam; vazios fora da B3, sem cotação
+    ou com a trava do preço desligada, que nem pergunta ao Yahoo (linha 413, Y1 a, "pode" do Tiago
+    em 25/10/2026). O relatório então deixa esses números em branco."""
+    if moeda_do_ticker(ticker) != "BRL" or not preco_no_relatorio_ligado():
+        return None, None
+    try:
+        fechamento = contexto.carregar_dados(ticker, PERIODO_DO_PRECO_NO_RELATORIO)[
+            "Close"
+        ]
+    except DadosIndisponiveisError:
+        return None, None
+    return float(fechamento.iloc[-1]), fechamento
+
+
+def _resposta_do_deck(
+    montar_deck: Callable[[datetime], Apresentacao], formato: str, nome: str
+) -> Response:
+    """O deck como arquivo para baixar (o mesmo conteúdo nos dois formatos, com a mesma hora)."""
+    agora = datetime.now(FUSO)
+    deck = montar_deck(agora)
+    gerar = apresentacao_em_pdf if formato == "pdf" else apresentacao_em_pptx
+    return Response(
+        content=gerar(deck, agora),
+        media_type=TIPOS_DO_DECK[formato],
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome}.{formato}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+def _relatorio_da_empresa_do_ticker(conta: Usuario, ticker: str) -> Relatorio:
+    """O relatório da empresa montado para o plano da conta, com a análise escrita (a rota JSON e a
+    do deck respondem do mesmo objeto, com as mesmas regras)."""
+    ticker = normalizar_ticker(ticker)
+    preco, fechamentos = _preco_e_fechamentos(ticker)
+    try:
+        with obter_engine().connect() as conexao:
+            entradas = entradas_do_relatorio(
+                conexao, ticker, preco=preco, fechamentos=fechamentos
+            )
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            raise HTTPException(status_code=404, detail=SEM_COLETA) from erro
+        raise
+    if entradas is None or entradas.cnpj.startswith(PREFIXO_DO_CIK):
+        raise HTTPException(status_code=404, detail=SO_B3)
+    entradas = replace(entradas, faixa_de_preco=faixa_de_preco_do_ticker(ticker))
+    if entradas.dados.contas.empty:
+        raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
+    relatorio = montar_relatorio(entradas, conta.plano)
+    return com_analise(relatorio, entradas, conta.plano)
+
+
+@router.get("/relatorio-empresa")
+def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEmpresaV1:
+    """O relatório da empresa do ticker, montado para o plano da conta: as seções da base de ML
+    só vêm com números para o Pro (as outras vêm trancadas, só com o título e o convite)."""
+    return esquemas.de_relatorio_da_empresa(
+        _relatorio_da_empresa_do_ticker(conta, ticker)
+    )
+
+
+@router.get("/relatorio-empresa/apresentacao", response_class=Response)
+def relatorio_da_empresa_em_deck(
+    conta: Conta, ticker: Ticker, formato: FormatoDoDeck
+) -> Response:
+    """A ficha da empresa como deck (PDF ou PPT), com "Limites e cuidados" (mesmo acesso e plano
+    da rota acima)."""
+    relatorio = _relatorio_da_empresa_do_ticker(conta, ticker)
+    sigla = relatorio.ticker.removesuffix(".SA")
+    return _resposta_do_deck(
+        lambda agora: apresentacao.da_ficha(relatorio, agora),
+        formato,
+        f"ficha-{sigla}-tickerlab",
+    )
+
+
+@router.get("/relatorio-empresa/markdown", response_class=Response)
+def relatorio_da_empresa_em_markdown(conta: Conta, ticker: Ticker) -> Response:
+    """A ficha da empresa em Markdown para ler com uma IA: o mesmo texto do botão da página (as seções
+    na ordem da tela, "Limites e cuidados" e o anexo de como cada número foi calculado), com o mesmo
+    acesso e o mesmo plano da rota JSON. O nome do arquivo vem do ticker da própria ficha."""
+    relatorio = _relatorio_da_empresa_do_ticker(conta, ticker)
+    sigla = relatorio.ticker.removesuffix(".SA")
+    return Response(
+        content=relatorio_em_markdown(relatorio),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="tickerlab-empresa-{sigla}.md"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+class PedidoDeBuscaPorCnpjV1(BaseModel):
+    cnpj: str  # com ou sem pontuação, com letras; sem limite aqui para o 422 não repetir o texto
+
+
+def _relatorio_do_pedido(
+    conta: Usuario, pedido: PedidoDeBuscaPorCnpjV1
+) -> RelatorioDoCnpj:
+    """O relatório do CNPJ pedido (a rota JSON e a do PDF respondem do mesmo objeto, com as mesmas regras)."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = buscar_por_cnpj(conexao, pedido.cnpj, conta.plano)
+    except PedidoInvalidoError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    log.info("busca por cnpj: %s", relatorio.situacao)  # só a contagem, nunca o CNPJ
+    return relatorio
+
+
+@router.post("/busca-por-cnpj")
+def busca_por_cnpj(
+    conta: Conta, pedido: PedidoDeBuscaPorCnpjV1
+) -> esquemas.BuscaPorCnpjV1:
+    """O relatório do CNPJ: da companhia aberta (cadastro, grupo, rede e fatos públicos) ou, sem ficha na
+    CVM, o cadastro da Receita (Simples e MEI, sócios, estabelecimentos e mudanças), sempre com fonte.
+
+    É POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log
+    de acesso. O app também não o grava no log, só a contagem por situação.
+    """
+    return esquemas.de_busca_por_cnpj(_relatorio_do_pedido(conta, pedido))
+
+
+NOME_DO_PDF_DO_CNPJ = (
+    "relatorio-do-cnpj-tickerlab.pdf"  # sem o CNPJ: o nome não vai para o disco alheio
+)
+
+
+@router.post("/busca-por-cnpj/pdf", response_class=Response)
+def busca_por_cnpj_em_pdf(conta: Conta, pedido: PedidoDeBuscaPorCnpjV1) -> Response:
+    """O mesmo relatório da rota acima em PDF, com "Limites e cuidados" (mesmo acesso, mesmo plano)."""
+    conteudo = relatorio_do_cnpj(_relatorio_do_pedido(conta, pedido))
+    return Response(
+        content=conteudo,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{NOME_DO_PDF_DO_CNPJ}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+SETOR_DESCONHECIDO = "Setor fora da lista do relatório do setor (veja /v1/setores)."
+TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR = 40
+
+
+@router.get("/setores")
+def setores(_conta: Conta) -> esquemas.SetoresV1:
+    """Os setores do relatório do setor, com quantas companhias abertas cada um tem."""
+    with obter_engine().connect() as conexao:
+        return esquemas.de_setores(relatorio_setor.setores_disponiveis(conexao))
+
+
+@router.get("/relatorio-setor")
+def relatorio_do_setor(
+    conta: Conta,
+    setor: Annotated[str, Query(max_length=TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR)],
+) -> esquemas.RelatorioDoSetorV1:
+    """O relatório do setor, montado para o plano da conta: quem está no setor e o que não temos
+    vêm sempre; os números da base vêm trancados sem o dossiê da base no plano."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = relatorio_setor.relatorio_do_setor(conexao, setor, conta.plano)
+    except relatorio_setor.SetorDesconhecidoError as erro:
+        raise HTTPException(status_code=404, detail=SETOR_DESCONHECIDO) from erro
+    return esquemas.de_relatorio_do_setor(relatorio)
+
+
+@router.get("/relatorio-setor/pdf", response_class=Response)
+def relatorio_do_setor_em_pdf(
+    conta: Conta,
+    setor: Annotated[str, Query(max_length=TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR)],
+) -> Response:
+    """O mesmo relatório da rota acima em PDF, com "Limites e cuidados" (mesmo acesso, mesmo plano)."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = relatorio_setor.relatorio_do_setor(conexao, setor, conta.plano)
+    except relatorio_setor.SetorDesconhecidoError as erro:
+        raise HTTPException(status_code=404, detail=SETOR_DESCONHECIDO) from erro
+    return Response(
+        content=pdf_do_setor(relatorio),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="relatorio-do-setor-{relatorio.setor}-tickerlab.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@router.get("/relatorio-setor/apresentacao", response_class=Response)
+def relatorio_do_setor_em_deck(
+    conta: Conta,
+    setor: Annotated[str, Query(max_length=TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR)],
+    formato: FormatoDoDeck,
+) -> Response:
+    """O relatório do setor como deck (PDF ou PPT), com "Limites e cuidados" (mesmo acesso e plano
+    da rota do PDF)."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = relatorio_setor.relatorio_do_setor(conexao, setor, conta.plano)
+    except relatorio_setor.SetorDesconhecidoError as erro:
+        raise HTTPException(status_code=404, detail=SETOR_DESCONHECIDO) from erro
+    return _resposta_do_deck(
+        lambda agora: apresentacao.do_setor(relatorio, agora),
+        formato,
+        f"setor-{relatorio.setor}-tickerlab",
     )
 
 
@@ -676,8 +1186,310 @@ def openapi_v1() -> dict:
     from fastapi import FastAPI
 
     from src.api_v1.conta import router as router_da_conta
+    from src.api_v1.entrada import router as router_da_entrada
 
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
     app.include_router(router_da_conta)
+    app.include_router(router_da_entrada)
     return app.openapi()
+
+
+# --- Pulse: estratégias acompanhadas (ADR 0062, Workspace, PR 2) ----------------------------
+
+SEM_ESTRATEGIAS = (
+    'Salve um backtest para acompanhar: o Pulse refaz a ficha "Foi sorte?" com os preços de '
+    "hoje e mostra aqui quando o veredito muda."
+)
+
+
+def _precos_da_estrategia(ticker: str, periodo: str, em_reais: bool) -> pd.DataFrame:
+    """Os preços como o app atual carrega os de uma simulação salva (telas/comum.py): em reais
+    quando ela foi salva assim; sem o dólar, `cambio_falhou` (o veredito fica sem conferir)."""
+    ticker = normalizar_ticker(ticker)
+    dados = contexto.carregar_dados(ticker, periodo)
+    if not (em_reais and moeda_do_ticker(ticker) == "USD"):
+        return dados
+    try:
+        cambio = contexto.carregar_dados(TICKER_DO_DOLAR, periodo)
+        return converter_para_reais(dados, cambio["Close"])
+    except (DadosIndisponiveisError, ValueError) as erro:
+        log.warning("Câmbio indisponível para converter %s: %s", ticker, erro)
+        dados = dados.copy()
+        dados.attrs = {**dados.attrs, "cambio_falhou": True}
+        return dados
+
+
+def _avisos_do_pulse(sem_conferir: list[str], sem_ficha: int, fora: int) -> list[str]:
+    """Os mesmos avisos do Pulse no app atual (telas/research/pulse.py)."""
+    avisos = []
+    if sem_conferir:
+        avisos.append(f"Não deu para conferir agora: {', '.join(sem_conferir)}.")
+    if fora:
+        avisos.append(
+            f"O Pulse confere as {pulse.MAXIMO_DE_FICHAS} estratégias salvas mais "
+            f"recentemente; {fora} ficaram para depois."
+        )
+    if sem_ficha:
+        avisos.append(
+            f"Backtests salvos antes de o Pulse acompanhar a ficha: {sem_ficha}. Para "
+            "acompanhar, abra em Minhas simulações e salve de novo."
+        )
+    return avisos
+
+
+def _estrategia_v1(
+    a: pulse.EstrategiaAcompanhada, ligadas: dict
+) -> esquemas.EstrategiaAcompanhadaV1:
+    retrato = a.estrategia.retrato
+    tese = ligadas.get(a.estrategia.id)
+    return esquemas.EstrategiaAcompanhadaV1(
+        id=a.estrategia.id,
+        nome=a.estrategia.nome,
+        ticker=restaurar_estado(retrato, "backtest").get("ticker"),
+        antes=a.antes,
+        agora=a.agora,
+        mudou=a.mudou,
+        conferido_em=a.conferido_em,
+        tese_ligada=None if tese is None else pulse.texto_da_tese_ligada(tese),
+        endereco=endereco_no_app_novo("backtest", retrato),
+    )
+
+
+# --- Pulse, parte 2: acontecimentos novos e variação do preço (Workspace, PR 3) -------------
+
+
+def _ativos_da_conta(
+    conexao: sa.Connection, conta: Usuario, simulacoes: list
+) -> tuple[tuple[pulse.AtivoDaPessoa, ...], int]:
+    """Os ativos que o Pulse acompanha, como no app atual: favoritos, a carteira guardada (se o
+    plano tem), as listas do Research e os ativos das estratégias salvas."""
+    favoritos = listar_favoritos(conexao, conta.id)
+    listas = [(w.nome, w.tickers) for w in listar_watchlists(conexao, conta.id)]
+    carteira = (
+        carregar_carteira(conexao, conta.id)
+        if pode_usar(conta.plano, CARTEIRA_NO_RESEARCH)
+        else None
+    )
+    return pulse.ativos_da_pessoa(
+        favoritos,
+        list(carteira.pesos) if carteira else [],
+        listas,
+        [s.parametros.get("ticker") for s in simulacoes],
+        maximo=pulse.MAXIMO_DE_ATIVOS,
+    )
+
+
+def _acontecimento_v1(item: research.ItemDoResearch) -> esquemas.AcontecimentoV1:
+    e = item.evento
+    return esquemas.AcontecimentoV1(
+        id=f"{e.fonte}:{e.protocolo}",
+        ticker=e.ticker.removesuffix(".SA"),
+        empresa=e.empresa,
+        tipo=e.rotulo,
+        titulo=e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro).",
+        publicado_em=e.publicado_em,
+        fonte=research.SIGLAS_DAS_FONTES.get(e.fonte, "fonte"),
+        link_do_original=link_da_fonte(e.link),
+        relevancia=item.relevancia,
+        por_que_aparece=item.razoes,
+    )
+
+
+def montar_acontecimentos(
+    eventos: list[Evento],
+    ativos: tuple[pulse.AtivoDaPessoa, ...],
+    j: pulse.Janela,
+    presets: list,
+) -> list[esquemas.AcontecimentoV1]:
+    """Os eventos novos por relevância, pelos parâmetros do Research da pessoa (se os guardados
+    não combinarem mais, os padrões). (A rota e os testes do React usam.)"""
+    try:
+        r = research_presets.resolver(presets)
+    except ValueError:
+        r = research_presets.resolver([])
+    itens = pulse.acontecimentos(
+        eventos,
+        ativos,
+        j,
+        research.pesos_da_resolucao(r.valores("relevancia")),
+        list(r["newsletter.temas"]),
+    )
+    return [_acontecimento_v1(item) for item in itens]
+
+
+def _eventos_novos(
+    ativos: tuple[pulse.AtivoDaPessoa, ...], j: pulse.Janela
+) -> list[Evento] | None:
+    """Os eventos coletados na janela; None se a leitura falhou (aí a visita não é marcada)."""
+    if not ativos:
+        return []
+    try:
+        with obter_engine().connect() as conexao:
+            return eventos_dos_tickers(
+                conexao,
+                [a.ticker for a in ativos],
+                j.publicados_desde,
+                coletados_entre=(j.desde, j.ate),
+            )
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            return []  # banco sem o Research: nada coletado
+        log.exception("Falha ao ler os acontecimentos do Pulse")
+        return None
+
+
+def montar_variacoes(
+    ativos: tuple[pulse.AtivoDaPessoa, ...],
+    j: pulse.Janela,
+    carregar: Callable[[str, str], pd.DataFrame] | None = None,
+) -> tuple[list[esquemas.VariacaoV1], list[str]]:
+    """A variação de cada ativo desde a visita (a maior primeiro) e os que ficaram sem: na
+    moeda do ativo, sem o câmbio, como no app atual. (A rota e os testes do React usam.)"""
+    carregar = carregar or contexto.carregar_dados
+    periodo = pulse.periodo_de_precos(j)
+    variacoes, sem_variacao = [], []
+    for ativo in ativos:
+        visto = _sem_preco.get(ativo.ticker)
+        if visto is not None and time.monotonic() - visto < VALIDADE_DO_SEM_PRECO:
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+            continue
+        try:
+            fechamentos = carregar(ativo.ticker, periodo)["Close"]
+        except DadosIndisponiveisError:
+            _sem_preco[ativo.ticker] = time.monotonic()
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+            continue
+        except (ValueError, KeyError):
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+            continue
+        v = pulse.variacao(ativo.ticker, fechamentos, j.desde)
+        if v is None:
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+        else:
+            variacoes.append(v)
+    origens = {a.ticker: list(a.origens) for a in ativos}
+    return [
+        esquemas.VariacaoV1(
+            ticker=v.ticker.removesuffix(".SA"),
+            variacao=v.retorno,
+            de=v.de,
+            ate=v.ate,
+            por_que_aparece=origens.get(v.ticker, []),
+        )
+        for v in pulse.ordenar_variacoes(variacoes)
+    ], sem_variacao
+
+
+@router.get("/pulse")
+def pulse_da_conta(
+    conta: Conta,
+    desde: Annotated[
+        datetime | None,
+        Query(description="O início da janela que a aba já mostrava (ISO, com fuso)."),
+    ] = None,
+) -> esquemas.PulseV1:
+    """O Pulse: os acontecimentos novos nas empresas dos ativos da pessoa, a variação do preço
+    desde a visita e as estratégias salvas com o veredito da ficha "Foi sorte?" refeito com os
+    preços de hoje. Abrir marca a visita, como no app atual; se a leitura dos acontecimentos
+    falhar, não marca (senão a pessoa perderia o que ainda não viu).
+
+    Sem sessão no servidor, o F5 da aba reenvia em `desde` o início que ela mostrava: a janela
+    não encolhe para os minutos desde a visita que a própria aba marcou (até 30 dias atrás).
+    Confere no máximo 10 fichas (as salvas mais recentemente); o resto aparece sem conferir.
+    """
+    agora = pulse.agora()
+    with obter_engine().connect() as conexao:
+        visita = repo_pulse.ultima_visita(conexao, conta.id)
+        vistos = repo_pulse.vereditos_vistos(conexao, conta.id)
+        guardadas = pulse.ler_mudancas(repo_pulse.mudancas_vistas(conexao, conta.id))
+        simulacoes = listar_simulacoes(conexao, conta.id)
+        ligadas = pulse.teses_por_estrategia(repo_teses.listar(conexao, conta.id))
+        ativos, ativos_de_fora = _ativos_da_conta(conexao, conta, simulacoes)
+        presets = presets_atuais(conexao, conta.id)
+    j = _ou_422(lambda: pulse.janela_da_aba(visita, agora, desde))
+    eventos = _eventos_novos(ativos, j)
+    acontecimentos = (
+        None if eventos is None else montar_acontecimentos(eventos, ativos, j, presets)
+    )
+    variacoes, sem_variacao = montar_variacoes(ativos, j)
+    salvas, sem_ficha, _ = pulse.estrategias_salvas(simulacoes, maximo=len(simulacoes))
+    a_conferir = salvas[: pulse.MAXIMO_DE_FICHAS]
+    fora = len(salvas) - len(a_conferir)
+    conferidos = [
+        pulse.comparar(
+            e, vistos, pulse.veredito_de_hoje(e, _precos_da_estrategia, cdi_entre)
+        )
+        for e in a_conferir
+    ] + [pulse.comparar(e, vistos, None) for e in salvas[pulse.MAXIMO_DE_FICHAS :]]
+    acompanhadas, mudancas = pulse.acompanhar(conferidos, guardadas, j)
+    if acontecimentos is not None:
+        with obter_engine().begin() as conexao:
+            repo_pulse.marcar_visita(
+                conexao,
+                conta.id,
+                agora,
+                pulse.vereditos_para_guardar(
+                    vistos, conferidos, {str(s.id) for s in simulacoes}
+                ),
+                pulse.mudancas_para_guardar(mudancas),
+            )
+    sem_conferir = [
+        v.estrategia.nome for v in conferidos[: len(a_conferir)] if v.agora is None
+    ]
+    return esquemas.PulseV1(
+        janela=esquemas.JanelaV1(
+            inicio=j.desde,
+            fim=j.ate,
+            primeira_vez=j.primeira_vez,
+            texto=pulse.texto_da_janela(j),
+        ),
+        estrategias=[_estrategia_v1(a, ligadas) for a in acompanhadas],
+        limites=esquemas.LimitesDoPulseV1(
+            sem_ficha=sem_ficha,
+            alem_do_maximo=fora,
+            nao_conferidas=len(sem_conferir),
+            alem_dos_ativos=ativos_de_fora,
+        ),
+        avisos=_avisos_do_pulse(sem_conferir, sem_ficha, fora),
+        sem_estrategias=SEM_ESTRATEGIAS,
+        notas=[pulse.LIMITES[2], pulse.LIMITES[3]],
+        acontecimentos=acontecimentos,
+        variacoes=variacoes,
+        avisos_dos_ativos=(
+            [pulse.aviso_dos_ativos_de_fora(ativos_de_fora)] if ativos_de_fora else []
+        ),
+        sem_variacao=sem_variacao,
+        sem_ativos=pulse.SEM_ATIVOS,
+        nota_da_variacao=pulse.NOTA_DA_VARIACAO,
+    )
+
+
+@router.get("/painel-do-cafe")
+def painel_do_cafe_v1(
+    _conta: Conta,
+    tipo: Annotated[
+        TipoDeCafe, Query(description="Arábica ou conilon (robusta).")
+    ] = "arabica",
+    regiao: Annotated[
+        str | None,
+        Query(
+            description="A região do clima e do calendário; vazia, a de maior área do tipo."
+        ),
+    ] = None,
+) -> esquemas.PainelDoCafeV1:
+    """O painel do café de hoje: preço de referência, câmbio, fundos, exportações, balanço, safra,
+    clima, calendário e contrapartes, cada bloco com a fonte e a data (sem dado: o motivo)."""
+    if regiao is not None and regiao not in painel_do_cafe.POR_ID:
+        raise HTTPException(
+            status_code=422, detail=f"Região de café desconhecida: {regiao}."
+        )
+    with obter_engine().connect() as conexao:
+        painel = painel_do_cafe.montar_painel(conexao, tipo, hoje_no_brasil(), regiao)
+    return esquemas.de_painel_do_cafe(painel)
+
+
+@router.get("/beta/boas-vindas")
+def boas_vindas_do_beta(_conta: Conta) -> esquemas.BoasVindasDoBetaV1:
+    """O texto da página de boas-vindas do beta e o roteiro dos 10 minutos (src/beta.py)."""
+    return esquemas.de_boas_vindas_do_beta()

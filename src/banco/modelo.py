@@ -53,7 +53,8 @@ usuarios = sa.Table(
     "usuarios",
     metadata,
     sa.Column("id", sa.Uuid, primary_key=True),
-    sa.Column("google_sub", sa.String(64), nullable=False, unique=True),
+    # vazio na conta criada pela Microsoft ou por e-mail (0039); a fonte é a tabela identidades
+    sa.Column("google_sub", sa.String(64), unique=True),
     sa.Column("email", sa.String(320), nullable=False),
     sa.Column("nome", sa.String(200)),
     sa.Column("foto_url", sa.String(1000)),
@@ -69,6 +70,59 @@ usuarios = sa.Table(
     sa.CheckConstraint("plano IN ('gratuito', 'plus', 'pro')", name="plano"),
 )
 sa.Index("ix_usuarios_email", usuarios.c.email)
+
+PROVEDORES_DE_LOGIN = ("google", "microsoft", "email")
+_REGRA_DOS_PROVEDORES = "provedor IN ('google', 'microsoft', 'email')"
+
+# Formas de entrar (0039): cada uma é um provedor + o identificador dele, ligada a uma conta. O e-mail
+# confirmado é o que permite juntar duas formas de entrar na mesma conta (src/banco/usuarios.py)
+identidades = sa.Table(
+    "identidades",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("provedor", sa.String(20), nullable=False),
+    sa.Column("sub", sa.String(255), nullable=False),
+    sa.Column("email", sa.String(320), nullable=False),
+    sa.Column("email_confirmado", sa.Boolean, nullable=False),
+    _momento("criada_em"),
+    sa.Column("ultimo_uso", sa.DateTime(timezone=True)),
+    sa.UniqueConstraint("provedor", "sub"),
+    sa.CheckConstraint(_REGRA_DOS_PROVEDORES, name="provedor"),
+)
+sa.Index("ix_identidades_usuario_id", identidades.c.usuario_id)
+sa.Index("ix_identidades_email", identidades.c.email)
+
+# Sessões do app novo (0039): o cookie leva um código aleatório; aqui fica só o hash dele
+sessoes_de_login = sa.Table(
+    "sessoes_de_login",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("hash_do_token", sa.String(64), nullable=False, unique=True),
+    sa.Column("provedor", sa.String(20), nullable=False),
+    _momento("criada_em"),
+    sa.Column("expira_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("ultimo_uso", sa.DateTime(timezone=True)),
+    sa.Column("encerrada_em", sa.DateTime(timezone=True)),
+    sa.CheckConstraint(_REGRA_DOS_PROVEDORES, name="provedor"),
+)
+sa.Index("ix_sessoes_de_login_usuario_id", sessoes_de_login.c.usuario_id)
+
+# Códigos de entrada por e-mail (0039): só hashes, sem chave para a conta (o primeiro acesso ainda
+# não tem conta). Uso no PR 2 do login
+codigos_de_entrada = sa.Table(
+    "codigos_de_entrada",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("hash_do_email", sa.String(64), nullable=False),
+    sa.Column("hash_do_codigo", sa.String(64), nullable=False),
+    _momento("criado_em"),
+    sa.Column("expira_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("tentativas", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("usado_em", sa.DateTime(timezone=True)),
+)
+sa.Index("ix_codigos_de_entrada_hash_do_email", codigos_de_entrada.c.hash_do_email)
 
 preferencias = sa.Table(
     "preferencias",
@@ -311,11 +365,18 @@ documentos_financeiros = sa.Table(
     sa.Column("link", sa.String(500), nullable=False),
     _momento("coletado_em"),
 )
+# o cadastro público da companhia (cad_cia_aberta.csv): setor e, desde a 0044, situação, categoria e
+# registro na CVM; as empresas dos EUA (`CIK...`) só têm o setor
 setores_cvm = sa.Table(
     "setores_cvm",
     metadata,
     sa.Column("cnpj", sa.String(18), primary_key=True),
     sa.Column("setor", sa.String(120), nullable=False),
+    sa.Column("situacao", sa.String(40)),  # ATIVO, CANCELADA...
+    sa.Column("situacao_desde", sa.Date),  # desde quando a situação vale
+    sa.Column("categoria", sa.String(40)),  # Categoria A ou B
+    sa.Column("registro", sa.Date),  # a data do registro na CVM
+    sa.Column("atualizado_em", sa.DateTime(timezone=True)),  # quando a coleta gravou
 )
 
 # Research (0008): dados públicos da CVM, iguais para todos (nada pessoal aqui)
@@ -827,4 +888,531 @@ fre_eventos_de_capital = sa.Table(
     sa.Column("acoes_novas", sa.Float),
     sa.Column("valor", sa.Float),
     _momento("coletado_em"),
+)
+
+
+# --- Sala de dados por operação (B-20, migração 0040; plano `2026-10-20-b20-sala-de-dados`) ---
+# Cada operação (M&A, dívida, crédito, FIDC) é uma sala com os documentos dela. Isolamento no banco:
+# toda tabela tem `usuario_id` e se liga à operação pela chave composta (operacao_id, usuario_id),
+# então o banco recusa uma linha de uma conta na sala de outra; evidência, contradição e item do
+# checklist só apontam coisas da mesma sala (chaves compostas com operacao_id). Tudo sai com a conta.
+TIPOS_DE_OPERACAO = ("ma", "divida", "credito", "fidc")
+SITUACOES_DA_OPERACAO = ("aberta", "encerrada")
+TIPOS_DE_DOCUMENTO = ("pdf", "xlsx", "docx", "csv")
+SITUACOES_DO_DOCUMENTO = ("na_fila", "lido", "sem_texto", "erro_na_leitura")
+QUEM_EXTRAIU = ("pessoa", "regra")
+REVISOES_DA_EVIDENCIA = ("automatico", "revisado", "contestado", "rejeitado")
+ESTADOS_DA_CONTRADICAO = ("aberta", "explicada", "descartada")
+ESTADOS_DO_CHECKLIST = (
+    "pendente",
+    "recebido",
+    "revisado",
+    "contestado",
+    "nao_se_aplica",
+)
+TAMANHO_MAXIMO_DO_NOME_DA_OPERACAO = 200
+TAMANHO_MAXIMO_DO_NOME_DO_DOCUMENTO = 255
+TAMANHO_MAXIMO_DA_NOTA = 2000
+
+
+def _entre(coluna: str, valores: tuple[str, ...]) -> str:
+    return f"{coluna} IN ({', '.join(repr(v) for v in valores)})"
+
+
+def _da_operacao(tabela: str) -> sa.ForeignKeyConstraint:
+    return sa.ForeignKeyConstraint(
+        ["operacao_id", "usuario_id"],
+        ["operacoes.id", "operacoes.usuario_id"],
+        name=f"fk_{tabela}_operacao_id_operacoes",
+        ondelete="CASCADE",
+    )
+
+
+def _da_mesma_sala(
+    tabela: str, coluna: str, alvo: str, ondelete: str | None = "CASCADE"
+) -> sa.ForeignKeyConstraint:
+    return sa.ForeignKeyConstraint(
+        [coluna, "operacao_id", "usuario_id"],
+        [f"{alvo}.id", f"{alvo}.operacao_id", f"{alvo}.usuario_id"],
+        name=f"fk_{tabela}_{coluna}_{alvo}",
+        ondelete=ondelete,
+    )
+
+
+operacoes = sa.Table(
+    "operacoes",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("tipo", sa.String(10), nullable=False),
+    sa.Column("nome", sa.String(TAMANHO_MAXIMO_DO_NOME_DA_OPERACAO), nullable=False),
+    sa.Column("situacao", sa.String(10), nullable=False, server_default="aberta"),
+    sa.Column("retencao_ate", sa.Date, nullable=False),
+    # chave da operação embrulhada pela chave-mestra (PR 2); vazia até lá, e nunca sai do banco
+    sa.Column("chave_cifrada", sa.LargeBinary),
+    sa.Column("versao_da_chave", sa.Integer),
+    _momento("criada_em"),
+    _momento("atualizada_em"),
+    sa.UniqueConstraint("id", "usuario_id", name="uq_operacoes_id_usuario_id"),
+    sa.CheckConstraint(_entre("tipo", TIPOS_DE_OPERACAO), name="tipo"),
+    sa.CheckConstraint(_entre("situacao", SITUACOES_DA_OPERACAO), name="situacao"),
+    sa.CheckConstraint(
+        f"length(nome) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_NOME_DA_OPERACAO}", name="nome"
+    ),
+    sa.CheckConstraint(
+        "(chave_cifrada IS NULL) = (versao_da_chave IS NULL)", name="chave"
+    ),
+)
+sa.Index(
+    "ix_operacoes_usuario_id_criada_em", operacoes.c.usuario_id, operacoes.c.criada_em
+)
+sa.Index("ix_operacoes_retencao_ate", operacoes.c.retencao_ate)
+
+documentos_da_sala = sa.Table(
+    "documentos_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column(
+        "nome_original", sa.String(TAMANHO_MAXIMO_DO_NOME_DO_DOCUMENTO), nullable=False
+    ),
+    sa.Column("tipo", sa.String(10), nullable=False),
+    sa.Column("tamanho_bytes", sa.BigInteger, nullable=False),
+    sa.Column("paginas", sa.Integer),
+    sa.Column("sha256", sa.String(64), nullable=False),
+    sa.Column("nonce", sa.LargeBinary),  # da cifra do arquivo (PR 2)
+    sa.Column("situacao", sa.String(20), nullable=False, server_default="na_fila"),
+    sa.Column("lido_por", sa.String(40)),  # versão do leitor
+    _momento("recebido_em"),
+    _da_operacao("documentos_da_sala"),
+    sa.UniqueConstraint(
+        "id", "operacao_id", "usuario_id", name="uq_documentos_da_sala_id_operacao"
+    ),
+    # o mesmo arquivo só é recusado dentro da mesma sala
+    sa.UniqueConstraint("operacao_id", "sha256", name="uq_documentos_da_sala_sha256"),
+    sa.CheckConstraint(_entre("tipo", TIPOS_DE_DOCUMENTO), name="tipo"),
+    sa.CheckConstraint(_entre("situacao", SITUACOES_DO_DOCUMENTO), name="situacao"),
+    sa.CheckConstraint("tamanho_bytes > 0", name="tamanho"),
+    sa.CheckConstraint("paginas IS NULL OR paginas >= 0", name="paginas"),
+    sa.CheckConstraint("length(sha256) = 64", name="sha256"),
+    sa.CheckConstraint(
+        f"length(nome_original) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_NOME_DO_DOCUMENTO}",
+        name="nome",
+    ),
+)
+sa.Index("ix_documentos_da_sala_usuario_id", documentos_da_sala.c.usuario_id)
+
+evidencias_da_sala = sa.Table(
+    "evidencias_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("documento_id", sa.Uuid, nullable=False),
+    sa.Column("metrica", sa.String(120), nullable=False),
+    sa.Column("periodo", sa.String(20), nullable=False),
+    sa.Column("valor_numero", sa.Numeric(28, 6)),
+    sa.Column("valor_texto", sa.String(500)),
+    sa.Column("unidade", sa.String(20)),
+    sa.Column("moeda", sa.String(3)),
+    sa.Column("pagina", sa.Integer),
+    sa.Column("secao", sa.String(200)),
+    sa.Column("tabela", sa.String(200)),
+    sa.Column("trecho", sa.String(TAMANHO_MAXIMO_DA_NOTA)),
+    sa.Column("conferida", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("extraido_por", sa.String(10), nullable=False),
+    sa.Column(
+        "estado_de_revisao", sa.String(12), nullable=False, server_default="automatico"
+    ),
+    _momento("criada_em"),
+    _da_operacao("evidencias_da_sala"),
+    _da_mesma_sala("evidencias_da_sala", "documento_id", "documentos_da_sala"),
+    sa.UniqueConstraint(
+        "id", "operacao_id", "usuario_id", name="uq_evidencias_da_sala_id_operacao"
+    ),
+    sa.CheckConstraint(_entre("extraido_por", QUEM_EXTRAIU), name="extraido_por"),
+    sa.CheckConstraint(
+        _entre("estado_de_revisao", REVISOES_DA_EVIDENCIA), name="estado_de_revisao"
+    ),
+    sa.CheckConstraint(
+        "valor_numero IS NOT NULL OR valor_texto IS NOT NULL", name="valor"
+    ),
+    sa.CheckConstraint("pagina IS NULL OR pagina >= 1", name="pagina"),
+)
+sa.Index("ix_evidencias_da_sala_usuario_id", evidencias_da_sala.c.usuario_id)
+sa.Index(
+    "ix_evidencias_da_sala_documento_id",
+    evidencias_da_sala.c.documento_id,
+    evidencias_da_sala.c.operacao_id,
+    evidencias_da_sala.c.usuario_id,
+)
+
+contradicoes_da_sala = sa.Table(
+    "contradicoes_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("evidencia_a", sa.Uuid, nullable=False),
+    sa.Column("evidencia_b", sa.Uuid, nullable=False),
+    sa.Column("diferenca", sa.Numeric(28, 6)),
+    sa.Column("estado", sa.String(12), nullable=False, server_default="aberta"),
+    sa.Column("nota", sa.String(TAMANHO_MAXIMO_DA_NOTA)),
+    _momento("criada_em"),
+    _da_operacao("contradicoes_da_sala"),
+    _da_mesma_sala("contradicoes_da_sala", "evidencia_a", "evidencias_da_sala"),
+    _da_mesma_sala("contradicoes_da_sala", "evidencia_b", "evidencias_da_sala"),
+    sa.UniqueConstraint(
+        "evidencia_a", "evidencia_b", name="uq_contradicoes_da_sala_evidencias"
+    ),
+    sa.CheckConstraint("evidencia_a <> evidencia_b", name="duas_evidencias"),
+    sa.CheckConstraint(_entre("estado", ESTADOS_DA_CONTRADICAO), name="estado"),
+)
+sa.Index("ix_contradicoes_da_sala_usuario_id", contradicoes_da_sala.c.usuario_id)
+sa.Index(
+    "ix_contradicoes_da_sala_evidencia_b",
+    contradicoes_da_sala.c.evidencia_b,
+    contradicoes_da_sala.c.operacao_id,
+    contradicoes_da_sala.c.usuario_id,
+)
+
+checklist_da_sala = sa.Table(
+    "checklist_da_sala",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("codigo", sa.String(60), nullable=False),  # do modelo de checklist (PR 4)
+    sa.Column("estado", sa.String(15), nullable=False, server_default="pendente"),
+    sa.Column("documento_id", sa.Uuid),
+    sa.Column("nota", sa.String(TAMANHO_MAXIMO_DA_NOTA)),
+    _momento("atualizado_em"),
+    _da_operacao("checklist_da_sala"),
+    # sem cascata: apagar o documento solta o item antes (src/banco/sala.py); o banco só impede
+    # que o item aponte um documento de outra sala
+    _da_mesma_sala(
+        "checklist_da_sala", "documento_id", "documentos_da_sala", ondelete=None
+    ),
+    sa.UniqueConstraint("operacao_id", "codigo", name="uq_checklist_da_sala_codigo"),
+    sa.CheckConstraint(_entre("estado", ESTADOS_DO_CHECKLIST), name="estado"),
+)
+sa.Index("ix_checklist_da_sala_usuario_id", checklist_da_sala.c.usuario_id)
+sa.Index(
+    "ix_checklist_da_sala_documento_id",
+    checklist_da_sala.c.documento_id,
+    checklist_da_sala.c.operacao_id,
+    checklist_da_sala.c.usuario_id,
+)
+
+
+# --- Originação: o funil das operações (B-33, migração 0041; plano `2026-10-21-b33-crm-de-originacao`) ---
+# Um negócio por operação (a chave primária é a própria operação) e os contatos que a pessoa anotou.
+# Mesmo isolamento da sala: chave composta com `usuario_id`, cascata com a operação e a conta.
+# Nenhuma coluna de e-mail ou telefone, de propósito: o registro é um caderno, não envia nada.
+FASES_DO_NEGOCIO = (
+    "ideia",
+    "qualificacao",
+    "analise",
+    "proposta",
+    "negociacao",
+    "fechado",
+    "perdido",
+)
+TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO = 300
+TAMANHO_MAXIMO_DO_CONTATO = 500
+
+negocios_da_originacao = sa.Table(
+    "negocios_da_originacao",
+    metadata,
+    sa.Column("operacao_id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("fase", sa.String(12), nullable=False, server_default="ideia"),
+    sa.Column("origem", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO), nullable=False),
+    sa.Column("alvo", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO)),
+    sa.Column("proximo_passo", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO)),
+    sa.Column("responsavel", sa.String(TAMANHO_MAXIMO_DO_TEXTO_DO_NEGOCIO)),
+    sa.Column("fase_desde", sa.Date, nullable=False),
+    _momento("criado_em"),
+    _momento("atualizado_em"),
+    _da_operacao("negocios_da_originacao"),
+    sa.UniqueConstraint(
+        "operacao_id", "usuario_id", name="uq_negocios_da_originacao_operacao"
+    ),
+    sa.CheckConstraint(_entre("fase", FASES_DO_NEGOCIO), name="fase"),
+)
+sa.Index("ix_negocios_da_originacao_usuario_id", negocios_da_originacao.c.usuario_id)
+
+contatos_do_negocio = sa.Table(
+    "contatos_do_negocio",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("descricao", sa.String(TAMANHO_MAXIMO_DO_CONTATO), nullable=False),
+    sa.Column("ocorreu_em", sa.Date, nullable=False),
+    _momento("registrado_em"),
+    sa.ForeignKeyConstraint(
+        ["operacao_id", "usuario_id"],
+        [
+            "negocios_da_originacao.operacao_id",
+            "negocios_da_originacao.usuario_id",
+        ],
+        name="fk_contatos_do_negocio_negocio",
+        ondelete="CASCADE",
+    ),
+    sa.CheckConstraint(
+        f"length(descricao) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_CONTATO}", name="descricao"
+    ),
+)
+sa.Index(
+    "ix_contatos_do_negocio_negocio",
+    contatos_do_negocio.c.operacao_id,
+    contatos_do_negocio.c.usuario_id,
+)
+sa.Index("ix_contatos_do_negocio_usuario_id", contatos_do_negocio.c.usuario_id)
+
+
+# --- Garantias das operações (B-17, migração 0042; plano `2026-10-21-b17-garantias`) ---
+# A exposição é a dívida a cobrir; cada garantia aponta para uma exposição da mesma operação. Mesmo
+# isolamento da sala: chave composta com `usuario_id`, cascata com a operação e com a conta. Titular só
+# por id opaco (`titular_ref`): nenhuma coluna de nome, CPF ou endereço. O laudo é um documento da
+# mesma sala, com a página citada; apagar o documento solta o laudo (src/banco/sala.py), não a garantia.
+TIPOS_DE_GARANTIA = (
+    "imovel",
+    "recebiveis",
+    "veiculo",
+    "acoes",
+    "fianca",
+    "aval",
+    "cessao_fiduciaria",
+    "outro",
+)
+LIQUIDEZES_DA_GARANTIA = ("alta", "media", "baixa")
+TAMANHO_MAXIMO_DO_ROTULO_DA_EXPOSICAO = 120
+TAMANHO_MAXIMO_DO_TITULAR_REF = 60
+
+exposicoes_da_operacao = sa.Table(
+    "exposicoes_da_operacao",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column(
+        "rotulo", sa.String(TAMANHO_MAXIMO_DO_ROTULO_DA_EXPOSICAO), nullable=False
+    ),
+    sa.Column("valor", sa.Numeric(28, 6), nullable=False),
+    sa.Column("moeda", sa.String(3), nullable=False),
+    sa.Column("vencimento", sa.Date),
+    _momento("criada_em"),
+    _momento("atualizada_em"),
+    _da_operacao("exposicoes_da_operacao"),
+    sa.UniqueConstraint(
+        "id", "operacao_id", "usuario_id", name="uq_exposicoes_da_operacao_id"
+    ),
+    sa.CheckConstraint("valor > 0", name="valor"),
+    sa.CheckConstraint(
+        f"length(rotulo) BETWEEN 1 AND {TAMANHO_MAXIMO_DO_ROTULO_DA_EXPOSICAO}",
+        name="rotulo",
+    ),
+)
+sa.Index("ix_exposicoes_da_operacao_usuario_id", exposicoes_da_operacao.c.usuario_id)
+sa.Index(
+    "ix_exposicoes_da_operacao_operacao",
+    exposicoes_da_operacao.c.operacao_id,
+    exposicoes_da_operacao.c.usuario_id,
+)
+
+garantias_da_operacao = sa.Table(
+    "garantias_da_operacao",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("operacao_id", sa.Uuid, nullable=False),
+    sa.Column("exposicao_id", sa.Uuid, nullable=False),
+    sa.Column("tipo", sa.String(20), nullable=False),
+    sa.Column("valor_avaliado", sa.Numeric(28, 6), nullable=False),
+    sa.Column("moeda", sa.String(3), nullable=False),
+    sa.Column("avaliado_em", sa.Date, nullable=False),
+    sa.Column("haircut", sa.Numeric(7, 6), nullable=False),
+    sa.Column("liquidez", sa.String(5), nullable=False),
+    sa.Column("prioridade", sa.Integer, nullable=False, server_default="1"),
+    sa.Column("onus_anteriores", sa.Numeric(28, 6), nullable=False, server_default="0"),
+    sa.Column("valido_ate", sa.Date),
+    sa.Column("titular_ref", sa.String(TAMANHO_MAXIMO_DO_TITULAR_REF)),
+    sa.Column("laudo_id", sa.Uuid),
+    sa.Column("laudo_pagina", sa.Integer),
+    _momento("criada_em"),
+    _momento("atualizada_em"),
+    _da_operacao("garantias_da_operacao"),
+    _da_mesma_sala("garantias_da_operacao", "exposicao_id", "exposicoes_da_operacao"),
+    # sem cascata: apagar o documento solta o laudo antes (src/banco/sala.py)
+    _da_mesma_sala(
+        "garantias_da_operacao", "laudo_id", "documentos_da_sala", ondelete=None
+    ),
+    sa.CheckConstraint(_entre("tipo", TIPOS_DE_GARANTIA), name="tipo"),
+    sa.CheckConstraint(_entre("liquidez", LIQUIDEZES_DA_GARANTIA), name="liquidez"),
+    sa.CheckConstraint("haircut >= 0 AND haircut <= 1", name="haircut"),
+    sa.CheckConstraint("valor_avaliado >= 0", name="valor_avaliado"),
+    sa.CheckConstraint("onus_anteriores >= 0", name="onus_anteriores"),
+    sa.CheckConstraint("prioridade >= 1", name="prioridade"),
+    sa.CheckConstraint(
+        "(laudo_id IS NULL) = (laudo_pagina IS NULL) "
+        "AND (laudo_pagina IS NULL OR laudo_pagina >= 1)",
+        name="laudo",
+    ),
+)
+sa.Index("ix_garantias_da_operacao_usuario_id", garantias_da_operacao.c.usuario_id)
+sa.Index(
+    "ix_garantias_da_operacao_exposicao",
+    garantias_da_operacao.c.exposicao_id,
+    garantias_da_operacao.c.operacao_id,
+    garantias_da_operacao.c.usuario_id,
+)
+sa.Index(
+    "ix_garantias_da_operacao_laudo",
+    garantias_da_operacao.c.laudo_id,
+    garantias_da_operacao.c.operacao_id,
+    garantias_da_operacao.c.usuario_id,
+)
+
+
+# API externa (N7, ADR 0108): quem entra. A organização é o cliente PJ, sem dado de pessoa (o contato
+# fica no CRM); a chave guarda só o prefixo (não é segredo) e o SHA-256 da chave inteira. Nada aqui
+# se apaga para suspender: suspender é preencher `suspensa_em` / `suspenso_em`.
+PLANOS_DA_API = ("piloto",)
+# `treino` é o modelo próprio do TickerLab: nunca vai para uma organização (plano N7, D6)
+FINALIDADES_DA_ORGANIZACAO = ("analise", "credito")
+CANAL_DA_CHAVE = "api_externa"  # a chave nunca abre `api_interna` (ADR 0108, linha 117)
+MOTIVOS_DA_SUSPENSAO = ("contrato", "pagamento", "abuso", "pedido_do_cliente", "fonte")
+TAMANHO_MAXIMO_DO_NOME_DA_ORGANIZACAO = 120
+TAMANHO_MAXIMO_DO_CONJUNTO = 80
+
+
+def _quem_fez(nome: str) -> sa.Column:
+    # o admin que fez; a linha fica quando a conta dele é apagada
+    return sa.Column(nome, sa.Uuid, sa.ForeignKey("usuarios.id", ondelete="SET NULL"))
+
+
+organizacoes = sa.Table(
+    "organizacoes",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("nome", sa.String(TAMANHO_MAXIMO_DO_NOME_DA_ORGANIZACAO), nullable=False),
+    sa.Column("cnpj", sa.String(14), unique=True),
+    sa.Column("plano_da_api", sa.String(20), nullable=False, server_default="piloto"),
+    sa.Column("suspensa_em", sa.DateTime(timezone=True)),
+    sa.Column("motivo_da_suspensao", sa.String(30)),
+    _momento("criada_em"),
+    _quem_fez("criada_por"),
+    sa.CheckConstraint(_entre("plano_da_api", PLANOS_DA_API), name="plano_da_api"),
+    sa.CheckConstraint(
+        "motivo_da_suspensao IS NULL OR "
+        + _entre("motivo_da_suspensao", MOTIVOS_DA_SUSPENSAO),
+        name="motivo_da_suspensao",
+    ),
+    sa.CheckConstraint(
+        "(suspensa_em IS NULL) = (motivo_da_suspensao IS NULL)", name="suspensao"
+    ),
+)
+
+chaves_da_api = sa.Table(
+    "chaves_da_api",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column(
+        "organizacao_id",
+        sa.Uuid,
+        sa.ForeignKey("organizacoes.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column("prefixo", sa.String(8), nullable=False, unique=True),
+    sa.Column("hash_da_chave", sa.String(64), nullable=False, unique=True),
+    _momento("criada_em"),
+    _quem_fez("criada_por"),
+    # preenchido na rotação: a chave antiga vale até aqui
+    sa.Column("expira_em", sa.DateTime(timezone=True)),
+    sa.Column("revogada_em", sa.DateTime(timezone=True)),
+    sa.Column("ultimo_uso", sa.DateTime(timezone=True)),
+    # para o consumo apontar para (chave, organização) e o banco recusar a chave de outra
+    sa.UniqueConstraint("id", "organizacao_id", name="uq_chaves_da_api_organizacao"),
+)
+sa.Index("ix_chaves_da_api_organizacao_id", chaves_da_api.c.organizacao_id)
+
+direitos_da_organizacao = sa.Table(
+    "direitos_da_organizacao",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column(
+        "organizacao_id",
+        sa.Uuid,
+        sa.ForeignKey("organizacoes.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column("conjunto", sa.String(TAMANHO_MAXIMO_DO_CONJUNTO), nullable=False),
+    sa.Column("finalidade", sa.String(12), nullable=False),
+    sa.Column("vigente_desde", sa.Date, nullable=False),
+    sa.Column("vigente_ate", sa.Date),
+    sa.Column("suspenso_em", sa.DateTime(timezone=True)),
+    _momento("criado_em"),
+    _quem_fez("criado_por"),
+    sa.UniqueConstraint(
+        "organizacao_id",
+        "conjunto",
+        "finalidade",
+        name="uq_direitos_da_organizacao_conjunto",
+    ),
+    sa.CheckConstraint(
+        _entre("finalidade", FINALIDADES_DA_ORGANIZACAO), name="finalidade"
+    ),
+    sa.CheckConstraint(
+        "vigente_ate IS NULL OR vigente_ate >= vigente_desde", name="vigencia"
+    ),
+)
+
+# O botão de parar um conjunto para todas as organizações (B-32a, PR 6): fonte que mudou a licença ou
+# dado que saiu errado. Vale também para contrato concedido depois; reativar não mexe no direito que
+# foi suspenso sozinho. Como em `organizacoes`, suspender é preencher, reativar é limpar: nada se apaga.
+conjuntos_suspensos = sa.Table(
+    "conjuntos_suspensos",
+    metadata,
+    sa.Column("conjunto", sa.String(TAMANHO_MAXIMO_DO_CONJUNTO), primary_key=True),
+    sa.Column("suspenso_em", sa.DateTime(timezone=True)),
+    sa.Column("motivo_da_suspensao", sa.String(30)),
+    sa.CheckConstraint(
+        "motivo_da_suspensao IS NULL OR "
+        + _entre("motivo_da_suspensao", MOTIVOS_DA_SUSPENSAO),
+        name="motivo_da_suspensao",
+    ),
+    sa.CheckConstraint(
+        "(suspenso_em IS NULL) = (motivo_da_suspensao IS NULL)", name="suspensao"
+    ),
+)
+
+# Medição agregada por dia (D10): sem IP, sem o que foi buscado, sem resposta
+consumo_da_api = sa.Table(
+    "consumo_da_api",
+    metadata,
+    sa.Column("organizacao_id", sa.Uuid, nullable=False),
+    sa.Column("chave_id", sa.Uuid, nullable=False),
+    sa.Column("dia", sa.Date, nullable=False),
+    sa.Column("canal", sa.String(12), nullable=False),
+    sa.Column("finalidade", sa.String(12), nullable=False),
+    sa.Column("conjunto", sa.String(TAMANHO_MAXIMO_DO_CONJUNTO), nullable=False),
+    sa.Column("pedidos", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("linhas", sa.BigInteger, nullable=False, server_default="0"),
+    sa.Column("negados", sa.Integer, nullable=False, server_default="0"),
+    sa.PrimaryKeyConstraint(
+        "organizacao_id", "chave_id", "dia", "canal", "finalidade", "conjunto"
+    ),
+    sa.ForeignKeyConstraint(
+        ["chave_id", "organizacao_id"],
+        ["chaves_da_api.id", "chaves_da_api.organizacao_id"],
+        name="fk_consumo_da_api_chave",
+        ondelete="CASCADE",
+    ),
+    sa.CheckConstraint(f"canal = '{CANAL_DA_CHAVE}'", name="canal"),
+    sa.CheckConstraint(
+        _entre("finalidade", FINALIDADES_DA_ORGANIZACAO), name="finalidade"
+    ),
 )

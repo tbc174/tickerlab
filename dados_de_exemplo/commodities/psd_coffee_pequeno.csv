@@ -1,0 +1,305 @@
+Commodity_Code,Commodity_Description,Country_Code,Country_Name,Market_Year,Calendar_Year,Month,Attribute_ID,Attribute_Description,Unit_ID,Unit_Description,Value
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,029,Arabica Production,02,(1000 60 KG BAGS),39800.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,090,Bean Exports,02,(1000 60 KG BAGS),32200.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,058,Bean Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,020,Beginning Stocks,02,(1000 60 KG BAGS),540.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,125,Domestic Consumption,02,(1000 60 KG BAGS),22450.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,176,Ending Stocks,02,(1000 60 KG BAGS),4620.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,088,Exports,02,(1000 60 KG BAGS),36145.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,057,Imports,02,(1000 60 KG BAGS),75.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,028,Production,02,(1000 60 KG BAGS),62600.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,107,Roast & Ground Exports,02,(1000 60 KG BAGS),45.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,075,Roast & Ground Imports,02,(1000 60 KG BAGS),75.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,053,Robusta Production,02,(1000 60 KG BAGS),22800.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),21500.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),950.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,114,Soluble Exports,02,(1000 60 KG BAGS),3900.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,082,Soluble Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,178,Total Distribution,02,(1000 60 KG BAGS),63215.0000
+0711100,"Coffee, Green",BR,Brazil,2022,2023,12,086,Total Supply,02,(1000 60 KG BAGS),63215.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,029,Arabica Production,02,(1000 60 KG BAGS),44900.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,090,Bean Exports,02,(1000 60 KG BAGS),43100.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,058,Bean Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,020,Beginning Stocks,02,(1000 60 KG BAGS),4620.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,125,Domestic Consumption,02,(1000 60 KG BAGS),22160.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,176,Ending Stocks,02,(1000 60 KG BAGS),2085.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,088,Exports,02,(1000 60 KG BAGS),46750.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,057,Imports,02,(1000 60 KG BAGS),75.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,028,Production,02,(1000 60 KG BAGS),66300.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,107,Roast & Ground Exports,02,(1000 60 KG BAGS),50.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,075,Roast & Ground Imports,02,(1000 60 KG BAGS),75.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,053,Robusta Production,02,(1000 60 KG BAGS),21400.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),21200.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),960.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,114,Soluble Exports,02,(1000 60 KG BAGS),3600.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,082,Soluble Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,178,Total Distribution,02,(1000 60 KG BAGS),70995.0000
+0711100,"Coffee, Green",BR,Brazil,2023,2025,06,086,Total Supply,02,(1000 60 KG BAGS),70995.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,029,Arabica Production,02,(1000 60 KG BAGS),44500.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,090,Bean Exports,02,(1000 60 KG BAGS),41000.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,058,Bean Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,020,Beginning Stocks,02,(1000 60 KG BAGS),2085.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,125,Domestic Consumption,02,(1000 60 KG BAGS),21970.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,176,Ending Stocks,02,(1000 60 KG BAGS),955.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,088,Exports,02,(1000 60 KG BAGS),44750.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,057,Imports,02,(1000 60 KG BAGS),90.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,028,Production,02,(1000 60 KG BAGS),65500.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,107,Roast & Ground Exports,02,(1000 60 KG BAGS),50.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,075,Roast & Ground Imports,02,(1000 60 KG BAGS),90.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,053,Robusta Production,02,(1000 60 KG BAGS),21000.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),21000.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),970.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,114,Soluble Exports,02,(1000 60 KG BAGS),3700.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,082,Soluble Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,178,Total Distribution,02,(1000 60 KG BAGS),67675.0000
+0711100,"Coffee, Green",BR,Brazil,2024,2026,07,086,Total Supply,02,(1000 60 KG BAGS),67675.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,029,Arabica Production,02,(1000 60 KG BAGS),38000.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,090,Bean Exports,02,(1000 60 KG BAGS),34000.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,058,Bean Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,020,Beginning Stocks,02,(1000 60 KG BAGS),955.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,125,Domestic Consumption,02,(1000 60 KG BAGS),22280.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,176,Ending Stocks,02,(1000 60 KG BAGS),3895.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,088,Exports,02,(1000 60 KG BAGS),37870.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,057,Imports,02,(1000 60 KG BAGS),90.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,028,Production,02,(1000 60 KG BAGS),63000.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,107,Roast & Ground Exports,02,(1000 60 KG BAGS),70.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,075,Roast & Ground Imports,02,(1000 60 KG BAGS),90.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,053,Robusta Production,02,(1000 60 KG BAGS),25000.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),21300.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),980.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,114,Soluble Exports,02,(1000 60 KG BAGS),3800.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,082,Soluble Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,178,Total Distribution,02,(1000 60 KG BAGS),64045.0000
+0711100,"Coffee, Green",BR,Brazil,2025,2026,07,086,Total Supply,02,(1000 60 KG BAGS),64045.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,029,Arabica Production,02,(1000 60 KG BAGS),10700.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,090,Bean Exports,02,(1000 60 KG BAGS),9450.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,058,Bean Imports,02,(1000 60 KG BAGS),2000.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,020,Beginning Stocks,02,(1000 60 KG BAGS),760.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,125,Domestic Consumption,02,(1000 60 KG BAGS),2150.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,176,Ending Stocks,02,(1000 60 KG BAGS),885.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,088,Exports,02,(1000 60 KG BAGS),10610.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,057,Imports,02,(1000 60 KG BAGS),2185.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,028,Production,02,(1000 60 KG BAGS),10700.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,107,Roast & Ground Exports,02,(1000 60 KG BAGS),210.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,075,Roast & Ground Imports,02,(1000 60 KG BAGS),5.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),1550.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),600.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,114,Soluble Exports,02,(1000 60 KG BAGS),950.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,082,Soluble Imports,02,(1000 60 KG BAGS),180.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,178,Total Distribution,02,(1000 60 KG BAGS),13645.0000
+0711100,"Coffee, Green",CO,Colombia,2022,2024,12,086,Total Supply,02,(1000 60 KG BAGS),13645.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,029,Arabica Production,02,(1000 60 KG BAGS),12760.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,090,Bean Exports,02,(1000 60 KG BAGS),10700.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,058,Bean Imports,02,(1000 60 KG BAGS),885.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,020,Beginning Stocks,02,(1000 60 KG BAGS),885.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,125,Domestic Consumption,02,(1000 60 KG BAGS),2225.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,176,Ending Stocks,02,(1000 60 KG BAGS),668.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,088,Exports,02,(1000 60 KG BAGS),11770.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,057,Imports,02,(1000 60 KG BAGS),1018.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,028,Production,02,(1000 60 KG BAGS),12760.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,107,Roast & Ground Exports,02,(1000 60 KG BAGS),230.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,075,Roast & Ground Imports,02,(1000 60 KG BAGS),3.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),1620.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),605.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,114,Soluble Exports,02,(1000 60 KG BAGS),840.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,082,Soluble Imports,02,(1000 60 KG BAGS),130.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,178,Total Distribution,02,(1000 60 KG BAGS),14663.0000
+0711100,"Coffee, Green",CO,Colombia,2023,2025,12,086,Total Supply,02,(1000 60 KG BAGS),14663.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,029,Arabica Production,02,(1000 60 KG BAGS),14800.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,090,Bean Exports,02,(1000 60 KG BAGS),12200.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,058,Bean Imports,02,(1000 60 KG BAGS),785.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,020,Beginning Stocks,02,(1000 60 KG BAGS),668.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,125,Domestic Consumption,02,(1000 60 KG BAGS),2149.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,176,Ending Stocks,02,(1000 60 KG BAGS),922.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,088,Exports,02,(1000 60 KG BAGS),13377.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,057,Imports,02,(1000 60 KG BAGS),980.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,028,Production,02,(1000 60 KG BAGS),14800.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,107,Roast & Ground Exports,02,(1000 60 KG BAGS),220.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,075,Roast & Ground Imports,02,(1000 60 KG BAGS),4.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),1600.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),549.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,114,Soluble Exports,02,(1000 60 KG BAGS),957.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,082,Soluble Imports,02,(1000 60 KG BAGS),191.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,178,Total Distribution,02,(1000 60 KG BAGS),16448.0000
+0711100,"Coffee, Green",CO,Colombia,2024,2026,07,086,Total Supply,02,(1000 60 KG BAGS),16448.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,029,Arabica Production,02,(1000 60 KG BAGS),12500.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,090,Bean Exports,02,(1000 60 KG BAGS),11700.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,058,Bean Imports,02,(1000 60 KG BAGS),2200.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,020,Beginning Stocks,02,(1000 60 KG BAGS),922.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,125,Domestic Consumption,02,(1000 60 KG BAGS),2200.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,176,Ending Stocks,02,(1000 60 KG BAGS),866.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,088,Exports,02,(1000 60 KG BAGS),12810.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,057,Imports,02,(1000 60 KG BAGS),2454.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,028,Production,02,(1000 60 KG BAGS),12500.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,107,Roast & Ground Exports,02,(1000 60 KG BAGS),160.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,075,Roast & Ground Imports,02,(1000 60 KG BAGS),4.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),1600.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),600.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,114,Soluble Exports,02,(1000 60 KG BAGS),950.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,082,Soluble Imports,02,(1000 60 KG BAGS),250.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,178,Total Distribution,02,(1000 60 KG BAGS),15876.0000
+0711100,"Coffee, Green",CO,Colombia,2025,2026,07,086,Total Supply,02,(1000 60 KG BAGS),15876.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,029,Arabica Production,02,(1000 60 KG BAGS),5700.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,090,Bean Exports,02,(1000 60 KG BAGS),5310.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,058,Bean Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,020,Beginning Stocks,02,(1000 60 KG BAGS),67.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,125,Domestic Consumption,02,(1000 60 KG BAGS),367.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,176,Ending Stocks,02,(1000 60 KG BAGS),112.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,088,Exports,02,(1000 60 KG BAGS),5310.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,057,Imports,02,(1000 60 KG BAGS),22.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,028,Production,02,(1000 60 KG BAGS),5700.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,107,Roast & Ground Exports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,075,Roast & Ground Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),345.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),22.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,114,Soluble Exports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,082,Soluble Imports,02,(1000 60 KG BAGS),22.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,178,Total Distribution,02,(1000 60 KG BAGS),5789.0000
+0711100,"Coffee, Green",HO,Honduras,2022,2024,06,086,Total Supply,02,(1000 60 KG BAGS),5789.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,029,Arabica Production,02,(1000 60 KG BAGS),5050.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,090,Bean Exports,02,(1000 60 KG BAGS),4715.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,058,Bean Imports,02,(1000 60 KG BAGS),15.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,020,Beginning Stocks,02,(1000 60 KG BAGS),112.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,125,Domestic Consumption,02,(1000 60 KG BAGS),340.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,176,Ending Stocks,02,(1000 60 KG BAGS),143.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,088,Exports,02,(1000 60 KG BAGS),4718.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,057,Imports,02,(1000 60 KG BAGS),39.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,028,Production,02,(1000 60 KG BAGS),5050.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,107,Roast & Ground Exports,02,(1000 60 KG BAGS),2.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,075,Roast & Ground Imports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),315.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),25.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,114,Soluble Exports,02,(1000 60 KG BAGS),1.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,082,Soluble Imports,02,(1000 60 KG BAGS),24.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,178,Total Distribution,02,(1000 60 KG BAGS),5201.0000
+0711100,"Coffee, Green",HO,Honduras,2023,2025,12,086,Total Supply,02,(1000 60 KG BAGS),5201.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,029,Arabica Production,02,(1000 60 KG BAGS),5200.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,090,Bean Exports,02,(1000 60 KG BAGS),4958.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,058,Bean Imports,02,(1000 60 KG BAGS),96.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,020,Beginning Stocks,02,(1000 60 KG BAGS),143.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,125,Domestic Consumption,02,(1000 60 KG BAGS),335.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,176,Ending Stocks,02,(1000 60 KG BAGS),178.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,088,Exports,02,(1000 60 KG BAGS),4960.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,057,Imports,02,(1000 60 KG BAGS),130.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,028,Production,02,(1000 60 KG BAGS),5200.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,107,Roast & Ground Exports,02,(1000 60 KG BAGS),2.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,075,Roast & Ground Imports,02,(1000 60 KG BAGS),3.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),310.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),25.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,114,Soluble Exports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,082,Soluble Imports,02,(1000 60 KG BAGS),31.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,178,Total Distribution,02,(1000 60 KG BAGS),5473.0000
+0711100,"Coffee, Green",HO,Honduras,2024,2026,07,086,Total Supply,02,(1000 60 KG BAGS),5473.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,029,Arabica Production,02,(1000 60 KG BAGS),5530.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,090,Bean Exports,02,(1000 60 KG BAGS),5028.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,058,Bean Imports,02,(1000 60 KG BAGS),100.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,020,Beginning Stocks,02,(1000 60 KG BAGS),178.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,125,Domestic Consumption,02,(1000 60 KG BAGS),380.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,176,Ending Stocks,02,(1000 60 KG BAGS),435.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,088,Exports,02,(1000 60 KG BAGS),5030.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,057,Imports,02,(1000 60 KG BAGS),137.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,028,Production,02,(1000 60 KG BAGS),5530.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,107,Roast & Ground Exports,02,(1000 60 KG BAGS),2.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,075,Roast & Ground Imports,02,(1000 60 KG BAGS),4.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,053,Robusta Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),350.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),30.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,114,Soluble Exports,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,082,Soluble Imports,02,(1000 60 KG BAGS),33.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,178,Total Distribution,02,(1000 60 KG BAGS),5845.0000
+0711100,"Coffee, Green",HO,Honduras,2025,2026,07,086,Total Supply,02,(1000 60 KG BAGS),5845.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,029,Arabica Production,02,(1000 60 KG BAGS),1000.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,090,Bean Exports,02,(1000 60 KG BAGS),26000.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,058,Bean Imports,02,(1000 60 KG BAGS),365.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,020,Beginning Stocks,02,(1000 60 KG BAGS),3580.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,125,Domestic Consumption,02,(1000 60 KG BAGS),3200.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,176,Ending Stocks,02,(1000 60 KG BAGS),839.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,088,Exports,02,(1000 60 KG BAGS),28340.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,057,Imports,02,(1000 60 KG BAGS),499.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,028,Production,02,(1000 60 KG BAGS),28300.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,107,Roast & Ground Exports,02,(1000 60 KG BAGS),450.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,075,Roast & Ground Imports,02,(1000 60 KG BAGS),8.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,053,Robusta Production,02,(1000 60 KG BAGS),27300.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),2650.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),550.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,114,Soluble Exports,02,(1000 60 KG BAGS),1890.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,082,Soluble Imports,02,(1000 60 KG BAGS),126.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,178,Total Distribution,02,(1000 60 KG BAGS),32379.0000
+0711100,"Coffee, Green",VM,Vietnam,2022,2024,06,086,Total Supply,02,(1000 60 KG BAGS),32379.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,029,Arabica Production,02,(1000 60 KG BAGS),1000.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,090,Bean Exports,02,(1000 60 KG BAGS),22000.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,058,Bean Imports,02,(1000 60 KG BAGS),400.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,020,Beginning Stocks,02,(1000 60 KG BAGS),839.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,125,Domestic Consumption,02,(1000 60 KG BAGS),3900.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,176,Ending Stocks,02,(1000 60 KG BAGS),889.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,088,Exports,02,(1000 60 KG BAGS),24400.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,057,Imports,02,(1000 60 KG BAGS),800.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,028,Production,02,(1000 60 KG BAGS),27550.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,107,Roast & Ground Exports,02,(1000 60 KG BAGS),400.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,075,Roast & Ground Imports,02,(1000 60 KG BAGS),200.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,053,Robusta Production,02,(1000 60 KG BAGS),26550.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),3000.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),900.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,114,Soluble Exports,02,(1000 60 KG BAGS),2000.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,082,Soluble Imports,02,(1000 60 KG BAGS),200.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,178,Total Distribution,02,(1000 60 KG BAGS),29189.0000
+0711100,"Coffee, Green",VM,Vietnam,2023,2025,06,086,Total Supply,02,(1000 60 KG BAGS),29189.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,029,Arabica Production,02,(1000 60 KG BAGS),1000.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,090,Bean Exports,02,(1000 60 KG BAGS),22350.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,058,Bean Imports,02,(1000 60 KG BAGS),800.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,020,Beginning Stocks,02,(1000 60 KG BAGS),889.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,125,Domestic Consumption,02,(1000 60 KG BAGS),4800.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,176,Ending Stocks,02,(1000 60 KG BAGS),1089.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,088,Exports,02,(1000 60 KG BAGS),25200.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,057,Imports,02,(1000 60 KG BAGS),1200.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,028,Production,02,(1000 60 KG BAGS),29000.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,107,Roast & Ground Exports,02,(1000 60 KG BAGS),500.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,075,Roast & Ground Imports,02,(1000 60 KG BAGS),200.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,053,Robusta Production,02,(1000 60 KG BAGS),28000.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),3350.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),1450.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,114,Soluble Exports,02,(1000 60 KG BAGS),2350.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,082,Soluble Imports,02,(1000 60 KG BAGS),200.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,178,Total Distribution,02,(1000 60 KG BAGS),31089.0000
+0711100,"Coffee, Green",VM,Vietnam,2024,2025,12,086,Total Supply,02,(1000 60 KG BAGS),31089.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,029,Arabica Production,02,(1000 60 KG BAGS),1200.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,090,Bean Exports,02,(1000 60 KG BAGS),25100.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,058,Bean Imports,02,(1000 60 KG BAGS),850.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,020,Beginning Stocks,02,(1000 60 KG BAGS),1089.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,125,Domestic Consumption,02,(1000 60 KG BAGS),4900.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,176,Ending Stocks,02,(1000 60 KG BAGS),689.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,088,Exports,02,(1000 60 KG BAGS),28500.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,057,Imports,02,(1000 60 KG BAGS),1300.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,056,Other Production,02,(1000 60 KG BAGS),0.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,028,Production,02,(1000 60 KG BAGS),31700.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,107,Roast & Ground Exports,02,(1000 60 KG BAGS),700.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,075,Roast & Ground Imports,02,(1000 60 KG BAGS),250.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,053,Robusta Production,02,(1000 60 KG BAGS),30500.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,141,"Rst,Ground Dom. Consum",02,(1000 60 KG BAGS),3400.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,154,Soluble Dom. Cons.,02,(1000 60 KG BAGS),1500.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,114,Soluble Exports,02,(1000 60 KG BAGS),2700.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,082,Soluble Imports,02,(1000 60 KG BAGS),200.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,178,Total Distribution,02,(1000 60 KG BAGS),34089.0000
+0711100,"Coffee, Green",VM,Vietnam,2025,2026,07,086,Total Supply,02,(1000 60 KG BAGS),34089.0000

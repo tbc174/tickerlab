@@ -8,8 +8,8 @@ export const DADOS = {
   caminho: "/sobre.html",
   titulo: "Sobre",
   descricao:
-    "Quem somos, nossa história e no que acreditamos: o TickerLab conecta diferentes " +
-    "perspectivas de análise para uma pesquisa de investimentos mais clara.",
+    "Quem somos, nossa história e no que acreditamos: o TickerLab conecta perspectivas de " +
+    "análise para quem analisa empresas e precisa conferir a fonte.",
   atual: "/sobre.html",
 };
 
@@ -52,6 +52,22 @@ const PERSPECTIVAS: [string, string][] = [
   [
     "Inteligência Integrada.",
     "Nossa visão é conectar métodos, mostrar concordâncias, divergências, riscos e limitações.",
+  ],
+];
+
+// Para quem é (plano do site para quem analisa, PR 9): fora do texto aprovado das peças institucionais.
+const PARA_QUEM_E: [string, string][] = [
+  [
+    "Analistas e equipes de análise.",
+    "Quem confere uma empresa e o grupo dela contra as bases públicas, com a data de cada fonte.",
+  ],
+  [
+    "Estudantes e pesquisadores.",
+    "Quem precisa de um número que possa citar, com fonte, data e versão.",
+  ],
+  [
+    "Equipes.",
+    "O plano Casa, por assento, para quem analisa junto. Ainda está em construção.",
   ],
 ];
 
@@ -103,6 +119,18 @@ export function Sobre() {
           </p>
         </section>
       </Fundo>
+
+      <section id="para-quem-e" className="faixa secao" aria-labelledby="titulo-para-quem">
+        <p className="olho">Para quem é</p>
+        <h2 id="titulo-para-quem">Para quem analisa empresas</h2>
+        <p className="subtitulo">
+          O TickerLab é uma ferramenta de dados auditáveis: cada número chega com a fonte e a
+          data, e o que a base não achou também aparece.
+        </p>
+        <div className="grade tres">
+          <ListaDeCartoes itens={PARA_QUEM_E} />
+        </div>
+      </section>
 
       <section id="nossa-historia" className="faixa secao" aria-labelledby="titulo-historia">
         <p className="olho">Nossa história</p>

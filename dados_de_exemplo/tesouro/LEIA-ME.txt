@@ -1,0 +1,10 @@
+Um dia (13/10/2026) no formato do arquivo do Tesouro Transparente (precotaxatesourodireto.csv),
+com 7 LTN (Tesouro Prefixado) e 7 NTN-B Principal (Tesouro IPCA+).
+
+NAO sao cotacoes reais: as taxas saem de uma curva Nelson-Siegel-Svensson mais desvios por titulo
+(o mercado nao cai exatamente numa NSS), arredondadas a 0,01% como o Tesouro publica. Servem para
+testar base/curva.py sem internet. Os PUs ficam zerados (a curva usa so as taxas).
+
+- taxas_do_dia_amostra.csv:  desvios de ate +-0,8 ponto-base (um dia "arrumado").
+- taxas_do_dia_dispersas.csv: desvios de ate +-2 pontos-base em ziguezague (um dia "sujo"): a NSS
+  e suave e nao absorve esse ruido, o erro nos vertices fica acima de 1 bp.

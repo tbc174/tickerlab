@@ -147,7 +147,7 @@ def test_arquivo_grande_vai_para_o_acervo_sem_passar_pela_memoria(tmp_path):
     temporario.write_bytes(b"PK" + b"x" * 1000)
     sha256 = hashlib.sha256(temporario.read_bytes()).hexdigest()
     relativo = acervo.guardar_arquivo("rfb-cnpj", URL, temporario, sha256, QUANDO)
-    assert relativo == f"bruto/rfb-cnpj/2026/{sha256}.zip"
+    assert relativo == f"restrito/rfb-cnpj/2026/{sha256}.zip"  # fonte com pessoa
     assert acervo.confere_com_o_registro(relativo, sha256)
     assert not temporario.exists()
     # o mesmo arquivo de novo: não duplica e o temporário some
@@ -167,3 +167,19 @@ def test_arquivo_grande_de_texto_fica_em_gzip(tmp_path):
     relativo = acervo.guardar_arquivo("mte-lista-suja", url, temporario, sha256, QUANDO)
     assert relativo is not None and relativo.endswith(".csv.gz")
     assert acervo.ler_original(relativo) == b"cnpj;nome\n" * 500
+
+
+def test_fonte_com_pessoa_vai_para_a_pasta_restrita():
+    quando = QUANDO
+    for fonte in acervo.FONTES_COM_PESSOA:
+        assert acervo.caminho_relativo(fonte, URL, b"x", quando, ".zip").startswith(
+            f"restrito/{fonte}/"
+        )
+    assert acervo.caminho_relativo("cvm-eventos", URL, b"x", quando, ".zip").startswith(
+        "bruto/"
+    )
+
+
+def test_restrito_nunca_entra_no_pacote_publico():
+    assert acervo.PASTA_RESTRITA not in acervo.PASTAS_PUBLICAS
+    assert acervo.PASTA_PUBLICA in acervo.PASTAS_PUBLICAS

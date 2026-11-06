@@ -1,0 +1,302 @@
+"""Carga mensal do CNPJ na base (ADR 0106, PR 5): um mês por vez, em partes, retomando do último gravado.
+
+Cada mês é lido em partes e repartido pelos 2 primeiros caracteres da raiz (a memória fica pequena). Para
+cada repartição compara-se o que já estava (`vigente/<tabela>/<xx>.parquet`) com o mês novo e grava-se só o
+que mudou (`mudancas/<tabela>/<AAAA-MM>.parquet`, `receita_diff`). O primeiro mês vira o retrato inicial.
+
+Os nomes dos sócios pessoa física vão só para `<restrita>/pessoas/<xx>.parquet` (o vigente do mês; quem
+saiu sai dali), nunca para `vigente/` nem para `mudancas/`, onde o sócio é só o `id_pessoa`. Quem se opôs
+(`<restrita>/pessoas_oposicoes.parquet`) não volta: fica fora de `pessoas` e com o id vazio no QSA, como a
+lápide deixou (`base.pessoas.oposicoes`). Tudo do mês é
+montado numa pasta de trabalho e só então trocado pelo vigente: queda no meio não deixa mês pela metade.
+O `manifesto.json` guarda, por mês, o SHA-256 de cada ZIP lido.
+
+Roda: outro script (montar_historico_do_cnpj.py, montar_vista_do_cnpj.py); citado em ancoragem.py,
+cnpj_historico.py.
+"""
+
+import hashlib
+import json
+import logging
+import shutil
+from collections.abc import Callable, Iterable
+from pathlib import Path
+
+import pandas as pd
+import pyarrow.parquet as pq
+
+from base.parquet import gravar_tabela, sem_os_ids
+from base.pessoas.oposicoes import ids_opostos
+from base.pessoas.tabelas import montar_pessoas, sem_opostos
+from base.receita_diff import CHAVE_DO_QSA, diff, qsa_para_diff
+from base.receita_retrato import ParteDoQsa
+
+log = logging.getLogger("tickerlab.carga_receita_mes")
+
+FONTE = "rfb-cnpj"
+LIVRE_MINIMO = 30 * 1024**3
+TAMANHO_DO_PEDACO = 1024 * 1024
+PREFIXO = 2
+# acima disto as mudanças do mês vão em um arquivo por prefixo (um só arquivo pede várias vezes o
+# seu tamanho em memória para gravar e conferir; em 2024-10 foram 8 milhões de linhas)
+LINHAS_NUM_ARQUIVO_SO = 2_000_000
+CHAVES = {
+    "estabelecimentos": ["cnpj"],
+    "simples": ["cnpj_basico"],
+    "qsa": CHAVE_DO_QSA,
+}
+RAIZ_DA_PARTICAO = {
+    "estabelecimentos": "cnpj",
+    "simples": "cnpj_basico",
+    "qsa": "cnpj_basico",
+}
+ENDERECO_DOS_ZIPS = "https://arquivos.receitafederal.gov.br/Dados/Cadastros/CNPJ"
+MANIFESTO = "manifesto.json"
+TRABALHO = "_novo"
+
+
+class PoucoDisco(RuntimeError):
+    """Menos de 30 GB livres: a carga não começa (70 milhões de linhas por mês)."""
+
+
+class MesForaDeOrdem(RuntimeError):
+    """O mês não é o seguinte ao último gravado: a carga anda um mês por vez, em ordem."""
+
+
+def _livre(pasta: Path) -> int:
+    while not pasta.exists() and pasta != pasta.parent:
+        pasta = pasta.parent
+    return shutil.disk_usage(pasta).free
+
+
+def exigir_disco(pasta: Path, livre: Callable[[Path], int] = _livre) -> None:
+    if livre(pasta) < LIVRE_MINIMO:
+        raise PoucoDisco("menos de 30 GB livres: a carga do CNPJ não começa")
+
+
+def sha256_do_arquivo(arquivo: Path) -> str:
+    resumo = hashlib.sha256()
+    with arquivo.open("rb") as aberto:
+        while pedaco := aberto.read(TAMANHO_DO_PEDACO):
+            resumo.update(pedaco)
+    return resumo.hexdigest()
+
+
+def _manifesto(pasta: Path) -> dict:
+    arquivo = pasta / MANIFESTO
+    if not arquivo.is_file():
+        return {"meses": {}}
+    return json.loads(arquivo.read_text(encoding="utf-8"))
+
+
+def ultimo_mes(pasta: Path) -> str | None:
+    """O último mês gravado (`AAAA-MM`), ou None se a carga ainda não começou."""
+    meses = _manifesto(pasta)["meses"]
+    return max(meses) if meses else None
+
+
+def _seguinte(mes: str) -> str:
+    ano, numero = int(mes[:4]), int(mes[5:])
+    return f"{ano + numero // 12}-{numero % 12 + 1:02d}"
+
+
+def pendentes(meses: Iterable[str], pasta: Path) -> list[str]:
+    """Os meses ainda não gravados, em ordem (retoma do último)."""
+    ultimo = ultimo_mes(pasta)
+    return sorted(m for m in meses if ultimo is None or m > ultimo)
+
+
+def _pico_de_memoria_mb() -> int:
+    """O maior uso de memória do processo até agora (0 fora do Linux); a carga é morta ao passar do limite."""
+    try:
+        for linha in Path("/proc/self/status").read_text().splitlines():
+            if linha.startswith("VmHWM:"):
+                return int(linha.split()[1]) // 1024
+    except OSError:
+        pass
+    return 0
+
+
+def _repartir(partes: Iterable[pd.DataFrame], raiz: str, destino: Path) -> None:
+    for numero, parte in enumerate(partes):
+        for prefixo, grupo in parte.groupby(parte[raiz].str[:PREFIXO]):
+            pasta = destino / str(prefixo)
+            pasta.mkdir(parents=True, exist_ok=True)
+            grupo.to_parquet(
+                pasta / f"{len(list(pasta.iterdir())):05d}-{numero}.parquet"
+            )
+
+
+def _ler_prefixo(pasta: Path) -> pd.DataFrame | None:
+    arquivos = sorted(pasta.glob("*.parquet")) if pasta.is_dir() else []
+    if not arquivos:
+        return None
+    return pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+
+
+def _aplicar(
+    tabela: str,
+    mes: str,
+    trabalho: Path,
+    vigente: Path,
+    primeiro: bool,
+    origens: list[dict[str, str]],
+) -> None:
+    """Passa o mês novo (repartido em `trabalho/<tabela>`) para o vigente.
+
+    As mudanças de cada prefixo vão para `trabalho/parciais/<tabela>/` na hora, para não segurar na
+    memória as do mês inteiro (`_guardar_mudancas` junta ou publica depois)."""
+    novo, antigo = trabalho / tabela, vigente / tabela
+    saida = trabalho / "vigente" / tabela
+    saida.mkdir(parents=True, exist_ok=True)
+    prefixos = {p.name for p in novo.iterdir()} if novo.is_dir() else set()
+    if not primeiro:
+        prefixos |= {a.stem for a in antigo.glob("*.parquet")}
+    parciais = trabalho / "parciais" / tabela
+    for prefixo in sorted(prefixos):
+        depois = _ler_prefixo(novo / prefixo)
+        antes = None if primeiro else _ler_prefixo_vigente(antigo, prefixo)
+        if depois is None:
+            if antes is None:
+                continue
+            depois = antes.iloc[0:0]
+        if not primeiro:
+            antes = antes if antes is not None else depois.iloc[0:0]
+            mudou = diff(antes, depois, CHAVES[tabela], mes)
+            if not mudou.empty:
+                parciais.mkdir(parents=True, exist_ok=True)
+                mudou.to_parquet(parciais / f"{prefixo}.parquet", index=False)
+        gravar_tabela(depois, saida / prefixo, origens, CHAVES[tabela])
+    log.info("%s aplicado (pico %d MB)", tabela, _pico_de_memoria_mb())
+
+
+def _origens(mes: str, arquivos: dict[str, str]) -> list[dict[str, str]]:
+    """Os ZIPs do mês como origens do manifesto de cada tabela (o endereço dá a licença `rfb-cnpj`)."""
+    return [
+        {"url": f"{ENDERECO_DOS_ZIPS}/{mes}/{nome}", "sha256": sha256}
+        for nome, sha256 in sorted(arquivos.items())
+    ]
+
+
+def _ler_prefixo_vigente(antigo: Path, prefixo: str) -> pd.DataFrame | None:
+    arquivo = antigo / f"{prefixo}.parquet"
+    return pd.read_parquet(arquivo) if arquivo.is_file() else None
+
+
+def _guardar_mudancas(
+    tabela: str, mes: str, trabalho: Path, origens: list[dict[str, str]]
+) -> int:
+    """Grava as mudanças do mês de uma tabela em `trabalho/mudancas/<tabela>/` e devolve quantas são.
+
+    Mês comum: um arquivo `<AAAA-MM>.parquet`. Mês grande (mais de `LINHAS_NUM_ARQUIVO_SO`): uma pasta
+    `<AAAA-MM>/` com um arquivo por prefixo, cada um com o seu manifesto.
+    """
+    parciais = trabalho / "parciais" / tabela
+    arquivos = sorted(parciais.glob("*.parquet")) if parciais.is_dir() else []
+    total = sum(pq.ParquetFile(a).metadata.num_rows for a in arquivos)
+    ordem = ["mes", *CHAVES[tabela], "ordem"]
+    destino = trabalho / "mudancas" / tabela
+    if 0 < total <= LINHAS_NUM_ARQUIVO_SO:
+        quadro = pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+        gravar_tabela(quadro, destino / mes, origens, ordem)
+    elif total:
+        for arquivo in arquivos:
+            gravar_tabela(
+                pd.read_parquet(arquivo), destino / mes / arquivo.stem, origens, ordem
+            )
+    shutil.rmtree(parciais, ignore_errors=True)
+    log.info(
+        "mudanças de %s: %d linhas (pico %d MB)", tabela, total, _pico_de_memoria_mb()
+    )
+    return total
+
+
+def _publicar_mudancas(trabalho: Path, destino: Path) -> None:
+    """Passa as mudanças do mês da pasta de trabalho para `mudancas/<tabela>/`, no lugar das de uma
+    carga anterior do mesmo mês (arquivo ou pasta)."""
+    for item in sorted(trabalho.glob("*/*")):
+        pasta = destino / item.parent.name
+        pasta.mkdir(parents=True, exist_ok=True)
+        mes = item.name.removesuffix(".parquet").removesuffix(".json")
+        shutil.rmtree(pasta / mes, ignore_errors=True)
+        if item.is_dir():
+            for sufixo in (".parquet", ".json"):
+                (pasta / f"{mes}{sufixo}").unlink(missing_ok=True)
+        item.replace(pasta / item.name)
+
+
+def _trocar(novo: Path, atual: Path) -> None:
+    if atual.exists():
+        shutil.rmtree(atual)
+    atual.parent.mkdir(parents=True, exist_ok=True)
+    novo.rename(atual)
+
+
+def _sem_os_opostos(socios: pd.DataFrame, opostos: set[str]) -> pd.DataFrame:
+    """O QSA do mês com o id de quem se opôs vazio, igual ao que a lápide deixou no vigente."""
+    sem = sem_os_ids(socios, opostos) if opostos else None
+    return socios if sem is None else sem
+
+
+def processar_mes(
+    mes: str,
+    pasta: Path,
+    restrita: Path,
+    *,
+    estabelecimentos: Iterable[pd.DataFrame],
+    simples: Iterable[pd.DataFrame],
+    qsa: Iterable[ParteDoQsa],
+    chave_de_pessoas: bytes,
+    arquivos: dict[str, str],
+) -> None:
+    """Lê o mês, grava o vigente, as mudanças, as pessoas (restrito) e o manifesto. Um mês, em ordem."""
+    ultimo = ultimo_mes(pasta)
+    if ultimo is not None and mes != _seguinte(ultimo):
+        raise MesForaDeOrdem(f"último gravado {ultimo}; pedido {mes}")
+    trabalho, trabalho_restrito = pasta / TRABALHO, restrita / TRABALHO
+    for pasta_de_trabalho in (trabalho, trabalho_restrito):
+        shutil.rmtree(pasta_de_trabalho, ignore_errors=True)
+    try:
+        _repartir(estabelecimentos, "cnpj", trabalho / "estabelecimentos")
+        log.info("estabelecimentos repartidos (pico %d MB)", _pico_de_memoria_mb())
+        _repartir(simples, "cnpj_basico", trabalho / "simples")
+        log.info("simples repartido (pico %d MB)", _pico_de_memoria_mb())
+        opostos = ids_opostos(restrita)
+        for parte in qsa:
+            if parte.socios.empty:
+                continue
+            # as pessoas primeiro: CPF inteiro quebra aqui, antes de qualquer coisa ser gravada
+            pessoas = sem_opostos(
+                montar_pessoas(parte.pessoas_brutas, FONTE, chave_de_pessoas), opostos
+            )
+            if len(pessoas):
+                _repartir([pessoas], "cnpj_basico", trabalho_restrito / "pessoas")
+            socios = qsa_para_diff(parte, chave_de_pessoas)
+            _repartir(
+                [_sem_os_opostos(socios, opostos)], "cnpj_basico", trabalho / "qsa"
+            )
+        log.info("qsa repartido (pico %d MB)", _pico_de_memoria_mb())
+        vigente = pasta / "vigente"
+        origens = _origens(mes, arquivos)
+        contagem = {}
+        for tabela in CHAVES:
+            _aplicar(tabela, mes, trabalho, vigente, ultimo is None, origens)
+            contagem[tabela] = _guardar_mudancas(tabela, mes, trabalho, origens)
+    except BaseException:
+        shutil.rmtree(trabalho, ignore_errors=True)
+        shutil.rmtree(trabalho_restrito, ignore_errors=True)
+        raise
+    _publicar_mudancas(trabalho / "mudancas", pasta / "mudancas")
+    (trabalho_restrito / "pessoas").mkdir(parents=True, exist_ok=True)
+    _trocar(trabalho / "vigente", vigente)
+    _trocar(trabalho_restrito / "pessoas", restrita / "pessoas")
+    shutil.rmtree(trabalho, ignore_errors=True)
+    shutil.rmtree(trabalho_restrito, ignore_errors=True)
+    manifesto = _manifesto(pasta)
+    manifesto["meses"][mes] = {
+        "arquivos": arquivos,
+        "mudancas": contagem,
+    }
+    (pasta / MANIFESTO).write_text(
+        json.dumps(manifesto, indent=2, sort_keys=True), encoding="utf-8"
+    )

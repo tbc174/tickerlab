@@ -10,6 +10,7 @@ PASTA_RAIZ = Path(__file__).resolve().parent.parent
 CAMINHO_GLOSSARIO = PASTA_RAIZ / "conteudo" / "glossario.md"
 CAMINHO_ESTRATEGIAS = PASTA_RAIZ / "conteudo" / "estrategias.md"
 CAMINHO_SOBRE = PASTA_RAIZ / "conteudo" / "sobre.md"
+CAMINHO_CAFE = PASTA_RAIZ / "conteudo" / "commodities" / "cafe.md"
 MARCA_DE_TERMO = "## "
 
 
@@ -67,6 +68,21 @@ def proteger_cifrao(texto: str | None) -> str | None:
     return texto.replace("$", r"\$") if texto else texto
 
 
+# os sinais que o Markdown do Streamlit usa (link, imagem, ênfase, título, lista, tabela, cor,
+# fórmula, HTML); com uma barra antes, cada um aparece como o próprio caractere
+_SINAIS_DO_MARKDOWN = str.maketrans({c: "\\" + c for c in r"\`*_{}[]()<>#+-.!|~:$"})
+
+
+def texto_da_fonte(texto: str | None) -> str | None:
+    """Texto que veio de fora (assunto e frases dos documentos da CVM e da SEC) pronto para
+    `st.markdown`: nada nele vira link, imagem, negrito ou fórmula (achado 7d do Codex).
+
+    As quebras de linha viram espaço: uma linha nova não começa título nem lista."""
+    if not texto:
+        return texto
+    return " ".join(texto.split()).translate(_SINAIS_DO_MARKDOWN)
+
+
 def carregar_estrategias(caminho: Path = CAMINHO_ESTRATEGIAS) -> dict[str, str]:
     """Explicações das estratégias (um verbete por estratégia), no mesmo formato do glossário."""
     return carregar_glossario(caminho)
@@ -74,4 +90,10 @@ def carregar_estrategias(caminho: Path = CAMINHO_ESTRATEGIAS) -> dict[str, str]:
 
 def carregar_sobre(caminho: Path = CAMINHO_SOBRE) -> dict[str, str]:
     """As seções da página Sobre, na ordem do arquivo (mesmo formato do glossário)."""
+    return carregar_glossario(caminho)
+
+
+def carregar_textos_do_cafe(caminho: Path = CAMINHO_CAFE) -> dict[str, str]:
+    """Os textos "o que é isto" do café (florada, bienalidade, geada, déficit), no formato do
+    glossário."""
     return carregar_glossario(caminho)

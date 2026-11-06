@@ -1,0 +1,72 @@
+{
+  "tabela": "cnpj_situacao_cadastral",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 dígitos): a empresa",
+      "unidade": "texto"
+    },
+    "matriz": {
+      "descricao": "Verdadeiro na matriz, falso na filial",
+      "unidade": "verdadeiro ou falso"
+    },
+    "situacao_cadastral": {
+      "descricao": "Código da situação cadastral: 01 nula, 02 ativa, 03 suspensa, 04 inapta, 08 baixada",
+      "unidade": "texto"
+    },
+    "data_situacao_cadastral": {
+      "descricao": "Data da situação cadastral informada",
+      "unidade": "data (dia)"
+    },
+    "motivo_situacao": {
+      "descricao": "Código do motivo da situação cadastral, como a Receita publica (tabela de motivos)",
+      "unidade": "texto"
+    },
+    "mes_do_retrato": {
+      "descricao": "Mês do arquivo da Receita de onde a linha veio",
+      "unidade": "AAAA-MM"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo baixado depois)",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "mes_do_retrato"
+  ],
+  "datas": {
+    "aconteceu_em": "data_situacao_cadastral",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
+  "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_cadastral` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
+}

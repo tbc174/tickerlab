@@ -102,9 +102,10 @@ def _ler_csv_do_zip(conteudo: bytes, contem: str) -> pd.DataFrame:
 _NUMERO_NO_LINK = re.compile(r"numProtocolo=(\d+).*?numVersao=(\d+)", re.IGNORECASE)
 
 
-def _identificador(protocolo: str, versao: str, link: str) -> tuple[str, int] | None:
-    """(protocolo, versão) da entrega. Os relatórios de proventos vêm sem a coluna de protocolo:
-    aí o número sai do próprio link da CVM ("rad-1477025")."""
+def identificador(protocolo: str, versao: str, link: str) -> tuple[str, int] | None:
+    """(protocolo, versão) da entrega. Os relatórios de proventos (e o IPE de 2003) vêm sem a coluna
+    de protocolo: aí o número sai do próprio link da CVM ("rad-1477025"). O leitor de fatos
+    relevantes usa a mesma regra no lote de medição (scripts.atualizar_leituras_cvm)."""
     if protocolo.strip():
         return protocolo.strip(), int(versao) if str(versao).isdigit() else 1
     achado = _NUMERO_NO_LINK.search(link or "")
@@ -125,15 +126,15 @@ def ler_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
         classe = classificar(linha.Categoria, linha.Tipo, linha.Assunto)
         if classe is None or not linha.Link_Download:
             continue
-        identificador = _identificador(
+        chave = identificador(
             linha.Protocolo_Entrega, linha.Versao, linha.Link_Download
         )
-        if identificador is None:
+        if chave is None:
             continue
         linhas.append(
             {
-                "protocolo": identificador[0],
-                "versao": identificador[1],
+                "protocolo": chave[0],
+                "versao": chave[1],
                 "cnpj": linha.CNPJ_Companhia.strip(),
                 "empresa": linha.Nome_Companhia.strip(),
                 "categoria": linha.Categoria.strip(),

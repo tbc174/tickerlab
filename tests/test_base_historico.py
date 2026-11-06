@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from base import historico
+from base.ancoragem import parquets_sem_manifesto
 from src.banco.coletas import com_registro
 
 PASTA_CVM = Path(__file__).parent / "arquivos" / "cvm"
@@ -35,7 +36,10 @@ def _guardar(fonte: str, url: str, conteudo: bytes) -> None:
     com_registro(fonte, lambda _url: conteudo)(url)
 
 
-def test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem(banco, tmp_path):
+def test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem(
+    banco, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     conteudo = _zip_do_ipe()
     _guardar("cvm-hist-ipe", URL_IPE, conteudo)
     with banco.connect() as conexao:
@@ -47,6 +51,8 @@ def test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem(banco, tmp_path):
     assert set(tabela["origem_sha256"]) == {hashlib.sha256(conteudo).hexdigest()}
     assert set(tabela["ano_do_arquivo"]) == {2024}
     assert set(tabela["montado_em"]) == {AGORA.isoformat()}
+    assert set(tabela["versao_do_codigo"]) == {"0123abc"}  # exigência 13 (ADR 0055)
+    assert parquets_sem_manifesto(tmp_path / "base") == []  # entra na âncora (ADR 0078)
 
 
 def test_usa_a_copia_mais_recente_do_mesmo_arquivo(banco, tmp_path):
@@ -65,6 +71,61 @@ def test_negociacoes_do_vlmo(banco, tmp_path):
         linhas = historico.montar("negociacoes", conexao, tmp_path / "base", AGORA)
     assert linhas[2024] > 0
     assert (tmp_path / "base" / "negociacoes" / "2024.parquet").exists()
+
+
+def _zip_do_ipe_com(ano: int, *linhas: str) -> bytes:
+    cabecalho = (
+        "CNPJ_Companhia;Nome_Companhia;Codigo_CVM;Data_Referencia;Categoria;Tipo;Especie;"
+        "Assunto;Data_Entrega;Tipo_Apresentacao;Protocolo_Entrega;Versao;Link_Download"
+    )
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as z:
+        texto = "\n".join([cabecalho, *linhas])
+        z.writestr(f"ipe_cia_aberta_{ano}.csv", texto.encode("latin-1"))
+    return saida.getvalue()
+
+
+def test_insolvencia_olha_os_anos_anteriores_e_grava_cada_ano_no_seu_arquivo(
+    banco, tmp_path
+):
+    # a recuperação extrajudicial começa em 2019; o documento de 2020 não diz o tipo
+    rj = "Informações de Companhias em Recuperação Judicial ou Extrajudicial"
+
+    def linha(tipo, assunto, entrega, protocolo):
+        return (
+            f"11.111.111/0001-11;ATMA PARTICIPAÇÕES S.A.;1;{entrega};{rj};{tipo};;{assunto};"
+            f"{entrega};AP;{protocolo};1;https://www.rad.cvm.gov.br/x?n={protocolo}"
+        )
+
+    url = (
+        "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{}.zip"
+    )
+    _guardar(
+        "cvm-hist-ipe",
+        url.format(2019),
+        _zip_do_ipe_com(
+            2019,
+            linha(
+                "Petição Inicial",
+                "Pedido de Homologação de Plano de Recuperação Extrajudicial",
+                "2019-12-30",
+                "1",
+            ),
+        ),
+    )
+    _guardar(
+        "cvm-hist-ipe",
+        url.format(2020),
+        _zip_do_ipe_com(
+            2020, linha("Sentenças", "Efeito Suspensivo", "2020-08-16", "2")
+        ),
+    )
+    with banco.connect() as conexao:
+        linhas = historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
+    assert linhas == {2019: 1, 2020: 1}
+    de_2020 = pd.read_parquet(tmp_path / "base" / "insolvencia" / "2020.parquet")
+    assert list(de_2020["rotulo"]) == ["recuperacao_extrajudicial"]
+    assert set(de_2020["ano_do_arquivo"]) == {2020}
 
 
 def test_sem_original_guardado_nada_e_montado(banco, tmp_path):
@@ -89,7 +150,8 @@ def test_ano_vem_do_nome_do_arquivo():
     assert historico.ano_do_arquivo("https://x/cda_fi_202609.zip") is None
 
 
-def test_comando_monta_as_tabelas_pedidas(banco, tmp_path):
+def test_comando_monta_as_tabelas_pedidas(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
 
     _guardar("cvm-hist-ipe", URL_IPE, _zip_do_ipe())
@@ -99,8 +161,67 @@ def test_comando_monta_as_tabelas_pedidas(banco, tmp_path):
     assert not (tmp_path / "b" / "negociacoes").exists()
 
 
-def test_comando_sai_com_1_se_um_original_nao_abre(banco, tmp_path):
+def test_comando_recusa_codigo_modificado(banco, tmp_path, monkeypatch):
+    """Como as outras cargas da base: sem saber o commit, nada é montado."""
+    import pytest
+
+    from scripts import montar_base_historica
+    from src.versao_do_codigo import VersaoDesconhecidaError
+
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc-modificado")
+    _guardar("cvm-hist-ipe", URL_IPE, _zip_do_ipe())
+    with pytest.raises(VersaoDesconhecidaError):
+        montar_base_historica.main(["eventos", "--pasta", str(tmp_path / "b")])
+    assert not (tmp_path / "b").exists()
+
+
+def test_comando_sai_com_1_se_um_original_nao_abre(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
 
     _guardar("cvm-hist-ipe", URL_IPE, b"PK quebrado")
     assert montar_base_historica.main(["--pasta", str(tmp_path / "b")]) == 1
+
+
+def test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao(
+    banco, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    _guardar("cvm-hist-ipe", URL_IPE, _zip_do_ipe())
+    pasta = tmp_path / "base" / "eventos"
+    with banco.connect() as conexao:
+        historico.montar("eventos", conexao, tmp_path / "base", AGORA)
+        antes = (pasta / "2024.parquet").read_bytes()
+        monkeypatch.setenv("TICKERLAB_VERSAO", "4567def")
+        historico.montar(
+            "eventos", conexao, tmp_path / "base", AGORA.replace(year=2027)
+        )
+    assert sorted(p.name for p in pasta.iterdir()) == ["2024.json", "2024.parquet"]
+    assert (pasta / "2024.parquet").read_bytes() == antes
+
+
+def test_rotulo_de_insolvencia_com_fonte_fora_dos_usos_da_erro(
+    banco, tmp_path, monkeypatch
+):
+    """A trava das licenças: rotular com fonte fora dos usos (hoje só a B3; aqui a CVM entra na
+    lista de mentira) dá erro; as outras tabelas da base histórica não são rótulos e não passam
+    pela trava de rotular."""
+    from src.banco import coletas
+
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3", "cvm"}))
+    with banco.connect() as conexao:
+        with pytest.raises(coletas.LicencaNaoPermiteError, match="insolvencia"):
+            historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
+        assert historico.montar("eventos", conexao, tmp_path / "base", AGORA) == {}
+
+
+def test_rotulo_de_insolvencia_com_fonte_nao_comercial_monta_e_registra_a_marca(
+    banco, tmp_path, monkeypatch
+):
+    """ADR 0102: a marca "não comercial" é informação; o rótulo é montado com ela registrada."""
+    from src.banco import coletas
+
+    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    with banco.connect() as conexao:
+        historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
+    assert coletas.marca_da_fonte("cvm-ipe") == coletas.Marca.NAO_COMERCIAL

@@ -2,17 +2,35 @@
 
 Lê o mesmo `Relatorio` da página (`src/relatorio_empresa.py`): as mesmas seções, na mesma ordem,
 com os mesmos números já escritos. A cascata do lucro e a ponte da dívida viram gráficos; a seção
-"Limites e cuidados" vem do relatório (obrigatória).
+"Limites e perguntas em aberto" vem do relatório (obrigatória). No papel, a explicação que a
+tela recolhe sai por inteiro.
 """
 
+from collections.abc import Callable
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fpdf.enums import XPos, YPos
 
+from src import dossie
+from src import graficos_do_relatorio as gdr
+from src import o_que_os_dados_mostram as leitura_da_ficha
+from src.analise_escrita.modelo_da_tela import ROTULO_DO_DESTAQUE, AnaliseDaTela
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
+from src.rastro import CONTA as CONTA_DO_RASTRO
+from src.rastro import (
+    CONTAS_USADAS,
+    FONTE,
+    FORMULA,
+    O_QUE_SAO_AS_CONTAS,
+    PUBLICADO_EM,
+    VERSAO,
+    como_foi_calculado,
+)
+from src.rastro import DOCUMENTO as DOCUMENTO_DO_RASTRO
 from src.relatorio_empresa import (
+    ANEXO_DE_ANOS,
     Item,
     Relatorio,
     Secao,
@@ -20,23 +38,42 @@ from src.relatorio_empresa import (
     nome_da_tabela,
     rotulo_da_coluna,
 )
-from src.relatorio_pdf import RelatorioPDF
+from src.relatorio_pdf import AVISO, RelatorioPDF
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 ESPACO_MINIMO_DA_TABELA = 50  # mm: o título não fica sozinho no pé da página
 MAX_COLUNAS = 7  # mais que isso não cabe na largura de uma página A4
+LARGURA_DO_NOME_NO_ANEXO = 34.0
+LARGURA_DA_UNIDADE_NO_ANEXO = 10.0
+TAMANHO_DO_ANEXO = (
+    6.5  # corpo menor: até 10 anos e "R$ 12,3 bi" precisam caber na largura
+)
 GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
+LISTA = "lista"  # tabela de itens (título, texto, nota, link): os destaques da amostra
+TITULO_DO_ANEXO = "Como cada número foi calculado"
+COLUNAS_DO_ANEXO = tuple(r.capitalize() for r in (FORMULA, VERSAO, FONTE, PUBLICADO_EM))
+DOCUMENTO = DOCUMENTO_DO_RASTRO.capitalize()
+CONTA = CONTA_DO_RASTRO.capitalize()
+TITULO_DAS_CONTAS = "Contas usadas em cada número"
+
+
+def _comparacao(item: Item) -> str:
+    if item.comparacao is None:
+        return item.sem_comparacao
+    return f"{item.comparacao.contra}: {item.comparacao.texto}"
 
 
 def _itens(pdf: RelatorioPDF, itens: list[Item]) -> None:
-    """Os números numa tabela (indicador, valor, nota); embaixo, as bases sem repetir, os
-    motivos dos que não saíram e o texto de cada nota."""
-    larguras = [pdf.epw * 0.56, pdf.epw * 0.24, pdf.epw * 0.20]
-    linhas = [[i.nome, i.texto, i.nota or ""] for i in itens]
-    pdf.tabela(["Indicador", "Valor", "Nota"], linhas, larguras)
+    """Os números numa tabela (indicador, valor, comparação, nota); embaixo, as bases e as fontes
+    sem repetir, os motivos dos que não saíram e o texto de cada nota."""
+    linhas = [[i.nome, i.texto, _comparacao(i), i.nota or ""] for i in itens]
+    pdf.tabela_de_texto(["Indicador", "Valor", "Comparado com", "Nota"], linhas)
     bases = list(dict.fromkeys(i.base for i in itens if i.base))
     if bases:
         pdf.paragrafo("Base: " + "; ".join(bases) + ".", apagado=True)
+    fontes = list(dict.fromkeys(i.fonte for i in itens if i.fonte))
+    if fontes:
+        pdf.paragrafo("Fonte: " + "; ".join(fontes) + ".", apagado=True)
     for frase in dict.fromkeys(
         [f"{i.nome}: {i.motivo}" for i in itens if i.motivo]
         + [i.nota_texto for i in itens if i.nota_texto]
@@ -52,16 +89,32 @@ def _cabecalho_e_linhas(linhas: list[dict]) -> tuple[list[str], list[list[str]]]
         chave = colunas[0]
         cabecalho = [rotulo_da_coluna(chave)] + [str(linha[chave]) for linha in linhas]
         corpo = [
-            [rotulo_da_coluna(c)] + [escrever_celula(linha.get(c)) for linha in linhas]
+            [rotulo_da_coluna(c)]
+            + [escrever_celula(linha.get(c), c) for linha in linhas]
             for c in colunas[1:]
         ]
     else:
         cabecalho = [rotulo_da_coluna(c) for c in colunas]
-        corpo = [[escrever_celula(linha.get(c)) for c in colunas] for linha in linhas]
+        corpo = [
+            [escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas
+        ]
     if len(cabecalho) > MAX_COLUNAS:
         cabecalho = [cabecalho[0], *cabecalho[-(MAX_COLUNAS - 1) :]]
         corpo = [[linha[0], *linha[-(MAX_COLUNAS - 1) :]] for linha in corpo]
     return cabecalho, corpo
+
+
+def _anexo_de_anos(
+    linhas: list[dict], largura: float
+) -> tuple[list[str], list[list[str]], list[float]]:
+    """O anexo de anos com todas as colunas (nenhum ano cortado): o nome da conta e a unidade
+    ficam largos, os anos dividem o resto em corpo menor."""
+    colunas = list(linhas[0])
+    cabecalho = [rotulo_da_coluna(c) for c in colunas]
+    corpo = [[escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas]
+    nome, unidade = LARGURA_DO_NOME_NO_ANEXO, LARGURA_DA_UNIDADE_NO_ANEXO
+    ano = (largura - nome - unidade) / max(len(colunas) - 2, 1)
+    return cabecalho, corpo, [nome, unidade, *[ano] * (len(colunas) - 2)]
 
 
 def _titulo_da_tabela(pdf: RelatorioPDF, titulo: str) -> None:
@@ -71,14 +124,48 @@ def _titulo_da_tabela(pdf: RelatorioPDF, titulo: str) -> None:
     pdf.cell(0, 6, titulo, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
 
-def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
+def _tabela_do_relatorio(pdf: RelatorioPDF, chave: str, linhas: list[dict]) -> None:
+    if chave in dossie.TITULOS_DAS_TABELAS:
+        _titulo_da_tabela(pdf, dossie.titulo_da_tabela(chave))
+        pdf.tabela_de_texto(list(linhas[0]), [list(linha.values()) for linha in linhas])
+        return
+    _titulo_da_tabela(pdf, nome_da_tabela(chave))
+    if chave == ANEXO_DE_ANOS:
+        cabecalho, corpo, larguras = _anexo_de_anos(linhas, pdf.epw)
+        pdf.tabela(cabecalho, corpo, larguras=larguras, tamanho=TAMANHO_DO_ANEXO)
+        return
+    pdf.tabela(*_cabecalho_e_linhas(linhas))
+
+
+def escrever_secao(
+    pdf: RelatorioPDF,
+    secao: Secao,
+    estilo: Estilo,
+    escrever_tabela: Callable[
+        [RelatorioPDF, str, list[dict]], None
+    ] = _tabela_do_relatorio,
+) -> None:
+    """`escrever_tabela` deixa o relatório do setor, que já traz as tabelas escritas, usar o mesmo
+    corpo de seção."""
     pdf.secao(secao.titulo, reservar=40, numerada=True)
     if secao.itens:
         _itens(pdf, secao.itens)
+    for titulo, pontos in leitura_da_ficha.por_lado(secao.pontos):
+        _titulo_da_tabela(pdf, titulo)
+        pdf.lista([leitura_da_ficha.frase(p) for p in pontos])
     for paragrafo in secao.paragrafos:
         pdf.paragrafo(paragrafo)
-    for chave, linhas in secao.tabelas.items():
+    for chave, linhas in secao.tabelas_a_mostrar().items():
         if not linhas:
+            continue
+        if chave == LISTA:
+            for linha in linhas:
+                pdf.item(
+                    linha["titulo"],
+                    linha["texto"],
+                    linha.get("link", ""),
+                    nota=linha["nota"],
+                )
             continue
         if chave in GRAFICOS:
             passos = [(linha["passo"], float(linha["valor"])) for linha in linhas]
@@ -87,20 +174,88 @@ def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
             )
             pdf.imagem(grafico)
             continue
-        _titulo_da_tabela(pdf, nome_da_tabela(chave))
-        pdf.tabela(*_cabecalho_e_linhas(linhas))
+        escrever_tabela(pdf, chave, linhas)
+
+
+def _sem_marcas_de_markdown(texto: str) -> str:
+    return texto.replace("*", "")
+
+
+def _analise(pdf: RelatorioPDF, analise: AnaliseDaTela, estilo: Estilo) -> None:
+    """A análise escrita antes da ficha: cada parte com o texto, os gráficos depois do parágrafo
+    a que se prendem (com o achado embaixo), os destaques e, no fim, as notas dela."""
+    pdf.secao("A análise", reservar=40, numerada=True)
+    pdf.aviso_destacado(analise.aviso)
+    if analise.motivo:
+        pdf.aviso_destacado(f"Texto de reserva por regras: {analise.motivo}.")
+    for parte in analise.partes:
+        _titulo_da_tabela(pdf, parte.titulo)
+        for i, paragrafo in enumerate(parte.paragrafos):
+            frases = " ".join(f.com_marcas() for f in paragrafo.frases)
+            rotulo = f"{paragrafo.rotulo}: " if paragrafo.rotulo else ""
+            pdf.paragrafo(_sem_marcas_de_markdown(rotulo + frases))
+            for grafico in analise.graficos_do_paragrafo(parte.chave, i):
+                pdf.imagem(gdr.png(grafico.pontos, estilo))
+                pdf.paragrafo(grafico.por_que.com_marcas(), apagado=True)
+        for destaque in analise.destaques_da_parte(parte.chave):
+            pdf.aviso_destacado(
+                f"{ROTULO_DO_DESTAQUE} {destaque.titulo}. {destaque.por_que.com_marcas()}"
+            )
+        for nota in analise.notas_da_parte(parte):
+            pdf.paragrafo(f"[{nota.numero}] {nota.legenda()}", apagado=True)
+
+
+def _como_foi_calculado(pdf: RelatorioPDF, relatorio: Relatorio) -> None:
+    """O anexo com o rastro de cada número (item 7 do lançamento): a fórmula, a versão do
+    cálculo, a fonte e a publicação numa tabela; embaixo, cada documento usado, com o link, e as
+    contas que entram em cada número, com as mesmas linhas "Conta" da página."""
+    rastros = [
+        (i.nome, i.rastro) for s in relatorio.secoes for i in s.itens if i.rastro
+    ]
+    if not rastros:
+        return
+    linhas, documentos, contas = [], {}, []
+    for nome, rastro in rastros:
+        partes = como_foi_calculado(rastro)
+        textos = {p.rotulo: p.texto for p in partes}
+        linhas.append([nome, *(textos[c] for c in COLUNAS_DO_ANEXO)])
+        documentos |= {(p.texto, p.url): None for p in partes if p.rotulo == DOCUMENTO}
+        if do_numero := [p.texto for p in partes if p.rotulo == CONTA]:
+            contas.append((nome, do_numero))
+    pdf.secao(TITULO_DO_ANEXO, reservar=40)
+    pdf.tabela_de_texto(["Indicador", *COLUNAS_DO_ANEXO], linhas)
+    if documentos:
+        _titulo_da_tabela(pdf, "Documentos usados")
+        for texto, url in documentos:
+            pdf.item(texto, "", url)
+    if contas:
+        _contas_usadas(pdf, contas)
+
+
+def _contas_usadas(pdf: RelatorioPDF, contas: list[tuple[str, list[str]]]) -> None:
+    _titulo_da_tabela(pdf, TITULO_DAS_CONTAS)
+    pdf.paragrafo(f"{CONTAS_USADAS.capitalize()}: {O_QUE_SAO_AS_CONTAS}", apagado=True)
+    for nome, do_numero in contas:
+        _titulo_da_tabela(pdf, nome)
+        pdf.lista(do_numero)
 
 
 def relatorio_da_empresa(
-    relatorio: Relatorio, gerado_em: datetime | None = None, estilo: Estilo = PADRAO
+    relatorio: Relatorio,
+    gerado_em: datetime | None = None,
+    estilo: Estilo = PADRAO,
+    aviso: str = AVISO,
+    com_rastro: bool = True,
 ) -> bytes:
-    """Os bytes do PDF do relatório."""
+    """Os bytes do PDF do relatório (`aviso`: o rodapé, que diz de onde vêm os dados). Com
+    `com_rastro`, o anexo "como cada número foi calculado" fecha o relatório."""
     gerado_em = gerado_em or datetime.now(FUSO)
     pdf = RelatorioPDF(
         f"Relatório da empresa: {relatorio.empresa}",
         f"{relatorio.ticker.removesuffix('.SA')} · {relatorio.setor or 'setor não informado'}",
         gerado_em,
         estilo,
+        aviso,
     )
     pdf.capa(
         [
@@ -110,15 +265,22 @@ def relatorio_da_empresa(
             ("Gerado em", f"{gerado_em:%d/%m/%Y às %H:%M}"),
             ("Fontes", "; ".join(relatorio.fontes)),
         ],
-        [s.titulo for s in relatorio.secoes],
+        [
+            *(["A análise"] if relatorio.analise else []),
+            *(s.titulo for s in relatorio.secoes),
+        ],
     )
     pdf.add_page()
     if relatorio.em_conferencia:
         pdf.aviso_destacado(
             "Há números desta empresa em conferência pelas regras de qualidade: veja a seção "
-            "Qualidade dos dados."
+            "Qualidade do lucro."
         )
     pdf.aviso_destacado(relatorio.aviso_das_notas)
+    if relatorio.analise:
+        _analise(pdf, relatorio.analise, estilo)
     for secao in relatorio.secoes:
-        _secao(pdf, secao, estilo)
+        escrever_secao(pdf, secao, estilo)
+    if com_rastro:
+        _como_foi_calculado(pdf, relatorio)
     return pdf.para_bytes()

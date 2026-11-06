@@ -20,6 +20,45 @@ def test_todo_grupo_tem_paginas_e_toda_pagina_tem_grupo_conhecido():
     assert {p.grupo for p in paginas.PAGINAS} <= set(paginas.GRUPOS)
 
 
+# --- Páginas só do app novo (ADR 0062, Emenda 2: tela nova nasce só no React) ---
+
+_SO_NO_APP_NOVO = paginas.Pagina(
+    "so_no_react",
+    "Só no React",
+    paginas.GRUPO_RESEARCH,
+    ":material/grain:",
+    "Uma página que só existe no app novo.",
+    area=paginas.AREA_ACOMPANHAR,
+    precisa_do_ativo=False,
+    contrato=paginas.Contrato("GET", "/v1/so-no-react", (), "SoNoReactV1"),
+    so_no_app_novo=True,
+)
+
+
+def test_pagina_so_do_app_novo_fica_fora_do_streamlit(monkeypatch):
+    # a conta parte do Streamlit de antes: páginas reais também podem ser só do app novo
+    antes = paginas.paginas_do_classico()
+    monkeypatch.setattr(paginas, "PAGINAS", (*paginas.PAGINAS, _SO_NO_APP_NOVO))
+    assert _SO_NO_APP_NOVO not in paginas.paginas_do_grupo(paginas.GRUPO_RESEARCH)
+    assert paginas.paginas_do_classico() == antes
+    # no app novo ela existe como qualquer outra: tem área e entra no menu dela
+    assert _SO_NO_APP_NOVO in paginas.paginas_da_area(paginas.AREA_ACOMPANHAR)
+
+
+def test_pagina_so_do_app_novo_precisa_de_contrato():
+    """Sem contrato o React não tem o que pedir à API, e o Streamlit não tem a tela: a página sumiria."""
+    with pytest.raises(ValueError, match="contrato"):
+        paginas.Pagina(
+            "sem_contrato",
+            "Sem contrato",
+            paginas.GRUPO_RESEARCH,
+            ":material/grain:",
+            "Uma página sem rota na API.",
+            area=paginas.AREA_ACOMPANHAR,
+            so_no_app_novo=True,
+        )
+
+
 def test_pagina_inicial_existe_e_e_a_primeira():
     assert paginas.PAGINAS[0].chave == paginas.PAGINA_INICIAL
     assert not paginas.pagina(paginas.PAGINA_INICIAL).precisa_do_ativo
@@ -63,13 +102,125 @@ def test_so_o_grupo_de_administracao_e_restrito_a_administradores():
         assert p.somente_admin == (p.grupo == paginas.GRUPO_ADMIN)
 
 
+# --- Áreas do app novo (ADR 0096): o menu por áreas sai daqui; o grupo do Streamlit não muda ---
+
+
+def test_toda_pagina_tem_area_conhecida_e_toda_area_tem_pagina():
+    for p in paginas.PAGINAS:
+        assert p.area in paginas.AREAS, p.chave
+    for area in paginas.AREAS:
+        assert paginas.paginas_da_area(area), area
+
+
+def test_areas_tem_rotulo_icone_frase_e_ordem_unica():
+    ordens = [a.ordem for a in paginas.AREAS.values()]
+    assert len(ordens) == len(set(ordens))
+    assert list(paginas.AREAS) == sorted(
+        paginas.AREAS, key=lambda a: paginas.AREAS[a].ordem
+    )
+    assert list(paginas.AREAS)[:4] == ["inicio", "ativo", "estrategias", "acompanhar"]
+    for area in paginas.AREAS.values():
+        assert area.rotulo and area.icone and area.frase.endswith(".")
+
+
+def test_frases_das_areas_nao_recomendam_nem_prometem():
+    """A frase de cada área aparece no app: descreve o que há lá, sem chamar para comprar nem prometer."""
+    proibidas = ("recomend", "compre", "garant", "oportunidade", "lucro", "ganhe")
+    for area in paginas.AREAS.values():
+        frase = area.frase.lower()
+        assert not any(p in frase for p in proibidas), area.rotulo
+
+
+def test_paginas_da_area_ativo_na_ordem_das_abas():
+    """A ordem das abas da página do ativo (PR 3): as análises, depois "Comparar com…" e o relatório."""
+    chaves = [p.chave for p in paginas.paginas_da_area("ativo")]
+    assert chaves == [
+        "visao_geral",
+        "risco",
+        "retorno_mensal",
+        "correlacao",
+        "linha_do_tempo",
+        "fundamentos",
+        "relatorio_empresa",
+        "por_dentro",
+        "donos",
+        "comparar",
+        "relatorio",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("area", "chaves"),
+    [
+        ("inicio", {"inicio", "pulse"}),
+        (
+            "estrategias",
+            {
+                "backtest",
+                "ranking",
+                "carteira",
+                "experimentos",
+                "regimes",
+                "pares",
+                "aprendizado",
+            },
+        ),
+        (
+            "acompanhar",
+            {
+                "research",
+                "diario_de_teses",
+                "carteira_b3",
+                "carteira_research",
+                "alertas",
+                "newsletter",
+                "momentum",
+                "juros_e_inflacao",
+                "precos_de_referencia",
+                "simulador_de_trava",
+                "parametros",
+                "mapa_do_cafe",
+                "painel_do_cafe",
+                "busca_por_cnpj",
+                "relatorio_do_setor",
+            },
+        ),
+        (
+            "conta",
+            {
+                "simulacoes",
+                "meus_dados",
+                "planos",
+                "admin",
+                "sala_de_dados",
+                "boas_vindas_beta",
+            },
+        ),
+        ("ajuda", {"guia", "termos", "privacidade", "trade"}),
+    ],
+)
+def test_cada_area_tem_as_paginas_do_mapa(area, chaves):
+    """O mapa da pesquisa (organização do app, §5). Trocar uma página de área é mexer só aqui e no mapa."""
+    assert {p.chave for p in paginas.paginas_da_area(area)} == chaves
+
+
+def test_area_sem_paginas_da_erro_claro():
+    with pytest.raises(KeyError):
+        paginas.paginas_da_area("nao_existe")
+
+
 # --- Contrato de entradas e saídas (preparação 3 da ADR 0044; ADR 0048) ---
 
 
 def _contratos():
+    """Os contratos do `openapi_v1` público; a sala tem o dela em `test_api_v1_sala_painel`."""
     from src.paginas import PAGINAS
 
-    return {p.chave: p.contrato for p in PAGINAS if p.contrato is not None}
+    return {
+        p.chave: p.contrato
+        for p in PAGINAS
+        if p.contrato is not None and not p.somente_admin and p.chave != "sala_de_dados"
+    }
 
 
 def _openapi():
@@ -101,7 +252,7 @@ def _entradas_da_rota(operacao: dict, esquemas: dict) -> dict[str, tuple[bool, d
         }
     return {
         p["name"]: (p["required"], _faixa(p["schema"]))
-        for p in operacao["parameters"]
+        for p in operacao.get("parameters", [])
         if p["in"] == "query"
     }
 
@@ -114,9 +265,18 @@ def test_as_paginas_de_analise_tem_contrato():
         "comparar",
         "backtest",
         "juros_e_inflacao",
+        "precos_de_referencia",
         "linha_do_tempo",
+        "relatorio_empresa",
+        "busca_por_cnpj",
+        "relatorio_do_setor",
         "planos",
         "meus_dados",
+        "simulacoes",
+        "pulse",
+        "mapa_do_cafe",
+        "painel_do_cafe",
+        "boas_vindas_beta",
     }
 
 
@@ -143,15 +303,28 @@ def test_cada_contrato_bate_com_a_rota_de_verdade():
 
 def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     usadas = {c.rota for c in _contratos().values()}
-    # /eu, /conta e o aceite são da conta e /configuracao é do login, não de uma página
+    # /eu, /conta, /sair e o aceite são da conta e /configuracao é do login, não de uma página;
+    # o PDF da busca por CNPJ e o do setor herdam o contrato da rota JSON (acesso.ROTAS_DE_ARQUIVO)
     assert set(_openapi()["paths"]) - usadas == {
+        "/v1/busca-por-cnpj/pdf",
+        "/v1/relatorio-setor/pdf",
+        "/v1/relatorio-setor/apresentacao",
+        "/v1/relatorio-empresa/apresentacao",
+        "/v1/relatorio-empresa/markdown",
         "/v1/eu",
         "/v1/conta",
+        "/v1/sair",
+        "/v1/sair-de-todos",
+        "/v1/entrada/codigo",
+        "/v1/entrada/confirmar",
         "/v1/aceite-dos-termos",
         "/v1/revogar-link",
+        "/v1/salvar-simulacao",
+        "/v1/apagar-simulacao",
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
+        "/v1/setores",  # a lista de setores da página "Relatório do setor"
         "/v1/configuracao",
     }
 

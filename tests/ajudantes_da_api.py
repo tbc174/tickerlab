@@ -34,3 +34,34 @@ def token(chave: RSAKey, **mudancas) -> str:
 
 def com_token(valor: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {valor}"}
+
+
+def da_sessao(banco, usuario) -> dict[str, str]:
+    """Os cabeçalhos do app novo logado como `usuario`: o cookie da sessão e a prova de origem.
+
+    O token do Google só abre a sessão (`POST /v1/conta`); nas outras rotas vale o cookie, e todo
+    pedido que muda algo leva o cabeçalho do app e a origem do próprio site (CSRF)."""
+    from src.api_v1.sessao import NOME_DO_COOKIE
+    from src.banco import sessoes
+
+    with banco.begin() as conexao:
+        valor = sessoes.abrir(conexao, usuario.id, "google")
+    return {
+        "Cookie": f"{NOME_DO_COOKIE}={valor}",
+        "X-TickerLab-Pedido": "1",
+        "Origin": "http://testserver",
+    }
+
+
+GATEWAY = "172.18.0.1"
+
+
+def cliente_do_gateway(ambiente: dict[str, str]):
+    """Cliente de teste que chega pelo túnel: a conexão vem do gateway e ele é o proxy confiável."""
+    from fastapi.testclient import TestClient
+
+    from src import api
+    from src.registro_de_acesso import VARIAVEL_DOS_PROXIES
+
+    app = api.criar_app({**ambiente, VARIAVEL_DOS_PROXIES: GATEWAY})
+    return TestClient(app, client=(GATEWAY, 50000))

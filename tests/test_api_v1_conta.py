@@ -25,6 +25,7 @@ from tests.ajudantes_da_api import (
     CLIENT_ID,
     chaves_publicas,
     com_token,
+    da_sessao,
     gerar_chave,
     token,
 )
@@ -114,14 +115,14 @@ def test_token_de_outro_aplicativo_401(cliente, banco, chave):
 
 def test_conta_nova_ainda_precisa_aceitar_os_termos(cliente, banco, chave):
     _criar(cliente, chave)
-    eu = cliente.get("/api/v1/eu", headers=com_token(token(chave, **DA_CARLA)))
+    eu = cliente.get("/api/v1/eu", headers=da_sessao(banco, _da_carla(banco)))
     assert eu.status_code == 403
     assert eu.headers[acesso.CABECALHO_DO_MOTIVO] == "termos"
     carla = _da_carla(banco)
     assert carla is not None
     with banco.begin() as conexao:
         registrar_aceite(conexao, carla.id)
-    eu = cliente.get("/api/v1/eu", headers=com_token(token(chave, **DA_CARLA)))
+    eu = cliente.get("/api/v1/eu", headers=da_sessao(banco, _da_carla(banco)))
     assert eu.status_code == 200
 
 
@@ -186,28 +187,28 @@ def test_api_desligada_404(banco, monkeypatch, chave):
 # --- O aceite dos termos pela API (conta e planos, PR 2) --------------------------------------
 
 
-def _aceitar(cliente, chave, versao=VERSAO_DOS_TERMOS):
+def _aceitar(cliente, banco, versao=VERSAO_DOS_TERMOS):
     return cliente.post(
         "/api/v1/aceite-dos-termos",
-        headers=com_token(token(chave, **DA_CARLA)),
+        headers=da_sessao(banco, _da_carla(banco)),
         json={"versao": versao},
     )
 
 
 def test_aceitar_os_termos_libera_a_conta(cliente, banco, chave):
     _criar(cliente, chave)
-    resposta = _aceitar(cliente, chave)
+    resposta = _aceitar(cliente, banco)
     assert resposta.status_code == 200, resposta.text
     assert resposta.json()["plano"] == "gratuito"
     carla = _da_carla(banco)
     assert carla is not None and carla.termos_versao == VERSAO_DOS_TERMOS
-    eu = cliente.get("/api/v1/eu", headers=com_token(token(chave, **DA_CARLA)))
+    eu = cliente.get("/api/v1/eu", headers=da_sessao(banco, _da_carla(banco)))
     assert eu.status_code == 200
 
 
 def test_o_aceite_fica_na_auditoria(cliente, banco, chave):
     _criar(cliente, chave)
-    _aceitar(cliente, chave)
+    _aceitar(cliente, banco)
     carla = _da_carla(banco)
     assert carla is not None
     with banco.connect() as conexao:
@@ -222,7 +223,7 @@ def test_o_aceite_fica_na_auditoria(cliente, banco, chave):
 def test_versao_velha_dos_termos_e_recusada(cliente, banco, chave):
     """Uma aba aberta antes da troca dos termos mostra o texto velho: não vale como aceite do novo."""
     _criar(cliente, chave)
-    resposta = _aceitar(cliente, chave, versao="2020-01-01.1")
+    resposta = _aceitar(cliente, banco, versao="2020-01-01.1")
     assert resposta.status_code == 409
     carla = _da_carla(banco)
     assert carla is not None and carla.termos_versao != VERSAO_DOS_TERMOS
@@ -233,16 +234,21 @@ def test_aceite_sem_versao_valida_422(cliente, banco, chave, corpo):
     _criar(cliente, chave)
     resposta = cliente.post(
         "/api/v1/aceite-dos-termos",
-        headers=com_token(token(chave, **DA_CARLA)),
+        headers=da_sessao(banco, _da_carla(banco)),
         json=corpo,
     )
     assert resposta.status_code == 422
 
 
-def test_aceite_sem_conta_401_conta_nova(cliente, banco, chave):
-    resposta = _aceitar(cliente, chave)
+def test_aceite_sem_sessao_401(cliente, banco, chave):
+    """Sem conta não há sessão: o pedido chega sem o cookie e a API pede para entrar."""
+    resposta = cliente.post(
+        "/api/v1/aceite-dos-termos",
+        headers={"X-TickerLab-Pedido": "1"},
+        json={"versao": VERSAO_DOS_TERMOS},
+    )
     assert resposta.status_code == 401
-    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "conta-nova"
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "sem-token"
 
 
 def test_aceite_sem_token_401(cliente, banco):
@@ -256,7 +262,7 @@ def test_o_aceite_vale_so_para_a_conta_do_token(cliente, banco, chave):
     _criar(cliente, chave)
     with banco.begin() as conexao:
         entrar(conexao, "davi", "davi@exemplo.com")
-    _aceitar(cliente, chave)
+    _aceitar(cliente, banco)
     with banco.connect() as conexao:
         davi = buscar_por_google_sub(conexao, "davi")
     assert davi is not None and davi.termos_versao != VERSAO_DOS_TERMOS
@@ -264,7 +270,7 @@ def test_o_aceite_vale_so_para_a_conta_do_token(cliente, banco, chave):
 
 def test_novidades_por_email_so_com_a_caixa_marcada(cliente, banco, chave):
     _criar(cliente, chave)
-    _aceitar(cliente, chave)
+    _aceitar(cliente, banco)
     carla = _da_carla(banco)
     assert carla is not None
     with banco.connect() as conexao:
@@ -275,7 +281,7 @@ def test_caixa_das_novidades_marcada_inscreve(cliente, banco, chave):
     _criar(cliente, chave)
     resposta = cliente.post(
         "/api/v1/aceite-dos-termos",
-        headers=com_token(token(chave, **DA_CARLA)),
+        headers=da_sessao(banco, _da_carla(banco)),
         json={
             "versao": VERSAO_DOS_TERMOS,
             "novidades": True,
@@ -295,7 +301,7 @@ def test_texto_velho_das_novidades_nao_vale_como_consentimento(cliente, banco, c
     _criar(cliente, chave)
     resposta = cliente.post(
         "/api/v1/aceite-dos-termos",
-        headers=com_token(token(chave, **DA_CARLA)),
+        headers=da_sessao(banco, _da_carla(banco)),
         json={
             "versao": VERSAO_DOS_TERMOS,
             "novidades": True,

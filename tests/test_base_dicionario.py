@@ -4,15 +4,38 @@ divulgação. O documento para o Tiago revisar é gerado daqui e precisa estar e
 
 from pathlib import Path
 
-from base import cda, fca
-from base.cadastro import COLUNAS_DOS_TICKERS, ler_cadastro
+import pandas as pd
+
+from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas, sus
+from base.amostra import demonstracoes as amostra_demonstracoes
+from base.amostra import universo as amostra_universo
+from base.cadastro import ler_cadastro, tickers_no_tempo
+from base.commodities import cftc_cot, comex_cafe, faostat_cafe, usda_psd
+from base.contrapartes import cafe as contrapartes_cafe
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
+from base.dmpl import FORMATO_DMPL
+from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
+from base.setoriais import anac as setoriais_anac
+from base.setoriais import anatel as setoriais_anatel
+from base.setoriais import aneel as setoriais_aneel
+from base.setoriais import anp as setoriais_anp
+from base.setoriais import anp_concessionarios as setoriais_anp_concessionarios
+from base.setoriais import ans as setoriais_ans
+from base.setoriais import antt_siade as setoriais_antt_siade
+from base.setoriais import ccee as setoriais_ccee
+from base.setoriais import comex_preco_medio as setoriais_comex_preco_medio
+from base.setoriais import comex_tabelas as setoriais_comex_tabelas
+from base.setoriais import ons as setoriais_ons
+from base.setoriais import ons_capacidade as setoriais_ons_capacidade
+from base.setoriais import ons_restricao as setoriais_ons_restricao
+from base.setoriais import susep as setoriais_susep
 from src.banco.coletas import (
+    A_CONFIRMAR,
     LICENCAS,
+    NAO_COMERCIAL,
     REVENDA,
     SEM_LICENCA_CONHECIDA,
-    SO_USO_INTERNO,
     licenca_da_fonte,
     revenda_da_fonte,
 )
@@ -25,32 +48,107 @@ from src.banco.modelo import (
 from src.padroes import MULTIPLOS
 
 RAIZ = Path(__file__).resolve().parent.parent
+PASTA_DO_FCA = RAIZ / "tests" / "arquivos" / "cvm" / "fca"
+# as tabelas da série 3 da base de ML (fundos e crédito), com a função ou a carga que as grava
+SERIE_3 = (
+    "valores_mobiliarios", "emissores", "tickers_no_tempo", "codigos_invalidos",
+    "codigos_fora_do_fca", "emissores_antigos", "emissores_sem_ligacao", "carteiras_dos_fundos",
+    "carteiras_bloco_8",
+    "painel_dos_fundos", "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
+    "ifdata_valores", "ifdata_cadastro", "ligacao_dos_bancos", "scr_credito",
+)  # fmt: skip
+
+
+def _zips_do_fca() -> list[bytes]:
+    return [p.read_bytes() for p in sorted(PASTA_DO_FCA.glob("*.zip"))]
+
+
+def _valores_da_carga() -> pd.DataFrame:
+    return pd.concat(
+        [fca.ler_valores_mobiliarios(z) for z in _zips_do_fca()], ignore_index=True
+    )
+
+
+def _tickers_e_emissores_da_carga() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Como a `carga_fca` grava (série 3, PR 8: com a tabela de códigos conferidos e a origem)."""
+    return fca.com_codigos_conferidos(
+        tickers_no_tempo(_zips_do_fca()),
+        fca.emissores(_valores_da_carga()),
+        fca.codigos_conferidos(),
+    )
+
+
+def _colunas_das_ofertas_e_conselhos() -> dict[str, list[str]]:
+    arquivos = Path(__file__).parent / "arquivos"
+    fre_zip = (arquivos / "fre" / "fre_cia_aberta_2024.zip").read_bytes()
+    ofertas_zip = (
+        arquivos / "cvm" / "ofertas" / "oferta_distribuicao.zip"
+    ).read_bytes()
+    return {
+        "fre_conselho": list(conselhos.COLUNAS_DO_CONSELHO),
+        "fre_comites": list(conselhos.COLUNAS_DOS_COMITES),
+        "fre_remuneracao": list(conselhos.ler_remuneracao(fre_zip).columns),
+        "fre_remuneracao_extremos": list(
+            conselhos.ler_remuneracao_extremos(fre_zip).columns
+        ),
+        "fre_diversidade": conselhos.colunas_da_diversidade(),
+        "fre_capital_social": list(fre_governanca.COLUNAS_DO_CAPITAL),
+        "fre_empregados": list(fre_governanca.COLUNAS_DOS_EMPREGADOS),
+        "fre_acionistas": list(fre_governanca.COLUNAS_DOS_ACIONISTAS),
+        "fre_distribuicao_capital": list(fre_governanca.COLUNAS_DA_DISTRIBUICAO),
+        "fre_partes_relacionadas": list(fre_governanca.COLUNAS_DAS_PARTES),
+        "ofertas_antigas": list(ofertas.ler_antigas(ofertas_zip).columns),
+        "ofertas_resolucao_160": list(ofertas.ler_resolucao_160(ofertas_zip).columns),
+    }
 
 
 def _colunas_de_verdade() -> dict[str, list[str]]:
     cadastro = ler_cadastro(b"CNPJ_CIA;DENOM_SOCIAL;SIT\n1;A;ATIVO\n")
+    tickers, emissores = _tickers_e_emissores_da_carga()
     return {
         "demonstracoes_como_era": list(COLUNAS_DA_BASE),
+        "dmpl_como_era": list(FORMATO_DMPL.colunas_da_base),
         "achados_de_qualidade": [c.name for c in achados_de_qualidade.columns],
         "cadastro_das_companhias": list(cadastro.columns),
-        "tickers_no_tempo": list(COLUNAS_DOS_TICKERS),
+        "rotulos_atraso": [*rotulo.COLUNAS, "montado_em", "versao_do_codigo"],
+        "tickers_no_tempo": list(tickers.columns),
         "valores_mobiliarios": list(fca.COLUNAS),
-        "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
-        "emissores": [
-            "emissor",
-            "cnpj",
-            "empresa",
-            "primeiro_ano",
-            "ultimo_ano",
-            "conflito",
+        "carteiras_dos_fundos": [*cda.COLUNAS, "visto_em", "disponivel_em"],
+        "carteiras_bloco_8": [*cda.COLUNAS_DO_BLOCO_8, "visto_em", "disponivel_em"],
+        "anac_estatistico": list(setoriais_anac.COLUNAS),
+        "anp_vendas": list(setoriais_anp.COLUNAS),
+        "usda_psd_cafe": list(usda_psd.COLUNAS),
+        "faostat_cafe": list(faostat_cafe.COLUNAS),
+        "comex_cafe": list(comex_cafe.COLUNAS),
+        "ons_geracao": list(setoriais_ons.COLUNAS),
+        "ccee_pld": list(setoriais_ccee.COLUNAS),
+        "ons_restricao": [*setoriais_ons_restricao.COLUNAS, "visto_em"],
+        "ons_capacidade": [*setoriais_ons_capacidade.COLUNAS, "visto_em"],
+        "anp_concessionarios": [*setoriais_anp_concessionarios.COLUNAS, "visto_em"],
+        "antt_siade": [*setoriais_antt_siade.COLUNAS, "visto_em"],
+        "comex_preco_medio": [*setoriais_comex_preco_medio.COLUNAS, "visto_em"],
+        "comex_urf": [*setoriais_comex_tabelas.COLUNAS_DA_URF, "visto_em"],
+        "comex_via": [*setoriais_comex_tabelas.COLUNAS_DA_VIA, "visto_em"],
+        "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),
+        "sus_internacoes": list(sus.SIH.colunas_da_tabela),
+        "sus_ambulatorial": list(sus.SIA.colunas_da_tabela),
+        "sus_competencias": list(sus.COLUNAS_DA_SITUACAO),
+        "amostra_painel": [
+            *amostra_universo.COLUNAS,
+            *amostra_demonstracoes.COLUNAS[2:],
         ],
-        "codigos_invalidos": [
-            "cnpj",
-            "empresa",
-            "referencia",
-            "valor_mobiliario",
-            "codigo_informado",
-        ],
+        **_colunas_das_ofertas_e_conselhos(),
+        "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
+        "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],
+        "ans_beneficiarios": [*setoriais_ans.COLUNAS, "visto_em"],
+        "susep_seguros": [*setoriais_susep.COLUNAS, "visto_em"],
+        "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
+        "emissores": list(emissores.columns),
+        "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
+        "emissores_antigos": list(ligacoes.tabela_conferida().columns),
+        "contraparte_cafe": list(contrapartes_cafe.COLUNAS),
+        "emissores_sem_ligacao": list(ligacoes.emissores_sem_ligacao().columns),
+        "codigos_invalidos": list(fca.codigos_invalidos(_valores_da_carga()).columns),
         **{
             t.name: [c.name for c in t.columns]
             for t in (padroes_setoriais, fre_proventos, fre_eventos_de_capital)
@@ -94,17 +192,18 @@ def test_toda_fonte_com_licenca_tem_resposta_sobre_revenda():
 
 
 def test_fonte_sem_licenca_de_dados_nunca_e_vendavel():
-    """Yahoo e corretoras de cripto sem termo de dados (ADRs 0008 e 0045): só uso interno."""
+    """Yahoo e corretoras de cripto sem termo de dados (ADRs 0008, Emenda 1, e 0045): não comercial;
+    fonte nova sem resposta escrita: a confirmar."""
     for familia in ("yahoo", "kraken", "mb"):
-        assert revenda_da_fonte(familia) == SO_USO_INTERNO
-    assert revenda_da_fonte("desconhecida") == SO_USO_INTERNO
+        assert revenda_da_fonte(familia) == NAO_COMERCIAL
+    assert revenda_da_fonte("desconhecida") == A_CONFIRMAR
 
 
 def test_padroes_avisam_que_os_multiplos_usam_o_preco_do_yahoo():
-    """Os múltiplos dos padrões levam o preço do Yahoo: só uso interno, nunca vender (plano da
-    série 2, nota da ADR 0055)."""
+    """Os múltiplos dos padrões levam o preço do Yahoo: não comercial, nunca vender nem pôr em modelo
+    (plano da série 2, nota da ADR 0055; ADR 0008, Emenda 1)."""
     ressalva = TABELAS["padroes_setoriais"].ressalva_de_revenda
-    assert SO_USO_INTERNO in ressalva
+    assert NAO_COMERCIAL in ressalva
     for multiplo in MULTIPLOS:
         assert f"`{multiplo}`" in ressalva
 
@@ -148,15 +247,202 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
         "ifdata_valores": [
             *bcb_ifdata.ler_valores(_ifdata("valores_202506_t1_r1.json")).columns,
             "disponivel_em",
+            "visto_em",
         ],
-        "ifdata_cadastro": list(cadastro.columns),
+        "ifdata_cadastro": [*cadastro.columns, "disponivel_em", "visto_em"],
         "ligacao_dos_bancos": list(
             bcb_ifdata.ligacao_dos_bancos(cadastro, *_empresas_e_tickers()).columns
         ),
         "scr_credito": [
             *bcb_scr.ler_ano(_scr("scrdata_2012.zip")).columns,
             "disponivel_em",
+            "ocorrencia",
+            "visto_em",
         ],
     }
     for tabela, esperadas in colunas.items():
         assert set(TABELAS[tabela].colunas) == set(esperadas), tabela
+
+
+def test_dicionario_cobre_as_tabelas_da_serie_3():
+    """Série 3, PR 8 (ADR 0027, exigência 8; ADR 0055, 11 e 13): cada tabela nova tem colunas com
+    unidade, frequência, atraso, fonte, licença, revenda e a linhagem com a versão do código."""
+    documento = documento_em_markdown()
+    for nome in SERIE_3:
+        tabela = TABELAS[nome]
+        assert tabela.colunas, f"{nome}: sem colunas"
+        for coluna, (descricao, unidade) in tabela.colunas.items():
+            assert descricao and unidade, f"{nome}.{coluna}"
+        for campo in ("descricao", "fonte", "frequencia", "atraso", "onde", "linhagem"):
+            assert getattr(tabela, campo), f"{nome}: falta {campo}"
+        assert licenca_da_fonte(tabela.familia_da_fonte) != SEM_LICENCA_CONHECIDA, nome
+        assert revenda_da_fonte(tabela.familia_da_fonte) in REVENDA.values(), nome
+        assert "ainda não é guardada" not in tabela.linhagem, nome
+        assert "versão do código" in tabela.linhagem or "SHA-256" in tabela.linhagem, (
+            nome
+        )
+        assert f"## `{nome}`" in documento, nome
+
+
+def test_cobertura_e_buracos_dos_fundos_cobrem_as_colunas():
+    from tests.test_base_ligacoes import _ligacao, _posicoes
+
+    assert set(ligacoes.cobertura(_posicoes(), _ligacao()).columns) == set(
+        TABELAS["cobertura_dos_fundos"].colunas
+    )
+    assert set(ligacoes.buracos(_posicoes(), _ligacao()).columns) == set(
+        TABELAS["buracos_dos_fundos"].colunas
+    )
+
+
+def test_cadastro_de_fundos_diz_como_fica_o_gestor_pessoa_fisica():
+    """LGPD: o dicionário diz que o documento e o nome do gestor PF ficam vazios."""
+    colunas = TABELAS["cadastro_de_fundos"].colunas
+    assert "pessoa física" in colunas["CPF_CNPJ_GESTOR"][0]
+    assert "pessoa física" in colunas["GESTOR"][0]
+    assert "DIRETOR" not in colunas
+
+
+def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
+    """B13, parte 2: as tabelas da base histórica (servidor de casa) entram no dicionário. Onde o
+    código não tem a lista de colunas numa constante, a lista é a das tabelas reais montadas em
+    14/10/2026 (esquema lido dos Parquets)."""
+    from base import (
+        auditores,
+        controladas,
+        empresa_serie,
+        enet_notas,
+        fre,
+        pareceres,
+        rotulos,
+        securitizacao,
+    )
+    from src.negociacoes import COLUNAS as COLUNAS_DAS_NEGOCIACOES
+
+    origem = ["origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codigo"]
+    da_historica = ["ano_do_arquivo", *origem]
+    eventos = [
+        "protocolo", "versao", "cnpj", "empresa", "categoria", "tipo", "assunto", "rotulo",
+        "tema", "materialidade", "referencia", "publicado_em", "link",
+    ]  # fmt: skip
+    situacao = [
+        "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo",
+        "data_situacao_especial", "mes_do_retrato", "disponivel_em",
+    ]  # fmt: skip
+    curva = [
+        "data_base", "curva", "prazo_anos", "taxa", "titulos", "maior_prazo_anos",
+        "disponivel_em",
+    ]  # fmt: skip
+    esperadas = {
+        "eventos": [*eventos, *da_historica],
+        "negociacoes": [*COLUNAS_DAS_NEGOCIACOES, *da_historica],
+        "proventos": [*fre.COLUNAS_DOS_PROVENTOS, *da_historica],
+        "eventos_de_capital": [*fre.COLUNAS_DOS_EVENTOS, *da_historica],
+        "insolvencia": [*rotulos.COLUNAS, *da_historica],
+        "cnpj_situacao_especial": [*situacao, *origem],
+        "cnpj_situacao_cadastral": [
+            "cnpj",
+            "cnpj_basico",
+            "matriz",
+            "situacao_cadastral",
+            "data_situacao_cadastral",
+            "motivo_situacao",
+            "mes_do_retrato",
+            "disponivel_em",
+            *origem,
+        ],
+        "auditores": [*auditores.COLUNAS, *da_historica],
+        "pareceres_dfp": [*pareceres.COLUNAS, *da_historica],
+        "pareceres_itr": [*pareceres.COLUNAS, *da_historica],
+        "notas_dfp": [*enet_notas.COLUNAS, *da_historica],
+        "securitizacao_certificados": [
+            *securitizacao.COLUNAS_DOS_CERTIFICADOS,
+            *da_historica,
+        ],
+        "securitizacao_cedente_devedor": [
+            *securitizacao.COLUNAS_DO_CEDENTE_DEVEDOR,
+            *da_historica,
+        ],
+        "trocas_de_auditor": [
+            *auditores.COLUNAS_DAS_TROCAS,
+            "montado_em",
+            "versao_do_codigo",
+        ],
+        "curva_juros": [*curva, *origem],
+        "controladas": [*controladas.COLUNAS, *da_historica],
+        "empresa_serie": [*empresa_serie.COLUNAS, "montado_em", "versao_do_codigo"],
+    }
+    for tabela, colunas in esperadas.items():
+        assert set(TABELAS[tabela].colunas) == set(colunas), tabela
+        # exigência 13 da ADR 0055: toda linha da série B diz o commit que a montou
+        assert "versao_do_codigo" in TABELAS[tabela].linhagem, tabela
+        assert "ainda não é guardada" not in TABELAS[tabela].linhagem, tabela
+    assert (
+        "Comex Stat; citar Secex/MDIC" in TABELAS["empresa_serie"].ressalva_de_revenda
+    )
+
+
+# --- contrato de dados (ADR 0077, PR 1): módulo, chaves, três datas e histórico ---
+MODULOS = {
+    "mercado_e_empresas", "credito_e_fidc", "ma", "governo_e_sancoes", "macro",
+    "cripto", "intradiarios", "pessoas", "rede",
+}  # fmt: skip
+APELIDOS_DAS_DATAS = {"aconteceu_em", "publico_em", "coletado_em"}
+FAMILIAS_DE_GOVERNO = {"rfb-cnpj", "cgu", "pgfn", "ibama", "mte"}
+
+
+def test_toda_tabela_tem_modulo_conhecido():
+    for nome, tabela in TABELAS.items():
+        assert tabela.modulo in MODULOS, nome
+
+
+def test_toda_tabela_tem_chaves_que_existem():
+    for nome, tabela in TABELAS.items():
+        assert tabela.chaves, f"{nome} sem chaves"
+        assert set(tabela.chaves) <= set(tabela.colunas), nome
+
+
+def test_apelidos_das_datas_apontam_para_colunas():
+    for nome, tabela in TABELAS.items():
+        assert set(tabela.datas) <= APELIDOS_DAS_DATAS, nome
+        assert set(tabela.datas.values()) <= set(tabela.colunas), nome
+
+
+def test_toda_tabela_tem_historico_desde_e_granularidade():
+    for nome, tabela in TABELAS.items():
+        pd.Timestamp(tabela.historico_desde)  # é uma data
+        assert tabela.granularidade_do_publico_em in {"dia", "mes", "ano"}, nome
+        if tabela.familia_da_fonte in FAMILIAS_DE_GOVERNO:
+            assert tabela.historico_desde == "2026-10-14", nome
+            assert tabela.granularidade_do_publico_em == "mes", nome
+
+
+def test_contrato_comeca_na_versao_1():
+    """Todas as tabelas seguem na versão maior 1; a menor sobe com coluna nova (série 4, PR 3: os
+    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige).
+
+    Exceção de propósito: `insolvencia` 2.0.0 (16/10/2026), o rótulo mudou de sentido (o da
+    própria companhia, com `exposicao_a_terceiro` para o que fala de outra), e 3.0.0 (17/10/2026),
+    uma linha por versão da entrega (a reapresentação apagava a data da 1ª versão), e `auditores` 2.0.0
+    (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA), e
+    `debentures_assembleias` 2.0.0 (17/10/2026), a chave passou a ser o `link` (a CVM põe vários
+    arquivos numa entrega e, de 2003 a 2015, não dá a versão), e `cnpj_situacao_especial` 2.0.0
+    (17/10/2026), o `publico_em` passou do mês do arquivo para `disponivel_em`, e
+    `demonstracoes_como_era` 2.0.0 (19/10/2026, série T1), a tabela ganhou a DFC, a DVA e a DRA
+    (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas), e
+    `ifdata_valores` 2.0.0 (21/10/2026), a chave ganhou o `visto_em` (a revisão do BC é linha nova da
+    mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado), e `ifdata_cadastro` e
+    `scr_credito` 2.0.0 (25/10/2026), o mesmo: a chave ganhou o `visto_em`, e `demonstracoes_como_era` 3.0.0 e
+    `dmpl_como_era` 2.0.0 (03/11/2026, API A3), a chave ganhou `ordem`, `inicio` e `fim` (a DRE do ITR traz o
+    trimestre e o acumulado; sem elas a chave se repetia em milhões de linhas)."""
+    maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
+    assert maiores.pop("insolvencia") == "3"
+    assert maiores.pop("auditores") == "2"
+    assert maiores.pop("debentures_assembleias") == "2"
+    assert maiores.pop("cnpj_situacao_especial") == "2"
+    assert maiores.pop("demonstracoes_como_era") == "3"
+    assert maiores.pop("dmpl_como_era") == "2"
+    assert maiores.pop("ifdata_valores") == "2"
+    assert maiores.pop("ifdata_cadastro") == "2"
+    assert maiores.pop("scr_credito") == "2"
+    assert set(maiores.values()) == {"1"}

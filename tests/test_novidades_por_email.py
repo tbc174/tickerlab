@@ -77,7 +77,7 @@ def test_id_da_campanha_fora_do_padrao_e_recusado(id_):
     ],
 )
 def test_campanha_que_promete_rentabilidade_e_recusada(promessa):
-    """O CLAUDE.md: nunca prometer rentabilidade."""
+    """O AGENTS.md: nunca prometer rentabilidade."""
     with pytest.raises(envio.CampanhaInvalidaError, match="promete"):
         _campanha(f"# Novidade\n\n{promessa} com o TickerLab.")
 

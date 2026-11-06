@@ -12,10 +12,14 @@ estudos
 guias
 notas
 dados_locais
+dados_sala
 *.sqlite
 .env
+.env.sala
 README.md
 requirements.txt
+requirements-estudos.txt
+requirements-trader.txt
 ruff.toml
 pytest.ini
 Dockerfile

@@ -52,6 +52,62 @@ def qualidade(valor: float, percentis: dict[str, float], maior_e_melhor: bool) -
     return QUALIDADES[abaixo]
 
 
+SOBE, CAI = "sobe", "cai"  # o sentido do número que muda a nota
+
+
+@dataclass(frozen=True)
+class Gatilho:
+    """O valor que muda a nota (o quintil vizinho do setor): não é previsão, só a régua."""
+
+    sentido: str  # SOBE ou CAI
+    limite: float
+    nota: str  # a nota depois de cruzar o limite
+    inclusive: bool  # o próprio limite já dá a nota nova ("a partir de" / "até")
+
+
+@dataclass(frozen=True)
+class Regua:
+    """Faixas em ordem de valor (da menor para a maior) e os limites entre elas. `de_cima[i]` diz
+    se o próprio limite i já pertence à faixa de cima ("a partir de") ou ainda à de baixo ("até")."""
+
+    faixas: tuple[str, ...]
+    limites: tuple[float, ...]
+    de_cima: tuple[bool, ...]
+
+    def gatilhos(self, faixa: str) -> list[Gatilho]:
+        """Os limites vizinhos da faixa de agora: um para cada lado, menos nas pontas."""
+        i = self.faixas.index(faixa)
+        resultado = []
+        if i < len(self.limites):
+            resultado.append(
+                Gatilho(SOBE, self.limites[i], self.faixas[i + 1], self.de_cima[i])
+            )
+        if i > 0:
+            anterior = i - 1
+            resultado.append(
+                Gatilho(
+                    CAI,
+                    self.limites[anterior],
+                    self.faixas[anterior],
+                    not self.de_cima[anterior],
+                )
+            )
+        return resultado
+
+
+def regua_do_setor(nota: "Nota", maior_e_melhor: bool) -> Regua:
+    """A régua de `qualidade`: os quintis do grupo; quando menor é melhor, o ótimo fica embaixo."""
+    limites = tuple(nota.percentis[p] for p in LIMITES_DOS_QUINTIS)
+    if maior_e_melhor:  # o valor no limite já sobe de nota (>=)
+        return Regua(QUALIDADES, limites, (True,) * len(limites))
+    return Regua(QUALIDADES[::-1], limites, (False,) * len(limites))  # (<=)
+
+
+def gatilhos(nota: "Nota", maior_e_melhor: bool) -> list[Gatilho]:
+    """O valor que muda a nota contra o setor, para cima e para baixo (não é previsão)."""
+    return regua_do_setor(nota, maior_e_melhor).gatilhos(nota.nota)
+
+
 @dataclass(frozen=True)
 class Nota:
     indicador: str
@@ -127,6 +183,12 @@ class NotaPorFaixa:
             f"compara com o setor): abaixo de {baixo} {f.notas[0]}; de {baixo} a {alto} "
             f"{f.notas[1]}; acima de {alto} {f.notas[2]} ({f.porque})."
         )
+
+
+def regua_da_faixa(indicador: str) -> Regua:
+    """A régua de `nota_por_faixa`: abaixo de `abaixo_de`, a 1ª; até `ate` (inclusive), a 2ª."""
+    f = FAIXAS_FIXAS[indicador]
+    return Regua(f.notas, (f.abaixo_de, f.ate), (True, False))
 
 
 def nota_por_faixa(indicador: str, valor: float) -> NotaPorFaixa | None:

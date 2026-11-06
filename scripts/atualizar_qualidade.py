@@ -9,6 +9,8 @@ Roda fora do app (no VPS, uma vez por dia, depois de `atualizar_fundamentos`, nu
 próprio: o ITR inteiro não cabe ao lado do app). Lê cada arquivo do acervo do original
 (`src/acervo.py`) e só baixa da CVM o que não estiver lá. Um arquivo que falha não para os outros;
 qualquer falha devolve 1, para a conferência das tarefas avisar.
+
+Roda: cron do VPS (todo dia às 8h15).
 """
 
 import argparse
@@ -32,6 +34,7 @@ from base.rodada import (
     regras_entre_documentos,
 )
 from src import demonstracoes as dm
+from src import rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.modelo import eventos
@@ -51,7 +54,7 @@ NAO_ENCONTRADO = 404
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:
@@ -120,7 +123,7 @@ def _ler_arquivo(
     if conteudo is None:
         log.info("%s %s ainda não existe na CVM: pulado", documento, ano)
         return None, False
-    leitura = ler_contas(conteudo, documento, so_as_das_regras=True)
+    leitura = ler_contas(conteudo, documento, recorte="regras")
     indice = ler_indice(conteudo, documento)
     falhou = _gravar(
         motor, regras_de_um_documento(leitura, documento, indice, hoje), agora

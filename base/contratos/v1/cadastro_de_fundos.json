@@ -1,0 +1,181 @@
+{
+  "tabela": "cadastro_de_fundos",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "TP_FUNDO": {
+      "descricao": "Tipo do fundo (FIDC, FI, FII...)",
+      "unidade": "texto"
+    },
+    "CNPJ_FUNDO": {
+      "descricao": "CNPJ do fundo",
+      "unidade": "texto"
+    },
+    "DENOM_SOCIAL": {
+      "descricao": "Nome do fundo",
+      "unidade": "texto"
+    },
+    "DT_REG": {
+      "descricao": "Data do registro na CVM",
+      "unidade": "data (dia)"
+    },
+    "DT_CONST": {
+      "descricao": "Data de constituição",
+      "unidade": "data (dia)"
+    },
+    "CD_CVM": {
+      "descricao": "Código do fundo na CVM",
+      "unidade": "texto"
+    },
+    "DT_CANCEL": {
+      "descricao": "Data do cancelamento (vazio: ativo)",
+      "unidade": "data (dia)"
+    },
+    "SIT": {
+      "descricao": "Situação (em funcionamento normal, cancelado...)",
+      "unidade": "texto"
+    },
+    "DT_INI_SIT": {
+      "descricao": "Início da situação",
+      "unidade": "data (dia)"
+    },
+    "DT_INI_ATIV": {
+      "descricao": "Início das atividades",
+      "unidade": "data (dia)"
+    },
+    "DT_INI_EXERC": {
+      "descricao": "Início do exercício social",
+      "unidade": "data (dia)"
+    },
+    "DT_FIM_EXERC": {
+      "descricao": "Fim do exercício social",
+      "unidade": "data (dia)"
+    },
+    "CLASSE": {
+      "descricao": "Classe do fundo (Ações, Renda Fixa, FIDC...)",
+      "unidade": "texto"
+    },
+    "DT_INI_CLASSE": {
+      "descricao": "Início da classe",
+      "unidade": "data (dia)"
+    },
+    "RENTAB_FUNDO": {
+      "descricao": "Indicador de desempenho informado (CDI, Ibovespa...)",
+      "unidade": "texto"
+    },
+    "CONDOM": {
+      "descricao": "Condomínio aberto ou fechado",
+      "unidade": "texto"
+    },
+    "FUNDO_COTAS": {
+      "descricao": "S se é fundo de cotas",
+      "unidade": "texto"
+    },
+    "FUNDO_EXCLUSIVO": {
+      "descricao": "S se é fundo exclusivo",
+      "unidade": "texto"
+    },
+    "TRIB_LPRAZO": {
+      "descricao": "S se tem tributação de longo prazo",
+      "unidade": "texto"
+    },
+    "PUBLICO_ALVO": {
+      "descricao": "Público-alvo (geral, qualificado, profissional)",
+      "unidade": "texto"
+    },
+    "ENTID_INVEST": {
+      "descricao": "S se é entidade de investimento",
+      "unidade": "texto"
+    },
+    "TAXA_PERFM": {
+      "descricao": "Taxa de performance",
+      "unidade": "percentual, como a CVM informa"
+    },
+    "INF_TAXA_PERFM": {
+      "descricao": "Texto sobre a taxa de performance",
+      "unidade": "texto"
+    },
+    "TAXA_ADM": {
+      "descricao": "Taxa de administração",
+      "unidade": "percentual ao ano, como a CVM informa"
+    },
+    "INF_TAXA_ADM": {
+      "descricao": "Texto sobre a taxa de administração",
+      "unidade": "texto"
+    },
+    "VL_PATRIM_LIQ": {
+      "descricao": "Patrimônio líquido",
+      "unidade": "reais (R$)"
+    },
+    "DT_PATRIM_LIQ": {
+      "descricao": "Data do patrimônio líquido",
+      "unidade": "data (dia)"
+    },
+    "CNPJ_ADMIN": {
+      "descricao": "CNPJ do administrador",
+      "unidade": "texto"
+    },
+    "ADMIN": {
+      "descricao": "Nome do administrador (empresa)",
+      "unidade": "texto"
+    },
+    "PF_PJ_GESTOR": {
+      "descricao": "PF ou PJ: o gestor é pessoa física ou jurídica",
+      "unidade": "texto"
+    },
+    "CPF_CNPJ_GESTOR": {
+      "descricao": "CNPJ do gestor; vazio quando o gestor é pessoa física",
+      "unidade": "texto"
+    },
+    "GESTOR": {
+      "descricao": "Nome do gestor; vazio quando é pessoa física",
+      "unidade": "texto"
+    },
+    "CNPJ_AUDITOR": {
+      "descricao": "CNPJ do auditor",
+      "unidade": "texto"
+    },
+    "AUDITOR": {
+      "descricao": "Nome do auditor",
+      "unidade": "texto"
+    },
+    "CNPJ_CUSTODIANTE": {
+      "descricao": "CNPJ do custodiante",
+      "unidade": "texto"
+    },
+    "CUSTODIANTE": {
+      "descricao": "Nome do custodiante",
+      "unidade": "texto"
+    },
+    "CNPJ_CONTROLADOR": {
+      "descricao": "CNPJ do controlador",
+      "unidade": "texto"
+    },
+    "CONTROLADOR": {
+      "descricao": "Nome do controlador",
+      "unidade": "texto"
+    },
+    "INVEST_CEMPR_EXTER": {
+      "descricao": "S se pode aplicar 100% no exterior",
+      "unidade": "texto"
+    },
+    "CLASSE_ANBIMA": {
+      "descricao": "Classificação da Anbima",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "CNPJ_FUNDO"
+  ],
+  "datas": {
+    "aconteceu_em": "DT_REG"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+  "atraso": "Do dia: é um retrato do cadastro na data da coleta; o histórico vem de `cad_fi_hist`"
+}

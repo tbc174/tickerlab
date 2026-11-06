@@ -1,0 +1,5 @@
+{"domain": "g", "date": "20261022", "time": "0000", "step": "24", "levtype": "sfc", "param": "2t", "_offset": 0, "_length": 100}
+{"domain": "g", "date": "20261022", "time": "0000", "step": "24", "levtype": "sfc", "param": "msl", "_offset": 100, "_length": 80}
+{"domain": "g", "date": "20261022", "time": "0000", "step": "24", "levtype": "sfc", "param": "tp", "_offset": 180, "_length": 120}
+{"domain": "g", "date": "20261022", "time": "0000", "step": "24", "levtype": "sfc", "param": "10u", "_offset": 300, "_length": 90}
+{"domain": "g", "date": "20261022", "time": "0000", "step": "24", "levtype": "pl", "param": "gh", "_offset": 390, "_length": 60}

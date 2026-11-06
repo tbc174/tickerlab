@@ -68,6 +68,14 @@ describe("linha do tempo", () => {
     );
   });
 
+  it("o fato relevante mostra o assunto que o leitor achou (e só ele)", async () => {
+    abrir();
+    const tabela = await screen.findByRole("table", { name: "Acontecimentos do período" });
+    const selos = tabela.querySelectorAll(".selo-do-assunto");
+    expect([...selos].map((s) => s.textContent)).toEqual(["Aquisição"]);
+    expect(selos[0].closest("tr")?.textContent).toContain("Aquisição da Refinaria Exemplo");
+  });
+
   it("a relevância é escolhida pelo nome, como no app atual", async () => {
     const { buscar } = abrir();
     await screen.findByRole("img", { name: /em base 100/ });

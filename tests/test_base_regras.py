@@ -577,3 +577,22 @@ def test_r8_antes_do_prazo_ou_entregue_no_prazo_nao_dispara():
 def test_r7_sem_contas_nao_quebra():
     vazias = pd.DataFrame(columns=list(COLUNAS))
     assert r7_salto_fora_do_padrao(vazias, _eventos()) == []
+
+
+def test_r8_usa_a_uf_da_sede_na_prorrogacao_do_rio_grande_do_sul():
+    """ITR de 31/03/2024 entregue em 20/06: no prazo para quem tem sede no RS (Res. CVM 202)."""
+    referencia = pd.Timestamp("2024-03-31")
+    entregas = pd.DataFrame(
+        [{"cnpj": CNPJ, "documento": "ITR", "referencia": referencia,
+          "recebido_em": pd.Timestamp("2024-06-20")}]
+    )  # fmt: skip
+    hoje = pd.Timestamp("2024-08-01")
+
+    def esperadas(uf: str) -> pd.DataFrame:
+        return pd.DataFrame([{"cnpj": CNPJ, "empresa": "EMPRESA TESTE S.A.", "uf": uf}])
+
+    assert r8_atraso(esperadas("RS"), entregas, "ITR", referencia, hoje) == []
+    assert len(r8_atraso(esperadas("SP"), entregas, "ITR", referencia, hoje)) == 1
+    assert (
+        len(r8_atraso(_esperadas(), entregas, "ITR", referencia, hoje)) == 1
+    )  # sem a UF

@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<ArrayOfPeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira>
+    <NumeroIdentificacaoPeriodo>1</NumeroIdentificacaoPeriodo>
+    <DataFimPeriodo>2015-03-31T00:00:00</DataFimPeriodo>
+  </PeriodoDemonstracaoFinanceira>
+  <PeriodoDemonstracaoFinanceira>
+    <NumeroIdentificacaoPeriodo>2</NumeroIdentificacaoPeriodo>
+    <DataFimPeriodo>2014-03-31T00:00:00</DataFimPeriodo>
+  </PeriodoDemonstracaoFinanceira>
+</ArrayOfPeriodoDemonstracaoFinanceira>

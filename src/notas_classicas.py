@@ -22,10 +22,34 @@ import pandas as pd
 
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import e_financeira
-from src.fundamentos import NAO_SE_APLICA_A_FINANCEIRAS, anuais
+from src.fundamentos import (
+    ANO_ANTERIOR,
+    CONFERENCIA,
+    LUCRO,
+    NAO_SE_APLICA_A_FINANCEIRAS,
+    anuais,
+)
+from src.fundamentos import todas_as_entradas as _entradas_das_contas
+from src.notas import Regua
+from src.rastro import Entrada
 
+VERSAO_DAS_NOTAS_CLASSICAS = "1"  # sobe quando uma fórmula ou um peso abaixo mudar
 ALTMAN_SEGURA, ALTMAN_AFLICAO = 2.60, 1.10
 BENEISH_LIMITE = -1.78
+AFLICAO, CINZENTA, SEGURA = "de aflição", "cinzenta", "segura"
+ABAIXO_DO_LIMITE, ACIMA_DO_LIMITE = (
+    "abaixo do limite do artigo",
+    "acima do limite do artigo",
+)
+# as faixas do artigo em ordem de valor: o Altman é "segura" só acima de 2,60 e "de aflição" só
+# abaixo de 1,10; o Beneish passa do limite só acima de −1,78 (`Regua`, para "o que mudaria")
+REGUAS = {
+    "altman": Regua(
+        (AFLICAO, CINZENTA, SEGURA), (ALTMAN_AFLICAO, ALTMAN_SEGURA), (True, False)
+    ),
+    "beneish": Regua((ABAIXO_DO_LIMITE, ACIMA_DO_LIMITE), (BENEISH_LIMITE,), (False,)),
+}
+PIOTROSKI_ALTO, PIOTROSKI_BAIXO = 8, 1  # os grupos das pontas no artigo: 8 e 9; 0 e 1
 PESOS_DO_ALTMAN = (6.56, 3.26, 6.72, 1.05)
 BENEISH_CONSTANTE = -4.84
 PESOS_DO_BENEISH = {
@@ -113,13 +137,7 @@ def _altman(ano: pd.Series, base: str) -> NotaClassica:
             motivo=f"Sem dado para: {', '.join(falta)}.",
         )  # fmt: skip
     z = sum(peso * p.valor for peso, p in zip(PESOS_DO_ALTMAN, parcelas, strict=True))  # type: ignore[operator]
-    faixa = (
-        "segura"
-        if z > ALTMAN_SEGURA
-        else "de aflição"
-        if z < ALTMAN_AFLICAO
-        else "cinzenta"
-    )
+    faixa = SEGURA if z > ALTMAN_SEGURA else AFLICAO if z < ALTMAN_AFLICAO else CINZENTA
     return NotaClassica(
         "altman",
         "Altman Z''",
@@ -217,11 +235,7 @@ def _beneish(t: pd.Series, a: pd.Series | None, base: str) -> NotaClassica:
             motivo=f"Sem dado para: {', '.join(falta)}.",
         )  # fmt: skip
     m = BENEISH_CONSTANTE + sum(PESOS_DO_BENEISH[n] * v for n, v in indices.items())  # type: ignore[operator]
-    faixa = (
-        "acima do limite do artigo"
-        if m > BENEISH_LIMITE
-        else "abaixo do limite do artigo"
-    )
+    faixa = ACIMA_DO_LIMITE if m > BENEISH_LIMITE else ABAIXO_DO_LIMITE
     return NotaClassica(
         "beneish",
         "Beneish M",
@@ -335,3 +349,66 @@ def calcular(dados: DadosDaEmpresa) -> dict[str, NotaClassica]:
         "altman": _altman(atual, f"DFP de {ano}"),
         "beneish": _beneish(atual, anterior, base),
     }
+
+
+# --- as entradas do rastro -----------------------------------------------------------------------
+_DO_BENEISH = (
+    "receita",
+    "resultado_bruto",
+    "ativo_total",
+    "ativo_circulante",
+    "imobilizado",
+    "depreciacao",
+    "passivo_circulante",
+    "divida_lp",
+    "contas_a_receber",
+    "despesas_com_vendas",
+    "despesas_administrativas",
+)
+_DO_PIOTROSKI = (
+    LUCRO,
+    "ativo_total",
+    "divida_lp",
+    "ativo_circulante",
+    "passivo_circulante",
+    "acoes_total",
+    "resultado_bruto",
+    "receita",
+)
+
+
+def _nos_dois_anos(*contas: str) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        (onde, conta) for onde in (ANO_ANTERIOR, CONFERENCIA) for conta in contas
+    )
+
+
+# As contas de cada nota (as que `_altman`, `_indices_do_beneish` e `_criterios_do_piotroski` leem):
+# a conferência é o último exercício; o ano anterior, o de antes. O caixa operacional (no Piotroski
+# e no TATA do Beneish) e o lucro do TATA são só do último ano. Mudou uma conta acima, mude aqui (o
+# teste de `tests/test_rastro.py` refaz cada nota só com as entradas).
+CONTAS_DAS_NOTAS: dict[str, tuple[tuple[str, str], ...]] = {
+    "piotroski": (*_nos_dois_anos(*_DO_PIOTROSKI), (CONFERENCIA, "fco")),
+    "altman": tuple(
+        (CONFERENCIA, conta)
+        for conta in (
+            "ativo_total",
+            "patrimonio_liquido",
+            "ativo_circulante",
+            "passivo_circulante",
+            "reservas_de_lucro",
+            "lucros_acumulados",
+            "ebit",
+        )
+    ),
+    "beneish": (
+        *_nos_dois_anos(*_DO_BENEISH),
+        (CONFERENCIA, "lucro_liquido"),
+        (CONFERENCIA, "fco"),
+    ),
+}
+
+
+def todas_as_entradas(dados: DadosDaEmpresa) -> dict[str, tuple[Entrada, ...]]:
+    """As entradas de cada nota de `CONTAS_DAS_NOTAS` (ver `fundamentos.todas_as_entradas`)."""
+    return _entradas_das_contas(dados, contas_dos_indicadores=CONTAS_DAS_NOTAS)

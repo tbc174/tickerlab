@@ -2,25 +2,42 @@
 
 A tela só lê do banco e desenha o `Relatorio` de `src/relatorio_empresa.py`, seção por seção, na
 mesma ordem do PDF e da futura API. Por enquanto só as empresas da B3 (os padrões e o FRE são da CVM).
+O relatório é montado com o plano de quem vê: as seções do dossiê da base chegam trancadas (só o
+título e o convite) para quem não é Pro.
 """
 
 import logging
+import re
 from dataclasses import replace
+from datetime import datetime
 
 import pandas as pd
 import streamlit as st
 from sqlalchemy import exc as sa_exc
 
-from src import eventos_sec, graficos, relatorios
+from src import apresentacao, dossie, eventos_sec, graficos, relatorios
+from src import graficos_do_relatorio as gdr
+from src import o_que_os_dados_mostram as leitura_da_ficha
+from src.analise_escrita.exibicao import com_analise
+from src.analise_escrita.modelo_da_tela import (
+    ROTULO_DO_DESTAQUE,
+    AnaliseDaTela,
+    ParteDaTela,
+)
+from src.apresentacao_pdf import apresentacao_em_pdf
+from src.apresentacao_pptx import apresentacao_em_pptx
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
 from src.banco.relatorio_empresa import entradas_do_relatorio
+from src.configuracao import preco_no_relatorio_ligado
 from src.dados import normalizar_ticker
+from src.faixa_de_preco import FaixaDePreco, faixa_de_preco_do_ticker
 from src.fundamentos import VERSAO_DOS_FUNDAMENTOS
 from src.moedas import moeda_do_ticker
 from src.padroes import VERSAO_DOS_PADROES
 from src.planos import LimiteDoPlanoError
+from src.rastro import Rastro, como_foi_calculado
 from src.relatorio_empresa import (
     Item,
     Premissas,
@@ -31,18 +48,28 @@ from src.relatorio_empresa import (
     nome_da_tabela,
     rotulo_da_coluna,
 )
-from src.relatorio_empresa_pdf import relatorio_da_empresa
+from src.relatorio_empresa_markdown import relatorio_em_markdown
+from src.relatorio_empresa_pdf import FUSO, relatorio_da_empresa
 from telas.comum import (
     PAGINAS_DO_MENU,
     cabecalho_da_pagina,
     carregar_contexto,
+    lembrar_recente,
+    mostrar_controles,
     mostrar_grafico,
+    plano_atual,
 )
 from telas.research.comum import _ainda_nao_coletado, _sem_banco_agora
 
 ITENS_POR_LINHA = 3
+COMO_FOI_CALCULADO = "Como foi calculado"
+MARCAS_DO_MARKDOWN = re.compile(r"[\\`*_\[\]$#<>|~]")
 GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
 CHAVE_DO_PDF = "relatorio_empresa_pdf"
+CHAVE_DO_DECK = "relatorio_empresa_deck"
+TIPO_DO_PPT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+)
 SO_B3 = (
     "O relatório completo por enquanto é só das empresas da B3 (os padrões por setor e os "
     "proventos do FRE vêm da CVM). Escolha um ticker da B3 no topo; para empresas dos EUA, "
@@ -80,31 +107,84 @@ def _ler(ticker: str, preco: float | None, fechamentos: pd.Series):
             icon=":material/schedule:",
         )
         return None
-    return entradas
+    return replace(entradas, faixa_de_preco=_faixa_de_preco(ticker))
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _faixa_de_preco(ticker: str) -> FaixaDePreco | None:
+    """A faixa de 52 semanas, guardada por uma hora: a página roda de novo a cada clique."""
+    return faixa_de_preco_do_ticker(ticker)
+
+
+def _origem(item: Item) -> str:
+    """De quando é e de onde veio (a ajuda do número), e por que não compara, quando não compara."""
+    partes = [
+        f"Base: {item.base}." if item.base else "",
+        f"Fonte: {item.fonte}." if item.fonte else "",
+    ]
+    return " ".join([p for p in partes if p] + [item.sem_comparacao])
+
+
+def _literal(texto: str) -> str:
+    """O texto sem virar Markdown (o "R$" da fórmula não abre LaTeX, o "*" não vira negrito)."""
+    return MARCAS_DO_MARKDOWN.sub(r"\\\g<0>", texto)
+
+
+def _como_foi_calculado(coluna, rastro: Rastro) -> None:
+    """O rastro do número em um clique (item 7 do lançamento): fórmula, versão, fonte, publicação
+    e o link de cada documento usado."""
+    with coluna.popover(COMO_FOI_CALCULADO, icon=":material/functions:"):
+        for linha in como_foi_calculado(rastro):
+            texto = _literal(linha.texto)
+            if linha.url:
+                texto += f" ([abrir o original]({linha.url}))"
+            st.markdown(f"**{linha.rotulo}:** {texto}")
 
 
 def _mostrar_item(coluna, item: Item) -> None:
-    coluna.metric(
-        item.nome, item.texto, help=f"Base: {item.base}" if item.base else None
-    )
+    ajuda = " ".join(p for p in (_origem(item), item.nota_texto) if p)
+    coluna.metric(item.nome, item.texto, help=ajuda or None)  # a explicação fica no (?)
+    if item.comparacao is not None:
+        coluna.caption(f"Contra {item.comparacao.contra}: {item.comparacao.texto}")
     if item.motivo:
         coluna.caption(item.motivo)
     if item.nota:
-        coluna.caption(
-            f"Nota: **{item.nota}**"
-            + (f" · {item.nota_texto}" if item.nota_texto else "")
-        )
+        coluna.caption(f"Nota: **{item.nota}**")
+    if item.rastro is not None:
+        _como_foi_calculado(coluna, item.rastro)
+
+
+def _titulo_da_tabela(chave: str) -> str:
+    if chave in dossie.TITULOS_DAS_TABELAS:
+        return dossie.titulo_da_tabela(chave)
+    return nome_da_tabela(chave)
 
 
 def _mostrar_secao(secao: Secao) -> None:
     st.subheader(secao.titulo)
+    if secao.trancada:
+        for paragrafo in secao.paragrafos:
+            st.info(paragrafo, icon=":material/workspace_premium:")
+        return
+    grupos = leitura_da_ficha.por_lado(secao.pontos)
+    if grupos:
+        for coluna, (titulo, pontos) in zip(
+            st.columns(len(grupos)), grupos, strict=True
+        ):
+            coluna.markdown(f"**{titulo}**")
+            coluna.markdown("\n".join(f"- {leitura_da_ficha.frase(p)}" for p in pontos))
     for inicio in range(0, len(secao.itens), ITENS_POR_LINHA):
         linha = secao.itens[inicio : inicio + ITENS_POR_LINHA]
         for coluna, item in zip(st.columns(ITENS_POR_LINHA), linha, strict=False):
             _mostrar_item(coluna, item)
-    for paragrafo in secao.paragrafos:
-        st.markdown(paragrafo)
-    for chave, linhas in secao.tabelas.items():
+    if secao.recolhida:
+        with st.expander("Ver a explicação"):
+            for paragrafo in secao.paragrafos:
+                st.markdown(paragrafo)
+    else:
+        for paragrafo in secao.paragrafos:
+            st.markdown(paragrafo)
+    for chave, linhas in secao.tabelas_a_mostrar().items():
         if not linhas:
             continue
         if chave in GRAFICOS:
@@ -115,16 +195,85 @@ def _mostrar_secao(secao: Secao) -> None:
                 )
             )
             continue
-        with st.expander(nome_da_tabela(chave)):
-            st.dataframe(_tabela_escrita(linhas), hide_index=True, width="stretch")
+        with st.expander(_titulo_da_tabela(chave)):
+            tabela = _tabela_escrita(linhas)
+            st.dataframe(
+                tabela,
+                hide_index=True,
+                width="stretch",
+                column_config=_colunas_com_link(tabela),
+            )
+
+
+SEM_LINK = escrever_celula(
+    None
+)  # "—": a célula sem link não pode virar um link para "—"
 
 
 def _tabela_escrita(linhas: list[dict]) -> pd.DataFrame:
-    """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não)."""
+    """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não); na coluna da fonte
+    original, a célula vazia fica vazia de verdade, para a coluna de link."""
     tabela = pd.DataFrame(linhas)
-    return pd.DataFrame(
-        {rotulo_da_coluna(c): [escrever_celula(v) for v in tabela[c]] for c in tabela}
+    escrita = pd.DataFrame(
+        {
+            rotulo_da_coluna(c): [escrever_celula(v, c) for v in tabela[c]]
+            for c in tabela
+        }
     )
+    if dossie.ROTULO_DO_LINK in escrita.columns:
+        links = escrita[dossie.ROTULO_DO_LINK]
+        escrita[dossie.ROTULO_DO_LINK] = [None if v == SEM_LINK else v for v in links]
+    return escrita
+
+
+def _colunas_com_link(tabela: pd.DataFrame) -> dict[str, object]:
+    """A coluna da fonte original vira link clicável (o único lugar que depende do Streamlit)."""
+    if dossie.ROTULO_DO_LINK not in tabela.columns:
+        return {}
+    return {dossie.ROTULO_DO_LINK: st.column_config.LinkColumn(display_text="Abrir")}
+
+
+def _texto_do_markdown(texto: str) -> str:
+    """O texto da frase sem que o `$` do "R$" vire fórmula no Markdown da página."""
+    return texto.replace("$", r"\$")
+
+
+def _mostrar_parte_da_analise(analise: AnaliseDaTela, parte: ParteDaTela) -> None:
+    st.subheader(parte.titulo)
+    for i, paragrafo in enumerate(parte.paragrafos):
+        frases = " ".join(f.com_marcas() for f in paragrafo.frases)
+        rotulo = f"**{paragrafo.rotulo}:** " if paragrafo.rotulo else ""
+        st.markdown(_texto_do_markdown(rotulo + frases))
+        for grafico in analise.graficos_do_paragrafo(parte.chave, i):
+            mostrar_grafico(gdr.figura(grafico.pontos))
+            st.caption(_texto_do_markdown(grafico.por_que.com_marcas()))
+    for destaque in analise.destaques_da_parte(parte.chave):
+        st.info(
+            _texto_do_markdown(
+                f"{ROTULO_DO_DESTAQUE} **{destaque.titulo}**. "
+                f"{destaque.por_que.com_marcas()}"
+            ),
+            icon=":material/arrow_downward:",
+        )
+    notas = analise.notas_da_parte(parte)
+    if notas:
+        with st.expander(f"Notas desta parte ({len(notas)})"):
+            for nota in notas:
+                st.markdown(_texto_do_markdown(f"**[{nota.numero}]** {nota.legenda()}"))
+
+
+def _mostrar_analise(analise: AnaliseDaTela) -> None:
+    """A análise escrita pelo modelo, parte por parte; cada nota numerada abre o número de origem."""
+    st.header("A análise")
+    st.caption(analise.aviso)
+    if analise.motivo:
+        st.info(
+            f"Texto de reserva por regras: {analise.motivo}.",
+            icon=":material/edit_note:",
+        )
+    for parte in analise.partes:
+        _mostrar_parte_da_analise(analise, parte)
+    st.header("Os dados")
 
 
 def _premissas() -> Premissas:
@@ -167,11 +316,23 @@ def _mostrar(relatorio: Relatorio) -> None:
     if relatorio.em_conferencia:
         st.warning(
             "Há números desta empresa em conferência pelas regras de qualidade: veja a seção "
-            "Qualidade dos dados.",
+            "Qualidade do lucro.",
             icon=":material/fact_check:",
         )
-    for secao in relatorio.secoes:
+    if relatorio.analise:
+        _mostrar_analise(relatorio.analise)
+    convidou = False
+    for secao, seguinte in zip(
+        relatorio.secoes, [*relatorio.secoes[1:], None], strict=True
+    ):
         _mostrar_secao(secao)
+        if secao.trancada and not (seguinte and seguinte.trancada) and not convidou:
+            convidou = True
+            st.page_link(  # um convite só, depois do 1º bloco de seções trancadas
+                PAGINAS_DO_MENU["planos"],
+                label="Conhecer o plano Pro",
+                icon=":material/workspace_premium:",
+            )
     st.caption("Fontes: " + "; ".join(relatorio.fontes) + ". Nada aqui é recomendação.")
 
 
@@ -244,16 +405,76 @@ def _oferecer_o_pdf(relatorio: Relatorio) -> None:
         )
 
 
-def pagina_relatorio_empresa():
-    cabecalho_da_pagina("relatorio_empresa")
+def _oferecer_o_markdown(relatorio: Relatorio) -> None:
+    """A ficha em Markdown para ler com uma IA (as mesmas seções do PDF). É o mesmo conteúdo da
+    página, então não conta como relatório do plano."""
+    st.download_button(
+        "Baixar em Markdown (para IA)",
+        data=relatorio_em_markdown(relatorio),
+        file_name=f"tickerlab-empresa-{relatorio.ticker.removesuffix('.SA')}.md",
+        mime="text/markdown",
+        icon=":material/description:",
+        key="empresa_baixar_markdown",
+        on_click="ignore",
+    )
+
+
+def _oferecer_o_deck(relatorio: Relatorio) -> None:
+    """O deck da ficha (PDF e PPT, os mesmos slides) para mandar sem editar. É o mesmo conteúdo
+    da página, então não conta como relatório do plano."""
+    if st.button(
+        "Gerar o deck (PDF e PPT)",
+        icon=":material/slideshow:",
+        key="empresa_gerar_deck",
+    ):
+        agora = datetime.now(FUSO)
+        deck = apresentacao.da_ficha(relatorio, agora)
+        with st.spinner("Montando os slides…"):
+            st.session_state[CHAVE_DO_DECK] = {
+                "ticker": relatorio.ticker,
+                "pdf": apresentacao_em_pdf(deck, agora),
+                "pptx": apresentacao_em_pptx(deck, agora),
+            }
+    gerado = st.session_state.get(CHAVE_DO_DECK)
+    if gerado and gerado["ticker"] == relatorio.ticker:
+        nome = f"tickerlab-ficha-{relatorio.ticker.removesuffix('.SA')}"
+        for formato, tipo in (("pdf", "application/pdf"), ("pptx", TIPO_DO_PPT)):
+            st.download_button(
+                f"Baixar o deck ({formato.upper() if formato == 'pdf' else 'PPT'})",
+                data=gerado[formato],
+                file_name=f"{nome}.{formato}",
+                mime=tipo,
+                icon=":material/download:",
+                key=f"empresa_baixar_deck_{formato}",
+                on_click="ignore",
+            )
+
+
+def _ticker_e_preco() -> tuple[str, float | None, pd.Series | None]:
+    """O ticker do topo e, com a trava do preço ligada, o último preço e a série (do Yahoo). Com
+    ela desligada, a página nem carrega a série (linha 413, Y1 a, "pode" do Tiago em 25/10/2026)."""
+    if not preco_no_relatorio_ligado():
+        ticker = normalizar_ticker(mostrar_controles()[0])
+        lembrar_recente(ticker)
+        return ticker, None, None
     c = carregar_contexto()
     ticker = normalizar_ticker(c.ticker)
-    preco = float(c.fechamento.iloc[-1]) if moeda_do_ticker(ticker) == "BRL" else None
-    entradas = _ler(ticker, preco, c.fechamento if preco is not None else None)
+    if moeda_do_ticker(ticker) != "BRL":
+        return ticker, None, None
+    return ticker, float(c.fechamento.iloc[-1]), c.fechamento
+
+
+def pagina_relatorio_empresa():
+    cabecalho_da_pagina("relatorio_empresa")
+    ticker, preco, fechamentos = _ticker_e_preco()
+    entradas = _ler(ticker, preco, fechamentos)
     if entradas is None:
         return
-    relatorio = montar(replace(entradas, premissas=_premissas()))
+    entradas = replace(entradas, premissas=_premissas())
+    relatorio = com_analise(montar(entradas, plano_atual()), entradas, plano_atual())
     _oferecer_o_pdf(relatorio)
+    _oferecer_o_markdown(relatorio)
+    _oferecer_o_deck(relatorio)
     _mostrar(relatorio)
     st.page_link(
         PAGINAS_DO_MENU["fundamentos"],

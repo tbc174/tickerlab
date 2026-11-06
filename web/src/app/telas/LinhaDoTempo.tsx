@@ -32,7 +32,10 @@ function Tabela({ marcos }: { marcos: MarcoV1[] }) {
               <tr key={`${m.data}-${m.descricao}`}>
                 <td className="numero">{formatarData(m.data)}</td>
                 <td>{m.rotulo}</td>
-                <td>{m.assunto}</td>
+                <td>
+                  {m.topico_nome ? <span className="selo-do-assunto">{m.topico_nome}</span> : null}
+                  {m.assunto}
+                </td>
                 <td>
                   {link ? (
                     <a href={link} target="_blank" rel="noopener noreferrer">
@@ -83,6 +86,7 @@ export function LinhaDoTempo({ pagina }: { pagina: PaginaDoApp }) {
     <TelaDoContrato<LinhaDoTempoDoAtivoV1>
       pagina={pagina}
       carregando="Montando a linha do tempo…"
+      esqueleto="lista"
       resultado={(dados) => <Resultado dados={dados} />}
     />
   );

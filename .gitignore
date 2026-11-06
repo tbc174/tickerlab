@@ -9,6 +9,7 @@ __pycache__/
 
 # Segredos: nunca commitar
 .env
+.env.sala
 *.key
 
 # Dados baixados (podem ser baixados de novo)
@@ -21,6 +22,9 @@ Thumbs.db
 # Banco de preços local (cache em SQLite): cada pessoa gera o seu
 dados_locais/
 *.sqlite
+
+# Sala de dados (arquivos cifrados de cada operação; B-20)
+dados_sala/
 
 # Segredos do Streamlit (login do Google): nunca commitar
 .streamlit/secrets.toml
@@ -36,3 +40,16 @@ dados_juros/
 .coverage.*
 .hypothesis/
 htmlcov/
+registros/
+
+# Dados gratuitos da Pesquisa 2 (baixados de novo com python -m trader.p2.baixar)
+dados_p2/
+
+# Registro de tentativas e relatórios da Pesquisa 2 (fora do Git, como a pesquisa_m2/)
+pesquisa_p2/
+# Registro, cache e relatórios das estratégias quant P0 (pesquisa_quant/, fora do Git como as outras)
+pesquisa_quant/
+
+# Configuração local do Claude (traz permissões e endereço do servidor) e arquivos cifrados: nunca no repositório público
+.claude/
+*.age

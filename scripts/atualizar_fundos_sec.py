@@ -6,6 +6,8 @@
 Baixa a lista de bases da página da SEC e lê só as que ainda não leu (cada uma tem ~100 MB e
 sai por trimestre). O código CUSIP vira ticker pelos arquivos de "falhas de entrega" da SEC dos
 últimos meses. Exige `TICKERLAB_CONTATO`, como as outras coletas da SEC.
+
+Roda: cron do VPS (todo dia às 7h50); citado em donos.py.
 """
 
 import argparse
@@ -16,7 +18,7 @@ import time
 import requests
 import sqlalchemy as sa
 
-from src import catalogo
+from src import catalogo, rede
 from src import fundos_sec as f13
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
@@ -35,7 +37,7 @@ SEM_CONTATO = 2
 
 def _baixar_da_fonte(url: str, agente: str) -> bytes:
     time.sleep(PAUSA_ENTRE_CONSULTAS)
-    resposta = requests.get(
+    resposta = rede.obter(
         url,
         timeout=600,
         headers={"User-Agent": agente, "Accept-Encoding": "gzip, deflate"},

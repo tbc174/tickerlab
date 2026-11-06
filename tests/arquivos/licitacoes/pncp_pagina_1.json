@@ -1,0 +1,8 @@
+{"data": [
+  {"numeroControlePNCP": "11-1-1/2026", "tipoPessoa": "PJ", "niFornecedor": "12345678000190",
+   "nomeRazaoSocialFornecedor": "ACME LTDA", "usuarioNome": "Servidor Fulano",
+   "orgaoEntidade": {"cnpj": "00394460000141", "razaoSocial": "UNIAO", "usuarioNome": "Outro Servidor"},
+   "valorGlobal": 100.5},
+  {"numeroControlePNCP": "22-1-2/2026", "tipoPessoa": "PF", "niFornecedor": "98765432100",
+   "nomeRazaoSocialFornecedor": "JOAO DA SILVA", "usuarioNome": "Servidor Beltrano", "valorGlobal": 20.0}
+ ], "totalRegistros": 3, "totalPaginas": 2, "numeroPagina": 1, "paginasRestantes": 1}

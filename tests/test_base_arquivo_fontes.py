@@ -160,6 +160,66 @@ def test_cnpj_acha_o_mes_mais_recente_pelo_compartilhamento_da_receita():
     assert propfind_raiz[2]["Authorization"].startswith("Basic ")
 
 
+def _cliente_do_cnpj():
+    base = fontes.RAIZ_DO_CNPJ
+    webdav = fontes.WEBDAV_DA_RECEITA
+    pasta = f"/public.php/webdav/{fontes.PASTA_DO_CNPJ}"
+    return Paginas(
+        {
+            base: b"<html></html>",
+            webdav + fontes.PASTA_DO_CNPJ + "/": _propfind(
+                [
+                    f"{pasta}/",
+                    f"{pasta}/2023-05/",
+                    f"{pasta}/2026-09/",
+                    f"{pasta}/2024-01/",
+                ]
+            ),
+            webdav + fontes.PASTA_DO_CNPJ + "/2024-01/": _propfind(
+                [
+                    f"{pasta}/2024-01/",
+                    f"{pasta}/2024-01/Empresas0.zip",
+                    f"{pasta}/2024-01/Estabelecimentos3.zip",
+                    f"{pasta}/2024-01/Socios1.zip",
+                    f"{pasta}/2024-01/Simples.zip",
+                    f"{pasta}/2024-01/Cnaes.zip",
+                    f"{pasta}/2024-01/Motivos.zip",
+                ]
+            ),
+        },
+        finais={base: "https://arquivos.receitafederal.gov.br/index.php/s/AbC123xyz"},
+    )
+
+
+def test_descobre_todos_os_meses_do_cnpj():
+    assert fontes.meses_do_cnpj(_cliente_do_cnpj()) == ["2023-05", "2024-01", "2026-09"]
+
+
+def test_arquivos_do_mes_filtra_pelos_nomes_pedidos():
+    cliente = _cliente_do_cnpj()
+    alvos = fontes.arquivos_do_mes(
+        cliente, "2024-01", ("Estabelecimentos", "Socios", "Simples")
+    )
+    nomes = [a.url.rsplit("/", 1)[-1] for a in alvos]
+    assert nomes == ["Estabelecimentos3.zip", "Socios1.zip", "Simples.zip"]
+    assert all("/2024-01/" in a.url and "AbC123xyz" in a.url for a in alvos)
+
+
+def test_arquivos_do_mes_sem_filtro_traz_todos_os_zips():
+    alvos = fontes.arquivos_do_mes(_cliente_do_cnpj(), "2024-01")
+    assert len(alvos) == 6
+
+
+def test_arquivos_do_mes_inexistente_e_falha():
+    with pytest.raises(ErroDeDescoberta):
+        fontes.arquivos_do_mes(_cliente_do_cnpj(), "2019-01")
+
+
+def test_mes_malformado_nao_vira_caminho():
+    with pytest.raises(ErroDeDescoberta):
+        fontes.arquivos_do_mes(_cliente_do_cnpj(), "../2024-01")
+
+
 def test_cnpj_sem_token_e_falha():
     cliente = Paginas(
         {fontes.RAIZ_DO_CNPJ: b""},
@@ -172,7 +232,7 @@ def test_cnpj_sem_token_e_falha():
 def test_catalogo_tem_ids_unicos_e_grupos_conhecidos():
     ids = [f.id for f in fontes.FONTES]
     assert len(ids) == len(set(ids))
-    assert {f.grupo for f in fontes.FONTES} <= {"diaria", "semanal", "mensal"}
+    assert {f.grupo for f in fontes.FONTES} <= {*fontes.GRUPOS, "carga-unica"}
     pesadas = {f.id for f in fontes.FONTES if f.pesada}
     assert {"rfb-cnpj", "pgfn-divida"} <= pesadas
     vigias = {f.id for f in fontes.FONTES if f.vigia}
@@ -261,3 +321,221 @@ def test_scr_do_ano_novo_so_entra_quando_o_bc_publica_janeiro():
     marco = datetime(2027, 3, 1, 5, tzinfo=UTC)
     assert scr.descobrir(Paginas({}), fevereiro)[-1].url.endswith("scrdata_2026.zip")
     assert scr.descobrir(Paginas({}), marco)[-1].url.endswith("scrdata_2027.zip")
+
+
+# prévia do balanço pelos reguladores, 1ª leva (14/10/2026)
+
+
+def test_previa_do_balanco_no_catalogo():
+    novas = {
+        "anp-vendas-distribuidora": ("semanal", False),
+        "anp-producao-poco": ("mensal", False),
+        "anp-concessionarios": ("mensal", False),
+        "ons-geracao-usina": ("semanal", True),
+        "ons-restricao-eolica-solar": ("semanal", True),
+        "ons-capacidade-geracao": ("semanal", False),
+        "antt-siade": ("semanal", True),
+        "comexstat": ("semanal", True),
+        "anac-estatistico": ("mensal", True),
+        "ans-beneficiarios": ("semanal", True),
+    }
+    for id_, (grupo, pesada) in novas.items():
+        fonte = fontes.POR_ID[id_]
+        assert (fonte.grupo, fonte.pesada) == (grupo, pesada), id_
+    # a ANP não manda ETag: os ZIPs de vendas vêm por endereço fixo, sem perguntar cabeçalhos
+    vendas = fontes.POR_ID["anp-vendas-distribuidora"].descobrir(Paginas({}), AGORA)
+    assert [a.url.rsplit("/", 1)[-1] for a in vendas] == [
+        "liquidos.zip",
+        "glp.zip",
+        "aviacao.zip",
+    ]
+
+
+def test_ckan_escolhe_so_os_formatos_pedidos():
+    # o ONS publica cada mês em CSV, XLSX e Parquet: basta o Parquet (e o dicionário)
+    portal = fontes.PORTAL_DO_ONS
+    resposta = json.dumps(
+        {
+            "result": {
+                "resources": [
+                    {"url": f"{portal}/d/dicionario.pdf", "format": "PDF"},
+                    {"url": f"{portal}/d/2026_10.csv", "format": "CSV"},
+                    {"url": f"{portal}/d/2026_10.xlsx", "format": "XLSX"},
+                    {"url": f"{portal}/d/2026_10.parquet", "format": "PARQUET"},
+                ]
+            }
+        }
+    ).encode()
+    cliente = Paginas({f"{portal}/api/3/action/package_show?id=g": resposta})
+    alvos = fontes.descobrir_ckan(cliente, portal, "g", formatos=("parquet", "pdf"))
+    assert [a.url.rsplit("/", 1)[-1] for a in alvos] == [
+        "dicionario.pdf",
+        "2026_10.parquet",
+    ]
+
+
+def test_producao_da_anp_sai_dos_links_da_pagina():
+    pasta = (
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/"
+        "arquivos-fase-de-desenvolvimento-e-producao/"
+        "arquivos-producao-de-petroleo-e-gas-natural-nacional/"
+    )
+    pagina = (
+        f'<a href="{pasta}pm/producao-mar-2026.csv">2026</a>'
+        f'<a href="{pasta}pm/producao_por_poco_2024.csv">2024</a>'
+        f'<a href="{pasta}pt/2026/producao_por_poco_terra_2026_2_trim.csv">terra</a>'
+        f'<a href="{pasta}pm/producao-mar-2026.csv">de novo</a>'
+        '<a href="https://www.gov.br/anp/outra-coisa.csv">fora</a>'
+    ).encode()
+    cliente = Paginas({fontes.PAGINA_DA_PRODUCAO_DA_ANP: pagina})
+    alvos = fontes.POR_ID["anp-producao-poco"].descobrir(cliente, AGORA)
+    assert [a.url.rsplit("/", 1)[-1] for a in alvos] == [
+        "producao-mar-2026.csv",
+        "producao_por_poco_2024.csv",
+        "producao_por_poco_terra_2026_2_trim.csv",
+    ]
+    with pytest.raises(ErroDeDescoberta):
+        fontes.descobrir_links(
+            Paginas({"https://x/p": b"<html></html>"}),
+            "https://x/p",
+            fontes.PRODUCAO_POR_POCO,
+        )
+
+
+def test_comex_tem_todos_os_anos_e_o_ano_novo_so_depois_de_janeiro():
+    alvos = [a.url for a in fontes.descobrir_comex(Paginas({}), AGORA)]
+    anos = 2026 - 1997 + 1
+    assert len(alvos) == 4 * anos + 2 + len(fontes.TABELAS_DO_COMEX)
+    assert f"{fontes.COMEX}comexstat-bd/ncm/EXP_1997.csv" in alvos
+    assert f"{fontes.COMEX}comexstat-bd/mun/IMP_2026_MUN.csv" in alvos
+    janeiro = [
+        a.url
+        for a in fontes.descobrir_comex(Paginas({}), datetime(2027, 1, 20, tzinfo=UTC))
+    ]
+    assert not any("_2027" in url for url in janeiro)
+    assert f"{fontes.COMEX}comexstat-bd/ncm/EXP_2026.csv" in janeiro
+
+
+def test_beneficiarios_da_ans_so_as_duas_safras_mais_recentes():
+    raiz = fontes.BENEFICIARIOS_DA_ANS
+    cliente = Paginas(
+        {
+            raiz: b'<a href="202606/">x</a><a href="202607/">x</a>'
+            b'<a href="202608/">x</a><a href="dicionario/">x</a>',
+            f"{raiz}202607/": b'<a href="pda-024-icb-AC-2026_07.zip">AC</a>',
+            f"{raiz}202608/": b'<a href="pda-024-icb-AC-2026_08.zip">AC</a>'
+            b'<a href="pda-024-icb-SP-2026_08.zip">SP</a>',
+        }
+    )
+    alvos = fontes.descobrir_beneficiarios_ans(cliente, AGORA)
+    assert [a.url.removeprefix(raiz) for a in alvos] == [
+        "202607/pda-024-icb-AC-2026_07.zip",
+        "202608/pda-024-icb-AC-2026_08.zip",
+        "202608/pda-024-icb-SP-2026_08.zip",
+    ]
+    with pytest.raises(ErroDeDescoberta):
+        fontes.descobrir_beneficiarios_ans(Paginas({raiz: b"<html></html>"}), AGORA)
+
+
+def test_endereco_da_anac_vai_codificado():
+    assert " " not in fontes.ESTATISTICO_DA_ANAC
+    assert fontes.ESTATISTICO_DA_ANAC.endswith("/Dados_Estatisticos.csv")
+
+
+def test_meses_recentes_do_fidc_e_do_cda_todo_dia():
+    """O dia em que cada informe apareceu (`base/publicacao.py`): os meses mais novos, todo dia, e o
+    que ainda não saiu fica como "não encontrado" (a prova de que faltava)."""
+    from datetime import UTC, datetime
+
+    agora = datetime(2026, 10, 16, 5, 0, tzinfo=UTC)
+    fidc = fontes.POR_ID["cvm-fidc-recente"]
+    cda = fontes.POR_ID["cvm-cda-recente"]
+    assert (fidc.grupo, cda.grupo) == ("diaria", "diaria")
+    assert not (fidc.pesada or cda.pesada)  # a CVM regrava sem mudar os cabeçalhos
+    alvos_fidc = fidc.descobrir(None, agora)  # type: ignore[arg-type]
+    assert (
+        [a.url.rsplit("_", 1)[-1] for a in alvos_fidc]
+        == [
+            "202606.zip",
+            "202607.zip",
+            "202608.zip",
+            "202609.zip",
+            "202610.zip",  # o mês corrente: o 404 dele registra o "não encontrado" (visto_em)
+        ]
+    )
+    assert alvos_fidc[0].url.startswith(
+        "https://dados.cvm.gov.br/dados/FIDC/DOC/INF_MENSAL/DADOS/inf_mensal_fidc_"
+    )
+    assert all(a.obter is not None for a in alvos_fidc)  # 404 vira "nao_encontrado"
+    alvos_cda = cda.descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.rsplit("/", 1)[-1] for a in alvos_cda] == [
+        f"cda_fi_2026{m:02d}.zip" for m in range(5, 11)
+    ]
+    # virada do ano, no fuso de São Paulo (1º/01 às 01h UTC ainda é 31/12)
+    janeiro = fidc.descobrir(None, datetime(2027, 1, 1, 1, 0, tzinfo=UTC))  # type: ignore[arg-type]
+    assert [a.url[-10:-4] for a in janeiro] == [
+        "202608",
+        "202609",
+        "202610",
+        "202611",
+        "202612",
+    ]
+
+
+def test_clima_do_cafe_inmet_por_ano_chirps_por_mes_e_malha_por_uf():
+    """Plano do café, PR 8: os zips anuais do INMET (todos, pesados: ETag e Last-Modified evitam a
+    baixa repetida), os GeoTIFFs dos meses recentes do CHIRPS (o que falta é 404, não falha) e a
+    malha municipal das seis UFs com região cafeeira."""
+    agora = datetime(2026, 10, 18, 12, tzinfo=UTC)
+    inmet = fontes.POR_ID["inmet-bdmep"]
+    assert (inmet.grupo, inmet.tipo, inmet.pesada) == ("mensal", "zip", True)
+    anos = inmet.descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.rsplit("/", 1)[-1] for a in anos][:2] == ["2000.zip", "2001.zip"]
+    assert (
+        anos[-1].url == "https://portal.inmet.gov.br/uploads/dadoshistoricos/2026.zip"
+    )
+    chirps = fontes.POR_ID["chirps-mensal"]
+    assert chirps.grupo == "mensal" and chirps.pesada
+    meses = chirps.descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.rsplit("/", 1)[-1] for a in meses] == [
+        f"chirps-v2.0.2026.{m:02d}.tif.gz" for m in (7, 8, 9)
+    ]
+    assert all(a.obter is not None and a.extensao == ".tif.gz" for a in meses)
+    malhas = fontes.POR_ID["ibge-malha-municipal"].descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.split("/estados/")[1][:2] for a in malhas] == [
+        "31",
+        "32",
+        "35",
+        "41",
+        "29",
+        "11",
+    ]
+    assert all("qualidade=minima" in a.url and a.extensao == ".json" for a in malhas)
+    assert fontes.TERMOS["termos-inmet"].startswith("https://portal.inmet.gov.br/")
+
+
+def test_mapbiomas_cafe_e_um_zip_pesado_no_google_drive_atras_da_confirmacao():
+    """Plano do café, PR 8 (8.4): a cobertura de café por município do MapBiomas (Coleção 11) é
+    uma planilha zipada no Google Drive; o `obter` do alvo segue a página de confirmação de arquivo
+    grande em vez de guardar o HTML dela."""
+    fonte = fontes.POR_ID["mapbiomas-cafe"]
+    assert (fonte.grupo, fonte.tipo, fonte.pesada) == ("mensal", "zip", True)
+    (alvo,) = fonte.descobrir(None, datetime(2026, 10, 18, tzinfo=UTC))  # type: ignore[arg-type]
+    assert alvo.url.startswith("https://drive.google.com/uc?id=")
+    assert alvo.extensao == ".zip" and alvo.obter is not None
+
+
+def test_chirps_historico_e_a_carga_unica_de_1991_ate_antes_dos_meses_recentes():
+    """Item 10 do café: a normal 1991–2020 pede 30 anos de GeoTIFFs. A fonte `chirps-historico` fica
+    fora dos grupos do cron (só roda pelo id, uma vez) e termina onde `chirps-mensal` começa."""
+    agora = datetime(2026, 10, 18, 12, tzinfo=UTC)
+    historico = fontes.POR_ID["chirps-historico"]
+    assert historico.pesada and historico.grupo not in fontes.GRUPOS
+    assert all(f.id != "chirps-historico" for g in fontes.GRUPOS for f in fontes.FONTES if f.grupo == g)  # fmt: skip
+    meses = historico.descobrir(None, agora)  # type: ignore[arg-type]
+    nomes = [a.url.rsplit("/", 1)[-1] for a in meses]
+    assert nomes[0] == "chirps-v2.0.1991.01.tif.gz" and nomes[-1] == "chirps-v2.0.2026.06.tif.gz"  # fmt: skip
+    assert len(nomes) == len(set(nomes)) == (2026 - 1991) * 12 + 6
+    recentes = {a.url for a in fontes.POR_ID["chirps-mensal"].descobrir(None, agora)}  # type: ignore[arg-type]
+    assert recentes.isdisjoint(a.url for a in meses)
+    assert all(a.obter is not None and a.extensao == ".tif.gz" for a in meses)

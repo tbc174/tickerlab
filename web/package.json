@@ -19,6 +19,7 @@
     "app:dev": "vite --config vite.app.config.ts"
   },
   "dependencies": {
+    "preact": "10.29.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router": "8.4.0"

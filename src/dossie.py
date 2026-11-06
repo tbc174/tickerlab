@@ -1,0 +1,1584 @@
+"""As fichas do dossiê da base no app (plano do relatório-modelo, 17/10/2026, PR 1).
+
+A ficha é montada toda noite no servidor de casa (`scripts/gerar_dossies.py`), uma por CNPJ. Aqui ela
+é lida e validada, perde o que é ruído (série de agência sem peso) e vira as `Secao` do relatório, já
+com cada número escrito: a página do site, o PDF e a tela do app leem a mesma coisa (ADR 0044).
+
+Uma ficha que não abre, fora do esquema ou de uma versão desconhecida não é mostrada (`None`): melhor
+nenhuma seção do que uma seção errada.
+
+No VPS (plano do dossiê da empresa no app, PR 3), as fichas chegam de casa toda noite em
+`dados_locais/dossies/<dia>/`, e o link `atual` aponta para a última noite completa (`TICKERLAB_DOSSIES`
+troca a pasta). `ficha_do` lê a do CNPJ e passa de novo pelas regras da base: seção fora do registro
+ou tabela que não pode ser mostrada sai; CPF ou coluna de pessoa barra a ficha inteira.
+"""
+
+import json
+import logging
+import os
+import re
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import date, datetime
+from functools import partial
+from pathlib import Path
+from typing import Any
+from zoneinfo import ZoneInfo
+
+from pydantic import BaseModel, ValidationError
+
+from base import cnpj as cnpj_da_base
+from base import dossie as dossie_da_base
+from base.pessoas.sem_cpf import tirar_cpf
+from src.configuracao import PASTA_RAIZ
+from src.negociacoes import formatar_valor
+from src.numero import Comparacao
+from src.rastro import Entrada, Rastro
+from src.relatorio_empresa import ANEXO_DFC_DVA, Dossie, Item, Secao
+
+log = logging.getLogger(__name__)
+
+VERSOES_CONHECIDAS = frozenset({1})
+PASTA_PADRAO = PASTA_RAIZ / "dados_locais" / "dossies"
+TAMANHO_MAXIMO = 2_000_000  # bytes; a maior ficha tem dezenas de KB
+TAMANHO_DO_CNPJ = 14
+DIAS_ATE_FICAR_VELHA = 3
+FUSO = ZoneInfo("America/Sao_Paulo")
+FICHA_DE_EXEMPLO = (
+    Path(__file__).resolve().parent.parent
+    / "dados_de_exemplo"
+    / "dossie"
+    / "02429144000193.json"
+)
+# série de agência com menos que isso do total no último ano: ruído (113 acessos de banda larga)
+PARTICIPACAO_MINIMA = 0.001
+MESES = (
+    "jan",
+    "fev",
+    "mar",
+    "abr",
+    "mai",
+    "jun",
+    "jul",
+    "ago",
+    "set",
+    "out",
+    "nov",
+    "dez",
+)
+TAMANHO_DO_ANO = (
+    4  # "2025": a série de agência somada no ano (base/dossie.py, `_item_da_serie`)
+)
+TAMANHO_DO_MES = 7  # "2025-12"
+TAMANHO_DO_DIA = 10  # "2025-12-31" (ou "2025-12-31T00:00:00", que perde a hora)
+FRACAO = "fração"  # a unidade de um número entre 0 e 1 (o índice de Basileia, a CR4)
+# a coluna do link para o documento original, nas tabelas que o carregam (a tela a faz clicável, o
+# Markdown a escreve como endereço e o site a tira, porque já põe o link na última coluna)
+ROTULO_DO_LINK = "Fonte original"
+TAMANHO_DO_CODIGO_DO_ORIGINAL = (
+    12  # o começo do SHA-256 do original no acervo basta para achá-lo
+)
+
+TITULOS_DAS_TABELAS = {
+    "pld_mensal": "PLD médio por mês e submercado",
+    "curtailment_mensal": "Eólicas e solares: energia não gerada por ordem do operador",
+    "capacidade_por_tipo": "Capacidade instalada em operação, por tipo de usina",
+    "pareceres_do_auditor": "Parecer do auditor nos últimos exercícios",
+    "pareceres_do_itr": "Revisão do auditor nos últimos ITRs",
+    "dmpl_por_exercicio": "Patrimônio líquido por componente (DMPL) nos últimos exercícios",
+    "trocas_de_auditor": "Trocas de auditor",
+    "controladas": "Controladas e coligadas no FRE mais recente",
+    "controladoras": "Quem controla a companhia",
+    "ofertas": "Últimas ofertas do grupo registradas na CVM",
+    "ofertas_por_ano": "Ofertas do grupo por ano",
+    "fundos_por_mes": "Fundos com a empresa, mês a mês",
+    "entidades_ligadas": "Entidades da agência ligadas à companhia",
+    "reapresentacoes": "Lucro e receita refeitos depois de publicados",
+    "lucro_por_exercicio": "Lucro do período de cada exercício (DFP)",
+    "releases_diferentes": "Release diferente do ITR ou da DFP",
+    "releases_por_classe": "Release contra o ITR ou a DFP, por resultado",
+    "insiders_por_cargo": "Insiders nos últimos 12 meses, por cargo",
+    "insiders_janelas": "Insiders: 12 meses contra os 12 anteriores",
+    "eventos_de_capital": "Eventos de capital dos últimos 10 anos",
+    "fundos_janelas": "Compras e vendas dos fundos: 12 meses contra os 12 anteriores",
+    "proventos_por_exercicio": "Lucro ajustado e dividendo de cada exercício (FRE)",
+    "caixa_por_exercicio": "EBITDA, capex e FCF de cada exercício (DFP)",
+    "dfc_dva_por_exercicio": "DFC e DVA de cada exercício (DFP)",
+    "governanca_por_ano": "Conselho, comitês e diversidade em cada FRE",
+    "comites": "Comitês no FRE mais recente",
+    "free_float_por_ano": "Free float e acionistas declarados em cada FRE",
+    "capital_social": "Capital social no FRE mais recente",
+    "empregados_do_fre": "Empregados no FRE mais recente",
+    "remuneracao_por_exercicio": "Remuneração da administração por exercício",
+    "remuneracao_por_orgao": "Remuneração no último exercício, por órgão",
+    "remuneracao_da_diretoria_por_exercicio": "Remuneração da Diretoria Estatutária por exercício",
+    "ratings": "Último rating de cada agência",
+    "ratings_janelas": "Ações de rating: 12 meses contra os 12 anteriores",
+    "acoes_de_rating": "Ações das agências de rating, com a nota anterior",
+    "assembleias_janelas": "Assembleias de debenturistas: 12 meses contra os 12 anteriores",
+    "assembleias_por_tema": "Assembleias de debenturistas por tema do assunto",
+    "assembleias_recentes": "Últimos documentos de assembleias de debenturistas",
+    "assembleias_de_aperto": "Assembleias de debenturistas de aperto (waiver, covenant, vencimento)",
+    "negocios": "Últimos documentos de negócios",
+    "negocios_por_ano": "Documentos de negócios por ano",
+    "ma_por_ano": "Negócios de M&A por ano em que ficaram conhecidos",
+    "ma_recentes": "Últimos negócios de M&A conhecidos",
+    "registros_de_insolvencia": "Registros de insolvência e situação especial",
+    "inscricoes_na_divida_ativa": "Inscrições em dívida ativa da União, por retrato da PGFN",
+    "entregas_de_dfp_e_itr": "Entregas de DFP e ITR, com o prazo da CVM",
+    "ligacoes_da_rede": "Ligações da companhia na rede",
+    "identificadores_da_empresa": "Identificadores públicos da companhia",
+} | {serie.nome: serie.medida for serie in dossie_da_base.SERIES_DAS_AGENCIAS}
+# as séries que a seção `setor` (molde D) usa: as das agências e as do IF.data dos bancos
+SERIES_DO_SETOR = {
+    serie.nome: serie
+    for serie in (
+        *dossie_da_base.SERIES_DAS_AGENCIAS,
+        *dossie_da_base.SERIES_DOS_BANCOS,
+    )
+}
+PREFIXO_DA_CONCENTRACAO = "concentracao_"
+PREFIXO_DO_LADO_A_LADO = "lado_a_lado_"
+TITULOS_DAS_TABELAS |= {
+    "participacao_dos_membros": "Participação de cada companhia aberta no mercado",
+    "membros": "Companhias abertas do setor",
+    **{
+        f"{PREFIXO_DA_CONCENTRACAO}{nome}": f"Concentração: {serie.medida}"
+        for nome, serie in SERIES_DO_SETOR.items()
+    },
+    **{
+        f"{PREFIXO_DO_LADO_A_LADO}{nome}": f"Lado a lado: {serie.medida}"
+        for nome, serie in SERIES_DO_SETOR.items()
+    },
+}
+_UNIDADE_DA_SERIE = {
+    serie.nome: serie.unidade for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+}
+_NOME_DA_AGENCIA = {
+    serie.fonte_b13: serie.medida.rsplit("(", 1)[-1].rstrip(")")
+    for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+}
+
+
+class EntradaDaFicha(BaseModel):
+    """Uma conta da demonstração que entra no número, como a base escreve (`base.dossie._entradas_do_caixa`)."""
+
+    conta: str
+    codigo: str
+    nome: str
+    valor: float
+    periodo: str
+    documento: str
+    referencia: date
+    versao: int
+    publicado_em: date | None = None
+
+    def como_entrada(self) -> Entrada:
+        return Entrada(**self.model_dump())
+
+
+class RastroDaFicha(BaseModel):
+    """Como o item foi calculado e de onde veio, como a base escreve (`base.dossie._rastro`)."""
+
+    formula: str
+    versao_do_calculo: str
+    fonte_id: str
+    outras_fontes: list[str] = []
+    publicado_em: date | None = None
+    entradas: list[
+        EntradaDaFicha
+    ] = []  # [] nas fichas de antes das entradas (linha 424)
+
+    def como_rastro(self) -> Rastro:
+        return Rastro(
+            self.formula,
+            self.versao_do_calculo,
+            self.fonte_id,
+            self.publicado_em,
+            outras_fontes=tuple(self.outras_fontes),
+            entradas=tuple(e.como_entrada() for e in self.entradas),
+        )
+
+
+class ItemDaFicha(BaseModel):
+    chave: str
+    nome: str
+    valor: str | int | float | None
+    unidade: str
+    base: str | None = None
+    rastro: RastroDaFicha | None = (
+        None  # None: ficha de antes do rastro (B-02, 20/10/2026)
+    )
+
+
+class SecaoDaFicha(BaseModel):
+    chave: str
+    titulo: str
+    itens: list[ItemDaFicha] = []
+    tabelas: dict[str, list[dict[str, Any]]] = {}
+    paragrafos: list[str] = []
+    fontes: list[str] = []
+
+
+class Ficha(BaseModel):
+    versao_do_esquema: int
+    cnpj: str
+    empresa: str
+    gerado_em: datetime
+    secoes: list[SecaoDaFicha]
+
+
+def ler_ficha(caminho: Path) -> Ficha | None:
+    """A ficha validada (None: não existe, não abre, fora do esquema ou de versão desconhecida)."""
+    try:
+        bruta = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        log.warning("ficha do dossiê não abre: %s", caminho)
+        return None
+    if (
+        not isinstance(bruta, dict)
+        or bruta.get("versao_do_esquema") not in VERSOES_CONHECIDAS
+    ):
+        log.warning("ficha do dossiê de versão desconhecida: %s", caminho)
+        return None
+    try:
+        return Ficha.model_validate(bruta)
+    except ValidationError:
+        log.warning("ficha do dossiê fora do esquema: %s", caminho)
+        return None
+
+
+def pasta_das_fichas() -> Path:
+    return Path(os.environ.get("TICKERLAB_DOSSIES") or PASTA_PADRAO)
+
+
+def ficha_do(cnpj: str, pasta: Path | None = None) -> Ficha | None:
+    """A ficha do CNPJ (formatado ou não) já conferida e cortada; None se não há ou não deve aparecer."""
+    digitos = re.sub(r"\D", "", cnpj)
+    if len(digitos) != TAMANHO_DO_CNPJ:
+        return None
+    caminho = (pasta or pasta_das_fichas()) / "atual" / f"{digitos}.json"
+    try:
+        if caminho.stat().st_size > TAMANHO_MAXIMO:
+            log.warning("ficha do dossiê grande demais: %s", caminho)
+            return None
+    except OSError:
+        return None  # a empresa não tem ficha (ou a pasta ainda não chegou)
+    ficha = ler_ficha(caminho)
+    if ficha is None:
+        return None
+    if ficha.cnpj != digitos:
+        log.warning("ficha do dossiê com outro CNPJ dentro: %s", caminho)
+        return None
+    ficha = _so_o_que_pode_mostrar(ficha)
+    try:
+        # os nomes das entidades-pessoa ficam no servidor de casa; aqui valem o CPF e as colunas
+        dossie_da_base.conferir_sem_pessoas(ficha.model_dump(mode="json"), set())
+    except dossie_da_base.PessoaNaFichaError as erro:
+        log.warning("ficha do dossiê barrada (%s): %s", erro, caminho)
+        return None
+    return cortar(ficha)
+
+
+def caixa_da_ficha(ficha: Ficha | None) -> dict[str, Any] | None:
+    """O último exercício da geração de caixa (exercício, margem EBITDA e FCF); None sem a seção."""
+    secao = next(
+        (s for s in (ficha.secoes if ficha else []) if s.chave == "geracao_de_caixa"),
+        None,
+    )
+    linhas = secao.tabelas.get("caixa_por_exercicio", []) if secao else []
+    if not linhas:
+        return None
+    ultimo = linhas[0]  # a ficha guarda o exercício mais novo primeiro
+    return {chave: ultimo.get(chave) for chave in ("exercicio", "margem_ebitda", "fcf")}
+
+
+def caixa_do_par(cnpj: str, pasta: Path | None = None) -> dict[str, Any] | None:
+    """A geração de caixa de um par, pela ficha da noite dele (None: sem ficha ou sem a seção)."""
+    return caixa_da_ficha(ficha_do(cnpj, pasta))
+
+
+def ficha_do_molde_a(ficha: Ficha | None) -> Ficha | None:
+    """A ficha sem as seções dos outros moldes (B: a busca por CNPJ; D: o setor); None se não sobra.
+
+    O relatório da empresa (molde A) fica como era: a análise escrita confere o hash dele, e uma
+    seção nova da noite mudaria o hash de todas as empresas.
+    """
+    if ficha is None:
+        return None
+    secoes = [
+        s for s in ficha.secoes if s.chave not in dossie_da_base.SECOES_FORA_DO_MOLDE_A
+    ]
+    return ficha.model_copy(update={"secoes": secoes}) if secoes else None
+
+
+# --- o setor (molde D, plano de 19/10/2026, PR 3) ---------------------------------------------------
+# a noite grava a seção `setor` dentro da ficha de um membro e diz no manifesto qual é a ficha
+NOME_DO_MANIFESTO = "manifesto.json"
+_NOME_DO_SETOR = {s.chave: s.nome for s in dossie_da_base.SETORES_DO_LANCAMENTO}
+
+
+class SetorDaNoite(BaseModel):
+    """Um setor no manifesto da noite: o CNPJ da ficha que leva a seção e os dos membros."""
+
+    ficha: str
+    membros: list[str] = []
+
+
+class _Manifesto(BaseModel):
+    setores: dict[str, SetorDaNoite] = {}  # o resto do manifesto o app não lê
+
+
+@dataclass(frozen=True)
+class SecaoDoSetor:
+    secao: SecaoDaFicha  # já conferida pelas regras da base, como as outras da ficha
+    itens: dict[str, Item]  # os itens da seção já escritos, pela chave
+    dia: date  # o dia da ficha da noite: os números são como eram nele
+
+
+def _e_cnpj_da_ficha(texto: str) -> bool:
+    return len(texto) == TAMANHO_DO_CNPJ and texto.isdigit()
+
+
+def setores_da_noite(pasta: Path | None = None) -> dict[str, SetorDaNoite]:
+    """Os setores do lançamento que a última noite gravou ({}: sem manifesto ou fora do esquema)."""
+    caminho = (pasta or pasta_das_fichas()) / "atual" / NOME_DO_MANIFESTO
+    try:
+        if caminho.stat().st_size > TAMANHO_MAXIMO:
+            log.warning("manifesto do dossiê grande demais: %s", caminho)
+            return {}
+        manifesto = _Manifesto.model_validate_json(caminho.read_bytes())
+    except OSError:
+        return {}  # a noite ainda não chegou
+    except ValidationError:
+        log.warning("manifesto do dossiê fora do esquema: %s", caminho)
+        return {}
+    return {
+        chave: setor
+        for chave, setor in manifesto.setores.items()
+        if chave in _NOME_DO_SETOR
+        and _e_cnpj_da_ficha(setor.ficha)
+        and all(_e_cnpj_da_ficha(m) for m in setor.membros)
+    }
+
+
+def secao_do_setor(chave: str, pasta: Path | None = None) -> SecaoDoSetor | None:
+    """A seção `setor` da noite para o setor (None: a noite não a gravou ou ela é de outro setor)."""
+    setor = setores_da_noite(pasta).get(chave)
+    ficha = ficha_do(setor.ficha, pasta) if setor else None
+    secao = (
+        next((s for s in ficha.secoes if s.chave == "setor"), None) if ficha else None
+    )
+    if ficha is None or secao is None:
+        return None
+    nome = next((i.valor for i in secao.itens if i.chave == "setor"), None)
+    if nome != _NOME_DO_SETOR[chave]:
+        log.warning("seção do setor com outro setor dentro: %s", chave)
+        return None
+    itens = {i.chave: _item_da_ficha(ficha, secao, i) for i in secao.itens}
+    return SecaoDoSetor(secao, itens, dia_da_ficha(ficha))
+
+
+_REGISTRO = {secao.chave: secao for secao in dossie_da_base.SECOES}
+_TABELA_DA_SERIE = {
+    serie.nome: serie.tabela for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+}
+
+
+def serie_da_tabela_do_setor(chave: str) -> dossie_da_base.SerieDaAgencia | None:
+    """A série de uma tabela `concentracao_<série>` ou `lado_a_lado_<série>` da seção setor."""
+    for prefixo in (PREFIXO_DA_CONCENTRACAO, PREFIXO_DO_LADO_A_LADO):
+        if chave.startswith(prefixo):
+            return SERIES_DO_SETOR.get(chave.removeprefix(prefixo))
+    return None
+
+
+def _tabela_pode_sair(chave: str) -> bool:
+    """A tabela da ficha tem colunas declaradas e, se é série de agência, a fonte é vendável."""
+    if chave in _TABELA_DA_SERIE:
+        return dossie_da_base.pode_mostrar(_TABELA_DA_SERIE[chave])
+    serie = serie_da_tabela_do_setor(chave)
+    if serie is not None:
+        return dossie_da_base.pode_mostrar(serie.tabela)
+    return chave in COLUNAS
+
+
+def _linhas_que_podem_sair(
+    chave: str, linhas: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """A participação dos membros mistura séries: sai só a linha de série com fonte vendável."""
+    if chave != "participacao_dos_membros":
+        return linhas
+    return [
+        linha
+        for linha in linhas
+        if (serie := SERIES_DO_SETOR.get(str(linha.get("serie")))) is not None
+        and dossie_da_base.pode_mostrar(serie.tabela)
+    ]
+
+
+def _so_o_que_pode_mostrar(ficha: Ficha) -> Ficha:
+    """Tira a seção fora do registro ou que lê tabela proibida, e a tabela que não pode sair.
+
+    As séries das agências são vistas uma a uma: uma fonte que deixa de ser vendável tira só a
+    série dela, não o setor regulado inteiro.
+    """
+    series = set(_TABELA_DA_SERIE.values())
+    secoes = []
+    for secao in ficha.secoes:
+        registrada = _REGISTRO.get(secao.chave)
+        lidas = set(registrada.tabelas) - series if registrada else set()
+        if registrada is None or not all(dossie_da_base.pode_mostrar(t) for t in lidas):
+            log.warning("seção do dossiê que não pode ser mostrada: %s", secao.chave)
+            continue
+        tabelas = {
+            k: _linhas_que_podem_sair(k, v)
+            for k, v in secao.tabelas.items()
+            if _tabela_pode_sair(k)
+        }
+        if len(tabelas) < len(secao.tabelas):
+            log.warning(
+                "tabelas do dossiê que não podem ser mostradas: %s",
+                sorted(set(secao.tabelas) - set(tabelas)),
+            )
+        secoes.append(secao.model_copy(update={"tabelas": tabelas}))
+    return ficha.model_copy(update={"secoes": secoes})
+
+
+# --- cortes ----------------------------------------------------------------------------------------
+
+
+def _serie_com_peso(linhas: list[dict[str, Any]]) -> bool:
+    """A série tem peso se, no ano mais recente, passa de 0,1% do total da agência."""
+    if not linhas:
+        return False
+    recente = max(linhas, key=lambda linha: linha.get("ano") or 0)
+    return float(recente.get("participacao") or 0) >= PARTICIPACAO_MINIMA
+
+
+def _cortar_setor(secao: SecaoDaFicha) -> SecaoDaFicha | None:
+    series = {
+        nome: linhas
+        for nome, linhas in secao.tabelas.items()
+        if nome in _UNIDADE_DA_SERIE and _serie_com_peso(linhas)
+    }
+    if not series:
+        return None
+    fontes_que_ficam = {
+        serie.fonte_b13
+        for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+        if serie.nome in series
+    }
+    ligadas = [
+        linha
+        for linha in secao.tabelas.get("entidades_ligadas", [])
+        if linha.get("fonte") in fontes_que_ficam
+    ]
+    return secao.model_copy(
+        update={
+            "itens": [i for i in secao.itens if i.chave in series],
+            "tabelas": series | ({"entidades_ligadas": ligadas} if ligadas else {}),
+            "fontes": dossie_da_base.fontes_do_setor(series),
+        }
+    )
+
+
+def cortar(ficha: Ficha) -> Ficha:
+    """A ficha sem o ruído: série de agência com menos de 0,1% do total some (e a seção, se esvaziar)."""
+    secoes = []
+    for secao in ficha.secoes:
+        cortada = _cortar_setor(secao) if secao.chave == "setor_regulado" else secao
+        if cortada is not None:
+            secoes.append(cortada)
+    return ficha.model_copy(update={"secoes": secoes})
+
+
+# --- números escritos ------------------------------------------------------------------------------
+
+
+def _numero(valor: object) -> float:
+    return float(valor) if isinstance(valor, int | float) else float(str(valor))
+
+
+def para_data(valor: object) -> date:
+    return date.fromisoformat(str(valor)[:10])  # "2026-03-31" ou "2026-03-31T00:00:00"
+
+
+def inteiro(valor: object) -> str:
+    return f"{_numero(valor):,.0f}".replace(",", ".")
+
+
+def decimal(valor: object, casas: int = 1) -> str:
+    return f"{_numero(valor):.{casas}f}".replace(".", ",")
+
+
+def _porcentagem(valor: object) -> str:
+    """30.0 → "30%"; 89.01 → "89,01%" (a participação no capital, como o FRE informa)."""
+    numero = _numero(valor)
+    return f"{numero:.0f}%" if numero.is_integer() else f"{decimal(numero, 2)}%"
+
+
+def _variacao(valor: object) -> str:
+    """-20.0 → "-20,0%" (uma diferença já em pontos percentuais)."""
+    return f"{decimal(valor)}%"
+
+
+def fracao(valor: object) -> str:
+    return f"{decimal(_numero(valor) * 100)}%"
+
+
+def reais(valor: object) -> str:
+    return formatar_valor(_numero(valor), "BRL")
+
+
+def dia(valor: object) -> str:
+    return para_data(valor).strftime("%d/%m/%Y")
+
+
+def mes(valor: object) -> str:
+    quando = para_data(valor)
+    return f"{MESES[quando.month - 1]}/{quando.year}"
+
+
+def _ano(valor: object) -> str:
+    return str(int(_numero(valor)))
+
+
+def _texto(valor: object) -> str:
+    return tirar_cpf(str(valor))
+
+
+PAPEIS_DO_MA = {
+    "comprou": "Comprou ou investiu",
+    "vendeu": "Vendeu",
+    "foi_comprada": "Foi comprada ou recebeu investimento",
+    "outro": "Outro papel",
+}
+TIPOS_DE_MA = {
+    "AQ_CONTROLE": "Compra de controle",
+    "AQ_MINORITARIA": "Compra de participação minoritária",
+    "VENDA_ATIVO": "Venda de ativo",
+    "PE_VC": "Investimento de private equity ou venture capital",
+    "FUSAO": "Fusão",
+    "JV": "Joint venture",
+    "DCM": "Emissão de dívida",
+}
+
+
+def _papel_no_ma(valor: object) -> str:
+    return PAPEIS_DO_MA.get(str(valor), str(valor))
+
+
+def _tipo_de_ma(valor: object) -> str:
+    return TIPOS_DE_MA.get(str(valor), "Tipo não identificado")
+
+
+def _sim_ou_nao(valor: object) -> str:
+    return "sim" if valor else "não"
+
+
+# os códigos de `pareceres_dfp` (`base/pareceres.py`) como a ficha os escreve; o que a base não classificou
+# aparece na tabela como "Não classificado" (nos itens ele nem aparece)
+_OPINIAO_DO_AUDITOR = {
+    "sem_ressalva": "Sem ressalva",
+    "com_ressalva": "Com ressalva",
+    "adversa": "Adversa",
+    "abstencao": "Abstenção de opinião",
+}
+_SIM_OU_NAO_DO_PARECER = {"sim": "Sim", "nao": "Não"}
+_NAO_CLASSIFICADO = "Não classificado"
+
+
+def _opiniao_do_auditor(valor: object) -> str:
+    return _OPINIAO_DO_AUDITOR.get(str(valor), _NAO_CLASSIFICADO)
+
+
+def _sim_ou_nao_do_parecer(valor: object) -> str:
+    return _SIM_OU_NAO_DO_PARECER.get(str(valor), _NAO_CLASSIFICADO)
+
+
+def _agencia(valor: object) -> str:
+    return _NOME_DA_AGENCIA.get(str(valor), str(valor))
+
+
+# os códigos da tabela `ratings` (`base/ratings.py`) como a ficha os escreve
+_AGENCIA_DE_RATING = {
+    "fitch": "Fitch",
+    "sp": "S&P",
+    "moodys": "Moody's",
+    "austin": "Austin Rating",
+    "liberum": "Liberum Ratings",
+    "sr_rating": "SR Rating",
+    "lf_rating": "LF Rating",
+    "am_best": "AM Best",
+}
+_PALAVRAS_COM_ACENTO = {
+    "afirmacao": "afirmação",
+    "elevacao": "elevação",
+    "atribuicao": "atribuição",
+    "estavel": "estável",
+    "observacao": "observação",
+    "nao": "não",
+    "previdenciaria": "previdenciária",
+    "corresponsavel": "corresponsável",
+    "solidario": "solidário",
+}
+
+
+def agencia_de_rating(valor: object) -> str:
+    """O nome da agência como a ficha o escreve ("fitch" → "Fitch"); código desconhecido sai como veio."""
+    return _AGENCIA_DE_RATING.get(str(valor), str(valor))
+
+
+def _codigo(valor: object) -> str:
+    """Um código da base ("em_observacao_negativa") em português ("Em observação negativa")."""
+    palavras = [_PALAVRAS_COM_ACENTO.get(p, p) for p in str(valor).split("_")]
+    return " ".join(palavras).capitalize()
+
+
+def _codigo_do_original(valor: object) -> str:
+    """O começo do SHA-256 do original no acervo, o bastante para achá-lo sem tomar a linha.
+
+    É um código hexadecimal, não um nome: não passa pelo filtro de CPF (`_texto`), que cortaria por
+    acaso um trecho de onze dígitos que fechasse como CPF.
+    """
+    return str(valor)[:TAMANHO_DO_CODIGO_DO_ORIGINAL]
+
+
+def _escritor_da_unidade(unidade: str) -> Callable[[object], str]:
+    """Como escrever um número da série: em reais ("R$ 8,0 bi"), fração ("15,2%", o índice de
+    Basileia) ou inteiro ("9.743.641")."""
+    if unidade == "R$":
+        return reais
+    return fracao if unidade == FRACAO else inteiro
+
+
+def _pontos(valor: object) -> str:
+    """A variação do HHI com o sinal: "+120", "-35", "+0"."""
+    return f"{_numero(valor):+,.0f}".replace(",", ".")
+
+
+def _medida_da_serie(valor: object) -> str:
+    serie = SERIES_DO_SETOR.get(str(valor))
+    return serie.medida if serie else str(valor)
+
+
+def _cnpj(valor: object) -> str:
+    return cnpj_da_base.formatar(str(valor))
+
+
+def _escrever_valor(valor: str | float | None, unidade: str) -> str:
+    if valor is None:
+        return "—"
+    if unidade == "R$":
+        return reais(valor)
+    if unidade == "data":
+        return dia(valor)
+    if unidade == FRACAO:
+        return fracao(valor)
+    if unidade == dossie_da_base.UNIDADE_DA_OPINIAO:
+        return _opiniao_do_auditor(valor)
+    if unidade == dossie_da_base.UNIDADE_SIM_OU_NAO:
+        return _sim_ou_nao_do_parecer(valor)
+    if isinstance(valor, int | float):
+        return inteiro(valor)
+    return str(valor)
+
+
+def _escrever_base(base: str | None, gerado_em: datetime) -> str:
+    """De quando é o número: dia, mês ("dez/2025"), ano ("2025") ou, se a data é depois da ficha, o
+    ano do FRE."""
+    if not base:
+        return ""
+    if len(base) == TAMANHO_DO_ANO:
+        return base
+    if len(base) == TAMANHO_DO_MES:
+        return mes(f"{base}-01")
+    quando = para_data(base)
+    if quando > gerado_em.date():
+        return f"FRE de {quando.year}"
+    return dia(quando)
+
+
+def _dia_ate_a_ficha(valor: object, gerado_em: datetime | None = None) -> str:
+    """O dia, salvo quando vem depois da ficha: aí só "FRE de AAAA". Fichas geradas antes de
+    28/10/2026 trazem na rede a referência nominal do FRE (31/12/2026) como "desde"; a ficha não
+    mostra o futuro. Sem a data da ficha (tabela escrita fora dela), escreve o dia."""
+    if gerado_em is None:
+        return dia(valor)
+    return _escrever_base(str(valor)[:TAMANHO_DO_DIA], gerado_em)
+
+
+# cada coluna de cada tabela da ficha: (coluna, rótulo, como escrever); o que não está aqui não sai
+Coluna = tuple[str, str, Any]
+COLUNAS: dict[str, list[Coluna]] = {
+    "pld_mensal": [
+        ("referencia", "Mês", mes),
+        ("submercado", "Submercado", lambda v: str(v).capitalize()),
+        ("pld", "PLD médio (R$/MWh)", lambda v: decimal(v, 2)),
+        ("disponivel_em", "Público em", dia),
+    ],
+    "curtailment_mensal": [
+        ("mes", "Mês", mes),
+        (
+            "tipo",
+            "Fonte",
+            lambda v: "Eólica" if v == "eolica" else "Solar fotovoltaica",
+        ),
+        ("mwh", "Energia não gerada (MWh)", inteiro),
+        ("disponivel_em", "Público em", dia),
+    ],
+    "capacidade_por_tipo": [
+        ("tipo_de_usina", "Tipo de usina", lambda v: str(v).capitalize()),
+        ("unidades", "Unidades", inteiro),
+        ("potencia_mw", "Potência efetiva (MW)", inteiro),
+        ("disponivel_em", "Última entrada em", dia),
+    ],
+    "pareceres_do_auditor": [
+        ("referencia", "Exercício", dia),
+        ("versao", "Versão", inteiro),
+        ("opiniao", "Opinião", _opiniao_do_auditor),
+        ("enfase", "Ênfase", _sim_ou_nao_do_parecer),
+        ("continuidade_operacional", "Continuidade", _sim_ou_nao_do_parecer),
+        ("disponivel_em", "Publicado em", dia),
+    ],
+    "pareceres_do_itr": [
+        ("referencia", "Trimestre", dia),
+        ("versao", "Versão", inteiro),
+        ("opiniao", "Conclusão", _opiniao_do_auditor),
+        ("enfase", "Ênfase", _sim_ou_nao_do_parecer),
+        ("continuidade_operacional", "Continuidade", _sim_ou_nao_do_parecer),
+        ("disponivel_em", "Publicado em", dia),
+    ],
+    "dmpl_por_exercicio": [
+        ("referencia", "Exercício", dia),
+        ("demonstracao", "Demonstração", _texto),
+        ("componente", "Componente", _texto),
+        ("valor", "Saldo final", reais),
+        ("publicado_em", "Publicado em", dia),
+    ],
+    "trocas_de_auditor": [
+        ("efetiva_em", "Desde", dia),
+        ("anterior", "Auditor anterior", _texto),
+        ("novo", "Auditor novo", _texto),
+        ("anos_com_o_anterior", "Anos com o anterior", decimal),
+    ],
+    "controladas": [
+        ("razao_social", "Sociedade", _texto),
+        ("participacao", "Participação", _porcentagem),
+        ("controlada", "Controlada", _sim_ou_nao),
+    ],
+    "controladoras": [
+        ("controladora", "Controladora", _texto),
+        ("participacao", "Participação", _porcentagem),
+    ],
+    "ofertas": [
+        ("data", "Data", dia),
+        ("emissor", "Emissor", _texto),
+        ("valor_mobiliario", "Papel", _texto),
+        ("tipo_oferta", "Tipo", lambda v: str(v).capitalize()),
+        ("valor_total", "Valor registrado", reais),
+        ("regime", "Regra", _texto),
+    ],
+    "ofertas_por_ano": [
+        ("ano", "Ano", _ano),
+        ("ofertas", "Ofertas", inteiro),
+        ("valor_total", "Valor registrado", reais),
+    ],
+    "fundos_por_mes": [
+        ("competencia", "Mês", mes),
+        ("fundos", "Fundos", inteiro),
+        ("valor", "Valor nas carteiras", reais),
+    ],
+    "reapresentacoes": [
+        ("exercicio", "Exercício", _ano),
+        ("linha", "Linha", _texto),
+        ("primeiro_valor", "Primeiro valor", reais),
+        ("primeiro_em", "Publicado em", dia),
+        ("valor_atual", "Valor atual", reais),
+        ("trocado_em", "Refeito em", dia),
+        ("diferenca_pct", "Diferença", _variacao),
+    ],
+    "lucro_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("lucro", "Lucro do período", reais),
+        ("divulgado_em", "Público desde", dia),
+    ],
+    "releases_diferentes": [
+        ("periodo", "Trimestre", _texto),
+        ("linha", "Linha", _texto),
+        ("valor_release_reais", "No release", reais),
+        ("valor_oficial_reais", "No ITR ou na DFP", reais),
+        ("diferenca_pct", "Diferença", _variacao),
+    ],
+    "releases_por_classe": [
+        ("classe", "Resultado da comparação", _texto),
+        ("valores", "Valores", inteiro),
+    ],
+    "insiders_por_cargo": [
+        ("cargo", "Cargo", _texto),
+        ("compras", "Compras", reais),
+        ("vendas", "Vendas", reais),
+        ("negociacoes", "Negociações", inteiro),
+    ],
+    "insiders_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("compras", "Compras de insiders", reais),
+        ("vendas", "Vendas de insiders", reais),
+        ("recompras", "Recompras", reais),
+    ],
+    "eventos_de_capital": [
+        ("data", "Data", dia),
+        ("tipo", "Evento", lambda v: str(v).capitalize()),
+        ("fator", "Fator", lambda v: decimal(v, 2)),
+        ("acoes_novas", "Ações novas", inteiro),
+        ("valor", "Valor", reais),
+    ],
+    "fundos_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("compras", "Compras dos fundos", reais),
+        ("vendas", "Vendas dos fundos", reais),
+    ],
+    "proventos_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("lucro_ajustado", "Lucro ajustado", reais),
+        ("dividendo_total", "Dividendo total", reais),
+        ("payout", "Payout", fracao),
+        ("conhecido_em", "FRE entregue em", dia),
+    ],
+    "caixa_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("receita", "Receita", reais),
+        ("ebitda", "EBITDA", reais),
+        ("margem_ebitda", "Margem EBITDA", fracao),
+        ("depreciacao_amortizacao", "Depreciação e amortização", reais),
+        ("caixa_operacional", "Caixa operacional", reais),
+        ("capex", "Capex", reais),
+        ("fcf", "FCF", reais),
+        ("divulgado_em", "Público desde", dia),
+    ],
+    "dfc_dva_por_exercicio": [
+        ("demonstracao", "Demonstração", _texto),
+        ("conta", "Conta", _texto),
+        ("descricao", "Descrição", _texto),
+        ("exercicio", "Exercício", _ano),
+        ("valor", "Valor", reais),
+    ],
+    "governanca_por_ano": [
+        ("ano", "FRE", _ano),
+        ("entregue_em", "Entregue em", dia),
+        ("conselho", "Conselho", inteiro),
+        ("independentes", "Independentes", inteiro),
+        ("eleitos_por_minoritarios", "Eleitos por minoritários", inteiro),
+        ("comites", "Comitês", inteiro),
+        ("mulheres_no_conselho", "Mulheres no conselho", inteiro),
+    ],
+    "comites": [
+        ("comite", "Comitê", _texto),
+        ("membros", "Membros", inteiro),
+    ],
+    "free_float_por_ano": [
+        ("ano", "FRE", _ano),
+        ("entregue_em", "Entregue em", dia),
+        ("assembleia_em", "Assembleia de", dia),
+        ("free_float", "Free float", fracao),
+        ("acoes_em_circulacao", "Ações em circulação", inteiro),
+        ("acionistas_pf", "Pessoas físicas", inteiro),
+        ("acionistas_pj", "Pessoas jurídicas", inteiro),
+        ("acionistas_institucionais", "Institucionais", inteiro),
+    ],
+    "capital_social": [
+        ("tipo_capital", "Capital", lambda v: str(v).capitalize()),
+        ("valor_capital", "Valor", reais),
+        ("acoes_ordinarias", "Ações ordinárias", inteiro),
+        ("acoes_preferenciais", "Ações preferenciais", inteiro),
+        ("acoes_total", "Total de ações", inteiro),
+    ],
+    "empregados_do_fre": [
+        ("recorte", "Recorte", _texto),
+        ("grupo", "Grupo", _texto),
+        ("total", "Empregados", inteiro),
+        ("mulheres", "Mulheres", inteiro),
+    ],
+    "remuneracao_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("total", "Total pago", reais),
+    ],
+    "remuneracao_por_orgao": [
+        ("orgao", "Órgão", _texto),
+        ("membros_remunerados", "Membros remunerados", decimal),
+        ("total", "Total", reais),
+        ("maior", "Maior individual", reais),
+        ("media", "Média", reais),
+        ("menor", "Menor individual", reais),
+    ],
+    "remuneracao_da_diretoria_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("total", "Total da Diretoria Estatutária", reais),
+        ("conhecido_em", "FRE entregue em", dia),
+    ],
+    "ratings": [
+        ("agencia", "Agência", agencia_de_rating),
+        ("escala", "Escala", _codigo),
+        ("nota", "Nota", _texto),
+        ("perspectiva", "Perspectiva", _codigo),
+        ("acao", "Ação", _codigo),
+        ("publico_em", "Publicado em", dia),
+        ("link", ROTULO_DO_LINK, _texto),
+    ],
+    "ratings_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("acoes", "Ações das agências", inteiro),
+        ("rebaixamentos", "Rebaixamentos", inteiro),
+        ("elevacoes", "Elevações", inteiro),
+    ],
+    "acoes_de_rating": [
+        ("publico_em", "Publicado em", dia),
+        ("agencia", "Agência", agencia_de_rating),
+        ("escala", "Escala", _codigo),
+        ("acao", "Ação", _codigo),
+        ("nota_anterior", "Nota anterior", _texto),
+        ("nota", "Nota", _texto),
+        ("perspectiva", "Perspectiva", _codigo),
+    ],
+    "assembleias_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("documentos", "Documentos", inteiro),
+    ],
+    "assembleias_por_tema": [
+        ("tema", "Tema do assunto", _texto),
+        ("ultimos_12_meses", "Últimos 12 meses", inteiro),
+        ("12_meses_anteriores", "12 meses anteriores", inteiro),
+    ],
+    "assembleias_recentes": [
+        ("publico_em", "Data", dia),
+        ("especie", "Documento", _texto),
+        ("assunto", "Assunto, como a empresa escreveu", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+    ],
+    "assembleias_de_aperto": [
+        ("publico_em", "Data", dia),
+        ("especie", "Documento", _texto),
+        ("assunto", "Assunto, como a empresa escreveu", _texto),
+    ],
+    "entidades_ligadas": [
+        ("nome", "Entidade na agência", _texto),
+        ("fonte", "Agência", _agencia),
+        ("desde", "Ligada desde", dia),
+    ],
+    "negocios": [
+        ("publicado_em", "Data", dia),
+        ("rotulo", "Documento", _texto),
+        ("assunto", "Assunto, como a empresa escreveu", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+    ],
+    "negocios_por_ano": [
+        ("ano", "Ano", _ano),
+        ("documentos", "Documentos", inteiro),
+    ],
+    "ma_por_ano": [
+        ("ano", "Ano", _ano),
+        ("comprou", "Comprou ou investiu", inteiro),
+        ("vendeu", "Vendeu", inteiro),
+        ("foi_comprada", "Foi comprada", inteiro),
+        ("outro", "Outro papel", inteiro),
+    ],
+    "ma_recentes": [
+        ("conhecido_em", "Conhecido desde", dia),
+        ("papel", "Papel da empresa", _papel_no_ma),
+        ("tipo", "Tipo do negócio", _tipo_de_ma),
+        ("confirmado", "Confirmado por fonte oficial", _sim_ou_nao),
+    ],
+    "registros_de_insolvencia": [
+        ("aconteceu_em", "Data do fato", dia),
+        ("publico_em", "Público desde", dia),
+        ("registro", "Registro", _texto),
+        ("veiculo", "Veículo", _texto),
+        ("situacao", "Situação", _texto),
+        ("contestacao", "Contestação da empresa", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+    ],
+    # virada de 5/11/2026 (fase 1): dívida ativa e entrega no prazo como fato datado, com a fonte ao
+    # lado; os rótulos evitam sigla no meio (a tela passa o cabeçalho por `capitalize`)
+    "inscricoes_na_divida_ativa": [
+        ("aconteceu_em", "Data do retrato", dia),
+        ("publico_em", "Público desde", dia),
+        ("tipo_divida", "Tipo de dívida", _codigo),
+        ("tipo_situacao", "Situação", _texto),
+        ("situacao_inscricao", "Situação da inscrição", _texto),
+        ("ajuizado", "Ajuizada", _sim_ou_nao),
+        ("inscricoes", "Inscrições", inteiro),
+        ("valor_consolidado", "Valor consolidado", reais),
+        ("regiao", "Região", _texto),
+        ("tipo_devedor", "Tipo de devedor", _codigo),
+        ("veiculo", "Veículo", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+        ("origem", "Original no acervo", _codigo_do_original),
+    ],
+    "entregas_de_dfp_e_itr": [
+        ("documento", "Documento", _texto),
+        ("referencia", "Referência", dia),
+        ("prazo", "Prazo de entrega", dia),
+        ("primeira_entrega", "Primeira entrega", dia),
+        ("publico_em", "Público desde", dia),
+        ("dias_uteis_de_atraso", "Dias úteis de atraso", inteiro),
+        ("rotulo", "Rótulo", _texto),
+        ("regra", "Regra que deu o rótulo", _texto),
+        ("veiculo", "Veículo", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+    ],
+    "ligacoes_da_rede": [
+        ("relacao", "Relação", _texto),
+        ("entidade", "Entidade", _texto),
+        ("cnpj", "CNPJ", _texto),
+        ("participacao", "Participação", _porcentagem),
+        ("desde", "Desde", _dia_ate_a_ficha),
+        ("documento", "Documento", _texto),
+    ],
+    "identificadores_da_empresa": [
+        ("identificador", "Identificador", _texto),
+        ("valor", "Valor", _texto),
+        ("desde", "Desde", dia),
+    ],
+    # sem o valor: cada linha é de uma série, com a unidade dela (o relatório do setor escreve o
+    # valor série a série, por `colunas_da_participacao`)
+    "participacao_dos_membros": [
+        ("serie", "Série", _medida_da_serie),
+        ("empresa", "Companhia", _texto),
+        ("ano", "Ano", _ano),
+        ("participacao", "Parte do mercado", fracao),
+        ("meses", "Meses no ano", inteiro),
+        ("ultimo_mes", "Até", mes),
+    ],
+    "membros": [
+        ("empresa", "Companhia", _texto),
+        ("cnpj", "CNPJ", _cnpj),
+        ("motivo", "Por que está no setor", _texto),
+    ],
+}
+
+
+def _colunas_da_serie(nome: str) -> list[Coluna]:
+    return [
+        ("ano", "Ano", _ano),
+        (
+            "valor",
+            _UNIDADE_DA_SERIE[nome].capitalize(),
+            _escritor_da_unidade(_UNIDADE_DA_SERIE[nome]),
+        ),
+        ("participacao", "Parte do total", fracao),
+        ("meses", "Meses no ano", inteiro),
+    ]
+
+
+def colunas_da_participacao(nome: str) -> list[Coluna]:
+    """As colunas da participação de cada companhia numa série, com o valor na unidade dela."""
+    serie = SERIES_DO_SETOR[nome]
+    return [
+        ("empresa", "Companhia", _texto),
+        ("ano", "Ano", _ano),
+        ("valor", serie.unidade.capitalize(), _escritor_da_unidade(serie.unidade)),
+        ("participacao", "Parte do mercado", fracao),
+        ("meses", "Meses no ano", inteiro),
+        ("ultimo_mes", "Até", mes),
+    ]
+
+
+def _colunas_da_concentracao(serie: dossie_da_base.SerieDaAgencia) -> list[Coluna]:
+    return [
+        ("ano", "Ano", _ano),
+        ("participantes", "Participantes", inteiro),
+        (
+            "total",
+            f"Mercado ({serie.unidade})",
+            _escritor_da_unidade(serie.unidade),
+        ),
+        ("cr4", "CR4 (4 maiores)", fracao),
+        ("hhi", "HHI (pontos)", inteiro),
+        ("faixa", "Faixa do CADE", _texto),
+        ("delta_hhi", "Variação do HHI", _pontos),
+        ("por_entidade", "Contado por entidade", fracao),
+        ("meses", "Meses no ano", inteiro),
+        ("ultimo_mes", "Até", mes),
+    ]
+
+
+def _colunas_do_lado_a_lado(serie: dossie_da_base.SerieDaAgencia) -> list[Coluna]:
+    abertura = [("abertura", "Modalidade", _texto)] if serie.abertura else []
+    return [
+        ("empresa", "Companhia", _texto),
+        ("entidade", "Entidade na agência", _texto),
+        ("ano", "Ano", _ano),
+        *abertura,
+        ("valor", serie.unidade.capitalize(), _escritor_da_unidade(serie.unidade)),
+        ("ultimo_mes", "Até", mes),
+    ]
+
+
+def colunas_da_tabela(chave: str) -> list[Coluna] | None:
+    """As colunas declaradas de uma tabela da ficha (None: a tabela não sai)."""
+    if chave in _UNIDADE_DA_SERIE:
+        return _colunas_da_serie(chave)
+    serie = serie_da_tabela_do_setor(chave)
+    if serie is None:
+        return COLUNAS.get(chave)
+    if chave.startswith(PREFIXO_DA_CONCENTRACAO):
+        return _colunas_da_concentracao(serie)
+    return _colunas_do_lado_a_lado(serie)
+
+
+def escrever_linhas(
+    colunas: list[Coluna], linhas: list[dict[str, Any]]
+) -> list[dict[str, str]]:
+    """As linhas com cada célula já escrita, pelo rótulo da coluna ("—" onde falta o número)."""
+    return [
+        {
+            rotulo: "—" if linha.get(coluna) is None else escrever(linha[coluna])
+            for coluna, rotulo, escrever in colunas
+        }
+        for linha in linhas
+    ]
+
+
+def titulo_da_tabela(chave: str) -> str:
+    return TITULOS_DAS_TABELAS.get(chave, chave.replace("_", " ").capitalize())
+
+
+def _escrever_tabela(
+    chave: str, linhas: list[dict[str, Any]], gerado_em: datetime
+) -> list[dict[str, str]]:
+    colunas = colunas_da_tabela(chave)
+    if colunas is None:
+        raise KeyError(f"tabela do dossiê sem colunas declaradas: {chave}")
+    return escrever_linhas(_com_o_dia_da_ficha(colunas, gerado_em), linhas)
+
+
+def _com_o_dia_da_ficha(colunas: list[Coluna], gerado_em: datetime) -> list[Coluna]:
+    """As colunas de data que não podem passar do dia da ficha recebem esse dia."""
+    return [
+        (
+            coluna,
+            rotulo,
+            partial(escrever, gerado_em=gerado_em)
+            if escrever is _dia_ate_a_ficha
+            else escrever,
+        )
+        for coluna, rotulo, escrever in colunas
+    ]
+
+
+def links_da_tabela(ficha: Ficha, secao: str, tabela: str) -> list[str]:
+    """Os links de cada linha (o documento na CVM), na ordem das linhas escritas."""
+    da_secao = next((s for s in ficha.secoes if s.chave == secao), None)
+    if da_secao is None:
+        return []
+    return [str(linha.get("link") or "") for linha in da_secao.tabelas.get(tabela, [])]
+
+
+# --- o contrato do número (relatórios v2, PR 1): de onde veio e contra o quê comparar -------------
+_DO_FRE = "FRE entregue à CVM"
+_DOS_FUNDOS = "carteiras dos fundos entregues à CVM (CDA, tabela painel_dos_fundos)"
+_DAS_REAPRESENTACOES = (
+    "DFP entregues à CVM, com cada versão reapresentada (tabela demonstracoes_como_era)"
+)
+_DOS_RELEASES = "press-releases de resultado e ITR ou DFP entregues à CVM (tabela release_x_oficial)"
+_DOS_INSIDERS = (
+    "negociações de controladores, administradores e da companhia declaradas à CVM "
+    "(VLMO, tabela negociacoes)"
+)
+_DA_DFP = "DFP entregue à CVM: DRE, DFC e DVA, como eram públicas no dia (tabela demonstracoes_como_era)"
+_DO_MA = "negócios de M&A publicados por assessorias independentes (tabelas ma_assessorias, ma_partes, ma_negocios e ma_datas)"
+_DOS_RATINGS = "relatórios das agências de rating e comunicados da companhia entregues à CVM (tabela ratings)"
+_DO_PARECER = "relatório do auditor independente sobre a DFP entregue à CVM (tabela pareceres_dfp)"
+_DO_PARECER_DO_ITR = "revisão especial do auditor independente sobre o ITR entregue à CVM (tabela pareceres_itr)"
+FONTES_DOS_ITENS = {
+    "parecer_opiniao": _DO_PARECER,
+    "parecer_enfase": _DO_PARECER,
+    "parecer_itr_opiniao": _DO_PARECER_DO_ITR,
+    "parecer_itr_enfase": _DO_PARECER_DO_ITR,
+    "parecer_itr_continuidade": _DO_PARECER_DO_ITR,
+    "parecer_continuidade": _DO_PARECER,
+    "auditor_atual": f"{_DO_FRE} (tabela auditores)",
+    "auditor_desde": f"{_DO_FRE} (tabela trocas_de_auditor)",
+    "sociedades": f"{_DO_FRE} (tabela controladas)",
+    "controladas": f"{_DO_FRE} (tabela controladas)",
+    "coligadas_e_outras": f"{_DO_FRE} (tabela controladas)",
+    "ofertas": "ofertas registradas na CVM (tabelas ofertas_resolucao_160 e ofertas_antigas)",
+    "fundos_com_a_acao": _DOS_FUNDOS,
+    "valor_nos_fundos": _DOS_FUNDOS,
+    "compras_dos_fundos_12m": _DOS_FUNDOS,
+    "vendas_dos_fundos_12m": _DOS_FUNDOS,
+    "exercicios_reapresentados": _DAS_REAPRESENTACOES,
+    "exercicios_olhados": _DAS_REAPRESENTACOES,
+    "releases_comparados": _DOS_RELEASES,
+    "releases_diferentes": _DOS_RELEASES,
+    "trocas_de_auditor_10_anos": "FCA entregue à CVM (tabela trocas_de_auditor)",
+    "insiders_compras_12m": _DOS_INSIDERS,
+    "insiders_vendas_12m": _DOS_INSIDERS,
+    "recompras_12m": _DOS_INSIDERS,
+    "eventos_de_capital": f"{_DO_FRE} (tabela eventos_de_capital)",
+    "negocios": "fatos relevantes e comunicados do IPE na CVM (tabela eventos)",
+    "ma_comprou": _DO_MA,
+    "ma_vendeu": _DO_MA,
+    "ma_foi_comprada": _DO_MA,
+    "conselho_membros": f"{_DO_FRE} (tabela fre_conselho)",
+    "conselho_independentes": f"{_DO_FRE} (tabela fre_conselho)",
+    "conselho_eleitos_por_minoritarios": f"{_DO_FRE} (tabela fre_conselho)",
+    "comites": f"{_DO_FRE} (tabela fre_comites)",
+    "acoes_integralizadas": f"{_DO_FRE} (tabela fre_capital_social)",
+    "free_float": f"{_DO_FRE} (tabela fre_distribuicao_capital, item 15.7)",
+    "empregados": f"{_DO_FRE} (tabela fre_empregados)",
+    "mulheres_no_conselho": f"{_DO_FRE} (tabela fre_diversidade)",
+    "remuneracao_da_administracao": f"{_DO_FRE} (tabelas fre_remuneracao e fre_remuneracao_extremos)",
+    "ebitda": _DA_DFP,
+    "capex": _DA_DFP,
+    "fcf": _DA_DFP,
+    "ratings_rebaixamentos_12m": _DOS_RATINGS,
+    "ratings_elevacoes_12m": _DOS_RATINGS,
+    "assembleias_de_debenturistas_12m": (
+        "editais, atas e propostas de assembleias de debenturistas entregues à CVM "
+        "(tabela debentures_assembleias)"
+    ),
+} | {
+    serie.nome: f"dados abertos da {_NOME_DA_AGENCIA[serie.fonte_b13]} (tabela {serie.tabela})"
+    for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+}
+SO_O_FRE_MAIS_RECENTE = (
+    "A ficha traz só o FRE mais recente: não há o número do ano anterior para comparar."
+)
+SEM_COM_O_QUE_COMPARAR = "A ficha não traz com o quê comparar este número."
+MESES_NO_ANO = 12
+JANELAS_PARA_COMPARAR = 2  # a dos últimos 12 meses e a dos 12 anteriores
+
+Comparado = tuple[Comparacao | None, str]  # a comparação ou o motivo de não haver
+Comparar = Callable[[SecaoDaFicha, ItemDaFicha], Comparado]
+
+
+def _mais_recentes(linhas: list[dict[str, Any]], coluna: str) -> list[dict[str, Any]]:
+    return sorted(linhas, key=lambda linha: str(linha.get(coluna)), reverse=True)
+
+
+def _contra_o_auditor_anterior(secao: SecaoDaFicha, _: ItemDaFicha) -> Comparado:
+    trocas = _mais_recentes(secao.tabelas.get("trocas_de_auditor", []), "efetiva_em")
+    if not trocas:
+        return None, "A ficha não registra troca de auditor para comparar."
+    troca = trocas[0]
+    return Comparacao(
+        "auditor anterior",
+        f"{troca['anterior']} por {decimal(troca['anos_com_o_anterior'])} anos, até "
+        f"{dia(troca['efetiva_em'])}",
+    ), ""
+
+
+def _contra_as_sociedades(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+    total = next((i.valor for i in secao.itens if i.chave == "sociedades"), None)
+    if total is None or item.valor is None:
+        return None, SO_O_FRE_MAIS_RECENTE
+    return Comparacao(
+        "sociedades no FRE", f"{inteiro(item.valor)} de {inteiro(total)}"
+    ), ""
+
+
+def _contra_os_anos(tabela: str, coluna: str) -> Comparar:
+    """Compara a contagem com a dos dois últimos anos da tabela por ano."""
+
+    def comparar(secao: SecaoDaFicha, _: ItemDaFicha) -> Comparado:
+        anos = _mais_recentes(secao.tabelas.get(tabela, []), "ano")[:2]
+        if not anos:
+            return None, SEM_COM_O_QUE_COMPARAR
+        return Comparacao(
+            "contagem por ano",
+            " e ".join(f"{inteiro(a[coluna])} em {_ano(a['ano'])}" for a in anos),
+        ), ""
+
+    return comparar
+
+
+def _um_ano_antes(quando: date) -> date:
+    return quando.replace(year=quando.year - 1)
+
+
+def _contra_o_mesmo_mes(
+    coluna: str, escrever: Callable[[object], str], sufixo: str = ""
+) -> Comparar:
+    """Compara a posição dos fundos com a do mesmo mês do ano anterior (ou a mais antiga)."""
+
+    def comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+        meses = sorted(
+            secao.tabelas.get("fundos_por_mes", []), key=lambda m: str(m["competencia"])
+        )
+        if not meses or not item.base:
+            return None, SEM_COM_O_QUE_COMPARAR
+        alvo = _um_ano_antes(para_data(item.base)).strftime("%Y-%m")
+        linha = next(
+            (m for m in meses if str(m["competencia"]).startswith(alvo)), meses[0]
+        )
+        quando = mes(linha["competencia"])
+        return Comparacao(
+            f"carteiras de {quando}",
+            f"{escrever(linha[coluna])}{sufixo} em {quando}",
+            float(linha[coluna]),
+        ), ""
+
+    return comparar
+
+
+def _contra_o_total_da_agencia(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+    """A participação no ano do item e o valor do ano anterior; o ano depois do item, se há na
+    tabela, é o corrente, que o item deixou de fora por estar incompleto (`base/dossie.py`,
+    `_item_da_serie`)."""
+    anos = _mais_recentes(secao.tabelas.get(item.chave, []), "ano")
+    if not anos:
+        return None, SEM_COM_O_QUE_COMPARAR
+    ano_do_item = (item.base or "")[:TAMANHO_DO_ANO]
+    posicao = next(
+        (i for i, linha in enumerate(anos) if _ano(linha["ano"]) == ano_do_item), 0
+    )
+    do_ano = anos[posicao]
+    textos = [
+        f"{fracao(do_ano['participacao'])} do total da agência em {_ano(do_ano['ano'])}"
+    ]
+    anterior = anos[posicao + 1] if posicao + 1 < len(anos) else None
+    if anterior is not None:
+        escrever = _escritor_da_unidade(item.unidade)
+        textos.append(f"{escrever(anterior['valor'])} em {_ano(anterior['ano'])}")
+    if posicao > 0:
+        textos.append(f"{_ano(anos[0]['ano'])} fica de fora por estar incompleto")
+    return Comparacao(
+        "total da agência no ano",
+        "; ".join(textos),
+        _numero(anterior["valor"]) if anterior is not None else None,
+    ), ""
+
+
+def _contra_o_item(total: str, contra: str, unidade: str) -> Comparar:
+    """Uma contagem contra o total de onde ela saiu ("1 de 4 valores comparados")."""
+
+    def comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+        do_total = next((i for i in secao.itens if i.chave == total), None)
+        if do_total is None or do_total.valor is None or item.valor is None:
+            return None, SEM_COM_O_QUE_COMPARAR
+        return Comparacao(
+            contra,
+            f"{inteiro(item.valor)} de {inteiro(do_total.valor)} {unidade}",
+            _numero(do_total.valor),
+        ), ""
+
+    return comparar
+
+
+def _contra_os_12_meses_anteriores(
+    tabela: str, coluna: str, escrever: Callable[[object], str] = reais
+) -> Comparar:
+    """Uma soma de 12 meses contra a dos 12 meses anteriores (a segunda linha da tabela de janelas)."""
+
+    def comparar(secao: SecaoDaFicha, _: ItemDaFicha) -> Comparado:
+        janelas = _mais_recentes(secao.tabelas.get(tabela, []), "ate")
+        if len(janelas) < JANELAS_PARA_COMPARAR:
+            return None, SEM_COM_O_QUE_COMPARAR
+        anterior = janelas[1]
+        quando = dia(anterior["ate"])
+        return Comparacao(
+            f"12 meses até {quando}",
+            f"{escrever(anterior[coluna])} nos 12 meses até {quando}",
+            _numero(anterior[coluna]),
+        ), ""
+
+    return comparar
+
+
+def _contra_o_ano_anterior(
+    tabela: str, coluna: str, chave_do_ano: str, antes_do_ano: str = "em"
+) -> Comparar:
+    """O número do ano mais novo da tabela contra o do ano antes dele (FRE ou exercício)."""
+
+    def comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+        anos = _mais_recentes(secao.tabelas.get(tabela, []), chave_do_ano)
+        if len(anos) < JANELAS_PARA_COMPARAR or anos[1].get(coluna) is None:
+            return None, SEM_COM_O_QUE_COMPARAR
+        anterior, quando = anos[1][coluna], _ano(anos[1][chave_do_ano])
+        escrever = _escritor_da_unidade(item.unidade)
+        return Comparacao(
+            f"{antes_do_ano} {quando}",
+            f"{escrever(anterior)} {antes_do_ano} {quando}",
+            _numero(anterior),
+        ), ""
+
+    return comparar
+
+
+_COMPARACOES = (
+    {
+        "exercicios_reapresentados": _contra_o_item(
+            "exercicios_olhados", "exercícios olhados", "exercícios olhados (DFP)"
+        ),
+        "releases_diferentes": _contra_o_item(
+            "releases_comparados", "valores comparados", "valores comparados"
+        ),
+        "insiders_compras_12m": _contra_os_12_meses_anteriores(
+            "insiders_janelas", "compras"
+        ),
+        "insiders_vendas_12m": _contra_os_12_meses_anteriores(
+            "insiders_janelas", "vendas"
+        ),
+        "recompras_12m": _contra_os_12_meses_anteriores(
+            "insiders_janelas", "recompras"
+        ),
+        "compras_dos_fundos_12m": _contra_os_12_meses_anteriores(
+            "fundos_janelas", "compras"
+        ),
+        "vendas_dos_fundos_12m": _contra_os_12_meses_anteriores(
+            "fundos_janelas", "vendas"
+        ),
+        "ratings_rebaixamentos_12m": _contra_os_12_meses_anteriores(
+            "ratings_janelas", "rebaixamentos", inteiro
+        ),
+        "ratings_elevacoes_12m": _contra_os_12_meses_anteriores(
+            "ratings_janelas", "elevacoes", inteiro
+        ),
+        "assembleias_de_debenturistas_12m": _contra_os_12_meses_anteriores(
+            "assembleias_janelas", "documentos", inteiro
+        ),
+        "ebitda": _contra_o_ano_anterior("caixa_por_exercicio", "ebitda", "exercicio"),
+        "capex": _contra_o_ano_anterior("caixa_por_exercicio", "capex", "exercicio"),
+        "fcf": _contra_o_ano_anterior("caixa_por_exercicio", "fcf", "exercicio"),
+        "remuneracao_da_administracao": _contra_o_ano_anterior(
+            "remuneracao_por_exercicio", "total", "exercicio"
+        ),
+        "free_float": _contra_o_ano_anterior(
+            "free_float_por_ano", "free_float", "ano", "no FRE de"
+        ),
+        "auditor_atual": _contra_o_auditor_anterior,
+        "auditor_desde": _contra_o_auditor_anterior,
+        "controladas": _contra_as_sociedades,
+        "coligadas_e_outras": _contra_as_sociedades,
+        "ofertas": _contra_os_anos("ofertas_por_ano", "ofertas"),
+        "negocios": _contra_os_anos("negocios_por_ano", "documentos"),
+        "fundos_com_a_acao": _contra_o_mesmo_mes("fundos", inteiro, " fundos"),
+        "valor_nos_fundos": _contra_o_mesmo_mes("valor", reais),
+    }
+    | {
+        serie.nome: _contra_o_total_da_agencia
+        for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+    }
+    | {
+        chave: _contra_o_ano_anterior("governanca_por_ano", coluna, "ano", "no FRE de")
+        for chave, coluna, *_ in dossie_da_base.ITENS_DA_GOVERNANCA
+    }
+)
+
+
+def _comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+    if item.chave == "sociedades":
+        return None, SO_O_FRE_MAIS_RECENTE
+    comparar = _COMPARACOES.get(item.chave)
+    return comparar(secao, item) if comparar else (None, SEM_COM_O_QUE_COMPARAR)
+
+
+def _item_da_ficha(ficha: Ficha, secao: SecaoDaFicha, item: ItemDaFicha) -> Item:
+    comparacao, sem_comparacao = _comparar(secao, item)
+    return Item(
+        item.chave,
+        item.nome,
+        _escrever_valor(item.valor, item.unidade),
+        float(item.valor) if isinstance(item.valor, int | float) else None,
+        item.unidade,
+        _escrever_base(item.base, ficha.gerado_em),
+        fonte=FONTES_DOS_ITENS.get(item.chave, ", ".join(secao.fontes)),
+        comparacao=comparacao,
+        sem_comparacao=sem_comparacao,
+        rastro=item.rastro.como_rastro() if item.rastro else None,
+    )
+
+
+TABELA_DA_DFC_E_DVA = "dfc_dva_por_exercicio"
+SIGLA_DA_DEMONSTRACAO = {
+    "DFC_MI": "DFC",
+    "DFC_MD": "DFC (método direto)",
+    "DVA": "DVA",
+}  # o código da conta se repete entre a DFC indireta e a direta: a sigla as separa
+UNIDADE_DO_ANEXO = "R$"
+
+
+def anexo_dfc_dva(linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A DFC e a DVA da ficha (uma linha por conta e exercício) no formato do anexo de anos: uma
+    conta por linha, uma coluna por exercício (do mais antigo ao mais novo), vazio onde falta.
+
+    A descrição da conta é a do exercício mais novo; a DFC vem antes da DVA, cada uma pelo código.
+    """
+    anos = sorted({str(linha["exercicio"]) for linha in linhas})
+    por_conta: dict[tuple[int, str], dict[str, Any]] = {}
+    for linha in sorted(linhas, key=lambda linha: linha["exercicio"]):
+        sigla = SIGLA_DA_DEMONSTRACAO.get(linha["demonstracao"], linha["demonstracao"])
+        ordem = list(SIGLA_DA_DEMONSTRACAO).index(linha["demonstracao"])
+        da_conta = por_conta.setdefault(
+            (ordem, linha["conta"]), {ano: None for ano in anos}
+        )
+        da_conta["conta"] = f"{sigla} {linha['conta']} · {linha['descricao']}"
+        da_conta[str(linha["exercicio"])] = linha["valor"]
+    return [
+        {"conta": da_conta.pop("conta"), "unidade": UNIDADE_DO_ANEXO, **da_conta}
+        for _, da_conta in sorted(por_conta.items())
+    ]
+
+
+def secoes_da_ficha(ficha: Ficha) -> list[Secao]:
+    """As seções do relatório, com os números escritos e a fonte (a atribuição que a licença pede)."""
+    secoes = []
+    for secao in ficha.secoes:
+        itens = [_item_da_ficha(ficha, secao, item) for item in secao.itens]
+        fontes = [f"Fonte: {fonte}." for fonte in secao.fontes]
+        tabelas = {
+            chave: _escrever_tabela(chave, linhas, ficha.gerado_em)
+            for chave, linhas in secao.tabelas.items()
+            if linhas and chave != TABELA_DA_DFC_E_DVA
+        }
+        if secao.tabelas.get(TABELA_DA_DFC_E_DVA):
+            tabelas[ANEXO_DFC_DVA] = anexo_dfc_dva(secao.tabelas[TABELA_DA_DFC_E_DVA])
+        secoes.append(
+            Secao(
+                secao.chave, secao.titulo, itens, [*secao.paragrafos, *fontes], tabelas
+            )
+        )
+    return secoes
+
+
+def dia_da_ficha(ficha: Ficha) -> date:
+    return ficha.gerado_em.date()
+
+
+def limites_da_ficha(ficha: Ficha) -> list[str]:
+    """Os cuidados com os números do dossiê (vão na seção de limites, no app e na amostra)."""
+    return [
+        (
+            f"Os números são da base do TickerLab em {ficha.gerado_em:%d/%m/%Y} e mudam quando a "
+            "companhia reapresenta um documento ou um fundo entrega uma carteira atrasada."
+        ),
+        (
+            "As ofertas estão pelo valor registrado na CVM, não pelo colocado. O assunto dos "
+            "documentos é escrito pela própria companhia, e os documentos de negócios são "
+            "escolhidos pelas palavras do assunto: pode faltar algum ou sobrar algum."
+        ),
+        (
+            "O setor regulado soma as entidades que o FRE liga à companhia hoje, também nos anos "
+            "anteriores: um ano antigo pode contar uma distribuidora comprada depois."
+        ),
+        "Nomes de pessoas (administradores, conselheiros, sócios) não aparecem.",
+    ]
+
+
+def dossie_da_ficha(ficha: Ficha, hoje: date | None = None) -> Dossie:
+    """A ficha (já de `ficha_do`) pronta para o relatório; velha com mais de 3 dias."""
+    hoje = hoje or datetime.now(FUSO).date()
+    dia = dia_da_ficha(ficha)
+    return Dossie(
+        secoes=secoes_da_ficha(ficha),
+        fontes=tuple(dict.fromkeys(f for s in ficha.secoes for f in s.fontes)),
+        limites=limites_da_ficha(ficha),
+        dia=dia,
+        velha=(hoje - dia).days > DIAS_ATE_FICAR_VELHA,
+    )

@@ -14,6 +14,7 @@ from datetime import date
 
 import pandas as pd
 
+from src import topicos
 from src.banco.eventos import Evento
 
 MATERIALIDADE_PADRAO = (
@@ -51,6 +52,9 @@ class Marco:
     materialidade: int
     assunto: str
     link: str  # vazio: sem link seguro
+    topico: str = (
+        ""  # o assunto do fato relevante (leitor v2); vazio nos outros e em "Outros"
+    )
 
 
 @dataclass(frozen=True)
@@ -75,8 +79,12 @@ def montar_linha_do_tempo(
     eventos: list[Evento],
     materialidade_minima: int = MATERIALIDADE_PADRAO,
     maximo: int = MAXIMO_DE_MARCOS,
+    assuntos: dict[str, topicos.LeituraDoTopico] | None = None,
 ) -> LinhaDoTempo:
-    """A curva em base 100 e os acontecimentos do período (os `maximo` mais relevantes, por data)."""
+    """A curva em base 100 e os acontecimentos do período (os `maximo` mais relevantes, por data).
+
+    `assuntos`: protocolo → assunto lido do texto (leitor v2); sem ele, vale o do título.
+    """
     precos = fechamento.dropna()
     if precos.empty:
         raise ValueError("Não há preço no período para montar a linha do tempo.")
@@ -94,13 +102,22 @@ def montar_linha_do_tempo(
             continue
         marcos.append(
             Marco(evento.publicado_em, ponto[0], ponto[1], evento.rotulo, evento.tema,
-                  evento.materialidade, evento.assunto, evento.link)
+                  evento.materialidade, evento.assunto, evento.link,
+                  _topico(evento, assuntos or {}))
         )  # fmt: skip
     return LinhaDoTempo(
         curva=tuple(PontoDaCurva(d.date(), float(v)) for d, v in curva.items()),
         marcos=tuple(marcos),
         fora_do_grafico=len(do_periodo) - len(marcos),
     )
+
+
+def _topico(evento: Evento, assuntos: dict[str, topicos.LeituraDoTopico]) -> str:
+    """O código do assunto, só para fatos relevantes com assunto achado."""
+    if evento.rotulo != topicos.ROTULO_DO_FATO_RELEVANTE:
+        return ""
+    leitura = assuntos.get(evento.protocolo) or topicos.topico_do_titulo(evento.assunto)
+    return "" if leitura.principal == topicos.OUTROS else leitura.principal
 
 
 def descricao_do_marco(marco: Marco) -> str:

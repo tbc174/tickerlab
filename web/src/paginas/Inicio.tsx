@@ -1,188 +1,130 @@
-// Página inicial v2 (ADR 0065), a partir do protótipo aprovado em 14/10/2026: hero escuro com a
-// busca e o painel do relatório de exemplo, a fita de ativos, as fontes dos dados, o bento das seis
-// frentes, o "Por que o TickerLab", o Report Studio e a chamada final. Os números do painel vêm do
-// Python (exemplo.json), os mesmos do PDF de exemplo: nunca escritos à mão.
-import type { ReactNode } from "react";
-import { type Modulo, type NumeroDoPainel, exemplo, marca, site } from "../conteudo";
-import {
-  AvisoDeAcesso,
-  ChamadaFinal,
-  MODULOS_DO_PRODUTO,
-  contagem,
-  disponiveis,
-} from "../site/comum";
+// Página inicial para quem analisa empresas (plano do site para quem analisa, 18/10/2026, PR 5): a
+// assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
+// estudo do dia, a vitrine das análises abertas, o que o app acrescenta (páginas do catálogo), o que a
+// base liga pelo CNPJ, os cruzamentos da base (PR 6), as quatro regras da base, as fontes com licença, as
+// últimas novidades e os planos. A pílula do herói e a faixa de novidades leem a atualização mais nova de
+// src/novidades.py: nada envelhece à mão. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
+import { BuscaDaBase } from "../site/BuscaDaBase";
+import type { Funcionalidade } from "../conteudo";
+import { baseEmNumeros, catalogo, modulos, novidades } from "../conteudo";
+import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
+import { Cruzamentos } from "../site/Cruzamentos";
+import { AvisoDeAcesso, ChamadaFinal, linkDaFuncionalidade } from "../site/comum";
 import { Fundo } from "../site/Fundo";
+import { ancora } from "../site/Leitura";
+import { LigadoPeloCnpj } from "../site/LigadoPeloCnpj";
+import { ASSINATURA, REGRAS_DA_BASE, URL_DA_API, linkDoApp } from "../site/textos";
+import { Vitrine } from "../site/Vitrine";
+import { dataPorExtenso } from "./Novidades";
 import {
-  ASSINATURA,
-  FONTES_DOS_DADOS,
-  FRASE_DA_DIFERENCA,
-  PRINCIPIOS,
-  URL_DO_APP,
-  linkDoApp,
-} from "../site/textos";
+  DADOS as RAIO_X_DO_CHOQUE,
+  MOMENTO_DO_RAIO_X,
+  PDF_DO_RAIO_X,
+  RAIO_X,
+} from "./RaioXDoChoque";
 
 export const DADOS = {
   caminho: "/",
+  ferramenta: true,
   titulo: "TickerLab",
   descricao:
-    "Pesquise ativos da B3 e dos EUA, entenda retorno e risco com cada número explicado " +
-    "e gere relatórios em PDF. Nada é recomendação de investimento.",
+    "Coleta segura e auditável das fontes públicas brasileiras para quem analisa empresas: cada " +
+    "número com data, fonte e caminho até o original.",
 };
 
-const ESTILOS = site.estilos_do_relatorio;
-const PDF_DE_EXEMPLO = `/relatorio/exemplo-${exemplo.ticker}.pdf`;
 // o pedaço da assinatura em destaque no título
-const DESTAQUE_DO_TITULO = "Mais inteligência";
+const DESTAQUE_DO_TITULO = "auditáveis";
+const SUBTITULO =
+  "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +
+  "caminho até o original.";
+const SEM_RESPOSTA = "licença em consulta";
+// para quem o site fala (ADR 0099): quem analisa empresas, do M&A à sala de aula
+const PARA_QUEM =
+  "Para M&A, crédito e FIDC, research e sala de aula: números para citar, com a fonte ao lado.";
+// a atualização mais nova das Novidades: alimenta a faixa "O que entrou por último", no fim da página
+const ULTIMA = novidades[0];
+// as páginas do app que a inicial destaca para quem analisa; o texto de cada uma vem do catálogo
+// (src/modulos.py). Backtest, carteira e calculadoras ficam fora da inicial (ADR 0099).
+const PAGINAS_DO_APP_EM_DESTAQUE = ["relatorio-empresa", "busca-por-cnpj", "relatorio-do-setor"];
+const milhares = (n: number) => n.toLocaleString("pt-BR");
 
-/** "2021-10-11" → "11/10/2021" (sem Date: nada de fuso mudando o dia). */
-const dataBr = (iso: string) => iso.split("-").reverse().join("/");
-const corDoSinal = (valor: number) => (valor > 0 ? "alta" : valor < 0 ? "queda" : "");
-
-/** "▲ +545,8%" com a seta escondida do leitor de tela (o sinal já diz se subiu ou caiu). */
-function Variacao({ numero }: { numero: NumeroDoPainel }) {
-  const [seta, ...resto] = numero.texto.split(" ");
-  return (
-    <>
-      <span aria-hidden="true">{seta}</span>
-      {` ${resto.join(" ")}`}
-    </>
-  );
+function funcionalidadePelaPagina(pagina: string): Funcionalidade {
+  for (const modulo of modulos) {
+    const achada = modulo.funcionalidades.find((f) => f.pagina_do_app === pagina);
+    if (achada) return achada;
+  }
+  throw new Error(`Página do app fora do catálogo: ${pagina}`);
 }
 
-// o desenho do painel: a série em base 100 numa caixa de 320 × 96, com folga em cima e embaixo
-const LARGURA_DO_GRAFICO = 320;
-const ALTURA_DO_GRAFICO = 96;
-const FOLGA_DO_GRAFICO = 4;
-
-function pontosDoGrafico(serie: number[]): string {
-  const menor = Math.min(...serie);
-  const faixa = Math.max(...serie) - menor || 1;
-  const util = ALTURA_DO_GRAFICO - 2 * FOLGA_DO_GRAFICO;
-  return serie
-    .map((valor, i) => {
-      const x = (i * LARGURA_DO_GRAFICO) / (serie.length - 1);
-      const y = FOLGA_DO_GRAFICO + ((menor + faixa - valor) / faixa) * util;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
-
-function GraficoDoPainel() {
-  const pontos = pontosDoGrafico(exemplo.serie);
-  const base = `${LARGURA_DO_GRAFICO},${ALTURA_DO_GRAFICO}`;
-  return (
-    <svg
-      className="v2-grafico"
-      viewBox={`0 0 ${LARGURA_DO_GRAFICO} ${ALTURA_DO_GRAFICO}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label={`Preço de fechamento de ${exemplo.codigo} no período, em base 100`}
-    >
-      <defs>
-        <linearGradient id="v2-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={marca.azul} stopOpacity=".45" />
-          <stop offset="1" stopColor={marca.azul} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon className="area" points={`0,${ALTURA_DO_GRAFICO} ${pontos} ${base}`} />
-      <polyline className="linha" pathLength={1} points={pontos} />
-    </svg>
-  );
-}
-
-/** O número principal (Ledger): o retorno total do relatório de exemplo, o desenho e três métricas. */
-function PainelDoExemplo() {
-  const periodo = `${dataBr(exemplo.inicio)} a ${dataBr(exemplo.fim)}`;
+/** Os quatro números da abertura, cada um com a conta recolhida ao lado. */
+function PainelDaBase() {
+  const { totais, ligado_pelo_cnpj: ligado } = catalogo;
+  const { numeros, medido_em_curto } = baseEmNumeros;
   return (
     <div className="v2-painel-pilha">
-      <article
-        className="v2-painel"
-        aria-label={`Números-chave do relatório de exemplo de ${exemplo.codigo}`}
-      >
+      <article className="v2-painel v2-painel-base" aria-labelledby="titulo-da-base">
         <header className="v2-painel-topo">
-          <span className="v2-etiqueta">Relatório de exemplo</span>
-          <span className="ticker">{exemplo.codigo}</span>
+          <span className="v2-etiqueta" id="titulo-da-base">
+            O que a base tem
+          </span>
+          <span className="ticker">Medido em {medido_em_curto}</span>
         </header>
-        <p className="v2-rotulo">Retorno total · {periodo}</p>
-        <p className={`v2-numero ${corDoSinal(exemplo.retorno_total.valor)}`}>
-          <Variacao numero={exemplo.retorno_total} />
-        </p>
-        <p className="v2-apoio">
-          <span className={corDoSinal(exemplo.retorno_ao_ano.valor)}>
-            <Variacao numero={exemplo.retorno_ao_ano} />
-          </span>{" "}
-          ao ano
-        </p>
-        <GraficoDoPainel />
-        <dl className="v2-metricas">
+        <dl className="v2-base-numeros">
           <div>
-            <dt>Maior queda</dt>
-            {/* a maior queda nunca é positiva: a seta é sempre para baixo */}
-            <dd className="queda">
-              <span aria-hidden="true">▼</span>
-              {` ${exemplo.maior_queda.texto}`}
+            <dt>tabelas, cada uma com contrato</dt>
+            <dd className="v2-numero">{milhares(totais.tabelas)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  Contamos as tabelas do catálogo de contratos da base. Cada contrato diz a fonte,
+                  a licença, as datas e a frequência de atualização; tabela nova entra na conta
+                  sozinha.
+                </p>
+              </ComoFoiCalculado>
             </dd>
           </div>
           <div>
-            <dt>Volatilidade</dt>
-            <dd>{exemplo.volatilidade.texto} a.a.</dd>
+            <dt>tabelas ligadas pelo CNPJ</dt>
+            <dd className="v2-numero">{milhares(ligado.tabelas)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  {`Contamos as tabelas do catálogo com uma coluna de CNPJ (ou da raiz dele), mais as da rede que liga empresas, fundos e tickers. Vêm de ${ligado.orgaos} órgãos públicos.`}
+                </p>
+              </ComoFoiCalculado>
+            </dd>
           </div>
           <div>
-            <dt>Sharpe</dt>
-            <dd>{exemplo.sharpe.texto}</dd>
+            <dt>fontes públicas, cada uma com a sua licença</dt>
+            <dd className="v2-numero">{milhares(totais.fontes)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  {`Uma fonte é um órgão ou publicação com a licença que ela mesma publica. ${totais.fontes_em_consulta} delas ainda não responderam por escrito sobre uso comercial: até a resposta, tratamos o dado delas como não comercial.`}
+                </p>
+              </ComoFoiCalculado>
+            </dd>
+          </div>
+          <div>
+            <dt>companhias abertas com demonstrações</dt>
+            <dd className="v2-numero">{milhares(numeros.empresas)}</dd>
+            <dd>
+              <ComoFoiCalculado>
+                <p>
+                  {`CNPJs distintos com ao menos uma demonstração financeira guardada, contados na base em ${medido_em_curto}. São ${milhares(numeros.linhas_de_demonstracoes)} linhas, cada uma com o dia em que o valor ficou público.`}
+                </p>
+              </ComoFoiCalculado>
+            </dd>
           </div>
         </dl>
         <footer className="v2-painel-rodape">
-          <span>Cada número explicado em português</span>
-          <a className="seta" href={PDF_DE_EXEMPLO}>
-            Abrir o PDF
+          <span>Cada tabela com fonte, licença e data</span>
+          <a className="seta" href="/dados.html">
+            A base inteira
           </a>
         </footer>
       </article>
-      <aside className="v2-flutuante" aria-label="Ficha Foi sorte?">
-        <span className="v2-etiqueta v2-etiqueta-ambar">Foi sorte?</span>
-        <p>
-          Um bom resultado no passado pode ser acaso. A ficha mostra se ele resiste quando
-          tiramos a sorte da conta.
-        </p>
-      </aside>
-      <p className="v2-nota">
-        Dados de exemplo do relatório (Yahoo Finance, até {dataBr(exemplo.fim)}). Não é
-        recomendação de investimento.
-      </p>
     </div>
-  );
-}
-
-function Busca() {
-  return (
-    <form
-      className="busca"
-      action={`${URL_DO_APP}/visao-geral`}
-      method="get"
-      role="search"
-      data-busca=""
-      data-app={URL_DO_APP}
-    >
-      <label htmlFor="busca-ticker">Busque um ativo</label>
-      <div className="campo">
-        <input
-          id="busca-ticker"
-          name="ticker"
-          type="text"
-          autoComplete="off"
-          placeholder="PETR4, Petrobras, AAPL, Ibovespa…"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded="false"
-          aria-controls="sugestoes"
-        />
-        <button className="botao primario" type="submit">
-          Analisar
-        </button>
-      </div>
-      <ul id="sugestoes" role="listbox" hidden />
-    </form>
   );
 }
 
@@ -192,9 +134,9 @@ function Heroi() {
     <Fundo>
       <section className="heroi faixa" aria-labelledby="titulo-heroi">
         <div className="heroi-texto">
-          <a className="v2-pilula" href="/produto.html#estrategias">
+          <a className="v2-pilula" href={RAIO_X_DO_CHOQUE.caminho}>
             <span className="v2-ponto" aria-hidden="true" />
-            Novo · ficha “Foi sorte?”
+            Novo · Raio-X do circuit breaker de 26/10
             <span className="v2-pilula-seta" aria-hidden="true">
               →
             </span>
@@ -204,219 +146,177 @@ function Heroi() {
             <span className="v2-degrade">{DESTAQUE_DO_TITULO}</span>
             {depois}
           </h1>
-          <p className="subtitulo">
-            Pesquise ativos, entenda retorno, risco e os documentos oficiais das empresas, teste
-            estratégias no passado e transforme o estudo em relatórios, com cada número
-            explicado em português.
-          </p>
-          <Busca />
-          <p className="exemplos">
-            <span>Experimente:</span>{" "}
-            {site.exemplos.map((e) => (
-              <a
-                key={e.simbolo}
-                className="ticker"
-                href={linkDoApp("visao-geral", { ticker: e.simbolo })}
-              >
-                {e.rotulo}
-              </a>
-            ))}
-          </p>
-          {/* no celular o painel não aparece: o PDF de exemplo fica a um toque por aqui */}
-          <div className="acoes v2-so-no-celular">
-            <a className="botao secundario" href={PDF_DE_EXEMPLO}>
-              Ver um relatório de exemplo (PDF)
+          <p className="subtitulo">{SUBTITULO}</p>
+          <p className="v2-para-quem">{PARA_QUEM}</p>
+          <div className="acoes">
+            <a className="botao primario" href="/dados.html">
+              Ver os dados
+            </a>
+            <a className="botao secundario" href={linkDoApp()}>
+              Abrir o app
             </a>
           </div>
           <AvisoDeAcesso />
+          <div data-busca-base><BuscaDaBase /></div>
         </div>
-        <PainelDoExemplo />
+        <PainelDaBase />
       </section>
     </Fundo>
   );
 }
 
-/** Só códigos e nomes, nenhum preço; a segunda volta existe para a fita emendar sem pulo. */
-function FitaDeAtivos() {
+/** A chamada do estudo do dia, logo abaixo do herói: os números vêm do próprio estudo (dados.json). */
+function EstudoDoDia() {
   return (
-    <section className="v2-fita" aria-label="Alguns dos ativos da busca">
-      <p className="v2-fita-rotulo">
-        {site.total_de_ativos.toLocaleString("pt-BR")} ativos na busca
-      </p>
-      <div className="v2-fita-trilho">
-        <div className="v2-fita-faixa">
-          {[false, true].map((repeticao) => (
-            <ul key={String(repeticao)} aria-hidden={repeticao ? "true" : undefined}>
-              {site.fita.map((ativo) => (
-                <li key={ativo.simbolo}>
-                  <b>{ativo.codigo}</b>
-                  {ativo.nome}
-                </li>
-              ))}
-            </ul>
-          ))}
+    <section className="faixa v2-estudo" aria-labelledby="titulo-estudo-do-dia">
+      <div className="v2-estudo-texto">
+        <p className="olho">
+          Estudo do dia · {MOMENTO_DO_RAIO_X}
+        </p>
+        <h2 id="titulo-estudo-do-dia">
+          <a href={RAIO_X_DO_CHOQUE.caminho}>{RAIO_X.titulo}</a>
+        </h2>
+        <p>
+          Quem caiu mais no circuit breaker de 26/10, e por quê: beta, alta entre os turnos, dívida,
+          tamanho, fundos, elétricas, bancos e a comparação com o Joesley Day.
+        </p>
+        <div className="acoes">
+          <a className="botao primario" href={RAIO_X_DO_CHOQUE.caminho}>
+            Ler o Raio-X
+          </a>
+          <a className="botao secundario" href={PDF_DO_RAIO_X}>
+            Baixar o PDF
+          </a>
         </div>
+      </div>
+      <dl className="v2-estudo-numeros">
+        <div>
+          <dt>Ibovespa no dia</dt>
+          <dd className="queda">{RAIO_X.ibovespa}</dd>
+        </div>
+        <div>
+          <dt>Mediana de {RAIO_X.empresas} empresas</dt>
+          <dd className="queda">{RAIO_X.mediana}</dd>
+        </div>
+        <div>
+          <dt>Caíram 30% ou mais</dt>
+          <dd>{RAIO_X.cairam_30}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function RegrasDaBase() {
+  return (
+    <section className="faixa secao v2-regras" aria-labelledby="titulo-regras">
+      <p className="olho">Método</p>
+      <h2 id="titulo-regras">Por que confiar num número daqui</h2>
+      <p className="subtitulo">
+        Quatro regras valem para toda tabela da base. Abra cada uma para ler como funciona.
+      </p>
+      <div className="grade v2-regras-lista">
+        {REGRAS_DA_BASE.map(([titulo, texto]) => (
+          <ComoFoiCalculado key={titulo} resumo={titulo}>
+            <p>{texto}</p>
+          </ComoFoiCalculado>
+        ))}
       </div>
     </section>
   );
 }
 
-function FontesDosDados() {
+function FontesDaBase() {
+  const { totais, fontes } = catalogo;
   return (
-    <section className="faixa v2-fontes" aria-label="De onde vêm os dados">
+    <section className="faixa secao v2-fontes-da-base" aria-labelledby="titulo-fontes">
       <p className="olho">De onde vêm os dados</p>
-      <ul>
-        {FONTES_DOS_DADOS.map(([nome, oQueVem]) => (
-          <li key={nome}>
-            <strong>{nome}</strong>
-            <span>{oQueVem}</span>
+      <h2 id="titulo-fontes">{`${totais.fontes} fontes públicas, cada uma com a sua licença`}</h2>
+      <p className="subtitulo">
+        {`${totais.fontes_em_consulta} delas ainda não responderam por escrito sobre uso comercial e levam o selo de consulta: até a resposta, tratamos o dado delas como não comercial.`}
+      </p>
+      <ul className="v2-lista-de-fontes">
+        {fontes.map((f) => (
+          <li key={f.licenca}>
+            <strong>{f.orgao}</strong>
+            <span>{f.tabelas === 1 ? "1 tabela" : `${f.tabelas} tabelas`}</span>
+            {f.situacao === "em consulta" ? (
+              <span className="selo breve">{SEM_RESPOSTA}</span>
+            ) : null}
           </li>
         ))}
       </ul>
-      <a className="seta" href="/metodologia.html">
-        Fontes e metodologia
+      <a className="seta" href={`/dados.html#${ancora("De onde vêm os dados")}`}>
+        Cada licença, uma a uma
       </a>
     </section>
   );
 }
 
-// ilustrações dos cartões largos do bento (enfeite: escondidas dos leitores de tela)
-const ILUSTRACOES: Record<string, ReactNode> = {
-  research: (
-    <div className="v2-mini v2-mini-doc" aria-hidden="true">
-      <span className="v2-doc-titulo">Fato relevante · CVM</span>
-      <i />
-      <i />
-      <i className="curta" />
-      <span className="v2-doc-selo">Explicado em português</span>
-    </div>
-  ),
-  estrategias: (
-    <svg className="v2-mini" viewBox="0 0 200 90" aria-hidden="true">
-      <polyline className="ref" points="0,70 30,66 60,68 90,58 120,62 150,50 180,54 200,48" />
-      <polyline
-        className="est"
-        pathLength={1}
-        points="0,74 30,64 60,60 90,46 120,50 150,34 180,30 200,20"
-      />
-      <text x="200" y="14" textAnchor="end">
-        estratégia
-      </text>
-      <text x="200" y="64" textAnchor="end" className="ref-t">
-        comprar e segurar
-      </text>
-    </svg>
-  ),
-};
-
-function CartaoDoBento({ modulo }: { modulo: Modulo }) {
-  const destino = `/produto.html#${modulo.chave}`;
-  if (disponiveis(modulo) === 0) {
-    return (
-      <article className="cartao v2-faixa-cartao breve">
-        <div>
-          <p className="olho">{modulo.objetivo}</p>
-          <h3>
-            {modulo.nome} <span className="selo breve">em breve</span>
-          </h3>
-          <p>{modulo.frase}</p>
-        </div>
-        <a className="seta" href={destino}>
-          Ver o que vem
-        </a>
-      </article>
-    );
-  }
-  const texto = (
-    <>
-      <p className="olho">{modulo.objetivo}</p>
-      <h3>{modulo.nome}</h3>
-      <p>{modulo.frase}</p>
-      <p className="contagem">{contagem(modulo)}</p>
-      <a className="seta" href={destino}>
-        Ver o que tem
-      </a>
-    </>
-  );
-  const ilustracao = ILUSTRACOES[modulo.chave];
-  return ilustracao ? (
-    <article className="cartao v2-larga">
-      <div>{texto}</div>
-      {ilustracao}
-    </article>
-  ) : (
-    <article className="cartao">{texto}</article>
-  );
-}
-
-/** As frentes com ilustração abrem o bento, largas; a ordem das outras é a do Produto. */
-const FRENTES_NO_BENTO = [...MODULOS_DO_PRODUTO].sort(
-  (a, b) => Number(b.chave in ILUSTRACOES) - Number(a.chave in ILUSTRACOES),
-);
-
-function PorQueOTickerLab() {
-  const [comeco, destaque] = FRASE_DA_DIFERENCA;
+/** O que o app acrescenta às análises abertas: três páginas do catálogo, com o texto do Python. */
+function NoApp() {
   return (
-    <div className="escura v2-diferenca">
-      <section className="faixa secao" aria-labelledby="titulo-diferenca">
-        <p className="olho">Por que o TickerLab</p>
-        <h2 id="titulo-diferenca">
-          {comeco} <span className="v2-degrade">{destaque}</span>
-        </h2>
-        <div className="grade tres">
-          {PRINCIPIOS.map(([titulo, texto], i) => (
-            <article key={titulo} className="v2-principio">
-              <span className="numero">{String(i + 1).padStart(2, "0")}</span>
-              <h3>{titulo}</h3>
-              <p>{texto}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-/** O Report Studio: imagens do PDF de verdade, trocando estilo e página (o site.js troca). */
-function Vitrine() {
-  const primeiro = ESTILOS[0].chave;
-  return (
-    <div className="vitrine" data-vitrine="">
-      <div className="controles" role="group" aria-label="Estilo do relatório">
-        {ESTILOS.map((e, i) => (
-          <button
-            key={e.chave}
-            type="button"
-            data-estilo={e.chave}
-            aria-pressed={i === 0 ? "true" : "false"}
-          >
-            {e.nome}
-          </button>
+    <section className="faixa secao v2-no-app" aria-labelledby="titulo-no-app">
+      <p className="olho">No app, com a sua conta</p>
+      <h2 id="titulo-no-app">Da análise aberta ao relatório completo</h2>
+      <p className="subtitulo">
+        As análises acima não pedem login. Com a conta, você escolhe a empresa ou o setor, gera o
+        relatório com a fonte de cada número e guarda o PDF.
+      </p>
+      <div className="grade tres">
+        {PAGINAS_DO_APP_EM_DESTAQUE.map(funcionalidadePelaPagina).map((f) => (
+          <article key={f.nome} className="cartao">
+            <h3>{f.nome}</h3>
+            <p>{f.descricao}</p>
+            <a className="seta" href={linkDaFuncionalidade(f)}>
+              Abrir no app
+            </a>
+          </article>
         ))}
       </div>
-      <div className="folhas">
-        <img
-          src={`/relatorio/${primeiro}-1.webp`}
-          width={560}
-          height={792}
-          loading="lazy"
-          alt={`Capa do relatório de exemplo de ${exemplo.ticker}`}
-          data-pagina="1"
-        />
-        <img
-          src={`/relatorio/${primeiro}-2.webp`}
-          width={560}
-          height={792}
-          loading="lazy"
-          alt="Segunda página do relatório de exemplo, com o resumo executivo e os números-chave"
-          data-pagina="2"
-        />
-      </div>
-      <p className="legenda">
-        Imagens do PDF real gerado pelo app, com dados de exemplo guardados no projeto. Só as
-        cores mudam entre os estilos: os números são os mesmos.
+      <p className="contagem v2-no-app-rodape">
+        Tudo o que o app tem, módulo a módulo, está em <a href="/produto.html">Produto</a>. Para o
+        seu sistema, a mesma base sai pela{" "}
+        <a href={URL_DA_API} rel="noopener">
+          TickerLab Data
+        </a>
+        , a API de dados: beta fechado, documentação aberta.
       </p>
-    </div>
+    </section>
+  );
+}
+
+/** Os três itens mais novos das Novidades: a página mostra que o produto anda, sem texto que envelhece. */
+/** "Relatório do setor: escolha um setor..." → título e descrição, que vira frase (maiúscula). */
+function tituloEDescricao(texto: string): [string, string] {
+  const corte = texto.indexOf(": ");
+  if (corte <= 0) return [texto, ""];
+  const descricao = texto.slice(corte + 2);
+  return [texto.slice(0, corte), descricao.charAt(0).toUpperCase() + descricao.slice(1)];
+}
+
+function UltimasNovidades() {
+  const itens = ULTIMA.novidades.slice(0, 3).map(tituloEDescricao);
+  return (
+    <section className="faixa secao v2-ultimas" aria-labelledby="titulo-ultimas">
+      <p className="olho">{`Novidades · ${dataPorExtenso(ULTIMA.data)}`}</p>
+      <h2 id="titulo-ultimas">O que entrou por último</h2>
+      <p className="subtitulo">
+        O que mudou na última atualização. A lista completa, com as correções, fica na página de
+        novidades.
+      </p>
+      <div className="grade tres">
+        {itens.map(([titulo, texto], i) => (
+          <article key={`${i}-${titulo}`} className="cartao">
+            <h3>{titulo}</h3>
+            <p>{texto}</p>
+          </article>
+        ))}
+      </div>
+      <a className="seta" href={`/novidades.html#${ULTIMA.data}`}>
+        Todas as novidades
+      </a>
+    </section>
   );
 }
 
@@ -424,34 +324,34 @@ export function Inicio() {
   return (
     <>
       <Heroi />
-      <FitaDeAtivos />
-      <FontesDosDados />
-      <section className="faixa secao" aria-labelledby="titulo-frentes">
-        <p className="olho">O que você leva</p>
-        <h2 id="titulo-frentes">Seis frentes, uma plataforma</h2>
-        <div className="v2-bento">
-          {FRENTES_NO_BENTO.map((m) => (
-            <CartaoDoBento key={m.chave} modulo={m} />
-          ))}
-        </div>
-        <p>
-          <a className="seta" href="/produto.html">
-            Tudo o que o TickerLab faz, e o que vem por aí
+      <EstudoDoDia />
+      <Vitrine />
+      <NoApp />
+      <LigadoPeloCnpj />
+      <Cruzamentos />
+      <RegrasDaBase />
+      <FontesDaBase />
+      <UltimasNovidades />
+      <ChamadaFinal
+        titulo="Comece pelo Gratuito"
+        subtitulo={
+          "O plano Gratuito não pede cartão e, até o lançamento, toda conta usa os limites do " +
+          "plano mais completo. O que cada plano inclui está na página de planos."
+        }
+      >
+        <div className="acoes">
+          <a className="botao primario" href={linkDoApp()}>
+            Abrir o app
           </a>
+          <a className="botao secundario" href="/precos.html">
+            Ver os planos
+          </a>
+        </div>
+        <p className="v2-aviso-final">
+          Os dados vêm de fontes públicas e podem ter atraso ou erros. Nada aqui é recomendação de
+          investimento.
         </p>
-      </section>
-      <PorQueOTickerLab />
-      <section id="relatorios" className="faixa secao" aria-labelledby="titulo-estudio">
-        <p className="olho">Report Studio</p>
-        <h2 id="titulo-estudio">Sua pesquisa merece mais que uma tela</h2>
-        <p className="subtitulo">
-          Modelo Executivo ou Pesquisa completa, seções na ordem que você quiser, três estilos e
-          a prévia do PDF de verdade antes de baixar. Toda versão tem resumo, metodologia e os
-          limites da análise.
-        </p>
-        <Vitrine />
-      </section>
-      <ChamadaFinal />
+      </ChamadaFinal>
     </>
   );
 }

@@ -1,0 +1,71 @@
+{
+  "tabela": "antt_siade",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "ferrovia": {
+      "descricao": "Sigla da ferrovia na ANTT (liga à empresa pela B13)",
+      "unidade": "texto"
+    },
+    "mercadoria": {
+      "descricao": "Mercadoria, como a ANTT escreve",
+      "unidade": "texto"
+    },
+    "estacao_de_origem": {
+      "descricao": "Estação de origem",
+      "unidade": "texto"
+    },
+    "uf_de_origem": {
+      "descricao": "UF da estação de origem",
+      "unidade": "texto"
+    },
+    "estacao_de_destino": {
+      "descricao": "Estação de destino",
+      "unidade": "texto"
+    },
+    "uf_de_destino": {
+      "descricao": "UF da estação de destino",
+      "unidade": "texto"
+    },
+    "toneladas_uteis": {
+      "descricao": "Toneladas úteis transportadas (TU)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "tku": {
+      "descricao": "Tonelada-quilômetro útil (TKU)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "ferrovia",
+    "mercadoria",
+    "estacao_de_origem",
+    "estacao_de_destino",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (um CSV por ano)",
+  "atraso": "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido (só uma captura, 14/10/2026); pode atrasar um número, nunca adiantar"
+}

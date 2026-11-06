@@ -1,0 +1,65 @@
+{
+  "tabela": "fre_proventos",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "exercicio": {
+      "descricao": "Fim do exercício social",
+      "unidade": "data (dia)"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE de onde a linha veio",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão desse FRE (1, 2, 3...)",
+      "unidade": "número"
+    },
+    "lucro_ajustado": {
+      "descricao": "Lucro líquido ajustado, base da distribuição",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "dividendo_total": {
+      "descricao": "Total distribuído (dividendos e JCP)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "payout": {
+      "descricao": "Parte do lucro ajustado distribuída",
+      "unidade": "fração (0,25 = 25%)"
+    },
+    "dividendos": {
+      "descricao": "Dividendos declarados",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "jcp": {
+      "descricao": "Juros sobre capital próprio declarados",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "coletado_em": {
+      "descricao": "Quando a carga gravou a linha",
+      "unidade": "data e hora (UTC)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "exercicio",
+    "referencia",
+    "versao"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "coletado_em": "coletado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Carga de uma vez (FRE de 2010 a 2022): a CVM tirou estas tabelas do FRE aberto depois de 2022 (Resolução CVM 59)",
+  "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança"
+}

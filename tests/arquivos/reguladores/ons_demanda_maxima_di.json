@@ -1,0 +1,12 @@
+{
+ "success": true,
+ "result": {
+  "name": "demanda_maxima_di",
+  "resources": [
+   {"format": "CSV", "url": "https://ons-dl-prod-opendata.s3.amazonaws.com/dataset/demanda_maxima_di/DEMANDA_MAXIMA_DI_2026.csv"},
+   {"format": "PARQUET", "url": "https://ons-dl-prod-opendata.s3.amazonaws.com/dataset/demanda_maxima_di/DEMANDA_MAXIMA_DI_2026.parquet"},
+   {"format": "XLSX", "url": "https://ons-dl-prod-opendata.s3.amazonaws.com/dataset/demanda_maxima_di/DEMANDA_MAXIMA_DI_2026.xlsx"},
+   {"format": "PDF", "url": "https://ons-dl-prod-opendata.s3.amazonaws.com/dataset/demanda_maxima_di/dicionario.pdf"}
+  ]
+ }
+}

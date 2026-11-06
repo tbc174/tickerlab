@@ -15,6 +15,7 @@ import sqlalchemy as sa
 from src.banco.modelo import eventos, eventos_versoes, tickers_dos_emissores
 from src.eventos import FONTE_IPE
 from src.links_das_fontes import link_da_fonte
+from src.negociacoes import FONTE_VLMO
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,27 @@ def gravar_tickers(
         ],
     )
     return len(tabela)
+
+
+def _nao_retirado(
+    tabela: sa.Table, ate: datetime | None = None
+) -> sa.ColumnElement[bool]:
+    """Fora: a operação que a versão nova do documento VLMO tirou (achado 7c do Codex).
+
+    Cada evento do VLMO é uma operação de um documento (empresa e mês); se a CVM reapresenta o
+    documento sem ela, as outras sobem de versão e ela fica para trás. Nada é apagado: ela some
+    da leitura, e "como estava em D" (`ate`, em `eventos_versoes`) continua mostrando o passado.
+    """
+    mais_nova = tabela.alias()
+    retirado = sa.exists().where(
+        mais_nova.c.fonte == tabela.c.fonte,
+        mais_nova.c.cnpj == tabela.c.cnpj,
+        mais_nova.c.referencia == tabela.c.referencia,
+        mais_nova.c.versao > tabela.c.versao,
+    )
+    if ate is not None:
+        retirado = retirado.where(mais_nova.c.registrado_em <= ate)
+    return ~sa.and_(tabela.c.fonte == FONTE_VLMO, retirado)
 
 
 def versoes_gravadas(
@@ -215,6 +237,7 @@ def eventos_como_estavam_em(
             eventos_versoes.c.substituido_em.is_(None),
             eventos_versoes.c.substituido_em > momento,
         ),
+        _nao_retirado(eventos_versoes, ate=momento),
     )
     if cnpj is not None:
         consulta = consulta.where(eventos_versoes.c.cnpj == cnpj)
@@ -288,7 +311,9 @@ def eventos_dos_tickers(
     consulta = (
         sa.select(eventos)
         .where(
-            eventos.c.cnpj.in_(list(ticker_do_cnpj)), eventos.c.publicado_em >= desde
+            eventos.c.cnpj.in_(list(ticker_do_cnpj)),
+            eventos.c.publicado_em >= desde,
+            _nao_retirado(eventos),
         )
         .order_by(eventos.c.publicado_em.desc(), eventos.c.materialidade.desc())
         .limit(limite)

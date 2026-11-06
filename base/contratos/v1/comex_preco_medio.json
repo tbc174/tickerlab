@@ -1,0 +1,62 @@
+{
+  "tabela": "comex_preco_medio",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "fluxo": {
+      "descricao": "`exportacao` ou `importacao`",
+      "unidade": "texto"
+    },
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "ncm": {
+      "descricao": "NCM (8 dígitos)",
+      "unidade": "texto"
+    },
+    "urf": {
+      "descricao": "Código da URF (unidade da Receita: porto, aeroporto ou posto)",
+      "unidade": "texto"
+    },
+    "vl_fob_usd": {
+      "descricao": "Valor FOB somado, em US$",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "kg_liquido": {
+      "descricao": "Quilo líquido somado",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "preco_usd_por_kg": {
+      "descricao": "Valor FOB ÷ quilo líquido, em US$ por quilo (vazio com quilo zero)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "fluxo",
+    "competencia",
+    "ncm",
+    "urf",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": false,
+  "frequencia": "Mensal (um CSV por ano e por fluxo)",
+  "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar"
+}

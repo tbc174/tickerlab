@@ -5,7 +5,7 @@ a página, sem internet. Amostras reais e reduzidas: `tests/arquivos/cvm/vlmo_am
 
 import io
 import zipfile
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -190,6 +190,38 @@ def test_gravar_de_novo_nao_duplica_e_versao_nova_troca_o_documento(motor, da_cv
     assert len(guardadas) == len(da_cvm) - len(um) + 1
 
 
+def test_operacao_retirada_na_versao_nova_some_dos_eventos(motor, da_cvm):
+    # achado 7c do Codex: a versão nova do documento VLMO tirou uma operação; o evento dela não
+    # pode continuar no Research (nada é apagado: a versão antiga continua no banco)
+    eventos = ng.eventos_das_negociacoes(da_cvm)
+    documento = eventos["protocolo"].str.rsplit("|", n=2).str[0]
+    do_doc = eventos[documento == "33.000.167/0001-01|2026-03"]
+    assert len(do_doc) == 3
+    corrigido = do_doc.head(1).assign(versao=do_doc["versao"].max() + 1)
+    antes, depois = datetime(2026, 4, 1, tzinfo=UTC), datetime(2026, 4, 5, tzinfo=UTC)
+    with motor.begin() as c:
+        repo_eventos.gravar_tickers(
+            c,
+            pd.DataFrame(
+                [{"ticker": "PETR4", "codigo": "PETR", "cnpj": PETROBRAS,
+                  "empresa": "Petrobras", "valor_mobiliario": "ON"}]
+            ),
+        )  # fmt: skip
+        repo_eventos.gravar_eventos(c, do_doc, fonte=ng.FONTE_VLMO, agora=antes)
+        repo_eventos.gravar_eventos(c, corrigido, fonte=ng.FONTE_VLMO, agora=depois)
+        vistos = repo_eventos.eventos_dos_tickers(c, ["PETR4"], date(2000, 1, 1))
+        no_passado = repo_eventos.eventos_como_estavam_em(c, antes, PETROBRAS)
+        hoje = repo_eventos.eventos_como_estavam_em(c, depois, PETROBRAS)
+    marco = {
+        e.protocolo for e in vistos if e.protocolo.startswith(PETROBRAS + "|2026-03")
+    }
+    assert marco == set(corrigido["protocolo"])
+    assert {l.protocolo for l in no_passado} >= set(do_doc["protocolo"])
+    assert {
+        l.protocolo for l in hoje if l.protocolo.startswith(PETROBRAS + "|2026-03")
+    } == set(corrigido["protocolo"])
+
+
 def test_documentos_lidos(motor):
     with motor.begin() as c:
         repo.marcar_como_lidos(c, ng.FONTE_FORM4, ["a", "b"])
@@ -322,3 +354,24 @@ def test_ativo_sem_cadastro(banco, da_cvm):
     app = _abrir("BTC-USD")
     assert not app.exception
     assert any("não tem cadastro na CVM nem na SEC" in i.value for i in app.info)
+
+
+def test_primeira_entrega_e_a_negociacao_mais_antiga(banco, da_cvm):
+    with banco.begin() as c:
+        assert repo.primeira_entrega(c) is None
+    _coletar(banco, da_cvm)
+    with banco.connect() as c:
+        assert repo.primeira_entrega(c) == datetime.now(FUSO).date() - timedelta(days=5)
+
+
+def test_periodos_de_2_e_5_anos_e_lista_maior(banco, da_cvm):
+    _coletar(banco, da_cvm)
+    app = _abrir()
+    app.button_group(key="dentro_janela").set_value(1826).run()
+    assert not app.exception
+    assert any(
+        "A base tem negociações tornadas públicas desde" in c.value for c in app.caption
+    )
+    app.button_group(key="dentro_tamanho").set_value(50).run()
+    assert not app.exception
+    assert [t for t in app.dataframe if "Saldo" in t.value.columns]

@@ -11,14 +11,15 @@ dia. Mudou a tela, a API ou os dados de exemplo? Regrave:
 
 import json
 import re
-from datetime import date
+from dataclasses import asdict
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from src import analises, comparacao, ficha
+from src import analises, comparacao, ficha, pulse
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -26,16 +27,21 @@ from src.api_v1 import esquemas
 from src.api_v1.contexto import ContextoDoAtivo
 from src.api_v1.rotas import (
     CAPITAL_PADRAO,
+    montar_acontecimentos,
     montar_backtest,
     montar_ficha_do_backtest,
     montar_linha_do_tempo,
+    montar_variacoes,
     montar_visao_geral,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.banco.eventos import Evento
+from src.commodities import painel_de_precos as pdp
+from src.commodities.cafe import pacote_do_mapa
 from src.dados import baixar_dados
 from src.validacao import parametros_numericos
 from tests.ajudantes_da_conta import ir_para
+from tests.test_commodities_cafe_pacote_do_mapa import pacote_de_exemplo
 
 PASTA = Path(__file__).resolve().parent.parent / "web" / "testes" / "app" / "exemplos"
 ARQUIVO = PASTA / "visao_geral.json"
@@ -100,7 +106,7 @@ def exemplo_da_linha_do_tempo() -> dict:
     contexto = _contexto_de_exemplo("PETR4.SA", "2y")
     dias = contexto.fechamento.index
     documentos = (
-        (40, 90, "Fato relevante", "Plano de investimentos", "https://www.rad.cvm.gov.br/exemplo-1"),
+        (40, 90, "Fato relevante", "Aquisição da Refinaria Exemplo", "https://www.rad.cvm.gov.br/exemplo-1"),
         (300, 60, "Comunicado ao mercado", "Produção do trimestre", "javascript:alert(1)"),
         (450, 20, "Aviso aos acionistas", "Data do pagamento", "https://www.rad.cvm.gov.br/exemplo-3"),
     )  # fmt: skip
@@ -278,15 +284,138 @@ def exemplo_da_ficha() -> dict:
     }
 
 
+def exemplo_do_pulse() -> dict:
+    """A parte 2 do Pulse (acontecimentos e variação) com os preços de exemplo: a visita em
+    05/10/2026 às 19h e o "agora" logo depois do último pregão de exemplo (09/10). Os documentos
+    são feitos à mão; um tem um link perigoso, que a tela não pode transformar em link."""
+    visita = datetime(2026, 10, 5, 22, 0, tzinfo=UTC)
+    janela = pulse.Janela(visita, datetime(2026, 10, 9, 23, 0, tzinfo=UTC), False)
+    ativos, _ = pulse.ativos_da_pessoa(
+        ["PETR4.SA", "VALE3.SA"],
+        ["ITUB4.SA"],
+        [("Bancos", ["BBDC4.SA"])],
+        ["WEGE3.SA", "ZZZZ3.SA"],
+    )
+    documentos = (
+        ("PETR4.SA", "Petrobras", "Fato Relevante", "Aquisição da Refinaria Exemplo", "cvm_ipe",
+         "https://www.rad.cvm.gov.br/exemplo-1", date(2026, 10, 8)),
+        ("VALE3.SA", "Vale", "Comunicado ao Mercado", "Produção do trimestre", "cvm_ipe",
+         "javascript:alert(1)", date(2026, 10, 7)),
+        ("PETR4.SA", "Petrobras", "Aviso aos Acionistas", "", "cvm_ipe",
+         "https://www.rad.cvm.gov.br/exemplo-3", date(2026, 9, 20)),
+    )  # fmt: skip
+    eventos = [
+        Evento(
+            ticker=ticker,
+            empresa=empresa,
+            rotulo=rotulo,
+            tema="eventos",
+            materialidade=60,
+            assunto=assunto,
+            referencia=None,
+            publicado_em=publicado_em,
+            link=link,
+            fonte=fonte,
+            protocolo=f"exemplo-{n}",
+            versao=1,
+        )
+        for n, (
+            ticker,
+            empresa,
+            rotulo,
+            assunto,
+            fonte,
+            link,
+            publicado_em,
+        ) in enumerate(documentos)
+    ]
+    variacoes, sem_variacao = montar_variacoes(
+        ativos,
+        janela,
+        lambda ticker, periodo: baixar_dados(ticker, periodo, forcar_exemplo=True),
+    )
+    return {
+        "resposta": {
+            "acontecimentos": [
+                a.model_dump(mode="json")
+                for a in montar_acontecimentos(eventos, ativos, janela, [])
+            ],
+            "variacoes": [v.model_dump(mode="json") for v in variacoes],
+            "sem_variacao": sem_variacao,
+            "avisos_dos_ativos": [pulse.aviso_dos_ativos_de_fora(3)],
+            "sem_ativos": pulse.SEM_ATIVOS,
+            "nota_da_variacao": pulse.NOTA_DA_VARIACAO,
+        }
+    }
+
+
+def _preco_de_exemplo(
+    chave: str, nome: str, inicio: float, com_fmi: bool
+) -> pdp.PrecoDeReferencia:
+    meses = pd.date_range("2025-08-01", "2026-09-01", freq="MS")
+    historico = tuple(
+        pdp.PontoMensal(
+            m.date(), inicio + i / 10, inicio + i / 10 + 0.02 if com_fmi else None
+        )
+        for i, m in enumerate(meses)
+    )
+    ultimo = historico[-1].bm or 0.0
+    um_ano_antes = historico[-1 - pdp.MESES_NO_ANO].bm or 1.0
+    return pdp.PrecoDeReferencia(
+        chave=chave,
+        nome=nome,
+        unidade="US$/kg",
+        ultimo_mes=historico[-1].mes,
+        ultimo_valor=ultimo,
+        variacao_12_meses=(ultimo / um_ano_antes - 1) * 100,
+        historico=historico,
+        com_fmi=com_fmi,
+        nota_das_fontes=None if com_fmi else pdp.NOTA_FONTES_DIFEREM,
+    )
+
+
+def exemplo_de_precos_de_referencia() -> dict:
+    """O painel de preços com séries feitas à mão; `na_tela` é o rótulo do `st.metric` e o texto."""
+    hoje = date(2026, 10, 18)
+    itens = (
+        _preco_de_exemplo(pdp.ARABICA, "Café arábica", 7.0, com_fmi=True),
+        _preco_de_exemplo(pdp.ROBUSTA, "Café robusta", 3.5, com_fmi=True),
+        _preco_de_exemplo("ureia", "Ureia", 0.4, com_fmi=False),
+    )
+    spread = tuple(
+        pdp.PontoDoSpread(a.mes, (a.bm or 0.0) - (r.bm or 0.0))
+        for a, r in zip(itens[0].historico, itens[1].historico, strict=True)
+    )
+    painel = pdp.PainelDePrecos(itens=itens, spread=spread)
+    resposta = esquemas.de_precos_de_referencia(painel, hoje).model_dump(mode="json")
+    na_tela = {
+        f"{i.nome} ({i.unidade})": pdp.formatar_valor(i.ultimo_valor) for i in itens
+    }
+    return {"resposta": resposta, "na_tela": na_tela}
+
+
+def exemplo_do_mapa_do_cafe() -> dict:
+    """O mapa do arábica em novembro com o pacote dos 5 municípios de exemplo (só Linhares tem
+    contorno na malha pequena)."""
+    vista = pacote_do_mapa.montar_vista(pacote_de_exemplo(), "arabica", 11)
+    resposta = esquemas.MapaDoCafeV1.model_validate(asdict(vista)).model_dump(
+        mode="json"
+    )
+    return {"resposta": resposta}
+
+
 EXEMPLOS = {
     "visao_geral": exemplo_da_visao_geral,
     "juros_e_inflacao": exemplo_de_juros,
+    "precos_de_referencia": exemplo_de_precos_de_referencia,
     "linha_do_tempo": exemplo_da_linha_do_tempo,
     "risco": exemplo_do_risco,
     "retorno_mensal": exemplo_do_retorno_mensal,
     "comparacao": exemplo_da_comparacao,
     "backtest": exemplo_do_backtest,
     "ficha": exemplo_da_ficha,
+    "pulse": exemplo_do_pulse,
+    "mapa_do_cafe": exemplo_do_mapa_do_cafe,
 }
 
 
@@ -317,6 +446,22 @@ if __name__ == "__main__":
         arquivo = PASTA / f"{nome}.json"
         arquivo.write_text(_em_json(exemplo()), encoding="utf-8")
         print(f"Gravado: {arquivo}")
+
+
+def test_o_exemplo_do_pulse_tem_o_numero_de_pulse_variacao():
+    """Cada variação do exemplo é a de `pulse.variacao` com os preços de exemplo; a maior
+    mudança vem primeiro; o link perigoso não chega à tela."""
+    gravado = json.loads((PASTA / "pulse.json").read_text(encoding="utf-8"))["resposta"]
+    visita = datetime(2026, 10, 5, 22, 0, tzinfo=UTC)
+    for v in gravado["variacoes"]:
+        precos = baixar_dados(f"{v['ticker']}.SA", "6mo", forcar_exemplo=True)["Close"]
+        esperada = pulse.variacao(f"{v['ticker']}.SA", precos, visita)
+        assert esperada is not None and v["variacao"] == esperada.retorno
+    tamanhos = [abs(v["variacao"]) for v in gravado["variacoes"]]
+    assert tamanhos == sorted(tamanhos, reverse=True)
+    assert gravado["sem_variacao"] == ["ZZZZ3"]
+    links = {a["titulo"]: a["link_do_original"] for a in gravado["acontecimentos"]}
+    assert links["Produção do trimestre"] is None
 
 
 def test_a_ficha_da_api_e_a_da_tela():

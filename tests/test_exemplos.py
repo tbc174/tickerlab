@@ -118,8 +118,15 @@ def test_falha_do_banco_central_fica_no_log(monkeypatch, caplog):
     def cai(*a, **k):
         raise requests.ConnectionError("sem rede")
 
-    monkeypatch.setattr(cdi.requests, "get", cai)
+    monkeypatch.setattr("requests.get", cai)
     monkeypatch.setattr("src.bcb.esperar", lambda _: None)
     with caplog.at_level(logging.WARNING), pytest.raises(cdi.CDIIndisponivelError):
         cdi.baixar_cdi(pd.Timestamp("2026-01-01"), pd.Timestamp("2026-02-01"))
     assert "Banco Central" in caplog.text
+
+
+def test_periodos_longos_devolvem_todo_o_exemplo():
+    """Os exemplos têm 5 anos: 10 anos e "Tudo" mostram o que houver."""
+    cinco = carregar_exemplo("PETR4.SA", "5y")
+    assert len(carregar_exemplo("PETR4.SA", "10y")) >= len(cinco)
+    assert len(carregar_exemplo("PETR4.SA", "max")) >= len(cinco)

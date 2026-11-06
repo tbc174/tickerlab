@@ -106,7 +106,8 @@ def _empresas_e_tickers() -> tuple[pd.DataFrame, pd.DataFrame]:
             "conflito": [False] * 5,
         }
     )
-    ano = pd.Timestamp
+    data = pd.Timestamp
+    # como a `tickers_no_tempo`: da entrega do FCA que trouxe o código até a do que veio sem ele
     tickers = pd.DataFrame(
         {
             "codigo": [
@@ -127,9 +128,9 @@ def _empresas_e_tickers() -> tuple[pd.DataFrame, pd.DataFrame]:
                 "30.306.294/0001-45",
                 "30.306.294/0001-45",
             ],
-            "primeiro_visto": [ano("2010-01-01")] * 6 + [ano("2012-01-01")],
-            "ultimo_visto": [ano("2026-01-01")] * 6
-            + [ano("2017-01-01")],  # BBTG11 saiu
+            "primeiro_visto": [data("2010-05-31")] * 6 + [data("2012-05-31")],
+            "ultimo_visto": [data("2026-05-31")] * 6 + [data("2017-05-31")],
+            "valido_ate": [pd.NaT] * 6 + [data("2018-05-31")],  # BBTG11 saiu
         }
     )
     return empresas, tickers
@@ -157,6 +158,61 @@ def test_banco_da_bolsa_liga_ao_cnpj_e_a_acao():
     assert (ligacao["data_base"] == pd.Timestamp("2025-06-30")).all()
 
 
+def test_instituicao_listada_liga_pelo_proprio_cnpj_e_nao_pelo_do_lider():
+    """Série 3, PR 8: o Banco PAN está no conglomerado do BTG (o líder é o BTG), mas tem ação própria
+    (BPAN4): a instituição individual liga pelo próprio CNPJ; o resto do conglomerado, pelo líder."""
+    cadastro = pd.DataFrame(
+        {
+            "data_base": [pd.Timestamp("2025-06-30")] * 3,
+            "cod_inst": ["59285411", "30306294", BTG],
+            "instituicao": [
+                "BANCO PAN S.A.",
+                "BANCO BTG PACTUAL S.A.",
+                "BTG PACTUAL - PRUDENCIAL",
+            ],
+            "cnpj_raiz": ["30306294"] * 3,  # o IF.data dá o CNPJ do líder a todos
+        }
+    )
+    empresas, tickers = _empresas_e_tickers()
+    pan = "59.285.411/0001-13"
+    empresas = pd.concat(
+        [
+            empresas,
+            pd.DataFrame({"emissor": ["BPAN"], "cnpj": [pan], "conflito": [False]}),
+        ],
+        ignore_index=True,
+    )
+    tickers = pd.concat(
+        [
+            tickers,
+            pd.DataFrame(
+                {
+                    "codigo": ["BPAN4"],
+                    "cnpj": [pan],
+                    "primeiro_visto": [pd.Timestamp("2019-05-31")],
+                    "ultimo_visto": [pd.Timestamp("2026-05-31")],
+                    "valido_ate": [pd.NaT],
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
+    ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, empresas, tickers).set_index(
+        "cod_inst"
+    )
+    assert ligacao.loc["59285411", ["cnpj", "tickers", "ligado_por"]].tolist() == [
+        pan,
+        "BPAN4",
+        bcb_ifdata.PELO_PROPRIO_CNPJ,
+    ]
+    assert ligacao.loc["30306294", "ligado_por"] == bcb_ifdata.PELO_PROPRIO_CNPJ
+    assert ligacao.loc[BTG, ["cnpj", "tickers", "ligado_por"]].tolist() == [
+        "30.306.294/0001-45",
+        "BPAC11",
+        bcb_ifdata.PELO_LIDER,
+    ]
+
+
 def test_ligacao_antes_do_fca_chega_ao_cnpj_mas_nao_a_acao():
     cadastro = bcb_ifdata.ler_cadastro(_ifdata("cadastro_200012.json"))
     empresas, tickers = _empresas_e_tickers()
@@ -165,6 +221,26 @@ def test_ligacao_antes_do_fca_chega_ao_cnpj_mas_nao_a_acao():
     )
     assert ligacao.loc["C0010045", "cnpj"] == "60.746.948/0001-12"
     assert pd.isna(ligacao.loc["C0010045", "tickers"])  # o FCA começa em 2010
+
+
+def test_ticker_so_entra_na_data_base_depois_da_entrega_do_fca():
+    """Série 4, PR 1: o ticker vale da entrega do FCA, não do ano dele. Com o FCA que trouxe o
+    BPAC11 entregue em 15/07/2025, o cadastro de 30/06/2025 ainda não tem o código; o de 30/09, sim."""
+    cadastro = pd.DataFrame(
+        {
+            "data_base": [pd.Timestamp("2025-06-30"), pd.Timestamp("2025-09-30")],
+            "cod_inst": [BTG, BTG],
+            "instituicao": ["BTG PACTUAL - PRUDENCIAL"] * 2,
+            "cnpj_raiz": ["30306294"] * 2,
+        }
+    )
+    empresas, tickers = _empresas_e_tickers()
+    tickers.loc[tickers["codigo"] == "BPAC11", "primeiro_visto"] = pd.Timestamp(
+        "2025-07-15"
+    )
+    ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, empresas, tickers)
+    assert pd.isna(ligacao["tickers"].iloc[0])
+    assert ligacao["tickers"].iloc[1] == "BPAC11"
 
 
 # ---------------------------------------------------------------------------- SCR.data
@@ -216,3 +292,23 @@ def test_scr_meses_do_arquivo_e_publicacao():
         == "https://www.bcb.gov.br/pda/desig/scrdata_2026.zip"
     )
     assert bcb_scr.PRIMEIRO_ANO == 2012
+
+
+def test_cnpj_alfanumerico_atravessa_ifdata():
+    """Banco novo com CNPJ de letras: a raiz do FCA guarda as letras e liga ao líder."""
+    cadastro = pd.DataFrame(
+        {
+            "data_base": [pd.Timestamp("2027-06-30")],
+            "cod_inst": ["C0099999"],
+            "instituicao": ["NOVO BANCO"],
+            "cnpj_raiz": ["12ABC345"],
+        }
+    )
+    emissores = pd.DataFrame(
+        {"emissor": ["NOVO"], "cnpj": ["12.ABC.345/01DE-35"], "conflito": [False]}
+    )
+    tickers = pd.DataFrame(
+        columns=["codigo", "cnpj", "primeiro_visto", "ultimo_visto", "valido_ate"]
+    )
+    ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, emissores, tickers).iloc[0]
+    assert ligacao["cnpj"] == "12.ABC.345/01DE-35"

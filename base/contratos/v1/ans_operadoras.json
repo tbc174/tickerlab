@@ -1,0 +1,109 @@
+{
+  "tabela": "ans_operadoras",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_na_fonte": {
+      "descricao": "O que identifica o registro na fonte",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "razao_social": {
+      "descricao": "Razão social da operadora, como a ANS escreve",
+      "unidade": "texto"
+    },
+    "nome_fantasia": {
+      "descricao": "Nome fantasia, quando a ANS informa",
+      "unidade": "texto"
+    },
+    "modalidade": {
+      "descricao": "Modalidade (Medicina de Grupo, Cooperativa Médica...)",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da sede",
+      "unidade": "texto"
+    },
+    "registrada_em": {
+      "descricao": "Data do registro na ANS",
+      "unidade": "data (dia)"
+    },
+    "descredenciada_em": {
+      "descricao": "Data do descredenciamento (só nas canceladas)",
+      "unidade": "data (dia)"
+    },
+    "motivo_do_descredenciamento": {
+      "descricao": "Motivo, como a ANS escreve (só nas canceladas)",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "`ativas` ou `canceladas`: o arquivo de onde a linha veio",
+      "unidade": "texto"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "situacao",
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "registrada_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "registrada_em": "a_conferir",
+    "descredenciada_em": "a_conferir",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": true,
+  "frequencia": "Mensal (a ANS recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+  "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que a coleta entrou, 04/11/2026 para estas fontes)"
+}

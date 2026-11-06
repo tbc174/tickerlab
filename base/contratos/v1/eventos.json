@@ -1,0 +1,96 @@
+{
+  "tabela": "eventos",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "protocolo": {
+      "descricao": "Protocolo de entrega na CVM",
+      "unidade": "texto"
+    },
+    "versao": {
+      "descricao": "Versão da entrega (fica a mais nova)",
+      "unidade": "número inteiro"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "categoria": {
+      "descricao": "Categoria do documento, como a CVM publica",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "Tipo do documento, como a CVM publica (pode vir vazio)",
+      "unidade": "texto"
+    },
+    "assunto": {
+      "descricao": "Assunto escrito pela empresa",
+      "unidade": "texto"
+    },
+    "rotulo": {
+      "descricao": "Nome curto do tipo de documento (`src/eventos.py`)",
+      "unidade": "texto"
+    },
+    "tema": {
+      "descricao": "resultados, proventos, eventos ou risco",
+      "unidade": "texto"
+    },
+    "materialidade": {
+      "descricao": "Quanto o tipo de documento costuma importar (escolha editorial)",
+      "unidade": "0 a 100"
+    },
+    "referencia": {
+      "descricao": "Data a que o documento se refere",
+      "unidade": "data (dia)"
+    },
+    "publicado_em": {
+      "descricao": "Data de entrega à CVM",
+      "unidade": "data (dia)"
+    },
+    "link": {
+      "descricao": "Endereço do documento original no sistema da CVM",
+      "unidade": "texto"
+    },
+    "ano_do_arquivo": {
+      "descricao": "Ano do arquivo da CVM de onde a linha veio",
+      "unidade": "ano"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "protocolo",
+    "versao"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "publicado_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados (o IPE da CVM muda todo dia)",
+  "atraso": "Nenhum além da entrega: o documento vale a partir de `publicado_em`"
+}

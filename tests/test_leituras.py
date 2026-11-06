@@ -4,7 +4,7 @@ fatos relevantes da CVM. Sem internet: a SEC e a CVM são simuladas."""
 import json
 import uuid
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 import sqlalchemy as sa
@@ -13,7 +13,7 @@ from scripts import atualizar_leituras_cvm
 from src import coleta_sec, leitura, topicos, topicos_modelo
 from src import eventos_sec as sec
 from src.banco import leituras as repo
-from src.banco.modelo import eventos
+from src.banco.modelo import eventos, leituras
 from src.eventos import FONTE_IPE
 from src.relatorios import FUSO
 from tests.test_fundamentos_sec import _abrir, _coletar_apple
@@ -25,6 +25,7 @@ from tests.test_topicos_modelo import ClienteDeMentira
 CIK = 320193
 CHAVE = sec.cik_como_chave(CIK)
 LINK_DA_CVM = "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?numProtocolo="
+OLE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 100  # um .doc antigo
 RISCO_NOVO = (
     "Tariffs imposed on imported semiconductors could materially increase our costs, and "
     "further tariffs and export restrictions may disrupt our supply chain."
@@ -141,6 +142,40 @@ def test_fatos_sem_leitura(banco):
         f"{LINK_DA_CVM}novo",
         "Fato Relevante",
     )
+
+
+def test_fato_reapresentado_depois_do_resumo_volta_para_a_fila(banco):
+    # achado 7b do Codex: a CVM reapresentou o fato (versão nova) depois que ele foi lido; o
+    # resumo velho não pode continuar na tela como se fosse do documento novo
+    lido, reapresentado = (
+        datetime(2026, 10, 10, tzinfo=UTC),
+        datetime(2026, 10, 11, tzinfo=UTC),
+    )
+    with banco.begin() as c:
+        _fato(c, "fato", date(2026, 10, 10))
+        repo.gravar_leitura(
+            c, FONTE_IPE, "fato", repo.RESUMO, "x", None, {"a": "velho"}
+        )
+        c.execute(sa.update(leituras).values(lido_em=lido))
+        c.execute(
+            sa.update(eventos)
+            .where(eventos.c.protocolo == "fato")
+            .values(versao=2, ingerido_em=reapresentado)
+        )
+    with banco.connect() as c:
+        pendentes = repo.fatos_sem_leitura(
+            c, FONTE_IPE, "Fato Relevante", date(2026, 9, 1), 10
+        )
+        assert [p[0] for p in pendentes] == ["fato"]
+        assert repo.resumos(c, FONTE_IPE, ["fato"]) == {}
+    with banco.begin() as c:  # lido de novo: sai da fila e o resumo novo aparece
+        repo.gravar_leitura(c, FONTE_IPE, "fato", repo.RESUMO, "x", None, {"a": "novo"})
+    with banco.connect() as c:
+        assert (
+            repo.fatos_sem_leitura(c, FONTE_IPE, "Fato Relevante", date(2026, 9, 1), 10)
+            == []
+        )
+        assert repo.resumos(c, FONTE_IPE, ["fato"]) == {"fato": {"a": "novo"}}
 
 
 def test_fato_com_link_de_fora_da_cvm_nao_e_baixado(banco):
@@ -270,8 +305,96 @@ def cvm(banco, monkeypatch):
         _fato(c, "f2", hoje)
     respostas: list[bytes] = []
     monkeypatch.setattr(atualizar_leituras_cvm, "baixar", lambda url: respostas.pop(0))
-    monkeypatch.setattr(atualizar_leituras_cvm.time, "sleep", lambda s: None)
+    monkeypatch.setattr(atualizar_leituras_cvm, "esperar", lambda s: None)
     return respostas
+
+
+def _lote(tmp_path, *protocolos):
+    """O arquivo do lote de medição do leitor (o mesmo formato do IPE da CVM, separado por ;)."""
+    linhas = ["Protocolo_Entrega;CNPJ_Companhia;Data_Entrega;Link_Download;Assunto"]
+    linhas += [
+        f"{p};22.222.222/0001-22;2019-05-10;{LINK_DA_CVM}{p};Fato Relevante"
+        for p in protocolos
+    ]
+    caminho = tmp_path / "lote.csv"
+    caminho.write_text("\n".join(linhas), encoding="utf-8")
+    return caminho
+
+
+def test_lote_de_medicao_completa_o_dia_depois_dos_recentes(banco, cvm, tmp_path):
+    """Plano do leitor: os fatos antigos do lote (que não estão no banco) entram até o máximo."""
+    cvm.extend([_pdf(" ".join(FATO.split()))] * 3)
+    lote = _lote(tmp_path, "l1", "l2", "l3")
+    assert atualizar_leituras_cvm.main(["--maximo", "3", "--lote", str(lote)]) == 0
+    assert cvm == []  # f1 e f2 (recentes) + 1 do lote
+    with banco.connect() as c:
+        lidos = repo.lidos(
+            c, FONTE_IPE, repo.TOPICO, ["f1", "f2", "l1", "l2", "l3"], topicos.VERSAO
+        )
+    assert lidos == {"f1", "f2", "l1"}
+
+
+def test_lote_ja_lido_nao_e_baixado_de_novo(banco, cvm, tmp_path):
+    lote = _lote(tmp_path, "l1")
+    with banco.begin() as c:
+        repo.gravar_leitura(
+            c, FONTE_IPE, "l1", repo.TOPICO, "x", None,
+            asdict(topicos.topico_do_titulo("Fato Relevante")), versao=topicos.VERSAO,
+        )  # fmt: skip
+    cvm.extend([_pdf(" ".join(FATO.split()))] * 2)
+    assert atualizar_leituras_cvm.main(["--lote", str(lote)]) == 0
+    assert cvm == []  # só os dois recentes
+
+
+def test_lote_com_link_de_fora_da_cvm_e_ignorado(tmp_path):
+    caminho = tmp_path / "lote.csv"
+    caminho.write_text(
+        "Protocolo_Entrega;CNPJ_Companhia;Data_Entrega;Link_Download;Assunto\n"
+        "l1;x;2019-05-10;https://exemplo.com/l1;Fato Relevante\n",
+        encoding="utf-8",
+    )
+    assert atualizar_leituras_cvm.ler_lote(caminho) == []
+
+
+# o IPE de 2003 da CVM vem sem Protocolo_Entrega (linha 125 do lote v1: Banco do Brasil, 25/06/2003)
+LINK_SEM_PROTOCOLO = (
+    "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE"
+    "&CodigoInstituicao=1&numProtocolo=11836&numSequencia=0&numVersao=0"
+)
+
+
+def _lote_sem_protocolo(tmp_path, link=LINK_SEM_PROTOCOLO):
+    caminho = tmp_path / "lote.csv"
+    caminho.write_text(
+        "Protocolo_Entrega;CNPJ_Companhia;Data_Entrega;Link_Download;Assunto\n"
+        f";00.000.000/0001-91;2003-06-25;{link};Fato Relevante\n",
+        encoding="utf-8",
+    )
+    return caminho
+
+
+def test_lote_sem_protocolo_usa_o_numero_do_link(tmp_path):
+    """A mesma chave dos eventos do banco (src.eventos.identificador): "rad-<numProtocolo>"."""
+    [(protocolo, *_)] = atualizar_leituras_cvm.ler_lote(_lote_sem_protocolo(tmp_path))
+    assert protocolo == "rad-11836"
+
+
+def test_lote_sem_protocolo_nem_numero_no_link_e_ignorado(tmp_path):
+    """Sem chave nenhuma a leitura não teria como ser achada depois: fica de fora."""
+    link = "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext"
+    assert atualizar_leituras_cvm.ler_lote(_lote_sem_protocolo(tmp_path, link)) == []
+
+
+def test_lote_sem_protocolo_lido_nao_e_baixado_de_novo(banco, cvm, tmp_path):
+    lote = _lote_sem_protocolo(tmp_path)
+    cvm.extend([_pdf(" ".join(FATO.split()))] * 3)
+    assert atualizar_leituras_cvm.main(["--lote", str(lote)]) == 0
+    assert cvm == []  # os dois recentes + o do lote
+    with banco.connect() as c:
+        assert repo.lidos(
+            c, FONTE_IPE, repo.TOPICO, ["rad-11836", ""], topicos.VERSAO
+        ) == {"rad-11836"}
+    assert atualizar_leituras_cvm.main(["--lote", str(lote)]) == 0  # nada novo a baixar
 
 
 def test_coleta_da_cvm_grava_os_resumos(banco, cvm):
@@ -294,7 +417,10 @@ def test_coleta_da_cvm_grava_o_assunto_pelo_texto(banco, cvm):
         lidos = repo.topicos_dos_fatos(
             c, FONTE_IPE, [("f1", "Fato Relevante"), ("f2", "Fato Relevante")]
         )
-        assert repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2"]) == {"f1", "f2"}
+        assert repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2"], topicos.VERSAO) == {
+            "f1",
+            "f2",
+        }
     assert {(t.principal, t.metodo) for t in lidos.values()} == {
         ("AQUISICAO", "regra_texto"),
         ("OUTROS", "regra_titulo"),
@@ -336,8 +462,43 @@ def test_coleta_da_cvm_para_no_limite_de_downloads(banco, cvm):
 
 
 def test_pdf_ilegivel_guarda_o_motivo():
-    resultado = atualizar_leituras_cvm.ler(b"%PDF-1.4 lixo %%EOF")
-    assert resultado == {"motivo": "PDF ilegível.", "versao": leitura.VERSAO}
+    lido = leitura.ler_documento(b"%PDF-1.4 lixo %%EOF")
+    assert atualizar_leituras_cvm.ler(lido) == {
+        "motivo": "PDF ilegível.",
+        "versao": leitura.VERSAO,
+    }
+
+
+def test_resumo_guarda_de_onde_veio_o_texto():
+    """Auditável: o resumo diz se o texto veio da camada do PDF ou do OCR (e quantas páginas)."""
+    pelo_texto = atualizar_leituras_cvm.ler(leitura.ler_documento(_pdf(FATO)))
+    assert pelo_texto["origem"] == leitura.TEXTO and "paginas_por_ocr" not in pelo_texto
+    pelo_ocr = atualizar_leituras_cvm.ler(
+        leitura.TextoDoDocumento(FATO, leitura.OCR, None, paginas=3, paginas_por_ocr=3)
+    )
+    assert pelo_ocr["origem"] == leitura.OCR and pelo_ocr["paginas_por_ocr"] == 3
+    assert "frases" in pelo_ocr
+
+
+def test_documento_que_nao_e_pdf_nao_para_a_fila(banco, cvm):
+    """Um .doc antigo (2003 a 2014) fica com o motivo e o assunto pelo título; o dia segue."""
+    cvm.extend([OLE, _pdf(" ".join(FATO.split()))])
+    assert atualizar_leituras_cvm.main([]) == 0
+    assert cvm == []  # pediu os dois
+    with banco.connect() as c:
+        guardados = repo.resumos(c, FONTE_IPE, ["f1", "f2"])
+        assert repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2"], topicos.VERSAO) == {
+            "f1",
+            "f2",
+        }
+    assert guardados["f1"]["motivo"] == "O documento não é PDF (word): não lido."
+    assert "frases" in guardados["f2"]
+
+
+def test_pdf_cortado_para_a_fila_como_o_limite(banco, cvm):
+    cvm.extend([_pdf("cortado")[:200], _pdf("nunca pedido")])
+    assert atualizar_leituras_cvm.main([]) == 0
+    assert len(cvm) == 1
 
 
 # --- telas ----------------------------------------------------------------------------------------

@@ -1,0 +1,180 @@
+# Como cada papel da B3 aparece nas tabelas do pregão do dia (src/pregao_do_dia.py). Só o nome pelo qual a
+# empresa é conhecida, sem situação que muda (recuperação judicial etc.). Papel que não está aqui usa o nome do
+# catálogo (conteudo/catalogo_de_ativos.csv) sem a classe e sem o "S.A.".
+simbolo,empresa
+ABCB4,ABC Brasil
+ABEV3,Ambev
+AGRO3,BrasilAgro
+ALLD3,Allied
+ALOS3,Allos
+ALPA4,Alpargatas
+ALUP11,Alupar
+AMER3,Americanas
+ANIM3,Ânima
+ARML3,Armac
+ASAI3,Assaí
+AUAU3,União Pet
+AURE3,Auren
+AXIA3,Axia (ex-Eletrobras)
+AXIA6,Axia (ex-Eletrobras)
+AXIA7,Axia (ex-Eletrobras)
+AZEV3,Azevedo & Travassos
+AZEV4,Azevedo & Travassos
+AZUL3,Azul
+AZZA3,Azzas 2154
+BBAS3,Banco do Brasil
+BBDC3,Bradesco
+BBDC4,Bradesco
+BBSE3,BB Seguridade
+BEEF3,Minerva
+BHIA3,Casas Bahia
+BIOM3,Biomm
+BLAU3,Blau
+BMGB4,BMG
+BMOB3,Bemobi
+BPAC11,BTG Pactual
+BRAP4,Bradespar
+BRAV3,Brava Energia
+BRBI11,BR Partners
+BRKM5,Braskem
+BRSR6,Banrisul
+CAML3,Camil
+CASH3,Méliuz
+CBAV3,CBA
+CLSC4,Celesc
+CMIG3,Cemig
+CMIG4,Cemig
+CMIN3,CSN Mineração
+COGN3,Cogna
+CPFE3,CPFL Energia
+CPLE3,Copel
+CSAN3,Cosan
+CSED3,Cruzeiro do Sul
+CSMG3,Copasa
+CSUD3,CSU Digital
+CURY3,Cury
+CVCB3,CVC
+CXSE3,Caixa Seguridade
+CYRE3,Cyrela
+CYRE4,Cyrela
+DASA3,Dasa
+DESK3,Desktop
+DIRR3,Direcional
+DXCO3,Dexco
+ECOR3,EcoRodovias
+EGIE3,Engie Brasil
+EMBJ3,Embraer
+ENEV3,Eneva
+ENGI11,Energisa
+EQTL3,Equatorial
+ESPA3,Espaçolaser
+EVEN3,Even
+EZTC3,EZTEC
+FESA4,Ferbasa
+FIQE3,Unifique
+FLRY3,Fleury
+FRAS3,Frasle
+GGBR4,Gerdau
+GGPS3,GPS
+GMAT3,Grupo Mateus
+GOAU4,Metalúrgica Gerdau
+GRND3,Grendene
+HAPV3,Hapvida
+HBSA3,Hidrovias do Brasil
+HYPE3,Hypera
+IGTI11,Iguatemi
+INTB3,Intelbras
+IRBR3,IRB
+ISAE4,ISA Energia
+ITSA3,Itaúsa
+ITSA4,Itaúsa
+ITUB3,Itaú Unibanco
+ITUB4,Itaú Unibanco
+JHSF3,JHSF
+JSLG3,JSL
+KEPL3,Kepler Weber
+KLBN11,Klabin
+LAVV3,Lavvi
+LEVE3,Mahle Metal Leve
+LIGT3,Light
+LJQQ3,Quero-Quero
+LOGG3,LOG
+LREN3,Lojas Renner
+LWSA3,LWSA
+MBRF3,MBRF
+MDIA3,M. Dias Branco
+MDNE3,Moura Dubeux
+MGLU3,Magazine Luiza
+MILS3,Mills
+MOTV3,Motiva
+MOVI3,Movida
+MRVE3,MRV
+MULT3,Multiplan
+MYPK3,Iochpe-Maxion
+NATU3,Natura
+ONCO3,Oncoclínicas
+OPCT3,OceanPact
+ORVR3,Orizon
+PASS3,Compass
+PCAR3,GPA
+PETR3,Petrobras
+PETR4,Petrobras
+PGMN3,Pague Menos
+PINE4,Pine
+PLPL3,Plano & Plano
+PMAM3,Paranapanema
+POMO3,Marcopolo
+POMO4,Marcopolo
+POSI3,Positivo
+PRIO3,Prio
+PSSA3,Porto Seguro
+QUAL3,Qualicorp
+RADL3,Raia Drogasil
+RAIL3,Rumo
+RAPT4,Randoncorp
+RCSL4,Recrusul
+RDOR3,Rede D'Or
+RECV3,PetroReconcavo
+RENT3,Localiza
+RENT4,Localiza
+RIAA3,Riachuelo
+SANB3,Santander Brasil
+SANB4,Santander Brasil
+SANB11,Santander Brasil
+SAPR4,Sanepar
+SAPR11,Sanepar
+SAUD3,Bradsaúde
+SBFG3,Grupo SBF
+SBSP3,Sabesp
+SEER3,Ser Educacional
+SIMH3,Simpar
+SLCE3,SLC Agrícola
+SMFT3,Smart Fit
+SMTO3,São Martinho
+SOJA3,Boa Safra
+SUZB3,Suzano
+TAEE11,Taesa
+TASA4,Taurus
+TEND3,Tenda
+TFCO4,Track & Field
+TGMA3,Tegma
+TIMS3,TIM
+TOTS3,Totvs
+TTEN3,Três Tentos
+TUPY3,Tupy
+UGPA3,Ultrapar
+UNIP6,Unipar
+USIM3,Usiminas
+USIM5,Usiminas
+VALE3,Vale
+VAMO3,Vamos
+VBBR3,Vibra
+VIVA3,Vivara
+VIVT3,Vivo
+VLID3,Valid
+VTRU3,Vitru
+VULC3,Vulcabras
+VVEO3,Viveo
+WEGE3,WEG
+WIZC3,Wiz
+YDUQ3,Yduqs

@@ -22,14 +22,15 @@ from src.planos import LimiteDoPlanoError
 
 log = logging.getLogger("tickerlab.conta")
 
-# {alvo: endereço do link criado nesta sessão} e {alvo: mensagem de erro}
+# {alvo: (endereço do link criado nesta sessão, de quê)} e {alvo: (mensagem de erro, de quê)};
+# "de quê" é a impressão do que estava na tela (a ficha) ou None (o PDF, que não muda)
 CHAVE_DOS_LINKS_CRIADOS = "links_compartilhados_criados"
 CHAVE_DOS_ERROS = "links_compartilhados_erros"
 
 CriarLink = Callable[[sa.Connection, int], str]  # (conexão, dias) → código
 
 
-def _criar(alvo: str, criar: CriarLink) -> None:
+def _criar(alvo: str, criar: CriarLink, de: str | None) -> None:
     """Botão "Criar o link": guarda o endereço só na sessão (o banco fica com o hash)."""
     erros = st.session_state.setdefault(CHAVE_DOS_ERROS, {})
     erros.pop(alvo, None)
@@ -38,19 +39,27 @@ def _criar(alvo: str, criar: CriarLink) -> None:
         with obter_engine().begin() as conexao:
             codigo = criar(conexao, dias)
     except (LimiteDoPlanoError, ValueError) as erro:
-        erros[alvo] = str(erro)
+        erros[alvo] = (str(erro), de)
         return
     except Exception:
         log.exception("Falha ao criar um link compartilhado")
-        erros[alvo] = "Não consegui criar o link agora. Tente de novo em instantes."
+        erros[alvo] = (
+            "Não consegui criar o link agora. Tente de novo em instantes.",
+            de,
+        )
         return
     st.session_state.setdefault(CHAVE_DOS_LINKS_CRIADOS, {})[alvo] = (
-        comp.endereco_do_link(codigo)
+        comp.endereco_do_link(codigo),
+        de,
     )
 
 
 def botao_de_compartilhar(
-    alvo: str, tipo: str, criar: CriarLink, onde: DeltaGenerator | None = None
+    alvo: str,
+    tipo: str,
+    criar: CriarLink,
+    onde: DeltaGenerator | None = None,
+    de: str | None = None,
 ) -> None:
     """O "Compartilhar": prazo, o que fica visível e o botão. `alvo` é a chave dos widgets."""
     onde = onde if onde is not None else st.container()
@@ -68,17 +77,28 @@ def botao_de_compartilhar(
             type="primary",
             key=f"{alvo}_criar",
             on_click=_criar,
-            args=(alvo, criar),
+            args=(alvo, criar, de),
         )
 
 
-def mostrar_link_criado(alvo: str, onde: DeltaGenerator | None = None) -> None:
-    """O link desta sessão (uma vez só: depois, só a impressão fica no banco) ou o erro."""
+def _desta_tela(guardados: dict, alvo: str, de: str | None) -> str | None:
+    """O que foi guardado para `alvo`, só se veio do que está na tela agora."""
+    texto, origem = guardados.get(alvo, (None, None))
+    return texto if origem == de else None
+
+
+def mostrar_link_criado(
+    alvo: str, onde: DeltaGenerator | None = None, de: str | None = None
+) -> None:
+    """O link desta sessão (uma vez só: depois, só a impressão fica no banco) ou o erro.
+
+    `de` é a impressão do que está na tela: o link (ou o erro) de outra ficha não aparece.
+    """
     onde = onde if onde is not None else st.container()
-    erro = st.session_state.get(CHAVE_DOS_ERROS, {}).get(alvo)
+    erro = _desta_tela(st.session_state.get(CHAVE_DOS_ERROS, {}), alvo, de)
     if erro:
         onde.error(erro)
-    endereco = st.session_state.get(CHAVE_DOS_LINKS_CRIADOS, {}).get(alvo)
+    endereco = _desta_tela(st.session_state.get(CHAVE_DOS_LINKS_CRIADOS, {}), alvo, de)
     if endereco:
         onde.success(
             "Link criado. Ele abre sem login, até o prazo ou até você revogar."
@@ -96,16 +116,19 @@ def compartilhar_ficha(
         return
     fonte = comp.fonte_dos_precos(pedido.dados.attrs.get("origem"))
 
-    def criar(conexao: sa.Connection, dias: int) -> str:
-        congelada = comp.congelar_ficha(
+    def congelar() -> dict:
+        return comp.congelar_ficha(
             resultado, pedido, ticker, texto_das_tentativas, fonte, datetime.now(UTC)
         )
+
+    def criar(conexao: sa.Connection, dias: int) -> str:
         return links.criar_link_da_ficha(
-            conexao, usuario.id, usuario.plano, congelada, dias
+            conexao, usuario.id, usuario.plano, congelar(), dias
         )
 
-    botao_de_compartilhar("compartilhar_ficha", "ficha", criar)
-    mostrar_link_criado("compartilhar_ficha")
+    desta_ficha = comp.impressao_da_ficha(congelar())
+    botao_de_compartilhar("compartilhar_ficha", "ficha", criar, de=desta_ficha)
+    mostrar_link_criado("compartilhar_ficha", de=desta_ficha)
 
 
 def compartilhar_pdf(

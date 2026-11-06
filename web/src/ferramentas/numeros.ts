@@ -32,3 +32,14 @@ export function formatarPorcentagem(fracao: number, casas = 2): string {
   const formato = casas === 2 ? DECIMAL : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: casas });
   return `${formato.format(fracao * 100)}%`;
 }
+
+const CURTO = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+
+/** Para o eixo dos gráficos: 800 → "R$ 800"; 30000 → "R$ 30 mil"; 1500000 → "R$ 1,5 mi". */
+export function formatarReaisCurto(valor: number): string {
+  const sinal = valor < 0 ? "−" : "";
+  const absoluto = Math.abs(valor);
+  if (absoluto >= 1e6) return `${sinal}R$ ${CURTO.format(absoluto / 1e6)} mi`;
+  if (absoluto >= 1e3) return `${sinal}R$ ${CURTO.format(absoluto / 1e3)} mil`;
+  return `${sinal}R$ ${CURTO.format(absoluto)}`;
+}

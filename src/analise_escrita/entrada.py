@@ -1,0 +1,338 @@
+"""A entrada do modelo: a ficha da empresa (`relatorio_empresa.montar`) com um id por número.
+
+Cada item vira uma linha com o contrato do número (valor, medido em, fonte, comparação ou o motivo de
+faltar), cada linha de tabela, parágrafo e ponto também ganha id, e as lacunas da base entram como
+linhas próprias: o modelo cita o que falta do mesmo jeito que cita um número. A porta 1 confere a
+análise contra estas linhas, e o hash diz se a análise guardada ainda vale para a ficha de agora.
+
+Fora da entrada: a seção de valuation, o dividend yield e o preço da ação (a D3 mudada em 20/10/2026
+liberou o preço do Yahoo na tela e no PDF da ficha, não no texto publicado da análise).
+"""
+
+import hashlib
+import json
+from collections import Counter
+from collections.abc import Iterator
+from datetime import date
+from typing import Any
+
+from base import dossie as dossie_da_base
+from src.analise_escrita import numeros
+from src.enderecos_das_fontes import paragrafo_sem_endereco, separar
+from src.relatorio_empresa import (
+    ANEXO_DE_ANOS,
+    COMO_SAI_O_DY,
+    COMO_SAI_O_DY_MEDIO,
+    EM_ABERTO,
+    FONTE_DO_ANEXO,
+    FONTE_DOS_MULTIPLOS,
+    LIMITE_DO_PRECO,
+    Relatorio,
+    nome_da_tabela,
+)
+from src.rotulos_ia import mascarar_pessoas
+from src.setores import grupo_do_setor
+
+VERSAO = 1
+SECOES_FORA = ("valuation",)  # números com o preço da ação
+TRECHO_DO_PRECO = (
+    "Preço da ação"  # o parágrafo da metodologia que diz de onde vem o preço
+)
+GRUPOS_DE_CONCESSAO = ("energia", "saneamento", "transporte")
+CONTROLADOR = "ficha_tecnica.controlador"
+LACUNA_SEGMENTOS = "lacuna.segmentos"
+LACUNA_CONCESSAO = "lacuna.concessao"
+LACUNAS = {
+    LACUNA_SEGMENTOS: (
+        "A base não separa a receita nem o lucro por segmento de negócio: as demonstrações da ficha "
+        "são as consolidadas da companhia."
+    ),
+    LACUNA_CONCESSAO: (
+        "A base não separa o investimento na concessão (ativo de contrato e intangível de "
+        "concessão) do capex: o capex da ficha pode não mostrar todo o investimento na rede."
+    ),
+}
+# o item vira só estes campos (a nota em letra miúda e a chave interna ficam de fora)
+CAMPOS_DO_ITEM = {
+    "nome": "nome",
+    "texto": "texto",
+    "valor": "valor",
+    "unidade": "unidade",
+    "base": "medido_em",
+    "fonte": "fonte",
+    "comparacao": "comparacao",
+    "sem_comparacao": "sem_comparacao",
+    "motivo": "motivo",
+    "nota": "nota",
+    "nota_texto": "nota_texto",
+}
+
+# Título que mudou na ficha depois de análises publicadas: a entrada guarda o nome de quando elas foram
+# escritas, senão o hash muda e o texto delas sai do relatório. Volta para o nome da ficha na próxima
+# rodada de textos (o Tiago escolheu assim em 23/10, na troca do título da ponte).
+NOMES_CONGELADOS_NA_ENTRADA = {
+    "ponte": "Da dívida líquida do ano anterior à de agora",
+}
+
+# Números que entraram na ficha depois de análises publicadas (os indicadores sem preço, linha 54 da
+# fila, 24/10): ficam fora da entrada pelo mesmo motivo do nome congelado acima, e entram na próxima
+# rodada de textos.
+ITENS_FORA_DA_ENTRADA = frozenset(
+    {
+        "margem_ebitda",
+        "roa",
+        "divida_liquida_sobre_ebitda",
+        "divida_liquida_sobre_ebit",
+        "passivos_sobre_ativos",
+        "pl_sobre_ativos",
+        "liquidez_corrente",
+        "dividendo_por_acao",
+        "payout",
+        "crescimento_do_dividendo",
+        "acoes_em_circulacao",
+        # free float e tag along na ficha técnica (linha 403, 05/11)
+        "free_float",
+        "tag_along",
+        # os de preço da linha 55 (25/10): fora como todo número com o preço, e fora também das
+        # perguntas em aberto dos limites
+        "dividend_yield_medio",
+        "p_ebitda",
+        "p_ebit",
+        "p_fcf",
+        "p_ativo",
+    }
+)
+COLUNAS_FORA_DA_ENTRADA = frozenset(
+    {"dividendo_por_acao", "dividendos_fre_por_acao", "jcp_fre_por_acao"}
+)
+
+PessoaNaEntradaError = dossie_da_base.PessoaNaFichaError
+
+
+def _nome_na_entrada(tabela: str) -> str:
+    return NOMES_CONGELADOS_NA_ENTRADA.get(tabela, nome_da_tabela(tabela))
+
+
+class DataDepoisDoCorteError(ValueError):
+    """A ficha tem uma data depois do corte: o texto de "como era em D" não pode ver o futuro (0077)."""
+
+
+def _sem_vazios(campos: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in campos.items() if v not in (None, "", [], {})}
+
+
+def _linha_do_item(secao: str, item: dict[str, Any]) -> dict[str, Any]:
+    campos = {destino: item.get(origem) for origem, destino in CAMPOS_DO_ITEM.items()}
+    if campos.get(
+        "fonte"
+    ):  # o endereço é da tela: a análise e o hash não dependem dele
+        campos["fonte"] = separar(campos["fonte"])[0]
+    return {"id": f"{secao}.{item['chave']}", "tipo": "numero", **_sem_vazios(campos)}
+
+
+def _usa_o_preco(item: dict[str, Any]) -> bool:
+    """O número sai do preço da ação (o DY, fora da seção de valuation)."""
+    return separar(item.get("fonte") or "")[0] == FONTE_DOS_MULTIPLOS
+
+
+def linhas_da_secao(secao: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    """As linhas de uma seção (itens, tabelas, parágrafos e pontos); o relatório do setor usa a mesma."""
+    chave = secao["chave"]
+    for item in secao["itens"]:
+        if not _usa_o_preco(item) and item["chave"] not in ITENS_FORA_DA_ENTRADA:
+            yield {"secao": chave, **_linha_do_item(chave, item)}
+    for tabela, linhas in secao["tabelas"].items():
+        if (
+            tabela == ANEXO_DE_ANOS
+        ):  # os mesmos números da tabela de anos nas linhas, já citada
+            continue
+        for i, celulas in enumerate(linhas):
+            yield {
+                "secao": chave,
+                "id": f"{chave}.{tabela}.{i}",
+                "tipo": "linha",
+                "tabela": _nome_na_entrada(tabela),
+                "celulas": {
+                    k: v for k, v in celulas.items() if k not in COLUNAS_FORA_DA_ENTRADA
+                },
+            }
+    for i, texto in enumerate(map(paragrafo_sem_endereco, secao["paragrafos"])):
+        if TRECHO_DO_PRECO not in texto and texto not in (
+            COMO_SAI_O_DY,
+            COMO_SAI_O_DY_MEDIO,
+            FONTE_DO_ANEXO,
+        ):
+            linha = {
+                "id": f"{chave}.paragrafos.{i}",
+                "tipo": "paragrafo",
+                "texto": texto,
+            }
+            yield {"secao": chave, **linha}
+    for i, ponto in enumerate(secao["pontos"]):
+        yield {"secao": chave, "id": f"{chave}.pontos.{i}", "tipo": "ponto", **ponto}
+
+
+def _perguntas_sem_os_numeros_fora(ficha: dict[str, Any]) -> dict[str, str | None]:
+    """Cada pergunta em aberto que cita um número de `ITENS_FORA_DA_ENTRADA`, como a ficha a escreveu,
+    e como ela fica sem ele (`None`: a pergunta era só dele e sai), na regra de `perguntas_em_aberto`."""
+    por_motivo: dict[str, list[tuple[str, bool]]] = {}
+    for secao in ficha["secoes"]:
+        if secao["trancada"]:
+            continue
+        for item in secao["itens"]:
+            if item["texto"] == "—" and item.get("motivo"):
+                fora = item["chave"] in ITENS_FORA_DA_ENTRADA
+                por_motivo.setdefault(item["motivo"], []).append((item["nome"], fora))
+    trocas: dict[str, str | None] = {}
+    for motivo, nomes in por_motivo.items():
+        if not any(fora for _, fora in nomes):
+            continue
+        todos = dict.fromkeys(nome for nome, _ in nomes)
+        ficam = dict.fromkeys(nome for nome, fora in nomes if not fora)
+        escrita = f"{EM_ABERTO} {' e '.join(todos)}. {motivo}"
+        trocas[escrita] = (
+            f"{EM_ABERTO} {' e '.join(ficam)}. {motivo}" if ficam else None
+        )
+    return trocas
+
+
+def _sem_os_numeros_fora(
+    secao: dict[str, Any], trocas: dict[str, str | None]
+) -> dict[str, Any]:
+    paragrafos = [trocas.get(texto, texto) for texto in secao["paragrafos"]]
+    return {**secao, "paragrafos": [texto for texto in paragrafos if texto is not None]}
+
+
+def _linhas_da_ficha(ficha: dict[str, Any]) -> list[dict[str, Any]]:
+    # a frase do preço nos limites sai antes da numeração: os ids dos parágrafos seguintes não mudam
+    trocas = {**_perguntas_sem_os_numeros_fora(ficha), LIMITE_DO_PRECO: None}
+    return [
+        linha
+        for secao in ficha["secoes"]
+        if secao["chave"] not in SECOES_FORA and not secao["trancada"]
+        for linha in linhas_da_secao(_sem_os_numeros_fora(secao, trocas))
+    ]
+
+
+def _assinatura(linha: dict[str, Any]) -> str:
+    """O conteúdo da linha sem o id: parágrafo que muda de posição continua sendo o mesmo."""
+    sem_id = {k: v for k, v in linha.items() if k not in ("id", "so_pro")}
+    return json.dumps(sem_id, sort_keys=True, ensure_ascii=False)
+
+
+def _marcar_so_pro(linhas: list[dict[str, Any]], sem_dossie: Relatorio | None) -> None:
+    """`so_pro`: a linha só existe (ou só é assim) com o dossiê. Sem a ficha de comparação, tudo."""
+    abertas = set()
+    if sem_dossie is not None:
+        abertas = {_assinatura(li) for li in _linhas_da_ficha(sem_dossie.como_dict())}
+    for linha in linhas:
+        linha["so_pro"] = _assinatura(linha) not in abertas
+
+
+def _lacunas(setor: str) -> list[dict[str, Any]]:
+    chaves = [LACUNA_SEGMENTOS]
+    if grupo_do_setor(setor) in GRUPOS_DE_CONCESSAO:
+        chaves.append(LACUNA_CONCESSAO)
+    return [
+        {
+            "secao": "lacuna",
+            "id": c,
+            "tipo": "lacuna",
+            "texto": LACUNAS[c],
+            "so_pro": False,
+        }
+        for c in chaves
+    ]
+
+
+def _obrigatorias(linhas: list[dict[str, Any]]) -> list[str]:
+    """O que o texto tem de dizer que falta (critério 2 do gabarito: omitir em silêncio reprova)."""
+    por_id = {linha["id"]: linha for linha in linhas}
+    controlador = por_id.get(CONTROLADOR, {})
+    obrigatorias = [CONTROLADOR] if controlador.get("motivo") else []
+    return obrigatorias + [i for i in LACUNAS if i in por_id]
+
+
+def _textos(valor: object) -> Iterator[str]:
+    if isinstance(valor, dict):
+        for dentro in valor.values():
+            yield from _textos(dentro)
+    elif isinstance(valor, list):
+        for dentro in valor:
+            yield from _textos(dentro)
+    elif isinstance(valor, str):
+        yield valor
+
+
+def conferir_corte(linhas: list[dict[str, Any]], corte: date) -> None:
+    """Levanta `DataDepoisDoCorteError` se algum texto da entrada tem data depois do corte."""
+    for linha in linhas:
+        for texto in _textos(linha):
+            for data in numeros.datas(texto):
+                if data.depois_de(corte):
+                    raise DataDepoisDoCorteError(
+                        f"{linha['id']}: {data.trecho} passa do corte de {corte:%d/%m/%Y}"
+                    )
+
+
+def entrada_da_ficha(
+    relatorio: Relatorio,
+    corte: date,
+    sem_dossie: Relatorio | None = None,
+    pessoas: frozenset[str] = frozenset(),
+) -> dict[str, Any]:
+    """A ficha como o modelo recebe: uma linha por número, tabela, parágrafo, ponto e lacuna.
+
+    `sem_dossie` é a mesma ficha montada sem o dossiê: o que muda entre as duas é `so_pro` (o
+    plano grátis não vê). `pessoas` são os nomes normalizados da base que não podem aparecer.
+    """
+    ficha = relatorio.como_dict()
+    linhas = _linhas_da_ficha(ficha)
+    _marcar_so_pro(linhas, sem_dossie)
+    linhas += _lacunas(relatorio.setor)
+    repetidos = sorted(
+        id_ for id_, n in Counter(linha["id"] for linha in linhas).items() if n > 1
+    )
+    if repetidos:
+        raise ValueError(f"id repetido na entrada: {', '.join(repetidos[:5])}")
+    conferir_corte(linhas, corte)
+    entrada = {
+        "versao": VERSAO,
+        "empresa": relatorio.empresa,
+        "cnpj": relatorio.cnpj,
+        "ticker": relatorio.ticker,
+        "setor": relatorio.setor,
+        "grupo": relatorio.grupo,
+        "corte": corte.isoformat(),
+        "fontes": [separar(f)[0] for f in relatorio.fontes if TRECHO_DO_PRECO not in f],
+        "secoes": {
+            s["chave"]: s["titulo"]
+            for s in ficha["secoes"]
+            if s["chave"] not in SECOES_FORA
+        },
+        "linhas": linhas,
+        "obrigatorias": _obrigatorias(linhas),
+    }
+    dossie_da_base.conferir_sem_pessoas(entrada, set(pessoas))
+    conferir_sem_nome_com_cargo(entrada)
+    return entrada
+
+
+def conferir_sem_nome_com_cargo(entrada: dict[str, Any]) -> None:
+    """D4 (parecer de privacidade, ADR 0088): nome de pessoa escrito junto de um cargo não vai à API.
+
+    A lista de pessoas da base só pega o texto que é exatamente um nome; esta trava pega o nome dentro
+    da frase ("CFO Maria Souza"), com a mesma heurística da rotulagem. Barra em vez de mascarar: a
+    entrada tem hash e o app a remonta para conferir.
+    """
+    for texto in _textos(entrada):
+        if mascarar_pessoas(texto) != texto:
+            raise PessoaNaEntradaError("nome de pessoa junto de um cargo na entrada")
+
+
+def hash_da_entrada(entrada: dict[str, Any]) -> str:
+    """O mesmo texto JSON dá o mesmo hash: a análise guardada vale só para a entrada de onde saiu."""
+    texto = json.dumps(
+        entrada, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    )
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()

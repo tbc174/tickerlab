@@ -1,0 +1,540 @@
+"""Séries do IBGE pelo SIDRA, sem internet: a URL de cada série, a leitura da resposta (com os
+símbolos do SIDRA), o tipo do café no id, o total derivado e o corte do futuro."""
+
+import json
+from datetime import date
+from pathlib import Path
+
+import pytest
+
+from src import ibge_sidra
+from src.ibge_sidra import Valor
+
+EXEMPLOS = Path(__file__).resolve().parent.parent / "dados_de_exemplo" / "ibge"
+
+
+def _resposta(nome: str) -> list[dict]:
+    return json.loads((EXEMPLOS / nome).read_text(encoding="utf-8"))
+
+
+def _linha(valor: str, **campos: str) -> dict:
+    base = {
+        "NC": "1", "NN": "Brasil", "MC": "2", "MN": "%", "V": valor,
+        "D1C": "1", "D1N": "Brasil", "D2C": "63", "D2N": "IPCA - Variação mensal",
+        "D3C": "202607", "D3N": "julho 2026", "D4C": "7169", "D4N": "Índice geral",
+    }  # fmt: skip
+    return {**base, **campos}
+
+
+CABECALHO = {"NC": "Nível Territorial (Código)", "V": "Valor"}
+
+
+# --- URL de cada série ----------------------------------------------------------------------------
+def test_url_da_lspa_do_cafe_por_uf():
+    url = ibge_sidra.montar_url(
+        6588, [35, 109], {48: [39454, 39455]}, "202601-202608", "n3/all"
+    )
+    assert url == (
+        "https://apisidra.ibge.gov.br/values/t/6588/n3/all/v/35,109/p/202601-202608"
+        "/c48/39454,39455"
+    )
+
+
+def test_url_da_pam_por_municipio_de_uma_uf():
+    url = ibge_sidra.montar_url(
+        1613, [216, 214], {82: [31619, 31620, 2723]}, "2020-2024", "n6/in n3 31"
+    )
+    assert url == (
+        "https://apisidra.ibge.gov.br/values/t/1613/n6/in%20n3%2031/v/216,214/p/2020-2024"
+        "/c82/31619,31620,2723"
+    )
+
+
+def test_url_sem_classificacao_e_com_varias():
+    assert ibge_sidra.montar_url(8886, [1], {}, "last 3").endswith(
+        "/t/8886/n1/all/v/1/p/last%203"
+    )
+    url = ibge_sidra.montar_url(8882, [7169], {11046: [56734], 85: [1, 2]}, "202601")
+    assert url.endswith("/c11046/56734/c85/1,2")
+
+
+@pytest.mark.parametrize("coleta", ibge_sidra.COLETAS, ids=lambda c: c.nome)
+def test_cada_coleta_gera_url_com_a_tabela_e_as_variaveis(coleta):
+    urls = coleta.urls("202601-202608")
+    assert urls
+    for url in urls:
+        assert f"/t/{coleta.tabela}/" in url
+        assert all(str(v) in url for v in coleta.variaveis)
+        assert " " not in url  # espaços vão como %20
+
+
+def test_as_tabelas_da_primeira_leva():
+    primeira = {6588, 1613, 8880, 8881, 8888, 8887, 7060}
+    assert primeira <= {c.tabela for c in ibge_sidra.COLETAS}
+    por_nome = ibge_sidra.COLETAS_POR_NOME
+    assert por_nome["lspa"].tabela == 6588
+    assert por_nome["pam-municipal"].frequencia == "anual"
+    assert por_nome["pmc-restrito"].tabela == 8880
+    assert por_nome["pmc-ampliado"].tabela == 8881
+
+
+def test_lote_1_do_levantamento_de_22_10_esta_nas_coletas():
+    lote_1 = {
+        8882, 8883, 8885, 6588, 8688, 6903, 2296, 7062, 7063, 1612, 291, 5930, 3939, 74, 6579,
+    }  # fmt: skip
+    assert lote_1 <= {c.tabela for c in ibge_sidra.COLETAS}
+
+
+def test_nome_de_coleta_nao_se_repete():
+    nomes = [c.nome for c in ibge_sidra.COLETAS]
+    assert len(nomes) == len(set(nomes))
+
+
+def test_toda_coleta_tem_uma_frequencia_que_o_leitor_entende():
+    """Mensal (AAAAMM), trimestral (AAAATT) ou anual (AAAA); outra coisa o leitor leria errado."""
+    assert {c.frequencia for c in ibge_sidra.COLETAS} <= {
+        "mensal",
+        "trimestral",
+        "anual",
+    }
+
+
+@pytest.mark.parametrize("coleta", ibge_sidra.COLETAS, ids=lambda c: c.nome)
+def test_nenhum_pedido_passa_do_limite_de_valores_do_sidra(coleta):
+    """Primeira carga (desde 2010): cada pedido, do menor ao maior território, cabe nos 50.000."""
+    periodo = {"mensal": "201001-202610", "trimestral": "201001-202604"}.get(
+        coleta.frequencia, "2010-2026"
+    )
+    for territorio in coleta.territorios:
+        celulas = coleta._celulas_por_periodo(territorio)
+        for bloco in coleta._blocos(periodo, territorio):
+            de, ate = bloco.split("-")
+            periodos = (
+                ibge_sidra._indice(ate, coleta.frequencia)
+                - ibge_sidra._indice(de, coleta.frequencia)
+                + 1
+            )
+            assert periodos * celulas <= ibge_sidra.VALORES_POR_PEDIDO_NO_SIDRA
+
+
+def test_o_8885_e_as_tabelas_por_uf_vao_em_varios_pedidos_quando_nao_cabem():
+    ampliado = ibge_sidra.COLETAS_POR_NOME["pmc-atividades-ampliado"]
+    pedidos_por_uf = [u for u in ampliado.urls("201001-202610") if "/n3/" in u]
+    assert len(pedidos_por_uf) > 1
+    assert "/p/201001-" in pedidos_por_uf[0]
+    assert pedidos_por_uf[-1].split("/p/")[1].split("/")[0].endswith("-202610")
+
+
+def test_blocos_mensais_cobrem_o_periodo_sem_buraco_nem_repeticao():
+    coleta = ibge_sidra.COLETAS_POR_NOME["pmc-atividades-ampliado"]
+    blocos = coleta._blocos("201011-202603", "n3/all")
+    meses = []
+    for bloco in blocos:
+        de, ate = bloco.split("-")
+        meses += range(ibge_sidra._indice(de), ibge_sidra._indice(ate) + 1)
+    assert meses == list(
+        range(ibge_sidra._indice("201011"), ibge_sidra._indice("202603") + 1)
+    )
+
+
+def test_periodo_que_nao_e_intervalo_vai_inteiro():
+    coleta = ibge_sidra.COLETAS_POR_NOME["sinapi"]
+    assert coleta._blocos("last 3") == ["last 3"]
+    assert coleta._blocos("202601") == ["202601"]
+
+
+def test_pam_municipal_vai_uf_por_uf_para_caber_no_limite_do_sidra():
+    urls = ibge_sidra.COLETAS_POR_NOME["pam-municipal"].urls("2020-2024")
+    assert len(urls) >= 27
+    assert all("n6/in%20n3%20" in u for u in urls)
+
+
+# --- leitura da resposta ---------------------------------------------------------------------------
+def test_le_a_resposta_real_do_ipca():
+    valores = ibge_sidra.ler_resposta(_resposta("ipca_cafe.json"))
+    assert len(valores) == 8
+    cafe = [v for v in valores if v.categorias == (7392,) and v.variavel == 63]
+    assert {v.periodo for v in cafe} == {"202607", "202608"}
+    assert all(v.unidade == "%" and v.nivel == "1" for v in cafe)
+    assert all(v.referencia in (date(2026, 7, 1), date(2026, 8, 1)) for v in cafe)
+
+
+def test_cabecalho_da_resposta_nao_vira_valor():
+    assert ibge_sidra.ler_resposta([CABECALHO]) == []
+    assert ibge_sidra.ler_resposta([]) == []
+
+
+def test_traco_e_zero_mesmo():
+    # "-" é "zero absoluto, não resultante de arredondamento" (nota do SIDRA)
+    [v] = ibge_sidra.ler_resposta([CABECALHO, _linha("-")])
+    assert v.valor == 0.0
+
+
+@pytest.mark.parametrize("simbolo", ["...", "..", "X", "", " "])
+def test_sigilo_e_dado_nao_disponivel_nao_viram_numero(simbolo):
+    # "X" (omitido por sigilo), ".." (não se aplica) e "..." (não disponível) nunca são zero
+    [v] = ibge_sidra.ler_resposta([CABECALHO, _linha(simbolo)])
+    assert v.valor is None
+
+
+def test_numero_decimal_com_ponto():
+    [v] = ibge_sidra.ler_resposta([CABECALHO, _linha("-2.45")])
+    assert v.valor == pytest.approx(-2.45)
+
+
+def test_simbolo_desconhecido_para_a_leitura_em_vez_de_chutar():
+    with pytest.raises(ibge_sidra.RespostaInesperada):
+        ibge_sidra.ler_resposta([CABECALHO, _linha("talvez")])
+
+
+def test_resposta_de_erro_do_sidra_nao_e_lista():
+    with pytest.raises(ibge_sidra.RespostaInesperada):
+        ibge_sidra.ler_resposta({"status": "Error", "message": "Parâmetro inválido"})  # type: ignore[arg-type]
+
+
+def test_data_de_referencia_mensal_e_anual():
+    assert ibge_sidra.data_de_referencia("202607") == date(2026, 7, 1)
+    assert ibge_sidra.data_de_referencia("2024") == date(2024, 12, 31)
+    with pytest.raises(ibge_sidra.RespostaInesperada):
+        ibge_sidra.data_de_referencia("2024T1")
+
+
+def test_seis_digitos_continuam_sendo_mes_quando_a_frequencia_nao_e_trimestral():
+    """Regressão do lote 2: `202602` é fevereiro nas séries mensais (e na PNAD, que termina
+    no mês), mesmo agora que o leitor também entende AAAATT."""
+    assert ibge_sidra.data_de_referencia("202602") == date(2026, 2, 1)
+    assert ibge_sidra.data_de_referencia("202602", "mensal") == date(2026, 2, 1)
+
+
+@pytest.mark.parametrize(
+    ("periodo", "esperado"),
+    [
+        ("202601", date(2026, 3, 31)),
+        ("202602", date(2026, 6, 30)),
+        ("202603", date(2026, 9, 30)),
+        ("202604", date(2026, 12, 31)),
+        ("202004", date(2020, 12, 31)),
+    ],
+)
+def test_trimestre_vai_para_o_ultimo_dia_dele(periodo, esperado):
+    assert ibge_sidra.data_de_referencia(periodo, "trimestral") == esperado
+
+
+@pytest.mark.parametrize("periodo", ["202600", "202605", "202612", "2026", "2026T2"])
+def test_trimestre_que_nao_existe_para_a_leitura(periodo):
+    with pytest.raises(ibge_sidra.RespostaInesperada):
+        ibge_sidra.data_de_referencia(periodo, "trimestral")
+
+
+def test_a_resposta_trimestral_do_abate_vira_valores_no_fim_do_trimestre():
+    valores = ibge_sidra.ler_resposta(_resposta("abate_bovinos.json"), "trimestral")
+    assert {v.referencia for v in valores} == {date(2026, 3, 31), date(2026, 6, 30)}
+    cabecas = [v for v in valores if v.variavel == 284]
+    assert cabecas[0].valor == 10311847.0
+    assert cabecas[0].categorias == (115236, 992, 118225)
+
+
+def test_o_mesmo_periodo_lido_como_mensal_nao_vira_trimestre():
+    valores = ibge_sidra.ler_resposta(_resposta("abate_bovinos.json"))
+    assert {v.referencia for v in valores} == {date(2026, 1, 1), date(2026, 2, 1)}
+
+
+def test_a_pnad_termina_no_mes_do_periodo_e_a_serie_diz_isso():
+    valores = ibge_sidra.ler_resposta(_resposta("pnad_desocupacao.json"))
+    assert [v.referencia for v in valores] == [
+        date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1),
+    ]  # fmt: skip
+    coleta = ibge_sidra.COLETAS_POR_NOME["pnad-desocupacao"]
+    serie = ibge_sidra.serie_do_acervo(
+        coleta.tabela, valores[0], coleta.frequencia, coleta.rotulo_do_periodo
+    )
+    assert "trimestre móvel terminado em" in serie.nome
+    assert serie.frequencia == "mensal"
+
+
+def test_serie_sem_rotulo_de_periodo_mantem_o_nome_de_antes():
+    valores = ibge_sidra.ler_resposta(_resposta("pimpf_secoes.json"))
+    serie = ibge_sidra.serie_do_acervo(8888, valores[0], "mensal")
+    assert "trimestre" not in serie.nome
+
+
+def test_pmc_tem_brasil_e_uf():
+    valores = ibge_sidra.ler_resposta(_resposta("pmc_volume.json"))
+    assert {v.nivel for v in valores} == {"1", "3"}
+    assert {v.local for v in valores} == {"1", "31"}
+
+
+# --- id da série (tipo do café) ---------------------------------------------------------------------
+def test_lspa_e_pam_gravam_o_tipo_do_cafe_no_id():
+    lspa = ibge_sidra.ler_resposta(_resposta("lspa_cafe.json"))
+    ids = {ibge_sidra.codigo_da_serie(6588, v) for v in lspa}
+    assert "ibge-sidra-6588-35-arabica-uf31" in ids
+    assert "ibge-sidra-6588-35-conilon-uf32" in ids  # canephora → conilon
+    pam = ibge_sidra.ler_resposta(_resposta("pam_cafe_municipios.json"))
+    ids = {ibge_sidra.codigo_da_serie(1613, v) for v in pam}
+    assert "ibge-sidra-1613-216-arabica-mun3136702" in ids
+    assert any("-total-mun" in i for i in ids)
+    assert not any("canephora" in i for i in ids)
+
+
+def test_serie_fora_do_cafe_usa_o_codigo_da_categoria():
+    [v] = ibge_sidra.ler_resposta([CABECALHO, _linha("0.07")])
+    assert ibge_sidra.codigo_da_serie(7060, v) == "ibge-sidra-7060-63-7169-br"
+
+
+def test_todo_id_de_cafe_termina_com_tipo_e_local():
+    # risco 4 do plano: nunca misturar arábica e conilon
+    for nome, tabela in (("lspa_cafe.json", 6588), ("pam_cafe_municipios.json", 1613)):
+        for v in ibge_sidra.ler_resposta(_resposta(nome)):
+            partes = ibge_sidra.codigo_da_serie(tabela, v).split("-")
+            assert partes[4] in {"arabica", "conilon", "total"}
+
+
+# --- total do café na LSPA ---------------------------------------------------------------------------
+def test_total_do_cafe_da_lspa_e_a_soma_dos_dois_tipos():
+    valores = ibge_sidra.ler_resposta(_resposta("lspa_cafe.json"))
+    com_total = ibge_sidra.somar_total_do_cafe(valores)
+    total_es = [
+        v for v in com_total
+        if v.local == "32" and v.variavel == 35 and v.periodo == "202608"
+        and ibge_sidra.rotulo_da_categoria(6588, v.categorias[0]) == "total"
+    ]  # fmt: skip
+    assert [v.valor for v in total_es] == [227174 + 848503]
+
+
+def test_total_nao_inventa_numero_quando_um_tipo_esta_em_sigilo():
+    base = {
+        "nivel": "3",
+        "local": "99",
+        "variavel": 35,
+        "periodo": "202607",
+        "unidade": "t",
+    }
+    valores = [
+        Valor(categorias=(39454,), valor=10.0, **base),
+        Valor(categorias=(39455,), valor=None, **base),
+    ]
+    totais = [
+        v for v in ibge_sidra.somar_total_do_cafe(valores)
+        if ibge_sidra.rotulo_da_categoria(6588, v.categorias[0]) == "total"
+    ]  # fmt: skip
+    assert totais and all(v.valor is None for v in totais)
+
+
+def test_rendimento_nao_tem_total_somado():
+    base = {"nivel": "3", "local": "99", "periodo": "202607", "unidade": "kg/ha"}
+    valores = [
+        Valor(variavel=36, categorias=(39454,), valor=1500.0, **base),
+        Valor(variavel=36, categorias=(39455,), valor=2500.0, **base),
+    ]
+    assert len(ibge_sidra.somar_total_do_cafe(valores)) == 2
+
+
+# --- sem olhar o futuro e séries vazias ---------------------------------------------------------------
+def test_corte_do_futuro_tira_o_que_ainda_nao_aconteceu():
+    valores = ibge_sidra.ler_resposta(_resposta("ipca_cafe.json"))
+    assert len(ibge_sidra.cortar_futuro(valores, date(2026, 7, 31))) == 4
+    assert len(ibge_sidra.cortar_futuro(valores, date(2026, 6, 30))) == 0
+    assert len(ibge_sidra.cortar_futuro(valores, date(2026, 8, 1))) == 8
+
+
+def test_cortar_o_futuro_nao_muda_o_passado():
+    valores = ibge_sidra.ler_resposta(_resposta("ipca_cafe.json"))
+    corte = date(2026, 7, 31)
+    tudo = ibge_sidra.cortar_futuro(valores, date(2026, 12, 31))
+    assert [v for v in tudo if v.referencia <= corte] == ibge_sidra.cortar_futuro(
+        valores, corte
+    )
+
+
+def test_descartar_series_sem_nenhum_valor_diferente_de_zero():
+    base = {"nivel": "6", "variavel": 216, "unidade": "ha", "categorias": (31619,)}
+    valores = [
+        Valor(local="1", periodo="2023", valor=0.0, **base),
+        Valor(local="1", periodo="2024", valor=None, **base),
+        Valor(local="2", periodo="2023", valor=0.0, **base),
+        Valor(local="2", periodo="2024", valor=7.0, **base),
+    ]
+    sobra = ibge_sidra.descartar_series_vazias(valores)
+    assert {v.local for v in sobra} == {"2"}
+    assert len(sobra) == 2  # a série que tem número guarda também os zeros dela
+
+
+# --- séries do acervo -----------------------------------------------------------------------------------
+def test_serie_do_acervo_tem_nome_unidade_e_frequencia():
+    valores = ibge_sidra.ler_resposta(_resposta("pimpf_secoes.json"))
+    serie = ibge_sidra.serie_do_acervo(8888, valores[0], "mensal")
+    assert serie.codigo.startswith("ibge-sidra-8888-")
+    assert serie.frequencia == "mensal"
+    assert "Indústria geral" in serie.nome and "Brasil" in serie.nome
+    assert not serie.uso_interno
+
+
+# --- séries novas do lote 1 (22/10/2026) -----------------------------------------------------------
+def test_pmc_por_atividade_usa_o_tipo_de_indice_de_cada_tabela():
+    por_nome = ibge_sidra.COLETAS_POR_NOME
+    assert por_nome["pmc-atividades-restrito"].classificacoes[11046] == (56733, 56734)
+    assert por_nome["pmc-atividades-ampliado"].classificacoes[11046] == (56735, 56736)
+    assert set(por_nome["pmc-atividades-restrito"].classificacoes[85]) <= set(
+        por_nome["pmc-atividades-ampliado"].classificacoes[85]
+    )
+
+
+def test_le_a_pmc_por_atividade_com_duas_classificacoes():
+    valores = ibge_sidra.ler_resposta(_resposta("pmc_atividades.json"))
+    assert valores
+    assert all(len(v.categorias) == 2 for v in valores)
+    codigo = ibge_sidra.codigo_da_serie(8882, valores[0])
+    tipo, atividade = valores[0].categorias
+    assert codigo == f"ibge-sidra-8882-{valores[0].variavel}-{tipo}-{atividade}-br"
+
+
+def test_le_o_pimpf_por_classes_e_nao_soma_cafe():
+    valores = ibge_sidra.ler_resposta(_resposta("pimpf_classes.json"))
+    assert {v.categorias for v in valores} <= {(c,) for c in ibge_sidra.PIMPF_CLASSES}
+    assert ibge_sidra.somar_total_do_cafe(valores) == valores  # só o café soma
+
+
+def test_silvicultura_total_em_sigilo_vira_vazio_e_o_resto_tem_numero():
+    valores = ibge_sidra.ler_resposta(_resposta("pevs_producao.json"))
+    por_categoria = {v.categorias[0]: v.valor for v in valores if v.periodo == "2024"}
+    assert por_categoria[0] is None
+    assert por_categoria[3458] == 122194270.0
+    assert {v.referencia for v in valores} == {date(2024, 12, 31), date(2025, 12, 31)}
+
+
+def test_ipp_le_indice_e_variacoes():
+    valores = ibge_sidra.ler_resposta(_resposta("ipp_atividades.json"))
+    assert {v.variavel for v in valores} <= set(ibge_sidra.IPP_VARIAVEIS)
+    assert all(v.referencia.day == 1 for v in valores)
+
+
+def test_ids_de_serie_das_coletas_novas_nao_se_repetem_entre_tabelas():
+    """O id leva a tabela, a variável, as categorias e o local: nenhuma combinação se repete."""
+    vistos = set()
+    for c in ibge_sidra.COLETAS:
+        for variavel in c.variaveis:
+            combinacoes = [()]
+            for ids in c.classificacoes.values():
+                combinacoes = [(*a, i) for a in combinacoes for i in ids]
+            for categorias in combinacoes:
+                chave = (c.tabela, variavel, categorias)
+                assert chave not in vistos
+                vistos.add(chave)
+
+
+def test_ipca15_e_inpc_reaproveitam_os_itens_do_ipca():
+    por_nome = ibge_sidra.COLETAS_POR_NOME
+    assert (
+        por_nome["ipca15-itens"].classificacoes == por_nome["ipca-itens"].classificacoes
+    )
+    assert (
+        por_nome["inpc-itens"].classificacoes == por_nome["ipca-itens"].classificacoes
+    )
+
+
+# --- lote 2: séries trimestrais (ids conferidos nos metadados do SIDRA em 05/11/2026) --------------
+LOTE_2 = {5932, 1621, 1846, 1092, 1093, 1094, 1086, 6381, 6390, 6392}
+POR_TABELA = {c.tabela: c for c in ibge_sidra.COLETAS}
+
+
+def test_lote_2_do_levantamento_esta_nas_coletas():
+    assert set(POR_TABELA) >= LOTE_2
+
+
+def test_pib_abate_e_leite_sao_trimestrais_e_a_pnad_e_mensal_de_trimestre_movel():
+    for tabela in (5932, 1621, 1846, 1092, 1093, 1094, 1086):
+        assert POR_TABELA[tabela].frequencia == "trimestral"
+    for tabela in (6381, 6390, 6392):
+        assert POR_TABELA[tabela].frequencia == "mensal"
+        assert "trimestre móvel terminado em" in POR_TABELA[tabela].rotulo_do_periodo
+
+
+def test_os_ids_do_pib_vem_dos_metadados_do_sidra():
+    assert POR_TABELA[5932].variaveis == (6561, 6564, 6562)
+    assert POR_TABELA[1621].variaveis == (584,)
+    assert POR_TABELA[1846].variaveis == (585,)
+    for tabela in (5932, 1621, 1846):
+        setores = POR_TABELA[tabela].classificacoes[11255]
+        assert {90707, 90687, 90691, 90696, 93404, 93406, 93407, 93408} <= set(setores)
+        assert POR_TABELA[tabela].territorios == ("n1/all",)
+
+
+def test_abate_e_leite_pedem_o_total_do_trimestre_e_a_inspecao_total():
+    for tabela in (1092, 1093, 1094):
+        assert POR_TABELA[tabela].variaveis == (284, 285)
+        assert POR_TABELA[tabela].classificacoes[12716] == (115236,)
+        assert POR_TABELA[tabela].classificacoes[12529] == (118225,)
+    assert POR_TABELA[1092].classificacoes[18] == (992,)
+    assert POR_TABELA[1086].variaveis == (282, 2522)
+    assert POR_TABELA[1086].territorios == ("n1/all", "n3/all")
+
+
+def test_pnad_pede_so_o_total_do_brasil():
+    assert POR_TABELA[6381].variaveis == (4099,)
+    assert POR_TABELA[6390].variaveis == (5933,)
+    assert POR_TABELA[6392].variaveis == (6293,)
+    for tabela in (6381, 6390, 6392):
+        assert POR_TABELA[tabela].classificacoes == {}
+        assert POR_TABELA[tabela].territorios == ("n1/all",)
+
+
+def test_url_do_abate_de_bovinos_pede_o_trimestre_no_formato_do_sidra():
+    coleta = ibge_sidra.COLETAS_POR_NOME["abate-bovinos"]
+    assert coleta.urls("202601-202602") == [
+        (
+            "https://apisidra.ibge.gov.br/values/t/1092/n1/all/v/284,285/p/202601-202602"
+            "/c12716/115236/c18/992/c12529/118225"
+        ),
+        (
+            "https://apisidra.ibge.gov.br/values/t/1092/n3/all/v/284,285/p/202601-202602"
+            "/c12716/115236/c18/992/c12529/118225"
+        ),
+    ]
+
+
+def test_blocos_trimestrais_cobrem_o_periodo_sem_buraco_nem_repeticao():
+    # variáveis demais para caber mais de 1 trimestre por pedido em UF
+    coleta = ibge_sidra.Coleta(
+        "teste", 1, tuple(range(1000)), {}, ("n3/all",), "trimestral"
+    )
+    assert coleta._blocos("202503-202602", "n3/all") == [
+        "202503-202503", "202504-202504", "202601-202601", "202602-202602",
+    ]  # fmt: skip
+
+
+def test_trimestre_conta_de_4_em_4_por_ano_e_nao_de_12_em_12():
+    (bloco,) = POR_TABELA[5932]._blocos("201001-202604", "n1/all")
+    assert bloco == "201001-202604"
+    assert (
+        ibge_sidra._indice("202604", "trimestral")
+        - ibge_sidra._indice("202601", "trimestral")
+        == 3
+    )
+    assert (
+        ibge_sidra._indice("202601", "trimestral")
+        - ibge_sidra._indice("202504", "trimestral")
+        == 1
+    )
+
+
+def test_nome_da_serie_cabe_na_coluna_do_catalogo_e_guarda_o_local_e_o_rotulo():
+    """`series.nome` tem 120 caracteres: o que passa disso (a variável da PNAD é longa) é cortado
+    na variável, nunca no rótulo do período nem no local."""
+    valor = ibge_sidra.ler_resposta(_resposta("pnad_desocupacao.json"))[0]
+    coleta = ibge_sidra.COLETAS_POR_NOME["pnad-desocupacao"]
+    serie = ibge_sidra.serie_do_acervo(
+        coleta.tabela, valor, coleta.frequencia, coleta.rotulo_do_periodo
+    )
+    assert len(serie.nome) <= ibge_sidra.NOME_MAXIMO_DA_SERIE
+    assert "…" in serie.nome
+    assert serie.nome.endswith("Brasil (trimestre móvel terminado em; IBGE/SIDRA)")
+
+
+@pytest.mark.parametrize(
+    "arquivo", sorted(p.name for p in EXEMPLOS.glob("*.json")), ids=str
+)
+def test_nome_de_toda_serie_dos_exemplos_cabe_no_catalogo(arquivo):
+    for valor in ibge_sidra.ler_resposta(_resposta(arquivo)):
+        nome = ibge_sidra.serie_do_acervo(1, valor, "mensal").nome
+        assert len(nome) <= ibge_sidra.NOME_MAXIMO_DA_SERIE

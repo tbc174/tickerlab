@@ -86,7 +86,7 @@ def test_numero_com_achado_aberto_ganha_o_selo(dados_da_weg):
         porque="A empresa refez o lucro no balanço seguinte.", conta="3.11",
     )  # fmt: skip
     relatorio = re_.montar(_entradas(dados_da_weg, achados=[achado]))
-    qualidade = relatorio.secao("qualidade")
+    qualidade = relatorio.secao("qualidade_do_lucro")
     assert any("refez o lucro" in p for p in qualidade.paragrafos)
     assert relatorio.em_conferencia
 
@@ -208,3 +208,155 @@ def test_margens_liquidas_tem_nomes_e_bases_diferentes(dados_da_weg):
     retorno = {i.chave: i.nome for i in relatorio.secao("retorno").itens}
     assert resultado["margem_liquida"] == "Margem líquida (lucro consolidado)"
     assert retorno["dupont_margem"] == "Margem líquida dos acionistas (DuPont)"
+
+
+# --- a fonte restrita citada (ADR 0008, Emenda 3) --------------------------------------------------
+
+
+def test_relatorio_cita_o_yahoo_pela_lista_dos_usos_sem_cobranca(dados_da_weg):
+    from src.banco import coletas
+
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "yahoo")
+    assert re_.fontes_do_relatorio(_entradas(dados_da_weg)) == ("cvm", "yahoo")
+    assert any(f.startswith(citacao) for f in relatorio.fontes)
+    assert "Yahoo" in citacao
+    assert (
+        next(i for i, f in enumerate(relatorio.fontes) if f.startswith(citacao)) > 0
+    )  # a CVM vem primeiro
+
+
+def test_relatorio_barra_fonte_fora_dos_usos(dados_da_weg, monkeypatch):
+    """A trava segue no relatório: se o preço viesse da B3, ele não seria montado (ADR 0102)."""
+    from src.banco import coletas
+
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3"}))
+    monkeypatch.setattr(re_, "FONTE_DO_PRECO", "b3")
+    with pytest.raises(coletas.LicencaNaoPermiteError, match="b3"):
+        re_.montar(_entradas(dados_da_weg))
+
+
+def test_relatorio_com_preco_da_b3_cita_a_fonte(dados_da_weg, monkeypatch):
+    """Emenda 6 da ADR 0008: o preço da B3 sai com "Fonte: B3" na mesma função da tela e do PDF."""
+    from src.banco import coletas
+
+    monkeypatch.setattr(re_, "FONTE_DO_PRECO", "b3")
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "b3")
+    assert any(f.startswith(citacao) for f in relatorio.fontes)
+    assert (
+        next(i for i, f in enumerate(relatorio.fontes) if f.startswith(citacao)) > 0
+    )  # a CVM vem primeiro
+
+
+def test_relatorio_monta_mesmo_sem_a_lista_dos_usos_sem_cobranca(
+    dados_da_weg, monkeypatch
+):
+    """ADR 0102: a lista só guarda a citação; sem ela o relatório sai, sem a frase do Yahoo."""
+    from src.banco import coletas
+
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    assert not any("Yahoo" in f for f in relatorio.fontes)
+
+
+def test_relatorio_sem_preco_nem_padroes_nao_usa_o_yahoo(dados_da_weg):
+    entradas = _entradas(dados_da_weg, preco=None, padroes=None)
+    assert re_.fontes_do_relatorio(entradas) == ("cvm",)
+    relatorio = re_.montar(entradas)
+    assert not any("Yahoo" in f for f in relatorio.fontes)
+
+
+# --- DY e múltiplos de mercado (D3 mudada em 20/10/2026) -------------------------------------------
+
+
+def test_dividendos_abrem_com_o_dy_citando_o_preco(dados_da_weg):
+    dividendos = re_.montar(_entradas(dados_da_weg)).secao("dividendos")
+    dy = dividendos.itens[0]
+    assert dy.chave == "dividend_yield" and dy.valor and dy.valor > 0
+    assert dy.texto.endswith("%") and dy.fonte.startswith(re_.FONTE_DOS_MULTIPLOS)
+    assert any("minoritários" in p for p in dividendos.paragrafos)
+
+
+def test_valuation_traz_valor_de_mercado_ev_e_multiplos(dados_da_weg):
+    valuation = re_.montar(_entradas(dados_da_weg)).secao("valuation")
+    itens = {i.chave: i for i in valuation.itens}
+    for chave in ("p_l", "p_vp", *re_.MULTIPLOS_DE_MERCADO):
+        assert itens[chave].valor is not None, chave
+        assert itens[chave].fonte.startswith(re_.FONTE_DOS_MULTIPLOS)
+    assert itens["valor_de_mercado"].texto.startswith("R$ ")
+    assert itens["ev_ebitda"].texto.endswith("×")
+
+
+def test_dy_medio_fica_nos_dividendos_logo_depois_do_dy(dados_da_weg):
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    dividendos = relatorio.secao("dividendos")
+    medio = dividendos.itens[1]
+    assert medio.chave == "dividend_yield_medio"
+    assert medio.fonte.startswith(
+        re_.FONTE_DOS_MULTIPLOS
+    )  # fora da análise escrita, como o DY
+    assert medio.motivo  # a amostra da WEG tem só 2 exercícios: o motivo explica
+    assert re_.COMO_SAI_O_DY_MEDIO in dividendos.paragrafos
+    valuation = {i.chave for i in relatorio.secao("valuation").itens}
+    assert {"p_ebitda", "p_ebit", "p_fcf", "p_ativo"} <= valuation
+    assert not {"dividend_yield", "dividend_yield_medio"} & valuation
+
+
+def test_limites_dizem_de_onde_vem_o_preco_so_quando_ha_preco(dados_da_weg):
+    com_preco = re_.montar(_entradas(dados_da_weg)).secao("limites").paragrafos
+    assert re_.LIMITE_DO_PRECO in com_preco
+    # sem o preço (a trava desligada), mesmo com os padrões setoriais
+    sem = re_.montar(_entradas(dados_da_weg, preco=None))
+    assert re_.LIMITE_DO_PRECO not in sem.secao("limites").paragrafos
+
+
+def test_sem_preco_dy_e_multiplos_ficam_com_o_motivo(dados_da_weg):
+    relatorio = re_.montar(_entradas(dados_da_weg, preco=None))
+    dy = relatorio.secao("dividendos").itens[0]
+    assert dy.valor is None and "preço" in dy.motivo
+    for item in relatorio.secao("valuation").itens:
+        assert item.valor is None and "preço" in item.motivo
+
+
+def test_anexo_de_anos_tem_contas_nas_linhas_e_anos_nas_colunas():
+    contas = pd.DataFrame(
+        {"receita": [100.0, 120.0, None], "lpa_basico": [1.5, 2.0, 2.5]},
+        index=pd.Index([2023, 2024, 2025], name="ano"),
+    )
+    linhas = re_.anexo_de_anos(contas)
+    assert [linha["conta"] for linha in linhas] == ["Receita", "LPA básico"]
+    assert list(linhas[0]) == ["conta", "unidade", "2023", "2024", "2025"]
+    assert linhas[0]["unidade"] == "R$" and linhas[1]["unidade"] == "R$ por ação"
+    assert (
+        linhas[0]["2024"] == 120.0 and linhas[0]["2025"] is None
+    )  # ano sem a conta: vazio
+    assert re_.anexo_de_anos(pd.DataFrame()) == []
+
+
+def test_historico_traz_o_anexo_com_fonte_e_sem_ano_alem_do_publicado(dados_da_weg):
+    secao = re_.montar(_entradas(dados_da_weg)).secao("historico")
+    anexo = secao.tabelas["anexo_de_anos"]
+    anos = [c for c in anexo[0] if c.isdigit()]
+    assert anos == sorted(anos) and int(anos[-1]) <= 2025
+    # o anexo toma o lugar da tabela de anos nas linhas na página, no PDF e na API; ela fica na
+    # seção porque a análise escrita cita as linhas dela
+    assert "contas" in secao.tabelas
+    assert list(secao.tabelas_a_mostrar()) == ["anexo_de_anos", "vertical"]
+    assert any("DFP" in p and "CVM" in p for p in secao.paragrafos)
+
+
+def test_yahoo_so_nas_fontes_quando_um_numero_vem_do_preco(dados_da_weg):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026 (achado b da passagem): padrões do setor sem
+    P/L nem P/VP são só da CVM; a ficha não cita o Yahoo que não usou."""
+    sem_multiplos = pd.DataFrame(
+        [{"grupo": "bens_de_capital", "indicador": "roe", "empresas": 27,
+          "percentis": PERCENTIS}]
+    )  # fmt: skip
+    so_cvm = _entradas(
+        dados_da_weg, preco=None, padroes=(date(2025, 12, 31), sem_multiplos)
+    )
+    assert re_.fontes_do_relatorio(so_cvm) == ("cvm",)
+    assert not any("Yahoo" in f for f in re_.montar(so_cvm).fontes)
+    com_p_l = _entradas(dados_da_weg, preco=None)  # os padrões do teste trazem o P/L
+    assert re_.fontes_do_relatorio(com_p_l) == ("cvm", "yahoo")

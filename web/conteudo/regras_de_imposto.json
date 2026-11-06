@@ -1,4 +1,50 @@
 {
+  "custodia_do_tesouro": {
+    "isento_no_selic_ate": 10000,
+    "taxa": 0.002
+  },
+  "fundos": {
+    "come_cotas_curto": 0.2,
+    "come_cotas_longo": 0.15,
+    "curto_prazo": {
+      "aliquotas": [
+        0.225,
+        0.2
+      ],
+      "ate_dias": 180
+    }
+  },
+  "iof": [
+    0.96,
+    0.93,
+    0.9,
+    0.86,
+    0.83,
+    0.8,
+    0.76,
+    0.73,
+    0.7,
+    0.66,
+    0.63,
+    0.6,
+    0.56,
+    0.53,
+    0.5,
+    0.46,
+    0.43,
+    0.4,
+    0.36,
+    0.33,
+    0.3,
+    0.26,
+    0.23,
+    0.2,
+    0.16,
+    0.13,
+    0.1,
+    0.06,
+    0.03
+  ],
   "regras": [
     {
       "chave": "aliquota_comum",
@@ -71,6 +117,54 @@
       "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
       "onde": "pergunta 738",
       "valor": "poupança, LCI, LCA, CRI, CRA"
+    },
+    {
+      "chave": "iof_resgate_antes_de_30_dias",
+      "conferida_em": "2026-10-15",
+      "descricao": "IOF sobre o rendimento no resgate antes de 30 dias (CDB, Tesouro, LCI); LCA tem alíquota zero",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2007/decreto/d6306.htm",
+      "onde": "art. 32 e anexo; LCA: art. 32, § 2º, V",
+      "valor": "96% no 1º dia ... 3% no 29º; 0 a partir do 30º"
+    },
+    {
+      "chave": "custodia_do_tesouro",
+      "conferida_em": "2026-10-15",
+      "descricao": "Taxa de custódia do Tesouro Direto (B3), ao ano sobre o valor dos títulos",
+      "fonte": "https://www.b3.com.br/pt_br/produtos-e-servicos/tarifas/tarifas-de-tesouro-direto/",
+      "onde": "Tarifas de Tesouro Direto",
+      "valor": 0.002
+    },
+    {
+      "chave": "custodia_isenta_no_selic_ate",
+      "conferida_em": "2026-10-15",
+      "descricao": "No Tesouro Selic, sem custódia até este valor por CPF (cobra só sobre o que passar)",
+      "fonte": "https://www.b3.com.br/pt_br/produtos-e-servicos/tarifas/tarifas-de-tesouro-direto/",
+      "onde": "Tarifas de Tesouro Direto",
+      "valor": 10000
+    },
+    {
+      "chave": "come_cotas_longo_prazo",
+      "conferida_em": "2026-10-15",
+      "descricao": "Fundos de longo prazo: IR retido em maio e novembro (come-cotas)",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14754.htm",
+      "onde": "art. 17, § 1º, I, a",
+      "valor": 0.15
+    },
+    {
+      "chave": "come_cotas_curto_prazo",
+      "conferida_em": "2026-10-15",
+      "descricao": "Fundos de curto prazo: IR retido em maio e novembro (come-cotas)",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14754.htm",
+      "onde": "art. 17, § 1º, II, a",
+      "valor": 0.2
+    },
+    {
+      "chave": "tabela_dos_fundos_de_curto_prazo",
+      "conferida_em": "2026-10-15",
+      "descricao": "Fundos de curto prazo no resgate: 22,5% até 180 dias, 20% depois",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 736",
+      "valor": "22,5% / 20%"
     }
   ],
   "renda_fixa": [

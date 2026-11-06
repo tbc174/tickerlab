@@ -48,6 +48,7 @@ export interface PaginaDoApp {
   url: string;
   grupo: string;
   descricao: string;
+  area: string; // a área no menu do app novo (AREAS de src/paginas.py; ADR 0096)
   e_pro: boolean;
   no_menu: boolean;
   somente_admin: boolean;
@@ -60,7 +61,7 @@ export const paginasDoApp: PaginaDoApp[] = paginasJson;
 export const planos = planosJson;
 import siteJson from "../conteudo/site.json";
 
-// o que só o site usa e vem do app: estilos do Report Studio, ativos de exemplo e a fita da inicial
+// o que só o site usa e vem do app: os estilos do Report Studio
 export const site = siteJson;
 import exemploJson from "../conteudo/exemplo.json";
 
@@ -123,17 +124,34 @@ export interface ParteDaAjuda {
   texto: string;
 }
 
+/** Uma área do menu do app novo (`Area` de src/paginas.py), com as páginas na ordem do menu. */
+export interface AreaDoApp {
+  chave: string;
+  rotulo: string;
+  icone: string; // o nome do desenho em web/src/app/areas.ts
+  frase: string;
+  paginas: string[]; // chaves das páginas
+}
+
 export const conteudoDoApp: {
+  areas: AreaDoApp[];
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
-  entrada: { aviso: string };
+  entrada: {
+    titulo: string;
+    explicacao: string;
+    lembrete_da_versao_classica: string;
+    pontos: string[];
+    aviso: string;
+  };
   assinatura: { retorno_ok: string; retorno_cancelado: string };
   aceite: {
     versao: string;
     titulo: string;
     introducao: string;
     caixa: string;
+    sem_o_aceite: { titulo: string; explicacao: string };
     novidades: { texto: string; versao: string };
   };
   linha_do_tempo: { relevancias: { nome: string; valor: number }[]; padrao: number };
@@ -182,4 +200,207 @@ export interface RegraDeImposto {
 export const regrasDeImposto: {
   regras: RegraDeImposto[];
   renda_fixa: { ate_dias: number | null; aliquota: number }[];
+  iof: number[]; // a fração do rendimento do 1º ao 29º dia (Decreto 6.306/2007, anexo)
+  custodia_do_tesouro: { taxa: number; isento_no_selic_ate: number };
+  fundos: { come_cotas_longo: number; come_cotas_curto: number; curto_prazo: { ate_dias: number; aliquotas: number[] } };
 } = regrasDeImpostoJson;
+import amostraJson from "../conteudo/amostra_relatorio.json";
+
+/** Uma tabela da amostra, já escrita: colunas, linhas e, quando há, o link de cada linha. */
+export interface TabelaDaAmostra {
+  chave: string;
+  titulo: string;
+  colunas: string[];
+  linhas: string[][];
+  links: string[];
+}
+
+/** A amostra aberta do relatório da base (src/amostra_do_relatorio.py, para_o_site). */
+export const amostraRelatorio: {
+  empresa: string;
+  razao_social: string;
+  cnpj: string;
+  ticker: string;
+  setor: string;
+  dados_de: string; // DD/MM/AAAA
+  pdf: string;
+  aviso: string;
+  destaques: {
+    chave: string;
+    titulo: string;
+    texto: string;
+    fonte: string;
+    data: string;
+    secao: string;
+    link: string;
+  }[];
+  secoes: {
+    chave: string;
+    titulo: string;
+    itens: { nome: string; texto: string; base: string }[];
+    paragrafos: string[];
+    tabelas: TabelaDaAmostra[];
+  }[];
+  limites: string[];
+  fontes: string[];
+} = amostraJson;
+import semanalEletricasJson from "../conteudo/relatorio_semanal_eletricas.json";
+
+/** O relatório de setor da semana (src/relatorio_semanal.py, para_o_site): elétricas. */
+export const relatorioSemanalEletricas: {
+  setor: string;
+  titulo: string;
+  dados_de: string; // DD/MM/AAAA
+  aviso: string;
+  aviso_rodape: string; // o rodapé da página: as bases de onde vêm os dados do setor
+  arquivos: { pdf: string; apresentacao_pdf: string; apresentacao_pptx: string };
+  destaques: { titulo: string; texto: string; fonte: string; data: string }[];
+  tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];
+  nao_temos: { kpi: string; motivo: string; fonte: string }[];
+  limites: string[];
+} = semanalEletricasJson;
+import pregaoDoDiaJson from "../conteudo/pregao_do_dia.json";
+
+/** O pregão do dia (src/texto_do_pregao.py, para_o_site): o texto do último pregão pelo molde e a
+ * impressão do molde aprovado, que a página confere antes de mostrar. */
+export const pregaoDoDia: {
+  molde_aprovado: string;
+  pregao: {
+    pregao: string; // AAAA-MM-DD
+    frases: { grupo: string; variante: string; texto: string }[];
+    grafico: { titulo: string; barras: { nome: string; valor: number; texto: string }[] };
+    tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];
+    limites: string[];
+    fontes: string[];
+    impressao_digital: string;
+  };
+} = pregaoDoDiaJson;
+import baseJson from "../conteudo/base.json";
+import catalogoJson from "../conteudo/catalogo.json";
+
+/** Uma fonte pública de dados (`Fonte` de base/vitrine.py): uma por texto de licença. */
+export interface FonteDaBase {
+  orgao: string;
+  licenca: string;
+  repasse: string; // o que pode ser repassado
+  situacao: "licenciada" | "em consulta";
+  modulos: string[]; // chaves dos módulos
+  tabelas: number;
+  historico_desde: string; // AAAA-MM-DD
+}
+
+/** Uma fonte do arquivista, uma linha (`para_o_site` de base/arquivo/registro.py). */
+export interface RegistroDeFonte {
+  id: string;
+  licenca: string;
+  marca: "vendavel" | "uso_interno" | "nao_comercial" | "a_confirmar";
+  ritmo: "diaria" | "semanal" | "mensal" | "carga-unica";
+  termos_lidos_em: string | null; // AAAA-MM-DD
+}
+
+/** Uma família de fonte, uma linha (`familias_para_o_site` de base/arquivo/registro.py). */
+export interface FamiliaDeFonte {
+  familia: string;
+  orgao: string;
+  link: string | null;
+  uso: "em_uso" | "guardada";
+  marca: RegistroDeFonte["marca"]; // a mais restrita entre as coletas
+  licencas: string[];
+  coletas: string[]; // ids das coletas do arquivista; vazio quando é lida fora do acervo
+  ritmo: string | null;
+  termos_lidos_em: string | null; // AAAA-MM-DD
+}
+
+/** Um módulo da base com a contagem de tabelas (`Modulo` de base/vitrine.py). */
+export interface ModuloDaBase {
+  chave: string;
+  nome: string;
+  tabelas: number;
+}
+
+/** Uma linha da lista de tabelas (`TabelaDoSite` de base/vitrine.py). */
+export interface TabelaDaBase {
+  tabela: string;
+  modulo: string;
+  frase: string;
+  orgao: string;
+  situacao: "licenciada" | "em consulta";
+  frequencia: string;
+  atraso: string | null;
+  historico_desde: string;
+  consultavel: boolean; // dá para consultar e exportar pela página Dados e pela API aberta
+}
+
+/** Um cartão do "ligado pelo CNPJ" (`TemaDoCnpj` de base/vitrine.py): os órgãos e a contagem vêm do catálogo. */
+export interface TemaDoCnpj {
+  chave: string;
+  titulo: string;
+  texto: string;
+  orgaos: string[];
+  tabelas: number;
+}
+
+/** As tabelas da base que se juntam pelo CNPJ, contadas pelas colunas do catálogo. */
+export interface LigadoPeloCnpj {
+  tabelas: number;
+  orgaos: number;
+  temas: TemaDoCnpj[];
+}
+
+/** O catálogo de contratos da base, contado pelo Python: a página Dados não digita número. */
+export const catalogo: {
+  totais: {
+    tabelas: number;
+    fontes: number;
+    fontes_em_consulta: number;
+    modulos: number;
+    familias: number;
+    familias_em_uso: number;
+  };
+  fontes: FonteDaBase[];
+  registro_de_fontes: RegistroDeFonte[];
+  familias_de_fontes: FamiliaDeFonte[];
+  modulos: ModuloDaBase[];
+  tabelas: TabelaDaBase[];
+  ligado_pelo_cnpj: LigadoPeloCnpj;
+} = catalogoJson as never;
+
+/** Os números medidos na base (`base/vitrine.py`, fotografia do servidor de casa): a página Dados não digita número. */
+export const baseEmNumeros: {
+  numeros: {
+    empresas: number;
+    linhas_de_demonstracoes: number;
+    versoes: number;
+    eventos: number;
+    originais_com_hash: number;
+    medido_em: string;
+  };
+  medido_em_curto: string;
+} = baseJson as never;
+import vitrineJson from "../conteudo/vitrine.json";
+
+/** Uma vaga da vitrine da página inicial (`Vaga` de base/vitrine.py): pronta tem link, em breve não. */
+export interface VagaDaVitrine {
+  chave: string;
+  titulo: string;
+  para_que_serve: string;
+  estado: "pronta" | "em_breve";
+  link: string | null;
+}
+
+export const vitrine: VagaDaVitrine[] = vitrineJson as never;
+import fatosJson from "../conteudo/fatos_da_base.json";
+
+/** Um fato agregado da página inicial (`Fato` de base/vitrine.py): só contagens, com a fonte e a data. */
+export interface FatoDaBase {
+  chave: string;
+  numero: string;
+  texto: string;
+  fonte: string;
+  tabelas: string[];
+  data: string;
+  como_foi_calculado: string;
+}
+
+/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão. */
+export const fatosDaBase: { fatos: FatoDaBase[]; medido_em_curto: string } = fatosJson as never;

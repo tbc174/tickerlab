@@ -1,0 +1,54 @@
+{
+  "tabela": "emissores",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "emissor": {
+      "descricao": "As 4 letras do emissor",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "primeiro_ano": {
+      "descricao": "Ano do primeiro FCA com o emissor",
+      "unidade": "número inteiro"
+    },
+    "ultimo_ano": {
+      "descricao": "Ano do último FCA com o emissor",
+      "unidade": "número inteiro"
+    },
+    "primeiro_recebido_em": {
+      "descricao": "Entrega do primeiro FCA com o emissor (nos códigos conferidos, o 1º mês nas carteiras dos fundos): desde quando a ligação é conhecida",
+      "unidade": "data (dia)"
+    },
+    "conflito": {
+      "descricao": "Verdadeiro se o emissor aparece com mais de um CNPJ",
+      "unidade": "verdadeiro ou falso"
+    },
+    "origem": {
+      "descricao": "fca (informado no formulário) ou códigos conferidos (tabela `base/conferidas/codigos_fora_do_fca.csv`: o código veio fora do formato no FCA)",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "emissor",
+    "cnpj"
+  ],
+  "datas": {
+    "publico_em": "primeiro_recebido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos",
+  "atraso": "Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017"
+}

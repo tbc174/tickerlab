@@ -81,13 +81,28 @@ def _uso_de_relatorios(usuario, limites):
 
 
 def _baixar_fechamentos(tickers, periodo):
-    fechamentos, falharam = {}, []
+    """(fechamentos, os que falharam, se algum veio dos dados de exemplo)."""
+    fechamentos, falharam, de_exemplo = {}, [], False
     for ticker in tickers:
         try:
-            fechamentos[ticker] = carregar_dados(ticker, periodo)["Close"]
+            dados = carregar_dados(ticker, periodo)
         except (DadosIndisponiveisError, ValueError):
             falharam.append(ticker)
-    return fechamentos, falharam
+            continue
+        fechamentos[ticker] = dados["Close"]
+        de_exemplo = de_exemplo or _de_exemplo(dados)
+    return fechamentos, falharam, de_exemplo
+
+
+def _de_exemplo(dados):
+    """Os preços vieram do exemplo: pedido na caixa do topo ou porque o Yahoo falhou."""
+    return dados is not None and dados.attrs.get("origem") == "exemplo"
+
+
+def _com_a_origem(base, de_exemplo):
+    """A fonte que o PDF escreve: o exemplo automático (Yahoo fora) não vira "Yahoo Finance"
+    (achado 5e do Codex)."""
+    return {**base, "exemplo": base["exemplo"] or de_exemplo}
 
 
 # Configurar → pré-visualizar → gerar → revisar → exportar. A prévia é o próprio PDF (só a capa e
@@ -171,7 +186,11 @@ def _montar_ativo(tipo, c, base, comuns, rotulo):
 
     def montar(config, ao_avancar):
         return relatorios.relatorio_do_ativo(
-            c.ticker, c.dados, **base, config=config, ao_avancar=ao_avancar
+            c.ticker,
+            c.dados,
+            **_com_a_origem(base, _de_exemplo(c.dados)),
+            config=config,
+            ao_avancar=ao_avancar,
         )
 
     return _pedido(
@@ -200,12 +219,15 @@ def _montar_comparacao(tipo, c, base, comuns):
     def montar(config, ao_avancar):
         if ao_avancar:
             ao_avancar("Preparando dados")
-        fechamentos, falharam = _baixar_fechamentos(outros, c.periodo)
+        fechamentos, falharam, de_exemplo = _baixar_fechamentos(outros, c.periodo)
         if falharam:
             st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
         alinhado, _ = alinhar_fechamentos(fechamentos)
         return relatorios.relatorio_de_comparacao(
-            alinhado, **base, config=config, ao_avancar=ao_avancar
+            alinhado,
+            **_com_a_origem(base, de_exemplo),
+            config=config,
+            ao_avancar=ao_avancar,
         )
 
     return _pedido(
@@ -246,7 +268,8 @@ def _montar_backtest(tipo, c, base, comuns):
 
     def montar(config, ao_avancar):
         return relatorios.relatorio_de_backtest(
-            c.ticker, c.dados, nome, padroes, custo, **base, config=config,
+            c.ticker, c.dados, nome, padroes, custo,
+            **_com_a_origem(base, _de_exemplo(c.dados)), config=config,
             ao_avancar=ao_avancar, tentativas_da_pessoa=tentativas_da_pessoa,
             tolerancia_de_queda=tolerancia,
         )  # fmt: skip
@@ -285,12 +308,17 @@ def _montar_carteira(tipo, c, base):
     def montar(config, ao_avancar):
         if ao_avancar:
             ao_avancar("Preparando dados")
-        fechamentos, falharam = _baixar_fechamentos(ativos, c.periodo)
+        fechamentos, falharam, de_exemplo = _baixar_fechamentos(ativos, c.periodo)
         if falharam:
             st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
         tabela = pd.DataFrame(fechamentos).dropna()
         return relatorios.relatorio_de_carteira(
-            tabela, nome, {}, **base, config=config, ao_avancar=ao_avancar
+            tabela,
+            nome,
+            {},
+            **_com_a_origem(base, de_exemplo),
+            config=config,
+            ao_avancar=ao_avancar,
         )
 
     return _pedido(
@@ -401,7 +429,7 @@ def _montar_minha_carteira(c, base):
     def montar(config, ao_avancar):
         if ao_avancar:
             ao_avancar("Preparando dados")
-        fechamentos, falharam = _baixar_fechamentos(
+        fechamentos, falharam, de_exemplo = _baixar_fechamentos(
             list(carteira.posicoes["ticker"]), c.periodo
         )
         if falharam:
@@ -412,9 +440,11 @@ def _montar_minha_carteira(c, base):
             raise ValueError(
                 "nenhum ativo da carteira tem histórico de preço no período"
             )
-        ibovespa = _baixar_fechamentos(["^BVSP"], c.periodo)[0].get("^BVSP")
+        indice, _, indice_de_exemplo = _baixar_fechamentos(["^BVSP"], c.periodo)
+        ibovespa = indice.get("^BVSP")
+        origem = _com_a_origem(base, de_exemplo or indice_de_exemplo)
         return relatorios.relatorio_da_minha_carteira(
-            carteira, pd.DataFrame(fechamentos), ibovespa, **base, config=config,
+            carteira, pd.DataFrame(fechamentos), ibovespa, **origem, config=config,
             ao_avancar=ao_avancar, demonstracao=demonstracao,
         )  # fmt: skip
 

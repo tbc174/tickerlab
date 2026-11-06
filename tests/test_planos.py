@@ -11,6 +11,7 @@ from src.banco.usuarios import buscar_por_email, entrar
 from src.planos import (
     APRENDIZADO_DE_MAQUINA,
     CARTEIRA_NO_RESEARCH,
+    DOSSIE_DA_BASE,
     LIMITES_DOS_PLANOS,
     PARES,
     LimiteDoPlanoError,
@@ -49,7 +50,7 @@ def test_recursos_do_pro():
 
 
 @pytest.mark.parametrize(
-    "recurso", [APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH]
+    "recurso", [APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH, DOSSIE_DA_BASE]
 )
 def test_plano_que_libera_e_o_primeiro_que_tem_o_recurso(recurso):
     assert plano_que_libera(recurso) == "pro"
@@ -120,6 +121,15 @@ def test_tabela_de_planos_cobre_todos_os_recursos():
     assert linhas["Aprendizado de máquina"]["Plus"] == "Não"  # ML e pares só no Pro
     assert linhas["Pairs trading"]["Pro"] == "Sim"
     assert linhas["Relatórios em PDF"]["Plus"] == "Todos os tipos, 20 por dia"
+
+
+def test_dossie_da_base_so_no_pro():
+    assert pode_usar("pro", DOSSIE_DA_BASE)
+    assert not pode_usar("plus", DOSSIE_DA_BASE)
+    assert not pode_usar("gratuito", DOSSIE_DA_BASE)
+    assert plano_que_libera(DOSSIE_DA_BASE) == "pro"
+    linha = {l["Recurso"]: l for l in tabela_de_planos()}["Dossiê da base"]
+    assert [linha[p] for p in ("Gratuito", "Plus", "Pro")] == ["Não", "Não", "Sim"]
 
 
 def test_plus_fica_entre_o_gratuito_e_o_pro():

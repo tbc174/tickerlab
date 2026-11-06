@@ -1,0 +1,37 @@
+{
+  "tabela": "cobertura_dos_fundos",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês da carteira",
+      "unidade": "data (dia)"
+    },
+    "valor_comprado": {
+      "descricao": "Valor comprado por todos os fundos",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "valor_com_cnpj": {
+      "descricao": "A parte desse valor cujo emissor tem CNPJ",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "fracao_com_cnpj": {
+      "descricao": "valor_com_cnpj ÷ valor_comprado",
+      "unidade": "fração (0,25 = 25%)"
+    }
+  },
+  "chaves": [
+    "competencia"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Mensal, montada junto com o painel dos fundos",
+  "atraso": "O do CDA (os meses mais novos ainda crescem enquanto os fundos entregam)"
+}

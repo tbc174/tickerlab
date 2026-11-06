@@ -13,6 +13,7 @@ import sqlalchemy as sa
 from src import auditoria
 from src.banco import novidades_por_email
 from src.banco.compartilhamentos import dados_para_exportar as links_para_exportar
+from src.banco.garantias import dados_para_exportar as garantias_para_exportar
 from src.banco.modelo import (
     alertas,
     assinaturas,
@@ -20,30 +21,48 @@ from src.banco.modelo import (
     envios_da_newsletter,
     envios_de_novidades,
     favoritos,
+    identidades,
     inscricoes_da_newsletter,
     inscricoes_de_novidades,
     pdfs_originais,
     preferencias,
     presets,
     relatorios,
+    sessoes_de_login,
     simulacoes,
     usuarios,
     watchlists,
 )
 from src.banco.origens import buscar_linha as buscar_origem_do_cadastro
+from src.banco.originacao import dados_para_exportar as originacao_para_exportar
 from src.banco.pulse import dados_para_exportar as pulse_para_exportar
+from src.banco.sala import dados_para_exportar as sala_para_exportar
 from src.banco.tentativas import contar_por_ativo
 from src.banco.teses import dados_para_exportar as diario_para_exportar
 from src.banco.usuarios import Usuario
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
+from src.sala.documentos import apagar_arquivos_da_conta
 
 # versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
 # alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas.
 # Versão 5: o PDF original dos relatórios fica guardado na biblioteca (ADR 0021). Versão 6: o
 # TickerLab se apresenta como produto por assinatura, não mais como projeto educacional. Versão 7:
 # a contagem das tentativas do backtest (ficha "Foi sorte?", só a impressão SHA-256)
-# (as Novidades por e-mail, 14/10, entraram sem novo aceite: o consentimento delas é à parte)
-VERSAO_DOS_TERMOS = "2026-10-13.7"
+# (as Novidades por e-mail, 14/10, entraram sem novo aceite: o consentimento delas é à parte).
+# Versão 8: formas de entrar e sessão de 30 dias (#461), encarregado e privacidade@, base legal
+# por dado, origem do cadastro, registros de acesso, transferência internacional, a base de
+# empresas e os relatórios escritos pelo modelo (ADR 0100); pré-lançamento sem cobrança.
+# Versão 9: transferência internacional provedor por provedor, depois de ler os contratos
+# (cláusulas da ANPD no Stripe; Google e Microsoft responsáveis próprios no login; o IP de quem
+# só visita o site vai à Cloudflare)
+# Versão 10: os sócios do cadastro público do CNPJ aparecem com o nome que a Receita publica,
+# só no quadro de sócios da empresa consultada (ADR 0106; portão com quatro condições)
+# Versão 11: a sala de dados (B-20, D13): nos dados de terceiros dentro dos documentos o cliente
+# é o controlador e o TickerLab é o operador; prazos, apagamento, cópias de 14 dias, incidente
+# Versão 13: o registro de quem entra no servidor e usa sudo vai a outro computador por 12 meses
+# (linha 207 da fila; RIPD da sala, R-S1). O texto 14 (a ficha de originação e as garantias da
+# sala, linha 194) entrou sem novo aceite: descreve o que a pessoa já anota, sem uso novo
+VERSAO_DOS_TERMOS = "2026-10-22.13"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
@@ -53,6 +72,12 @@ INTRODUCAO_DO_ACEITE = (
     "investimento. Leia os termos e a política de privacidade e confirme."
 )
 CAIXA_DO_ACEITE = "Li e aceito os Termos de uso e a Política de privacidade"
+# quem não aceita os termos novos ainda pode exercer os direitos da LGPD (art. 18)
+TITULO_SEM_O_ACEITE = "Não quer aceitar? Baixe ou apague os seus dados"
+EXPLICACAO_SEM_O_ACEITE = (
+    "Sem aceitar, você não usa o app, mas os seus dados continuam seus: dá para baixar "
+    "uma cópia ou apagar a conta aqui mesmo."
+)
 
 
 def carregar_texto(nome: str) -> str:
@@ -151,6 +176,12 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         "pulse": pulse_para_exportar(conexao, usuario_id),
         "diario_de_teses": diario_para_exportar(conexao, usuario_id),
         "links_compartilhados": links_para_exportar(conexao, usuario_id),
+        # metadados da sala de dados (B-20); os arquivos saem pelo "Baixar a sala"
+        "sala_de_dados": sala_para_exportar(conexao, usuario_id=usuario_id),
+        # o funil de originação (B-33): fase, próximo passo e os contatos anotados à mão
+        "originacao": originacao_para_exportar(conexao, usuario_id=usuario_id),
+        # as garantias das operações (B-17): exposição, haircut, validade e o laudo citado
+        "garantias": garantias_para_exportar(conexao, usuario_id=usuario_id),
         "origem_do_cadastro": _origem_do_cadastro(conexao, usuario_id),
         "favoritos": [
             l.ticker
@@ -317,6 +348,36 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 .order_by(relatorios.c.criado_em)
             )
         ],
+        # o identificador que o provedor dá à pessoa e o hash do token da sessão ficam de fora:
+        # não dizem nada a ela e só serviriam para alguém se passar por ela
+        "formas_de_entrar": [
+            {
+                "provedor": l.provedor,
+                "email": l.email,
+                "email_confirmado": l.email_confirmado,
+                "criada_em": _texto(l.criada_em),
+                "ultimo_uso": _texto(l.ultimo_uso),
+            }
+            for l in conexao.execute(
+                sa.select(identidades)
+                .where(identidades.c.usuario_id == usuario_id)
+                .order_by(identidades.c.criada_em)
+            )
+        ],
+        "sessoes_de_login": [
+            {
+                "provedor": l.provedor,
+                "criada_em": _texto(l.criada_em),
+                "expira_em": _texto(l.expira_em),
+                "ultimo_uso": _texto(l.ultimo_uso),
+                "encerrada_em": _texto(l.encerrada_em),
+            }
+            for l in conexao.execute(
+                sa.select(sessoes_de_login)
+                .where(sessoes_de_login.c.usuario_id == usuario_id)
+                .order_by(sessoes_de_login.c.criada_em)
+            )
+        ],
         "assinatura": (
             {
                 "status": assinatura.status,
@@ -333,8 +394,12 @@ def apagar_conta(conexao: sa.Connection, usuario_id: uuid.UUID) -> bool:
     """Apaga a pessoa e tudo o que é dela (em cascata) e deixa só um registro sem dado pessoal.
 
     Devolve se havia o que apagar. A cobrança no Stripe é encerrada por quem chama
-    (`cobranca.encerrar_cobranca`), antes desta função, porque envolve a internet.
+    (`cobranca.encerrar_cobranca`), antes desta função, porque envolve a internet. Os arquivos
+    da sala de dados saem do disco antes da linha da conta (depois, a cascata já teria levado a
+    lista das operações); se o banco falhar depois, a conta fica sem os arquivos, o lado seguro
+    do erro.
     """
+    apagar_arquivos_da_conta(conexao, usuario_id=usuario_id)
     existia = (
         conexao.execute(sa.delete(usuarios).where(usuarios.c.id == usuario_id)).rowcount
         > 0

@@ -6,6 +6,8 @@
 As tabelas de dividendos, desdobramentos, grupamentos, bonificações e aumentos de capital só existem
 no FRE aberto até o de 2022 (Resolução CVM 59): é uma carga de uma vez, sem cron. Cada arquivo vai
 para o acervo e o registro de coletas (fonte `cvm-fre`). Um ano que não existe na CVM é pulado.
+
+Roda: manual (python -m scripts.atualizar_fre); citado em fre.py.
 """
 
 import argparse
@@ -17,6 +19,7 @@ import requests
 import sqlalchemy as sa
 
 from base.fre import ULTIMO_ANO_COM_AS_TABELAS, ler_eventos_de_capital, ler_proventos
+from src import rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.fre import gravar_eventos, gravar_proventos
@@ -31,7 +34,7 @@ NAO_ENCONTRADO = 404
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

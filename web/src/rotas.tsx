@@ -12,6 +12,10 @@ import {
   DADOS_DA_RENDA_FIXA,
   DADOS_DA_RENDA,
   DADOS_DA_SORTE,
+  DADOS_DO_QUANTO_DARIA,
+  DADOS_DO_PRECO_MEDIO,
+  DADOS_DO_FINANCIAMENTO,
+  DADOS_DO_FUNDO,
   DADOS_DOS_JUROS,
   PaginaDaRenda,
   PaginaDaSorte,
@@ -22,18 +26,31 @@ import {
   PaginaDoConversor,
   PaginaDoDarf,
   PaginaDoJuroReal,
+  PaginaDoQuantoDaria,
+  PaginaDoPrecoMedio,
+  PaginaDoFinanciamento,
+  PaginaDoFundo,
   PaginaDosJuros,
   Vitrine,
 } from "./ferramentas/paginas";
 import { Aprender, DADOS as DADOS_DO_APRENDER } from "./paginas/Aprender";
 import { ComoFunciona, DADOS as DADOS_DO_COMO_FUNCIONA } from "./paginas/ComoFunciona";
+import { DADOS as DADOS_DOS_DADOS, Dados } from "./paginas/Dados";
 import { DADOS as DADOS_DO_INICIO, Inicio } from "./paginas/Inicio";
 import { DADOS_DA_PRIVACIDADE, DADOS_DOS_TERMOS, Legal } from "./paginas/Legal";
 import { DADOS as DADOS_DA_METODOLOGIA, Metodologia } from "./paginas/Metodologia";
 import { DADOS as DADOS_DA_404, NaoEncontrada } from "./paginas/NaoEncontrada";
 import { DADOS as DADOS_DAS_NOVIDADES, Novidades } from "./paginas/Novidades";
 import { DADOS as DADOS_DOS_PLANOS, Precos } from "./paginas/Precos";
+import { DADOS as DADOS_DO_PREGAO, PregaoDoDia } from "./paginas/PregaoDoDia";
 import { DADOS as DADOS_DO_PRODUTO, Produto } from "./paginas/Produto";
+import { DADOS as DADOS_DO_RAIO_X, RaioXDoChoque } from "./paginas/RaioXDoChoque";
+import { DADOS as DADOS_DO_RELATORIO, RelatorioExemplo } from "./paginas/RelatorioExemplo";
+import { DADOS as DADOS_DOS_RELATORIOS, Relatorios } from "./paginas/Relatorios";
+import {
+  DADOS as DADOS_DO_SEMANAL_ELETRICAS,
+  RelatorioSemanalEletricas,
+} from "./paginas/RelatorioSemanalEletricas";
 import { DADOS as DADOS_DO_SOBRE, Sobre } from "./paginas/Sobre";
 import type { DadosDaPagina } from "./site/Moldura";
 
@@ -51,6 +68,7 @@ export const ROTAS: Rota[] = [
     dados: DADOS_DO_COMO_FUNCIONA,
     conteudo: () => <ComoFunciona />,
   },
+  { arquivo: "dados.html", dados: DADOS_DOS_DADOS, conteudo: () => <Dados /> },
   { arquivo: "aprender.html", dados: DADOS_DO_APRENDER, conteudo: () => <Aprender /> },
   { arquivo: "ferramentas.html", dados: DADOS_DA_VITRINE, conteudo: () => <Vitrine /> },
   {
@@ -91,9 +109,34 @@ export const ROTAS: Rota[] = [
     dados: DADOS_DA_INFLACAO,
     conteudo: () => <PaginaDaInflacao />,
   },
+  { arquivo: "quanto-daria.html", dados: DADOS_DO_QUANTO_DARIA, conteudo: () => <PaginaDoQuantoDaria /> },
+  {
+    arquivo: "calculadora-de-preco-medio.html",
+    dados: DADOS_DO_PRECO_MEDIO,
+    conteudo: () => <PaginaDoPrecoMedio />,
+  },
+  {
+    arquivo: "simulador-de-financiamento.html",
+    dados: DADOS_DO_FINANCIAMENTO,
+    conteudo: () => <PaginaDoFinanciamento />,
+  },
+  { arquivo: "fundo-ou-cdb.html", dados: DADOS_DO_FUNDO, conteudo: () => <PaginaDoFundo /> },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
   { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },
+  { arquivo: "relatorios.html", dados: DADOS_DOS_RELATORIOS, conteudo: () => <Relatorios /> },
+  { arquivo: "pregao-do-dia.html", dados: DADOS_DO_PREGAO, conteudo: () => <PregaoDoDia /> },
+  { arquivo: "raio-x-do-choque.html", dados: DADOS_DO_RAIO_X, conteudo: () => <RaioXDoChoque /> },
+  {
+    arquivo: "relatorio-de-exemplo.html",
+    dados: DADOS_DO_RELATORIO,
+    conteudo: () => <RelatorioExemplo />,
+  },
+  {
+    arquivo: "relatorio-de-setor-eletricas.html",
+    dados: DADOS_DO_SEMANAL_ELETRICAS,
+    conteudo: () => <RelatorioSemanalEletricas />,
+  },
   { arquivo: "novidades.html", dados: DADOS_DAS_NOVIDADES, conteudo: () => <Novidades /> },
   {
     arquivo: "termos.html",

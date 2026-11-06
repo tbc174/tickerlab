@@ -78,7 +78,7 @@ def test_banco_fora_do_ar_nao_derruba_a_coleta(monkeypatch, caplog):
         ("wiki-acessos", "CC0"),
         ("gdelt-cripto", "GDELT"),
         ("btc-no", "Blockchain pública"),
-        ("kraken-ohlc", "Sem termo de dados de mercado"),
+        ("kraken-ohlc", "Termo da Kraken"),
         ("mb-candles", "Sem termo de dados de mercado"),
         ("desconhecida", "Desconhecida"),
     ],
@@ -119,16 +119,22 @@ def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas()
         licenca_da_fonte("rfb-cripto") == coletas.LICENCAS["rfb"]
     )  # a planilha de cripto não muda
     assert licenca_da_fonte("gleif-br").startswith("CC0")
-    for fonte in (
-        "cgu-ceis",
-        "pgfn-divida",
-        "ibama-autos",
-        "mte-lista-suja",
-        "rfb-cnpj",
-    ):
+    for fonte in ("cgu-ceis", "ibama-autos", "mte-lista-suja"):
         assert coletas.revenda_da_fonte(fonte) == coletas.SO_USO_INTERNO, fonte
+    # só o rodapé CC BY-ND do site, sem resposta: vendável por risco assumido (ADR 0122)
+    assert coletas.revenda_da_fonte("pgfn-divida") == coletas.VENDAVEL_RISCO_ASSUMIDO
+    assert coletas.revenda_da_fonte("rfb-cnpj") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("gleif-br") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("termos-b3") == coletas.SO_USO_INTERNO
+
+
+def test_b3_diz_que_esta_sem_licenca_e_e_nao_comercial():
+    # a marca segue como informação; desde 22/10/2026 a B3 entra no produto com a fonte citada
+    # (ADR 0008, Emenda 6)
+    assert "Sem licença da B3" in licenca_da_fonte("b3-negocios")
+    assert "Emenda 6" in licenca_da_fonte("b3-negocios")
+    assert coletas.revenda_da_fonte("b3-negocios") == coletas.NAO_COMERCIAL
+    assert coletas.revenda_da_fonte("b3-boletim-pr") == coletas.NAO_COMERCIAL
 
 
 def test_registrar_arquivo_grande_usa_o_sha256_e_o_tamanho_ja_calculados(banco):
@@ -172,6 +178,33 @@ def test_licencas_das_fontes_abertas_novas():
         assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_ODBL
 
 
+def test_licencas_da_previa_do_balanco():
+    """Licença declarada no conjunto do dados.gov.br (lida em 14/10/2026), não o rodapé do site."""
+    for fonte in (
+        "anp-vendas-distribuidora",
+        "anac-estatistico",
+        "ans-beneficiarios",
+        "ons-geracao-usina",
+    ):
+        assert "CC BY" in licenca_da_fonte(fonte)
+        assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert "ANTT" in licenca_da_fonte("antt-siade")
+    # Comex Stat: o MDIC respondeu por escrito em 21/10/2026 (LAI): uso livre, inclusive
+    # comercial, derivação e ML; o CC BY-ND do rodapé é só do site
+    assert coletas.revenda_da_fonte("comexstat") == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert "MDIC" in licenca_da_fonte("comexstat")
+
+
+def test_toda_licenca_cabe_na_coluna_do_registro():
+    """A coluna `licenca` tem 80 caracteres: um texto maior derruba o registro (Comex, 14/10/2026)."""
+    limite = coletas.coletas.c.licenca.type.length
+    assert all(len(texto) <= limite for texto in coletas.LICENCAS.values())
+    assert len(coletas.SEM_LICENCA_CONHECIDA) <= limite
+    assert "SAMP sem CPF" in licenca_da_fonte("aneel-samp")
+    assert coletas.revenda_da_fonte("anatel-acessos") == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert coletas.revenda_da_fonte("bcb-pix-chaves") == coletas.VENDAVEL_ODBL
+
+
 def test_coleta_registra_a_versao_do_codigo(banco, monkeypatch):
     """Série 3, PR 3 (exigência 13 da ADR 0055): cada arquivo registrado diz qual commit o baixou."""
     from src import versao_do_codigo as vc
@@ -202,3 +235,43 @@ def test_migracao_da_versao_do_codigo_sobe_e_desce(tmp_path):
         assert "versao_do_codigo" in colunas()
     finally:
         motor.dispose()
+
+
+def test_versoes_guardadas_sem_ler_e_ausencia_antes_da_primeira(banco):
+    """A data em que cada informe apareceu (`base/publicacao.py`) sai das versões guardadas."""
+    from src import acervo
+
+    dia = datetime(2026, 11, 1, 5, 0, tzinfo=UTC)
+    with banco.begin() as conexao:
+        registrar(conexao, "cvm-fidc-recente", URL, None, "nao_encontrado", agora=dia)
+        for n, conteudo in enumerate((b"v1", b"v1", b"v2")):
+            quando = dia + timedelta(days=n + 1)
+            caminho = acervo.guardar_original("cvm-fidc-recente", URL, conteudo, quando)
+            registrar(
+                conexao, "cvm-fidc-recente", URL, conteudo, "ok", None, quando, caminho
+            )
+    with banco.connect() as conexao:
+        versoes = coletas.versoes_guardadas(conexao, URL)
+        assert [v.sha256 for v in versoes] == [
+            hashlib.sha256(b"v1").hexdigest(),
+            hashlib.sha256(b"v2").hexdigest(),
+        ]  # a repetida não conta
+        assert acervo.ler_original(versoes[1].caminho) == b"v2"
+        assert coletas.ausente_antes(conexao, URL, versoes[0].baixado_em)
+        assert not coletas.ausente_antes(conexao, URL, dia)
+        assert coletas.versoes_guardadas(conexao, URL + "x") == []
+
+
+def test_marca_do_tce_pr_e_vendavel_com_atribuicao():
+    # regras de utilização do PIT: "livre para qualquer finalidade ou atividade" (lidas em 16/10/2026)
+    for fonte in ("tce-pr", "tce-pr-pit", "tce-pr-despesa"):
+        assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_COM_ATRIBUICAO, fonte
+        assert "TCE-PR" in licenca_da_fonte(fonte)
+    assert (
+        coletas.revenda_da_fonte("tce-rs-empenhos") == coletas.VENDAVEL_COM_ATRIBUICAO
+    )
+
+
+def test_licitacon_e_vendavel_por_risco_assumido():
+    # o LicitaCon do TCE-RS segue sem resposta da Ouvidoria (ADR 0085); o Tiago assumiu o risco (ADR 0122)
+    assert coletas.revenda_da_fonte("tce-rs") == coletas.VENDAVEL_RISCO_ASSUMIDO

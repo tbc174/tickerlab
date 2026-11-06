@@ -84,12 +84,36 @@ def pytest_configure(config):
         config.pluginmanager.register(_MedidorDeDuracoes(config), "medidor_de_duracoes")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def limites_de_depois_do_lancamento():
+    """Os testes conferem os limites de cada plano; o pré-lançamento (tudo liberado) tem os seus.
+
+    Vale para a sessão inteira: fixtures de módulo (ex.: `no_gratuito`) são montadas antes das
+    de função e já precisam ver a trava desligada.
+    """
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("src.planos.TUDO_LIBERADO_NO_PRE_LANCAMENTO", False)
+        yield
+
+
+@pytest.fixture(autouse=True)
+def sem_a_faixa_de_preco_do_yahoo(monkeypatch):
+    """Nenhum teste vai ao Yahoo buscar a faixa de 52 semanas da ficha; o que quiser a usa por conta."""
+    monkeypatch.setattr(
+        "src.faixa_de_preco.baixar_fechamento_sem_ajuste", lambda *_: None
+    )
+
+
 @pytest.fixture(autouse=True)
 def banco_de_precos_isolado(tmp_path, monkeypatch):
     """Cada teste usa um banco SQLite novo: nenhum teste lê ou escreve o banco de verdade."""
     monkeypatch.setenv(VARIAVEL_DO_CAMINHO, str(tmp_path / "precos_de_teste.sqlite"))
     # o acervo do arquivo original (src/acervo.py) também fica na pasta do teste
     monkeypatch.setenv(VARIAVEL_DA_PASTA, str(tmp_path / "acervo"))
+    # a vista do CNPJ (src/cadastro_da_receita.py) só existe no teste que a monta
+    monkeypatch.setenv("TICKERLAB_CNPJ", str(tmp_path / "sem_vista_do_cnpj"))
+    # e a memória do Pulse dos ativos sem preço começa vazia (um teste não herda a do outro)
+    monkeypatch.setattr("src.api_v1.rotas._sem_preco", {})
 
 
 @pytest.fixture

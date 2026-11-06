@@ -1,0 +1,75 @@
+{
+ "escolha": {
+  "cnpj": "02.429.144/0001-93",
+  "empresa": "CPFL ENERGIA S.A.",
+  "modelo": "claude-haiku-5-5",
+  "versao_do_guia": "graficos_v1",
+  "hash_da_entrada": "0d671b02e3a48cfc4e50bbf95f0a75756a0d6cd3d3dea2b9884f11f36fcd4e39",
+  "hash_do_texto": "4986ec7b76621e99946ab21b43efe7aa9eef1f15272f8e74af77859341786a87",
+  "escolhido_em": "2026-10-23T02:13:28-03:00",
+  "stop_reason": "end_turn",
+  "resposta_bruta": "{\"graficos\":[{\"tipo\":\"cascata\",\"tabela\":\"resultado.cascata\",\"eixo\":\"passo\",\"colunas\":[\"valor\"],\"titulo\":\"Da receita ao lucro no último ano\",\"parte\":\"o_que_os_numeros_mostram\",\"paragrafo\":0,\"por_que\":{\"texto\":\"Mostra, passo a passo, como a receita do último ano chega ao lucro consolidado.\",\"notas\":[\"resultado.cascata.0\",\"resultado.cascata.1\",\"resultado.cascata.2\",\"resultado.cascata.3\",\"resultado.cascata.4\",\"resultado.cascata.5\",\"resultado.cascata.6\"],\"contas\":[]}},{\"tipo\":\"cascata\",\"tabela\":\"endividamento.ponte\",\"eixo\":\"passo\",\"colunas\":[\"valor\"],\"titulo\":\"Da dívida líquida do ano anterior à de agora\",\"parte\":\"o_que_os_numeros_mostram\",\"paragrafo\":6,\"por_que\":{\"texto\":\"Mostra de onde veio a variação da dívida líquida entre os dois anos, passo a passo, incluindo a linha de outros.\",\"notas\":[\"endividamento.ponte.0\",\"endividamento.ponte.1\",\"endividamento.ponte.2\",\"endividamento.ponte.3\",\"endividamento.ponte.4\",\"endividamento.ponte.5\"],\"contas\":[]}},{\"tipo\":\"barras_no_tempo\",\"tabela\":\"dividendos.historico\",\"eixo\":\"ano\",\"colunas\":[\"dividendos_pagos\",\"lucro\"],\"titulo\":\"Dividendos pagos e lucro por ano\",\"parte\":\"dinheiro\",\"paragrafo\":0,\"por_que\":{\"texto\":\"Compara, ano a ano, os dividendos pagos com o lucro dos acionistas.\",\"notas\":[\"dividendos.historico.0\",\"dividendos.historico.1\"],\"contas\":[]}},{\"tipo\":\"barras_no_tempo\",\"tabela\":\"ofertas_e_fundos.ofertas_por_ano\",\"eixo\":\"Ano\",\"colunas\":[\"Ofertas\"],\"titulo\":\"Ofertas registradas na CVM por ano\",\"parte\":\"dinheiro\",\"paragrafo\":1,\"por_que\":{\"texto\":\"Mostra quantas ofertas do grupo foram registradas na CVM em cada ano da série.\",\"notas\":[\"ofertas_e_fundos.ofertas_por_ano.0\",\"ofertas_e_fundos.ofertas_por_ano.1\",\"ofertas_e_fundos.ofertas_por_ano.2\",\"ofertas_e_fundos.ofertas_por_ano.3\"],\"contas\":[]}},{\"tipo\":\"linha_no_tempo\",\"tabela\":\"ofertas_e_fundos.fundos_por_mes\",\"eixo\":\"Mês\",\"colunas\":[\"Fundos\"],\"titulo\":\"Fundos com a ação por mês\",\"parte\":\"dinheiro\",\"paragrafo\":3,\"por_que\":{\"texto\":\"Mostra quantos fundos tinham a ação mês a mês, da primeira linha da série ao último mês entregue.\",\"notas\":[\"ofertas_e_fundos.fundos_por_mes.0\",\"ofertas_e_fundos.fundos_por_mes.9\",\"ofertas_e_fundos.fundos_por_mes.11\",\"ofertas_e_fundos.fundos_por_mes.23\"],\"contas\":[]}}],\"destaques\":[{\"secao\":\"retorno\",\"parte\":\"o_que_os_numeros_mostram\",\"por_que\":{\"texto\":\"Mostra o ROE, o ROIC e a margem da DuPont contra o setor, para ler de onde vem o retorno.\",\"notas\":[\"retorno.roe\",\"retorno.roic\",\"retorno.dupont_margem\"],\"contas\":[]}},{\"secao\":\"o_que_mudaria\",\"parte\":\"o_que_mudaria\",\"por_que\":{\"texto\":\"Mostra o valor que mudaria cada nota, pela mesma régua de hoje.\",\"notas\":[\"o_que_mudaria.gatilhos.5\",\"o_que_mudaria.gatilhos.8\"],\"contas\":[]}}]}",
+  "tokens": {
+   "entrada": 52565,
+   "saida": 5681,
+   "cache_escrito": 3772,
+   "cache_lido": 0
+  },
+  "custo_em_dolares": 0.0085685
+ },
+ "cega": {
+  "conferente": "claude-sonnet-5-5",
+  "hash_da_resposta": "3dec494b0f6046415a49caf37d16a04a9777b1b8b7975be3a546d2a2046ecf73",
+  "conferido_em": "2026-10-23T02:14:44-03:00",
+  "stop_reason": "end_turn",
+  "reprovados": [
+   "destaque.0",
+   "grafico.3"
+  ],
+  "motivo": null,
+  "itens": [
+   [
+    "grafico.0",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.1",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.2",
+    "mostra",
+    ""
+   ],
+   [
+    "grafico.3",
+    "engana",
+    "Põe 2026, que vai só até 09/09, ao lado de anos inteiros, e pula os anos sem oferta (2018 a 2022), o que esconde os zeros que o parágrafo compara."
+   ],
+   [
+    "grafico.4",
+    "mostra",
+    ""
+   ],
+   [
+    "destaque.0",
+    "nao_mostra",
+    "O porquê diz que a margem da DuPont é comparada com o setor, mas ela só é comparada com o balanço de 31/03/2026 (era 12,8%)."
+   ],
+   [
+    "destaque.1",
+    "mostra",
+    ""
+   ]
+  ],
+  "tokens": {
+   "entrada": 13800,
+   "saida": 1449,
+   "cache_escrito": 914,
+   "cache_lido": 0
+  },
+  "custo_em_dolares": 0.044374
+ }
+}

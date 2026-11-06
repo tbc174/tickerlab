@@ -1,0 +1,65 @@
+{
+  "tabela": "ma_partes",
+  "modulo": "ma",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "assessoria": {
+      "descricao": "Quem postou (`igc`)",
+      "unidade": "texto"
+    },
+    "url": {
+      "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+      "unidade": "texto"
+    },
+    "nome": {
+      "descricao": "O nome da empresa como a página escreve",
+      "unidade": "texto"
+    },
+    "papel": {
+      "descricao": "alvo, comprador, vendedor ou outras_partes; vazio quando o negócio não tem papéis (dívida, fusão, joint venture, título sem verbo)",
+      "unidade": "texto"
+    },
+    "na_pagina": {
+      "descricao": "cliente (a assessorada) ou contraparte: o campo da página em que o nome está",
+      "unidade": "texto"
+    },
+    "nome_normalizado": {
+      "descricao": "O nome sem acento, caixa, forma jurídica no fim (S.A., Ltda...) e \"Grupo\": o que se compara",
+      "unidade": "texto"
+    },
+    "id_entidade": {
+      "descricao": "A entidade da rede; para uma fechada que ainda não está na rede, o id que a rede dará à raiz dela. Vazio sem ligação ou na dúvida",
+      "unidade": "texto"
+    },
+    "cnpj_raiz": {
+      "descricao": "Os 8 primeiros dígitos do CNPJ da empresa ligada",
+      "unidade": "texto"
+    },
+    "lei": {
+      "descricao": "O LEI da entidade ligada, quando a rede tem",
+      "unidade": "texto"
+    },
+    "ligacao_por": {
+      "descricao": "nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um candidato) ou sem_ligacao",
+      "unidade": "texto"
+    },
+    "candidatos": {
+      "descricao": "Quantas entidades têm esse nome (0 sem ligação, 1 ligada, 2 ou mais na dúvida)",
+      "unidade": "número inteiro"
+    }
+  },
+  "chaves": [
+    "assessoria",
+    "url",
+    "nome"
+  ],
+  "datas": {},
+  "historico_desde": "2026-10-16",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+  "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+  "pessoa": false,
+  "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+  "atraso": "O da tabela `ma_assessorias` e o do mês do CNPJ guardado"
+}

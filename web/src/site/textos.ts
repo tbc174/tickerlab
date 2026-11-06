@@ -3,6 +3,8 @@
 export const URL_DO_SITE = "https://tickerlab.com.br";
 export const URL_DO_APP = "https://app.tickerlab.com.br";
 export const URL_DO_CODIGO = "https://github.com/tbc174/tickerlab";
+// a API de dados (TickerLab Data): o site e a documentação dela ficam na raiz da própria API
+export const URL_DA_API = "https://api.tickerlab.com.br";
 export const EMAIL_DE_CONTATO = "contato@tickerlab.com.br";
 
 // Beta fechado: só contas convidadas entram (o aviso aparece no topo da página inicial)
@@ -10,11 +12,11 @@ export const BETA_FECHADO = false;
 export const TICKER_DO_EXEMPLO = "PETR4.SA";
 
 export const AVISO =
-  "Nada aqui é recomendação de investimento. Os dados vêm do Yahoo " +
-  "Finance e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.";
+  "Nada aqui é recomendação de investimento. Os dados vêm de fontes públicas, cada número com a sua " +
+  "fonte e a sua data, e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.";
 
 // a assinatura institucional do manual de identidade
-export const ASSINATURA = "Menos ruído. Mais inteligência para investir.";
+export const ASSINATURA = "Dados auditáveis para quem analisa empresas no Brasil.";
 
 /** Endereço de uma página do app, com os parâmetros na ordem dada (sem codificar, como antes). */
 export function linkDoApp(pagina = "", parametros: Record<string, string> = {}): string {
@@ -25,44 +27,64 @@ export function linkDoApp(pagina = "", parametros: Record<string, string> = {}):
 }
 
 // --- textos que aparecem em mais de uma página ---------------------------------------------
-export const PASSOS: [string, string][] = [
-  ["Escolha o que investigar", "Busque por código ou empresa: B3, EUA, índices e cripto."],
-  ["Explore os dados", "Gráficos, risco e testes de estratégia no passado, com custos."],
-  ["Guarde e compartilhe", "Monte um PDF com as seções que importam e baixe."],
+// O caminho de um número até o relatório (página "Como funciona"): fonte, original com hash, versões,
+// porta e relatório. O terceiro item de cada passo é a explicação técnica, que vai recolhida em
+// "Como foi calculado" (ADR 0099, item 7).
+export const PASSOS: [string, string, string][] = [
+  [
+    "A fonte",
+    "Coletamos de órgãos públicos: a CVM, a Receita Federal, o Banco Central, as agências reguladoras, os tribunais de contas e outros. Cada tabela da base diz de qual fonte vem e com que licença.",
+    "A coleta lê o que o órgão publica e anota a hora em que leu. A licença é a que a própria fonte publica; onde ela ainda não respondeu por escrito sobre uso comercial, a página Dados avisa.",
+  ],
+  [
+    "O original, com hash",
+    "Guardamos o arquivo exatamente como veio e registramos o SHA-256 dele: quem quiser confere que nada foi mexido.",
+    "O hash SHA-256 é calculado sobre os bytes do arquivo no momento da coleta. O mesmo arquivo dá sempre o mesmo hash, e qualquer alteração, mesmo de uma vírgula, muda o resultado.",
+  ],
+  [
+    "As versões",
+    "Quando a fonte corrige um dado, a correção entra como versão nova, com a data em que a vimos. A anterior não é apagada.",
+    "Cada versão guarda a data em que o dado ficou público e a data em que o TickerLab o viu. Por isso é possível perguntar “como era em tal dia”, com o que se sabia então.",
+  ],
+  [
+    "A porta",
+    "Os dados da base são consultados por data: a consulta só enxerga o que já era público naquele dia. A mesma porta atende, de fora, a TickerLab Data, a API de dados: em beta fechado, com a documentação aberta.",
+    "Um dado só é usado a partir do dia em que ficou público. Cortar o futuro não muda o passado: há teste automático que confere isso em cada versão do código.",
+  ],
+  [
+    "O relatório",
+    "O PDF junta os números, cada um com a fonte e a data, e diz o que não foi achado. A seção “Limites e cuidados” é obrigatória.",
+    "As contas ficam recolhidas em “Como foi calculado”: quem quer conferir abre, quem só quer o resultado não é atrapalhado. Os mesmos cálculos valem para a tela e para o PDF.",
+  ],
 ];
 
 export const PUBLICOS: [string, string][] = [
   [
-    "Quem está começando",
-    "Quer entender uma ação antes de investir, sem jargão. O tutorial guia a primeira " +
-      "análise em 2 minutos.",
+    "Quem analisa empresas",
+    "Analistas de M&A, crédito e research, e as equipes que conferem o que uma empresa e o grupo dela dizem contra as bases públicas, com a data de cada fonte e o que não foi achado.",
   ],
   [
-    "Quem estuda estratégias",
-    "Testa regras de compra e venda com custos, validação fora da amostra e teste " +
-      "contra o acaso, e vê quando a estratégia não funciona.",
+    "Estudantes e pesquisadores",
+    "Querem um número que possam citar: fonte, data e versão em cada um, e o teste de estratégia mostra também quando a estratégia não funciona.",
   ],
   [
-    "Quem quer organizar a carteira",
-    "Vê concentração, número efetivo de ativos e o comportamento da carteira de hoje no " +
-      "passado, comparada ao Ibovespa.",
+    "Equipes",
+    "O plano Casa, por assento, para quem analisa junto. Ainda está em construção: conte para a gente o que a sua equipe precisa.",
   ],
 ];
 
 export const CONFIANCA: [string, string][] = [
   [
     "Dados",
-    "Preços diários do Yahoo Finance, ajustados por dividendos e desdobramentos. Não é " +
-      "tempo real: os dados podem ter atraso, falhas e ajustes posteriores.",
+    "Documentos oficiais da CVM, da Receita Federal, do Banco Central, da SEC e de dezenas de outros órgãos públicos, cada um com fonte, data e licença. No app, os preços diários vêm do Yahoo Finance, ajustados por dividendos e desdobramentos; não são tempo real e podem ter atraso, falhas e ajustes posteriores. O pregão do dia, no site, usa o fechamento oficial da B3.",
   ],
   [
-    "Carteira B3",
-    "A API da Área do Investidor só atende empresas credenciadas. Por isso o caminho é " +
-      "a planilha que você mesmo baixa; ela é lida só na memória.",
+    "Original e versões",
+    "O arquivo da fonte é guardado como veio, com o hash. Quando a fonte corrige um dado, a correção vira versão nova: nada é sobrescrito.",
   ],
   [
     "Privacidade",
-    "Login com o Google; você exporta ou apaga a sua conta quando quiser. O site não usa " +
+    "Login com o Google, com sessão de 30 dias; você exporta ou apaga a sua conta quando quiser. O site não usa " +
       "Google Fonts nem ferramentas de rastreamento.",
   ],
   [
@@ -74,8 +96,8 @@ export const CONFIANCA: [string, string][] = [
 
 export const PERGUNTAS: [string, string][] = [
   [
-    "O TickerLab recomenda o que comprar?",
-    "Não. O TickerLab mostra o que aconteceu no passado e explica cada " +
+    "O TickerLab diz o que comprar?",
+    "Não. O TickerLab mostra o que aconteceu e explica cada " +
       "número. Nada aqui é recomendação de investimento.",
   ],
   [
@@ -91,12 +113,19 @@ export const PERGUNTAS: [string, string][] = [
   [
     "O que fica guardado sobre mim?",
     "Seu perfil do Google (nome, e-mail), preferências, favoritos, simulações salvas e o " +
-      "registro dos relatórios gerados (não o PDF). Detalhes na Política de privacidade.",
+      "registro dos relatórios gerados, com o PDF original por 1 ano (menos o de \"Minha carteira\", " +
+      "que nunca fica guardado). Detalhes na Política de privacidade.",
   ],
   [
     "Preciso pagar?",
     "Não para começar: o plano Gratuito não pede cartão. Hoje a cobrança dos planos " +
       "pagos está em modo de teste, sem dinheiro real.",
+  ],
+  [
+    "Dá para usar os dados fora do app, no meu sistema ou numa IA?",
+    "Sim, pela TickerLab Data, a API de dados: a mesma base, consultada por data, com fonte, " +
+      "data e licença em cada resposta. Está em beta fechado e sem cobrança; a documentação " +
+      "está aberta em api.tickerlab.com.br.",
   ],
   [
     "Como apago a minha conta?",
@@ -105,34 +134,25 @@ export const PERGUNTAS: [string, string][] = [
   ],
 ];
 
-// --- página inicial v2 (ADR 0065) ----------------------------------------------------------
-// de onde vem cada dado, como nas Fontes e metodologia (o nome e o que vem de lá)
-export const FONTES_DOS_DADOS: [string, string][] = [
-  ["CVM", "documentos e demonstrações"],
-  ["SEC", "empresas dos EUA"],
-  ["Banco Central", "juros, inflação e câmbio"],
-  ["Tesouro dos EUA", "curva de juros"],
-  ["Yahoo Finance", "preços, com atraso possível"],
-];
-
-// a frase da diferença, em duas partes (a segunda em destaque); o texto final é do Tiago
-// (tarefa marketing-frase-diferenca na Central)
-export const FRASE_DA_DIFERENCA: [string, string] = [
-  "Outros sites mostram os números.",
-  "O TickerLab testa se a ideia funciona.",
-];
-
-export const PRINCIPIOS: [string, string][] = [
+// --- as quatro regras que valem para toda tabela da base (página inicial e Dados) -----------
+export const REGRAS_DA_BASE: [string, string][] = [
   [
-    "Sem olhar o futuro",
-    "Cada teste usa só o que se sabia naquele dia, com custos de operação na conta.",
+    "Como era na data",
+    "Guardamos o que estava público em cada dia, não só o valor de hoje. Uma consulta a uma data " +
+      "nunca enxerga o que só ficou público depois dela.",
   ],
   [
-    "Desconta a sorte",
-    "A ficha “Foi sorte?” mostra se um bom resultado resiste quando tiramos o acaso da conta.",
+    "Linhagem",
+    "Cada tabela diz de qual fonte vem, qual versão do contrato a descreve e desde quando há histórico.",
   ],
   [
-    "Cada número explicado",
-    "Em português, com a fonte, a data e os limites de cada análise. Nada é recomendação.",
+    "Licença por tabela",
+    "Cada tabela leva a licença da sua fonte e diz o que pode ser repassado. Onde ainda não há " +
+      "resposta escrita da fonte, a página avisa.",
+  ],
+  [
+    "Explicação",
+    "O que cada dado é e como foi calculado vem escrito em português e recolhido: quem quer " +
+      "conferir abre, quem só quer o resultado não é atrapalhado.",
   ],
 ];

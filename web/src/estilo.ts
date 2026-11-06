@@ -16,8 +16,8 @@ function variaveis(tema: string[][]): string {
 
 export function css(): string {
   return semCrlf(`${CABECALHO}
-@font-face { font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
 :root {
   ${variaveis(marca.site_claro)}
   --largura: 72rem; --raio: 14px;
@@ -43,6 +43,8 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .pular:focus { left: 1rem; }
 .faixa { width: 100%; max-width: var(--largura); margin-inline: auto; padding-inline: clamp(1rem, 4vw, 2rem); }
 .olho { margin: 0 0 .5rem; font-size: .74rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--azul-texto); }
+a.olho { display: inline-block; text-decoration: none; }
+a.olho:hover { text-decoration: underline; }
 .subtitulo { font-size: 1.12rem; color: var(--apagado); }
 .apagado { color: var(--apagado); }
 /* topo */
@@ -81,6 +83,13 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .tema-opcoes [aria-checked="true"] { color: var(--azul-texto); }
 .tema-opcoes [aria-checked="true"] svg { color: var(--azul-texto); }
 .tema-opcoes [aria-checked="true"]::after { content: "✓"; margin-left: auto; font-weight: 800; }
+/* menu do celular: o botão só aparece com JavaScript e na tela estreita (sem JS, os itens quebram em linhas) */
+.menu-botao { display: none; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; padding: 0; flex: none;
+  border-radius: 10px; border: 1px solid var(--linha-forte); background: transparent; color: var(--texto); cursor: pointer; }
+.menu-botao:hover { border-color: var(--azul); }
+.menu-botao svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.menu-botao .aberto, .menu-botao[aria-expanded="true"] .fechado { display: none; }
+.menu-botao[aria-expanded="true"] .aberto { display: inline; }
 /* botões */
 .botao { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px;
   padding: .75rem 1.2rem; font: 700 1rem "Manrope", sans-serif; text-decoration: none; cursor: pointer;
@@ -97,10 +106,14 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 /* herói */
 .heroi { display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(2rem, 5vw, 4rem); align-items: center;
   padding-block: clamp(3rem, 8vw, 6rem); }
-.heroi-texto { min-width: 0; }
+/* com z-index: o movimento.js põe translate na coluna (paralaxe), o que já a torna um contexto de
+   empilhamento; sem z-index ela ficaria atrás da linha decorativa e do painel, e a busca junto.
+   Acima do botão de pausa (2), que a lista de sugestões aberta alcança no celular */
+.heroi-texto { min-width: 0; position: relative; z-index: 3; }
 .heroi-visual img { border-radius: 10px; border: 1px solid var(--linha-forte);
   box-shadow: 0 30px 80px var(--sombra); transform: rotate(1.5deg); }
-.busca { position: relative; margin: 1.75rem 0 .75rem; }
+/* acima dos irmãos do herói: as sugestões (z-index 4 aqui dentro) não podem ficar atrás do "Experimente" */
+.busca { position: relative; z-index: 2; margin: 1.75rem 0 .75rem; }
 .busca label { display: block; font-weight: 700; font-size: .9rem; margin-bottom: .4rem; color: var(--apagado); }
 .busca .campo { display: flex; gap: .5rem; }
 .busca input { flex: 1; min-width: 0; padding: .8rem 1rem .8rem 2.6rem; border-radius: 10px; font: 500 1rem "Manrope", sans-serif;
@@ -129,6 +142,13 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 /* faixas de largura total; a seção logo depois de uma faixa não precisa de linha em cima */
 .escura > .secao, .escura + .secao { border-top: 0; }
 .grade { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.grade.dois { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* o título leva ao relatório e o cartão inteiro responde ao toque (o ::after cobre o cartão) */
+.cartao-de-relatorio { position: relative; }
+.cartao-de-relatorio h2 { font-size: 1.3rem; margin: 0 0 .6rem; }
+.cartao-de-relatorio h2 a { color: inherit; text-decoration: none; }
+.cartao-de-relatorio h2 a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.cartao-de-relatorio:hover h2 a { text-decoration: underline; }
 .grade.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grade.quatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .cartao, .pilar { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: 1.4rem;
@@ -188,6 +208,7 @@ thead th { background: var(--superficie); color: var(--apagado); font-size: .82r
 tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 table.planos td { text-align: center; }
 table.planos thead th:not(:first-child) { text-align: center; color: var(--texto); font-size: .95rem; text-transform: none; letter-spacing: 0; }
+table.planos thead tr + tr th { text-align: center; color: var(--texto); font-size: .95rem; text-transform: none; letter-spacing: 0; }
 /* perguntas */
 .faq details { border-bottom: 1px solid var(--linha); padding: 1rem 0; max-width: 52rem; }
 .faq summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; list-style: none; }
@@ -225,23 +246,30 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 #sugestoes { transition: opacity 160ms ease, transform 160ms ease; }
 @starting-style { #sugestoes { opacity: 0; transform: translateY(-4px); } }
 /* o momento da página inicial: a linha se desenha, o ponto aparece, o texto e o relatório chegam */
-.topo-da-pagina { overflow: hidden; }
+/* sem overflow no topo: o que vaza é só o fundo, cortado em .v2-camadas; a lista da busca pode descer
+   do herói e, com z-index, passar por cima do que vem depois (a fita de ativos é posicionada) */
+.topo-da-pagina { z-index: 1; }
 .topo-da-pagina > .heroi { padding-bottom: 1rem; }
 .linha-do-topo { position: relative; height: clamp(80px, 11vw, 150px); }
 .linha-heroi { position: absolute; inset: 0; width: 100%; height: 100%;
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%); }
 .linha-heroi polyline, .linha-heroi path { fill: none; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .linha-heroi .apoio { stroke: var(--texto); stroke-width: 2; opacity: .2; }
-.linha-heroi .principal { stroke: var(--azul); stroke-width: 4; stroke-dasharray: 1; stroke-dashoffset: 0;
-  animation: tl-desenhar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }
+/* revela da esquerda para a direita: o tracejado (stroke-dasharray) com o traço que não estica
+   (non-scaling-stroke) cortava a linha uns 15% antes do ponto, até parada */
+.linha-heroi .principal { stroke: var(--azul); stroke-width: 4;
+  animation: tl-revelar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }
 .ponto-heroi { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
   background: var(--texto); animation: tl-ponto 260ms ease-out 1200ms both; }
-.heroi-texto > * { animation: tl-chegar 420ms cubic-bezier(.2, .7, .2, 1) both; }
+/* "backwards", não "both": com "both" o transform da chegada fica para sempre, cada filho vira um
+   contexto de empilhamento e as sugestões da busca ficam atrás do que vem depois */
+.heroi-texto > * { animation: tl-chegar 420ms cubic-bezier(.2, .7, .2, 1) backwards; }
 .heroi-texto > :nth-child(2) { animation-delay: 60ms; }
 .heroi-texto > :nth-child(3) { animation-delay: 120ms; }
 .heroi-texto > :nth-child(n+4) { animation-delay: 180ms; }
 .heroi-visual img { animation: tl-folha 700ms cubic-bezier(.2, .7, .2, 1) 200ms both; }
-@keyframes tl-desenhar { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+/* a margem negativa deixa a espessura do traço e a ponta redonda de fora do recorte */
+@keyframes tl-revelar { from { clip-path: inset(-12px 100% -12px -12px); } to { clip-path: inset(-12px -12px -12px -12px); } }
 @keyframes tl-ponto { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes tl-chegar { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes tl-folha { from { opacity: 0; transform: translateY(24px) rotate(4deg); } to { opacity: 1; transform: rotate(1.5deg); } }
@@ -249,12 +277,29 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 @media (max-width: 860px) {
   .heroi { grid-template-columns: 1fr; }
   .heroi-visual { display: none; }
-  .grade.tres, .grade.quatro, .passos { grid-template-columns: 1fr; }
+  .grade.dois, .grade.tres, .grade.quatro, .passos { grid-template-columns: 1fr; }
   .topo nav { display: none; }
+  .topo .faixa { position: relative; }
+  .com-js .menu-botao { display: inline-flex; }
+  .com-js .topo nav[data-aberto] { display: flex; flex-direction: column; gap: .1rem; position: absolute; left: 0; right: 0;
+    top: calc(100% + .45rem); margin: 0; padding: .35rem; background: var(--destaque); border: 1px solid var(--linha-forte);
+    border-radius: 12px; box-shadow: 0 16px 40px var(--sombra); transition: opacity 160ms ease, transform 160ms ease; }
+  .topo nav[data-aberto] a { padding: .75rem .8rem; border-radius: 8px; font-size: 1rem; color: var(--texto); }
+  .topo nav[data-aberto] a:hover, .topo nav[data-aberto] a[aria-current] { background: var(--superficie); }
+  .topo nav[data-aberto] a[aria-current] { color: var(--azul-texto); }
+  .topo nav[data-aberto] a::after { display: none; }
+  @starting-style { .com-js .topo nav[data-aberto] { opacity: 0; transform: translateY(-4px); } }
+  :root:not(.com-js) .topo nav { display: flex; flex-wrap: wrap; order: 9; flex-basis: 100%; margin-left: 0;
+    gap: .35rem 1rem; padding-bottom: .7rem; }
   .rodape .faixa { grid-template-columns: 1fr; }
   .vitrine .folhas { grid-template-columns: 1fr 1fr; gap: .6rem; }
 }
 @media (max-width: 520px) {
+  /* a comparação dos planos cabe na tela do celular: células mais justas */
+  table.planos { font-size: .82rem; }
+  table.planos th, table.planos td { padding: .6rem .4rem; hyphens: auto; }
+  table.planos th:first-child { padding-left: .7rem; }
+  table.planos thead th:not(:first-child) { font-size: .82rem; }
   .busca .campo { flex-direction: column; }
   #sugestoes .tipo { display: none; }
 }

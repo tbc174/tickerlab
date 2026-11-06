@@ -19,6 +19,9 @@ log = logging.getLogger(__name__)
 ARQUIVO_DO_ALEMBIC = PASTA_RAIZ / "alembic.ini"
 PASTA_DAS_MIGRACOES = PASTA_RAIZ / "migracoes"
 SEGUNDOS_PARA_CONECTAR = 5  # o banco fica na mesma máquina: conectar leva milissegundos
+# Número qualquer, fixo, que identifica a trava das migrações no PostgreSQL (pg_advisory_xact_lock
+# pede um inteiro de 64 bits); só não pode ser usado por outra trava do sistema.
+CHAVE_DA_TRAVA_DAS_MIGRACOES = 7_423_001
 
 
 def _ligar_chaves_estrangeiras_no_sqlite(
@@ -142,6 +145,24 @@ def banco_esta_saudavel(motor: sa.Engine | None = None) -> bool:
     except sa.exc.SQLAlchemyError as erro:
         log.error("Banco indisponível: %s", erro.__class__.__name__)
         return False
+
+
+def travar_migracoes(conexao: sa.Connection) -> None:
+    """Espera a vez de migrar: só um processo por vez aplica migrações no mesmo PostgreSQL.
+
+    No servidor de casa várias tarefas abrem na mesma hora e cada uma migra o banco antes de
+    começar. Sem a trava, duas aplicaram a mesma migração juntas e a segunda quebrou com
+    `DuplicateTable` (22/10/2026, `ma-textos` e `carga-enet`). Chame dentro da transação das
+    migrações e antes de o Alembic ler a versão do banco: a trava solta sozinha no fim da
+    transação, e quem esperou lê a versão já atualizada e não refaz nada. No SQLite (um arquivo
+    local, sem tarefas em paralelo) não faz nada.
+    """
+    if conexao.dialect.name != "postgresql":
+        return
+    conexao.execute(
+        sa.text("SELECT pg_advisory_xact_lock(:chave)"),
+        {"chave": CHAVE_DA_TRAVA_DAS_MIGRACOES},
+    )
 
 
 def _configuracao_do_alembic(url: str) -> Config:

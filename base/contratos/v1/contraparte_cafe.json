@@ -1,0 +1,85 @@
+{
+  "tabela": "contraparte_cafe",
+  "modulo": "macro",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id": {
+      "descricao": "Apelido da contraparte (chave quando não há CNPJ conferido)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da entidade no cadastro aberto da Receita (vazio: não confirmado)",
+      "unidade": "texto"
+    },
+    "nome": {
+      "descricao": "Nome da cooperativa ou empresa",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "`cooperativa`, `trading` ou `exportadora`",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da sede",
+      "unidade": "texto"
+    },
+    "fato": {
+      "descricao": "Tipo do fato (`faturamento`, `pedido_de_recuperacao_judicial`...)",
+      "unidade": "texto"
+    },
+    "descricao": {
+      "descricao": "O fato com as nossas palavras, \"segundo <veículo>\"",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "O número do fato, na unidade ao lado (vazio se não há)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "unidade": {
+      "descricao": "`R$`, `sacas` ou outra",
+      "unidade": "texto"
+    },
+    "data": {
+      "descricao": "Quando o fato aconteceu (fim do exercício, dia do pedido)",
+      "unidade": "data (dia)"
+    },
+    "divulgado_em": {
+      "descricao": "Quando ficou público (sem olhar o futuro)",
+      "unidade": "data (dia)"
+    },
+    "fonte": {
+      "descricao": "Endereço público da notícia ou do documento",
+      "unidade": "texto"
+    },
+    "veiculo": {
+      "descricao": "Quem publicou",
+      "unidade": "texto"
+    },
+    "tipo_de_fonte": {
+      "descricao": "`documento_oficial`, `demonstracao_financeira`, `relatorio_da_entidade` ou `noticia`",
+      "unidade": "texto"
+    },
+    "conferido_em": {
+      "descricao": "Dia da conferência",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "id",
+    "fato",
+    "data"
+  ],
+  "datas": {
+    "aconteceu_em": "data",
+    "publico_em": "divulgado_em",
+    "coletado_em": "conferido_em"
+  },
+  "historico_desde": "2004-07-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Notícias e páginas públicas guardadas só como prova; na ficha, fato e link",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": false,
+  "frequencia": "Quando a conferência anda (assembleias de março, notícias de recuperação judicial)",
+  "atraso": "O `divulgado_em` é o dia da publicação da notícia ou do documento"
+}

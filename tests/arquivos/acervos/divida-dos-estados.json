@@ -1,0 +1,4 @@
+{"success": true, "result": {"license_id": "odc-odbl", "resources": [
+ {"format": "PDF", "url": "https://www.tesourotransparente.gov.br/ckan/dataset/x/resource/1/download/metadados.pdf"},
+ {"format": "CSV", "url": "https://www.tesourotransparente.gov.br/ckan/dataset/x/resource/2/download/relatorio-estoque-final.csv"}
+]}}

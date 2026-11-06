@@ -85,21 +85,28 @@ Regras que uma ferramenta confere estão marcadas com 🤖 (ruff ou testes, no C
 - [ ] Funções novas curtas, com nome claro, tipo e docstring.
 - [ ] Nenhum número mágico novo; nenhum segredo, e-mail ou IP no código.
 - [ ] Testes do que mudou passando; `ruff check` e `ruff format --check` limpos.
+- [ ] Mudou o banco? Migração nova (com `downgrade`) e consultas filtradas pelo usuário.
 - [ ] O trecho que você tocou ficou mais claro do que estava ("regra do escoteiro").
 - [ ] Pronto para trocar de interface: nenhum cálculo, regra ou texto novo em `telas/` (só ler, chamar
       `src/` e mostrar); estado que importa no banco; truque do Streamlit isolado e testado.
-- [ ] O PR explica o que muda, o que não muda e como foi testado.
+- [ ] Casa em ordem (`AGENTS.md`): script novo com a linha `Roda:`; nada novo na raiz nem nos
+      `requirements*.txt` sem a lista ou a exceção do teste.
+- [ ] O PR explica o que muda, o que não muda e como foi testado, e termina com `Feito por: <IA e modelo>`
+      (o modelo em `.github/PULL_REQUEST_TEMPLATE.md` é esta lista).
 
 ## Dívida conhecida (a pagar em etapas)
 
 - ~~Cálculos do pandas nas telas de backtest, carteira e experimentos~~: levados para `src/`, com
   teste e telas idênticas antes e depois, em 13/10/2026 (#106, #107).
-- A API só tem saúde, webhook e Newsletter: as análises principais ainda não têm rota de leitura.
+- ~~A API só tem saúde, webhook e Newsletter~~: a API v1 (`src/api_v1/`, ligada por `TICKERLAB_API_V1=1`)
+  tem entrada, conta, estudos, base pública, ferramentas, links compartilhados e sala de dados
+  (`docs/api/README.md`). A dívida que fica é a interface: as telas ainda são Streamlit e não leem da API.
 
 - ~~`app.py` gigante~~: dividido em `telas/` em 12/10/2026 (229 linhas: entrada e menu); as funções
   acima da complexidade 15 foram divididas e o C901 e o B905 valem em todo o código.
 - `src/relatorios.py` com funções de 125 a 200 linhas: quebrar por seção do relatório.
 - Funções de tela ainda longas (mais de ~100 linhas, mas abaixo da complexidade 15): dividir quando
   forem tocadas.
-- ~~Checagem de tipos e cobertura no CI~~: no CI desde 12/10/2026 (`pyright` em `src/`, `scripts/` e
-  `telas/`; cobertura mínima no `.coveragerc`).
+- ~~Checagem de tipos e cobertura no CI~~: no CI desde 12/10/2026 (`pyright` em `src/`, `scripts/`,
+  `telas/` e `base/`; cobertura mínima no `.coveragerc`); desde 05/11/2026 o `vulture` em modo "não
+  piorar" (`scripts/conferir_codigo_morto.py`).

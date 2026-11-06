@@ -168,7 +168,7 @@ def test_falha_de_rede_vira_erro_do_app(monkeypatch, sem_espera):
     def quebra(*a, **k):
         raise requests.ConnectionError("sem rede")
 
-    monkeypatch.setattr(cdi.requests, "get", quebra)
+    monkeypatch.setattr("requests.get", quebra)
     with pytest.raises(cdi.CDIIndisponivelError):
         cdi.baixar_cdi(pd.Timestamp("2026-01-02"), pd.Timestamp("2026-02-02"))
 

@@ -17,7 +17,7 @@ from src import catalogo, formatos, graficos, marca
 from src import indicadores as ind
 from src import parametros as research_parametros
 from src import presets as research_presets
-from src.analises import MIN_DIAS_PARA_ANALISE, aviso_da_origem
+from src.analises import MIN_DIAS_PARA_ANALISE, aviso_da_origem, aviso_do_cambio
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     carregar_preferencias,
@@ -52,7 +52,8 @@ def carregar_dados(ticker, periodo):
 
     Com "Converter para reais", ativos cotados em dólar (EUA, S&P 500, Bitcoin) são
     multiplicados pelo câmbio do dia. Se o câmbio falhar, o ativo segue em dólar e a marca
-    `attrs["cambio_falhou"]` avisa a tela.
+    `attrs["cambio_falhou"]` avisa a tela; com o dólar do cache antigo (ou do exemplo), a marca
+    `attrs["cambio_ate"]` diz até quando ele vai.
     """
     return carregar_dados_de(ticker, periodo, bool(st.session_state.get("em_reais")))
 
@@ -64,10 +65,18 @@ def carregar_dados_de(ticker, periodo, em_reais):
     dados = _carregar_dados_em_cache(ticker, periodo, exemplo)
     if em_reais and moeda_do_ticker(ticker) == "USD":
         try:
-            cambio = _carregar_dados_em_cache(TICKER_DO_DOLAR, periodo, exemplo)[
-                "Close"
-            ]
-            return converter_para_reais(dados, cambio)
+            cambio = _carregar_dados_em_cache(TICKER_DO_DOLAR, periodo, exemplo)
+            convertido = converter_para_reais(dados, cambio["Close"])
+            if not exemplo and cambio.attrs.get("origem") in (
+                "cache_antigo",
+                "exemplo",
+            ):
+                # o dólar não veio atualizado: a tela avisa (achado 5d do Codex)
+                convertido.attrs = {
+                    **convertido.attrs,
+                    "cambio_ate": cambio.attrs.get("ate"),
+                }
+            return convertido
         except (DadosIndisponiveisError, ValueError) as erro:
             logging.getLogger(__name__).warning(
                 "Câmbio indisponível para converter %s: %s", ticker, erro
@@ -112,8 +121,8 @@ log_da_conta = logging.getLogger("tickerlab.conta")
 
 def salvar_na_conta(usuario):
     """Grava favoritos e preferências só quando o usuário muda alguma coisa."""
-    if usuario is None:
-        return
+    if usuario is None or not st.session_state.get("conta_carregada"):
+        return  # sem ter lido a conta, gravar sobrescreveria o que está guardado
     atual = {
         "favoritos": list(st.session_state["favoritos"]),
         "preferencias": {
@@ -171,10 +180,24 @@ def _ir_para_favorito():
     st.session_state["favorito_escolhido"] = "—"
 
 
-PERIODOS_DO_TOPO = {"6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos"}
+PERIODOS_DO_TOPO = {
+    "6mo": "6 meses",
+    "1y": "1 ano",
+    "2y": "2 anos",
+    "5y": "5 anos",
+    "10y": "10 anos",
+    "max": "Todo o histórico",
+}
 
 
-ROTULOS_CURTOS_DO_PERIODO = {"6mo": "6M", "1y": "1A", "2y": "2A", "5y": "5A"}
+ROTULOS_CURTOS_DO_PERIODO = {
+    "6mo": "6M",
+    "1y": "1A",
+    "2y": "2A",
+    "5y": "5A",
+    "10y": "10A",
+    "max": "Tudo",
+}
 
 
 NOMES_DOS_MODOS_DA_TAXA = {
@@ -262,7 +285,7 @@ def mostrar_controles():
     """
     with st.container(border=True):
         col_ativo, col_periodo, col_favoritos = st.columns(
-            [3, 2, 2], vertical_alignment="bottom"
+            [3, 3, 2], vertical_alignment="bottom"
         )
         ticker = col_ativo.selectbox(
             "Ativo",
@@ -281,7 +304,8 @@ def mostrar_controles():
             format_func=ROTULOS_CURTOS_DO_PERIODO.get,
             key="periodo",
             required=True,  # sempre um período escolhido (clicar no ativo não o desmarca)
-            help="Quanto tempo de histórico olhar para trás: 6 meses, 1 ano, 2 anos ou 5 anos.",
+            help="Quanto tempo de histórico olhar para trás: de 6 meses a 10 anos, ou Tudo "
+            "(todo o histórico que a fonte tem do ativo, desde o primeiro pregão disponível).",
         )
         with col_favoritos:
             mostrar_favoritos()
@@ -450,6 +474,8 @@ def carregar_contexto():
             "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
             "Tente de novo mais tarde."
         )
+    if dados.attrs.get("cambio_ate"):
+        st.warning(aviso_do_cambio(dados.attrs["cambio_ate"]))
     aviso = aviso_da_origem(
         dados.attrs.get("origem") or "atual", dados.attrs.get("ate")
     )

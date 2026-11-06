@@ -25,9 +25,7 @@ def upgrade() -> None:
         sa.Column("unidade", sa.String(40), nullable=False),
         sa.Column("frequencia", sa.String(20), nullable=False),
         sa.Column("licenca", sa.String(80), nullable=False),
-        sa.Column(
-            "uso_interno", sa.Boolean, nullable=False, server_default=sa.false()
-        ),
+        sa.Column("uso_interno", sa.Boolean, nullable=False, server_default=sa.false()),
     )
     op.create_table(
         "observacoes",

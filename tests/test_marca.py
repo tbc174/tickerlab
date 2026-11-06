@@ -283,3 +283,10 @@ def test_series_vizinhas_bem_diferentes():
     for series in (marca.PAPEL_SERIES, marca.SERIES):
         for cor, vizinha in itertools.pairwise(series):
             assert _distancia(cor, vizinha) >= 15, (cor, vizinha)
+
+
+def test_a_assinatura_da_imagem_cabe_em_duas_linhas():
+    from scripts import gerar_marca
+
+    linha_1, linha_2 = gerar_marca.linhas_da_assinatura()
+    assert f"{linha_1} {linha_2}" == gerar_marca.ASSINATURA_INSTITUCIONAL

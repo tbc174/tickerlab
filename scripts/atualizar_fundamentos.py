@@ -2,11 +2,14 @@
 de entrega fora do prazo (eventos do Research, `src/prazos.py`).
 
     python -m scripts.atualizar_fundamentos            (DFP e ITR do ano atual e do anterior)
-    python -m scripts.atualizar_fundamentos --anos 6   (primeira carga: 6 anos de DFP)
+    python -m scripts.atualizar_fundamentos --anos 10  (primeira carga: 10 anos de DFP e de ITR)
 
 Roda fora do app (no servidor, uma vez por dia); o app só lê. Usa o banco de
 `TICKERLAB_DATABASE_URL` e aplica as migrações antes. Um arquivo que ainda não existe na CVM (o DFP
 do ano corrente, antes de março) é pulado; outras falhas param a coleta sem apagar nada.
+
+Roda: cron do VPS (todo dia às 7h10); migração do banco (0044_cadastro_da_cvm.py); citado em
+demonstracoes.py, fundamentos.py.
 """
 
 import argparse
@@ -19,7 +22,7 @@ import requests
 import sqlalchemy as sa
 
 from src import demonstracoes as dm
-from src import prazos
+from src import prazos, rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.demonstracoes import (
@@ -33,13 +36,15 @@ from src.configuracao import url_do_banco
 
 log = logging.getLogger("tickerlab.fundamentos")
 MAX_ANOS = 10  # o suficiente para crescimento de 5 a 10 anos
-ANOS_DE_ITR = 2  # os 12 meses só precisam do ITR deste ano e do anterior
+# os 12 meses só precisam do ITR deste ano e do anterior; uma carga com --anos maior traz os
+# trimestres dos mesmos anos do DFP (o histórico trimestral da tela de Fundamentos)
+ANOS_DE_ITR = 2
 NAO_ENCONTRADO = 404
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:
@@ -75,7 +80,8 @@ def main(argv: list[str] | None = None) -> int:
                     gravar_setores(conexao, dm.ler_setores(cadastro)),
                 )
         pedidos = [("DFP", a) for a in range(ano - anos, ano + 1)]
-        pedidos += [("ITR", a) for a in range(ano - ANOS_DE_ITR + 1, ano + 1)]
+        anos_de_itr = max(ANOS_DE_ITR, anos)
+        pedidos += [("ITR", a) for a in range(ano - anos_de_itr + 1, ano + 1)]
         for documento, ano_do_arquivo in pedidos:
             modelo = dm.URL_DO_DFP if documento == "DFP" else dm.URL_DO_ITR
             conteudo = baixar(modelo.format(ano=ano_do_arquivo))

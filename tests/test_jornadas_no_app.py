@@ -9,7 +9,7 @@ import pytest
 from src.banco import usuarios as contas
 from src.banco.modelo import PLANOS
 from src.conformidade import registrar_aceite
-from src.paginas import PAGINAS
+from src.paginas import paginas_do_classico
 from tests.ajudantes_da_conta import abrir_app, entrar_como, ir_para
 
 # um PostgreSQL que não responde (conexão recusada), com 1 s de limite por tentativa
@@ -35,6 +35,7 @@ def _conta(banco, plano="gratuito", admin=False):
             "ana",
             "ana@exemplo.com",
             emails_de_admin=("ana@exemplo.com",) if admin else (),
+            email_confirmado=True,
         )
         contas.mudar_plano(c, usuario.id, plano)
         registrar_aceite(c, usuario.id)
@@ -49,7 +50,7 @@ def test_todas_as_paginas_abrem_com_login_em_cada_plano(banco, monkeypatch, plan
     _conta(banco, plano)
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     app = abrir_app()
-    for p in PAGINAS:
+    for p in paginas_do_classico():
         if p.somente_admin:  # testada em test_admin_no_app.py
             continue
         ir_para(app, p.chave)
@@ -67,7 +68,7 @@ def test_banco_fora_do_ar_nenhuma_pagina_quebra_nem_inventa_vazio(banco, monkeyp
     app = abrir_app()  # entra com o banco no ar
     monkeypatch.setenv("TICKERLAB_DATABASE_URL", BANCO_FORA_DO_AR)
     app.session_state["usuario_em"] = 0  # força reler o usuário, como a cada minuto
-    for p in PAGINAS:
+    for p in paginas_do_classico():
         if p.somente_admin:
             continue
         ir_para(app, p.chave)

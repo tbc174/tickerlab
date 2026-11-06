@@ -119,3 +119,46 @@ def test_meus_dados_lista_e_revoga(banco, monkeypatch):
         assert links.abrir_link(conexao, codigo) is None
         assert links.listar_links(conexao, usuario_id)[0].situacao == "revogado"
     assert not [b for b in app.button if b.key == f"revogar_link_{link.id}"]
+
+
+def test_link_de_outra_ficha_nao_fica_embaixo_da_ficha_nova(banco, monkeypatch):
+    """Achado 2a do Codex: trocar a estratégia não pode deixar o link da ficha anterior à vista."""
+    entrar_como(monkeypatch, "lia", "lia@exemplo.com")
+    app = abrir_app("backtest")
+    app.button(key="compartilhar_ficha_criar").click().run()
+    assert _codigo_mostrado(app)
+    app.selectbox(key="backtest_estrategia").select("MACD").run()
+    assert not app.exception
+    assert not [c for c in app.code if comp.ENDERECO_DA_PAGINA in c.value]
+    assert comp.AVISO_DO_LINK_CRIADO not in _textos(app)
+
+
+def test_meus_dados_nao_mostra_link_de_outra_conta(banco, monkeypatch):
+    """Isolamento na tela: cada conta vê e revoga só os próprios links."""
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    abrir_app()
+    entrar_como(monkeypatch, "bia", "bia@exemplo.com")
+    abrir_app()
+    ana, bia = id_do_usuario(banco, "ana"), id_do_usuario(banco, "bia")
+    with banco.begin() as conexao:
+        links.criar_link_da_ficha(conexao, ana, "gratuito", _congelada(), 30)
+        (da_ana,) = links.listar_links(conexao, ana)
+    app = abrir_app("meus_dados")
+    assert not app.exception
+    assert comp.SEM_LINKS in _textos(app)
+    assert not [b for b in app.button if b.key == f"revogar_link_{da_ana.id}"]
+    with banco.connect() as conexao:
+        assert links.listar_links(conexao, bia) == []
+
+
+def test_meus_dados_avisa_quando_nao_consegue_ler_os_links(banco, monkeypatch):
+    entrar_como(monkeypatch, "lia", "lia@exemplo.com")
+    abrir_app()
+
+    def _falha(*_args, **_kwargs):
+        raise RuntimeError("banco fora do ar")
+
+    monkeypatch.setattr("telas.compartilhar.links.listar_links", _falha)
+    app = abrir_app("meus_dados")
+    assert not app.exception
+    assert "Não consegui ler os seus links agora" in _textos(app)

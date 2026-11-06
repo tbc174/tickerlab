@@ -97,28 +97,30 @@ function Resultado({ dados }: { dados: MeuPlanoV1 }) {
         {dados.frase_da_assinatura ? <p className="apagado">{dados.frase_da_assinatura}</p> : null}
       </section>
       <h2>O que cada plano inclui</h2>
-      <table aria-label="O que cada plano inclui" className="tabela-do-app">
-        <thead>
-          <tr>
-            <th scope="col">Recurso</th>
-            {planos.nomes.map((nome) => (
-              <th key={nome} scope="col">
-                {nome}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {dados.tabela.map((linha) => (
-            <tr key={linha.Recurso}>
-              <th scope="row">{linha.Recurso}</th>
+      <div className="tabela-rolavel">
+        <table aria-label="O que cada plano inclui" className="tabela-do-app">
+          <thead>
+            <tr>
+              <th scope="col">Recurso</th>
               {planos.nomes.map((nome) => (
-                <td key={nome}>{linha[nome]}</td>
+                <th key={nome} scope="col">
+                  {nome}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {dados.tabela.map((linha) => (
+              <tr key={linha.Recurso}>
+                <th scope="row">{linha.Recurso}</th>
+                {planos.nomes.map((nome) => (
+                  <td key={nome}>{linha[nome]}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p className="apagado">{dados.aviso}</p>
       {dados.texto_da_acao ? <p className="apagado">{dados.texto_da_acao}</p> : null}
       {dados.acao === "assinar" || dados.acao === "gerenciar" ? <BotaoDoStripe acao={dados.acao} /> : null}

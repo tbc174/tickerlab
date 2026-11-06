@@ -10,10 +10,14 @@ inteiro e das duas colunas ("último" e "penúltimo" exercício), por isso leem 
   mas são contadas por documento: viram a regra R9 do selo.
 - **Nada é escolhido aqui:** todas as versões que o arquivo trouxer ficam; escolher a versão é
   trabalho de quem chama.
-- **Só as contas das regras** (`so_as_das_regras=True`, PR 3): BPA e BPP inteiros e o primeiro nível
-  da DRE (receita, lucro); a DFC e o detalhe da DRE ficam de fora. O ITR inteiro ocupava 741 MB
-  na leitura, mais que o contêiner do VPS (768 MB, dividido com o app). As repetidas continuam
-  contadas em todas as demonstrações.
+- **Recortes** (`recorte`):
+  - `"regras"` (PR 3): BPA e BPP inteiros e o primeiro nível da DRE (receita, lucro); a DFC e o
+    detalhe da DRE ficam de fora, e a DVA e a DRA nem são lidas. O ITR inteiro ocupava 741 MB na
+    leitura, mais que o contêiner do VPS (768 MB, dividido com o app). As repetidas continuam
+    contadas em BPA, BPP, DRE e DFC.
+  - `"base"` (série T1): o das regras mais a DFC, a DVA e a DRA inteiras, para a base "como era na
+    data" (EBITDA, capex, fluxo de caixa livre). O detalhe da DRE continua fora.
+  - `"tudo"`: as sete demonstrações sem a DMPL, que tem uma coluna a mais (`base/dmpl.py`).
 """
 
 import io
@@ -21,15 +25,28 @@ import re
 import unicodedata
 import zipfile
 from dataclasses import dataclass
+from typing import Literal
 
 import pandas as pd
 
 CODIFICACAO_DA_CVM = "latin-1"
 ESCALAS = {"MIL": 1000.0, "UNIDADE": 1.0}
-# dfp_cia_aberta_DRE_con_2022.csv, itr_cia_aberta_BPP_ind_2026.csv...
-ARQUIVO_DE_DEMONSTRACAO = re.compile(
-    r"_(BPA|BPP|DRE|DFC_MD|DFC_MI)_(con|ind)_\d{4}\.csv$"
-)
+# as demonstrações que as regras usam; a DFC entra só para contar as linhas repetidas (R9)
+DEMONSTRACOES_DAS_REGRAS = ("BPA", "BPP", "DRE", "DFC_MD", "DFC_MI")
+# a DMPL fica de fora: tem a coluna COLUNA_DF a mais e vai para a tabela própria (base/dmpl.py)
+DEMONSTRACOES_DA_BASE = (*DEMONSTRACOES_DAS_REGRAS, "DRA", "DVA")
+DA_BASE_INTEIRAS = ("DFC_MD", "DFC_MI", "DRA", "DVA")
+Recorte = Literal["tudo", "regras", "base"]
+RECORTES: tuple[Recorte, ...] = ("tudo", "regras", "base")
+
+
+def _arquivo_de(demonstracoes: tuple[str, ...]) -> re.Pattern[str]:
+    """dfp_cia_aberta_DRE_con_2022.csv, itr_cia_aberta_BPP_ind_2026.csv..."""
+    return re.compile(rf"_({'|'.join(demonstracoes)})_(con|ind)_\d{{4}}\.csv$")
+
+
+ARQUIVO_DE_DEMONSTRACAO = _arquivo_de(DEMONSTRACOES_DA_BASE)
+ARQUIVO_DAS_REGRAS = _arquivo_de(DEMONSTRACOES_DAS_REGRAS)
 COLUNAS = (
     "cnpj",
     "empresa",
@@ -77,9 +94,10 @@ def _sem_acento(texto: str) -> str:
     return "".join(c for c in texto if unicodedata.category(c) != "Mn").lower().strip()
 
 
-def _ler_csv(
+def ler_csv_da_cvm(
     arquivo: zipfile.ZipFile, nome: str, colunas: set[str] | None = COLUNAS_DO_CSV
 ) -> pd.DataFrame:
+    """Um CSV de dentro do zip da CVM (latin-1, `;`), só com `colunas` (None: todas)."""
     return pd.read_csv(
         arquivo.open(nome),
         sep=";",
@@ -91,9 +109,10 @@ def _ler_csv(
     )
 
 
-def _normalizar(
+def normalizar_contas(
     bruto: pd.DataFrame, documento: str, demonstracao: str, grupo: str
 ) -> pd.DataFrame:
+    """As linhas do CSV no formato de `COLUNAS`: valor em reais (pela escala), datas e ordem."""
     escalas = bruto["ESCALA_MOEDA"].str.upper().str.strip()
     desconhecidas = sorted(set(escalas) - set(ESCALAS))
     if desconhecidas:
@@ -131,9 +150,28 @@ def so_as_contas_das_regras(contas: pd.DataFrame) -> pd.DataFrame:
     Vale para contas de qualquer fonte (os CSVs ou o ENET): a base "como era na data" precisa do
     mesmo recorte em todas, senão uma conta que só uma fonte traz nunca seria substituída.
     """
+    return contas[_das_regras(contas)]
+
+
+def so_as_contas_da_base(contas: pd.DataFrame) -> pd.DataFrame:
+    """O recorte das regras mais a DFC, a DVA e a DRA inteiras (a base "como era na data").
+
+    Como `so_as_contas_das_regras`, vale para contas de qualquer fonte.
+    """
+    return contas[_das_regras(contas) | contas["demonstracao"].isin(DA_BASE_INTEIRAS)]
+
+
+def _das_regras(contas: pd.DataFrame) -> pd.Series:
     demonstracao = contas["demonstracao"]
     primeiro_nivel = contas["conta"].str.count(r"\.") <= 1
-    return contas[demonstracao.isin(BALANCO) | ((demonstracao == DRE) & primeiro_nivel)]
+    return demonstracao.isin(BALANCO) | ((demonstracao == DRE) & primeiro_nivel)
+
+
+FILTROS = {
+    "tudo": None,
+    "regras": so_as_contas_das_regras,
+    "base": so_as_contas_da_base,
+}
 
 
 def _contar_repetidas(contas: pd.DataFrame) -> pd.DataFrame:
@@ -141,27 +179,36 @@ def _contar_repetidas(contas: pd.DataFrame) -> pd.DataFrame:
 
 
 def ler_contas(
-    zip_bytes: bytes, documento: str, so_as_das_regras: bool = False
+    zip_bytes: bytes, documento: str, recorte: Recorte = "tudo"
 ) -> LeituraDeContas:
-    """Todas as contas de BPA, BPP, DRE e DFC (individual e consolidado) de um zip da CVM.
+    """As contas de BPA, BPP, DRE, DRA, DFC e DVA (individual e consolidado) de um zip da CVM.
 
     `documento` é "DFP" ou "ITR". As linhas repetidas idênticas saem e são contadas por documento
     (cada CSV é uma demonstração, então as repetidas são procuradas dentro dele).
-    `so_as_das_regras`: só as contas que `base/regras.py` usa, para caber na memória do VPS.
+    `recorte`: "regras" (só o que `base/regras.py` usa, para caber na memória do VPS), "base" (o
+    da base "como era na data") ou "tudo".
     """
+    if recorte not in RECORTES:
+        raise ValueError(
+            f"recorte desconhecido: {recorte!r} (use {', '.join(RECORTES)})"
+        )
+    arquivos = ARQUIVO_DAS_REGRAS if recorte == "regras" else ARQUIVO_DE_DEMONSTRACAO
+    filtro = FILTROS[recorte]
     partes: list[pd.DataFrame] = []
     repetidas: list[pd.DataFrame] = []
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as arquivo:
         for nome in sorted(arquivo.namelist()):
-            achado = ARQUIVO_DE_DEMONSTRACAO.search(nome)
+            achado = arquivos.search(nome)
             if not achado:
                 continue
-            parte = _normalizar(_ler_csv(arquivo, nome), documento, *achado.groups())
+            parte = normalizar_contas(
+                ler_csv_da_cvm(arquivo, nome), documento, *achado.groups()
+            )
             repetida = parte.duplicated(keep="first")
             repetidas.append(_contar_repetidas(parte[repetida]))
             parte = parte[~repetida]
-            if so_as_das_regras:
-                parte = so_as_contas_das_regras(parte)
+            if filtro is not None:
+                parte = filtro(parte)
             partes.append(parte)
     if not partes:
         vazio = pd.DataFrame(columns=list(COLUNAS))
@@ -189,7 +236,7 @@ def ler_indice(zip_bytes: bytes, documento: str) -> pd.DataFrame:
         nomes = [n for n in arquivo.namelist() if nome_do_indice.match(n)]
         if not nomes:
             return pd.DataFrame(columns=colunas)
-        bruto = _ler_csv(arquivo, nomes[0], colunas=None)
+        bruto = ler_csv_da_cvm(arquivo, nomes[0], colunas=None)
     return pd.DataFrame(
         {
             "cnpj": bruto["CNPJ_CIA"],

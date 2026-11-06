@@ -1,6 +1,6 @@
 /* As animações do site (ADR 0065). Vieram do protótipo aprovado em 14/10/2026.
    Contínuas (param com o botão de pausa, fora da tela, com a aba escondida e com "reduzir
-   movimento"): fundo "mercado vivo", aurora, borda viva do painel e fita de ativos.
+   movimento"): fundo "mercado vivo", aurora, borda viva do painel.
    Uma vez: dígitos do número principal (sem contar: o valor nunca muda), títulos palavra por palavra,
    revelar ao rolar. Reações: o mouse acende o fundo, luz nos cartões, painel inclinado, botões
    magnéticos, profundidade ao rolar e menu que encolhe.
@@ -248,13 +248,14 @@
   }
 
   /* ---------- 4. revelar ao rolar (uma vez) ---------- */
+  var pendentes = [];
   if ("IntersectionObserver" in window) {
     raiz.classList.add("v2-anima");
     var titulos = document.querySelectorAll(".secao:not(.texto-longo):not(.v2-pagina-topo) > h2");
     titulos.forEach(function (h) { separarPalavras(h); h.classList.add("v2-titulo-palavras"); });
     var alvos = Array.prototype.filter.call(document.querySelectorAll(
       ".secao > .olho, .secao > .subtitulo, .secao > .modulo-topo, .v2-bento > *, .grade > *, " +
-      ".v2-fontes li, .vitrine, .final > :not(h2), .v2-fita, .passos > li, .linha-do-tempo > li, .faq details, " +
+      ".vitrine, .final > :not(h2), .passos > li, .linha-do-tempo > li, .faq details, " +
       ".v2-planos > *, .v2-promessas > li, .v2-venn, .tabela, .pilares-sobre li"),
       function (el) { return !el.closest(".v2-pagina-topo, .texto-longo"); });
     var vistos = new IntersectionObserver(function (es) {
@@ -270,18 +271,31 @@
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
     alvos.forEach(function (el) { el.classList.add("v2-revelar"); vistos.observe(el); });
     titulos.forEach(function (el) { vistos.observe(el); });
+    pendentes = alvos.concat(Array.prototype.slice.call(titulos));
     var faixas = new IntersectionObserver(function (es) {
       es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("visivel"); faixas.unobserve(e.target); } });
     }, { threshold: 0.25 });
-    document.querySelectorAll(".v2-final-fundo, .v2-diferenca, .passos, .v2-acreditamos").forEach(function (el) { faixas.observe(el); });
+    document.querySelectorAll(".v2-final-fundo, .passos, .v2-acreditamos").forEach(function (el) { faixas.observe(el); });
   }
 
   /* ---------- 5. profundidade ao rolar e menu que encolhe ---------- */
   var pilha = document.querySelector(".v2-painel-pilha");
   var texto = document.querySelector(".v2-heroi-fundo .heroi-texto");
   var agendado = false;
+  // o observador só avisa quando o estado muda entre dois quadros: o que um pulo (âncora, rolagem
+  // rápida) levou de baixo para cima da tela nunca "apareceu" e ficaria escondido lá em cima
+  function revelarOsPulados() {
+    pendentes = pendentes.filter(function (el) {
+      if (el.classList.contains("visivel")) return false;
+      if (el.getBoundingClientRect().bottom >= 0) return true;
+      el.classList.add("visivel");
+      vistos.unobserve(el);
+      return false;
+    });
+  }
   function aoRolar() {
     agendado = false;
+    revelarOsPulados();
     var y = window.scrollY;
     raiz.classList.toggle("v2-rolou", y > 40);
     if (heroi && y < heroi.offsetHeight + 200) {
@@ -296,7 +310,7 @@
   if (!ponteiroFino) return;
 
   /* ---------- 6. luz que segue o cursor nos cartões ---------- */
-  document.querySelectorAll(".v2-bento .cartao, .v2-principio, .grade .cartao, .pilar, .v2-plano").forEach(function (c) {
+  document.querySelectorAll(".v2-bento .cartao, .grade .cartao, .pilar, .v2-plano").forEach(function (c) {
     c.addEventListener("pointermove", function (e) {
       var r = c.getBoundingClientRect();
       c.style.setProperty("--mx", (e.clientX - r.left) + "px");

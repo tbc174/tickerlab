@@ -50,13 +50,34 @@ def test_grava_as_tabelas_com_manifesto(ambiente):
         assert conferir_tabela(arquivo), nome
         manifesto = json.loads(arquivo.with_suffix(".json").read_text(encoding="utf-8"))
         assert manifesto["versao_do_codigo"] == VERSAO
+        # os 4 anos das amostras (os outros deram 404) e, nas tabelas que a usam, a tabela conferida
+        conferida = nome in ("emissores", "tickers")
+        assert len(manifesto["origens"]) == 4 + conferida, nome
         assert (
-            len(manifesto["origens"]) == 4
-        )  # os 4 anos das amostras; os outros deram 404
+            any(
+                o["url"] == carga_fca.URL_DOS_CODIGOS_CONFERIDOS
+                for o in manifesto["origens"]
+            )
+            == conferida
+        ), nome
     emissores = pd.read_parquet(pasta / "emissores.parquet")
     assert {"PETR", "ITUB", "VVAR", "VIIA", "BHIA"} <= set(emissores["emissor"])
     invalidos = pd.read_parquet(pasta / "codigos_invalidos.parquet")
     assert "4030" in set(invalidos["codigo_informado"])
+
+
+def test_btg_entra_pela_tabela_conferida(ambiente):
+    """Série 3, PR 8: o BTG informa "000000" nas units; sem a tabela conferida, ficava sem ticker."""
+    pasta, _ = ambiente
+    carga_fca.main(["--pasta", str(pasta), "--desde", "2026", "--ate", "2026"])
+    emissores = pd.read_parquet(pasta / "emissores.parquet").set_index("emissor")
+    assert emissores.loc["BPAC", ["cnpj", "origem"]].tolist() == [
+        "30.306.294/0001-45",
+        "códigos conferidos",
+    ]
+    assert emissores.loc["PETR", "origem"] == "fca"
+    tickers = pd.read_parquet(pasta / "tickers.parquet")
+    assert "BPAC11" in set(tickers["codigo"])
 
 
 def test_segunda_carga_le_do_acervo_sem_baixar_de_novo(ambiente):

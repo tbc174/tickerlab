@@ -1,0 +1,58 @@
+direcao;cnpj;rj_propria_no_ipe;receita_marca_a_raiz;confere;explicacao;conferido_em
+receita_para_ipe;60.851.615/0001-53;True;True;True;;2026-10-17
+receita_para_ipe;07.718.269/0001-57;True;True;True;;2026-10-17
+receita_para_ipe;09.112.685/0001-32;True;True;True;;2026-10-17
+receita_para_ipe;22.677.520/0001-76;True;True;True;;2026-10-17
+receita_para_ipe;61.082.004/0001-50;True;True;True;;2026-10-17
+receita_para_ipe;33.035.536/0001-00;True;True;True;;2026-10-17
+receita_para_ipe;33.200.049/0001-47;True;True;True;;2026-10-17
+receita_para_ipe;21.240.146/0001-84;True;True;True;;2026-10-17
+receita_para_ipe;04.032.433/0001-80;True;True;True;;2026-10-17
+receita_para_ipe;31.553.627/0001-01;True;True;True;;2026-10-17
+receita_para_ipe;76.535.764/0001-43;True;True;True;;2026-10-17
+receita_para_ipe;03.494.776/0001-01;True;True;True;;2026-10-17
+receita_para_ipe;08.613.550/0001-98;True;True;True;;2026-10-17
+receita_para_ipe;50.564.053/0001-03;True;True;True;;2026-10-17
+receita_para_ipe;16.233.389/0001-55;True;True;True;;2026-10-17
+receita_para_ipe;00.354.053/0001-00;True;True;True;;2026-10-17
+receita_para_ipe;21.255.567/0001-89;True;True;True;;2026-10-17
+receita_para_ipe;10.851.805/0001-00;True;True;True;;2026-10-17
+receita_para_ipe;09.116.278/0001-01;True;True;True;;2026-10-17
+receita_para_ipe;76.627.504/0001-06;True;True;True;;2026-10-17
+receita_para_ipe;61.065.751/0001-80;True;True;True;;2026-10-17
+receita_para_ipe;08.773.135/0001-00;True;True;True;;2026-10-17
+receita_para_ipe;89.723.993/0001-33;True;True;True;;2026-10-17
+receita_para_ipe;62.258.884/0001-36;True;True;True;;2026-10-17
+receita_para_ipe;33.412.081/0001-96;True;True;True;;2026-10-17
+ipe_para_receita;02.950.811/0001-89;True;False;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-17
+ipe_para_receita;24.973.927/0001-76;True;True;True;;2026-10-17
+ipe_para_receita;08.534.605/0001-74;True;False;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-17
+ipe_para_receita;09.116.278/0001-01;True;True;True;;2026-10-17
+ipe_para_receita;09.478.309/0001-66;True;False;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-17
+ipe_para_receita;62.258.884/0001-36;True;True;True;;2026-10-17
+ipe_para_receita;22.677.520/0001-76;True;True;True;;2026-10-17
+ipe_para_receita;07.718.269/0001-57;True;True;True;;2026-10-17
+ipe_para_receita;09.527.023/0001-23;True;False;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-17
+ipe_para_receita;08.773.135/0001-00;True;True;True;;2026-10-17
+ipe_para_receita;60.398.369/0004-79;True;True;True;;2026-10-17
+ipe_para_receita;21.255.567/0001-89;True;True;True;;2026-10-17
+ipe_para_receita;04.032.433/0001-80;True;True;True;;2026-10-17
+ipe_para_receita;10.678.505/0001-63;True;False;False;documento do fim da recuperação judicial: a Receita já tirou a marca;2026-10-17
+ipe_para_receita;61.082.004/0001-50;True;True;True;;2026-10-17
+ipe_para_receita;16.233.389/0001-55;True;True;True;;2026-10-17
+ipe_para_receita;76.535.764/0001-43;True;True;True;;2026-10-17
+ipe_para_receita;33.041.260/0652-90;True;False;False;o IPE traz o CNPJ de uma filial e a Receita não tem marca na companhia;2026-10-17
+ipe_para_receita;21.240.146/0001-84;True;True;True;;2026-10-17
+ipe_para_receita;03.378.521/0001-75;True;False;False;documento do encerramento da recuperação judicial: a Receita já tirou a marca;2026-10-17
+ipe_para_receita;50.564.053/0001-03;True;True;True;;2026-10-17
+ipe_para_receita;60.851.615/0001-53;True;True;True;;2026-10-17
+ipe_para_receita;12.648.266/0001-24;True;False;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-17
+ipe_para_receita;33.035.536/0001-00;True;True;True;;2026-10-17
+ipe_para_receita;00.359.742/0001-08;True;False;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-17
+ipe_para_receita;61.065.751/0001-80;True;True;True;;2026-10-17
+ipe_para_receita;08.613.550/0001-98;True;True;True;;2026-10-17
+ipe_para_receita;00.776.574/0001-56;True;True;True;;2026-10-17
+ipe_para_receita;09.112.685/0001-32;True;True;True;;2026-10-17
+ipe_para_receita;33.200.049/0001-47;True;True;True;;2026-10-17
+ipe_para_receita;82.636.986/0001-55;True;False;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-17
+ipe_para_receita;31.553.627/0001-01;True;True;True;;2026-10-17

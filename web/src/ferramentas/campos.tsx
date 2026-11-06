@@ -1,7 +1,9 @@
 // Os campos das ferramentas: número em texto (aceita "1.000,50"), escolha entre opções e o bloco do
 // resultado. Saem prontos no HTML do build com os valores de exemplo e voltam a responder quando o
 // ferramentas.js liga a ferramenta no navegador.
-import { type ReactNode, useId } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useIdUnico } from "../idUnico";
+import { formatarNumero, lerNumero } from "./numeros";
 
 export function CampoDeNumero({
   rotulo,
@@ -10,6 +12,7 @@ export function CampoDeNumero({
   antes,
   depois,
   dica,
+  children,
 }: {
   rotulo: string;
   valor: string;
@@ -17,8 +20,9 @@ export function CampoDeNumero({
   antes?: string; // "R$"
   depois?: ReactNode; // "%" ou uma Escolha de unidade
   dica?: string;
+  children?: ReactNode; // o deslizante e os atalhos (CampoComDeslizante)
 }) {
-  const id = useId();
+  const id = useIdUnico();
   return (
     <div className="ferramenta-campo">
       <label htmlFor={id}>{rotulo}</label>
@@ -34,8 +38,54 @@ export function CampoDeNumero({
         />
         {depois}
       </div>
+      {children}
       {dica ? <small className="apagado">{dica}</small> : null}
     </div>
+  );
+}
+
+/** Um valor pronto para pôr no campo com um clique ("Selic hoje"), com a data na dica. */
+export interface Atalho {
+  rotulo: string;
+  valor: string; // como a pessoa escreveria: "15" ou "10.000"
+  dica?: string;
+}
+
+/** O campo de número com um deslizante embaixo (e, se houver, os atalhos). O texto manda: aceita
+ * qualquer valor, e o deslizante fica na ponta quando o valor passa da faixa dele. */
+export function CampoComDeslizante({
+  min,
+  max,
+  passo,
+  atalhos = [],
+  ...campo
+}: Parameters<typeof CampoDeNumero>[0] & { min: number; max: number; passo: number; atalhos?: Atalho[] }) {
+  const numero = lerNumero(campo.valor);
+  const posicao = numero === null ? min : Math.min(max, Math.max(min, numero));
+  return (
+    <CampoDeNumero {...campo}>
+      <input
+        className="ferramenta-deslizante"
+        type="range"
+        aria-label={`${campo.rotulo} (deslizante)`}
+        min={min}
+        max={max}
+        step={passo}
+        value={posicao}
+        // a parte cheia do trilho (o CSS pinta até aqui; o trilho nativo saía branco no tema escuro)
+        style={{ "--p": ((posicao - min) / (max - min)).toFixed(4) } as CSSProperties}
+        onChange={(evento) => campo.aoMudar(formatarNumero(Number(evento.target.value)))}
+      />
+      {atalhos.length ? (
+        <div className="ferramenta-atalhos">
+          {atalhos.map((a) => (
+            <button key={a.rotulo} type="button" title={a.dica} onClick={() => campo.aoMudar(a.valor)}>
+              {a.rotulo}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </CampoDeNumero>
   );
 }
 
@@ -72,7 +122,7 @@ export function Alternativas<T extends string>({
   opcoes: [T, string][];
   aoMudar: (valor: T) => void;
 }) {
-  const nome = useId();
+  const nome = useIdUnico();
   return (
     <fieldset className="ferramenta-campo ferramenta-alternativas">
       <legend>{rotulo}</legend>

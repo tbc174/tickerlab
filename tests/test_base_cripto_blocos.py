@@ -199,6 +199,42 @@ def test_histograma_ignora_saida_impossivel_de_gastar():
     assert histograma[5] == para_satoshis(50)
 
 
+def test_histograma_ignora_op_return_que_o_no_nao_classifica_como_nulldata():
+    # bloco 360.603, transação 2ede1c2b…9759, saída 0 (600 satoshis): o script começa em OP_RETURN
+    # mas o "push" depois dele passa do fim, então o nó o chama de "nonstandard", não "nulldata".
+    # Mesmo assim o Bitcoin Core o conta como impossível de gastar (começa em OP_RETURN)
+    script = "6a5468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e20622e2e2e"
+    saida = {"value": 0.000006, "scriptPubKey": {"type": "nonstandard", "hex": script}}
+    bloco = _bloco(5, [_coinbase(50), _transacao([], [saida], 100)])
+
+    histograma = atualizar_histograma(np.zeros(10, dtype=np.int64), bloco)
+
+    assert histograma[5] == para_satoshis(50)
+
+
+def test_histograma_ignora_script_maior_que_o_limite_do_bitcoin_core():
+    # script com mais de 10.000 bytes também nunca entra no conjunto de moedas não gastas
+    script = "51" * 10_001
+    saida = {"value": 0.1, "scriptPubKey": {"type": "nonstandard", "hex": script}}
+    bloco = _bloco(5, [_coinbase(50), _transacao([], [saida], 100)])
+
+    histograma = atualizar_histograma(np.zeros(10, dtype=np.int64), bloco)
+
+    assert histograma[5] == para_satoshis(50)
+
+
+def test_histograma_guarda_script_de_10_mil_bytes_que_nao_comeca_em_op_return():
+    saida = {
+        "value": 0.1,
+        "scriptPubKey": {"type": "nonstandard", "hex": "51" * 10_000},
+    }
+    bloco = _bloco(5, [_coinbase(50), _transacao([], [saida], 100)])
+
+    histograma = atualizar_histograma(np.zeros(10, dtype=np.int64), bloco)
+
+    assert histograma[5] == para_satoshis(50.1)
+
+
 def test_metricas_trazem_dificuldade_e_hora_mediana():
     metricas = metricas_do_bloco(
         _bloco(100, [_coinbase(50)], hora=7_200), _hora_fixa({})

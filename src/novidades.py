@@ -21,6 +21,136 @@ class Atualizacao:
 
 ATUALIZACOES: tuple[Atualizacao, ...] = (
     Atualizacao(
+        data=date(2026, 11, 5),
+        titulo=(
+            "Relatório do setor, café, pregão do dia, busca por CNPJ ampliada, relatório da empresa "
+            "mais completo e a API com documentação aberta"
+        ),
+        resumo=(
+            "Telas novas para entender um setor e o mercado do café, o resumo do pregão no site, a "
+            "busca por CNPJ para empresas que não são de capital aberto, o Formulário de Referência "
+            "e a revisão do ITR no relatório da empresa, a fonte de cada número como link, dezenas "
+            "de tabelas novas na base e o site da TickerLab Data, a API de dados. Cada número tem a "
+            "data e a fonte."
+        ),
+        novidades=(
+            (
+                "Relatório do setor: escolha um setor e veja quem está nele, o tamanho do mercado, a "
+                "concentração (CR4 e HHI, com a faixa do CADE), as empresas lado a lado e o que "
+                "ainda não temos, com a fonte de cada número. Nas elétricas, também o mercado de "
+                "energia: o PLD mensal por submercado (CCEE), o corte de geração (curtailment) de "
+                "eólicas e solares e a capacidade instalada por tipo de usina (ONS), como eram na "
+                "data."
+            ),
+            (
+                "Relatório da empresa: a mínima e a máxima de 52 semanas e a variação em 12 meses "
+                "do preço; o capital social por tipo de ação e os empregados por posição e região, "
+                "do Formulário de Referência; a revisão do auditor em cada ITR e o patrimônio por "
+                "componente (DMPL) dos últimos três exercícios; e o anexo com as linhas da "
+                "demonstração de fluxo de caixa (DFC) e da demonstração do valor adicionado (DVA)."
+            ),
+            (
+                "Busca por CNPJ: além das companhias abertas, agora mostra o cadastro da Receita, o "
+                "Simples e o MEI, os sócios e o que mudou em 12 meses, com a data e a fonte de "
+                "cada linha."
+            ),
+            (
+                "A fonte vira link: no relatório da empresa, no relatório do setor e no relatório "
+                "semanal público, a fonte de cada número leva ao endereço público da base de origem "
+                "(CVM, ANEEL, Banco Central, IBGE e outras)."
+            ),
+            (
+                "Painel do café: arábica ou conilon, com preço de referência, câmbio, fundos, "
+                "exportações, safra da CONAB, clima e calendário, cada número com a data e a fonte."
+            ),
+            (
+                "Mapa do café: onde se produz arábica e conilon, município a município (IBGE), e a "
+                "chuva e a geada de cada região contra a normal."
+            ),
+            (
+                "Simulador de trava do café: a sua produção em cada safra desde 2000, sem travar, "
+                "a termo, no futuro e com opção, lado a lado com os riscos de cada caminho. Nada "
+                "do que você digita é guardado."
+            ),
+            (
+                "Preços de referência: café (arábica e robusta), algodão e fertilizantes, o preço "
+                "mensal do Banco Mundial e do FMI, com a fonte e a data de cada número."
+            ),
+            (
+                "Prazos maiores: Juros e inflação mostra todo o acervo do Banco Central desde 2010, "
+                "Preços de referência vai até 1960 e Pessoas de dentro ganha janelas de 2 e 5 anos, "
+                "com botões de 1 ano a Tudo e o aviso de desde quando há dado."
+            ),
+            (
+                "Pregão do dia: o resumo de cada dia útil no site, a partir do fechamento oficial "
+                "da B3, com o Ibovespa e os contratos de juros e dólar. Mostra o que o mercado fez, "
+                "não por quê."
+            ),
+            (
+                "Raio-X do choque de 26/10: o estudo do dia do circuit breaker, com o PDF para "
+                "baixar."
+            ),
+            (
+                "Sala de dados: os documentos de cada operação num lugar cifrado, visível só para "
+                "a sua conta, com a origem de cada número e o checklist do que falta."
+            ),
+            (
+                "A base cresceu: licitações, contratos e despesas dos tribunais de contas de PE, SP, "
+                "CE e RS, estabelecimentos de saúde do CNES (DATASUS), barragens e produção mineral "
+                "da ANM, preços máximos de medicamentos da CMED, financiamentos do BNDES e da Finep, "
+                "operadoras da ANS, cadastro da SUSEP, embargos do IBAMA e a Lista Suja do trabalho "
+                "escravo (MTE), entre outras. Cada tabela está na página Dados, com contrato, "
+                "licença e data."
+            ),
+            (
+                "Página inicial do site: a seção “Um CNPJ, muitas fontes” mostra, por tema, o que a "
+                "base liga pelo CNPJ de uma empresa, com um número novo no painel da abertura."
+            ),
+            (
+                "TickerLab Data: a API de dados ganhou site e documentação em api.tickerlab.com.br, "
+                "com as rotas, os exemplos e as regras de uso. Está em beta fechado, sem cobrança."
+            ),
+        ),
+        correcoes=(
+            (
+                'Página Dados: o selo "Em uso" passou a valer só para fonte que uma tela lê. CCEE, '
+                "DJEN e FAOSTAT estão guardadas no nosso acervo e voltaram a aparecer assim."
+            ),
+            (
+                "Relatório da empresa: as notas seguem a metodologia do setor da empresa, e os "
+                "dados do IF.data (Banco Central) entram só nos bancos."
+            ),
+            "Juros e inflação: a meta da Selic não aparece mais em dias depois da última coleta.",
+            (
+                "Parâmetros: os que ainda não mudam nenhum número aparecem travados, em vez de "
+                "parecer que funcionam."
+            ),
+            (
+                'Página Produto: Testes de robustez e Trilhas apareciam como "em breve", mas já '
+                "estão no app."
+            ),
+        ),
+    ),
+    Atualizacao(
+        data=date(2026, 10, 19),
+        titulo="Busca por CNPJ, login que dura 30 dias e termos de uso atualizados",
+        resumo=(
+            "Uma página nova para começar a pesquisa pelo CNPJ da empresa, um login que não pede "
+            "para entrar toda hora e os textos legais revistos."
+        ),
+        novidades=(
+            (
+                "Busca por CNPJ: digite o CNPJ de uma companhia aberta e veja de que grupo ela faz "
+                "parte e os fatos públicos, com a data e a fonte de cada linha."
+            ),
+            "O login com o Google agora mantém a sua sessão por 30 dias.",
+            (
+                "Termos de uso e Política de privacidade atualizados para refletir o que o produto "
+                "faz hoje."
+            ),
+        ),
+    ),
+    Atualizacao(
         data=date(2026, 10, 14),
         titulo="Relatório da empresa mais claro e números conferidos com o PDF da CVM",
         resumo=(

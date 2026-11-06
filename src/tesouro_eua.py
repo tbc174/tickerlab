@@ -15,6 +15,8 @@ from collections.abc import Callable
 import pandas as pd
 import requests
 
+from src import rede
+
 URL_DA_CURVA = (
     "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/"
     "daily-treasury-rates.csv/{ano}/all"
@@ -60,7 +62,7 @@ def montar_curva(texto_csv: str) -> pd.DataFrame:
     return curva[~curva.index.duplicated(keep="last")]
 
 
-def baixar_curva(ano: int, buscar: Buscar = requests.get) -> pd.DataFrame:
+def baixar_curva(ano: int, buscar: Buscar = rede.get_com_agente) -> pd.DataFrame:
     """A curva diária de um ano inteiro (o ano corrente vem até o último dia útil publicado)."""
     params = {
         "type": "daily_treasury_yield_curve",
@@ -72,7 +74,6 @@ def baixar_curva(ano: int, buscar: Buscar = requests.get) -> pd.DataFrame:
             URL_DA_CURVA.format(ano=ano),
             params=params,
             timeout=TEMPO_LIMITE,
-            headers={"User-Agent": "TickerLab (dados públicos do Tesouro dos EUA)"},
         )
         resposta.raise_for_status()
     except requests.RequestException as erro:

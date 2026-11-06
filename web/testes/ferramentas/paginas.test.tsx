@@ -3,10 +3,14 @@
 import { describe, expect, it } from "vitest";
 import { modulos } from "../../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../../src/entry-server";
-import { FERRAMENTAS_DO_SITE } from "../../src/ferramentas/paginas";
+import { FERRAMENTAS_DO_SITE, GRUPOS_DA_VITRINE } from "../../src/ferramentas/paginas";
+import { PREVIAS } from "../../src/ferramentas/previas";
 import { ROTAS } from "../../src/rotas";
 
 const PAGINAS_DE_FERRAMENTA = FERRAMENTAS_DO_SITE.map((f) => f.arquivo);
+// a busca aberta da inicial, o pregão mais novo, que o script pede à API (site/PregaoAoVivo.tsx), e a
+// consulta às tabelas da base na página Dados (site/ConsultaDaBase.tsx)
+const OUTRAS_COM_SCRIPT = ["index.html", "pregao-do-dia.html", "relatorios.html", "dados.html"];
 
 describe("páginas das ferramentas", () => {
   it("cada ferramenta da vitrine tem uma rota que carrega o script das calculadoras", () => {
@@ -17,10 +21,10 @@ describe("páginas das ferramentas", () => {
     }
   });
 
-  it("só as páginas com calculadora carregam o ferramentas.js", () => {
+  it("as calculadoras, a busca aberta e o pregão do dia carregam o ferramentas.js", () => {
     for (const arquivo of arquivos) {
       const carrega = /<script src="\/ferramentas\.js\?v=[0-9a-f]{12}" defer="">/.test(renderizar(arquivo));
-      expect(carrega, arquivo).toBe(PAGINAS_DE_FERRAMENTA.includes(arquivo));
+      expect(carrega, arquivo).toBe(OUTRAS_COM_SCRIPT.includes(arquivo) || PAGINAS_DE_FERRAMENTA.includes(arquivo));
     }
   });
 
@@ -35,14 +39,15 @@ describe("páginas das ferramentas", () => {
     }
   });
 
-  it("a vitrine, as ferramentas e o menu entram no site", () => {
+  it("a vitrine, as ferramentas e o rodapé entram no site", () => {
     const mapa = arquivosFixos()["sitemap.xml"];
     for (const arquivo of ["ferramentas.html", ...PAGINAS_DE_FERRAMENTA]) {
       expect(mapa).toContain(`https://tickerlab.com.br/${arquivo}`);
     }
     const vitrine = renderizar("ferramentas.html");
     for (const arquivo of PAGINAS_DE_FERRAMENTA) expect(vitrine).toContain(`href="/${arquivo}"`);
-    expect(renderizar("index.html")).toContain('<a href="/ferramentas.html">Ferramentas</a>');
+    // desde o menu do plano de 18/10, a vitrine fica no rodapé de toda página (não mais no topo)
+    expect(renderizar("index.html")).toContain('<a href="/ferramentas.html">Ferramentas grátis</a>');
   });
 
   it("o Produto leva às ferramentas que estão na vitrine (src/modulos.py)", () => {
@@ -53,5 +58,53 @@ describe("páginas das ferramentas", () => {
     expect(doCatalogo.length).toBeGreaterThan(0);
     for (const pagina of doCatalogo) expect(PAGINAS_DE_FERRAMENTA).toContain(pagina);
     expect(renderizar("produto.html")).toContain('href="/calculadora-de-juros-compostos.html"');
+  });
+
+  it("a vitrine separa as ferramentas em grupos, cada uma num grupo só", () => {
+    const nosGrupos = GRUPOS_DA_VITRINE.flatMap((g) => g.arquivos);
+    expect([...nosGrupos].sort()).toEqual([...PAGINAS_DE_FERRAMENTA].sort());
+    expect(GRUPOS_DA_VITRINE.map((g) => g.nome)).toEqual([
+      "Planejar",
+      "Comparar investimentos",
+      "Impostos",
+      "Inflação e câmbio",
+      "Sorte ou habilidade",
+    ]);
+    const vitrine = renderizar("ferramentas.html");
+    for (const grupo of GRUPOS_DA_VITRINE) expect(vitrine).toContain(`>${grupo.nome}</h3>`);
+  });
+
+  it("cada cartão da vitrine tem a prévia em SVG, feita no build e escondida do leitor de tela", () => {
+    expect(Object.keys(PREVIAS).sort()).toEqual([...PAGINAS_DE_FERRAMENTA].sort());
+    const vitrine = renderizar("ferramentas.html");
+    const previas = vitrine.match(/<svg class="previa"[^>]*aria-hidden="true"/g) ?? [];
+    expect(previas).toHaveLength(PAGINAS_DE_FERRAMENTA.length);
+    expect(vitrine).not.toMatch(/NaN|Infinity/);
+    // as únicas imagens da página são as folhas do Report Studio
+    const fora = vitrine.replace(/<div class="vitrine" data-vitrine="">.*?<\/div><p class="legenda">/s, "");
+    expect(fora).not.toContain("<img");
+  });
+
+  it("'No app' leva o backtest, a carteira e o Report Studio; 'Calculadoras' leva os grupos (plano do site, Tarefa 3)", () => {
+    const vitrine = renderizar("ferramentas.html");
+    const noApp = vitrine.indexOf(">No app</h2>");
+    const calculadoras = vitrine.indexOf(">Calculadoras</h2>");
+    expect(noApp).toBeGreaterThan(-1);
+    expect(calculadoras).toBeGreaterThan(noApp);
+    const trechoNoApp = vitrine.slice(noApp, calculadoras);
+    for (const chave of ["estrategias", "carteira"]) {
+      expect(trechoNoApp).toContain(`href="/produto.html#${chave}"`);
+    }
+    expect(trechoNoApp).toContain("Report Studio");
+    expect(trechoNoApp).toContain("data-vitrine=");
+    expect(vitrine.slice(calculadoras)).toContain(`>${GRUPOS_DA_VITRINE[0].nome}</h3>`);
+  });
+
+  it("a página inicial não tem mais o bento das seis frentes nem o Report Studio", () => {
+    const inicio = renderizar("index.html");
+    expect(inicio).not.toContain("Sua pesquisa merece mais que uma tela");
+    expect(inicio).not.toContain("v2-bento");
+    expect(inicio).not.toContain("Seis frentes, uma plataforma");
+    expect(inicio).not.toContain("data-vitrine=");
   });
 });

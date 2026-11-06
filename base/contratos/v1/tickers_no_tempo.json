@@ -1,0 +1,63 @@
+{
+  "tabela": "tickers_no_tempo",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "codigo": {
+      "descricao": "Código de negociação na B3 (PETR4, TAEE11)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "valor_mobiliario": {
+      "descricao": "Tipo do papel (ações ordinárias, preferenciais, units)",
+      "unidade": "texto"
+    },
+    "primeiro_visto": {
+      "descricao": "Entrega (DT_RECEB) do primeiro FCA vigente com o código: vale desde esse dia",
+      "unidade": "data (dia)"
+    },
+    "ultimo_visto": {
+      "descricao": "Entrega do último FCA vigente com o código",
+      "unidade": "data (dia)"
+    },
+    "valido_ate": {
+      "descricao": "Entrega do FCA que passou a valer sem o código (deixa de valer nesse dia); vazio: ainda no FCA mais recente da empresa",
+      "unidade": "data (dia)"
+    },
+    "inicio_negociacao": {
+      "descricao": "Início da negociação informado pela empresa",
+      "unidade": "data (dia)"
+    },
+    "fim_negociacao": {
+      "descricao": "Fim da negociação informado (vazio: ainda negociado)",
+      "unidade": "data (dia)"
+    },
+    "origem": {
+      "descricao": "fca (informado no formulário) ou códigos conferidos (tabela `base/conferidas/codigos_fora_do_fca.csv`: o código veio fora do formato no FCA)",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "codigo",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "inicio_negociacao",
+    "publico_em": "primeiro_visto"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Anual (o FCA é entregue até 31/05) e a cada alteração",
+  "atraso": "Até meses: a empresa atualiza o FCA quando muda algo"
+}

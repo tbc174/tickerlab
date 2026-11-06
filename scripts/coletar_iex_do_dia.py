@@ -9,15 +9,34 @@ TOPS do dia (~9 GB comprimido) é lido enquanto baixa e não fica no disco; só 
 `dados_locais/intradiario/iex/AAAA-MM-DD.parquet`, com um resumo `.json` ao lado (conferências e
 o SHA-256 do Parquet). Gravação atômica: o arquivo só aparece completo. Um arquivo da IEX
 malformado (`ArquivoIexInvalidoError`) não grava nada e faz a tarefa falhar, para o alarme
-avisar. Olha os últimos dias úteis e coleta só os que faltam: um dia perdido é recuperado na
-madrugada seguinte, e feriados (sem arquivo na IEX) são pulados.
+avisar. Olha os últimos pregões e coleta só os que faltam: um dia perdido é recuperado na
+madrugada seguinte. Fins de semana e feriados da NYSE (`src.calendario_nyse`) nem são pedidos: a
+IEX responde 404 neles, e um 404 num dia de pregão continua sendo falha, para o alarme avisar. A
+exceção é o último pregão: a IEX publica o dia só na tarde seguinte (23/10/2026: às 5h, a lista do
+dia 22 dava 404), então ali o 404 é "ainda não publicado"; se ele seguir no dia seguinte, falha.
+Conexão que cai no meio do arquivo: o dia é baixado de novo uma vez; se cair de novo, o dia falha
+(nada gravado, alarme avisa), mas a rodada segue com os outros dias e o selo.
 
-Carga do passado (`--desde`): os dias úteis que faltam desde a data, do mais novo para o mais
-antigo, até `--maximo` dias coletados (feriados não contam) ou até acabar o tempo (`--minutos`),
-para a rodada da madrugada não encostar no backup. Cada dia baixa ~9 GB (cabe com folga nos 8 TB
+Carga do passado (`--desde`): os pregões que faltam desde a data, do mais novo para o mais
+antigo, até `--maximo` dias coletados (dia ainda sem arquivo não conta) ou até acabar o tempo (`--minutos`),
+para a rodada da madrugada não encostar no backup. O orçamento vale para a rodada inteira, coleta e
+selo: a carga segura a trava das tarefas do VPS, e o deploy automático espera por ela (18/10/2026: o
+selo, fora do orçamento, segurou a trava por horas). Cada dia baixa ~9 GB (cabe com folga nos 8 TB
 mensais do VPS, conferido em 13/10/2026).
 
+Selo por ativo (plano dos intradiários grátis, PR 5): no fim de cada rodada, os dias com barras e
+sem selo ganham `selo/AAAA-MM-DD.parquet` (o fechamento das barras contra o oficial do dia,
+`src.barras_intradiarias.selo_dos_fechamentos`) e o resumo `.json` ganha a contagem. O selo está
+**pausado** desde 28/10/2026 (linha 175 da fila): o fechamento oficial vinha do Yahoo, que saiu das
+rotinas, e o próprio TOPS não serve de oficial (as barras já vêm dele). `main` só sela se receber
+uma fonte (`oficiais`); sem ela os dias ficam sem selo e são selados quando houver fonte licenciada
+(`selar_os_que_faltam` recupera todos). Com fonte: sem resposta, ou com o tempo da rodada
+(`--minutos`) acabado, o dia fica para a rodada seguinte. `nao_confere` aparece na saída, mas não é
+falha (na carga antiga, um desdobramento depois do dia muda o preço oficial).
+
 Atribuição obrigatória ao mostrar estes dados: `iex_tops.ATRIBUICAO` (termos da IEX, ADR 0019).
+
+Roda: cron do VPS (todo dia às 0h30 e 5h00); outro script (medir_iex_um_dia.py).
 """
 
 import argparse
@@ -33,10 +52,16 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import requests
+import urllib3
 
-from src import catalogo, iex_tops
-from src.barras_intradiarias import cobertura_por_simbolo, montar_barras
+from src import calendario_nyse, catalogo, iex_tops, rede
+from src.barras_intradiarias import (
+    cobertura_por_simbolo,
+    montar_barras,
+    selo_dos_fechamentos,
+)
 
 LISTA_DO_HIST = "https://iextrading.com/api/1.0/hist?date={data}"
 PASTA = Path("dados_locais/intradiario/iex")
@@ -44,27 +69,40 @@ FUSO_NY = ZoneInfo("America/New_York")
 DIAS_UTEIS_OLHADOS = 5
 MAXIMO_DE_DIAS_POR_RODADA = 2  # ~12 min; o resto fica para a madrugada seguinte
 TEMPO_LIMITE_S = 120
-SEM_ARQUIVO = "sem arquivo"  # fim de semana, feriado ou ainda não publicado
+# Conexão que cai no meio do arquivo (~17 GB; 16/10/2026: IncompleteRead perto da metade): o dia é
+# baixado de novo do começo, uma vez. Se cair de novo, o dia falha e a rodada segue para o próximo.
+TENTATIVAS_DO_ARQUIVO = 2
+CONEXAO_CAIU = (urllib3.exceptions.HTTPError, requests.ConnectionError)
+SEM_ARQUIVO = "sem arquivo"  # ainda não publicado
+HTTP_NAO_ENCONTRADO = 404
+MAXIMO_DE_SELOS_POR_RODADA = (
+    40  # um pedido ao Yahoo por dia; a carga põe ~20 dias por noite
+)
+
+MENSAGEM_DO_SELO_PAUSADO = (
+    "Selo pausado: sem fonte licenciada do fechamento oficial; os dias ficam sem selo "
+    "e são selados quando houver fonte."
+)
 
 log = logging.getLogger(__name__)
 
 
 def dias_uteis_recentes(hoje: date, quantos: int = DIAS_UTEIS_OLHADOS) -> list[date]:
-    """Os `quantos` dias de segunda a sexta antes de `hoje` (o de hoje ainda não saiu), do mais
-    antigo para o mais novo. Feriados entram e são pulados por não terem arquivo na IEX."""
+    """Os `quantos` pregões da NYSE antes de `hoje` (o de hoje ainda não saiu), do mais antigo
+    para o mais novo."""
     dias, dia = [], hoje - timedelta(days=1)
     while len(dias) < quantos:
-        if dia.weekday() < 5:
+        if calendario_nyse.eh_pregao(dia):
             dias.append(dia)
         dia -= timedelta(days=1)
     return sorted(dias)
 
 
 def dias_uteis_desde(inicio: date, hoje: date) -> list[date]:
-    """Os dias de segunda a sexta de `inicio` até ontem, do mais novo para o mais antigo."""
+    """Os pregões da NYSE de `inicio` até ontem, do mais novo para o mais antigo."""
     dias, dia = [], hoje - timedelta(days=1)
     while dia >= inicio:
-        if dia.weekday() < 5:
+        if calendario_nyse.eh_pregao(dia):
             dias.append(dia)
         dia -= timedelta(days=1)
     return dias
@@ -80,11 +118,18 @@ def dias_que_faltam(hoje: date, pasta: Path = PASTA) -> list[date]:
     ]
 
 
-def endereco_do_tops(dia: date, buscar: Callable = requests.get) -> str | None:
-    """O link do TOPS do dia, ou None se a IEX não tem arquivo para a data."""
+def endereco_do_tops(
+    dia: date, buscar: Callable = rede.get_com_agente, *, pode_faltar: bool = False
+) -> str | None:
+    """O link do TOPS do dia, ou None se a IEX não tem arquivo para a data.
+
+    Com `pode_faltar` (o último pregão, que a IEX publica só na tarde seguinte), o 404 da lista
+    também é None; nos outros dias ele levanta, para o alarme avisar."""
     resposta = buscar(
         LISTA_DO_HIST.format(data=dia.strftime("%Y%m%d")), timeout=TEMPO_LIMITE_S
     )
+    if pode_faltar and resposta.status_code == HTTP_NAO_ENCONTRADO:
+        return None
     resposta.raise_for_status()
     lista = resposta.json() or []
     tops = [item for item in lista if item.get("feed") == "TOPS"]
@@ -104,26 +149,44 @@ def _gravar_atomico(caminho: Path, escrever: Callable[[Path], None]) -> None:
     os.replace(temporario, caminho)
 
 
+def _ler_o_arquivo(
+    link: str, simbolos: set[str], buscar: Callable
+) -> iex_tops.NegociosDoDia:
+    for tentativa in range(1, TENTATIVAS_DO_ARQUIVO + 1):
+        try:
+            with buscar(link, stream=True, timeout=TEMPO_LIMITE_S) as resposta:
+                resposta.raise_for_status()
+                with gzip.GzipFile(fileobj=resposta.raw) as descomprimido:
+                    return iex_tops.coletar_negocios(
+                        iex_tops.pacotes_do_pcapng(descomprimido), simbolos
+                    )
+        except CONEXAO_CAIU as erro:
+            if tentativa == TENTATIVAS_DO_ARQUIVO:
+                raise
+            print(
+                f"A conexão caiu no meio do arquivo ({type(erro).__name__}); baixando de novo."
+            )
+    raise AssertionError("inalcançável")
+
+
 def coletar_dia(
     dia: date,
     simbolos: set[str],
     pasta: Path = PASTA,
-    buscar: Callable = requests.get,
+    buscar: Callable = rede.get_com_agente,
+    *,
+    pode_faltar: bool = False,
 ) -> dict | str:
     """Baixa, lê e grava as barras de `dia`. Devolve o resumo, ou `SEM_ARQUIVO`.
 
-    Levanta `iex_tops.ArquivoIexInvalidoError` (arquivo malformado) sem gravar nada.
+    Levanta `iex_tops.ArquivoIexInvalidoError` (arquivo malformado) ou o erro da conexão (se ela
+    cair nas `TENTATIVAS_DO_ARQUIVO`) sem gravar nada.
     """
-    link = endereco_do_tops(dia, buscar)
+    link = endereco_do_tops(dia, buscar, pode_faltar=pode_faltar)
     if link is None:
         return SEM_ARQUIVO
     inicio = time.perf_counter()
-    with buscar(link, stream=True, timeout=TEMPO_LIMITE_S) as resposta:
-        resposta.raise_for_status()
-        with gzip.GzipFile(fileobj=resposta.raw) as descomprimido:
-            negocios = iex_tops.coletar_negocios(
-                iex_tops.pacotes_do_pcapng(descomprimido), simbolos
-            )
+    negocios = _ler_o_arquivo(link, simbolos, buscar)
     barras = montar_barras(iex_tops.tabela_de_negocios(negocios), "America/New_York")
     pasta.mkdir(parents=True, exist_ok=True)
     parquet = arquivo_do_dia(dia, pasta)
@@ -154,6 +217,86 @@ def coletar_dia(
     return resumo
 
 
+def pasta_do_selo(pasta: Path) -> Path:
+    return pasta / "selo"
+
+
+def dias_sem_selo(pasta: Path) -> list[date]:
+    """Dias coletados (com o resumo `.json`) que ainda não têm selo, do mais novo ao mais antigo."""
+    dias = [date.fromisoformat(r.stem) for r in pasta.glob("????-??-??.json")]
+    return sorted(
+        (d for d in dias if not (pasta_do_selo(pasta) / f"{d}.parquet").exists()),
+        reverse=True,
+    )
+
+
+def selar_dia(
+    dia: date, pasta: Path, oficiais: Callable[[date, list[str]], pd.Series]
+) -> dict | None:
+    """Grava o selo do dia e acrescenta a contagem ao resumo; None se não veio o oficial."""
+    barras = pd.read_parquet(arquivo_do_dia(dia, pasta))
+    fechamentos = oficiais(dia, sorted(barras["simbolo"].unique()))
+    if fechamentos.empty:
+        return None
+    selo = selo_dos_fechamentos(barras, fechamentos)
+    pasta_do_selo(pasta).mkdir(parents=True, exist_ok=True)
+    _gravar_atomico(
+        pasta_do_selo(pasta) / f"{dia}.parquet",
+        lambda p: selo.to_parquet(p, index=False),
+    )
+    caminho_do_resumo = arquivo_do_dia(dia, pasta).with_suffix(".json")
+    resumo = json.loads(caminho_do_resumo.read_text("utf-8"))
+    contagem = selo["selo"].value_counts().sort_index()
+    resumo["selo"] = {str(nome): int(n) for nome, n in contagem.items()}
+    resumo["pior_diferenca"] = round(float(selo["diferenca"].abs().max()), 6)
+    _gravar_atomico(
+        caminho_do_resumo,
+        lambda p: p.write_text(
+            json.dumps(resumo, ensure_ascii=False, indent=1), "utf-8"
+        ),
+    )
+    return resumo
+
+
+def _passou_do_prazo(prazo: float | None) -> bool:
+    """Se o instante `prazo` (no relógio de `time.monotonic`) já passou; sem prazo, nunca."""
+    return prazo is not None and time.monotonic() > prazo
+
+
+def selar_os_que_faltam(
+    pasta: Path,
+    oficiais: Callable[[date, list[str]], pd.Series],
+    maximo: int = MAXIMO_DE_SELOS_POR_RODADA,
+    prazo: float | None = None,
+) -> list[str]:
+    """Sela até `maximo` dias sem selo, parando quando passa o `prazo` (instante no relógio de
+    `time.monotonic`; None = sem prazo). Devolve uma linha por dia selado.
+
+    O prazo é conferido antes de cada dia: o dia já começado termina (um pedido ao Yahoo).
+    """
+    linhas = []
+    fila = dias_sem_selo(pasta)[:maximo]
+    for posicao, dia in enumerate(fila):
+        if _passou_do_prazo(prazo):
+            print(
+                f"Tempo da rodada acabou; {len(fila) - posicao} dias ficam sem selo "
+                "para a próxima rodada."
+            )
+            break
+        resumo = selar_dia(dia, pasta, oficiais)
+        if resumo is None:
+            print(
+                f"{dia}: sem o fechamento oficial ainda; o selo fica para a próxima rodada"
+            )
+            continue
+        contagem = ", ".join(f"{n} {selo}" for selo, n in resumo["selo"].items())
+        linhas.append(
+            f"{dia}: selo {contagem}; pior diferença do fechamento "
+            f"{resumo['pior_diferenca']:.2%}"
+        )
+    return linhas
+
+
 def _opcoes(argumentos: list[str] | None) -> argparse.Namespace:
     leitor = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     leitor.add_argument("--data", type=date.fromisoformat, default=None)
@@ -174,20 +317,23 @@ def _dias_da_rodada(opcoes: argparse.Namespace, hoje: date) -> list[date]:
 
 
 def _coletar_e_contar(
-    dia: date, simbolos: set[str], pasta: Path, buscar: Callable
+    dia: date, simbolos: set[str], pasta: Path, buscar: Callable, ultimo_pregao: date
 ) -> tuple[bool, bool]:
     """Coleta um dia e conta a história. Devolve (contou no máximo, falhou)."""
     try:
-        resultado = coletar_dia(dia, simbolos, pasta, buscar)
+        resultado = coletar_dia(
+            dia, simbolos, pasta, buscar, pode_faltar=dia == ultimo_pregao
+        )
     except (
         iex_tops.ArquivoIexInvalidoError,
         requests.RequestException,
+        urllib3.exceptions.HTTPError,
         OSError,
     ) as erro:
         print(f"{dia}: FALHOU, nada gravado ({type(erro).__name__}: {erro})")
         return True, True
     if resultado == SEM_ARQUIVO:
-        print(f"{dia}: a IEX não tem arquivo (feriado ou ainda não publicado)")
+        print(f"{dia}: a IEX ainda não tem arquivo (não publicado)")
         return False, False
     print(
         f"{dia}: {resultado['barras']:,} barras de {resultado['simbolos_com_barras']} ações, "
@@ -196,28 +342,48 @@ def _coletar_e_contar(
     return True, False
 
 
-def main(argumentos: list[str] | None = None, buscar: Callable = requests.get) -> int:
-    """0 = tudo certo (inclusive sem nada a coletar); 1 = algum dia falhou."""
+def main(
+    argumentos: list[str] | None = None,
+    buscar: Callable = rede.get_com_agente,
+    oficiais: Callable[[date, list[str]], pd.Series] | None = None,
+) -> int:
+    """0 = tudo certo (inclusive sem nada a coletar); 1 = algum dia falhou.
+
+    `oficiais` (dia, símbolos → fechamento oficial) é a fonte do selo; sem ela o selo fica pausado."""
     opcoes = _opcoes(argumentos)
-    inicio = time.monotonic()
-    dias = _dias_da_rodada(opcoes, datetime.now(FUSO_NY).date())
+    prazo = time.monotonic() + opcoes.minutos * 60 if opcoes.minutos else None
+    codigo = _coletar(opcoes, buscar, prazo)
+    if oficiais is None:
+        print(MENSAGEM_DO_SELO_PAUSADO)
+        return codigo
+    for linha in selar_os_que_faltam(opcoes.pasta, oficiais, prazo=prazo):
+        print(linha)
+    return codigo
+
+
+def _coletar(opcoes: argparse.Namespace, buscar: Callable, prazo: float | None) -> int:
+    hoje = datetime.now(FUSO_NY).date()
+    dias = _dias_da_rodada(opcoes, hoje)
     if not dias:
-        print("Nada a coletar: os dias úteis pedidos já estão guardados.")
+        print("Nada a coletar: os pregões pedidos já estão guardados.")
         return 0
     simbolos = simbolos_do_sp500()
+    [ultimo_pregao] = dias_uteis_recentes(hoje, 1)
     coletados, falhou = 0, False
     for dia in dias:
         if coletados >= opcoes.maximo:
             break
-        if opcoes.minutos and time.monotonic() - inicio > opcoes.minutos * 60:
+        if _passou_do_prazo(prazo):
             print(
                 f"Tempo da rodada acabou; {coletados} dias coletados, o resto fica para a próxima."
             )
             break
-        contou, deu_erro = _coletar_e_contar(dia, simbolos, opcoes.pasta, buscar)
+        contou, deu_erro = _coletar_e_contar(
+            dia, simbolos, opcoes.pasta, buscar, ultimo_pregao
+        )
         coletados += contou
         falhou = falhou or deu_erro
-    print(f"Faltam {len(dias) - coletados} dias úteis (feriados incluídos).")
+    print(f"Faltam {len(dias) - coletados} pregões.")
     return 1 if falhou else 0
 
 

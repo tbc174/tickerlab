@@ -2,6 +2,7 @@
 foi conferida, num lugar só para as ferramentas do site e o imposto do backtest."""
 
 from datetime import UTC, date, datetime
+from itertools import pairwise
 
 import pytest
 
@@ -12,7 +13,10 @@ from src import regras_de_imposto as regras
 def test_toda_regra_tem_fonte_oficial_e_data():
     for regra in regras.TODAS:
         assert regra.fonte.startswith("https://"), regra.chave
-        assert "gov.br" in regra.fonte, regra.chave
+        # lei e Receita em gov.br; a custódia do Tesouro Direto é tarifa da B3, e a fonte é a dela
+        assert any(dominio in regra.fonte for dominio in ("gov.br", "b3.com.br")), (
+            regra.chave
+        )
         assert regra.onde, regra.chave  # a pergunta ou o artigo
         assert date.fromisoformat(regra.conferida_em) <= datetime.now(UTC).date(), (
             regra.chave
@@ -54,3 +58,59 @@ def test_exportacao_para_o_site_leva_tudo():
     assert {r["chave"] for r in exportado["regras"]} == {r.chave for r in regras.TODAS}
     assert exportado["renda_fixa"][0] == {"ate_dias": 180, "aliquota": 0.225}
     assert exportado["renda_fixa"][-1] == {"ate_dias": None, "aliquota": 0.15}
+
+
+# --- ferramentas v2: IOF dos primeiros 30 dias e custódia do Tesouro Direto --------------------
+@pytest.mark.parametrize(
+    ("dias", "aliquota"),
+    [
+        (1, 0.96),
+        (2, 0.93),
+        (10, 0.66),
+        (15, 0.50),
+        (28, 0.06),
+        (29, 0.03),
+        (30, 0),
+        (400, 0),
+    ],
+)
+def test_iof_regressivo_do_anexo_do_decreto_6306(dias, aliquota):
+    assert regras.aliquota_do_iof(dias) == pytest.approx(aliquota)
+
+
+def test_iof_a_tabela_tem_29_dias_e_so_cai():
+    tabela = regras.TABELA_DO_IOF
+    assert len(tabela) == 29
+    assert all(a > b for a, b in pairwise(tabela))
+    with pytest.raises(ValueError, match="1 dia"):
+        regras.aliquota_do_iof(0)
+
+
+def test_custodia_do_tesouro_direto():
+    assert regras.valor("custodia_do_tesouro") == 0.002
+    assert regras.valor("custodia_isenta_no_selic_ate") == 10_000
+    assert (
+        regras.valor("iof_resgate_antes_de_30_dias")
+        == "96% no 1º dia ... 3% no 29º; 0 a partir do 30º"
+    )
+
+
+def test_o_site_recebe_o_iof_e_a_custodia():
+    site = regras.para_o_site()
+    assert site["iof"] == list(regras.TABELA_DO_IOF)
+    assert site["custodia_do_tesouro"] == {"taxa": 0.002, "isento_no_selic_ate": 10_000}
+
+
+# --- ferramentas v2: fundos (come-cotas e a tabela de curto prazo) ----------------------------
+def test_come_cotas_de_15_e_20_por_cento():
+    assert regras.valor("come_cotas_longo_prazo") == 0.15
+    assert regras.valor("come_cotas_curto_prazo") == 0.20
+
+
+@pytest.mark.parametrize(
+    ("dias", "longo", "aliquota"),
+    [(100, True, 0.225), (300, True, 0.20), (500, True, 0.175), (800, True, 0.15),
+     (100, False, 0.225), (181, False, 0.20), (2000, False, 0.20)],
+)  # fmt: skip
+def test_aliquota_do_fundo_no_resgate(dias, longo, aliquota):
+    assert regras.aliquota_do_fundo(dias, longo) == aliquota

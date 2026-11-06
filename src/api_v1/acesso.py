@@ -1,11 +1,13 @@
-"""Quem pode chamar a API de leitura: a conta do TickerLab, pelo login do Google.
+"""Quem pode chamar a API de leitura: a conta do TickerLab, pela sessão (o cookie).
 
 A interface nova faz o login com o Google no navegador e manda o token (um "ID token", assinado pelo
-Google) no cabeçalho `Authorization: Bearer ...`. Aqui ele é conferido: assinatura com as chaves
-públicas do Google, feito para o TickerLab (`aud`), emitido pelo Google (`iss`), dentro da validade e
-com o e-mail verificado. Depois, a conta precisa já existir (o primeiro login é pelo app) e ter
-aceitado os termos atuais. Por último, o plano da conta precisa abrir a página da rota (o contrato da
-página em src/paginas.py diz qual é; a regra é a mesma do Streamlit, ADR 0062).
+Google) uma vez, para `POST /v1/conta`, que abre a sessão de 30 dias num cookie (src/api_v1/sessao.py);
+daí em diante vale só o cookie (o Bearer das outras rotas saiu no PR 2 do login). O token do Google é
+conferido: assinatura com as chaves públicas do Google, feito para o TickerLab (`aud`), emitido pelo
+Google (`iss`), dentro da validade e com o e-mail verificado. Depois, a conta precisa ter aceitado os
+termos atuais (menos para baixar os próprios dados: LGPD). Por último, o plano da conta precisa abrir a
+página da rota (o contrato da página em src/paginas.py diz qual é; a regra é a mesma do Streamlit,
+ADR 0062).
 
 A chave liga/desliga fica em `src/api_v1/__init__.py`; aqui ela é conferida de novo a cada pedido.
 """
@@ -23,14 +25,21 @@ from joserfc.errors import JoseError
 from joserfc.jwk import KeySet
 
 from src.api_v1 import api_v1_ligada
+from src.api_v1.sessao import (
+    pedido_do_proprio_site,
+    precisa_provar_a_origem,
+    token_do_cookie,
+)
 from src.autenticacao import IdentidadeDoGoogle, LoginInvalidoError, ler_identidade
 from src.banco.conexao import obter_engine
-from src.banco.usuarios import Usuario, buscar_por_google_sub
+from src.banco.sessoes import conta_da_sessao
+from src.banco.usuarios import Usuario
 from src.conformidade import precisa_aceitar_os_termos
 from src.paginas import PREFIXO_DA_API, motivo_da_pagina, pagina_da_rota
 
 # o motivo de um 401 ou 403, para a tela mostrar o caminho certo (entrar de novo, entrar pelo app
-# uma vez ou aceitar os termos): "sem-token", "token-invalido", "conta-nova" ou "termos"
+# uma vez ou aceitar os termos): "sem-token", "token-invalido", "sessao" (a do cookie
+# acabou), "termos", "plano" ou "pedido-de-fora" (POST com o cookie que não saiu do próprio app)
 CABECALHO_DO_MOTIVO = "X-TickerLab-Motivo"
 
 
@@ -93,7 +102,7 @@ def verificar_token(
 
 
 class LimiteDePedidos:
-    """No máximo `por_minuto` pedidos por conta numa janela de 60 segundos.
+    """No máximo `por_minuto` pedidos por chave numa janela (60 segundos, se não disserem outra).
 
     Fica na memória do processo: com um processo só da API (como hoje), vale para todos os pedidos.
     """
@@ -102,7 +111,9 @@ class LimiteDePedidos:
         self,
         por_minuto: int = PEDIDOS_POR_MINUTO,
         maximo_de_chaves: int = MAXIMO_DE_CHAVES,
+        janela: int = 60,
     ) -> None:
+        self.janela = janela  # segundos
         self.por_minuto = por_minuto
         self.maximo_de_chaves = maximo_de_chaves
         self._pedidos: dict[str, deque[float]] = {}
@@ -111,7 +122,9 @@ class LimiteDePedidos:
     def _esquecer_quem_parou(self, momento: float) -> None:
         """Tira as chaves sem pedido no último minuto (com chave por IP, a lista não para de crescer)."""
         paradas = [
-            c for c, f in self._pedidos.items() if not f or f[-1] <= momento - 60
+            c
+            for c, f in self._pedidos.items()
+            if not f or f[-1] <= momento - self.janela
         ]
         for chave in paradas:
             del self._pedidos[chave]
@@ -128,7 +141,7 @@ class LimiteDePedidos:
             ):
                 self._esquecer_quem_parou(momento)
             fila = self._pedidos.setdefault(conta, deque())
-            while fila and fila[0] <= momento - 60:
+            while fila and fila[0] <= momento - self.janela:
                 fila.popleft()
             if len(fila) >= self.por_minuto:
                 return False
@@ -165,14 +178,13 @@ def exigir_api_ligada() -> None:
         raise HTTPException(status_code=404, detail="Not Found")
 
 
+MENSAGEM_SEM_LOGIN = "Entre no TickerLab (o login com o Google abre a sessão)."
+
+
 def _token_do_cabecalho(authorization: str | None) -> str:
     tipo, _, token = (authorization or "").partition(" ")
     if tipo.lower() != "bearer" or not token.strip():
-        raise _recusa(
-            401,
-            "Faça o login com o Google e mande o token (Authorization: Bearer).",
-            "sem-token",
-        )
+        raise _recusa(401, MENSAGEM_SEM_LOGIN, "sem-token")
     return token.strip()
 
 
@@ -191,24 +203,50 @@ def identidade_logada(
         raise _recusa(401, str(erro), "token-invalido") from erro
 
 
-def conta_sem_o_aceite(
-    identidade: Annotated[IdentidadeDoGoogle, Depends(identidade_logada)],
-) -> Usuario:
-    """A conta de quem chamou, mesmo sem os termos atuais aceitos (só a rota do aceite usa)."""
-    with obter_engine().connect() as conexao:
-        usuario = buscar_por_google_sub(conexao, identidade.sub)
+def recusar_pedido_de_fora(request: Request) -> None:
+    """403 para o pedido que muda algo, chega com o cookie da sessão e não saiu do próprio app."""
+    if precisa_provar_a_origem(request) and not pedido_do_proprio_site(request):
+        raise _recusa(
+            403, "Pedido recusado: ele não saiu do próprio TickerLab.", "pedido-de-fora"
+        )
+
+
+def _conta_pelo_cookie(token: str) -> Usuario | None:
+    with obter_engine().begin() as conexao:  # begin: grava o último uso da sessão
+        return conta_da_sessao(conexao, token)
+
+
+def conta_sem_o_aceite(request: Request) -> Usuario:
+    """A conta de quem chamou, mesmo sem os termos atuais aceitos (só a rota do aceite usa).
+
+    Vale só a sessão do cookie. O token do Google no cabeçalho `Authorization` só serve para abrir a
+    sessão (`POST /v1/conta`); nas outras rotas ele é ignorado. Sem sessão, 401.
+    """
+    recusar_pedido_de_fora(request)
+    token_da_sessao = token_do_cookie(request)
+    usuario = _conta_pelo_cookie(token_da_sessao) if token_da_sessao else None
+    if usuario is None and token_da_sessao:
+        raise _recusa(401, "A sessão acabou: entre de novo.", "sessao")
     if usuario is None:
-        raise _recusa(401, "Conta não encontrada: entre de novo.", "conta-nova")
+        raise _recusa(401, MENSAGEM_SEM_LOGIN, "sem-token")
     if not LIMITE.permitir(str(usuario.id), agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
     return usuario
 
 
+# rotas dos direitos da LGPD (art. 18): valem sem o aceite dos termos atuais. Quem não quer
+# aceitar termos novos ainda baixa os próprios dados (achado 6c da auditoria do Codex, 17/10/2026)
+ROTAS_SEM_O_ACEITE = frozenset({"/v1/meus-dados"})
+
+
 def conta_logada(
+    request: Request,
     usuario: Annotated[Usuario, Depends(conta_sem_o_aceite)],
 ) -> Usuario:
     """A conta do TickerLab de quem chamou, ou o erro HTTP certo (401, 403, 429 ou 503)."""
-    if precisa_aceitar_os_termos(usuario):
+    rota: str = request.scope["route"].path
+    sem_o_aceite = rota.removeprefix(PREFIXO_DA_API) in ROTAS_SEM_O_ACEITE
+    if precisa_aceitar_os_termos(usuario) and not sem_o_aceite:
         raise _recusa(403, "Aceite os termos atuais para continuar.", "termos")
     return usuario
 
@@ -218,11 +256,26 @@ ROTAS_DA_CONTA = frozenset(
     {
         "/v1/eu",
         "/v1/revogar-link",
+        "/v1/salvar-simulacao",
+        "/v1/apagar-simulacao",
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
+        # molde D: a lista de setores só pede login (ajuda a página "Relatório do setor", que tem o
+        # contrato de /v1/relatorio-setor; é ele que diz o plano das seções da base)
+        "/v1/setores",
     }
 )
+
+
+# o arquivo de uma página (o PDF) abre com as mesmas regras de plano da rota JSON dela
+ROTAS_DE_ARQUIVO = {
+    "/v1/busca-por-cnpj/pdf": "/v1/busca-por-cnpj",
+    "/v1/relatorio-setor/pdf": "/v1/relatorio-setor",
+    "/v1/relatorio-setor/apresentacao": "/v1/relatorio-setor",
+    "/v1/relatorio-empresa/apresentacao": "/v1/relatorio-empresa",
+    "/v1/relatorio-empresa/markdown": "/v1/relatorio-empresa",
+}
 
 
 def conta_com_acesso(
@@ -236,7 +289,9 @@ def conta_com_acesso(
     rota: str = request.scope["route"].path
     if rota.removeprefix(PREFIXO_DA_API) in ROTAS_DA_CONTA:
         return conta
-    pagina = pagina_da_rota(rota)
+    pagina = pagina_da_rota(
+        ROTAS_DE_ARQUIVO.get(rota.removeprefix(PREFIXO_DA_API), rota)
+    )
     if pagina is None:
         raise HTTPException(status_code=500, detail="Rota sem contrato de página.")
     motivo = motivo_da_pagina(conta.plano, pagina.chave)

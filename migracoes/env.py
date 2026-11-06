@@ -2,7 +2,7 @@
 
 from alembic import context
 
-from src.banco.conexao import criar_engine
+from src.banco.conexao import criar_engine, travar_migracoes
 from src.banco.modelo import metadata
 from src.configuracao import url_do_banco
 
@@ -23,6 +23,8 @@ def rodar_migracoes() -> None:
             render_as_batch=conexao.dialect.name == "sqlite",
         )
         with context.begin_transaction():
+            # antes de o Alembic ler a versão: quem chegar junto espera e encontra o banco migrado
+            travar_migracoes(conexao)
             context.run_migrations()
     motor.dispose()
 

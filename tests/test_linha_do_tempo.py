@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from src import linha_do_tempo as ldt
+from src import topicos
 from src.banco.eventos import Evento
 
 PALAVRAS_DE_CAUSA = (
@@ -102,3 +103,55 @@ def test_descricao_do_marco_tem_data_rotulo_e_assunto():
 def test_sem_preco_nao_monta():
     with pytest.raises(ValueError, match="preço"):
         ldt.montar_linha_do_tempo(pd.Series(dtype=float), [])
+
+
+# --- leitor v2: o assunto dos fatos relevantes (ADR 0069, PR 4) ----------------------------------
+
+
+def test_fato_relevante_ganha_o_assunto_pelo_titulo():
+    dias = _fechamento().index
+    eventos = [
+        _evento(dias[5].date(), assunto="JCP 2T23"),
+        _evento(
+            dias[10].date(), assunto="Fato Relevante"
+        ),  # genérico: fica sem assunto
+        _evento(
+            dias[15].date(),
+            rotulo="Comunicado ao mercado",
+            assunto="Aquisição de ativos",
+        ),
+    ]
+    marcos = ldt.montar_linha_do_tempo(
+        _fechamento(), eventos, materialidade_minima=0
+    ).marcos
+    assert [m.topico for m in marcos] == [
+        "DIVIDENDOS",
+        "",
+        "",
+    ]  # o leitor só lê fatos relevantes
+
+
+def test_assunto_lido_do_texto_vale_mais_que_o_titulo():
+    dia = _fechamento().index[5].date()
+    evento = _evento(dia, assunto="Fato Relevante")
+    lido = topicos.LeituraDoTopico(
+        "AQUISICAO", (), "adquiriu a Empresa X", "regra_texto", "1"
+    )
+    marcos = ldt.montar_linha_do_tempo(
+        _fechamento(),
+        [evento],
+        materialidade_minima=0,
+        assuntos={evento.protocolo: lido},
+    ).marcos
+    assert marcos[0].topico == "AQUISICAO"
+
+
+def test_api_leva_o_codigo_e_o_nome_do_assunto():
+    from src.api_v1 import esquemas
+
+    dia = _fechamento().index[5].date()
+    linha = ldt.montar_linha_do_tempo(
+        _fechamento(), [_evento(dia, assunto="JCP 2T23")], materialidade_minima=0
+    )
+    marco = esquemas.de_linha_do_tempo(linha).marcos[0]
+    assert (marco.topico, marco.topico_nome) == ("DIVIDENDOS", "Dividendos e JCP")

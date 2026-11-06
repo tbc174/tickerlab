@@ -1,12 +1,23 @@
 """PDF do relatório completo de empresa (série 2 da base de ML, PR 7): as mesmas seções e números da
-página (a mesma estrutura de `src/relatorio_empresa.py`), com "Limites e cuidados" e os gráficos."""
+página (a mesma estrutura de `src/relatorio_empresa.py`), com "Limites e perguntas em aberto" e os gráficos."""
 
+from datetime import date
 from io import BytesIO
 
+import pandas as pd
+import pytest
 from pypdf import PdfReader
 
 from src import relatorio_empresa as re_
-from src.relatorio_empresa_pdf import relatorio_da_empresa
+from src.rastro import CONTA, como_foi_calculado
+from src.relatorio_empresa import anexo_de_anos
+from src.relatorio_empresa_pdf import (
+    TITULO_DAS_CONTAS,
+    TITULO_DO_ANEXO,
+    _anexo_de_anos,
+    relatorio_da_empresa,
+)
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 from tests.test_relatorio_empresa import _entradas, dados_da_weg  # noqa: F401
 
 
@@ -38,6 +49,77 @@ def test_pdf_tem_limites_e_cuidados(dados_da_weg):  # noqa: F811
     assert _sem_espacos("não é recomendação") in texto
 
 
+def _links(pdf: bytes) -> list[str]:
+    return [
+        anotacao.get_object()["/A"]["/URI"]
+        for pagina in PdfReader(BytesIO(pdf)).pages
+        for anotacao in pagina.get("/Annots", [])
+        if "/URI" in anotacao.get_object().get("/A", {})
+    ]
+
+
+def test_pdf_fecha_com_o_anexo_de_como_cada_numero_foi_calculado(dados_da_weg):  # noqa: F811
+    """Item 7 do lançamento: no papel, o rastro de cada número e o link de cada documento."""
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    pdf = relatorio_da_empresa(relatorio)
+    texto = _sem_espacos(_texto(pdf))
+    assert _sem_espacos(TITULO_DO_ANEXO) in texto
+    margem = next(
+        i for s in relatorio.secoes for i in s.itens if i.chave == "margem_ebit"
+    )
+    assert margem.rastro is not None
+    assert _sem_espacos(margem.rastro.formula) in texto
+    assert _sem_espacos(margem.rastro.versao_do_calculo) in texto
+    urls = {d.url for d in margem.rastro.documentos if d.url}
+    assert urls and urls <= set(_links(pdf))  # o documento original, clicável
+
+
+def test_o_anexo_lista_as_contas_usadas_em_cada_numero(dados_da_weg):  # noqa: F811
+    """As mesmas linhas "Conta" da página, embaixo do nome de cada número."""
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio)))
+    assert _sem_espacos(TITULO_DAS_CONTAS) in texto
+    margem = next(
+        i for s in relatorio.secoes for i in s.itens if i.chave == "margem_ebit"
+    )
+    assert margem.rastro is not None and margem.rastro.entradas
+    contas = [
+        linha.texto
+        for linha in como_foi_calculado(margem.rastro)
+        if linha.rotulo == CONTA.capitalize()
+    ]
+    assert len(contas) == len(margem.rastro.entradas)
+    for conta in contas:
+        assert _sem_espacos(conta) in texto
+
+
+def test_pdf_sem_rastro_nao_tem_o_anexo(dados_da_weg):  # noqa: F811
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio, com_rastro=False)))
+    assert _sem_espacos(TITULO_DO_ANEXO) not in texto
+
+
+def test_amostra_publica_leva_o_anexo_quando_a_ficha_tem_rastro():
+    """O PDF da amostra do site mostra como cada número foi calculado ("pode" do Tiago, 21/10). A
+    ficha congelada da CPFL é de antes do rastro: aqui ela ganha o rastro de um item."""
+    from src import amostra_do_relatorio, dossie
+
+    ficha = dossie.ler_ficha(FICHA_DE_17_10)
+    assert ficha is not None
+    item = next(i for s in ficha.secoes for i in s.itens if i.valor is not None)
+    item.rastro = dossie.RastroDaFicha(
+        formula="soma das linhas da tabela de teste",
+        versao_do_calculo="1",
+        fonte_id="cvm",
+        publicado_em=date(2026, 5, 14),
+    )
+    pdf = amostra_do_relatorio.pdf(amostra_do_relatorio.montar(ficha))
+    texto = _sem_espacos(_texto(pdf))
+    assert _sem_espacos(TITULO_DO_ANEXO) in texto
+    assert _sem_espacos("soma das linhas da tabela de teste") in texto
+    assert _sem_espacos("14/05/2026") in texto
+
+
 PASSOS = [("Receita", 10e9), ("Custo", -6e9), ("Outras", -2.5e9), ("Lucro", 1.5e9)]
 
 
@@ -54,3 +136,30 @@ def test_grafico_de_cascata_do_pdf_e_png():
     from src.graficos_pdf import grafico_de_cascata
 
     assert grafico_de_cascata(PASSOS, "Da receita ao lucro").startswith(b"\x89PNG")
+
+
+def test_pdf_cita_a_fonte_restrita_e_a_frase_da_iex(dados_da_weg):  # noqa: F811
+    from dataclasses import replace
+
+    from src.banco.coletas import FRASE_DA_IEX, citacoes_das_fontes
+
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio)))
+    assert _sem_espacos("Yahoo Finance") in texto
+    com_iex = replace(
+        relatorio, fontes=(*relatorio.fontes, *citacoes_das_fontes(["iex"]))
+    )
+    texto = _sem_espacos(_texto(relatorio_da_empresa(com_iex)))
+    assert _sem_espacos(FRASE_DA_IEX[:40]) in texto
+
+
+def test_anexo_de_anos_no_pdf_guarda_os_dez_anos_e_cabe_na_pagina():
+    contas = pd.DataFrame(
+        {"receita": range(10), "ebit": range(10)},
+        index=pd.Index(range(2016, 2026), name="ano"),
+    )
+    linhas = anexo_de_anos(contas)
+    cabecalho, corpo, larguras = _anexo_de_anos(linhas, 174.0)
+    assert cabecalho[2:] == [str(a) for a in range(2016, 2026)]
+    assert all(len(linha) == len(cabecalho) == len(larguras) for linha in corpo)
+    assert sum(larguras) == pytest.approx(174.0)

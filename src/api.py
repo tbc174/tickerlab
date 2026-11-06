@@ -14,16 +14,24 @@ import logging
 import os
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import stripe
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
+from src.api_externa import api_externa_ligada
 from src.api_v1 import api_v1_ligada
 from src.banco import newsletter_por_email, novidades_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
 from src.logs import configurar_logs
+from src.registro_de_acesso import (
+    RegistroDeAcesso,
+    proxies_pelo_ambiente,
+    registro_pelo_ambiente,
+)
 
 log = logging.getLogger(__name__)
 
@@ -136,6 +144,32 @@ def sair_das_novidades(codigo: str = "") -> HTMLResponse:
     )
 
 
+SITE_DA_API = Path(__file__).resolve().parent.parent / "site-api"
+
+
+def _montar_site_da_api(app: FastAPI) -> None:
+    """O site da TickerLab Data (`site-api/`) na raiz da API: a página inicial, a documentação e os
+    arquivos em `/estatico`. Só essas três entradas: qualquer outro caminho segue respondendo o 404 da
+    API, e as rotas da API (registradas antes) nunca são cobertas."""
+    if not (SITE_DA_API / "index.html").is_file():
+        return
+
+    @app.get("/", include_in_schema=False)
+    def pagina_inicial() -> FileResponse:
+        return FileResponse(SITE_DA_API / "index.html", media_type="text/html")
+
+    @app.get("/documentacao/", include_in_schema=False)
+    @app.get("/documentacao", include_in_schema=False)
+    def documentacao() -> FileResponse:
+        return FileResponse(
+            SITE_DA_API / "documentacao" / "index.html", media_type="text/html"
+        )
+
+    app.mount(
+        "/estatico", StaticFiles(directory=SITE_DA_API / "estatico"), name="estatico"
+    )
+
+
 @asynccontextmanager
 async def _ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
     configurar_logs()  # ao subir o serviço (nos testes, sem servidor, não mexe nos logs)
@@ -143,7 +177,8 @@ async def _ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
 
 
 def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
-    """A API; as rotas de leitura (v1) só entram com `TICKERLAB_API_V1=1` (ADR 0048)."""
+    """A API; as rotas de leitura (v1) só entram com `TICKERLAB_API_V1=1` (ADR 0048) e as da API
+    externa (B-32a) só com `TICKERLAB_API_EXTERNA=1`."""
     nova = FastAPI(
         title="TickerLab API",
         docs_url=None,
@@ -153,15 +188,66 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     )
     nova.include_router(router)
     nova.include_router(router, prefix="/api")
+    # os limites por IP da v1 leem daqui (src/api_v1/compartilhados.py: ip_de_quem_pede)
+    nova.state.proxies_confiaveis = proxies_pelo_ambiente(ambiente)
+    registro = registro_pelo_ambiente(ambiente)
+    if registro is not None:
+        # Marco Civil, art. 15: IP real e hora em arquivo, por 6 meses (nunca no banco)
+        nova.add_middleware(
+            RegistroDeAcesso, escrever=registro[0], confiaveis=registro[1]
+        )
     if api_v1_ligada(ambiente):
         # só aqui: as contas da v1 carregam o pandas, e desligada a API continua leve
+        from src.api_v1.acesso import CABECALHO_DO_MOTIVO
+        from src.api_v1.base_publica import router as router_da_base_publica
+        from src.api_v1.base_tabelas import router as router_das_tabelas_da_base
         from src.api_v1.compartilhados import router as router_compartilhados
         from src.api_v1.conta import router as router_da_conta
+        from src.api_v1.entrada import router as router_da_entrada
+        from src.api_v1.estudos import router as router_dos_estudos
+        from src.api_v1.ferramentas import router as router_das_ferramentas
         from src.api_v1.rotas import router as router_v1
+        from src.api_v1.sala import router as router_da_sala
+        from src.api_v1.sala_garantias import router as router_das_garantias
+        from src.api_v1.sala_painel import router as router_do_painel_da_sala
+        from src.api_v1.sala_trabalho import router as router_do_trabalho_na_sala
+        from src.planos import LimiteDoPlanoError
 
-        for rotas in (router_v1, router_compartilhados, router_da_conta):
+        @nova.exception_handler(LimiteDoPlanoError)
+        async def _limite_do_plano(
+            _pedido: Request, erro: LimiteDoPlanoError
+        ) -> JSONResponse:
+            # a mesma recusa de plano das páginas fechadas (acesso._recusa): o app novo lê o
+            # cabeçalho e mostra o caminho para o plano maior; a frase do erro já sugere o Pro
+            return JSONResponse(
+                status_code=403,
+                content={"detail": str(erro)},
+                headers={CABECALHO_DO_MOTIVO: "plano"},
+            )
+
+        for rotas in (
+            router_v1,
+            router_compartilhados,
+            router_da_conta,
+            router_da_entrada,
+            router_das_ferramentas,
+            router_da_base_publica,
+            router_das_tabelas_da_base,
+            router_dos_estudos,
+            router_da_sala,
+            router_do_painel_da_sala,
+            router_do_trabalho_na_sala,
+            router_das_garantias,
+        ):
             nova.include_router(rotas)
             nova.include_router(rotas, prefix="/api")
+    if api_externa_ligada(ambiente):
+        # a API paga da TickerLab Data (B-32a): desligada até o "pode" do Tiago para ligar
+        from src.api_externa.rotas import router as router_da_api_externa
+
+        nova.include_router(router_da_api_externa)
+        nova.include_router(router_da_api_externa, prefix="/api")
+    _montar_site_da_api(nova)
     return nova
 
 

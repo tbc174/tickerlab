@@ -1,0 +1,121 @@
+{
+  "tabela": "aneel_cde",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "arquivo": {
+      "descricao": "`mensal` (beneficiários) ou `rede_basica` (descontos na transmissão)",
+      "unidade": "texto"
+    },
+    "id_na_fonte": {
+      "descricao": "As colunas da soma juntas por `|`",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "mes": {
+      "descricao": "Mês de referência (o 1º dia do mês)",
+      "unidade": "data (dia)"
+    },
+    "distribuidora": {
+      "descricao": "Sigla da distribuidora (vazio na rede básica)",
+      "unidade": "texto"
+    },
+    "cnpj_da_distribuidora": {
+      "descricao": "CNPJ da distribuidora, só os números (vazio na rede básica)",
+      "unidade": "texto"
+    },
+    "classe": {
+      "descricao": "Código da classe do consumidor, como a ANEEL escreve",
+      "unidade": "texto"
+    },
+    "grupo_tarifario": {
+      "descricao": "Subgrupo tarifário (código) ou grupo (rede básica)",
+      "unidade": "texto"
+    },
+    "tipo_de_desconto": {
+      "descricao": "Tipo de subsídio (`SubsCARFI`, `SubsRural`...) ou o código do tipo (rede básica)",
+      "unidade": "texto"
+    },
+    "valor_do_desconto": {
+      "descricao": "Soma dos subsídios ou descontos pagos pela CDE no mês",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "valor_cobrado": {
+      "descricao": "Soma da cobrança (só a rede básica informa)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "linhas": {
+      "descricao": "Quantas linhas da fonte (unidades consumidoras ou agentes) foram somadas",
+      "unidade": "número inteiro"
+    },
+    "gerado_em": {
+      "descricao": "Dia em que a ANEEL gerou o arquivo",
+      "unidade": "data (dia)"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que o arquivista viu a linha",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "arquivo",
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "mes",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "mes": "a_conferir",
+    "gerado_em": "a_conferir",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-10-29",
+  "granularidade_do_publico_em": "mes",
+  "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": true,
+  "frequencia": "Mensal (um arquivo novo por mês; a ANEEL pode republicar o mês corrigido)",
+  "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
+}

@@ -1,0 +1,40 @@
+{
+  "tabela": "setoriais_buracos",
+  "modulo": "operacao_por_setor",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "chave": {
+      "descricao": "Código na fonte sem ligação",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "Volume somado (passageiros pagos na ANAC, quantidade na ANP)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "primeira": {
+      "descricao": "Primeiro mês em que aparece",
+      "unidade": "data (dia)"
+    },
+    "ultima": {
+      "descricao": "Último mês em que aparece",
+      "unidade": "data (dia)"
+    },
+    "fonte": {
+      "descricao": "Fonte no registro de coletas",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "fonte",
+    "chave"
+  ],
+  "datas": {},
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "A cada carga das fontes setoriais",
+  "atraso": "Nenhum"
+}

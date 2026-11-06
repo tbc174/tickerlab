@@ -1,0 +1,130 @@
+{
+  "tabela": "scr_credito",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "data_base": {
+      "descricao": "Fim do mês",
+      "unidade": "data (dia)"
+    },
+    "uf": {
+      "descricao": "UF do cliente",
+      "unidade": "texto"
+    },
+    "segmento": {
+      "descricao": "Segmento da instituição (Banco, Cooperativa, Financeira...)",
+      "unidade": "texto"
+    },
+    "cliente": {
+      "descricao": "PF ou PJ",
+      "unidade": "texto"
+    },
+    "cnae_ocupacao": {
+      "descricao": "Seção do CNAE (PJ) ou natureza da ocupação (PF)",
+      "unidade": "texto"
+    },
+    "porte": {
+      "descricao": "Porte da empresa (PJ) ou faixa de renda (PF)",
+      "unidade": "texto"
+    },
+    "modalidade": {
+      "descricao": "Modalidade do crédito",
+      "unidade": "texto"
+    },
+    "submodalidade": {
+      "descricao": "Submodalidade do crédito",
+      "unidade": "texto"
+    },
+    "origem": {
+      "descricao": "Origem dos recursos (livres ou direcionados)",
+      "unidade": "texto"
+    },
+    "indexador": {
+      "descricao": "Indexador (prefixado, pós-fixado...)",
+      "unidade": "texto"
+    },
+    "numero_de_operacoes": {
+      "descricao": "Número de operações (vazio quando o BC não informa)",
+      "unidade": "número inteiro"
+    },
+    "a_vencer_ate_90_dias": {
+      "descricao": "Carteira a vencer em até 90 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "a_vencer_de_91_ate_360_dias": {
+      "descricao": "A vencer de 91 a 360 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "a_vencer_de_361_ate_1080_dias": {
+      "descricao": "A vencer de 361 a 1080 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "a_vencer_de_1081_ate_1800_dias": {
+      "descricao": "A vencer de 1081 a 1800 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "a_vencer_de_1801_ate_5400_dias": {
+      "descricao": "A vencer de 1801 a 5400 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "a_vencer_acima_de_5400_dias": {
+      "descricao": "A vencer acima de 5400 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "carteira_a_vencer": {
+      "descricao": "Total a vencer",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "vencido_de_15_ate_90_dias": {
+      "descricao": "Vencido de 15 a 90 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "vencido_acima_de_90_dias": {
+      "descricao": "Vencido há mais de 90 dias",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "carteira_vencida": {
+      "descricao": "Total vencido (a partir de 15 dias)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "carteira_ativa": {
+      "descricao": "Carteira ativa, como o BC informa",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "carteira_inadimplencia": {
+      "descricao": "Carteira em inadimplência (atraso acima de 90 dias)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "ativo_problematico": {
+      "descricao": "Ativo problemático (atraso ou reestruturação)",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o mês era público (como era na data)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "data_base",
+    "uf",
+    "segmento",
+    "cliente",
+    "cnae_ocupacao",
+    "porte",
+    "modalidade",
+    "submodalidade",
+    "origem",
+    "indexador"
+  ],
+  "datas": {
+    "aconteceu_em": "data_base"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Mensal, um arquivo por ano",
+  "atraso": "Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); `disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais novos são baixados de novo a cada carga e cada regravação vira versão `<ano>.v<N>`"
+}

@@ -16,11 +16,11 @@ import pandas as pd
 import yfinance as yf
 
 from src import armazenamento
-from src.exemplos import DESLOCAMENTO_DO_PERIODO, carregar_exemplo
+from src.exemplos import DESLOCAMENTO_DO_PERIODO, PERIODO_TUDO, carregar_exemplo
 
 SUFIXO_B3 = ".SA"
 PADRAO_B3 = re.compile(r"[A-Z]{4}\d{1,2}")  # 4 letras + 1 ou 2 números (PETR4, BOVA11)
-PERIODOS_VALIDOS = ["6mo", "1y", "2y", "5y"]
+PERIODOS_VALIDOS = ["6mo", "1y", "2y", "5y", "10y", PERIODO_TUDO]
 TOLERANCIA_DE_COBERTURA = timedelta(
     days=10
 )  # feriados e fins de semana no começo do período
@@ -56,10 +56,14 @@ def manter_apenas_dias_uteis(dados: pd.DataFrame) -> pd.DataFrame:
     return uteis
 
 
-def _baixar_do_yahoo(ticker: str, **pedido: str) -> pd.DataFrame | None:
-    """Uma consulta ao Yahoo, com colunas simples e só dias úteis. None se falhar ou vier vazia."""
+def _baixar_do_yahoo(
+    ticker: str, ajustado: bool = True, **pedido: str
+) -> pd.DataFrame | None:
+    """Uma consulta ao Yahoo, com colunas simples e só dias úteis. None se falhar ou vier vazia.
+
+    `ajustado=False` pede os preços como negociados, sem o ajuste por proventos."""
     try:
-        dados = yf.download(ticker, auto_adjust=True, progress=False, **pedido)
+        dados = yf.download(ticker, auto_adjust=ajustado, progress=False, **pedido)
     except Exception as erro:  # noqa: BLE001  (o yfinance levanta vários tipos de erro)
         log.warning("Falha ao baixar %s no Yahoo Finance: %s", ticker, erro)
         return None
@@ -70,19 +74,47 @@ def _baixar_do_yahoo(ticker: str, **pedido: str) -> pd.DataFrame | None:
     return manter_apenas_dias_uteis(dados)
 
 
+def baixar_historico_completo(ticker: str) -> pd.DataFrame:
+    """Todo o histórico diário do Yahoo (`period="max"`), sem o cache em SQLite: para a ferramenta
+    "Quanto daria?" do site, que guarda só o resultado do dia (src/ferramentas/ponte_dados.py)."""
+    dados = _baixar_do_yahoo(normalizar_ticker(ticker), period="max")
+    if dados is None:
+        raise DadosIndisponiveisError(
+            f"Sem histórico de {ticker} no Yahoo Finance agora."
+        )
+    return dados
+
+
+def baixar_fechamento_sem_ajuste(ticker: str, periodo: str = "2y") -> pd.Series | None:
+    """O fechamento diário SEM ajuste por proventos (para a mínima e a máxima de 52 semanas), direto
+    do Yahoo e sem guardar a série. None se o Yahoo falhar ou não tiver o ticker."""
+    dados = _baixar_do_yahoo(normalizar_ticker(ticker), ajustado=False, period=periodo)
+    if dados is None or "Close" not in dados:
+        return None
+    return dados["Close"]
+
+
 def _recortar_periodo(dados: pd.DataFrame, periodo: str) -> pd.DataFrame:
     """Os últimos `periodo` do histórico (o fim é o último dia disponível)."""
-    recorte = dados.loc[
-        dados.index > dados.index[-1] - DESLOCAMENTO_DO_PERIODO[periodo]
-    ]
+    deslocamento = DESLOCAMENTO_DO_PERIODO[periodo]
+    if deslocamento is None:  # "Tudo"
+        return dados
+    recorte = dados.loc[dados.index > dados.index[-1] - deslocamento]
     recorte.attrs = dict(dados.attrs)
     return recorte
 
 
-def _cobre_o_periodo(guardado: pd.DataFrame, periodo: str) -> bool:
+def _cobre_o_periodo(
+    guardado: pd.DataFrame, periodo: str, historico_inteiro: bool
+) -> bool:
+    """O guardado tem o começo do período? "Tudo" só se veio inteiro do Yahoo: pela data não dá
+    para saber (2 anos guardados e um IPO de 2 anos atrás têm a mesma cara)."""
     if guardado.empty:
         return False
-    inicio_necessario = guardado.index[-1] - DESLOCAMENTO_DO_PERIODO[periodo]
+    deslocamento = DESLOCAMENTO_DO_PERIODO[periodo]
+    if deslocamento is None:
+        return historico_inteiro
+    inicio_necessario = guardado.index[-1] - deslocamento
     return guardado.index[0] <= inicio_necessario + TOLERANCIA_DE_COBERTURA
 
 
@@ -103,6 +135,8 @@ def _baixar_tudo(
         if usar_banco:
             armazenamento.salvar_precos(ticker, dados)
             armazenamento.registrar_consulta(ticker, agora)
+            if periodo == PERIODO_TUDO:
+                armazenamento.marcar_historico_inteiro(ticker)
         return dados
     if not guardado.empty:
         log.warning(
@@ -128,18 +162,21 @@ def _trocar_historico_reajustado(
     ajustados nunca se misturam).
     """
     completo = _baixar_do_yahoo(ticker, period=periodo)
-    if completo is None or not _cobre_o_periodo(completo, periodo):
+    inteiro = periodo == PERIODO_TUDO
+    if completo is None or not _cobre_o_periodo(completo, periodo, inteiro):
         log.warning(
             "Histórico novo de %s não chegou inteiro: mantendo o guardado.", ticker
         )
         return _marcar_como_antigo(_recortar_periodo(guardado, periodo))
-    armazenamento.substituir_precos(ticker, completo, agora)
+    armazenamento.substituir_precos(ticker, completo, agora, historico_inteiro=inteiro)
     return completo
 
 
 def _dados_com_banco(ticker: str, periodo: str, agora: datetime) -> pd.DataFrame:
+    armazenamento.apagar_tickers_esquecidos(agora)
     guardado = armazenamento.ler_precos(ticker)
-    if not _cobre_o_periodo(guardado, periodo):
+    inteiro = armazenamento.tem_historico_inteiro(ticker)
+    if not _cobre_o_periodo(guardado, periodo, inteiro):
         return _baixar_tudo(ticker, periodo, guardado, True, agora)
 
     if armazenamento.consulta_recente(ticker, agora):

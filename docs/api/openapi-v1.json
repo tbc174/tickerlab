@@ -33,6 +33,133 @@
         "title": "AceiteV1",
         "type": "object"
       },
+      "AcontecimentoV1": {
+        "description": "Um documento novo (CVM ou SEC) de uma empresa que a pessoa acompanha.",
+        "properties": {
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "link_do_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Do Original"
+          },
+          "por_que_aparece": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Por Que Aparece",
+            "type": "array"
+          },
+          "publicado_em": {
+            "format": "date",
+            "title": "Publicado Em",
+            "type": "string"
+          },
+          "relevancia": {
+            "title": "Relevancia",
+            "type": "number"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ticker",
+          "empresa",
+          "tipo",
+          "titulo",
+          "publicado_em",
+          "fonte",
+          "link_do_original",
+          "relevancia",
+          "por_que_aparece"
+        ],
+        "title": "AcontecimentoV1",
+        "type": "object"
+      },
+      "AnaliseDaEmpresaV1": {
+        "description": "A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100), e os\ngráficos e destaques escolhidos para ela.",
+        "properties": {
+          "aviso": {
+            "title": "Aviso",
+            "type": "string"
+          },
+          "destaques": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DestaqueDaAnaliseV1"
+            },
+            "title": "Destaques",
+            "type": "array"
+          },
+          "graficos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraficoDaAnaliseV1"
+            },
+            "title": "Graficos",
+            "type": "array"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          },
+          "notas": {
+            "items": {
+              "$ref": "#/components/schemas/NotaDaAnaliseV1"
+            },
+            "title": "Notas",
+            "type": "array"
+          },
+          "partes": {
+            "items": {
+              "$ref": "#/components/schemas/ParteDaAnaliseV1"
+            },
+            "title": "Partes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "partes",
+          "notas",
+          "aviso"
+        ],
+        "title": "AnaliseDaEmpresaV1",
+        "type": "object"
+      },
       "AnoV1": {
         "properties": {
           "ano": {
@@ -234,6 +361,1053 @@
         "title": "BacktestV1",
         "type": "object"
       },
+      "BalancoDoCafeV1": {
+        "properties": {
+          "estoque_consumo_brasil": {
+            "items": {
+              "$ref": "#/components/schemas/PontoAnualDoCafeV1"
+            },
+            "title": "Estoque Consumo Brasil",
+            "type": "array"
+          },
+          "estoque_consumo_mundo": {
+            "items": {
+              "$ref": "#/components/schemas/PontoAnualDoCafeV1"
+            },
+            "title": "Estoque Consumo Mundo",
+            "type": "array"
+          },
+          "paises": {
+            "items": {
+              "$ref": "#/components/schemas/BalancoDoPaisV1"
+            },
+            "title": "Paises",
+            "type": "array"
+          },
+          "participacao_do_brasil": {
+            "items": {
+              "$ref": "#/components/schemas/PontoAnualDoCafeV1"
+            },
+            "title": "Participacao Do Brasil",
+            "type": "array"
+          },
+          "ultima_safra": {
+            "title": "Ultima Safra",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ultima_safra",
+          "estoque_consumo_mundo",
+          "estoque_consumo_brasil",
+          "participacao_do_brasil",
+          "paises"
+        ],
+        "title": "BalancoDoCafeV1",
+        "type": "object"
+      },
+      "BalancoDoPaisV1": {
+        "properties": {
+          "ano_safra": {
+            "title": "Ano Safra",
+            "type": "integer"
+          },
+          "codigo_do_pais": {
+            "title": "Codigo Do Pais",
+            "type": "string"
+          },
+          "participacao_na_producao": {
+            "title": "Participacao Na Producao",
+            "type": "number"
+          },
+          "producao": {
+            "title": "Producao",
+            "type": "number"
+          },
+          "relacao_estoque_consumo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relacao Estoque Consumo"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo_do_pais",
+          "ano_safra",
+          "tipo",
+          "producao",
+          "participacao_na_producao",
+          "relacao_estoque_consumo"
+        ],
+        "title": "BalancoDoPaisV1",
+        "type": "object"
+      },
+      "BienalidadeDoCafeV1": {
+        "properties": {
+          "marcas": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDaSafraV1"
+            },
+            "title": "Marcas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "marcas"
+        ],
+        "title": "BienalidadeDoCafeV1",
+        "type": "object"
+      },
+      "BlocoDaBienalidadeV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BienalidadeDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDaBienalidadeV1",
+        "type": "object"
+      },
+      "BlocoDaSafraV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SafraDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDaSafraV1",
+        "type": "object"
+      },
+      "BlocoDasContrapartesV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContrapartesDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDasContrapartesV1",
+        "type": "object"
+      },
+      "BlocoDasExportacoesV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportacoesDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDasExportacoesV1",
+        "type": "object"
+      },
+      "BlocoDoBalancoV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BalancoDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoBalancoV1",
+        "type": "object"
+      },
+      "BlocoDoCalendarioV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarioDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoCalendarioV1",
+        "type": "object"
+      },
+      "BlocoDoCambioV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CambioDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoCambioV1",
+        "type": "object"
+      },
+      "BlocoDoClimaV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClimaDaRegiaoV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoClimaV1",
+        "type": "object"
+      },
+      "BlocoDoPrecoDoCafeV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrecoDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoPrecoDoCafeV1",
+        "type": "object"
+      },
+      "BlocoDoTermometroV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermometroDaConabV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoTermometroV1",
+        "type": "object"
+      },
+      "BlocoDosFundosV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundosDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDosFundosV1",
+        "type": "object"
+      },
+      "BoasVindasDoBetaV1": {
+        "description": "A página de boas-vindas do beta: o texto e o roteiro dos 10 minutos (src/beta.py).",
+        "properties": {
+          "como_responder": {
+            "title": "Como Responder",
+            "type": "string"
+          },
+          "roteiro": {
+            "items": {
+              "$ref": "#/components/schemas/PassoDoBetaV1"
+            },
+            "title": "Roteiro",
+            "type": "array"
+          },
+          "sobre_o_beta": {
+            "title": "Sobre O Beta",
+            "type": "string"
+          },
+          "texto_de_boas_vindas": {
+            "title": "Texto De Boas Vindas",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "total_de_minutos": {
+            "title": "Total De Minutos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "titulo",
+          "texto_de_boas_vindas",
+          "sobre_o_beta",
+          "como_responder",
+          "total_de_minutos",
+          "roteiro"
+        ],
+        "title": "BoasVindasDoBetaV1",
+        "type": "object"
+      },
+      "BuscaPorCnpjV1": {
+        "description": "O relatório do CNPJ (molde B): as seções no formato do relatório da empresa.",
+        "properties": {
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "desligado": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Desligado",
+            "type": "array"
+          },
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "secoes": {
+            "items": {
+              "$ref": "#/components/schemas/SecaoDoRelatorioV1"
+            },
+            "title": "Secoes",
+            "type": "array"
+          },
+          "situacao": {
+            "title": "Situacao",
+            "type": "string"
+          },
+          "tickers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tickers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "situacao",
+          "cnpj",
+          "empresa",
+          "tickers",
+          "como_era_em",
+          "secoes",
+          "fontes",
+          "limites",
+          "desligado",
+          "avisos"
+        ],
+        "title": "BuscaPorCnpjV1",
+        "type": "object"
+      },
+      "CalendarioDoCafeV1": {
+        "properties": {
+          "fase": {
+            "$ref": "#/components/schemas/FaseDoCafeV1"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDoCalendarioV1"
+            },
+            "title": "Itens",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fase",
+          "itens"
+        ],
+        "title": "CalendarioDoCafeV1",
+        "type": "object"
+      },
+      "CamadaDoMapaV1": {
+        "description": "Uma camada do mapa: o que pinta os municípios, com o \"o que é isto\" e a fonte.",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "escala": {
+            "title": "Escala",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "referencia": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referencia"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "unidade",
+          "o_que_e",
+          "fonte",
+          "escala",
+          "referencia"
+        ],
+        "title": "CamadaDoMapaV1",
+        "type": "object"
+      },
+      "CambioDoCafeV1": {
+        "properties": {
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoCambioV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "ultimo_dia": {
+            "format": "date",
+            "title": "Ultimo Dia",
+            "type": "string"
+          },
+          "ultimo_valor": {
+            "title": "Ultimo Valor",
+            "type": "number"
+          },
+          "variacao_12_meses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao 12 Meses"
+          }
+        },
+        "required": [
+          "ultimo_dia",
+          "ultimo_valor",
+          "variacao_12_meses",
+          "historico"
+        ],
+        "title": "CambioDoCafeV1",
+        "type": "object"
+      },
       "ChecagemV1": {
         "properties": {
           "explicacao": {
@@ -255,6 +1429,37 @@
           "explicacao"
         ],
         "title": "ChecagemV1",
+        "type": "object"
+      },
+      "ClimaDaRegiaoV1": {
+        "properties": {
+          "chuva": {
+            "$ref": "#/components/schemas/IndiceDeChuvaV1"
+          },
+          "fonte_dos_dados": {
+            "title": "Fonte Dos Dados",
+            "type": "string"
+          },
+          "nome_da_regiao": {
+            "title": "Nome Da Regiao",
+            "type": "string"
+          },
+          "regiao": {
+            "title": "Regiao",
+            "type": "string"
+          },
+          "temperatura": {
+            "$ref": "#/components/schemas/TemperaturaDoMesV1"
+          }
+        },
+        "required": [
+          "regiao",
+          "nome_da_regiao",
+          "fonte_dos_dados",
+          "chuva",
+          "temperatura"
+        ],
+        "title": "ClimaDaRegiaoV1",
         "type": "object"
       },
       "ComparacaoDoAtivoV1": {
@@ -279,6 +1484,36 @@
           "sem_dados"
         ],
         "title": "ComparacaoDoAtivoV1",
+        "type": "object"
+      },
+      "ComparacaoDoNumeroV1": {
+        "description": "Contra o quê o número é comparado (o setor, uma faixa, o artigo, o balanço anterior).",
+        "properties": {
+          "contra": {
+            "title": "Contra",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "contra",
+          "texto"
+        ],
+        "title": "ComparacaoDoNumeroV1",
         "type": "object"
       },
       "ComparacaoV1": {
@@ -375,6 +1610,26 @@
         "title": "ConfiguracaoV1",
         "type": "object"
       },
+      "ConfirmacaoV1": {
+        "properties": {
+          "codigo": {
+            "maxLength": 20,
+            "title": "Codigo",
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 320,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "codigo"
+        ],
+        "title": "ConfirmacaoV1",
+        "type": "object"
+      },
       "ContaV1": {
         "properties": {
           "administrador": {
@@ -414,6 +1669,22 @@
         "title": "ContaV1",
         "type": "object"
       },
+      "ContrapartesDoCafeV1": {
+        "properties": {
+          "fichas": {
+            "items": {
+              "$ref": "#/components/schemas/FichaDaContraparteV1"
+            },
+            "title": "Fichas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fichas"
+        ],
+        "title": "ContrapartesDoCafeV1",
+        "type": "object"
+      },
       "CurvaV1": {
         "description": "Uma série ao longo do tempo: as datas e o valor em cada uma (`null` onde não há).",
         "properties": {
@@ -447,6 +1718,112 @@
         "title": "CurvaV1",
         "type": "object"
       },
+      "DestaqueDaAnaliseV1": {
+        "description": "Uma seção da ficha puxada para perto de uma parte do texto.",
+        "properties": {
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "parte": {
+            "title": "Parte",
+            "type": "string"
+          },
+          "por_que": {
+            "$ref": "#/components/schemas/FraseDaAnaliseV1"
+          },
+          "secao": {
+            "title": "Secao",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parte",
+          "secao",
+          "titulo",
+          "por_que",
+          "origem"
+        ],
+        "title": "DestaqueDaAnaliseV1",
+        "type": "object"
+      },
+      "DestinoDoCafeV1": {
+        "properties": {
+          "fob_usd": {
+            "title": "Fob Usd",
+            "type": "number"
+          },
+          "fracao": {
+            "title": "Fracao",
+            "type": "number"
+          },
+          "pais": {
+            "title": "Pais",
+            "type": "string"
+          },
+          "sacas": {
+            "title": "Sacas",
+            "type": "number"
+          }
+        },
+        "required": [
+          "pais",
+          "sacas",
+          "fob_usd",
+          "fracao"
+        ],
+        "title": "DestinoDoCafeV1",
+        "type": "object"
+      },
+      "DocumentoUsadoV1": {
+        "description": "Um documento que entrou na conta: a demonstração da CVM ou o fechamento do preço.",
+        "properties": {
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "publicado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicado Em"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome",
+          "publicado_em",
+          "url"
+        ],
+        "title": "DocumentoUsadoV1",
+        "type": "object"
+      },
+      "EncerradasV1": {
+        "properties": {
+          "encerradas": {
+            "title": "Encerradas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "encerradas"
+        ],
+        "title": "EncerradasV1",
+        "type": "object"
+      },
       "EnderecoDoStripeV1": {
         "description": "A página de pagamento ou o portal do Stripe: a tela leva a pessoa até lá.",
         "properties": {
@@ -459,6 +1836,212 @@
           "url"
         ],
         "title": "EnderecoDoStripeV1",
+        "type": "object"
+      },
+      "EntradaDoNumeroV1": {
+        "description": "Uma conta da demonstração que entra no número (`src/rastro.py`, `Entrada`): só com as\nentradas, quem confere refaz a conta.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "conta": {
+            "title": "Conta",
+            "type": "string"
+          },
+          "documento": {
+            "title": "Documento",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "title": "Periodo",
+            "type": "string"
+          },
+          "publicado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicado Em"
+          },
+          "referencia": {
+            "format": "date",
+            "title": "Referencia",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          },
+          "versao": {
+            "title": "Versao",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conta",
+          "codigo",
+          "nome",
+          "valor",
+          "periodo",
+          "documento",
+          "referencia",
+          "versao",
+          "publicado_em"
+        ],
+        "title": "EntradaDoNumeroV1",
+        "type": "object"
+      },
+      "ErroDaSafraV1": {
+        "properties": {
+          "erro_mil_sacas": {
+            "title": "Erro Mil Sacas",
+            "type": "number"
+          },
+          "erro_pct": {
+            "title": "Erro Pct",
+            "type": "number"
+          },
+          "safra": {
+            "title": "Safra",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "safra",
+          "erro_pct",
+          "erro_mil_sacas"
+        ],
+        "title": "ErroDaSafraV1",
+        "type": "object"
+      },
+      "EscalaDoGraficoV1": {
+        "properties": {
+          "casas": {
+            "title": "Casas",
+            "type": "integer"
+          },
+          "divisor": {
+            "title": "Divisor",
+            "type": "number"
+          },
+          "medida": {
+            "title": "Medida",
+            "type": "string"
+          }
+        },
+        "required": [
+          "divisor",
+          "medida",
+          "casas"
+        ],
+        "title": "EscalaDoGraficoV1",
+        "type": "object"
+      },
+      "EstrategiaAcompanhadaV1": {
+        "description": "Um backtest salvo com a ficha \"Foi sorte?\" e o veredito dela refeito com os preços de\nhoje.",
+        "properties": {
+          "agora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agora"
+          },
+          "antes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Antes"
+          },
+          "conferido_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conferido Em"
+          },
+          "endereco": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endereco"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mudou": {
+            "title": "Mudou",
+            "type": "boolean"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "tese_ligada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tese Ligada"
+          },
+          "ticker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticker"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "ticker",
+          "antes",
+          "agora",
+          "mudou",
+          "conferido_em",
+          "tese_ligada",
+          "endereco"
+        ],
+        "title": "EstrategiaAcompanhadaV1",
         "type": "object"
       },
       "EuV1": {
@@ -532,6 +2115,254 @@
         "title": "ExpectativaV1",
         "type": "object"
       },
+      "ExportacoesDoCafeV1": {
+        "properties": {
+          "destinos": {
+            "items": {
+              "$ref": "#/components/schemas/DestinoDoCafeV1"
+            },
+            "title": "Destinos",
+            "type": "array"
+          },
+          "fob_usd": {
+            "title": "Fob Usd",
+            "type": "number"
+          },
+          "fracao_do_espirito_santo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fracao Do Espirito Santo"
+          },
+          "nota": {
+            "title": "Nota",
+            "type": "string"
+          },
+          "primeiro_mes": {
+            "format": "date",
+            "title": "Primeiro Mes",
+            "type": "string"
+          },
+          "sacas": {
+            "title": "Sacas",
+            "type": "number"
+          },
+          "ultimo_mes": {
+            "format": "date",
+            "title": "Ultimo Mes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "primeiro_mes",
+          "ultimo_mes",
+          "sacas",
+          "fob_usd",
+          "destinos",
+          "fracao_do_espirito_santo",
+          "nota"
+        ],
+        "title": "ExportacoesDoCafeV1",
+        "type": "object"
+      },
+      "FaltaNoSetorV1": {
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "kpi": {
+            "title": "Kpi",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kpi",
+          "motivo",
+          "fonte"
+        ],
+        "title": "FaltaNoSetorV1",
+        "type": "object"
+      },
+      "FaseDoCafeV1": {
+        "properties": {
+          "em_colheita": {
+            "title": "Em Colheita",
+            "type": "boolean"
+          },
+          "mes": {
+            "title": "Mes",
+            "type": "integer"
+          },
+          "na_janela_de_geada": {
+            "title": "Na Janela De Geada",
+            "type": "boolean"
+          },
+          "regiao_id": {
+            "title": "Regiao Id",
+            "type": "string"
+          },
+          "safra_em_curso": {
+            "title": "Safra Em Curso",
+            "type": "string"
+          },
+          "safra_seguinte": {
+            "title": "Safra Seguinte",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mes",
+          "regiao_id",
+          "safra_em_curso",
+          "safra_seguinte",
+          "em_colheita",
+          "na_janela_de_geada"
+        ],
+        "title": "FaseDoCafeV1",
+        "type": "object"
+      },
+      "FatoDaContraparteV1": {
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "descricao": {
+            "title": "Descricao",
+            "type": "string"
+          },
+          "divulgado_em": {
+            "format": "date",
+            "title": "Divulgado Em",
+            "type": "string"
+          },
+          "fato": {
+            "title": "Fato",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "tipo_de_fonte": {
+            "title": "Tipo De Fonte",
+            "type": "string"
+          },
+          "unidade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidade"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "veiculo": {
+            "title": "Veiculo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fato",
+          "descricao",
+          "valor",
+          "unidade",
+          "data",
+          "divulgado_em",
+          "fonte",
+          "veiculo",
+          "tipo_de_fonte"
+        ],
+        "title": "FatoDaContraparteV1",
+        "type": "object"
+      },
+      "FichaDaContraparteV1": {
+        "properties": {
+          "cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnpj"
+          },
+          "fatos": {
+            "items": {
+              "$ref": "#/components/schemas/FatoDaContraparteV1"
+            },
+            "title": "Fatos",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "o_que_nao_sabemos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "O Que Nao Sabemos",
+            "type": "array"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "id",
+          "cnpj",
+          "nome",
+          "tipo",
+          "uf",
+          "fatos",
+          "o_que_nao_sabemos"
+        ],
+        "title": "FichaDaContraparteV1",
+        "type": "object"
+      },
       "FichaV1": {
         "description": "A ficha \"Foi sorte?\" do backtest (ADR 0037, D1 e D2), com os textos de `src/ficha.py`.",
         "properties": {
@@ -591,6 +2422,157 @@
         "title": "FichaV1",
         "type": "object"
       },
+      "FraseDaAnaliseV1": {
+        "properties": {
+          "notas": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Notas",
+            "type": "array"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "notas"
+        ],
+        "title": "FraseDaAnaliseV1",
+        "type": "object"
+      },
+      "FraseDoSetorV1": {
+        "description": "Uma frase de \"O que os dados mostram\": saiu de uma regra fixa e leva o id de cada número.",
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "ids"
+        ],
+        "title": "FraseDoSetorV1",
+        "type": "object"
+      },
+      "FundosDoCafeV1": {
+        "properties": {
+          "comprados_lotes": {
+            "title": "Comprados Lotes",
+            "type": "number"
+          },
+          "fracao_do_interesse_aberto": {
+            "title": "Fracao Do Interesse Aberto",
+            "type": "number"
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDosFundosV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "interesse_aberto_lotes": {
+            "title": "Interesse Aberto Lotes",
+            "type": "number"
+          },
+          "legenda": {
+            "title": "Legenda",
+            "type": "string"
+          },
+          "liquido_lotes": {
+            "title": "Liquido Lotes",
+            "type": "number"
+          },
+          "liquido_sacas": {
+            "title": "Liquido Sacas",
+            "type": "number"
+          },
+          "relatorio": {
+            "format": "date",
+            "title": "Relatorio",
+            "type": "string"
+          },
+          "vendidos_lotes": {
+            "title": "Vendidos Lotes",
+            "type": "number"
+          }
+        },
+        "required": [
+          "relatorio",
+          "comprados_lotes",
+          "vendidos_lotes",
+          "liquido_lotes",
+          "liquido_sacas",
+          "interesse_aberto_lotes",
+          "fracao_do_interesse_aberto",
+          "historico",
+          "legenda"
+        ],
+        "title": "FundosDoCafeV1",
+        "type": "object"
+      },
+      "GraficoDaAnaliseV1": {
+        "description": "Um gráfico da análise: entra depois do parágrafo `paragrafo` da parte `parte`.",
+        "properties": {
+          "escala": {
+            "$ref": "#/components/schemas/EscalaDoGraficoV1"
+          },
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "paragrafo": {
+            "title": "Paragrafo",
+            "type": "integer"
+          },
+          "parte": {
+            "title": "Parte",
+            "type": "string"
+          },
+          "pontos": {
+            "$ref": "#/components/schemas/PontosDoGraficoV1"
+          },
+          "por_que": {
+            "$ref": "#/components/schemas/FraseDaAnaliseV1"
+          },
+          "secao": {
+            "default": "",
+            "title": "Secao",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parte",
+          "paragrafo",
+          "tipo",
+          "titulo",
+          "por_que",
+          "origem",
+          "pontos",
+          "escala"
+        ],
+        "title": "GraficoDaAnaliseV1",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -602,6 +2584,307 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IndiceDeChuvaV1": {
+        "properties": {
+          "anomalia": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomalia"
+          },
+          "fim": {
+            "format": "date",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "format": "date",
+            "title": "Inicio",
+            "type": "string"
+          },
+          "n_estacoes": {
+            "title": "N Estacoes",
+            "type": "integer"
+          },
+          "normal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normal"
+          },
+          "razao_da_normal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Razao Da Normal"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "valor",
+          "normal",
+          "anomalia",
+          "razao_da_normal",
+          "n_estacoes",
+          "inicio",
+          "fim"
+        ],
+        "title": "IndiceDeChuvaV1",
+        "type": "object"
+      },
+      "IndiceDoMapaV1": {
+        "properties": {
+          "fim": {
+            "format": "date",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "format": "date",
+            "title": "Inicio",
+            "type": "string"
+          },
+          "n_estacoes": {
+            "title": "N Estacoes",
+            "type": "integer"
+          },
+          "normal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normal"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "valor",
+          "normal",
+          "n_estacoes",
+          "inicio",
+          "fim",
+          "texto"
+        ],
+        "title": "IndiceDoMapaV1",
+        "type": "object"
+      },
+      "ItemDoCalendarioV1": {
+        "properties": {
+          "indices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Indices",
+            "type": "array"
+          },
+          "tema": {
+            "title": "Tema",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tema",
+          "texto",
+          "indices"
+        ],
+        "title": "ItemDoCalendarioV1",
+        "type": "object"
+      },
+      "ItemDoMesV1": {
+        "properties": {
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "texto"
+        ],
+        "title": "ItemDoMesV1",
+        "type": "object"
+      },
+      "ItemDoRelatorioV1": {
+        "description": "Um número com o contrato inteiro: de quando é (`base`), de onde veio (`fonte`) e a\ncomparação (ou, em `sem_comparacao`, por que não há com o quê comparar).",
+        "properties": {
+          "base": {
+            "title": "Base",
+            "type": "string"
+          },
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "comparacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComparacaoDoNumeroV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "nota_texto": {
+            "title": "Nota Texto",
+            "type": "string"
+          },
+          "rastro": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RastroDoNumeroV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sem_comparacao": {
+            "title": "Sem Comparacao",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "texto",
+          "valor",
+          "unidade",
+          "base",
+          "motivo",
+          "nota",
+          "nota_texto",
+          "fonte",
+          "comparacao",
+          "sem_comparacao"
+        ],
+        "title": "ItemDoRelatorioV1",
+        "type": "object"
+      },
+      "JanelaV1": {
+        "description": "De quando a quando o Pulse olha: da última visita (na 1ª, 7 dias atrás) até agora.",
+        "properties": {
+          "fim": {
+            "format": "date-time",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "format": "date-time",
+            "title": "Inicio",
+            "type": "string"
+          },
+          "primeira_vez": {
+            "title": "Primeira Vez",
+            "type": "boolean"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "inicio",
+          "fim",
+          "primeira_vez",
+          "texto"
+        ],
+        "title": "JanelaV1",
         "type": "object"
       },
       "JurosEInflacaoV1": {
@@ -649,6 +2932,34 @@
           "avisos"
         ],
         "title": "JurosEInflacaoV1",
+        "type": "object"
+      },
+      "LimitesDoPulseV1": {
+        "properties": {
+          "alem_do_maximo": {
+            "title": "Alem Do Maximo",
+            "type": "integer"
+          },
+          "alem_dos_ativos": {
+            "title": "Alem Dos Ativos",
+            "type": "integer"
+          },
+          "nao_conferidas": {
+            "title": "Nao Conferidas",
+            "type": "integer"
+          },
+          "sem_ficha": {
+            "title": "Sem Ficha",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sem_ficha",
+          "alem_do_maximo",
+          "nao_conferidas",
+          "alem_dos_ativos"
+        ],
+        "title": "LimitesDoPulseV1",
         "type": "object"
       },
       "LimitesV1": {
@@ -779,6 +3090,79 @@
         "title": "LinhaDaComparacaoV1",
         "type": "object"
       },
+      "LinhaDaSafraV1": {
+        "properties": {
+          "area_producao_ha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Producao Ha"
+          },
+          "producao_mil_sacas": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Producao Mil Sacas"
+          },
+          "produtividade_sc_ha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Produtividade Sc Ha"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uf",
+          "area_producao_ha",
+          "produtividade_sc_ha",
+          "producao_mil_sacas"
+        ],
+        "title": "LinhaDaSafraV1",
+        "type": "object"
+      },
+      "LinhaDoRastroV1": {
+        "description": "Uma linha do \"como foi calculado\" (`src/rastro.py`, `como_foi_calculado`).",
+        "properties": {
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rotulo",
+          "texto",
+          "url"
+        ],
+        "title": "LinhaDoRastroV1",
+        "type": "object"
+      },
       "LinhaDoTempoDoAtivoV1": {
         "properties": {
           "ativo": {
@@ -880,6 +3264,103 @@
         "title": "LinkV1",
         "type": "object"
       },
+      "MapaDoCafeV1": {
+        "description": "O mapa de um tipo de café como o pacote de `gerado_em` o deixou (nada publicado depois).",
+        "properties": {
+          "ano": {
+            "title": "Ano",
+            "type": "integer"
+          },
+          "aviso": {
+            "title": "Aviso",
+            "type": "string"
+          },
+          "camadas": {
+            "items": {
+              "$ref": "#/components/schemas/CamadaDoMapaV1"
+            },
+            "title": "Camadas",
+            "type": "array"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "gerado_em": {
+            "format": "date",
+            "title": "Gerado Em",
+            "type": "string"
+          },
+          "malha": {
+            "additionalProperties": true,
+            "title": "Malha",
+            "type": "object"
+          },
+          "mes": {
+            "title": "Mes",
+            "type": "integer"
+          },
+          "municipios": {
+            "items": {
+              "$ref": "#/components/schemas/MunicipioDoMapaV1"
+            },
+            "title": "Municipios",
+            "type": "array"
+          },
+          "regioes": {
+            "items": {
+              "$ref": "#/components/schemas/RegiaoDoMapaV1"
+            },
+            "title": "Regioes",
+            "type": "array"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "ano",
+          "gerado_em",
+          "mes",
+          "camadas",
+          "municipios",
+          "regioes",
+          "malha",
+          "fontes",
+          "aviso"
+        ],
+        "title": "MapaDoCafeV1",
+        "type": "object"
+      },
+      "MarcoDoCafeV1": {
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "texto",
+          "fonte"
+        ],
+        "title": "MarcoDoCafeV1",
+        "type": "object"
+      },
       "MarcoV1": {
         "description": "Um acontecimento na linha do tempo: o documento e o ponto da curva (base 100) onde ele fica.",
         "properties": {
@@ -917,6 +3398,14 @@
             "title": "Tema",
             "type": "string"
           },
+          "topico": {
+            "title": "Topico",
+            "type": "string"
+          },
+          "topico_nome": {
+            "title": "Topico Nome",
+            "type": "string"
+          },
           "valor_no_grafico": {
             "title": "Valor No Grafico",
             "type": "number"
@@ -931,9 +3420,42 @@
           "materialidade",
           "assunto",
           "descricao",
-          "link"
+          "link",
+          "topico",
+          "topico_nome"
         ],
         "title": "MarcoV1",
+        "type": "object"
+      },
+      "MembroDoSetorV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "tickers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tickers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cnpj",
+          "empresa",
+          "tickers",
+          "motivo"
+        ],
+        "title": "MembroDoSetorV1",
         "type": "object"
       },
       "MesV1": {
@@ -1073,6 +3595,163 @@
         "title": "MeusLinksV1",
         "type": "object"
       },
+      "MinhasSimulacoesV1": {
+        "properties": {
+          "limite": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limite"
+          },
+          "sem_simulacoes": {
+            "title": "Sem Simulacoes",
+            "type": "string"
+          },
+          "simulacoes": {
+            "items": {
+              "$ref": "#/components/schemas/SimulacaoV1"
+            },
+            "title": "Simulacoes",
+            "type": "array"
+          },
+          "usadas": {
+            "title": "Usadas",
+            "type": "integer"
+          },
+          "uso": {
+            "title": "Uso",
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulacoes",
+          "usadas",
+          "limite",
+          "uso",
+          "sem_simulacoes"
+        ],
+        "title": "MinhasSimulacoesV1",
+        "type": "object"
+      },
+      "MunicipioDoMapaV1": {
+        "properties": {
+          "area_mapbiomas_ha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Mapbiomas Ha"
+          },
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "regiao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regiao"
+          },
+          "sem_dado": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Sem Dado",
+            "type": "object"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          },
+          "valores": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Valores",
+            "type": "object"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome",
+          "uf",
+          "regiao",
+          "valores",
+          "sem_dado",
+          "area_mapbiomas_ha"
+        ],
+        "title": "MunicipioDoMapaV1",
+        "type": "object"
+      },
+      "NotaDaAnaliseV1": {
+        "description": "A nota numerada de uma frase da análise: abre o número de onde a frase saiu.",
+        "properties": {
+          "comparacao": {
+            "title": "Comparacao",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "medido_em": {
+            "title": "Medido Em",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "numero": {
+            "title": "Numero",
+            "type": "integer"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "numero",
+          "id",
+          "nome",
+          "texto",
+          "medido_em",
+          "fonte",
+          "comparacao"
+        ],
+        "title": "NotaDaAnaliseV1",
+        "type": "object"
+      },
       "NumeroDeJurosV1": {
         "description": "Um número do painel (em %, como o Banco Central publica), com a data e a fonte.",
         "properties": {
@@ -1148,6 +3827,29 @@
           "legenda"
         ],
         "title": "NumeroDeJurosV1",
+        "type": "object"
+      },
+      "OpcaoDeRegiaoV1": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "tipo_predominante": {
+            "title": "Tipo Predominante",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "tipo_predominante"
+        ],
+        "title": "OpcaoDeRegiaoV1",
         "type": "object"
       },
       "PainelDeNumerosV1": {
@@ -1296,6 +3998,183 @@
         "title": "PainelDeNumerosV1",
         "type": "object"
       },
+      "PainelDoCafeV1": {
+        "description": "O painel do café de um tipo como estava em `dia`: cada bloco com o que é, a fonte e a data.",
+        "properties": {
+          "aviso_diario": {
+            "title": "Aviso Diario",
+            "type": "string"
+          },
+          "balanco": {
+            "$ref": "#/components/schemas/BlocoDoBalancoV1"
+          },
+          "bienalidade": {
+            "$ref": "#/components/schemas/BlocoDaBienalidadeV1"
+          },
+          "calendario": {
+            "$ref": "#/components/schemas/BlocoDoCalendarioV1"
+          },
+          "cambio": {
+            "$ref": "#/components/schemas/BlocoDoCambioV1"
+          },
+          "clima": {
+            "$ref": "#/components/schemas/BlocoDoClimaV1"
+          },
+          "contrapartes": {
+            "$ref": "#/components/schemas/BlocoDasContrapartesV1"
+          },
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "exportacoes": {
+            "$ref": "#/components/schemas/BlocoDasExportacoesV1"
+          },
+          "fundos": {
+            "$ref": "#/components/schemas/BlocoDosFundosV1"
+          },
+          "nome_do_tipo": {
+            "title": "Nome Do Tipo",
+            "type": "string"
+          },
+          "preco_de_referencia": {
+            "$ref": "#/components/schemas/BlocoDoPrecoDoCafeV1"
+          },
+          "regiao": {
+            "title": "Regiao",
+            "type": "string"
+          },
+          "regioes": {
+            "items": {
+              "$ref": "#/components/schemas/OpcaoDeRegiaoV1"
+            },
+            "title": "Regioes",
+            "type": "array"
+          },
+          "safra": {
+            "$ref": "#/components/schemas/BlocoDaSafraV1"
+          },
+          "termometro": {
+            "$ref": "#/components/schemas/BlocoDoTermometroV1"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "tipo",
+          "nome_do_tipo",
+          "regiao",
+          "regioes",
+          "aviso_diario",
+          "preco_de_referencia",
+          "cambio",
+          "fundos",
+          "exportacoes",
+          "balanco",
+          "safra",
+          "termometro",
+          "bienalidade",
+          "clima",
+          "calendario",
+          "contrapartes"
+        ],
+        "title": "PainelDoCafeV1",
+        "type": "object"
+      },
+      "ParagrafoDaAnaliseV1": {
+        "properties": {
+          "frases": {
+            "items": {
+              "$ref": "#/components/schemas/FraseDaAnaliseV1"
+            },
+            "title": "Frases",
+            "type": "array"
+          },
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "rotulo",
+          "frases"
+        ],
+        "title": "ParagrafoDaAnaliseV1",
+        "type": "object"
+      },
+      "ParteDaAnaliseV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "paragrafos": {
+            "items": {
+              "$ref": "#/components/schemas/ParagrafoDaAnaliseV1"
+            },
+            "title": "Paragrafos",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "origem",
+          "paragrafos"
+        ],
+        "title": "ParteDaAnaliseV1",
+        "type": "object"
+      },
+      "PassoDoBetaV1": {
+        "properties": {
+          "minutos": {
+            "title": "Minutos",
+            "type": "integer"
+          },
+          "o_que_fazer": {
+            "title": "O Que Fazer",
+            "type": "string"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ordem",
+          "minutos",
+          "titulo",
+          "o_que_fazer",
+          "url"
+        ],
+        "title": "PassoDoBetaV1",
+        "type": "object"
+      },
       "PedidoDeBacktestV1": {
         "properties": {
           "capital_inicial": {
@@ -1356,7 +4235,9 @@
               "6mo",
               "1y",
               "2y",
-              "5y"
+              "5y",
+              "10y",
+              "max"
             ],
             "title": "Periodo",
             "type": "string"
@@ -1401,6 +4282,33 @@
         "title": "PedidoDeBacktestV1",
         "type": "object"
       },
+      "PedidoDeBuscaPorCnpjV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "PedidoDeBuscaPorCnpjV1",
+        "type": "object"
+      },
+      "PedidoDeCodigoV1": {
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PedidoDeCodigoV1",
+        "type": "object"
+      },
       "PedidoDeRevogarV1": {
         "properties": {
           "id": {
@@ -1413,6 +4321,52 @@
           "id"
         ],
         "title": "PedidoDeRevogarV1",
+        "type": "object"
+      },
+      "PedidoDeSalvarSimulacaoV1": {
+        "description": "O backtest que a tela mostrou (o mesmo pedido de /v1/backtest) e o veredito da ficha.",
+        "properties": {
+          "backtest": {
+            "$ref": "#/components/schemas/PedidoDeBacktestV1"
+          },
+          "nome": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "veredito": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Veredito"
+          }
+        },
+        "required": [
+          "nome",
+          "backtest"
+        ],
+        "title": "PedidoDeSalvarSimulacaoV1",
+        "type": "object"
+      },
+      "PedidoDeSimulacaoV1": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "PedidoDeSimulacaoV1",
         "type": "object"
       },
       "PiorQuedaV1": {
@@ -1474,6 +4428,302 @@
         "title": "PiorQuedaV1",
         "type": "object"
       },
+      "PontoAnualDoCafeV1": {
+        "properties": {
+          "ano_safra": {
+            "title": "Ano Safra",
+            "type": "integer"
+          },
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ano_safra",
+          "valor",
+          "rotulo"
+        ],
+        "title": "PontoAnualDoCafeV1",
+        "type": "object"
+      },
+      "PontoDaSafraV1": {
+        "properties": {
+          "levantamento": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Levantamento"
+          },
+          "rotulo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotulo"
+          },
+          "safra": {
+            "title": "Safra",
+            "type": "integer"
+          },
+          "serie": {
+            "title": "Serie",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "safra",
+          "tipo",
+          "uf",
+          "serie",
+          "valor",
+          "unidade",
+          "rotulo",
+          "levantamento"
+        ],
+        "title": "PontoDaSafraV1",
+        "type": "object"
+      },
+      "PontoDoCambioV1": {
+        "properties": {
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "mes",
+          "valor"
+        ],
+        "title": "PontoDoCambioV1",
+        "type": "object"
+      },
+      "PontoDoPrecoDoCafeV1": {
+        "properties": {
+          "bm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bm"
+          },
+          "fmi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fmi"
+          },
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mes",
+          "bm",
+          "fmi"
+        ],
+        "title": "PontoDoPrecoDoCafeV1",
+        "type": "object"
+      },
+      "PontoDoPrecoV1": {
+        "properties": {
+          "bm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bm"
+          },
+          "fmi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fmi"
+          },
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mes",
+          "bm",
+          "fmi"
+        ],
+        "title": "PontoDoPrecoV1",
+        "type": "object"
+      },
+      "PontoDoRelatorioV1": {
+        "description": "Um ponto de \"O que os dados mostram\": saiu de uma regra fixa e leva o número, de quando\nele é e a tabela de origem.",
+        "properties": {
+          "indicador": {
+            "title": "Indicador",
+            "type": "string"
+          },
+          "lado": {
+            "title": "Lado",
+            "type": "string"
+          },
+          "medido_em": {
+            "title": "Medido Em",
+            "type": "string"
+          },
+          "numero": {
+            "title": "Numero",
+            "type": "string"
+          },
+          "tabela": {
+            "title": "Tabela",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lado",
+          "texto",
+          "numero",
+          "medido_em",
+          "tabela",
+          "indicador"
+        ],
+        "title": "PontoDoRelatorioV1",
+        "type": "object"
+      },
+      "PontoDoSpreadDoCafeV1": {
+        "properties": {
+          "arabica": {
+            "title": "Arabica",
+            "type": "number"
+          },
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          },
+          "razao": {
+            "title": "Razao",
+            "type": "number"
+          },
+          "robusta": {
+            "title": "Robusta",
+            "type": "number"
+          },
+          "spread": {
+            "title": "Spread",
+            "type": "number"
+          }
+        },
+        "required": [
+          "mes",
+          "arabica",
+          "robusta",
+          "spread",
+          "razao"
+        ],
+        "title": "PontoDoSpreadDoCafeV1",
+        "type": "object"
+      },
+      "PontoDoSpreadV1": {
+        "properties": {
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "mes",
+          "valor"
+        ],
+        "title": "PontoDoSpreadV1",
+        "type": "object"
+      },
+      "PontoDosFundosV1": {
+        "properties": {
+          "fracao_do_interesse_aberto": {
+            "title": "Fracao Do Interesse Aberto",
+            "type": "number"
+          },
+          "liquido_lotes": {
+            "title": "Liquido Lotes",
+            "type": "number"
+          },
+          "relatorio": {
+            "format": "date",
+            "title": "Relatorio",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relatorio",
+          "liquido_lotes",
+          "fracao_do_interesse_aberto"
+        ],
+        "title": "PontoDosFundosV1",
+        "type": "object"
+      },
       "PontoMensalV1": {
         "properties": {
           "ipca_12_meses": {
@@ -1510,6 +4760,706 @@
           "ipca_12_meses"
         ],
         "title": "PontoMensalV1",
+        "type": "object"
+      },
+      "PontosDoGraficoV1": {
+        "description": "Os números do gráfico, lidos da ficha: uma lista de valores por coluna, na ordem dos rótulos.",
+        "properties": {
+          "colunas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Colunas",
+            "type": "array"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "nome_do_eixo": {
+            "title": "Nome Do Eixo",
+            "type": "string"
+          },
+          "rotulos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rotulos",
+            "type": "array"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "valores": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "title": "Valores",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tipo",
+          "titulo",
+          "nome_do_eixo",
+          "rotulos",
+          "colunas",
+          "valores",
+          "ids",
+          "unidade"
+        ],
+        "title": "PontosDoGraficoV1",
+        "type": "object"
+      },
+      "PrecoDeReferenciaDoCafeV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "com_fmi": {
+            "title": "Com Fmi",
+            "type": "boolean"
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoPrecoDoCafeV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "nota_das_fontes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Das Fontes"
+          },
+          "ultimo_mes": {
+            "format": "date",
+            "title": "Ultimo Mes",
+            "type": "string"
+          },
+          "ultimo_valor": {
+            "title": "Ultimo Valor",
+            "type": "number"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "variacao_12_meses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao 12 Meses"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "unidade",
+          "ultimo_mes",
+          "ultimo_valor",
+          "variacao_12_meses",
+          "historico",
+          "com_fmi",
+          "nota_das_fontes"
+        ],
+        "title": "PrecoDeReferenciaDoCafeV1",
+        "type": "object"
+      },
+      "PrecoDeReferenciaV1": {
+        "description": "Um item do painel, com os textos prontos (os mesmos do Streamlit).",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "com_fmi": {
+            "title": "Com Fmi",
+            "type": "boolean"
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoPrecoV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "legenda": {
+            "title": "Legenda",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "nota_das_fontes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Das Fontes"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "texto_da_variacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Da Variacao"
+          },
+          "ultimo_mes": {
+            "format": "date",
+            "title": "Ultimo Mes",
+            "type": "string"
+          },
+          "ultimo_valor": {
+            "title": "Ultimo Valor",
+            "type": "number"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "variacao_12_meses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao 12 Meses"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "unidade",
+          "ultimo_mes",
+          "ultimo_valor",
+          "texto",
+          "variacao_12_meses",
+          "texto_da_variacao",
+          "legenda",
+          "com_fmi",
+          "nota_das_fontes",
+          "historico"
+        ],
+        "title": "PrecoDeReferenciaV1",
+        "type": "object"
+      },
+      "PrecoDoCafeV1": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/PrecoDeReferenciaDoCafeV1"
+          },
+          "marcos": {
+            "items": {
+              "$ref": "#/components/schemas/MarcoDoCafeV1"
+            },
+            "title": "Marcos",
+            "type": "array"
+          },
+          "spread": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoSpreadDoCafeV1"
+            },
+            "title": "Spread",
+            "type": "array"
+          }
+        },
+        "required": [
+          "item",
+          "spread",
+          "marcos"
+        ],
+        "title": "PrecoDoCafeV1",
+        "type": "object"
+      },
+      "PrecosDeReferenciaV1": {
+        "description": "O painel de preços de referência mensais como era em `dia`.",
+        "properties": {
+          "atribuicao": {
+            "title": "Atribuicao",
+            "type": "string"
+          },
+          "aviso_diario": {
+            "title": "Aviso Diario",
+            "type": "string"
+          },
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/PrecoDeReferenciaV1"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "nota_do_spread": {
+            "title": "Nota Do Spread",
+            "type": "string"
+          },
+          "spread": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoSpreadV1"
+            },
+            "title": "Spread",
+            "type": "array"
+          },
+          "titulo_do_spread": {
+            "title": "Titulo Do Spread",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "itens",
+          "spread",
+          "titulo_do_spread",
+          "nota_do_spread",
+          "aviso_diario",
+          "atribuicao"
+        ],
+        "title": "PrecosDeReferenciaV1",
+        "type": "object"
+      },
+      "PulseV1": {
+        "properties": {
+          "acontecimentos": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AcontecimentoV1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acontecimentos"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "avisos_dos_ativos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos Dos Ativos",
+            "type": "array"
+          },
+          "estrategias": {
+            "items": {
+              "$ref": "#/components/schemas/EstrategiaAcompanhadaV1"
+            },
+            "title": "Estrategias",
+            "type": "array"
+          },
+          "janela": {
+            "$ref": "#/components/schemas/JanelaV1"
+          },
+          "limites": {
+            "$ref": "#/components/schemas/LimitesDoPulseV1"
+          },
+          "nota_da_variacao": {
+            "title": "Nota Da Variacao",
+            "type": "string"
+          },
+          "notas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notas",
+            "type": "array"
+          },
+          "sem_ativos": {
+            "title": "Sem Ativos",
+            "type": "string"
+          },
+          "sem_estrategias": {
+            "title": "Sem Estrategias",
+            "type": "string"
+          },
+          "sem_variacao": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sem Variacao",
+            "type": "array"
+          },
+          "variacoes": {
+            "items": {
+              "$ref": "#/components/schemas/VariacaoV1"
+            },
+            "title": "Variacoes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "janela",
+          "estrategias",
+          "limites",
+          "avisos",
+          "sem_estrategias",
+          "notas",
+          "acontecimentos",
+          "variacoes",
+          "avisos_dos_ativos",
+          "sem_variacao",
+          "sem_ativos",
+          "nota_da_variacao"
+        ],
+        "title": "PulseV1",
+        "type": "object"
+      },
+      "RastroDoNumeroV1": {
+        "description": "Como o número foi calculado e de onde veio (`src/rastro.py`): a conta, a versão dela, a\nfonte (o id da coleta, com a licença) e quando o insumo mais novo ficou público.",
+        "properties": {
+          "documentos": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentoUsadoV1"
+            },
+            "title": "Documentos",
+            "type": "array"
+          },
+          "entradas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EntradaDoNumeroV1"
+            },
+            "title": "Entradas",
+            "type": "array"
+          },
+          "fonte_id": {
+            "title": "Fonte Id",
+            "type": "string"
+          },
+          "formula": {
+            "title": "Formula",
+            "type": "string"
+          },
+          "linhas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LinhaDoRastroV1"
+            },
+            "title": "Linhas",
+            "type": "array"
+          },
+          "outras_fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Outras Fontes",
+            "type": "array"
+          },
+          "publicado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicado Em"
+          },
+          "versao_do_calculo": {
+            "title": "Versao Do Calculo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formula",
+          "versao_do_calculo",
+          "fonte_id",
+          "publicado_em",
+          "documentos",
+          "outras_fontes"
+        ],
+        "title": "RastroDoNumeroV1",
+        "type": "object"
+      },
+      "RegiaoDoMapaV1": {
+        "properties": {
+          "chuva": {
+            "$ref": "#/components/schemas/IndiceDoMapaV1"
+          },
+          "fase": {
+            "title": "Fase",
+            "type": "string"
+          },
+          "geada": {
+            "$ref": "#/components/schemas/IndiceDoMapaV1"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "o_que_o_mercado_olha": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDoMesV1"
+            },
+            "title": "O Que O Mercado Olha",
+            "type": "array"
+          },
+          "tipo_predominante": {
+            "title": "Tipo Predominante",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "tipo_predominante",
+          "chuva",
+          "geada",
+          "fase",
+          "o_que_o_mercado_olha"
+        ],
+        "title": "RegiaoDoMapaV1",
+        "type": "object"
+      },
+      "RelatorioDaEmpresaV1": {
+        "properties": {
+          "analise": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnaliseDaEmpresaV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aviso_das_notas": {
+            "title": "Aviso Das Notas",
+            "type": "string"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "em_conferencia": {
+            "title": "Em Conferencia",
+            "type": "boolean"
+          },
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "grupo": {
+            "title": "Grupo",
+            "type": "string"
+          },
+          "secoes": {
+            "items": {
+              "$ref": "#/components/schemas/SecaoDoRelatorioV1"
+            },
+            "title": "Secoes",
+            "type": "array"
+          },
+          "setor": {
+            "title": "Setor",
+            "type": "string"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "empresa",
+          "cnpj",
+          "ticker",
+          "setor",
+          "grupo",
+          "secoes",
+          "fontes",
+          "aviso_das_notas",
+          "em_conferencia"
+        ],
+        "title": "RelatorioDaEmpresaV1",
+        "type": "object"
+      },
+      "RelatorioDoSetorV1": {
+        "description": "O relatório do setor (molde D): as seções no formato do relatório da empresa.",
+        "properties": {
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "frases": {
+            "items": {
+              "$ref": "#/components/schemas/FraseDoSetorV1"
+            },
+            "title": "Frases",
+            "type": "array"
+          },
+          "graficos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraficoDaAnaliseV1"
+            },
+            "title": "Graficos",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "membros": {
+            "items": {
+              "$ref": "#/components/schemas/MembroDoSetorV1"
+            },
+            "title": "Membros",
+            "type": "array"
+          },
+          "nao_temos": {
+            "items": {
+              "$ref": "#/components/schemas/FaltaNoSetorV1"
+            },
+            "title": "Nao Temos",
+            "type": "array"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "secoes": {
+            "items": {
+              "$ref": "#/components/schemas/SecaoDoRelatorioV1"
+            },
+            "title": "Secoes",
+            "type": "array"
+          },
+          "setor": {
+            "title": "Setor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "setor",
+          "nome",
+          "como_era_em",
+          "membros",
+          "secoes",
+          "frases",
+          "nao_temos",
+          "fontes",
+          "limites",
+          "avisos"
+        ],
+        "title": "RelatorioDoSetorV1",
+        "type": "object"
+      },
+      "RespostaDoPedidoV1": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mensagem"
+        ],
+        "title": "RespostaDoPedidoV1",
         "type": "object"
       },
       "RetornoMensalDoAtivoV1": {
@@ -1646,6 +5596,369 @@
         "title": "RiscoV1",
         "type": "object"
       },
+      "SafraDoCafeV1": {
+        "properties": {
+          "divulgado_em": {
+            "format": "date",
+            "title": "Divulgado Em",
+            "type": "string"
+          },
+          "levantamento": {
+            "title": "Levantamento",
+            "type": "integer"
+          },
+          "linhas": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaDaSafraV1"
+            },
+            "title": "Linhas",
+            "type": "array"
+          },
+          "safra": {
+            "title": "Safra",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "safra",
+          "levantamento",
+          "divulgado_em",
+          "linhas"
+        ],
+        "title": "SafraDoCafeV1",
+        "type": "object"
+      },
+      "SecaoDoRelatorioV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDoRelatorioV1"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "paragrafos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paragrafos",
+            "type": "array"
+          },
+          "pontos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PontoDoRelatorioV1"
+            },
+            "title": "Pontos",
+            "type": "array"
+          },
+          "recolhida": {
+            "default": false,
+            "title": "Recolhida",
+            "type": "boolean"
+          },
+          "tabelas": {
+            "items": {
+              "$ref": "#/components/schemas/TabelaDoRelatorioV1"
+            },
+            "title": "Tabelas",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "trancada": {
+            "title": "Trancada",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "itens",
+          "paragrafos",
+          "tabelas",
+          "trancada"
+        ],
+        "title": "SecaoDoRelatorioV1",
+        "type": "object"
+      },
+      "SetorV1": {
+        "description": "Um setor do relatório: a chave que vai em `/v1/relatorio-setor?setor=` e quantas companhias.",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "empresas": {
+            "title": "Empresas",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "empresas",
+          "como_era_em"
+        ],
+        "title": "SetorV1",
+        "type": "object"
+      },
+      "SetoresV1": {
+        "properties": {
+          "setores": {
+            "items": {
+              "$ref": "#/components/schemas/SetorV1"
+            },
+            "title": "Setores",
+            "type": "array"
+          }
+        },
+        "required": [
+          "setores"
+        ],
+        "title": "SetoresV1",
+        "type": "object"
+      },
+      "SimulacaoV1": {
+        "description": "Uma simulação guardada na conta: o que a lista mostra e o endereço que a reabre.",
+        "properties": {
+          "criada_em": {
+            "format": "date-time",
+            "title": "Criada Em",
+            "type": "string"
+          },
+          "dados_ate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dados Ate"
+          },
+          "endereco": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endereco"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "numeros": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Numeros",
+            "type": "object"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "veredito": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Veredito"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "nome",
+          "criada_em",
+          "dados_ate",
+          "numeros",
+          "veredito",
+          "endereco"
+        ],
+        "title": "SimulacaoV1",
+        "type": "object"
+      },
+      "TabelaDoRelatorioV1": {
+        "description": "Uma tabela de uma seção, com o título e as células já escritas (como na página e no PDF).",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "colunas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Colunas",
+            "type": "array"
+          },
+          "linhas": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Linhas",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "colunas",
+          "linhas"
+        ],
+        "title": "TabelaDoRelatorioV1",
+        "type": "object"
+      },
+      "TemperaturaDoMesV1": {
+        "properties": {
+          "competencia": {
+            "format": "date",
+            "title": "Competencia",
+            "type": "string"
+          },
+          "dias_tmin_abaixo_de_2c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dias Tmin Abaixo De 2C"
+          },
+          "tmin_anomalia_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmin Anomalia C"
+          },
+          "tmin_media_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmin Media C"
+          },
+          "tmin_normal_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmin Normal C"
+          }
+        },
+        "required": [
+          "competencia",
+          "tmin_media_c",
+          "tmin_normal_c",
+          "tmin_anomalia_c",
+          "dias_tmin_abaixo_de_2c"
+        ],
+        "title": "TemperaturaDoMesV1",
+        "type": "object"
+      },
+      "TermometroDaConabV1": {
+        "properties": {
+          "erros": {
+            "items": {
+              "$ref": "#/components/schemas/ErroDaSafraV1"
+            },
+            "title": "Erros",
+            "type": "array"
+          },
+          "maior_erro_pct": {
+            "title": "Maior Erro Pct",
+            "type": "number"
+          },
+          "menor_erro_pct": {
+            "title": "Menor Erro Pct",
+            "type": "number"
+          },
+          "nota": {
+            "title": "Nota",
+            "type": "string"
+          },
+          "vies_medio_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vies Medio Pct"
+          }
+        },
+        "required": [
+          "erros",
+          "vies_medio_pct",
+          "menor_erro_pct",
+          "maior_erro_pct",
+          "nota"
+        ],
+        "title": "TermometroDaConabV1",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1684,6 +5997,45 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VariacaoV1": {
+        "description": "Do último fechamento conhecido na hora da visita ao último de hoje, sem os proventos.",
+        "properties": {
+          "ate": {
+            "format": "date",
+            "title": "Ate",
+            "type": "string"
+          },
+          "de": {
+            "format": "date",
+            "title": "De",
+            "type": "string"
+          },
+          "por_que_aparece": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Por Que Aparece",
+            "type": "array"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          },
+          "variacao": {
+            "title": "Variacao",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker",
+          "variacao",
+          "de",
+          "ate",
+          "por_que_aparece"
+        ],
+        "title": "VariacaoV1",
         "type": "object"
       },
       "VereditoV1": {
@@ -1753,24 +6105,6 @@
       "post": {
         "description": "Grava o aceite dos termos atuais para a conta do token (como o botão do Streamlit).",
         "operationId": "registrar_o_aceite_v1_aceite_dos_termos_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1806,28 +6140,49 @@
         "summary": "Registrar O Aceite"
       }
     },
+    "/v1/apagar-simulacao": {
+      "post": {
+        "description": "Apaga uma simulação da própria conta; a de outra conta (ou já apagada) dá 404, sem dizer\nqual é o caso.",
+        "operationId": "apagar_simulacao_da_conta_v1_apagar_simulacao_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeSimulacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinhasSimulacoesV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apagar Simulacao Da Conta"
+      }
+    },
     "/v1/backtest": {
       "post": {
         "description": "O backtest simples (sem proteções, Monte Carlo nem grade) e, embaixo, a ficha \"Foi sorte?\".\n\nComo no Streamlit, todo backtest é uma tentativa: a configuração fica contada na conta (a mesma\nconfiguração não conta duas vezes) e entra na checagem do acaso.",
         "operationId": "backtest_v1_backtest_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1861,6 +6216,141 @@
           }
         },
         "summary": "Backtest"
+      }
+    },
+    "/v1/beta/boas-vindas": {
+      "get": {
+        "description": "O texto da página de boas-vindas do beta e o roteiro dos 10 minutos (src/beta.py).",
+        "operationId": "boas_vindas_do_beta_v1_beta_boas_vindas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoasVindasDoBetaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Boas Vindas Do Beta"
+      }
+    },
+    "/v1/busca-por-cnpj": {
+      "post": {
+        "description": "O relatório do CNPJ: da companhia aberta (cadastro, grupo, rede e fatos públicos) ou, sem ficha na\nCVM, o cadastro da Receita (Simples e MEI, sócios, estabelecimentos e mudanças), sempre com fonte.\n\nÉ POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log\nde acesso. O app também não o grava no log, só a contagem por situação.",
+        "operationId": "busca_por_cnpj_v1_busca_por_cnpj_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeBuscaPorCnpjV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuscaPorCnpjV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Busca Por Cnpj"
+      }
+    },
+    "/v1/busca-por-cnpj/pdf": {
+      "post": {
+        "description": "O mesmo relatório da rota acima em PDF, com \"Limites e cuidados\" (mesmo acesso, mesmo plano).",
+        "operationId": "busca_por_cnpj_em_pdf_v1_busca_por_cnpj_pdf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeBuscaPorCnpjV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Busca Por Cnpj Em Pdf"
+      }
+    },
+    "/v1/commodities/cafe/mapa": {
+      "get": {
+        "description": "Produção e área de café por município (PAM) e o clima de cada região, como o pacote do dia\nos deixou; 503 se o pacote ainda não chegou a este servidor.",
+        "operationId": "mapa_do_cafe_v1_commodities_cafe_mapa_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "default": "arabica",
+              "enum": [
+                "arabica",
+                "conilon"
+              ],
+              "title": "Tipo",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapaDoCafeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mapa Do Cafe"
       }
     },
     "/v1/comparacao": {
@@ -1902,7 +6392,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -1924,22 +6416,6 @@
                 }
               ],
               "title": "Taxa"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1989,7 +6465,7 @@
     },
     "/v1/conta": {
       "post": {
-        "description": "Cria a conta de quem o token prova ser (ou só registra o acesso, se ela já existe).",
+        "description": "Cria a conta de quem o token prova ser (ou só registra o acesso) e abre a sessão.",
         "operationId": "entrar_v1_conta_post",
         "parameters": [
           {
@@ -2050,33 +6526,26 @@
         "summary": "Entrar"
       }
     },
-    "/v1/eu": {
-      "get": {
-        "operationId": "eu_v1_eu_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
+    "/v1/entrada/codigo": {
+      "post": {
+        "description": "Manda um código de entrada para o e-mail (ou finge que mandou: a resposta é sempre igual).",
+        "operationId": "pedir_o_codigo_v1_entrada_codigo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeCodigoV1"
+              }
             }
-          }
-        ],
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EuV1"
+                  "$ref": "#/components/schemas/RespostaDoPedidoV1"
                 }
               }
             },
@@ -2093,17 +6562,17 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Eu"
+        "summary": "Pedir O Codigo"
       }
     },
-    "/v1/juros-e-inflacao": {
-      "get": {
-        "description": "Selic, CDI, IPCA, juro real e o Focus de hoje; 503 se as séries não foram coletadas.",
-        "operationId": "juros_e_inflacao_v1_juros_e_inflacao_get",
+    "/v1/entrada/confirmar": {
+      "post": {
+        "description": "Confere o código e abre a sessão. Código errado, vencido, usado ou nunca pedido: 401 igual.",
+        "operationId": "confirmar_o_codigo_v1_entrada_confirmar_post",
         "parameters": [
           {
-            "in": "header",
-            "name": "authorization",
+            "in": "cookie",
+            "name": "tl_origem",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2114,16 +6583,26 @@
                   "type": "null"
                 }
               ],
-              "title": "Authorization"
+              "title": "Tl Origem"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JurosEInflacaoV1"
+                  "$ref": "#/components/schemas/ContaV1"
                 }
               }
             },
@@ -2138,6 +6617,43 @@
               }
             },
             "description": "Validation Error"
+          }
+        },
+        "summary": "Confirmar O Codigo"
+      }
+    },
+    "/v1/eu": {
+      "get": {
+        "operationId": "eu_v1_eu_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EuV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Eu"
+      }
+    },
+    "/v1/juros-e-inflacao": {
+      "get": {
+        "description": "Selic, CDI, IPCA, juro real e o Focus de hoje; 503 se as séries não foram coletadas.",
+        "operationId": "juros_e_inflacao_v1_juros_e_inflacao_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JurosEInflacaoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
           }
         },
         "summary": "Juros E Inflacao"
@@ -2169,7 +6685,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -2185,22 +6703,6 @@
               "minimum": 0,
               "title": "Materialidade Minima",
               "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2233,24 +6735,6 @@
       "get": {
         "description": "Meus dados › Links compartilhados: só os da conta do token.",
         "operationId": "links_compartilhados_v1_links_compartilhados_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -2261,16 +6745,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Links Compartilhados"
@@ -2280,24 +6754,6 @@
       "get": {
         "description": "Só leitura do banco: nenhuma chamada ao Stripe (assinar continua no app atual).",
         "operationId": "meu_plano_v1_meu_plano_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -2308,16 +6764,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Meu Plano"
@@ -2327,24 +6773,6 @@
       "get": {
         "description": "Tudo o que o TickerLab guarda sobre a conta (LGPD), a mesma exportação do Streamlit.",
         "operationId": "meus_dados_v1_meus_dados_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -2353,16 +6781,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Meus Dados"
@@ -2372,10 +6790,46 @@
       "post": {
         "description": "A página de pagamento do Stripe para assinar o Pro (só modo de teste; só admins, ADR 0029).\n\nA rota confere tudo de novo, mesmo com o botão escondido: chamar direto não fura a trava.",
         "operationId": "pagamento_da_assinatura_v1_pagamento_da_assinatura_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnderecoDoStripeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pagamento Da Assinatura"
+      }
+    },
+    "/v1/painel-do-cafe": {
+      "get": {
+        "description": "O painel do café de hoje: preço de referência, câmbio, fundos, exportações, balanço, safra,\nclima, calendário e contrapartes, cada bloco com a fonte e a data (sem dado: o motivo).",
+        "operationId": "painel_do_cafe_v1_v1_painel_do_cafe_get",
         "parameters": [
           {
-            "in": "header",
-            "name": "authorization",
+            "description": "Arábica ou conilon (robusta).",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "default": "arabica",
+              "description": "Arábica ou conilon (robusta).",
+              "enum": [
+                "arabica",
+                "conilon"
+              ],
+              "title": "Tipo",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A região do clima e do calendário; vazia, a de maior área do tipo.",
+            "in": "query",
+            "name": "regiao",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2386,7 +6840,8 @@
                   "type": "null"
                 }
               ],
-              "title": "Authorization"
+              "description": "A região do clima e do calendário; vazia, a de maior área do tipo.",
+              "title": "Regiao"
             }
           }
         ],
@@ -2395,7 +6850,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnderecoDoStripeV1"
+                  "$ref": "#/components/schemas/PainelDoCafeV1"
                 }
               }
             },
@@ -2412,28 +6867,69 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Pagamento Da Assinatura"
+        "summary": "Painel Do Cafe V1"
       }
     },
     "/v1/portal-da-assinatura": {
       "post": {
         "description": "O portal do Stripe para trocar o cartão, ver faturas ou cancelar a própria assinatura.",
         "operationId": "portal_da_assinatura_v1_portal_da_assinatura_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnderecoDoStripeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Portal Da Assinatura"
+      }
+    },
+    "/v1/precos-de-referencia": {
+      "get": {
+        "description": "Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI; 503 sem coleta.",
+        "operationId": "precos_de_referencia_v1_precos_de_referencia_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrecosDeReferenciaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Precos De Referencia"
+      }
+    },
+    "/v1/pulse": {
+      "get": {
+        "description": "O Pulse: os acontecimentos novos nas empresas dos ativos da pessoa, a variação do preço\ndesde a visita e as estratégias salvas com o veredito da ficha \"Foi sorte?\" refeito com os\npreços de hoje. Abrir marca a visita, como no app atual; se a leitura dos acontecimentos\nfalhar, não marca (senão a pessoa perderia o que ainda não viu).\n\nSem sessão no servidor, o F5 da aba reenvia em `desde` o início que ela mostrava: a janela\nnão encolhe para os minutos desde a visita que a própria aba marcou (até 30 dias atrás).\nConfere no máximo 10 fichas (as salvas mais recentemente); o resto aparece sem conferir.",
+        "operationId": "pulse_da_conta_v1_pulse_get",
         "parameters": [
           {
-            "in": "header",
-            "name": "authorization",
+            "description": "O início da janela que a aba já mostrava (ISO, com fuso).",
+            "in": "query",
+            "name": "desde",
             "required": false,
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Authorization"
+              "description": "O início da janela que a aba já mostrava (ISO, com fuso).",
+              "title": "Desde"
             }
           }
         ],
@@ -2442,7 +6938,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnderecoDoStripeV1"
+                  "$ref": "#/components/schemas/PulseV1"
                 }
               }
             },
@@ -2459,7 +6955,254 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Portal Da Assinatura"
+        "summary": "Pulse Da Conta"
+      }
+    },
+    "/v1/relatorio-empresa": {
+      "get": {
+        "description": "O relatório da empresa do ticker, montado para o plano da conta: as seções da base de ML\nsó vêm com números para o Pro (as outras vêm trancadas, só com o título e o convite).",
+        "operationId": "relatorio_da_empresa_v1_relatorio_empresa_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatorioDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Da Empresa"
+      }
+    },
+    "/v1/relatorio-empresa/apresentacao": {
+      "get": {
+        "description": "A ficha da empresa como deck (PDF ou PPT), com \"Limites e cuidados\" (mesmo acesso e plano\nda rota acima).",
+        "operationId": "relatorio_da_empresa_em_deck_v1_relatorio_empresa_apresentacao_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "formato",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Formato",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Da Empresa Em Deck"
+      }
+    },
+    "/v1/relatorio-empresa/markdown": {
+      "get": {
+        "description": "A ficha da empresa em Markdown para ler com uma IA: o mesmo texto do botão da página (as seções\nna ordem da tela, \"Limites e cuidados\" e o anexo de como cada número foi calculado), com o mesmo\nacesso e o mesmo plano da rota JSON. O nome do arquivo vem do ticker da própria ficha.",
+        "operationId": "relatorio_da_empresa_em_markdown_v1_relatorio_empresa_markdown_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Da Empresa Em Markdown"
+      }
+    },
+    "/v1/relatorio-setor": {
+      "get": {
+        "description": "O relatório do setor, montado para o plano da conta: quem está no setor e o que não temos\nvêm sempre; os números da base vêm trancados sem o dossiê da base no plano.",
+        "operationId": "relatorio_do_setor_v1_relatorio_setor_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "setor",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Setor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatorioDoSetorV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Do Setor"
+      }
+    },
+    "/v1/relatorio-setor/apresentacao": {
+      "get": {
+        "description": "O relatório do setor como deck (PDF ou PPT), com \"Limites e cuidados\" (mesmo acesso e plano\nda rota do PDF).",
+        "operationId": "relatorio_do_setor_em_deck_v1_relatorio_setor_apresentacao_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "setor",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Setor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "formato",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Formato",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Do Setor Em Deck"
+      }
+    },
+    "/v1/relatorio-setor/pdf": {
+      "get": {
+        "description": "O mesmo relatório da rota acima em PDF, com \"Limites e cuidados\" (mesmo acesso, mesmo plano).",
+        "operationId": "relatorio_do_setor_em_pdf_v1_relatorio_setor_pdf_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "setor",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Setor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Do Setor Em Pdf"
       }
     },
     "/v1/retorno-mensal": {
@@ -2487,7 +7230,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -2509,22 +7254,6 @@
                 }
               ],
               "title": "Taxa"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2557,24 +7286,6 @@
       "post": {
         "description": "Revoga um link da própria conta; o de outra conta (ou já revogado) dá 404, sem dizer qual.",
         "operationId": "revogar_link_v1_revogar_link_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2635,7 +7346,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -2670,22 +7383,6 @@
               "title": "Janela",
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2713,6 +7410,114 @@
         "summary": "Risco"
       }
     },
+    "/v1/sair": {
+      "post": {
+        "description": "Encerra a sessão do cookie (neste aparelho) e apaga o cookie. Sem sessão, não é erro.",
+        "operationId": "sair_v1_sair_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sair"
+      }
+    },
+    "/v1/sair-de-todos": {
+      "post": {
+        "description": "Encerra as sessões da conta em todos os aparelhos (a pessoa perdeu um celular, por exemplo).\n\nVale mesmo sem os termos atuais aceitos: sair não depende de aceitar nada.",
+        "operationId": "sair_de_todos_v1_sair_de_todos_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncerradasV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sair De Todos"
+      }
+    },
+    "/v1/salvar-simulacao": {
+      "post": {
+        "description": "Guarda o backtest da tela como o Streamlit guarda (telas/dados_da_conta.py): o retrato\ndas escolhas, os números formatados, até quando iam os dados e a ficha \"Foi sorte?\" (o\npedido e o veredito), que o Pulse recalcula depois.\n\nO backtest roda de novo aqui (é barato) em vez de confiar nos números que a tela mandar; só\no veredito vem da tela, porque a ficha custa caro e ele serve só de \"antes\" na comparação do\nPulse. Além do limite do plano: 403 com o motivo \"plano\" (src/api.py).",
+        "operationId": "salvar_simulacao_da_tela_v1_salvar_simulacao_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeSalvarSimulacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinhasSimulacoesV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Salvar Simulacao Da Tela"
+      }
+    },
+    "/v1/setores": {
+      "get": {
+        "description": "Os setores do relatório do setor, com quantas companhias abertas cada um tem.",
+        "operationId": "setores_v1_setores_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetoresV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Setores"
+      }
+    },
+    "/v1/simulacoes": {
+      "get": {
+        "description": "Minhas simulações: as guardadas na conta do token (as do app atual também), a mais nova\nprimeiro, com quantas o plano ainda deixa.",
+        "operationId": "minhas_simulacoes_v1_simulacoes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinhasSimulacoesV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Minhas Simulacoes"
+      }
+    },
     "/v1/visao-geral": {
       "get": {
         "operationId": "visao_geral_v1_visao_geral_get",
@@ -2738,7 +7543,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -2772,22 +7579,6 @@
               "minimum": 90,
               "title": "Confianca Do Var",
               "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],

@@ -1,0 +1,81 @@
+{
+  "tabela": "fre_capital_social",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia (como a CVM escreve)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do FRE",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_documento": {
+      "descricao": "Identificador do documento na CVM",
+      "unidade": "texto"
+    },
+    "id_capital_social": {
+      "descricao": "Identificador da linha de capital na CVM",
+      "unidade": "texto"
+    },
+    "tipo_capital": {
+      "descricao": "integralizado, subscrito, emitido ou autorizado (o \"Capital ...\" da CVM, sem acento)",
+      "unidade": "texto"
+    },
+    "autorizado_em": {
+      "descricao": "Data da autorização ou aprovação do capital",
+      "unidade": "data (dia)"
+    },
+    "valor_capital": {
+      "descricao": "Valor do capital",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "acoes_ordinarias": {
+      "descricao": "Quantidade de ações ordinárias",
+      "unidade": "ações"
+    },
+    "acoes_preferenciais": {
+      "descricao": "Quantidade de ações preferenciais",
+      "unidade": "ações"
+    },
+    "acoes_total": {
+      "descricao": "Quantidade total de ações",
+      "unidade": "ações"
+    },
+    "acoes_por_classe": {
+      "descricao": "Quantidade por classe, como \"Preferencial Classe A=1000; Ordinária Classe A=500\" (vazio sem classe declarada)",
+      "unidade": "texto"
+    },
+    "titulos_conversiveis": {
+      "descricao": "Títulos conversíveis em ação, separados por \"; \" (sem as condições de conversão, texto livre; vazio quando a companhia diz que não há)",
+      "unidade": "texto"
+    },
+    "conhecido_em": {
+      "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "referencia",
+    "versao",
+    "id_capital_social"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+  "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+}

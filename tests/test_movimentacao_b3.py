@@ -436,3 +436,125 @@ def test_taxa_do_aluguel_vira_renda_e_a_linha_so_de_quantidade_fica_de_fora():
         Lancamento(date(2026, 9, 25), "VGIR11", "aluguel", 0, 7.61),
     )
     assert mov.fora_das_contas == 1
+
+
+# ---- movimentação real de 12 meses (14/10/2026): derivativos e transferências de provento ----
+
+
+def test_futuros_e_opcoes_sao_contados_a_parte_e_nao_viram_renda_fixa():
+    mov = _ler(
+        [
+            _linha("Credito", "02/02/2025", "Compra", "Futuro - WINV26", 1, 100, 100),
+            _linha("Debito", "03/02/2025", "Venda", "Futuro - WDOU26", 2, 50, 100),
+            _linha(
+                "Credito",
+                "03/02/2025",
+                "Compra",
+                "Opção de Compra - BOVAE133 - BOVA11",
+                1,
+                1,
+                1,
+            ),
+            _linha(
+                "Debito",
+                "04/02/2025",
+                "Venda",
+                "Opção de Venda - BOVAQ133 - BOVA11",
+                1,
+                1,
+                1,
+            ),
+            _linha(
+                "Credito", "04/02/2025", "Juros", "CRA - CRA123 - EMISSORA", 1, 5, 5
+            ),
+        ]
+    )
+    assert mov.lancamentos == ()
+    texto = " ".join(mov.avisos)
+    assert "4 linhas de futuros e opções" in texto
+    assert "1 linha de Tesouro e renda fixa ficou" in texto
+
+
+def test_so_derivativos_nao_gera_aviso_de_renda_fixa():
+    mov = _ler([_linha("Credito", "02/02/2025", "Compra", "Futuro - WINV26", 1, 1, 1)])
+    assert len(mov.avisos) == 1
+    assert "futuros e opções" in mov.avisos[0]
+    assert "renda fixa" not in mov.avisos[0]
+
+
+def test_provento_transferido_entre_corretoras_fica_de_fora_sem_aviso():
+    mov = _ler(
+        [
+            _linha(
+                "Credito", "02/02/2025", "Dividendo - Transferido", PETR, 10, 1, 7.5
+            ),
+            _linha("Debito", "02/02/2025", "Dividendo - Transferido", PETR, 10, 1, 7.5),
+            _linha(
+                "Credito",
+                "03/02/2025",
+                "Juros Sobre Capital Próprio - Transferido",
+                PETR,
+                10,
+                1,
+                3.2,
+            ),
+            _linha(
+                "Debito",
+                "03/02/2025",
+                "Juros Sobre Capital Próprio - Transferido",
+                PETR,
+                10,
+                1,
+                3.2,
+            ),
+            _linha("Credito", "04/02/2025", "Dividendo", PETR, 10, 1, 10),
+        ]
+    )
+    assert [x.tipo for x in mov.lancamentos] == ["dividendo"]
+    assert mov.fora_das_contas == 4
+    assert not any("não reconhecido" in a for a in mov.avisos)
+
+
+def test_amortizacao_de_fii_vira_lancamento_que_reduz_o_custo():
+    mov = _ler(
+        [
+            _linha(
+                "Credito",
+                "02/02/2025",
+                "Transferência - Liquidação",
+                HGLG,
+                10,
+                100,
+                1000,
+            ),
+            _linha("Credito", "01/03/2025", "Amortização", HGLG, 10, 10, 100),
+        ]
+    )
+    assert [x.tipo for x in mov.lancamentos] == ["compra", "amortizacao"]
+    (custo,) = custo_medio(list(mov.lancamentos))
+    assert custo.custo_total == pytest.approx(900)
+    assert not any("não reconhecido" in a for a in mov.avisos)
+
+
+def test_atualizacao_continua_fora_das_contas_com_aviso():
+    mov = _ler([_linha("Credito", "02/02/2025", "Atualização", PETR, 1900, "-", "-")])
+    assert mov.lancamentos == ()
+    assert any("não reconhecido" in a and "Atualização" in a for a in mov.avisos)
+
+
+def test_guarda_o_nome_de_cada_ativo():
+    mov = _ler(
+        [
+            _linha(
+                "Credito",
+                "02/02/2025",
+                "Transferência - Liquidação",
+                HGLG,
+                10,
+                100,
+                1000,
+            ),
+            _linha("Credito", "01/03/2025", "Rendimento", "HGLG11F - CGHG", 1, 1, 1),
+        ]
+    )
+    assert mov.nomes == {"HGLG11": "CGHG LOGISTICA FDO INV IMOB - FII"}

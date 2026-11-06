@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TickerLab Data · API de dados</title>
+<meta name="description" content="Dados das empresas brasileiras direto da fonte oficial, com a data em que ficaram públicos e a licença de cada tabela. Beta sem cobrança. Nada é recomendação de investimento.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/estatico/simbolo.svg">
+<script src="/estatico/sol.js"></script>
+<script>(function(){var raiz=document.documentElement,escolha="auto";raiz.classList.add("com-js");try{escolha=localStorage.getItem("tema")||"auto"}catch(e){}var sol=window.TickerLabSol;var tema=escolha!=="auto"?escolha:sol?sol.temaDoMomento(new Date(),sol.fusoDoAparelho()):"claro";raiz.dataset.escolha=escolha;if(tema==="escuro")raiz.dataset.tema="escuro";})();</script>
+<link rel="preload" href="/estatico/Manrope-VariableFont_wght.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/estatico/estilo.css"><link rel="stylesheet" href="/estatico/v2.css"><link rel="stylesheet" href="/estatico/api.css">
+<script src="/estatico/v2.js" defer></script><script src="/estatico/api.js" defer></script><script src="/estatico/fundo.js" defer></script><script src="/estatico/chat.js" defer></script>
+</head><body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="topo escura"><div class="faixa">
+  <a class="marca" href="/" aria-label="TickerLab Data, página inicial"><svg xmlns="http://www.w3.org/2000/svg" viewBox="9 14 60 60" width="32" height="32" aria-hidden="true"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="currentColor"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg><span>Ticker<b>Lab</b></span><span class="api">Data</span></a>
+  <nav aria-label="Principal"><a href="#catalogo">Catálogo</a><a href="#regras">Regras</a><a href="#precos">Preços</a><a href="#docs">Documentação</a><a class="voltar" href="https://tickerlab.com.br/">tickerlab.com.br ↗</a></nav>
+</div></header>
+<main id="conteudo">
+
+<!-- 1. hero: a resposta com rastro -->
+<div class="escura topo-da-pagina v2-heroi-fundo">
+  <div class="v2-aurora" aria-hidden="true"><span></span><span></span></div><canvas class="v2-mercado" data-fundo-api aria-hidden="true"></canvas><div class="v2-grade" aria-hidden="true"></div>
+  <div class="v2-horizonte" aria-hidden="true"></div>
+  <section class="heroi faixa api-heroi" aria-labelledby="titulo-heroi">
+    <div class="heroi-texto">
+      <a class="v2-pilula" href="#precos"><span class="v2-ponto" aria-hidden="true"></span>Beta fechado · sem cobrança<span class="v2-pilula-seta" aria-hidden="true">→</span></a>
+      <h1 id="titulo-heroi">Dados das empresas brasileiras, <span class="v2-degrade">da fonte</span>, com data e licença.</h1>
+      <p class="subtitulo">Balanços, cadastros, dívidas e fundos lidos direto da CVM, da Receita, do Banco Central e das agências. Cada número vem com o documento de onde saiu, o dia em que ficou público e a licença da tabela.</p>
+      <div class="api-botoes"><a class="botao primario" href="/documentacao/">Documentação</a><a class="botao secundario" href="/documentacao/#comecar">Como pedir uma chave</a><a class="botao secundario" href="#chat">Perguntar à IA</a></div>
+      <ul class="api-prova"><li>JSON</li><li>Chave no cabeçalho</li><li>“Como era na data” em toda rota</li></ul>
+    </div>
+
+    <div class="resposta" aria-label="Resposta de exemplo da API">
+      <div class="resposta-topo" role="tablist" aria-label="Linguagem do exemplo">
+        <button type="button" role="tab" data-aba="curl" aria-pressed="false">curl</button>
+        <button type="button" role="tab" data-aba="python" aria-pressed="false">Python</button>
+        <button type="button" role="tab" data-aba="js" aria-pressed="false">JavaScript</button>
+        <button type="button" role="tab" data-aba="resposta" aria-pressed="true">Resposta</button>
+        <span class="status">200 OK</span>
+      </div>
+<pre data-painel="curl" hidden><code><span class="c"># contas da Petrobras como a base as via em 30/09/2024</span>
+curl "https://api.tickerlab.com.br/data/v1/companies/33000167000101/financials?known_at=2024-09-30" \
+  -H "Authorization: Bearer $TICKERLAB_CHAVE"</code></pre>
+<pre data-painel="python" hidden><code><span class="k">import</span> os, requests
+
+r = requests.get(
+    <span class="s">"https://api.tickerlab.com.br/data/v1/companies/33000167000101/financials"</span>,
+    params={<span class="s">"known_at"</span>: <span class="s">"2024-09-30"</span>},
+    headers={<span class="s">"Authorization"</span>: <span class="s">"Bearer "</span> + os.environ[<span class="s">"TICKERLAB_CHAVE"</span>]},
+)
+linha = r.json()[<span class="s">"rows"</span>][0]</code></pre>
+<pre data-painel="js" hidden><code><span class="k">const</span> url = <span class="s">"https://api.tickerlab.com.br/data/v1/companies/33000167000101/financials?known_at=2024-09-30"</span>;
+<span class="k">const</span> r = <span class="k">await</span> fetch(url, {
+  headers: { Authorization: <span class="s">`Bearer ${process.env.TICKERLAB_CHAVE}`</span> },
+});
+<span class="k">const</span> { rows } = <span class="k">await</span> r.json();</code></pre>
+<pre data-painel="resposta"><code>{
+  <span class="k">"cnpj"</span>: <span class="s">"33000167000101"</span>, <span class="k">"known_at"</span>: <span class="s">"2024-09-30"</span>,
+  <span class="k">"rows"</span>: [{
+    <span class="k">"account"</span>: { <span class="k">"value"</span>: <span class="s">"3.01"</span>, <span class="k">"source"</span>: <span class="s">"cvm-hist-dfp"</span>,
+                <span class="k">"published_at"</span>: <span class="s">"2024-03-07"</span>, <span class="k">"observed_at"</span>: <span class="s">null</span> },
+    <span class="k">"description"</span>: { <span class="k">"value"</span>: <span class="s">"Receita de Venda de Bens e/ou Serviços"</span>, … },
+    <span class="k">"document"</span>: { <span class="k">"value"</span>: <span class="s">"DFP"</span>, … },
+    <span class="k">"reference_period"</span>: { <span class="k">"value"</span>: <span class="s">"2023-12-31"</span>, … },
+    <span class="k">"revision"</span>: { <span class="k">"value"</span>: <span class="n">1</span>, … },
+    <span class="k">"value"</span>: { <span class="k">"value"</span>: <span class="n">&lt;valor da fonte&gt;</span>, … }
+  }, …],
+  <span class="k">"truncated"</span>: <span class="n">false</span>,
+  <span class="destaque-rastro"><span class="k">"sources"</span>: [{
+    <span class="k">"source"</span>: <span class="s">"cvm-hist-dfp"</span>,
+    <span class="k">"license"</span>: <span class="s">"ODbL (dados abertos da CVM; citar a fonte)"</span>,
+    <span class="k">"attribution"</span>: <span class="s">"Fonte: CVM, Portal de Dados Abertos (ODbL)"</span>
+  }]</span>
+}</code></pre>
+      <div class="resposta-nota"><span><b>source, published_at, license</b>: de onde saiu, quando ficou público, sob qual licença.</span><span>Exemplo de forma: o valor aparece como marcador e as datas são ilustrativas.</span></div>
+    </div>
+  </section>
+  <button class="v2-pausa" type="button" data-pausa aria-pressed="false"><svg class="pausar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg><svg class="retomar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>Pausar animação</span></button>
+</div>
+
+<!-- 1b. chat de IA: pergunta em português, resposta com rastro e a chamada que a produziu -->
+<section class="faixa secao chat" id="chat" aria-labelledby="titulo-chat" data-chat>
+  <div class="chat-cabeca">
+    <p class="olho">TickerLab Data AI</p>
+    <h2 id="titulo-chat">Pergunte em português. Receba o dado, a fonte e a chamada.</h2>
+    <p class="subtitulo">A IA não inventa número: ela escreve a consulta, a base responde, e a resposta vem com fonte, data e licença, mais a chamada da API para você repetir no seu código. O chat ainda não está ligado: abaixo, respostas de exemplo.</p>
+  </div>
+  <div class="chat-caixa">
+    <form class="chat-form" autocomplete="off">
+      <textarea data-chat-campo rows="2" aria-label="Sua pergunta" placeholder="Experimente: “Quais contas a Petrobras entregou na DFP de 2024?”"></textarea>
+      <div class="chat-rodape"><span class="chat-dica">Enter envia · Shift+Enter nova linha</span><button class="chat-enviar" type="submit" aria-label="Enviar pergunta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
+    </form>
+    <div class="chat-publicos" aria-label="Perguntas por perfil">
+      <button type="button" data-publico="investidor" aria-pressed="true">Investidor</button>
+      <button type="button" data-publico="dev" aria-pressed="false">Dev</button>
+      <button type="button" data-publico="analista" aria-pressed="false">Analista</button>
+    </div>
+    <div class="chat-sugestoes" data-perguntas="investidor">
+      <button type="button" data-pergunta>Quais contas a Petrobras entregou na DFP de 2024?</button>
+      <button type="button" data-pergunta>Qual é a situação da Petrobras na Receita?</button>
+      <button type="button" data-pergunta>Quanto um fundo cobra de taxa e como ficam 20 anos com 8% ao ano?</button>
+    </div>
+    <div class="chat-sugestoes" data-perguntas="dev" hidden>
+      <button type="button" data-pergunta>Monte a chamada em Python para as contas de uma empresa como eram em 30/09/2024.</button>
+      <button type="button" data-pergunta>Como pego o que a base sabia em 30/09/2024?</button>
+      <button type="button" data-pergunta>Que campos vêm em cada valor da resposta?</button>
+    </div>
+    <div class="chat-sugestoes" data-perguntas="analista" hidden>
+      <button type="button" data-pergunta>Consulte várias empresas de uma vez.</button>
+      <button type="button" data-pergunta>Quanto da minha cota do mês já usei?</button>
+      <button type="button" data-pergunta>Que dados a API não entrega?</button>
+    </div>
+    <div class="chat-conversa" data-chat-conversa aria-live="polite" hidden></div>
+    <p class="chat-cota">Quando ligar, no beta: <b>50 perguntas por chave por mês</b>, até 10 por dia, sem cobrança; se o orçamento do beta acabar no mês, o chat avisa e pausa · a resposta nunca é recomendação de investimento · <b>exemplos: o chat de IA ainda não está ligado</b></p>
+  </div>
+</section>
+
+<!-- 5. cobertura (lida do catálogo) -->
+<section class="faixa secao" aria-labelledby="titulo-cobertura">
+  <p class="olho">O que a API entrega hoje</p>
+  <h2 id="titulo-cobertura">Pequeno, conferido e com licença</h2>
+  <p class="subtitulo">Esta lista é conferida por teste contra o portão de direitos da API (<code>site-api/catalogo.json</code>, gerado do código): se um conjunto entra ou sai, o teste falha até o site acompanhar. A base tem muito mais tabelas do que a API entrega; a API só serve o que a fonte permite redistribuir.</p>
+  <div class="cobertura" data-cobertura>
+    <div><b data-conta="conjuntos">3</b><span>conjuntos na API</span><small>empresas, demonstrações e fundos; cada um com licença e campos descritos</small></div>
+    <div><b data-conta="fontes">6</b><span>fontes</span><small>CVM (cadastros, DFP, ITR, carteiras de fundos) e Receita Federal (CNPJ)</small></div>
+    <div><b data-conta="rotas">7</b><span>rotas</span><small>3 de consulta, 2 de lote, o catálogo e o consumo</small></div>
+    <div><b data-conta="lote">100</b><span>CNPJs por lote</span><small>um pedido da cota por CNPJ válido e distinto</small></div>
+  </div>
+</section>
+
+<!-- 2. como era na data -->
+<div class="escura como-era"><section class="faixa secao" aria-labelledby="titulo-como-era">
+  <p class="olho">A regra que muda tudo</p>
+  <h2 id="titulo-como-era">Peça o número como ele era naquela data</h2>
+  <p class="subtitulo">Empresas reapresentam balanços. Uma API comum devolve só o valor de hoje e apaga o passado. Aqui, o parâmetro <code>known_at</code> devolve o que o mercado via naquele dia: documento, versão e valor vigentes. É o que deixa um backtest honesto.</p>
+  <div class="demo-data">
+    <div>
+      <div class="controle-data">
+        <label for="data-vista">Arraste a data</label>
+        <input id="data-vista" type="range" min="0" max="2" step="1" value="2" list="marcos-datas">
+        <ul class="marcos" aria-hidden="true"><li>mar 2024</li><li>set 2024</li><li>abr 2025</li></ul>
+      </div>
+      <p class="data-escolhida"><span data-data-escolhida>abril de 2025</span><small data-data-explica>Depois da DFP 2024: o valor anual do exercício de 2024 já está público.</small></p>
+      <ul class="fatos">
+        <li><b>published_at</b> é o dia da entrega à CVM. O valor vale a partir dele, inclusive.</li>
+        <li><b>valid_until</b> é o dia em que outra versão tomou o lugar. Vazio: vale até hoje.</li>
+        <li>Teste no app: cortar o futuro não muda o passado. O princípio tem teste automático na base.</li>
+      </ul>
+    </div>
+    <div class="resposta" aria-live="polite">
+      <div class="resposta-topo"><span class="mono" style="color:#a9b8d6;font-size:.78rem;padding:.4rem .5rem">GET /data/v1/companies/{cnpj}/financials<br>?known_at=<b data-data-param>2025-04-30</b></span></div>
+<pre><code data-resposta-como-era>{
+  <span class="k">"document"</span>: <span class="s">"DFP"</span>, <span class="k">"reference_period"</span>: <span class="s">"2024-12-31"</span>,
+  <span class="k">"revision"</span>: <span class="n">1</span>,
+  <span class="k">"published_at"</span>: <span class="s">"2025-02-27"</span>, <span class="k">"valid_until"</span>: <span class="s">null</span>,
+  <span class="k">"value"</span>: <span class="n">&lt;valor da fonte&gt;</span>
+}</code></pre>
+      <div class="resposta-nota"><span>Mesma pergunta, três respostas: a base guarda cada versão com o dia em que ficou pública. Forma real; datas e versões do exemplo são ilustrativas.</span></div>
+    </div>
+  </div>
+</section></div>
+
+<!-- 3. catálogo em cartões -->
+<section class="faixa secao" id="catalogo" aria-labelledby="titulo-catalogo">
+  <p class="olho">Catálogo</p>
+  <h2 id="titulo-catalogo">Um endpoint por pergunta, uma fonte por resposta</h2>
+  <p class="subtitulo">As rotas do beta, todas em <code>https://api.tickerlab.com.br</code>. Cada cartão diz de onde o dado vem e sob qual licença você pode usá-lo.</p>
+  <div class="rotas">
+    <article class="rota" data-fonte="cvm-hist-dfp cvm-hist-itr"><span class="metodo"><b>GET</b> /data/v1/companies/{cnpj}/financials</span><h3>Demonstrações como eram na data</h3><p>DFP e ITR da CVM, conta a conta, com documento, versão, origem, o dia em que ficaram públicas e <code>valid_until</code>. Filtre por <code>period_end</code>.</p><div class="fontes"><span class="odbl">ODbL · CVM</span><span>known_at</span></div></article>
+    <article class="rota" data-fonte="rfb-cnpj"><span class="metodo"><b>GET</b> /data/v1/companies/{cnpj}</span><h3>Situação cadastral na Receita</h3><p>Situação, data, motivo, matriz e o mês do retrato, como era em <code>known_at</code>. MEI, empresário individual e o que não é empresa saem <code>not_available</code>.</p><div class="fontes"><span>CC BY · Receita</span><span>known_at</span></div></article>
+    <article class="rota" data-fonte="cvm-cadastros cvm-cda-recente cvm-hist-cda"><span class="metodo"><b>GET</b> /data/v1/funds/{cnpj}</span><h3>Fundos: taxas, custo da taxa e carteira</h3><p>Cadastro e taxas da CVM, a carteira da competência mais nova já pública e, se você enviar <code>assumed_return</code>, o custo da taxa em 5 e 20 anos. O retorno é seu, não nosso: nada é previsão.</p><div class="fontes"><span class="odbl">ODbL · CVM</span><span>known_at</span></div></article>
+    <article class="rota"><span class="metodo"><b>POST</b> /data/v1/companies/batch · /funds/batch</span><h3>Lotes de até 100 CNPJs</h3><p>O mesmo de cada rota, num pedido só, com o estado de cada item. Um pedido da cota por CNPJ válido e distinto.</p><div class="fontes"><span>lote</span></div></article>
+    <article class="rota"><span class="metodo"><b>GET</b> /data/v1/catalog</span><h3>O que a sua chave pode pedir</h3><p>Conjuntos, campos, licença e atribuição de cada fonte, só do que o contrato da organização libera. Não gasta cota.</p><div class="fontes"><span>sem cota</span></div></article>
+    <article class="rota"><span class="metodo"><b>GET</b> /data/v1/usage</span><h3>Seu consumo do mês</h3><p>Pedidos, negados, plano, limites e o que falta da cota. Não gasta cota, mas conta no limite por minuto.</p><div class="fontes"><span>sem cota</span></div></article>
+    <article class="rota breve"><span class="metodo"><b>GET</b> setores, dívida ativa, rede de entidades</span><h3>Mais conjuntos</h3><p>A base já tem dados das agências (ANP, ONS, ANEEL, ANS, Anatel, ANAC, ANTT, CCEE) e outras tabelas. Entram na API quando a fonte e a licença permitirem, um conjunto por vez. Sem data.</p><div class="fontes"><span>em breve</span></div></article>
+    <article class="rota breve"><span class="metodo"><b>GET</b> preços e índices da B3</span><h3>Preços</h3><p>Não há dado aberto de preço: depende de licença com a B3. Fora do beta; sem data.</p><div class="fontes"><span>sem licença ainda</span></div></article>
+  </div>
+  </section>
+
+<!-- 4. as quatro regras -->
+<section class="faixa secao" id="regras" aria-labelledby="titulo-regras">
+  <p class="olho">Regras da base</p>
+  <h2 id="titulo-regras">Quatro promessas que valem para toda tabela</h2>
+  <div class="regras">
+    <article class="regra"><h3>Como era na data</h3><p>Todo valor tem o dia em que ficou público e o dia em que foi substituído. Você pode pedir a base como ela era em qualquer data.</p><code>?known_at=2024-09-30</code></article>
+    <article class="regra"><h3>Linhagem</h3><p>Cada campo diz a fonte, o dia em que ficou público e, quando a base sabe, quando o TickerLab o viu. O documento e a versão vêm em cada linha de demonstração.</p><code>published_at · observed_at</code></article>
+    <article class="regra"><h3>Licença por tabela</h3><p>A licença da fonte vem na resposta, não num rodapé. Fonte sem licença conhecida não sai pela API.</p><code>"license": "ODbL (…)"</code></article>
+    <article class="regra"><h3>Explicação</h3><p>O catálogo descreve os campos de cada conjunto. Nomes e códigos de erro saem em inglês, estáveis entre versões.</p><code>GET /data/v1/catalog</code></article>
+  </div>
+</section>
+
+<!-- 6. o que não entrega -->
+<div class="escura"><section class="faixa secao" aria-labelledby="titulo-nao">
+  <p class="olho">Honestidade</p>
+  <h2 id="titulo-nao">O que a API não entrega, e por quê</h2>
+  <p class="subtitulo">Negar é o padrão: um dado só sai pela API quando a fonte permite distribuir e quando sabemos de quem ele é. O que fica de fora fica escrito aqui.</p>
+  <div class="nao-entrega">
+    <article><h3>Preços e índices da B3</h3><p>Cotações, Ibovespa e múltiplos que dependem de preço.</p><span class="porque">Não há dado aberto: só com licença da B3. Enquanto não houver, não há rota.</span></article>
+    <article><h3>Nada sobre pessoa física</h3><p>Nomes de sócios, dívida de pessoa, qualquer dado negativo de alguém que a base trata como pessoa.</p><span class="porque">LGPD: empresário individual e MEI não saem; o que a base trata como pessoa responde <code>not_available</code>.</span></article>
+    <article><h3>Tabelas de uso interno</h3><p>Posts de assessorias de M&amp;A, páginas guardadas como prova, dados de licença “não comercial”.</p><span class="porque">A fonte não autoriza redistribuir. Servem à análise dentro do app, não à API.</span></article>
+  </div>
+  <p class="subtitulo" style="margin-top:1.5rem">Dados vêm das fontes oficiais e podem ter atraso ou erro da própria fonte. Nada aqui é recomendação de investimento.</p>
+</section></div>
+
+<!-- 7. preços -->
+<section class="faixa secao" id="precos" aria-labelledby="titulo-precos">
+  <p class="olho">Preços</p>
+  <h2 id="titulo-precos">Beta sem cobrança</h2>
+  <p class="subtitulo">O beta é fechado e sem cobrança: as chaves são dadas por contrato a quem vai integrar. O que muda depois será anunciado com antecedência, e quem entrou no beta será avisado primeiro.</p>
+  <div class="planos">
+    <article class="plano beta"><p class="olho">Agora</p><h3>Beta</h3><p class="preco">R$ 0 <small>durante o beta</small></p>
+      <ul><li>Os três conjuntos e as rotas acima</li><li>Cota mensal e limite por minuto por organização, no <code>/data/v1/usage</code></li><li>Chat de IA quando ligar: 50 perguntas por chave por mês, até 10 por dia</li><li>JSON</li><li>Licença da fonte em cada resposta; citar a fonte é obrigatório</li><li>Chave pode ser suspensa se o uso quebrar a licença de uma fonte</li></ul>
+      <a class="botao primario" href="/documentacao/#comecar">Como pedir uma chave</a></article>
+    <article class="plano depois"><p class="olho">Depois do beta</p><h3>Planos por uso</h3><p>A ideia é simples como a de quem faz isso bem: uma faixa grátis sem cartão, planos mensais por volume e um estimador para você saber o custo antes de usar. Os números só entram aqui quando forem decisão tomada.</p></article>
+  </div>
+</section>
+
+<!-- 8. docs -->
+<section class="faixa secao" id="docs" aria-labelledby="titulo-docs">
+  <p class="olho">Documentação</p>
+  <h2 id="titulo-docs">Integre sozinho, pela documentação</h2>
+  <p class="subtitulo">O objetivo do beta é este: um piloto de fora integra sem falar com a gente. Se precisou perguntar, a documentação falhou e a gente conserta. Biblioteca Python e servidor MCP ainda não existem.</p>
+  <div class="docs">
+    <div class="docs-lista">
+      <a href="/documentacao/#comecar"><span class="icone">01</span><span><b>Começar</b><span>Como pedir a chave, a primeira chamada, limites do beta.</span></span></a>
+      <a href="/documentacao/#autenticacao"><span class="icone">key</span><span><b>Autenticação</b><span>Chave só no cabeçalho; o que acontece quando é recusada.</span></span></a>
+      <a href="/documentacao/#versoes"><span class="icone">v1</span><span><b>Versões</b><span>O que muda com aviso e o que nunca muda.</span></span></a>
+      <a href="/documentacao/#direitos"><span class="icone">©</span><span><b>Direitos por fonte</b><span>Fonte por fonte: licença e como citar.</span></span></a>
+      <a href="/documentacao/#erros"><span class="icone">4xx</span><span><b>Erros e limites</b><span>Os códigos de erro e o que fazer com cada um.</span></span></a>
+      <a href="/documentacao/#lotes"><span class="icone">[ ]</span><span><b>Lotes</b><span>Até 100 CNPJs por pedido.</span></span></a>
+    </div>
+    <div class="instalar"><header><span>Primeira chamada</span><span>HTTP</span></header>
+<pre><code><span class="cmd">$</span> export TICKERLAB_CHAVE=…
+<span class="cmd">$</span> curl -H "Authorization: Bearer $TICKERLAB_CHAVE" \
+    https://api.tickerlab.com.br/data/v1/catalog</code></pre></div>
+  </div>
+</section>
+
+<div class="escura v2-final-fundo"><div class="v2-horizonte v2-horizonte-alto" aria-hidden="true"></div><section class="faixa secao final api-final" aria-labelledby="titulo-final"><h2 id="titulo-final">Comece pela documentação</h2><p class="subtitulo">A primeira resposta já vem com fonte, data e licença.</p><a class="botao primario" href="/documentacao/">Abrir a documentação</a></section></div>
+</main>
+<footer class="rodape escura"><div class="faixa"><div><a class="marca" href="/" aria-label="TickerLab Data, página inicial"><svg xmlns="http://www.w3.org/2000/svg" viewBox="9 14 60 60" width="32" height="32" aria-hidden="true"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="currentColor"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg><span>Ticker<b>Lab</b></span><span class="api">Data</span></a><p class="apagado">Dados das empresas brasileiras, da fonte, com data e licença.</p></div><nav aria-label="Rodapé"><a href="/documentacao/">Documentação</a><a href="https://tickerlab.com.br/dados.html">Fontes e licenças</a><a href="https://tickerlab.com.br/">TickerLab, o app</a><a href="https://tickerlab.com.br/termos.html">Termos de uso</a><a href="https://tickerlab.com.br/privacidade.html">Privacidade</a><a href="mailto:contato@tickerlab.com.br">contato@tickerlab.com.br</a></nav><p class="aviso">Nada aqui é recomendação de investimento. Os dados vêm das fontes oficiais citadas em cada resposta e podem ter atraso ou erros da própria fonte. Cada tabela tem a sua licença; cite a fonte.</p></div></footer>
+<a class="chat-flutuante" href="#chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-4.6A8 8 0 1 1 21 12z"/></svg><span>Perguntar à IA</span></a>
+</body></html>

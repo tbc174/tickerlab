@@ -1,0 +1,18 @@
+{
+ "success": true,
+ "result": {
+  "name": "relatorio-de-subsidios-ao-bndes",
+  "resources": [
+   {
+    "format": "PDF",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/a/download/metadados---subsidios-ao-bndes.pdf",
+    "size": 42733
+   },
+   {
+    "format": "PDF",
+    "url": "https://www.tesourotransparente.gov.br/ckan/dataset/ab56485b/resource/b/download/relatorio-de-subsidios-6o-bimestre-de-2015.pdf",
+    "size": 185510
+   }
+  ]
+ }
+}

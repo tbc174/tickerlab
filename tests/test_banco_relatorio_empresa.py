@@ -96,6 +96,77 @@ def test_carrega_tudo_da_empresa_pelo_ticker(conexao):
     assert pares is not None
     assert set(pares["cnpj"]) == {WEG, PETROBRAS}  # o banco é de outro grupo
     assert (pares["receita"] > 0).all() and pares["empresa"].str.len().min() > 0
+    tickers = entradas.tickers
+    assert tickers is not None  # só os da WEG, para a ficha técnica
+    assert list(tickers["codigo"]) == ["WEGE3"]
+    assert list(tickers["valor_mobiliario"]) == ["Ações Ordinárias"]
+    assert pd.Timestamp(tickers["atualizado_em"].iloc[0]).date() == AGORA.date()
+
+
+def test_trava_desligada_tira_o_preco_do_relatorio(conexao, monkeypatch):
+    """D3 mudada em 20/10/2026: TICKERLAB_PRECO_NO_RELATORIO=0 tira o preço do Yahoo da tela, do
+    PDF e da API de uma vez (todos leem por aqui), sem deploy."""
+    fechamentos = pd.Series([49.0, 50.0])
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, fechamentos=fechamentos
+    )
+    assert desligada is not None
+    assert desligada.preco is None and desligada.fechamentos is None
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    ligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, fechamentos=fechamentos
+    )
+    assert ligada is not None and ligada.preco == 50.0
+    assert ligada.fechamentos is fechamentos
+
+
+def test_trava_desligada_e_a_ficha_sem_preco_dy_multiplos_nem_a_frase(
+    conexao, monkeypatch
+):
+    """Linha 55 da fila: com a trava desligada, a ficha é a mesma de quando o Yahoo falha (nenhum
+    DY, múltiplo ou frase do preço), e nada do resto muda."""
+    from dataclasses import replace
+
+    from src import relatorio_empresa as re_
+
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    ligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, hoje=AGORA.date()
+    )
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, hoje=AGORA.date()
+    )
+    assert ligada is not None and desligada is not None
+    ficha = re_.montar(desligada)
+    assert ficha == re_.montar(replace(ligada, preco=None, fechamentos=None))
+    assert re_.LIMITE_DO_PRECO in re_.montar(ligada).secao("limites").paragrafos
+    assert re_.LIMITE_DO_PRECO not in ficha.secao("limites").paragrafos
+    for secao in ("valuation", "dividendos"):
+        for item in ficha.secao(secao).itens:
+            if item.fonte.startswith(re_.FONTE_DOS_MULTIPLOS):
+                assert item.valor is None and "preço" in item.motivo, item.chave
+
+
+def test_relatorio_le_a_ficha_sem_as_secoes_do_molde_b(conexao, monkeypatch):
+    """Uma ficha só com a seção da rede (molde B) não vira dossiê no relatório da empresa."""
+    from src import dossie
+    from tests.test_dossie_no_app import SECAO_DA_REDE, _bruta
+
+    so_a_rede = dossie.Ficha.model_validate(_bruta() | {"secoes": [SECAO_DA_REDE]})
+    monkeypatch.setattr(repo, "ficha_do", lambda _cnpj: so_a_rede)
+    entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
+    assert entradas is not None
+    assert entradas.dossie is None
+
+
+def test_pares_leem_a_geracao_de_caixa_pela_ficha_de_cada_um(conexao):
+    from src import dossie
+
+    entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
+    assert entradas is not None
+    assert entradas.caixa_do_par is dossie.caixa_do_par
 
 
 def test_sem_padrao_gravado_fica_sem_padroes(conexao):
@@ -131,3 +202,71 @@ def test_gratuito_nao_gera_o_pdf_da_empresa_e_o_plus_gera():
     with pytest.raises(LimiteDoPlanoError):
         conferir_relatorio("gratuito", relatorios.EMPRESA, 0)
     conferir_relatorio("plus", relatorios.EMPRESA, 0)
+
+
+def test_trava_desligada_tira_os_multiplos_dos_padroes(conexao, monkeypatch):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026: P/L e P/VP dos padrões vêm do preço do Yahoo
+    no corte; com a trava desligada, a régua do setor sai sem eles e o resto fica."""
+    tabela = pd.DataFrame(
+        [{"grupo": "bens_de_capital", "indicador": i, "empresas": 9,
+          "percentis": {"50": 0.15}} for i in ("roe", "p_l", "p_vp")]
+    )  # fmt: skip
+    gravar_padroes(conexao, tabela, date(2025, 12, 31), AGORA)
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    ligada = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=AGORA.date())
+    assert ligada is not None and ligada.padroes is not None
+    assert set(ligada.padroes[1]["indicador"]) == {"roe", "p_l", "p_vp"}
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=AGORA.date())
+    assert desligada is not None and desligada.padroes is not None
+    assert list(desligada.padroes[1]["indicador"]) == ["roe"]
+
+
+def test_trava_desligada_e_padroes_so_de_multiplos_ficam_sem_padroes(
+    conexao, monkeypatch
+):
+    tabela = pd.DataFrame(
+        [{"grupo": "bens_de_capital", "indicador": "p_l", "empresas": 9,
+          "percentis": {"50": 12.0}}]
+    )  # fmt: skip
+    gravar_padroes(conexao, tabela, date(2025, 12, 31), AGORA)
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=AGORA.date())
+    assert desligada is not None and desligada.padroes is None
+
+
+def test_ficha_mostra_a_faixa_de_52_semanas_na_secao_de_valuation(conexao):
+    """Linha 412: a faixa entra como parágrafo do valuation, com fonte e data; sem ela, nada muda."""
+    from dataclasses import replace
+
+    from src import relatorio_empresa as re_
+    from src.faixa_de_preco import calcular_faixa_de_preco
+
+    indice = pd.bdate_range(end="2026-11-03", periods=520)
+    faixa = calcular_faixa_de_preco(pd.Series(10.0, index=indice))
+    entradas = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, hoje=AGORA.date()
+    )
+    assert entradas is not None
+    sem = re_.montar(entradas).secao("valuation").paragrafos
+    com = (
+        re_.montar(replace(entradas, faixa_de_preco=faixa))
+        .secao("valuation")
+        .paragrafos
+    )
+    assert faixa is not None and faixa.texto() in com
+    assert [p for p in com if p != faixa.texto()] == sem
+
+
+def test_trava_desligada_nao_pergunta_a_faixa_ao_yahoo(monkeypatch):
+    from src import faixa_de_preco as modulo
+
+    chamadas = []
+    monkeypatch.setattr(
+        modulo, "baixar_fechamento_sem_ajuste", lambda *a: chamadas.append(a)
+    )
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    assert modulo.faixa_de_preco_do_ticker("WEGE3.SA") is None
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    assert modulo.faixa_de_preco_do_ticker("AAPL") is None  # fora da B3
+    assert chamadas == []

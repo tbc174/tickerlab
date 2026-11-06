@@ -1,0 +1,95 @@
+{
+  "tabela": "ons_capacidade",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_subsistema": {
+      "descricao": "Subsistema (N, NE, S, SE)",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da usina",
+      "unidade": "texto"
+    },
+    "modalidade_de_operacao": {
+      "descricao": "Modalidade de operação (tipo I, II...)",
+      "unidade": "texto"
+    },
+    "proprietario": {
+      "descricao": "Agente proprietário, como o ONS escreve (liga à empresa pela B13)",
+      "unidade": "texto"
+    },
+    "operador": {
+      "descricao": "Agente operador",
+      "unidade": "texto"
+    },
+    "tipo_de_usina": {
+      "descricao": "Hidrelétrica, térmica, eólica, fotovoltaica...",
+      "unidade": "texto"
+    },
+    "usina": {
+      "descricao": "Nome da usina",
+      "unidade": "texto"
+    },
+    "ceg": {
+      "descricao": "Código na ANEEL",
+      "unidade": "texto"
+    },
+    "unidade_geradora": {
+      "descricao": "Nome da unidade geradora",
+      "unidade": "texto"
+    },
+    "cod_equipamento": {
+      "descricao": "Código do equipamento no ONS (a chave)",
+      "unidade": "texto"
+    },
+    "numero_da_unidade": {
+      "descricao": "Número da unidade na usina",
+      "unidade": "texto"
+    },
+    "combustivel": {
+      "descricao": "Combustível ou fonte",
+      "unidade": "texto"
+    },
+    "entrada_em_teste": {
+      "descricao": "Data da entrada em teste",
+      "unidade": "data (dia)"
+    },
+    "entrada_em_operacao": {
+      "descricao": "Data da entrada em operação",
+      "unidade": "data (dia)"
+    },
+    "desativada_em": {
+      "descricao": "Data da desativação (vazio: em operação)",
+      "unidade": "data (dia)"
+    },
+    "potencia_efetiva_mw": {
+      "descricao": "Potência efetiva da unidade, em MW",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a unidade existe para quem pergunta (entrada em operação)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cod_equipamento",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "entrada_em_operacao",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (o ONS regera o cadastro inteiro)",
+  "atraso": "A regra usa a data de entrada em operação (ou em teste, quando falta)"
+}

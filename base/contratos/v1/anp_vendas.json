@@ -1,0 +1,92 @@
+{
+  "tabela": "anp_vendas",
+  "modulo": "operacao_por_setor",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "grupo": {
+      "descricao": "liquidos, glp ou aviacao (o zip)",
+      "unidade": "texto"
+    },
+    "agente": {
+      "descricao": "Agente regulado (a distribuidora), como a ANP escreve",
+      "unidade": "texto"
+    },
+    "codigo_do_produto": {
+      "descricao": "Código do produto na ANP",
+      "unidade": "texto"
+    },
+    "nome_do_produto": {
+      "descricao": "Nome do produto",
+      "unidade": "texto"
+    },
+    "descricao_do_produto": {
+      "descricao": "Descrição do produto (vazio no histórico dos líquidos)",
+      "unidade": "texto"
+    },
+    "codigo_da_embalagem": {
+      "descricao": "Código da embalagem (só GLP)",
+      "unidade": "texto"
+    },
+    "regiao_origem": {
+      "descricao": "Região de origem",
+      "unidade": "texto"
+    },
+    "uf_origem": {
+      "descricao": "UF de origem",
+      "unidade": "texto"
+    },
+    "regiao_destino": {
+      "descricao": "Região de destino",
+      "unidade": "texto"
+    },
+    "uf_destino": {
+      "descricao": "UF de destino",
+      "unidade": "texto"
+    },
+    "mercado_destino": {
+      "descricao": "Mercado destinatário (posto, consumidor final...)",
+      "unidade": "texto"
+    },
+    "quantidade": {
+      "descricao": "Quantidade vendida, na unidade da coluna `unidade`",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "unidade": {
+      "descricao": "mil m³ ou mil ton, como no cabeçalho da ANP",
+      "unidade": "texto"
+    },
+    "arquivo": {
+      "descricao": "O CSV do zip de onde veio a linha",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "grupo",
+    "agente",
+    "codigo_do_produto",
+    "uf_origem",
+    "uf_destino",
+    "mercado_destino"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal",
+  "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)"
+}

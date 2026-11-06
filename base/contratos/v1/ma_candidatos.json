@@ -1,0 +1,91 @@
+{
+  "tabela": "ma_candidatos",
+  "modulo": "ma",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "codigo_cvm": {
+      "descricao": "Código da companhia na CVM",
+      "unidade": "texto"
+    },
+    "categoria": {
+      "descricao": "Categoria do IPE: Fato Relevante, Comunicado ao Mercado ou o edital de OPA",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "Tipo do IPE (vazio no fato relevante)",
+      "unidade": "texto"
+    },
+    "assunto": {
+      "descricao": "Assunto como a companhia preencheu",
+      "unidade": "texto"
+    },
+    "tipo_provavel": {
+      "descricao": "Pista do assunto: OPA, INC_ACOES, FUSAO, CISAO, INC_EMPRESA, JV, UPI, PRIVATIZACAO, ALIEN_CONTROLE, VENDA_ATIVO, AQUISICAO (controle ou minoritária) ou NEGOCIACAO (memorando, exclusividade); vazia no assunto genérico. Não é o tipo da operação: quem diz é o texto",
+      "unidade": "texto"
+    },
+    "evidencia": {
+      "descricao": "Por que entrou: assunto (o assunto dá o tipo provável), assunto_generico (fato relevante de assunto padrão ou vazio) ou categoria (edital de OPA)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência informada pela companhia",
+      "unidade": "data (dia)"
+    },
+    "publico_em": {
+      "descricao": "Entrega da versão do documento à CVM: quando ficou público para a base",
+      "unidade": "data (dia)"
+    },
+    "protocolo": {
+      "descricao": "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+      "unidade": "texto"
+    },
+    "versao": {
+      "descricao": "Versão do documento (reapresentação)",
+      "unidade": "número inteiro"
+    },
+    "link": {
+      "descricao": "Link do documento no sistema da CVM",
+      "unidade": "texto"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "link"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "publico_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "historico_desde": "2003-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária no servidor de casa (`scripts/montar_ma_candidatos.py`), depois do arquivista baixar o IPE do ano",
+  "atraso": "O documento vale a partir de `publico_em` (entrega da versão à CVM), nunca da `referencia` informada pela companhia"
+}

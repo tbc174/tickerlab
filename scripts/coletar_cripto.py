@@ -4,7 +4,7 @@
     python -m scripts.coletar_cripto kraken      (Kraken: os últimos 720 dias)
     python -m scripts.coletar_cripto cftc        (posições nos futuros de Bitcoin da CME)
     python -m scripts.coletar_cripto wikipedia   (acessos ao artigo "Bitcoin")
-    python -m scripts.coletar_cripto gdelt       (notícias; um dia por vez, 6 s entre pedidos)
+    python -m scripts.coletar_cripto gdelt       (notícias; 30 dias por pedido, 60 s entre pedidos)
     python -m scripts.coletar_cripto receita     (planilha de criptoativos da Receita)
     python -m scripts.coletar_cripto no          (nó do Bitcoin; cookie em BITCOIN_COOKIE)
     python -m scripts.coletar_cripto kraken-arquivo XBTUSD_1440.csv   (carga única do histórico)
@@ -14,6 +14,9 @@
 A base fica em `<TICKERLAB_ACERVO>/base/cripto/`. Cada arquivo baixado vai para o acervo do
 original e para o registro de coletas (`com_registro`). Qualquer falha devolve 1 (o Kuma avisa) e
 nada é tratado como dado ausente: a rodada seguinte pede de novo desde o último dia guardado.
+
+Roda: cron de casa pelo coletar-cripto.sh (a cada 10 min e rodadas marcadas) e pelo freio-bitcoin.sh
+(a cada 5 min); citado em coleta.py.
 """
 
 import argparse
@@ -37,7 +40,7 @@ from base.cripto.leitura import CadeiaInconsistente, ler_blocos
 from base.cripto.no_bitcoin import ClienteRPC, ErroDoNo
 from base.cripto.qualidade import VERSAO_DAS_REGRAS, AchadoCripto, rodar
 from base.cripto.reprodutivel import CHAVES, Original, comparar, nada_depois_de, refazer
-from src import acervo
+from src import acervo, rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import obter_engine
 from src.banco.modelo import coletas
@@ -45,7 +48,6 @@ from src.bcb import baixar_ptax
 
 log = logging.getLogger("coletar_cripto")
 
-AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
 TEMPO_LIMITE_EM_SEGUNDOS = 120
 VARIAVEL_DO_COOKIE = "BITCOIN_COOKIE"
 # fonte da linha de comando: (nome no registro de coletas, função de coleta)
@@ -86,9 +88,7 @@ def pasta_da_base() -> Path:
 
 
 def _baixar_da_fonte(url: str) -> bytes:
-    resposta = requests.get(
-        url, timeout=TEMPO_LIMITE_EM_SEGUNDOS, headers={"User-Agent": AGENTE}
-    )
+    resposta = rede.obter(url, timeout=TEMPO_LIMITE_EM_SEGUNDOS)
     resposta.raise_for_status()
     return resposta.content
 

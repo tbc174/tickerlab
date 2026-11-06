@@ -1,0 +1,125 @@
+{
+  "tabela": "anatel_acessos",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "servico": {
+      "descricao": "banda_larga_fixa, telefonia_movel ou tv_por_assinatura",
+      "unidade": "texto"
+    },
+    "recorte": {
+      "descricao": "completo; na móvel de 2005 a 2018, modalidade ou tecnologia",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da prestadora (14 dígitos; a chave da B13)",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da prestadora, como a Anatel escreve",
+      "unidade": "texto"
+    },
+    "grupo_economico": {
+      "descricao": "Grupo econômico, como a Anatel escreve",
+      "unidade": "texto"
+    },
+    "porte_da_prestadora": {
+      "descricao": "Grande ou pequeno porte",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF",
+      "unidade": "texto"
+    },
+    "regiao_pgo": {
+      "descricao": "Região do plano geral de outorgas (móvel até 2009)",
+      "unidade": "texto"
+    },
+    "codigo_nacional": {
+      "descricao": "DDD (móvel)",
+      "unidade": "texto"
+    },
+    "modalidade_de_cobranca": {
+      "descricao": "Pré-pago ou pós-pago (móvel)",
+      "unidade": "texto"
+    },
+    "tecnologia": {
+      "descricao": "Tecnologia (FTTH, cabo, GSM, LTE, DTH...)",
+      "unidade": "texto"
+    },
+    "geracao": {
+      "descricao": "Geração da tecnologia móvel (2G a 5G)",
+      "unidade": "texto"
+    },
+    "tipo_de_pessoa": {
+      "descricao": "Assinante pessoa física ou jurídica",
+      "unidade": "texto"
+    },
+    "tipo_de_produto": {
+      "descricao": "Tipo de produto (internet, voz, M2M...)",
+      "unidade": "texto"
+    },
+    "faixa_de_velocidade": {
+      "descricao": "Faixa de velocidade contratada (banda larga)",
+      "unidade": "texto"
+    },
+    "meio_de_acesso": {
+      "descricao": "Fibra, cabo coaxial, rádio, satélite...",
+      "unidade": "texto"
+    },
+    "tipo_de_acesso_tv": {
+      "descricao": "Tipo de acesso de TV por assinatura",
+      "unidade": "texto"
+    },
+    "acessos": {
+      "descricao": "Acessos em serviço no fim do mês, somados os municípios da UF",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "arquivo": {
+      "descricao": "O CSV da Anatel de onde veio a linha",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "servico",
+    "recorte",
+    "cnpj",
+    "uf",
+    "regiao_pgo",
+    "codigo_nacional",
+    "modalidade_de_cobranca",
+    "tecnologia",
+    "geracao",
+    "tipo_de_pessoa",
+    "tipo_de_produto",
+    "faixa_de_velocidade",
+    "meio_de_acesso",
+    "tipo_de_acesso_tv",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal",
+  "atraso": "Agosto/2026 estava publicado em 14/10/2026; a regra usa o fim do mês + 60 dias"
+}

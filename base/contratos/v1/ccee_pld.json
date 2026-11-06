@@ -1,0 +1,57 @@
+{
+  "tabela": "ccee_pld",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "granularidade": {
+      "descricao": "`hora`, `dia`, `mes` ou `semana_por_patamar`",
+      "unidade": "texto"
+    },
+    "submercado": {
+      "descricao": "Sudeste, Sul, Nordeste ou Norte, como a CCEE escreve",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Início do período a que o preço se refere (hora, dia, mês ou semana)",
+      "unidade": "data e hora (UTC)"
+    },
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "ordem": {
+      "descricao": "Posição entre as linhas da fonte que repetem a mesma referência (1 se única)",
+      "unidade": "número inteiro"
+    },
+    "periodo_de_comercializacao": {
+      "descricao": "Hora do mês (1 a 744) na fonte; vazio nas outras granularidades",
+      "unidade": "número inteiro"
+    },
+    "pld": {
+      "descricao": "Preço em R$/MWh",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (ver o atraso)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "granularidade",
+    "submercado",
+    "referencia",
+    "ordem"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Diária (a CCEE republica o arquivo do ano a cada dia útil)",
+  "atraso": "O preço do dia sai no dia anterior e a regra usa o dia + 1; a média do mês vale a partir de 2 dias depois do fim do mês; a semana, 7 dias depois do dia que a fonte marca"
+}

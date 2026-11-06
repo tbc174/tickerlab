@@ -5,30 +5,33 @@
     python -m scripts.arquivar_fontes semanal         (FIAGRO, FIDC, CRI/CRA, IBAMA, lista suja, GLEIF)
     python -m scripts.arquivar_fontes mensal          (CNPJ e PGFN, pesadas)
     python -m scripts.arquivar_fontes cvm-fiagro      (uma fonte só)
+    python -m scripts.arquivar_fontes b3-negocios     (negócios do pregão da B3; também às 22h)
 
 Cada arquivo vai para o acervo (`TICKERLAB_ACERVO`), para o registro de coletas e para o manifesto do
 dia. Saída: 0 tudo certo; 1 alguma falha (o Kuma avisa); 2 nada falhou, mas um termo de uso ou um
-catálogo mudou (aviso para alguém ler). Fonte desconhecida também sai com 2.
+catálogo mudou, ou uma página vigiada caiu no desafio anti-robô do site (aviso para alguém ler). Fonte desconhecida também sai com 2.
 
 Quando algo falha, a última linha da saída padrão é `FALHAS: fonte (motivo); ...`, curta, para o
 aviso do Kuma dizer o porquê (quem lê o e-mail nem sempre alcança o log do servidor).
+
+Roda: cron de casa pelo arquivar-fontes.sh (todo dia às 2h00 e 22h00; todo domingo às 3h00 e 4h00) e
+por outros scripts do servidor; citado em fontes.py.
 """
 
 import argparse
 import logging
 import sys
 import time
-from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
 
+from base.arquivo.cliente_http import ClienteHttp
 from base.arquivo.coleta import (
     ErroDeDescoberta,
     Fonte,
     FreioDeDisco,
-    Resposta,
     Resultado,
     arquivar,
 )
@@ -36,57 +39,15 @@ from base.arquivo.fontes import FONTES, GRUPOS, POR_ID
 from src import acervo
 
 log = logging.getLogger("arquivar_fontes")
+esperar = time.sleep  # só este módulo espera por aqui: os testes trocam este nome, não o `time.sleep` do processo
 
 # alguns portais bloqueiam por alguns minutos e depois liberam (o firewall do BC, 14/10/2026): uma
 # nova tentativa depois de esperar, nunca um laço
 ESPERA_PARA_TENTAR_DE_NOVO = 300
 
-AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
-TEMPO_LIMITE_EM_SEGUNDOS = 120
 OK, FALHA, AVISO = 0, 1, 2
 # o resumo vai na mensagem do Kuma (no endereço do push e no assunto do e-mail): curto
 TAMANHO_MAXIMO_DO_RESUMO = 300
-
-
-class ClienteHttp:
-    """O `Cliente` do arquivista com `requests`: um pedido por vez, com o nosso `User-Agent`."""
-
-    def __init__(self) -> None:
-        self.sessao = requests.Session()
-        self.sessao.headers["User-Agent"] = AGENTE
-
-    def ler(
-        self,
-        url: str,
-        *,
-        metodo: str = "GET",
-        cabecalhos: Mapping[str, str] | None = None,
-    ) -> Resposta:
-        resposta = self.sessao.request(
-            metodo,
-            url,
-            headers=dict(cabecalhos or {}),
-            timeout=TEMPO_LIMITE_EM_SEGUNDOS,
-        )
-        resposta.raise_for_status()
-        return Resposta(resposta.url, resposta.content, dict(resposta.headers))
-
-    def cabecalhos(self, url: str) -> Mapping[str, str]:
-        resposta = self.sessao.head(
-            url, allow_redirects=True, timeout=TEMPO_LIMITE_EM_SEGUNDOS
-        )
-        resposta.raise_for_status()
-        return dict(resposta.headers)
-
-    def baixar(self, url: str, destino: Path) -> Mapping[str, str]:
-        with self.sessao.get(
-            url, stream=True, timeout=TEMPO_LIMITE_EM_SEGUNDOS
-        ) as resposta:
-            resposta.raise_for_status()
-            with destino.open("wb") as arquivo:
-                for parte in resposta.iter_content(chunk_size=1024 * 1024):
-                    arquivo.write(parte)
-            return dict(resposta.headers)
 
 
 def _motivo(erro: Exception) -> str:
@@ -116,7 +77,7 @@ def _arquivar_com_nova_tentativa(
         log.warning(
             "%s: falhou; nova tentativa em %d s", fonte.id, ESPERA_PARA_TENTAR_DE_NOVO
         )
-        time.sleep(ESPERA_PARA_TENTAR_DE_NOVO)
+        esperar(ESPERA_PARA_TENTAR_DE_NOVO)
         return _uma_rodada(fonte, cliente, temporaria)
     except FreioDeDisco as erro:
         log.error("%s: %s", fonte.id, erro)
@@ -174,17 +135,25 @@ def main(argv: list[str] | None = None) -> int:
             problemas.append(f"{fonte.id} ({resultado})")
             continue
         log.info(
-            "%s: %d novos, %d iguais, %d sem mudança nos cabeçalhos, %d falhas",
+            "%s: %d novos, %d iguais, %d já guardados sem mudança, %d sem arquivo, %d falhas",
             fonte.id,
             resultado.novos,
             resultado.iguais,
             resultado.pulados,
+            resultado.sem_arquivo,
             len(resultado.falhas),
         )
         if resultado.falhas:
             problemas.append(
                 f"{fonte.id} ({len(resultado.falhas)} arquivos; 1º: {resultado.falhas[0]})"
             )
+        for url in resultado.bloqueadas:
+            log.warning(
+                "%s: desafio anti-robô em %s (sem cópia; ver com uma pessoa)",
+                fonte.id,
+                url,
+            )
+            mudou = True
         for url in resultado.mudaram:
             log.warning("%s: o texto mudou em %s (ler de novo)", fonte.id, url)
             mudou = True

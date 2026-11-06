@@ -1,0 +1,115 @@
+{
+ "resposta": {
+  "acontecimentos": [
+   {
+    "empresa": "Petrobras",
+    "fonte": "CVM",
+    "id": "cvm_ipe:exemplo-0",
+    "link_do_original": "https://www.rad.cvm.gov.br/exemplo-1",
+    "por_que_aparece": [
+     "Você acompanha PETR4 em: favoritos.",
+     "Fato Relevante: materialidade 60 de 100 para este tipo de documento.",
+     "O tema \"eventos\" não está entre os seus temas (pesa menos).",
+     "Publicado em 08/10/2026 (há 1 dia).",
+     "Fonte: CVM (documento entregue pela empresa)."
+    ],
+    "publicado_em": "2026-10-08",
+    "relevancia": 0.7485,
+    "ticker": "PETR4",
+    "tipo": "Fato Relevante",
+    "titulo": "Aquisição da Refinaria Exemplo"
+   },
+   {
+    "empresa": "Vale",
+    "fonte": "CVM",
+    "id": "cvm_ipe:exemplo-1",
+    "link_do_original": null,
+    "por_que_aparece": [
+     "Você acompanha VALE3 em: favoritos.",
+     "Comunicado ao Mercado: materialidade 60 de 100 para este tipo de documento.",
+     "O tema \"eventos\" não está entre os seus temas (pesa menos).",
+     "Publicado em 07/10/2026 (há 2 dias).",
+     "Fonte: CVM (documento entregue pela empresa)."
+    ],
+    "publicado_em": "2026-10-07",
+    "relevancia": 0.7471,
+    "ticker": "VALE3",
+    "tipo": "Comunicado ao Mercado",
+    "titulo": "Produção do trimestre"
+   },
+   {
+    "empresa": "Petrobras",
+    "fonte": "CVM",
+    "id": "cvm_ipe:exemplo-2",
+    "link_do_original": "https://www.rad.cvm.gov.br/exemplo-3",
+    "por_que_aparece": [
+     "Você acompanha PETR4 em: favoritos.",
+     "Aviso aos Acionistas: materialidade 60 de 100 para este tipo de documento.",
+     "O tema \"eventos\" não está entre os seus temas (pesa menos).",
+     "Publicado em 20/09/2026 (há 19 dias).",
+     "Fonte: CVM (documento entregue pela empresa)."
+    ],
+    "publicado_em": "2026-09-20",
+    "relevancia": 0.7221,
+    "ticker": "PETR4",
+    "tipo": "Aviso aos Acionistas",
+    "titulo": "Aviso aos Acionistas de Petrobras (sem assunto no cadastro)."
+   }
+  ],
+  "avisos_dos_ativos": [
+   "O Pulse acompanha até 30 ativos; 3 ficaram de fora (valem os favoritos, depois a carteira, as listas e as estratégias)."
+  ],
+  "nota_da_variacao": "Do último fechamento que já existia na hora da sua visita até o último fechamento de hoje, na moeda do ativo e sem os proventos.",
+  "sem_ativos": "Ainda não há nenhum ativo guardado. O Pulse acompanha os seus favoritos, as listas do Research, a carteira guardada (Pro) e os ativos das estratégias salvas.",
+  "sem_variacao": [
+   "ZZZZ3"
+  ],
+  "variacoes": [
+   {
+    "ate": "2026-10-09",
+    "de": "2026-10-05",
+    "por_que_aparece": [
+     "favoritos"
+    ],
+    "ticker": "VALE3",
+    "variacao": -0.0490196078431373
+   },
+   {
+    "ate": "2026-10-09",
+    "de": "2026-10-05",
+    "por_que_aparece": [
+     "Minha carteira"
+    ],
+    "ticker": "ITUB4",
+    "variacao": 0.02000808407437349
+   },
+   {
+    "ate": "2026-10-09",
+    "de": "2026-10-05",
+    "por_que_aparece": [
+     "favoritos"
+    ],
+    "ticker": "PETR4",
+    "variacao": 0.011560693641618602
+   },
+   {
+    "ate": "2026-10-09",
+    "de": "2026-10-05",
+    "por_que_aparece": [
+     "lista Bancos"
+    ],
+    "ticker": "BBDC4",
+    "variacao": -0.010531135531135605
+   },
+   {
+    "ate": "2026-10-09",
+    "de": "2026-10-05",
+    "por_que_aparece": [
+     "estratégias salvas"
+    ],
+    "ticker": "WEGE3",
+    "variacao": 0.004292682926829272
+   }
+  ]
+ }
+}

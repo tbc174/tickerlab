@@ -6,6 +6,8 @@
 Roda fora do app (no servidor, uma vez por dia); o app só lê o que foi gravado. Usa o banco de
 `TICKERLAB_DATABASE_URL` (o mesmo do app) e aplica as migrações antes. Se a CVM falhar, não apaga
 nada e sai com erro (o próximo dia tenta de novo).
+
+Roda: cron do VPS (todo dia às 7h00); citado em eventos.py, acontecimentos.py.
 """
 
 import argparse
@@ -17,6 +19,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from src import eventos as ev
+from src import rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.eventos import gravar_eventos, gravar_tickers
@@ -28,7 +31,7 @@ MAX_ANOS_DE_EVENTOS = 5  # mais que isso pesa no banco sem ajudar o Research
 
 
 def _baixar_da_fonte(url: str) -> bytes:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=180, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     resposta.raise_for_status()

@@ -63,6 +63,12 @@
       "Recurso": "Carteira no Research"
     },
     {
+      "Gratuito": "Não",
+      "Plus": "Não",
+      "Pro": "Sim",
+      "Recurso": "Dossiê da base"
+    },
+    {
       "Gratuito": "0",
       "Plus": "10",
       "Pro": "50",

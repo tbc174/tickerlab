@@ -5,11 +5,19 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
   da fonte: uma linha por instituição, relatório, conta e coluna. O inventário de 14/10/2026 achou:
   - tipo 1 (conglomerado prudencial) desde mar/2014; tipos 2 (conglomerado financeiro) e 3
     (instituição individual) desde mar/2000; o tipo 4 (câmbio) e o relatório 15 (câmbio) ficam fora;
+  - só o prudencial tem as carteiras de crédito (relatórios 5 a 16); o financeiro e o individual têm
+    os relatórios 1 a 4 (o 5 até 2005) e respondem vazio aos outros. Medido em 14/10/2026: ~193 MB de
+    JSON por trimestre no prudencial e ~58 MB nos outros dois; ~50× menor em gzip no acervo;
   - em 2000, 34 linhas de total sem código de instituição (somas da fonte): ficam fora;
   - o nome da coluna vem com a letra da nota numa linha nova ("Disponibilidades \\n(a)"): vira um
     espaço só.
 - **"Como era na data":** jun/2026 já estava publicado em 14/10 (106 dias) e set/2026 não; a base usa
-  data-base + 120 dias. Cada revisão do BC vira versão (o SHA-256 da resposta fica no manifesto).
+  data-base + 120 dias. O BC revisa datas-base já publicadas: cada baixada do arquivista é uma coleta
+  e a tabela guarda uma linha por **valor diferente** de cada chave (`base/setoriais/revisoes.py`). O
+  primeiro valor vale desde o prazo; a revisão vale só desde o dia em que foi vista (`visto_em`), nunca
+  antes (ADR 0027, exigência 3). Limite: o que o BC revisou antes da 1ª coleta guardada não aparece, e
+  a linha da primeira coleta sem dia (acervo desligado) fica com `visto_em` vazio. A versão anterior da
+  tabela continua guardada como `<AAAAMM>.v<N>` e o SHA-256 de cada resposta fica no manifesto.
 - **Ligação com a bolsa:** o cadastro de cada data dá a raiz do CNPJ do líder do conglomerado (ou o
   próprio código, para a instituição individual); a raiz liga ao CNPJ da empresa do FCA e aos tickers
   que valiam no ano (`base/fca.py`). Antes de 2010, sem FCA, a ligação chega ao CNPJ mas não à ação.
@@ -17,8 +25,13 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
 
 import json
 import re
+from collections.abc import Sequence
 
 import pandas as pd
+
+from base.cnpj import raiz as raiz_do_cnpj
+from base.fca import vale_na_data
+from base.setoriais import revisoes
 
 API = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/"
 PRIMEIRO_ANO = 2000
@@ -43,7 +56,18 @@ RELATORIOS = (
 )  # 15 (câmbio) fica fora
 MESES_DA_DATA_BASE = (3, 6, 9, 12)
 DIAS_ATE_FICAR_PUBLICO = 120
-DIGITOS_DA_RAIZ = 8
+# por onde a instituição chegou à empresa da bolsa (série 3, PR 8)
+PELO_PROPRIO_CNPJ, PELO_LIDER = "próprio CNPJ", "líder do conglomerado"
+CHAVE_DOS_VALORES = (
+    "data_base",
+    "tipo_instituicao",
+    "cod_inst",
+    "relatorio",
+    "grupo",
+    "conta",
+    "coluna",
+)
+CHAVE_DO_CADASTRO = ("data_base", "cod_inst")
 COLUNAS_DOS_VALORES = {
     "TipoInstituicao": "tipo_instituicao",
     "CodInst": "cod_inst",
@@ -149,17 +173,56 @@ def disponivel_em(tabela: pd.DataFrame) -> pd.Series:
     return tabela["data_base"] + pd.Timedelta(days=DIAS_ATE_FICAR_PUBLICO)
 
 
+def valores_com_revisoes(
+    coletas: Sequence[tuple[pd.Timestamp, pd.DataFrame]],
+) -> pd.DataFrame:
+    """As coletas de um relatório (dia da baixada, `ler_valores`) numa tabela com as revisões do BC.
+
+    Sem o dia (acervo desligado) a coleta entra com `visto_em` vazio: o valor vale desde o prazo."""
+    com_prazo = [
+        (dia, tabela.assign(disponivel_em=disponivel_em(tabela)))
+        for dia, tabela in coletas
+    ]
+    return revisoes.juntar_coletas(com_prazo, list(CHAVE_DOS_VALORES))
+
+
+def cadastro_com_revisoes(
+    coletas: Sequence[tuple[pd.Timestamp, pd.DataFrame]],
+) -> pd.DataFrame:
+    """As coletas do cadastro de uma data-base (dia da baixada, `ler_cadastro`) numa tabela com as
+    revisões do BC, como nos valores: o nome ou o conglomerado revisado vale desde o dia em que foi visto.
+
+    Sem o dia (acervo desligado) a coleta entra com `visto_em` vazio: o cadastro vale desde o prazo."""
+    com_prazo = [
+        (dia, tabela.assign(disponivel_em=disponivel_em(tabela)))
+        for dia, tabela in coletas
+    ]
+    return revisoes.juntar_coletas(com_prazo, list(CHAVE_DO_CADASTRO))
+
+
+def cadastro_mais_novo(cadastro: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por instituição e data-base: a de `visto_em` mais novo. Para a ligação com a bolsa e a
+    rede, que são montadas de hoje; o "como era na data" do cadastro usa `revisoes.como_era_em`."""
+    if "visto_em" not in cadastro.columns:
+        return cadastro
+    ordem = cadastro.sort_values("visto_em", kind="stable", na_position="first")
+    return ordem.drop_duplicates(list(CHAVE_DO_CADASTRO), keep="last").sort_index()
+
+
 def _raiz(cnpj: pd.Series) -> pd.Series:
-    return cnpj.str.replace(r"\D", "", regex=True).str[:DIGITOS_DA_RAIZ]
+    return cnpj.map(raiz_do_cnpj)
 
 
 def ligacao_dos_bancos(
     cadastro: pd.DataFrame, emissores: pd.DataFrame, tickers: pd.DataFrame
 ) -> pd.DataFrame:
-    """Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano da data-base.
+    """Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam na data-base.
 
-    `emissores` e `tickers` são as tabelas da `scripts/carga_fca.py`. Uma raiz com mais de um CNPJ
-    no FCA (não acontece com os bancos de hoje) fica sem ligação, como os conflitos do FCA.
+    `emissores` e `tickers` são as tabelas da `scripts/carga_fca.py`. A instituição individual cujo
+    código é o próprio CNPJ de uma empresa da bolsa liga por ele (o Banco PAN, do conglomerado do
+    BTG, tem a BPAN4); as outras, pela raiz do CNPJ do líder do conglomerado. Uma raiz com mais de um
+    CNPJ no FCA (não acontece com os bancos de hoje) fica sem ligação, como os conflitos do FCA. O
+    ticker vale na data-base só se o FCA que o trouxe já tinha sido entregue (`fca.vale_na_data`).
     """
     empresas = (
         emissores.loc[~emissores["conflito"], ["cnpj"]]
@@ -167,27 +230,27 @@ def ligacao_dos_bancos(
         .assign(cnpj_raiz=lambda t: _raiz(t["cnpj"]))
     )
     unicas = empresas[~empresas["cnpj_raiz"].duplicated(keep=False)]
-    ligacao = cadastro[["data_base", "cod_inst", "instituicao", "cnpj_raiz"]].merge(
-        unicas, on="cnpj_raiz", how="left"
+    cnpj_da_raiz = unicas.set_index("cnpj_raiz")["cnpj"]
+    ligacao = cadastro[["data_base", "cod_inst", "instituicao", "cnpj_raiz"]].copy()
+    proprio = ligacao["cod_inst"].where(ligacao["cod_inst"].str.fullmatch(r"\d{8}"))
+    pelo_proprio = proprio.map(cnpj_da_raiz)
+    pelo_lider = ligacao["cnpj_raiz"].map(cnpj_da_raiz)
+    ligacao["cnpj"] = pelo_proprio.fillna(pelo_lider)
+    ligacao["ligado_por"] = (
+        pd.Series(PELO_LIDER, index=ligacao.index)
+        .where(pelo_lider.notna())
+        .mask(pelo_proprio.notna(), PELO_PROPRIO_CNPJ)
     )
-    ano = ligacao["data_base"].dt.year
-    vigentes = (
-        ligacao[["cnpj"]]
-        .assign(ano=ano)
-        .merge(tickers[["codigo", "cnpj", "primeiro_visto", "ultimo_visto"]], on="cnpj")
+    pares = (
+        ligacao[["cnpj", "data_base"]]
+        .drop_duplicates()
+        .merge(tickers[["codigo", "cnpj", "primeiro_visto", "valido_ate"]], on="cnpj")
     )
-    vigentes = vigentes[
-        (vigentes["primeiro_visto"].dt.year <= vigentes["ano"])
-        & (vigentes["ultimo_visto"].dt.year >= vigentes["ano"])
-    ]
+    vigentes = pares[vale_na_data(pares, pares["data_base"])]
     codigos = (
-        vigentes.groupby(["cnpj", "ano"])["codigo"]
+        vigentes.groupby(["cnpj", "data_base"])["codigo"]
         .agg(lambda c: ",".join(sorted(set(c))))
         .rename("tickers")
         .reset_index()
     )
-    return (
-        ligacao.assign(ano=ano)
-        .merge(codigos, on=["cnpj", "ano"], how="left")
-        .drop(columns="ano")
-    )
+    return ligacao.merge(codigos, on=["cnpj", "data_base"], how="left")

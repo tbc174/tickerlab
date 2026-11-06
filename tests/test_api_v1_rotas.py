@@ -1,6 +1,8 @@
 """As rotas de leitura da API v1: os mesmos números que a tela, com os dados de exemplo."""
 
+import json
 import re
+from dataclasses import asdict
 from datetime import UTC, date, datetime
 
 import pandas as pd
@@ -8,13 +10,24 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from src import analises, api, cobranca, compartilhamentos, ficha, paginas, planos
+from src import (
+    analises,
+    api,
+    cobranca,
+    compartilhamentos,
+    ficha,
+    paginas,
+    planos,
+    precos_de_referencia,
+    topicos,
+)
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
 from src.banco import compartilhamentos as links
+from src.banco import leituras as repo_leituras
 from src.banco import series as acervo
 from src.banco import tentativas
 from src.banco.dados_do_usuario import (
@@ -27,6 +40,12 @@ from src.banco.dados_do_usuario import (
 from src.banco.eventos import Evento
 from src.banco.modelo import PLANOS, assinaturas
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
+from src.commodities import painel_de_precos
+from src.commodities.cafe.pacote_do_mapa import (
+    gravar_pacote,
+    montar_vista,
+    vista_em_dicionario,
+)
 from src.conformidade import exportar_meus_dados, registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
@@ -37,10 +56,10 @@ from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
     chaves_publicas,
-    com_token,
+    da_sessao,
     gerar_chave,
-    token,
 )
+from tests.test_commodities_cafe_pacote_do_mapa import pacote_de_exemplo
 from tests.test_compartilhamentos import _congelada
 
 TAXA = 0.10
@@ -67,7 +86,7 @@ def cliente(banco, monkeypatch, chave):
     with banco.begin() as conexao:
         ana = entrar(conexao, "ana", "ana@exemplo.com")[0]
         registrar_aceite(conexao, ana.id)
-    cliente = TestClient(app, headers=com_token(token(chave)))
+    cliente = TestClient(app, headers=da_sessao(banco, ana))
     yield cliente
 
 
@@ -338,6 +357,40 @@ def test_juros_e_inflacao_sem_series_coletadas_503(cliente, no_dia):
     assert "coletadas" in resposta.json()["detail"]
 
 
+@pytest.fixture
+def pacote_do_mapa_gravado(tmp_path, monkeypatch):
+    caminho = tmp_path / "mapa_do_cafe.json"
+    pacote = pacote_de_exemplo()
+    gravar_pacote(pacote, caminho)
+    monkeypatch.setenv("TICKERLAB_MAPA_DO_CAFE", str(caminho))
+    monkeypatch.setattr(rotas, "hoje_no_brasil", lambda: date(2026, 11, 5))
+    return pacote
+
+
+def test_mapa_do_cafe_igual_ao_pacote(cliente, pacote_do_mapa_gravado):
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa", params={"tipo": "conilon"})
+    assert resposta.status_code == 200, resposta.text
+    vista = montar_vista(pacote_do_mapa_gravado, "conilon", 11)
+    assert resposta.json() == json.loads(json.dumps(vista_em_dicionario(vista)))
+    assert resposta.json()["malha"]["type"] == "FeatureCollection"
+
+
+def test_mapa_do_cafe_comeca_no_arabica(cliente, pacote_do_mapa_gravado):
+    assert cliente.get("/api/v1/commodities/cafe/mapa").json()["tipo"] == "arabica"
+
+
+def test_mapa_do_cafe_recusa_o_total(cliente, pacote_do_mapa_gravado):
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa", params={"tipo": "total"})
+    assert resposta.status_code == 422
+
+
+def test_mapa_do_cafe_sem_pacote_503(cliente, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_MAPA_DO_CAFE", str(tmp_path / "nao-existe.json"))
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa")
+    assert resposta.status_code == 503
+    assert "mapa do café" in resposta.json()["detail"]
+
+
 def _eventos_no_periodo(fechamento):
     dias = fechamento.index
     return [
@@ -383,6 +436,30 @@ def test_linha_do_tempo_igual_a_tela(cliente, monkeypatch):
     assert len(dados["marcos"]) == 2 and dados["fora_do_grafico"] == 1
     assert dados["aviso"] == ldt.AVISO_DA_LINHA
     assert dados["texto_fora_do_grafico"] == ldt.texto_fora_do_grafico(1)
+
+
+def test_linha_do_tempo_usa_o_assunto_lido_do_texto(cliente, banco, monkeypatch):
+    """Leitor v2: o fato de título genérico ganha o assunto que a leitura diária achou no texto."""
+    eventos = _eventos_no_periodo(
+        _fechamento()
+    )  # títulos "Assunto 10"...: sem assunto pelo título
+    monkeypatch.setattr(rotas, "eventos_dos_tickers", lambda *_a, **_k: eventos)
+    lido = topicos.LeituraDoTopico(
+        "AQUISICAO", (), "adquiriu a Empresa X", "regra_texto", "1"
+    )
+    with banco.begin() as c:
+        repo_leituras.gravar_leitura(
+            c, "cvm_ipe", "p-10", repo_leituras.TOPICO, "cnpj", None, asdict(lido),
+            versao=topicos.VERSAO,
+        )  # fmt: skip
+    marcos = cliente.get(
+        "/api/v1/linha-do-tempo",
+        params={"ticker": "PETR4.SA", "materialidade_minima": 50},
+    ).json()["linha_do_tempo"]["marcos"]
+    assert [(m["topico"], m["topico_nome"]) for m in marcos] == [
+        ("AQUISICAO", "Aquisição"),
+        ("", ""),
+    ]
 
 
 def test_linha_do_tempo_so_em_base_100(cliente, monkeypatch):
@@ -525,7 +602,11 @@ def test_toda_rota_da_v1_tem_contrato_ou_e_da_conta():
         caminho = rota.path  # type: ignore[attr-defined]
         if caminho in ROTAS_PUBLICAS:
             continue
-        assert caminho in paginas.POR_ROTA or caminho in acesso.ROTAS_DA_CONTA, caminho
+        assert (
+            caminho in paginas.POR_ROTA
+            or caminho in acesso.ROTAS_DA_CONTA
+            or acesso.ROTAS_DE_ARQUIVO.get(caminho) in paginas.POR_ROTA
+        ), caminho
         dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
         assert acesso.conta_com_acesso in dependencias, caminho
 
@@ -633,7 +714,7 @@ def test_as_tentativas_de_uma_conta_nao_contam_na_outra(cliente, banco, chave):
     da_bia = cliente.post(
         "/api/v1/backtest",
         json=PEDIDO_DA_FICHA,
-        headers=com_token(token(chave, sub="bia", email="bia@exemplo.com")),
+        headers=da_sessao(banco, bia),
     )
     assert da_bia.status_code == 200, da_bia.text
     assert da_bia.json()["ficha"]["tentativas_da_pessoa"] == 1
@@ -736,6 +817,21 @@ def _id_da_ana_no(banco):
         ana = buscar_por_google_sub(conexao, "ana")
     assert ana is not None
     return ana.id
+
+
+def test_boas_vindas_do_beta_trazem_o_roteiro_da_pagina(cliente):
+    resposta = cliente.get("/api/v1/beta/boas-vindas")
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert [p["url"] for p in dados["roteiro"]][:3] == [
+        "relatorio-do-setor",
+        "relatorio-empresa",
+        "busca-por-cnpj",
+    ]
+    assert (
+        dados["total_de_minutos"] == sum(p["minutos"] for p in dados["roteiro"]) == 10
+    )
+    assert "recomendação de investimento" in dados["sobre_o_beta"]
 
 
 def test_meu_plano_mostra_o_plano_e_o_uso(cliente, banco):
@@ -873,22 +969,28 @@ def stripe_de_teste(monkeypatch):
         monkeypatch.setenv(nome, valor)
     chamadas = []
 
-    def pagina(usuario_id, email, id_do_cliente=None, caminho_de_volta="/", **_):
-        chamadas.append(("pagina", usuario_id, email, id_do_cliente, caminho_de_volta))
+    def pagina(motor, usuario_id, email, caminho_de_volta="/", **_):
+        chamadas.append(("pagina", usuario_id, email, caminho_de_volta))
         return CHECKOUT
 
     def portal(id_do_cliente, caminho_de_volta="/", **_):
         chamadas.append(("portal", id_do_cliente, caminho_de_volta))
         return PORTAL
 
-    monkeypatch.setattr(cobranca, "criar_pagina_de_pagamento", pagina)
+    monkeypatch.setattr(cobranca, "abrir_pagamento", pagina)
     monkeypatch.setattr(cobranca, "criar_portal_da_assinatura", portal)
     return chamadas
 
 
 def _ana_admin(banco):
     with banco.begin() as conexao:
-        entrar(conexao, "ana", "ana@exemplo.com", emails_de_admin=("ana@exemplo.com",))
+        entrar(
+            conexao,
+            "ana",
+            "ana@exemplo.com",
+            emails_de_admin=("ana@exemplo.com",),
+            email_confirmado=True,
+        )
 
 
 def _assinatura_da_ana(banco, cliente="cus_ana"):
@@ -932,15 +1034,30 @@ def test_admin_assina_e_volta_para_os_planos_do_app_novo(
     assert resposta.status_code == 200, resposta.text
     assert resposta.json() == {"url": CHECKOUT}
     assert stripe_de_teste == [
-        ("pagina", _id_da_ana_no(banco), "ana@exemplo.com", None, "/novo/planos")
+        ("pagina", _id_da_ana_no(banco), "ana@exemplo.com", "/planos")
     ]
 
 
-def test_quem_ja_e_cliente_reusa_o_cliente_do_stripe(cliente, banco, stripe_de_teste):
+def test_rebaixada_com_assinatura_viva_gerencia_e_nao_assina_de_novo(
+    cliente, banco, stripe_de_teste
+):
+    """Achados 1b e 1d do Codex (ADR 0091): um segundo Checkout daria a segunda assinatura."""
     _ana_admin(banco)
     _assinatura_da_ana(banco)
-    cliente.post("/api/v1/pagamento-da-assinatura", json={})
-    assert stripe_de_teste[0][3] == "cus_ana"
+    with banco.begin() as conexao:
+        conexao.execute(sa.update(assinaturas).values(stripe_subscription_id="sub_ana"))
+    assert cliente.get("/api/v1/meu-plano").json()["acao"] == "gerenciar"
+    assert cliente.post("/api/v1/pagamento-da-assinatura", json={}).status_code == 409
+    assert cliente.post("/api/v1/portal-da-assinatura", json={}).status_code == 200
+    assert stripe_de_teste == [("portal", "cus_ana", "/planos")]
+
+
+def test_quem_ja_assinou_e_cancelou_assina_de_novo(cliente, banco, stripe_de_teste):
+    _ana_admin(banco)
+    _assinatura_da_ana(banco)
+    with banco.begin() as conexao:
+        conexao.execute(sa.update(assinaturas).values(status="canceled"))
+    assert cliente.post("/api/v1/pagamento-da-assinatura", json={}).status_code == 200
 
 
 def test_conta_comum_nao_cria_pagamento(cliente, banco, stripe_de_teste):
@@ -973,7 +1090,7 @@ def test_assinante_abre_o_portal(cliente, banco, stripe_de_teste):
     resposta = cliente.post("/api/v1/portal-da-assinatura", json={})
     assert resposta.status_code == 200, resposta.text
     assert resposta.json() == {"url": PORTAL}
-    assert stripe_de_teste == [("portal", "cus_ana", "/novo/planos")]
+    assert stripe_de_teste == [("portal", "cus_ana", "/planos")]
 
 
 def test_sem_assinatura_nao_ha_portal(cliente, banco, stripe_de_teste):
@@ -993,3 +1110,203 @@ def test_o_portal_e_so_da_assinatura_da_conta_do_token(cliente, banco, stripe_de
         )
     assert cliente.post("/api/v1/portal-da-assinatura", json={}).status_code == 404
     assert stripe_de_teste == []
+
+
+# --- relatório da empresa com o dossiê da base (PR 4 do plano do dossiê) ---
+
+
+def _com_a_petrobras_coletada(banco, tmp_path, monkeypatch):
+    from tests.test_fundamentos_no_app import _coletar
+    from tests.test_relatorio_empresa_no_app import _ficha_da_petrobras
+
+    _coletar(banco)
+    _ficha_da_petrobras(tmp_path, monkeypatch)
+
+
+def _textos_da_resposta(valor) -> str:
+    return json.dumps(valor, ensure_ascii=False)
+
+
+def test_relatorio_empresa_do_pro_traz_as_secoes_da_base(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "pro")
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "petr4"})
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert dados["ticker"] == "PETR4.SA" and dados["cnpj"] == "33.000.167/0001-01"
+    secoes = {s["chave"]: s for s in dados["secoes"]}
+    base = [s for s in dados["secoes"] if s["titulo"] == "Auditor e controladas"]
+    assert len(base) == 1 and base[0]["trancada"] is False
+    assert "R$ 495,2 mi" in [i["texto"] for s in dados["secoes"] for i in s["itens"]]
+    fundos = [t for s in dados["secoes"] for t in s["tabelas"]]
+    assert "Fundos com a empresa, mês a mês" in [t["titulo"] for t in fundos]
+    assert all(len(t["colunas"]) == len(l) for t in fundos for l in t["linhas"])
+    assert secoes["limites"]["paragrafos"]
+
+
+def test_relatorio_empresa_sem_analise_gerada_devolve_analise_nula(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    monkeypatch.setenv("TICKERLAB_ANALISES", str(tmp_path / "sem-analises"))
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["analise"] is None
+
+
+def test_relatorio_empresa_do_gratuito_vem_trancado_sem_numeros(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    trancadas = [s for s in dados["secoes"] if s["trancada"]]
+    assert [s["titulo"] for s in trancadas][:2] == [
+        "Ofertas e fundos",
+        "Auditor e controladas",
+    ]
+    assert trancadas and all(
+        not s["itens"] and not s["tabelas"] and s["paragrafos"] for s in trancadas
+    )
+    texto = _textos_da_resposta(trancadas)
+    assert "R$ 495,2 mi" not in texto and "PRICEWATERHOUSECOOPERS" not in texto
+    assert "PRICEWATERHOUSECOOPERS" not in _textos_da_resposta(dados)
+
+
+def test_relatorio_empresa_do_plus_tambem_vem_trancado(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "plus")
+    dados = cliente.get(
+        "/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"}
+    ).json()
+    assert any(s["trancada"] for s in dados["secoes"])
+    assert "PRICEWATERHOUSECOOPERS" not in _textos_da_resposta(dados)
+
+
+def test_relatorio_empresa_de_ticker_sem_empresa_da_404(cliente):
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "ZZZZ9.SA"})
+    assert resposta.status_code == 404
+
+
+def test_relatorio_empresa_exige_ticker(cliente):
+    assert cliente.get("/api/v1/relatorio-empresa").status_code == 422
+
+
+# --- Painel do café (PR 11 do plano do café; a tela só existe no React) ---------------------
+
+
+@pytest.fixture
+def cafe_semeado(banco, monkeypatch):
+    from src.commodities.cafe import painel as painel_do_cafe
+    from tests.test_painel_do_cafe import semear_acervo, tabelas_de_exemplo
+
+    with banco.begin() as conexao:
+        semear_acervo(conexao)
+    monkeypatch.setattr(painel_do_cafe, "tabelas_pela_porta", tabelas_de_exemplo)
+    return painel_do_cafe
+
+
+@pytest.mark.parametrize("tipo", ["arabica", "conilon"])
+def test_painel_do_cafe_igual_ao_montar_painel(
+    cliente, banco, no_dia, cafe_semeado, tipo
+):
+    resposta = cliente.get("/api/v1/painel-do-cafe", params={"tipo": tipo})
+    assert resposta.status_code == 200, resposta.text
+    with banco.connect() as conexao:
+        lido = cafe_semeado.montar_painel(
+            conexao, tipo, HOJE, tabelas=cafe_semeado.tabelas_pela_porta()
+        )
+    assert resposta.json() == _json(esquemas.de_painel_do_cafe(lido))
+    dados = resposta.json()
+    assert dados["tipo"] == tipo
+    assert dados["aviso_diario"] == cafe_semeado.AVISO_DIARIO
+    assert dados["preco_de_referencia"]["conteudo"] is not None
+
+
+def test_painel_do_cafe_com_regiao_escolhida(cliente, no_dia, cafe_semeado):
+    regiao = cafe_semeado.regiao_padrao("conilon").id
+    resposta = cliente.get(
+        "/api/v1/painel-do-cafe", params={"tipo": "conilon", "regiao": regiao}
+    )
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["regiao"] == regiao
+
+
+@pytest.mark.parametrize(
+    "params", [{"tipo": "robusta"}, {"regiao": "nao-existe"}], ids=["tipo", "regiao"]
+)
+def test_painel_do_cafe_recusa_tipo_ou_regiao_desconhecidos_422(
+    cliente, no_dia, params
+):
+    resposta = cliente.get("/api/v1/painel-do-cafe", params=params)
+    assert resposta.status_code == 422
+
+
+def test_painel_do_cafe_exige_login(banco, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
+    cliente_sem_login = TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
+    assert cliente_sem_login.get("/api/v1/painel-do-cafe").status_code == 401
+
+
+# --- Preços de referência (ADR 0062, Emenda 2: a tela vai para o React) -------------------
+
+
+def _semear_precos_de_referencia(banco):
+    meses = pd.date_range("2025-08-01", "2026-09-01", freq="MS")
+    valores = pd.Series([float(v) for v in range(1, len(meses) + 1)], index=meses)
+    codigos = [f"bm-pink-{c}" for c in painel_de_precos.CHAVES_DO_PAINEL]
+    codigos += [f"fmi-{c}" for c in precos_de_referencia.COMPARAVEIS]
+    with banco.begin() as conexao:
+        for codigo in codigos:
+            acervo.garantir_serie(conexao, precos_de_referencia.serie_do_acervo(codigo))
+            acervo.gravar(conexao, codigo, valores, date(2026, 10, 5))
+
+
+def test_precos_de_referencia_igual_a_tela(cliente, banco, no_dia):
+    _semear_precos_de_referencia(banco)
+    resposta = cliente.get("/api/v1/precos-de-referencia")
+    assert resposta.status_code == 200, resposta.text
+    with banco.connect() as conexao:
+        lido = painel_de_precos.montar_painel(conexao, HOJE)
+    assert resposta.json() == _json(esquemas.de_precos_de_referencia(lido, HOJE))
+    dados = resposta.json()
+    assert dados["aviso_diario"] == painel_de_precos.AVISO_DIARIO
+    assert dados["atribuicao"] == painel_de_precos.ATRIBUICAO
+    itens = {i["chave"]: i for i in dados["itens"]}
+    assert list(itens) == list(painel_de_precos.CHAVES_DO_PAINEL)
+    assert itens["ureia"]["texto"] == "14,00"
+    assert itens["ureia"]["legenda"] == "Média de 09/2026, Pink Sheet do Banco Mundial."
+    assert itens["ureia"]["nota_das_fontes"] == painel_de_precos.NOTA_FONTES_DIFEREM
+    assert itens["cafe-arabica"]["com_fmi"] is True
+    assert dados["spread"], "arábica e robusta semeados: o spread existe"
+
+
+def test_precos_de_referencia_sem_series_coletadas_503(cliente, no_dia):
+    resposta = cliente.get("/api/v1/precos-de-referencia")
+    assert resposta.status_code == 503
+    assert "coletados" in resposta.json()["detail"]
+    assert (
+        "python -m" not in resposta.json()["detail"]
+    )  # comando interno não vai a quem usa
+
+
+def test_relatorio_empresa_com_a_trava_desligada_nem_pede_o_preco(
+    cliente, banco, tmp_path, monkeypatch
+):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026: com TICKERLAB_PRECO_NO_RELATORIO=0 a ficha
+    não vai ao Yahoo (antes buscava, guardava no cache e só depois escondia o número)."""
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    pedidos = []
+    monkeypatch.setattr(contexto, "carregar_dados", lambda *a: pedidos.append(a))
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    assert pedidos == []
+    assert not any("Yahoo" in f for f in resposta.json()["fontes"])
