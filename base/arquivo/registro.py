@@ -104,8 +104,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 # rodada 1 da pesquisa de dados escondidos (licencas-por-fonte.md): BCB e Tesouro Transparente
 # relidos em 22/10/2026, depois da auditoria; vale o dia mais novo
 TERMOS_LIDOS_EM |= dict.fromkeys(("bcb", "tesouro"), date(2026, 10, 22))
-# fontes pouco visíveis (ADR 0124): rodapés do gov.br e páginas dos PDFs lidos em 04/11/2026
-TERMOS_LIDOS_EM |= dict.fromkeys(("sudeco", "sudam", "divida"), date(2026, 11, 4))
+# fontes pouco visíveis (ADR 0124): rodapés do gov.br da Sudeco e da Sudam lidos em 04/11/2026; a
+# família "divida" fica sem data porque os termos dos sites dos PDFs não foram lidos um a um
+TERMOS_LIDOS_EM |= dict.fromkeys(("sudeco", "sudam"), date(2026, 11, 4))
 # lote setoriais Brasil (licencas-por-fonte.md): as licenças lidas na rodada 3 (ANS, ANAC), na
 # rodada 1 (EPE, INEP, Senatran, INPI, ANEEL e Comex Stat); Anatel e ANP seguem o balanço prévio de
 # 14/10/2026 (licença declarada no conjunto do dados.gov.br)

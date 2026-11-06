@@ -11,7 +11,7 @@ from base import fatos_documentais
 from base.arquivo import fontes, lote_documentais, registro
 from base.licenca import familia_do_endereco
 from src.banco import coletas
-from src.banco.coletas import Guarda
+from src.banco.coletas import Coleta, Guarda
 
 FAMILIAS_NOVAS = ("sudeco", "sudam", "divida")
 FONTES_NOVAS = {"divida-documental", "sudeco-fdco", "sudam-fda"}
@@ -27,11 +27,20 @@ class _SemRede:
         raise AssertionError(f"leu a rede: {url}")
 
 
-def test_familias_novas_tem_licenca_revenda_coleta_e_termos():
+def test_familias_novas_tem_licenca_coleta_e_termos_lidos():
     for familia in FAMILIAS_NOVAS:
         assert familia in coletas.LICENCAS, familia
         assert familia in coletas.COLETA_E_GUARDA, familia
-        assert familia in registro.TERMOS_LIDOS_EM, familia
+    assert registro.TERMOS_LIDOS_EM["sudeco"] == registro.TERMOS_LIDOS_EM["sudam"]
+
+
+def test_divida_nao_diz_que_leu_termos_que_nao_leu():
+    """Os termos dos sites dos PDFs não foram lidos um a um: o catálogo público não mostra data."""
+    assert coletas.COLETA_E_GUARDA["divida"].coleta is Coleta.NAO_LIDA
+    assert "divida" not in registro.TERMOS_LIDOS_EM
+
+
+def test_familias_novas_tem_revenda_e_guarda():
     assert coletas.REVENDA["sudeco"] == coletas.VENDAVEL_RISCO_ASSUMIDO
     assert coletas.REVENDA["sudam"] == coletas.VENDAVEL_RISCO_ASSUMIDO
     assert "BY-ND" in coletas.LICENCAS["sudeco"]
