@@ -50,6 +50,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"CNES do Ministério da Saúde", "Ministério da Saúde (DATASUS)"),
     (r"TCE-PE:", "TCE-PE"),
     (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
+    (r"Sefa-PR, dívida", "Sefa-PR"),
     (r"TCE-SP:", "TCE-SP"),
     (r"TCE-CE:", "TCE-CE"),
     (r"LicitaCon do TCE-RS", "TCE-RS"),
@@ -471,11 +472,12 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
-        "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
+        "Dívida ativa da União e do Paraná, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
         "empregadores do MTE, os embargos do IBAMA, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
             "pgfn_divida",
+            "sefa_pr_divida_ativa",
             "sancoes_cgu",
             "ans_penalidades",
             "mte_lista_suja",

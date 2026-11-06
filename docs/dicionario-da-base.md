@@ -3428,6 +3428,48 @@ Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `sefa_pr_divida_ativa`
+
+Débitos inscritos em dívida ativa no Paraná (Sefa-PR: ICMS, IPVA, taxas...) por CNPJ, com o valor, a data da inscrição, a suspensão, a garantia e o parcelamento. Um arquivo por dia forma uma série só: débito novo ou com valor ou situação diferente vira linha nova desde o dia em que foi visto, e o débito que some do arquivo (pago, cancelado, prescrito: a fonte não diz o motivo) ganha `consta` falso. Só pessoa jurídica: a coleta tira o CPF, o nome e a razão social (firma individual e MEI têm o nome da pessoa), e quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`.
+
+- **Fonte:** Sefa-PR: Portal do Devedor, lista de devedores em arquivo (licença a confirmar; citar a fonte) (`base/divida_estadual.py`)
+- **Licença:** Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Semanal (a Sefa-PR gera o arquivo todo dia; o arquivista guarda o do dia)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada débito: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); a data da inscrição fica na coluna `inscrito_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `inscrito_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sefa_pr_divida_ativa/divida_ativa.parquet` (servidor de casa, `scripts/carga_divida_estadual.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O número da dívida ativa, o CNPJ e o tipo do crédito juntos por `|` | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `divida_ativa` | Número da inscrição em dívida ativa, como a fonte escreve | texto |
+| `tipo_do_credito` | Tipo do crédito (ICMS, IPVA, PROCON, taxas...), como a fonte escreve | texto |
+| `inscrito_em` | Data da inscrição do débito em dívida ativa (não é quando a base soube) | data (dia) |
+| `atualizado_em` | Data da última atualização do valor, segundo a fonte | data (dia) |
+| `valor_do_imposto` | Valor do imposto (principal), em reais | reais (R$), já multiplicado pela escala informada |
+| `valor_da_multa` | Valor da multa, em reais | reais (R$), já multiplicado pela escala informada |
+| `valor_dos_juros` | Valor dos juros, em reais | reais (R$), já multiplicado pela escala informada |
+| `valor_total` | Valor total do débito na atualização, em reais | reais (R$), já multiplicado pela escala informada |
+| `suspensao` | Motivo da suspensão da exigibilidade (depósito judicial, suspensão da PGE...); vazio quando não há | texto |
+| `com_garantia` | Verdadeiro quando o débito tem garantia | verdadeiro ou falso |
+| `com_parcelamento_ativo` | Verdadeiro quando há parcelamento ativo do débito | verdadeiro ou falso |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `financiamentos_bndes`
 
 Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas). **Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.

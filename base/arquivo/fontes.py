@@ -36,6 +36,7 @@ from base.arquivo import (
     lote_commodities,
     lote_commodities_oficiais,
     lote_cvm,
+    lote_divida_estadual,
     lote_documentais,
     lote_eua,
     lote_europa_rba,
@@ -1625,6 +1626,8 @@ FONTES: list[Fonte] = [
     # benefícios fiscais de Pernambuco por CNPJ (SEFAZ-PE, CC BY; linha 578 da fila), um CSV por ano,
     # sem a razão social; descoberta pela página porque o robots.txt fecha /api/
     *lote_sefaz_pe.fontes(),
+    # dívida ativa estadual (Sefa-PR; linha 755 da fila): o ZIP do dia, só CNPJ e sem o nome
+    *lote_divida_estadual.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),

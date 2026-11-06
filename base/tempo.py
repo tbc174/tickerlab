@@ -39,7 +39,8 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "DT_INI_GESTOR", "DT_INI_ADMIN",
         "registro", "registrada_desde", "inicio_listagem", "inicio_negociacao",
         "entrada_em_operacao", "entrada_em_teste", "fechamento_em", "infracao_em",
-        "primeira_inscricao", "ultima_inscricao", "ultima_alteracao_em", "instante",
+        "primeira_inscricao", "ultima_inscricao", "inscrito_em",  # inscrito_em: a dívida ativa do PR
+        "ultima_alteracao_em", "instante",
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",

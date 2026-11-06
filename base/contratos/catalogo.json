@@ -9199,6 +9199,126 @@
       "frequencia": "Mensal (um arquivo por ano; o arquivista guarda só o que mudou)",
       "atraso": "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas"
     },
+    "sefa_pr_divida_ativa": {
+      "tabela": "sefa_pr_divida_ativa",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O número da dívida ativa, o CNPJ e o tipo do crédito juntos por `|`",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "divida_ativa": {
+          "descricao": "Número da inscrição em dívida ativa, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "tipo_do_credito": {
+          "descricao": "Tipo do crédito (ICMS, IPVA, PROCON, taxas...), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "inscrito_em": {
+          "descricao": "Data da inscrição do débito em dívida ativa (não é quando a base soube)",
+          "unidade": "data (dia)"
+        },
+        "atualizado_em": {
+          "descricao": "Data da última atualização do valor, segundo a fonte",
+          "unidade": "data (dia)"
+        },
+        "valor_do_imposto": {
+          "descricao": "Valor do imposto (principal), em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_da_multa": {
+          "descricao": "Valor da multa, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_dos_juros": {
+          "descricao": "Valor dos juros, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_total": {
+          "descricao": "Valor total do débito na atualização, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "suspensao": {
+          "descricao": "Motivo da suspensão da exigibilidade (depósito judicial, suspensão da PGE...); vazio quando não há",
+          "unidade": "texto"
+        },
+        "com_garantia": {
+          "descricao": "Verdadeiro quando o débito tem garantia",
+          "unidade": "verdadeiro ou falso"
+        },
+        "com_parcelamento_ativo": {
+          "descricao": "Verdadeiro quando há parcelamento ativo do débito",
+          "unidade": "verdadeiro ou falso"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "inscrito_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "inscrito_em": "a_conferir",
+        "atualizado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-06",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
+      "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
+      "pessoa": true,
+      "frequencia": "Semanal (a Sefa-PR gera o arquivo todo dia; o arquivista guarda o do dia)",
+      "atraso": "A fonte não diz quando publicou cada débito: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); a data da inscrição fica na coluna `inscrito_em`"
+    },
     "financiamentos_bndes": {
       "tabela": "financiamentos_bndes",
       "modulo": "governo_e_sancoes",

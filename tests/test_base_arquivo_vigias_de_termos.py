@@ -159,6 +159,7 @@ _SEM_VIGIA = {
         ),
         "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
     ),
+    "sefapr": "o portal da Sefa-PR não publica licença nem termos de uso da lista de devedores (a confirmar): nada a vigiar",
     "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",
     "tcu": "a lista de inidôneos não declara licença: não há texto de termos a vigiar",
     **dict.fromkeys(
