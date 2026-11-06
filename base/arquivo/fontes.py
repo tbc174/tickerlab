@@ -41,6 +41,7 @@ from base.arquivo import (
     lote_patentes,
     lote_reguladores,
     lote_sec,
+    lote_sefaz_pe,
     lote_selic,
     lote_setoriais,
     lote_tesouro,
@@ -1610,6 +1611,9 @@ FONTES: list[Fonte] = [
     # lote Brasil, segunda camada (22/10/2026): Portal da Transparência, BNDES, INSS e SUSEP, só CNPJ
     # e agregados (linhas 259, 260 e 262 da fila)
     *lote_brasil2.fontes(),
+    # benefícios fiscais de Pernambuco por CNPJ (SEFAZ-PE, CC BY; linha 578 da fila), um CSV por ano,
+    # sem a razão social; descoberta pela página porque o robots.txt fecha /api/
+    *lote_sefaz_pe.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),

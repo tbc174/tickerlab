@@ -2581,7 +2581,7 @@ def _tabelas_da_anm() -> dict[str, Tabela]:
 
 
 def _tabelas_dos_incentivos() -> dict[str, Tabela]:
-    """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE e RDE-IED."""
+    """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE, RDE-IED e SEFAZ-PE."""
     situacao = {
         "consta": (
             "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
@@ -2702,6 +2702,28 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
         "ocorrencia": ("`REGISTRO EFETUADO` ou `REGISTRO ENCERRADO`", TEXTO),
         "mes": ("Mês da ocorrência (o 1º dia do mês)", DATA),
     }
+    pe = {
+        "arquivo": ("O ano do arquivo da SEFAZ-PE de onde a linha veio", TEXTO),
+        "id_na_fonte": (
+            "O programa, o CNPJ, o CACEPE e o início do prazo juntos por `|`",
+            TEXTO,
+        ),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "programa": (
+            "Programa estadual do benefício (PRODEPE, PEAP, máquinas pesadas...), como a fonte escreve",
+            TEXTO,
+        ),
+        "cacepe": ("Cadastro da empresa na SEFAZ-PE (CACEPE)", TEXTO),
+        "vigencia_inicio": (
+            "Início do prazo do benefício (não é quando a base soube)",
+            DATA,
+        ),
+        "vigencia_fim": (
+            "Fim do prazo do benefício; a prorrogação vira linha nova (vazio quando a fonte não diz)",
+            DATA,
+        ),
+    }
     return {
         "mme_reidi": tabela(
             "mme_reidi",
@@ -2741,6 +2763,20 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
             "bcb",
             "Parada desde dez/2022 (o arquivista confere todo mês)",
             rde,
+        ),
+        "sefaz_pe_beneficios": tabela(
+            "sefaz_pe_beneficios",
+            (
+                "Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas "
+                "pesadas...) por CNPJ, com o CACEPE e o prazo de cada um. Um Parquet por ano da "
+                "fonte (`arquivo`); a razão social não é guardada. O prazo prorrogado vira linha "
+                "nova, e o prazo (`vigencia_inicio`, `vigencia_fim`) não é a data em que a base "
+                "soube do benefício (`disponivel_em`)."
+            ),
+            "SEFAZ-PE: dados abertos (dados.pe.gov.br), benefícios fiscais, CC BY",
+            "sefazpe",
+            "Mensal (um arquivo por ano; o arquivista guarda só o que mudou)",
+            pe,
         ),
     }
 
@@ -8755,6 +8791,7 @@ _CONTRATO = {
     "mme_reidi": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "portaria_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
+    "sefaz_pe_beneficios": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
@@ -8971,6 +9008,10 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "bcb_rde_ied": {
         "pasta": "bcb_rde_ied",
         "nao_nulas": ("id_na_fonte", "cnpj_basico", "codigo_rde", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "sefaz_pe_beneficios": {
+        "pasta": "sefaz_pe_beneficios",
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "programa", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "ans_penalidades": {
         "pasta": "ans_penalidades",
