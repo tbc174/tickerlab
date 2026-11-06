@@ -103,7 +103,14 @@ NO_FIM_DA_AREA = ("comparar", "relatorio")
 # O que a tela recebe (entradas) e qual rota da API devolve o que ela mostra (resposta). Uma tela nova
 # (React) é montada a partir daqui; há teste que confere cada contrato contra a API de verdade.
 
-PERIODOS = ("6mo", "1y", "2y", "5y")  # os mesmos de src/dados.py (há teste)
+PERIODOS = (
+    "6mo",
+    "1y",
+    "2y",
+    "5y",
+    "10y",
+    "max",
+)  # os mesmos de src/dados.py (há teste)
 
 
 @dataclass(frozen=True)
@@ -517,6 +524,16 @@ PAGINAS = (
         ),
     ),
     Pagina(
+        "simulador_de_trava",
+        "Simulador de trava do café",
+        GRUPO_RESEARCH,
+        ":material/balance:",
+        "A sua produção de café em cada safra desde 2000: sem travar, a termo, no futuro e com "
+        "opção, lado a lado com os riscos, no preço mensal. Nada do que você digita é guardado.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "linha_do_tempo",
         "Linha do tempo",
         GRUPO_RESEARCH,
@@ -570,8 +587,9 @@ PAGINAS = (
         "Busca por CNPJ",
         GRUPO_RESEARCH,
         ":material/manage_search:",
-        "Digite o CNPJ de uma companhia aberta e veja quem é, de que grupo faz parte, com quem a "
-        "rede de empresas a liga e os fatos públicos, com a data e a fonte de cada linha.",
+        "Digite o CNPJ de uma empresa e veja quem é: da companhia aberta, o grupo, a rede de empresas "
+        "e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que "
+        "mudou em 12 meses. Com a data e a fonte de cada linha.",
         area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
         contrato=Contrato(
@@ -729,6 +747,18 @@ PAGINAS = (
         area=AREA_CONTA,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/sala", (), "SalaV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
+        "boas_vindas_beta",
+        "Boas-vindas ao beta",
+        GRUPO_CONTA,
+        ":material/waving_hand:",
+        "O roteiro dos 10 minutos para conhecer o TickerLab: o relatório do setor, o de uma empresa e a "
+        "busca por CNPJ, com a fonte de cada número.",
+        area=AREA_CONTA,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/beta/boas-vindas", (), "BoasVindasDoBetaV1"),
         so_no_app_novo=True,
     ),
     Pagina(

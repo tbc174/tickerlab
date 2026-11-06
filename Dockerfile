@@ -27,6 +27,7 @@ COPY telas ./telas
 COPY alembic.ini ./
 COPY migracoes ./migracoes
 COPY conteudo ./conteudo
+COPY site-api ./site-api
 COPY dados_de_exemplo ./dados_de_exemplo
 
 # o commit deste código, para a linhagem dos números (ADR 0055, exigência 13):

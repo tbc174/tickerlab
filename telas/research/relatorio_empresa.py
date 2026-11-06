@@ -30,7 +30,9 @@ from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
 from src.banco.relatorio_empresa import entradas_do_relatorio
+from src.configuracao import preco_no_relatorio_ligado
 from src.dados import normalizar_ticker
+from src.faixa_de_preco import FaixaDePreco, faixa_de_preco_do_ticker
 from src.fundamentos import VERSAO_DOS_FUNDAMENTOS
 from src.moedas import moeda_do_ticker
 from src.padroes import VERSAO_DOS_PADROES
@@ -46,11 +48,14 @@ from src.relatorio_empresa import (
     nome_da_tabela,
     rotulo_da_coluna,
 )
+from src.relatorio_empresa_markdown import relatorio_em_markdown
 from src.relatorio_empresa_pdf import FUSO, relatorio_da_empresa
 from telas.comum import (
     PAGINAS_DO_MENU,
     cabecalho_da_pagina,
     carregar_contexto,
+    lembrar_recente,
+    mostrar_controles,
     mostrar_grafico,
     plano_atual,
 )
@@ -102,7 +107,13 @@ def _ler(ticker: str, preco: float | None, fechamentos: pd.Series):
             icon=":material/schedule:",
         )
         return None
-    return entradas
+    return replace(entradas, faixa_de_preco=_faixa_de_preco(ticker))
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _faixa_de_preco(ticker: str) -> FaixaDePreco | None:
+    """A faixa de 52 semanas, guardada por uma hora: a página roda de novo a cada clique."""
+    return faixa_de_preco_do_ticker(ticker)
 
 
 def _origem(item: Item) -> str:
@@ -185,15 +196,41 @@ def _mostrar_secao(secao: Secao) -> None:
             )
             continue
         with st.expander(_titulo_da_tabela(chave)):
-            st.dataframe(_tabela_escrita(linhas), hide_index=True, width="stretch")
+            tabela = _tabela_escrita(linhas)
+            st.dataframe(
+                tabela,
+                hide_index=True,
+                width="stretch",
+                column_config=_colunas_com_link(tabela),
+            )
+
+
+SEM_LINK = escrever_celula(
+    None
+)  # "—": a célula sem link não pode virar um link para "—"
 
 
 def _tabela_escrita(linhas: list[dict]) -> pd.DataFrame:
-    """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não)."""
+    """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não); na coluna da fonte
+    original, a célula vazia fica vazia de verdade, para a coluna de link."""
     tabela = pd.DataFrame(linhas)
-    return pd.DataFrame(
-        {rotulo_da_coluna(c): [escrever_celula(v) for v in tabela[c]] for c in tabela}
+    escrita = pd.DataFrame(
+        {
+            rotulo_da_coluna(c): [escrever_celula(v, c) for v in tabela[c]]
+            for c in tabela
+        }
     )
+    if dossie.ROTULO_DO_LINK in escrita.columns:
+        links = escrita[dossie.ROTULO_DO_LINK]
+        escrita[dossie.ROTULO_DO_LINK] = [None if v == SEM_LINK else v for v in links]
+    return escrita
+
+
+def _colunas_com_link(tabela: pd.DataFrame) -> dict[str, object]:
+    """A coluna da fonte original vira link clicável (o único lugar que depende do Streamlit)."""
+    if dossie.ROTULO_DO_LINK not in tabela.columns:
+        return {}
+    return {dossie.ROTULO_DO_LINK: st.column_config.LinkColumn(display_text="Abrir")}
 
 
 def _texto_do_markdown(texto: str) -> str:
@@ -368,6 +405,20 @@ def _oferecer_o_pdf(relatorio: Relatorio) -> None:
         )
 
 
+def _oferecer_o_markdown(relatorio: Relatorio) -> None:
+    """A ficha em Markdown para ler com uma IA (as mesmas seções do PDF). É o mesmo conteúdo da
+    página, então não conta como relatório do plano."""
+    st.download_button(
+        "Baixar em Markdown (para IA)",
+        data=relatorio_em_markdown(relatorio),
+        file_name=f"tickerlab-empresa-{relatorio.ticker.removesuffix('.SA')}.md",
+        mime="text/markdown",
+        icon=":material/description:",
+        key="empresa_baixar_markdown",
+        on_click="ignore",
+    )
+
+
 def _oferecer_o_deck(relatorio: Relatorio) -> None:
     """O deck da ficha (PDF e PPT, os mesmos slides) para mandar sem editar. É o mesmo conteúdo
     da página, então não conta como relatório do plano."""
@@ -399,17 +450,30 @@ def _oferecer_o_deck(relatorio: Relatorio) -> None:
             )
 
 
-def pagina_relatorio_empresa():
-    cabecalho_da_pagina("relatorio_empresa")
+def _ticker_e_preco() -> tuple[str, float | None, pd.Series | None]:
+    """O ticker do topo e, com a trava do preço ligada, o último preço e a série (do Yahoo). Com
+    ela desligada, a página nem carrega a série (linha 413, Y1 a, "pode" do Tiago em 25/10/2026)."""
+    if not preco_no_relatorio_ligado():
+        ticker = normalizar_ticker(mostrar_controles()[0])
+        lembrar_recente(ticker)
+        return ticker, None, None
     c = carregar_contexto()
     ticker = normalizar_ticker(c.ticker)
-    preco = float(c.fechamento.iloc[-1]) if moeda_do_ticker(ticker) == "BRL" else None
-    entradas = _ler(ticker, preco, c.fechamento if preco is not None else None)
+    if moeda_do_ticker(ticker) != "BRL":
+        return ticker, None, None
+    return ticker, float(c.fechamento.iloc[-1]), c.fechamento
+
+
+def pagina_relatorio_empresa():
+    cabecalho_da_pagina("relatorio_empresa")
+    ticker, preco, fechamentos = _ticker_e_preco()
+    entradas = _ler(ticker, preco, fechamentos)
     if entradas is None:
         return
     entradas = replace(entradas, premissas=_premissas())
     relatorio = com_analise(montar(entradas, plano_atual()), entradas, plano_atual())
     _oferecer_o_pdf(relatorio)
+    _oferecer_o_markdown(relatorio)
     _oferecer_o_deck(relatorio)
     _mostrar(relatorio)
     st.page_link(

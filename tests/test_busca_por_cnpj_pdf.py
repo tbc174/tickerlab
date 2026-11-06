@@ -1,6 +1,6 @@
 """O PDF do relatório do CNPJ (molde B, PR 4): as seções com fonte e data, "Limites e cuidados", nenhum
-nome de pessoa, nada do que está desligado, a mesma resposta para CNPJ fechado e desconhecido, e o CNPJ
-pedido fora do log. Mais a rota `POST /v1/busca-por-cnpj/pdf`."""
+nome de pessoa, nada do que está desligado, a mesma resposta para todo CNPJ que a base não tem, e o CNPJ
+pedido fora do log. A empresa sem ficha na CVM (cadastro da Receita): `tests/test_busca_por_cnpj_fechadas.py`. Mais a rota `POST /v1/busca-por-cnpj/pdf`."""
 
 import logging
 import re
@@ -21,6 +21,21 @@ chave = rotas.chave
 cliente = rotas.cliente
 ROTA = "/api/v1/busca-por-cnpj/pdf"
 GERADO_EM = datetime(2026, 10, 20, 9, 0, tzinfo=ZoneInfo("America/Sao_Paulo"))
+
+
+_NOME = r"[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+(?:\s+(?:d[aeo]s?\s+)?[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+)+"
+_CARGO = r"(?:Diretor|Diretora|Conselheir[oa]s?|Administrador[a]?(?:es)?|Acionistas?)"
+# Cargo + nome: "Diretor João Silva", "Conselheiros: Ana Souza". O rótulo de contagem ("Conselheiros
+# independentes: 3") não tem pessoa e passa; o cargo no plural sem dois-pontos também (só é rótulo).
+_PESSOA_NO_TEXTO = re.compile(
+    rf"\b(?:Diretor|Diretora|Conselheir[oa]|Administrador|Administradora|Acionista)\s+{_NOME}"
+    rf"|\b{_CARGO}\s*[:\-–]\s*{_NOME}"
+    rf"|\b{_NOME}\s*[,\-–(]\s*{_CARGO}\b"
+)
+
+
+def _tem_nome_de_pessoa(texto: str) -> bool:
+    return _PESSOA_NO_TEXTO.search(texto) is not None
 
 
 def _texto_do_pdf(pdf: bytes) -> str:
@@ -71,7 +86,7 @@ def test_pdf_tem_limites_e_cuidados_e_o_que_nao_aparece(banco, com_a_petrobras) 
         texto = _pdf(banco, com_a_petrobras, plano)
         assert "Limites e cuidados" in texto
         assert "recomendação de investimento" in texto
-        assert "Só as companhias abertas" in texto
+        assert "Aparecem as companhias abertas" in texto
         assert "O que ainda não aparece" in texto
 
 
@@ -86,7 +101,42 @@ def test_pdf_nao_traz_nome_de_pessoa(banco, com_a_petrobras) -> None:
     texto = _pdf(banco, com_a_petrobras)
     assert not re.search(r"\d{3}\.\d{3}\.\d{3}-\d{2}", texto)
     assert not re.search(r"\b(Diretor|Conselheir|Administrador|Acionista)", texto)
-    assert "Sócios, administradores e qualquer nome de pessoa: não aparecem" in texto
+    assert "Nome de sócio ou administrador pessoa física: não aparece" in texto
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "Diretor João da Silva",
+        "Conselheira Maria Souza Lima",
+        "Administrador Carlos Pereira",
+        "Acionista José Santos",
+        "Conselheiros: Ana Souza, Pedro Alves",
+        "Diretor - Marcos Oliveira",
+        "Marcos Oliveira, Diretor",
+        "Ana Souza (Conselheira)",
+        "Governança: Acionista Roberto Lima Filho",
+    ],
+)
+def test_regra_de_pessoa_reprova_nome_com_cargo(texto) -> None:
+    assert _tem_nome_de_pessoa(texto)
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "Conselheiros independentes: 3",
+        "Conselheiros independentes 2 de 9",
+        "Conselheiros Independentes",
+        "Diretores estatutários: 5",
+        "Número de diretores e de conselheiros",
+        "Acionistas controladores: 1",
+        "Administradores com mandato vigente",
+        "Governança Conselheiros independentes 3 Comitê de auditoria sim",
+    ],
+)
+def test_regra_de_pessoa_aprova_rotulo_de_contagem(texto) -> None:
+    assert not _tem_nome_de_pessoa(texto)
 
 
 def test_pdf_nao_traz_o_que_esta_desligado(banco, com_a_petrobras) -> None:
@@ -103,7 +153,8 @@ def test_pdf_nao_traz_o_que_esta_desligado(banco, com_a_petrobras) -> None:
 def test_pdf_de_cnpj_fechado_e_desconhecido_diz_a_mesma_coisa(
     banco, com_a_petrobras
 ) -> None:
-    """Risco 5: a empresa que a base conhece (tem cadastro) mas sem ficha responde igual à desconhecida."""
+    """Risco 5: a empresa que o app conhece (tem setor), sem ficha e sem o cadastro da Receita, responde
+    igual à desconhecida."""
     with banco.begin() as conexao:
         repo.gravar_setor(conexao, "00.000.000/0001-91", "Bancos")
     a = _pdf(banco, com_a_petrobras, texto="00000000000191")
@@ -111,7 +162,7 @@ def test_pdf_de_cnpj_fechado_e_desconhecido_diz_a_mesma_coisa(
     assert a.replace("00.000.000/0001-91", "CNPJ") == b.replace(
         "11.222.333/0001-81", "CNPJ"
     )
-    assert "ainda não está na base aberta" in a
+    assert "não está na base do TickerLab" in a
     assert "Limites e cuidados" in a and "Bancos" not in a
 
 
@@ -160,7 +211,7 @@ def test_rota_do_gratuito_vem_trancada(cliente, pasta_das_fichas) -> None:
 def test_rota_fora_da_base_aberta_tambem_devolve_pdf(cliente, pasta_das_fichas) -> None:
     resposta = cliente.post(ROTA, json={"cnpj": "11222333000181"})
     assert resposta.status_code == 200
-    assert "ainda não está na base aberta" in _texto_do_pdf(resposta.content)
+    assert "não está na base do TickerLab" in _texto_do_pdf(resposta.content)
 
 
 @pytest.mark.parametrize("cnpj", ["33000167000102", "abc", ""])

@@ -36,6 +36,12 @@ copiar). Todas desligadas por padrão: sem elas o resultado é, ao centavo, o da
    iria ao residual amortiza essas classes de cima para baixo até a meta (o turbo). É a única saída do
    juro para o principal.
 
+Medida sobre o resultado (não muda a cascata):
+
+9. **Vida média ponderada** (WAL, *weighted average life*): soma de mês × principal pago, dividida
+   pelo principal pago, em anos. O turbo conta como principal; a perda não entra (a classe que perde
+   tem a vida média do que recebeu); sem preço nem taxa de desconto.
+
 O que a versão 0.2.0 **não** faz: juros de mora, custo variável, indexador (hoje taxa mensal fixa),
 gatilhos de caixa ou de inadimplência (só o de perda acumulada) e recomposição de perda já alocada.
 """
@@ -47,6 +53,7 @@ from itertools import groupby
 
 VERSAO_DO_CALCULO = "cascata 0.2.0"
 CENTAVOS_POR_REAL = 100
+MESES_POR_ANO = 12
 SEQUENCIAL = "sequencial"
 PRO_RATA = "pro_rata"
 
@@ -379,3 +386,12 @@ def reconciliar(reserva_inicial: int, resultados: list[Resultado]) -> dict[str, 
         "reserva_final": reserva_final,
         "diferenca": entradas - saidas - reserva_final,
     }
+
+
+def vida_media_em_anos(resultados: list[Resultado], nome: str) -> float | None:
+    """Vida média ponderada (WAL) do principal pago à classe, em anos; None se ela não recebeu principal."""
+    principal = sum(r.principal_pago[nome] for r in resultados)
+    if principal == 0:
+        return None
+    ponderado = sum(r.periodo * r.principal_pago[nome] for r in resultados)
+    return ponderado / principal / MESES_POR_ANO

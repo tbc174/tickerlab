@@ -1,19 +1,20 @@
 """Features de crédito da base, pela porta, como eram num dia (B-30; protótipo C, parte 2).
 
 Dívida ativa da União (PGFN), situação especial no CNPJ (Receita), insolvência da própria companhia
-e eventos do IPE (CVM), lidos só pela porta (`base/porta`) com `como_era_em`: entra o que já era
+e eventos do IPE (CVM) e a inadimplência do setor da empresa no SCR (Banco Central, B-30b), lidos só pela porta (`base/porta`) com `como_era_em`: entra o que já era
 público no dia. A PGFN e a Receita valem pelo último dia do mês em que o retrato foi visto (a porta
 já lê assim); o IPE, pelo dia da entrega à CVM.
 
 Não observado (nunca estimado): tabela que não está na base, retrato que ainda não existia,
-empresário individual ou MEI na PGFN (ADR 0075: nada negativo sobre pessoa sai da base) e companhia
-sem nenhum documento do IPE até o dia. A empresa fora de um retrato público tem zero (ou "nenhuma"):
+empresário individual ou MEI (pelas `entidades` da rede, como a API externa decide; a porta esconde as
+linhas deles na PGFN, ADR 0075: nada negativo sobre pessoa sai da base) e companhia sem nenhum
+documento do IPE até o dia. A empresa fora de um retrato público tem zero (ou "nenhuma"):
 o retrato inteiro é a observação. Um documento do IPE reapresentado depois do dia some do dia (a base
 guarda só a versão mais nova nos `eventos`): a contagem pode ficar menor, nunca olha o futuro.
 
-`pgfn_divida`, `cnpj_situacao_especial` e `insolvencia` não podem aparecer no app até o parecer
-(`base/dossie.py`, `TABELAS_PROIBIDAS`): estas features são da pesquisa, sem tela. Nada aqui é nota,
-score nem opinião de crédito (B-31).
+`pgfn_divida`, `cnpj_situacao_especial` e `insolvencia` saem no app como fato datado desde a virada de
+5/11/2026 (`docs/virada-empresas-fechadas.md`); estas features seguem sendo da pesquisa, sem tela. Nada
+aqui é nota, score nem opinião de crédito (B-31).
 """
 
 from collections.abc import Callable, Sequence
@@ -24,6 +25,8 @@ import pandas as pd
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from base.porta.rede import resolver
+from base.rede.ids import PREFIXO_DE_PESSOA
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.credito.features import (
     Feature,
@@ -46,6 +49,15 @@ SEM_RETRATO = "Nenhum retrato da {fonte} era público no dia."
 COMO_PESSOA = (
     "Empresário individual ou MEI: nada negativo sobre pessoa sai da base (ADR 0075)."
 )
+SEM_A_SECAO = (
+    "A seção do CNAE da companhia como era no dia não foi informada: o CNAE por CNPJ com data ainda "
+    "não está na porta (carga do CNPJ, fila 120)."
+)
+SEM_MES_DO_SCR = "Nenhuma data-base do SCR com carteira nesta seção era pública no dia."
+CARTEIRA_NAO_POSITIVA = (
+    "Carteira ativa zerada ou sem valor na seção: a razão não tem sentido."
+)
+FONTE_DO_SCR = "bcb"
 SEM_IPE = (
     "Nenhum documento do IPE da companhia era público no dia: ela não entregava à CVM."
 )
@@ -54,6 +66,7 @@ DA_PGFN = (
     "divida_ativa_ajuizada",
     "inscricoes_em_divida_ativa",
 )
+DO_SCR = ("inadimplencia_do_setor_no_scr", "carteira_do_setor_no_scr")
 DO_IPE = (
     "eventos_de_insolvencia",
     "ultimo_evento_de_insolvencia",
@@ -97,6 +110,23 @@ def _nao_observadas(
     return [nova_feature(c, None, periodo, documentos, motivo, fonte) for c in chaves]
 
 
+def _pessoa_natural(porta: Porta, raiz: str, dia: date) -> bool:
+    """O CNPJ é tratado como pessoa (empresário individual, MEI; ADR 0075) nas `entidades` da rede
+    públicas no dia, como a API externa decide (na dúvida, é pessoa). Sem a rede nesta base, ou sem
+    o CNPJ nela, False: a porta já esconde as linhas de pessoa da PGFN, então o que chega é de empresa."""
+    try:
+        id_entidade = resolver(porta.con, raiz, dia.isoformat())
+    except LookupError:
+        return False
+    if id_entidade.startswith(PREFIXO_DE_PESSOA):
+        return True
+    entidade = _ler(porta, "entidades", dia, {"id_entidade": id_entidade})
+    if entidade is None or entidade.empty:
+        return False
+    marcas = entidade.iloc[0][["mei", "trata_como_pessoa"]]
+    return any(pd.isna(marca) or bool(marca) for marca in marcas)
+
+
 # --- PGFN -----------------------------------------------------------------------------------------
 def _pgfn(porta: Porta, raiz: str, dia: date) -> list[Feature]:
     linhas = _ler(porta, "pgfn_divida", dia, {"cnpj_basico": raiz})
@@ -112,7 +142,7 @@ def _pgfn(porta: Porta, raiz: str, dia: date) -> list[Feature]:
     retrato, publico = _dia(ultimo[0]), ultimo[1]
     periodo = f"retrato de {retrato:%d/%m/%Y}"
     documentos = [DocumentoUsado(f"PGFN: dívida ativa da União, {periodo}", publico)]
-    if linhas["trata_como_pessoa"].fillna(False).astype(bool).any():
+    if _pessoa_natural(porta, raiz, dia):
         return _nao_observadas(DA_PGFN, COMO_PESSOA, FONTE_DA_PGFN, periodo, documentos)
     do_retrato = linhas[linhas["data_do_retrato"].map(_dia) == retrato]
     principal = do_retrato[do_retrato["tipo_devedor"] == DEVEDOR_PRINCIPAL]
@@ -248,6 +278,52 @@ def _ipe(porta: Porta, cnpj_formatado: str, dia: date) -> list[Feature]:
     ]
 
 
+# --- SCR: o setor da empresa -----------------------------------------------------------------------
+def _somas_do_scr(
+    porta: Porta, secao: str, dia: date, coluna: str
+) -> dict[date, tuple[float, date]]:
+    """data-base → (soma, dia em que ficou pública) das pessoas jurídicas da seção, só as públicas."""
+    por_mes = porta.somar(
+        "scr_credito",
+        ["data_base", "publico_em"],
+        coluna,
+        filtros={"cliente": "PJ", "cnae_ocupacao": secao},
+        como_era_em=dia,
+    )
+    return {
+        _dia(linha["data_base"]): (float(linha[coluna]), _dia(linha["publico_em"]))
+        for _, linha in por_mes.iterrows()
+    }
+
+
+def _scr(porta: Porta, secao: str | None, dia: date) -> list[Feature]:
+    if secao is None:
+        return _nao_observadas(DO_SCR, SEM_A_SECAO, FONTE_DO_SCR)
+    try:
+        ativas = _somas_do_scr(porta, secao, dia, "carteira_ativa")
+    except KeyError:
+        motivo = SEM_A_TABELA.format(tabela="scr_credito")
+        return _nao_observadas(DO_SCR, motivo, FONTE_DO_SCR)
+    if not ativas:
+        return _nao_observadas(DO_SCR, SEM_MES_DO_SCR, FONTE_DO_SCR)
+    data_base = max(ativas)
+    ativa, publico = ativas[data_base]
+    inadimplente = _somas_do_scr(porta, secao, dia, "carteira_inadimplencia")[
+        data_base
+    ][0]
+    periodo = f"data-base de {data_base:%d/%m/%Y}"
+    nome = f"Banco Central: SCR.data, pessoas jurídicas em «{secao}», {periodo}"
+    documentos = [DocumentoUsado(nome, publico)]
+    motivo = CARTEIRA_NAO_POSITIVA if not ativa > 0 else ""
+    return [
+        nova_feature(
+            DO_SCR[0], None if motivo else inadimplente / ativa, periodo, documentos,
+            motivo, FONTE_DO_SCR,
+        ),
+        nova_feature(DO_SCR[1], ativa, periodo, documentos, fonte=FONTE_DO_SCR),
+    ]  # fmt: skip
+
+
 # --- juntando -------------------------------------------------------------------------------------
 def _cnpj(cnpj: str) -> str:
     normal = cnpj_.normalizar_cnpj(cnpj)
@@ -257,20 +333,32 @@ def _cnpj(cnpj: str) -> str:
 
 
 def features_da_base(
-    porta: Porta, cnpj: str, data_da_analise: date
+    porta: Porta,
+    cnpj: str,
+    data_da_analise: date,
+    secao_do_cnae: str | None = None,
 ) -> tuple[Feature, ...]:
-    """As features da base de um CNPJ (ordem do dicionário), com o que era público no dia."""
+    """As features da base de um CNPJ (ordem do dicionário), com o que era público no dia.
+
+    `secao_do_cnae` é a seção do CNAE da companhia **como era no dia**, no nome do SCR
+    (`base.cnae.secao_do_cnae`); sem ela, as features do SCR ficam não observadas: o CNAE por CNPJ
+    com data ainda não está na porta."""
     normal = _cnpj(cnpj)
     raiz = normal[: cnpj_.TAMANHO_DA_RAIZ]
     return (
         *_pgfn(porta, raiz, data_da_analise),
         _situacao_especial(porta, raiz, data_da_analise),
         *_ipe(porta, cnpj_.formatar(normal), data_da_analise),
+        *_scr(porta, secao_do_cnae, data_da_analise),
     )
 
 
 def features_de_credito(
-    dados: DadosDaEmpresa, porta: Porta, cnpj: str, data_da_analise: date
+    dados: DadosDaEmpresa,
+    porta: Porta,
+    cnpj: str,
+    data_da_analise: date,
+    secao_do_cnae: str | None = None,
 ) -> FeaturesDeCredito:
     """Todas as features de uma companhia aberta: as das demonstrações e as da base."""
     normal = _cnpj(cnpj)
@@ -278,5 +366,5 @@ def features_de_credito(
     return replace(
         das_demonstracoes,
         features=das_demonstracoes.features
-        + features_da_base(porta, normal, data_da_analise),
+        + features_da_base(porta, normal, data_da_analise, secao_do_cnae),
     )

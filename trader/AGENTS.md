@@ -9,7 +9,11 @@ fora do app publicado e da imagem Docker, e conecta no MetaTrader 5 **só para l
    de ordens só existe a partir da fase M3, em conta demo, com autorização escrita do Tiago.
 2. **Critério antes dos resultados.** O critério vigente é `docs/pre-registro-m2-v0.4.md` (o
    SHA-256 fica em `trader/holdout.py`). Mudar qualquer coisa nele = versão nova, com data, **+25
-   tentativas**, aprovação do Tiago e cópia do registro antes.
+   tentativas**, aprovação do Tiago e cópia do registro antes. As versões anteriores
+   (`pre-registro-m2-v0.1.md` a `v0.3.md`) e a `pre-registro-quant-p0-v0.1.md` estão **superadas** (pela
+   v0.4 e pela quant v0.2), mas **não se editam**, nem para avisar: o texto é a impressão digital (SHA-256
+   citado em `trader/holdout.py` e conferido por teste em `trader/criterio_quant.py`). Quem abre uma versão
+   velha confere a data e o número; a vigente é a citada aqui e em `criterio_quant.py`.
 3. **Toda execução é uma tentativa.** `python -m trader.rodar_modelo` e `rodar_baselines` gravam no
    registro (`pesquisa_m2/registro.db`) e deixam o Sharpe deflacionado mais exigente. **Não rode
    "só para ver"**, não repita uma rodada sem motivo e não proponha variações de um modelo
@@ -51,6 +55,8 @@ numba, joblib, MetaTrader5, PySide6).
 | Aquecimento das janelas e cobertura | `aquecimento.py` |
 | VaR/CVaR históricos e Benjamini-Hochberg | `quant.py` |
 | Catálogo de fatores candidatos (nenhum medido) | `fatores/` |
+| Scalp no mini índice, fase 1 (pesquisa à parte da M2; reprovada em 29/10/2026) | `scalp_win.py`; critério em `docs/pre-registro-scalp-win-fase1.md`, resultado em `docs/resultado-scalp-win-fase1.md` |
+| Scalp no mini índice, fase 1b: fluxo do agressor e corretoras de lote pequeno (reprovada em 29/10/2026) | `scalp_win_1b.py`; critério em `docs/pre-registro-scalp-win-fase1b.md`, resultado em `docs/resultado-scalp-win-fase1b.md` |
 | Conferência dos custos (B3 à vista) e da validação | `docs/trader-conferencia-custos-e-validacao.md` |
 | Painel | `interface/` |
 

@@ -426,13 +426,16 @@ def registro_do_cotahist(
     precos: tuple[float, float, float, float] = (30.1, 30.3, 30.1, 30.3),
     negocios: int = 3,
     volume: int = 600,
+    volume_financeiro: float = 18_120.0,
+    distribuicao: str = "101",
 ) -> str:
-    """Uma linha de 245 posições do COTAHIST (preços em centavos, 13 algarismos)."""
+    """Uma linha de 245 posições do COTAHIST (preços e volume financeiro em centavos)."""
     abertura, maxima, minima, fechamento = (f"{round(p * 100):013d}" for p in precos)
     linha = ("01" + "20261013" + "02" + simbolo.ljust(12) + tipo_de_mercado).ljust(56)
     linha += abertura + maxima + minima + "0" * 13 + fechamento
     linha = linha.ljust(147) + f"{negocios:05d}" + f"{volume:018d}"
-    return linha.ljust(245, "0")
+    linha += f"{round(volume_financeiro * 100):018d}"
+    return linha.ljust(242, "0") + distribuicao
 
 
 FIM_DE_LINHA = chr(13) + chr(10)
@@ -475,6 +478,28 @@ def test_cotahist_com_os_campos_e_o_mercado(tmp_path):
     termo = cotahist.loc["BBAS3T"]  # uma linha por vencimento, somadas como no PR
     assert (termo["negocios"], termo["volume"]) == (6, 1000)
     assert pd.isna(termo["abertura"])
+
+
+def test_cotahist_traz_o_volume_em_reais_alem_da_quantidade(tmp_path):
+    """Regressão (pregão do dia, 28/10/2026): `volume` é a quantidade de papéis (QUATOT, como o
+    FinInstrmQty do PR); o valor negociado em reais (VOLTOT) vem à parte. VALE3 em 27/10/2026:
+    43.938.600 ações e R$ 2.772.825.021,00."""
+    caminho = zip_do_cotahist(
+        tmp_path,
+        [
+            registro_do_cotahist(
+                "VALE3", "010", volume=43_938_600, volume_financeiro=2_772_825_021.0
+            ),
+            registro_do_cotahist("BBAS3T", "030", volume_financeiro=1_000.5),
+            registro_do_cotahist("BBAS3T", "030", volume_financeiro=2_000.25),
+        ],
+    )
+    cotahist = b3.ler_cotahist(caminho)
+    assert cotahist.loc["VALE3", "volume"] == 43_938_600
+    assert cotahist.loc["VALE3", "volume_financeiro"] == 2_772_825_021.0
+    assert (
+        cotahist.loc["BBAS3T", "volume_financeiro"] == 3_000.75
+    )  # somado, como o volume
 
 
 def test_boletim_do_dia_e_o_pr_completado_pelo_cotahist(tmp_path):
@@ -630,3 +655,70 @@ def test_sem_nenhum_cotahist_e_atrasado():
 def test_lista_curta_de_pregoes_nao_tem_risco():
     """Com poucos pregões conhecidos (acervo começando), todos são recentes."""
     assert b3.dias_em_risco([date(2026, 10, 9), date(2026, 10, 13)], set()) == []
+
+
+def test_contratos_do_pr_trazem_o_ajuste_do_di_em_taxa_e_o_do_dolar_em_preco(tmp_path):
+    """DI1: a taxa de ajuste (% ao ano), não o preço unitário; DOL: o preço de ajuste (R$ por US$ 1.000).
+    Contrato sem negócio no dia também tem ajuste; ação e contrato de outro prefixo ficam de fora."""
+    caminho = zip_do_boletim(
+        tmp_path,
+        {
+            "BVBG.086.01_A.xml": (
+                datetime(2026, 10, 27, 21, 0, tzinfo=UTC),
+                xml_do_boletim(
+                    [
+                        relatorio(
+                            "DI1F29",
+                            TradQty="139933",
+                            AdjstdQt="74289.66",
+                            AdjstdQtTax="14.76",
+                            PrvsAdjstdQt="73646.86",
+                            PrvsAdjstdQtTax="15.223",
+                        ),
+                        relatorio("DI1F35", AdjstdQtTax="14.1", PrvsAdjstdQtTax="14.2"),
+                        relatorio(
+                            "DOLX26",
+                            TradQty="41018",
+                            AdjstdQt="5350.365",
+                            PrvsAdjstdQt="5422.909",
+                        ),
+                        PETR4_NO_BOLETIM,
+                        relatorio(
+                            "WINZ26",
+                            TradQty="9",
+                            AdjstdQt="176000",
+                            PrvsAdjstdQt="177000",
+                        ),
+                    ]
+                ),
+            )
+        },
+    )
+    contratos = b3.ler_contratos_do_pr(caminho)
+    assert sorted(contratos.index) == ["DI1F29", "DI1F35", "DOLX26"]
+    assert tuple(contratos.loc["DI1F29"]) == (14.76, 15.223)
+    assert tuple(contratos.loc["DI1F35"]) == (14.1, 14.2)
+    assert tuple(contratos.loc["DOLX26"]) == (5350.365, 5422.909)
+
+
+def test_contrato_sem_ajuste_fica_de_fora(tmp_path):
+    caminho = zip_do_boletim(
+        tmp_path,
+        {
+            "BVBG.086.01_A.xml": (
+                datetime(2026, 10, 27, 21, 0, tzinfo=UTC),
+                xml_do_boletim([relatorio("DOLF27", PrvsAdjstdQt="5400")]),
+            )
+        },
+    )
+    assert b3.ler_contratos_do_pr(caminho).empty
+
+
+def test_cotahist_traz_o_numero_de_distribuicao(tmp_path):
+    """DISMES: a B3 aumenta o número a cada evento; é por ele que o pregão do dia acha o dia ex."""
+    cotahist = b3.ler_cotahist(
+        zip_do_cotahist(
+            tmp_path, [registro_do_cotahist("VIVT3", "010", distribuicao="191")]
+        )
+    )
+    assert cotahist.loc["VIVT3", "distribuicao"] == "191"

@@ -118,6 +118,25 @@ def test_historico_mensal_traz_selic_e_ipca_em_12_meses():
     )  # os 11 primeiros meses não têm 12 para trás
 
 
+def test_historico_traz_todo_o_acervo_e_nao_so_10_anos():
+    # 16 anos de IPCA (o acervo começa em 2010): nenhum mês fica de fora
+    lidas = _lidas(**{ji.IPCA: _lida(_mensal([0.5] * 16 * 12))})
+    painel = ji.montar_painel(lidas, None, HOJE)
+    assert len(painel.historico) == 16 * 12
+    assert painel.historico[0].mes == date(2010, 10, 1)
+
+
+def test_grafico_do_historico_tem_botoes_de_1_ano_a_tudo():
+    from src import graficos
+
+    lidas = _lidas(**{ji.IPCA: _lida(_mensal([0.5] * 24))})
+    figura = graficos.criar_grafico_juros_e_inflacao(
+        ji.montar_painel(lidas, None, HOJE).historico
+    )
+    rotulos = [b.label for b in figura.layout.xaxis.rangeselector.buttons]
+    assert rotulos == ["1A", "2A", "5A", "10A", "Tudo"]
+
+
 # --- leitura do acervo --------------------------------------------------------------------
 
 

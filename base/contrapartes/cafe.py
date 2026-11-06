@@ -12,7 +12,7 @@ que **não** sabemos. As regras (testes em `tests/test_base_contrapartes_cafe.py
   oficial ou com notícia de veículo identificado cuja página foi guardada pelo arquivista
   (`base/arquivo/contrapartes.py`; os endereços guardados entram em `guardadas`). Notícia ainda não
   guardada fica em "o que não sabemos", com o veículo, a data e o link, e não entre os fatos.
-- **Palavras vedadas** (`VEDADAS`): a ficha descreve, não julga.
+- **Palavras vedadas** (`base/palavras_vedadas.py`): a ficha descreve, não julga.
 - **Sem olhar o futuro:** `em` corta pelo `divulgado_em` (cortar o futuro não muda o passado).
 
 Os fatos vêm da tabela conferida `base/conferidas/contrapartes_cafe.csv` (notícias e documentos lidos à
@@ -21,7 +21,6 @@ situação especial do cadastro aberto do CNPJ (Receita) e os informes de CRA da
 """
 
 import re
-import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
@@ -29,6 +28,7 @@ from pathlib import Path
 import pandas as pd
 
 from base.fidc import documento_de_empresa
+from base.palavras_vedadas import palavras_vedadas_em
 
 CAMINHO = (
     Path(__file__).resolve().parent.parent / "conferidas" / "contrapartes_cafe.csv"
@@ -67,20 +67,6 @@ NOMES_DOS_FATOS_DE_RISCO = {
     "apuracao_publica": "Apuração pública",
 }
 FATOS_DE_RISCO = tuple(NOMES_DOS_FATOS_DE_RISCO)
-# a ficha descreve, não julga: estas palavras não aparecem em nenhum texto dela (comparação sem
-# acento nem caixa, palavra inteira)
-VEDADAS = (
-    "quebrou",
-    "quebrada",
-    "calote",
-    "golpe",
-    "fraude",
-    "não confiável",
-    "evite",
-    "recomendamos",
-    "seguro",
-    "confiável",
-)
 ENDERECO_DO_CNPJ = (
     "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/"
 )
@@ -141,17 +127,6 @@ class FichaDaContraparte:
     uf: str | None
     fatos: list[Fato] = field(default_factory=list)
     o_que_nao_sabemos: list[str] = field(default_factory=list)
-
-
-def _sem_acento(texto: str) -> str:
-    normal = unicodedata.normalize("NFKD", texto.casefold())
-    return "".join(c for c in normal if not unicodedata.combining(c))
-
-
-def palavras_vedadas_em(texto: str) -> list[str]:
-    """As palavras de `VEDADAS` que aparecem no texto (palavra inteira, sem acento nem caixa)."""
-    limpo = _sem_acento(texto)
-    return [v for v in VEDADAS if re.search(rf"\b{re.escape(_sem_acento(v))}\b", limpo)]
 
 
 def cnpj_valido(valor: str) -> bool:

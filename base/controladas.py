@@ -20,6 +20,7 @@ import pandas as pd
 
 from base import fre
 from base.cnpj import normalizar_cnpj
+from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 
 COLUNAS = (
     "cnpj_companhia", "companhia", "referencia", "versao", "id_documento", "conhecido_em",
@@ -61,7 +62,7 @@ def ler_controladas_do_fre(conteudo_do_zip: bytes) -> pd.DataFrame:
     tabela = pd.DataFrame(
         {
             "cnpj_companhia": bruto["CNPJ_Companhia"].map(cnpj14),
-            "companhia": bruto["Nome_Companhia"].str.strip(),
+            "companhia": tirar_cpf_da_coluna(bruto["Nome_Companhia"].str.strip()),
             "referencia": pd.to_datetime(
                 bruto["Data_Referencia"], errors="coerce"
             ).dt.date,
@@ -71,7 +72,7 @@ def ler_controladas_do_fre(conteudo_do_zip: bytes) -> pd.DataFrame:
                 documento.map(entregue), errors="coerce"
             ).dt.date,
             "cnpj": bruto["CNPJ"].map(cnpj14),
-            "razao_social": bruto["Razao_Social"].str.strip(),
+            "razao_social": tirar_cpf_da_coluna(bruto["Razao_Social"].str.strip()),
             "tipo": bruto["Tipo_Sociedade"].str.strip().str.lower(),
             "participacao": pd.to_numeric(
                 bruto["Participacao_Emissor"], errors="coerce"

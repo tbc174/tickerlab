@@ -30,7 +30,7 @@ URL_CNPJ = (
 USOS = ("treinar", "rotular", "exportar", "mostrar")
 FONTES_COM_MARCA_RESTRITA = (
     "yahoo-bvsp",  # não comercial, na lista dos usos sem cobrança
-    "tce-rs",  # a confirmar, fora da lista
+    "assessoria-igc",  # a confirmar (posts das assessorias, ADR 0082)
     "kraken",  # não comercial, antes só na exceção da ADR 0045
     "fonte-que-ninguem-conhece",  # sem resposta escrita: a confirmar
 )
@@ -59,8 +59,8 @@ def _manifesto(arquivo: Path) -> dict:
         ("bcb-sgs-433", Marca.VENDAVEL),
         (
             "sec-13f",
-            Marca.USO_INTERNO,
-        ),  # a SEC permite ML por escrito; revenda a confirmar
+            Marca.VENDAVEL,
+        ),  # ML por escrito; revenda por risco assumido (ADR 0122)
         ("yahoo", Marca.NAO_COMERCIAL),  # termos do Yahoo: uso pessoal
         ("yahoo-bvsp", Marca.NAO_COMERCIAL),
         ("b3-negocios", Marca.NAO_COMERCIAL),  # só pesquisa até a B3 autorizar
@@ -75,7 +75,7 @@ def _manifesto(arquivo: Path) -> dict:
             "rfb-cnpj",
             Marca.VENDAVEL,
         ),  # CC BY na ficha do dados.gov.br (Pode, 20/10/2026)
-        ("pgfn-divida", Marca.A_CONFIRMAR),
+        ("pgfn-divida", Marca.VENDAVEL),  # risco assumido (ADR 0122)
         (
             "fonte-que-ninguem-conhece",
             Marca.A_CONFIRMAR,
@@ -99,6 +99,39 @@ def test_a_mais_restrita_vence():
         == Marca.NAO_COMERCIAL
     )
     assert marca_mais_restrita([]) == Marca.A_CONFIRMAR  # sem fonte conhecida
+
+
+# --- Emenda 5 da ADR 0008 (21/10/2026): Kraken, MapBiomas, GDELT e CFTC ---------------------------
+
+
+@pytest.mark.parametrize(
+    ("fonte", "marca"),
+    [
+        ("kraken", Marca.NAO_COMERCIAL),  # termo de 19/10/2026: só uso próprio
+        (
+            "mapbiomas",
+            Marca.VENDAVEL,
+        ),  # CC BY-SA; risco assumido (ADR 0122, 05/11/2026)
+        ("gdelt", Marca.VENDAVEL),  # uso livre citando e linkando o GDELT
+        ("cftc", Marca.VENDAVEL),  # obra do governo dos EUA, 17 U.S.C. §105
+    ],
+)
+def test_emenda_5_as_quatro_marcas(fonte, marca):
+    assert marca_da_fonte(fonte) == marca
+
+
+def test_emenda_5_os_textos_das_licencas():
+    assert "19/10/2026" in coletas.LICENCAS["kraken"]
+    assert "robôs" in coletas.LICENCAS["kraken"]
+    assert "CC BY-SA" in coletas.LICENCAS["mapbiomas"]
+    assert "GDELT Project" in coletas.LICENCAS["gdelt"]
+    assert "§105" in coletas.LICENCAS["cftc"]
+
+
+def test_emenda_5_gdelt_sai_dos_usos_sem_cobranca_e_a_kraken_segue_coletando():
+    assert coletas.uso_sem_cobranca("gdelt") is None
+    # parar a coleta (1b) e apagar o guardado (1c) foram negados: a Kraken continua no arquivo
+    assert "kraken" in coletas.REVENDA and "kraken" in coletas.COLETA_E_GUARDA
 
 
 # --- o erro: só a B3 (ADR 0102) ----------------------------------------------------------------
@@ -201,6 +234,14 @@ def test_a_trava_segue_funcionando_para_quem_entrar_na_lista(monkeypatch):
             "tce-rs-empenhos",
         ),
         ("https://dados.tce.rs.gov.br/dados/licitacon/2024.zip", "tce-rs"),
+        (
+            "ftp://ftp.datasus.gov.br/dissemin/publicos/SIHSUS/200801_/Dados/RDAC2607.dbc",
+            "ms",
+        ),
+        (
+            "ftp://ftp.datasus.gov.br/dissemin/publicos/SIASUS/200801_/Dados/PAAC2607.dbc",
+            "ms",
+        ),
         ("https://sem-fonte.example/x.csv", None),
         ("base/conferidas/empresas.csv", None),  # conferida à mão: não traz fonte nova
     ],
@@ -277,7 +318,7 @@ def test_cripto_sem_origens_tem_a_fonte_pela_pasta(tmp_path):
     for arquivo in (kraken, cftc):
         gravar_se_mudou(_tabela(), arquivo, [], [], versoes=False)
     assert _manifesto(kraken)["licenca"]["fontes"] == {"kraken": "nao_comercial"}
-    assert _manifesto(cftc)["licenca"]["fontes"] == {"cftc": "uso_interno"}
+    assert _manifesto(cftc)["licenca"]["fontes"] == {"cftc": "vendavel"}
     licenca.exigir_licenca_das_tabelas("treinar", [kraken, cftc])  # ADR 0102: só marca
 
 
@@ -327,12 +368,14 @@ def test_tabela_sem_origens_fica_a_confirmar_e_passa(tmp_path):
 
 
 def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeypatch):
-    """`base/conferidas/empresa_serie.csv` diz a fonte do arquivista em cada linha (o Comex Stat está
-    a confirmar); texto livre na coluna `fonte` (as outras conferidas) não vira fonte."""
+    """`base/conferidas/empresa_serie.csv` diz a fonte do arquivista em cada linha (a PGFN é vendável
+    por risco assumido desde a ADR 0122; o Comex Stat é vendável desde a resposta do MDIC de 21/10/2026); texto livre na
+    coluna `fonte` (as outras conferidas) não vira fonte."""
     conferidas = tmp_path / "repo" / "base" / "conferidas"
     conferidas.mkdir(parents=True)
     (conferidas / "empresa_serie.csv").write_text(
-        "fonte;chave;cnpj\nans-beneficiarios;1;x\ncomexstat;2;y\n", encoding="utf-8"
+        "fonte;chave;cnpj\nans-beneficiarios;1;x\ncomexstat;2;y\npgfn-divida;3;z\n",
+        encoding="utf-8",
     )
     (conferidas / "emissores.csv").write_text(
         "emissor;fonte\nABNB;cadastro de companhias da CVM (cad_cia_aberta.csv)\n",
@@ -350,8 +393,13 @@ def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeyp
         origens=[{"url": "base/conferidas/emissores.csv", "sha256": "d"}],
     )
     assert _manifesto(serie)["licenca"] == {
-        "marca": "a_confirmar",
-        "fontes": {"ans": "vendavel", "comexstat": "a_confirmar", "cvm": "vendavel"},
+        "marca": "vendavel",
+        "fontes": {
+            "ans": "vendavel",
+            "comexstat": "vendavel",
+            "pgfn": "vendavel",
+            "cvm": "vendavel",
+        },
     }
     assert _manifesto(emissores)["licenca"]["fontes"] == {"cvm": "vendavel"}
 
@@ -361,11 +409,9 @@ def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeyp
 FONTES_DA_EMENDA_3 = (
     "yahoo",  # múltiplos p_l e p_vp dos padrões setoriais
     "pgfn",  # dívida ativa
-    "comexstat",  # B13 e rede
     "assessoria",  # negócios de M&A (só fatos, ADR 0082)
     "bcb-sgs-189",  # IGP-M da FGV
     "wayback",  # datas das cópias
-    "gdelt",
 )
 
 
@@ -374,9 +420,22 @@ def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
     assert set(FONTES_DA_EMENDA_3) <= set(por_fonte)
     for uso in coletas.USOS_SEM_COBRANCA:
         assert uso.fonte in coletas.REVENDA, uso.fonte  # fonte conhecida, com marca
-        assert marca_da_fonte(uso.fonte) != Marca.VENDAVEL, uso.fonte  # senão sobra
+        # com licença escrita a citação sobraria; vendida por risco assumido (ADR 0122), ela fica
+        assert coletas.revenda_da_fonte(uso.fonte) not in (
+            coletas.VENDAVEL_ODBL,
+            coletas.VENDAVEL_COM_ATRIBUICAO,
+        ), uso.fonte
         assert uso.onde and uso.substituto and uso.citacao, uso.fonte
     assert "b3" in por_fonte  # Emenda 6 (22/10/2026): a B3 entrou, com a citação
+
+
+def test_comex_stat_saiu_da_lista_porque_o_mdic_respondeu():
+    """Resposta escrita do MDIC em 21/10/2026 (LAI, Decreto 8.777/2016): uso livre, inclusive
+    comercial, derivação e ML. A fonte é vendável com atribuição e não precisa mais da citação
+    de uso sem cobrança."""
+    assert marca_da_fonte("comexstat") == Marca.VENDAVEL
+    assert coletas.uso_sem_cobranca("comexstat") is None
+    assert coletas.pode_usar("exportar", "comexstat")
 
 
 @pytest.mark.parametrize(
@@ -384,11 +443,9 @@ def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
     [
         "yahoo-bvsp",
         "pgfn-divida",
-        "comexstat",
         "assessoria-igc",
         "bcb-sgs-189",
         "wayback-igc",
-        "gdelt",
     ],
 )
 def test_mostrar_aceita_fonte_restrita_da_lista(fonte):
@@ -443,8 +500,8 @@ def test_rfb_cnpj_vendavel_com_atribuicao():
         "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026"
         in coletas.LICENCAS["rfb-cnpj"]
     )
-    # a planilha de cripto da Receita não muda
-    assert marca_da_fonte("rfb-cripto") == Marca.A_CONFIRMAR
+    # a planilha de cripto da Receita é vendável por risco assumido (ADR 0122), sem frase própria
+    assert coletas.revenda_da_fonte("rfb-cripto") == coletas.VENDAVEL_RISCO_ASSUMIDO
     assert coletas.citacoes_das_fontes(["rfb-cnpj", "rfb-cnpj-estabelecimentos"]) == [
         coletas.FRASE_DA_RECEITA
     ]

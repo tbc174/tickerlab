@@ -123,7 +123,7 @@ def _recebiveis_aceitos(tape: dict[str, Any], excluidas: set[int]) -> list[dict]
 
 
 def _saldo_por_contraparte(recebiveis: list[dict], campo: str) -> list[int]:
-    """Saldos por CNPJ (sem diferença de maiúscula), do maior para o menor."""
+    """Saldos por CNPJ ou id externo (sem diferença de maiúscula), do maior para o menor."""
     soma: dict[str, int] = defaultdict(int)
     for r in recebiveis:
         soma[r[campo].strip().upper()] += r["saldo"]
@@ -138,7 +138,7 @@ def _concentracao(
         saldos = _saldo_por_contraparte(recebiveis, f"{sujeito}_cnpj")
         for n in TAMANHOS_DO_TOPO:
             chave = f"{sujeito}_top{n}"
-            formula = f"saldo em aberto dos {n} maiores {sujeito}s (por CNPJ) / saldo em aberto do pool"
+            formula = f"saldo em aberto dos {n} maiores {sujeito}s (por CNPJ ou id externo) / saldo em aberto do pool"
             numeros[chave] = NumeroDoPool(
                 chave, _razao(sum(saldos[:n]), saldo), _rastro(tape, formula, corte)
             )

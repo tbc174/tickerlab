@@ -24,6 +24,9 @@ Resposta guardada (mesma entrada, mesmo guia) nunca é paga de novo. Em `<pasta>
 resposta bruta de cada escritor), `cegas/` (o veredito da porta 2), `analises/` (o texto montado com
 a linhagem inteira, o que vai para o VPS) e `manifesto.json` (gasto, pilotos, lotes e os vereditos da
 porta 3 em ordem). A chave fica em `ANTHROPIC_API_KEY` (nunca no código).
+
+Roda: manual no servidor pelo escrever-analises.sh; outro script (exportar_entradas_da_analise.py);
+citado em exibicao.py.
 """
 
 import argparse

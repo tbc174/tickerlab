@@ -33,10 +33,18 @@ from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import EXERCICIO, POSICAO, e_financeira
 from src.formatos import formatar_decimal, formatar_pct
 from src.fundamentos import (
+    BALANCO,
+    COMECO_E_FIM,
+    CONFERENCIA,
+    DAS_ACOES,
+    DOZE_MESES,
     FRACAO,
+    LUCRO,
     NAO_SE_APLICA_A_FINANCEIRAS,
     REAIS,
     REAIS_POR_ACAO,
+    TODOS_OS_ANOS,
+    UM_ANO_ANTES,
     VEZES,
     Indicador,
     acoes_em_circulacao,
@@ -44,7 +52,10 @@ from src.fundamentos import (
     balanco_mais_recente,
     divida_e_caixa,
     doze_meses,
+    um_ano_antes,
 )
+from src.fundamentos import todas_as_entradas as _entradas_das_contas
+from src.rastro import Entrada
 
 DIAS = "dias"
 ACOES = "ações"
@@ -113,6 +124,102 @@ FORMULAS = {
 }
 
 
+# As contas que entram em cada indicador, e de onde (os lugares de `src/fundamentos.py`): é o que o
+# rastro cita como entradas. Cada uma leva todas as contas que `calcular` lê para dar o número, também
+# as que só decidem se ele sai (o DuPont pede receita, ativo, patrimônio e lucro para as quatro partes).
+# Os fatores do FRE (desdobramentos, grupamentos e bonificações) não são contas da DFP e ficam fora:
+# sem eles, as entradas refazem os dividendos com o ajuste só pelos saltos redondos.
+def _medio(conta: str) -> tuple[tuple[str, str], ...]:
+    """O saldo médio: o do balanço mais recente e, quando há, o de um ano antes."""
+    return ((BALANCO, conta), (UM_ANO_ANTES, conta))
+
+
+_DO_DUPONT = (
+    (DOZE_MESES, LUCRO),
+    (DOZE_MESES, "receita"),
+    (BALANCO, "ativo_total"),
+    (BALANCO, "patrimonio_liquido"),
+    (BALANCO, "minoritarios"),
+)
+_RECEBER = ((DOZE_MESES, "receita"), *_medio("contas_a_receber"))
+_ESTOCAR = ((DOZE_MESES, "custo"), *_medio("estoques"))
+_PAGAR = ((DOZE_MESES, "custo"), *_medio("fornecedores"))
+_DIVIDA_LIQUIDA = tuple(
+    (BALANCO, conta) for conta in ("divida_cp", "divida_lp", "caixa", "aplicacoes")
+)
+_DA_ESTRUTURA = ((BALANCO, "ativo_total"), (BALANCO, "patrimonio_liquido"))
+# as ações de todos os anos: os saltos sem evento e os fatores que ajustam cada ano leem a série inteira
+_ACOES_DE_TODOS_OS_ANOS = (
+    (TODOS_OS_ANOS, "acoes_total"),
+    (TODOS_OS_ANOS, "acoes_tesouraria"),
+)
+_PAGOS_NO_ULTIMO = (CONFERENCIA, "dividendos_pagos")
+_POR_ESPECIE = tuple(
+    (BALANCO, conta)
+    for conta in (
+        "acoes_ordinarias",
+        "acoes_ordinarias_tesouraria",
+        "acoes_preferenciais",
+        "acoes_preferenciais_tesouraria",
+    )
+)
+CONTAS_DOS_INDICADORES: dict[str, tuple[tuple[str, str], ...]] = {
+    "dupont_margem": _DO_DUPONT,
+    "dupont_giro": _DO_DUPONT,
+    "dupont_alavancagem": _DO_DUPONT,
+    "dupont_roe": _DO_DUPONT,
+    "pmr": _RECEBER,
+    "pme": _ESTOCAR,
+    "pmp": _PAGAR,
+    "ciclo_de_caixa": _RECEBER + _ESTOCAR + _PAGAR,
+    "caixa_livre": ((DOZE_MESES, "fco"), (DOZE_MESES, "capex")),
+    "capex": ((DOZE_MESES, "capex"),),
+    "capex_sobre_depreciacao": ((DOZE_MESES, "capex"), (DOZE_MESES, "depreciacao")),
+    "cobertura_de_juros": ((DOZE_MESES, "ebit"), (DOZE_MESES, "despesas_financeiras")),
+    "margem_ebitda": (
+        (DOZE_MESES, "ebit"),
+        (DOZE_MESES, "depreciacao"),
+        (DOZE_MESES, "receita"),
+    ),
+    "divida_liquida_sobre_ebitda": (
+        *_DIVIDA_LIQUIDA,
+        (DOZE_MESES, "ebit"),
+        (DOZE_MESES, "depreciacao"),
+    ),
+    "divida_liquida_sobre_ebit": (*_DIVIDA_LIQUIDA, (DOZE_MESES, "ebit")),
+    "passivos_sobre_ativos": _DA_ESTRUTURA,
+    "pl_sobre_ativos": _DA_ESTRUTURA,
+    "roa": ((DOZE_MESES, "lucro_liquido"), (BALANCO, "ativo_total")),
+    "liquidez_corrente": (
+        (BALANCO, "ativo_circulante"),
+        (BALANCO, "passivo_circulante"),
+    ),
+    "anos_pagando": ((TODOS_OS_ANOS, "dividendos_pagos"),),
+    "diluicao": _ACOES_DE_TODOS_OS_ANOS,
+    # o último ano não tem salto depois dele: só as ações do fim dele entram no "por ação"
+    "dividendo_por_acao": (
+        _PAGOS_NO_ULTIMO,
+        (CONFERENCIA, "acoes_total"),
+        (CONFERENCIA, "acoes_tesouraria"),
+    ),
+    "payout": (_PAGOS_NO_ULTIMO, (CONFERENCIA, LUCRO)),
+    "crescimento_do_dividendo": (
+        (COMECO_E_FIM, "dividendos_pagos"),
+        *_ACOES_DE_TODOS_OS_ANOS,
+    ),
+    "acoes_em_circulacao": DAS_ACOES + _POR_ESPECIE,
+}
+
+
+def todas_as_entradas(dados: DadosDaEmpresa) -> dict[str, tuple[Entrada, ...]]:
+    """As entradas de cada indicador de `CONTAS_DOS_INDICADORES` (ver `fundamentos.todas_as_entradas`)."""
+    return _entradas_das_contas(
+        dados,
+        anos=ANOS_DO_CRESCIMENTO_DO_DIVIDENDO,
+        contas_dos_indicadores=CONTAS_DOS_INDICADORES,
+    )
+
+
 @dataclass(frozen=True)
 class Historico:
     contas: pd.DataFrame  # um ano por linha (o índice), uma conta por coluna
@@ -137,10 +244,6 @@ class Fundamentalista:
 
 def _data(d: date) -> str:
     return f"{d:%d/%m/%Y}"
-
-
-def _um_ano_antes(d: date) -> date:
-    return d.replace(year=d.year - 1, day=28 if (d.month, d.day) == (2, 29) else d.day)
 
 
 def _saldos_em(contas: pd.DataFrame, referencia: date) -> dict:
@@ -436,12 +539,12 @@ def calcular(dados: DadosDaEmpresa) -> Fundamentalista:
     ttm, base_12m, _ = doze_meses(contas)
     saldo, data_do_balanco, _ = balanco_mais_recente(contas)
     anterior = (
-        _saldos_em(contas, _um_ano_antes(data_do_balanco)) if data_do_balanco else {}
+        _saldos_em(contas, um_ano_antes(data_do_balanco)) if data_do_balanco else {}
     )
     base_balanco = f"balanço de {_data(data_do_balanco)}" if data_do_balanco else ""
     base = f"{base_12m}; {base_balanco}"
     base_media = (
-        f"{base_12m}; saldo médio de {_data(_um_ano_antes(data_do_balanco))} e "
+        f"{base_12m}; saldo médio de {_data(um_ano_antes(data_do_balanco))} e "
         f"{_data(data_do_balanco)}"
         if anterior and data_do_balanco
         else f"{base_12m}; saldo do fim, em {_data(data_do_balanco)}"

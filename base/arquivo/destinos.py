@@ -15,12 +15,18 @@ from base.arquivo import (
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_commodities,
+    lote_commodities_oficiais,
     lote_cvm,
+    lote_documentais,
     lote_eua,
+    lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
     lote_patentes,
     lote_reguladores,
     lote_sec,
+    lote_selic,
     lote_setoriais,
     lote_tesouro,
 )
@@ -64,10 +70,19 @@ _SO_LIGA_HOJE = "hoje só liga nomes na rede; a tabela própria está prevista"
 _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
 )
+_IBOVESPA_FORA_DO_CATALOGO = (
+    "fechamento do Ibovespa para o pregão do dia, fora do catálogo (licença da B3)"
+)
 
 
 def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
     return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
+
+
+_LOTE_EUROPA_RBA_SO_ARQUIVO = (
+    "séries de institutos de estatística europeus e da RBA, guardadas como publicadas; "
+    "a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria"
+)
 
 
 _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
@@ -116,6 +131,7 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
     "indicadores do Banco Mundial para o Brasil e para o mundo": _ids(
         "worldbank",
         "brasil",
+        "qeds-brasil",
         "mundo-fp-cpi-totl-zg",
         "mundo-ny-gdp-mktp-kd-zg",
         "mundo-sp-pop-totl",
@@ -143,6 +159,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
         "noaa", "ao", "nao", "pna", "teleconexoes"
     ),
 }
+
+_LOTE_NORDICOS_SO_ARQUIVO = (
+    "juros e câmbio dos bancos centrais nórdicos guardados como a fonte publica; a tabela com contrato "
+    "no catálogo ainda não existe"
+)
 
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
@@ -203,6 +224,16 @@ _LOTE_REGULADORES_SO_ARQUIVO = (
     "não existe"
 )
 
+_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO = (
+    "preço de commodity de órgão público guardado como o órgão publica (Comissão Europeia, citando a fonte e "
+    "indicando as mudanças); o leitor com tabela no catálogo ainda não existe"
+)
+
+_LOTE_COMMODITIES_SO_ARQUIVO = (
+    "série de café, commodities ou clima guardada como a fonte publica (USDA, FAO, OIC, CONAB, CFTC, CHC, "
+    "INMET e MapBiomas, citando a fonte); o leitor com tabela no catálogo ainda não existe"
+)
+
 # GSF e repasse do risco hidrológico: a linha que mais muda o resultado das hidrelétricas; DEC, FEC e
 # autos entram na ficha das distribuidoras
 _REGULADORES_PLANEJADAS = {
@@ -213,6 +244,8 @@ _REGULADORES_PLANEJADAS = {
         "distribuidoras/ficha",
         "indicadores gerenciais e autos de infração por distribuidora",
     ),
+    # das pastas da ANS no lote, só as penalidades viram tabela; o resto segue só no acervo
+    "ans-qualidade": _tabela("ans_penalidades"),
 }
 
 # o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
@@ -237,6 +270,12 @@ _LOTE_CVM_SO_ARQUIVO = (
     "pessoa, ADR 0088); a tabela com contrato no catálogo ainda não existe"
 )
 
+# informe mensal de CRI, CRA e OTS (série 6, PR 1): as três fontes juntas nas mesmas duas tabelas
+_INFORME_DE_SECURITIZACAO = (
+    "securitizacao_certificados",
+    "securitizacao_cedente_devedor",
+)
+
 DESTINOS: dict[str, Destino] = {
     # CVM
     "cvm-hist-dfp": _tabela("demonstracoes_como_era", "dmpl_como_era", "pareceres_dfp"),
@@ -248,6 +287,7 @@ DESTINOS: dict[str, Destino] = {
         "fre_capital_social",
         "fre_empregados",
         "fre_acionistas",
+        "fre_distribuicao_capital",
         "fre_partes_relacionadas",
         "fre_eventos_de_capital",
         "fre_proventos",
@@ -276,11 +316,9 @@ DESTINOS: dict[str, Destino] = {
     "cvm-fidc-recente": _tabela("fidc_informe"),
     "cvm-ofertas": _tabela("ofertas_antigas", "ofertas_resolucao_160"),
     "cvm-cadastros": _tabela("cadastro_das_companhias", "cadastro_de_fundos"),
-    "cvm-cri": _planejada("serie-6/PR1", "certificados de recebíveis imobiliários"),
-    "cvm-cra": _planejada("serie-6/PR1", "certificados de recebíveis do agronegócio"),
-    "cvm-fiagro": _planejada(
-        "serie-T/T4", "informe mensal do FIAGRO; a CVM só guarda os meses recentes"
-    ),
+    "cvm-cri": _tabela(*_INFORME_DE_SECURITIZACAO),
+    "cvm-cra": _tabela(*_INFORME_DE_SECURITIZACAO),
+    "cvm-fiagro": _tabela("cvm_fiagro"),
     "cvm-sancionador": _planejada(
         "serie-T/T4", "processos sancionadores (só PJ e a função)"
     ),
@@ -330,7 +368,12 @@ DESTINOS: dict[str, Destino] = {
     "tesouro-br-divida": _planejada(
         "serie-T/T7", "estoque e emissões da dívida federal, CAPAG e dívida dos estados"
     ),
-    "rfb-cnpj": _tabela("cnpj_situacao_especial"),
+    "rfb-cnpj": _tabela(
+        "cnpj_situacao_especial",
+        "cnpj_situacao_cadastral",
+        "cnpj_simples_historico",
+        "cnpj_empresas_historico",
+    ),
     "pgfn-divida": _tabela("pgfn_divida"),
     # setoriais
     "anp-vendas-distribuidora": _tabela("anp_vendas"),
@@ -345,23 +388,54 @@ DESTINOS: dict[str, Destino] = {
     "anac-estatistico": _tabela("anac_estatistico"),
     "ans-beneficiarios": _tabela("ans_beneficiarios"),
     "ans-beneficiarios-operadora": _tabela("ans_beneficiarios"),
-    "ans-operadoras": _planejada(
-        "serie-T/T9", _SO_LIGA_HOJE + " (cadastro de operadoras)"
-    ),
+    "ans-operadoras": _tabela("ans_operadoras"),
     "susep-ses": _tabela("susep_seguros"),
-    "susep-cadastro": _planejada(
-        "serie-T/T9", _SO_LIGA_HOJE + " (entidades supervisionadas)"
-    ),
+    "susep-cadastro": _tabela("susep_cadastro"),
     "antt-pedagio": _planejada("serie-5/PR1", "praças de pedágio e tráfego"),
     "antt-siade": _tabela("antt_siade"),
-    "comexstat": _tabela("comex_cafe", "comex_preco_medio"),
+    "comexstat": _tabela("comex_cafe", "comex_preco_medio", "comex_urf", "comex_via"),
     # governo, sanções e identificadores
-    "cgu-ceis": _planejada("sinais/PR4", "sanções administrativas da CGU"),
-    "cgu-cnep": _planejada("sinais/PR4", "sanções da Lei Anticorrupção"),
-    "cgu-cepim": _planejada(
-        "sinais/PR4", "entidades privadas sem fins lucrativos impedidas"
+    "cgu-ceis": _tabela("sancoes_cgu"),
+    "cgu-cnep": _tabela("sancoes_cgu"),
+    "cgu-cepim": _tabela("sancoes_cgu"),
+    "cgu-leniencia": _tabela("sancoes_cgu"),
+    "djen-partes": _tabela("processos_comunicacoes", "processos_partes", "processos"),
+    "djen-processos": _tabela(
+        "processos_comunicacoes", "processos_partes", "processos"
     ),
-    "cgu-leniencia": _planejada("sinais/PR4", "acordos de leniência"),
+    "cnj-tpu": _tabela("processos"),
+    # só uso interno (`coletas.FONTES_SO_INTERNAS`): a tabela nunca sai em tela, API nem exportação
+    "datajud-processos": _tabela("processos_datajud", "processos_datajud_movimentos"),
+    "antt-autos-de-transito": _planejada(
+        "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
+    ),
+    # Ficha Clara, licenças e registros (`base/licencas.py`)
+    "anvisa-empresas": _tabela("anvisa_registros"),
+    "anvisa-produtos": _tabela("anvisa_registros"),
+    "anvisa-cmed": _tabela("cmed_precos"),
+    "antt-rntrc": _tabela("antt_rntrc"),
+    "mapa-sipeagro": _tabela("mapa_sipeagro"),
+    "anatel-outorgas": _tabela("anatel_outorgas"),
+    "anm-cadastro-mineiro": _tabela("anm_titulos"),
+    "ancine-agentes": _tabela("ancine_agentes"),
+    # Ficha Clara, incentivos (`base/incentivos.py`)
+    "mme-reidi": _tabela("mme_reidi"),
+    "aneel-cde": _tabela("aneel_cde"),
+    "bcb-rde-ied": _tabela("bcb_rde_ied"),
+    "sefazpe-beneficios": _tabela(
+        "sefaz_pe_beneficios"
+    ),  # incentivo estadual (linha 578)
+    # financiamentos por CNPJ (`base/financiamentos.py`; o BNDES vem do lote Brasil 2, abaixo)
+    "finep-contratacao": _tabela("financiamentos_finep"),
+    **{f.id: _tabela("bcb_selic_focus") for f in lote_selic.fontes()},
+    # fontes pouco visíveis (ADR 0124): os fatos aprovados viram as tabelas do PR B
+    **{
+        f.id: _planejada(
+            "fontes-pouco-visiveis/PR-B",
+            "fatos de dívida e de fundos regionais com página e prova",
+        )
+        for f in lote_documentais.fontes()
+    },
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),
@@ -369,9 +443,9 @@ DESTINOS: dict[str, Destino] = {
         "sinais/PR2-3", "empenhos, liquidações e pagamentos dos municípios do Paraná"
     ),
     "ibama-autos": _planejada("serie-T/T5", "autos de infração ambiental por CNPJ"),
-    "ibama-embargos": _planejada("serie-T/T5", "embargos ambientais por CNPJ"),
-    "mte-lista-suja": _planejada("serie-T/T5", "cadastro de empregadores (só PJ)"),
-    "gleif-br": _planejada("serie-T/T9", _SO_LIGA_HOJE + " (CNPJ e LEI)"),
+    "ibama-embargos": _tabela("ibama_embargos"),
+    "mte-lista-suja": _tabela("mte_lista_suja"),
+    "gleif-br": _tabela("gleif_ponte"),
     # M&A e intradiários
     "assessoria-igc": _tabela(
         "ma_assessorias", "ma_datas", "ma_negocios", "ma_partes", "ma_regua"
@@ -382,6 +456,7 @@ DESTINOS: dict[str, Destino] = {
     "b3-negocios": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-boletim-pr": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-cotahist-dia": _pesquisa(_B3_FORA_DO_CATALOGO),
+    "b3-ibov-diario": _pesquisa(_IBOVESPA_FORA_DO_CATALOGO),
     "conab-cafe-safra": _tabela("conab_cafe"),
     "conab-cafe-publicacao": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
@@ -396,6 +471,8 @@ DESTINOS: dict[str, Destino] = {
     "inmet-bdmep": _tabela("clima_regiao_cafe"),
     "chirps-mensal": _tabela("clima_regiao_cafe"),
     "chirps-historico": _tabela("clima_regiao_cafe"),
+    "chirps3-rnl-mensal": _tabela("clima_regiao_cafe"),
+    "chirps3-rnl-historico": _tabela("clima_regiao_cafe"),
     "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # área de café por município (plano do café, PR 8): `base/commodities/area_municipio.py`
     "mapbiomas-cafe": _tabela("area_cafe_municipio"),
@@ -420,6 +497,8 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/brasil-camada-2", _LOTE_BRASIL2_SO_ARQUIVO)
         for f in lote_brasil2.fontes()
     },
+    # das operações do BNDES, o arquivo das não automáticas já vira tabela (linha 469)
+    "bndes-operacoes": _tabela("financiamentos_bndes"),
     # lote cadastros globais (rodada 4, linha 287): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CADASTROS_SO_ARQUIVO)
@@ -450,6 +529,7 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("cvm-lote-2/tabelas", _LOTE_CVM_SO_ARQUIVO)
         for f in lote_cvm.fontes()
     },
+    "cvm-securitizadoras-ots": _tabela(*_INFORME_DE_SECURITIZACAO),
     "cvm-fundos-informe-diario": _planejada(
         "cvm-lote-2/cota-por-fundo",
         "cota, patrimônio e captação diária de cada fundo 555",
@@ -499,17 +579,30 @@ DESTINOS: dict[str, Destino] = {
             "termos-iex",
             "termos-banco-mundial",
             *lote_eua.termos(),
+            *lote_europa_rba.termos(),
+            *lote_nordicos.termos(),
             *lote_cadastros.termos(),
             *lote_atencao.termos(),
             *lote_clima.termos(),
             *lote_patentes.termos(),
+            *lote_commodities_oficiais.termos(),
         )
+    },
+    # lote nórdico (linha 511, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/nordicos", _LOTE_NORDICOS_SO_ARQUIVO)
+        for f in lote_nordicos.fontes()
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
     # publicam; a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria
     **{
         f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
         for f in lote_eua.fontes()
+    },
+    # lote Europa e RBA (linha 512, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("lote-europa-rba/carga", _LOTE_EUROPA_RBA_SO_ARQUIVO)
+        for f in lote_europa_rba.fontes()
     },
     # lote SEC (rodada 4, 23/10/2026): idem, a carga na base de ML é uma fila própria
     **{
@@ -537,6 +630,15 @@ DESTINOS: dict[str, Destino] = {
     **_REGULADORES_PLANEJADAS,
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),
+    # lote café, commodities e clima (linha 204 da fila, 03/11/2026): guardado no acervo; leitores depois
+    **{
+        f.id: _pesquisa(_LOTE_COMMODITIES_SO_ARQUIVO) for f in lote_commodities.fontes()
+    },
+    # lote commodities oficiais (linha 396 da fila, 05/11/2026): guardado no acervo; leitores depois
+    **{
+        f.id: _pesquisa(_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO)
+        for f in lote_commodities_oficiais.fontes()
+    },
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`
     "contrapartes-cafe": _tabela("contraparte_cafe"),
 }

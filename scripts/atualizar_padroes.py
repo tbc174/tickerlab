@@ -13,6 +13,8 @@ metodologia são os de 31/12 de cada ano.
 Com `--com-precos`, busca o preço de cada empresa no corte (último pregão até a data, no máximo
 `DIAS_DE_TOLERANCIA` antes) pelo histórico do app (Yahoo, com o cache no banco), e os múltiplos
 entram nos padrões: são a régua do setor do barato, justo ou caro. Preço de exemplo nunca entra.
+
+Roda: cron do VPS (todo dia às 8h30); citado em coletas.py, dicionario.py.
 """
 
 import argparse
@@ -41,7 +43,9 @@ FUSO = ZoneInfo("America/Sao_Paulo")
 DIAS_DE_TOLERANCIA = (
     10  # sem pregão nos 10 dias antes do corte: sem preço (ação parada ou fora)
 )
-PERIODO_DOS_PRECOS = "5y"  # o maior que o app guarda
+PERIODO_DOS_PRECOS = (
+    "5y"  # os padrões olham 5 anos (o app guarda até o histórico inteiro)
+)
 ORIGEM_PROIBIDA = "exemplo"  # dado de exemplo do app: nunca num padrão
 
 

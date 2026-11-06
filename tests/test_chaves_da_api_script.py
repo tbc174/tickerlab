@@ -16,7 +16,7 @@ from scripts import chaves_da_api as script
 from src.banco import chaves_da_api as cb
 from src.banco.modelo import auditoria, chaves_da_api, organizacoes
 from src.banco.usuarios import entrar
-from src.chaves_da_api import FORMATO, MotivoDaRecusa, hash_da_chave
+from src.chaves_da_api import FORMATO, MotivoDaRecusa, gerar_chave, hash_da_chave
 
 ADMIN = "admin-n7@exemplo.com"
 HOJE = datetime.now(UTC).date()
@@ -71,6 +71,18 @@ def _emitir(capsys, organizacao_id):
     return _chave_na_saida(saida), saida, erro
 
 
+def _segredo_da_chave(chave):
+    """O segredo é tudo depois de `tld_<prefixo>_`; ele mesmo pode ter `_` (base64 para URL)."""
+    return chave.split("_", 2)[2]
+
+
+def test_segredo_da_chave_e_inteiro_mesmo_com_sublinhado_nele():
+    for _ in range(500):
+        prefixo, chave = gerar_chave()
+        assert _segredo_da_chave(chave) == chave.removeprefix(f"tld_{prefixo}_")
+        assert len(_segredo_da_chave(chave)) == 43
+
+
 def _conferir(banco, chave):
     with banco.begin() as conexao:
         return cb.conferir_chave(conexao, chave)
@@ -96,7 +108,8 @@ def test_chave_nova_sai_uma_vez_no_stdout_e_em_nenhum_outro_lugar(
     caplog.set_level(logging.DEBUG)
     organizacao_id = _criar_organizacao(capsys)
     chave, _, erro = _emitir(capsys, organizacao_id)
-    segredo = chave.rsplit("_", 1)[1]
+    segredo = _segredo_da_chave(chave)
+    assert len(segredo) == 43
     assert chave not in erro and segredo not in erro
     assert chave not in caplog.text and segredo not in caplog.text
     auditado = _auditoria_em_texto(banco)
@@ -222,6 +235,68 @@ def test_conceder_suspender_e_reativar_direito(banco, admin, capsys):
     assert permite()
 
 
+def test_suspender_e_reativar_conjunto_para_todas_as_organizacoes(banco, admin, capsys):
+    organizacao_id = _criar_organizacao(capsys)
+    _rodar(
+        capsys,
+        "conceder-direito",
+        str(organizacao_id),
+        "--conjunto",
+        "cvm-dfp-itr",
+        "--finalidade",
+        "analise",
+        "--desde",
+        HOJE.isoformat(),
+    )
+
+    def permite():
+        with banco.connect() as conexao:
+            return cb.contrato_permite(
+                conexao,
+                organizacao_id,
+                conjunto="cvm-dfp-itr",
+                finalidade="analise",
+                dia=HOJE,
+            )
+
+    suspender = ("suspender-conjunto", "cvm-dfp-itr", "--motivo", "fonte")
+    codigo, saida, _ = _rodar(capsys, *suspender)
+    assert codigo == 0
+    assert "cvm-dfp-itr" in saida
+    assert "1 contrato" in saida  # quantos o botão alcançou: nome errado aparece como 0
+    assert not permite()
+    codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
+    assert codigo == 0
+    assert "cvm-dfp-itr" in saida and "fonte" in saida
+    codigo, _, erro = _rodar(capsys, *suspender)
+    assert codigo == 1  # já estava: nada mudou
+    assert "já estava" in erro
+    assert _rodar(capsys, "reativar-conjunto", "cvm-dfp-itr")[0] == 0
+    assert permite()
+    codigo, saida, _ = _rodar(capsys, "conjuntos-suspensos")
+    assert codigo == 0
+    assert "Nenhum conjunto suspenso" in saida
+
+
+def test_suspender_conjunto_sem_contrato_avisa_que_nao_alcancou_ninguem(
+    banco, admin, capsys
+):
+    # um nome digitado errado (DFP em vez de dfp) não pode parecer que parou alguma coisa
+    codigo, saida, _ = _rodar(
+        capsys, "suspender-conjunto", "CVM-DFP-ITR", "--motivo", "fonte"
+    )
+    assert codigo == 0  # suspender antes do primeiro contrato vale
+    assert "nenhum contrato" in saida
+
+
+def test_motivo_do_conjunto_fora_da_lista_e_recusado_pelo_argparse(
+    banco, admin, capsys
+):
+    with pytest.raises(SystemExit) as saida:
+        _rodar(capsys, "suspender-conjunto", "cvm-dfp-itr", "--motivo", "porque sim")
+    assert saida.value.code == 2
+
+
 def test_finalidade_treino_nunca_e_concedida(banco, admin, capsys):
     organizacao_id = _criar_organizacao(capsys)
     with pytest.raises(SystemExit):
@@ -305,6 +380,24 @@ def test_recusa_quem_esta_na_lista_mas_nao_e_admin_no_banco(
     )
     assert codigo == 2
     assert "administrador" in erro
+
+
+def test_suspender_conjunto_recusa_quem_nao_e_admin_no_banco(
+    banco, admin, capsys, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_ADMINS", f"{ADMIN},nunca-entrou@exemplo.com")
+    codigo, _, erro = _rodar(
+        capsys,
+        "suspender-conjunto",
+        "cvm-dfp-itr",
+        "--motivo",
+        "fonte",
+        admin="nunca-entrou@exemplo.com",
+    )
+    assert codigo == 2
+    assert "administrador" in erro
+    with banco.connect() as conexao:
+        assert cb.conjuntos_suspensos_agora(conexao) == []
 
 
 def test_sem_admin_usa_o_unico_da_lista(banco, admin, capsys):

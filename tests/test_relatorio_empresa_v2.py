@@ -19,6 +19,7 @@ from src import o_que_os_dados_mostram as leitura_da_ficha
 from src import relatorio_empresa as re_
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.padroes import INDICADORES
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "cpfl"
 CPFL = "02.429.144/0001-93"
@@ -66,7 +67,7 @@ def _padroes() -> tuple[date, pd.DataFrame]:
 
 @pytest.fixture(scope="module")
 def entradas_da_cpfl() -> re_.Entradas:
-    ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    ficha = dossie.ler_ficha(FICHA_DE_17_10)
     assert ficha is not None
     return re_.Entradas(
         dados=_dados(),
@@ -182,6 +183,51 @@ def test_ficha_tecnica_sem_o_pro_nao_mostra_o_auditor(entradas_da_cpfl):
     assert "Dossiê da base" not in str(
         re_.montar(entradas_da_cpfl).secao("ficha_tecnica").tabelas
     )
+
+
+def test_ficha_tecnica_free_float_e_tag_along_sem_numero_inventado(ficha_da_cpfl):
+    """A ficha de exemplo da CPFL não traz o dossiê da base: o motivo fica escrito, e o tag along (que a
+    base ainda não tem) nunca é deduzido do segmento de listagem."""
+    ficha = _itens(ficha_da_cpfl, "ficha_tecnica")
+    assert ficha["free_float"].texto == "—"
+    assert ficha["free_float"].motivo == re_.SEM_FICHA_DA_BASE
+    assert ficha["tag_along"].texto == "—"
+    assert "estatuto" in ficha["tag_along"].motivo
+    assert ficha["tag_along"].valor is None
+
+
+def test_ficha_tecnica_sem_o_pro_nao_mostra_o_free_float(entradas_da_cpfl):
+    ficha = _itens(re_.montar(entradas_da_cpfl), "ficha_tecnica")
+    assert ficha["free_float"].texto == "—"
+    assert "Pro" in ficha["free_float"].motivo
+
+
+def test_ficha_tecnica_traz_o_free_float_do_dossie_com_a_data_do_fre(entradas_da_cpfl):
+    item = re_.Item(
+        "free_float", "Free float (ações em circulação)", "38,8%", 0.388, "fração",
+        "2026-07-10", fonte="CVM",
+    )  # fmt: skip
+    secao = re_.Secao("governanca", "Governança", [item])
+    achados = re_._free_float_e_tag_along(entradas_da_cpfl, [secao], "pro")
+    assert [i.chave for i in achados] == ["free_float", "tag_along"]
+    assert achados[0] is item
+    assert achados[0].texto == "38,8%"
+
+
+def test_ficha_tecnica_governanca_sem_o_item_diz_que_o_fre_nao_tem_o_15_7(
+    entradas_da_cpfl,
+):
+    secao = re_.Secao("governanca", "Governança", [])
+    achados = re_._free_float_e_tag_along(entradas_da_cpfl, [secao], "pro")
+    assert achados[0].texto == "—"
+    assert achados[0].motivo == re_.SEM_FREE_FLOAT
+
+
+def test_ficha_tecnica_governanca_trancada_nao_vaza_o_free_float(entradas_da_cpfl):
+    item = re_.Item("free_float", "Free float", "38,8%", 0.388, "fração", "2026-07-10")
+    trancada = re_.Secao("governanca", "Governança", [item], trancada=True)
+    achados = re_._free_float_e_tag_along(entradas_da_cpfl, [trancada], None)
+    assert achados[0].texto == "—"
 
 
 def test_ficha_tecnica_prazo_da_dfp_reapresentada():
@@ -511,7 +557,9 @@ def test_indicadores_sem_preco_tem_data_fonte_comparacao_e_formula(ficha_da_cpfl
         for chave in chaves:
             item = itens[chave]
             assert item.valor is not None, chave
-            assert item.base and item.fonte == re_.FONTE_DAS_DEMONSTRACOES, chave
+            assert item.base and item.fonte.startswith(re_.FONTE_DAS_DEMONSTRACOES), (
+                chave
+            )
             assert (
                 item.comparacao is not None and "balanço de" in item.comparacao.contra
             )
@@ -530,7 +578,7 @@ def test_dividendo_por_acao_payout_e_crescimento_da_cpfl(ficha_da_cpfl):
     itens = _itens(ficha_da_cpfl, "dividendos")
     dpa = itens["dividendo_por_acao"]
     assert dpa.texto.startswith("R$ ") and dpa.base == "DFP de 2025"
-    assert dpa.fonte == re_.FONTE_DAS_ACOES
+    assert dpa.fonte.startswith(re_.FONTE_DAS_ACOES)
     assert dpa.comparacao is not None and dpa.comparacao.contra == "DFP de 2024"
     assert itens["payout"].valor and itens["payout"].texto.endswith("%")
     crescimento = itens["crescimento_do_dividendo"]  # só DFP de 2024 e 2025 na amostra
@@ -545,7 +593,7 @@ def test_ficha_tecnica_traz_as_acoes_por_especie(ficha_da_cpfl):
     acoes = _itens(ficha_da_cpfl, "ficha_tecnica")["acoes_em_circulacao"]
     assert acoes.texto == "1.152.254.440 (1.152.254.440 ON e 0 PN)"
     assert acoes.base == "balanço de 30/06/2026"
-    assert acoes.fonte == re_.FONTE_DAS_ACOES
+    assert acoes.fonte.startswith(re_.FONTE_DAS_ACOES)
     assert acoes.comparacao is not None and acoes.comparacao.texto.startswith("era ")
     assert acoes.rastro is not None
 
@@ -556,3 +604,20 @@ def test_acoes_sem_especie_mostram_so_o_total():
         re_.texto_das_acoes(3_000.0, 1_000.0, 2_000.0) == "3.000 (1.000 ON e 2.000 PN)"
     )
     assert re_.escrever(1_234_567.0, fundamentalista.ACOES) == "1.234.567"
+
+
+def test_todo_numero_da_ficha_com_fonte_conhecida_leva_o_endereco(ficha_da_cpfl):
+    itens = [i for s in ficha_da_cpfl.secoes for i in s.itens if i.fonte]
+    assert itens
+    sem_endereco = [i.chave for i in itens if "https://" not in i.fonte]
+    # sobra só a fonte que o app calcula sozinho, sem base pública para apontar
+    assert len(sem_endereco) < len(itens) / 2
+    assert all("https://" in f for f in ficha_da_cpfl.fontes if "CVM" in f)
+
+
+def test_o_markdown_escreve_o_endereco_sem_marcas_escapadas(ficha_da_cpfl):
+    from src.relatorio_empresa_markdown import relatorio_em_markdown
+
+    texto = relatorio_em_markdown(ficha_da_cpfl)
+    assert "https://dados.cvm.gov.br/dataset/cia_aberta-doc-dfp" in texto
+    assert r"cia\_aberta" not in texto

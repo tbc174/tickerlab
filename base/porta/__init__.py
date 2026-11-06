@@ -17,7 +17,7 @@ consultas seguidas, `with porta.abrir() as p:` usa uma conexão só. "Como era e
 """
 
 import json
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Self
 
@@ -149,6 +149,15 @@ class Porta:
         """As colunas da tabela nesta base (com as datas pelos apelidos), sem ler as linhas."""
         return colunas(self.con, self._view(tabela, versao))
 
+    def tipos(self, tabela: str, versao: str | None = None) -> dict[str, str]:
+        """O tipo do DuckDB de cada coluna da tabela nesta base (`DATE`, `VARCHAR`...), sem ler as
+        linhas: quem serve a tabela em JSON ou CSV sabe o que é dia e o que é momento."""
+        view = self._view(tabela, versao)
+        return {
+            nome: tipo
+            for nome, tipo, *_ in self.con.execute(f"DESCRIBE {_nome(view)}").fetchall()
+        }
+
     def hashes(self, tabela: str) -> dict[str, str | None]:
         """Por arquivo vigente da tabela (caminho dentro da base, sem `.parquet`), o SHA-256 do
         conteúdo que o manifesto ao lado guarda (None se não há manifesto). Quem monta algo a partir
@@ -210,6 +219,91 @@ class Porta:
         ).df()
         return resultado if como_era_em is None else sem_o_fim_futuro(resultado)
 
+    def ler_pagina(
+        self,
+        tabela: str,
+        *,
+        como_era_em: object = None,
+        filtros: Mapping[str, object] | None = None,
+        colunas: Sequence[str] | None = None,
+        limite: int,
+        deslocamento: int = 0,
+    ) -> pd.DataFrame:
+        """Uma página da tabela: como `ler`, mas numa ordem total (as chaves do contrato e, para
+        desempatar, as outras colunas) e cortada no SQL (`LIMIT`/`OFFSET`), para servir tabela grande
+        sem a trazer inteira (API e site). Como cada página é uma consulta à parte, só a ordem total
+        garante que a seguinte continua de onde a anterior parou: a chave se repete na base, e entre
+        linhas empatadas o DuckDB não repete a ordem. Página depois do fim volta vazia; `contar`
+        com os mesmos `filtros` e `como_era_em` diz o total."""
+        if limite < 1 or deslocamento < 0:
+            raise ValueError(
+                f"{tabela}: limite >= 1 e deslocamento >= 0 (veio {limite}, {deslocamento})"
+            )
+        consulta, parametros = self._consulta_ordenada(
+            tabela, como_era_em, filtros, colunas
+        )
+        parametros.update({"limite": int(limite), "deslocamento": int(deslocamento)})
+        resultado = self.con.execute(
+            f"{consulta} LIMIT $limite OFFSET $deslocamento", parametros
+        ).df()
+        return resultado if como_era_em is None else sem_o_fim_futuro(resultado)
+
+    def ler_em_lotes(
+        self,
+        tabela: str,
+        *,
+        como_era_em: object = None,
+        filtros: Mapping[str, object] | None = None,
+        colunas: Sequence[str] | None = None,
+        limite: int,
+        vetores_por_lote: int = 1,
+    ) -> Iterator[pd.DataFrame]:
+        """As primeiras `limite` linhas na ordem de `ler_pagina`, numa consulta só, entregues em
+        lotes (`vetores_por_lote` vetores de 2.048 linhas do DuckDB): o CSV da API sai inteiro sem
+        `OFFSET` crescente, que obriga o DuckDB a ordenar tudo o que pulou e estoura a memória. A
+        conexão fica ocupada até o último lote: nada mais roda nela no meio."""
+        if limite < 1 or vetores_por_lote < 1:
+            raise ValueError(
+                f"{tabela}: limite >= 1 e vetores_por_lote >= 1 "
+                f"(veio {limite}, {vetores_por_lote})"
+            )
+        consulta, parametros = self._consulta_ordenada(
+            tabela, como_era_em, filtros, colunas
+        )
+        parametros["limite"] = int(limite)
+        resultado = self.con.execute(f"{consulta} LIMIT $limite", parametros)
+        while not (lote := resultado.fetch_df_chunk(vetores_por_lote)).empty:
+            yield lote if como_era_em is None else sem_o_fim_futuro(lote)
+
+    def _consulta_ordenada(
+        self,
+        tabela: str,
+        como_era_em: object,
+        filtros: Mapping[str, object] | None,
+        colunas: Sequence[str] | None,
+    ) -> tuple[str, dict[str, object]]:
+        """O `SELECT` de `ler_pagina` e `ler_em_lotes`, com filtros, "como era em" e a ordem total,
+        sem o corte; e os parâmetros dele."""
+        view = self._view(tabela, None)
+        onde, parametros = self._onde(tabela, None, filtros, como_era_em, colunas or [])
+        escolhidas = list(colunas) if colunas is not None else self.colunas(tabela)
+        selecao = ", ".join(_nome(c) for c in escolhidas)
+        mais_nova = self._so_a_mais_nova(tabela) if como_era_em is not None else ""
+        ordem = self._ordem_total(tabela, escolhidas)
+        return (
+            f"SELECT {selecao} FROM {_nome(view)} WHERE {onde} {mais_nova} {ordem}",
+            parametros,
+        )
+
+    def _ordem_total(self, tabela: str, escolhidas: Sequence[str]) -> str:
+        """`ORDER BY` pelas chaves do contrato que a base tem e depois pelas outras colunas
+        escolhidas (os nomes vêm do dicionário e da base, nunca de quem pede). Duas linhas que só
+        empatam aqui saem iguais, então a ordem entre elas não muda o que sai."""
+        existentes = self.colunas(tabela)
+        chaves = [c for c in self.tabelas[tabela].chaves if c in existentes]
+        resto = [c for c in escolhidas if c not in chaves]
+        return "ORDER BY " + ", ".join(_nome(c) for c in [*chaves, *resto])
+
     def somar(
         self,
         tabela: str,
@@ -267,6 +361,33 @@ class Porta:
             f"WHERE {_nome(coluna)} IS NOT NULL"
         ).fetchall()
         return {linha[0] for linha in linhas}
+
+    def contar(
+        self,
+        tabela: str,
+        ao_menos: Mapping[str, float] | None = None,
+        *,
+        como_era_em: object = None,
+        filtros: Mapping[str, object] | None = None,
+    ) -> int:
+        """Quantas linhas a tabela tem, no DuckDB: todas as vigentes ou, com `filtros` e
+        `como_era_em` (como em `ler`), as que `ler_pagina` percorre; `ao_menos` só conta as de
+        `coluna >= valor`. Toda coluna precisa existir."""
+        view = self._view(tabela, None)
+        onde, parametros = self._onde(
+            tabela, None, filtros, como_era_em, list(ao_menos or {})
+        )
+        for i, (coluna, valor) in enumerate((ao_menos or {}).items()):
+            onde += f" AND {_nome(coluna)} >= $m{i}"
+            parametros[f"m{i}"] = valor
+        linhas = f"SELECT * FROM {_nome(view)} WHERE {onde}"
+        mais_nova = self._so_a_mais_nova(tabela) if como_era_em is not None else ""
+        if mais_nova:
+            linhas = f"SELECT * FROM ({linhas}) {mais_nova}"
+        linha = self.con.execute(
+            f"SELECT count(*) FROM ({linhas})", parametros
+        ).fetchone()
+        return int(linha[0]) if linha else 0
 
     # --- rede, linhagem e carteira --------------------------------------------------------------
     def rede(

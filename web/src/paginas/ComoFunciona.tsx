@@ -1,5 +1,7 @@
-// Como funciona: os três passos, para quem é, confiança e perguntas. Era `como_funciona()`.
+// Como funciona: do original ao relatório em cinco passos (a coleta vem primeiro), para quem é,
+// confiança e perguntas. Era `como_funciona()`.
 import { ChamadaFinal, ListaDeCartoes } from "../site/comum";
+import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { TopoDaPagina } from "../site/Fundo";
 import { CONFIANCA, PASSOS, PERGUNTAS, PUBLICOS } from "../site/textos";
 
@@ -7,8 +9,8 @@ export const DADOS = {
   caminho: "/como-funciona.html",
   titulo: "Como funciona",
   descricao:
-    "Como o TickerLab funciona, para quem é, de onde vêm os números e as perguntas " +
-    "frequentes.",
+    "Da fonte ao relatório: o original com hash, as versões, a consulta por data e o PDF. " +
+    "Para quem analisa empresas.",
   atual: "/como-funciona.html",
 };
 
@@ -17,16 +19,19 @@ export function ComoFunciona() {
     <>
       <TopoDaPagina
         olho="Como funciona"
-        titulo="Em três passos"
-        subtitulo="Da primeira busca ao relatório em PDF, com cada número explicado."
+        titulo="Da fonte ao relatório, em cinco passos"
+        subtitulo="A coleta vem primeiro: cada número do relatório volta por este caminho até o original."
       />
-      <section className="faixa secao" aria-label="Os três passos">
+      <section className="faixa secao" aria-label="Os cinco passos">
         <ol className="passos">
-          {PASSOS.map(([titulo, texto], i) => (
+          {PASSOS.map(([titulo, texto, detalhe], i) => (
             <li key={titulo}>
               <span className="numero">{i + 1}</span>
               <h3>{titulo}</h3>
               <p>{texto}</p>
+              <ComoFoiCalculado resumo="Como funciona por dentro">
+                <p>{detalhe}</p>
+              </ComoFoiCalculado>
             </li>
           ))}
         </ol>
@@ -34,7 +39,7 @@ export function ComoFunciona() {
 
       <section className="faixa secao" aria-labelledby="titulo-quem">
         <p className="olho">Para quem é</p>
-        <h2 id="titulo-quem">Feito para quem quer entender, não para quem quer palpite</h2>
+        <h2 id="titulo-quem">Feito para quem confere, não para quem quer palpite</h2>
         <div className="grade tres">
           <ListaDeCartoes itens={PUBLICOS} />
         </div>

@@ -1171,6 +1171,48 @@
         "title": "BlocoDosFundosV1",
         "type": "object"
       },
+      "BoasVindasDoBetaV1": {
+        "description": "A página de boas-vindas do beta: o texto e o roteiro dos 10 minutos (src/beta.py).",
+        "properties": {
+          "como_responder": {
+            "title": "Como Responder",
+            "type": "string"
+          },
+          "roteiro": {
+            "items": {
+              "$ref": "#/components/schemas/PassoDoBetaV1"
+            },
+            "title": "Roteiro",
+            "type": "array"
+          },
+          "sobre_o_beta": {
+            "title": "Sobre O Beta",
+            "type": "string"
+          },
+          "texto_de_boas_vindas": {
+            "title": "Texto De Boas Vindas",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "total_de_minutos": {
+            "title": "Total De Minutos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "titulo",
+          "texto_de_boas_vindas",
+          "sobre_o_beta",
+          "como_responder",
+          "total_de_minutos",
+          "roteiro"
+        ],
+        "title": "BoasVindasDoBetaV1",
+        "type": "object"
+      },
       "BuscaPorCnpjV1": {
         "description": "O relatório do CNPJ (molde B): as seções no formato do relatório da empresa.",
         "properties": {
@@ -1794,6 +1836,69 @@
           "url"
         ],
         "title": "EnderecoDoStripeV1",
+        "type": "object"
+      },
+      "EntradaDoNumeroV1": {
+        "description": "Uma conta da demonstração que entra no número (`src/rastro.py`, `Entrada`): só com as\nentradas, quem confere refaz a conta.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "conta": {
+            "title": "Conta",
+            "type": "string"
+          },
+          "documento": {
+            "title": "Documento",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "title": "Periodo",
+            "type": "string"
+          },
+          "publicado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicado Em"
+          },
+          "referencia": {
+            "format": "date",
+            "title": "Referencia",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          },
+          "versao": {
+            "title": "Versao",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conta",
+          "codigo",
+          "nome",
+          "valor",
+          "periodo",
+          "documento",
+          "referencia",
+          "versao",
+          "publicado_em"
+        ],
+        "title": "EntradaDoNumeroV1",
         "type": "object"
       },
       "ErroDaSafraV1": {
@@ -2440,6 +2545,11 @@
           },
           "por_que": {
             "$ref": "#/components/schemas/FraseDaAnaliseV1"
+          },
+          "secao": {
+            "default": "",
+            "title": "Secao",
+            "type": "string"
           },
           "tipo": {
             "title": "Tipo",
@@ -4032,6 +4142,39 @@
         "title": "ParteDaAnaliseV1",
         "type": "object"
       },
+      "PassoDoBetaV1": {
+        "properties": {
+          "minutos": {
+            "title": "Minutos",
+            "type": "integer"
+          },
+          "o_que_fazer": {
+            "title": "O Que Fazer",
+            "type": "string"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ordem",
+          "minutos",
+          "titulo",
+          "o_que_fazer",
+          "url"
+        ],
+        "title": "PassoDoBetaV1",
+        "type": "object"
+      },
       "PedidoDeBacktestV1": {
         "properties": {
           "capital_inicial": {
@@ -4092,7 +4235,9 @@
               "6mo",
               "1y",
               "2y",
-              "5y"
+              "5y",
+              "10y",
+              "max"
             ],
             "title": "Periodo",
             "type": "string"
@@ -5036,6 +5181,14 @@
             "title": "Documentos",
             "type": "array"
           },
+          "entradas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EntradaDoNumeroV1"
+            },
+            "title": "Entradas",
+            "type": "array"
+          },
           "fonte_id": {
             "title": "Fonte Id",
             "type": "string"
@@ -5234,6 +5387,14 @@
               "$ref": "#/components/schemas/FraseDoSetorV1"
             },
             "title": "Frases",
+            "type": "array"
+          },
+          "graficos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraficoDaAnaliseV1"
+            },
+            "title": "Graficos",
             "type": "array"
           },
           "limites": {
@@ -6057,9 +6218,28 @@
         "summary": "Backtest"
       }
     },
+    "/v1/beta/boas-vindas": {
+      "get": {
+        "description": "O texto da página de boas-vindas do beta e o roteiro dos 10 minutos (src/beta.py).",
+        "operationId": "boas_vindas_do_beta_v1_beta_boas_vindas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoasVindasDoBetaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Boas Vindas Do Beta"
+      }
+    },
     "/v1/busca-por-cnpj": {
       "post": {
-        "description": "O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.\n\nÉ POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log\nde acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.",
+        "description": "O relatório do CNPJ: da companhia aberta (cadastro, grupo, rede e fatos públicos) ou, sem ficha na\nCVM, o cadastro da Receita (Simples e MEI, sócios, estabelecimentos e mudanças), sempre com fonte.\n\nÉ POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log\nde acesso. O app também não o grava no log, só a contagem por situação.",
         "operationId": "busca_por_cnpj_v1_busca_por_cnpj_post",
         "requestBody": {
           "content": {
@@ -6212,7 +6392,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -6503,7 +6685,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -6864,6 +7048,41 @@
         "summary": "Relatorio Da Empresa Em Deck"
       }
     },
+    "/v1/relatorio-empresa/markdown": {
+      "get": {
+        "description": "A ficha da empresa em Markdown para ler com uma IA: o mesmo texto do botão da página (as seções\nna ordem da tela, \"Limites e cuidados\" e o anexo de como cada número foi calculado), com o mesmo\nacesso e o mesmo plano da rota JSON. O nome do arquivo vem do ticker da própria ficha.",
+        "operationId": "relatorio_da_empresa_em_markdown_v1_relatorio_empresa_markdown_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Da Empresa Em Markdown"
+      }
+    },
     "/v1/relatorio-setor": {
       "get": {
         "description": "O relatório do setor, montado para o plano da conta: quem está no setor e o que não temos\nvêm sempre; os números da base vêm trancados sem o dossiê da base no plano.",
@@ -7011,7 +7230,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7125,7 +7346,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"
@@ -7320,7 +7543,9 @@
                 "6mo",
                 "1y",
                 "2y",
-                "5y"
+                "5y",
+                "10y",
+                "max"
               ],
               "title": "Periodo",
               "type": "string"

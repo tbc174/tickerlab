@@ -153,6 +153,13 @@ def negociacoes(
     return tabela
 
 
+def primeira_entrega(conexao: sa.Connection) -> date | None:
+    """O dia da negociação mais antiga tornada pública na base (até onde a coleta voltou)."""
+    return conexao.execute(
+        sa.select(sa.func.min(negociacoes_internas.c.entregue_em))
+    ).scalar()
+
+
 def ultima_coleta(conexao: sa.Connection) -> datetime | None:
     return conexao.execute(
         sa.select(sa.func.max(negociacoes_internas.c.ingerido_em))

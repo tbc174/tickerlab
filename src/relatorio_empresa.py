@@ -29,13 +29,15 @@ from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.contestacao import com_a_contestacao
+from src.enderecos_das_fontes import fonte_com_endereco, paragrafo_com_endereco
+from src.faixa_de_preco import FaixaDePreco
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao, Numero
 from src.padroes import INDICADORES, MULTIPLOS
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.qualidade_texto import texto_do_selo
-from src.rastro import DocumentoUsado, Metrica, Rastro
+from src.rastro import DocumentoUsado, Entrada, Metrica, Rastro, nome_do_documento
 from src.setores import NOMES, SEM_GRUPO, grupo_do_setor, grupo_para_comparar
 
 # as seções na ordem do molde A (relatórios v2): quem é, o que os dados mostram e o que mudou no
@@ -79,6 +81,8 @@ ORDEM_DAS_SECOES = (
     "eventos",
     "negocios",  # negócios e acontecimentos
     "insolvencia",  # registros de insolvência e situação especial (ADR 0103, D2)
+    "divida_com_a_uniao",  # dívida ativa com a União, como fato datado (virada de 5/11/2026, fase 1)
+    "entrega_das_demonstracoes",  # entrega de DFP e ITR no prazo (idem)
     *list(SECOES)[list(SECOES).index("notas_classicas") :],
 )
 # uma seção nova da base, que a ordem ainda não conhece, vai com os negócios e acontecimentos
@@ -135,6 +139,18 @@ ROTULOS_DAS_COLUNAS = {  # o cabeçalho que a regra geral (`rotulo_da_coluna`) e
     "dividendo_por_acao": "Dividendo por ação (caixa)",
     "dividendos_fre_por_acao": "Dividendos por ação (FRE)",
     "jcp_fre_por_acao": "JCP por ação (FRE)",
+    # o cadastro da Receita na busca por CNPJ (`src/relatorio_da_receita.py`)
+    "cnpj": "CNPJ",
+    "socio": "Sócio",
+    "qualificacao": "Qualificação",
+    "situacao": "Situação",
+    "inicio": "Início",
+    "mes": "Mês",
+    "mudanca": "Mudança",
+    # as contagens de ações (a sensibilidade do DCF e o histórico)
+    "acoes": "Ações",
+    "acoes_ajustadas": "Ações ajustadas",
+    "acoes_em_circulacao": "Ações em circulação",
 }
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
@@ -152,7 +168,13 @@ NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "piotroski": "Parcelas do Piotroski",
     "altman": "Parcelas do Altman Z''",
     "beneish": "Parcelas do Beneish",
+    "socios_da_receita": "Quadro de sócios",
+    "mudancas_da_receita": "O que mudou nos últimos 12 meses",
 }
+COLUNAS_DE_ANO = frozenset(
+    {"ano", "exercicio", "exercicio_do_caixa"}
+)  # 2024, não "R$ 2,0 mil"
+COLUNAS_DE_CONTAGEM = frozenset({"acoes", "acoes_ajustadas", "acoes_em_circulacao"})
 MIL = 1_000  # daqui para cima, a célula é dinheiro (R$ mil, mi, bi)
 QUANTOS_EVENTOS = 15
 FONTES = ("CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",)
@@ -193,13 +215,28 @@ FONTE_DOS_MULTIPLOS = "preço da ação (Yahoo Finance) e DFP e ITR entregues à
 FONTE_DAS_ACOES = "DFP entregues à CVM (fluxo de caixa e composição do capital)"
 SEM_O_ANTERIOR = "O balanço anterior guardado não tem este número para comparar."
 SEM_O_ANO_ANTERIOR = "A DFP do ano anterior guardada não tem este número para comparar."
-# os múltiplos de mercado além de P/L e P/VP (D3 mudada em 20/10/2026); o DY fica nos dividendos
-MULTIPLOS_DE_MERCADO = tuple(m for m in fundamentos.DE_MERCADO if m != "dividend_yield")
+# os múltiplos de mercado além de P/L e P/VP (D3 mudada em 20/10/2026); os DY ficam nos dividendos
+DOS_DIVIDENDOS = ("dividend_yield", "dividend_yield_medio")
+MULTIPLOS_DE_MERCADO = tuple(
+    m for m in fundamentos.DE_MERCADO if m not in DOS_DIVIDENDOS
+)
 COMO_SAI_O_DY = (
     "Dividend yield: dividendos e JCP pagos em caixa nos últimos 12 meses (fluxo de caixa da "
     "DFP e do ITR), divididos pelo valor de mercado de hoje. O caixa pago pode incluir o que as "
     "controladas pagaram aos acionistas minoritários delas, e o mesmo preço vale para todas as "
     "classes de ação."
+)
+COMO_SAI_O_DY_MEDIO = (
+    f"Dividend yield médio: a média dos dividendos e JCP pagos em caixa nos "
+    f"{fundamentos.ANOS_DO_CRESCIMENTO} últimos exercícios (fluxo de caixa da DFP), dividida pelo "
+    "mesmo valor de mercado de hoje. Não usa o preço de cada ano: mostra quanto a empresa costuma "
+    "pagar perto do preço atual, não o que rendeu a quem comprou em cada ano."
+)
+# nos limites só quando a ficha usa o preço; começa como o trecho que a análise escrita deixa de fora
+LIMITE_DO_PRECO = (
+    "Preço da ação: vem do Yahoo Finance, um serviço para uso pessoal, e pode chegar atrasado, "
+    "falhar ou mudar depois. Sem ele, o valor de mercado, o dividend yield e os múltiplos ficam em "
+    "branco."
 )
 SEM_DILUICAO = (
     "Sem dois anos de ações em circulação, ou com um salto sem desdobramento explicado."
@@ -273,9 +310,12 @@ class Secao:
     def tabelas_a_mostrar(self) -> dict[str, list[dict]]:
         """As tabelas que a página, o PDF e a API mostram: o anexo de anos toma o lugar da tabela
         de anos nas linhas, que fica na seção só porque a análise escrita cita as linhas dela."""
+        escondidas = {
+            ANEXO_DFC_DVA
+        }  # a caminho do anexo de anos, onde `com_a_dfc_e_a_dva` a põe
         if ANEXO_DE_ANOS in self.tabelas:
-            return {k: v for k, v in self.tabelas.items() if k != TABELA_DE_ANOS}
-        return self.tabelas
+            escondidas.add(TABELA_DE_ANOS)
+        return {k: v for k, v in self.tabelas.items() if k not in escondidas}
 
 
 @dataclass(frozen=True)
@@ -351,6 +391,7 @@ class Entradas:
         None  # codigo, valor_mobiliario, atualizado_em (do FCA)
     )
     premissas: Premissas = field(default_factory=Premissas)
+    faixa_de_preco: FaixaDePreco | None = None  # 52 semanas e 12 meses, sem ajuste
 
 
 # --- números escritos ------------------------------------------------------------------------------
@@ -393,14 +434,19 @@ def rotulo_da_coluna(coluna: str) -> str:
     return str(coluna).replace("_", " ").capitalize()
 
 
-def escrever_celula(valor: object) -> str:
-    """Uma célula das tabelas do relatório, igual na página e no PDF (valores em reais acima de
-    mil viram "R$ 1,2 bi"; frações e contagens ficam com duas casas)."""
+def escrever_celula(valor: object, coluna: str | None = None) -> str:
+    """Uma célula das tabelas do relatório, igual na página e no PDF. Pela coluna: ano sai como
+    "2024" e contagem de ações como "1.152.254.440"; sem coluna, ou em outra, o número acima de
+    mil é dinheiro ("R$ 1,2 bi") e frações ficam com duas casas."""
     if valor is None or (isinstance(valor, float) and not math.isfinite(valor)):
         return "—"
     if isinstance(valor, bool):
         return "sim" if valor else "não"
     if isinstance(valor, int | float):
+        if coluna in COLUNAS_DE_ANO:
+            return str(int(valor))
+        if coluna in COLUNAS_DE_CONTAGEM:
+            return _acoes(valor)
         if abs(valor) >= MIL:
             return formatar_valor(float(valor), "BRL")
         return f"{valor:.2f}".replace(".", ",")
@@ -453,6 +499,7 @@ CALCULO_DAS_NOTAS_CLASSICAS = (
     f"notas clássicas {notas_classicas.VERSAO_DAS_NOTAS_CLASSICAS}"
 )
 CRESCIMENTOS = ("crescimento_receita", "crescimento_lucro")
+MEDIA_DOS_DIVIDENDOS = "dividend_yield_medio"
 # quantos exercícios cada nota clássica lê: o Altman só o último; as outras comparam com o anterior
 ANOS_DAS_NOTAS_CLASSICAS = {"piotroski": 2, "altman": 1, "beneish": 2}
 
@@ -470,8 +517,9 @@ def _ultimas_versoes(documentos: pd.DataFrame) -> list[pd.Series]:
 def _documento(linha: pd.Series) -> DocumentoUsado:  # uma linha de `_ultimas_versoes`
     link = linha["link"]
     return DocumentoUsado(
-        f"{linha['documento']} de {_dia(linha['referencia']):%d/%m/%Y}, "
-        f"versão {int(linha['versao'])}",
+        nome_do_documento(
+            linha["documento"], _dia(linha["referencia"]), linha["versao"]
+        ),
         _dia(linha["recebido_em"]),
         link if isinstance(link, str) else "",
     )
@@ -519,12 +567,38 @@ def _rastro(chave: str, c: "_Calculos") -> Rastro:
         formula, versao = fundamentos.FORMULAS[chave], CALCULO_DOS_FUNDAMENTOS
     else:
         formula, versao = fundamentalista.FORMULAS[chave], CALCULO_DO_FUNDAMENTALISTA
-    documentos = (
-        _dfps(c, _ultimos_anos(c, fundamentos.ANOS_DO_CRESCIMENTO + 1))
-        if chave in CRESCIMENTOS
-        else c.documentos
+    if chave in CRESCIMENTOS:
+        documentos = _dfps(c, _ultimos_anos(c, fundamentos.ANOS_DO_CRESCIMENTO + 1))
+    elif (
+        chave == MEDIA_DOS_DIVIDENDOS
+    ):  # as DFPs dos exercícios da média, além das do mercado
+        dos_anos = _dfps(c, _ultimos_anos(c, fundamentos.ANOS_DO_CRESCIMENTO))
+        documentos = (*dos_anos, *(d for d in c.documentos if d not in dos_anos))
+    else:
+        documentos = c.documentos
+    entradas = c.entradas.get(chave, ())
+    return Rastro.dos_documentos(
+        formula,
+        versao,
+        FONTE_DA_CVM,
+        (*documentos, *_os_que_faltam_citar(documentos, entradas, c)),
+        entradas=entradas,
     )
-    return Rastro.dos_documentos(formula, versao, FONTE_DA_CVM, documentos)
+
+
+def _os_que_faltam_citar(
+    documentos: tuple[DocumentoUsado, ...],
+    entradas: tuple[Entrada, ...],
+    c: "_Calculos",
+) -> tuple[DocumentoUsado, ...]:
+    """Os documentos das entradas que ainda não estão no rastro, para que toda conta cite o seu."""
+    citados = {d.nome for d in documentos}
+    nomes = (nome_do_documento(e.documento, e.referencia, e.versao) for e in entradas)
+    return tuple(
+        c.guardados[nome]
+        for nome in dict.fromkeys(nomes)
+        if nome not in citados and nome in c.guardados
+    )
 
 
 def _com_o_preco(rastro: Rastro, c: "_Calculos") -> Rastro:
@@ -534,6 +608,7 @@ def _com_o_preco(rastro: Rastro, c: "_Calculos") -> Rastro:
         rastro.fonte_id,
         (*rastro.documentos, c.fechamento),
         (FONTE_DO_PRECO,),
+        rastro.entradas,
     )
 
 
@@ -589,6 +664,11 @@ class _Calculos:
         int, DocumentoUsado
     ]  # a DFP de cada exercício (crescimento, notas, dividendos)
     fechamento: DocumentoUsado  # o preço usado nos múltiplos
+    # as contas que entram em cada indicador (só os que têm valor)
+    entradas: dict[str, tuple[Entrada, ...]] = field(default_factory=dict)
+    # todo documento da CVM guardado, pelo nome: o rastro cita o de cada entrada (o saldo de um ano
+    # antes, no saldo médio, não está nos documentos dos 12 meses e do balanço)
+    guardados: dict[str, DocumentoUsado] = field(default_factory=dict)
 
     @property
     def data_anterior(self) -> date | None:
@@ -638,21 +718,62 @@ def _calcular(e: Entradas) -> _Calculos:
         and (nota := notas.nota_por_faixa(chave, indicadores[chave].valor)) is not None
     ]
     balancos = _balancos(e.dados.contas)
+    dividendos = fundamentalista.dividendos_e_diluicao(
+        e.dados, e.proventos, e.eventos_de_capital
+    )
+    classicas = notas_classicas.calcular(e.dados)
+    valores = {
+        **{chave: i.valor for chave, i in indicadores.items()},
+        **{chave: nota.valor for chave, nota in classicas.items()},
+    }
     return _Calculos(
         indicadores,
         {n.indicador: n for n in [*lista, *por_faixa]},
-        notas_classicas.calcular(e.dados),
+        classicas,
         extra.historico,
-        fundamentalista.dividendos_e_diluicao(
-            e.dados, e.proventos, e.eventos_de_capital
-        ),
+        dividendos,
         grupo,
         balancos,
         _indicadores_de_antes(e, balancos),
         documentos_usados(tela.documentos),
         _dfps_por_ano(e.dados.documentos),
         _fechamento(e),
+        _entradas_com_valor(
+            e.dados, {**valores, **_valores_dos_dividendos(dividendos, e.dados)}
+        ),
+        {d.nome: d for d in documentos_usados(e.dados.documentos)},
     )
+
+
+def _valores_dos_dividendos(
+    d: fundamentalista.DividendosEDiluicao, dados: DadosDaEmpresa
+) -> dict[str, float | None]:
+    """Os números dos dividendos e das ações em circulação, que não saem de `calcular`."""
+    return {
+        **{
+            chave: i.valor
+            for chave, i in fundamentalista.indicadores_dos_dividendos(d).items()
+        },
+        "anos_pagando": float(d.anos_pagando),
+        "diluicao": d.diluicao_anual,
+        "acoes_em_circulacao": fundamentalista.acoes_por_especie(dados).total.valor,
+    }
+
+
+def _entradas_com_valor(
+    dados: DadosDaEmpresa, valores: dict[str, float | None]
+) -> dict[str, tuple[Entrada, ...]]:
+    """As entradas dos números calculados: o indisponível não cita conta (não houve conta)."""
+    todas = {
+        **fundamentos.todas_as_entradas(dados),
+        **fundamentalista.todas_as_entradas(dados),
+        **notas_classicas.todas_as_entradas(dados),
+    }
+    return {
+        chave: todas[chave]
+        for chave, valor in valores.items()
+        if valor is not None and chave in todas
+    }
 
 
 def _secao_de_itens(chave: str, c: _Calculos) -> Secao:
@@ -668,6 +789,8 @@ def _notas_classicas(c: _Calculos) -> Secao:
     itens, tabelas = [], {}
     for nota in c.classicas.values():
         texto = "—" if nota.valor is None else f"{nota.valor:.2f}".replace(".", ",")
+        documentos = _dfps(c, _ultimos_anos(c, ANOS_DAS_NOTAS_CLASSICAS[nota.chave]))
+        entradas = c.entradas.get(nota.chave, ())
         itens.append(
             Item(
                 nota.chave,
@@ -686,7 +809,8 @@ def _notas_classicas(c: _Calculos) -> Secao:
                     nota.formula,
                     CALCULO_DAS_NOTAS_CLASSICAS,
                     FONTE_DA_CVM,
-                    _dfps(c, _ultimos_anos(c, ANOS_DAS_NOTAS_CLASSICAS[nota.chave])),
+                    (*documentos, *_os_que_faltam_citar(documentos, entradas, c)),
+                    entradas=entradas,
                 ),
             )
         )
@@ -824,6 +948,8 @@ def _valuation(c: _Calculos, e: Entradas) -> Secao:
             "no DCF. São um ponto de partida declarado, não uma opinião sobre a empresa."
         )
     ]
+    if e.faixa_de_preco is not None:
+        paragrafos.append(e.faixa_de_preco.texto())
     tabelas: dict[str, list[dict]] = {}
     livre = c.indicadores.get("caixa_livre")
     acoes, divida = _acoes_e_divida(c)
@@ -961,11 +1087,15 @@ def _dividendos(c: _Calculos) -> Secao:
         else None
     )
     dy = c.indicadores.get("dividend_yield")
-    itens = [] if dy is None else [_item_com_o_preco(dy, c)]
+    dos_dy = [c.indicadores[k] for k in DOS_DIVIDENDOS if k in c.indicadores]
+    itens = [_item_com_o_preco(indicador, c) for indicador in dos_dy]
 
     def rastro(chave: str) -> Rastro:
+        documentos, entradas = _dfps(c, anos), c.entradas.get(chave, ())
         return Rastro.dos_documentos(fundamentalista.FORMULAS[chave], CALCULO_DO_FUNDAMENTALISTA,
-                                     FONTE_DA_CVM, _dfps(c, anos))  # fmt: skip
+                                     FONTE_DA_CVM,
+                                     (*documentos, *_os_que_faltam_citar(documentos, entradas, c)),
+                                     entradas=entradas)  # fmt: skip
 
     itens += [
         Item("anos_pagando", "Anos pagando dividendos", str(d.anos_pagando), float(d.anos_pagando),
@@ -983,7 +1113,7 @@ def _dividendos(c: _Calculos) -> Secao:
         SECOES["dividendos"],
         itens,
         # no fim: os avisos guardam a posição (o id deles na análise escrita)
-        [*d.avisos, *([COMO_SAI_O_DY] if dy is not None else [])],
+        [*d.avisos, *([COMO_SAI_O_DY, COMO_SAI_O_DY_MEDIO] if dy is not None else [])],
         {"historico": _tabela(d.historico)},
     )
 
@@ -993,6 +1123,10 @@ UNIDADES_DIFERENTES = {
     "lpa_basico": "R$ por ação"
 }  # as demais contas da DFP vêm em reais
 ANEXO_DE_ANOS = "anexo_de_anos"
+ANEXO_DFC_DVA = (
+    "anexo_dfc_dva"  # as linhas da DFC e da DVA da ficha da noite, no formato do anexo
+)
+COLUNAS_FIXAS_DO_ANEXO = ("conta", "unidade")
 TABELA_DE_ANOS = (
     "contas"  # um ano por linha: a que a análise escrita cita (`historico.contas.N`)
 )
@@ -1014,6 +1148,50 @@ def anexo_de_anos(contas: pd.DataFrame) -> list[dict]:
             **{str(ano): para_json(valor) for ano, valor in serie.items()},
         }
         for conta, serie in contas.items()
+    ]
+
+
+def _anos_do_anexo(linhas: list[dict]) -> list[str]:
+    return sorted(
+        {k for linha in linhas for k in linha if k not in COLUNAS_FIXAS_DO_ANEXO}
+    )
+
+
+def _no_formato_do_anexo(linha: dict, anos: list[str]) -> dict:
+    return {
+        **{coluna: linha[coluna] for coluna in COLUNAS_FIXAS_DO_ANEXO},
+        **{ano: linha.get(ano) for ano in anos},
+    }
+
+
+def com_a_dfc_e_a_dva(secoes: list[Secao]) -> list[Secao]:
+    """Passa as linhas da DFC e da DVA (que a ficha da noite traz na seção de caixa) para o anexo de
+    anos do histórico, nos mesmos anos das contas; sem histórico ou sem as linhas, nada muda.
+
+    O PDF lê as colunas da primeira linha do anexo: toda linha sai com os mesmos anos, vazios onde
+    a conta não existe naquele ano.
+    """
+    da_ficha = next((s for s in secoes if ANEXO_DFC_DVA in s.tabelas), None)
+    historico = next((s for s in secoes if s.chave == "historico"), None)
+    if da_ficha is None or historico is None:
+        return secoes
+    contas = historico.tabelas.get(ANEXO_DE_ANOS, [])
+    novas = da_ficha.tabelas[ANEXO_DFC_DVA]
+    anos = _anos_do_anexo(contas) or _anos_do_anexo(novas)
+    do_anexo = [
+        linha
+        for linha in (_no_formato_do_anexo(n, anos) for n in novas)
+        if any(linha[ano] is not None for ano in anos)
+    ]
+    sem_a_tabela = {k: v for k, v in da_ficha.tabelas.items() if k != ANEXO_DFC_DVA}
+    anexo = [_no_formato_do_anexo(linha, anos) for linha in contas] + do_anexo
+    return [
+        replace(s, tabelas=sem_a_tabela)
+        if s is da_ficha
+        else replace(s, tabelas={**s.tabelas, ANEXO_DE_ANOS: anexo})
+        if s is historico
+        else s
+        for s in secoes
     ]
 
 
@@ -1409,6 +1587,15 @@ SEM_CONTROLADORA = (
     "à CVM (uma controladora de fora do Brasil, por exemplo, não entrega)."
 )
 SEM_FICHA_DA_BASE = "A ficha da base desta empresa ainda não chegou ao app."
+SEM_FREE_FLOAT = (
+    "A ficha não traz o free float: o FRE mais recente desta empresa não tem o item 15.7 com um "
+    "percentual de ações em circulação maior que 0 e até 100%."
+)
+SEM_TAG_ALONG = (
+    "A base ainda não tem o tag along: ele vem do estatuto e do segmento de listagem da B3, que "
+    "ainda não estão em campos que a base leia. Veja o estatuto no site de relações com "
+    "investidores da empresa."
+)
 DIAS_DO_ITR = 45  # prazo da CVM: o ITR sai até 45 dias depois do fim do trimestre
 MESES_DA_DFP = 3  # e a DFP até 3 meses depois do fim do exercício
 
@@ -1574,6 +1761,28 @@ def _auditor_e_controlador(
     return [auditor, _controlador(secao, atual.base)]
 
 
+def _free_float_e_tag_along(
+    e: Entradas, do_dossie: list[Secao], plano: str | None
+) -> list[Item]:
+    """O free float declarado no FRE (item 15.7) e o tag along, que a base ainda não tem.
+
+    O free float vem do dossiê (governança), com a data de entrega do FRE e a comparação com o FRE
+    anterior; sem ele (plano, ficha ou FRE sem o item) o motivo fica escrito, nunca um número
+    inventado. O tag along nunca é deduzido do segmento de listagem: sem fonte estruturada, "—"."""
+    secao = next(
+        (s for s in do_dossie if s.chave == "governanca" and not s.trancada), None
+    )
+    if secao is None:
+        free_float = _sem_o_dossie("free_float", "Free float", e, plano)
+    else:
+        encontrado = next((i for i in secao.itens if i.chave == "free_float"), None)
+        free_float = encontrado or Item(
+            "free_float", "Free float", "—", None, TEXTO, "", SEM_FREE_FLOAT
+        )
+    tag_along = Item("tag_along", "Tag along", "—", None, TEXTO, "", SEM_TAG_ALONG)
+    return [free_float, tag_along]
+
+
 def _ultimo_dia(tabela: pd.DataFrame | None, coluna: str) -> date | None:
     if tabela is None or tabela.empty:
         return None
@@ -1643,6 +1852,7 @@ def _ficha_tecnica(
         _setor(e, c),
         *_auditor_e_controlador(e, do_dossie, plano),
         _acoes_em_circulacao(e, c),
+        *_free_float_e_tag_along(e, do_dossie, plano),
         ultima_demonstracao(e.dados.documentos),
     ]
     return Secao(
@@ -1681,11 +1891,28 @@ def perguntas_em_aberto(secoes: list[Secao], tranca: str | None) -> list[str]:
 
 
 def fontes_do_relatorio(e: Entradas) -> tuple[str, ...]:
-    """As fontes (de `coletas.REVENDA`) que a ficha vai mostrar com estas entradas."""
+    """As fontes (de `coletas.REVENDA`) que a ficha vai mostrar com estas entradas. O preço só
+    entra com um número que vem dele: o preço, a série ou P/L e P/VP nos padrões (linha 413, Y1 a)."""
+    multiplos_nos_padroes = (
+        e.padroes is not None and e.padroes[1]["indicador"].isin(MULTIPLOS).any()
+    )
     com_preco = (
-        e.preco is not None or e.fechamentos is not None or e.padroes is not None
+        e.preco is not None or e.fechamentos is not None or multiplos_nos_padroes
     )
     return (FONTE_DA_CVM, *([FONTE_DO_PRECO] if com_preco else []))
+
+
+def com_enderecos_das_fontes(secoes: list[Secao]) -> list[Secao]:
+    """As seções com o endereço público da fonte em cada número e em cada parágrafo "Fonte: ..."
+    (linha 601): a página, o PDF, o Markdown e a API mostram o mesmo texto."""
+    return [
+        replace(
+            s,
+            itens=[replace(i, fonte=fonte_com_endereco(i.fonte)) for i in s.itens],
+            paragrafos=[paragrafo_com_endereco(p) for p in s.paragrafos],
+        )
+        for s in secoes
+    ]
 
 
 def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
@@ -1699,7 +1926,11 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     c = _calcular(entradas)
     do_dossie = _secoes_do_dossie(entradas, plano)
     mostrado = entradas.dossie if any(not s.trancada for s in do_dossie) else None
-    limites = [*LIMITES, *(mostrado.limites if mostrado else [])]
+    limites = [
+        *LIMITES,
+        *([LIMITE_DO_PRECO] if entradas.preco is not None else []),
+        *(mostrado.limites if mostrado else []),
+    ]
     fontes = (
         *FONTES,
         *citacoes_das_fontes(usadas),
@@ -1733,15 +1964,15 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
             paragrafos=com_a_contestacao([*limites, *em_aberto]),
         )
     )
-    secoes = na_ordem(secoes)
+    secoes = na_ordem(com_a_dfc_e_a_dva(secoes))
     return Relatorio(
         empresa=entradas.empresa,
         cnpj=entradas.cnpj,
         ticker=entradas.ticker,
         setor=entradas.dados.setor,
         grupo=NOMES.get(c.grupo, c.grupo),
-        secoes=secoes,
-        fontes=tuple(dict.fromkeys(fontes)),
+        secoes=com_enderecos_das_fontes(secoes),
+        fontes=tuple(dict.fromkeys(fonte_com_endereco(f) for f in fontes)),
         aviso_das_notas=notas.AVISO,
         em_conferencia=bool(entradas.achados),
     )

@@ -3,6 +3,7 @@
 import json
 import re
 
+from base import vitrine
 from base.contrato import PASTA
 from scripts import exportar_conteudo as exp
 from src import marca, modulos, planos
@@ -62,15 +63,12 @@ def test_marca_leva_as_cores_do_site_nos_dois_temas():
     ]
 
 
-def test_site_leva_os_estilos_do_relatorio_e_os_exemplos():
-    from src import catalogo
+def test_site_leva_os_estilos_do_relatorio():
     from src.estilos_pdf import ESTILOS
 
     site = exp.conteudo()["site"]
     assert [e["chave"] for e in site["estilos_do_relatorio"]] == list(ESTILOS)
     assert site["estilos_do_relatorio"][0]["nome"] == next(iter(ESTILOS.values())).nome
-    assert [e["simbolo"] for e in site["exemplos"]] == list(catalogo.EXEMPLOS)
-    assert site["exemplos"][0]["rotulo"] == catalogo.rotulo("PETR4.SA").split(" · ")[0]
 
 
 def test_ativos_levam_o_catalogo_inteiro_da_busca_com_o_rotulo_do_python():
@@ -297,24 +295,16 @@ def test_painel_vai_para_o_site_no_exemplo_json():
     assert exp.conteudo()["exemplo"] == exp.painel_de_exemplo()
 
 
-def test_site_leva_a_fita_e_o_total_de_ativos_da_busca():
-    """A fita da página inicial: código do catálogo e um nome curto, nenhum preço (ADR 0065)."""
-    from src import catalogo
-
-    site = exp.conteudo()["site"]
-    tabela = catalogo.carregar()
-    assert site["total_de_ativos"] == len(tabela)
-    assert len(site["fita"]) >= 10
-    for item in site["fita"]:
-        assert set(item) == {"simbolo", "codigo", "nome"}
-        assert item["codigo"] == tabela.loc[item["simbolo"], "codigo"]
+def test_site_nao_leva_mais_a_fita_nem_os_exemplos_da_busca():
+    """A página inicial fala com quem analisa (PR 5 do site): a fita e a busca de ativos saíram."""
+    assert set(exp.conteudo()["site"]) == {"estilos_do_relatorio"}
 
 
 def test_catalogo_do_site_vem_do_contrato():
     """A página Dados conta as tabelas e as fontes do `catalogo.json`; nada é digitado à mão."""
-    contrato = json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))[
-        "tabelas"
-    ]
+    contrato = vitrine.catalogo_publico(
+        json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    )["tabelas"]
     catalogo = exp.conteudo()["catalogo"]
 
     assert catalogo["totais"]["tabelas"] == len(contrato) == len(catalogo["tabelas"])
@@ -348,3 +338,15 @@ def test_catalogo_do_site_nao_leva_conversa_interna():
         assert not re.search(
             r"\bADR\b|perguntar|\bML\b", f["licenca"] + f["repasse"]
         ), f
+
+
+def test_catalogo_leva_as_fontes_por_familia_com_os_totais():
+    """A página Dados conta as famílias em uso e guardadas do registro; nenhum número é digitado."""
+    catalogo = exp.conteudo()["catalogo"]
+    familias = catalogo["familias_de_fontes"]
+    assert catalogo["totais"]["familias"] == len(familias) >= 100
+    assert catalogo["totais"]["familias_em_uso"] == sum(
+        f["uso"] == "em_uso" for f in familias
+    )
+    for f in familias:
+        assert not re.search(r"servidor|VPS|arquivista|\bADR\b|\w+/\w+\.py", str(f)), f

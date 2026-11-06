@@ -5,6 +5,8 @@ O participante é o conglomerado prudencial (tipo 1 do IF.data), ligado à compa
 o BB e o Itaú têm ticker. Os números são trimestrais (a data-base), e o estoque do ano é o de dezembro.
 """
 
+import dataclasses
+
 import pandas as pd
 import pytest
 
@@ -191,8 +193,10 @@ def test_bancos_concentracao_de_credito() -> None:
         linhas[2025]["hhi"] - (30**2 + 25**2 + 20**2 + 15**2 + 5**2 + 5**2)
     )
     assert linhas[2026]["meses"] == 3 and linhas[2026]["delta_hhi"] is None
+    # março de 2026 é só 1 das 4 datas-base do ano: o topo fica com dezembro de 2025, o ano completo
     itens = {item["chave"]: item for item in _secao()["itens"]}
-    assert itens["cr4_bcb_carteira_de_credito"]["base"] == "2026-03"
+    assert itens["cr4_bcb_carteira_de_credito"]["base"] == "2025-12"
+    assert itens["cr4_bcb_carteira_de_credito"]["valor"] == pytest.approx(0.90)
 
 
 def test_bancos_conglomerado_e_um_participante() -> None:
@@ -263,9 +267,21 @@ def test_bancos_fontes_e_registro_da_secao() -> None:
 
 
 def test_bancos_limites_explicam_a_base_e_a_conferencia() -> None:
-    texto = dossie.LIMITES["setor"]
+    texto = " ".join(_secao()["paragrafos"])
     for trecho in ("conglomerado prudencial", "REB", "carteira classificada", "revis"):
         assert trecho in texto, trecho
+
+
+def test_ficha_de_quem_nao_e_banco_nao_cita_o_ifdata() -> None:
+    """Linha 623: a metodologia da ficha é a do setor; o IF.data é só dos bancos."""
+    nao_banco = dataclasses.replace(BANCOS, chave="eletricas")
+    secao = dossie.secao_setor(nao_banco, _membros(), _series(), _ligacoes(), {})
+    assert secao is not None
+    texto = " ".join(secao["paragrafos"])
+    assert dossie.METODOLOGIA_DO_SETOR in texto
+    assert "IF.data" not in texto
+    assert "IF.data" not in dossie.LIMITES["setor"]
+    assert dossie.METODOLOGIA_DOS_BANCOS in " ".join(_secao()["paragrafos"])
 
 
 def test_bancos_cortar_o_futuro_nao_muda_o_passado() -> None:

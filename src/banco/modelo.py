@@ -1384,6 +1384,25 @@ direitos_da_organizacao = sa.Table(
     ),
 )
 
+# O botão de parar um conjunto para todas as organizações (B-32a, PR 6): fonte que mudou a licença ou
+# dado que saiu errado. Vale também para contrato concedido depois; reativar não mexe no direito que
+# foi suspenso sozinho. Como em `organizacoes`, suspender é preencher, reativar é limpar: nada se apaga.
+conjuntos_suspensos = sa.Table(
+    "conjuntos_suspensos",
+    metadata,
+    sa.Column("conjunto", sa.String(TAMANHO_MAXIMO_DO_CONJUNTO), primary_key=True),
+    sa.Column("suspenso_em", sa.DateTime(timezone=True)),
+    sa.Column("motivo_da_suspensao", sa.String(30)),
+    sa.CheckConstraint(
+        "motivo_da_suspensao IS NULL OR "
+        + _entre("motivo_da_suspensao", MOTIVOS_DA_SUSPENSAO),
+        name="motivo_da_suspensao",
+    ),
+    sa.CheckConstraint(
+        "(suspenso_em IS NULL) = (motivo_da_suspensao IS NULL)", name="suspensao"
+    ),
+)
+
 # Medição agregada por dia (D10): sem IP, sem o que foi buscado, sem resposta
 consumo_da_api = sa.Table(
     "consumo_da_api",

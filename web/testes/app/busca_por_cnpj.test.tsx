@@ -50,6 +50,18 @@ const FORA: BuscaPorCnpjV1 = {
   desligado: DESLIGADO,
   avisos: ["Este CNPJ ainda não está na base aberta do TickerLab."],
 };
+const DA_RECEITA: BuscaPorCnpjV1 = {
+  situacao: "cadastro_da_receita",
+  cnpj: "12.345.678/0001-95",
+  empresa: "",
+  tickers: [],
+  como_era_em: "2024-09-21",
+  secoes: [secao("cadastro_da_receita", "Cadastro da Receita"), secao("socios_da_receita", "Quadro de sócios")],
+  fontes: ["Receita Federal, dados abertos do CNPJ"],
+  limites: LIMITES,
+  desligado: DESLIGADO,
+  avisos: [],
+};
 const TRANCADA: BuscaPorCnpjV1 = {
   ...ENCONTRADA,
   secoes: [secao("cadastro", "Cadastro"), secao("rede", "Rede de empresas", true), secao("fatos", "Fatos públicos", true)],
@@ -79,7 +91,7 @@ describe("busca por CNPJ", () => {
     await screen.findByLabelText("CNPJ");
     expect(pedidos(buscar)).toHaveLength(0);
     expect(screen.getByRole("heading", { name: "Busca por CNPJ" })).toBeTruthy();
-    expect(screen.getByText(/só as companhias abertas/i)).toBeTruthy();
+    expect(screen.getByText(/cadastro aberto do CNPJ/i)).toBeTruthy();
   });
 
   it("encontrada: o CNPJ vai no corpo, nunca no endereço, e o relatório vem com fonte, limites e o desligado", async () => {
@@ -108,6 +120,14 @@ describe("busca por CNPJ", () => {
     expect(screen.queryByRole("heading", { name: "Cadastro" })).toBeNull();
     expect(screen.getByRole("region", { name: "Limites e cuidados" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "O que ainda não aparece" })).toBeTruthy();
+  });
+
+  it("cadastro da Receita (sem ficha na CVM): o CNPJ e o mês da publicação, sem nome de empresa", async () => {
+    abrir(() => respostaJson(200, DA_RECEITA));
+    await buscarPor("12345678000195");
+    expect(await screen.findByText(/cadastro da Receita de 09\/2024/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Quadro de sócios" })).toBeTruthy();
+    expect(screen.queryByText(/ficha de/)).toBeNull();
   });
 
   it("trancada pelo plano: só o título e o convite, com um único link para os Planos", async () => {

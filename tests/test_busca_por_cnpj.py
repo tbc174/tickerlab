@@ -10,8 +10,8 @@ import pytest
 from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src import busca_por_cnpj as busca
-from src import dossie
 from src.banco import demonstracoes as repo
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
 PETROBRAS = "33000167000101"
 HOJE = date(2026, 10, 19)
@@ -49,7 +49,7 @@ def _filial(matriz: str, numero: str = "0002") -> str:
 
 
 def _gravar_ficha(pasta: Path, cnpj: str = PETROBRAS) -> Path:
-    bruta = json.loads(dossie.FICHA_DE_EXEMPLO.read_text(encoding="utf-8"))
+    bruta = json.loads(FICHA_DE_17_10.read_text(encoding="utf-8"))
     bruta["secoes"].append(SECAO_DA_REDE)
     atual = pasta / "atual"
     atual.mkdir(exist_ok=True)

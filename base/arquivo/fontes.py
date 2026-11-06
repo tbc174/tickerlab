@@ -10,6 +10,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -17,23 +18,35 @@ from zoneinfo import ZoneInfo
 import requests
 import sqlalchemy as sa
 
-from base import intradiario_b3, tce_pr
+from base import indices_b3, intradiario_b3, tce_pr
 from base.arquivo import (
     assessorias,
+    chirps_v3,
+    cnj_tpu,
     contrapartes,
+    datajud,
+    djen,
+    finep,
     lote_acervos,
     lote_atencao,
     lote_bcb,
     lote_brasil2,
     lote_cadastros,
     lote_clima,
+    lote_commodities,
+    lote_commodities_oficiais,
     lote_cvm,
+    lote_documentais,
     lote_eua,
+    lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
     lote_organismos,
     lote_patentes,
     lote_reguladores,
     lote_sec,
+    lote_sefaz_pe,
+    lote_selic,
     lote_setoriais,
     lote_tesouro,
     wayback,
@@ -119,8 +132,11 @@ TERMOS = {
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    **lote_commodities_oficiais.termos(),  # aviso legal da Comissão Europeia (DG AGRI, linha 396)
+    **lote_nordicos.termos(),  # Riksbank e Norges Bank (linha 511, 05/11/2026)
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
+    **lote_europa_rba.termos(),  # CBS, Istat e RBA (linha 512, 05/11/2026)
     **lote_licitacoes.termos(),  # sem vigia de termos neste lote (motivos em _SEM_VIGIA)
     **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
     **lote_atencao.termos(),  # Querido Diário, Crossref, OpenAlex e Senado (rodada 4)
@@ -236,6 +252,180 @@ CAMPOS_DO_CADASTRO_DA_SUSEP = (
     "entcgc",
     "dataautorizacao",
 )
+
+# Ficha Clara, licenças e registros (etapa 2, 29/10/2026; todos CC BY no dados.gov.br): os cadastros
+# guardam a linha só quando o documento é um CNPJ inteiro (CPF de pessoa física e CNPJ mascarado
+# saem) e só as colunas da lista: razão social (pode ser o nome de um MEI ou do titular), nome de
+# fantasia, endereço, CEP, telefone, e-mail, representante e responsável técnico nunca entram
+CONSULTAS_DA_ANVISA = "https://dados.anvisa.gov.br/dados/CONSULTAS/"
+# autorização de funcionamento (AFE): as datas vêm em MM/DD/AAAA; o arquivo das internacionais fica
+# de fora (empresa estrangeira, sem CNPJ)
+COLUNAS_DA_AFE_DA_ANVISA = (
+    "NU_CNPJ", "NU_AUTORIZACAO", "NU_AUTORIZACAO_NOVO", "NU_PROCESSO", "DT_AUTORIZACAO", "ATIVO",
+    "TIPO_PRODUTO", "CO_TIPO_ATIVIDADES", "ST_AUTORIZACAO_ESPECIAL", "DT_CANCELAMENTO",
+    "DT_PUBLICACAO", "CIDADE", "UF", "CO_MUNICIPIO_IBGE", "ATIVIDADES", "DT_CARGA_ETL",
+)  # fmt: skip
+# certificado de boas práticas de fabricação (CBPF): o CNPJ é o de quem pediu; a fábrica inspecionada
+# pode ser estrangeira
+COLUNAS_DO_CBPF_DA_ANVISA = (
+    "CO_DOCUMENTO_PETICAO", "NU_CNPJ_SOLICITANTE", "CODIGOUNICO_INSPECIONADA",
+    "NU_CNPJ_EMPRESA_INSPECIONADA", "NO_PAIS_INSPECIONADA", "NO_TIPO_CERTIFICADO", "ASSUNTO",
+    "DT_PUBLICACAO", "DT_VALIDADE", "DS_TP_EMISSAO_CERTIFICADO", "SITUACAO", "NU_PROCESSO",
+    "STATUS", "DT_CARGA_ETL",
+)  # fmt: skip
+# produtos registrados (um arquivo por tipo; cada um traz as colunas dele, e fica a interseção com
+# esta lista); sai a razão social, e o texto longo da bula (indicações, sinônimos) também
+ARQUIVOS_DE_PRODUTOS_DA_ANVISA = (
+    "MEDICAMENTOS", "SANEANTES", "COSMETICOS", "PRODUTOS_SAUDE", "ALIMENTOS",
+)  # fmt: skip
+COLUNAS_DOS_PRODUTOS_DA_ANVISA = (
+    "NU_PROCESSO", "NU_CNPJ_EMPRESA", "NO_PRODUTO", "CO_TIPO_PRODUTO", "NU_REGISTRO_PRODUTO",
+    "NU_REGISTRO", "NU_REGISTRO_NOTIFICACAO_PRODUTO", "CO_SEQ_PRODUTO", "ST_PRODUTO_ATIVO",
+    "ST_SITUACAO_PRODUTO", "IS_REGISTRADO", "ST_REGISTRADO", "TP_SITUACAO_PRODUTO",
+    "SITUACAO_REGISTRO", "SITUACAO_ASSUNTO", "DS_SITUACAO_ASSUNTO_DOC", "TIPO_AUTORIZACAO",
+    "TIPO_REGULARIZACAO", "DS_TIPO_PETICAO", "DS_TIPO_CATEGORIA_REGULATORIA",
+    "DS_CATEGORIA_PRODUTO", "SG_RISCO_PRODUTO", "CO_ATC", "SUBSTANCIAS_MEDICAMENTOS", "MARCAS",
+    "DATA_PUBLICACAO", "DT_PUBLICACAO", "DT_REGULARIZACAO", "DT_VENCIMENTO",
+    "DT_VENCIMENTO_PRODUTO", "DT_VENCIMENTO_REGISTRO", "VALIDADE_SITUACAO", "DATA_CANCELAMENTO",
+    "DT_CANCELAMENTO", "CANCELAMENTO", "DT_ATUALIZACAO", "DATA_ULTIMA_ATUALIZACAO", "DT_CARGA_ETL",
+)  # fmt: skip
+# preços máximos da CMED (lista de preços de medicamentos, Anvisa; 04/11/2026): uma linha por
+# apresentação (CNPJ + código GGREM), na lista ao consumidor (PF e PMC) e na de compras públicas (PF e
+# PMVG). UTF-8 com BOM. Sai o nome do laboratório (a razão social); "COMERCIALIZAÇÃO 2025" muda de
+# nome todo ano e "DESTINAÇÃO COMERCIAL" vem vazia, então ficam de fora até terem um nome estável.
+# Licença: a da Anvisa (CC BY); a desta lista em particular está "a confirmar" (ADR 0102, Emenda 2)
+PRECOS_DA_CMED = "https://dados.anvisa.gov.br/dados/"
+ALIQUOTAS_DA_CMED = (
+    "12", "17", "17,5", "18", "19", "19,5", "20", "20,5", "21", "22", "22,5", "23",
+)  # fmt: skip
+COLUNAS_DE_IDENTIDADE_DA_CMED = (
+    "SUBSTÂNCIA", "CNPJ", "CÓDIGO GGREM", "REGISTRO", "EAN 1", "EAN 2", "EAN 3", "PRODUTO",
+    "APRESENTAÇÃO", "CLASSE TERAPÊUTICA", "TIPO DE PRODUTO (STATUS DO PRODUTO)", "REGIME DE PREÇO",
+)  # fmt: skip
+COLUNAS_DE_MARCAS_DA_CMED = (
+    "RESTRIÇÃO HOSPITALAR", "CAP", "CONFAZ 87", "ICMS 0%", "ANÁLISE RECURSAL",
+    "LISTA DE CONCESSÃO DE CRÉDITO TRIBUTÁRIO (PIS/COFINS)", "TARJA",
+)  # fmt: skip
+
+
+def colunas_de_preco_da_cmed(referencia: str) -> tuple[str, ...]:
+    """As colunas de um preço ("PF", "PMC" ou "PMVG") como a CMED as escreve, na ordem do arquivo.
+
+    A alíquota zero do PF vem sem espaço ("PF 0%") e a do PMC e do PMVG com espaço ("PMC 0 %"); a
+    área de livre comércio (ALC) tem dois espaços antes ("PF 12 %  ALC").
+    """
+    zero = "0%" if referencia == "PF" else "0 %"
+    colunas = [f"{referencia} Sem Impostos", f"{referencia} {zero}"]
+    for aliquota in ALIQUOTAS_DA_CMED:
+        colunas += [f"{referencia} {aliquota} %", f"{referencia} {aliquota} %  ALC"]
+    return tuple(colunas)
+
+
+LISTAS_DA_CMED = {
+    "consumidor": "PMC",
+    "governo": "PMVG",
+}  # a lista e o preço máximo dela
+ARQUIVOS_DA_CMED = {
+    "consumidor": "TA_PRECO_MEDICAMENTO.csv",
+    "governo": "TA_PRECO_MEDICAMENTO_GOV.csv",
+}
+# RNTRC (transportadores de carga): um CSV por mês (~160 MB), e cada um é o cadastro inteiro daquele
+# mês; basta o mais novo (o arquivista guarda o histórico a partir daqui)
+COLUNAS_DO_RNTRC = (
+    "numero_rntrc", "data_primeiro_cadastro", "situacao_rntrc", "cpfcnpjtransportador",
+    "categoria_transportador", "municipio", "uf", "equiparado", "data_situacao_rntrc",
+)  # fmt: skip
+# SIPEAGRO (MAPA): só os dois arquivos com o CNPJ inteiro; fertilizantes, qualidade vegetal, vinhos e
+# bebidas e alimentação animal mascaram o CNPJ, e nunca se cruza pelo nome (homônimos)
+SIPEAGRO = "https://dados.agricultura.gov.br/dataset/52a01565-72d6-410e-b21b-64035831a7be/resource/"
+PRODUTO_VETERINARIO_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "7ce5fac0-9c8f-4e14-82d9-6deab9b5e2e9/download/sipeagroprodutoveterinario.csv"
+)
+AVIACAO_AGRICOLA_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "fac50de6-d4c4-4b47-bac9-5b144de448c9/download/sipeagroaviacaoagricolaregistro.csv"
+)
+COLUNAS_DO_SIPEAGRO = (
+    "UNIDADE_DA_FEDERACAO", "MUNICIPIO", "NUMERO_REGISTRO_ESTABELECIMENTO", "STATUS_DO_REGISTRO",
+    "STATUS_REGISTRO_ESTABELECIMENTO", "CNPJ", "CPF_CNPJ", "AREA_ATUACAO", "ATIVIDADE",
+    "CLASSIFICACAO", "CARACTERISTICA_ADICIONAL", "ESPECIE", "NUMERO_REGISTRO_AERONAVE",
+    "STATUS_AERONAVE",
+)  # fmt: skip
+# Anatel, prestadoras com outorga: um ZIP com um CSV só (UTF-8 com BOM)
+OUTORGAS_DA_ANATEL = "https://www.anatel.gov.br/dadosabertos/paineis_de_dados/outorga_e_licenciamento/prestadoras_servicos_telecomunicacoes.zip"
+COLUNAS_DAS_OUTORGAS_DA_ANATEL = (
+    "Tipo de Identificação", "CNPJ ou CPF", "Tipo de Entidade", "Tipo de Outorga",
+    "Fistel da Outorga", "Processo SEI da Outorga", "Data Inclusão da Outorga",
+    "Serviço da Notificação", "Código e Nome do Serviço da Notificação", "Fistel da Notificação",
+    "Processo SEI da Notificação", "Data Inclusão da Notificação",
+    "Código IBGE do Munícipio do Endereço Sede", "Nome do Munícipio do Endereço Sede",
+    "UF do Endereço Sede",
+)  # fmt: skip
+# ANM, Cadastro Mineiro: um CSV por tipo de título, separado por "," (os microdados, um ZIP de
+# 181 MB, ficam para depois)
+CADASTRO_MINEIRO_DA_ANM = "https://dadosabertos.anm.gov.br/SCM/{nome}.csv"
+ARQUIVOS_DO_CADASTRO_MINEIRO = (
+    "Alvara_de_Pesquisa", "Cessoes_de_Direitos", "Guia_de_Utilizacao_Autorizada", "Licenciamento",
+    "PLG", "Portaria_de_Lavra", "Registro_de_Extracao_Publicado", "Relatorio_de_Pesquisa_Aprovado",
+    "Requerimento_de_Lavra", "Requerimento_de_Licenciamento", "Requerimento_de_Pesquisa",
+    "Requerimento_de_PLG", "Requerimento_de_Registro_de_Extracao_Protocolizado",
+)  # fmt: skip
+COLUNAS_DO_CADASTRO_MINEIRO = (
+    "Superintendência", "Processo", "Tipo de requerimento", "Fase Atual", "CPF/CNPJ do titular",
+    "Municipio(s)", "Substância(s)", "Tipo(s) de Uso", "Situação",
+)  # fmt: skip
+# Ancine, agentes econômicos registrados
+AGENTES_DA_ANCINE = (
+    "https://dados.ancine.gov.br/dados-abertos/agentes-economicos-regulares.csv"
+)
+COLUNAS_DOS_AGENTES_DA_ANCINE = (
+    "REGISTRO_ANCINE", "DATA_REGISTRO", "CNPJ", "DATA_CONSTITUICAO", "UF", "MUNICIPIO",
+    "CODIGO_MUNICIPIO_IBGE", "CLASSIFICACAO_AGENTE_ECONOMICO", "NATUREZA_JURIDICA",
+    "BRASILEIRO_INDEPENDENTE",
+)  # fmt: skip
+
+# Ficha Clara, incentivos (etapa 4, 29/10/2026). Lei do Bem (MCTI) e Lei 8.387 (SUFRAMA) ficam de
+# fora: a primeira só publica totais por região e CNAE, sem CNPJ; o arquivo da segunda dá 404 (fila).
+# REIDI (MME): atos de enquadramento de projetos de geração e transmissão de energia; licença
+# "Outra (Aberta)" no portal do MME, sem nome (a confirmar). Sai a razão social e a descrição longa
+REIDI_DO_MME = "https://dadosabertos.mme.gov.br/dataset/43dbd18d-10b3-4c01-be9a-7a653e986bec/resource/97d455b6-78ca-4356-88a1-f9edf416244f/download/processos_deferidos.csv"
+COLUNAS_DO_REIDI = (
+    "Processo", "CNPJ", "Municipio", "UF", "idt_projeto", "Nome_do_Projeto", "Portaria",
+    "Data_inicio_portaria", "vlr_Total_Com_Incidencia_PISPASEP_COFINS",
+    "vlr_Total_Sem_Incidencia_PISPASEP_COFINS", "vlr_Beneficio_Fiscal", "dat_Execucao_Inicio",
+    "dat_Execucao_Termino",
+)  # fmt: skip
+# CDE (ANEEL, ODbL): quem recebe os descontos tarifários pagos pela Conta de Desenvolvimento
+# Energético. Um ZIP por mês (~300 MB; dentro, um CSV de ~2 GB com cada unidade consumidora, também
+# de pessoa física, com nome e CPF): fica só a linha de CNPJ inteiro, sem o nome do cliente, e só os
+# meses mais novos (o histórico cresce daqui; os anos antigos, fila). A rede básica (geradores e
+# consumidores ligados à transmissão) vem num CSV por ano, sem o nome do agente
+PACOTE_DA_CDE = "beneficiarios-da-cde"
+MESES_DA_CDE = 13  # o último ano e o mesmo mês do ano anterior, para comparar
+MES_NO_ARQUIVO_DA_CDE = re.compile(r"cde-beneficiarios-01([a-z]{3})(\d{4})\.zip$")
+MESES_EM_INGLES = (
+    "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
+)  # fmt: skip
+COLUNAS_DA_CDE = (
+    "DatGeracaoConjuntoDados", "AnmReferencia", "SigAgente", "NumCNPJDistribuidora",
+    "CodIbgeMunicipio", "IdcTipoFaturamento", "IdcClasseConsumidor", "IdcSubclasse",
+    "IdcSubgrupoTarifario", "IdcTipoCompraEnergia", "NumCPFCNPJCliente", "DscTipoSubsidio",
+    "VlrSubsidio",
+)  # fmt: skip
+COLUNAS_DA_CDE_NA_REDE_BASICA = (
+    "DatGeracaoConjuntoDados", "NumAno", "NomMes", "NumCNPJ", "DscGrupoTarifario",
+    "IdcClasseConsumidor", "IdcTipo", "VlrDesconto", "VlrCobranca",
+)  # fmt: skip
+# RDE-IED (Banco Central, ODbL): os registros de investimento estrangeiro direto pelo CNPJ básico
+# (8 dígitos) da empresa que recebeu, de nov/2011 a dez/2022 (a série parou aí; 72.566 registros em
+# 29/10/2026, um pedido só). O nome do investidor estrangeiro (pode ser uma pessoa) e o da empresa
+# ficam de fora
+REGISTROS_DO_RDE_IED = "https://olinda.bcb.gov.br/olinda/servico/RDE_Publicacao/versao/v1/odata/RegistrosIED?$top=500000&$format=json"
+CAMPOS_DO_RDE_IED = (
+    "CodigoRDE", "CnpjBaseReceptora", "UfPessoaNacional", "PaisPessoaEstrangeira",
+    "MoedaOperacao", "ValorOperacao", "Sistema", "Ocorrencia", "Modalidade", "Ano", "Mes",
+)  # fmt: skip
 # 2ª leva (14/10/2026)
 # Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
 # dentro dos ZIPs (o de telefonia móvel tem 3,2 GB; os "_Colunas" somam ~70 MB comprimidos)
@@ -689,6 +879,162 @@ def descobrir_cadastro_da_susep(cliente: Cliente, agora: datetime) -> list[Alvo]
     ]
 
 
+@dataclass(frozen=True)
+class CsvDeCadastro:
+    """Um CSV de cadastro (licenças e registros) e o que dele chega ao acervo."""
+
+    url: str
+    colunas: tuple[str, ...]
+    cnpj_em: str  # a coluna do documento: fica só a linha com CNPJ inteiro
+    codificacao: str = "latin-1"
+    separador: str = ";"
+    dentro_do_zip: bool = False
+
+    def alvo(self) -> Alvo:
+        obter = csv_so_com_colunas(
+            self.url, self.colunas, self.codificacao, separador=self.separador,
+            so_com_cnpj_em=self.cnpj_em, dentro_do_zip=self.dentro_do_zip,
+        )  # fmt: skip
+        return Alvo(self.url, ".csv", obter)
+
+
+def _cadastros(*arquivos: CsvDeCadastro) -> Descobrir:
+    return lambda cliente, agora: [arquivo.alvo() for arquivo in arquivos]
+
+
+CADASTROS_DE_EMPRESAS_DA_ANVISA = (
+    CsvDeCadastro(
+        CONSULTAS_DA_ANVISA
+        + "EMPRESA_FISCALIZACAO_PRODUTO/TA_CONSULTA_FUNCIONAMENTO_EMPRESA_NACIONAL.CSV",
+        COLUNAS_DA_AFE_DA_ANVISA,
+        "NU_CNPJ",
+    ),
+    *(
+        CsvDeCadastro(
+            CONSULTAS_DA_ANVISA + f"EMPRESA_FISCALIZACAO_PRODUTO/{nome}.CSV",
+            COLUNAS_DO_CBPF_DA_ANVISA,
+            "NU_CNPJ_SOLICITANTE",
+        )
+        for nome in ("TA_CONSULTA_CBPF", "TA_CONSULTA_CBPF_MEDICAMENTO")
+    ),
+)
+CADASTROS_DE_PRODUTOS_DA_ANVISA = tuple(
+    CsvDeCadastro(
+        CONSULTAS_DA_ANVISA + f"PRODUTOS/TA_CONSULTA_{nome}.CSV",
+        COLUNAS_DOS_PRODUTOS_DA_ANVISA,
+        "NU_CNPJ_EMPRESA",
+    )
+    for nome in ARQUIVOS_DE_PRODUTOS_DA_ANVISA
+)
+CADASTROS_DE_PRECOS_DA_CMED = tuple(
+    CsvDeCadastro(
+        PRECOS_DA_CMED + ARQUIVOS_DA_CMED[lista],
+        COLUNAS_DE_IDENTIDADE_DA_CMED
+        + colunas_de_preco_da_cmed("PF")
+        + colunas_de_preco_da_cmed(maximo)
+        + COLUNAS_DE_MARCAS_DA_CMED,
+        "CNPJ",
+        "utf-8-sig",
+    )
+    for lista, maximo in LISTAS_DA_CMED.items()
+)
+CADASTROS_DO_SIPEAGRO = (
+    CsvDeCadastro(
+        PRODUTO_VETERINARIO_DO_SIPEAGRO, COLUNAS_DO_SIPEAGRO, "CNPJ", "utf-8"
+    ),
+    CsvDeCadastro(
+        AVIACAO_AGRICOLA_DO_SIPEAGRO, COLUNAS_DO_SIPEAGRO, "CPF_CNPJ", "utf-8"
+    ),
+)
+OUTORGAS_DA_ANATEL_FILTRADAS = CsvDeCadastro(
+    OUTORGAS_DA_ANATEL,
+    COLUNAS_DAS_OUTORGAS_DA_ANATEL,
+    "CNPJ ou CPF",
+    "utf-8-sig",
+    dentro_do_zip=True,
+)
+CADASTRO_MINEIRO_FILTRADO = tuple(
+    CsvDeCadastro(
+        CADASTRO_MINEIRO_DA_ANM.format(nome=nome),
+        COLUNAS_DO_CADASTRO_MINEIRO,
+        "CPF/CNPJ do titular",
+        separador=",",
+    )
+    for nome in ARQUIVOS_DO_CADASTRO_MINEIRO
+)
+AGENTES_DA_ANCINE_FILTRADOS = CsvDeCadastro(
+    AGENTES_DA_ANCINE, COLUNAS_DOS_AGENTES_DA_ANCINE, "CNPJ", "utf-8"
+)
+
+
+def descobrir_rntrc(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """O CSV mais novo do RNTRC na ANTT (cada mês é o cadastro inteiro), só com os transportadores
+    de CNPJ inteiro e sem o nome nem o CEP."""
+    resposta = _json(cliente, f"{PORTAL_DA_ANTT}/api/3/action/package_show?id=rntrc")
+    csvs = [
+        r
+        for r in resposta.get("result", {}).get("resources", [])
+        if _e_arquivo(r) and (r.get("format") or "").lower() == "csv"
+    ]
+    if not csvs:
+        raise ErroDeDescoberta("rntrc: pacote sem CSV na ANTT")
+    mais_novo = max(csvs, key=lambda r: r.get("created") or "")
+    return [
+        CsvDeCadastro(mais_novo["url"], COLUNAS_DO_RNTRC, "cpfcnpjtransportador").alvo()
+    ]
+
+
+REIDI_FILTRADO = CsvDeCadastro(REIDI_DO_MME, COLUNAS_DO_REIDI, "CNPJ", "utf-8-sig")
+
+
+def _mes_do_arquivo_da_cde(url: str) -> date | None:
+    achado = MES_NO_ARQUIVO_DA_CDE.search(url.lower())
+    if achado is None:
+        return None
+    mes, ano = achado.groups()
+    return date(int(ano), MESES_EM_INGLES.index(mes) + 1, 1)
+
+
+def descobrir_cde(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os ZIPs mensais mais novos dos beneficiários da CDE (só CNPJ inteiro, sem o nome do cliente)
+    e os CSVs anuais da rede básica (sem o nome do agente)."""
+    alvos = descobrir_ckan(cliente, PORTAL_DA_ANEEL, PACOTE_DA_CDE)
+    meses = {
+        alvo.url: mes
+        for alvo in alvos
+        if (mes := _mes_do_arquivo_da_cde(alvo.url)) is not None
+    }
+    if not meses:
+        raise ErroDeDescoberta(f"{PACOTE_DA_CDE}: nenhum ZIP mensal na ANEEL")
+    mais_novos = sorted(meses, key=meses.__getitem__)[-MESES_DA_CDE:]
+    rede_basica = [
+        a.url
+        for a in alvos
+        if "rede-basica" in a.url.lower() and a.url.lower().endswith(".csv")
+    ]
+    return [
+        *(
+            CsvDeCadastro(url, COLUNAS_DA_CDE, "NumCPFCNPJCliente", separador=",", dentro_do_zip=True).alvo()
+            for url in mais_novos
+        ),
+        *(
+            CsvDeCadastro(url, COLUNAS_DA_CDE_NA_REDE_BASICA, "NumCNPJ", "utf-8").alvo()
+            for url in rede_basica
+        ),
+    ]  # fmt: skip
+
+
+def descobrir_rde_ied(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os registros de investimento estrangeiro direto, sem o nome do investidor nem o da empresa."""
+    return [
+        Alvo(
+            REGISTROS_DO_RDE_IED,
+            ".json",
+            json_so_com_campos(REGISTROS_DO_RDE_IED, CAMPOS_DO_RDE_IED),
+        )
+    ]
+
+
 def _fim_dos_meses(agora: datetime, quantos: int) -> list[date]:
     """O último dia de cada um dos `quantos` meses fechados antes de `agora`."""
     dias: list[date] = []
@@ -768,6 +1114,26 @@ def descobrir_cotahist_do_dia(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+def descobrir_ibovespa_diario(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Um arquivo por ano, de 2000 ao ano corrente (no fuso da B3): o pregão do dia compara a
+    variação do Ibovespa com a de cada pregão desde 2000."""
+    ano_corrente = agora.astimezone(FUSO_DA_B3).year
+    return [
+        Alvo(indices_b3.endereco_do_ano(ano), ".json")
+        for ano in range(indices_b3.PRIMEIRO_ANO, ano_corrente + 1)
+    ]
+
+
+def _ano_do_indice_ja_fechado(anterior: sa.Row) -> bool:
+    """Baixado depois que o ano acabou (no fuso da B3): o ano não muda mais; o corrente muda todo dia."""
+    baixado = anterior.baixado_em
+    if baixado.tzinfo is None:  # o SQLite dos testes devolve sem fuso
+        baixado = baixado.replace(tzinfo=UTC)
+    return baixado.astimezone(FUSO_DA_B3).year > indices_b3.ano_do_endereco(
+        anterior.url
+    )
+
+
 def _pregao_inteiro_ja_guardado(anterior: sa.Row) -> bool:
     resumo = intradiario_b3.resumo_guardado(
         intradiario_b3.pregao_do_endereco(anterior.url)
@@ -836,7 +1202,7 @@ PRIMEIRO_ANO_DO_INMET = (
     2000  # as estações automáticas começam aí; zip por ano, ~100 MB nos recentes
 )
 CHIRPS_MENSAL = (
-    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/"
+    "https://data.chc.ucsb.edu/products/CHIRPS/v2.0/global_monthly/tifs/"
     "chirps-v2.0.{ano}.{mes:02d}.tif.gz"
 )
 PRIMEIRO_ANO_DO_CHIRPS = 1991  # início da normal climatológica de 1991–2020 (OMM)
@@ -1023,8 +1389,8 @@ FONTES: list[Fonte] = [
     Fonte(
         "ccee-pld",
         "semanal",
-        _ckan(
-            "https://dadosabertos.ccee.org.br",
+        lote_setoriais._ckan_pela_pagina(  # o robots.txt da CCEE proíbe a `/api/`
+            lote_setoriais.PORTAL_DA_CCEE,
             "pld_horario",
             "pld_media_diaria",
             "pld_media_mensal",
@@ -1091,6 +1457,18 @@ FONTES: list[Fonte] = [
         ),
         pesada=True,
     ),
+    # autos de infração de trânsito do SIFAMA, um CSV por ano (Ficha Clara, sinais jurídicos):
+    # guardado cru no acervo restrito (pode trazer CPF do autuado); a carga espera ver o layout
+    Fonte(
+        "antt-autos-de-transito",
+        "mensal",
+        _ckan(
+            PORTAL_DA_ANTT,
+            "739c95ed-18f6-42c8-bd0d-8de997915395",
+            formatos=("csv", "pdf"),
+        ),
+        pesada=True,
+    ),
     Fonte("comexstat", "semanal", descobrir_comex, pesada=True),
     Fonte("anac-estatistico", "mensal", _um(ESTATISTICO_DA_ANAC), pesada=True),
     Fonte("ans-beneficiarios", "semanal", descobrir_beneficiarios_ans, pesada=True),
@@ -1106,6 +1484,36 @@ FONTES: list[Fonte] = [
     Fonte("susep-ses", "mensal", descobrir_susep, pesada=True),
     Fonte("ans-operadoras", "mensal", descobrir_cadastro_da_ans),
     Fonte("susep-cadastro", "mensal", descobrir_cadastro_da_susep),
+    # Ficha Clara, licenças e registros (etapa 2): cadastros filtrados na coleta (`CsvDeCadastro`)
+    Fonte(
+        "anvisa-empresas",
+        "mensal",
+        _cadastros(*CADASTROS_DE_EMPRESAS_DA_ANVISA),
+        pesada=True,
+    ),
+    Fonte(
+        "anvisa-produtos",
+        "mensal",
+        _cadastros(*CADASTROS_DE_PRODUTOS_DA_ANVISA),
+        pesada=True,
+    ),
+    Fonte("anvisa-cmed", "mensal", _cadastros(*CADASTROS_DE_PRECOS_DA_CMED)),
+    Fonte("antt-rntrc", "mensal", descobrir_rntrc, pesada=True),
+    Fonte("mapa-sipeagro", "mensal", _cadastros(*CADASTROS_DO_SIPEAGRO)),
+    Fonte(
+        "anatel-outorgas",
+        "mensal",
+        _cadastros(OUTORGAS_DA_ANATEL_FILTRADAS),
+        pesada=True,
+    ),
+    Fonte("anm-cadastro-mineiro", "mensal", _cadastros(*CADASTRO_MINEIRO_FILTRADO)),
+    Fonte("ancine-agentes", "mensal", _cadastros(AGENTES_DA_ANCINE_FILTRADOS)),
+    # Ficha Clara, incentivos (etapa 4): só a linha de CNPJ inteiro, sem nome nem razão social
+    Fonte("mme-reidi", "mensal", _cadastros(REIDI_FILTRADO)),
+    Fonte("aneel-cde", "mensal", descobrir_cde, pesada=True),
+    Fonte("bcb-rde-ied", "mensal", descobrir_rde_ied, "json"),
+    # financiamentos por CNPJ (linha 469): só as abas de crédito, sem nome, título nem resumo
+    Fonte("finep-contratacao", "mensal", finep.descobrir_contratacao),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",
@@ -1128,6 +1536,14 @@ FONTES: list[Fonte] = [
         descobrir_cotahist_do_dia,
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
+    ),
+    # fechamento diário do Ibovespa (estatísticas do índice da B3), um arquivo por ano: `base/indices_b3.py`
+    Fonte(
+        "b3-ibov-diario",
+        "diaria",
+        descobrir_ibovespa_diario,
+        "json",
+        guardado_vale=_ano_do_indice_ja_fechado,
     ),
     # PIT do TCE-PR, só com os atributos da lista (sem pessoas): `base/tce_pr.py`
     Fonte("tce-pr-pit", "semanal", descobrir_pit, "zip", pesada=True),
@@ -1161,13 +1577,17 @@ FONTES: list[Fonte] = [
     # (`python -m scripts.arquivar_fontes chirps-historico`); depois o `chirps-mensal` segue sozinho
     Fonte("chirps-historico", "carga-unica", _meses_do_chirps_historico, pesada=True),
     Fonte("ibge-malha-municipal", "mensal", _malhas_do_ibge, "json"),
-    # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
+    # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY-SA, termos do site de 21/10/2026, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
+    *lote_nordicos.fontes(),  # Riksbank e Norges Bank: juros e câmbio (linha 511)
     *lote_organismos.fontes(),  # BCE, OCDE, Eurostat, BIS, FMI, Banco Mundial, NASA, NOAA, GLEIF
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
     *lote_eua.fontes(),
+    # lote Europa e RBA (linha 512, licenças lidas em 29/10/2026): institutos de estatística da Áustria,
+    # Bélgica, Países Baixos, Irlanda, Espanha e Itália, e as tabelas próprias da RBA
+    *lote_europa_rba.fontes(),
     # lote SEC (rodada 4, 23/10/2026): mais conjuntos da Data Library, corretoras, Form ADV e os
     # pacotes diários do EDGAR (linha 201 da fila)
     *lote_sec.fontes(),
@@ -1179,9 +1599,20 @@ FONTES: list[Fonte] = [
     # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
     # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
     contrapartes.fonte(),
+    # comunicações processuais do DJEN em que cada companhia aberta é parte, sem a Justiça do Trabalho
+    # (plano de 03/11/2026 dos processos judiciais; "pode" do Tiago na mesma data)
+    djen.fonte(),
+    # e cada processo já ligado a uma companhia, pelo número (acha a comunicação que só intima a outra
+    # parte; PR 1b)
+    djen.fonte_dos_processos(),
+    # e cada um desses processos no DataJud, só para uso interno (PR 3; `coletas.FONTES_SO_INTERNAS`)
+    datajud.fonte(),
+    # as classes processuais da TPU do CNJ, para o nome e o ramo da classe de cada processo (PR 1b)
+    cnj_tpu.fonte(),
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),
+    *lote_selic.fontes(),
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)
     *lote_setoriais.fontes(),
@@ -1191,6 +1622,9 @@ FONTES: list[Fonte] = [
     # lote Brasil, segunda camada (22/10/2026): Portal da Transparência, BNDES, INSS e SUSEP, só CNPJ
     # e agregados (linhas 259, 260 e 262 da fila)
     *lote_brasil2.fontes(),
+    # benefícios fiscais de Pernambuco por CNPJ (SEFAZ-PE, CC BY; linha 578 da fila), um CSV por ano,
+    # sem a razão social; descoberta pela página porque o robots.txt fecha /api/
+    *lote_sefaz_pe.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),
@@ -1203,12 +1637,22 @@ FONTES: list[Fonte] = [
     # lote clima e fogo (rodada 4, linha 290): INPE Queimadas, NASA FIRMS, TerraBrasilis (WFS), NOAA,
     # ECMWF, MapBiomas, ONS, Climate TRACE, EDGAR e Carbon Monitor
     *lote_clima.fontes(),
+    # lote café, commodities e clima (linha 204): USDA PSD inteiro, FAOSTAT, I-CIP da OIC, séries e boletins da
+    # CONAB, outras famílias do COT, CHIRTS, SPEI e SPI do CHC, normais do INMET e MapBiomas por bioma
+    *lote_commodities.fontes(),
+    # commodities oficiais com licença aberta (linha 396): DG AGRI e, nos PRs seguintes, BCPI, Eurostat, SSB, REQ e DG ENER
+    *lote_commodities_oficiais.fontes(),
+    # ponte da troca do CHIRPS v2 (acaba em dez/2026): a v3 `rnl` pela cópia Zarr do Hugging Face, que o
+    # robots.txt do CHC não deixa coletar direto; fonte própria, nunca soma com a v2 (linha 126 da fila)
+    *chirps_v3.fontes(),
     # lote patentes e marcas (rodada 4, linha 291): INPI (marcas, desenhos, programas, partes de
     # patentes e contratos; pessoa física só como contagem), EPO Linked open EP data e WIPO IP Statistics
     *lote_patentes.fontes(),
     # lote acervos históricos (rodada 4, linha 292): COTAHIST anual da B3, relatórios e SGS antigo do BCB,
     # FTP do IBGE, pacotes de dívida do Tesouro e IPEADATA; nenhuma fonte com pessoa física
     *lote_acervos.fontes(),
+    # fontes pouco visíveis (plano de 05/11/2026, ADR 0124): PDFs de dívida documental, FDCO e FDA
+    *lote_documentais.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

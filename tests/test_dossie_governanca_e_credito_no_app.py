@@ -46,13 +46,16 @@ def test_as_secoes_novas_chegam_ao_app_com_todas_as_tabelas(secoes) -> None:
         "comites",
         "remuneracao_por_exercicio",
         "remuneracao_por_orgao",
+        "remuneracao_da_diretoria_por_exercicio",
     }
     assert set(secoes["credito"].tabelas) == {
         "ratings",
         "ratings_janelas",
+        "acoes_de_rating",
         "assembleias_janelas",
         "assembleias_por_tema",
         "assembleias_recentes",
+        "assembleias_de_aperto",
     }
 
 

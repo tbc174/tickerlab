@@ -9,6 +9,8 @@ compara a última versão de cada dia da janela nas duas máquinas e põe no ace
 
 Saída 0 tudo igual; 1 dia faltando ou diferente numa das máquinas (ou arquivo estragado), com a
 última linha `FALHAS: ...` (vai para o aviso do Kuma).
+
+Roda: cron de casa pelo reconciliar-b3.sh (todo dia às 6h30); citado em copia_b3.py.
 """
 
 import argparse

@@ -19,6 +19,7 @@ from src.analise_escrita.modelo_da_tela import Escala, PontosDoGrafico
 from src.estilos_pdf import PADRAO, Estilo
 
 DIVISORES = ((1e9, "bilhões"), (1e6, "milhões"), (1e3, "mil"))
+LIMITE_DOS_MILHOES = 1e6  # número sem unidade a partir daqui vai em milhões
 LIMITE_DAS_CASAS = 100  # de 100 para cima, os decimais só poluem o eixo
 TIPOS_QUE_PEDEM_TODAS_AS_COLUNAS = frozenset({"dispersao", "cascata", "antes_e_agora"})
 MOEDA_DA_CASCATA = "R$"  # as tabelas de cascata da ficha guardam reais sem o símbolo
@@ -86,6 +87,8 @@ def escala_para(pontos: PontosDoGrafico) -> Escala:
             if maior >= divisor:
                 return Escala(divisor, f"{pontos.unidade} {nome}", 1)
         return Escala(1.0, pontos.unidade, 0)
+    if maior >= LIMITE_DOS_MILHOES:
+        return Escala(1e6, "milhões", 1)  # 87.543.053 não cabe no eixo do PDF
     inteiros = all(float(v).is_integer() for v in todos)
     return Escala(1.0, "", 0 if inteiros or maior >= LIMITE_DAS_CASAS else 2)
 

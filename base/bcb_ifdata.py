@@ -67,6 +67,7 @@ CHAVE_DOS_VALORES = (
     "conta",
     "coluna",
 )
+CHAVE_DO_CADASTRO = ("data_base", "cod_inst")
 COLUNAS_DOS_VALORES = {
     "TipoInstituicao": "tipo_instituicao",
     "CodInst": "cod_inst",
@@ -183,6 +184,29 @@ def valores_com_revisoes(
         for dia, tabela in coletas
     ]
     return revisoes.juntar_coletas(com_prazo, list(CHAVE_DOS_VALORES))
+
+
+def cadastro_com_revisoes(
+    coletas: Sequence[tuple[pd.Timestamp, pd.DataFrame]],
+) -> pd.DataFrame:
+    """As coletas do cadastro de uma data-base (dia da baixada, `ler_cadastro`) numa tabela com as
+    revisões do BC, como nos valores: o nome ou o conglomerado revisado vale desde o dia em que foi visto.
+
+    Sem o dia (acervo desligado) a coleta entra com `visto_em` vazio: o cadastro vale desde o prazo."""
+    com_prazo = [
+        (dia, tabela.assign(disponivel_em=disponivel_em(tabela)))
+        for dia, tabela in coletas
+    ]
+    return revisoes.juntar_coletas(com_prazo, list(CHAVE_DO_CADASTRO))
+
+
+def cadastro_mais_novo(cadastro: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por instituição e data-base: a de `visto_em` mais novo. Para a ligação com a bolsa e a
+    rede, que são montadas de hoje; o "como era na data" do cadastro usa `revisoes.como_era_em`."""
+    if "visto_em" not in cadastro.columns:
+        return cadastro
+    ordem = cadastro.sort_values("visto_em", kind="stable", na_position="first")
+    return ordem.drop_duplicates(list(CHAVE_DO_CADASTRO), keep="last").sort_index()
 
 
 def _raiz(cnpj: pd.Series) -> pd.Series:

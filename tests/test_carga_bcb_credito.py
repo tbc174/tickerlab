@@ -1,6 +1,8 @@
 """Carga do IF.data e do SCR.data para a base (série 3 da base de ML, PR 7). Sem internet."""
 
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import pandas as pd
@@ -215,3 +217,65 @@ def test_ligacao_nao_le_as_versoes_anteriores_do_cadastro(ambiente):
     carga.montar_ligacao(pasta, pasta.parent.parent / "acervo" / "base" / "fca")
     ligacao = pd.read_parquet(pasta / "ifdata" / "ligacao_dos_bancos.parquet")
     assert not ligacao.duplicated(["data_base", "cod_inst"]).any()
+
+
+def test_revisao_do_cadastro_do_bc_so_vale_desde_o_dia_em_que_foi_vista(ambiente):
+    """Mesmo achado do #495 no cadastro do IF.data: o nome ou o conglomerado revisado não pode voltar
+    para antes do dia em que o arquivista o viu."""
+    pasta, respostas, _ = ambiente
+    _rodar(pasta, "--so", "ifdata", "--desde", "2025", "--ate", "2025")
+    chave = "IfDataCadastro(AnoMes=@AnoMes)?@AnoMes=202506"
+    resposta = json.loads(respostas[chave])
+    antigo = resposta["value"][0]["NomeInstituicao"]
+    resposta["value"][0]["NomeInstituicao"] = "NOME REVISADO"
+    respostas[chave] = json.dumps(resposta).encode()
+    _rodar(pasta, "--so", "ifdata", "--desde", "2025", "--ate", "2025")
+
+    tabela = pd.read_parquet(pasta / "ifdata" / "cadastro" / "202506.parquet")
+    revisada = tabela[tabela.duplicated(["data_base", "cod_inst"], keep=False)]
+    assert set(revisada["instituicao"]) == {antigo, "NOME REVISADO"}
+    nova = revisada[revisada["instituicao"] == "NOME REVISADO"].iloc[0]
+    assert nova["disponivel_em"] == nova["visto_em"]
+    # a ligação dos bancos usa só o cadastro mais novo: uma linha por instituição
+    ligacao = pd.read_parquet(pasta / "ifdata" / "ligacao_dos_bancos.parquet")
+    assert not ligacao.duplicated(["data_base", "cod_inst"]).any()
+    assert "NOME REVISADO" in set(ligacao["instituicao"])
+
+
+def _zip_com_a_primeira_carteira_mudada(conteudo: bytes) -> bytes:
+    """O mesmo arquivo do BC com o `carteira_ativa` da 1ª linha do 1º mês trocado por 999999,5."""
+    saida = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(conteudo)) as entrada,
+        zipfile.ZipFile(saida, "w") as novo,
+    ):
+        for indice, nome in enumerate(sorted(entrada.namelist())):
+            texto = entrada.read(nome).decode("utf-8-sig")
+            if indice == 0:
+                cabecalho, primeira, *resto = texto.splitlines(keepends=True)
+                coluna = cabecalho.split(";").index("carteira_ativa")
+                campos = primeira.split(";")
+                campos[coluna] = '"999999,5"'
+                texto = "".join([cabecalho, ";".join(campos), *resto])
+            novo.writestr(nome, texto.encode("utf-8-sig"))
+    return saida.getvalue()
+
+
+def test_revisao_do_scr_so_vale_desde_o_dia_em_que_foi_vista(ambiente, monkeypatch):
+    """O BC regrava o ano inteiro do SCR: a regravação que muda um número é linha nova da mesma chave."""
+    pasta, respostas, _ = ambiente
+    monkeypatch.setattr(
+        carga, "ANOS_RECENTES", 100
+    )  # 2012 é baixado de novo, como os 2 anos mais novos
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+    antigo = pd.read_parquet(pasta / "scr" / "2012.parquet")
+    respostas["scrdata_2012.zip"] = _zip_com_a_primeira_carteira_mudada(
+        respostas["scrdata_2012.zip"]
+    )
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+
+    tabela = pd.read_parquet(pasta / "scr" / "2012.parquet")
+    assert len(tabela) == len(antigo) + 1
+    assert (pasta / "scr" / "2012.v1.parquet").exists()
+    (nova,) = tabela[tabela["carteira_ativa"] == 999999.5].to_dict("records")
+    assert nova["disponivel_em"] == nova["visto_em"] > nova["data_base"]

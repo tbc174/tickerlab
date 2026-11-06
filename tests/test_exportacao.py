@@ -71,3 +71,27 @@ def test_operacoes_ganham_nomes_em_portugues_e_numeracao():
     assert tabela.index[0] == 1 and tabela.index.name == "Operação"
     texto = converter_para_csv(tabela).decode("utf-8-sig")
     assert "1;2026-01-05;2026-01-09;5;0,03;False" in texto
+
+
+def test_csv_protege_texto_que_o_excel_leria_como_formula():
+    tabela = pd.DataFrame(
+        {
+            "Nome": ["=1+1", "+5", "-x", "@soma", "\tA", "normal"],
+            "Valor": [-3.5, 1.0, 2.0, 3.0, 4.0, 5.0],
+        },
+        index=pd.date_range("2026-01-05", periods=6),
+    )
+    linhas = converter_para_csv(tabela).decode("utf-8-sig").splitlines()
+    assert linhas[1] == "2026-01-05;'=1+1;-3,5"
+    assert linhas[2] == "2026-01-06;'+5;1,0"
+    assert linhas[3] == "2026-01-07;'-x;2,0"
+    assert linhas[4] == "2026-01-08;'@soma;3,0"
+    assert linhas[5].startswith("2026-01-09;'\tA;")
+    assert linhas[6] == "2026-01-10;normal;5,0"
+
+
+def test_csv_protege_texto_que_comeca_com_cr_e_nao_mexe_na_tabela_original():
+    tabela = pd.DataFrame({"Nome": ["\rA"], "Valor": [1]})
+    texto = converter_para_csv(tabela).decode("utf-8-sig")
+    assert "'\rA" in texto
+    assert tabela.loc[0, "Nome"] == "\rA"

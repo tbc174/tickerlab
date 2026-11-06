@@ -36,6 +36,19 @@ const RASTRO: RastroDoNumeroV1 = {
   publicado_em: "2026-02-25",
   documentos: [{ nome: "DFP de 31/12/2025, versão 1", publicado_em: "2026-02-25", url: DFP }],
   outras_fontes: [],
+  entradas: [
+    {
+      conta: "receita",
+      codigo: "3.01",
+      nome: "Receita de Venda de Bens e/ou Serviços",
+      valor: 40804110000,
+      periodo: "exercicio",
+      documento: "DFP",
+      referencia: "2025-12-31",
+      versao: 1,
+      publicado_em: "2026-02-25",
+    },
+  ],
   linhas: [
     { rotulo: "Fórmula", texto: "receita de vendas (12 meses)", url: "" },
     { rotulo: "Versão do cálculo", texto: "fundamentos 2", url: "" },
@@ -228,6 +241,7 @@ describe("relatório da empresa", () => {
     expect(Object.keys(RASTRO).sort()).toEqual(campos("RastroDoNumeroV1"));
     expect(Object.keys(RASTRO.linhas[0]).sort()).toEqual(campos("LinhaDoRastroV1"));
     expect(Object.keys(RASTRO.documentos[0]).sort()).toEqual(campos("DocumentoUsadoV1"));
+    expect(Object.keys(RASTRO.entradas[0]).sort()).toEqual(campos("EntradaDoNumeroV1"));
   });
 
   it("mostra o aviso de conferência e as fontes", async () => {

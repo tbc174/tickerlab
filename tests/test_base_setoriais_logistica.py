@@ -17,11 +17,12 @@ from base.setoriais import (
     anp_concessionarios,
     antt_siade,
     comex_preco_medio,
+    comex_tabelas,
     ligacao,
     prazos,
     revisoes,
 )
-from base.vitrine import EM_CONSULTA, situacao_da_licenca
+from base.vitrine import LICENCIADA, situacao_da_licenca
 from src.banco.coletas import (
     Marca,
     licenca_da_fonte,
@@ -271,6 +272,42 @@ def test_comex_destino_so_dos_csv_de_ncm():
     assert comex_preco_medio.destino("https://x/comexstat-bd/tabelas/URF.csv") is None
 
 
+TABELAS_DO_COMEX = "https://x.gov.br/comexstat-bd/tabelas/"
+
+
+def test_comex_urf_sem_o_codigo_repetido_no_nome():
+    urf = comex_tabelas.ler_urf(_ler("comex", "URF.csv"))
+    assert list(urf.columns) == list(comex_tabelas.COLUNAS_DA_URF)
+    assert not urf.duplicated(list(comex_tabelas.CHAVE_DA_URF)).any()
+    assert urf["disponivel_em"].isna().all()  # a carga põe o dia da coleta
+    nomes = urf.set_index("urf")["nome"]
+    assert nomes["0510353"] == "IRF ILHEUS"
+    assert not any(n.startswith(f"{c} - ") for c, n in nomes.items())
+
+
+def test_comex_urf_cobre_as_urf_do_preco_medio(exportacao):
+    urf = comex_tabelas.ler_urf(_ler("comex", "URF.csv"))
+    assert set(exportacao["urf"]) <= set(urf["urf"])
+
+
+def test_comex_via_traz_o_nome_de_cada_codigo():
+    via = comex_tabelas.ler_via(_ler("comex", "VIA.csv"))
+    assert list(via.columns) == list(comex_tabelas.COLUNAS_DA_VIA)
+    assert not via.duplicated(list(comex_tabelas.CHAVE_DA_VIA)).any()
+    nomes = via.set_index("via")["nome"]
+    assert nomes["00"] == "VIA NAO DECLARADA"
+    assert nomes["01"] == "MARITIMA"
+
+
+def test_comex_destino_das_tabelas_de_apoio_so_urf_e_via():
+    assert comex_tabelas.destino_da_urf(f"{TABELAS_DO_COMEX}URF.csv") == "urf"
+    assert comex_tabelas.destino_da_via(f"{TABELAS_DO_COMEX}VIA.csv") == "via"
+    assert comex_tabelas.destino_da_urf(f"{TABELAS_DO_COMEX}VIA.csv") is None
+    assert comex_tabelas.destino_da_via(f"{TABELAS_DO_COMEX}URF.csv") is None
+    assert comex_tabelas.destino_da_urf(f"{TABELAS_DO_COMEX}NCM.csv") is None
+    assert comex_tabelas.destino_da_urf(f"{COMEX}EXP_2026.csv") is None
+
+
 def test_comex_recusa_endereco_que_nao_e_de_ncm():
     with pytest.raises(ValueError, match="Comex"):
         comex_preco_medio.ler(_ler("comex", "EXP_2026.csv"), "https://x/URF.csv")
@@ -294,20 +331,23 @@ def test_comex_revisao_do_mdic_vale_so_desde_a_coleta(exportacao):
     assert depois["vl_fob_usd"].sum() == pytest.approx(revisado["vl_fob_usd"].sum())
 
 
-# --- Licença: o Comex fica de uso interno -----------------------------------------------------------
-def test_preco_medio_nao_e_vendavel_e_aparece_em_consulta():
+# --- Licença: o Comex é vendável com atribuição desde a resposta do MDIC (21/10/2026) ---------------
+def test_preco_medio_e_vendavel_com_atribuicao_e_licenciado():
+    """Até 29/10/2026 a tabela era de uso interno (marca "a confirmar"); o MDIC respondeu por
+    LAI que os dados abertos da Secex têm uso livre, inclusive comercial, citando Secex/MDIC."""
     from base.dicionario import TABELAS
 
     tabela = TABELAS["comex_preco_medio"]
     assert tabela.familia_da_fonte == "comexstat"
-    assert marca_da_fonte(tabela.familia_da_fonte) is not Marca.VENDAVEL
-    assert revenda_da_fonte(tabela.familia_da_fonte).startswith("a confirmar")
+    assert marca_da_fonte(tabela.familia_da_fonte) is Marca.VENDAVEL
+    assert revenda_da_fonte(tabela.familia_da_fonte).startswith("vendável")
     licenca = licenca_da_fonte(tabela.familia_da_fonte)
     assert (
         situacao_da_licenca(licenca, revenda_da_fonte(tabela.familia_da_fonte))
-        == EM_CONSULTA
+        == LICENCIADA
     )
-    assert "Uso interno" in tabela.descricao or "uso interno" in tabela.descricao
+    assert "Secex/MDIC" in tabela.descricao
+    assert "uso interno" not in tabela.descricao.lower()
 
 
 def test_concessionarios_e_ferrovias_vem_de_fonte_com_licenca_escrita():

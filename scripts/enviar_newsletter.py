@@ -9,6 +9,8 @@ da página, com os parâmetros dela, e envia pelo Resend.
 Sem `RESEND_API_KEY`, nada sai: a edição é montada e registrada como "retida" (dá para testar no
 servidor antes de criar a conta). Uma falha de envio fica registrada e é tentada de novo na
 próxima vez. Nenhum e-mail aparece nos registros (logs): só o id da conta.
+
+Roda: cron do VPS (todo dia às 8h00).
 """
 
 import argparse

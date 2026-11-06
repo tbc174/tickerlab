@@ -7,7 +7,10 @@ Nada é copiado: cada view lê os Parquets vigentes da tabela no acervo (as vers
 - `<tabela>`: as colunas como estão, mais `aconteceu_em`, `publico_em` e `coletado_em` (só as que o
   contrato dá) como **dia**. Momento em UTC vira o dia de UTC (o relógio da conexão fica em UTC);
   `publico_em` por mês vale pelo **último dia do mês** e por ano pelo último dia do ano (o
-  conservador: nada é público antes de o período terminar);
+  conservador: nada é público antes de o período terminar). Se o dicionário marca `linhas_de_pessoa`
+  (a coluna booleana da pessoa natural, `trata_como_pessoa` na `pgfn_divida`), a view esconde essas
+  linhas (ADR 0075: nada negativo sobre pessoa sai da base), e a marca vazia também esconde; sem a
+  coluna no arquivo, não serve linha nenhuma (o conservador: na dúvida, é pessoa);
 - `<tabela>__v<N>`: a versão maior N. A de hoje é a mesma view; uma antiga traduz as colunas pelo
   contrato congelado (`base/contratos/v<N>/`): renomeada volta com o nome antigo, a que saiu volta
   vazia, a nova não aparece (D12: vista, nunca segunda cópia);
@@ -51,6 +54,8 @@ ARQUIVOS: dict[str, str] = {
     "cda_cotas": "cda_cotas/*.parquet",
     "fidc_informe": "fidc/informe/*/*.parquet",
     "cadastro_de_fundos": "fidc/cadastro/cad_fi.parquet",
+    "cadastro_gestor_hist": "fidc/cadastro/hist_gestor.parquet",
+    "cadastro_admin_hist": "fidc/cadastro/hist_admin.parquet",
     "painel_dos_fundos": "fundos/painel_*/*.parquet",  # os dois: o por empresa não tem `emissor`
     "cobertura_dos_fundos": "fundos/cobertura.parquet",
     "buracos_dos_fundos": "fundos/buracos.parquet",
@@ -65,6 +70,8 @@ ARQUIVOS: dict[str, str] = {
     "anp_concessionarios": "setoriais/anp_concessionarios/*.parquet",
     "antt_siade": "setoriais/antt_siade/*.parquet",
     "comex_preco_medio": "setoriais/comex_preco_medio/*.parquet",
+    "comex_urf": "setoriais/comex_urf/*.parquet",
+    "comex_via": "setoriais/comex_via/*.parquet",
     "cftc_cot_agro": "setoriais/cftc/*.parquet",
     "aneel_samp": "setoriais/aneel/*.parquet",
     "anatel_acessos": "setoriais/anatel/*.parquet",
@@ -81,6 +88,7 @@ ARQUIVOS: dict[str, str] = {
     "fre_capital_social": "fre_capital_social/*.parquet",
     "fre_empregados": "fre_empregados/*.parquet",
     "fre_acionistas": "fre_acionistas/*.parquet",
+    "fre_distribuicao_capital": "fre_distribuicao_capital/*.parquet",
     "fre_partes_relacionadas": "fre_partes_relacionadas/*.parquet",
     "ofertas_antigas": "ofertas/antigas.parquet",
     "ofertas_resolucao_160": "ofertas/resolucao_160.parquet",
@@ -95,13 +103,59 @@ ARQUIVOS: dict[str, str] = {
     "eventos_de_capital": "eventos_de_capital/*.parquet",
     "insolvencia": "insolvencia/*.parquet",
     "cnpj_situacao_especial": "cnpj_situacao_especial/*.parquet",
+    "cnpj_situacao_cadastral": "cnpj_situacao_cadastral/*.parquet",
+    "cnpj_simples_historico": "cnpj_simples_historico/*.parquet",
+    "cnpj_empresas_historico": "cnpj_empresas_historico/*.parquet",
     "pgfn_divida": "pgfn_divida/*/*.parquet",
+    "sancoes_cgu": "sancoes_cgu/*.parquet",
+    "ans_penalidades": "ans_penalidades/*.parquet",
+    "processos_comunicacoes": "processos_comunicacoes/*.parquet",
+    "processos": "processos/*.parquet",
+    "processos_partes": "processos_partes/*.parquet",
+    "anvisa_registros": "anvisa_registros/*.parquet",
+    "antt_rntrc": "antt_rntrc/*.parquet",
+    "mapa_sipeagro": "mapa_sipeagro/*.parquet",
+    "anatel_outorgas": "anatel_outorgas/*.parquet",
+    "anm_titulos": "anm_titulos/*.parquet",
+    "ancine_agentes": "ancine_agentes/*.parquet",
+    "financiamentos_bndes": "financiamentos_bndes/*.parquet",
+    "financiamentos_finep": "financiamentos_finep/*.parquet",
+    "cmed_precos": "cmed_precos/*.parquet",
+    "ans_operadoras": "ans_operadoras/*.parquet",
+    "susep_cadastro": "susep_cadastro/*.parquet",
+    "mte_lista_suja": "mte_lista_suja/*.parquet",
+    "ibama_embargos": "ibama_embargos/*.parquet",
+    "cvm_fiagro": "cvm_fiagro/*.parquet",
+    "gleif_ponte": "gleif_ponte/*.parquet",
+    "cnes_estabelecimentos": "cnes_estabelecimentos/*.parquet",
+    "cnes_competencias": "cnes_competencias/*.parquet",
+    "sus_internacoes": "sus_internacoes/*.parquet",
+    "sus_ambulatorial": "sus_ambulatorial/*.parquet",
+    "anm_cfem_arrecadacao": "anm_cfem_arrecadacao/*.parquet",
+    "anm_sigbm_barragens": "anm_sigbm_barragens/*.parquet",
+    "anm_amb_producao_bruta": "anm_amb_producao_bruta/*.parquet",
+    "anm_amb_producao_beneficiada": "anm_amb_producao_beneficiada/*.parquet",
+    "anm_amb_agua_mineral": "anm_amb_agua_mineral/*.parquet",
+    "tce_pe_contratos": "tce_pe_contratos/*.parquet",
+    "tce_pe_aditivos": "tce_pe_aditivos/*.parquet",
+    "tce_pe_licitacoes": "tce_pe_licitacoes/*.parquet",
+    "tce_sp_despesas": "tce_sp_despesas/*.parquet",
+    "tce_ce_contratos": "tce_ce_contratos/*.parquet",
+    "tce_rs_contratos": "tce_rs_contratos/*.parquet",
+    "mme_reidi": "mme_reidi/*.parquet",
+    "aneel_cde": "aneel_cde/*.parquet",
+    "bcb_rde_ied": "bcb_rde_ied/*.parquet",
+    "sefaz_pe_beneficios": "sefaz_pe_beneficios/*.parquet",
     "ratings": "ratings/*.parquet",
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",
     "fca_geral": "fca_geral/*.parquet",
     "pareceres_dfp": "pareceres_dfp/*.parquet",
     "pareceres_itr": "pareceres_itr/*.parquet",
+    "notas_dfp": "notas_dfp/*.parquet",
+    "processos_nas_notas": "processos_nas_notas/*.parquet",
+    "securitizacao_certificados": "securitizacao_certificados/*.parquet",
+    "securitizacao_cedente_devedor": "securitizacao_cedente_devedor/*.parquet",
     "trocas_de_auditor": "trocas_de_auditor/trocas.parquet",
     "curva_juros": "curva_juros/*.parquet",
     "bcb_selic_focus": "bcb_selic_focus/bcb_selic_focus.parquet",
@@ -142,8 +196,19 @@ FORA_DA_PORTA: dict[str, str] = {
     "padroes_setoriais": _NO_BANCO,
     "fre_proventos": _NO_BANCO,
     "fre_eventos_de_capital": _NO_BANCO,
+    "sus_competencias": (
+        "só interna (`vitrine.TABELAS_SO_INTERNAS`): `registros` menos a soma publicada revelaria a célula "
+        "suprimida; a conferência com o TabNet lê o Parquet direto"
+    ),
     "cadastro_das_companhias": (
         "não é Parquet da base: é lido do original no acervo (`base/cadastro.py::ler_cadastro`)"
+    ),
+    **dict.fromkeys(
+        ("processos_datajud", "processos_datajud_movimentos"),
+        (
+            "só uso interno (`coletas.FONTES_SO_INTERNAS`): a porta serve a API e o site; o "
+            "treino lê o Parquet direto"
+        ),
     ),
     **{
         f"cnpj_{nome}{sufixo}": _CNPJ_DA_CARGA
@@ -177,6 +242,12 @@ def nome_da_view(tabela: str, versao: str | None = None) -> str:
     if versao is None:
         return tabela
     return f"{tabela}__v{str(versao).split('.')[0]}"
+
+
+def servida_pela_porta(tabela: str) -> bool:
+    """Se a porta serve a tabela por Parquet do acervo (`ARQUIVOS`): as conferidas no repositório e
+    as de `FORA_DA_PORTA` ficam de fora da consulta aberta (API e site)."""
+    return tabela in ARQUIVOS
 
 
 def arquivos_da_tabela(pasta: Path, padrao: str) -> list[Path]:
@@ -224,6 +295,17 @@ def _select_com_apelidos(
         )
     partes = ["*" + (f" REPLACE ({', '.join(trocar)})" if trocar else ""), *somar]
     return f"SELECT {', '.join(partes)} FROM {fonte}"
+
+
+def _sem_as_linhas_de_pessoa(select: str, tabela: Tabela, colunas: list[str]) -> str:
+    """Esconde as linhas marcadas como pessoa natural (`tabela.linhas_de_pessoa`, ADR 0075). Na dúvida
+    é pessoa: a marca vazia também esconde, e sem a coluna no arquivo (não dá para separar empresa de
+    pessoa) a view não serve linha nenhuma."""
+    if not tabela.linhas_de_pessoa:
+        return select
+    if tabela.linhas_de_pessoa not in colunas:
+        return f"{select} WHERE false"
+    return f"{select} WHERE NOT coalesce({_nome(tabela.linhas_de_pessoa)}, true)"
 
 
 def _contratos_congelados(pasta: Path, nome: str) -> dict[int, dict]:
@@ -368,8 +450,11 @@ def conectar(
         for nome, fonte in fontes.items():
             if nome not in tabelas:
                 continue
-            select = _select_com_apelidos(
-                nome, tabelas[nome], _colunas(con, fonte), fonte
+            colunas = _colunas(con, fonte)
+            select = _sem_as_linhas_de_pessoa(
+                _select_com_apelidos(nome, tabelas[nome], colunas, fonte),
+                tabelas[nome],
+                colunas,
             )
             con.execute(f"CREATE VIEW {_nome(nome)} AS {select}")
             _views_das_versoes(con, nome, tabelas[nome], contratos)

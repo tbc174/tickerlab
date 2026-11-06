@@ -11,6 +11,7 @@ viram uma **tabela derivada** da exportação do acervo (`src/exportacao_do_acer
   `publico_em`. A linha antiga fica, para "como era na data" funcionar.
 """
 
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -23,10 +24,18 @@ from src.versao_do_codigo import versao_do_codigo
 TABELA = "bcb_selic_focus"
 CAMINHO_DO_COPOM = Path(__file__).resolve().parent / "conferidas" / "copom_reunioes.csv"
 SERIE_DA_META = "bcb-sgs-432"
+SERIE_DO_FOCUS = "bcb-focus-selic"
 SERIES_DO_ACERVO = {
     SERIE_DA_META: SERIE_DA_META,
-    "bcb-focus-selic": "focus-selic-anual",
+    SERIE_DO_FOCUS: "focus-selic-anual",
 }
+COLUNAS_DAS_OBSERVACOES = [
+    "serie",
+    "referencia",
+    "valor",
+    "divulgado_em",
+    "registrado_em",
+]
 CHAVE = ["serie", "referencia", "divulgado_em"]
 COLUNAS = [
     "serie",
@@ -124,3 +133,46 @@ def divergencias_com_a_sgs(
                 }
             )
     return divergencias
+
+
+def _dia_da_coleta(coletado_em: datetime) -> pd.Timestamp:
+    return pd.Timestamp(coletado_em).tz_localize(None).normalize()
+
+
+def observacoes_da_meta(conteudo: bytes, coletado_em: datetime) -> pd.DataFrame:
+    """A SGS 432 como o banco de produção a guarda: a meta vale desde o dia em que aparece."""
+    itens = pd.DataFrame(json.loads(conteudo))
+    if itens.empty:
+        return pd.DataFrame(columns=COLUNAS_DAS_OBSERVACOES)
+    dia = pd.to_datetime(itens["data"], format="%d/%m/%Y")
+    # o SGS responde também as semanas seguintes: a meta só vale a partir do dia em que aparece
+    itens, dia = (
+        itens[dia <= _dia_da_coleta(coletado_em)],
+        dia[dia <= _dia_da_coleta(coletado_em)],
+    )
+    return pd.DataFrame(
+        {
+            "serie": SERIE_DA_META,
+            "referencia": dia,
+            "valor": itens["valor"].astype(float),
+            "divulgado_em": dia,
+            "registrado_em": pd.Timestamp(coletado_em),
+        }
+    )
+
+
+def observacoes_do_focus(conteudo: bytes, coletado_em: datetime) -> pd.DataFrame:
+    """O Focus Selic anual: a safra é a data da pesquisa; a referência, o fim do ano projetado."""
+    itens = pd.DataFrame(json.loads(conteudo)["value"])
+    if itens.empty:
+        return pd.DataFrame(columns=COLUNAS_DAS_OBSERVACOES)
+    ano = pd.to_numeric(itens["DataReferencia"]).astype(int)
+    return pd.DataFrame(
+        {
+            "serie": SERIE_DO_FOCUS,
+            "referencia": pd.to_datetime(ano.astype(str) + "-12-31"),
+            "valor": itens["Mediana"].astype(float),
+            "divulgado_em": pd.to_datetime(itens["Data"]),
+            "registrado_em": pd.Timestamp(coletado_em),
+        }
+    )

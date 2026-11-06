@@ -180,10 +180,24 @@ def _ir_para_favorito():
     st.session_state["favorito_escolhido"] = "—"
 
 
-PERIODOS_DO_TOPO = {"6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos"}
+PERIODOS_DO_TOPO = {
+    "6mo": "6 meses",
+    "1y": "1 ano",
+    "2y": "2 anos",
+    "5y": "5 anos",
+    "10y": "10 anos",
+    "max": "Todo o histórico",
+}
 
 
-ROTULOS_CURTOS_DO_PERIODO = {"6mo": "6M", "1y": "1A", "2y": "2A", "5y": "5A"}
+ROTULOS_CURTOS_DO_PERIODO = {
+    "6mo": "6M",
+    "1y": "1A",
+    "2y": "2A",
+    "5y": "5A",
+    "10y": "10A",
+    "max": "Tudo",
+}
 
 
 NOMES_DOS_MODOS_DA_TAXA = {
@@ -271,7 +285,7 @@ def mostrar_controles():
     """
     with st.container(border=True):
         col_ativo, col_periodo, col_favoritos = st.columns(
-            [3, 2, 2], vertical_alignment="bottom"
+            [3, 3, 2], vertical_alignment="bottom"
         )
         ticker = col_ativo.selectbox(
             "Ativo",
@@ -290,7 +304,8 @@ def mostrar_controles():
             format_func=ROTULOS_CURTOS_DO_PERIODO.get,
             key="periodo",
             required=True,  # sempre um período escolhido (clicar no ativo não o desmarca)
-            help="Quanto tempo de histórico olhar para trás: 6 meses, 1 ano, 2 anos ou 5 anos.",
+            help="Quanto tempo de histórico olhar para trás: de 6 meses a 10 anos, ou Tudo "
+            "(todo o histórico que a fonte tem do ativo, desde o primeiro pregão disponível).",
         )
         with col_favoritos:
             mostrar_favoritos()

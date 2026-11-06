@@ -208,6 +208,7 @@ thead th { background: var(--superficie); color: var(--apagado); font-size: .82r
 tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 table.planos td { text-align: center; }
 table.planos thead th:not(:first-child) { text-align: center; color: var(--texto); font-size: .95rem; text-transform: none; letter-spacing: 0; }
+table.planos thead tr + tr th { text-align: center; color: var(--texto); font-size: .95rem; text-transform: none; letter-spacing: 0; }
 /* perguntas */
 .faq details { border-bottom: 1px solid var(--linha); padding: 1rem 0; max-width: 52rem; }
 .faq summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; list-style: none; }

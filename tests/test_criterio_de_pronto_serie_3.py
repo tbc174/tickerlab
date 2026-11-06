@@ -86,9 +86,10 @@ COMO_ERA_NA_DATA = {
     "fidc_informe": "disponivel_em",
     "ifdata_valores": "disponivel_em",
     "scr_credito": "disponivel_em",
+    "ifdata_cadastro": "disponivel_em",
 }
 # retratos do cadastro na data da coleta: cada carga que muda algo vira versão `<nome>.v<N>`
-RETRATOS = {"cadastro_de_fundos", "ifdata_cadastro", "ligacao_dos_bancos"}
+RETRATOS = {"cadastro_de_fundos", "ligacao_dos_bancos"}
 PENDENCIAS: dict[tuple[str, int], str] = {}
 
 

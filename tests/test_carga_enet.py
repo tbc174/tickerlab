@@ -53,9 +53,14 @@ class _Mundo:
     """A CVM e o ENET de mentira, com um relógio que anda 10 minutos a cada pacote."""
 
     def __init__(
-        self, monkeypatch, comeco: datetime, quebrados: set[str] = frozenset()
+        self,
+        monkeypatch,
+        comeco: datetime,
+        quebrados: set[str] = frozenset(),
+        estranhos: set[str] = frozenset(),
     ):
         self.agora, self.pacotes, self.quebrados = comeco, [], quebrados
+        self.estranhos = estranhos  # pacotes num formato que o leitor não conhece
         monkeypatch.setattr(carga_enet, "baixar", self.arquivo_da_cvm)
         monkeypatch.setattr(carga_enet, "Baixador", lambda: self)
         monkeypatch.setattr(carga_enet, "agora", lambda: self.agora)
@@ -72,6 +77,8 @@ class _Mundo:
         self.agora += timedelta(minutes=10)
         if link in self.quebrados:
             return b"isto nao e zip"
+        if link in self.estranhos:
+            return _pacote_de("coisa-estranha.bin")
         return _pacote(_dfp(versao=int(link[-1])))
 
 
@@ -112,13 +119,18 @@ def test_para_as_6h_e_retoma_na_noite_seguinte_sem_baixar_de_novo(url, monkeypat
     assert len(mundo.pacotes) == 5 and len(_guardados(url)) == 8
 
 
+DE_2023 = {f"http://enet/{d}/2023/{v}" for d in ("DFP", "ITR") for v in (1, 2)}
+DE_2024 = {f"http://enet/{d}/2024/{v}" for d in ("DFP", "ITR") for v in (1, 2)}
+SO_2024 = ["--desde", "2024", "--ate", "2024"]
+
+
 def test_falha_passageira_nao_derruba_a_tarefa_mas_tudo_falhando_sim(url, monkeypatch):
     comeco = datetime(2026, 10, 14, 0, 30, tzinfo=FUSO)
     _Mundo(monkeypatch, comeco, quebrados={"http://enet/DFP/2024/1"})
     assert carga_enet.main(["--desde", "2024", "--ate", "2024"]) == 0
     tudo = {f"http://enet/{d}/2024/{v}" for d in ("DFP", "ITR") for v in (1, 2)}
-    _Mundo(monkeypatch, comeco, quebrados=tudo - _guardados(url))
-    assert carga_enet.main(["--desde", "2024", "--ate", "2024"]) == 1  # avisa o Kuma
+    _Mundo(monkeypatch, comeco, quebrados=(tudo - _guardados(url)) | DE_2023)
+    assert carga_enet.main(["--desde", "2023", "--ate", "2024"]) == 1  # avisa o Kuma
 
 
 @pytest.mark.parametrize(
@@ -172,3 +184,67 @@ def test_falha_de_rede_continua_dizendo_que_a_fonte_pode_estar_fora_do_ar(
     assert carga_enet.main(["--desde", "2024", "--ate", "2024"]) == 1
     assert "fora do ar" in caplog.text
     assert "formato que o leitor não conhece" not in caplog.text
+
+
+def test_pacote_sem_leitor_nao_e_baixado_toda_noite_nem_acende_o_kuma_de_novo(
+    url, monkeypatch
+):
+    """Regressão de 04/11/2026: os mesmos 45 pacotes sem leitor eram baixados de novo toda noite (11
+    minutos e ~1 GB da CVM) e a tarefa saía com 1 para sempre ("Carga em dia: 0 baixadas")."""
+    noite = datetime(2026, 10, 14, 0, 30, tzinfo=FUSO)
+    mundo = _Mundo(monkeypatch, noite, estranhos=DE_2024)
+    assert carga_enet.main(SO_2024) == 1  # a novidade avisa uma vez
+    mundo.agora, mundo.pacotes = noite + timedelta(days=1), []
+    assert carga_enet.main(SO_2024) == 0
+    assert mundo.pacotes == []
+
+
+def test_pacote_sem_leitor_e_tentado_de_novo_depois_de_um_mes_sem_acender_o_kuma(
+    url, monkeypatch
+):
+    noite = datetime(2026, 10, 14, 0, 30, tzinfo=FUSO)
+    mundo = _Mundo(monkeypatch, noite, estranhos=DE_2024)
+    assert carga_enet.main(SO_2024) == 1
+    mundo.agora, mundo.pacotes = noite + timedelta(days=31), []
+    assert carga_enet.main(SO_2024) == 0  # já se sabia: não é novidade
+    assert set(mundo.pacotes) == DE_2024
+
+
+def test_tentar_de_novo_baixa_ja_o_que_foi_deixado_de_lado(url, monkeypatch):
+    """Depois de ensinar o leitor um formato novo, não é preciso esperar um mês."""
+    noite = datetime(2026, 10, 14, 0, 30, tzinfo=FUSO)
+    mundo = _Mundo(monkeypatch, noite, estranhos=DE_2024)
+    assert carga_enet.main(SO_2024) == 1
+    mundo.agora, mundo.estranhos = noite + timedelta(days=1), set()
+    assert carga_enet.main([*SO_2024, "--tentar-de-novo"]) == 0
+    assert _guardados(url) == DE_2024
+
+
+def test_pacote_cortado_tres_noites_seguidas_e_deixado_de_lado(url, monkeypatch):
+    noite = datetime(2026, 10, 14, 0, 30, tzinfo=FUSO)
+    mundo = _Mundo(monkeypatch, noite, quebrados=DE_2024)
+    saidas = []
+    for dia in range(5):
+        mundo.agora = noite + timedelta(days=dia)
+        saidas.append(carga_enet.main(SO_2024))
+    assert saidas == [1, 0, 0, 0, 0]  # só a primeira é novidade
+    assert len(mundo.pacotes) == 3 * len(DE_2024)
+
+
+def test_sem_rede_toda_noite_continua_vermelho_e_nao_desiste_dos_pacotes(
+    url, monkeypatch
+):
+    noite = datetime(2026, 10, 14, 0, 30, tzinfo=FUSO)
+    mundo = _Mundo(monkeypatch, noite)
+    com_rede = mundo.baixar
+
+    def sem_rede(link: str) -> bytes:
+        raise ConnectionError("sem rede")
+
+    mundo.baixar = sem_rede  # type: ignore[method-assign]
+    for dia in range(4):
+        mundo.agora = noite + timedelta(days=dia)
+        assert carga_enet.main(SO_2024) == 1
+    mundo.baixar, mundo.agora = com_rede, noite + timedelta(days=4)  # type: ignore[method-assign]
+    assert carga_enet.main(SO_2024) == 0
+    assert _guardados(url) == DE_2024

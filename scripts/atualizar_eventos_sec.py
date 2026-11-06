@@ -11,6 +11,8 @@ app (R4, `tickers_sob_demanda`). A coleta de cada empresa está em `src/coleta_s
 acesso da SEC: cada consulta diz quem é e um e-mail de contato (`TICKERLAB_CONTATO`, no .env, fora
 do Git) e no máximo 10 consultas por segundo (aqui, ~8). Sem o contato, não consulta nada e sai
 com erro. Uma empresa que falhar é pulada; as outras seguem. Não apaga nada.
+
+Roda: cron do VPS (todo dia às 7h20); citado em coleta_sec.py, eventos_sec.py.
 """
 
 import argparse

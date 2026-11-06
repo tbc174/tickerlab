@@ -16,15 +16,23 @@ Convenções (escritas antes do código, ADR 0006):
    O horizonte é o prazo da carteira mais a defasagem, para a última recuperação ainda caber.
 4. Os cenários mudam só os parâmetros acima; carteira, estrutura e motor da cascata são os mesmos, então a
    diferença entre dois cenários vem só deles.
+5. **CDR de equilíbrio** de uma classe: o maior CDR anual em que ela ainda não perde principal, com o resto
+   do cenário fixo (padrão: o base). Achado por bissecção entre 0 e 100%: o limite de baixo nunca perde e o
+   de cima sempre perde, então a resposta vale mesmo que a perda não cresça sempre com o CDR (arredondamento,
+   gatilho). Perde já com CDR zero: None; não perde nem com 100%: 1,0. Sem preço nem taxa de desconto (o
+   dossiê pede a convenção brasileira, DU/252, antes de qualquer preço).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import asdict, dataclass
 
 from src.securitizacao.cascata import (
+    MESES_POR_ANO,
+    PRO_RATA,
     REGRAS_DA_0_1_0,
     Classe,
     Operacao,
@@ -33,10 +41,11 @@ from src.securitizacao.cascata import (
     Resultado,
     reconciliar,
     rodar,
+    vida_media_em_anos,
 )
 
-MESES_POR_ANO = 12
 CENTAVOS_POR_REAL = 100
+TOLERANCIA_DO_EQUILIBRIO = 1e-4  # 0,01 ponto percentual de CDR anual
 
 
 def cdr_para_mdr(cdr_anual: float) -> float:
@@ -120,6 +129,7 @@ class ResultadoDoCenario:
     pago_a_subordinada: int
     perda_total: int
     reconciliacao: dict[str, int]
+    vida_media_em_anos: dict[str, float | None]
 
 
 # Cenários de referência (CDR 6% a.a. é o base; o dobro é o estresse de inadimplência).
@@ -142,6 +152,19 @@ CENARIOS_PADRAO = (
     CENARIO_INADIMPLENCIA_x2,
     CENARIO_ATRASO_E_RECUPERACAO,
     CENARIO_PRE_PAGAMENTO,
+)
+
+# As quatro regras da 0.2.0 ligadas, com parâmetros de referência (sintéticos): na carteira sintética, a perda
+# acumulada do base fica em ~6% do pool original e a do estresse passa de 12%, então o gatilho de 8% dispara
+# só no estresse; a meta de sobrecolateralização de 10% fica acima dos 5% da estrutura sintética, então o
+# turbo trabalha desde o primeiro mês.
+GATILHO_DE_PERDA_DE_REFERENCIA = 0.08
+META_DE_SOBRECOLATERALIZACAO_DE_REFERENCIA = 0.10
+REGRAS_DA_0_2_0_LIGADAS = Regras(
+    juros_acumulam=True,
+    principal=PRO_RATA,
+    gatilho_de_perda=GATILHO_DE_PERDA_DE_REFERENCIA,
+    meta_de_sobrecolateralizacao=META_DE_SOBRECOLATERALIZACAO_DE_REFERENCIA,
 )
 
 
@@ -213,6 +236,9 @@ def rodar_cenario(
             r.perda_alocada[c.nome] for r in meses for c in estrutura.classes
         ),
         reconciliacao=reconciliar(0, meses),
+        vida_media_em_anos={
+            c.nome: vida_media_em_anos(meses, c.nome) for c in estrutura.classes
+        },
     )
 
 
@@ -223,6 +249,53 @@ def rodar_cenarios(
 ) -> list[ResultadoDoCenario]:
     """Todos os cenários sobre a mesma carteira e estrutura, na ordem dada."""
     return [rodar_cenario(carteira, estrutura, c) for c in cenarios]
+
+
+def _perde_principal(
+    carteira: Carteira, estrutura: Estrutura, cenario: Cenario, classe: str
+) -> bool:
+    resultado = rodar_cenario(carteira, estrutura, cenario)
+    return resultado.totais_por_classe[classe]["perda"] > 0
+
+
+def cdr_de_equilibrio(
+    carteira: Carteira,
+    estrutura: Estrutura,
+    classe: str,
+    cenario: Cenario = CENARIO_BASE,
+    tolerancia: float = TOLERANCIA_DO_EQUILIBRIO,
+) -> float | None:
+    """O maior CDR anual em que a classe não perde principal, por bissecção (convenção 5 do módulo)."""
+    if classe not in {c.nome for c in estrutura.classes}:
+        raise ValueError(f"classe desconhecida: {classe}")
+
+    def perde(cdr: float) -> bool:
+        com_cdr = dataclasses.replace(cenario, cdr_anual=cdr)
+        return _perde_principal(carteira, estrutura, com_cdr, classe)
+
+    if perde(0.0):
+        return None
+    if not perde(1.0):
+        return 1.0
+    nao_perde, perde_com = 0.0, 1.0
+    while perde_com - nao_perde > tolerancia:
+        meio = (nao_perde + perde_com) / 2
+        if perde(meio):
+            perde_com = meio
+        else:
+            nao_perde = meio
+    return nao_perde
+
+
+def cdrs_de_equilibrio(
+    carteira: Carteira, estrutura: Estrutura, cenario: Cenario = CENARIO_BASE
+) -> dict[str, float | None]:
+    """O CDR de equilíbrio de cada classe, da mais sênior à mais subordinada."""
+    ordenadas = sorted(estrutura.classes, key=lambda c: c.senioridade)
+    return {
+        c.nome: cdr_de_equilibrio(carteira, estrutura, c.nome, cenario)
+        for c in ordenadas
+    }
 
 
 def hash_da_entrada(carteira: Carteira, estrutura: Estrutura) -> str:

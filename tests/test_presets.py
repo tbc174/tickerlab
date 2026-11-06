@@ -271,3 +271,10 @@ def test_textos_do_catalogo_nao_prometem_nada():
         assert not any(
             palavra in texto for palavra in ("garantid", "seguro", "ideal para você")
         )
+
+
+def test_os_parametros_ainda_sem_efeito_existem_no_catalogo():
+    assert pm.AINDA_SEM_EFEITO.issubset(pm.CATALOGO)
+    # a relevância e a newsletter (temas, itens, frequência) já são lidas: não podem estar travadas
+    assert "relevancia.exposicao" not in pm.AINDA_SEM_EFEITO
+    assert "newsletter.temas" not in pm.AINDA_SEM_EFEITO

@@ -9,6 +9,7 @@ from src.banco import pdfs_originais as pdfs
 from src.banco.usuarios import mudar_plano
 from src.relatorio_empresa import SECOES
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario, ir_para
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 from tests.test_fundamentos_no_app import _coletar
 
 
@@ -58,6 +59,14 @@ def test_cada_numero_diz_como_foi_calculado(banco):
         linha.startswith("**Documento:** DFP") and "abrir o original" in linha
         for linha in linhas
     )
+    assert any(
+        linha.startswith("**Contas usadas:** as linhas da demonstração")
+        for linha in linhas
+    )
+    assert any(
+        linha.startswith("**Conta:** ") and "na CVM): R\\$ " in linha
+        for linha in linhas
+    )  # o valor guardado, com o cifrão que não vira LaTeX
 
 
 def test_formula_com_cifrao_nao_vira_latex():
@@ -143,9 +152,7 @@ def _ficha_da_petrobras(tmp_path, monkeypatch):
     """A ficha de exemplo (CPFL) gravada como se fosse a da Petrobras, na pasta das fichas."""
     import json
 
-    from src import dossie
-
-    bruta = json.loads(dossie.FICHA_DE_EXEMPLO.read_text(encoding="utf-8"))
+    bruta = json.loads(FICHA_DE_17_10.read_text(encoding="utf-8"))
     atual = tmp_path / "atual"
     atual.mkdir()
     (atual / "33000167000101.json").write_text(
@@ -200,6 +207,15 @@ def test_no_modo_local_gera_e_baixa_o_deck_em_pdf_e_ppt(banco):
     assert "Baixar o PDF" not in rotulos
 
 
+def test_a_pagina_oferece_a_ficha_em_markdown_sem_contar_no_plano(banco):
+    _coletar(banco)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    rotulos = [b.proto.label for b in app.get("download_button")]
+    assert "Baixar em Markdown (para IA)" in rotulos
+    assert "Baixar o PDF" not in rotulos
+
+
 def test_indicadores_sem_preco_aparecem_na_pagina(banco):
     """Linha 54 da fila: os números novos chegam à tela, cada um com o valor escrito."""
     _coletar(banco)
@@ -222,3 +238,18 @@ def test_indicadores_sem_preco_aparecem_na_pagina(banco):
         assert any(rotulo.startswith(nome) for rotulo in metricas), nome
     acoes = next(v for k, v in metricas.items() if k.startswith("Ações em circulação"))
     assert " ON e " in acoes and " PN)" in acoes
+
+
+def test_trava_desligada_a_pagina_nem_pede_o_preco(banco, monkeypatch):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026: com a trava desligada, a ficha mostra as
+    seções sem carregar a série do ticker do topo (que vem do Yahoo)."""
+
+    def nao_pode():
+        raise AssertionError("a ficha pediu o preço com a trava desligada")
+
+    _coletar(banco)
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    monkeypatch.setattr("telas.research.relatorio_empresa.carregar_contexto", nao_pode)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    assert [s.value for s in app.subheader] == list(SECOES.values())

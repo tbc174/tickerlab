@@ -57,7 +57,21 @@ def _consumidores() -> pd.DataFrame:
     )
 
 
-def secao_da_noite() -> dict:
+def _consumidores_com_2026_pela_metade() -> pd.DataFrame:
+    """2024 e 2025 inteiros e 2026 com 8 meses: poucos participantes, a CPFL e a outra sozinhas."""
+    parcial = pd.DataFrame(
+        {
+            "ano": [2026] * 2,
+            "chave": ["33050196000188", "44555666000177"],
+            "valor": [5.0, 7.0],
+            "meses": [8] * 2,
+            "ultimo_mes": [pd.Timestamp("2026-08-31")] * 2,
+        }
+    )
+    return pd.concat([_consumidores(), parcial], ignore_index=True)
+
+
+def secao_da_noite(consumidores: pd.DataFrame | None = None) -> dict:
     """A seção `setor` das elétricas como a noite a grava (molde D, PR 1)."""
     setor = rs.setor_do_relatorio("eletricas")
     membros = dossie_da_base.membros_do_setor(
@@ -71,7 +85,15 @@ def secao_da_noite() -> dict:
         _ligacoes(),
     )
     secao = dossie_da_base.secao_setor(
-        setor, membros, {"aneel_consumidores": _consumidores()}, _ligacoes(), {}
+        setor,
+        membros,
+        {
+            "aneel_consumidores": _consumidores()
+            if consumidores is None
+            else consumidores
+        },
+        _ligacoes(),
+        {},
     )
     assert secao is not None
     return json.loads(json.dumps(secao, allow_nan=False))
@@ -196,7 +218,8 @@ def test_kpi_parcial_diz_o_que_falta() -> None:
 def test_kpi_proprio_que_sai_no_relatorio_e_serie_do_setor() -> None:
     series = set(dossie.SERIES_DO_SETOR)
     proprios = [k for k in rs.KPIS_DO_SETOR if rs.TODOS not in k.setores]
-    assert all(k.no_relatorio in series for k in proprios if k.no_relatorio), proprios
+    saem = series | set(rs.TABELAS_DO_MERCADO_DE_ENERGIA)
+    assert all(k.no_relatorio in saem for k in proprios if k.no_relatorio), proprios
 
 
 def test_ids_dos_kpis_sao_unicos() -> None:
@@ -320,6 +343,54 @@ def test_frase_sem_previsao_nem_ordem_por_juizo(noite) -> None:
         assert not juizo.search(normal), texto
 
 
+@pytest.fixture
+def noite_com_2026_pela_metade(tmp_path: Path) -> dossie.SecaoDoSetor:
+    secao = secao_da_noite(_consumidores_com_2026_pela_metade())
+    noite = dossie.secao_do_setor("eletricas", gravar_noite(tmp_path, secao))
+    assert noite is not None
+    return noite
+
+
+def test_frases_usam_o_ultimo_ano_completo_e_nao_o_parcial(
+    noite_com_2026_pela_metade,
+) -> None:
+    """2026 tem 8 meses e 2 participantes: as frases do ano (HHI, CR4, soma, maior parte) são de 2025."""
+    secao = noite_com_2026_pela_metade.secao
+    frases = rs.frases_por_regra(rs.setor_do_relatorio("eletricas"), secao)
+    por_id = {f.ids[0]: f.texto for f in frases}
+    assert por_id["hhi_aneel_consumidores"].startswith("Em 2025, o HHI")
+    assert "em 2025, entre 3 participantes" in por_id["cr4_aneel_consumidores"]
+    assert all("2026" not in f.texto for f in frases), [f.texto for f in frases]
+    assert any(f.texto.startswith("Em 2025, as 2 companhias abertas") for f in frases)
+
+
+def test_sem_ano_completo_a_frase_diz_os_meses(tmp_path: Path) -> None:
+    so_parcial = _consumidores_com_2026_pela_metade().query("ano == 2026")
+    secao = secao_da_noite(so_parcial.reset_index(drop=True))
+    noite = dossie.secao_do_setor("eletricas", gravar_noite(tmp_path, secao))
+    assert noite is not None
+    frases = rs.frases_por_regra(rs.setor_do_relatorio("eletricas"), noite.secao)
+    assert frases
+    for frase in frases:
+        assert "2026 (só 8 meses, até ago/2026)" in frase.texto, frase.texto
+
+
+def test_tamanho_e_concentracao_declaram_o_ano_parcial(
+    noite_com_2026_pela_metade,
+) -> None:
+    relatorio = rs.montar_relatorio_do_setor(
+        _entradas(noite_com_2026_pela_metade), "pro", HOJE
+    )
+    por_chave = {s.chave: s for s in relatorio.secoes}
+    for chave in ("tamanho", "concentracao"):
+        avisos = [p for p in por_chave[chave].paragrafos if "2026 tem 8 meses" in p]
+        assert len(avisos) == 1, chave
+        assert "ano inteiro de 2025" in avisos[0]
+    itens = {i.chave: i for s in relatorio.secoes for i in s.itens}
+    assert itens["hhi_aneel_consumidores"].base == "dez/2025"
+    assert itens["mercado_aneel_consumidores"].valor == pytest.approx(1000.0)
+
+
 def test_sem_numeros_bastantes_nao_ha_frase() -> None:
     secao = dossie.SecaoDaFicha(chave="setor", titulo="Setor")
     assert rs.frases_por_regra(rs.setor_do_relatorio("eletricas"), secao) == []
@@ -330,7 +401,9 @@ def test_sem_numeros_bastantes_nao_ha_frase() -> None:
 
 def test_relatorio_do_setor_ordem_das_secoes(noite) -> None:
     relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "pro", HOJE)
-    assert [s.chave for s in relatorio.secoes] == list(rs.ORDEM_DAS_SECOES)
+    # o mercado de energia só aparece quando a noite o trouxe (tests/test_mercado_de_energia.py)
+    esperadas = [c for c in rs.ORDEM_DAS_SECOES if c != "mercado_de_energia"]
+    assert [s.chave for s in relatorio.secoes] == esperadas
     assert relatorio.como_era_em == noite.dia
     assert relatorio.frases and relatorio.fontes and not relatorio.avisos
     assert next(s for s in relatorio.secoes if s.chave == "metodologia").recolhida
@@ -353,7 +426,7 @@ def test_secoes_trazem_as_tabelas_da_noite(noite) -> None:
 def test_sem_o_plano_vem_trancado(noite) -> None:
     relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "gratuito", HOJE)
     trancadas = [s for s in relatorio.secoes if s.trancada]
-    assert {s.chave for s in trancadas} == rs.DA_BASE
+    assert {s.chave for s in trancadas} == rs.DA_BASE - {"mercado_de_energia"}
     assert all(not s.itens and not s.tabelas and s.paragrafos for s in trancadas)
     assert relatorio.frases == []
     assert not any(
@@ -380,7 +453,8 @@ def test_nao_temos_diz_o_parcial_e_o_que_a_base_ja_tem() -> None:
     faltas = {f.kpi: f for f in rs.nao_temos("eletricas")}
     assert faltas["Perdas de energia"].motivo.startswith("Parcial:")
     assert faltas["Geração por usina"].fonte == "base do TickerLab (tabela ons_geracao)"
-    assert faltas["PLD e CMO"].fonte == "série T6 da mesa Dados"
+    assert faltas["CMO"].fonte == "série T6 da mesa Dados"
+    assert "PLD" not in faltas  # o PLD sai no relatório (mercado de energia)
     assert "Consumidores atendidos" not in faltas  # esse sai no relatório
 
 
@@ -478,3 +552,45 @@ def test_entradas_do_setor_com_o_banco(banco, tmp_path) -> None:
     assert set(entradas.indicadores) == {m.cnpj for m in entradas.membros}
     bancos = next(s for s in disponiveis if s.chave == "bancos")
     assert bancos.empresas == len(entradas.membros) and bancos.como_era_em is None
+
+
+# --- linha 172: a metodologia é do setor e o lado a lado avisa quem ficou de fora ------------------
+
+
+def _metodologia(relatorio: rs.RelatorioDoSetor) -> str:
+    return " ".join(
+        next(s for s in relatorio.secoes if s.chave == "metodologia").paragrafos
+    )
+
+
+def test_metodologia_das_eletricas_nao_leva_o_paragrafo_dos_bancos(noite) -> None:
+    texto = _metodologia(rs.montar_relatorio_do_setor(_entradas(noite), "pro", HOJE))
+    assert "IF.data" not in texto and "REB" not in texto and "Basileia" not in texto
+    assert "HHI" in texto and "CADE" in texto
+
+
+def test_metodologia_dos_bancos_leva_o_if_data(noite) -> None:
+    entradas = rs.EntradasDoSetor(rs.setor_do_relatorio("bancos"), [], noite, {}, {})
+    texto = _metodologia(rs.montar_relatorio_do_setor(entradas, "pro", HOJE))
+    assert "IF.data" in texto and "HHI" in texto
+
+
+def _aviso_do_lado_a_lado(relatorio: rs.RelatorioDoSetor) -> list[str]:
+    secao = next(s for s in relatorio.secoes if s.chave == "lado_a_lado")
+    return [p for p in secao.paragrafos if "fora desta tabela" in p]
+
+
+def test_lado_a_lado_avisa_quem_tem_parte_do_mercado_e_nao_e_membro(noite) -> None:
+    so_a_cpfl = rs.juntar_membros(noite.secao.tabelas["membros"], {}, {CPFL: ["CPFE3"]})
+    entradas = rs.EntradasDoSetor(
+        rs.setor_do_relatorio("eletricas"), so_a_cpfl, noite, {}, {}
+    )
+    avisos = _aviso_do_lado_a_lado(rs.montar_relatorio_do_setor(entradas, "pro", HOJE))
+    assert len(avisos) == 1
+    assert "OUTRA ENERGIA" in avisos[0] and "CPFL" not in avisos[0]
+    assert "2 têm parte do mercado" in avisos[0] and "1 está" in avisos[0]
+
+
+def test_lado_a_lado_sem_ninguem_de_fora_nao_avisa(noite) -> None:
+    relatorio = rs.montar_relatorio_do_setor(_entradas(noite), "pro", HOJE)
+    assert _aviso_do_lado_a_lado(relatorio) == []

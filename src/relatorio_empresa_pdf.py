@@ -18,8 +18,17 @@ from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.analise_escrita.modelo_da_tela import ROTULO_DO_DESTAQUE, AnaliseDaTela
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
+from src.rastro import CONTA as CONTA_DO_RASTRO
+from src.rastro import (
+    CONTAS_USADAS,
+    FONTE,
+    FORMULA,
+    O_QUE_SAO_AS_CONTAS,
+    PUBLICADO_EM,
+    VERSAO,
+    como_foi_calculado,
+)
 from src.rastro import DOCUMENTO as DOCUMENTO_DO_RASTRO
-from src.rastro import FONTE, FORMULA, PUBLICADO_EM, VERSAO, como_foi_calculado
 from src.relatorio_empresa import (
     ANEXO_DE_ANOS,
     Item,
@@ -44,6 +53,8 @@ LISTA = "lista"  # tabela de itens (título, texto, nota, link): os destaques da
 TITULO_DO_ANEXO = "Como cada número foi calculado"
 COLUNAS_DO_ANEXO = tuple(r.capitalize() for r in (FORMULA, VERSAO, FONTE, PUBLICADO_EM))
 DOCUMENTO = DOCUMENTO_DO_RASTRO.capitalize()
+CONTA = CONTA_DO_RASTRO.capitalize()
+TITULO_DAS_CONTAS = "Contas usadas em cada número"
 
 
 def _comparacao(item: Item) -> str:
@@ -78,12 +89,15 @@ def _cabecalho_e_linhas(linhas: list[dict]) -> tuple[list[str], list[list[str]]]
         chave = colunas[0]
         cabecalho = [rotulo_da_coluna(chave)] + [str(linha[chave]) for linha in linhas]
         corpo = [
-            [rotulo_da_coluna(c)] + [escrever_celula(linha.get(c)) for linha in linhas]
+            [rotulo_da_coluna(c)]
+            + [escrever_celula(linha.get(c), c) for linha in linhas]
             for c in colunas[1:]
         ]
     else:
         cabecalho = [rotulo_da_coluna(c) for c in colunas]
-        corpo = [[escrever_celula(linha.get(c)) for c in colunas] for linha in linhas]
+        corpo = [
+            [escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas
+        ]
     if len(cabecalho) > MAX_COLUNAS:
         cabecalho = [cabecalho[0], *cabecalho[-(MAX_COLUNAS - 1) :]]
         corpo = [[linha[0], *linha[-(MAX_COLUNAS - 1) :]] for linha in corpo]
@@ -97,7 +111,7 @@ def _anexo_de_anos(
     ficam largos, os anos dividem o resto em corpo menor."""
     colunas = list(linhas[0])
     cabecalho = [rotulo_da_coluna(c) for c in colunas]
-    corpo = [[escrever_celula(linha.get(c)) for c in colunas] for linha in linhas]
+    corpo = [[escrever_celula(linha.get(c), c) for c in colunas] for linha in linhas]
     nome, unidade = LARGURA_DO_NOME_NO_ANEXO, LARGURA_DA_UNIDADE_NO_ANEXO
     ano = (largura - nome - unidade) / max(len(colunas) - 2, 1)
     return cabecalho, corpo, [nome, unidade, *[ano] * (len(colunas) - 2)]
@@ -193,24 +207,37 @@ def _analise(pdf: RelatorioPDF, analise: AnaliseDaTela, estilo: Estilo) -> None:
 
 def _como_foi_calculado(pdf: RelatorioPDF, relatorio: Relatorio) -> None:
     """O anexo com o rastro de cada número (item 7 do lançamento): a fórmula, a versão do
-    cálculo, a fonte e a publicação numa tabela; embaixo, cada documento usado, com o link."""
+    cálculo, a fonte e a publicação numa tabela; embaixo, cada documento usado, com o link, e as
+    contas que entram em cada número, com as mesmas linhas "Conta" da página."""
     rastros = [
         (i.nome, i.rastro) for s in relatorio.secoes for i in s.itens if i.rastro
     ]
     if not rastros:
         return
-    linhas, documentos = [], {}
+    linhas, documentos, contas = [], {}, []
     for nome, rastro in rastros:
         partes = como_foi_calculado(rastro)
         textos = {p.rotulo: p.texto for p in partes}
         linhas.append([nome, *(textos[c] for c in COLUNAS_DO_ANEXO)])
         documentos |= {(p.texto, p.url): None for p in partes if p.rotulo == DOCUMENTO}
+        if do_numero := [p.texto for p in partes if p.rotulo == CONTA]:
+            contas.append((nome, do_numero))
     pdf.secao(TITULO_DO_ANEXO, reservar=40)
     pdf.tabela_de_texto(["Indicador", *COLUNAS_DO_ANEXO], linhas)
     if documentos:
         _titulo_da_tabela(pdf, "Documentos usados")
         for texto, url in documentos:
             pdf.item(texto, "", url)
+    if contas:
+        _contas_usadas(pdf, contas)
+
+
+def _contas_usadas(pdf: RelatorioPDF, contas: list[tuple[str, list[str]]]) -> None:
+    _titulo_da_tabela(pdf, TITULO_DAS_CONTAS)
+    pdf.paragrafo(f"{CONTAS_USADAS.capitalize()}: {O_QUE_SAO_AS_CONTAS}", apagado=True)
+    for nome, do_numero in contas:
+        _titulo_da_tabela(pdf, nome)
+        pdf.lista(do_numero)
 
 
 def relatorio_da_empresa(

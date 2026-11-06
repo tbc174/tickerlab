@@ -147,6 +147,21 @@ def test_reapresentacao_nao_olha_o_futuro() -> None:
     assert _itens(antes)["exercicios_olhados"]["valor"] == 1
 
 
+def test_lucro_por_exercicio_e_a_ultima_versao_ja_divulgada_de_cada_ano() -> None:
+    secao = _qualidade(como_era=_como_era())
+    assert secao is not None
+    assert secao["tabelas"]["lucro_por_exercicio"] == [
+        {"exercicio": 2024, "lucro": 120 * MILHAO, "divulgado_em": "2025-03-12"},
+        {"exercicio": 2023, "lucro": 80 * MILHAO, "divulgado_em": "2025-03-12"},
+    ]
+    vazio = pd.DataFrame()
+    antes = dossie.secao_qualidade_do_lucro(_como_era(), vazio, vazio, D("2024-06-01"))
+    assert antes is not None
+    assert antes["tabelas"]["lucro_por_exercicio"] == [
+        {"exercicio": 2023, "lucro": 100 * MILHAO, "divulgado_em": "2024-03-10"},
+    ]
+
+
 def test_reapresentacoes_so_dos_ultimos_10_exercicios() -> None:
     velho = pd.DataFrame(
         [
@@ -307,6 +322,7 @@ def _capital(**tabelas: object) -> dict | None:
         tabelas.get("painel", vazio),  # type: ignore[arg-type]
         HOJE,
         tabelas.get("ultimo_mes"),  # type: ignore[arg-type]
+        proventos=tabelas.get("proventos", vazio),  # type: ignore[arg-type]
     )
 
 
@@ -384,6 +400,76 @@ def test_eventos_de_capital_dos_10_anos_sem_repetir() -> None:
     assert item["base"] == "2023-08-01"
 
 
+# --- capital e acionistas: proventos de cada exercício -------------------------------------------
+
+
+def _provento(
+    fre: tuple[str, int, str], exercicio: str, lucro: float, dividendo: float
+) -> dict[str, object]:
+    referencia, versao, conhecido_em = fre
+    return {
+        "cnpj": "02.429.144/0001-93",
+        "referencia": D(referencia),
+        "versao": versao,
+        "conhecido_em": D(conhecido_em),
+        "exercicio": D(exercicio),
+        "lucro_ajustado": lucro * MILHAO,
+        "dividendo_total": dividendo * MILHAO,
+        "payout": dividendo / lucro if lucro else None,
+    }
+
+
+FRE_2025 = ("2025-01-01", 1, "2025-05-31")
+FRE_2026 = ("2026-01-01", 1, "2026-05-29")
+FRE_2027 = ("2027-01-01", 1, "2026-11-30")  # entregue depois de hoje
+
+
+def _proventos() -> pd.DataFrame:
+    # o FRE de 2026 refaz 2024 (dividendo 55 contra 50) e traz 2025; o de 2027 ainda não foi entregue
+    return pd.DataFrame(
+        [
+            _provento(FRE_2025, "2023-12-31", 100, 40),
+            _provento(FRE_2025, "2024-12-31", 100, 50),
+            _provento(FRE_2026, "2024-12-31", 100, 55),
+            _provento(FRE_2026, "2025-12-31", 100, 130),
+            _provento(FRE_2027, "2026-12-31", 10, 90),
+        ]
+    )
+
+
+def test_proventos_por_exercicio_vem_do_fre_mais_novo_ja_entregue() -> None:
+    secao = _capital(proventos=_proventos())
+    assert secao is not None
+    assert secao["tabelas"]["proventos_por_exercicio"] == [
+        {"exercicio": 2025, "lucro_ajustado": 100 * MILHAO, "dividendo_total": 130 * MILHAO,
+         "payout": 1.3, "conhecido_em": "2026-05-29"},
+        {"exercicio": 2024, "lucro_ajustado": 100 * MILHAO, "dividendo_total": 55 * MILHAO,
+         "payout": 0.55, "conhecido_em": "2026-05-29"},
+        {"exercicio": 2023, "lucro_ajustado": 100 * MILHAO, "dividendo_total": 40 * MILHAO,
+         "payout": 0.4, "conhecido_em": "2025-05-31"},
+    ]  # fmt: skip
+    assert secao["itens"] == []  # só a tabela: nenhum número novo para o rastro
+
+
+def test_proventos_sem_a_data_da_entrega_do_fre_ficam_fora() -> None:
+    sem_data = _proventos().assign(conhecido_em=pd.NaT)
+    assert _capital(proventos=sem_data) is None
+
+
+def test_proventos_cortar_o_futuro_nao_muda_o_passado() -> None:
+    dia = D("2026-03-01")
+    vazio = pd.DataFrame()
+    proventos = _proventos()
+
+    def secao(tabela: pd.DataFrame) -> dict | None:
+        return dossie.secao_capital_e_acionistas(
+            vazio, vazio, vazio, dia, None, proventos=tabela
+        )
+
+    assert secao(proventos) == secao(proventos[proventos["conhecido_em"] <= dia])
+    assert secao(proventos) is not None
+
+
 # --- capital e acionistas: compras e vendas dos fundos -------------------------------------------
 
 
@@ -431,6 +517,11 @@ def test_secoes_novas_estao_registradas_e_podem_ser_mostradas(chave: str) -> Non
     registro = {secao.chave: secao for secao in dossie.SECOES}[chave]
     dossie.exigir_que_pode_mostrar(registro.tabelas)
     assert chave in dossie.LIMITES
+
+
+def test_proventos_estao_registrados_na_secao_de_capital() -> None:
+    registro = {secao.chave: secao for secao in dossie.SECOES}["capital_e_acionistas"]
+    assert "proventos" in registro.tabelas
 
 
 def test_tabelas_bloqueadas_ficam_fora_das_secoes_novas() -> None:

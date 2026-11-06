@@ -8,6 +8,8 @@ Grava `<base>/amostra/v1/painel/<ano>.parquet` com manifesto, versões e linhage
 tabelas de entrada (e o cadastro da CVM, um original), e a linhagem segue delas até os originais. Blocos:
 universo (quem está, desde quando e com que tickers) e demonstrações (balanço e resultado como eram); os
 outros entram um por PR. Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+
+Roda: manual (python -m scripts.montar_amostra); ver dicionario-da-base.md; citado em dicionario.py.
 """
 
 import argparse

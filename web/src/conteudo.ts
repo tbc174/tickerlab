@@ -61,7 +61,7 @@ export const paginasDoApp: PaginaDoApp[] = paginasJson;
 export const planos = planosJson;
 import siteJson from "../conteudo/site.json";
 
-// o que só o site usa e vem do app: estilos do Report Studio, ativos de exemplo e a fita da inicial
+// o que só o site usa e vem do app: os estilos do Report Studio
 export const site = siteJson;
 import exemploJson from "../conteudo/exemplo.json";
 
@@ -252,11 +252,30 @@ export const relatorioSemanalEletricas: {
   titulo: string;
   dados_de: string; // DD/MM/AAAA
   aviso: string;
+  aviso_rodape: string; // o rodapé da página: as bases de onde vêm os dados do setor
+  arquivos: { pdf: string; apresentacao_pdf: string; apresentacao_pptx: string };
   destaques: { titulo: string; texto: string; fonte: string; data: string }[];
   tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];
   nao_temos: { kpi: string; motivo: string; fonte: string }[];
   limites: string[];
 } = semanalEletricasJson;
+import pregaoDoDiaJson from "../conteudo/pregao_do_dia.json";
+
+/** O pregão do dia (src/texto_do_pregao.py, para_o_site): o texto do último pregão pelo molde e a
+ * impressão do molde aprovado, que a página confere antes de mostrar. */
+export const pregaoDoDia: {
+  molde_aprovado: string;
+  pregao: {
+    pregao: string; // AAAA-MM-DD
+    frases: { grupo: string; variante: string; texto: string }[];
+    grafico: { titulo: string; barras: { nome: string; valor: number; texto: string }[] };
+    tabelas: { chave: string; titulo: string; colunas: string[]; linhas: string[][] }[];
+    limites: string[];
+    fontes: string[];
+    impressao_digital: string;
+  };
+} = pregaoDoDiaJson;
+import baseJson from "../conteudo/base.json";
 import catalogoJson from "../conteudo/catalogo.json";
 
 /** Uma fonte pública de dados (`Fonte` de base/vitrine.py): uma por texto de licença. */
@@ -279,6 +298,19 @@ export interface RegistroDeFonte {
   termos_lidos_em: string | null; // AAAA-MM-DD
 }
 
+/** Uma família de fonte, uma linha (`familias_para_o_site` de base/arquivo/registro.py). */
+export interface FamiliaDeFonte {
+  familia: string;
+  orgao: string;
+  link: string | null;
+  uso: "em_uso" | "guardada";
+  marca: RegistroDeFonte["marca"]; // a mais restrita entre as coletas
+  licencas: string[];
+  coletas: string[]; // ids das coletas do arquivista; vazio quando é lida fora do acervo
+  ritmo: string | null;
+  termos_lidos_em: string | null; // AAAA-MM-DD
+}
+
 /** Um módulo da base com a contagem de tabelas (`Modulo` de base/vitrine.py). */
 export interface ModuloDaBase {
   chave: string;
@@ -296,13 +328,79 @@ export interface TabelaDaBase {
   frequencia: string;
   atraso: string | null;
   historico_desde: string;
+  consultavel: boolean; // dá para consultar e exportar pela página Dados e pela API aberta
+}
+
+/** Um cartão do "ligado pelo CNPJ" (`TemaDoCnpj` de base/vitrine.py): os órgãos e a contagem vêm do catálogo. */
+export interface TemaDoCnpj {
+  chave: string;
+  titulo: string;
+  texto: string;
+  orgaos: string[];
+  tabelas: number;
+}
+
+/** As tabelas da base que se juntam pelo CNPJ, contadas pelas colunas do catálogo. */
+export interface LigadoPeloCnpj {
+  tabelas: number;
+  orgaos: number;
+  temas: TemaDoCnpj[];
 }
 
 /** O catálogo de contratos da base, contado pelo Python: a página Dados não digita número. */
 export const catalogo: {
-  totais: { tabelas: number; fontes: number; fontes_em_consulta: number; modulos: number };
+  totais: {
+    tabelas: number;
+    fontes: number;
+    fontes_em_consulta: number;
+    modulos: number;
+    familias: number;
+    familias_em_uso: number;
+  };
   fontes: FonteDaBase[];
   registro_de_fontes: RegistroDeFonte[];
+  familias_de_fontes: FamiliaDeFonte[];
   modulos: ModuloDaBase[];
   tabelas: TabelaDaBase[];
+  ligado_pelo_cnpj: LigadoPeloCnpj;
 } = catalogoJson as never;
+
+/** Os números medidos na base (`base/vitrine.py`, fotografia do servidor de casa): a página Dados não digita número. */
+export const baseEmNumeros: {
+  numeros: {
+    empresas: number;
+    linhas_de_demonstracoes: number;
+    versoes: number;
+    eventos: number;
+    originais_com_hash: number;
+    medido_em: string;
+  };
+  medido_em_curto: string;
+} = baseJson as never;
+import vitrineJson from "../conteudo/vitrine.json";
+
+/** Uma vaga da vitrine da página inicial (`Vaga` de base/vitrine.py): pronta tem link, em breve não. */
+export interface VagaDaVitrine {
+  chave: string;
+  titulo: string;
+  para_que_serve: string;
+  estado: "pronta" | "em_breve";
+  link: string | null;
+}
+
+export const vitrine: VagaDaVitrine[] = vitrineJson as never;
+import fatosJson from "../conteudo/fatos_da_base.json";
+
+/** Um fato agregado da página inicial (`Fato` de base/vitrine.py): só contagens, com a fonte e a data. */
+export interface FatoDaBase {
+  chave: string;
+  numero: string;
+  texto: string;
+  fonte: string;
+  tabelas: string[];
+  data: string;
+  como_foi_calculado: string;
+}
+
+/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão. */
+export const fatosDaBase: { fatos: FatoDaBase[]; medido_em_curto: string } = fatosJson as never;

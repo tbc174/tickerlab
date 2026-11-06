@@ -9,12 +9,15 @@ import pytest
 from pypdf import PdfReader
 
 from src import relatorio_empresa as re_
+from src.rastro import CONTA, como_foi_calculado
 from src.relatorio_empresa import anexo_de_anos
 from src.relatorio_empresa_pdf import (
+    TITULO_DAS_CONTAS,
     TITULO_DO_ANEXO,
     _anexo_de_anos,
     relatorio_da_empresa,
 )
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 from tests.test_relatorio_empresa import _entradas, dados_da_weg  # noqa: F401
 
 
@@ -71,6 +74,25 @@ def test_pdf_fecha_com_o_anexo_de_como_cada_numero_foi_calculado(dados_da_weg): 
     assert urls and urls <= set(_links(pdf))  # o documento original, clicável
 
 
+def test_o_anexo_lista_as_contas_usadas_em_cada_numero(dados_da_weg):  # noqa: F811
+    """As mesmas linhas "Conta" da página, embaixo do nome de cada número."""
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio)))
+    assert _sem_espacos(TITULO_DAS_CONTAS) in texto
+    margem = next(
+        i for s in relatorio.secoes for i in s.itens if i.chave == "margem_ebit"
+    )
+    assert margem.rastro is not None and margem.rastro.entradas
+    contas = [
+        linha.texto
+        for linha in como_foi_calculado(margem.rastro)
+        if linha.rotulo == CONTA.capitalize()
+    ]
+    assert len(contas) == len(margem.rastro.entradas)
+    for conta in contas:
+        assert _sem_espacos(conta) in texto
+
+
 def test_pdf_sem_rastro_nao_tem_o_anexo(dados_da_weg):  # noqa: F811
     relatorio = re_.montar(_entradas(dados_da_weg))
     texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio, com_rastro=False)))
@@ -82,7 +104,7 @@ def test_amostra_publica_leva_o_anexo_quando_a_ficha_tem_rastro():
     ficha congelada da CPFL é de antes do rastro: aqui ela ganha o rastro de um item."""
     from src import amostra_do_relatorio, dossie
 
-    ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+    ficha = dossie.ler_ficha(FICHA_DE_17_10)
     assert ficha is not None
     item = next(i for s in ficha.secoes for i in s.itens if i.valor is not None)
     item.rastro = dossie.RastroDaFicha(

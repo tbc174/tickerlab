@@ -10,7 +10,14 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from base.commodities import clima_regiao, comex_cafe, conab_cafe, usda_psd
+from base.arquivo import chirps_v3
+from base.commodities import (
+    clima_regiao,
+    comex_cafe,
+    conab_cafe,
+    faostat_cafe,
+    usda_psd,
+)
 from base.parquet import ler_tabela
 from base.porta import Porta
 from scripts import carga_cafe
@@ -29,6 +36,7 @@ SEGUNDA = datetime(2026, 3, 20, 12, tzinfo=UTC)
 CONAB = "https://www.gov.br/conab/x/3o-levantamento-de-cafe-safra-2026/site_previsao-de-safra-cafe-set-2026.xls"
 SIDRA = "https://apisidra.ibge.gov.br/values/t/1613/n6/in%20n3%2031/v/216,214/p/2024-2025/c82/31619,31620,2723"
 MAPBIOMAS = "https://drive.google.com/uc?id=x&export=download"
+FAOSTAT = "https://bulks-faostat.fao.org/production/Production_Crops_Livestock_E_All_Data_(Normalized).zip"
 INMET = "https://portal.inmet.gov.br/uploads/dadoshistoricos/2024.zip"
 
 
@@ -76,6 +84,11 @@ def _guardar_tudo(motor):
         "https://apps.fas.usda.gov/psdonline/downloads/psd_coffee_csv.zip",
         psd,
     )
+    faostat = _zip(
+        "Production_Crops_Livestock_E_All_Data_(Normalized).csv",
+        (EXEMPLOS / "faostat_cafe_pequeno.csv").read_bytes(),
+    )
+    _guardar(motor, faostat_cafe.FONTE, FAOSTAT, faostat)
     _guardar(
         motor,
         carga_cafe.FONTE_DO_INMET,
@@ -96,7 +109,7 @@ def _guardar_tudo(motor):
     )
 
 
-def test_grava_as_cinco_tabelas_e_a_porta_le(ambiente):
+def test_grava_as_seis_tabelas_e_a_porta_le(ambiente):
     base, motor = ambiente
     _guardar_tudo(motor)
     assert carga_cafe.main(["--base", str(base)]) == 0
@@ -106,6 +119,9 @@ def test_grava_as_cinco_tabelas_e_a_porta_le(ambiente):
             pd.Timestamp("2026-01-20")
         }
         assert len(porta.ler("usda_psd_cafe")) > 0
+        faostat = porta.ler("faostat_cafe")
+        assert set(faostat["elemento"]) == {"producao", "area_colhida", "rendimento"}
+        assert set(faostat["divulgado_em"]) == {pd.Timestamp("2026-01-20")}
         assert set(porta.ler("clima_regiao_cafe")["fonte"]) == {"inmet"}
         area = porta.ler("area_cafe_municipio")
         assert (
@@ -242,9 +258,55 @@ def test_chirps_do_mes_le_o_mes_do_endereco(monkeypatch):
     assert carga_cafe._chirps_do_mes(outra, {}) is None
 
 
+def test_chirps_do_mes_da_v3_traz_a_fonte_propria_e_nunca_a_da_v2(monkeypatch):
+    """A v3 `rnl` é outra série: o endereço `?mes=` escolhe o leitor e a fonte `chirps-v3-rnl`."""
+    grade = chirps_v3.Grade(-180.0, 60.0, 0.05, 7200, 2400)
+    monkeypatch.setattr(
+        chirps_v3,
+        "ler_arquivo",
+        lambda _conteudo: chirps_v3.MesDoCHIRPS(2026, 8, grade, None),
+    )
+    monkeypatch.setattr(
+        clima_regiao,
+        "ler_chirps_v3",
+        lambda _conteudo, _mascaras: pd.DataFrame(
+            {"codigo": ["3170701"], "chuva_mm": [80.0]}
+        ),
+    )
+    monkeypatch.setattr(carga_cafe, "_conteudo", lambda _linha: b"")
+    grades = []
+
+    def mascaras_v3(g):
+        grades.append(g)
+        return {}
+
+    class Linha:
+        url = "https://huggingface.co/x/precip?mes=2026-08"
+
+    mensal = carga_cafe._chirps_do_mes(Linha(), {}, mascaras_v3)
+    assert set(mensal["fonte"]) == {"chirps-v3-rnl"}
+    assert set(pd.to_datetime(mensal["competencia"])) == {pd.Timestamp("2026-08-31")}
+    assert grades == [grade]
+
+
+def test_origens_do_ano_pega_o_mes_da_v3_pelo_endereco():
+    class Linha:
+        def __init__(self, url):
+            self.url = url
+
+    v3 = Linha("https://huggingface.co/x/precip?mes=2026-08")
+    assert carga_cafe._mes_do_chirps(v3.url).group(1) == "2026"
+    assert carga_cafe._mes_do_chirps("https://x/sem-mes.tif") is None
+
+
 def test_a_carga_do_clima_junta_o_chirps_recente_e_o_historico_sem_repetir_endereco():
     """O CHIRPS vem de duas fontes do arquivista (`chirps-mensal` e `chirps-historico`)."""
-    assert carga_cafe.FONTES_DO_CHIRPS == ("chirps-mensal", "chirps-historico")
+    assert carga_cafe.FONTES_DO_CHIRPS == (
+        "chirps-mensal",
+        "chirps-historico",
+        "chirps3-rnl-mensal",
+        "chirps3-rnl-historico",
+    )
 
     class Linha:
         def __init__(self, url):

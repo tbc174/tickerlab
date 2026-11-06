@@ -22,7 +22,11 @@ Regras (a numeração é estável; a de esquema vem primeiro porque as outras de
 - **T04 data no futuro**: emissão depois da data de corte (um vencimento futuro é o normal).
 - **T05 saldo negativo**.
 - **T06 saldo que não fecha**: `valor_face - valor_pago != saldo` (saldo negativo é só T05).
-- **T07 cedente** e **T08 sacado** com CNPJ inválido (14 caracteres, alfanumérico aceito, DV conferido).
+- **T07 cedente** e **T08 sacado** com identificador inválido. Cada contraparte tem um tipo de identificador
+  opcional (`cedente_tipo_id`, `sacado_tipo_id`): `cnpj` (o padrão, para os tapes antigos) confere 14
+  caracteres, alfanumérico aceito, DV conferido; `externo` (id de fora do Brasil, como o ABS-EE da SEC, que
+  não tem CNPJ) só pede texto de até `TAMANHO_MAXIMO_DO_ID_EXTERNO` caracteres e sem quebra de linha, e
+  nunca vira CNPJ. Um id vazio é T01 em qualquer tipo; um tipo que não seja `cnpj` nem `externo` é T01.
   O do cedente é erro; o do sacado é aviso (a fonte do sacado costuma vir pior).
 
 Linhas contam de 1, na ordem do tape; `linha` 0 é o tape inteiro.
@@ -65,10 +69,15 @@ ERRO = "erro"
 AVISO = "aviso"
 
 CAMPOS_TEXTO = ("recebivel_id", "cedente_cnpj", "sacado_cnpj")
+CAMPOS_TIPO_DE_ID = ("cedente_tipo_id", "sacado_tipo_id")  # opcionais
 CAMPOS_DATA = ("emissao", "vencimento")
 CAMPOS_VALOR = ("valor_face", "valor_pago", "saldo")
 CAMPOS = CAMPOS_TEXTO + CAMPOS_DATA + CAMPOS_VALOR
 
+TIPO_CNPJ = "cnpj"
+TIPO_EXTERNO = "externo"
+TIPOS_DE_ID = (TIPO_CNPJ, TIPO_EXTERNO)
+TAMANHO_MAXIMO_DO_ID_EXTERNO = 128
 DATA_DE_CORTE_PADRAO = date(2026, 9, 30)
 ALFABETO_DO_CNPJ = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 FATIA_DE_CNPJ_ALFANUMERICO = (
@@ -258,8 +267,21 @@ def _problema_do_campo(r: dict, campo: str) -> str | None:
     return None
 
 
+def _problema_do_tipo_de_id(r: dict, campo: str) -> str | None:
+    """Problema de esquema do tipo de identificador (campo opcional), ou None."""
+    if campo in r and r[campo] not in TIPOS_DE_ID:
+        return f"{campo} deve ser {TIPO_CNPJ!r} ou {TIPO_EXTERNO!r}"
+    return None
+
+
 def _achados_de_esquema(r: dict, linha: int) -> list[AchadoDeTape]:
     achados = []
+    for campo in CAMPOS_TIPO_DE_ID:
+        problema = _problema_do_tipo_de_id(r, campo)
+        if problema:
+            achados.append(
+                AchadoDeTape(ESQUEMA, linha, campo, ERRO, str(r[campo]), None, problema)
+            )
     for campo in CAMPOS:
         problema = _problema_do_campo(r, campo)
         if problema:
@@ -322,19 +344,28 @@ def _cnpj_confere(texto: str) -> bool:
     return cnpj is not None and cnpj_base.dv_confere(cnpj)
 
 
-def _achados_de_cnpj(r: dict, linha: int) -> list[AchadoDeTape]:
+def _id_externo_confere(texto: str) -> bool:
+    return len(texto) <= TAMANHO_MAXIMO_DO_ID_EXTERNO and not any(
+        quebra in texto for quebra in ("\n", "\r")
+    )
+
+
+def _achados_de_identificador(r: dict, linha: int) -> list[AchadoDeTape]:
     achados = []
-    for campo, regra, gravidade in (
-        ("cedente_cnpj", CEDENTE_INVALIDO, ERRO),
-        ("sacado_cnpj", SACADO_INVALIDO, AVISO),
+    for campo, campo_tipo, regra, gravidade in (
+        ("cedente_cnpj", "cedente_tipo_id", CEDENTE_INVALIDO, ERRO),
+        ("sacado_cnpj", "sacado_tipo_id", SACADO_INVALIDO, AVISO),
     ):
-        if not _cnpj_confere(r[campo]):
+        if r.get(campo_tipo, TIPO_CNPJ) == TIPO_EXTERNO:
+            confere = _id_externo_confere(r[campo])
+            porque = f"{campo} não é um id externo válido (até {TAMANHO_MAXIMO_DO_ID_EXTERNO} caracteres, sem quebra de linha)"
+        else:
+            confere = _cnpj_confere(r[campo])
+            porque = f"{campo} não é um CNPJ válido (tamanho, caractere ou dígito verificador)"
+        if not confere:
             achados.append(
-                AchadoDeTape(
-                    regra, linha, campo, gravidade, r[campo], None,
-                    f"{campo} não é um CNPJ válido (tamanho, caractere ou dígito verificador)",
-                )
-            )  # fmt: skip
+                AchadoDeTape(regra, linha, campo, gravidade, r[campo], None, porque)
+            )
     return achados
 
 
@@ -397,5 +428,5 @@ def validar_tape(tape: object) -> list[AchadoDeTape]:
         vistos.add(r["recebivel_id"])
         achados.extend(_achados_de_datas(r, linha, corte))
         achados.extend(_achados_de_saldo(r, linha))
-        achados.extend(_achados_de_cnpj(r, linha))
+        achados.extend(_achados_de_identificador(r, linha))
     return sorted(achados, key=lambda a: (a.linha, REGRAS.index(a.regra)))

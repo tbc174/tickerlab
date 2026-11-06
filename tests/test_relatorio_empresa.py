@@ -219,9 +219,11 @@ def test_relatorio_cita_o_yahoo_pela_lista_dos_usos_sem_cobranca(dados_da_weg):
     relatorio = re_.montar(_entradas(dados_da_weg))
     citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "yahoo")
     assert re_.fontes_do_relatorio(_entradas(dados_da_weg)) == ("cvm", "yahoo")
-    assert citacao in relatorio.fontes
+    assert any(f.startswith(citacao) for f in relatorio.fontes)
     assert "Yahoo" in citacao
-    assert relatorio.fontes.index(citacao) > 0  # a CVM vem primeiro
+    assert (
+        next(i for i, f in enumerate(relatorio.fontes) if f.startswith(citacao)) > 0
+    )  # a CVM vem primeiro
 
 
 def test_relatorio_barra_fonte_fora_dos_usos(dados_da_weg, monkeypatch):
@@ -241,8 +243,10 @@ def test_relatorio_com_preco_da_b3_cita_a_fonte(dados_da_weg, monkeypatch):
     monkeypatch.setattr(re_, "FONTE_DO_PRECO", "b3")
     relatorio = re_.montar(_entradas(dados_da_weg))
     citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "b3")
-    assert citacao in relatorio.fontes
-    assert relatorio.fontes.index(citacao) > 0  # a CVM vem primeiro
+    assert any(f.startswith(citacao) for f in relatorio.fontes)
+    assert (
+        next(i for i, f in enumerate(relatorio.fontes) if f.startswith(citacao)) > 0
+    )  # a CVM vem primeiro
 
 
 def test_relatorio_monta_mesmo_sem_a_lista_dos_usos_sem_cobranca(
@@ -270,7 +274,7 @@ def test_dividendos_abrem_com_o_dy_citando_o_preco(dados_da_weg):
     dividendos = re_.montar(_entradas(dados_da_weg)).secao("dividendos")
     dy = dividendos.itens[0]
     assert dy.chave == "dividend_yield" and dy.valor and dy.valor > 0
-    assert dy.texto.endswith("%") and dy.fonte == re_.FONTE_DOS_MULTIPLOS
+    assert dy.texto.endswith("%") and dy.fonte.startswith(re_.FONTE_DOS_MULTIPLOS)
     assert any("minoritários" in p for p in dividendos.paragrafos)
 
 
@@ -279,9 +283,32 @@ def test_valuation_traz_valor_de_mercado_ev_e_multiplos(dados_da_weg):
     itens = {i.chave: i for i in valuation.itens}
     for chave in ("p_l", "p_vp", *re_.MULTIPLOS_DE_MERCADO):
         assert itens[chave].valor is not None, chave
-        assert itens[chave].fonte == re_.FONTE_DOS_MULTIPLOS
+        assert itens[chave].fonte.startswith(re_.FONTE_DOS_MULTIPLOS)
     assert itens["valor_de_mercado"].texto.startswith("R$ ")
     assert itens["ev_ebitda"].texto.endswith("×")
+
+
+def test_dy_medio_fica_nos_dividendos_logo_depois_do_dy(dados_da_weg):
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    dividendos = relatorio.secao("dividendos")
+    medio = dividendos.itens[1]
+    assert medio.chave == "dividend_yield_medio"
+    assert medio.fonte.startswith(
+        re_.FONTE_DOS_MULTIPLOS
+    )  # fora da análise escrita, como o DY
+    assert medio.motivo  # a amostra da WEG tem só 2 exercícios: o motivo explica
+    assert re_.COMO_SAI_O_DY_MEDIO in dividendos.paragrafos
+    valuation = {i.chave for i in relatorio.secao("valuation").itens}
+    assert {"p_ebitda", "p_ebit", "p_fcf", "p_ativo"} <= valuation
+    assert not {"dividend_yield", "dividend_yield_medio"} & valuation
+
+
+def test_limites_dizem_de_onde_vem_o_preco_so_quando_ha_preco(dados_da_weg):
+    com_preco = re_.montar(_entradas(dados_da_weg)).secao("limites").paragrafos
+    assert re_.LIMITE_DO_PRECO in com_preco
+    # sem o preço (a trava desligada), mesmo com os padrões setoriais
+    sem = re_.montar(_entradas(dados_da_weg, preco=None))
+    assert re_.LIMITE_DO_PRECO not in sem.secao("limites").paragrafos
 
 
 def test_sem_preco_dy_e_multiplos_ficam_com_o_motivo(dados_da_weg):
@@ -317,3 +344,19 @@ def test_historico_traz_o_anexo_com_fonte_e_sem_ano_alem_do_publicado(dados_da_w
     assert "contas" in secao.tabelas
     assert list(secao.tabelas_a_mostrar()) == ["anexo_de_anos", "vertical"]
     assert any("DFP" in p and "CVM" in p for p in secao.paragrafos)
+
+
+def test_yahoo_so_nas_fontes_quando_um_numero_vem_do_preco(dados_da_weg):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026 (achado b da passagem): padrões do setor sem
+    P/L nem P/VP são só da CVM; a ficha não cita o Yahoo que não usou."""
+    sem_multiplos = pd.DataFrame(
+        [{"grupo": "bens_de_capital", "indicador": "roe", "empresas": 27,
+          "percentis": PERCENTIS}]
+    )  # fmt: skip
+    so_cvm = _entradas(
+        dados_da_weg, preco=None, padroes=(date(2025, 12, 31), sem_multiplos)
+    )
+    assert re_.fontes_do_relatorio(so_cvm) == ("cvm",)
+    assert not any("Yahoo" in f for f in re_.montar(so_cvm).fontes)
+    com_p_l = _entradas(dados_da_weg, preco=None)  # os padrões do teste trazem o P/L
+    assert re_.fontes_do_relatorio(com_p_l) == ("cvm", "yahoo")

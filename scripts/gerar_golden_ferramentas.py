@@ -8,6 +8,8 @@ Python devolveu, ou `{"erro": true}` quando a entrada é recusada. O vitest
 `tests/test_golden_ferramentas.py` confere que o arquivo está em dia com o Python.
 
 Rodar depois de mudar uma conta de propósito (e a cópia em TS) ou de acrescentar casos.
+
+Roda: manual (python -m scripts.gerar_golden_ferramentas); coberto por test_golden_ferramentas.py.
 """
 
 import dataclasses

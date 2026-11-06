@@ -243,6 +243,132 @@ def test_cadastro_da_ans_e_guardado_sem_representante_nem_contato(tmp_path):
     assert not list(tmp_path.glob("*.bruto"))
 
 
+def test_filtro_por_cnpj_tira_cpf_e_cnpj_mascarado(tmp_path):
+    """Linha de pessoa física (CPF, também completado com zeros) ou com CNPJ mascarado não chega ao
+    acervo; o CNPJ com letras (julho de 2026) fica; o separador "," vira ";"."""
+    bruto = (
+        '"Processo","CPF/CNPJ do titular","Titular","Situação"\n'
+        '"1/2020","12.345.678/0001-95","EMPRESA FICTICIA","Ativo"\n'
+        '"2/2020","123.456.789-09","PESSOA FICTICIA","Ativo"\n'
+        '"3/2020","**.***.678/0001-**","OUTRA","Ativo"\n'
+        '"4/2020","00012345678909","PESSOA COM ZEROS","Ativo"\n'
+        '"5/2020","12.ABC.345/01DE-35","EMPRESA NOVA","Ativo"\n'
+    ).encode("latin-1")
+    url = "https://exemplo/scm.csv"
+    obter_ = obter.csv_so_com_colunas(
+        url, ("Processo", "CPF/CNPJ do titular", "Situação"), "latin-1",
+        separador=",", so_com_cnpj_em="CPF/CNPJ do titular",
+    )  # fmt: skip
+    destino = tmp_path / "scm.csv"
+    obter_(ServidorComTrechos({url: bruto}), destino)
+    linhas = destino.read_text(encoding="latin-1").splitlines()
+    assert linhas == [
+        "Processo;CPF/CNPJ do titular;Situação",
+        "1/2020;12.345.678/0001-95;Ativo",
+        "5/2020;12.ABC.345/01DE-35;Ativo",
+    ]
+
+
+def test_filtro_le_o_csv_dentro_do_zip_e_grava_sem_bom(tmp_path):
+    csv_ = "﻿CNPJ ou CPF;Nome Entidade;Tipo de Outorga\n12345678000195;FICTICIA;Autorização\n"
+    url = "https://exemplo/prestadoras.zip"
+    obter_ = obter.csv_so_com_colunas(
+        url, ("CNPJ ou CPF", "Tipo de Outorga"), "utf-8-sig",
+        so_com_cnpj_em="CNPJ ou CPF", dentro_do_zip=True,
+    )  # fmt: skip
+    destino = tmp_path / "anatel.csv"
+    obter_(ServidorComTrechos({url: _zip({"p.csv": csv_.encode("utf-8")})}), destino)
+    esperado = "CNPJ ou CPF;Tipo de Outorga\r\n12345678000195;Autorização\r\n"
+    assert destino.read_bytes() == esperado.encode()
+    assert not list(tmp_path.glob("*.bruto"))
+
+
+def test_filtro_sem_a_coluna_do_documento_falha(tmp_path):
+    """Se a fonte renomear a coluna do CNPJ, a coleta para em vez de gravar CPF sem filtro."""
+    url = "https://exemplo/x.csv"
+    obter_ = obter.csv_so_com_colunas(url, ("A", "DOC"), "utf-8", so_com_cnpj_em="DOC")
+    with pytest.raises(ValueError, match="DOC"):
+        obter_(ServidorComTrechos({url: b"A;DOCUMENTO\n1;123\n"}), tmp_path / "x.csv")
+    assert not list(tmp_path.glob("*.bruto"))
+
+
+CADASTROS_DE_LICENCAS = (
+    *fontes.CADASTROS_DE_EMPRESAS_DA_ANVISA,
+    *fontes.CADASTROS_DE_PRODUTOS_DA_ANVISA,
+    *fontes.CADASTROS_DE_PRECOS_DA_CMED,
+    *fontes.CADASTROS_DO_SIPEAGRO,
+    fontes.OUTORGAS_DA_ANATEL_FILTRADAS,
+    *fontes.CADASTRO_MINEIRO_FILTRADO,
+    fontes.AGENTES_DA_ANCINE_FILTRADOS,
+)
+# pedaços de nome de coluna que trazem pessoa, contato ou endereço (Ficha Clara: sem pessoa física)
+COLUNA_DE_PESSOA = (
+    "RAZAO", "FANTASIA", "TITULAR", "NOME_TRANSPORTADOR", "NOME ENTIDADE", "REPRESENTANTE",
+    "RESPONSAVEL", "EMAIL", "ELETRÔNICO", "TELEFONE", "CEP", "ENDERECO", "LOGRADOURO", "BAIRRO",
+    "HOMEPAGE", "SAC", "RAZÃO", "NOMCLIENTE", "NOMAGENTE", "NOMEPESSOA", "LABORATÓRIO",
+)  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    "colunas",
+    [c.colunas for c in CADASTROS_DE_LICENCAS]
+    + [fontes.COLUNAS_DO_RNTRC, fontes.COLUNAS_DO_REIDI, fontes.COLUNAS_DA_CDE]
+    + [fontes.COLUNAS_DA_CDE_NA_REDE_BASICA, fontes.CAMPOS_DO_RDE_IED],
+)
+def test_cadastros_de_licencas_nao_guardam_coluna_de_pessoa(colunas):
+    for coluna in colunas:
+        nome = coluna.upper().replace(" DO ", " ").replace(" DA ", " ")
+        if nome in ("CPF/CNPJ TITULAR", "CNPJBASERECEPTORA"):
+            continue  # o documento (só fica quando é CNPJ); "receptora" tem "CEP" no meio
+        assert not any(p in nome for p in COLUNA_DE_PESSOA), coluna
+
+
+def test_cadastros_de_licencas_guardam_a_coluna_do_cnpj():
+    for cadastro in CADASTROS_DE_LICENCAS:
+        assert cadastro.cnpj_em in cadastro.colunas, cadastro.url
+
+
+def test_rntrc_pega_so_o_csv_mais_novo_e_tira_o_nome(tmp_path):
+    pacote = {
+        "result": {
+            "resources": [
+                {
+                    "url": "https://x/ago.csv",
+                    "format": "CSV",
+                    "created": "2026-09-10T00:00",
+                },
+                {
+                    "url": "https://x/set.csv",
+                    "format": "CSV",
+                    "created": "2026-10-10T00:00",
+                },
+                {
+                    "url": "https://x/painel",
+                    "format": "HTML",
+                    "created": "2026-10-20T00:00",
+                },
+            ]
+        }
+    }
+    bruto = (
+        "nome_transportador;numero_rntrc;cpfcnpjtransportador;cep;uf\n"
+        "EMPRESA FICTICIA;1;12345678000195;01000000;SP\n"
+        "PESSOA FICTICIA;2;12345678909;02000000;RJ\n"
+    ).encode("latin-1")
+    url_do_pacote = f"{fontes.PORTAL_DA_ANTT}/api/3/action/package_show?id=rntrc"
+    servidor = ServidorComTrechos(
+        {url_do_pacote: json.dumps(pacote).encode(), "https://x/set.csv": bruto}
+    )
+    (alvo,) = fontes.descobrir_rntrc(servidor, AGORA)
+    assert alvo.url == "https://x/set.csv" and alvo.obter is not None
+    destino = tmp_path / "rntrc.csv"
+    alvo.obter(servidor, destino)
+    assert destino.read_text(encoding="latin-1").splitlines() == [
+        "numero_rntrc;cpfcnpjtransportador;uf",
+        "1;12345678000195;SP",
+    ]
+
+
 def test_cadastro_da_susep_e_guardado_so_com_codigo_nome_e_cnpj(tmp_path):
     bruto = json.dumps(
         {"value": [{"entcodigofip": "05886", "entnome": "PORTO", "entcgc": "61198164000160",
@@ -476,3 +602,121 @@ def test_vigia_do_cnpj_usa_a_rota_da_ficha_que_aceita_a_chave():
     assert fontes.FICHA_DO_CNPJ_NO_DADOS_GOV_BR.startswith(
         "https://dados.gov.br/dados/api/publico/conjuntos-dados/"
     )
+
+
+def _recurso(url: str, formato: str) -> dict:
+    return {"url": url, "format": formato}
+
+
+PASTA_DA_CDE = "https://dadosabertos.aneel.gov.br/dataset/cde/resource"
+
+
+def test_cde_pega_os_meses_mais_novos_e_a_rede_basica(monkeypatch):
+    meses = [f"{PASTA_DA_CDE}/{i}/download/cde-beneficiarios-01{m}" for i, m in enumerate(
+        ("jan2025.zip", "dec2024.zip", "MAY2026.zip", "feb2025.zip")
+    )]  # fmt: skip
+    pacote = {
+        "result": {
+            "resources": [
+                *(_recurso(url, "ZIP") for url in meses),
+                _recurso(f"{PASTA_DA_CDE}/9/download/cde-beneficiarios-rede-basica-2024.csv", "CSV"),
+                _recurso(f"{PASTA_DA_CDE}/8/download/dm-beneficiarios-da-cde.pdf", "PDF"),
+            ]
+        }
+    }  # fmt: skip
+    url_do_pacote = (
+        f"{fontes.PORTAL_DA_ANEEL}/api/3/action/package_show?id={fontes.PACOTE_DA_CDE}"
+    )
+    servidor = ServidorComTrechos({url_do_pacote: json.dumps(pacote).encode()})
+    monkeypatch.setattr(fontes, "MESES_DA_CDE", 2)
+    alvos = fontes.descobrir_cde(servidor, AGORA)
+    assert [a.url.rsplit("-", 1)[-1] for a in alvos] == [
+        "01feb2025.zip", "01MAY2026.zip", "2024.csv",
+    ]  # fmt: skip
+    assert all(a.obter is not None and a.extensao == ".csv" for a in alvos)
+
+
+def test_cde_sem_zip_mensal_falha():
+    url_do_pacote = (
+        f"{fontes.PORTAL_DA_ANEEL}/api/3/action/package_show?id={fontes.PACOTE_DA_CDE}"
+    )
+    pacote = {"result": {"resources": [_recurso("https://x/a.csv", "CSV")]}}
+    servidor = ServidorComTrechos({url_do_pacote: json.dumps(pacote).encode()})
+    with pytest.raises(coleta.ErroDeDescoberta, match="ZIP mensal"):
+        fontes.descobrir_cde(servidor, AGORA)
+
+
+def test_cde_mensal_tira_o_cpf_e_o_nome_do_cliente(tmp_path):
+    """O CSV de dentro do ZIP traz cada unidade consumidora: a linha de CPF (tarifa social, rural)
+    não chega ao acervo, e o nome do cliente sai de todas."""
+    cabecalho = ",".join(
+        (*fontes.COLUNAS_DA_CDE[:10], "NomCliente", *fontes.COLUNAS_DA_CDE[10:])
+    )
+    inicio = "01/07/2026,05/2026,DISTRIB,11111111000191,3550308,1,2,3.30,6,1"
+    csv_ = (
+        f"{cabecalho}\n"
+        f'{inicio},EMPRESA FICTICIA,12345678000195,SubsIrrigacao,"1.234,56"\n'
+        f'{inicio},PESSOA FICTICIA,12345678909,SubsBaixaRenda,"12,30"\n'
+    )
+    url = f"{PASTA_DA_CDE}/1/download/cde-beneficiarios-01may2026.zip"
+    servidor = ServidorComTrechos({url: _zip({"cde.csv": csv_.encode("latin-1")})})
+    alvo = fontes.CsvDeCadastro(
+        url,
+        fontes.COLUNAS_DA_CDE,
+        "NumCPFCNPJCliente",
+        separador=",",
+        dentro_do_zip=True,
+    ).alvo()
+    assert alvo.obter is not None
+    destino = tmp_path / "cde.csv"
+    alvo.obter(servidor, destino)
+    texto = destino.read_text(encoding="latin-1")
+    assert "FICTICIA" not in texto and "12345678909" not in texto
+    assert texto.splitlines()[1].endswith(";12345678000195;SubsIrrigacao;1.234,56")
+
+
+def test_reidi_tira_a_razao_social_e_a_descricao(tmp_path):
+    cabecalho = (
+        "﻿Processo;CNPJ;Razão_Social;Municipio;UF;idt_projeto;Nome_do_Projeto;"
+        "Descrição_do_Projeto;Portaria;Data_inicio_portaria"
+    )
+    csv_ = (
+        f"{cabecalho}\n"
+        '1;12345678000195;EMPRESA FICTICIA S.A;Manaus;AM;7;UTE Ficticia;"texto\nlongo";Portaria 1;'
+        "01/02/2024\n"
+    )
+    servidor = ServidorComTrechos({fontes.REIDI_DO_MME: csv_.encode("utf-8")})
+    alvo = fontes.REIDI_FILTRADO.alvo()
+    assert alvo.obter is not None
+    destino = tmp_path / "reidi.csv"
+    alvo.obter(servidor, destino)
+    assert destino.read_text(encoding="utf-8").splitlines() == [
+        "Processo;CNPJ;Municipio;UF;idt_projeto;Nome_do_Projeto;Portaria;Data_inicio_portaria",
+        "1;12345678000195;Manaus;AM;7;UTE Ficticia;Portaria 1;01/02/2024",
+    ]
+
+
+def test_rde_ied_tira_o_nome_do_investidor_e_da_empresa(tmp_path):
+    item = {
+        "CodigoRDE": "IA000001", "CnpjBaseReceptora": "12345678",
+        "NomePessoaNacional": "EMPRESA FICTICIA LTDA", "UfPessoaNacional": "SP",
+        "NomePessoaEstrangeira": "PESSOA FICTICIA", "PaisPessoaEstrangeira": "PANAMA",
+        "Ocorrencia": "REGISTRO EFETUADO", "Ano": 2020, "Mes": 5,
+    }  # fmt: skip
+    servidor = ServidorComTrechos(
+        {fontes.REGISTROS_DO_RDE_IED: json.dumps({"value": [item]}).encode()}
+    )
+    (alvo,) = fontes.descobrir_rde_ied(servidor, AGORA)
+    assert alvo.obter is not None
+    destino = tmp_path / "rde.json"
+    alvo.obter(servidor, destino)
+    (gravado,) = json.loads(destino.read_text(encoding="utf-8"))["value"]
+    assert "FICTICIA" not in json.dumps(gravado)
+    assert gravado["CnpjBaseReceptora"] == "12345678" and gravado["Ano"] == 2020
+
+
+def test_lei_do_bem_e_8387_ficam_de_fora_das_fontes():
+    """Lei do Bem sem CNPJ e Lei 8.387 com o arquivo fora do ar (29/10/2026): sem coleta (fila)."""
+    ids = {f.id for f in fontes.FONTES}
+    assert {"mme-reidi", "aneel-cde", "bcb-rde-ied"} <= ids
+    assert not any(i.startswith(("mcti-", "suframa-")) for i in ids)

@@ -42,6 +42,10 @@ log = logging.getLogger(__name__)
 FONTE = "b3-negocios"
 RETENCAO_EM_DIAS = 90
 SHA_CURTO = 12  # o começo do SHA-256 nas mensagens (cabe no aviso do Kuma)
+# o mínimo do arquivista (50 GB livres) é o do disco grande de casa: no VPS (96 GB) ele parou a cópia
+# desde 25/10/2026 com o disco 62% usado. A cópia ocupa ~3 GB (90 dias de pregão): lá vale a regra
+# dos 70% de `coleta` e este mínimo pequeno
+LIVRE_MINIMO_NO_VPS_EM_BYTES = 10 * 1024**3
 NOME_DE_DIA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 NOME_DE_SHA = re.compile(r"^[0-9a-f]{64}$")
 
@@ -144,7 +148,7 @@ def copiar_janela(
     Levanta `FreioDeDisco` antes de baixar (o VPS é o da produção); falha num dia não para os outros.
     Não usa banco nenhum.
     """
-    conferir_freio(*espaco(pasta))
+    conferir_freio(*espaco(pasta), livre_minimo=LIVRE_MINIMO_NO_VPS_EM_BYTES)
     (pasta / ".temporario").mkdir(parents=True, exist_ok=True)
     rodada = Rodada()
     for numero, alvo in enumerate(fontes.descobrir_negocios_b3(cliente, agora)):

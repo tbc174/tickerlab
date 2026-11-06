@@ -1,5 +1,5 @@
-// Busca por CNPJ no app novo (molde B): o relatório do CNPJ de uma companhia aberta, nas mesmas
-// seções do relatório da empresa. Não é uma TelaDoContrato: o CNPJ pode ser de MEI (dado pessoal,
+// Busca por CNPJ no app novo (molde B): o relatório do CNPJ de uma companhia aberta ou, sem ficha na
+// CVM, o cadastro da Receita, nas mesmas seções do relatório da empresa. Não é uma TelaDoContrato: o CNPJ pode ser de MEI (dado pessoal,
 // ADR 0077, item 1), então ele vai no corpo do POST e nunca no endereço, e nada é pedido antes de a
 // pessoa buscar. "Limites e cuidados" e "O que ainda não aparece" ficam sempre à vista.
 import { type FormEvent, useState } from "react";
@@ -30,6 +30,11 @@ function Lista({ titulo, itens, id }: { titulo: string; itens: string[]; id: str
   );
 }
 
+// "2024-09-21" → "09/2024": o cadastro da Receita é de uma publicação mensal, não de um dia
+function mesDaPublicacao(dia: string): string {
+  return `${dia.slice(5, 7)}/${dia.slice(0, 4)}`;
+}
+
 function Relatorio({ dados }: { dados: BuscaPorCnpjV1 }) {
   const fimDoBloco = fimDoPrimeiroBloco(dados.secoes);
   return (
@@ -40,6 +45,14 @@ function Relatorio({ dados }: { dados: BuscaPorCnpjV1 }) {
           {dados.tickers.length > 0 ? ` · ${dados.tickers.join(", ")}` : ""}
           {dados.como_era_em ? (
             <span className="apagado"> · ficha de {formatarData(dados.como_era_em)}</span>
+          ) : null}
+        </p>
+      ) : null}
+      {dados.situacao === "cadastro_da_receita" ? (
+        <p>
+          CNPJ {dados.cnpj}
+          {dados.como_era_em ? (
+            <span className="apagado"> · cadastro da Receita de {mesDaPublicacao(dados.como_era_em)}</span>
           ) : null}
         </p>
       ) : null}
@@ -111,7 +124,7 @@ function Resultado({ pagina, cnpj }: { pagina: PaginaDoApp; cnpj: string }) {
 
 // antes da primeira busca os limites e o desligado não vêm da API; este é o resumo fixo da tela
 const ANTES_DA_BUSCA =
-  "No lançamento a busca mostra só as companhias abertas com ficha na base. Nada aqui é recomendação de investimento.";
+  "A busca mostra as companhias abertas com ficha na base e as empresas do cadastro aberto do CNPJ da Receita Federal. Nada aqui é recomendação de investimento.";
 
 export function BuscaPorCnpj({ pagina }: { pagina: PaginaDoApp }) {
   const [rascunho, setRascunho] = useState("");

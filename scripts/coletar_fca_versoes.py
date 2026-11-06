@@ -14,6 +14,8 @@ A CVM limita os downloads por endereço (a rotulagem por IA mede de 1 a 3 docume
 pausa entre os pedidos e, à primeira página no lugar do zip, a coleta para sem erro e continua na
 próxima rodada. Roda de madrugada, fora das janelas da carga do ENET e da rotulagem. Recusa rodar sem
 a versão do código (exigência 13 da ADR 0055).
+
+Roda: outro script (carga_fca.py).
 """
 
 import argparse

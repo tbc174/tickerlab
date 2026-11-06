@@ -14,6 +14,9 @@ regras do que pode entrar ficam em `base/dossie.py`.
 Uma seção que quebra numa empresa não derruba as outras nem a noite; uma ficha com pessoa não é gravada.
 Roda toda noite no servidor de casa, depois da rede: saída 0 tudo certo; 1 alguma falha, com a última
 linha `FALHAS: ...` (vai para o aviso do Kuma), como `scripts/montar_rede.py`.
+
+Roda: cron de casa pelo gerar-dossies.sh (todo dia às 6h40); outro script
+(gerar_pacotes_do_cafe.py); citado em dossie.py.
 """
 
 import argparse
@@ -30,7 +33,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from base import contestacoes as contestacoes_da_base
-from base import dossie
+from base import dossie, mercado_de_energia
 from base import indicadores_de_caixa as t1
 from base.dicionario import TABELAS
 from base.porta import Porta
@@ -135,11 +138,26 @@ class Entradas:
     hoje: pd.Timestamp  # o dia da ficha, sem fuso, para comparar com as datas da base
     # o M&A das assessorias de cada empresa (raiz do CNPJ), como era conhecido em `hoje`
     negocios_de_ma: dict[str, pd.DataFrame] = field(default_factory=dict)
+    # PLD, curtailment e capacidade das elétricas, já resumidos como eram em `hoje` (mercado, sem empresa)
+    mercado_de_energia: dict[str, pd.DataFrame] = field(default_factory=dict)
     # insolvência (CVM) e situação especial (Receita) por raiz de CNPJ; None: a base não tem a tabela
     # (a ficha diz "não consultamos"). As contestações vêm do CSV conferido à mão, por raiz.
     insolvencia: dict[str, pd.DataFrame] | None = None
     situacao_especial: dict[str, pd.DataFrame] | None = None
     contestacoes: pd.DataFrame = field(default_factory=contestacoes_da_base.vazia)
+    # dívida ativa da União (PGFN) e rótulo de atraso na entrega (CVM) por raiz de CNPJ, como fato
+    # datado (virada de 5/11/2026, fase 1); None: a base não tem a tabela (sem seção). As duas são
+    # lidas sem `como_era_em`: a regra da data fica na seção (o documento sem entrega não tem data
+    # pública, e a porta o esconderia)
+    pgfn_divida: dict[str, pd.DataFrame] | None = None
+    rotulos_atraso: dict[str, pd.DataFrame] | None = None
+    # o relatório do auditor sobre a DFP (`pareceres_dfp`); vazio: a base ainda não tem a tabela
+    pareceres: pd.DataFrame = field(default_factory=pd.DataFrame)
+    # o mesmo para o ITR (`pareceres_itr`) e a DMPL das DFPs (`dmpl_como_era`); vazio: sem a tabela
+    pareceres_itr: pd.DataFrame = field(default_factory=pd.DataFrame)
+    dmpl: pd.DataFrame = field(default_factory=pd.DataFrame)
+    # o lucro ajustado e o dividendo de cada exercício (`proventos`, do FRE), já com a entrega do FRE
+    proventos: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 # só as colunas que as seções de qualidade do lucro, de geração de caixa e de capital usam (a DRE de
@@ -149,6 +167,8 @@ COLUNAS_DA_DRE = (
     "grupo",
     "demonstracao",
     "documento",
+    "referencia",
+    "versao",
     "conta",
     "descricao",
     "inicio",
@@ -182,25 +202,50 @@ COLUNAS_DA_GOVERNANCA = {  # tabela do FRE → as colunas que a seção usa (nun
     "fre_comites": (*_DO_FRE, "tipo_de_comite", "membros"),
     "fre_remuneracao": (
         *_DO_FRE, "fim_do_exercicio", "orgao", "membros_remunerados", "total_remuneracao",
+        "total_do_orgao",
     ),
     "fre_remuneracao_extremos": (*_DO_FRE, "fim_do_exercicio", "orgao", "maior", "media", "menor"),
     "fre_diversidade": (*_DO_FRE, "orgao", "genero_feminino"),
+    "fre_capital_social": (
+        *_DO_FRE, "tipo_capital", "valor_capital", "acoes_ordinarias", "acoes_preferenciais",
+        "acoes_total",
+    ),
+    "fre_empregados": (
+        *_DO_FRE, "recorte", "grupo", "genero_feminino", "genero_masculino", "genero_nao_binario",
+        "genero_outros", "genero_sem_resposta",
+    ),
+    "fre_distribuicao_capital": (
+        *_DO_FRE, "acionistas_pf", "acionistas_pj", "acionistas_institucionais",
+        "circulacao_total", "percentual_total", "ultima_assembleia_em",
+    ),
 }  # fmt: skip
 COLUNAS_DA_INSOLVENCIA = (
     "cnpj", "rotulo", "evento", "protocolo", "versao", "referencia", "conhecido_em", "link",
+)  # fmt: skip
+COLUNAS_DOS_PARECERES = (
+    "cnpj", "referencia", "versao", "disponivel_em", "opiniao", "enfase", "continuidade_operacional",
+)  # fmt: skip
+COLUNAS_DA_DMPL = (
+    "cnpj", "grupo", "conta", "coluna", "valor", "documento", "referencia", "versao", "ordem",
+    "divulgado_em", "ate",
 )  # fmt: skip
 COLUNAS_DA_SITUACAO_ESPECIAL = (
     "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo", "data_situacao_especial",
     "mes_do_retrato", "disponivel_em",
 )  # fmt: skip
+COLUNAS_DA_DIVIDA = ("cnpj_basico", *dossie.COLUNAS_DA_DIVIDA)
+COLUNAS_DAS_ENTREGAS = ("cnpj", *dossie.COLUNAS_DAS_ENTREGAS)
 COLUNAS_DOS_RATINGS = (
-    "cnpj", "agencia", "escala", "nota", "nota_original", "perspectiva", "acao", "data_acao",
-    "publico_em", "protocolo", "link", "situacao_extracao",
+    "cnpj", "agencia", "escala", "nota", "nota_original", "nivel", "perspectiva", "acao",
+    "data_acao", "publico_em", "protocolo", "link", "situacao_extracao",
 )  # fmt: skip
-# sem a coluna `estresse`: é um rótulo nosso, e a ficha mostra só os fatos (os temas do assunto)
+# `estresse` é um rótulo nosso: a ficha o usa só para escolher as assembleias de aperto e não o mostra
 COLUNAS_DAS_ASSEMBLEIAS = (
     "cnpj", "documento", "especie", "assunto", "publico_em", "protocolo", "versao", "link",
-    *(f"tema_{tema}" for tema in dossie.TEMAS_DAS_ASSEMBLEIAS),
+    dossie.APERTO, *(f"tema_{tema}" for tema in dossie.TEMAS_DAS_ASSEMBLEIAS),
+)  # fmt: skip
+COLUNAS_DOS_PROVENTOS = (
+    "cnpj", "referencia", "versao", "exercicio", "lucro_ajustado", "dividendo_total", "payout",
 )  # fmt: skip
 
 
@@ -380,10 +425,15 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         s.nome: ler_serie(leitor, s, hoje)
         for s in (*dossie.SERIES_DAS_AGENCIAS, *dossie.SERIES_DOS_BANCOS)
     }
+    fre = {
+        tabela: leitor.ler(tabela, [*colunas])
+        for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
+    }
+    empresas = _empresas(
+        leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
+    )
     return Entradas(
-        empresas=_empresas(
-            leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
-        ),
+        empresas=empresas,
         auditores=leitor.ler("auditores"),
         trocas=leitor.ler("trocas_de_auditor"),
         controladas=controladas,
@@ -417,10 +467,7 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         releases=leitor.ler("release_x_oficial", [*COLUNAS_DO_RELEASE]),
         negociacoes=leitor.ler("negociacoes", [*COLUNAS_DAS_NEGOCIACOES]),
         eventos_de_capital=leitor.ler("eventos_de_capital", [*COLUNAS_DOS_EVENTOS]),
-        fre={
-            tabela: leitor.ler(tabela, [*colunas])
-            for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
-        },
+        fre=fre,
         ratings=leitor.ler("ratings", [*COLUNAS_DOS_RATINGS]),
         assembleias=leitor.ler("debentures_assembleias", [*COLUNAS_DAS_ASSEMBLEIAS]),
         series=series,
@@ -432,6 +479,7 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         rede=_rede(leitor, hoje, entidades, controladas),
         hoje=_dia(hoje),
         negocios_de_ma=_negocios_de_ma(leitor, _dia(hoje)),
+        mercado_de_energia=_mercado_de_energia(leitor, _dia(hoje)),
         insolvencia=_por_raiz(
             _ler_se_existe(leitor, "insolvencia", COLUNAS_DA_INSOLVENCIA), "cnpj"
         ),
@@ -442,6 +490,65 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             "cnpj_basico",
         ),
         contestacoes=contestacoes_da_base.ler(),
+        pgfn_divida=_divida_das_companhias(leitor, empresas),
+        rotulos_atraso=_por_raiz(
+            _ler_se_existe(leitor, "rotulos_atraso", COLUNAS_DAS_ENTREGAS), "cnpj"
+        ),
+        pareceres=_pareceres(leitor),
+        pareceres_itr=_pareceres(leitor, "pareceres_itr"),
+        dmpl=_dmpl(leitor, _dia(hoje)),
+        proventos=_proventos(leitor, fre["fre_remuneracao"]),
+    )
+
+
+def _proventos(leitor: Leitor, fre_remuneracao: pd.DataFrame) -> pd.DataFrame:
+    """Os proventos de cada exercício com a data em que o FRE que os informou foi entregue.
+
+    A tabela `proventos` só tem a data da coleta: para cortar o futuro, a ficha precisa do dia em que o
+    FRE ficou público, que vem de `fre_remuneracao` pela mesma chave (cnpj, referencia, versao). Linha
+    de FRE que a base não conhece fica de fora. Vazio quando a base não tem a tabela.
+    """
+    proventos = _ler_se_existe(leitor, "proventos", COLUNAS_DOS_PROVENTOS)
+    if proventos is None or proventos.empty:
+        return VAZIA
+    return com_a_entrega_do_fre(proventos, fre_remuneracao)
+
+
+def com_a_entrega_do_fre(proventos: pd.DataFrame, do_fre: pd.DataFrame) -> pd.DataFrame:
+    """`proventos` com a coluna `conhecido_em` de `do_fre` (uma tabela fre_*), pela chave do FRE."""
+    chave = ["cnpj", "referencia", "versao"]
+    if do_fre.empty or not set(chave) <= set(do_fre.columns):
+        return proventos.iloc[0:0]
+    entregas = do_fre[[*chave, "conhecido_em"]].drop_duplicates(chave)
+    juntos = proventos.assign(
+        cnpj=dossie.digitos(proventos["cnpj"]),
+        referencia=pd.to_datetime(proventos["referencia"]),
+    ).merge(
+        entregas.assign(
+            cnpj=dossie.digitos(entregas["cnpj"]),
+            referencia=pd.to_datetime(entregas["referencia"]),
+        ),
+        on=chave,
+        how="inner",
+    )
+    return juntos.reset_index(drop=True)
+
+
+def _pareceres(leitor: Leitor, tabela: str = "pareceres_dfp") -> pd.DataFrame:
+    """Os pareceres do auditor (todas as versões, com o dia em que ficaram públicos); vazio sem a tabela."""
+    pareceres = _ler_se_existe(leitor, tabela, COLUNAS_DOS_PARECERES)
+    return VAZIA if pareceres is None else pareceres
+
+
+def _dmpl(leitor: Leitor, hoje: pd.Timestamp) -> pd.DataFrame:
+    """O saldo final da DMPL das DFPs como era em `hoje`; vazio sem a tabela."""
+    if not leitor.tem_coluna("dmpl_como_era", COLUNAS_DA_DMPL[0]):
+        return VAZIA
+    return leitor.ler(
+        "dmpl_como_era",
+        [*COLUNAS_DA_DMPL],
+        filtros={"documento": "DFP", "conta": "5.07"},
+        como_era_em=hoje,
     )
 
 
@@ -454,6 +561,25 @@ def _ler_se_existe(
     return leitor.ler(tabela, [*colunas])
 
 
+def _divida_das_companhias(
+    leitor: Leitor, empresas: pd.DataFrame
+) -> dict[str, pd.DataFrame] | None:
+    """A `pgfn_divida` só das raízes de CNPJ das companhias da ficha, por raiz; None sem a tabela.
+
+    A tabela tem toda empresa com dívida ativa (milhões de linhas por retrato): o filtro vai à porta,
+    em vez de ler tudo e separar um DataFrame por raiz (revisão cruzada do PR 2 da virada de 5/11).
+    """
+    if not leitor.tem_coluna("pgfn_divida", COLUNAS_DA_DIVIDA[0]):
+        return None
+    raizes = sorted(set(dossie.digitos(empresas["cnpj"]).str[:RAIZ_DO_CNPJ]))
+    if not raizes:
+        return {}
+    divida = leitor.ler(
+        "pgfn_divida", [*COLUNAS_DA_DIVIDA], filtros={"cnpj_basico": raizes}
+    )
+    return _por_raiz(divida, "cnpj_basico")
+
+
 def _por_raiz(
     tabela: pd.DataFrame | None, coluna: str
 ) -> dict[str, pd.DataFrame] | None:
@@ -464,6 +590,40 @@ def _por_raiz(
         return {}
     raizes = dossie.digitos(tabela[coluna]).str[:RAIZ_DO_CNPJ]
     return {str(r): g for r, g in tabela.groupby(raizes)}
+
+
+def _mercado_de_energia(leitor: Leitor, hoje: pd.Timestamp) -> dict[str, pd.DataFrame]:
+    """PLD, curtailment e capacidade das elétricas como eram no dia (vazio: a base ainda não tem a
+    tabela). O curtailment é somado por hora na porta: a tabela é de milhões de linhas."""
+    pld = leitor.ler(
+        "ccee_pld",
+        ["granularidade", "submercado", "referencia", "pld", "disponivel_em"],
+        filtros={"granularidade": "mes"},
+        como_era_em=hoje,
+    )
+    horas = leitor.somar(
+        "ons_restricao",
+        ["instante", "tipo"],
+        "nao_realizada_mwmed",
+        {},
+        como_era_em=hoje,
+    )
+    capacidade = leitor.ler(
+        "ons_capacidade",
+        [
+            "tipo_de_usina",
+            "potencia_efetiva_mw",
+            "entrada_em_operacao",
+            "entrada_em_teste",
+            "desativada_em",
+        ],
+        como_era_em=hoje,
+    )
+    return {
+        "pld_mensal": mercado_de_energia.pld_mensal(pld, hoje),
+        "curtailment_mensal": mercado_de_energia.curtailment_mensal(horas, hoje),
+        "capacidade_por_tipo": mercado_de_energia.capacidade_por_tipo(capacidade, hoje),
+    }
 
 
 def _negocios_de_ma(leitor: Leitor, hoje: pd.Timestamp) -> dict[str, pd.DataFrame]:
@@ -506,6 +666,9 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     """
     auditores = _por_cnpj(entradas.auditores, "cnpj")
     trocas = _por_cnpj(entradas.trocas, "cnpj")
+    pareceres = _por_cnpj(entradas.pareceres, "cnpj")
+    pareceres_itr = _por_cnpj(entradas.pareceres_itr, "cnpj")
+    dmpl = _por_cnpj(entradas.dmpl, "cnpj")
     controladas = _por_cnpj(entradas.controladas, "cnpj_companhia")
     controladoras = _por_cnpj(entradas.controladoras, "cnpj")
     ofertas_160 = _por_cnpj(entradas.ofertas_160, "cnpj_emissor")
@@ -521,6 +684,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     fre = {nome: _por_cnpj(tabela, "cnpj") for nome, tabela in entradas.fre.items()}
     ratings = _por_cnpj(entradas.ratings, "cnpj")
     assembleias = _por_cnpj(entradas.assembleias, "cnpj")
+    proventos = _por_cnpj(entradas.proventos, "cnpj")
     hoje = entradas.hoje
     de_ma = entradas.negocios_de_ma
 
@@ -533,6 +697,9 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             do_fre["fre_remuneracao_extremos"],
             do_fre["fre_diversidade"],
             hoje,
+            do_fre["fre_capital_social"],
+            do_fre["fre_empregados"],
+            do_fre["fre_distribuicao_capital"],
         )
 
     def ofertas_e_fundos(cnpj: str) -> dict | None:
@@ -551,6 +718,9 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             controladas.get(c, VAZIA),
             controladoras.get(c, VAZIA),
             entradas.pessoas,
+            pareceres.get(c, VAZIA),
+            hoje,
+            pareceres_itr.get(c, VAZIA),
         ),
         "qualidade_do_lucro": lambda c: dossie.secao_qualidade_do_lucro(
             como_era.get(c, VAZIA), releases.get(c, VAZIA), trocas.get(c, VAZIA), hoje
@@ -565,6 +735,8 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             painel.get(c, VAZIA),
             hoje,
             entradas.ultimo_mes_do_cda,
+            proventos=proventos.get(c, VAZIA),
+            dmpl=dmpl.get(c, VAZIA),
         ),
         "governanca": governanca,
         "credito": lambda c: dossie.secao_credito(
@@ -582,6 +754,12 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             _da_raiz(entradas.situacao_especial, c),
             contestacoes_da_base.da_empresa(entradas.contestacoes, c[:RAIZ_DO_CNPJ]),
             hoje,
+        ),
+        "divida_com_a_uniao": lambda c: dossie.secao_divida_com_a_uniao(
+            _da_raiz(entradas.pgfn_divida, c), hoje
+        ),
+        "entrega_das_demonstracoes": lambda c: dossie.secao_entrega_das_demonstracoes(
+            _da_raiz(entradas.rotulos_atraso, c), hoje
         ),
         "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }
@@ -618,7 +796,12 @@ def montar_setores(entradas: Entradas) -> tuple[list[SetorMontado], list[str]]:
             if membros.empty:  # nenhuma companhia da base no setor: nada a montar
                 continue
             secao = dossie.secao_setor(
-                setor, membros, entradas.series, ligacoes, entradas.grupos
+                setor,
+                membros,
+                entradas.series,
+                ligacoes,
+                entradas.grupos,
+                entradas.mercado_de_energia,
             )
         except Exception as erro:  # noqa: BLE001 (um setor não derruba a noite)
             falhas.append(f"setor {setor.chave}: {type(erro).__name__}: {erro}")

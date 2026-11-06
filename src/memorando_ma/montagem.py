@@ -404,7 +404,7 @@ def _desligado(relatorio: RelatorioDoCnpj) -> list[_Bloco]:
 def red_flags(
     relatorio: RelatorioDoCnpj, ficha: Ficha | None, dia: date
 ) -> list[_Bloco]:
-    """Os quatro cruzamentos da ficha, os ratings da seção de crédito e o que espera o parecer."""
+    """Os cruzamentos da ficha, os ratings da seção de crédito e o que espera o parecer."""
     blocos = (
         [_cruzamento(c) for c in cruzamentos.cruzamentos_da_ficha(ficha, dia)]
         if ficha

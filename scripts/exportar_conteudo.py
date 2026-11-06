@@ -7,6 +7,9 @@ Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
+
+Roda: hook do Claude Code no PC (travas.py); outro script (gerar_site.py, juntar_main.py,
+markdown_simples.py); citado em amostra_do_relatorio.py, metodologia_das_notas.py.
 """
 
 import json
@@ -39,6 +42,7 @@ from src import (
     qualidade_texto,
     regras_de_imposto,
     relatorio_semanal,
+    texto_do_pregao,
 )
 from src import autenticacao as aut
 from src import graficos_pdf as gp
@@ -55,26 +59,6 @@ RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
 # pontos do desenho do painel da página inicial (cinco anos: um ponto a cada ~4 semanas)
 PONTOS_DO_PAINEL = 64
-# a fita da página inicial: só o código (do catálogo) e um nome curto, nenhum preço
-ATIVOS_DA_FITA = (
-    ("PETR4.SA", "Petrobras"),
-    ("VALE3.SA", "Vale"),
-    ("ITUB4.SA", "Itaú Unibanco"),
-    ("WEGE3.SA", "WEG"),
-    ("BBAS3.SA", "Banco do Brasil"),
-    ("TAEE11.SA", "Taesa"),
-    ("HGLG11.SA", "Pátria Log · FII"),
-    ("IVVB11.SA", "iShares S&P 500 · ETF"),
-    ("^BVSP", "Ibovespa"),
-    ("^GSPC", "S&P 500"),
-    ("AAPL", "Apple"),
-    ("MSFT", "Microsoft"),
-    ("NVDA", "Nvidia"),
-    ("GOOGL", "Alphabet"),
-    ("BTC-USD", "Bitcoin"),
-    ("ETH-USD", "Ethereum"),
-    ("BRL=X", "Dólar em reais"),
-)
 
 
 def _modulos() -> list[dict]:
@@ -176,20 +160,10 @@ def _planos() -> dict:
 
 
 def _site() -> dict:
-    """O que só o site usa e vem do app: os estilos do Report Studio, os ativos de exemplo e a fita
-    e o total de ativos da busca da página inicial."""
-    tabela = catalogo.carregar()
+    """O que só o site usa e vem do app: os estilos do Report Studio."""
     return {
-        "total_de_ativos": len(tabela),
-        "fita": [
-            {"simbolo": s, "codigo": tabela.loc[s, "codigo"], "nome": nome}
-            for s, nome in ATIVOS_DA_FITA
-        ],
         "estilos_do_relatorio": [
             {"chave": chave, "nome": estilo.nome} for chave, estilo in ESTILOS.items()
-        ],
-        "exemplos": [
-            {"simbolo": s, "rotulo": catalogo.codigo(s)} for s in catalogo.EXEMPLOS
         ],
     }
 
@@ -393,10 +367,11 @@ def _app() -> dict[str, object]:
 
 def _catalogo() -> dict:
     """A página Dados: fontes, módulos e uma linha por tabela, tudo contado do contrato da base."""
-    catalogo = contrato.catalogo()
+    catalogo = vitrine.catalogo_publico(contrato.catalogo())
     frases = {nome: vitrine.primeira_frase(t.descricao) for nome, t in TABELAS.items()}
     fontes = vitrine.fontes_do_catalogo(catalogo)
     modulos_da_base = vitrine.modulos_do_catalogo(catalogo)
+    familias = registro.familias_para_o_site(catalogo)
     return {
         "totais": {
             "tabelas": len(catalogo["tabelas"]),
@@ -405,12 +380,21 @@ def _catalogo() -> dict:
                 f.situacao == vitrine.EM_CONSULTA for f in fontes
             ),
             "modulos": len(modulos_da_base),
+            "familias": len(familias),
+            "familias_em_uso": sum(f["uso"] == "em_uso" for f in familias),
         },
         "fontes": [asdict(f) for f in fontes],
         "registro_de_fontes": registro.para_o_site(),
+        "familias_de_fontes": familias,
         "modulos": [asdict(m) for m in modulos_da_base],
         "tabelas": [asdict(t) for t in vitrine.tabelas_do_catalogo(catalogo, frases)],
+        "ligado_pelo_cnpj": vitrine.ligado_pelo_cnpj(catalogo),
     }
+
+
+def _base() -> dict:
+    """A faixa de números da página Dados: a fotografia medida no servidor de casa, com o "medido em"."""
+    return vitrine.base_em_numeros()
 
 
 def conteudo() -> dict[str, object]:
@@ -431,8 +415,13 @@ def conteudo() -> dict[str, object]:
         "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
         "relatorio_semanal_eletricas": relatorio_semanal.para_o_site(),
+        "pregao_do_dia": texto_do_pregao.para_o_site(),
         "catalogo": _catalogo(),
+        "base": _base(),
+        "vitrine": [asdict(v) for v in vitrine.VAGAS_DA_VITRINE],
+        "fatos_da_base": vitrine.fatos_da_base(),
         "ativos": _ativos(),
+        "empresas_da_base": vitrine.empresas_da_base(),
     }
 
 

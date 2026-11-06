@@ -1,0 +1,40 @@
+# datas marcadas que fazem do pregão um dia de evento (src/eventos_do_pregao.py); só o que a fonte oficial já publicou, desde o primeiro pregão do relatório (27/10/2026); conferido em 03/11/2026
+# momento: antes_do_fechamento = o efeito é no pregão do mesmo dia; depois_do_fechamento = no pregão seguinte (o comunicado do Copom sai a partir das 18h30)
+data,evento,momento,fonte
+2026-10-28,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2026-11-04,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2026-11-06,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2026-11-12,IPCA,antes_do_fechamento,https://www.ibge.gov.br/calendario-de-divulgacao.html
+2026-12-04,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2026-12-09,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2026-12-09,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2026-12-11,IPCA,antes_do_fechamento,https://www.ibge.gov.br/calendario-de-divulgacao.html
+2027-01-08,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-01-12,IPCA,antes_do_fechamento,https://www.ibge.gov.br/calendario-de-divulgacao.html
+2027-01-27,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-01-27,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2027-02-05,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-03-05,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-03-17,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-03-17,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2027-04-02,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-04-28,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-04-28,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2027-05-07,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-06-04,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-06-09,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2027-06-16,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-07-02,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-07-28,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2027-08-04,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-08-06,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-09-03,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-09-15,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2027-09-22,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-10-08,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-10-27,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-10-27,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+2027-11-05,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-12-03,Emprego nos EUA (payroll),antes_do_fechamento,https://www.bls.gov/schedule/news_release/empsit.htm
+2027-12-08,Decisão do Copom,depois_do_fechamento,https://www.bcb.gov.br/en/monetarypolicy/committee
+2027-12-08,Decisão do Fed (FOMC),antes_do_fechamento,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm

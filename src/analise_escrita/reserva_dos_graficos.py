@@ -5,6 +5,10 @@ sobram menos de `MINIMO_DE_GRAFICOS`, a reserva completa com gráficos fixos das
 ficha de empresa costuma ter (a cascata do resultado, a ponte da dívida, os fundos com a ação), na
 ordem abaixo, pulando a tabela que esta ficha não tem e o desenho que o modelo já escolheu. A
 reserva passa na mesma porta: um gráfico dela que não serve a esta ficha também fica de fora.
+
+O relatório do setor tem a sua (a concentração, o tamanho do mercado e as empresas lado a lado):
+as tabelas dele mudam de nome com a fonte (`tamanho_aneel_consumidores`), então a reserva acha a
+tabela pela seção.
 """
 
 from dataclasses import dataclass
@@ -26,6 +30,7 @@ class _Fixo:
     titulo: str
     parte: str
     por_que: str  # sem número: a frase só diz o que o gráfico mostra
+    outra_coluna: str = ""  # a dispersão tem duas
 
 
 # a ordem é a da preferência: o que mais explica a empresa primeiro
@@ -55,12 +60,60 @@ _FIXOS = (
 )  # fmt: skip
 
 
+COLUNAS_QUE_NAO_SAO_O_VALOR = frozenset({"Ano", "Meses no ano", "Até"})
+HHI = "HHI (pontos)"  # a coluna que a seção de concentração escreve
+
+
+def _tabela_da_secao(
+    tabelas: dict[str, list[gr.LinhaDaTabela]], secao: str
+) -> str | None:
+    """O id da primeira tabela da seção (`secao.nome_da_tabela`), ou None se a ficha não a tem."""
+    return next((t for t in tabelas if t.startswith(f"{secao}.")), None)
+
+
+def _valor_do_tamanho(linhas: list[gr.LinhaDaTabela]) -> str:
+    """A coluna do tamanho do mercado: a que sobra depois do ano, dos meses e do "até"."""
+    colunas = [c for c in linhas[0].celulas if c not in COLUNAS_QUE_NAO_SAO_O_VALOR]
+    return colunas[0] if colunas else ""
+
+
+def _fixos_do_setor(tabelas: dict[str, list[gr.LinhaDaTabela]]) -> list[_Fixo]:
+    """Os desenhos fixos do relatório do setor, nas tabelas que a ficha do setor tem."""
+    fixos = []
+    if concentracao := _tabela_da_secao(tabelas, "concentracao"):
+        fixos.append(
+            _Fixo(
+                concentracao, "linha_no_tempo", "Ano", HHI,
+                "Concentração do mercado (HHI) ano a ano", "tamanho_e_concentracao",
+                "A linha mostra como o índice de concentração do mercado andou em cada ano fechado.",
+            )
+        )  # fmt: skip
+    if tamanho := _tabela_da_secao(tabelas, "tamanho"):
+        fixos.append(
+            _Fixo(
+                tamanho, "barras_no_tempo", "Ano", _valor_do_tamanho(tabelas[tamanho]),
+                "Tamanho do mercado ano a ano", "tamanho_e_concentracao",
+                "As barras mostram o tamanho do mercado em cada ano fechado.",
+            )
+        )  # fmt: skip
+    if lado_a_lado := _tabela_da_secao(tabelas, "lado_a_lado"):
+        fixos.append(
+            _Fixo(
+                lado_a_lado, "dispersao", "Companhia", "Margem líquida",
+                "Margem líquida e ROE de cada companhia aberta", "lado_a_lado",
+                "Cada ponto é uma companhia aberta: a margem líquida de um lado, o retorno sobre o patrimônio do outro.",
+                outra_coluna="ROE pelo DuPont",
+            )
+        )  # fmt: skip
+    return fixos
+
+
 def _grafico(fixo: _Fixo, primeira_linha: str) -> gr.Grafico:
     return gr.Grafico(
         tipo=fixo.tipo,
         tabela=fixo.tabela,
         eixo=fixo.eixo,
-        colunas=(fixo.coluna,),
+        colunas=tuple(c for c in (fixo.coluna, fixo.outra_coluna) if c),
         titulo=fixo.titulo,
         parte=fixo.parte,
         paragrafo=0,
@@ -74,9 +127,12 @@ def graficos_de_reserva(
 ) -> tuple[gr.Grafico, ...]:
     """Os gráficos fixos que esta ficha sustenta, já aprovados na porta 1, na ordem da preferência."""
     tabelas = gr.tabelas_da_entrada(entrada)
+    fixos = (
+        _fixos_do_setor(tabelas) if entrada.get("tipo") == saida.TIPO_SETOR else _FIXOS
+    )
     candidatos = [
         _grafico(fixo, tabelas[fixo.tabela][0].id)
-        for fixo in _FIXOS
+        for fixo in fixos
         if fixo.tabela in tabelas
     ]
     conferencia = p1g.conferir(gr.Escolha(tuple(candidatos)), entrada, analise)

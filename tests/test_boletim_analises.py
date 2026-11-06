@@ -157,6 +157,13 @@ def test_curva_hoje_ha_um_mes_e_ha_um_ano(raiz):
     assert s.numeros["inclinacao_nominal"] == pytest.approx(-0.01)
 
 
+def test_curva_cita_so_o_tesouro_como_fonte(raiz):
+    # a curva_juros da base sai só do Tesouro Direto (base/curva.py); a ANBIMA não pode ser citada como fonte
+    s = an.curva_juros(_contexto(raiz))
+    assert "Tesouro" in s.fonte
+    assert "ANBIMA" not in s.fonte.upper()
+
+
 def test_eventos_ultimos_30_dias_contra_o_ano_anterior(raiz):
     s = an.eventos(_contexto(raiz))
     assert s.numeros["ate"] == "2026-10-08"  # a janela termina no documento mais novo

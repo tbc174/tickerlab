@@ -14,8 +14,9 @@ import pytest
 
 from base import dossie as dossie_da_base
 from src import dossie
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
-EXEMPLO = dossie.FICHA_DE_EXEMPLO
+EXEMPLO = FICHA_DE_17_10
 CPFL = "02429144000193"
 
 

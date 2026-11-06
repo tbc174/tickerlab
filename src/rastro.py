@@ -11,7 +11,10 @@ calculado" em um clique e o documento original):
 - `fonte_id`: o id da coleta em `src/banco/coletas.py` ("cvm"), o mesmo que a trava de licença usa;
   `outras_fontes`, as outras que entram na conta ("yahoo", pelo preço);
 - `publicado_em`: o dia em que o insumo mais novo ficou público (a entrega à CVM, não a data do
-  balanço; o dia do fechamento, no preço), e os `documentos` usados, com o link de cada um.
+  balanço; o dia do fechamento, no preço), e os `documentos` usados, com o link de cada um;
+- `entradas`: as contas da DFP e do ITR que entram na conta, com o código e o nome na CVM, o valor
+  guardado e o documento de onde vieram (`CONTAS_DOS_INDICADORES` em `src/fundamentos.py`): só com
+  elas, quem confere refaz o número.
 
 É o subconjunto do `Rastro` do `data_model.md` que os números do relatório usam hoje. Tipos simples,
 sem Streamlit: a página, o PDF e a API leem a mesma coisa (ADR 0044).
@@ -20,6 +23,14 @@ sem Streamlit: a página, o PDF e a API leem a mesma coisa (ADR 0044).
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import date
+
+from src.demonstracoes import (
+    ACUMULADO,
+    ACUMULADO_ANTERIOR,
+    COLUNAS_DAS_ACOES,
+    EXERCICIO,
+    POSICAO,
+)
 
 FORMULA, VERSAO, FONTE, PUBLICADO_EM = (
     "fórmula",
@@ -36,6 +47,29 @@ class DocumentoUsado:
     url: str = ""  # o documento original, quando há link
 
 
+def nome_do_documento(documento: str, referencia: date, versao: int) -> str:
+    """O nome de uma demonstração da CVM como o rastro a cita: "DFP de 31/12/2025, versão 1"."""
+    return f"{documento} de {referencia:%d/%m/%Y}, versão {int(versao)}"
+
+
+@dataclass(frozen=True)
+class Entrada:
+    """Uma conta da demonstração que entra no número, com o valor guardado: só com as entradas,
+    quem confere refaz a conta (o gabarito de `tests/test_rastro.py` cobra)."""
+
+    conta: str  # o nome no TickerLab ("receita"), o mesmo de `src/demonstracoes.py`
+    codigo: (
+        str  # o código na CVM ("3.01"; com "xx" quando é a soma das linhas de um grupo)
+    )
+    nome: str  # o nome da conta na CVM ("Receita de Venda de Bens e/ou Serviços")
+    valor: float  # como na tabela de contas (em reais; ações em unidades)
+    periodo: str  # "exercicio", "posicao", "acumulado" ou "acumulado_anterior"
+    documento: str  # "DFP" ou "ITR"
+    referencia: date  # a data da demonstração
+    versao: int
+    publicado_em: date | None  # quando a CVM recebeu o documento
+
+
 @dataclass(frozen=True)
 class Rastro:
     formula: str
@@ -44,6 +78,7 @@ class Rastro:
     publicado_em: date | None
     documentos: tuple[DocumentoUsado, ...] = ()
     outras_fontes: tuple[str, ...] = ()
+    entradas: tuple[Entrada, ...] = ()  # vazia quando o número está indisponível
 
     @classmethod
     def dos_documentos(
@@ -53,6 +88,7 @@ class Rastro:
         fonte_id: str,
         documentos: Iterable[DocumentoUsado],
         outras_fontes: tuple[str, ...] = (),
+        entradas: tuple[Entrada, ...] = (),
     ) -> "Rastro":
         """O rastro com `publicado_em` tirado dos documentos (o mais recente que tem dia)."""
         documentos = tuple(documentos)
@@ -64,6 +100,7 @@ class Rastro:
             max(dias) if dias else None,
             documentos,
             outras_fontes,
+            entradas,
         )
 
     def o_que_falta(self) -> list[str]:
@@ -85,7 +122,7 @@ SEM_DIA = "dia não conhecido"
 class LinhaDoRastro:
     """Uma linha do "como foi calculado": o rótulo, o texto e o link do documento original."""
 
-    rotulo: str  # "Fórmula", "Versão do cálculo", "Fonte", "Publicado em", "Documento"
+    rotulo: str  # "Fórmula", "Versão do cálculo", "Fonte", "Publicado em", "Documento", "Conta"
     texto: str
     url: str = ""
 
@@ -106,9 +143,16 @@ def como_foi_calculado(rastro: Rastro) -> list[LinhaDoRastro]:
         LinhaDoRastro(FONTE.capitalize(), fontes),
         LinhaDoRastro(PUBLICADO_EM.capitalize(), _dia(rastro.publicado_em)),
     ]
-    return linhas + [
+    linhas += [
         LinhaDoRastro(DOCUMENTO.capitalize(), _documento(d), d.url)
         for d in rastro.documentos
+    ]
+    if not rastro.entradas:
+        return linhas
+    return [
+        *linhas,
+        LinhaDoRastro(CONTAS_USADAS.capitalize(), O_QUE_SAO_AS_CONTAS),
+        *(LinhaDoRastro(CONTA.capitalize(), _conta(e)) for e in rastro.entradas),
     ]
 
 
@@ -116,6 +160,40 @@ def _documento(documento: DocumentoUsado) -> str:
     if documento.publicado_em is None:
         return f"{documento.nome} (dia da publicação não conhecido)"
     return f"{documento.nome}, publicado em {_dia(documento.publicado_em)}"
+
+
+CONTAS_USADAS, CONTA = "contas usadas", "conta"
+O_QUE_SAO_AS_CONTAS = (
+    "as linhas da demonstração que entram no número, com o valor guardado: com elas, dá para "
+    "refazer a conta."
+)
+PERIODO_EM_TEXTO = {
+    EXERCICIO: "no exercício",
+    POSICAO: "no saldo do balanço",
+    ACUMULADO: "no acumulado do ano",
+    ACUMULADO_ANTERIOR: "no acumulado do mesmo período do ano anterior",
+}
+_EM_ACOES = {conta for conta, _ in COLUNAS_DAS_ACOES}
+_POR_ACAO = {"lpa_basico"}
+
+
+def _conta(entrada: Entrada) -> str:
+    """'Receita de Venda (código 3.01 na CVM): R$ 40.804.110.000 no exercício (DFP de ...)'."""
+    # as ações vêm de uma coluna do arquivo da composição do capital, não de um código do plano
+    tipo = "campo" if entrada.codigo[:1].isalpha() else "código"
+    documento = nome_do_documento(entrada.documento, entrada.referencia, entrada.versao)
+    return (
+        f"{entrada.nome} ({tipo} {entrada.codigo} na CVM): {_valor(entrada)} "
+        f"{PERIODO_EM_TEXTO[entrada.periodo]} ({documento})"
+    )
+
+
+def _valor(entrada: Entrada) -> str:
+    """O valor guardado: reais inteiros, ações em unidades, o lucro por ação com centavos."""
+    if entrada.conta in _POR_ACAO:
+        return f"R$ {entrada.valor:.2f} por ação".replace(".", ",")
+    inteiro = f"{entrada.valor:,.0f}".replace(",", ".")
+    return f"{inteiro} ações" if entrada.conta in _EM_ACOES else f"R$ {inteiro}"
 
 
 @dataclass(frozen=True)

@@ -14,6 +14,7 @@ from hypothesis import strategies as st
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from base.rede import ids
 from src.credito import features as fc
 from src.credito import features_da_base as fb
 from src.credito.dicionario import DA_BASE, DAS_DEMONSTRACOES, DICIONARIO
@@ -70,6 +71,28 @@ def _evento(cnpj, protocolo, rotulo, tema, publicado_em) -> dict:
             "publicado_em": pd.Timestamp(publicado_em), "link": f"https://cvm/{protocolo}"}  # fmt: skip
 
 
+def _entidade(cnpj, natureza, pessoa) -> tuple[dict, dict]:
+    """A entidade da rede e o identificador da raiz do CNPJ, públicos antes de qualquer retrato."""
+    id_entidade = ids.id_entidade("empresa", "cnpj_raiz", cnpj[:8])
+    publico = pd.Timestamp("2024-12-31")
+    return (
+        {"id_entidade": id_entidade, "tipo": "empresa", "nome": "X", "natureza_juridica": natureza,
+         "natureza_fonte": "receita", "mei": pessoa, "trata_como_pessoa": pessoa, "publico_em": publico},
+        {"id_entidade": id_entidade, "sistema": "cnpj_raiz", "valor": cnpj[:8], "desde": publico,
+         "publico_em": publico},
+    )  # fmt: skip
+
+
+def _scr(data_base, secao, ativa, inadimplencia, uf, cliente="PJ") -> dict:
+    """Uma linha do SCR; o BC publica a data-base 60 dias depois (`disponivel_em`)."""
+    base = pd.Timestamp(data_base)
+    return {"data_base": base, "uf": uf, "segmento": "Banco", "cliente": cliente,
+            "cnae_ocupacao": secao, "porte": "Médio", "modalidade": "Capital de giro",
+            "submodalidade": "x", "origem": "Livres", "indexador": "Pós-fixado",
+            "carteira_ativa": ativa, "carteira_inadimplencia": inadimplencia,
+            "disponivel_em": base + pd.Timedelta(days=60)}  # fmt: skip
+
+
 PGFN = [
     _pgfn(
         EMPRESA, "2026-06-30", "2026-07-23", ajuizado=True, inscricoes=2, valor=1000.0
@@ -100,15 +123,37 @@ EVENTOS = [
     _evento(EMPRESA, "E4", "Comunicado ao mercado", "eventos", "2026-06-01"),
     _evento(OUTRA, "E5", "Comunicado ao mercado", "eventos", "2026-06-01"),
 ]
+SECAO = "Construção"
+SCR = [
+    _scr("2026-03-31", SECAO, 1000.0, 50.0, "SP"),
+    _scr("2026-03-31", SECAO, 3000.0, 150.0, "RJ"),  # outra UF, mesma seção: soma
+    _scr(
+        "2026-03-31", SECAO, 999.0, 999.0, "SP", cliente="PF"
+    ),  # pessoa física não entra
+    _scr("2026-03-31", "Educação", 500.0, 400.0, "SP"),
+    _scr("2026-04-30", SECAO, 5000.0, 500.0, "SP"),
+    _scr("2026-04-30", "Educação", 500.0, 400.0, "SP"),
+    _scr("2026-05-31", SECAO, 6000.0, 1800.0, "SP"),
+]
+# a rede diz quem é pessoa (a MEI, natureza 213-5); a NOVA não consta nela
+REDE = [_entidade(EMPRESA, "2046", pessoa=False), _entidade(MEI, "2135", pessoa=True)]
+ENTIDADES = [entidade for entidade, _ in REDE]
+IDENTIFICADORES = [identificador for _, identificador in REDE]
 TABELAS = {
+    "scr_credito": SCR,
     "pgfn_divida": PGFN,
+    "entidades": ENTIDADES,
+    "identificadores": IDENTIFICADORES,
     "cnpj_situacao_especial": SITUACAO,
     "insolvencia": INSOLVENCIA,
     "eventos": EVENTOS,
 }
 # o dia em que cada tabela fica pública (a PGFN e a Receita valem pelo último dia do mês)
 PUBLICO_EM = {
+    "scr_credito": lambda linha: linha["disponivel_em"],
     "pgfn_divida": lambda linha: linha["disponivel_em"] + pd.offsets.MonthEnd(0),
+    "entidades": lambda linha: linha["publico_em"],
+    "identificadores": lambda linha: linha["publico_em"],
     "cnpj_situacao_especial": lambda linha: (
         linha["disponivel_em"] + pd.offsets.MonthEnd(0)
     ),
@@ -117,10 +162,16 @@ PUBLICO_EM = {
 }
 
 
-def _porta(pasta, corte: date | None = None, sem: tuple[str, ...] = ()) -> Porta:
-    """A porta com as tabelas acima (com `corte`, só o que era público até ele)."""
+def _porta(
+    pasta,
+    corte: date | None = None,
+    sem: tuple[str, ...] = (),
+    trocas: dict[str, list[dict]] | None = None,
+) -> Porta:
+    """A porta com as tabelas acima (com `corte`, só o que era público até ele; `trocas` põe outras
+    linhas no lugar das de uma tabela)."""
     extras = {}
-    for nome, linhas in TABELAS.items():
+    for nome, linhas in {**TABELAS, **(trocas or {})}.items():
         if nome in sem:
             continue
         tabela = pd.DataFrame(linhas)
@@ -175,6 +226,8 @@ def test_empresa_fora_do_retrato_tem_zero_e_antes_do_retrato_nao_observado(porta
 
 
 def test_mei_nao_sai_da_base(porta):
+    """A porta esconde as linhas da MEI na PGFN (ADR 0075) e as `entidades` dizem que o CNPJ é pessoa:
+    a feature fica não observada, em vez de um zero falso."""
     f = _da_base(porta, MEI, date(2026, 11, 1))
     for chave in (
         "divida_ativa_da_uniao",
@@ -182,6 +235,45 @@ def test_mei_nao_sai_da_base(porta):
         "inscricoes_em_divida_ativa",
     ):
         assert f[chave].valor is None and f[chave].motivo == fb.COMO_PESSOA
+
+
+def test_a_porta_nao_entrega_a_linha_da_mei(porta):
+    """O que a feature lê da PGFN nunca traz a MEI: a view da porta já a esconde."""
+    linhas = porta.ler("pgfn_divida", como_era_em=date(2026, 11, 1))
+    assert not linhas["trata_como_pessoa"].fillna(False).astype(bool).any()
+    assert _formatado(MEI) not in set(linhas["cnpj"])
+
+
+def test_sem_a_rede_na_base_a_empresa_segue_com_os_numeros(tmp_path):
+    with _porta(tmp_path, sem=("entidades", "identificadores")) as p:
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor == 3000.0
+        and f["divida_ativa_da_uniao"].motivo == ""
+    )
+
+
+def test_identificador_que_leva_a_uma_pessoa_na_rede_e_pessoa(tmp_path):
+    """Se a raiz do CNPJ leva a uma entidade de pessoa (id `P...`, só da vista interna), as features
+    ficam não observadas sem nem abrir a `entidades`."""
+    da_pessoa = {**IDENTIFICADORES[0], "id_entidade": ids.PREFIXO_DE_PESSOA + "1" * 20}
+    with _porta(tmp_path, trocas={"identificadores": [da_pessoa]}) as p:
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor is None
+        and f["divida_ativa_da_uniao"].motivo == fb.COMO_PESSOA
+    )
+
+
+def test_identificador_sem_a_entidade_na_rede_segue_como_empresa(tmp_path):
+    """O identificador existe, mas a entidade não está na base: nada diz que é pessoa, e a porta já
+    esconde as linhas de pessoa da PGFN, então os números seguem."""
+    with _porta(tmp_path, trocas={"entidades": [ENTIDADES[1]]}) as p:  # só a da MEI
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor == 3000.0
+        and f["divida_ativa_da_uniao"].motivo == ""
+    )
 
 
 # --- situação especial na Receita -----------------------------------------------------------------
@@ -295,4 +387,78 @@ def test_cortar_o_futuro_nao_muda_o_passado(pasta, dia, dias_a_mais, cnpj):
     ):
         features = fb.features_da_base(completa, cnpj, dia)
         assert fb.features_da_base(cortada, cnpj, dia) == features
+    fc.conferir_ponto_no_tempo(features, dia)
+
+
+# --- SCR: a inadimplência do setor da empresa -----------------------------------------------------
+def _scr_do_dia(porta, dia, secao=SECAO) -> dict[str, fc.Feature]:
+    return {f.chave: f for f in fb.features_da_base(porta, EMPRESA, dia, secao)}
+
+
+def test_scr_usa_o_mes_mais_novo_que_ja_era_publico_no_dia(porta):
+    # 2026-03-31 vira público em 30/05; 2026-04-30 em 29/06; 2026-05-31 em 30/07
+    antes = _scr_do_dia(porta, date(2026, 5, 29))
+    assert (
+        antes["inadimplencia_do_setor_no_scr"].valor is None
+    )  # nenhum mês público ainda
+    assert antes["inadimplencia_do_setor_no_scr"].motivo == fb.SEM_MES_DO_SCR
+
+    marco = _scr_do_dia(porta, date(2026, 6, 28))
+    assert marco["inadimplencia_do_setor_no_scr"].valor == pytest.approx(200 / 4000)
+    assert marco["carteira_do_setor_no_scr"].valor == 4000.0
+    assert marco["inadimplencia_do_setor_no_scr"].disponivel_em == date(2026, 5, 30)
+    assert "31/03/2026" in marco["inadimplencia_do_setor_no_scr"].periodo
+
+    abril = _scr_do_dia(porta, date(2026, 6, 29))  # o dia da publicação já vale
+    assert abril["inadimplencia_do_setor_no_scr"].valor == pytest.approx(0.1)
+    assert abril["carteira_do_setor_no_scr"].disponivel_em == date(2026, 6, 29)
+
+    maio = _scr_do_dia(porta, date(2026, 7, 30))
+    assert maio["inadimplencia_do_setor_no_scr"].valor == pytest.approx(0.3)
+
+
+def test_scr_so_conta_pessoa_juridica_da_secao(porta):
+    f = _scr_do_dia(porta, date(2026, 6, 28), "Educação")
+    assert f["inadimplencia_do_setor_no_scr"].valor == pytest.approx(0.8)
+
+
+def test_scr_sem_a_secao_da_empresa_fica_nao_observado(porta):
+    f = _scr_do_dia(porta, date(2026, 7, 30), None)
+    for chave in ("inadimplencia_do_setor_no_scr", "carteira_do_setor_no_scr"):
+        assert f[chave].valor is None and f[chave].motivo == fb.SEM_A_SECAO
+
+
+def test_scr_secao_sem_carteira_no_mes_nao_inventa_zero(porta):
+    f = _scr_do_dia(porta, date(2026, 7, 30), "Serviços domésticos")
+    assert f["inadimplencia_do_setor_no_scr"].valor is None
+    assert f["inadimplencia_do_setor_no_scr"].motivo == fb.SEM_MES_DO_SCR
+
+
+def test_scr_tabela_fora_da_base(tmp_path):
+    with _porta(tmp_path, sem=("scr_credito",)) as p:
+        f = _scr_do_dia(p, date(2026, 7, 30))
+    assert f["carteira_do_setor_no_scr"].motivo == fb.SEM_A_TABELA.format(
+        tabela="scr_credito"
+    )
+
+
+def test_scr_carteira_zero_nao_divide(tmp_path):
+    linhas = [_scr("2026-03-31", SECAO, 0.0, 0.0, "SP")]
+    extras = {"scr_credito": pd.DataFrame(linhas)}
+    with Porta(tmp_path, arquivos={}, conferidas={}, extras=extras) as p:
+        f = _scr_do_dia(p, date(2026, 7, 30))
+    assert f["inadimplencia_do_setor_no_scr"].valor is None
+    assert "ativa" in f["inadimplencia_do_setor_no_scr"].motivo.lower()
+    assert f["carteira_do_setor_no_scr"].valor == 0.0
+
+
+@settings(max_examples=40, deadline=None)
+@given(st.dates(date(2026, 1, 1), date(2027, 1, 31)), st.integers(0, 400))
+def test_scr_cortar_o_futuro_nao_muda_o_passado(pasta, dia, dias_a_mais):
+    with (
+        _porta(pasta) as completa,
+        _porta(pasta, dia + timedelta(days=dias_a_mais)) as cortada,
+    ):
+        features = fb.features_da_base(completa, EMPRESA, dia, SECAO)
+        assert fb.features_da_base(cortada, EMPRESA, dia, SECAO) == features
     fc.conferir_ponto_no_tempo(features, dia)

@@ -12,8 +12,8 @@ Fontes (ADR 0102: coleta com ritmo, uso citando a fonte; ADR 0088: **só pessoa 
   itens que são gente (Q5). Um pedido por vez, com o agente do TickerLab;
 - **SEC `company_tickers.json`** (domínio público): ticker → CIK de quem arquiva na SEC;
 - **sanções** (só **entidades**, nunca pessoas): OFAC SDN (`sdn.csv`), a lista consolidada da União
-  Europeia (CSV com o token público do próprio site) e a ConList do OFSI (OGL v3). A lista da ONU fica
-  de fora (termos pessoais, não comerciais).
+  Europeia (CSV com o token público do próprio site) e a UK Sanctions List do FCDO, que substituiu a
+  ConList do OFSI (OGL v3). A lista da ONU fica de fora (termos pessoais, não comerciais).
 
 Fora daqui, de propósito: OpenSanctions, Open Ownership, ICIJ, ONU, OpenCorporates, OpenFIGI, EU BRIS e
 Companies House (licença não comercial, pessoas físicas ou agregador pago; `licencas-por-fonte.md`).
@@ -93,13 +93,14 @@ UE_SANCOES = (
 )
 COLUNA_DO_TIPO_NA_UE = "Entity_SubjectType_ClassificationCode"
 TIPO_DE_EMPRESA_NA_UE = "enterprise"
-OFSI_CONLIST = (
-    "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv"
-)
-COLUNA_DO_TIPO_NO_OFSI = "Group Type"
-TIPO_DE_ENTIDADE_NO_OFSI = "Entity"
-# a ConList começa com uma linha "Last Updated,data" antes do cabeçalho
-LINHAS_ANTES_DO_CABECALHO_DO_OFSI = 1
+# a ConList do OFSI (`ofsistorage.blob.core.windows.net/.../ConList.csv`) saiu do ar (409 em
+# 28/10/2026): as designações do OFSI estão na UK Sanctions List do FCDO, também OGL v3. A fonte
+# segue com o id `ofsi-conlist` (o catálogo e a licença são os mesmos)
+SANCOES_DO_REINO_UNIDO = "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.csv"
+COLUNA_DO_TIPO_NO_REINO_UNIDO = "Designation Type"
+TIPO_DE_ENTIDADE_NO_REINO_UNIDO = "Entity"  # "Individual" e "Ship" saem
+# a lista começa com uma linha "Report Date: data" antes do cabeçalho
+LINHAS_ANTES_DO_CABECALHO_DO_REINO_UNIDO = 1
 
 
 # ---- filtros de LGPD (arquivo para arquivo) --------------------------------------------------
@@ -169,25 +170,27 @@ def sancoes_da_ue_so_com_empresas(bruto: Path, destino: Path) -> None:
     )
 
 
-def conlist_do_ofsi_so_com_entidades(bruto: Path, destino: Path) -> None:
-    """A ConList do OFSI só com o grupo "Entity" (indivíduo e navio saem)."""
+def sancoes_do_reino_unido_so_com_entidades(bruto: Path, destino: Path) -> None:
+    """A UK Sanctions List só com as linhas "Entity" (indivíduo e navio saem)."""
     posicao: list[int] = []
 
     def achar_coluna(cabecalho: list[str]) -> None:
-        if COLUNA_DO_TIPO_NO_OFSI not in cabecalho:
+        if COLUNA_DO_TIPO_NO_REINO_UNIDO not in cabecalho:
             raise ErroDeDescoberta(
-                f"ConList do OFSI sem a coluna {COLUNA_DO_TIPO_NO_OFSI} (formato mudou)"
+                f"lista do Reino Unido sem a coluna {COLUNA_DO_TIPO_NO_REINO_UNIDO} "
+                "(formato mudou)"
             )
-        posicao.append(cabecalho.index(COLUNA_DO_TIPO_NO_OFSI))
+        posicao.append(cabecalho.index(COLUNA_DO_TIPO_NO_REINO_UNIDO))
 
     _csv_filtrado(
         bruto,
         destino,
         lambda linha: (
-            len(linha) > posicao[0] and linha[posicao[0]] == TIPO_DE_ENTIDADE_NO_OFSI
+            len(linha) > posicao[0]
+            and linha[posicao[0]] == TIPO_DE_ENTIDADE_NO_REINO_UNIDO
         ),
         codificacao="utf-8-sig",
-        linhas_de_cabecalho=LINHAS_ANTES_DO_CABECALHO_DO_OFSI + 1,
+        linhas_de_cabecalho=LINHAS_ANTES_DO_CABECALHO_DO_REINO_UNIDO + 1,
         cabecalho=achar_coluna,
     )
 
@@ -373,7 +376,9 @@ def fontes() -> list[Fonte]:
         Fonte(
             "ofsi-conlist",
             "diaria",
-            _csv_de_sancoes(OFSI_CONLIST, conlist_do_ofsi_so_com_entidades),
+            _csv_de_sancoes(
+                SANCOES_DO_REINO_UNIDO, sancoes_do_reino_unido_so_com_entidades
+            ),
             "arquivo",
             pausa_minima=pausa,
         ),

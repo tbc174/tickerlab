@@ -3,8 +3,14 @@ conta, o texto cita fonte e data, e o que a base não tem aparece dito."""
 
 import json
 import re
+from io import BytesIO
 
+from pypdf import PdfReader
+
+from src import apresentacao
 from src import relatorio_semanal as semanal
+from src import relatorio_semanal_arquivos as arquivos
+from src.enderecos_das_fontes import enderecos_da_fonte
 
 
 def _retrato() -> dict:
@@ -88,3 +94,79 @@ def test_os_limites_dizem_o_que_ficou_de_fora():
     limites = " ".join(semanal.para_o_site()["limites"])
     for nome in ("AXIA Energia", "AES Elpa", "CEB"):
         assert nome in limites
+
+
+# --- os arquivos para levar: PDF e deck da página pública (fila 600) -----------------------------
+
+
+def test_a_pagina_aponta_para_os_tres_arquivos():
+    pagina = semanal.para_o_site()
+    assert set(pagina["arquivos"]) == {"pdf", "apresentacao_pdf", "apresentacao_pptx"}
+    assert all(c.startswith("/relatorio/") for c in pagina["arquivos"].values())
+
+
+def test_o_pdf_e_o_deck_tem_os_numeros_da_pagina_e_os_limites():
+    pagina = semanal.para_o_site()
+    momento = semanal.gerado_em_do_retrato()
+    deck = apresentacao.do_relatorio_semanal(pagina, momento)
+    texto = " ".join(deck.textos())
+    maior = pagina["tabelas"][0]["linhas"][0]
+    assert maior[0] in texto and maior[1] in texto
+    assert pagina["destaques"][0]["fonte"] in texto
+    assert deck.slides[-1].titulo.startswith("Limites e cuidados")
+    assert "Limites e cuidados" in {s.titulo.split(" (")[0] for s in deck.slides}
+
+
+def test_os_tres_arquivos_abrem_e_o_pdf_tem_limites_e_cuidados():
+    pagina = semanal.para_o_site()
+    momento = semanal.gerado_em_do_retrato()
+    pdf = arquivos.relatorio_em_pdf(pagina, momento)
+    deck_pdf = arquivos.apresentacao_em_pdf_do_relatorio(pagina, momento)
+    deck_pptx = arquivos.apresentacao_em_pptx_do_relatorio(pagina, momento)
+    assert pdf.startswith(b"%PDF") and deck_pdf.startswith(b"%PDF")
+    assert deck_pptx.startswith(b"PK")  # o .pptx é um zip
+    texto = " ".join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages)
+    assert "Limites e cuidados" in texto
+    assert pagina["tabelas"][0]["linhas"][0][0] in texto
+    assert "Limites e cuidados" in " ".join(
+        p.extract_text() for p in PdfReader(BytesIO(deck_pdf)).pages
+    )
+
+
+def test_os_arquivos_nao_mudam_a_cada_geracao():
+    pagina = semanal.para_o_site()
+    momento = semanal.gerado_em_do_retrato()
+    assert arquivos.relatorio_em_pdf(pagina, momento) == arquivos.relatorio_em_pdf(
+        pagina, momento
+    )
+
+
+def test_o_pptx_nao_muda_com_o_relogio():
+    import time
+
+    pagina = semanal.para_o_site()
+    momento = semanal.gerado_em_do_retrato()
+    primeiro = arquivos.apresentacao_em_pptx_do_relatorio(pagina, momento)
+    time.sleep(2)
+    assert primeiro == arquivos.apresentacao_em_pptx_do_relatorio(pagina, momento)
+
+
+def test_o_rodape_cita_as_fontes_do_setor_e_nao_o_yahoo():
+    """Linha 602: o rodapé padrão do site dizia "Os dados vêm do Yahoo Finance" no relatório do setor,
+    cujos dados são da ANEEL e da CVM. O rodapé sai das fontes dos próprios destaques."""
+    pagina = semanal.para_o_site()
+    rodape = pagina["aviso_rodape"]
+    fontes = " ".join(d["fonte"] for d in pagina["destaques"])
+    assert "Yahoo" not in fontes
+    assert "Yahoo" not in rodape
+    assert "Nada aqui é recomendação de investimento" in rodape
+    for orgao, endereco in enderecos_da_fonte(fontes):
+        assert orgao in rodape and endereco in rodape
+    assert "ANEEL" in rodape and "dados.cvm.gov.br" in rodape
+
+
+def test_o_rodape_cita_o_yahoo_so_se_uma_fonte_usa_dado_dele(monkeypatch):
+    monkeypatch.setattr(
+        semanal, "FONTES_DOS_DADOS", ("Yahoo Finance, preços de fechamento",)
+    )
+    assert "Yahoo Finance" in semanal.para_o_site()["aviso_rodape"]

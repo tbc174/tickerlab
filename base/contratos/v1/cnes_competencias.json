@@ -1,0 +1,60 @@
+{
+  "tabela": "cnes_competencias",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Competência olhada, no formato AAAAMM",
+      "unidade": "número inteiro"
+    },
+    "linhas": {
+      "descricao": "Quantos estabelecimentos a fonte devolveu na competência",
+      "unidade": "número inteiro"
+    },
+    "situacao": {
+      "descricao": "`com_dados` ou `vazia`. `vazia` é a fonte ainda não ter publicado a competência: nunca significa que não há estabelecimentos",
+      "unidade": "texto"
+    },
+    "coletado_em": {
+      "descricao": "Dia em que a competência foi vista pela primeira vez com essa situação",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "competencia"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "coletado_em"
+  },
+  "sinonimos_de_tempo": {
+    "competencia": "referencia",
+    "coletado_em": "coletado_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CNES do Ministério da Saúde: sem licença escrita; a confirmar, só interno (ADR 0102)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": false,
+  "frequencia": "Mensal (a coleta olha as competências mais recentes; as já gravadas não mudam sem dado novo)",
+  "atraso": "A API não diz quando publicou cada competência (o FTP publica por volta do dia 15 do mês seguinte): a competência vale desde o dia em que a coleta a viu, e a última com dado fica 1 a 3 meses atrás"
+}

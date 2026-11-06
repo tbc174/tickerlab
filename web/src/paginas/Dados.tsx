@@ -2,9 +2,18 @@
 // Nenhum número é digitado aqui: tabelas, fontes e módulos vêm de `catalogo` (ADRs 0048, 0065 e 0099).
 // A comparação com qualquer outra base é só pelo rigor: linhagem, "como era na data", licença por
 // tabela e explicação recolhida. Nada aqui é recomendação de investimento.
-import { type FonteDaBase, type RegistroDeFonte, type TabelaDaBase, catalogo } from "../conteudo";
+import {
+  type FamiliaDeFonte,
+  type FonteDaBase,
+  type RegistroDeFonte,
+  type TabelaDaBase,
+  baseEmNumeros,
+  catalogo,
+} from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
+import { ConsultaDaBase, enderecoDaConsulta } from "../site/ConsultaDaBase";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
+import { REGRAS_DA_BASE } from "../site/textos";
 
 export const DADOS = {
   caminho: "/dados.html",
@@ -13,6 +22,7 @@ export const DADOS = {
     "A base do TickerLab: cada tabela com a fonte, a licença e a data em que o dado ficou público, " +
     "para quem analisa empresas no Brasil.",
   atual: "/dados.html",
+  ferramenta: true, // o ferramentas.js liga o painel de consulta (site/ConsultaDaBase.tsx)
 };
 
 const SECOES = [
@@ -20,31 +30,9 @@ const SECOES = [
   "Quatro regras que valem para toda tabela",
   "O que há na base",
   "De onde vêm os dados",
-  "Cada fonte que coletamos, uma a uma",
+  "Todas as fontes que temos, uma a uma",
   "O que ainda não está na base",
   "Como auditar um número",
-];
-
-const REGRAS: [string, string][] = [
-  [
-    "Como era na data",
-    "Guardamos o que estava público em cada dia, não só o valor de hoje. Uma consulta a uma data " +
-      "nunca enxerga o que só ficou público depois dela.",
-  ],
-  [
-    "Linhagem",
-    "Cada tabela diz de qual fonte vem, qual versão do contrato a descreve e desde quando há histórico.",
-  ],
-  [
-    "Licença por tabela",
-    "Cada tabela leva a licença da sua fonte e diz o que pode ser repassado. Onde ainda não há " +
-      "resposta escrita da fonte, a página avisa.",
-  ],
-  [
-    "Explicação",
-    "O que cada dado é e como foi calculado vem escrito em português e recolhido: quem quer " +
-      "conferir abre, quem só quer o resultado não é atrapalhado.",
-  ],
 ];
 
 const MARCAS: Record<RegistroDeFonte["marca"], string> = {
@@ -62,6 +50,15 @@ const RITMOS: Record<RegistroDeFonte["ritmo"], string> = {
 };
 
 const SEM_RESPOSTA = "licença em consulta";
+// tabela que a consulta aberta ainda não serve (fora da porta ou conferida no repositório)
+const SEM_CONSULTA = "Ainda sem consulta aberta: esta tabela aparece pela ficha no app.";
+// a coluna, a frase e o painel da consulta nascem escondidos e só aparecem quando a API responde
+// (`mostrarSeAConsultaResponde`, ligada pelo ferramentas.js): sem ela, a página não promete a consulta
+const COM_CONSULTA = { "data-com-consulta": "", hidden: true } as const;
+const FRASE_DA_CONSULTA =
+  '"Consulta" mostra as primeiras linhas da tabela aqui mesmo, sem login; "CSV" baixa a mesma consulta, ' +
+  "cada linha com a fonte, a licença e o dia em que ficou pública, até o teto de linhas da API (o painel " +
+  "mostra quanto); se a tabela tiver mais, a última linha do arquivo avisa.";
 
 function dataPorExtenso(iso: string): string {
   const [ano, mes, dia] = iso.split("-");
@@ -99,6 +96,20 @@ function LinhaDaTabela({ t }: { t: TabelaDaBase }) {
         ) : null}
       </td>
       <td>{dataPorExtenso(t.historico_desde)}</td>
+      <td className="dados-consulta" {...COM_CONSULTA}>
+        {t.consultavel ? (
+          <>
+            <button type="button" className="dados-consultar" data-consultar={t.tabela}>
+              Consultar
+            </button>{" "}
+            <a href={enderecoDaConsulta(t.tabela, "", "csv")}>CSV</a>
+          </>
+        ) : (
+          <span className="dados-frase" title={SEM_CONSULTA}>
+            só no app
+          </span>
+        )}
+      </td>
     </tr>
   );
 }
@@ -118,6 +129,7 @@ function TabelasDoModulo({ chave, nome }: { chave: string; nome: string }) {
               <th>Fonte</th>
               <th>Atualização</th>
               <th>Desde</th>
+              <th {...COM_CONSULTA}>Consulta</th>
             </tr>
           </thead>
           <tbody>
@@ -148,17 +160,99 @@ function CartaoDaFonte({ f }: { f: FonteDaBase }) {
   );
 }
 
-function LinhaDaFonte({ r }: { r: RegistroDeFonte }) {
+const USOS: Record<FamiliaDeFonte["uso"], string> = {
+  em_uso: "Em uso",
+  guardada: "Guardada",
+};
+
+const FILTROS_DE_USO: [string, string][] = [
+  ["todas", "Todas"],
+  ["em_uso", "Em uso"],
+  ["guardada", "Guardadas"],
+];
+
+const ritmoDaColeta = new Map(catalogo.registro_de_fontes.map((r) => [r.id, RITMOS[r.ritmo]]));
+
+/** Em uso primeiro; dentro de cada grupo, pelo nome do órgão. */
+function naOrdemDaPagina(familias: FamiliaDeFonte[]): FamiliaDeFonte[] {
+  return [...familias].sort(
+    (a, b) =>
+      Number(a.uso !== "em_uso") - Number(b.uso !== "em_uso") ||
+      a.orgao.localeCompare(b.orgao, "pt-BR"),
+  );
+}
+
+function ColetasDaFamilia({ f }: { f: FamiliaDeFonte }) {
+  if (f.coletas.length === 0) {
+    return <span className="dados-frase">Lida direto da fonte, fora do acervo</span>;
+  }
+  const rotulo = f.coletas.length === 1 ? "ver a coleta" : `ver as ${f.coletas.length} coletas`;
   return (
-    <tr>
+    <details className="dados-coletas">
+      <summary>{rotulo}</summary>
+      <ul>
+        {f.coletas.map((id) => (
+          <li key={id}>
+            <code>{id}</code> <span className="dados-frase">{ritmoDaColeta.get(id)}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function LinhaDaFamilia({ f }: { f: FamiliaDeFonte }) {
+  return (
+    <tr data-uso-da-fonte={f.uso}>
       <td>
-        <code>{r.id}</code>
+        {f.link ? (
+          <a href={f.link} rel="noopener" target="_blank">
+            {f.orgao}
+          </a>
+        ) : (
+          f.orgao
+        )}
+        <br />
+        <ColetasDaFamilia f={f} />
       </td>
-      <td>{r.licenca}</td>
-      <td>{MARCAS[r.marca]}</td>
-      <td>{RITMOS[r.ritmo]}</td>
-      <td>{r.termos_lidos_em ? dataPorExtenso(r.termos_lidos_em) : "Termos ainda não lidos"}</td>
+      <td>{USOS[f.uso]}</td>
+      <td>{MARCAS[f.marca]}</td>
+      <td>
+        {f.licencas.map((l) => (
+          <span key={l} className="dados-licenca">
+            {l}
+          </span>
+        ))}
+      </td>
+      <td>{f.termos_lidos_em ? dataPorExtenso(f.termos_lidos_em) : "Termos ainda não lidos"}</td>
     </tr>
+  );
+}
+
+const milhares = (n: number) => n.toLocaleString("pt-BR");
+
+/** Os números da base, medidos de verdade e com a data da medição ao lado. */
+function NumerosDaBase() {
+  const { numeros: n, medido_em_curto } = baseEmNumeros;
+  const itens: [number, string][] = [
+    [n.empresas, "companhias com demonstrações"],
+    [n.linhas_de_demonstracoes, "linhas de demonstrações"],
+    [n.versoes, "linhas reapresentadas (versão 2 em diante)"],
+    [n.eventos, "eventos e comunicados"],
+    [n.originais_com_hash, "arquivos originais com SHA-256 guardado"],
+  ];
+  return (
+    <>
+      <dl className="grade dados-numeros" data-numeros-da-base="">
+        {itens.map(([valor, rotulo]) => (
+          <div key={rotulo} className="cartao">
+            <dt>{milhares(valor)}</dt>
+            <dd>{rotulo}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="dados-frase">{`Medido em ${medido_em_curto}.`}</p>
+    </>
   );
 }
 
@@ -176,6 +270,7 @@ export function Dados() {
       <p className="dados-resumo">
         {`${totais.tabelas} tabelas, de ${totais.fontes} fontes públicas, em ${totais.modulos} módulos.`}
       </p>
+      <NumerosDaBase />
       <p>
         Toda tabela tem um contrato: quem cuida dela, a versão, as chaves, as datas, a licença e a
         frequência de atualização. A lista abaixo é gerada desse contrato; tabela ou fonte nova
@@ -184,7 +279,7 @@ export function Dados() {
 
       <h2 id={ancora(SECOES[1])}>{SECOES[1]}</h2>
       <div className="grade dados-regras">
-        {REGRAS.map(([titulo, texto]) => (
+        {REGRAS_DA_BASE.map(([titulo, texto]) => (
           <article key={titulo} className="cartao">
             <h3>{titulo}</h3>
             <p>{texto}</p>
@@ -196,6 +291,7 @@ export function Dados() {
       <p>
         {`As ${totais.tabelas} tabelas em ${totais.modulos} módulos. "Desde" é o começo do histórico guardado; "atualização" é a frequência com que a fonte publica.`}
       </p>
+      <p {...COM_CONSULTA}>{FRASE_DA_CONSULTA}</p>
       <p>
         <input
           type="search"
@@ -212,6 +308,11 @@ export function Dados() {
       {modulos.map((m) => (
         <TabelasDoModulo key={m.chave} chave={m.chave} nome={m.nome} />
       ))}
+      <div {...COM_CONSULTA}>
+        <div data-consulta-base="">
+          <ConsultaDaBase />
+        </div>
+      </div>
 
       <h2 id={ancora(SECOES[3])}>{SECOES[3]}</h2>
       <p>
@@ -225,30 +326,57 @@ export function Dados() {
 
       <h2 id={ancora(SECOES[4])}>{SECOES[4]}</h2>
       <p>
-        Para cada uma mostramos a licença que ela publica, se o dado pode ser repassado (a marca),
-        com que frequência coletamos e o dia em que lemos os termos dela pela última vez. "Termos
-        ainda não lidos" significa exatamente isso: ainda não anotamos a leitura. Marca "a
-        confirmar" quer dizer que não há resposta escrita da fonte sobre uso comercial; até lá,
-        tratamos como não comercial. Isto não é parecer jurídico.
+        Temos <strong>{`${totais.familias} fontes públicas`}</strong>
+        {`: ${totais.familias_em_uso} já chegam a uma tela, a um relatório, à ficha ou à API, e ${totais.familias - totais.familias_em_uso} estão guardadas no nosso acervo, com o arquivo original e a data da coleta, esperando o dia em que viram tabela. Para cada uma mostramos o órgão que a publica, a licença que ela mesma escreve, se o dado pode ser repassado e o dia em que lemos os termos dela pela última vez.`}
       </p>
-      <div className="tabela">
+      <p>
+        <strong>Em uso</strong> quer dizer que algum número do TickerLab sai dela.{" "}
+        <strong>Guardada</strong> quer dizer que coletamos e guardamos, mas ainda não mostramos nada
+        dela. <strong>A confirmar</strong> quer dizer que a fonte não respondeu por escrito sobre
+        uso comercial; até a resposta, tratamos como não comercial. <strong>Não comercial</strong>{" "}
+        e <strong>só uso interno</strong> são fontes que usamos para conferir ou pesquisar, sem
+        repassar o dado.
+      </p>
+      <p>
+        Os preços das ações vêm do Yahoo Finance, cujos termos são de uso pessoal: mostramos com a
+        fonte citada enquanto a base própria de preços, feita com os arquivos da B3, não fica
+        pronta.
+      </p>
+      <div
+        className="dados-filtro-uso"
+        role="group"
+        aria-label="Mostrar fontes"
+        data-filtro-uso=""
+        hidden
+      >
+        {FILTROS_DE_USO.map(([uso, rotulo], i) => (
+          <button key={uso} type="button" data-uso={uso} aria-pressed={i === 0 ? "true" : "false"}>
+            {rotulo}
+          </button>
+        ))}
+      </div>
+      <div className="tabela dados-familias">
         <table>
           <thead>
             <tr>
-              <th>Fonte</th>
+              <th>Órgão</th>
+              <th>Uso</th>
+              <th>Pode repassar?</th>
               <th>Licença</th>
-              <th>Marca</th>
-              <th>Coleta</th>
               <th>Termos lidos em</th>
             </tr>
           </thead>
           <tbody>
-            {catalogo.registro_de_fontes.map((r) => (
-              <LinhaDaFonte key={r.id} r={r} />
+            {naOrdemDaPagina(catalogo.familias_de_fontes).map((f) => (
+              <LinhaDaFamilia key={f.familia} f={f} />
             ))}
           </tbody>
         </table>
       </div>
+      <p className="dados-frase">
+        Isto não é parecer jurídico. A lista sai do código do TickerLab e muda sozinha quando entra
+        fonte nova.
+      </p>
 
       <h2 id={ancora(SECOES[5])}>{SECOES[5]}</h2>
       <ul>

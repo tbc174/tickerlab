@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from trader.validacao import CPCV, bootstrap_diferenca_de_sharpe
+from trader.validacao import CPCV, bootstrap_diferenca_de_sharpe, bootstrap_do_sharpe
 
 
 @pytest.fixture
@@ -134,3 +134,23 @@ def test_bootstrap_usa_so_datas_em_comum_e_e_reproduzivel():
     assert r1 == r2 and r1["dias"] == 2000
     with pytest.raises(ValueError, match="Poucos dias"):
         bootstrap_diferenca_de_sharpe(a.iloc[:10], b.iloc[:10])
+
+
+# --- bootstrap de um Sharpe só (régua sem excesso, como o CDI) -----------------------------
+
+
+def test_bootstrap_do_sharpe_ve_sinal_forte_e_e_reproduzivel():
+    bom = _ruido(4000, 0.0010, 8)
+    r1 = bootstrap_do_sharpe(bom, sorteios=400, semente=3)
+    r2 = bootstrap_do_sharpe(bom, sorteios=400, semente=3)
+    assert r1 == r2
+    assert r1["ic90_inferior"] > 0
+    assert r1["ic90_inferior"] < r1["sharpe"] < r1["ic90_superior"]
+    assert r1["dias"] == 4000 and r1["sorteios"] == 400
+
+
+def test_bootstrap_do_sharpe_nao_aprova_ruido():
+    r = bootstrap_do_sharpe(_ruido(3000, 0.0, 9), sorteios=400)
+    assert r["ic90_inferior"] < 0 < r["ic90_superior"]
+    with pytest.raises(ValueError, match="Poucos dias"):
+        bootstrap_do_sharpe(_ruido(10, 0.0, 9))

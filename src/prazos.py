@@ -28,7 +28,8 @@ FONTE_PRAZO = "cvm_prazo"
 MESES_DO_DFP = 3
 MESES_DO_DFP_ESTRANGEIRO = 4
 DIAS_DO_ITR = 45
-ATRASO_GRAVE = 30  # dias: acima disso o alerta pesa mais
+ATRASO_GRAVE = 30  # dias corridos: acima disso o alerta pesa mais
+ZONA_CINZENTA = 2  # dias úteis: atraso até aqui pode ser só um feriado local
 NOMES = {"DFP": "DFP (anual)", "ITR": "ITR (trimestral)"}
 COLUNAS = [
     "protocolo", "versao", "cnpj", "empresa", "categoria", "tipo", "assunto", "rotulo", "tema",

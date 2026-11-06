@@ -22,7 +22,9 @@ from src import versao_do_codigo as vc
 from src.banco.coletas import registrar
 from src.banco.conexao import criar_engine, migrar_para
 
-RECORTE = (Path(__file__).parent / "arquivos" / "fre" / "fre_t3_2024.zip").read_bytes()
+RECORTE_SEM_DISTRIBUICAO = (
+    Path(__file__).parent / "arquivos" / "fre" / "fre_t3_2024.zip"
+).read_bytes()
 URL_DO_FRE = (
     "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/fre_cia_aberta_2024.zip"
 )
@@ -34,6 +36,7 @@ LEITORES = {
     "fre_capital_social": governanca.ler_capital_social,
     "fre_empregados": governanca.ler_empregados,
     "fre_acionistas": governanca.ler_acionistas,
+    "fre_distribuicao_capital": governanca.ler_distribuicao_capital,
     "fre_partes_relacionadas": governanca.ler_partes_relacionadas,
 }
 ACIONISTAS = "fre_cia_aberta_posicao_acionaria_2024.csv"
@@ -92,6 +95,55 @@ def _ate(corte: str) -> bytes:
     cabecalho, linhas = _csv(RECORTE, PRINCIPAL)
     entrega = cabecalho.index("DT_RECEB")
     return _trocar(RECORTE, PRINCIPAL, [c for c in linhas if c[entrega] <= corte])
+
+
+DISTRIBUICAO = "fre_cia_aberta_distribuicao_capital_2024.csv"
+CABECALHO_DA_DISTRIBUICAO = (
+    "CNPJ_Companhia;Data_Referencia;Versao;ID_Documento;Nome_Companhia;"
+    "Quantidade_Acionistas_PF;Quantidade_Acionistas_PJ;"
+    "Quantidade_Acionistas_Investidores_Institucionais;"
+    "Quantidade_Acoes_Ordinarias_Circulacao;Percentual_Acoes_Ordinarias_Circulacao;"
+    "Quantidade_Acoes_Preferenciais_Circulacao;Percentual_Acoes_Preferenciais_Circulacao;"
+    "Quantidade_Total_Acoes_Circulacao;Percentual_Total_Acoes_Circulacao;"
+    "Data_Ultima_Assembleia"
+)
+# números inventados, um por versão do recorte (Lifemed v1 e v2, Petrobras v27 e v28, Estrela)
+NUMEROS_DA_DISTRIBUICAO = {
+    "138502": "100;5;2;900000;35.0;0;0.0;900000;35.0;2024-04-10",
+    "144295": "120;6;3;1000000;38.8;0;0.0;1000000;38.8;2024-04-10",
+    "147358": "500000;900;300;2000000000;30.5;3000000000;60.1;5000000000;45.3;2024-04-25",
+    "148031": "510000;910;310;2100000000;31.5;3100000000;61.2;5200000000;46.4;2024-04-25",
+    "146667": "40;3;1;800000;29.7;1600000;29.7;2400000;29.7;2024-04-22",
+}
+
+
+def _com_distribuicao(conteudo_do_zip: bytes) -> bytes:
+    """O recorte do FRE com o CSV da distribuição do capital (15.7), que o recorte real não traz."""
+    linhas = [CABECALHO_DA_DISTRIBUICAO]
+    for id_documento, numeros in NUMEROS_DA_DISTRIBUICAO.items():
+        doc = _documento_de(conteudo_do_zip, id_documento)
+        linhas.append(f"{doc[0]};{doc[1]};{doc[2]};{id_documento};Empresa;{numeros}")
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as original:
+        arquivos = {n: original.read(n) for n in original.namelist()}
+    arquivos[DISTRIBUICAO] = ("\r\n".join(linhas) + "\r\n").encode("latin-1")
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as novo:
+        for n, conteudo in arquivos.items():
+            novo.writestr(n, conteudo)
+    return saida.getvalue()
+
+
+def _documento_de(conteudo_do_zip: bytes, id_documento: str) -> tuple[str, str, str]:
+    cabecalho, linhas = _csv(conteudo_do_zip, PRINCIPAL)
+    campos = next(c for c in linhas if c[cabecalho.index("ID_DOC")] == id_documento)
+    return (
+        campos[cabecalho.index("CNPJ_CIA")],
+        campos[cabecalho.index("DT_REFER")],
+        campos[cabecalho.index("VERSAO")],
+    )
+
+
+RECORTE = _com_distribuicao(RECORTE_SEM_DISTRIBUICAO)
 
 
 # --- capital social ---------------------------------------------------------------------------------
@@ -357,6 +409,42 @@ def test_parte_pessoa_sem_tipo_e_cpf_no_documento_sao_somadas():
     assert empresa["cnpj_contraparte"] == "11.222.333/0001-81"
     assert empresa["taxa_de_juros"] == pytest.approx(3.5)
     assert empresa["emprestimo"]
+
+
+# --- distribuição do capital (free float) ------------------------------------------------------------
+def test_distribuicao_traz_o_free_float_por_especie_e_os_acionistas_por_tipo():
+    tabela = governanca.ler_distribuicao_capital(RECORTE)
+    assert list(tabela.columns) == list(governanca.COLUNAS_DA_DISTRIBUICAO)
+    petrobras = tabela[tabela["id_documento"] == PETROBRAS].iloc[0]
+    assert petrobras["percentual_total"] == pytest.approx(46.4)
+    assert petrobras["percentual_ordinarias"] == pytest.approx(31.5)
+    assert petrobras["circulacao_total"] == 5_200_000_000
+    assert petrobras["acionistas_pf"] == 510_000
+    assert petrobras["acionistas_institucionais"] == 310
+    assert petrobras["ultima_assembleia_em"] == pd.Timestamp("2024-04-25")
+    assert petrobras["conhecido_em"] == pd.Timestamp("2025-05-19")
+
+
+def test_distribuicao_guarda_as_duas_versoes_com_a_entrega_de_cada_uma():
+    tabela = governanca.ler_distribuicao_capital(RECORTE)
+    lifemed = tabela[tabela["cnpj"] == "02.357.251/0001-53"].sort_values("versao")
+    assert list(lifemed["versao"]) == [1, 2]
+    assert list(lifemed["percentual_total"]) == [35.0, 38.8]
+    assert list(lifemed["conhecido_em"]) == [
+        pd.Timestamp("2024-05-31"),
+        pd.Timestamp("2025-01-15"),
+    ]
+
+
+def test_distribuicao_sem_o_arquivo_da_vazio_com_as_colunas():
+    tabela = governanca.ler_distribuicao_capital(RECORTE_SEM_DISTRIBUICAO)
+    assert tabela.empty
+    assert list(tabela.columns) == list(governanca.COLUNAS_DA_DISTRIBUICAO)
+
+
+def test_distribuicao_so_com_numero_de_acionistas_nao_leva_nome_nem_documento():
+    colunas = set(governanca.ler_distribuicao_capital(RECORTE).columns)
+    assert not colunas & {"nome", "nome_companhia", "cpf", "documento"}
 
 
 # --- regras de toda tabela --------------------------------------------------------------------------

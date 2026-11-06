@@ -111,9 +111,13 @@ python -m scripts.ancorar_base carimbar /ancoras/prereg-m2-v0.4.json
   foi feita naquele dia. Ancorar cedo e sempre é o que dá valor.
 - **Não prova que o dado está certo:** prova que não mudou depois. A qualidade continua sendo o
   critério de pronto da ADR 0027.
-- **Exploradores:** o `conferir` confia em dois exploradores públicos que precisam concordar. Quem
-  tiver um nó do Bitcoin pode conferir sem confiar em ninguém (`ots verify`, ou o nó de casa num PR
-  seguinte).
+- **Nó do Bitcoin e exploradores:** o `conferir` pergunta a raiz e a hora do bloco primeiro ao **nó
+  do Bitcoin de casa** (`getblockhash` + `getblockheader`, que o nó podado guarda), sem confiar em
+  ninguém. O nó é ligado por duas variáveis de ambiente: `BITCOIN_COOKIE` (arquivo do cookie do RPC,
+  o mesmo da coleta de cripto) e `BITCOIN_RPC_ENDERECO` (padrão `http://127.0.0.1:8332`); o cookie é
+  segredo e fica só no servidor. Sem `BITCOIN_COOKIE`, ou se o nó não responde (10 s) ou não conhece a
+  altura, o `conferir` avisa no log e usa dois exploradores públicos (`mempool.space` e
+  `blockstream.info`), que precisam concordar. Quem tiver um nó também pode conferir com o `ots verify`.
 - **Windows:** o programa `ots` oficial não abre (a `python-bitcoinlib` procura o OpenSSL por
   `ctypes`); por isso o script usa a biblioteca `opentimestamps` direto. Acentos trocados no
   terminal: `$env:PYTHONIOENCODING = "utf-8"`.

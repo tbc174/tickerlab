@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from src import (
     analises,
+    beta,
     busca_por_cnpj,
     catalogo,
     dossie,
@@ -754,6 +755,23 @@ class LinhaDoRastroV1(BaseModel):
     url: str  # o documento original ("" quando não há link)
 
 
+class EntradaDoNumeroV1(BaseModel):
+    """Uma conta da demonstração que entra no número (`src/rastro.py`, `Entrada`): só com as
+    entradas, quem confere refaz a conta."""
+
+    conta: str  # o nome no TickerLab ("receita")
+    codigo: (
+        str  # o código na CVM ("3.01"; com "xx" quando é a soma das linhas de um grupo)
+    )
+    nome: str  # o nome da conta na CVM
+    valor: float  # em reais (ações em unidades)
+    periodo: str  # "exercicio", "posicao", "acumulado" ou "acumulado_anterior"
+    documento: str  # "DFP" ou "ITR"
+    referencia: date  # a data da demonstração
+    versao: int
+    publicado_em: date | None  # quando a CVM recebeu o documento
+
+
 class RastroDoNumeroV1(BaseModel):
     """Como o número foi calculado e de onde veio (`src/rastro.py`): a conta, a versão dela, a
     fonte (o id da coleta, com a licença) e quando o insumo mais novo ficou público."""
@@ -764,6 +782,7 @@ class RastroDoNumeroV1(BaseModel):
     publicado_em: date | None
     documentos: list[DocumentoUsadoV1]
     outras_fontes: list[str]  # ["yahoo"] nos números que usam o preço
+    entradas: list[EntradaDoNumeroV1] = []  # vazia no número indisponível
     linhas: list[
         LinhaDoRastroV1
     ] = []  # o "como foi calculado" já escrito, como na página
@@ -893,6 +912,7 @@ class GraficoDaAnaliseV1(BaseModel):
     origem: str  # "modelo" (escolhido pela IA) ou "regras" (a reserva)
     pontos: PontosDoGraficoV1
     escala: EscalaDoGraficoV1
+    secao: str = ""  # no relatório do setor: a seção em cujo fim o gráfico entra
 
 
 class DestaqueDaAnaliseV1(BaseModel):
@@ -947,7 +967,7 @@ def _tabela_do_relatorio(chave: str, linhas: list[dict]) -> TabelaDoRelatorioV1:
         titulo=_titulo_da_tabela(chave),
         colunas=[relatorio_empresa.rotulo_da_coluna(c) for c in colunas],
         linhas=[
-            [relatorio_empresa.escrever_celula(linha.get(c)) for c in colunas]
+            [relatorio_empresa.escrever_celula(linha.get(c), c) for c in colunas]
             for linha in linhas
         ],
     )
@@ -971,11 +991,13 @@ def de_relatorio_da_empresa(
 class BuscaPorCnpjV1(BaseModel):
     """O relatório do CNPJ (molde B): as seções no formato do relatório da empresa."""
 
-    situacao: str  # "encontrada" ou "fora_da_base_aberta"
+    situacao: str  # "encontrada", "cadastro_da_receita" (sem ficha na CVM) ou "fora_da_base_aberta"
     cnpj: str
     empresa: str
     tickers: list[str]
-    como_era_em: date | None  # o dia da ficha da noite
+    como_era_em: (
+        date | None
+    )  # o dia da ficha da noite ou da publicação do cadastro da Receita
     secoes: list[SecaoDoRelatorioV1]
     fontes: list[str]
     limites: list[str]
@@ -1057,6 +1079,8 @@ class RelatorioDoSetorV1(BaseModel):
     fontes: list[str]
     limites: list[str]
     avisos: list[str]
+    # escolhidos para o setor, cada um no fim da seção `secao`; vazia sem seção com tabela
+    graficos: list[GraficoDaAnaliseV1] = []
 
 
 def _tabela_ja_escrita(chave: str, linhas: list[dict[str, str]]) -> TabelaDoRelatorioV1:
@@ -1466,3 +1490,33 @@ class PainelDoCafeV1(BaseModel):
 def de_painel_do_cafe(painel: painel_do_cafe.PainelDoCafe) -> PainelDoCafeV1:
     """O painel montado no formato da API (os campos têm os mesmos nomes das dataclasses)."""
     return PainelDoCafeV1.model_validate(painel_do_cafe.em_dicionario(painel))
+
+
+class PassoDoBetaV1(BaseModel):
+    ordem: int
+    minutos: int
+    titulo: str
+    o_que_fazer: str
+    url: str  # o endereço da página no app, sem a barra
+
+
+class BoasVindasDoBetaV1(BaseModel):
+    """A página de boas-vindas do beta: o texto e o roteiro dos 10 minutos (src/beta.py)."""
+
+    titulo: str
+    texto_de_boas_vindas: str
+    sobre_o_beta: str
+    como_responder: str
+    total_de_minutos: int
+    roteiro: list[PassoDoBetaV1]
+
+
+def de_boas_vindas_do_beta() -> BoasVindasDoBetaV1:
+    return BoasVindasDoBetaV1(
+        titulo=beta.TITULO,
+        texto_de_boas_vindas=beta.ABERTURA,
+        sobre_o_beta=beta.SOBRE_O_BETA,
+        como_responder=beta.COMO_RESPONDER,
+        total_de_minutos=beta.TOTAL_DE_MINUTOS,
+        roteiro=[PassoDoBetaV1(**asdict(passo)) for passo in beta.ROTEIRO],
+    )

@@ -322,6 +322,25 @@ def test_hash_em_pedacos_e_o_mesmo_da_tabela_inteira(monkeypatch):
     )
 
 
+def test_guardar_versao_anterior_nao_deixa_a_tabela_sem_parquet(
+    tabela, tmp_path, monkeypatch
+):
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "cda" / "2025"
+    gravar_tabela(tabela, destino, ORIGENS, ["cnpj", "ano"])
+    original = destino.with_suffix(".parquet").read_bytes()
+    manifesto = destino.with_suffix(".json").read_bytes()
+
+    versao = parquet.guardar_versao_anterior(destino)
+
+    # a vigente segue no lugar, legível, até a troca atômica da nova
+    assert destino.with_suffix(".parquet").read_bytes() == original
+    assert conferir_tabela(destino.with_suffix(".parquet"))
+    # e a versão guardada é igual ao original
+    assert versao.with_name(versao.name + ".parquet").read_bytes() == original
+    assert versao.with_name(versao.name + ".json").read_bytes() == manifesto
+
+
 # --- lápide: oposição ou eliminação atendida regrava as versões sem a pessoa (plano, D7) ---------
 PESSOA, OUTRA = "P" + "1" * 20, "P" + "2" * 20
 EMPRESA_A, EMPRESA_B = "E" + "a" * 20, "E" + "b" * 20
@@ -378,3 +397,34 @@ def test_sem_lapide_nada_muda(tmp_path, monkeypatch):
     assert parquet.regravar_por_lapide(destino, {"P" + "9" * 20}, "2026-10-16") == []
     assert parquet.regravar_por_lapide(destino, set(), "2026-10-16") == []
     assert {p.name: p.read_bytes() for p in destino.parent.iterdir()} == antes
+
+
+def test_gravar_atomico_duas_threads_na_mesma_tabela(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    destino = tmp_path / "t.parquet"
+    barreira = Barrier(2)
+
+    def escritor(valor: int) -> None:
+        def gravar(caminho):
+            pd.DataFrame({"x": [valor]}).to_parquet(caminho, index=False)
+            barreira.wait(timeout=10)  # as duas já têm o temporário aberto
+
+        parquet.gravar_atomico(destino, gravar)
+
+    with ThreadPoolExecutor(2) as pool:
+        for futuro in [pool.submit(escritor, 1), pool.submit(escritor, 2)]:
+            futuro.result()
+    assert pd.read_parquet(destino)["x"].iloc[0] in (1, 2)
+    assert not list(tmp_path.glob("*.parcial"))
+
+
+def test_gravar_atomico_apaga_o_temporario_se_a_gravacao_falha(tmp_path):
+    def gravar(caminho):
+        caminho.write_bytes(b"pela metade")
+        raise OSError("disco cheio")
+
+    with pytest.raises(OSError):
+        parquet.gravar_atomico(tmp_path / "t.parquet", gravar)
+    assert not list(tmp_path.iterdir())

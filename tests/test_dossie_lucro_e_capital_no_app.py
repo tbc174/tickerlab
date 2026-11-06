@@ -50,6 +50,7 @@ def secoes(tmp_path_factory: pytest.TempPathFactory) -> dict[str, re_.Secao]:
 def test_as_secoes_novas_chegam_ao_app_com_todas_as_tabelas(secoes) -> None:
     assert set(secoes) == set(NOVAS)
     assert set(secoes["qualidade_do_lucro"].tabelas) == {
+        "lucro_por_exercicio",
         "reapresentacoes",
         "releases_diferentes",
         "releases_por_classe",

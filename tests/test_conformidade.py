@@ -413,6 +413,14 @@ def test_apagar_conta_remove_tudo_da_pessoa_e_so_dela(conexao, ana, bia):
     assert len(repo.listar_simulacoes(conexao, bia.id)) == 1  # a da Bia continua
 
 
+def test_apagar_conta_apaga_a_origem_do_cadastro_e_so_a_dela(conexao, ana, bia):
+    origens.gravar_origem(conexao, ana.id, Origem(source="linkedin", ref="liga-ibmec"))
+    origens.gravar_origem(conexao, bia.id, Origem(source="instagram"))
+    assert conformidade.apagar_conta(conexao, ana.id) is True
+    assert origens.buscar_origem(conexao, ana.id) is None
+    assert origens.buscar_origem(conexao, bia.id) == Origem(source="instagram")
+
+
 def test_apagar_deixa_so_um_registro_sem_dado_pessoal(conexao, ana):
     conformidade.registrar_aceite(conexao, ana.id)  # a auditoria dela aponta para ela
     conformidade.apagar_conta(conexao, ana.id)

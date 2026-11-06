@@ -20,10 +20,13 @@ import sqlalchemy as sa
 from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src import cruzamentos, dossie, fundamentalista, fundamentos
+from src.analise_escrita.exibicao_do_setor import graficos_do_setor
+from src.analise_escrita.modelo_da_tela import GraficoDaTela
 from src.banco.demonstracoes import dados_da_empresa
 from src.banco.modelo import setores_cvm, tickers_dos_emissores
 from src.contestacao import com_a_contestacao
 from src.dossie import Ficha
+from src.enderecos_das_fontes import fonte_com_endereco
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.relatorio_empresa import (
     AINDA_SEM_DADO,
@@ -37,6 +40,7 @@ from src.relatorio_empresa import (
     Dossie,
     Item,
     Secao,
+    com_enderecos_das_fontes,
     data_do_dossie,
     escrever,
     para_json,
@@ -194,9 +198,10 @@ _DAS_ELETRICAS = (
     _tem("energia_vendida", "Energia vendida e mercado faturado", _E, "aneel_samp"),
     _tem("geracao_por_usina", "Geração por usina", _E, "ons_geracao"),
     _parcial("perdas", "Perdas de energia", _E, "aneel_samp", "só o que a SAMP dá"),
-    _falta("pld_cmo", "PLD e CMO", _E, _da_serie("T6")),
-    _falta("curtailment", "Curtailment", _E, _da_serie("T6")),
-    _falta("capacidade", "Capacidade instalada", _E, _da_serie("T6")),
+    _tem("pld", "PLD", _E, "ccee_pld", "pld_mensal"),
+    _falta("cmo", "CMO", _E, _da_serie("T6")),
+    _tem("curtailment", "Curtailment", _E, "ons_restricao", "curtailment_mensal"),
+    _tem("capacidade", "Capacidade instalada", _E, "ons_capacidade", "capacidade_por_tipo"),
     _falta("gsf", "GSF", _E, _da_serie("S8")),
     _falta("ena_ear", "ENA e EAR", _E, _da_serie("S8")),
     _falta("dec_fec", "DEC e FEC", _E, _da_serie("S8")),
@@ -489,17 +494,27 @@ def _nome_curto(medida: str) -> str:
     return medida[:1].lower() + medida[1:]
 
 
-def _mais_nova(linhas: list[dict[str, Any]]) -> dict[str, Any]:
-    return max(linhas, key=lambda linha: linha["ano"])
+def _ano_de_referencia(linhas: list[dict[str, Any]]) -> dict[str, Any]:
+    """A linha do último ano completo (12 meses); sem nenhum, a mais nova. O ano pela metade tem
+    menos meses e, às vezes, menos participantes: não é o retrato do setor no ano."""
+    completas = [l for l in linhas if l["meses"] == MESES_DO_ANO_COMPLETO]
+    return max(completas or linhas, key=lambda linha: linha["ano"])
+
+
+def _ano_escrito(linha: Mapping[str, Any]) -> str:
+    """ "2025"; o ano pela metade leva os meses ("2026 (só 8 meses, até ago/2026)")."""
+    if linha["meses"] == MESES_DO_ANO_COMPLETO:
+        return str(linha["ano"])
+    return f"{linha['ano']} (só {linha['meses']} meses, até {dossie.mes(linha['ultimo_mes'])})"
 
 
 def _frase_do_hhi(nome: str, concentracao: list[dict[str, Any]]) -> Frase | None:
     if not concentracao:
         return None
-    linha = _mais_nova(concentracao)
+    linha = _ano_de_referencia(concentracao)
     medida = _nome_curto(dossie.SERIES_DO_SETOR[nome].medida)
     texto = (
-        f"Em {linha['ano']}, o HHI de {medida} foi de {dossie.inteiro(linha['hhi'])} pontos, "
+        f"Em {_ano_escrito(linha)}, o HHI de {medida} foi de {dossie.inteiro(linha['hhi'])} pontos, "
         f"na faixa {linha['faixa']} do Guia H do CADE"
     )
     delta = linha.get("delta_hhi")
@@ -517,24 +532,26 @@ def _frase_do_hhi(nome: str, concentracao: list[dict[str, Any]]) -> Frase | None
 def _frase_da_cr4(nome: str, concentracao: list[dict[str, Any]]) -> Frase | None:
     if not concentracao:
         return None
-    linha = _mais_nova(concentracao)
+    linha = _ano_de_referencia(concentracao)
     medida = _nome_curto(dossie.SERIES_DO_SETOR[nome].medida)
     texto = (
         f"Os 4 maiores participantes somaram {dossie.fracao(linha['cr4'])} de {medida} em "
-        f"{linha['ano']}, entre {dossie.inteiro(linha['participantes'])} participantes."
+        f"{_ano_escrito(linha)}, entre {dossie.inteiro(linha['participantes'])} participantes."
     )
     return Frase(texto, (f"cr4_{nome}", f"concentracao_{nome}/{linha['ano']}"))
 
 
 def _do_ano(
     participacao: list[dict[str, Any]], nome: str
-) -> tuple[int, list[dict[str, Any]]]:
-    """O ano mais recente da série na participação e as linhas dele."""
+) -> tuple[str, list[dict[str, Any]]]:
+    """O ano de referência da série na participação (escrito) e as linhas dele: o último ano
+    completo; sem nenhum, o mais novo."""
     da_serie = [l for l in participacao if l["serie"] == nome]
     if not da_serie:
-        return 0, []
-    ano = max(l["ano"] for l in da_serie)
-    return ano, [l for l in da_serie if l["ano"] == ano]
+        return "", []
+    ano = _ano_de_referencia(da_serie)["ano"]
+    linhas = [l for l in da_serie if l["ano"] == ano]
+    return _ano_escrito(linhas[0]), linhas
 
 
 def _id_da_participacao(linha: Mapping[str, Any]) -> str:
@@ -651,6 +668,7 @@ TITULOS = {
     "tamanho": "Tamanho do setor",
     "concentracao": "Concentração",
     "participacao": "Participação de cada companhia aberta",
+    "mercado_de_energia": "Mercado de energia",
     "lado_a_lado": "Empresas lado a lado",
     "cruzamentos": "Cruzamentos",
     "o_que_os_dados_mostram": "O que os dados mostram",
@@ -664,6 +682,7 @@ DA_BASE = frozenset(
         "tamanho",
         "concentracao",
         "participacao",
+        "mercado_de_energia",
         "lado_a_lado",
         "cruzamentos",
         "o_que_os_dados_mostram",
@@ -739,6 +758,8 @@ class RelatorioDoSetor:
     fontes: list[str]
     limites: list[str]
     avisos: list[str] = field(default_factory=list)
+    # os gráficos escolhidos para este setor (plano de 23/10/2026, PR 4); entram no fim da seção
+    graficos: tuple[GraficoDaTela, ...] = ()
 
     def como_dict(self) -> dict:
         return para_json(asdict(self))  # type: ignore[return-value]
@@ -814,11 +835,12 @@ def _secao_do_tamanho(e: EntradasDoSetor, noite: dossie.SecaoDoSetor) -> Secao:
         colunas = [c for c in dossie.colunas_da_tabela(f"concentracao_{nome}") or [] if c[0] in ("ano", "total", "meses", "ultimo_mes")]  # fmt: skip
         if linhas:
             tabelas[f"tamanho_{nome}"] = dossie.escrever_linhas(colunas, linhas)
+    avisos = [p for p in noite.secao.paragrafos if p.startswith(dossie_da_base.MARCA_DO_ANO_PARCIAL)]  # fmt: skip
     return Secao(
         "tamanho",
         TITULOS["tamanho"],
         _itens(noite, "mercado_", e.setor.series),
-        _fontes_da_noite(noite),
+        [*avisos, *_fontes_da_noite(noite)],
         tabelas,
     )
 
@@ -855,6 +877,66 @@ def _secao_da_participacao(e: EntradasDoSetor, noite: dossie.SecaoDoSetor) -> Se
     )
 
 
+TABELAS_DO_MERCADO_DE_ENERGIA = (
+    "pld_mensal",
+    "curtailment_mensal",
+    "capacidade_por_tipo",
+)
+ITENS_DO_MERCADO_DE_ENERGIA = (
+    "pld_mensal",
+    "curtailment_mensal",
+    "capacidade_instalada",
+)
+SOBRE_O_MERCADO_DE_ENERGIA = (
+    "PLD, curtailment e capacidade são de um mercado, não de uma companhia: valem para o setor "
+    "inteiro, não para a empresa que você abriu. O CMO ainda não está na base."
+)
+
+
+def _secao_do_mercado_de_energia(noite: dossie.SecaoDoSetor) -> Secao | None:
+    """PLD, energia eólica e solar não gerada por ordem do operador e capacidade em operação; só as
+    elétricas têm (None: a noite não trouxe nenhuma das tabelas)."""
+    tabelas = {
+        chave: dossie.escrever_linhas(dossie.colunas_da_tabela(chave) or [], linhas)
+        for chave in TABELAS_DO_MERCADO_DE_ENERGIA
+        if (linhas := noite.secao.tabelas.get(chave))
+    }
+    if not tabelas:
+        return None
+    itens = [noite.itens[c] for c in ITENS_DO_MERCADO_DE_ENERGIA if c in noite.itens]
+    return Secao(
+        "mercado_de_energia",
+        TITULOS["mercado_de_energia"],
+        itens,
+        [SOBRE_O_MERCADO_DE_ENERGIA, *_fontes_da_noite(noite)],
+        tabelas,
+    )
+
+
+def _aviso_de_quem_ficou_de_fora(
+    membros: list[Membro], participacao: list[dict[str, Any]]
+) -> list[str]:
+    """Quem tem parte do mercado na base e não está no lado a lado (sem ticker, não é membro): o
+    "N" da frase da parte do mercado e o dos membros não são o mesmo número."""
+    dos_membros = {m.cnpj for m in membros}
+    de_fora = {
+        _so_digitos(str(l["cnpj"])): str(l["empresa"])
+        for l in participacao
+        if _so_digitos(str(l["cnpj"])) not in dos_membros
+    }
+    if not de_fora:
+        return []
+    com_parte = {_so_digitos(str(l["cnpj"])) for l in participacao}
+    quantas = "1 está" if len(de_fora) == 1 else f"{len(de_fora)} estão"
+    nomes = ", ".join(sorted(de_fora.values()))
+    texto = (
+        f"{len(com_parte)} têm parte do mercado na base e {quantas} fora desta tabela por não "
+        f"terem ticker na base: {nomes}. A parte do mercado delas entra nas somas da participação "
+        "e nas frases acima, não nas linhas daqui."
+    )
+    return [texto]
+
+
 def _secao_do_lado_a_lado(e: EntradasDoSetor) -> Secao:
     noite = e.da_noite
     participacao = (
@@ -874,7 +956,11 @@ def _secao_do_lado_a_lado(e: EntradasDoSetor) -> Secao:
         "lado_a_lado",
         TITULOS["lado_a_lado"],
         [],
-        [SOBRE_O_LADO_A_LADO, *fontes],
+        [
+            SOBRE_O_LADO_A_LADO,
+            *_aviso_de_quem_ficou_de_fora(e.membros, participacao),
+            *fontes,
+        ],
         tabelas,
     )
 
@@ -921,11 +1007,11 @@ def _secao_do_que_nao_temos(faltas: list[FaltaNoSetor]) -> Secao:
     )
 
 
-def _secao_da_metodologia() -> Secao:
+def _secao_da_metodologia(chave: str) -> Secao:
     return Secao(
         "metodologia",
         TITULOS["metodologia"],
-        paragrafos=[dossie_da_base.LIMITES["setor"]],
+        paragrafos=[dossie_da_base.metodologia_do_setor(chave)],
         recolhida=True,
     )
 
@@ -933,10 +1019,12 @@ def _secao_da_metodologia() -> Secao:
 def _secoes_da_noite(e: EntradasDoSetor) -> list[Secao]:
     if e.da_noite is None:
         return []
+    mercado = _secao_do_mercado_de_energia(e.da_noite)
     return [
         _secao_do_tamanho(e, e.da_noite),
         _secao_da_concentracao(e, e.da_noite),
         _secao_da_participacao(e, e.da_noite),
+        *([mercado] if mercado else []),
     ]
 
 
@@ -970,7 +1058,7 @@ def montar_relatorio_do_setor(
         _secao_dos_cruzamentos(e, hoje),
         _secao_das_frases(frases),
         _secao_do_que_nao_temos(faltas),
-        _secao_da_metodologia(),
+        _secao_da_metodologia(e.setor.chave),
     ]
     motivo = motivo_sem_acesso(plano, DOSSIE_DA_BASE)
     if motivo is None and noite is not None:
@@ -986,10 +1074,10 @@ def montar_relatorio_do_setor(
         nome=e.setor.nome,
         como_era_em=noite.dia if noite else None,
         membros=e.membros,
-        secoes=secoes,
+        secoes=com_enderecos_das_fontes(secoes),
         frases=frases,
         nao_temos=faltas,
-        fontes=list(dict.fromkeys(fontes)),
+        fontes=list(dict.fromkeys(fonte_com_endereco(f) for f in fontes)),
         limites=com_a_contestacao(list(LIMITES_DO_SETOR)),
         avisos=[] if noite else [SEM_A_NOITE],
     )
@@ -1038,7 +1126,10 @@ def relatorio_do_setor(
 ) -> RelatorioDoSetor:
     """O relatório do setor para o plano de quem pede; `SetorDesconhecidoError` fora da lista."""
     entradas = entradas_do_setor(conexao, chave, pasta)
-    return montar_relatorio_do_setor(entradas, plano, hoje or datetime.now(FUSO).date())
+    hoje = hoje or datetime.now(FUSO).date()
+    relatorio = montar_relatorio_do_setor(entradas, plano, hoje)
+    graficos = graficos_do_setor(relatorio.como_dict(), hoje)
+    return replace(relatorio, graficos=graficos)
 
 
 @dataclass(frozen=True)

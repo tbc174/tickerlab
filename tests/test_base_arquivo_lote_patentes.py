@@ -93,7 +93,7 @@ def test_toda_fonte_do_lote_tem_licenca_marca_data_e_destino():
 def test_as_tres_familias_estao_representadas_com_a_marca_de_cada_uma():
     assert {f.id.split("-", 1)[0] for f in lote.fontes()} == FAMILIAS
     esperada = {
-        "inpi": Marca.A_CONFIRMAR,
+        "inpi": Marca.VENDAVEL,  # risco assumido (ADR 0122)
         "epo": Marca.VENDAVEL,
         "wipo": Marca.USO_INTERNO,
     }

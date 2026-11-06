@@ -445,9 +445,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Data:** 14/10/2026 (PR #226)
 
 ## SSH pelo nome do Tailscale: "Host key verification failed"
-- **Sintoma:** fora da rede de casa, `ssh granserver@servidor.<tailnet>.ts.net` recusava com "Host key verification failed", apesar de ser o mesmo servidor.
-- **Causa:** o `known_hosts` guarda a chave pelo IP da rede de casa (`192.168.15.5`); o nome do Tailscale é outro nome para o mesmo servidor e não está lá.
-- **Solução:** `ssh -o HostKeyAlias=192.168.15.5 granserver@servidor.<tailnet>.ts.net` (confere a mesma chave, sem aceitar uma nova às cegas).
+- **Sintoma:** fora da rede de casa, `ssh <usuario>@servidor.<tailnet>.ts.net` recusava com "Host key verification failed", apesar de ser o mesmo servidor.
+- **Causa:** o `known_hosts` guarda a chave pelo IP da rede de casa (`<ip-da-rede-de-casa>`); o nome do Tailscale é outro nome para o mesmo servidor e não está lá.
+- **Solução:** `ssh -o HostKeyAlias=<ip-da-rede-de-casa> <usuario>@servidor.<tailnet>.ts.net` (confere a mesma chave, sem aceitar uma nova às cegas).
 - **Data:** 14/10/2026
 
 ## Sessão SSH presa ao disparar uma carga longa com `setsid ... &`
@@ -657,3 +657,22 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o `~/bin/boletim-da-base.sh` tirava as tarefas diárias com `grep '^TAREFAS='` do `conferir-tarefas-casa.sh`. Desde o D1 do painel das coletas (21/10), esse arquivo lê o `estado.json` do vigia e não tem mais essa linha. Com `set -euo pipefail`, o `grep` vazio encerra o script antes de qualquer `echo`.
 - **Solução:** o script lê as diárias (prazo de até 26 h) do `~/painel-das-coletas/estado.json` e, se a lista vier vazia, sai com uma linha `FALHAS:`. A cópia antiga ficou em `~/bin/boletim-da-base.sh.antes-diarias-20261024`. Regra: ao mudar a origem de um dado no servidor, procure quem mais o lia (`grep -l` em `~/bin`).
 - **Data:** 24/10/2026
+
+### Carga histórica do CNPJ: ZIP cortado da Receita e memória estourada no mês grande
+- **Erro:** `BadZipFile` em 2023-08 e OOM (kill do contêiner de 4 GB) em 2024-10, o mês com 8,4 milhões de mudanças nos estabelecimentos e 9,7 milhões nos sócios.
+- **Causa:** a Receita publica `Estabelecimentos6/7.zip` cortados em 2023-08 (a cópia inteira vem com sufixo `-RF…`); e as mudanças do mês eram montadas todas de uma vez na memória.
+- **Solução:** o download confere `zipfile.is_zipfile` e o `Content-Length`, repete e usa a cópia `-RF…` (#619); as mudanças saem uma tabela por vez (#634) e um arquivo por prefixo, com pasta `<AAAA-MM>/<xx>.parquet` quando o mês passa de 2 milhões de linhas (#644). Pico medido: 3,8 GB no pior mês; contêiner com 5 GB e swap.
+- **Data:** 25/10/2026
+
+
+## Busca aberta por nome ou ticker devolvia 503 no PostgreSQL
+- **Sintoma:** CNPJ funcionava, mas nome e ticker devolviam 503 após a publicação.
+- **Causa:** `order_by("cnpj")` resolveu o nome para a tabela associada (`setores_cvm`), embora o `SELECT DISTINCT` retornasse o CNPJ de `tickers_dos_emissores`. PostgreSQL exige que a expressão ordenada esteja na seleção; SQLite aceita essa consulta e ocultou o erro nos testes locais.
+- **Solução:** ordenar pelas próprias `selected_columns` da consulta. Os três modos de busca e a eliminação de duplicatas passaram a ser exercitados também pelo PostgreSQL no conjunto `test_banco.py` do CI. A falha foi reproduzida por consulta de leitura antes da correção.
+- **Data:** 26/10/2026
+
+## Página com contrato em `src/paginas.py` sem a tela em React no mesmo PR (`esqueleto`, `moldura`)
+- **Sintoma:** PR que só traz a rota da API de uma página nova fica com os testes web `web/testes/app/esqueleto.test.tsx` ("toda página com contrato já tem a tela em React") e `web/testes/app/moldura.test.tsx` vermelhos.
+- **Causa:** dar contrato à página em `src/paginas.py` a põe em `paginasDoApp`, e esses testes exigem que toda página com contrato tenha a tela em React.
+- **Solução:** a tela entra no mesmo PR do contrato. Se o PR é só da rota, não dê contrato de página: ponha a rota em `ROTAS_DA_CONTA` (`src/api_v1/acesso.py`), que `test_toda_rota_da_v1_tem_contrato_ou_e_da_conta` aceita. Exemplos: molde B (#477) e molde D (#505).
+- **Data:** 03/11/2026

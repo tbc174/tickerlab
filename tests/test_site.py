@@ -7,10 +7,13 @@ fontes, marca, relatório de exemplo e catálogo vêm de `scripts/gerar_site.py`
 import html
 import json
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
 
+from base.dicionario import TABELAS
+from base.dossie import pode_consultar
 from scripts import gerar_site as gs
 from scripts.markdown_simples import markdown_para_html
 from src import marca, planos
@@ -43,13 +46,24 @@ def esc(texto: str) -> str:
     return html.escape(texto, quote=True)
 
 
+def _conteudo(caminho: Path) -> object:
+    """Os bytes do arquivo; do .pptx, o texto de cada parte menos as imagens: o Pillow do PC e o do CI
+    recodificam a marca de jeitos diferentes, e isso não muda nenhum slide."""
+    if caminho.suffix != ".pptx":
+        return caminho.read_bytes()
+    with zipfile.ZipFile(caminho) as pptx:
+        return {
+            n: pptx.read(n) for n in pptx.namelist() if not n.startswith("ppt/media/")
+        }
+
+
 def test_parte_do_python_esta_em_dia(regerado):
     """Mudou a marca, o relatório de exemplo ou o catálogo? Rode `python -m scripts.gerar_site`."""
     novos = gs.arquivos_do_python(regerado)
     atuais = gs.arquivos_do_python(SITE)
     assert novos == atuais
     diferentes = [
-        str(c) for c in novos if (regerado / c).read_bytes() != (SITE / c).read_bytes()
+        str(c) for c in novos if _conteudo(regerado / c) != _conteudo(SITE / c)
     ]
     assert not diferentes, f"Rode python -m scripts.gerar_site: {diferentes}"
 
@@ -98,14 +112,31 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
         for pagina in re.findall(re.escape(URL_DO_APP) + r"/([a-z0-9\-]*)", texto):
-            assert pagina in urls, (arquivo.name, pagina)
+            # a API mora no endereço do app; o teste seguinte confere esses links
+            assert pagina in urls or pagina == "api", (arquivo.name, pagina)
+
+
+def test_links_para_a_api_sao_o_csv_das_tabelas_consultaveis():
+    """A página Dados aponta o CSV de cada tabela consultável para a API, que mora no endereço do app
+    (virada de 5/11/2026, fase 1, PR 3): só a rota de exportação, só tabela que a porta serve, e
+    toda tabela consultável tem o seu link."""
+    consultaveis = {nome for nome in TABELAS if pode_consultar(nome)}
+    exportacao = re.compile(r"v1/base/tabelas/([a-z0-9_]+)\.csv")
+    apontadas: set[str] = set()
+    for arquivo in PAGINAS_HTML:
+        texto = arquivo.read_text(encoding="utf-8")
+        for rota in re.findall(re.escape(URL_DO_APP) + r'/api/([^"]*)', texto):
+            tabela = exportacao.fullmatch(rota)
+            assert tabela and tabela.group(1) in consultaveis, (arquivo.name, rota)
+            apontadas.add(tabela.group(1))
+    assert apontadas == consultaveis
 
 
 def test_nada_vem_de_terceiros():
     """Sem Google Fonts, sem rastreadores: fontes, imagens e scripts são do próprio site."""
     for arquivo in [
         *PAGINAS_HTML,
-        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js")),
+        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js", "origem.js")),
     ]:
         texto = arquivo.read_text(encoding="utf-8")
         assert "googleapis" not in texto and "gstatic" not in texto
@@ -154,6 +185,27 @@ def test_planos_do_site_sao_os_do_app():
     assert "modo de teste" in texto
 
 
+def test_precos_pessoa_e_casa_sem_preco():
+    """Plano do site para quem analisa (D1): Pessoa e Casa, uma faixa grátis, nenhum preço."""
+    texto = (SITE / "precos.html").read_text(encoding="utf-8")
+    sem_tags = html.unescape(re.sub(r"<[^>]+>", " ", texto))
+    for frase in (
+        "Para conhecer, de graça",
+        "Pessoa",
+        "Casa",
+        "por assento",
+        "em construção",
+        "definido antes do lançamento",  # ADR 0029, Emenda 1
+        "toda conta usa",
+    ):
+        assert frase in sem_tags, frase
+    assert "R$" not in texto
+    # nenhum valor em dinheiro: número seguido de "reais", "/mês", "por mês" ou "/ano"
+    assert not re.search(
+        r"\d\s*(reais|/\s*m[eê]s|por m[eê]s|/\s*ano|por ano)", sem_tags
+    )
+
+
 def test_precos_anunciam_mensal_de_verdade():
     """ADR 0054: mensal cobrado um mês por vez, sem fidelidade, e o cancelamento no próprio app."""
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
@@ -171,6 +223,12 @@ def test_catalogo_da_busca_e_o_do_app():
     simbolos = {a[0] for a in ativos}
     assert {"PETR4.SA", "AAPL", "^BVSP", "BTC-USD"} <= simbolos
     assert all(len(a) == 5 for a in ativos)
+
+
+def test_ads_txt_e_gerado_com_a_linha_do_adsense(regerado):
+    esperado = "google.com, pub-4178012487609221, DIRECT, f08c47fec0942fa0\n"
+    assert (regerado / "ads.txt").read_bytes() == esperado.encode()
+    assert (SITE / "ads.txt").read_bytes() == esperado.encode()
 
 
 def test_relatorio_de_exemplo_e_um_pdf_de_verdade_marcado_como_exemplo():
@@ -236,7 +294,7 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
     um deploy recebe o HTML novo com o estilo antigo."""
     import hashlib
 
-    for nome in ("estilo.css", "site.js", "movimento.js"):
+    for nome in ("estilo.css", "site.js", "movimento.js", "origem.js"):
         conteudo = (SITE / nome).read_text(
             encoding="utf-8"
         )  # quebras de linha iguais em todo SO
@@ -476,3 +534,24 @@ def test_security_txt_existe_e_nao_esta_perto_de_vencer():
     assert vence - datetime.now(UTC) > timedelta(days=30), (
         "renove o Expires do security.txt"
     )
+
+
+def test_toda_pagina_do_site_com_dados_da_base_leva_o_selo_da_data():
+    """Linha 605: página que diz "Dados da base de" tem de trazer o selo com a mesma data (DD/MM/AAAA)."""
+    import re
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parent.parent / "site"
+    selo = re.compile(r'data-data-da-base="(\d{2}/\d{2}/\d{4})"')
+    dados = re.compile(r"Dados da base de (\d{2}/\d{2}/\d{4})")
+    com_dados = [
+        p for p in raiz.glob("*.html") if dados.search(p.read_text(encoding="utf-8"))
+    ]
+    assert com_dados, (
+        "nenhuma página com 'Dados da base de': o teste deixou de olhar o site"
+    )
+    for pagina in com_dados:
+        html = pagina.read_text(encoding="utf-8")
+        assert selo.findall(html) == dados.findall(html), (
+            f"{pagina.name} sai sem o selo da data da base"
+        )

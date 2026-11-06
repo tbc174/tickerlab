@@ -21,6 +21,9 @@ def _importados_de_terceiros() -> set[str]:
         *(RAIZ / "base").glob(
             "*.py"
         ),  # as regras de qualidade, que a tela Fundamentos usa
+        # a porta e os sócios: a busca por CNPJ lê a vista do CNPJ por eles no servidor do app
+        *(RAIZ / "base" / "porta").glob("*.py"),
+        *(RAIZ / "base" / "pessoas").glob("*.py"),
     ]
     nomes: set[str] = set()
     for arquivo in arquivos:

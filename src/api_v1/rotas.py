@@ -6,7 +6,7 @@ import os
 import time
 import uuid
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, TypeVar
 
@@ -79,10 +79,12 @@ from src.commodities import painel_de_precos
 from src.commodities.cafe import pacote_do_mapa
 from src.commodities.cafe import painel as painel_do_cafe
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
+from src.configuracao import preco_no_relatorio_ligado
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
 from src.eventos_sec import PREFIXO_DO_CIK
+from src.faixa_de_preco import faixa_de_preco_do_ticker
 from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.links_das_fontes import link_da_fonte
@@ -101,6 +103,7 @@ from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
 from src.relatorio_do_setor_pdf import relatorio_do_setor as pdf_do_setor
 from src.relatorio_empresa import Relatorio
 from src.relatorio_empresa import montar as montar_relatorio
+from src.relatorio_empresa_markdown import relatorio_em_markdown
 from src.simulacoes import (
     endereco_no_app_novo,
     restaurar_estado,
@@ -118,7 +121,9 @@ TIPOS_DO_DECK = {
     "pdf": "application/pdf",
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
-Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
+Periodo = Literal[
+    "6mo", "1y", "2y", "5y", "10y", "max"
+]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
 SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o CDI à toa)
 # a ficha "Foi sorte?": o capital entra só no imposto da checagem 2 (o mesmo padrão do Streamlit)
@@ -965,9 +970,10 @@ PERIODO_DO_PRECO_NO_RELATORIO = "2y"
 
 
 def _preco_e_fechamentos(ticker: str) -> tuple[float | None, pd.Series | None]:
-    """O último preço e a série que o valuation e os múltiplos usam; vazios fora da B3 ou sem
-    cotação (o relatório então deixa esses números em branco)."""
-    if moeda_do_ticker(ticker) != "BRL":
+    """O último preço e a série que o valuation e os múltiplos usam; vazios fora da B3, sem cotação
+    ou com a trava do preço desligada, que nem pergunta ao Yahoo (linha 413, Y1 a, "pode" do Tiago
+    em 25/10/2026). O relatório então deixa esses números em branco."""
+    if moeda_do_ticker(ticker) != "BRL" or not preco_no_relatorio_ligado():
         return None, None
     try:
         fechamento = contexto.carregar_dados(ticker, PERIODO_DO_PRECO_NO_RELATORIO)[
@@ -1011,6 +1017,7 @@ def _relatorio_da_empresa_do_ticker(conta: Usuario, ticker: str) -> Relatorio:
         raise
     if entradas is None or entradas.cnpj.startswith(PREFIXO_DO_CIK):
         raise HTTPException(status_code=404, detail=SO_B3)
+    entradas = replace(entradas, faixa_de_preco=faixa_de_preco_do_ticker(ticker))
     if entradas.dados.contas.empty:
         raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
     relatorio = montar_relatorio(entradas, conta.plano)
@@ -1041,6 +1048,23 @@ def relatorio_da_empresa_em_deck(
     )
 
 
+@router.get("/relatorio-empresa/markdown", response_class=Response)
+def relatorio_da_empresa_em_markdown(conta: Conta, ticker: Ticker) -> Response:
+    """A ficha da empresa em Markdown para ler com uma IA: o mesmo texto do botão da página (as seções
+    na ordem da tela, "Limites e cuidados" e o anexo de como cada número foi calculado), com o mesmo
+    acesso e o mesmo plano da rota JSON. O nome do arquivo vem do ticker da própria ficha."""
+    relatorio = _relatorio_da_empresa_do_ticker(conta, ticker)
+    sigla = relatorio.ticker.removesuffix(".SA")
+    return Response(
+        content=relatorio_em_markdown(relatorio),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="tickerlab-empresa-{sigla}.md"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 class PedidoDeBuscaPorCnpjV1(BaseModel):
     cnpj: str  # com ou sem pontuação, com letras; sem limite aqui para o 422 não repetir o texto
 
@@ -1062,10 +1086,11 @@ def _relatorio_do_pedido(
 def busca_por_cnpj(
     conta: Conta, pedido: PedidoDeBuscaPorCnpjV1
 ) -> esquemas.BuscaPorCnpjV1:
-    """O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.
+    """O relatório do CNPJ: da companhia aberta (cadastro, grupo, rede e fatos públicos) ou, sem ficha na
+    CVM, o cadastro da Receita (Simples e MEI, sócios, estabelecimentos e mudanças), sempre com fonte.
 
     É POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log
-    de acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.
+    de acesso. O app também não o grava no log, só a contagem por situação.
     """
     return esquemas.de_busca_por_cnpj(_relatorio_do_pedido(conta, pedido))
 
@@ -1462,3 +1487,9 @@ def painel_do_cafe_v1(
     with obter_engine().connect() as conexao:
         painel = painel_do_cafe.montar_painel(conexao, tipo, hoje_no_brasil(), regiao)
     return esquemas.de_painel_do_cafe(painel)
+
+
+@router.get("/beta/boas-vindas")
+def boas_vindas_do_beta(_conta: Conta) -> esquemas.BoasVindasDoBetaV1:
+    """O texto da página de boas-vindas do beta e o roteiro dos 10 minutos (src/beta.py)."""
+    return esquemas.de_boas_vindas_do_beta()

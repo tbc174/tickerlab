@@ -90,6 +90,12 @@ CAMPOS_DO_PR = {
     "LastPric": "fechamento",
     "FinInstrmQty": "volume",
 }
+# ajuste do dia e da véspera dos contratos que o pregão do dia mostra: o DI1 pela taxa (% ao ano), não
+# pelo preço unitário; o dólar futuro pelo preço (R$ por US$ 1.000)
+AJUSTES_DOS_CONTRATOS = {
+    "DI1": ("AdjstdQtTax", "PrvsAdjstdQtTax"),
+    "DOL": ("AdjstdQt", "PrvsAdjstdQt"),
+}
 
 
 def _hora_em_tempo(hora: pd.Series) -> pd.Series:
@@ -302,26 +308,62 @@ def ler_boletim_pr(caminho_zip: Path) -> pd.DataFrame:
     Código com várias linhas (termo, por vencimento): negócios e volume somados, máxima e mínima de
     todas, abertura e fechamento vazios (não dá para saber qual linha veio antes).
     """
+    linhas = [
+        linha
+        for elemento in _relatorios_do_pr(caminho_zip)
+        if (linha := _relatorio_do_pr(elemento)) is not None
+    ]
+    return _um_por_codigo(pd.DataFrame(linhas, columns=["simbolo", *CAMPOS_CONFERIDOS]))
+
+
+def _relatorios_do_pr(caminho_zip: Path) -> Iterator[ET.Element]:
+    """Os `PricRpt` da última versão do boletim, um de cada vez (cada um é limpo depois de usado)."""
     with zipfile.ZipFile(caminho_zip) as externo:
         conteudo = externo.read(externo.namelist()[0])
-    linhas = []
     with zipfile.ZipFile(io.BytesIO(conteudo)) as interno:
         for _, elemento in ET.iterparse(interno.open(_ultima_versao(interno))):
             if elemento.tag == f"{ESPACO_DO_PR}PricRpt":
-                linha = _relatorio_do_pr(elemento)
-                if linha is not None:
-                    linhas.append(linha)
+                yield elemento
                 elemento.clear()
-    return _um_por_codigo(pd.DataFrame(linhas, columns=["simbolo", *CAMPOS_CONFERIDOS]))
+
+
+def _ajuste_do_contrato(elemento: ET.Element) -> tuple[str, float, float] | None:
+    simbolo = elemento.findtext(f"{ESPACO_DO_PR}SctyId/{ESPACO_DO_PR}TckrSymb") or ""
+    campos = AJUSTES_DOS_CONTRATOS.get(simbolo[:3])
+    if campos is None:
+        return None
+    dia, vespera = (
+        elemento.findtext(f"{ESPACO_DO_PR}FinInstrmAttrbts/{ESPACO_DO_PR}{campo}")
+        for campo in campos
+    )
+    if not dia or not vespera:
+        return None  # sem ajuste (contrato novo, ou sem o da véspera): não há variação
+    return simbolo, float(dia), float(vespera)
+
+
+def ler_contratos_do_pr(caminho_zip: Path) -> pd.DataFrame:
+    """O ajuste do dia e o da véspera do DI1 (taxa, % ao ano) e do dólar futuro (R$ por US$ 1.000),
+    um contrato por linha (código → `ajuste`, `ajuste_vespera`), do boletim PR do dia.
+
+    Contrato sem negócio no dia entra: a B3 calcula o ajuste de todos os vencimentos em aberto.
+    """
+    linhas = [
+        linha
+        for elemento in _relatorios_do_pr(caminho_zip)
+        if (linha := _ajuste_do_contrato(elemento)) is not None
+    ]
+    return pd.DataFrame(
+        linhas, columns=["simbolo", "ajuste", "ajuste_vespera"]
+    ).set_index("simbolo")
 
 
 def _um_por_codigo(tabela: pd.DataFrame) -> pd.DataFrame:
     """Uma linha por código. Código com várias linhas no boletim (termo, uma por vencimento):
     negócios e volume somados, máxima e mínima de todas, abertura e fechamento vazios (não dá para
-    saber qual linha veio antes). Outras colunas: a da primeira linha."""
+    saber qual linha veio antes). Volume em reais também somado; outras colunas: a da primeira linha."""
     grupos = tabela.groupby("simbolo", sort=True)
     extras = {
-        c: (c, "first")
+        c: (c, "sum" if c == "volume_financeiro" else "first")
         for c in tabela.columns
         if c not in ["simbolo", *CAMPOS_CONFERIDOS]
     }
@@ -451,7 +493,9 @@ def _registro_do_cotahist(linha: str) -> dict[str, object]:
         "minima": int(linha[82:95]) / CENTAVOS,
         "fechamento": int(linha[108:121]) / CENTAVOS,
         "negocios": int(linha[147:152]),
-        "volume": int(linha[152:170]),
+        "volume": int(linha[152:170]),  # quantidade de papéis (QUATOT), como no PR
+        "volume_financeiro": int(linha[170:188]) / CENTAVOS,  # em reais (VOLTOT)
+        "distribuicao": linha[242:245],  # a B3 aumenta o número a cada evento (DISMES)
     }
 
 
@@ -465,7 +509,16 @@ def ler_cotahist(caminho_zip: Path) -> pd.DataFrame:
         if linha[:2] == TIPO_DE_REGISTRO_DE_COTACAO
     ]
     return _um_por_codigo(
-        pd.DataFrame(registros, columns=["simbolo", "mercado", *CAMPOS_CONFERIDOS])
+        pd.DataFrame(
+            registros,
+            columns=[
+                "simbolo",
+                "mercado",
+                *CAMPOS_CONFERIDOS,
+                "volume_financeiro",
+                "distribuicao",
+            ],
+        )
     )
 
 

@@ -349,6 +349,121 @@ def test_principal_prefere_a_companhia_que_tem_ticker_hoje():
     assert empresa_serie._principal(ligacoes).tolist() == [False, True]
 
 
+def _controladas_do_setor_eletrico() -> pd.DataFrame:
+    """Três companhias com a distribuidora de cada uma: uma que parou de entregar o FRE em 2016,
+    uma que largou a participação em 2018 e uma que segue com ela."""
+    linhas = [
+        # companhia, ref, conhecido_em, cnpj da ligada, razão, tipo, %
+        ("11111111000111", date(2016, 1, 1), date(2016, 6, 1), "61695227000193", "Eletropaulo", "controlada", 100.0),
+        ("22222222000122", date(2014, 1, 1), date(2014, 6, 1), "33333333000133", "Roraima", "controlada", 100.0),
+        ("22222222000122", date(2018, 1, 1), date(2018, 6, 1), "55555555000155", "Outra", "controlada", 100.0),
+        ("22222222000122", date(2026, 1, 1), date(2026, 6, 1), "55555555000155", "Outra", "controlada", 100.0),
+        ("44444444000144", date(2026, 1, 1), date(2026, 6, 1), "66666666000166", "Segue", "controlada", 100.0),
+    ]  # fmt: skip
+    colunas = [
+        "cnpj_companhia",
+        "referencia",
+        "conhecido_em",
+        "cnpj",
+        "razao_social",
+        "tipo",
+        "participacao",
+    ]
+    tabela = pd.DataFrame(linhas, columns=colunas)
+    tabela["companhia"] = "COMPANHIA " + tabela["cnpj_companhia"]
+    tabela["versao"], tabela["id_documento"] = "1", "1"
+    return tabela
+
+
+def _entidades_do_setor_eletrico() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            ("aneel-samp", c, c, c[:8])
+            for c in ("61695227000193", "33333333000133", "66666666000166")
+        ],
+        columns=["fonte", "chave", "nome", "raiz"],
+    )
+
+
+def test_ligacao_diz_ate_quando_aparece_nas_entregas_do_fre():
+    tabela = empresa_serie.ligar(
+        _entidades_do_setor_eletrico(), _controladas_do_setor_eletrico()
+    )
+    por = tabela[tabela["via"] != "propria"].set_index("chave")
+    # largada: a companhia seguiu entregando e a ligação sumiu; vale a 1ª entrega sem ela
+    assert por.loc["33333333000133", "ate"] == date(2018, 1, 1)
+    assert por.loc["33333333000133", "ate_publico_em"] == date(2018, 6, 1)
+    assert not por.loc["33333333000133", "vigente"]
+    # a companhia parou de entregar: não há 1ª entrega sem a ligação, mas ela não está vigente
+    assert pd.isna(por.loc["61695227000193", "ate"])
+    assert not por.loc["61695227000193", "vigente"]
+    # segue nas entregas mais novas
+    assert pd.isna(por.loc["66666666000166", "ate"])
+    assert por.loc["66666666000166", "vigente"]
+
+
+def test_a_propria_companhia_e_sempre_vigente():
+    tabela = empresa_serie.ligar(
+        pd.DataFrame(
+            [("ons-capacidade-geracao", "X", "COMPANHIA 11111111000111", None)],
+            columns=["fonte", "chave", "nome", "raiz"],
+        ),
+        _controladas_do_setor_eletrico(),
+    )
+    assert tabela.loc[tabela["via"] == "propria", "vigente"].all()
+
+
+def test_na_aneel_participacao_minoritaria_nao_e_vinculo_principal():
+    """Coelce na Eletrobras (6,4%, sem tipo): a ANEEL atribui o mercado a quem controla."""
+    controladas_ = (
+        _controladas_do_setor_eletrico()
+        .iloc[[4]]
+        .assign(
+            tipo="", participacao=6.41, cnpj="77777777000177", razao_social="Coelce"
+        )
+    )
+    entidades = pd.DataFrame(
+        [
+            ("aneel-samp", "77777777000177", "COELCE", "77777777"),
+            ("bcb-pix-chaves", "77777777", "COELCE", "77777777"),
+        ],
+        columns=["fonte", "chave", "nome", "raiz"],
+    )
+    tabela = empresa_serie.ligar(entidades, controladas_)
+    assert not tabela[tabela["fonte"] == "aneel-samp"]["principal"].any()
+    assert tabela[tabela["fonte"] == "bcb-pix-chaves"][
+        "principal"
+    ].all()  # outra fonte: como antes
+
+
+def test_na_aneel_controle_vigente_ganha_de_participacao_minoritaria_mais_nova():
+    """Bragantina: a controladora de 95,85% (2017) ganha do 0,11% da Eletrobras (2026)."""
+    linhas = pd.concat(
+        [
+            _controladas_do_setor_eletrico()
+            .iloc[[0]]
+            .assign(
+                cnpj="88888888000188", razao_social="Bragantina", participacao=95.85
+            ),
+            _controladas_do_setor_eletrico()
+            .iloc[[4]]
+            .assign(
+                tipo="coligada",
+                participacao=0.11,
+                cnpj="88888888000188",
+                razao_social="Bragantina",
+            ),
+        ]
+    )
+    entidades = pd.DataFrame(
+        [("aneel-samp", "88888888000188", "BRAGANTINA", "88888888")],
+        columns=["fonte", "chave", "nome", "raiz"],
+    )
+    tabela = empresa_serie.ligar(entidades, linhas)
+    principal = tabela[tabela["principal"]]
+    assert principal["cnpj_companhia"].tolist() == ["11111111000111"]
+
+
 # --- parte 2: tabela conferida (ferrovias, siglas aéreas, produtos do Comex) ---------------------
 VALE = "33.592.510/0001-54"
 FCA_CONCESSIONARIA = "00924429000175"

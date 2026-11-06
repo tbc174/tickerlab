@@ -7,6 +7,7 @@ import { type PaginaDoApp, paginasDoApp } from "../conteudo";
 import { linkDoClassico } from "./classico";
 import { navegador } from "./navegador";
 import { Backtest } from "./telas/Backtest";
+import { BoasVindasDoBeta } from "./telas/BoasVindasDoBeta";
 import { BuscaPorCnpj } from "./telas/BuscaPorCnpj";
 import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
@@ -44,6 +45,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
   sala_de_dados: () => <Sala />,
+  boas_vindas_beta: (pagina) => <BoasVindasDoBeta pagina={pagina} />,
   mapa_do_cafe: (pagina) => <MapaDoCafe pagina={pagina} />,
   painel_do_cafe: (pagina) => <PainelDoCafe pagina={pagina} />,
   // o Pulse é o Workspace: o Início do app novo

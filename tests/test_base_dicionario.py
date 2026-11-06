@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas
+from base import cda, conselhos, fca, fre_governanca, ligacoes, ofertas, sus
 from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
@@ -25,6 +25,7 @@ from base.setoriais import ans as setoriais_ans
 from base.setoriais import antt_siade as setoriais_antt_siade
 from base.setoriais import ccee as setoriais_ccee
 from base.setoriais import comex_preco_medio as setoriais_comex_preco_medio
+from base.setoriais import comex_tabelas as setoriais_comex_tabelas
 from base.setoriais import ons as setoriais_ons
 from base.setoriais import ons_capacidade as setoriais_ons_capacidade
 from base.setoriais import ons_restricao as setoriais_ons_restricao
@@ -94,6 +95,7 @@ def _colunas_das_ofertas_e_conselhos() -> dict[str, list[str]]:
         "fre_capital_social": list(fre_governanca.COLUNAS_DO_CAPITAL),
         "fre_empregados": list(fre_governanca.COLUNAS_DOS_EMPREGADOS),
         "fre_acionistas": list(fre_governanca.COLUNAS_DOS_ACIONISTAS),
+        "fre_distribuicao_capital": list(fre_governanca.COLUNAS_DA_DISTRIBUICAO),
         "fre_partes_relacionadas": list(fre_governanca.COLUNAS_DAS_PARTES),
         "ofertas_antigas": list(ofertas.ler_antigas(ofertas_zip).columns),
         "ofertas_resolucao_160": list(ofertas.ler_resolucao_160(ofertas_zip).columns),
@@ -125,7 +127,12 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "anp_concessionarios": [*setoriais_anp_concessionarios.COLUNAS, "visto_em"],
         "antt_siade": [*setoriais_antt_siade.COLUNAS, "visto_em"],
         "comex_preco_medio": [*setoriais_comex_preco_medio.COLUNAS, "visto_em"],
+        "comex_urf": [*setoriais_comex_tabelas.COLUNAS_DA_URF, "visto_em"],
+        "comex_via": [*setoriais_comex_tabelas.COLUNAS_DA_VIA, "visto_em"],
         "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),
+        "sus_internacoes": list(sus.SIH.colunas_da_tabela),
+        "sus_ambulatorial": list(sus.SIA.colunas_da_tabela),
+        "sus_competencias": list(sus.COLUNAS_DA_SITUACAO),
         "amostra_painel": [
             *amostra_universo.COLUNAS,
             *amostra_demonstracoes.COLUNAS[2:],
@@ -242,13 +249,15 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
             "disponivel_em",
             "visto_em",
         ],
-        "ifdata_cadastro": list(cadastro.columns),
+        "ifdata_cadastro": [*cadastro.columns, "disponivel_em", "visto_em"],
         "ligacao_dos_bancos": list(
             bcb_ifdata.ligacao_dos_bancos(cadastro, *_empresas_e_tickers()).columns
         ),
         "scr_credito": [
             *bcb_scr.ler_ano(_scr("scrdata_2012.zip")).columns,
             "disponivel_em",
+            "ocorrencia",
+            "visto_em",
         ],
     }
     for tabela, esperadas in colunas.items():
@@ -298,7 +307,16 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     """B13, parte 2: as tabelas da base histórica (servidor de casa) entram no dicionário. Onde o
     código não tem a lista de colunas numa constante, a lista é a das tabelas reais montadas em
     14/10/2026 (esquema lido dos Parquets)."""
-    from base import auditores, controladas, empresa_serie, fre, pareceres, rotulos
+    from base import (
+        auditores,
+        controladas,
+        empresa_serie,
+        enet_notas,
+        fre,
+        pareceres,
+        rotulos,
+        securitizacao,
+    )
     from src.negociacoes import COLUNAS as COLUNAS_DAS_NEGOCIACOES
 
     origem = ["origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codigo"]
@@ -322,9 +340,29 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "eventos_de_capital": [*fre.COLUNAS_DOS_EVENTOS, *da_historica],
         "insolvencia": [*rotulos.COLUNAS, *da_historica],
         "cnpj_situacao_especial": [*situacao, *origem],
+        "cnpj_situacao_cadastral": [
+            "cnpj",
+            "cnpj_basico",
+            "matriz",
+            "situacao_cadastral",
+            "data_situacao_cadastral",
+            "motivo_situacao",
+            "mes_do_retrato",
+            "disponivel_em",
+            *origem,
+        ],
         "auditores": [*auditores.COLUNAS, *da_historica],
         "pareceres_dfp": [*pareceres.COLUNAS, *da_historica],
         "pareceres_itr": [*pareceres.COLUNAS, *da_historica],
+        "notas_dfp": [*enet_notas.COLUNAS, *da_historica],
+        "securitizacao_certificados": [
+            *securitizacao.COLUNAS_DOS_CERTIFICADOS,
+            *da_historica,
+        ],
+        "securitizacao_cedente_devedor": [
+            *securitizacao.COLUNAS_DO_CEDENTE_DEVEDOR,
+            *da_historica,
+        ],
         "trocas_de_auditor": [
             *auditores.COLUNAS_DAS_TROCAS,
             "montado_em",
@@ -339,7 +377,9 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         # exigência 13 da ADR 0055: toda linha da série B diz o commit que a montou
         assert "versao_do_codigo" in TABELAS[tabela].linhagem, tabela
         assert "ainda não é guardada" not in TABELAS[tabela].linhagem, tabela
-    assert "Comex Stat a confirmar" in TABELAS["empresa_serie"].ressalva_de_revenda
+    assert (
+        "Comex Stat; citar Secex/MDIC" in TABELAS["empresa_serie"].ressalva_de_revenda
+    )
 
 
 # --- contrato de dados (ADR 0077, PR 1): módulo, chaves, três datas e histórico ---
@@ -391,12 +431,18 @@ def test_contrato_comeca_na_versao_1():
     `demonstracoes_como_era` 2.0.0 (19/10/2026, série T1), a tabela ganhou a DFC, a DVA e a DRA
     (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas), e
     `ifdata_valores` 2.0.0 (21/10/2026), a chave ganhou o `visto_em` (a revisão do BC é linha nova da
-    mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado)."""
+    mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado), e `ifdata_cadastro` e
+    `scr_credito` 2.0.0 (25/10/2026), o mesmo: a chave ganhou o `visto_em`, e `demonstracoes_como_era` 3.0.0 e
+    `dmpl_como_era` 2.0.0 (03/11/2026, API A3), a chave ganhou `ordem`, `inicio` e `fim` (a DRE do ITR traz o
+    trimestre e o acumulado; sem elas a chave se repetia em milhões de linhas)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
     assert maiores.pop("cnpj_situacao_especial") == "2"
-    assert maiores.pop("demonstracoes_como_era") == "2"
+    assert maiores.pop("demonstracoes_como_era") == "3"
+    assert maiores.pop("dmpl_como_era") == "2"
     assert maiores.pop("ifdata_valores") == "2"
+    assert maiores.pop("ifdata_cadastro") == "2"
+    assert maiores.pop("scr_credito") == "2"
     assert set(maiores.values()) == {"1"}

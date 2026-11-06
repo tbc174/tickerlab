@@ -18,6 +18,9 @@ Versões antigas (achado da série 4): a CVM publica os valores mobiliários só
 formulário. A carga lê **todas** as baixadas guardadas de cada ano (cada uma com as versões que trazia)
 e os documentos das versões que `scripts/coletar_fca_versoes.py` guardou do sistema de documentos da CVM;
 `valores_mobiliarios` diz a origem de cada linha.
+
+Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h00); outro script
+(coletar_fca_versoes.py); citado em bcb_ifdata.py, dicionario.py.
 """
 
 import argparse

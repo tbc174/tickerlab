@@ -11,7 +11,14 @@ from base.arquivo import destinos, fontes
 from base.arquivo import lote_reguladores as lote
 from base.arquivo import lote_setoriais as setoriais
 from base.arquivo.coleta import ErroDeDescoberta, Resposta
-from src.banco.coletas import SEM_LICENCA_CONHECIDA, licenca_da_fonte, revenda_da_fonte
+from src.banco.coletas import (
+    SEM_LICENCA_CONHECIDA,
+    VENDAVEL_ODBL,
+    Marca,
+    licenca_da_fonte,
+    marca_da_fonte,
+    revenda_da_fonte,
+)
 
 AGORA = datetime(2026, 10, 23, 23, tzinfo=UTC)
 PASTA = Path(__file__).parent / "arquivos" / "reguladores"
@@ -30,7 +37,8 @@ PACOTES_DE_PESSOA = {
 
 
 class Portal:
-    """Um cliente de mentira: responde ao `package_show` com o gravado."""
+    """Um cliente de mentira: responde com o gravado do pacote, pelo `package_show?id=<pacote>` (ANEEL e
+    ONS) ou pela página `/dataset/<pacote>` (CCEE)."""
 
     def __init__(self, respostas: dict[str, bytes]):
         self.respostas = respostas
@@ -38,7 +46,8 @@ class Portal:
 
     def ler(self, url, *, metodo="GET", cabecalhos=None, corpo=None):
         self.pedidos.append(url)
-        return Resposta(url, self.respostas[url.rsplit("=", 1)[-1]], {})
+        pacote = url.rsplit("/", 1)[-1].rsplit("=", 1)[-1]
+        return Resposta(url, self.respostas[pacote], {})
 
 
 def _gravado(nome: str) -> bytes:
@@ -118,23 +127,28 @@ def test_ons_pega_o_csv_do_ano_e_deixa_parquet_e_xlsx():
     ]
 
 
-def test_ccee_pede_ao_portal_da_ccee_e_leva_todo_arquivo():
+def test_ccee_le_a_pagina_de_cada_pacote_e_leva_todo_arquivo():
     portal = Portal(
         {
-            p: _gravado("ccee_pldx_valor_anual.json")
+            p: _gravado("ccee_pldx_valor_anual.html")
             for p in ("pldx_valor_anual", "pld_sombra")
         }
     )
     alvos = _fonte("ccee-preco-futuro").descobrir(portal, AGORA)
-    assert all(p.startswith(setoriais.PORTAL_DA_CCEE) for p in portal.pedidos)
-    assert len(alvos) == 2
+    assert portal.pedidos == [
+        f"{setoriais.PORTAL_DA_CCEE}/dataset/{p}"
+        for p in ("pldx_valor_anual", "pld_sombra")
+    ]
+    assert [a.url for a in alvos] == [
+        "https://pda-download.ccee.org.br/f0XoqvKpQGyTE_eXw1LJvw/content"
+    ] * 2
 
 
 def test_pacote_sem_arquivo_e_erro_com_o_nome_dele():
     portal = Portal(
         {
-            "pldx_valor_anual": _gravado("ccee_pldx_valor_anual.json"),
-            "pld_sombra": _gravado("ccee_sem_arquivo.json"),
+            "pldx_valor_anual": _gravado("ccee_pldx_valor_anual.html"),
+            "pld_sombra": _gravado("ccee_sem_arquivo.html"),
         }
     )
     with pytest.raises(ErroDeDescoberta, match="pld_sombra"):
@@ -249,3 +263,20 @@ def test_comex_tabelas_usa_os_nomes_que_devolvem_csv():
     assert "NCM_SH.csv" in nomes and "PAIS_BLOCO.csv" in nomes
     assert not {"SH.csv", "CUCI.csv", "ISIC.csv", "CGCE.csv"} & set(nomes)
     assert not set(nomes) & {f"{n}.csv" for n in fontes.TABELAS_DO_COMEX}
+
+
+def test_bdgd_entra_so_pelo_ucat_pj_e_o_resto_segue_fora():
+    """ADR 0121, item 4: do BDGD só o UCAT_PJ (1,42 MB, sem CNPJ); as bases por distribuidora ficam de fora."""
+    fonte = _fonte("aneel-bdgd-ucat-pj")
+    alvos = fonte.descobrir(None, AGORA)
+    assert [a.url for a in alvos] == [lote.URL_DO_UCAT_PJ]
+    assert lote.URL_DO_UCAT_PJ.endswith("/ucat_pj.csv")
+    assert not fonte.pesada
+    outras = [f.id for f in lote.fontes() if "bdgd" in f.id]
+    assert outras == ["aneel-bdgd-ucat-pj"]
+
+
+def test_ucat_pj_e_odbl_com_atribuicao_a_aneel():
+    assert revenda_da_fonte("aneel-bdgd-ucat-pj") == VENDAVEL_ODBL
+    assert marca_da_fonte("aneel-bdgd-ucat-pj") == Marca.VENDAVEL
+    assert "ODbL" in licenca_da_fonte("aneel-bdgd-ucat-pj")

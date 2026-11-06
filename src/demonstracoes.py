@@ -249,6 +249,8 @@ def _contas_do_fluxo(dfc: pd.DataFrame) -> pd.DataFrame:
             # as três abaixo vêm em várias linhas e são somadas (CONTAS_SOMADAS)
             "depreciacao": cd.str.startswith("6.01.01.") & e_depreciacao(ds),
             "capex": cd.str.startswith("6.02.") & e_capex(ds),
+            # o total do investimento só confere o capex (tirar_zeros_de_ausencia o descarta)
+            "investimento_total": (cd == "6.02") & ds.str.startswith("caixa liquido"),
             "dividendos_pagos": cd.str.startswith("6.03.")
             & ds.str.contains(
                 r"dividendo|juros s(?:obre|/) ?(?:o )?capital", regex=True
@@ -323,7 +325,7 @@ def ler_demonstracoes(
     contas = _normalizar(
         pd.concat(partes, ignore_index=True) if partes else pd.DataFrame(), documento
     )
-    contas = _somar_as_divididas(contas)
+    contas = tirar_zeros_de_ausencia(_somar_as_divididas(contas))
     contas = pd.concat([contas, _acoes(capital, documento)], ignore_index=True)
     contas = _so_a_versao_mais_nova(contas)
     return contas[COLUNAS].reset_index(drop=True), _documentos(indice, documento)
@@ -378,6 +380,46 @@ def _somar_as_divididas(contas: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([contas[~divididas], somadas], ignore_index=True)
 
 
+_CHAVE_DO_DOCUMENTO = ("cnpj", "documento", "referencia", "versao", "periodo", "tipo")
+# (conta que pode ser zero de ausência, conta de total que prova que o zero não é de verdade):
+# o lucro dos controladores some se o consolidado não é zero; o capex, se o caixa de investimento
+# não é zero (a obra está numa linha que não reconhecemos como capex, ex.: ativo contratual)
+_ZERO_QUE_SO_VALE_COM_TOTAL_ZERO = (
+    ("lucro_controladores", "lucro_liquido"),
+    ("capex", "investimento_total"),
+)
+
+
+def tirar_zeros_de_ausencia(contas: pd.DataFrame) -> pd.DataFrame:
+    """Tira da tabela de contas o zero que é ausência, e a conta `investimento_total` (só conferência).
+
+    A CVM às vezes deixa "atribuído aos controladores" em 0 com lucro consolidado diferente de zero
+    (Light, Renova, CEEE-G), e o capex somado de linhas reconhecidas pode dar 0 com o caixa de
+    investimento em bilhões (COELBA). Esses 0 não são lucro nem capex: ficam sem valor (ausência
+    nunca vira zero). Zero com o total também zero é zero de verdade e continua."""
+    if contas.empty:
+        return contas
+    chave = [c for c in _CHAVE_DO_DOCUMENTO if c in contas]
+    ausentes = pd.Series(False, index=contas.index)
+    linhas = pd.MultiIndex.from_frame(contas[chave])
+    for conta_zerada, conta_total in _ZERO_QUE_SO_VALE_COM_TOTAL_ZERO:
+        totais = (
+            contas[contas["conta"] == conta_total]
+            .drop_duplicates(chave)
+            .set_index(chave)["valor"]
+        )
+        do_total = pd.Series(totais.reindex(linhas).to_numpy(), index=contas.index)
+        ausentes |= (
+            (contas["conta"] == conta_zerada)
+            & (contas["valor"] == 0)
+            & do_total.ne(0)
+            & do_total.notna()
+        )
+    return contas[~ausentes & (contas["conta"] != "investimento_total")].reset_index(
+        drop=True
+    )
+
+
 # Conta do TickerLab → coluna da composição do capital da CVM.
 COLUNAS_DAS_ACOES = (
     ("acoes_total", "QT_ACAO_TOTAL_CAP_INTEGR"),
@@ -387,6 +429,65 @@ COLUNAS_DAS_ACOES = (
     ("acoes_ordinarias_tesouraria", "QT_ACAO_ORDIN_TESOURO"),
     ("acoes_preferenciais_tesouraria", "QT_ACAO_PREF_TESOURO"),
 )
+
+_NOMES_DAS_ACOES = {
+    "acoes_total": "ações do capital integralizado",
+    "acoes_tesouraria": "ações em tesouraria",
+    "acoes_ordinarias": "ações ordinárias do capital integralizado",
+    "acoes_preferenciais": "ações preferenciais do capital integralizado",
+    "acoes_ordinarias_tesouraria": "ações ordinárias em tesouraria",
+    "acoes_preferenciais_tesouraria": "ações preferenciais em tesouraria",
+}
+# Conta do TickerLab → (código, nome) na CVM, para o rastro dos números (`src/rastro.py`). O código
+# segue a escolha de `_contas_da_dre`, `_contas_do_balanco` e `_contas_do_fluxo`: onde ele muda com o
+# plano de contas (empresa, banco, seguradora), vão as opções; "xx" é a soma das linhas de um grupo
+# (medido nas DFPs de 2024 a 2026 e nos ITRs de 2024 e 2025). As ações vêm da composição do capital,
+# pela coluna do arquivo.
+CONTAS_DA_CVM: dict[str, tuple[str, str]] = {
+    "receita": ("3.01", "Receita de Venda de Bens e/ou Serviços"),
+    "custo": ("3.02", "Custo dos Bens e/ou Serviços Vendidos"),
+    "resultado_bruto": ("3.03", "Resultado Bruto"),
+    "despesas_com_vendas": ("3.04.01", "Despesas com Vendas"),
+    "despesas_administrativas": ("3.04.02", "Despesas Gerais e Administrativas"),
+    "ebit": ("3.05 ou 3.07", "Resultado Antes do Resultado Financeiro e dos Tributos"),
+    "despesas_financeiras": ("3.06.02", "Despesas Financeiras"),
+    "lucro_liquido": ("3.09, 3.11 ou 3.13", "Lucro/Prejuízo Consolidado do Período"),
+    "lucro_controladores": (
+        "3.09.01, 3.11.01 ou 3.13.01",
+        "Atribuído a Sócios da Empresa Controladora",
+    ),
+    "lpa_basico": ("3.99.01.xx", "Lucro Básico por Ação (a 1ª classe com valor)"),
+    "ativo_total": ("1", "Ativo Total"),
+    "ativo_circulante": ("1.01", "Ativo Circulante"),
+    "caixa": ("1.01.01 ou 1.01", "Caixa e Equivalentes de Caixa"),
+    "aplicacoes": ("1.01.02", "Aplicações Financeiras"),
+    "contas_a_receber": ("1.01.03", "Contas a Receber"),
+    "estoques": ("1.01.04", "Estoques"),
+    "imobilizado": ("1.02.03 ou 1.06", "Imobilizado"),
+    "intangivel": ("1.02.04 ou 1.07", "Intangível"),
+    "passivo_circulante": ("2.01", "Passivo Circulante"),
+    "fornecedores": ("2.01.02", "Fornecedores"),
+    "divida_cp": ("2.01.04", "Empréstimos e Financiamentos (circulante)"),
+    "divida_lp": ("2.02.01", "Empréstimos e Financiamentos (não circulante)"),
+    "patrimonio_liquido": (
+        "2.03, 2.05, 2.07 ou 2.08",
+        "Patrimônio Líquido Consolidado",
+    ),
+    "reservas_de_lucro": ("2.03.04", "Reservas de Lucros"),
+    "lucros_acumulados": ("2.03.05", "Lucros/Prejuízos Acumulados"),
+    "minoritarios": (
+        "2.03.09 ou 2.08.09",
+        "Participação dos Acionistas Não Controladores",
+    ),
+    "fco": ("6.01", "Caixa Líquido das Atividades Operacionais"),
+    "depreciacao": ("6.01.01.xx", "Depreciação e amortização (soma das linhas)"),
+    "capex": ("6.02.xx", "Compras de imobilizado e intangível (soma das linhas)"),
+    "dividendos_pagos": ("6.03.xx", "Dividendos e JCP pagos (soma das linhas)"),
+    **{
+        conta: (coluna, f"Composição do capital: {_NOMES_DAS_ACOES[conta]}")
+        for conta, coluna in COLUNAS_DAS_ACOES
+    },
+}
 
 
 def _acoes(capital: pd.DataFrame, documento: str) -> pd.DataFrame:

@@ -1,10 +1,2344 @@
 {
+  "familias_de_fontes": [
+    {
+      "coletas": [
+        "cvm-sancionador",
+        "cvm-recompra",
+        "cvm-ofertas",
+        "cvm-cadastros",
+        "cvm-fiagro",
+        "cvm-fidc",
+        "cvm-fidc-recente",
+        "cvm-cda-recente",
+        "cvm-cri",
+        "cvm-cra",
+        "cvm-cgvn",
+        "cvm-hist-ipe",
+        "cvm-hist-itr",
+        "cvm-hist-dfp",
+        "cvm-hist-fre",
+        "cvm-hist-fca",
+        "cvm-hist-vlmo",
+        "cvm-hist-cda",
+        "cvm-fundos-informe-diario",
+        "cvm-fundos-lamina",
+        "cvm-fundos-perfil-mensal",
+        "cvm-fundos-balancete",
+        "cvm-fundos-extrato",
+        "cvm-fundos-complementares",
+        "cvm-fundos-eventuais",
+        "cvm-fundos-entrega",
+        "cvm-fii-mensal",
+        "cvm-fii-trimestral",
+        "cvm-fii-anual",
+        "cvm-fii-demonstracoes",
+        "cvm-fii-administradores",
+        "cvm-securitizadoras-ots",
+        "cvm-fip-trimestral",
+        "cvm-fip-quadrimestral",
+        "cvm-fie-balancete",
+        "cvm-fie-balanco",
+        "cvm-fie-medidas",
+        "cvm-arrecadacao"
+      ],
+      "familia": "cvm",
+      "licencas": [
+        "ODbL (dados abertos da CVM; citar a fonte)"
+      ],
+      "link": "https://dados.cvm.gov.br/",
+      "marca": "vendavel",
+      "orgao": "CVM (mercado de capitais)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "cgu-ceis",
+        "cgu-cnep",
+        "cgu-cepim",
+        "cgu-leniencia"
+      ],
+      "familia": "cgu",
+      "licencas": [
+        "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)"
+      ],
+      "link": "https://portaldatransparencia.gov.br/",
+      "marca": "uso_interno",
+      "orgao": "CGU (cadastros de sanções)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "ibama-autos",
+        "ibama-embargos"
+      ],
+      "familia": "ibama",
+      "licencas": [
+        "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)"
+      ],
+      "link": "https://dadosabertos.ibama.gov.br/",
+      "marca": "uso_interno",
+      "orgao": "IBAMA (autos e embargos)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "mte-lista-suja"
+      ],
+      "familia": "mte",
+      "licencas": [
+        "Cadastro de empregadores do MTE (dado público; citar o MTE)"
+      ],
+      "link": "https://www.gov.br/trabalho-e-emprego/",
+      "marca": "uso_interno",
+      "orgao": "Ministério do Trabalho (Lista Suja)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "gleif-br",
+        "gleif-emissores",
+        "gleif-autoridades-de-registro",
+        "gleif-goldencopy-lei2",
+        "gleif-goldencopy-rr",
+        "gleif-goldencopy-repex"
+      ],
+      "familia": "gleif",
+      "licencas": [
+        "CC0 (GLEIF, Global LEI Index)"
+      ],
+      "link": "https://www.gleif.org/",
+      "marca": "vendavel",
+      "orgao": "GLEIF (identificador LEI)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "rfb-cnpj"
+      ],
+      "familia": "rfb",
+      "licencas": [
+        "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+      ],
+      "link": "https://www.gov.br/receitafederal/",
+      "marca": "vendavel",
+      "orgao": "Receita Federal (CNPJ)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "pgfn-divida",
+        "pgfn-divida-historico"
+      ],
+      "familia": "pgfn",
+      "licencas": [
+        "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)"
+      ],
+      "link": "https://dadosabertos.pgfn.gov.br/",
+      "marca": "vendavel",
+      "orgao": "PGFN (dívida ativa)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "bcb-scr",
+        "bcb-pix-chaves",
+        "bcb-rde-ied",
+        "bcb-mercado-imobiliario",
+        "bcb-str",
+        "bcb-consorcios",
+        "bcb-leiloes-selic",
+        "bcb-tarifas-instituicao",
+        "bcb-cosif",
+        "bcb-sgs-selic-meta",
+        "bcb-focus-selic-anual",
+        "bcb-relatorio-anual",
+        "bcb-sgs-pre-2000"
+      ],
+      "familia": "bcb",
+      "licencas": [
+        "ODbL (dados abertos do Banco Central; citar a fonte)"
+      ],
+      "link": "https://dadosabertos.bcb.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Banco Central do Brasil",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "ccee-pld",
+        "ccee-consumo-horario",
+        "ccee-geracao-detalhe",
+        "ccee-garantia-fisica",
+        "ccee-contratos-leilao",
+        "ccee-preco-futuro",
+        "ccee-risco-hidrologico",
+        "ccee-liquidacao",
+        "ccee-itaipu",
+        "ccee-mecanismos",
+        "ccee-pld-detalhe",
+        "ccee-consumo",
+        "ccee-geracao",
+        "ccee-contratos",
+        "ccee-mercado"
+      ],
+      "familia": "ccee",
+      "licencas": [
+        "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)"
+      ],
+      "link": "https://dadosabertos.ccee.org.br/",
+      "marca": "vendavel",
+      "orgao": "CCEE (comercialização de energia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "antt-pedagio",
+        "antt-siade",
+        "antt-autos-de-transito",
+        "antt-rntrc"
+      ],
+      "familia": "antt",
+      "licencas": [
+        "CC BY (dados abertos da ANTT; citar a ANTT)"
+      ],
+      "link": "https://dados.antt.gov.br/",
+      "marca": "vendavel",
+      "orgao": "ANTT (transportes terrestres)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "tesouro-br-divida",
+        "tesouro-br-direto",
+        "tesouro-br-leiloes",
+        "tesouro-br-rtn",
+        "tesouro-br-receitas",
+        "tesouro-br-despesas",
+        "tesouro-br-restos-a-pagar",
+        "tesouro-br-fatores-divida",
+        "tesouro-br-paf",
+        "tesouro-br-bspn",
+        "tesouro-br-limites-lrf",
+        "tesouro-br-dividendos-estatais",
+        "tesouro-br-subsidios-bndes",
+        "tesouro-br-garantias",
+        "tesouro-br-transferencias",
+        "tesouro-br-capag-municipios",
+        "tesouro-br-td-vendas",
+        "tesouro-br-td-resgates",
+        "tesouro-br-td-estoque",
+        "tesouro-br-siconfi-entes",
+        "tesouro-br-siconfi-entregas",
+        "tesouro-br-siconfi-rreo",
+        "tesouro-br-siconfi-rgf",
+        "tesouro-br-siconfi-dca",
+        "tesouro-br-divida-execucao-por-fonte",
+        "tesouro-br-divida-execucao-por-nd",
+        "tesouro-br-divida-dotacao",
+        "tesouro-br-divida-emissoes-diretas",
+        "tesouro-br-divida-emissoes-soberanas",
+        "tesouro-br-divida-estados-estoque",
+        "tesouro-br-divida-estados-servico",
+        "tesouro-br-divida-consolidada-liquida"
+      ],
+      "familia": "tesouro",
+      "licencas": [
+        "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+        "ODbL (SICONFI, Tesouro Nacional; citar a fonte)"
+      ],
+      "link": "https://www.tesourotransparente.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Tesouro Nacional",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "anp-vendas-distribuidora",
+        "anp-producao-poco",
+        "anp-concessionarios",
+        "anp-precos-ultimas-semanas",
+        "anp-precos-semestral",
+        "anp-precos-mensal"
+      ],
+      "familia": "anp",
+      "licencas": [
+        "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)"
+      ],
+      "link": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos",
+      "marca": "vendavel",
+      "orgao": "ANP (petróleo, gás e combustíveis)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-14",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "ons-geracao-usina",
+        "ons-restricao-eolica-solar",
+        "ons-capacidade-geracao",
+        "ons-demanda-maxima",
+        "ons-hidrologia-detalhe",
+        "ons-cmo-semi-horario",
+        "ons-disponibilidade",
+        "ons-itaipu",
+        "ons-chuva-estacao",
+        "ons-carga",
+        "ons-balanco",
+        "ons-hidrologia",
+        "ons-custos",
+        "ons-termica",
+        "ons-fator-capacidade",
+        "ons-hidrologia-detalhada"
+      ],
+      "familia": "ons",
+      "licencas": [
+        "CC BY 4.0 (dados abertos do ONS; citar o ONS)"
+      ],
+      "link": "https://dados.ons.org.br/",
+      "marca": "vendavel",
+      "orgao": "ONS (operador do sistema elétrico)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "comexstat",
+        "comexstat-tabelas"
+      ],
+      "familia": "comexstat",
+      "licencas": [
+        "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)"
+      ],
+      "link": "https://balanca.mdic.gov.br/balanca/bd/",
+      "marca": "vendavel",
+      "orgao": "Comex Stat (MDIC)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "anac-estatistico",
+        "anac-horas-voadas"
+      ],
+      "familia": "anac",
+      "licencas": [
+        "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)"
+      ],
+      "link": "https://sistemas.anac.gov.br/dadosabertos/",
+      "marca": "vendavel",
+      "orgao": "ANAC (aviação civil)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "ans-beneficiarios",
+        "ans-beneficiarios-operadora",
+        "ans-operadoras",
+        "ans-qualidade",
+        "ans-precos",
+        "ans-glosas",
+        "ans-ressarcimento-sus",
+        "ans-cobertura-e-produtos",
+        "ans-demonstracoes"
+      ],
+      "familia": "ans",
+      "licencas": [
+        "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+        "Demonstrações da ANS: sem licença declarada; citar a ANS"
+      ],
+      "link": "https://dadosabertos.ans.gov.br/",
+      "marca": "vendavel",
+      "orgao": "ANS (planos de saúde)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "anatel-acessos",
+        "anatel-outorgas",
+        "anatel-acessos-telefonia-fixa"
+      ],
+      "familia": "anatel",
+      "licencas": [
+        "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)"
+      ],
+      "link": "https://www.anatel.gov.br/dadosabertos/",
+      "marca": "vendavel",
+      "orgao": "Anatel (telecomunicações)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-14",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "aneel-samp",
+        "aneel-cde",
+        "aneel-inadimplencia",
+        "aneel-empreendimentos",
+        "aneel-encargos",
+        "aneel-fiscalizacao",
+        "aneel-bdgd-ucat-pj",
+        "aneel-tarifas",
+        "aneel-geracao",
+        "aneel-qualidade"
+      ],
+      "familia": "aneel",
+      "licencas": [
+        "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor"
+      ],
+      "link": "https://dadosabertos.aneel.gov.br/",
+      "marca": "vendavel",
+      "orgao": "ANEEL (energia elétrica)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "susep-ses",
+        "susep-cadastro",
+        "susep-ses-grandes",
+        "susep-ses-complementos"
+      ],
+      "familia": "susep",
+      "licencas": [
+        "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas"
+      ],
+      "link": "https://dados.susep.gov.br/",
+      "marca": "vendavel",
+      "orgao": "SUSEP (seguros)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-15",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "anvisa-empresas",
+        "anvisa-produtos",
+        "anvisa-cmed"
+      ],
+      "familia": "anvisa",
+      "licencas": [
+        "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+        "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)"
+      ],
+      "link": "https://dados.anvisa.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Anvisa (vigilância sanitária)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "mapa-sipeagro"
+      ],
+      "familia": "mapa",
+      "licencas": [
+        "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)"
+      ],
+      "link": "https://dados.agricultura.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Ministério da Agricultura (SIPEAGRO)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "anm-cadastro-mineiro"
+      ],
+      "familia": "anm",
+      "licencas": [
+        "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)"
+      ],
+      "link": "https://dadosabertos.anm.gov.br/",
+      "marca": "vendavel",
+      "orgao": "ANM (mineração)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "ancine-agentes"
+      ],
+      "familia": "ancine",
+      "licencas": [
+        "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)"
+      ],
+      "link": "https://dados.ancine.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Ancine (audiovisual)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "mme-reidi"
+      ],
+      "familia": "mme",
+      "licencas": [
+        "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)"
+      ],
+      "link": "https://dadosabertos.mme.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Ministério de Minas e Energia (REIDI)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "finep-contratacao"
+      ],
+      "familia": "finep",
+      "licencas": [
+        "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)"
+      ],
+      "link": "https://www.finep.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Finep (financiamento à inovação)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "b3-negocios",
+        "b3-boletim-pr",
+        "b3-cotahist-dia",
+        "b3-ibov-diario",
+        "b3-cotahist-anual"
+      ],
+      "familia": "b3",
+      "licencas": [
+        "Sem licença da B3; uso com a fonte citada, risco assumido"
+      ],
+      "link": "https://www.b3.com.br/",
+      "marca": "nao_comercial",
+      "orgao": "B3 (bolsa)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "tce-pr-pit",
+        "tce-pr-despesa"
+      ],
+      "familia": "tce",
+      "licencas": [
+        "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF"
+      ],
+      "link": "https://pit.tce.pr.gov.br/",
+      "marca": "vendavel",
+      "orgao": "TCE-PR (Tribunal de Contas do Paraná)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-16",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "assessoria-igc"
+      ],
+      "familia": "assessoria",
+      "licencas": [
+        "Posts públicos de assessorias de M&A: só fatos, sem texto"
+      ],
+      "link": null,
+      "marca": "a_confirmar",
+      "orgao": "Assessorias de M&A (páginas públicas)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "wayback-igc"
+      ],
+      "familia": "wayback",
+      "licencas": [
+        "Internet Archive: 'for scholarship and research purposes only'; só datas"
+      ],
+      "link": "https://web.archive.org/",
+      "marca": "nao_comercial",
+      "orgao": "Internet Archive (Wayback Machine)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-16",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "cftc-cot-disaggregated",
+        "cftc-cot-futuros-e-opcoes",
+        "cftc-cot-cit",
+        "cftc-cot-legado"
+      ],
+      "familia": "cftc",
+      "licencas": [
+        "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)"
+      ],
+      "link": "https://www.cftc.gov/",
+      "marca": "vendavel",
+      "orgao": "CFTC (derivativos, EUA)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "conab-cafe-safra",
+        "conab-cafe-publicacao",
+        "conab-series-graos",
+        "conab-series-cana",
+        "conab-series-cafe",
+        "conab-boletins-graos"
+      ],
+      "familia": "conab",
+      "licencas": [
+        "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento"
+      ],
+      "link": "https://www.gov.br/conab/",
+      "marca": "vendavel",
+      "orgao": "Conab (safras)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "usda-psd-cafe",
+        "usda-psd-todas"
+      ],
+      "familia": "usda",
+      "licencas": [
+        "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY"
+      ],
+      "link": "https://apps.fas.usda.gov/psdonline/",
+      "marca": "vendavel",
+      "orgao": "USDA (agricultura dos EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-18",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "faostat-cafe",
+        "faostat-precos-ao-produtor",
+        "faostat-comercio"
+      ],
+      "familia": "faostat",
+      "licencas": [
+        "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)"
+      ],
+      "link": "https://www.fao.org/faostat/",
+      "marca": "vendavel",
+      "orgao": "FAO (FAOSTAT)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ico-relatorio-mensal",
+        "ico-icip-mensal"
+      ],
+      "familia": "ico",
+      "licencas": [
+        "ICO: relatório mensal sem termos achados; uso citando a fonte"
+      ],
+      "link": "https://ico.org/",
+      "marca": "nao_comercial",
+      "orgao": "OIC (Organização Internacional do Café)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "inmet-bdmep",
+        "inmet-estacoes",
+        "inmet-normais"
+      ],
+      "familia": "inmet",
+      "licencas": [
+        "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)"
+      ],
+      "link": "https://portal.inmet.gov.br/",
+      "marca": "vendavel",
+      "orgao": "INMET (meteorologia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "chirps-mensal",
+        "chirps-historico",
+        "chirps-chirts-tmax-mensal",
+        "chirps-chirts-tmax-historico",
+        "chirps-spei-fldas",
+        "chirps-spi-chirps3"
+      ],
+      "familia": "chirps",
+      "licencas": [
+        "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015"
+      ],
+      "link": "https://www.chc.ucsb.edu/data/chirps",
+      "marca": "vendavel",
+      "orgao": "CHIRPS v2 (chuva por satélite, UCSB)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "ibge-malha-municipal",
+        "ibge-precos-ftp",
+        "ibge-contas-nacionais-ftp"
+      ],
+      "familia": "ibge",
+      "licencas": [
+        "Domínio público (citar o IBGE)"
+      ],
+      "link": "https://www.ibge.gov.br/",
+      "marca": "vendavel",
+      "orgao": "IBGE",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-18",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "mapbiomas-cafe",
+        "mapbiomas-estatisticas",
+        "mapbiomas-bioma-e-estado"
+      ],
+      "familia": "mapbiomas",
+      "licencas": [
+        "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)"
+      ],
+      "link": "https://brasil.mapbiomas.org/",
+      "marca": "vendavel",
+      "orgao": "MapBiomas (uso da terra)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "riksbank-catalogo-de-series",
+        "riksbank-catalogo-de-grupos",
+        "riksbank-juro-diretor",
+        "riksbank-letra-3m",
+        "riksbank-titulo-2a",
+        "riksbank-titulo-5a",
+        "riksbank-titulo-10a",
+        "riksbank-cambio-real",
+        "riksbank-cambio-dolar",
+        "riksbank-cambio-euro",
+        "riksbank-cambio-libra",
+        "riksbank-cambio-coroa-norueguesa",
+        "riksbank-cambio-iene",
+        "riksbank-cambio-yuan"
+      ],
+      "familia": "riksbank",
+      "licencas": [
+        "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)"
+      ],
+      "link": "https://www.riksbank.se/en-gb/",
+      "marca": "vendavel",
+      "orgao": "Sveriges riksbank (Suécia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "norges-cambio",
+        "norges-juro-diretor",
+        "norges-letra-3m",
+        "norges-titulo-10a"
+      ],
+      "familia": "norges",
+      "licencas": [
+        "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)"
+      ],
+      "link": "https://www.norges-bank.no/en/",
+      "marca": "a_confirmar",
+      "orgao": "Norges Bank (Noruega)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "dst-ipc",
+        "dst-ipch",
+        "dst-desemprego",
+        "dst-contas-nacionais-trimestrais",
+        "dst-juros-de-mercado",
+        "dst-juros-por-tipo"
+      ],
+      "familia": "dst",
+      "licencas": [
+        "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)"
+      ],
+      "link": "https://www.dst.dk/en/",
+      "marca": "vendavel",
+      "orgao": "Statistics Denmark (Danmarks Statistik)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "scb-ipc",
+        "scb-ipc-juros-fixos",
+        "scb-ipch",
+        "scb-desemprego"
+      ],
+      "familia": "scb",
+      "licencas": [
+        "CC0 (Statistics Sweden, SCB; citar o SCB)"
+      ],
+      "link": "https://www.scb.se/en/",
+      "marca": "vendavel",
+      "orgao": "Statistics Sweden (SCB, Suécia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "statfi-ipc",
+        "statfi-desemprego",
+        "statfi-pib-trimestral"
+      ],
+      "familia": "statfi",
+      "licencas": [
+        "CC BY 4.0 (Statistics Finland; citar Statistics Finland)"
+      ],
+      "link": "https://stat.fi/en",
+      "marca": "vendavel",
+      "orgao": "Statistics Finland (Finlândia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "statice-ipc",
+        "statice-pib-trimestral",
+        "statice-desemprego"
+      ],
+      "familia": "statice",
+      "licencas": [
+        "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)"
+      ],
+      "link": "https://www.statice.is/",
+      "marca": "vendavel",
+      "orgao": "Statistics Iceland (Hagstofa, Islândia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "bce-cambio-dolar",
+        "bce-cambio-real",
+        "bce-curva-10a",
+        "bce-juro-principal",
+        "bce-inflacao-ipch",
+        "bce-balanco-bancos",
+        "bce-juro-credito"
+      ],
+      "familia": "bce",
+      "licencas": [
+        "Reuso livre citando 'Source: ECB statistics' (aviso do Data Portal do BCE)"
+      ],
+      "link": "https://data.ecb.europa.eu/",
+      "marca": "vendavel",
+      "orgao": "Banco Central Europeu",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ocde-cli"
+      ],
+      "familia": "ocde",
+      "licencas": [
+        "Termos da OCDE: uso livre, inclusive comercial, citando a OCDE e a data"
+      ],
+      "link": "https://www.oecd.org/",
+      "marca": "vendavel",
+      "orgao": "OCDE",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "eurostat-confianca",
+        "eurostat-ipch",
+        "eurostat-desemprego",
+        "eurostat-pib",
+        "eurostat-juro-longo",
+        "eurostat-producao-industrial",
+        "eurostat-precos-agricolas",
+        "eurostat-preco-do-gas"
+      ],
+      "familia": "eurostat",
+      "licencas": [
+        "CC BY 4.0 (Eurostat); coleta só dos países da UE"
+      ],
+      "link": "https://ec.europa.eu/eurostat",
+      "marca": "vendavel",
+      "orgao": "Eurostat",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "bis-cambio-efetivo-nominal",
+        "bis-cambio-efetivo-real",
+        "bis-juro-dos-bancos-centrais",
+        "bis-preco-de-imoveis",
+        "bis-inflacao-longa",
+        "bis-cambio",
+        "bis-lacuna-de-credito"
+      ],
+      "familia": "bis",
+      "licencas": [
+        "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS"
+      ],
+      "link": "https://www.bis.org/statistics/",
+      "marca": "vendavel",
+      "orgao": "BIS (Banco de Compensações Internacionais)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-03",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "fmi-cambio",
+        "fmi-inflacao",
+        "fmi-reservas-do-mundo",
+        "fmi-weo-ngdp_rpch",
+        "fmi-weo-pcpipch",
+        "fmi-weo-bca_ngdpd",
+        "fmi-weo-ggxwdg_ngdp"
+      ],
+      "familia": "fmi",
+      "licencas": [
+        "© FMI: uso comercial pede permissão por escrito; coleta citando o FMI"
+      ],
+      "link": "https://www.imf.org/",
+      "marca": "uso_interno",
+      "orgao": "FMI",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "noaa-teleconexoes",
+        "noaa-nao",
+        "noaa-ao",
+        "noaa-pna",
+        "noaa-oni",
+        "noaa-nino",
+        "noaa-soi",
+        "noaa-ghcn-estacoes",
+        "noaa-ghcn-paises",
+        "noaa-ghcn-diario-brasil",
+        "noaa-ghcn-mensal-temperatura",
+        "noaa-oisst-diario"
+      ],
+      "familia": "noaa",
+      "licencas": [
+        "Obra do governo dos EUA (domínio público); citar a NOAA CPC"
+      ],
+      "link": "https://www.cpc.ncep.noaa.gov/",
+      "marca": "vendavel",
+      "orgao": "NOAA (clima, EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "worldbank-brasil",
+        "worldbank-qeds-brasil",
+        "worldbank-mundo-ny-gdp-mktp-kd-zg",
+        "worldbank-mundo-fp-cpi-totl-zg",
+        "worldbank-mundo-sp-pop-totl"
+      ],
+      "familia": "worldbank",
+      "licencas": [
+        "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto"
+      ],
+      "link": "https://data.worldbank.org/",
+      "marca": "vendavel",
+      "orgao": "Banco Mundial (indicadores)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "nasa-power-sul-de-minas",
+        "nasa-power-cerrado-mineiro",
+        "nasa-power-matas-de-minas",
+        "nasa-power-chapada-de-minas",
+        "nasa-power-mogiana",
+        "nasa-power-alta-paulista",
+        "nasa-power-norte-do-parana",
+        "nasa-power-oeste-da-bahia",
+        "nasa-power-planalto-da-bahia",
+        "nasa-power-es-montanhas",
+        "nasa-power-es-norte",
+        "nasa-power-rondonia",
+        "nasa-power-bahia-atlantico"
+      ],
+      "familia": "nasa",
+      "licencas": [
+        "CC BY 4.0 (NASA POWER; citar NASA POWER)"
+      ],
+      "link": "https://power.larc.nasa.gov/",
+      "marca": "vendavel",
+      "orgao": "NASA POWER (clima)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "sec-edgar-indice-diario",
+        "sec-edgar-indice-trimestral",
+        "sec-edgar-form-d",
+        "sec-edgar-13f",
+        "sec-edgar-form-d-historico",
+        "sec-edgar-13f-historico",
+        "sec-edgar-busca-texto",
+        "sec-bulk-submissions",
+        "sec-bulk-companyfacts",
+        "sec-demonstracoes-financeiras",
+        "sec-demonstracoes-financeiras-historico",
+        "sec-notas-das-demonstracoes",
+        "sec-notas-das-demonstracoes-historico",
+        "sec-insiders",
+        "sec-insiders-historico",
+        "sec-nport",
+        "sec-nport-historico",
+        "sec-ncen",
+        "sec-ncen-historico",
+        "sec-nmfp",
+        "sec-nmfp-historico",
+        "sec-reg-a",
+        "sec-reg-a-historico",
+        "sec-crowdfunding",
+        "sec-crowdfunding-historico",
+        "sec-bdc",
+        "sec-bdc-historico",
+        "sec-form-adv",
+        "sec-form-adv-historico",
+        "sec-consultores-municipais",
+        "sec-consultores-municipais-historico",
+        "sec-corretoras",
+        "sec-corretoras-historico",
+        "sec-foia-registros",
+        "sec-foia-registros-historico",
+        "sec-company-tickers"
+      ],
+      "familia": "sec",
+      "licencas": [
+        "Acesso público (EDGAR, SEC)",
+        "Domínio público (lista de tickers da SEC; citar a SEC)"
+      ],
+      "link": "https://www.sec.gov/",
+      "marca": "vendavel",
+      "orgao": "SEC (EDGAR, empresas dos EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "fed-ddp-h15",
+        "fed-ddp-h10",
+        "fed-ddp-h41",
+        "fed-ddp-h8",
+        "fed-ddp-h6",
+        "fed-ddp-g19",
+        "fed-ddp-z1",
+        "fed-ddp-chgdel"
+      ],
+      "familia": "fed",
+      "licencas": [
+        "Domínio público (Federal Reserve Board, Data Download Program; citar o Fed)"
+      ],
+      "link": "https://www.federalreserve.gov/",
+      "marca": "vendavel",
+      "orgao": "Federal Reserve",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "treasury-fiscaldata-divida-total",
+        "treasury-fiscaldata-juros-medios",
+        "treasury-fiscaldata-cambio-oficial",
+        "treasury-fiscaldata-leiloes",
+        "treasury-fiscaldata-resultado-mensal",
+        "treasury-fiscaldata-receitas-e-despesas",
+        "treasury-fiscaldata-vendas-de-titulos",
+        "treasury-curva-juros",
+        "treasury-curva-juros-historico"
+      ],
+      "familia": "treasury",
+      "licencas": [
+        "Domínio público (Fiscal Data e curvas, Tesouro dos EUA; citar o Tesouro)"
+      ],
+      "link": "https://fiscaldata.treasury.gov/",
+      "marca": "vendavel",
+      "orgao": "Tesouro dos EUA (Fiscal Data)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "bls-cu",
+        "bls-cw",
+        "bls-ce",
+        "bls-wp",
+        "bls-pc",
+        "bls-pr",
+        "bls-ip",
+        "bls-jt",
+        "bls-ap",
+        "bls-ei",
+        "bls-la"
+      ],
+      "familia": "bls",
+      "licencas": [
+        "Domínio público (Bureau of Labor Statistics; citar a BLS)"
+      ],
+      "link": "https://www.bls.gov/",
+      "marca": "vendavel",
+      "orgao": "BLS (estatísticas do trabalho, EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "eia-wpsr"
+      ],
+      "familia": "eia",
+      "licencas": [
+        "Domínio público (Energy Information Administration; citar a EIA)"
+      ],
+      "link": "https://www.eia.gov/",
+      "marca": "vendavel",
+      "orgao": "EIA (energia, EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ofr-estresse-financeiro",
+        "ofr-monitor-de-funding",
+        "ofr-monitor-de-hedge-funds"
+      ],
+      "familia": "ofr",
+      "licencas": [
+        "Domínio público (Office of Financial Research, Tesouro dos EUA; citar a OFR)"
+      ],
+      "link": "https://www.financialresearch.gov/",
+      "marca": "vendavel",
+      "orgao": "OFR (pesquisa financeira, Tesouro dos EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "nyfed-juros-referencia",
+        "nyfed-juros-referencia-historico",
+        "nyfed-dealers-primarios"
+      ],
+      "familia": "nyfed",
+      "licencas": [
+        "Federal Reserve Bank of New York: dados públicos de mercado (citar o NY Fed)"
+      ],
+      "link": "https://www.newyorkfed.org/",
+      "marca": "vendavel",
+      "orgao": "Federal Reserve de Nova York",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "tic-detentores-estrangeiros",
+        "tic-posicoes-de-longo-prazo",
+        "tic-carteira-global"
+      ],
+      "familia": "tic",
+      "licencas": [
+        "Domínio público (Treasury International Capital, Tesouro dos EUA; citar)"
+      ],
+      "link": "https://home.treasury.gov/data/treasury-international-capital-tic-system",
+      "marca": "vendavel",
+      "orgao": "TIC (capital estrangeiro, Tesouro dos EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "census-comercio-exterior",
+        "census-varejo",
+        "census-construcao",
+        "census-industria"
+      ],
+      "familia": "census",
+      "licencas": [
+        "Domínio público (U.S. Census Bureau; citar o Census Bureau)"
+      ],
+      "link": "https://www.census.gov/",
+      "marca": "vendavel",
+      "orgao": "U.S. Census Bureau",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "statat-ipc-base-2010",
+        "statat-ipc-base-2020"
+      ],
+      "familia": "statat",
+      "licencas": [
+        "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'"
+      ],
+      "link": "https://data.statistik.gv.at/",
+      "marca": "vendavel",
+      "orgao": "Statistik Austria (Áustria)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "statbel-ipch-anual",
+        "statbel-ipc-mensal",
+        "statbel-emprego-por-regiao"
+      ],
+      "familia": "statbel",
+      "licencas": [
+        "CC BY 4.0 (dados abertos do Statbel); citar o Statbel"
+      ],
+      "link": "https://statbel.fgov.be/",
+      "marca": "vendavel",
+      "orgao": "Statbel (Bélgica)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "cbs-inflacao-anual",
+        "cbs-ipch-comparado"
+      ],
+      "familia": "cbs",
+      "licencas": [
+        "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands"
+      ],
+      "link": "https://opendata.cbs.nl/",
+      "marca": "vendavel",
+      "orgao": "CBS (Statistics Netherlands, Países Baixos)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "cso-ipc",
+        "cso-preco-de-imoveis",
+        "cso-desemprego"
+      ],
+      "familia": "cso",
+      "licencas": [
+        "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO"
+      ],
+      "link": "https://data.cso.ie/",
+      "marca": "vendavel",
+      "orgao": "CSO (Central Statistics Office, Irlanda)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ines-ipc",
+        "ines-ativos-epa"
+      ],
+      "familia": "ines",
+      "licencas": [
+        "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'"
+      ],
+      "link": "https://www.ine.es/",
+      "marca": "vendavel",
+      "orgao": "INE (Instituto Nacional de Estatística, Espanha)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "istat-fluxo-143-497",
+        "istat-fluxo-120-337"
+      ],
+      "familia": "istat",
+      "licencas": [
+        "CC BY 4.0 (aviso legal do Istat); citar o Istat"
+      ],
+      "link": "https://www.istat.it/",
+      "marca": "vendavel",
+      "orgao": "Istat (Instituto Nacional de Estatística, Itália)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "rba-cambio",
+        "rba-rendimentos-dos-titulos",
+        "rba-balanco"
+      ],
+      "familia": "rba",
+      "licencas": [
+        "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte"
+      ],
+      "link": "https://www.rba.gov.au/statistics/",
+      "marca": "vendavel",
+      "orgao": "RBA (Banco Central da Austrália)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "contrapartes-cafe"
+      ],
+      "familia": "contrapartes",
+      "licencas": [
+        "Página guardada só como prova; na ficha, fato e link"
+      ],
+      "link": null,
+      "marca": "a_confirmar",
+      "orgao": "Imprensa e páginas públicas",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-18",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "djen-partes",
+        "djen-processos"
+      ],
+      "familia": "djen",
+      "licencas": [
+        "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho"
+      ],
+      "link": "https://comunica.pje.jus.br/",
+      "marca": "vendavel",
+      "orgao": "CNJ (Diário de Justiça Eletrônico Nacional)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "datajud-processos"
+      ],
+      "familia": "datajud",
+      "licencas": [
+        "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)"
+      ],
+      "link": "https://datajud-wiki.cnj.jus.br/api-publica/",
+      "marca": "uso_interno",
+      "orgao": "CNJ (DataJud, só uso interno)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "cnj-tpu"
+      ],
+      "familia": "cnj",
+      "licencas": [
+        "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ"
+      ],
+      "link": "https://www.cnj.jus.br/sgt/consulta_publica_classes.php",
+      "marca": "vendavel",
+      "orgao": "CNJ (Tabelas Processuais Unificadas)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "epe-consumo-mensal"
+      ],
+      "familia": "epe",
+      "licencas": [
+        "CC BY 4.0 (dados abertos da EPE; citar a EPE)"
+      ],
+      "link": "https://www.epe.gov.br/",
+      "marca": "vendavel",
+      "orgao": "EPE (pesquisa energética)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "inep-censo-superior"
+      ],
+      "familia": "inep",
+      "licencas": [
+        "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP"
+      ],
+      "link": "https://www.gov.br/inep/",
+      "marca": "vendavel",
+      "orgao": "INEP (educação)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "senatran-frota"
+      ],
+      "familia": "senatran",
+      "licencas": [
+        "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran"
+      ],
+      "link": "https://www.gov.br/transportes/",
+      "marca": "vendavel",
+      "orgao": "Senatran (frota de veículos)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "inpi-patentes",
+        "inpi-contratos",
+        "inpi-patentes-partes",
+        "inpi-marcas",
+        "inpi-desenhos",
+        "inpi-programas",
+        "inpi-contratos-partes"
+      ],
+      "familia": "inpi",
+      "licencas": [
+        "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI"
+      ],
+      "link": "https://dadosabertos.inpi.gov.br/",
+      "marca": "vendavel",
+      "orgao": "INPI (patentes e marcas)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "seges-pncp-compras",
+        "seges-pncp-itens",
+        "seges-pncp-resultados",
+        "seges-arp-atas",
+        "seges-arp-itens",
+        "seges-legado-licitacao",
+        "seges-legado-pregao",
+        "seges-legado-rdc",
+        "seges-legado-sem-licitacao",
+        "seges-pesquisa-precos",
+        "seges-propostas",
+        "seges-catalogo",
+        "seges-siconv"
+      ],
+      "familia": "seges",
+      "licencas": [
+        "Dados abertos da SEGES (Decreto 8.777/2016; citar a SEGES)",
+        "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)"
+      ],
+      "link": "https://www.gov.br/compras/",
+      "marca": "vendavel",
+      "orgao": "SEGES (compras públicas, Ministério da Gestão)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "comprasgov-resultado-itens"
+      ],
+      "familia": "comprasgov",
+      "licencas": [
+        "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)"
+      ],
+      "link": "https://dadosabertos.compras.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Compras.gov.br (Ministério da Gestão)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "transferegov-especiais",
+        "transferegov-ted",
+        "transferegov-fundo-a-fundo",
+        "transferegov-especiais-pagamentos"
+      ],
+      "familia": "transferegov",
+      "licencas": [
+        "Dados abertos do Transferegov (Decreto 8.777/2016; citar o MGI)",
+        "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)"
+      ],
+      "link": "https://www.gov.br/transferegov/",
+      "marca": "vendavel",
+      "orgao": "Transferegov (Ministério da Gestão)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "pncp-contratos-atualizados",
+        "pncp-atas-atualizadas",
+        "pncp-contratacoes-atualizadas",
+        "pncp-contratos"
+      ],
+      "familia": "pncp",
+      "licencas": [
+        "PNCP: licença não escrita (a confirmar; citar o PNCP)"
+      ],
+      "link": "https://pncp.gov.br/",
+      "marca": "vendavel",
+      "orgao": "PNCP (contratações públicas)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "tcu-inidoneos"
+      ],
+      "familia": "tcu",
+      "licencas": [
+        "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)"
+      ],
+      "link": "https://contas.tcu.gov.br/",
+      "marca": "vendavel",
+      "orgao": "TCU (Tribunal de Contas da União)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "govmg-compras-contratos"
+      ],
+      "familia": "govmg",
+      "licencas": [
+        "CC BY 4.0 (dados abertos de Minas Gerais; citar o Governo de MG)"
+      ],
+      "link": "https://dados.mg.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Minas Gerais (dados abertos)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "govsc-contratos"
+      ],
+      "familia": "govsc",
+      "licencas": [
+        "CC BY (dados abertos de Santa Catarina; citar o Governo de SC)"
+      ],
+      "link": "https://dados.sc.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Santa Catarina (dados abertos)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "transparencia-transferencias",
+        "transparencia-compras",
+        "transparencia-licitacoes",
+        "transparencia-despesas",
+        "transparencia-orcamento",
+        "transparencia-emendas"
+      ],
+      "familia": "transparencia",
+      "licencas": [
+        "Portal da Transparência da CGU (Decreto 8.777/2016, CC BY; citar a CGU). Só CNPJ"
+      ],
+      "link": "https://portaldatransparencia.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Portal da Transparência (CGU)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "bndes-estatisticas",
+        "bndes-desembolsos-mensais",
+        "bndes-contas",
+        "bndes-operacoes",
+        "bndes-operacoes-indiretas",
+        "bndes-compras"
+      ],
+      "familia": "bndes",
+      "licencas": [
+        "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ"
+      ],
+      "link": "https://dadosabertos.bndes.gov.br/",
+      "marca": "vendavel",
+      "orgao": "BNDES",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "inss-folha-agregada",
+        "inss-acordos-internacionais",
+        "inss-requerimentos-pendentes",
+        "inss-requerimentos-solicitados"
+      ],
+      "familia": "inss",
+      "licencas": [
+        "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados"
+      ],
+      "link": "https://dadosabertos.inss.gov.br/",
+      "marca": "vendavel",
+      "orgao": "INSS",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "sefazpe-beneficios"
+      ],
+      "familia": "sefazpe",
+      "licencas": [
+        "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social"
+      ],
+      "link": "https://dados.pe.gov.br/",
+      "marca": "vendavel",
+      "orgao": "SEFAZ-PE (Secretaria da Fazenda de Pernambuco)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-05",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "wikidata-lei",
+        "wikidata-isin",
+        "wikidata-cnpj",
+        "wikidata-cik",
+        "wikidata-b3"
+      ],
+      "familia": "wikidata",
+      "licencas": [
+        "CC0 (Wikidata; citar Wikidata)"
+      ],
+      "link": "https://www.wikidata.org/",
+      "marca": "vendavel",
+      "orgao": "Wikidata",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ofac-sdn"
+      ],
+      "familia": "ofac",
+      "licencas": [
+        "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades"
+      ],
+      "link": "https://ofac.treasury.gov/",
+      "marca": "vendavel",
+      "orgao": "OFAC (sanções, EUA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "eufsf-sancoes"
+      ],
+      "familia": "eufsf",
+      "licencas": [
+        "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas"
+      ],
+      "link": "https://webgate.ec.europa.eu/fsd/fsf",
+      "marca": "vendavel",
+      "orgao": "União Europeia (sanções financeiras)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ofsi-conlist"
+      ],
+      "familia": "ofsi",
+      "licencas": [
+        "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades"
+      ],
+      "link": "https://sanctionslist.fcdo.gov.uk/",
+      "marca": "vendavel",
+      "orgao": "OFSI (sanções, Reino Unido)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "wiki-pageviews-empresas"
+      ],
+      "familia": "wiki",
+      "licencas": [
+        "CC0 (acessos por artigo, Wikimedia; citar a Wikimedia)"
+      ],
+      "link": "https://wikimedia.org/",
+      "marca": "vendavel",
+      "orgao": "Wikimedia (acessos à Wikipédia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "gdelt-gkg"
+      ],
+      "familia": "gdelt",
+      "licencas": [
+        "GDELT: uso livre citando e linkando o GDELT; só empresa, tema e tom"
+      ],
+      "link": "https://www.gdeltproject.org/",
+      "marca": "vendavel",
+      "orgao": "GDELT Project (notícias)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-21",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "querido-diario-empresas"
+      ],
+      "familia": "querido",
+      "licencas": [
+        "CC BY 4.0 (Querido Diário, Open Knowledge Brasil; citar)"
+      ],
+      "link": "https://queridodiario.ok.org.br/",
+      "marca": "vendavel",
+      "orgao": "Querido Diário (Open Knowledge Brasil)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "openalex-afiliacoes"
+      ],
+      "familia": "openalex",
+      "licencas": [
+        "CC0 (OpenAlex); só afiliações e contagens, sem autores"
+      ],
+      "link": "https://openalex.org/",
+      "marca": "vendavel",
+      "orgao": "OpenAlex (artigos científicos)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "crossref-afiliacoes"
+      ],
+      "familia": "crossref",
+      "licencas": [
+        "Metadados sem direitos de autor (Crossref); só contagens por afiliação"
+      ],
+      "link": "https://www.crossref.org/",
+      "marca": "vendavel",
+      "orgao": "Crossref (artigos científicos)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ebc-rss-ultimas",
+        "ebc-rss-economia"
+      ],
+      "familia": "ebc",
+      "licencas": [
+        "Texto de terceiros (EBC): só índice (data, título, link) do RSS"
+      ],
+      "link": "https://agenciabrasil.ebc.com.br/",
+      "marca": "a_confirmar",
+      "orgao": "EBC (Agência Brasil)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "senado-rss-noticias"
+      ],
+      "familia": "senado",
+      "licencas": [
+        "Texto de terceiros (Agência Senado): só índice (data, título, link) do RSS"
+      ],
+      "link": "https://www12.senado.leg.br/",
+      "marca": "a_confirmar",
+      "orgao": "Senado Federal (Agência Senado)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "camara-rss-noticias"
+      ],
+      "familia": "camara",
+      "licencas": [
+        "Texto de terceiros (Agência Câmara): só índice (data, título, link)"
+      ],
+      "link": "https://www.camara.leg.br/",
+      "marca": "a_confirmar",
+      "orgao": "Câmara dos Deputados (Agência Câmara)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "inpe-queimadas-diario",
+        "inpe-queimadas-mensal",
+        "inpe-queimadas-historico"
+      ],
+      "familia": "inpe",
+      "licencas": [
+        "INPE Queimadas: sem licença escrita; uso citando o INPE"
+      ],
+      "link": "https://terrabrasilis.dpi.inpe.br/queimadas/portal/",
+      "marca": "vendavel",
+      "orgao": "INPE (queimadas)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-23",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "firms-viirs-snpp-brasil",
+        "firms-viirs-noaa20-brasil",
+        "firms-modis-brasil"
+      ],
+      "familia": "firms",
+      "licencas": [
+        "Dados abertos da NASA (FIRMS); citar NASA FIRMS, chave só no ambiente"
+      ],
+      "link": "https://firms.modaps.eosdis.nasa.gov/",
+      "marca": "vendavel",
+      "orgao": "NASA FIRMS (focos de incêndio)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-23",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ecmwf-previsao-recortada"
+      ],
+      "familia": "ecmwf",
+      "licencas": [
+        "CC BY 4.0 (ECMWF open data); citar o ECMWF"
+      ],
+      "link": "https://www.ecmwf.int/",
+      "marca": "vendavel",
+      "orgao": "ECMWF (previsão do tempo europeia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-23",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "terrabrasilis-deter-amazonia",
+        "terrabrasilis-deter-cerrado",
+        "terrabrasilis-prodes-recente",
+        "terrabrasilis-prodes-historico"
+      ],
+      "familia": "terrabrasilis",
+      "licencas": [
+        "CC BY-SA 4.0 (INPE, TerraBrasilis); citar e compartilhar igual"
+      ],
+      "link": "https://terrabrasilis.dpi.inpe.br/",
+      "marca": "vendavel",
+      "orgao": "INPE (TerraBrasilis, desmatamento)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-23",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "climatetrace-paises",
+        "climatetrace-brasil-setores"
+      ],
+      "familia": "climatetrace",
+      "licencas": [
+        "CC BY 4.0 (Climate TRACE); citar o Climate TRACE"
+      ],
+      "link": "https://climatetrace.org/",
+      "marca": "vendavel",
+      "orgao": "Climate TRACE (emissões)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-23",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "edgar-ghg-ar5",
+        "edgar-ch4",
+        "edgar-n2o"
+      ],
+      "familia": "edgar",
+      "licencas": [
+        "CC BY 4.0 (EDGAR, JRC); sem o IEA-EDGAR CO2, que é CC BY-NC-ND"
+      ],
+      "link": "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/EDGAR/",
+      "marca": "vendavel",
+      "orgao": "EDGAR (emissões, Comissão Europeia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-23",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "carbonmonitor-global"
+      ],
+      "familia": "carbonmonitor",
+      "licencas": [
+        "CC BY 4.0 (Carbon Monitor); citar o Carbon Monitor"
+      ],
+      "link": "https://carbonmonitor.org/",
+      "marca": "vendavel",
+      "orgao": "Carbon Monitor (emissões)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-23",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "dgagri-cereal",
+        "dgagri-oilseeds",
+        "dgagri-dairy",
+        "dgagri-sugar"
+      ],
+      "familia": "dgagri",
+      "licencas": [
+        "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças"
+      ],
+      "link": "https://agridata.ec.europa.eu/",
+      "marca": "vendavel",
+      "orgao": "Comissão Europeia (DG AGRI, preços agroalimentares)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-24",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "boc-bcpi-semanal",
+        "boc-bcpi-mensal",
+        "boc-bcpi-anual",
+        "boc-bcpi-pesos"
+      ],
+      "familia": "boc",
+      "licencas": [
+        "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis"
+      ],
+      "link": "https://www.bankofcanada.ca/rates/price-indexes/bcpi/",
+      "marca": "vendavel",
+      "orgao": "Bank of Canada (índice de preços de commodities)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-05",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ssb-salmao-semanal"
+      ],
+      "familia": "ssb",
+      "licencas": [
+        "CC BY 4.0 (Statistics Norway): citar o SSB, a licença e as mudanças"
+      ],
+      "link": "https://www.ssb.no/en",
+      "marca": "vendavel",
+      "orgao": "SSB (Statistics Norway, Noruega)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-06",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "dgener-oil-bulletin"
+      ],
+      "familia": "dgener",
+      "licencas": [
+        "CC BY 4.0 (Comissão, DG ENER): citar a fonte e indicar mudanças"
+      ],
+      "link": "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en",
+      "marca": "vendavel",
+      "orgao": "Comissão Europeia (DG ENER, Weekly Oil Bulletin)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-06",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "chirps3-rnl-mensal",
+        "chirps3-rnl-historico"
+      ],
+      "familia": "chirps3",
+      "licencas": [
+        "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P"
+      ],
+      "link": "https://www.chc.ucsb.edu/data",
+      "marca": "vendavel",
+      "orgao": "CHIRPS v3 (chuva por satélite, UCSB)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-28",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "epo-linked-patentes"
+      ],
+      "familia": "epo",
+      "licencas": [
+        "CC BY 4.0 (EPO Linked open EP data); citar o EPO; um pedido por vez"
+      ],
+      "link": "https://data.epo.org/",
+      "marca": "vendavel",
+      "orgao": "EPO (patentes europeias)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "wipo-estatisticas"
+      ],
+      "familia": "wipo",
+      "licencas": [
+        "WIPO Statistics Database: não republicar nem revender; só uso interno, citando"
+      ],
+      "link": "https://www.wipo.int/",
+      "marca": "uso_interno",
+      "orgao": "OMPI (WIPO, propriedade intelectual)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ipea-odata-metadados",
+        "ipea-odata-series"
+      ],
+      "familia": "ipea",
+      "licencas": [
+        "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea"
+      ],
+      "link": "https://www.ipeadata.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Ipea (IPEADATA)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "divida-documental"
+      ],
+      "familia": "divida",
+      "licencas": [
+        "PDF guardado só como prova; fato com página e link"
+      ],
+      "link": null,
+      "marca": "a_confirmar",
+      "orgao": "Publicações legais, FNET e prospectos (dívida de empresas fechadas)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "sudeco-fdco"
+      ],
+      "familia": "sudeco",
+      "licencas": [
+        "Sudeco (FDCO), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudeco e a data"
+      ],
+      "link": "https://www.gov.br/sudeco/",
+      "marca": "vendavel",
+      "orgao": "Sudeco (FDCO, fundo do Centro-Oeste)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-04",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "sudam-fda"
+      ],
+      "familia": "sudam",
+      "licencas": [
+        "Sudam (FDA), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudam e a data"
+      ],
+      "link": "https://www.gov.br/sudam/",
+      "marca": "vendavel",
+      "orgao": "Sudam (FDA, fundo da Amazônia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-04",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "yahoo",
+      "licencas": [
+        "Uso pessoal: só interno, nunca exportar"
+      ],
+      "link": "https://finance.yahoo.com/",
+      "marca": "nao_comercial",
+      "orgao": "Yahoo Finance (preços)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [],
+      "familia": "iex",
+      "licencas": [
+        "Termos do IEX HIST (com atribuição)"
+      ],
+      "link": "https://iextrading.com/",
+      "marca": "uso_interno",
+      "orgao": "IEX (bolsa dos EUA)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-10-21",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "bm",
+      "licencas": [
+        "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles"
+      ],
+      "link": "https://www.worldbank.org/en/research/commodity-markets",
+      "marca": "uso_interno",
+      "orgao": "Banco Mundial (Pink Sheet, preços de commodities)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-10-21",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [],
+      "familia": "cecafe",
+      "licencas": [
+        "Cecafé: robots.txt veda PDF; coleta com ritmo, uso citando a fonte"
+      ],
+      "link": "https://www.cecafe.com.br/",
+      "marca": "nao_comercial",
+      "orgao": "Cecafé (exportadores de café)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-10-18",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "fnc",
+      "licencas": [
+        "FNC: só uso pessoal, veda robô; coleta com ritmo, cita a fonte"
+      ],
+      "link": "https://federaciondecafeteros.org/",
+      "marca": "nao_comercial",
+      "orgao": "FNC (cafeicultores da Colômbia)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-10-21",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "kraken",
+      "licencas": [
+        "Termo da Kraken (19/10/2026): só uso próprio; veda cópia, comércio e robôs"
+      ],
+      "link": "https://www.kraken.com/",
+      "marca": "nao_comercial",
+      "orgao": "Kraken (corretora de cripto)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-10-21",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "mb",
+      "licencas": [
+        "Sem termo de dados de mercado: uso sem autorização; só interno"
+      ],
+      "link": null,
+      "marca": "nao_comercial",
+      "orgao": "Mercado Bitcoin (corretora de cripto)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "btc",
+      "licencas": [
+        "Blockchain pública lida por nó próprio (Bitcoin Core, MIT)"
+      ],
+      "link": null,
+      "marca": "vendavel",
+      "orgao": "Rede Bitcoin (lida por nó próprio)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "ms",
+      "licencas": [
+        "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar"
+      ],
+      "link": "https://opendatasus.saude.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [],
+      "familia": "estban",
+      "licencas": [
+        "BCB, ESTBAN: reprodução com fonte e integridade; risco assumido"
+      ],
+      "link": "https://www.bcb.gov.br/estatisticas/estatisticabancariamunicipios",
+      "marca": "vendavel",
+      "orgao": "Banco Central do Brasil (ESTBAN)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "goias",
+      "licencas": [
+        "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)"
+      ],
+      "link": "https://dadosabertos.go.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Goiás (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-11-05",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "msestado",
+      "licencas": [
+        "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)"
+      ],
+      "link": "https://www.dados.ms.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo de Mato Grosso do Sul (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-11-05",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [],
+      "familia": "spcapital",
+      "licencas": [
+        "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)"
+      ],
+      "link": "https://dados.prefeitura.sp.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Prefeitura de São Paulo (dados abertos)",
+      "ritmo": "lida pelo app",
+      "termos_lidos_em": "2026-11-05",
+      "uso": "guardada"
+    }
+  ],
   "fontes": [
     {
       "historico_desde": "2003-01-01",
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "modulos": [
         "credito_e_fidc",
+        "governo_e_sancoes",
         "ma",
         "mercado_e_empresas",
         "rede"
@@ -12,7 +2346,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 57
+      "tabelas": 65
     },
     {
       "historico_desde": "2026-10-14",
@@ -23,20 +2357,32 @@
       "orgao": "Receita Federal",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 7
+      "tabelas": 10
+    },
+    {
+      "historico_desde": "2002-01-01",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "ANM",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 6
     },
     {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "modulos": [
         "credito_e_fidc",
+        "governo_e_sancoes",
         "macro",
         "mercado_e_empresas"
       ],
       "orgao": "Banco Central",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 5
+      "tabelas": 6
     },
     {
       "historico_desde": "2026-10-16",
@@ -51,11 +2397,56 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MDIC",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "modulos": [
         "mercado_e_empresas"
       ],
       "orgao": "ANP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2025-01-01",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CNJ",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
@@ -72,14 +2463,62 @@
       "tabelas": 3
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-PE: licença não localizada; risco assumido",
       "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-PE",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "modulos": [
+        "governo_e_sancoes",
         "mercado_e_empresas"
       ],
-      "orgao": "MDIC",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
+      "orgao": "ANEEL",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANTT",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "Anatel",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "SUSEP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
       "tabelas": 2
     },
     {
@@ -94,46 +2533,35 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
       "modulos": [
-        "mercado_e_empresas"
+        "governo_e_sancoes"
       ],
-      "orgao": "ANEEL",
+      "orgao": "Ancine",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Anvisa",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "ODbL (dados abertos do BNDES; citar o BNDES, compartilhar igual). Só CNPJ",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "BNDES",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANTT",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "Anatel",
-      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -150,11 +2578,33 @@
     },
     {
       "historico_desde": "2006-06-13",
-      "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
       "modulos": [
         "mercado_e_empresas"
       ],
       "orgao": "CFTC",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CGU",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "CMED (Anvisa)",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -166,8 +2616,8 @@
         "macro"
       ],
       "orgao": "CONAB",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
       "tabelas": 1
     },
     {
@@ -179,6 +2629,39 @@
       "orgao": "FAO",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Finep",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "GLEIF",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "IBAMA",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -215,8 +2698,41 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MAPA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-29",
+      "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MME",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MTE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1985-12-31",
-      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
         "macro"
       ],
@@ -237,12 +2753,45 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "historico_desde": "2026-11-05",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
       "modulos": [
-        "mercado_e_empresas"
+        "governo_e_sancoes"
       ],
-      "orgao": "SUSEP",
+      "orgao": "SEFAZ-PE",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-CE: licença não localizada; risco assumido",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-CE",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-RS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-04",
+      "licenca": "TCE-SP: licença não localizada; risco assumido",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCE-SP",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -270,21 +2819,116 @@
       "tabelas": 1
     }
   ],
+  "ligado_pelo_cnpj": {
+    "orgaos": 31,
+    "tabelas": 112,
+    "temas": [
+      {
+        "chave": "cvm",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da diretoria e ofertas de ações e de dívida.",
+        "titulo": "O que a companhia entrega à CVM"
+      },
+      {
+        "chave": "donos",
+        "orgaos": [
+          "Receita Federal",
+          "CVM"
+        ],
+        "tabelas": 8,
+        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
+        "titulo": "Quem é dono e quem controla"
+      },
+      {
+        "chave": "cadastro",
+        "orgaos": [
+          "Receita Federal"
+        ],
+        "tabelas": 8,
+        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro.",
+        "titulo": "Cadastro e situação na Receita"
+      },
+      {
+        "chave": "riscos",
+        "orgaos": [
+          "PGFN",
+          "CGU",
+          "ANS",
+          "MTE",
+          "IBAMA",
+          "CNJ",
+          "CVM"
+        ],
+        "tabelas": 7,
+        "texto": "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "titulo": "Dívida, sanções e processos"
+      },
+      {
+        "chave": "licencas",
+        "orgaos": [
+          "ANS",
+          "SUSEP",
+          "Anvisa",
+          "ANP",
+          "ANTT",
+          "MAPA",
+          "Anatel",
+          "ANM",
+          "CMED (Anvisa)",
+          "Ancine",
+          "Ministério da Saúde (DATASUS)"
+        ],
+        "tabelas": 13,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "titulo": "Licenças e registros nas agências"
+      },
+      {
+        "chave": "saude",
+        "orgaos": [
+          "Ministério da Saúde (DATASUS)"
+        ],
+        "tabelas": 2,
+        "texto": "Internações e procedimentos ambulatoriais que o SUS pagou a cada hospital e clínica, mês a mês, nos dados abertos do DATASUS, sem nada do paciente.",
+        "titulo": "Atendimento pelo SUS"
+      },
+      {
+        "chave": "dinheiro_publico",
+        "orgaos": [
+          "BNDES",
+          "Finep",
+          "MME",
+          "ANEEL",
+          "TCE-PE",
+          "TCE-SP",
+          "TCE-CE",
+          "TCE-RS",
+          "Banco Central",
+          "SEFAZ-PE"
+        ],
+        "tabelas": 12,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "titulo": "Dinheiro público e capital de fora"
+      }
+    ]
+  },
   "modulos": [
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 62
-    },
-    {
-      "chave": "credito_e_fidc",
-      "nome": "Crédito e FIDC",
-      "tabelas": 11
+      "tabelas": 67
     },
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 8
+      "tabelas": 49
+    },
+    {
+      "chave": "credito_e_fidc",
+      "nome": "Crédito e FIDC",
+      "tabelas": 16
     },
     {
       "chave": "macro",
@@ -437,6 +3081,76 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-dgagri",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-boc",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-ssb",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-dgener",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-riksbank",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-norges",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-dst",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-scb",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-statfi",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-statice",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-bce",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -494,6 +3208,27 @@
     },
     {
       "id": "termos-nyfed",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-cbs",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-istat",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-rba",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
       "ritmo": "diaria",
@@ -670,28 +3405,28 @@
     {
       "id": "catalogo-cvm",
       "licenca": "Lista de conjuntos de portais de dados abertos (metadados)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": null
     },
     {
       "id": "catalogo-bc",
       "licenca": "Lista de conjuntos de portais de dados abertos (metadados)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": null
     },
     {
       "id": "catalogo-tesouro",
       "licenca": "Lista de conjuntos de portais de dados abertos (metadados)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": null
     },
     {
       "id": "catalogo-ibama",
       "licenca": "Lista de conjuntos de portais de dados abertos (metadados)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": null
     },
@@ -784,12 +3519,12 @@
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "pgfn-divida",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
     },
@@ -934,9 +3669,16 @@
       "termos_lidos_em": "2026-10-21"
     },
     {
+      "id": "antt-autos-de-transito",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
       "id": "comexstat",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "marca": "a_confirmar",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -1004,6 +3746,90 @@
       "termos_lidos_em": "2026-10-15"
     },
     {
+      "id": "anvisa-empresas",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anvisa-produtos",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anvisa-cmed",
+      "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "antt-rntrc",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "mapa-sipeagro",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anatel-outorgas",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anm-cadastro-mineiro",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "ancine-agentes",
+      "licenca": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "mme-reidi",
+      "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "aneel-cde",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-rde-ied",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "finep-contratacao",
+      "licenca": "Sem licença escrita na planilha da Finep (a confirmar; citar a Finep)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
       "id": "b3-negocios",
       "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
@@ -1019,6 +3845,13 @@
     },
     {
       "id": "b3-cotahist-dia",
+      "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
+      "marca": "nao_comercial",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "b3-ibov-diario",
       "licenca": "Sem licença da B3; uso com a fonte citada, risco assumido",
       "marca": "nao_comercial",
       "ritmo": "diaria",
@@ -1054,22 +3887,22 @@
     },
     {
       "id": "cftc-cot-disaggregated",
-      "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
-      "marca": "uso_interno",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": null
     },
     {
       "id": "conab-cafe-safra",
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "conab-cafe-publicacao",
       "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
@@ -1124,10 +3957,248 @@
     },
     {
       "id": "mapbiomas-cafe",
-      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "riksbank-catalogo-de-series",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-catalogo-de-grupos",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-juro-diretor",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-letra-3m",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-titulo-2a",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-titulo-5a",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-titulo-10a",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-real",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-dolar",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-euro",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-libra",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-coroa-norueguesa",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-iene",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-yuan",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-cambio",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-juro-diretor",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-letra-3m",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-titulo-10a",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-ipc",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-ipch",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-desemprego",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-contas-nacionais-trimestrais",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-juros-de-mercado",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-juros-por-tipo",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-ipc",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-ipc-juros-fixos",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-ipch",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-desemprego",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statfi-ipc",
+      "licenca": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statfi-desemprego",
+      "licenca": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statfi-pib-trimestral",
+      "licenca": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statice-ipc",
+      "licenca": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statice-pib-trimestral",
+      "licenca": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statice-desemprego",
+      "licenca": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
     },
     {
       "id": "bce-cambio-dolar",
@@ -1229,52 +4300,52 @@
     },
     {
       "id": "bis-cambio-efetivo-nominal",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-cambio-efetivo-real",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-juro-dos-bancos-centrais",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-preco-de-imoveis",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-inflacao-longa",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-cambio",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "bis-lacuna-de-credito",
-      "licenca": "Termos do BIS: uso e redistribuição só não comerciais, citando o BIS",
-      "marca": "nao_comercial",
+      "licenca": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+      "marca": "vendavel",
       "ritmo": "semanal",
-      "termos_lidos_em": "2026-10-22"
+      "termos_lidos_em": "2026-11-03"
     },
     {
       "id": "fmi-cambio",
@@ -1355,6 +4426,13 @@
     },
     {
       "id": "worldbank-brasil",
+      "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "worldbank-qeds-brasil",
       "licenca": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
       "marca": "vendavel",
       "ritmo": "mensal",
@@ -1489,49 +4567,49 @@
     {
       "id": "sec-edgar-indice-diario",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-edgar-indice-trimestral",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-edgar-form-d",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-edgar-13f",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-edgar-form-d-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-edgar-13f-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-edgar-busca-texto",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
@@ -1837,198 +4915,317 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "statat-ipc-base-2010",
+      "licenca": "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statat-ipc-base-2020",
+      "licenca": "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statbel-ipch-anual",
+      "licenca": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statbel-ipc-mensal",
+      "licenca": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statbel-emprego-por-regiao",
+      "licenca": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cbs-inflacao-anual",
+      "licenca": "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cbs-ipch-comparado",
+      "licenca": "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cso-ipc",
+      "licenca": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cso-preco-de-imoveis",
+      "licenca": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cso-desemprego",
+      "licenca": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "ines-ipc",
+      "licenca": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "ines-ativos-epa",
+      "licenca": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "istat-fluxo-143-497",
+      "licenca": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "istat-fluxo-120-337",
+      "licenca": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "rba-cambio",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "rba-rendimentos-dos-titulos",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "rba-balanco",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
       "id": "sec-bulk-submissions",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-bulk-companyfacts",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-demonstracoes-financeiras",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-demonstracoes-financeiras-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-notas-das-demonstracoes",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-notas-das-demonstracoes-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-insiders",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-insiders-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-nport",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-nport-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-ncen",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-ncen-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-nmfp",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-nmfp-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-reg-a",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-reg-a-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-crowdfunding",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-crowdfunding-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-bdc",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-bdc-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-form-adv",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-form-adv-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-consultores-municipais",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-consultores-municipais-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-corretoras",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-corretoras-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-foia-registros",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "sec-foia-registros-historico",
       "licenca": "Acesso público (EDGAR, SEC)",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
@@ -2147,7 +5344,7 @@
     {
       "id": "pgfn-divida-historico",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-21"
     },
@@ -2320,6 +5517,13 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "aneel-bdgd-ucat-pj",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
       "id": "susep-ses-grandes",
       "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
       "marca": "vendavel",
@@ -2328,8 +5532,8 @@
     },
     {
       "id": "comexstat-tabelas",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "marca": "a_confirmar",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -2339,6 +5543,34 @@
       "marca": "a_confirmar",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-18"
+    },
+    {
+      "id": "djen-partes",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "djen-processos",
+      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "datajud-processos",
+      "licenca": "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)",
+      "marca": "uso_interno",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "cnj-tpu",
+      "licenca": "TPU do CNJ (Resolução CNJ 46/2007), pública; citar o CNJ",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
     },
     {
       "id": "bcb-mercado-imobiliario",
@@ -2415,6 +5647,20 @@
       "licenca": "ODbL (SICONFI, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-sgs-selic-meta",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-focus-selic-anual",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
@@ -2525,7 +5771,7 @@
     {
       "id": "ans-demonstracoes",
       "licenca": "Demonstrações da ANS: sem licença declarada; citar a ANS",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -2546,14 +5792,14 @@
     {
       "id": "inep-censo-superior",
       "licenca": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "senatran-frota",
       "licenca": "CC BY-ND 3.0 (rodapé do site da Senatran); como publicado, citando a Senatran",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -2581,14 +5827,14 @@
     {
       "id": "inpi-patentes",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "inpi-contratos",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -2658,7 +5904,7 @@
     {
       "id": "seges-pesquisa-precos",
       "licenca": "Painel de Preços da SEGES (dados abertos; citar a SEGES; revenda a confirmar)",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -2712,16 +5958,44 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "transferegov-especiais-pagamentos",
+      "licenca": "API nova do Transferegov (citar o MGI; sem licença lida; revenda a confirmar)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratos-atualizados",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-atas-atualizadas",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "pncp-contratacoes-atualizadas",
+      "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
       "id": "pncp-contratos",
       "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tcu-inidoneos",
       "licenca": "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -2857,6 +6131,13 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-15"
+    },
+    {
+      "id": "sefazpe-beneficios",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
     },
     {
       "id": "gleif-goldencopy-lei2",
@@ -3148,21 +6429,21 @@
     {
       "id": "inpe-queimadas-diario",
       "licenca": "INPE Queimadas: sem licença escrita; uso citando o INPE",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-23"
     },
     {
       "id": "inpe-queimadas-mensal",
       "licenca": "INPE Queimadas: sem licença escrita; uso citando o INPE",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-23"
     },
     {
       "id": "inpe-queimadas-historico",
       "licenca": "INPE Queimadas: sem licença escrita; uso citando o INPE",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-23"
     },
@@ -3259,7 +6540,7 @@
     },
     {
       "id": "mapbiomas-estatisticas",
-      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
@@ -3267,28 +6548,28 @@
     {
       "id": "terrabrasilis-deter-amazonia",
       "licenca": "CC BY-SA 4.0 (INPE, TerraBrasilis); citar e compartilhar igual",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-23"
     },
     {
       "id": "terrabrasilis-deter-cerrado",
       "licenca": "CC BY-SA 4.0 (INPE, TerraBrasilis); citar e compartilhar igual",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-23"
     },
     {
       "id": "terrabrasilis-prodes-recente",
       "licenca": "CC BY-SA 4.0 (INPE, TerraBrasilis); citar e compartilhar igual",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-23"
     },
     {
       "id": "terrabrasilis-prodes-historico",
       "licenca": "CC BY-SA 4.0 (INPE, TerraBrasilis); citar e compartilhar igual",
-      "marca": "uso_interno",
+      "marca": "vendavel",
       "ritmo": "carga-unica",
       "termos_lidos_em": "2026-10-23"
     },
@@ -3342,37 +6623,247 @@
       "termos_lidos_em": "2026-10-23"
     },
     {
+      "id": "faostat-precos-ao-produtor",
+      "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "faostat-comercio",
+      "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ico-icip-mensal",
+      "licenca": "ICO: relatório mensal sem termos achados; uso citando a fonte",
+      "marca": "nao_comercial",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-series-graos",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-series-cana",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-series-cafe",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "conab-boletins-graos",
+      "licenca": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "cftc-cot-futuros-e-opcoes",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "cftc-cot-cit",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "cftc-cot-legado",
+      "licenca": "Obra do governo dos EUA (17 U.S.C. §105; citar a CFTC)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "chirps-chirts-tmax-mensal",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "chirps-chirts-tmax-historico",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "chirps-spei-fldas",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "chirps-spi-chirps3",
+      "licenca": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "inmet-normais",
+      "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "mapbiomas-bioma-e-estado",
+      "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "dgagri-cereal",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
+      "id": "dgagri-oilseeds",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
+      "id": "dgagri-dairy",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
+      "id": "dgagri-sugar",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
+      "id": "boc-bcpi-semanal",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "boc-bcpi-mensal",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "boc-bcpi-anual",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "boc-bcpi-pesos",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "eurostat-precos-agricolas",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "eurostat-preco-do-gas",
+      "licenca": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "ssb-salmao-semanal",
+      "licenca": "CC BY 4.0 (Statistics Norway): citar o SSB, a licença e as mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
+      "id": "dgener-oil-bulletin",
+      "licenca": "CC BY 4.0 (Comissão, DG ENER): citar a fonte e indicar mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
+      "id": "chirps3-rnl-mensal",
+      "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-28"
+    },
+    {
+      "id": "chirps3-rnl-historico",
+      "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
+      "marca": "vendavel",
+      "ritmo": "carga-unica",
+      "termos_lidos_em": "2026-10-28"
+    },
+    {
       "id": "inpi-patentes-partes",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "inpi-marcas",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "inpi-desenhos",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "inpi-programas",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "inpi-contratos-partes",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
@@ -3427,56 +6918,56 @@
     },
     {
       "id": "tesouro-br-divida-execucao-por-fonte",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-divida-execucao-por-nd",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-divida-dotacao",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-divida-emissoes-diretas",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-divida-emissoes-soberanas",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-divida-estados-estoque",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-divida-estados-servico",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "tesouro-br-divida-consolidada-liquida",
-      "licenca": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
@@ -3484,21 +6975,43 @@
     {
       "id": "ipea-odata-metadados",
       "licenca": "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ipea-odata-series",
       "licenca": "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea",
-      "marca": "a_confirmar",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "divida-documental",
+      "licenca": "PDF guardado só como prova; fato com página e link",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "sudeco-fdco",
+      "licenca": "Sudeco (FDCO), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudeco e a data",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-04"
+    },
+    {
+      "id": "sudam-fda",
+      "licenca": "Sudam (FDA), CC BY-ND 3.0 no rodapé do gov.br; citar a Sudam e a data",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-04"
     }
   ],
   "tabelas": [
     {
       "atraso": "DFP: até 3 meses depois do fim do exercício",
+      "consultavel": true,
       "frase": "Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -3509,6 +7022,7 @@
     },
     {
       "atraso": "DFP: até 3 meses depois do fim do exercício",
+      "consultavel": true,
       "frase": "A demonstração das mutações do patrimônio líquido (DMPL) como era em cada data: uma linha por valor diferente que cada célula (conta × coluna do patrimônio) de cada período já teve.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -3519,6 +7033,7 @@
     },
     {
       "atraso": "O do documento conferido",
+      "consultavel": false,
       "frase": "Os achados das regras fixas do selo \"dado em conferência\": o número que chamou a atenção, o esperado e o porquê.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -3529,6 +7044,7 @@
     },
     {
       "atraso": "Dias, entre o ato e a publicação",
+      "consultavel": false,
       "frase": "Cada registro de companhia aberta na CVM, inclusive as que saíram, com a data e o motivo.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -3539,6 +7055,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu, juntando todos os anos do formulário cadastral (FCA): código que sumiu continua aqui.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3549,6 +7066,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), com a data de entrega de cada versão.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3559,6 +7077,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o último ano do FCA em que apareceu.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3569,6 +7088,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "consultavel": true,
       "frase": "Códigos de negociação informados fora do formato de ticker (a CSN informa \"4030\"): não viram ligação e vão para o relatório de buracos.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3579,6 +7099,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "As posições em ações de todos os fundos registrados na CVM, por mês, desde 2005 (CDA, bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3589,6 +7110,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA (\"demais ativos não codificados\"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3599,6 +7121,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "As cotas de fundos que cada fundo tem, do bloco 2 do CDA (\"cotas de fundos\"): quem compra cotas de FIDC, de FIP, de FII e de outros fundos.",
       "frequencia": "Mensal",
       "historico_desde": "2005-01-31",
@@ -3609,6 +7132,7 @@
     },
     {
       "atraso": "Entregue em até 15 dias",
+      "consultavel": true,
       "frase": "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (tab_I a tab_X_7) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3619,6 +7143,7 @@
     },
     {
       "atraso": "Do dia: é um retrato do cadastro na data da coleta",
+      "consultavel": false,
       "frase": "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -3628,7 +7153,30 @@
       "tabela": "cadastro_de_fundos"
     },
     {
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "consultavel": false,
+      "frase": "O gestor de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_gestor_hist"
+    },
+    {
+      "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara",
+      "consultavel": false,
+      "frase": "O administrador de cada fundo da CVM ao longo do tempo (cad_fi_hist): uma linha por período, com o início e o fim que a CVM declara.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_admin_hist"
+    },
+    {
       "atraso": null,
+      "consultavel": true,
       "frase": "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3639,6 +7187,7 @@
     },
     {
       "atraso": "O do CDA",
+      "consultavel": false,
       "frase": "Por mês desde 2005, quanto do valor comprado pelos fundos chega a um CNPJ de empresa pela ligação do painel (a meta da tabela conferida é 95% em cada ano).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3649,6 +7198,7 @@
     },
     {
       "atraso": "O do CDA",
+      "consultavel": false,
       "frase": "Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o menor.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3659,6 +7209,7 @@
     },
     {
       "atraso": "Nenhum",
+      "consultavel": false,
       "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de propósito, cada um com o motivo.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -3669,6 +7220,7 @@
     },
     {
       "atraso": "Nenhum: a ligação vale para o período em que o emissor aparece nas carteiras",
+      "consultavel": false,
       "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que saíram da bolsa ou mudaram de código antes de 2018 (e a CSN, que informa \"4030\"), ligados ao CNPJ pelo cadastro de companhias da CVM.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -3679,6 +7231,7 @@
     },
     {
       "atraso": "Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras",
+      "consultavel": false,
       "frase": "Tabela conferida à mão: códigos de empresas da bolsa que o FCA traz fora do formato (o BTG informa \"000000\" nas units, a Marisa \"022055\").",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -3689,6 +7242,7 @@
     },
     {
       "atraso": "Mensal",
+      "consultavel": true,
       "frase": "Estatístico do transporte aéreo da ANAC por empresa, mês e par de aeroportos (passageiros, carga, assentos, ASK, RPK, combustível...), desde 2000, no formato da fonte.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3699,6 +7253,7 @@
     },
     {
       "atraso": "Mensal",
+      "consultavel": true,
       "frase": "Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por mês, agente, produto, origem, destino e mercado, desde 2007, no formato da fonte.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3709,16 +7264,18 @@
     },
     {
       "atraso": "O mês fecha cerca de 60 dias depois",
+      "consultavel": true,
       "frase": "Exportações de café por mês, NCM, UF de origem e país de destino, recortadas do Comex Stat (NCMs 09011110, 09011190, 09012100 e 21011110).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-18",
       "modulo": "mercado_e_empresas",
       "orgao": "MDIC",
-      "situacao": "em consulta",
+      "situacao": "licenciada",
       "tabela": "comex_cafe"
     },
     {
       "atraso": "O dia seguinte",
+      "consultavel": true,
       "frase": "Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte.",
       "frequencia": "Diária",
       "historico_desde": "2026-10-14",
@@ -3729,6 +7286,7 @@
     },
     {
       "atraso": "O preço do dia sai no dia anterior e a regra usa o dia + 1",
+      "consultavel": true,
       "frase": "PLD (preço de liquidação das diferenças) da CCEE, em R$/MWh, por submercado: por hora e por dia desde 01/2021, por mês desde 2001 e, de 06/2001 a 12/2020.",
       "frequencia": "Diária",
       "historico_desde": "2026-10-14",
@@ -3739,6 +7297,7 @@
     },
     {
       "atraso": "O instante + 2 dias",
+      "consultavel": true,
       "frase": "Restrição de geração eólica e solar do ONS (curtailment): quanto cada usina ou conjunto deixou de gerar por ordem do operador, uma linha por usina e hora.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3749,6 +7308,7 @@
     },
     {
       "atraso": "A regra usa a data de entrada em operação",
+      "consultavel": true,
       "frase": "Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (MW), proprietário, operador, entrada em teste, entrada em operação e desativação.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3759,6 +7319,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3769,6 +7330,7 @@
     },
     {
       "atraso": "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido",
+      "consultavel": true,
       "frase": "Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilômetro útil (TKU) por mês, ferrovia, mercadoria e par de estações (origem e destino), de 2006 em diante.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3779,16 +7341,40 @@
     },
     {
       "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC",
+      "consultavel": true,
       "frase": "Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
       "modulo": "mercado_e_empresas",
       "orgao": "MDIC",
-      "situacao": "em consulta",
+      "situacao": "licenciada",
       "tabela": "comex_preco_medio"
     },
     {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Nome de cada URF (unidade da Receita: porto, aeroporto ou posto) do Comex Stat, para ler o código que comex_preco_medio guarda (coluna urf).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "licenciada",
+      "tabela": "comex_urf"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Nome de cada via de transporte do Comex Stat, para ler o código que comex_preco_medio guarda (a via de transporte dos CSVs do MDIC).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "licenciada",
+      "tabela": "comex_via"
+    },
+    {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
+      "consultavel": true,
       "frase": "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3799,6 +7385,7 @@
     },
     {
       "atraso": "Agosto/2026 estava publicado em 14/10/2026",
+      "consultavel": true,
       "frase": "Acessos de banda larga fixa, telefonia móvel e TV por assinatura da Anatel por prestadora (CNPJ), mês e UF, desde 2005 (móvel), 2007 (banda larga) e 2012 (TV), somados os municípios.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3809,6 +7396,7 @@
     },
     {
       "atraso": "Medido: o arquivo de 08/08/2026 trazia até junho/2026",
+      "consultavel": true,
       "frase": "Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidade, cobertura, vigência do plano, contratação e financiamento, desde 2017, no formato da fonte.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
@@ -3819,6 +7407,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Conselho de administração, diretoria e conselho fiscal por companhia e versão do FRE: quantos membros, suplentes, independentes, eleitos pelo controlador e pelos minoritários, desde 2010.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3829,6 +7418,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Comitês (auditoria, risco, remuneração...) por companhia e versão do FRE: quantos membros e suplentes, desde 2010.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3839,6 +7429,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Remuneração total da administração por órgão e exercício (salário, benefícios, bônus, participação nos resultados, ações...), como a CVM publica no FRE, desde 2010, sem os textos livres.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3849,6 +7440,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "A maior, a menor e a média da remuneração individual por órgão e exercício, como a CVM publica no FRE, desde 2010 (sem a observação em texto livre).",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3859,6 +7451,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Gênero, raça e pessoas com deficiência na administração por órgão, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores).",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3869,6 +7462,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Capital social de cada FRE (integralizado, subscrito, emitido e autorizado), com as ações ordinárias e preferenciais, as classes e os títulos conversíveis em ação.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3879,6 +7473,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Empregados por região (recorte local) e por posição, liderança ou não (recorte posicao), com gênero, raça, faixa etária, PCD e região, como a CVM publica no FRE de 2023 em diante.",
       "frequencia": "Anual",
       "historico_desde": "2023-01-01",
@@ -3889,6 +7484,18 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
+      "frase": "Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_distribuicao_capital"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3899,6 +7506,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação, os montantes, a taxa e a posição da companhia.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -3909,6 +7517,7 @@
     },
     {
       "atraso": "Nenhum além das datas da própria oferta",
+      "consultavel": true,
       "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -3919,6 +7528,7 @@
     },
     {
       "atraso": "Nenhum além das datas da própria oferta",
+      "consultavel": true,
       "frase": "Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por CNPJ do emissor, no formato da CVM, sem os textos livres (devedores, garantias, lastro, destinação dos recursos).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -3929,6 +7539,7 @@
     },
     {
       "atraso": "Agosto/2026 estava publicado em 16/10/2026",
+      "consultavel": true,
       "frase": "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -3939,6 +7550,7 @@
     },
     {
       "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
+      "consultavel": false,
       "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3949,6 +7561,7 @@
     },
     {
       "atraso": "Nenhum",
+      "consultavel": false,
       "frase": "Os códigos das fontes setoriais.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
@@ -3959,6 +7572,7 @@
     },
     {
       "atraso": "Jun/2026 estava publicado em 14/10",
+      "consultavel": true,
       "frase": "Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e conglomerado, por trimestre desde 2000, no formato longo da fonte (uma linha por instituição, relatório, conta e coluna).",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -3968,7 +7582,8 @@
       "tabela": "ifdata_valores"
     },
     {
-      "atraso": "O dos valores",
+      "atraso": null,
+      "consultavel": true,
       "frase": "O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidade, conglomerados e CNPJ do líder de cada instituição e conglomerado, com a raiz do CNPJ que liga à bolsa.",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -3979,6 +7594,7 @@
     },
     {
       "atraso": "O do cadastro do IF.data",
+      "consultavel": false,
       "frase": "Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por data-base.",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -3989,6 +7605,7 @@
     },
     {
       "atraso": "Publicado ~30 dias depois do fim do mês",
+      "consultavel": true,
       "frase": "Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, modalidade.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -3999,6 +7616,7 @@
     },
     {
       "atraso": "O do balanço mais novo de cada empresa até o corte",
+      "consultavel": false,
       "frase": "Os padrões por setor das notas: os percentis de cada indicador entre as empresas de cada grupo de setores, calculados só com os balanços que eram públicos na data de corte.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -4009,6 +7627,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Dividendos e juros sobre capital próprio de cada exercício, como a empresa informou no Formulário de Referência (FRE).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4019,6 +7638,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital informados no FRE, para ajustar a quantidade de ações (sem confundir desdobramento com diluição).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4029,6 +7649,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4039,6 +7660,7 @@
     },
     {
       "atraso": "Até 10 dias depois do fim do mês da negociação",
+      "consultavel": true,
       "frase": "Compras e vendas de ações e units por controladores, diretores, conselheiros e pela própria companhia (tesouraria), declaradas à CVM no VLMO desde 2018.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4049,6 +7671,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4059,6 +7682,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
       "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4069,6 +7693,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4079,6 +7704,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
+      "consultavel": false,
       "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -4088,7 +7714,19 @@
       "tabela": "cnpj_situacao_especial"
     },
     {
+      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
+      "consultavel": false,
+      "frase": "Situação cadastral de cada estabelecimento do CNPJ (nula, ativa, suspensa, inapta ou baixada), um retrato por mês guardado: o histórico \"como era na data\" nasce da sequência dos retratos.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_situacao_cadastral"
+    },
+    {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação cadastral, datas, atividade (CNAE), endereço e situação especial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -4099,6 +7737,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "O que mudou de um mês para o outro em cnpj_estabelecimentos: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -4109,6 +7748,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa do CNPJ aberto da Receita, o retrato mais recente, com as datas de opção e de exclusão.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -4119,6 +7759,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "O que mudou de um mês para o outro em cnpj_simples: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -4129,6 +7770,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "Quadro de sócios e administradores das empresas do CNPJ aberto da Receita, o retrato mais recente.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -4139,6 +7781,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
       "frase": "O que mudou de um mês para o outro em cnpj_qsa: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -4148,7 +7791,30 @@
       "tabela": "cnpj_qsa_mudancas"
     },
     {
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
+      "consultavel": true,
+      "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com disponivel_em até D.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_simples_historico"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
+      "consultavel": true,
+      "frase": "Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_empresas_historico"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
+      "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
       "frequencia": "Trimestral",
       "historico_desde": "2026-10-14",
@@ -4159,6 +7825,436 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
+      "frase": "Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punidas pela Lei Anticorrupção, com o valor da multa).",
+      "frequencia": "Diária",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CGU",
+      "situacao": "em consulta",
+      "tabela": "sancoes_cgu"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tipo do processo, a situação da demanda, as datas da 1ª instância e a multa final.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_penalidades"
+    },
+    {
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "consultavel": true,
+      "frase": "Processos judiciais por companhia aberta: as comunicações.",
+      "frequencia": "Semanal",
+      "historico_desde": "2025-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CNJ",
+      "situacao": "licenciada",
+      "tabela": "processos_comunicacoes"
+    },
+    {
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "consultavel": true,
+      "frase": "Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo.",
+      "frequencia": "Semanal",
+      "historico_desde": "2025-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CNJ",
+      "situacao": "licenciada",
+      "tabela": "processos_partes"
+    },
+    {
+      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
+      "consultavel": true,
+      "frase": "Processos judiciais por companhia aberta: uma linha por processo, com o que a primeira comunicação diz e a classe pela TPU do CNJ.",
+      "frequencia": "Semanal",
+      "historico_desde": "2025-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CNJ",
+      "situacao": "licenciada",
+      "tabela": "processos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Licenças da Anvisa por CNPJ: autorização de funcionamento (AFE), certificados de boas práticas de fabricação (CBPF) e os produtos registrados.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Anvisa",
+      "situacao": "licenciada",
+      "tabela": "anvisa_registros"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANTT",
+      "situacao": "licenciada",
+      "tabela": "antt_rntrc"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MAPA",
+      "situacao": "licenciada",
+      "tabela": "mapa_sipeagro"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Prestadoras de telecomunicações com outorga da Anatel, por CNPJ e serviço notificado.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Anatel",
+      "situacao": "licenciada",
+      "tabela": "anatel_outorgas"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Títulos e requerimentos minerários da ANM por CNPJ do titular (Cadastro Mineiro, um arquivo por tipo de título).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_titulos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Agentes econômicos registrados na Ancine, por CNPJ.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ancine",
+      "situacao": "licenciada",
+      "tabela": "ancine_agentes"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Projetos de geração e transmissão de energia enquadrados no REIDI (MME), por CNPJ, com a portaria, a execução e o benefício fiscal.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MME",
+      "situacao": "licenciada",
+      "tabela": "mme_reidi"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Descontos tarifários pagos pela Conta de Desenvolvimento Energético (CDE, ANEEL), somados por CNPJ, mês, distribuidora, classe.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_cde"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela raiz do CNPJ da empresa que recebeu, de nov/2011 a dez/2022 (a série parou aí).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_rde_ied"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas pesadas...) por CNPJ, com o CACEPE e o prazo de cada um.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-05",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SEFAZ-PE",
+      "situacao": "licenciada",
+      "tabela": "sefaz_pe_beneficios"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "BNDES",
+      "situacao": "licenciada",
+      "tabela": "financiamentos_bndes"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Histórico de contratações de crédito reembolsável da Finep por CNPJ (crédito direto e descentralizado, pelos agentes financeiros).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Finep",
+      "situacao": "licenciada",
+      "tabela": "financiamentos_finep"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGREM), nas duas listas que a Anvisa publica.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CMED (Anvisa)",
+      "situacao": "licenciada",
+      "tabela": "cmed_precos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: ativas e canceladas (com a data e o motivo do descredenciamento).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_operadoras"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência, capitalização).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SUSEP",
+      "situacao": "licenciada",
+      "tabela": "susep_cadastro"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Cadastro de Empregadores do MTE (a \"lista suja\" do trabalho análogo ao escravo), só pessoa jurídica.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MTE",
+      "situacao": "em consulta",
+      "tabela": "mte_lista_suja"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Termos de embargo do IBAMA por CNPJ do embargado, um por linha.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "IBAMA",
+      "situacao": "em consulta",
+      "tabela": "ibama_embargos"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês.",
+      "frequencia": "Mensal",
+      "historico_desde": "2025-10-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cvm_fiagro"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ das entidades do Brasil: uma linha por valor diferente de cada par LEI e CNPJ.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "GLEIF",
+      "situacao": "licenciada",
+      "tabela": "gleif_ponte"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "licenciada",
+      "tabela": "cnes_estabelecimentos"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Uma linha por competência do CNES olhada pela coleta, dizendo se veio com dados ou vazia.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "licenciada",
+      "tabela": "cnes_competencias"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Internações do SUS por estabelecimento e mês (SIH, AIH reduzida), com o CNPJ do estabelecimento e o da mantenedora.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "licenciada",
+      "tabela": "sus_internacoes"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Produção ambulatorial do SUS por estabelecimento e mês (SIA, arquivos PA), com o CNPJ do estabelecimento e o da mantenedora.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "licenciada",
+      "tabela": "sus_ambulatorial"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
+      "frase": "Contratos do TCE-PE (estaduais e municipais) por contratado.",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "licenciada",
+      "tabela": "tce_pe_contratos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
+      "frase": "Termos aditivos dos contratos do TCE-PE por contratado.",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "licenciada",
+      "tabela": "tce_pe_aditivos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
+      "frase": "Licitações do TCE-PE por licitante vencedor (LicitacoesDetalhes; só a linha do vencedor pessoa jurídica).",
+      "frequencia": "Anual",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-PE",
+      "situacao": "licenciada",
+      "tabela": "tce_pe_licitacoes"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
+      "frase": "Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-SP",
+      "situacao": "licenciada",
+      "tabela": "tce_sp_despesas"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
+      "frase": "Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-CE",
+      "situacao": "licenciada",
+      "tabela": "tce_ce_contratos"
+    },
+    {
+      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
+      "consultavel": false,
+      "frase": "Contratos do LicitaCon do TCE-RS por contratado (só contrato.csv; pessoas.csv nunca é aberto).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCE-RS",
+      "situacao": "licenciada",
+      "tabela": "tce_rs_contratos"
+    },
+    {
+      "atraso": "A linha vale desde a data em que a ANM a criou",
+      "consultavel": true,
+      "frase": "CFEM (royalty da mineração) recolhida por titular do processo, substância e município.",
+      "frequencia": "Mensal",
+      "historico_desde": "2002-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_cfem_arrecadacao"
+    },
+    {
+      "atraso": "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial (DPA) como o empreendedor declarou.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_sigbm_barragens"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_bruta"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Produção mineral beneficiada do Anuário Mineral por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_beneficiada"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_agua_mineral"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
       "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -4169,6 +8265,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados.",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -4179,6 +8276,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início e fim).",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -4189,6 +8287,7 @@
     },
     {
       "atraso": "A entrega à CVM",
+      "consultavel": true,
       "frase": "Parecer do auditor de cada DFP desde 2010, lido do CSV de pareceres da CVM (relatório do auditor independente): tipo de opinião (campo da CVM).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -4199,6 +8298,7 @@
     },
     {
       "atraso": "A entrega à CVM",
+      "consultavel": true,
       "frase": "Parecer do auditor de cada ITR desde 2011, lido do CSV de pareceres da CVM (relatório da revisão especial): tipo de opinião (campo da CVM).",
       "frequencia": "Mensal",
       "historico_desde": "2011-01-01",
@@ -4208,7 +8308,52 @@
       "tabela": "pareceres_itr"
     },
     {
+      "atraso": "A entrega do informe à CVM",
+      "consultavel": true,
+      "frase": "Um certificado de recebíveis (CRI, CRA ou outro título de securitização, OTS) por mês, lido do informe mensal da CVM (quadro geral): a securitizadora, o código do certificado, a emissão.",
+      "frequencia": "Semanal",
+      "historico_desde": "2019-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "securitizacao_certificados"
+    },
+    {
+      "atraso": "A entrega do informe à CVM",
+      "consultavel": true,
+      "frase": "Cedente e devedor de cada certificado (CRI, CRA e OTS) por mês, do quadro cedente_devedor do informe mensal da CVM.",
+      "frequencia": "Semanal",
+      "historico_desde": "2019-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "securitizacao_cedente_devedor"
+    },
+    {
+      "atraso": "A entrega à CVM",
+      "consultavel": false,
+      "frase": "Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "notas_dfp"
+    },
+    {
+      "atraso": "O da DFP: cada versão vale a partir da própria entrega à CVM",
+      "consultavel": true,
+      "frase": "Processos judiciais que a própria companhia cita nas notas explicativas da DFP: uma linha por número de processo e página de cada versão.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "processos_nas_notas"
+    },
+    {
       "atraso": null,
+      "consultavel": true,
       "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -4219,6 +8364,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Rótulo \"trocou de auditor\": cada troca de firma, montada de todos os anos de auditores na ordem de entrega dos FCAs (uma troca nunca é reescrita depois).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4229,6 +8375,7 @@
     },
     {
       "atraso": "Um dia útil: o arquivo do Tesouro sai na manhã seguinte",
+      "consultavel": true,
       "frase": "Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (Tesouro IPCA+) e inflação implícita, nos vértices de 6 meses a 20 anos, só com os títulos sem cupom.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -4239,6 +8386,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com a safra: cada revisão é uma linha a mais, que passa a valer em divulgado_em.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4249,6 +8397,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "O que a empresa disse no press-release de resultado contra o que entregou à CVM no ITR ou na DFP do mesmo período: receita líquida, lucro líquido dos controladores e resultado operacional.",
       "frequencia": "Semanal",
       "historico_desde": "2010-01-01",
@@ -4259,6 +8408,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Um fato por linha para as notas de dado: resultado trimestral (ITR e DFP), fato relevante (IPE) e reunião do Copom.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -4269,6 +8419,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Um número por linha de cada fato de noticias_fatos, com a conta, o período, a versão e a data pública de onde saiu, e o cálculo quando o valor não é o publicado (trimestre isolado).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -4279,6 +8430,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": true,
       "frase": "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4289,6 +8441,7 @@
     },
     {
       "atraso": "O rótulo de um documento existe a partir do prazo",
+      "consultavel": true,
       "frase": "Rótulo do modelo de atraso na entrega: uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4299,6 +8452,7 @@
     },
     {
       "atraso": "Cada coluna usa só o que era público na véspera da previsão",
+      "consultavel": false,
       "frase": "Colunas do modelo de atraso na entrega como eram na data da previsão: uma linha por exemplo de rotulos_atraso (mesma chave).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4309,6 +8463,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "De que companhia listada é cada entidade que os reguladores enxergam.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4319,6 +8474,7 @@
     },
     {
       "atraso": "O da fonte mais lenta de cada entidade",
+      "consultavel": true,
       "frase": "Uma linha por entidade da rede: empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4329,6 +8485,7 @@
     },
     {
       "atraso": "O ticker vale da entrega do FCA que o trouxe",
+      "consultavel": true,
       "frase": "Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (codigo_<fonte>).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -4339,6 +8496,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Uma linha por relação entre duas entidades da rede, com as três datas: sociedade controlada, coligada ou participada da companhia (FRE).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -4349,6 +8507,7 @@
     },
     {
       "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando",
+      "consultavel": false,
       "frase": "Negócios de M&A do middle market tirados dos posts das assessorias independentes, uma linha por página de negócio: as empresas, o tipo e o sentido.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -4359,6 +8518,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Documentos que as companhias abertas entregam à CVM no IPE desde 2003 e que podem anunciar uma operação de M&A, uma linha por versão entregue: fatos relevantes escolhidos pelo assunto.",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
@@ -4369,6 +8529,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "As empresas de cada negócio de M&A das assessorias (ma_assessorias), uma linha por empresa de cada página, ligadas à rede de entidades só por regras exatas.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -4379,6 +8540,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Uma linha por página de negócio de M&A com o id_negocio, o mesmo para as páginas do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo negócio): mesmas partes.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -4389,6 +8551,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Quando cada negócio de M&A das assessorias ficou público, provado, e a confirmação por fonte oficial; uma linha por página.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -4399,6 +8562,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -4409,6 +8573,7 @@
     },
     {
       "atraso": "Divulgado na sexta-feira",
+      "consultavel": true,
       "frase": "Posição dos fundos e dos produtores nos futuros de café (Coffee C), açúcar, soja, milho, boi gordo e algodão, por semana, desde 2006, no formato do relatório Disaggregated da CFTC.",
       "frequencia": "Semanal",
       "historico_desde": "2006-06-13",
@@ -4419,16 +8584,18 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento (1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-02-05",
       "modulo": "macro",
       "orgao": "CONAB",
-      "situacao": "em consulta",
+      "situacao": "licenciada",
       "tabela": "conab_cafe"
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-18",
@@ -4439,6 +8606,7 @@
     },
     {
       "atraso": null,
+      "consultavel": true,
       "frase": "Café verde por país e ano da FAO (FAOSTAT): produção em toneladas, área colhida em hectares e rendimento em kg por hectare, desde 1961.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-19",
@@ -4449,6 +8617,7 @@
     },
     {
       "atraso": "Mensal",
+      "consultavel": true,
       "frase": "Clima do mês por região produtora de café: chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia.",
       "frequencia": "Mensal",
       "historico_desde": "1981-01-31",
@@ -4459,6 +8628,7 @@
     },
     {
       "atraso": "Anual",
+      "consultavel": true,
       "frase": "Área e produção de café por município e ano, pela PAM do IBGE e pela cobertura de café do MapBiomas, lado a lado.",
       "frequencia": "Anual",
       "historico_desde": "1985-12-31",
@@ -4469,6 +8639,7 @@
     },
     {
       "atraso": null,
+      "consultavel": false,
       "frase": "Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings de café (faturamento, sobras, sacas recebidas, pedido de recuperação judicial, apuração pública), cada um com fonte.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2004-07-01",
@@ -4479,9 +8650,11 @@
     }
   ],
   "totais": {
-    "fontes": 24,
-    "fontes_em_consulta": 6,
+    "familias": 130,
+    "familias_em_uso": 43,
+    "fontes": 43,
+    "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 98
+    "tabelas": 149
   }
 }

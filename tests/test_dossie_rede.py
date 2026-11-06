@@ -110,6 +110,25 @@ def test_cada_ligacao_aparece_do_ponto_de_vista_da_empresa() -> None:
     assert _item(secao, "ligacoes") == 3
 
 
+def test_desde_e_o_dia_em_que_a_ligacao_ficou_publica() -> None:
+    """Sem olhar o futuro: a CVM dá ao FRE de 2026 a referência nominal 31/12/2026, mas a ligação só
+    ficou pública no dia da entrega (regressão da ficha de exemplo da CPFL, 28/10/2026)."""
+    secao = _secao(
+        _ligacoes(
+            {
+                "de": "EC",
+                "para": "EA",
+                "tipo": "controlada_de",
+                "aconteceu_em": "2026-12-31",
+                "publico_em": "2026-08-31",
+            }
+        )
+    )
+    assert secao is not None
+    (controlada,) = secao["tabelas"]["ligacoes_da_rede"]
+    assert controlada["desde"] == "2026-08-31"
+
+
 def test_valores_mobiliarios_emitidos_entram_so_como_contagem() -> None:
     entidades = _entidades("EA", "EC", "ED", "EV1", "EV2")
     secao = _secao(

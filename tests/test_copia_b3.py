@@ -146,6 +146,33 @@ def test_freio_de_disco_para_antes_de_baixar(tmp_path):
     assert cliente.baixados == []
 
 
+def test_vps_com_37_gb_livres_de_96_copia(tmp_path):
+    # 28/10/2026: o freio do arquivista (50 GB livres) parava a cópia desde 25/10 com o disco do VPS
+    # 62% usado; lá vale a regra dos 70% e um mínimo pequeno (a cópia ocupa ~3 GB)
+    cliente = B3Falsa({URL: _zip()})
+    assert _copiar(cliente, tmp_path, livre_gb=37).novos == 1
+
+
+def test_vps_com_mais_de_70_por_cento_usado_ainda_freia(tmp_path):
+    cliente = B3Falsa({URL: _zip()})
+    with pytest.raises(coleta.FreioDeDisco):
+        _copiar(cliente, tmp_path, livre_gb=28)  # 71% usado
+    assert cliente.baixados == []
+
+
+def test_vps_freia_abaixo_do_minimo_mesmo_com_o_disco_pouco_usado(tmp_path):
+    cliente = B3Falsa({URL: _zip()})
+    with pytest.raises(coleta.FreioDeDisco):  # 9 GB livres de 20 GB: 55% usado
+        copia_b3.copiar_janela(
+            cliente,
+            tmp_path,
+            AGORA,
+            pausa=0,
+            espaco=lambda _: (20 * 1024**3, 9 * 1024**3),
+        )
+    assert cliente.baixados == []
+
+
 def test_retencao_apaga_so_os_dias_antigos(tmp_path):
     brutos = tmp_path / "brutos"
     for nome in ("2026-07-15", "2026-07-16", "2026-10-13", "outra-coisa"):
@@ -322,6 +349,15 @@ def _fixar_relogio_do_script(monkeypatch, agora: datetime) -> None:
     monkeypatch.setattr(copiar_b3_negocios, "agora", lambda: agora)
 
 
+def _fixar_disco_com_folga(monkeypatch) -> None:
+    """Disco falso folgado: o do CI às vezes tem menos livre que o freio do VPS (04/11/2026, 7 GB)."""
+    from scripts import copiar_b3_negocios
+
+    monkeypatch.setattr(
+        copiar_b3_negocios, "espaco_do_disco", lambda _: (96 * 1024**3, 80 * 1024**3)
+    )
+
+
 def _fixar_relogio_da_reconciliacao(monkeypatch, agora: datetime) -> None:
     from scripts import reconciliar_b3_vps
 
@@ -333,6 +369,7 @@ def test_script_do_vps_guarda_e_sai_com_zero(tmp_path, monkeypatch, agora):
     from scripts import copiar_b3_negocios
 
     _fixar_relogio_do_script(monkeypatch, agora)
+    _fixar_disco_com_folga(monkeypatch)
     dia = _hoje_util(agora)
     url = fontes.NEGOCIOS_DA_B3.format(dia=dia.isoformat())
     monkeypatch.setattr(
@@ -348,6 +385,7 @@ def test_script_do_vps_avisa_a_falha_numa_linha(tmp_path, monkeypatch, capsys, a
     from scripts import copiar_b3_negocios
 
     _fixar_relogio_do_script(monkeypatch, agora)
+    _fixar_disco_com_folga(monkeypatch)
     dia = _hoje_util(agora)
     url = fontes.NEGOCIOS_DA_B3.format(dia=dia.isoformat())
     monkeypatch.setattr(

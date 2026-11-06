@@ -96,7 +96,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -159,7 +161,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -222,7 +226,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -285,7 +291,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -350,7 +358,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -609,6 +619,18 @@
     "url": "precos-de-referencia"
   },
   {
+    "area": "acompanhar",
+    "chave": "simulador_de_trava",
+    "contrato": null,
+    "descricao": "A sua produção de café em cada safra desde 2000: sem travar, a termo, no futuro e com opção, lado a lado com os riscos, no preço mensal. Nada do que você digita é guardado.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Simulador de trava do café",
+    "url": "simulador-de-trava"
+  },
+  {
     "area": "ativo",
     "chave": "linha_do_tempo",
     "contrato": {
@@ -633,7 +655,9 @@
             "6mo",
             "1y",
             "2y",
-            "5y"
+            "5y",
+            "10y",
+            "max"
           ],
           "padrao": "2y",
           "tipo": "opcao"
@@ -721,7 +745,7 @@
       "resposta": "BuscaPorCnpjV1",
       "rota": "/v1/busca-por-cnpj"
     },
-    "descricao": "Digite o CNPJ de uma companhia aberta e veja quem é, de que grupo faz parte, com quem a rede de empresas a liga e os fatos públicos, com a data e a fonte de cada linha.",
+    "descricao": "Digite o CNPJ de uma empresa e veja quem é: da companhia aberta, o grupo, a rede de empresas e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que mudou em 12 meses. Com a data e a fonte de cada linha.",
     "e_pro": false,
     "grupo": "Research",
     "no_menu": true,
@@ -908,6 +932,23 @@
     "somente_admin": false,
     "titulo": "Sala de dados",
     "url": "sala-de-dados"
+  },
+  {
+    "area": "conta",
+    "chave": "boas_vindas_beta",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "BoasVindasDoBetaV1",
+      "rota": "/v1/beta/boas-vindas"
+    },
+    "descricao": "O roteiro dos 10 minutos para conhecer o TickerLab: o relatório do setor, o de uma empresa e a busca por CNPJ, com a fonte de cada número.",
+    "e_pro": false,
+    "grupo": "Minha conta",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Boas-vindas ao beta",
+    "url": "boas-vindas-beta"
   },
   {
     "area": "acompanhar",

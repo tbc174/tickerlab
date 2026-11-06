@@ -43,6 +43,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/relatorio-setor/pdf",
         "/v1/relatorio-setor/apresentacao",
         "/v1/relatorio-empresa/apresentacao",
+        "/v1/relatorio-empresa/markdown",
         "/v1/meu-plano",
         "/v1/links-compartilhados",
         "/v1/revogar-link",
@@ -54,6 +55,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
         "/v1/painel-do-cafe",
+        "/v1/beta/boas-vindas",
         "/v1/busca-por-cnpj",
         "/v1/busca-por-cnpj/pdf",
     }

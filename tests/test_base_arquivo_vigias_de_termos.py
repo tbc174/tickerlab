@@ -34,6 +34,17 @@ _SEM_VIGIA = {
             "anp",
             "ans",
             "antt",
+            # Ficha Clara, licenças e registros (licença lida na ficha do dados.gov.br em 29/10/2026)
+            "anvisa",
+            "mapa",
+            "anm",
+            "anm-amb",  # linha 657: sem licença declarada no portal, a confirmar
+            "anm-cfem",
+            "anm-sigbm",
+            "estban",  # linha 659: termos gerais do BC lidos em 04/11/2026, sem página própria do ESTBAN
+            "ancine",
+            # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
+            "mme",
             "susep",
             "ibama",
             "mte",
@@ -59,6 +70,17 @@ _SEM_VIGIA = {
             "tce-rs-empenhos",
             "cgu",
             "pgfn",
+            "rfb-renuncias",
+            "rfb-transacoes",
+            "ms",
+            "tce-rn",
+            "tce-pe",
+            "tce-sp",
+            "tce-ce",
+            "goias",
+            "msestado",
+            "sefazpe",  # linha 578: licença CC BY na ficha do conjunto, sem página de termos
+            "spcapital",
             "conab",
             "comexstat",
         ),
@@ -76,7 +98,10 @@ _SEM_VIGIA = {
     "wayback": "a página de termos do Internet Archive veio vazia",
     "cftc": "a página de política da CFTC deu 404 (domínio público, obra do governo dos EUA)",
     "usda": "usda.gov e fas.usda.gov respondem 403 (domínio público pela política do USDA)",
+    "chirps3": "a licença (CC BY 4.0) está na ficha do dataset no Hugging Face, cópia de terceiro; os termos do Hugging Face não foram lidos (PR da ponte, 28/10/2026)",
     "ico": "ico.org não publica termos, só o aviso de copyright",
+    "finep": "a planilha de contratações da Finep não diz licença nem aponta termos (a confirmar, linha 469)",
+    "anvisa-cmed": "as listas de preços da CMED não dizem licença própria nem apontam termos (a confirmar)",
     # lote Tesouro (23/10/2026): a licença ODbL está na ficha de cada pacote do CKAN; o catálogo já é vigiado
     **dict.fromkeys(
         (
@@ -125,7 +150,13 @@ _SEM_VIGIA = {
     "epe": "a licença CC BY 4.0 está dita na página de dados abertos, sem página de termos própria",
     # lote licitações e contratos (rodada 4, 22/10/2026)
     **dict.fromkeys(
-        ("seges", "seges-pesquisa-precos", "comprasgov", "transferegov"),
+        (
+            "seges",
+            "seges-pesquisa-precos",
+            "comprasgov",
+            "transferegov",
+            "transferegov-especiais-pagamentos",
+        ),
         "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
     ),
     "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",
@@ -144,6 +175,21 @@ _SEM_VIGIA = {
     "wiki": "a documentação da API deu 502 e as páginas lidas não dizem a licença",
     "termos": "são as próprias cópias das páginas vigiadas",
     "contrapartes": "páginas de terceiros guardadas como prova, sem coleta recorrente do termo",
+    "djen": "a regra é a Resolução CNJ 455/2022 (norma publicada); a API não tem página de termos",
+    # lote Europa e RBA (linha 512, 05/11/2026): as páginas de termos conhecidas deram 404 ou ficam atrás de
+    # desafio anti-robô (sem contorno); a licença foi lida à mão em 29/10/2026
+    **dict.fromkeys(
+        ("statat", "statbel", "cso", "ines"),
+        "a página de termos não responde ao nosso agente (404 ou desafio anti-robô); licença lida à mão em 29/10/2026",
+    ),
+    "snb": "sem coleta: só a marca não comercial; os termos do portal data.snb.ch são um app JavaScript",
+    "cnj": "a regra é a Resolução CNJ 46/2007 (norma publicada); o serviço da TPU não tem termos",
+    # fontes pouco visíveis (ADR 0124)
+    **dict.fromkeys(
+        ("sudeco", "sudam"),
+        "a licença (CC BY-ND 3.0) está no rodapé de cada página do gov.br, sem página de termos própria",
+    ),
+    "divida": "PDFs de sites diferentes guardados só como prova; não há uma página de termos a vigiar",
 }
 
 

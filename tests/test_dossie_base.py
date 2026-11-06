@@ -32,40 +32,41 @@ CNPJ = "02429144000193"
         # marca restrita, que desde a ADR 0102 é só informação
         "ma_negocios",  # assessorias de M&A, só fatos (a confirmar)
         "ma_datas",  # datas pelo Wayback (não comercial)
+        # crise e risco com o nome da empresa: fato datado desde a virada de 5/11/2026
+        "insolvencia",
+        "cnpj_situacao_especial",
+        "rotulos_atraso",
+        "pgfn_divida",
     ],
 )
-def test_tabela_sem_pessoa_e_fora_da_lista_proibida_pode_ser_mostrada(
-    tabela: str,
-) -> None:
+def test_tabela_sem_pessoa_que_a_licenca_deixa_pode_ser_mostrada(tabela: str) -> None:
     assert dossie.pode_mostrar(tabela)
 
 
-@pytest.mark.parametrize(
-    "tabela",
-    [
-        "pgfn_divida",  # a licença deixa, mas é crise com nome (P-44)
-        "rotulos_atraso",
-        "tabela_que_nao_existe",
-    ],
-)
-def test_tabela_que_nao_pode_ser_mostrada(tabela: str) -> None:
+@pytest.mark.parametrize("tabela", ["tabela_que_nao_existe", "cnpj_qsa"])
+def test_tabela_fora_do_dicionario_ou_com_pessoa_nao_pode_ser_mostrada(
+    tabela: str,
+) -> None:
     assert not dossie.pode_mostrar(tabela)
 
 
-@pytest.mark.parametrize("tabela", ["cnpj_situacao_especial", "insolvencia"])
-def test_a_d2_liberou_insolvencia_e_situacao_especial(tabela: str) -> None:
-    """A ADR 0103 (D2, só fatos) tirou as duas da lista do P-44; a pgfn_divida segue fora."""
-    assert dossie.pode_mostrar(tabela)
+def test_a_virada_de_5_11_2026_tirou_a_lista_de_tabelas_proibidas() -> None:
+    """`docs/virada-empresas-fechadas.md`: toda a base vai a público; crise e risco com o nome da
+    empresa saem como fato datado, sem esperar parecer. Não há mais lista proibida nem "só em contagem"."""
+    assert not hasattr(dossie, "TABELAS_PROIBIDAS")
+    assert not hasattr(dossie, "TABELAS_SO_EM_CONTAGEM")
+    assert not hasattr(dossie, "pode_contar")
 
 
-def test_a_pgfn_tem_pessoa_e_a_lgpd_segura_mesmo_com_a_licenca_liberada(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Emenda 3, item 3b: dado pessoal é LGPD, não licença; a trava deixa, a tabela não sai."""
-    assert coletas.pode_usar("mostrar", dossie.TABELAS["pgfn_divida"].familia_da_fonte)
-    monkeypatch.setattr(dossie, "TABELAS_PROIBIDAS", frozenset())
-    assert dossie.TABELAS["pgfn_divida"].pessoa
-    assert not dossie.pode_mostrar("pgfn_divida")
+def test_a_pgfn_sai_sem_as_linhas_de_pessoa() -> None:
+    """ADR 0075 depois da virada: a tabela não é de pessoa (sai no app), mas o empresário individual e
+    o MEI ficam marcados em `trata_como_pessoa` e a porta esconde essas linhas."""
+    pgfn = dossie.TABELAS["pgfn_divida"]
+    assert coletas.pode_usar("mostrar", pgfn.familia_da_fonte)
+    assert pgfn.pessoa is False
+    assert pgfn.linhas_de_pessoa == "trata_como_pessoa"
+    assert pgfn.linhas_de_pessoa in pgfn.colunas
+    assert dossie.pode_mostrar("pgfn_divida")
 
 
 def test_a_lista_dos_usos_sem_cobranca_nao_decide_mais(
@@ -97,8 +98,8 @@ def test_tabela_vendavel_com_pessoa_nao_pode_ser_mostrada(
 
 
 def test_registrar_tabela_proibida_da_erro() -> None:
-    with pytest.raises(dossie.TabelaProibidaError, match="pgfn_divida"):
-        dossie.exigir_que_pode_mostrar(["auditores", "pgfn_divida"])
+    with pytest.raises(dossie.TabelaProibidaError, match="cnpj_qsa"):
+        dossie.exigir_que_pode_mostrar(["auditores", "cnpj_qsa"])
 
 
 def test_todas_as_secoes_registradas_podem_ser_mostradas() -> None:
@@ -497,6 +498,81 @@ def test_setor_regulado_soma_as_entidades_principais_e_a_participacao() -> None:
     assert linhas[2024]["participacao"] == pytest.approx(8 / 20)
     assert linhas[2025]["participacao"] == pytest.approx(6 / 20)
     assert secao["tabelas"]["entidades_ligadas"][0]["nome"] == "CPFL Paulista"
+
+
+def _com_a_vigencia(
+    ligacoes: pd.DataFrame, chave: str, ultima: str, ate: str | None
+) -> pd.DataFrame:
+    """A ligação da `chave` acabou: a última entrega do FRE que a mostrou é `ultima`."""
+    ligacoes = ligacoes.assign(
+        vigente=True,
+        ultima_referencia=D("2026-01-01"),
+        ate=pd.NaT,
+        ate_publico_em=pd.NaT,
+    )
+    acabou = ligacoes["chave"] == chave
+    ligacoes.loc[acabou, "vigente"] = False
+    ligacoes.loc[acabou, "ultima_referencia"] = D(ultima)
+    if ate:
+        ligacoes.loc[acabou, "ate"] = D(ate)
+        ligacoes.loc[acabou, "ate_publico_em"] = D(ate) + pd.Timedelta(days=150)
+    return ligacoes
+
+
+def test_setor_regulado_conta_a_entidade_so_ate_o_ano_em_que_a_ligacao_acabou() -> None:
+    """A distribuidora vendida (Roraima, em 2018) não soma no ano em que já era de outro dono."""
+    ligacoes = _com_a_vigencia(
+        _ligacoes_b13(), "22222222000122", "2024-01-01", "2025-01-01"
+    )
+    com_a_rge_em_2025 = pd.concat(
+        [
+            _serie_aneel(),
+            pd.DataFrame(
+                {"ano": [2025], "chave": ["22222222000122"], "valor": [4.0]}
+            ).merge(_PERIODOS, on="ano"),
+        ]
+    )  # a RGE tem número em 2025, mas já era de outro dono
+    secao = dossie.secao_setor_regulado(
+        ligacoes, {"aneel_consumidores": com_a_rge_em_2025}
+    )
+    assert secao is not None
+    linhas = {r["ano"]: r for r in secao["tabelas"]["aneel_consumidores"]}
+    assert linhas[2024]["valor"] == 8.0  # a RGE ainda era dela em 2024
+    assert linhas[2025]["valor"] == 6.0  # em 2025 só a CPFL Paulista
+    assert linhas[2025]["participacao"] == pytest.approx(6 / 24)
+
+
+def test_setor_regulado_ligacao_de_companhia_que_parou_de_entregar_acaba_na_ultima_evidencia() -> (
+    None
+):
+    """Eletropaulo na AES ELPA: o FRE parou em 2016 e não há entrega sem a ligação (`ate` vazio)."""
+    ligacoes = _com_a_vigencia(_ligacoes_b13(), "11111111000111", "2024-01-01", None)
+    secao = dossie.secao_setor_regulado(
+        ligacoes, {"aneel_consumidores": _serie_aneel()}
+    )
+    assert secao is not None
+    linhas = {r["ano"]: r for r in secao["tabelas"]["aneel_consumidores"]}
+    assert linhas[2024]["valor"] == 8.0
+    assert (
+        2025 not in linhas
+    )  # a CPFL Paulista deixou de ser da empresa; a RGE não tem número
+
+
+def test_entidades_ligadas_mostram_ate_quando_a_ligacao_acabou() -> None:
+    ligacoes = _com_a_vigencia(
+        _ligacoes_b13(), "22222222000122", "2024-01-01", "2025-01-01"
+    )
+    secao = dossie.secao_setor_regulado(
+        ligacoes, {"aneel_consumidores": _serie_aneel()}
+    )
+    assert secao is not None
+    rge = next(r for r in secao["tabelas"]["entidades_ligadas"] if r["nome"] == "RGE")
+    assert str(rge["ate"]).startswith("2025-01-01")
+    assert str(rge["ate_publico_em"]).startswith("2025-05-31")
+    cpfl = next(
+        r for r in secao["tabelas"]["entidades_ligadas"] if r["nome"] == "CPFL Paulista"
+    )
+    assert bool(cpfl["vigente"])
 
 
 def test_fontes_do_setor_sao_so_as_das_series_da_empresa() -> None:

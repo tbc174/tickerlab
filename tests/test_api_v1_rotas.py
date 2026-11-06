@@ -819,6 +819,21 @@ def _id_da_ana_no(banco):
     return ana.id
 
 
+def test_boas_vindas_do_beta_trazem_o_roteiro_da_pagina(cliente):
+    resposta = cliente.get("/api/v1/beta/boas-vindas")
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert [p["url"] for p in dados["roteiro"]][:3] == [
+        "relatorio-do-setor",
+        "relatorio-empresa",
+        "busca-por-cnpj",
+    ]
+    assert (
+        dados["total_de_minutos"] == sum(p["minutos"] for p in dados["roteiro"]) == 10
+    )
+    assert "recomendação de investimento" in dados["sobre_o_beta"]
+
+
 def test_meu_plano_mostra_o_plano_e_o_uso(cliente, banco):
     ana = _id_da_ana_no(banco)
     with banco.begin() as conexao:
@@ -1280,3 +1295,18 @@ def test_precos_de_referencia_sem_series_coletadas_503(cliente, no_dia):
     assert (
         "python -m" not in resposta.json()["detail"]
     )  # comando interno não vai a quem usa
+
+
+def test_relatorio_empresa_com_a_trava_desligada_nem_pede_o_preco(
+    cliente, banco, tmp_path, monkeypatch
+):
+    """Linha 413, Y1 (a), "pode" do Tiago em 25/10/2026: com TICKERLAB_PRECO_NO_RELATORIO=0 a ficha
+    não vai ao Yahoo (antes buscava, guardava no cache e só depois escondia o número)."""
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    pedidos = []
+    monkeypatch.setattr(contexto, "carregar_dados", lambda *a: pedidos.append(a))
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    assert pedidos == []
+    assert not any("Yahoo" in f for f in resposta.json()["fontes"])

@@ -4,6 +4,8 @@ Tabelas de mentira, pequenas, já só com a empresa da ficha (o script separa po
 somas: nenhum nome de pessoa (ADRs 0018 e 0075); cada número com a data e sem olhar o futuro.
 """
 
+import json
+
 import pandas as pd
 
 from base import dossie
@@ -118,6 +120,7 @@ def _remuneracao() -> pd.DataFrame:
                 orgao=orgao,
                 membros_remunerados=6.0,
                 total_remuneracao=milhoes * MILHAO,
+                total_do_orgao=milhoes * MILHAO,
             )
             for fre, fim, orgao, milhoes in linhas
         ]
@@ -148,6 +151,8 @@ def _governanca(hoje: pd.Timestamp = HOJE, **tabelas: pd.DataFrame) -> dict | No
         tabelas.get("extremos", vazia),
         tabelas.get("diversidade", vazia),
         hoje,
+        tabelas.get("capital"),
+        tabelas.get("empregados"),
     )
 
 
@@ -246,6 +251,40 @@ def test_remuneracao_por_orgao_traz_a_maior_a_media_e_a_menor() -> None:
     }
 
 
+def test_remuneracao_da_diretoria_por_exercicio_vem_do_fre_mais_novo_de_cada_ano() -> (
+    None
+):
+    secao = _governanca_completa()
+    assert secao is not None
+    assert secao["tabelas"]["remuneracao_da_diretoria_por_exercicio"] == [
+        {"exercicio": 2025, "total": 40 * MILHAO, "conhecido_em": "2026-07-10"},
+        {"exercicio": 2024, "total": 45 * MILHAO, "conhecido_em": "2026-07-10"},
+        {"exercicio": 2023, "total": 40 * MILHAO, "conhecido_em": "2025-05-31"},
+    ]
+
+
+def test_remuneracao_da_diretoria_usa_o_total_do_orgao_e_nao_o_da_administracao() -> (
+    None
+):
+    # de 2024 em diante a CVM repete o total da administração em `total_remuneracao` de cada órgão
+    remuneracao = pd.DataFrame(
+        [
+            _do_fre(FRE_2026_V2, fim_do_exercicio=D("2025-12-31"), orgao=orgao,
+                    membros_remunerados=6.0, total_remuneracao=51 * MILHAO, total_do_orgao=do_orgao)
+            for orgao, do_orgao in (
+                ("Conselho de Administração", 10 * MILHAO),
+                ("Diretoria Estatutária", 40 * MILHAO),
+                ("Conselho Fiscal", 1 * MILHAO),
+            )
+        ]
+    )  # fmt: skip
+    secao = _governanca(remuneracao=remuneracao)
+    assert secao is not None
+    assert secao["tabelas"]["remuneracao_da_diretoria_por_exercicio"] == [
+        {"exercicio": 2025, "total": 40 * MILHAO, "conhecido_em": "2026-07-10"},
+    ]
+
+
 def test_governanca_cortar_o_futuro_nao_muda_o_passado() -> None:
     dia = D("2026-06-15")  # a versão 2 do FRE de 2026 ainda não tinha sido entregue
 
@@ -263,6 +302,79 @@ def test_governanca_cortar_o_futuro_nao_muda_o_passado() -> None:
     assert cortada == _governanca_completa(dia)
     assert cortada is not None
     assert _itens(cortada)["conselho_membros"]["valor"] == 9
+
+
+def _capital() -> pd.DataFrame:
+    def linha(fre, tipo, valor, ordinarias, preferenciais):
+        return _do_fre(
+            fre, tipo_capital=tipo, valor_capital=valor, acoes_ordinarias=ordinarias,
+            acoes_preferenciais=preferenciais, acoes_total=ordinarias + preferenciais,
+        )  # fmt: skip
+
+    return pd.DataFrame(
+        [
+            linha(FRE_2025, "integralizado", 90 * MILHAO, 900.0, 0.0),
+            linha(FRE_2026_V2, "integralizado", 100 * MILHAO, 1000.0, 500.0),
+            linha(FRE_2026_V2, "autorizado", 150 * MILHAO, 2000.0, 0.0),
+            linha(FRE_2027, "integralizado", 999 * MILHAO, 9999.0, 0.0),
+        ]
+    )
+
+
+def _empregados() -> pd.DataFrame:
+    def linha(fre, recorte, grupo, mulheres, homens):
+        return _do_fre(
+            fre, recorte=recorte, grupo=grupo, genero_feminino=mulheres,
+            genero_masculino=homens, genero_nao_binario=0.0, genero_outros=0.0,
+            genero_sem_resposta=1.0,
+        )  # fmt: skip
+
+    return pd.DataFrame(
+        [
+            linha(FRE_2026_V2, "posicao", "Liderança", 10.0, 30.0),
+            linha(FRE_2026_V2, "posicao", "Não-liderança", 60.0, 100.0),
+            linha(FRE_2026_V2, "local", "Sudeste", 70.0, 130.0),
+            linha(FRE_2027, "posicao", "Liderança", 500.0, 500.0),
+        ]
+    )
+
+
+def test_capital_e_empregados_vem_do_fre_mais_novo_ja_entregue() -> None:
+    secao = _governanca(capital=_capital(), empregados=_empregados())
+    assert secao is not None
+    itens = _itens(secao)
+    assert (
+        itens["acoes_integralizadas"]["valor"] == 1500
+    )  # o FRE de 2027 ainda não era público
+    assert itens["acoes_integralizadas"]["base"] == "2026-07-10"
+    assert (
+        itens["empregados"]["valor"] == 202
+    )  # 41 + 161 (soma das respostas de gênero)
+    capital = secao["tabelas"]["capital_social"]
+    assert [linha["tipo_capital"] for linha in capital] == [
+        "autorizado",
+        "integralizado",
+    ]
+    por_posicao = [
+        linha
+        for linha in secao["tabelas"]["empregados_do_fre"]
+        if linha["recorte"] == "Por posição"
+    ]
+    assert sum(linha["mulheres"] for linha in por_posicao) == 70
+
+
+def test_capital_e_empregados_cortar_o_futuro_nao_muda_o_passado() -> None:
+    dia = D("2026-06-15")  # a versão 2 do FRE de 2026 ainda não existia
+    cortada = _governanca(
+        dia,
+        capital=_capital()[lambda t: t["conhecido_em"] <= dia],
+        empregados=_empregados()[lambda t: t["conhecido_em"] <= dia],
+    )
+    completa = _governanca(dia, capital=_capital(), empregados=_empregados())
+    assert cortada == completa
+    assert cortada is not None
+    assert _itens(cortada)["acoes_integralizadas"]["valor"] == 900
+    assert "empregados" not in _itens(cortada)  # não havia FRE de empregados entregue
 
 
 def test_governanca_sem_nenhuma_tabela_nao_tem_secao() -> None:
@@ -295,6 +407,7 @@ def _rating(
         "agencia": agencia,
         "escala": escala,
         "nota": nota_original.split("(")[0],
+        "nivel": NIVEL.get(nota_original),
         "nota_original": nota_original,
         "perspectiva": perspectiva,
         "acao": acao,
@@ -306,6 +419,9 @@ def _rating(
         "link": f"https://cvm/{protocolo}",
         "situacao_extracao": situacao,
     }
+
+
+NIVEL = {"AA+(bra)": 2, "AA(bra)": 3, "AA-(bra)": 4, "brAAA": 1, "Ba2": 12}  # 1 = AAA
 
 
 def _ratings() -> pd.DataFrame:
@@ -332,6 +448,7 @@ def _assembleia(
     publico_em: str,
     protocolo: str,
     versao: int = 1,
+    estresse: bool = False,
     **temas: bool,
 ) -> dict[str, object]:
     return {
@@ -342,6 +459,7 @@ def _assembleia(
         "publico_em": D(publico_em),
         "protocolo": protocolo,
         "versao": versao,
+        "estresse": estresse,
         "link": f"https://cvm/{protocolo}/{versao}",
         **{
             f"tema_{tema}": temas.get(tema, False)
@@ -360,16 +478,16 @@ def _assembleias() -> pd.DataFrame:
     return pd.DataFrame(
         [
             _assembleia("assembleia", "Edital de Convocação", "AGD 5ª emissão: waiver de covenant",
-                        "2026-02-10", "a1", waiver=True, covenant=True),
+                        "2026-02-10", "a1", estresse=True, waiver=True, covenant=True),
             _assembleia("assembleia", "Ata", "AGD 5ª emissão: waiver", "2026-03-01", "a2",
-                        waiver=True),
+                        estresse=True, waiver=True),
             # a mesma ata reentregue: conta uma vez
             _assembleia("assembleia", "Ata", "AGD 5ª emissão: waiver", "2026-03-05", "a2", 2,
-                        waiver=True),
+                        estresse=True, waiver=True),
             _assembleia("aviso", "", "Pagamento de juros da 5ª emissão", "2026-04-01", "a3"),
             _assembleia("assembleia", "Edital de Convocação",
                         "AGD 4ª emissão: não declarar o vencimento antecipado", "2025-05-05", "a4",
-                        vencimento_antecipado=True),
+                        estresse=True, vencimento_antecipado=True),
             _assembleia("assembleia", "Edital de Convocação", "AGD 6ª emissão", "2026-11-02", "a5"),
         ]
     )  # fmt: skip
@@ -459,6 +577,43 @@ def test_assembleias_recentes_trazem_o_assunto_e_o_link() -> None:
         ("2026-02-10", "Edital de Convocação", "https://cvm/a1/1"),
         ("2025-05-05", "Edital de Convocação", "https://cvm/a4/1"),
     ]
+
+
+def test_acoes_de_rating_trazem_a_nota_anterior_da_mesma_agencia_e_escala() -> None:
+    secao = _credito_completo()
+    assert secao is not None
+    acoes = secao["tabelas"]["acoes_de_rating"]
+    assert [
+        (a["agencia"], a["acao"], a["nota_anterior"], a["nota"], a["nivel_anterior"], a["nivel"],
+         a["perspectiva"], a["publico_em"])
+        for a in acoes
+    ] == [
+        ("moodys", "retirada", None, "Ba2", None, 12, "estavel", "2026-05-11"),
+        ("fitch", "rebaixamento", "AA(bra)", "AA-(bra)", 3, 4, "negativa", "2026-03-03"),
+        ("sp", "afirmacao", None, "brAAA", None, 1, "estavel", "2025-06-02"),
+        ("fitch", "afirmacao", "AA+(bra)", "AA(bra)", 2, 3, "estavel", "2024-09-11"),
+        ("fitch", "elevacao", None, "AA+(bra)", None, 2, "positiva", "2014-05-02"),
+    ]  # fmt: skip
+    assert all(a["link"].startswith("https://cvm/") for a in acoes)
+
+
+def test_assembleias_de_aperto_sao_as_do_rotulo_da_base_so_com_os_fatos() -> None:
+    secao = _credito_completo()
+    assert secao is not None
+    aperto = secao["tabelas"]["assembleias_de_aperto"]
+    assert [(a["publico_em"], a["especie"]) for a in aperto] == [
+        ("2026-03-05", "Ata"),
+        ("2026-02-10", "Edital de Convocação"),
+        ("2025-05-05", "Edital de Convocação"),
+    ]
+    assert set(aperto[0]) == {"publico_em", "especie", "assunto", "link"}
+    assert "estresse" not in json.dumps(secao)
+
+
+def test_assembleias_sem_o_rotulo_da_base_nao_tem_a_tabela_de_aperto() -> None:
+    secao = _credito(assembleias=_assembleias().drop(columns="estresse"))
+    assert secao is not None
+    assert "assembleias_de_aperto" not in secao["tabelas"]
 
 
 def test_credito_cortar_o_futuro_nao_muda_o_passado() -> None:

@@ -13,11 +13,11 @@ import pytest
 
 from scripts import exportar_entradas_da_analise as ex
 from src import demonstracoes as dm
-from src import dossie
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.demonstracoes import gravar_demonstracoes, gravar_setor
 from src.banco.eventos import gravar_tickers
 from tests import test_relatorio_empresa_v2 as ficha_v2
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
 CPFL = ficha_v2.CPFL
 CPFL_DIGITOS = "02429144000193"
@@ -61,8 +61,8 @@ def dossies(tmp_path, monkeypatch) -> Path:
     """`atual/` com a ficha da CPFL, uma ficha de empresa sem ticker e o manifesto do dossiê."""
     atual = tmp_path / "dossies" / "atual"
     atual.mkdir(parents=True)
-    shutil.copy(dossie.FICHA_DE_EXEMPLO, atual / f"{CPFL_DIGITOS}.json")
-    outra = json.loads(dossie.FICHA_DE_EXEMPLO.read_text(encoding="utf-8"))
+    shutil.copy(FICHA_DE_17_10, atual / f"{CPFL_DIGITOS}.json")
+    outra = json.loads(FICHA_DE_17_10.read_text(encoding="utf-8"))
     outra["cnpj"] = SEM_TICKER
     (atual / f"{SEM_TICKER}.json").write_text(json.dumps(outra), encoding="utf-8")
     (atual / "manifesto.json").write_text("{}", encoding="utf-8")

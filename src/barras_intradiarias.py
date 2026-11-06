@@ -194,7 +194,7 @@ def selo_dos_fechamentos(
     """Uma linha por símbolo (das barras ou do oficial): diferença do fechamento, cobertura dos
     minutos do pregão e o selo (`confere`, `nao_confere`, `ausente` na IEX ou `sem_boletim`).
 
-    O fechamento oficial não fica na tabela (vem do Yahoo, que não entra na base).
+    O fechamento oficial não fica na tabela (vem de fonte externa, que não entra na base).
     """
     diferenca = conferir_fechamentos(barras, fechamentos_oficiais)["diferenca"]
     cobertura = cobertura_por_simbolo(barras)

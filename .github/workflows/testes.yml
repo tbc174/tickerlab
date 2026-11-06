@@ -120,11 +120,24 @@ jobs:
 
       # o painel do trader usa o Qt (PySide6): mesmo sem tela ("offscreen"), ele precisa das
       # bibliotecas gráficas do sistema, que o Ubuntu do GitHub não traz (faltava o libEGL.so.1)
+      #
+      # O espelho do apt já travou (26/10, #688: o "apt-get update" ficou parado até o limite de 15 min
+      # do job e cancelou a parte sem rodar teste). Por isso o passo tem prazo curto e até 3
+      # tentativas, em vez de deixar o job inteiro esperando.
       - name: Bibliotecas do Qt
         if: matrix.dependencias == 'requirements-trader.txt'
+        timeout-minutes: 6
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+          apt_opcoes="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
+          for tentativa in 1 2 3; do
+            if sudo timeout 120 apt-get $apt_opcoes update \
+              && sudo timeout 120 apt-get $apt_opcoes install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3; then
+              exit 0
+            fi
+            echo "apt-get falhou na tentativa $tentativa; esperando para tentar de novo"
+            sleep 10
+          done
+          exit 1
 
       # o torch do PyPI para Linux traz as bibliotecas de GPU da NVIDIA (vários GB); a pesquisa só
       # usa CPU, então o uv busca a mesma versão só para CPU (~200 MB) no índice do PyTorch
@@ -139,12 +152,22 @@ jobs:
 
       - name: ruff (formatação do app, telas, src, base e tests)
         if: matrix.qualidade
-        run: python -m ruff format --check app.py telas src base tests trader scripts
+        run: python -m ruff format --check app.py telas src base tests trader scripts migracoes
 
-      # tipos: só src/ e scripts/ por enquanto (regras e porquês no pyrightconfig.json)
+      # tipos: src/, scripts/, telas/ e base/ (o "include", as regras e os porquês no pyrightconfig.json)
       - name: pyright (tipos)
         if: matrix.qualidade
         run: python -m pyright
+
+      # código morto em modo "não piorar": o que o vulture aponta hoje está em
+      # tests/arquivos/vulture_esperado.txt; item novo ou item que sumiu falha
+      # (scripts/conferir_codigo_morto.py). O vulture fica fora do requirements.txt: é ferramenta de
+      # desenvolvimento, instalada só aqui.
+      - name: "vulture (código morto: não piorar)"
+        if: matrix.qualidade
+        run: |
+          uv pip install vulture==2.16
+          python -m scripts.conferir_codigo_morto
 
       # em paralelo, um processo por núcleo lógico ("auto" contaria só os físicos: 2 no GitHub);
       # "loadgroup" reparte teste a teste, menos o grupo "postgres" do test_banco.py (o único que
@@ -198,11 +221,11 @@ jobs:
           python -m coverage combine
           python -m coverage report
 
-      - name: Testes do README (mudança só de texto)
+      - name: Testes do README e da raiz (mudança só de texto)
         if: needs.mudancas.outputs.so_texto == 'true'
         run: |
           python -m pip install pytest==9.1.1
-          python -m pytest -q --noconftest -p no:cacheprovider tests/test_publicacao.py tests/test_mudou_so_texto.py
+          python -m pytest -q --noconftest -p no:cacheprovider tests/test_publicacao.py tests/test_mudou_so_texto.py tests/test_raiz_do_repositorio.py
 
   web:
     # o front-end em React (ADR 0048): tipos, testes, build, licenças e vulnerabilidades dos pacotes
@@ -299,6 +322,10 @@ jobs:
         # os caminhos pelo esquema OpenAPI: no FastAPI 0.143 o include_router guarda o roteador
         # inteiro (_IncludedRouter, sem .path), então listar app.routes quebrava a verificação
         run: docker run --rm tickerlab:ci python -c "from src.api import app; p = sorted(app.openapi()['paths']); print(p); assert '/saude' in p and '/api/saude' in p"
+
+      - name: A busca por CNPJ abre dentro da imagem
+        # a busca lê a vista do CNPJ pela porta da base (DuckDB e Parquet), que a API só importa no pedido
+        run: docker run --rm tickerlab:ci python -c "import src.busca_por_cnpj, src.api_v1.rotas; print('busca ok')"
 
       - name: O login com o Google tem o que precisa dentro da imagem
         run: docker run --rm tickerlab:ci python -c "from authlib.integrations.starlette_client import OAuth; print('login ok')"

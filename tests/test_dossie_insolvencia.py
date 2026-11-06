@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from base import contestacoes, dossie
+from base import contestacoes, dossie, palavras_vedadas
 from base.contrapartes import cafe
 from src import dossie as dossie_do_app
 from src.relatorio_empresa import ORDEM_DAS_SECOES
@@ -20,18 +20,7 @@ D = pd.Timestamp
 HOJE = D("2026-10-22")
 RAIZ = "02429144"
 FRASE_FIXA = "a falta de registro nas fontes lidas não prova que não exista"
-# a lista única da ADR 0103 (item 7): a do café mais a da 0085
-VEDADAS = (
-    *cafe.VEDADAS,
-    "fraudador",
-    "corrupção",
-    "cartel",
-    "conluio",
-    "laranja",
-    "superfaturamento",
-    "direcionamento",
-    "suspeito",
-)
+VEDADAS = palavras_vedadas.VEDADAS
 JULGAMENTOS = ("avaliamos", "classificamos", "nota ", "risco", "sinal")
 
 
@@ -98,15 +87,16 @@ def _textos(secao: dict) -> str:
 
 
 @pytest.mark.parametrize("tabela", ["insolvencia", "cnpj_situacao_especial"])
-def test_a_d2_libera_so_as_duas_tabelas(tabela: str) -> None:
+def test_a_d2_liberou_as_duas_tabelas(tabela: str) -> None:
     assert dossie.pode_mostrar(tabela)
 
 
 @pytest.mark.parametrize("tabela", ["pgfn_divida", "rotulos_atraso"])
-def test_a_divida_ativa_e_o_rotulo_de_atraso_seguem_fora(tabela: str) -> None:
-    """P-44: a ADR 0103 (D2) só desbloqueia a insolvência e a situação especial."""
-    assert not dossie.pode_mostrar(tabela)
-    assert tabela in dossie.TABELAS_PROIBIDAS
+def test_a_virada_liberou_a_divida_ativa_e_o_rotulo_de_atraso(tabela: str) -> None:
+    """5/11/2026 (`docs/virada-empresas-fechadas.md`): toda a base vai a público, sem esperar o parecer
+    (P-44); as duas saem como fato datado, com fonte, data pública e link."""
+    assert dossie.pode_mostrar(tabela)
+    assert not hasattr(dossie, "TABELAS_PROIBIDAS")
 
 
 def test_a_secao_esta_registrada_com_as_duas_tabelas() -> None:
@@ -127,15 +117,18 @@ def test_a_tabela_tem_colunas_e_titulo_declarados() -> None:
     colunas = dossie_do_app.colunas_da_tabela("registros_de_insolvencia")
     assert colunas is not None
     nomes = {coluna for coluna, _, _ in colunas}
-    assert nomes == {
-        "aconteceu_em",
-        "publico_em",
-        "registro",
-        "veiculo",
-        "situacao",
-        "contestacao",
-    }
-    assert "link" not in nomes  # o link vai ao lado, como nas outras tabelas
+    assert (
+        nomes
+        == {
+            "aconteceu_em",
+            "publico_em",
+            "registro",
+            "veiculo",
+            "situacao",
+            "contestacao",
+            "link",  # a fonte original, como nas outras tabelas que carregam o link (virada de 5/11)
+        }
+    )
     assert dossie_do_app.titulo_da_tabela("registros_de_insolvencia")
 
 
@@ -362,6 +355,34 @@ def test_a_contestacao_tambem_vale_para_o_fato_da_receita() -> None:
     contestada = _contestacao(registro="falencia")
     [linha] = _linhas(_secao(cvm=_cvm().iloc[0:0], contestadas=contestada))
     assert linha["situacao"] == "contestada"
+
+
+# --- o desfecho não se deduz (linha 235 da fila) ---------------------------------------------------
+
+
+def test_a_situacao_do_fato_so_pode_ser_vazia_ou_contestada() -> None:
+    """A CVM e a Receita só dizem que o fato existiu: nem a idade do fato, nem o sumiço dele do retrato
+    seguinte, nem um documento posterior viram `vigente` ou `encerrada`. Só a empresa, contestando."""
+    antigo = _cvm(
+        {"referencia": D("2010-01-01"), "conhecido_em": D("2010-01-05")},
+        {
+            "protocolo": "P2",
+            "rotulo": "falencia",
+            "referencia": D("2026-10-01"),
+            "conhecido_em": D("2026-10-02"),
+        },
+    )
+    sem_o_fato_depois = _receita(
+        {"mes_do_retrato": "2025-07", "disponivel_em": D("2025-07-31")},
+        {"situacao_especial": None, "rotulo": None, "mes_do_retrato": "2025-08"},
+    )
+    contestada = _contestacao(registro="falencia")
+    for contestadas in (SEM_CONTESTACAO, contestada):
+        linhas = _linhas(
+            _secao(cvm=antigo, receita=sem_o_fato_depois, contestadas=contestadas)
+        )
+        assert {linha.get("situacao") for linha in linhas} <= {None, "contestada"}
+    assert not re.search(r"vigente|encerrad", str(_linhas(_secao(cvm=antigo))))
 
 
 # --- o arquivo das contestações ---------------------------------------------------------------------

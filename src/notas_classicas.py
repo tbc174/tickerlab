@@ -22,8 +22,16 @@ import pandas as pd
 
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import e_financeira
-from src.fundamentos import NAO_SE_APLICA_A_FINANCEIRAS, anuais
+from src.fundamentos import (
+    ANO_ANTERIOR,
+    CONFERENCIA,
+    LUCRO,
+    NAO_SE_APLICA_A_FINANCEIRAS,
+    anuais,
+)
+from src.fundamentos import todas_as_entradas as _entradas_das_contas
 from src.notas import Regua
+from src.rastro import Entrada
 
 VERSAO_DAS_NOTAS_CLASSICAS = "1"  # sobe quando uma fórmula ou um peso abaixo mudar
 ALTMAN_SEGURA, ALTMAN_AFLICAO = 2.60, 1.10
@@ -341,3 +349,66 @@ def calcular(dados: DadosDaEmpresa) -> dict[str, NotaClassica]:
         "altman": _altman(atual, f"DFP de {ano}"),
         "beneish": _beneish(atual, anterior, base),
     }
+
+
+# --- as entradas do rastro -----------------------------------------------------------------------
+_DO_BENEISH = (
+    "receita",
+    "resultado_bruto",
+    "ativo_total",
+    "ativo_circulante",
+    "imobilizado",
+    "depreciacao",
+    "passivo_circulante",
+    "divida_lp",
+    "contas_a_receber",
+    "despesas_com_vendas",
+    "despesas_administrativas",
+)
+_DO_PIOTROSKI = (
+    LUCRO,
+    "ativo_total",
+    "divida_lp",
+    "ativo_circulante",
+    "passivo_circulante",
+    "acoes_total",
+    "resultado_bruto",
+    "receita",
+)
+
+
+def _nos_dois_anos(*contas: str) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        (onde, conta) for onde in (ANO_ANTERIOR, CONFERENCIA) for conta in contas
+    )
+
+
+# As contas de cada nota (as que `_altman`, `_indices_do_beneish` e `_criterios_do_piotroski` leem):
+# a conferência é o último exercício; o ano anterior, o de antes. O caixa operacional (no Piotroski
+# e no TATA do Beneish) e o lucro do TATA são só do último ano. Mudou uma conta acima, mude aqui (o
+# teste de `tests/test_rastro.py` refaz cada nota só com as entradas).
+CONTAS_DAS_NOTAS: dict[str, tuple[tuple[str, str], ...]] = {
+    "piotroski": (*_nos_dois_anos(*_DO_PIOTROSKI), (CONFERENCIA, "fco")),
+    "altman": tuple(
+        (CONFERENCIA, conta)
+        for conta in (
+            "ativo_total",
+            "patrimonio_liquido",
+            "ativo_circulante",
+            "passivo_circulante",
+            "reservas_de_lucro",
+            "lucros_acumulados",
+            "ebit",
+        )
+    ),
+    "beneish": (
+        *_nos_dois_anos(*_DO_BENEISH),
+        (CONFERENCIA, "lucro_liquido"),
+        (CONFERENCIA, "fco"),
+    ),
+}
+
+
+def todas_as_entradas(dados: DadosDaEmpresa) -> dict[str, tuple[Entrada, ...]]:
+    """As entradas de cada nota de `CONTAS_DAS_NOTAS` (ver `fundamentos.todas_as_entradas`)."""
+    return _entradas_das_contas(dados, contas_dos_indicadores=CONTAS_DAS_NOTAS)

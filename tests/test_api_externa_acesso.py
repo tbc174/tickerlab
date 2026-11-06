@@ -16,6 +16,7 @@ import sqlalchemy as sa
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
+from base.prontidao import Prontidao, Prova
 from src import api
 from src import portao_externo as portao
 from src.api_externa import acesso
@@ -323,6 +324,7 @@ def _linha_do_portao(**outros) -> LinhaDeDireito:
         "categoria": Categoria.FATO_DE_PJ,
         "vigente_desde": date(2026, 10, 1),
         "prova": "teste",
+        "tabelas": ("demonstracoes",),
     }
     return LinhaDeDireito(**(base | outros))  # type: ignore[arg-type]
 
@@ -330,11 +332,14 @@ def _linha_do_portao(**outros) -> LinhaDeDireito:
 def _portao_liberando(*linhas: LinhaDeDireito) -> portao.Regras:
     """O portão com tudo em ordem para a família `cvm`: só a linha decide."""
     respostas = ColetaEGuarda(Coleta.ABERTA, Guarda.SEM_PRAZO)
+    prova = Prova(date(2026, 10, 1), "teste", "teste")
     return dataclasses.replace(
         portao.regras_vigentes(),
         linhas=linhas or (_linha_do_portao(),),
         coleta_e_guarda={"cvm": respostas},
         termos_lidos_em={"cvm": date(2026, 10, 1)},
+        prontidao={"demonstracoes": Prontidao(1, prova, prova, prova)},
+        versoes_maiores={"demonstracoes": 1},
     )
 
 

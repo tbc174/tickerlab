@@ -11,14 +11,15 @@ from pathlib import Path
 import pytest
 
 from src import destaques, dossie
+from tests.ajudantes_da_ficha import FICHA_DE_17_10
 
 
 def _ficha(alterar=None, tmp_path: Path | None = None) -> dossie.Ficha:
     if alterar is None:
-        ficha = dossie.ler_ficha(dossie.FICHA_DE_EXEMPLO)
+        ficha = dossie.ler_ficha(FICHA_DE_17_10)
     else:
         assert tmp_path is not None
-        bruta = json.loads(dossie.FICHA_DE_EXEMPLO.read_text(encoding="utf-8"))
+        bruta = json.loads(FICHA_DE_17_10.read_text(encoding="utf-8"))
         alterar(bruta)
         caminho = tmp_path / "ficha.json"
         caminho.write_text(json.dumps(bruta), encoding="utf-8")

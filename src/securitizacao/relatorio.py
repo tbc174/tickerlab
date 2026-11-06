@@ -1,13 +1,15 @@
 """O PDF dos cenários da cascata (protótipo D, etapa 6): feito para outra pessoa auditar.
 
-Estrutura da operação, os cenários lado a lado, a reconciliação do caixa, a versão do motor e o
-SHA-256 da carteira de entrada. "Limites e cuidados" sai sempre. Usa o mesmo `RelatorioPDF` dos demais
+Estrutura da operação, os cenários lado a lado (com a vida média de cada classe), o CDR de equilíbrio, os
+mesmos cenários com as regras da 0.2.0 ligadas, a reconciliação do caixa, a versão do motor e o SHA-256 da
+carteira de entrada. "Limites e cuidados" sai sempre. Usa o mesmo `RelatorioPDF` dos demais
 relatórios; nenhuma rota nem tela chama esta função ainda (a rota que a exporia seria
 `POST /v1/securitizacao/cenarios`, a definir com o B-10).
 """
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime
 
 from src.estilos_pdf import PADRAO, Estilo
@@ -16,13 +18,21 @@ from src.relatorio_pdf import RelatorioPDF
 from src.securitizacao.cascata import PRO_RATA, VERSAO_DO_CALCULO, Regras
 from src.securitizacao.cenarios import (
     CENTAVOS_POR_REAL,
+    REGRAS_DA_0_2_0_LIGADAS,
+    TOLERANCIA_DO_EQUILIBRIO,
     Carteira,
     Estrutura,
     ResultadoDoCenario,
+    cdrs_de_equilibrio,
     hash_da_entrada,
+    rodar_cenarios,
 )
 
 TITULO_DOS_LIMITES = "Limites e cuidados"
+TITULO_DO_EQUILIBRIO = "Vida média e CDR de equilíbrio"
+TITULO_DAS_REGRAS_LIGADAS = "Com as regras da 0.2.0 ligadas"
+SEM_VALOR = "—"
+TOLERANCIA_EM_TEXTO = f"{TOLERANCIA_DO_EQUILIBRIO:.2%}".replace(".", ",")
 AVISO_DO_RODAPE = "Protótipo com carteira sintética. Nada aqui é recomendação de investimento, oferta ou rating."
 LIMITES = [
     (
@@ -43,6 +53,20 @@ LIMITES = [
         "A recuperação volta ao caixa como principal das classes de cima: não restitui perda já alocada "
         "às de baixo."
     ),
+    (
+        "A vida média (WAL) pondera o principal recebido pelo mês em que entrou, em anos; a classe que "
+        "perde tem a vida média do que recebeu. Sem preço, taxa interna nem duration: esses pedem a "
+        "convenção brasileira (DU/252) e ficam para depois."
+    ),
+    (
+        "O CDR de equilíbrio é o maior CDR anual em que a classe ainda não perde principal, com o resto do "
+        "cenário base (sem pré-pagamento nem recuperação), achado por bissecção: erra por no máximo "
+        f"{TOLERANCIA_EM_TEXTO} de CDR anual, sempre para menos. Não conta os juros que ficaram sem pagar."
+    ),
+    (
+        "Os parâmetros das regras da 0.2.0 ligadas (gatilho de perda e meta de sobrecolateralização) são "
+        "de referência, não de uma operação real."
+    ),
     "Nada aqui é recomendação de investimento.",
 ]
 
@@ -57,6 +81,22 @@ def _reais(centavos: int) -> str:
 def _percentual(fracao: float) -> str:
     """Fração em percentual com vírgula decimal (0.05 → 5,0%)."""
     return f"{fracao:.1%}".replace(".", ",")
+
+
+def _anos(anos: float | None) -> str:
+    """Vida média em anos com vírgula decimal; classe sem principal recebido fica sem valor."""
+    return SEM_VALOR if anos is None else f"{anos:.2f}".replace(".", ",")
+
+
+def _cdr(cdr: float | None) -> str:
+    """CDR de equilíbrio em percentual; None é perda mesmo sem inadimplência, 1,0 é nunca perder."""
+    if cdr is None:
+        return "perde com CDR 0"
+    if cdr >= 1.0:
+        return "não perde"
+    if cdr < TOLERANCIA_DO_EQUILIBRIO:
+        return f"menos de {TOLERANCIA_EM_TEXTO}"
+    return f"{cdr:.2%}".replace(".", ",")
 
 
 def descrever_regras(regras: Regras) -> str:
@@ -94,8 +134,8 @@ def _tabela_dos_cenarios(
 ) -> tuple[list[str], list[list[str]]]:
     cabecalho = ["R$", *(r.cenario.nome for r in resultados)]
     linhas = [
-        ["CDR anual", *(f"{r.cenario.cdr_anual:.1%}" for r in resultados)],
-        ["CPR anual", *(f"{r.cenario.cpr_anual:.1%}" for r in resultados)],
+        ["CDR anual", *(_percentual(r.cenario.cdr_anual) for r in resultados)],
+        ["CPR anual", *(_percentual(r.cenario.cpr_anual) for r in resultados)],
         [
             "Recuperação (atraso em meses)",
             *(
@@ -123,6 +163,13 @@ def _tabela_dos_cenarios(
                 *(_reais(r.totais_por_classe[c.nome]["perda"]) for r in resultados),
             ]
         )
+    linhas.extend(
+        [
+            f"Vida média (anos): {c.nome}",
+            *(_anos(r.vida_media_em_anos[c.nome]) for r in resultados),
+        ]
+        for c in sorted(estrutura.classes, key=lambda c: c.senioridade)
+    )
     linhas.append(["Residual", *(_reais(r.residual) for r in resultados)])
     linhas.append(
         [
@@ -130,6 +177,17 @@ def _tabela_dos_cenarios(
             *(_reais(r.pago_a_subordinada) for r in resultados),
         ]
     )
+    return cabecalho, linhas
+
+
+def _tabela_do_equilibrio(
+    estrutura: Estrutura, colunas: list[tuple[str, dict[str, float | None]]]
+) -> tuple[list[str], list[list[str]]]:
+    cabecalho = ["CDR de equilíbrio", *(rotulo for rotulo, _ in colunas)]
+    linhas = [
+        [c.nome, *(_cdr(cdrs[c.nome]) for _, cdrs in colunas)]
+        for c in sorted(estrutura.classes, key=lambda c: c.senioridade)
+    ]
     return cabecalho, linhas
 
 
@@ -156,10 +214,18 @@ def relatorio_dos_cenarios(
     resultados: list[ResultadoDoCenario],
     gerado_em: datetime | None = None,
     estilo: Estilo = PADRAO,
+    regras_comparadas: Regras | None = REGRAS_DA_0_2_0_LIGADAS,
 ) -> bytes:
-    """Os bytes do PDF: estrutura, cenários lado a lado, reconciliação, versão, hash e limites."""
+    """Os bytes do PDF: estrutura, cenários, equilíbrio, regras comparadas, reconciliação, versão, hash e limites.
+
+    `regras_comparadas` roda os mesmos cenários com outras regras (padrão: as da 0.2.0 ligadas); None, ou as
+    mesmas regras da estrutura, tira essa seção.
+    """
     gerado_em = gerado_em or datetime.now(FUSO)
     hash_da_carteira = hash_da_entrada(carteira, estrutura)
+    comparada = None
+    if regras_comparadas is not None and regras_comparadas != estrutura.regras:
+        comparada = dataclasses.replace(estrutura, regras=regras_comparadas)
     pdf = RelatorioPDF(
         "Cenários da cascata de securitização",
         "Protótipo · carteira sintética",
@@ -170,6 +236,8 @@ def relatorio_dos_cenarios(
     titulos = [
         "Estrutura da operação",
         "Cenários lado a lado",
+        TITULO_DO_EQUILIBRIO,
+        *([TITULO_DAS_REGRAS_LIGADAS] if comparada else []),
         "Reconciliação do caixa",
     ]
     pdf.capa(
@@ -181,7 +249,7 @@ def relatorio_dos_cenarios(
         [*titulos, "Reprodutibilidade", TITULO_DOS_LIMITES],
     )
     pdf.add_page()
-    pdf.secao(titulos[0], numerada=True, reservar=50)
+    pdf.secao("Estrutura da operação", numerada=True, reservar=50)
     pdf.paragrafo(
         f"Carteira: saldo de R$ {_reais(carteira.saldo)}, rendimento de "
         f"{carteira.taxa_mensal:.2%} ao mês e amortização linear em {carteira.prazo_meses} meses. "
@@ -190,9 +258,12 @@ def relatorio_dos_cenarios(
     )
     pdf.paragrafo(descrever_regras(estrutura.regras))
     pdf.tabela_de_texto(*_tabela_da_estrutura(estrutura))
-    pdf.secao(titulos[1], numerada=True, reservar=60)
+    pdf.secao("Cenários lado a lado", numerada=True, reservar=60)
     pdf.tabela_de_texto(*_tabela_dos_cenarios(estrutura, resultados))
-    pdf.secao(titulos[2], numerada=True, reservar=40)
+    _secao_do_equilibrio(pdf, carteira, estrutura, comparada)
+    if comparada is not None:
+        _secao_das_regras_ligadas(pdf, carteira, comparada, resultados)
+    pdf.secao("Reconciliação do caixa", numerada=True, reservar=40)
     pdf.tabela_de_texto(*_tabela_da_reconciliacao(resultados))
     pdf.secao("Reprodutibilidade", numerada=True, reservar=40)
     pdf.pares(
@@ -204,3 +275,42 @@ def relatorio_dos_cenarios(
     pdf.secao(TITULO_DOS_LIMITES, reservar=40, numerada=True)
     pdf.lista(LIMITES)
     return pdf.para_bytes()
+
+
+def _secao_do_equilibrio(
+    pdf: RelatorioPDF,
+    carteira: Carteira,
+    estrutura: Estrutura,
+    comparada: Estrutura | None,
+) -> None:
+    """O CDR de equilíbrio de cada classe, com as regras da estrutura e, se houver, com as comparadas."""
+    colunas = [("regras da estrutura", cdrs_de_equilibrio(carteira, estrutura))]
+    if comparada is not None:
+        colunas.append(
+            ("regras da 0.2.0 ligadas", cdrs_de_equilibrio(carteira, comparada))
+        )
+    pdf.secao(TITULO_DO_EQUILIBRIO, numerada=True, reservar=40)
+    pdf.paragrafo(
+        "A vida média de cada classe está na tabela dos cenários. O CDR de equilíbrio é o maior CDR anual "
+        "em que a classe ainda não perde principal, com o resto do cenário base."
+    )
+    pdf.tabela_de_texto(*_tabela_do_equilibrio(estrutura, colunas))
+
+
+def _secao_das_regras_ligadas(
+    pdf: RelatorioPDF,
+    carteira: Carteira,
+    comparada: Estrutura,
+    resultados: list[ResultadoDoCenario],
+) -> None:
+    """Os mesmos cenários, a mesma carteira e as mesmas classes, só com as regras trocadas."""
+    ligados = rodar_cenarios(carteira, comparada, tuple(r.cenario for r in resultados))
+    pdf.secao(TITULO_DAS_REGRAS_LIGADAS, numerada=True, reservar=60)
+    pdf.paragrafo(
+        "Mesma carteira, mesmas classes e mesmos cenários; só as regras da cascata mudam. "
+        f"SHA-256 desta entrada: {hash_da_entrada(carteira, comparada)}."
+    )
+    pdf.paragrafo(descrever_regras(comparada.regras))
+    pdf.tabela_de_texto(*_tabela_dos_cenarios(comparada, ligados))
+    pdf.paragrafo("Reconciliação do caixa com as regras ligadas:")
+    pdf.tabela_de_texto(*_tabela_da_reconciliacao(ligados))

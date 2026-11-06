@@ -14,6 +14,8 @@ leem os releases: o modelo só copia número e trecho, o código confere (`base.
 tudo fica guardado com a linhagem. `estimar`, `piloto` e `enviar` gastam API (Haiku 5.5; `--modelo
 claude-sonnet-5-5` para a leitura às cegas): só rodam com o "pode" do Tiago para o valor, e o teto
 (`--teto-dolares`, obrigatório) trava o envio antes de gastar.
+
+Roda: manual (python -m scripts.ler_releases); ver dicionario-da-base.md; citado em dicionario.py.
 """
 
 import argparse

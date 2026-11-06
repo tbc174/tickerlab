@@ -200,8 +200,10 @@ def espaco_do_disco(pasta: Path) -> tuple[int, int]:
     return uso.total, uso.free
 
 
-def conferir_freio(total: int, livre: int) -> None:
-    if livre < LIVRE_MINIMO_EM_BYTES or (total - livre) / total > USO_MAXIMO_DO_DISCO:
+def conferir_freio(
+    total: int, livre: int, livre_minimo: int = LIVRE_MINIMO_EM_BYTES
+) -> None:
+    if livre < livre_minimo or (total - livre) / total > USO_MAXIMO_DO_DISCO:
         raise FreioDeDisco(
             f"livre {livre / 1024**3:.0f} GB de {total / 1024**3:.0f} GB"
         )
@@ -411,6 +413,13 @@ def arquivar(
                 resultado.falhas.append(alvo.url)
             detalhe = f"{type(erro).__name__}: {erro}"
             _registrar(fonte.id, alvo.url, None, None, "falhou", detalhe, agora)
+    if len(alvos) > 1 and resultado.sem_arquivo == len(alvos):
+        # 404 num mês só é "ainda não saiu"; em todos ao mesmo tempo, o endereço provavelmente mudou
+        log.warning(
+            "%s: todos os arquivos deram 404 (%d); confira se o endereço da fonte mudou",
+            fonte.id,
+            len(alvos),
+        )
     return resultado
 
 

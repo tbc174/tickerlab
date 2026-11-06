@@ -253,6 +253,24 @@ export interface MeusLinksV1 {
   links: LinkV1[];
 }
 
+// --- Boas-vindas do beta (src/api_v1/esquemas.py, BoasVindasDoBetaV1) ---
+export interface PassoDoBetaV1 {
+  ordem: number;
+  minutos: number;
+  titulo: string;
+  o_que_fazer: string;
+  url: string; // o endereço da página no app, sem a barra
+}
+
+export interface BoasVindasDoBetaV1 {
+  titulo: string;
+  texto_de_boas_vindas: string;
+  sobre_o_beta: string;
+  como_responder: string;
+  total_de_minutos: number;
+  roteiro: PassoDoBetaV1[];
+}
+
 export interface MeuPlanoV1 {
   plano: string;
   nome_do_plano: string;
@@ -419,6 +437,19 @@ export interface LinhaDoRastroV1 {
 }
 
 /** Como o número foi calculado e de onde veio: a conta, a versão, a fonte e a publicação. */
+/** Uma conta da demonstração que entra no número: só com as entradas, quem confere refaz a conta. */
+export interface EntradaDoNumeroV1 {
+  conta: string; // o nome no TickerLab ("receita")
+  codigo: string; // o código na CVM ("3.01"; com "xx" quando é a soma das linhas de um grupo)
+  nome: string; // o nome da conta na CVM
+  valor: number; // em reais (ações em unidades)
+  periodo: string; // "exercicio", "posicao", "acumulado" ou "acumulado_anterior"
+  documento: string; // "DFP" ou "ITR"
+  referencia: string; // ISO: a data da demonstração
+  versao: number;
+  publicado_em: string | null; // ISO: quando a CVM recebeu o documento
+}
+
 export interface RastroDoNumeroV1 {
   formula: string;
   versao_do_calculo: string;
@@ -426,6 +457,7 @@ export interface RastroDoNumeroV1 {
   publicado_em: string | null;
   documentos: DocumentoUsadoV1[];
   outras_fontes: string[];
+  entradas: EntradaDoNumeroV1[]; // vazia no número indisponível
   linhas: LinhaDoRastroV1[];
 }
 
@@ -522,6 +554,7 @@ export interface GraficoDaAnaliseV1 {
   origem: "modelo" | "regras"; // regras: a reserva
   pontos: PontosDoGraficoV1;
   escala: EscalaDoGraficoV1;
+  secao?: string; // só no setor: o gráfico entra no fim desta seção, sem parágrafo âncora
 }
 
 /** Uma seção da ficha puxada para perto de uma parte do texto. */
@@ -558,11 +591,11 @@ export interface RelatorioDaEmpresaV1 {
 
 /** O relatório do CNPJ (molde B): as seções no formato do relatório da empresa. */
 export interface BuscaPorCnpjV1 {
-  situacao: "encontrada" | "fora_da_base_aberta";
+  situacao: "encontrada" | "cadastro_da_receita" | "fora_da_base_aberta"; // cadastro_da_receita: sem ficha na CVM
   cnpj: string;
   empresa: string;
   tickers: string[];
-  como_era_em: string | null; // o dia da ficha da noite (AAAA-MM-DD)
+  como_era_em: string | null; // o dia da ficha da noite ou, no cadastro da Receita, da publicação (AAAA-MM-DD)
   secoes: SecaoDoRelatorioV1[];
   fontes: string[];
   limites: string[]; // "Limites e cuidados": sempre presentes
@@ -613,6 +646,7 @@ export interface RelatorioDoSetorV1 {
   fontes: string[];
   limites: string[]; // "Limites e cuidados": sempre presentes
   avisos: string[];
+  graficos?: GraficoDaAnaliseV1[]; // o cardápio da análise com as tabelas do setor
 }
 
 /** Uma camada do Mapa do café: o que pinta os municípios, com o "o que é isto" e a fonte. */

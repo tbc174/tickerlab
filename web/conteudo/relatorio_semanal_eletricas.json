@@ -1,22 +1,28 @@
 {
+  "arquivos": {
+    "apresentacao_pdf": "/relatorio/setor-eletricas-apresentacao.pdf",
+    "apresentacao_pptx": "/relatorio/setor-eletricas-apresentacao.pptx",
+    "pdf": "/relatorio/setor-eletricas.pdf"
+  },
   "aviso": "Nada aqui é recomendação de investimento. Os números descrevem o que as companhias e as agências entregaram, sem dizer o que vai acontecer.",
+  "aviso_rodape": "Nada aqui é recomendação de investimento. Os dados vêm de FRE (https://dados.cvm.gov.br/dataset/cia_aberta-doc-fre); ANEEL (https://dadosabertos.aneel.gov.br/), cada número com a data do dado.",
   "dados_de": "19/10/2026",
   "destaques": [
     {
       "data": "12/2025 (ficha de 19/10/2026)",
-      "fonte": "ODbL (dados abertos da ANEEL, SAMP; citar a ANEEL), ligados a cada companhia pelo formulário de referência da CVM e pelo nome da distribuidora",
+      "fonte": "ODbL (dados abertos da ANEEL, SAMP; citar a ANEEL), ligados a cada companhia pelo formulário de referência da CVM e pelo nome da distribuidora — FRE: https://dados.cvm.gov.br/dataset/cia_aberta-doc-fre; ANEEL: https://dadosabertos.aneel.gov.br/",
       "texto": "Em 12/2025, as distribuidoras do país atendiam 87,5 milhões de consumidores. As 9 companhias abertas desta página, com as distribuidoras que a base liga a cada uma, somam 66,7 milhões: 76,2% do total.",
       "titulo": "9 companhias abertas atendem 76,2% dos consumidores do país"
     },
     {
       "data": "12/2025 (ficha de 19/10/2026)",
-      "fonte": "ODbL (dados abertos da ANEEL, SAMP; citar a ANEEL), ligados a cada companhia pelo formulário de referência da CVM e pelo nome da distribuidora",
+      "fonte": "ODbL (dados abertos da ANEEL, SAMP; citar a ANEEL), ligados a cada companhia pelo formulário de referência da CVM e pelo nome da distribuidora — FRE: https://dados.cvm.gov.br/dataset/cia_aberta-doc-fre; ANEEL: https://dadosabertos.aneel.gov.br/",
       "texto": "Neoenergia, Equatorial, CPFL Energia e Cemig atendem juntas 47,2 milhões de consumidores, 70,7% do que as 9 somam.",
       "titulo": "As 4 maiores concentram 53,9% do país"
     },
     {
       "data": "ficha de 19/10/2026 (formulário mais recente)",
-      "fonte": "ODbL (dados abertos da CVM; citar a fonte): Formulário de Referência",
+      "fonte": "ODbL (dados abertos da CVM; citar a fonte): Formulário de Referência — FRE: https://dados.cvm.gov.br/dataset/cia_aberta-doc-fre",
       "texto": "CPFL Energia, Cemig, Energisa, Light e Rede Energia Participações têm o auditor atual desde 2022, segundo o formulário de referência. Juntas, atendem 34,0% dos consumidores do país.",
       "titulo": "5 das 9 informam o auditor atual desde 2022"
     }
@@ -47,17 +53,7 @@
     },
     {
       "fonte": "nenhuma coletada ainda",
-      "kpi": "PLD e CMO",
-      "motivo": "A base ainda não tem este número."
-    },
-    {
-      "fonte": "nenhuma coletada ainda",
-      "kpi": "Curtailment",
-      "motivo": "A base ainda não tem este número."
-    },
-    {
-      "fonte": "nenhuma coletada ainda",
-      "kpi": "Capacidade instalada",
+      "kpi": "CMO",
       "motivo": "A base ainda não tem este número."
     },
     {
@@ -91,12 +87,12 @@
       "motivo": "A base ainda não tem este número."
     },
     {
-      "fonte": "release ou ITR da empresa",
+      "fonte": "release ou ITR da empresa — ITR: https://dados.cvm.gov.br/dataset/cia_aberta-doc-itr",
       "kpi": "Inadimplência dos consumidores",
       "motivo": "A base ainda não tem este número."
     },
     {
-      "fonte": "release ou ITR da empresa",
+      "fonte": "release ou ITR da empresa — ITR: https://dados.cvm.gov.br/dataset/cia_aberta-doc-itr",
       "kpi": "EBITDA regulatório",
       "motivo": "A base ainda não tem este número."
     }

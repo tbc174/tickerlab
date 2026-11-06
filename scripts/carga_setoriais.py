@@ -16,6 +16,9 @@ de um endereço entra como uma coleta (`base/setoriais/revisoes.py`), e a tabela
 valor diferente, com o dia em que a revisão foi vista. Um Parquet por arquivo da fonte: o SAMP por ano
 (`aneel/<ano>`), a Anatel por CSV (`anatel/<nome do CSV>`), a ANS e a SUSEP por ano da competência
 (`ans/<ano>`, `susep/<ano>`).
+
+Roda: cron de casa pelo carga-serie4.sh (todo mês, dia 13, às 9h00) e pelo carga-cafe.sh (todo dia
+às 6h20, só o CFTC); outro script (carga_cafe.py); citado em dicionario.py.
 """
 
 import argparse
@@ -42,6 +45,7 @@ from base.setoriais import (
     antt_siade,
     ccee,
     comex_preco_medio,
+    comex_tabelas,
     ligacao,
     ons,
     ons_capacidade,
@@ -98,6 +102,7 @@ class Revisada(NamedTuple):
     foto: bool = (
         False  # sem data própria: o 1º valor vale desde o dia da coleta que o trouxe
     )
+    fonte_dos_originais: str = ""  # tabela de apoio de outra fonte: de quem são os originais (vazio: a própria chave)
 
 
 def _ano_do_samp(url: str) -> str | None:
@@ -157,6 +162,16 @@ REVISADAS = {
         "comex_preco_medio", list(comex_preco_medio.CHAVE), comex_preco_medio.CARIMBOS,
         comex_preco_medio.destino, comex_preco_medio.ler, "", "", lambda t: t["kg_liquido"],
     ),
+    "comex_urf": Revisada(
+        "comex_urf", list(comex_tabelas.CHAVE_DA_URF), comex_tabelas.CARIMBOS,
+        comex_tabelas.destino_da_urf, comex_tabelas.ler_urf, "", "", lambda t: t["urf"].str.len(),
+        foto=True, fonte_dos_originais=comex_tabelas.FONTE_DOS_ORIGINAIS,
+    ),
+    "comex_via": Revisada(
+        "comex_via", list(comex_tabelas.CHAVE_DA_VIA), comex_tabelas.CARIMBOS,
+        comex_tabelas.destino_da_via, comex_tabelas.ler_via, "", "", lambda t: t["via"].str.len(),
+        foto=True, fonte_dos_originais=comex_tabelas.FONTE_DOS_ORIGINAIS,
+    ),
 }  # fmt: skip
 
 
@@ -180,7 +195,7 @@ def _leitor(fonte: str, linha: sa.Row) -> Callable[[bytes], pd.DataFrame] | None
         return ons.ler
     if fonte == cftc_cot.FONTE and linha.url.endswith(".zip"):
         return cftc_cot.ler_disaggregated
-    if fonte == ccee.FONTE and ".csv" in linha.url.lower():
+    if fonte == ccee.FONTE:  # o portal entrega o CSV em ".../content", sem extensão
         return ccee.ler
     return None
 
@@ -320,7 +335,9 @@ def carregar_revisada(
     urls = sorted(
         {
             lin.url
-            for lin in originais_mais_recentes(conexao, fonte)
+            for lin in originais_mais_recentes(
+                conexao, revisada.fonte_dos_originais or fonte
+            )
             if revisada.destino(lin.url)
         }
     )

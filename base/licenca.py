@@ -46,6 +46,7 @@ FAMILIA_DO_ENDERECO = {
     "www.sec.gov/": "sec",
     "data.sec.gov/": "sec",
     "api.bcb.gov.br/dados/serie/bcdata.sgs.189/": "bcb-sgs-189",  # IGP-M da FGV
+    "www.bcb.gov.br/content/estatisticas/estatistica_bancaria_estban/": "estban",  # ESTBAN (linha 659)
     "api.bcb.gov.br/": "bcb",
     "olinda.bcb.gov.br/": "bcb",
     "dadosabertos.bcb.gov.br/": "bcb",
@@ -53,12 +54,20 @@ FAMILIA_DO_ENDERECO = {
     "home.treasury.gov/": "tesouro",
     "www.tesourotransparente.gov.br/": "tesouro-br",
     "iextrading.com/": "iex",
+    "arquivos.receitafederal.gov.br/Dados/Obrigacoes_Acessorias/": "rfb-renuncias",  # DIRBI e ECF
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
+    "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
+    "apidadosabertos.saude.gov.br/assistencia-a-saude/cnes": "ms",  # CNES por competência
+    "ftp.datasus.gov.br/": "ms",  # SIH RD e SIA PA por competência (`scripts/carga_sus.py`, linha 698)
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
+    "comunicaapi.pje.jus.br/": "djen",
+    "gateway.cloud.pje.jus.br/tpu/": "cnj",
+    "api-publica.datajud.cnj.jus.br/": "datajud",  # só uso interno (`coletas.FONTES_SO_INTERNAS`)
     "dadosabertos-download.cgu.gov.br/": "transparencia",
     "dadosabertos.bndes.gov.br/": "bndes",
+    "download.finep.gov.br/": "finep",
     "dadosabertos.inss.gov.br/": "inss",
     "dadosabertos.ibama.gov.br/": "ibama",
     "www.gov.br/trabalho-e-emprego/": "mte",
@@ -88,10 +97,27 @@ FAMILIA_DO_ENDERECO = {
     "api.kraken.com/": "kraken",
     "assets.kraken.com/": "kraken",
     "api.mercadobitcoin.net/": "mb",
+    "apidadosabertos.tce.rn.gov.br/": "tce-rn",  # unidades, licitações e participantes (linha 662)
+    "sistemas.tce.pe.gov.br/DadosAbertos": "tce-pe",  # contratos e aditivos (linha 652)
+    "transparencia.tce.sp.gov.br/": "tce-sp",  # despesas por fornecedor CNPJ (linha 652)
+    "dadosabertos.tce.ce.gov.br/": "tce-ce",  # contratos do SIM (linha 652)
+    "api-dados-abertos.tce.ce.gov.br/": "tce-ce",  # o SIM que responde (linha 682)
+    "dadosabertos.go.gov.br/": "goias",  # licenças do Ipê (linha 658)
+    "www.dados.ms.gov.br/": "msestado",  # despesas por credor (linhas 658 e 688)
+    "dados.ms.gov.br/": "msestado",
+    "dados.pe.gov.br/": "sefazpe",  # benefícios fiscais da SEFAZ-PE (linha 578)
+    "dados.prefeitura.sp.gov.br/": "spcapital",  # extrato de contratos (linha 658)
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",
     "www.gov.br/conab/": "conab",
+    # fontes pouco visíveis (ADR 0124): FDCO da Sudeco, FDA da Sudam e PDFs de dívida documental
+    "www.gov.br/sudeco/": "sudeco",
+    "www.gov.br/sudam/": "sudam",
+    "auniao.pb.gov.br/": "divida",
+    "digital.jornaldocomercio.com/": "divida",
+    "ecoagro.agr.br/": "divida",
+    "fnet.bmfbovespa.com.br/": "divida",
     "apps.fas.usda.gov/": "usda",
     "bulks-faostat.fao.org/": "faostat",
     "www.fao.org/": "faostat",

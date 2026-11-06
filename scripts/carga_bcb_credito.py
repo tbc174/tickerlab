@@ -16,6 +16,8 @@ As 8 datas-base mais novas do IF.data e os 2 anos mais novos do SCR são baixado
 (o BC revisa os números; cada revisão vira versão). O resto vem do acervo se já estiver lá. Um pedido
 por vez, com pausa; se o firewall do BC bloquear, espera 5 minutos e tenta mais uma vez. Recusa rodar
 sem a versão do código (exigência 13 da ADR 0055).
+
+Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h15); citado em dicionario.py.
 """
 
 import argparse
@@ -160,12 +162,14 @@ def carregar_ifdata_data(
     url = bcb_ifdata.endereco_do_cadastro(data_base)
     conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
     if conteudo is not None:
-        cadastro = bcb_ifdata.ler_cadastro(conteudo)
+        guardadas = _coletas_do_relatorio(conexao, url, conteudo)
         resultados.append(
             gravar_com_versoes(
-                lambda: cadastro,
+                lambda: bcb_ifdata.cadastro_com_revisoes(
+                    [(dia, bcb_ifdata.ler_cadastro(c)) for dia, c in guardadas]
+                ),
                 pasta / "ifdata" / "cadastro" / str(data_base),
-                [_origem(url, conteudo)],
+                [_origem(url, c) for _, c in guardadas],
                 ORDEM_DO_CADASTRO,
             )
         )
@@ -182,7 +186,9 @@ def montar_ligacao(pasta: Path, pasta_do_fca: Path) -> int:
     )
     if not arquivos:
         return 0
-    cadastro = pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+    cadastro = bcb_ifdata.cadastro_mais_novo(
+        pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+    )
     entradas = [pasta_do_fca / "emissores.parquet", pasta_do_fca / "tickers.parquet"]
     emissores, tickers = (pd.read_parquet(a) for a in entradas)
     ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, emissores, tickers)
@@ -209,12 +215,13 @@ def carregar_scr_ano(
     conteudo = _obter(conexao, url, baixar_scr, de_novo, PAUSA_SCR)
     if conteudo is None:
         return "sem arquivo"
+    guardadas = _coletas_do_relatorio(conexao, url, conteudo)
     return gravar_com_versoes(
-        lambda: (t := bcb_scr.ler_ano(conteudo)).assign(
-            disponivel_em=bcb_scr.disponivel_em(t)
+        lambda: bcb_scr.ano_com_revisoes(
+            [(dia, bcb_scr.ler_ano(c)) for dia, c in guardadas]
         ),
         pasta / "scr" / str(ano),
-        [_origem(url, conteudo)],
+        [_origem(url, c) for _, c in guardadas],
         list(bcb_scr.COLUNAS_DE_TEXTO),
     )
 
