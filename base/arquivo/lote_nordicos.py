@@ -22,8 +22,9 @@ Regras (testes em `tests/test_base_arquivo_lote_nordicos.py`):
   comercial, sem treino, rótulo nem exportação) até uma leitura humana, e a ADR 0102 Emenda 2 proíbe
   perguntar à fonte. O arquivista só guarda a cópia como veio.
 - **Statistics Denmark** (StatBank): CC BY 4.0 (lido em 29/10/2026): vendável citando a fonte. A API exige
-  nomear todas as variáveis da tabela; a descoberta lê o `tableinfo` e pede cada uma com `*` (tabela com mais de
-  um milhão de células é falha, não corte silencioso);
+  nomear todas as variáveis da tabela; a descoberta lê o `tableinfo` e pede cada uma com `*`. O formato é o
+  BULK (CSV por fluxo): o `CSV` comum recusa mais de 1 milhão de células contando a coluna de cada variável e a do
+  valor (o IPC, com 404 mil combinações, dá 1,6 milhão) e o BULK não tem esse limite;
 - **fora daqui**: SSB, Danmarks Nationalbank, Bank of Finland e Seðlabanki (licença ainda não lida).
 """
 
@@ -161,7 +162,6 @@ SERIES_DO_NORGES_BANK = (
 
 # ---- Statistics Denmark (StatBank; CC BY 4.0, citar "Statistics Denmark") ----------------------
 DST = "https://api.statbank.dk/v1"
-LIMITE_DE_CELULAS_DA_DST = 1_000_000  # acima disso a API recusa o pedido
 # preços (IPC e IPCH), desemprego, contas nacionais trimestrais, juros do banco central e dos bancos.
 # A tabela de câmbio diário (DNVALD) passa de 2,7 milhões de células: fica para uma janela por data.
 TABELAS_DA_DST = {
@@ -173,7 +173,7 @@ TABELAS_DA_DST = {
     "juros-por-tipo": "MPK3",
 }
 SERIES_DA_DST = tuple(
-    Serie(f"dst-{nome}", f"{DST}/data/{tabela}/CSV", ".csv", "semanal")
+    Serie(f"dst-{nome}", f"{DST}/data/{tabela}/BULK", ".csv", "semanal")
     for nome, tabela in TABELAS_DA_DST.items()
 )
 
@@ -198,18 +198,13 @@ def endereco_da_tabela_da_dst(cliente: Cliente, serie: Serie) -> str:
     resposta = cliente.ler(f"{DST}/tableinfo/{tabela}?format=JSON&lang=en")
     try:
         variaveis = json.loads(resposta.conteudo)["variables"]
-        celulas = 1
-        for v in variaveis:
-            celulas *= len(v["values"])
         ids = [v["id"] for v in variaveis]
     except (ValueError, KeyError, TypeError) as erro:
         raise ErroDeDescoberta(f"DST: tableinfo inesperado de {tabela}") from erro
-    if not ids or celulas > LIMITE_DE_CELULAS_DA_DST:
-        raise ErroDeDescoberta(
-            f"DST: {tabela} fora do que a API entrega ({celulas} células)"
-        )
+    if not ids:
+        raise ErroDeDescoberta(f"DST: {tabela} sem variáveis no tableinfo")
     filtros = "&".join(f"{quote(v)}=*" for v in ids)
-    return f"{serie.url}?lang=en&delimiter=Semicolon&{filtros}"
+    return f"{serie.url}?lang=en&{filtros}"
 
 
 def descobrir_serie(serie: Serie) -> Descobrir:

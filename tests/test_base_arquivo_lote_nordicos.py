@@ -140,16 +140,30 @@ def test_dst_pede_todas_as_variaveis_da_tabela_com_asterisco():
         "https://api.statbank.dk/v1/tableinfo/AUS08?format=JSON&lang=en"
     ]
     assert alvo.url == (
-        "https://api.statbank.dk/v1/data/AUS08/CSV?lang=en&delimiter=Semicolon"
+        "https://api.statbank.dk/v1/data/AUS08/BULK?lang=en"
         "&OMR%C3%85DE=*&SAESONFAK=*&Tid=*"
     )
     assert alvo.extensao == ".csv"
 
 
-def test_dst_tabela_grande_demais_e_falha_e_nao_corte_silencioso():
+def test_dst_usa_o_bulk_que_nao_tem_o_limite_de_celulas_do_csv():
+    """O `CSV` comum recusa mais de 1 milhão de células (combinações x (variáveis + 1)) com 400; o IPC, com
+    404 mil combinações e 3 variáveis, dá 1,6 milhão. O BULK entrega a tabela inteira (conferido em 05/11/2026)."""
+    for serie in lote.SERIES_DA_DST:
+        assert "/BULK" in serie.url and "/CSV" not in serie.url, serie.id
     cliente = TableinfoFixo(
-        [{"id": "A", "values": [1] * 2000}, {"id": "Tid", "values": [1] * 2000}]
+        [
+            {"id": "VAREGR", "values": [1] * 2018},
+            {"id": "ENHED", "values": [1] * 3},
+            {"id": "Tid", "values": [1] * 67},
+        ]
     )
+    (alvo,) = lote.descobrir_serie(_tabela_da_dst("ipc"))(cliente, AGORA)
+    assert alvo.url.startswith("https://api.statbank.dk/v1/data/PRIS01/BULK?lang=en&")
+
+
+def test_dst_tabela_sem_variaveis_e_falha():
+    cliente = TableinfoFixo([])
     with pytest.raises(ErroDeDescoberta):
         lote.descobrir_serie(_tabela_da_dst("ipc"))(cliente, AGORA)
 
