@@ -20,7 +20,7 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 
 ```powershell
 .venv\Scripts\python -m streamlit run app.py              # app em modo local (sem login, SQLite)
-.venv\Scripts\python -m pytest -q -n 4 --dist loadgroup  # suíte inteira em 4 processos (~2 min; sem -n, ~12 min)
+.venv\Scripts\python -m pytest -q -n 4 --dist loadgroup  # suíte inteira em 4 processos (~40 min no PC, medido em 05/11/2026; o CI reparte em 5 máquinas)
 .venv\Scripts\python -m pytest -q tests/test_planos.py    # um arquivo (prefira durante o trabalho)
 .venv\Scripts\python -m ruff check .
 .venv\Scripts\python -m pyright                            # tipos (src, scripts, telas e base; ver pyrightconfig.json)
@@ -101,8 +101,8 @@ Pedido do Tiago (05/11/2026): crescer organizado, sem deixar coisa sem uso. Quat
   (`tests/test_scripts_dizem_quem_roda.py`). Script sem uso registrado sai, ou ganha "sem uso registrado em
   DD/MM/AAAA" para a próxima faxina decidir.
 - **Código morto não piora:** o CI roda o `vulture` (`scripts/conferir_codigo_morto.py`) e compara com
-  `tests/arquivos/vulture_esperado.txt`; item novo falha. Tirou código morto, ou apareceu um falso positivo
-  com motivo: `python -m scripts.conferir_codigo_morto --gravar` e o arquivo vai no commit (de novo depois
+  `tests/arquivos/vulture_esperado.txt`; item novo, ou item que sumiu sem regravar, falha. Tirou código
+  morto, ou apareceu um falso positivo com motivo: `python -m scripts.conferir_codigo_morto --gravar` e o arquivo vai no commit (de novo depois
   do `juntar_main`).
 
 ## Git e GitHub

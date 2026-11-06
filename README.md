@@ -369,7 +369,7 @@ e `pre-registro-quant-p0-v0.1.md` e `v0.2.md`).
 
 ## Qualidade e testes
 
-- **Mais de 14 mil testes** (pytest) em 729 arquivos, rodando com **PostgreSQL 16 de verdade**, em
+- **Mais de 14 mil testes** (pytest) em 742 arquivos, rodando com **PostgreSQL 16 de verdade**, em
   5 máquinas ao mesmo tempo no GitHub Actions. A cobertura mínima é de **85%** (`.coveragerc`); o
   CI falha abaixo disso.
 - **Estilo e tipos:** `ruff` (estilo e formatação) e `pyright` (tipos) em todo commit.
