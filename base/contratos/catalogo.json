@@ -282,8 +282,8 @@
       "sinonimos_de_tempo": {
         "referencia": "referencia",
         "valido_desde": "aconteceu_em",
-        "calculado_em": "a_conferir",
-        "fechado_em": "a_conferir"
+        "calculado_em": "coletado_em",
+        "fechado_em": "ate_publico_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -407,7 +407,7 @@
       },
       "sinonimos_de_tempo": {
         "primeiro_visto": "publico_em",
-        "ultimo_visto": "a_conferir",
+        "ultimo_visto": "publico_em",
         "valido_ate": "ate",
         "inicio_negociacao": "aconteceu_em",
         "fim_negociacao": "ate"
@@ -721,7 +721,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "confidencial_ate": "a_conferir",
+        "confidencial_ate": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em"
       },
@@ -816,7 +816,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "confidencial_ate": "a_conferir",
+        "confidencial_ate": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em"
       },
@@ -903,7 +903,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "confidencial_ate": "a_conferir",
+        "confidencial_ate": "ate",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em"
       },
@@ -1413,8 +1413,8 @@
       ],
       "datas": {},
       "sinonimos_de_tempo": {
-        "primeira": "a_conferir",
-        "ultima": "a_conferir"
+        "primeira": "referencia",
+        "ultima": "referencia"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -1600,8 +1600,8 @@
         "coletado_em": "conferido_em"
       },
       "sinonimos_de_tempo": {
-        "primeiro_no_cda": "a_conferir",
-        "ultimo_no_cda": "a_conferir",
+        "primeiro_no_cda": "referencia",
+        "ultimo_no_cda": "referencia",
         "conferido_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
@@ -1789,7 +1789,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "atualizado_em": "a_conferir",
+        "atualizado_em": "aconteceu_em",
         "disponivel_em": "publico_em"
       },
       "historico_desde": "2026-10-14",
@@ -2724,7 +2724,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "gerado_em": "a_conferir",
+        "gerado_em": "aconteceu_em",
         "disponivel_em": "publico_em",
         "visto_em": "visto_em"
       },
@@ -2933,7 +2933,7 @@
       },
       "sinonimos_de_tempo": {
         "competencia": "referencia",
-        "base_de": "a_conferir",
+        "base_de": "visto_em",
         "disponivel_em": "publico_em",
         "visto_em": "visto_em"
       },
@@ -4241,7 +4241,7 @@
         "data_inicio_oferta": "aconteceu_em",
         "data_encerramento_oferta": "ate",
         "data_emissao": "aconteceu_em",
-        "data_vencimento": "a_conferir",
+        "data_vencimento": "ate",
         "data_comunicado": "aconteceu_em",
         "anunciada_em": "aconteceu_em",
         "disponivel_em": "publico_em"
@@ -4803,7 +4803,7 @@
         "aconteceu_em": "data"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "referencia",
         "registrada_desde": "aconteceu_em",
         "primeira_entrega": "publico_em",
         "balanco_fim": "referencia",
@@ -4855,8 +4855,8 @@
       ],
       "datas": {},
       "sinonimos_de_tempo": {
-        "primeira": "a_conferir",
-        "ultima": "a_conferir"
+        "primeira": "referencia",
+        "ultima": "referencia"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -5298,8 +5298,8 @@
         "coletado_em": "calculado_em"
       },
       "sinonimos_de_tempo": {
-        "data_de_corte": "a_conferir",
-        "calculado_em": "a_conferir"
+        "data_de_corte": "referencia",
+        "calculado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5446,7 +5446,7 @@
         "coletado_em": "coletado_em"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "referencia": "referencia",
         "coletado_em": "coletado_em"
       },
@@ -5550,7 +5550,7 @@
         "referencia": "referencia",
         "publicado_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5675,11 +5675,11 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "referencia": "referencia",
         "entregue_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5765,7 +5765,7 @@
         "referencia": "referencia",
         "exercicio": "referencia",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5855,9 +5855,9 @@
       },
       "sinonimos_de_tempo": {
         "referencia": "referencia",
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -5965,7 +5965,7 @@
         "conhecido_em": "publico_em",
         "referencia": "referencia",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -6043,7 +6043,7 @@
         "data_situacao_especial": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6121,7 +6121,7 @@
         "data_situacao_cadastral": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6433,7 +6433,7 @@
         "publico_em": "mes"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "visto_em",
         "data_situacao_cadastral_antes": "aconteceu_em",
         "data_situacao_cadastral_depois": "aconteceu_em",
         "data_inicio_atividade_antes": "aconteceu_em",
@@ -6582,7 +6582,7 @@
         "publico_em": "mes"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "visto_em",
         "data_opcao_simples_antes": "aconteceu_em",
         "data_opcao_simples_depois": "aconteceu_em",
         "data_exclusao_simples_antes": "ate",
@@ -6726,7 +6726,7 @@
         "publico_em": "mes"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "visto_em",
         "data_entrada_antes": "aconteceu_em",
         "data_entrada_depois": "aconteceu_em"
       },
@@ -6810,7 +6810,7 @@
         "data_exclusao_simples": "ate",
         "data_opcao_mei": "aconteceu_em",
         "data_exclusao_mei": "ate",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6872,7 +6872,7 @@
       },
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -6988,10 +6988,10 @@
         "primeira_inscricao": "aconteceu_em",
         "ultima_inscricao": "aconteceu_em",
         "data_do_retrato": "referencia",
-        "gerado_em": "a_conferir",
+        "gerado_em": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -7140,7 +7140,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -7288,7 +7288,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -7448,7 +7448,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7535,7 +7535,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7633,7 +7633,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-01-01",
       "granularidade_do_publico_em": "dia",
@@ -7767,7 +7767,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-05",
       "granularidade_do_publico_em": "dia",
@@ -7849,7 +7849,7 @@
         "disponivel_em": "publico_em",
         "visto_em": "visto_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-05",
       "granularidade_do_publico_em": "dia",
@@ -7985,7 +7985,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8121,7 +8121,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8257,7 +8257,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8393,7 +8393,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8529,7 +8529,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8665,7 +8665,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8790,7 +8790,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8906,12 +8906,12 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
-        "gerado_em": "a_conferir",
+        "mes": "referencia",
+        "gerado_em": "aconteceu_em",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -8998,11 +8998,11 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "mes": "a_conferir",
+        "mes": "referencia",
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-29",
       "granularidade_do_publico_em": "mes",
@@ -9294,7 +9294,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -9489,7 +9489,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -9961,7 +9961,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "mes",
@@ -10070,7 +10070,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "mes",
@@ -10157,7 +10157,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "mes",
@@ -10260,7 +10260,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -10380,7 +10380,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
@@ -10539,7 +10539,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2025-10-01",
       "granularidade_do_publico_em": "dia",
@@ -10636,7 +10636,7 @@
         "visto_em": "visto_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "dia",
@@ -10746,7 +10746,7 @@
         "competencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "mes",
@@ -10806,7 +10806,7 @@
         "competencia": "referencia",
         "coletado_em": "coletado_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -10929,7 +10929,7 @@
         "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11046,7 +11046,7 @@
         "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11189,7 +11189,7 @@
         "data_homologacao": "a_conferir",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11284,7 +11284,7 @@
         "data_emissao": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11402,7 +11402,7 @@
         "vigencia_fim": "ate",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11526,7 +11526,7 @@
         "data_assinatura": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11638,7 +11638,7 @@
         "criado_em": "a_conferir",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2002-01-01",
       "granularidade_do_publico_em": "dia",
@@ -11763,7 +11763,7 @@
         "classificado_em": "a_conferir",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11869,7 +11869,7 @@
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -11991,7 +11991,7 @@
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -12108,7 +12108,7 @@
       "sinonimos_de_tempo": {
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2026-11-04",
       "granularidade_do_publico_em": "dia",
@@ -12245,7 +12245,7 @@
         "referencia": "referencia",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12368,7 +12368,7 @@
         "data_acao": "aconteceu_em",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12475,7 +12475,7 @@
         "inicio": "referencia",
         "fim": "referencia",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12566,7 +12566,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12657,7 +12657,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2011-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12762,7 +12762,7 @@
         "disponivel_em": "publico_em",
         "data_emissao": "aconteceu_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2019-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12857,7 +12857,7 @@
         "data_entrega": "publico_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2019-01-01",
       "granularidade_do_publico_em": "dia",
@@ -12941,7 +12941,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13030,7 +13030,7 @@
         "referencia": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13121,7 +13121,7 @@
         "referencia": "referencia",
         "conhecido_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13198,7 +13198,7 @@
       "sinonimos_de_tempo": {
         "conhecido_em": "publico_em",
         "efetiva_em": "aconteceu_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13273,7 +13273,7 @@
         "data_base": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13341,7 +13341,7 @@
         "divulgado_em": "publico_em",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13487,7 +13487,7 @@
         "documento_entregue_em": "publico_em",
         "disponivel_em": "publico_em",
         "publico_em": "publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13756,7 +13756,7 @@
         "referencia": "referencia",
         "conhecido_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -13845,10 +13845,10 @@
       },
       "sinonimos_de_tempo": {
         "referencia": "referencia",
-        "data_da_previsao": "a_conferir",
-        "prazo": "a_conferir",
+        "data_da_previsao": "referencia",
+        "prazo": "aconteceu_em",
         "primeira_entrega": "publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -14000,8 +14000,8 @@
       },
       "sinonimos_de_tempo": {
         "referencia": "referencia",
-        "data_da_previsao": "a_conferir",
-        "montado_em": "a_conferir"
+        "data_da_previsao": "referencia",
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -14108,7 +14108,7 @@
         "ultima_referencia": "referencia",
         "ate": "ate",
         "ate_publico_em": "ate_publico_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2010-01-01",
       "granularidade_do_publico_em": "dia",
@@ -14532,7 +14532,7 @@
         "referencia": "referencia",
         "publico_em": "publico_em",
         "origem_coletada_em": "coletado_em",
-        "montado_em": "a_conferir"
+        "montado_em": "coletado_em"
       },
       "historico_desde": "2003-01-01",
       "granularidade_do_publico_em": "dia",
@@ -14853,7 +14853,7 @@
         "fechamento_em": "aconteceu_em",
         "receita_exercicio_fim": "referencia",
         "receita_publico_em": "publico_em",
-        "porte_publico_em": "a_conferir"
+        "porte_publico_em": "coletado_em"
       },
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
@@ -15380,7 +15380,7 @@
         "coletado_em": "conferido_em"
       },
       "sinonimos_de_tempo": {
-        "data": "a_conferir",
+        "data": "aconteceu_em",
         "divulgado_em": "publico_em",
         "conferido_em": "coletado_em"
       },
