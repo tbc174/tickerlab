@@ -62,6 +62,7 @@ LICENCAS = {
     # linha 658 (fichas dos conjuntos no CKAN, lidas em 03/11/2026)
     "goias": "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)",
     "msestado": "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)",
+    "sefazpe": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
     "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
@@ -325,6 +326,7 @@ REVENDA = {
     "tce-ce": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-CE
     "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
     "msestado": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN; uso público com a fonte: "pode" do Tiago em 05/11/2026 (linha 688)
+    "sefazpe": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN (lida em 03/11/2026); coleta da linha 578 aberta pelo Tiago em 05/11/2026 ("Sim, abrir as 8"); nada perguntado à fonte (ADR 0102 Emenda 2)
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": VENDAVEL_RISCO_ASSUMIDO,
     # dado pessoal (autuados, empregadores pessoa física): só interno
@@ -610,6 +612,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "rfb-cnpj",  # Disallow: / ; CC BY na ficha do dados.gov.br
             "goias",  # Disallow: /api/ e Crawl-Delay: 10 (04/11/2026); CC BY
             "spcapital",  # Disallow: / (04/11/2026); CC0
+            "sefazpe",  # dados.pe.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN; a coleta lê a página, não a API
             "msestado",  # www.dados.ms.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN
         ),
         _ROBOTS_FECHA_COM_LICENCA,
