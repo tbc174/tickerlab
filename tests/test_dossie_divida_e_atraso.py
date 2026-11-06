@@ -12,8 +12,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from base import dossie
-from base.contrapartes import cafe
+from base import dossie, palavras_vedadas
 from src import amostra_do_relatorio
 from src import dossie as dossie_do_app
 from src import relatorio_empresa_markdown as markdown
@@ -25,7 +24,7 @@ HOJE = D("2026-10-17")
 CNPJ = "02429144000193"
 SHA = "a" * 64
 MONTADA_EM = "2026-10-21T00:00:00-03:00"  # o dia em que a tabela de rótulos foi montada
-VEDADAS = cafe.VEDADAS_DA_ADR_0103
+VEDADAS = palavras_vedadas.VEDADAS
 JULGAMENTOS = ("avaliamos", "classificamos", "nota ", "risco", "sinal")
 ENDERECO_DAS_ENTREGAS = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/"
 
