@@ -189,7 +189,7 @@ def relato(tabela: pd.DataFrame, faltam: set[str], data: str) -> str:
     linhas = [
         f"# Extratores de PDF contra o gabarito ({data})",
         "",
-        "Medida, não aprovação: o fato só entra na base pelo gabarito ou por regra conferida, e nenhum",
+        "Medida, não aprovação: o fato só entra na base pelo gabarito ou por regra conferida; o",
         "extrator não aprova nada sozinho (ADR 0124). Conta como achado o número impresso nas páginas citadas.",
         "",
         "| Extrator | Fatos | Recuperação |",
