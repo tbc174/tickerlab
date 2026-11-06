@@ -32,6 +32,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pandas as pd
 import pyarrow as pa
@@ -60,6 +61,10 @@ TRACOS = frozenset({"-", "–", "—"})
 # `valor` guarda duas casas (decimal128(18, 2)); não arredonda
 CASAS_DA_TABELA = Decimal("0.01")
 TIPO_DO_DINHEIRO = pa.decimal128(18, 2)
+# os valores de aceite do briefing de 04/11/2026, conferidos na pesquisa (um por linha, com a prova)
+CAMINHO_DO_GABARITO = (
+    Path(__file__).resolve().parent / "conferidas" / "fatos_documentais_gabarito.csv"
+)
 TIPO_DO_INSTANTE = pa.timestamp("us", tz="UTC")
 DIGITOS_DO_CNPJ = 14
 DIGITOS_DA_RAIZ = 8
@@ -520,3 +525,11 @@ def _ultimo_publico(vinculo: Vinculo, documentos: Mapping[str, Documento]) -> Do
     """O documento que ficou público por último: só então o vínculo entre os dois é conhecido."""
     dois = (documentos[vinculo.documento_a], documentos[vinculo.documento_b])
     return max(dois, key=lambda d: (d.disponivel_em, d.coletado_em))
+
+
+def gabarito() -> pd.DataFrame:
+    """Os fatos de aceite congelados (`conferidas/fatos_documentais_gabarito.csv`): cada um com o
+    documento (SHA-256), a página ou a célula, a data-base e o dia da conferência. Tudo como texto, para
+    que vazio e "0.00" continuem diferentes; `valor` está em reais (`BRL`), em pontos percentuais ao ano
+    (`pp_aa`) ou é uma data (`data`), como diz a coluna `unidade`. Conflitos ficam nas duas linhas."""
+    return pd.read_csv(CAMINHO_DO_GABARITO, sep=";", dtype=str, keep_default_na=False)

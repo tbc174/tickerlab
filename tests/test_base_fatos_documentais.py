@@ -288,3 +288,74 @@ def test_esquemas_das_quatro_tabelas():
     for nome, tabela in tabelas.items():
         assert list(tabela.columns) == esquemas[nome].names
         assert fd.como_arrow(nome, tabela).schema.equals(esquemas[nome])
+
+
+def _valor(gabarito, cnpj: str, medida: str) -> Decimal:
+    [texto] = gabarito.loc[
+        (gabarito["cnpj"] == cnpj) & (gabarito["medida"] == medida), "valor"
+    ].tolist()
+    return Decimal(texto)
+
+
+def test_gabarito_tem_documento_pagina_e_data():
+    gabarito = fd.gabarito()
+
+    assert len(gabarito) > 0
+    assert gabarito["documento_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
+    tem_lugar = (gabarito["pagina_pdf"] != "") | (gabarito["celula_ou_linha"] != "")
+    assert tem_lugar.all(), gabarito.loc[~tem_lugar, ["cnpj", "medida"]]
+    assert gabarito["conferido_em"].str.fullmatch(r"\d{4}-\d{2}-\d{2}").all()
+    assert gabarito["fonte"].str.startswith("https://").all()
+    assert (
+        gabarito["cnpj"].str.fullmatch(r"\d{8}|\d{14}").all()
+    )  # raiz ou CNPJ; nunca CPF
+
+
+def test_gabarito_bate_com_o_briefing():
+    g = fd.gabarito()
+    sao_braz, alibem, frico, hfs = (
+        "08811226000184",
+        "03941052000150",
+        "07014305000100",
+        "37980530000404",
+    )
+
+    bancos = ["caixa", "santander", "bnb"]
+    assert sum(_valor(g, sao_braz, f"divida_{b}") for b in bancos) == Decimal(74797000)
+    circulante_mais_longo = _valor(g, sao_braz, "divida_circulante") + _valor(
+        g, sao_braz, "divida_nao_circulante"
+    )
+    assert circulante_mais_longo == _valor(g, sao_braz, "divida_total")
+    assert _valor(g, sao_braz, "valor_nominal") - _valor(
+        g, sao_braz, "juros_a_transcorrer"
+    ) == _valor(
+        g, sao_braz, "divida_total"
+    )  # reconciliação: confere, não vira linha nova
+    assert _valor(g, alibem, "divida_modalidades") - _valor(
+        g, alibem, "custos_de_captacao_a_apropriar"
+    ) == _valor(g, alibem, "divida_liquida_de_custos")
+    assert _valor(g, frico, "liberacao_2024") + _valor(
+        g, frico, "liberacao_2025"
+    ) == _valor(g, frico, "liberado_projeto")
+    assert _valor(g, frico, "liberado_projeto") != _valor(
+        g, frico, "participacao_contratada"
+    )
+    assert _valor(g, hfs, "liberacao_2025") == 0  # zero informado: está lá, não é vazio
+    # conflitos guardados nos dois lados, nunca uma média
+    assert sorted(g.loc[g["medida"] == "spread_sobre_ipca_aa", "valor"]) == [
+        "3.63",
+        "3.87",
+    ]
+    assert (
+        len(g.loc[(g["cnpj"] == sao_braz) & (g["medida"] == "vencimento_santander")])
+        == 2
+    )
+    # PIS e Cofins da J.B.World têm o mesmo valor e ficam em duas linhas, sem somar
+    jb = g.loc[g["cnpj"] == "85248987"]
+    assert sorted(jb["medida"]) == ["perse_cofins", "perse_pis"]
+    assert set(jb["valor"]) == {"492285396.03"}
+    empresas = {
+        sao_braz, alibem, "06004860000180", hfs, frico, "51166456000167",
+        "85248987", "15195705", "11200595000145", "16921603000166",
+    }  # fmt: skip
+    assert set(g["cnpj"]) == empresas
