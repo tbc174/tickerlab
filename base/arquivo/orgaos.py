@@ -200,6 +200,10 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "Comissão Europeia (DG AGRI, preços agroalimentares)",
         "https://agridata.ec.europa.eu/",
     ),
+    "dgener": Orgao(
+        "Comissão Europeia (DG ENER, Weekly Oil Bulletin)",
+        "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en",
+    ),
     "boc": Orgao(
         "Bank of Canada (índice de preços de commodities)",
         "https://www.bankofcanada.ca/rates/price-indexes/bcpi/",

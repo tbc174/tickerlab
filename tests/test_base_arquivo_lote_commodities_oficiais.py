@@ -254,3 +254,71 @@ def test_ssb_e_json_leve_semanal_e_com_pausa():
 
 def test_ssb_vigia_a_licenca_do_instituto():
     assert lote.termos()["termos-ssb"] == "https://www.ssb.no/en/diverse/lisens"
+
+
+# ---- Weekly Oil Bulletin (DG ENER): XLSX descobertos pela página do boletim ----------------------
+PAGINA_DO_WOB = "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en"
+DOWNLOAD_DO_WOB = "https://energy.ec.europa.eu/document/download"
+# trecho real da página (conferida em 06/11/2026): o endereço do preço semanal muda a cada semana
+HTML_DO_WOB = b"""
+<a href="/document/download/264c2d0f-f161-4ea3-a777-78faae59bea0_en?filename=Weekly%20Oil%20Bulletin%20Weekly%20prices%20with%20Taxes%20-%202026-09-21.xlsx">com</a>
+<a href="/document/download/78311f92-68f8-4b82-b5cf-1293beeaae77_en?filename=Weekly%20Oil%20Bulletin%20Weekly%20prices%20without%20taxes%20-%202024-02-19.xlsx">sem</a>
+<a href="/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx">historico</a>
+<a href="/document/download/ccdc6e96-6792-40cb-b0b4-b6609f1e30d0_en?filename=Oil_Bulletin_Duties_and_taxes.xlsx">impostos</a>
+<a href="/document/download/0241d6bb-e34f-46bb-a75e-5a99a8b3db26_en?filename=WOB%20-%20map%20-%20diesel%20-%202024-04-22.pdf">mapa</a>
+<a href="/document/download/a99a3695-dfa9-49bf-98b4-192a97f19b7b_en?filename=2018_austria_notes.pdf">notas</a>
+<a href="/document/download/78311f92-68f8-4b82-b5cf-1293beeaae77_en?filename=Weekly%20Oil%20Bulletin%20Weekly%20prices%20without%20taxes%20-%202024-02-19.xlsx">repetido</a>
+"""
+
+
+class _ClienteDaPaginaDoWob:
+    def __init__(self, html: bytes = HTML_DO_WOB):
+        self.html = html
+        self.pedidos: list[str] = []
+
+    def ler(self, url, *, metodo="GET", cabecalhos=None):
+        self.pedidos.append(url)
+        return SimpleNamespace(url=url, conteudo=self.html, cabecalhos={})
+
+
+def _alvos_do_wob(html: bytes = HTML_DO_WOB):
+    cliente = _ClienteDaPaginaDoWob(html)
+    return cliente, _fonte("dgener-oil-bulletin").descobrir(cliente, AGORA)  # type: ignore[arg-type]
+
+
+def test_wob_pega_so_as_planilhas_da_pagina_sem_repetir_e_com_endereco_inteiro():
+    cliente, alvos = _alvos_do_wob()
+    assert cliente.pedidos == [
+        PAGINA_DO_WOB
+    ]  # um pedido só, à página que a Comissão publica
+    assert [a.url for a in alvos] == [
+        f"{DOWNLOAD_DO_WOB}/264c2d0f-f161-4ea3-a777-78faae59bea0_en",
+        f"{DOWNLOAD_DO_WOB}/78311f92-68f8-4b82-b5cf-1293beeaae77_en",
+        f"{DOWNLOAD_DO_WOB}/906e60ca-8b6a-44e7-8589-652854d2fd3f_en",
+        f"{DOWNLOAD_DO_WOB}/ccdc6e96-6792-40cb-b0b4-b6609f1e30d0_en",
+    ]
+    assert {a.extensao for a in alvos} == {".xlsx"}
+
+
+def test_wob_nao_adivinha_endereco_quando_a_pagina_nao_traz_planilha():
+    """O endereço do histórico adivinhado redireciona para a home: sem link na página, não há alvo."""
+    _, alvos = _alvos_do_wob(b"<html><a href='/outra'>nada</a></html>")
+    assert alvos == []
+
+
+def test_wob_e_semanal_leve_e_com_pausa():
+    fonte = _fonte("dgener-oil-bulletin")
+    assert fonte.grupo == "semanal"
+    assert (
+        fonte.tipo == "zip"
+    )  # XLSX é um zip: barra a página HTML que a Comissão devolve no lugar do arquivo
+    assert not fonte.pesada
+    assert (
+        fonte.pausa_minima >= 2.0
+    )  # o histórico tem 4,5 MB; sem pressa com a Comissão
+
+
+def test_wob_vigia_o_aviso_legal_da_comissao():
+    assert (
+        lote.termos()["termos-dgener"] == "https://commission.europa.eu/legal-notice_en"
+    )

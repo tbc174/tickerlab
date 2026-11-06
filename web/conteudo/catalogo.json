@@ -2042,6 +2042,21 @@
     },
     {
       "coletas": [
+        "dgener-oil-bulletin"
+      ],
+      "familia": "dgener",
+      "licencas": [
+        "CC BY 4.0 (Comissão, DG ENER): citar a fonte e indicar mudanças"
+      ],
+      "link": "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en",
+      "marca": "vendavel",
+      "orgao": "Comissão Europeia (DG ENER, Weekly Oil Bulletin)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-06",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "chirps3-rnl-mensal",
         "chirps3-rnl-historico"
       ],
@@ -3081,6 +3096,13 @@
     },
     {
       "id": "termos-ssb",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-dgener",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
       "ritmo": "diaria",
@@ -6790,6 +6812,13 @@
       "termos_lidos_em": "2026-11-06"
     },
     {
+      "id": "dgener-oil-bulletin",
+      "licenca": "CC BY 4.0 (Comissão, DG ENER): citar a fonte e indicar mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
       "id": "chirps3-rnl-mensal",
       "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
       "marca": "vendavel",
@@ -8621,7 +8650,7 @@
     }
   ],
   "totais": {
-    "familias": 129,
+    "familias": 130,
     "familias_em_uso": 43,
     "fontes": 43,
     "fontes_em_consulta": 7,
