@@ -24,8 +24,10 @@ from pathlib import Path
 
 drive = Path(os.environ["FAKE_DRIVE"])
 args = [a for a in sys.argv[1:]]
-with open(os.environ["FAKE_ANOTACOES"], "a") as nota:
-    nota.write(" ".join(args) + "\\n")
+# uma escrita só, em modo append: dois processos ao mesmo tempo não misturam as linhas (no Windows `open` mistura)
+fd = os.open(os.environ["FAKE_ANOTACOES"], os.O_WRONLY | os.O_APPEND | os.O_CREAT)
+os.write(fd, (" ".join(args) + "\\n").encode())
+os.close(fd)
 sub = args[0]
 caminho = next(a for a in args[1:] if ":" in a and not a.startswith("-")).split(":", 1)[1]
 alvo = drive / caminho
@@ -314,18 +316,17 @@ def test_pacote_que_falha_nao_vira_objeto_e_os_outros_sobem(
 def test_cota_do_google_passageira_refaz_o_pacote_sem_contar_falha(
     mundo: emp.Configuracao, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """403 de cota por minuto some em instantes: o pacote é refeito e a rodada termina sem falha."""
-    original = emp.subir_pacote
+    """403 de cota por minuto some em instantes: o envio é refeito e a rodada termina sem falha."""
+    original = emp.enviar_tar
     tentativas: dict[str, int] = {}
 
-    def instavel(cfg: emp.Configuracao, pacote: emp.Pacote, carimbo: str):
-        chave = f"{pacote.parte.nome}/{pacote.chave}"
-        tentativas[chave] = tentativas.get(chave, 0) + 1
-        if tentativas[chave] < 3:
+    def instavel(cfg: emp.Configuracao, pacote: emp.Pacote, alvo_tar: str):
+        tentativas[alvo_tar] = tentativas.get(alvo_tar, 0) + 1
+        if tentativas[alvo_tar] < 3:
             raise RuntimeError("rclone rcat falhou (rateLimitExceeded)")
-        return original(cfg, pacote, carimbo)
+        return original(cfg, pacote, alvo_tar)
 
-    monkeypatch.setattr(emp, "subir_pacote", instavel)
+    monkeypatch.setattr(emp, "enviar_tar", instavel)
     assert emp.subir(mundo) == 0
     assert tentativas and all(n == 3 for n in tentativas.values())
     assert "bruto/cvm-dfp/2024/a.bin.gz" in membros_do_drive(mundo)
@@ -338,15 +339,57 @@ def test_cota_que_nao_passa_acaba_em_falha_depois_das_tentativas(
 ) -> None:
     chamadas: list[str] = []
 
-    def sempre_falha(cfg: emp.Configuracao, pacote: emp.Pacote, carimbo: str):
-        chamadas.append(pacote.chave)
+    def sempre_falha(cfg: emp.Configuracao, pacote: emp.Pacote, alvo_tar: str):
+        chamadas.append(alvo_tar)
         raise RuntimeError("rateLimitExceeded")
 
-    monkeypatch.setattr(emp, "subir_pacote", sempre_falha)
+    monkeypatch.setattr(emp, "enviar_tar", sempre_falha)
     assert emp.subir(mundo) == 1
     assert "FALHAS:" in capsys.readouterr().out
     assert len(chamadas) % emp.TENTATIVAS_DO_PACOTE == 0 and chamadas
     assert not objetos(mundo, "pacotes")
+
+
+def test_tar_completo_nunca_e_reenviado_quando_so_o_indice_falha(
+    mundo: emp.Configuracao, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Revisão cruzada P1-A: pacote já completo no Drive não é reescrito na nova tentativa do índice."""
+    original_tar = emp.enviar_tar
+    original_indice = emp.enviar_indice
+    envios_do_tar: dict[str, int] = {}
+    falhas_do_indice: dict[str, int] = {}
+
+    def conta_tar(cfg: emp.Configuracao, pacote: emp.Pacote, alvo_tar: str):
+        envios_do_tar[alvo_tar] = envios_do_tar.get(alvo_tar, 0) + 1
+        return original_tar(cfg, pacote, alvo_tar)
+
+    def indice_instavel(cfg: emp.Configuracao, alvo_indice: str, indice: bytes) -> None:
+        falhas_do_indice[alvo_indice] = falhas_do_indice.get(alvo_indice, 0) + 1
+        if falhas_do_indice[alvo_indice] < 3:
+            raise RuntimeError("rclone rcat falhou no índice (rateLimitExceeded)")
+        original_indice(cfg, alvo_indice, indice)
+
+    monkeypatch.setattr(emp, "enviar_tar", conta_tar)
+    monkeypatch.setattr(emp, "enviar_indice", indice_instavel)
+    assert emp.subir(mundo) == 0
+    assert envios_do_tar and all(n == 1 for n in envios_do_tar.values())
+    assert all(n == 3 for n in falhas_do_indice.values())
+
+
+def test_conferencia_ignora_indice_cortado_e_avisa(
+    mundo: emp.Configuracao, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Revisão cruzada P1-B: um índice cortado (envio interrompido) não derruba a conferência inteira."""
+    assert emp.subir(mundo) == 0
+    indices = [p for p in objetos(mundo, "indices") if p.suffix == ".jsonl"]
+    assert indices
+    alvo = indices[0]
+    linhas = alvo.read_text(encoding="utf-8").splitlines()
+    cortado = chr(10).join([*linhas[:-1], linhas[-1][:10]])
+    alvo.write_text(cortado, encoding="utf-8")
+    emp.conferir(mundo)
+    saida = capsys.readouterr().out
+    assert "índice inválido" in saida
 
 
 def test_erro_ao_montar_o_pacote_corta_o_envio_sem_deixar_objeto(

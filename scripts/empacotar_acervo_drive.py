@@ -42,7 +42,7 @@ import tempfile
 import threading
 import time
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -489,12 +489,37 @@ def proteger_os_envios() -> None:
     signal.signal(signal.SIGTERM, _encerrar_com_sigterm)
 
 
-def subir_pacote(
-    cfg: Configuracao, pacote: Pacote, carimbo: str
-) -> list[dict[str, Any]]:
-    """Manda um pacote e o índice dele; só devolve quando os dois estão no Drive com o tamanho certo."""
-    nome = nome_no_drive(pacote, carimbo)
-    alvo_tar, alvo_indice = f"pacotes/{nome}.tar", f"indices/{nome}.jsonl"
+# O `client_id` compartilhado do rclone divide a cota de requisições por minuto com muita gente: o Google devolve
+# 403 `rateLimitExceeded` de vez em quando, até num envio grande. Cada etapa que falha é refeita com espera
+# crescente antes de contar como falha. O `.tar` só é reenviado enquanto NÃO está completo no Drive: depois
+# que o `rcat` dele terminou bem, só o índice e a conferência repetem (um pacote enviado nunca é reescrito).
+TENTATIVAS_DO_PACOTE = 4
+ESPERA_ENTRE_TENTATIVAS = 90.0
+
+
+def com_novas_tentativas[T](
+    cfg: Configuracao, descricao: str, etapa: Callable[[], T]
+) -> T:
+    """Roda a `etapa` até `TENTATIVAS_DO_PACOTE` vezes, com espera crescente; a última falha sobe."""
+    for tentativa in range(1, TENTATIVAS_DO_PACOTE + 1):
+        try:
+            return etapa()
+        except RuntimeError as erro:
+            if tentativa == TENTATIVAS_DO_PACOTE:
+                raise
+            espera = ESPERA_ENTRE_TENTATIVAS * tentativa
+            registrar(
+                cfg,
+                f"nova tentativa ({tentativa}/{TENTATIVAS_DO_PACOTE}) de {descricao} em {espera:.0f}s: {erro}",
+            )
+            time.sleep(espera)
+    raise AssertionError("inalcançável")  # pragma: no cover
+
+
+def enviar_tar(
+    cfg: Configuracao, pacote: Pacote, alvo_tar: str
+) -> tuple[list[dict[str, Any]], int]:
+    """Monta o pacote e o manda ao Drive por `rclone rcat`; só devolve com o `rcat` terminado bem."""
     envio = subprocess.Popen(
         morrer_com_o_pai(
             comando(
@@ -522,58 +547,69 @@ def subir_pacote(
     ENVIOS_ATIVOS.discard(envio)
     if codigo_do_envio != 0:
         raise RuntimeError(
-            f"rclone rcat falhou em {alvo_tar} (código {envio.returncode})"
+            f"rclone rcat falhou em {alvo_tar} (código {codigo_do_envio})"
         )
+    return entradas, total
+
+
+def enviar_indice(cfg: Configuracao, alvo_indice: str, indice: bytes) -> None:
+    """Manda o índice. Passa pelo mesmo cuidado do `.tar`: se o Python morrer, o `rcat` morre junto."""
+    envio = subprocess.Popen(
+        morrer_com_o_pai(
+            comando(cfg, "rcat", f"{cfg.remoto}:{alvo_indice}", *OPCOES_DO_ENVIO)
+        ),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    ENVIOS_ATIVOS.add(envio)
+    assert envio.stdin is not None
+    try:
+        envio.stdin.write(indice)
+    except BaseException:
+        envio.kill()
+        envio.wait()
+        ENVIOS_ATIVOS.discard(envio)
+        raise
+    envio.stdin.close()
+    codigo = envio.wait()
+    ENVIOS_ATIVOS.discard(envio)
+    if codigo != 0:
+        raise RuntimeError(f"rclone rcat falhou no índice {alvo_indice}")
+
+
+def subir_pacote(
+    cfg: Configuracao, pacote: Pacote, carimbo: str
+) -> list[dict[str, Any]]:
+    """Manda um pacote e o índice dele; só devolve quando os dois estão no Drive com o tamanho certo."""
+    nome = nome_no_drive(pacote, carimbo)
+    alvo_tar, alvo_indice = f"pacotes/{nome}.tar", f"indices/{nome}.jsonl"
+    entradas, total = com_novas_tentativas(
+        cfg, nome, lambda: enviar_tar(cfg, pacote, alvo_tar)
+    )
     cabecalho = {
-        "pacote": f"pacotes/{nome}.tar",
+        "pacote": alvo_tar,
         "tar_bytes": total,
         "arquivos": len(entradas),
         "criado": carimbo,
         "parte": pacote.parte.nome,
     }
-    indice = "\n".join(json_linha(x) for x in [cabecalho, *entradas]) + "\n"
-    resultado = subprocess.run(
-        comando(cfg, "rcat", f"{cfg.remoto}:{alvo_indice}", *OPCOES_DO_ENVIO),
-        input=indice.encode("utf-8"),
-        capture_output=True,
-        check=False,
+    indice = ("\n".join(json_linha(x) for x in [cabecalho, *entradas]) + "\n").encode(
+        "utf-8"
     )
-    if resultado.returncode != 0:
-        raise RuntimeError(f"rclone rcat falhou no índice {alvo_indice}")
     pasta, _, arquivo = alvo_tar.rpartition("/")
-    conferir_tamanho(cfg, pasta, arquivo, total)
     pasta_i, _, arquivo_i = alvo_indice.rpartition("/")
-    conferir_tamanho(cfg, pasta_i, arquivo_i, len(indice.encode("utf-8")))
+
+    def concluir() -> None:
+        enviar_indice(cfg, alvo_indice, indice)
+        conferir_tamanho(cfg, pasta, arquivo, total)
+        conferir_tamanho(cfg, pasta_i, arquivo_i, len(indice))
+
+    com_novas_tentativas(cfg, f"{nome} (índice)", concluir)
     return entradas
 
 
 # ---------- subir ----------
-
-# O `client_id` compartilhado do rclone divide a cota de requisições por minuto com muita gente: o Google devolve
-# 403 `rateLimitExceeded` de vez em quando, até num envio grande. Um pacote que falha é refeito do zero (o `rcat`
-# interrompido não deixa objeto no Drive), com espera crescente, antes de contar como falha.
-TENTATIVAS_DO_PACOTE = 4
-ESPERA_ENTRE_TENTATIVAS = 90.0
-
-
-def subir_com_novas_tentativas(
-    cfg: Configuracao, pacote: Pacote, carimbo: str
-) -> list[dict[str, Any]]:
-    """`subir_pacote` com novas tentativas e espera crescente; a última falha sobe para quem chamou."""
-    for tentativa in range(1, TENTATIVAS_DO_PACOTE + 1):
-        try:
-            return subir_pacote(cfg, pacote, carimbo)
-        except RuntimeError as erro:
-            if tentativa == TENTATIVAS_DO_PACOTE:
-                raise
-            espera = ESPERA_ENTRE_TENTATIVAS * tentativa
-            registrar(
-                cfg,
-                f"nova tentativa ({tentativa}/{TENTATIVAS_DO_PACOTE}) de {nome_no_drive(pacote, carimbo)} "
-                f"em {espera:.0f}s: {erro}",
-            )
-            time.sleep(espera)
-    raise AssertionError("inalcançável")  # pragma: no cover
 
 
 def subir(
@@ -623,7 +659,7 @@ def subir(
 
     def trabalhar(pacote: Pacote) -> None:
         nonlocal enviados
-        entradas = subir_com_novas_tentativas(cfg, pacote, carimbo)
+        entradas = subir_pacote(cfg, pacote, carimbo)
         with trava:
             gravar_estado(
                 cfg.estado, pacote.parte, entradas, nome_no_drive(pacote, carimbo)
@@ -667,17 +703,27 @@ def ler_indices(
         f["Path"] for f in listar_drive(cfg, pasta) if f["Path"].endswith(".jsonl")
     ]
 
-    def ler(caminho: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    def ler(caminho: str) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
         bruto = subprocess.run(
             [*cfg.rclone, "cat", f"{cfg.remoto}:{pasta}/{caminho}"],
             capture_output=True,
             check=True,
         ).stdout.decode("utf-8")
-        linhas = [json.loads(x) for x in bruto.splitlines() if x.strip()]
-        return linhas[0], linhas[1:]
+        try:
+            linhas = [json.loads(x) for x in bruto.splitlines() if x.strip()]
+            cabecalho, entradas = linhas[0], linhas[1:]
+            valido = cabecalho["arquivos"] == len(entradas)
+        except (ValueError, IndexError, KeyError, TypeError):
+            valido = False
+        if not valido:
+            # índice de um envio interrompido (cortado): o pacote dele não conta como enviado e
+            # nada é apagado; o `subir` seguinte refaz o pacote com outro nome
+            print(f"índice inválido (envio interrompido), ignorado: {pasta}/{caminho}")
+            return None
+        return cabecalho, entradas
 
     with ThreadPoolExecutor(max_workers=4) as piscina:
-        return list(piscina.map(ler, caminhos))
+        return [lido for lido in piscina.map(ler, caminhos) if lido is not None]
 
 
 def reconstruir_estado(cfg: Configuracao) -> int:
