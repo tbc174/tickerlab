@@ -8,7 +8,11 @@ Aqui entram os que faltavam para a governança:
 - `fre_empregados` (só do FRE de 2023 em diante, quando a CVM passou a pedir): os empregados por
   região e por posição (liderança ou não), com gênero, raça, faixa etária e PCD, só contagens;
 - `fre_acionistas` (2010 em diante): quem tem 5% ou mais e a cadeia de acionistas até a pessoa física;
-- `fre_partes_relacionadas` (2010 em diante): as transações com partes relacionadas (item 11.2).
+- `fre_partes_relacionadas` (2010 em diante): as transações com partes relacionadas (item 11.2);
+- `fre_distribuicao_capital` (item 15.7): as ações em circulação (o free float, sem o controlador, os
+  administradores e a tesouraria) com a quantidade e o percentual por espécie, e quantos acionistas
+  pessoa física, pessoa jurídica e investidor institucional a companhia declara. Só contagens e
+  percentuais: a tabela não traz nome nem documento.
 
 Pessoa física (ADR 0075): até o parecer jurídico, entra só como número somado, sem nome, CPF, id, UF
 ou nacionalidade; o representante legal nem é lido. A base olha para empresas.
@@ -391,6 +395,44 @@ def ler_acionistas(conteudo_do_zip: bytes) -> pd.DataFrame:
     return conferir_sem_cpf(
         tabela, ("acionista", "cnpj_acionista", "cnpj_acionista_relacionado")
     )
+
+
+# --- distribuição do capital: o free float (item 15.7 do FRE) ----------------------------------------
+DISTRIBUICAO = {
+    "Quantidade_Acionistas_PF": "acionistas_pf",
+    "Quantidade_Acionistas_PJ": "acionistas_pj",
+    "Quantidade_Acionistas_Investidores_Institucionais": "acionistas_institucionais",
+    "Quantidade_Acoes_Ordinarias_Circulacao": "circulacao_ordinarias",
+    "Percentual_Acoes_Ordinarias_Circulacao": "percentual_ordinarias",
+    "Quantidade_Acoes_Preferenciais_Circulacao": "circulacao_preferenciais",
+    "Percentual_Acoes_Preferenciais_Circulacao": "percentual_preferenciais",
+    "Quantidade_Total_Acoes_Circulacao": "circulacao_total",
+    "Percentual_Total_Acoes_Circulacao": "percentual_total",
+}
+COLUNAS_DA_DISTRIBUICAO = (
+    *conselhos.COLUNAS_DO_DOCUMENTO, *DISTRIBUICAO.values(), "ultima_assembleia_em",
+    "conhecido_em",
+)  # fmt: skip
+
+
+def ler_distribuicao_capital(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """A distribuição do capital de cada FRE: as ações em circulação (quantidade e percentual por
+    espécie) e o número de acionistas por tipo. Percentual de 0 a 100, como a CVM escreve."""
+    bruto = conselhos._tabela(
+        conteudo_do_zip,
+        "distribuicao_capital",
+        [*conselhos.DOCUMENTO, *DISTRIBUICAO, "Data_Ultima_Assembleia"],
+    )
+    if bruto.empty:
+        return pd.DataFrame(columns=list(COLUNAS_DA_DISTRIBUICAO))
+    tabela = conselhos._documento(bruto, conselhos.entregas(conteudo_do_zip))
+    for velho, novo in DISTRIBUICAO.items():
+        tabela[novo] = numero(bruto[velho])
+    tabela["ultima_assembleia_em"] = pd.to_datetime(
+        bruto["Data_Ultima_Assembleia"].str.strip(), errors="coerce"
+    )
+    tabela = conselhos._so_com_data(tabela.drop_duplicates())
+    return tabela.reindex(columns=list(COLUNAS_DA_DISTRIBUICAO))
 
 
 # --- transações com partes relacionadas (item 11.2 do FRE) -------------------------------------------
