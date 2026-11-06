@@ -1177,6 +1177,121 @@
     },
     {
       "coletas": [
+        "statat-ipc-base-2010",
+        "statat-ipc-base-2020"
+      ],
+      "familia": "statat",
+      "licencas": [
+        "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'"
+      ],
+      "link": "https://data.statistik.gv.at/",
+      "marca": "vendavel",
+      "orgao": "Statistik Austria (Áustria)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "statbel-ipch-anual",
+        "statbel-ipc-mensal",
+        "statbel-emprego-por-regiao"
+      ],
+      "familia": "statbel",
+      "licencas": [
+        "CC BY 4.0 (dados abertos do Statbel); citar o Statbel"
+      ],
+      "link": "https://statbel.fgov.be/",
+      "marca": "vendavel",
+      "orgao": "Statbel (Bélgica)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "cbs-inflacao-anual",
+        "cbs-ipch-comparado"
+      ],
+      "familia": "cbs",
+      "licencas": [
+        "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands"
+      ],
+      "link": "https://opendata.cbs.nl/",
+      "marca": "vendavel",
+      "orgao": "CBS (Statistics Netherlands, Países Baixos)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "cso-ipc",
+        "cso-preco-de-imoveis",
+        "cso-desemprego"
+      ],
+      "familia": "cso",
+      "licencas": [
+        "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO"
+      ],
+      "link": "https://data.cso.ie/",
+      "marca": "vendavel",
+      "orgao": "CSO (Central Statistics Office, Irlanda)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "ines-ipc",
+        "ines-ativos-epa"
+      ],
+      "familia": "ines",
+      "licencas": [
+        "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'"
+      ],
+      "link": "https://www.ine.es/",
+      "marca": "vendavel",
+      "orgao": "INE (Instituto Nacional de Estatística, Espanha)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "istat-fluxo-143-497",
+        "istat-fluxo-120-337"
+      ],
+      "familia": "istat",
+      "licencas": [
+        "CC BY 4.0 (aviso legal do Istat); citar o Istat"
+      ],
+      "link": "https://www.istat.it/",
+      "marca": "vendavel",
+      "orgao": "Istat (Instituto Nacional de Estatística, Itália)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "rba-cambio",
+        "rba-rendimentos-dos-titulos",
+        "rba-balanco"
+      ],
+      "familia": "rba",
+      "licencas": [
+        "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte"
+      ],
+      "link": "https://www.rba.gov.au/statistics/",
+      "marca": "vendavel",
+      "orgao": "RBA (Banco Central da Austrália)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "contrapartes-cafe"
       ],
       "familia": "contrapartes",
@@ -2822,6 +2937,27 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-cbs",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-istat",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-rba",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-wikidata",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -4388,6 +4524,125 @@
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "statat-ipc-base-2010",
+      "licenca": "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statat-ipc-base-2020",
+      "licenca": "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statbel-ipch-anual",
+      "licenca": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statbel-ipc-mensal",
+      "licenca": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statbel-emprego-por-regiao",
+      "licenca": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cbs-inflacao-anual",
+      "licenca": "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cbs-ipch-comparado",
+      "licenca": "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cso-ipc",
+      "licenca": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cso-preco-de-imoveis",
+      "licenca": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "cso-desemprego",
+      "licenca": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "ines-ipc",
+      "licenca": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "ines-ativos-epa",
+      "licenca": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "istat-fluxo-143-497",
+      "licenca": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "istat-fluxo-120-337",
+      "licenca": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "rba-cambio",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "rba-rendimentos-dos-titulos",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "rba-balanco",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
     },
     {
       "id": "sec-bulk-submissions",
@@ -7705,7 +7960,7 @@
     }
   ],
   "totais": {
-    "familias": 111,
+    "familias": 118,
     "familias_em_uso": 42,
     "fontes": 42,
     "fontes_em_consulta": 7,
