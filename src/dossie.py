@@ -72,6 +72,12 @@ TAMANHO_DO_ANO = (
 TAMANHO_DO_MES = 7  # "2025-12"
 TAMANHO_DO_DIA = 10  # "2025-12-31" (ou "2025-12-31T00:00:00", que perde a hora)
 FRACAO = "fração"  # a unidade de um número entre 0 e 1 (o índice de Basileia, a CR4)
+# a coluna do link para o documento original, nas tabelas que o carregam (a tela a faz clicável, o
+# Markdown a escreve como endereço e o site a tira, porque já põe o link na última coluna)
+ROTULO_DO_LINK = "Fonte original"
+TAMANHO_DO_CODIGO_DO_ORIGINAL = (
+    12  # o começo do SHA-256 do original no acervo basta para achá-lo
+)
 
 TITULOS_DAS_TABELAS = {
     "pld_mensal": "PLD médio por mês e submercado",
@@ -117,6 +123,8 @@ TITULOS_DAS_TABELAS = {
     "ma_por_ano": "Negócios de M&A por ano em que ficaram conhecidos",
     "ma_recentes": "Últimos negócios de M&A conhecidos",
     "registros_de_insolvencia": "Registros de insolvência e situação especial",
+    "inscricoes_na_divida_ativa": "Inscrições em dívida ativa da União, por retrato da PGFN",
+    "entregas_de_dfp_e_itr": "Entregas de DFP e ITR, com o prazo da CVM",
     "ligacoes_da_rede": "Ligações da companhia na rede",
     "identificadores_da_empresa": "Identificadores públicos da companhia",
 } | {serie.nome: serie.medida for serie in dossie_da_base.SERIES_DAS_AGENCIAS}
@@ -609,6 +617,10 @@ _PALAVRAS_COM_ACENTO = {
     "atribuicao": "atribuição",
     "estavel": "estável",
     "observacao": "observação",
+    "nao": "não",
+    "previdenciaria": "previdenciária",
+    "corresponsavel": "corresponsável",
+    "solidario": "solidário",
 }
 
 
@@ -621,6 +633,15 @@ def _codigo(valor: object) -> str:
     """Um código da base ("em_observacao_negativa") em português ("Em observação negativa")."""
     palavras = [_PALAVRAS_COM_ACENTO.get(p, p) for p in str(valor).split("_")]
     return " ".join(palavras).capitalize()
+
+
+def _codigo_do_original(valor: object) -> str:
+    """O começo do SHA-256 do original no acervo, o bastante para achá-lo sem tomar a linha.
+
+    É um código hexadecimal, não um nome: não passa pelo filtro de CPF (`_texto`), que cortaria por
+    acaso um trecho de onze dígitos que fechasse como CPF.
+    """
+    return str(valor)[:TAMANHO_DO_CODIGO_DO_ORIGINAL]
 
 
 def _escritor_da_unidade(unidade: str) -> Callable[[object], str]:
@@ -894,6 +915,7 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("perspectiva", "Perspectiva", _codigo),
         ("acao", "Ação", _codigo),
         ("publico_em", "Publicado em", dia),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "ratings_janelas": [
         ("janela", "Período", _texto),
@@ -925,6 +947,7 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("publico_em", "Data", dia),
         ("especie", "Documento", _texto),
         ("assunto", "Assunto, como a empresa escreveu", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "assembleias_de_aperto": [
         ("publico_em", "Data", dia),
@@ -940,6 +963,7 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("publicado_em", "Data", dia),
         ("rotulo", "Documento", _texto),
         ("assunto", "Assunto, como a empresa escreveu", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "negocios_por_ano": [
         ("ano", "Ano", _ano),
@@ -965,6 +989,36 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("veiculo", "Veículo", _texto),
         ("situacao", "Situação", _texto),
         ("contestacao", "Contestação da empresa", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+    ],
+    # virada de 5/11/2026 (fase 1): dívida ativa e entrega no prazo como fato datado, com a fonte ao
+    # lado; os rótulos evitam sigla no meio (a tela passa o cabeçalho por `capitalize`)
+    "inscricoes_na_divida_ativa": [
+        ("aconteceu_em", "Data do retrato", dia),
+        ("publico_em", "Público desde", dia),
+        ("tipo_divida", "Tipo de dívida", _codigo),
+        ("tipo_situacao", "Situação", _texto),
+        ("situacao_inscricao", "Situação da inscrição", _texto),
+        ("ajuizado", "Ajuizada", _sim_ou_nao),
+        ("inscricoes", "Inscrições", inteiro),
+        ("valor_consolidado", "Valor consolidado", reais),
+        ("regiao", "Região", _texto),
+        ("tipo_devedor", "Tipo de devedor", _codigo),
+        ("veiculo", "Veículo", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+        ("origem", "Original no acervo", _codigo_do_original),
+    ],
+    "entregas_de_dfp_e_itr": [
+        ("documento", "Documento", _texto),
+        ("referencia", "Referência", dia),
+        ("prazo", "Prazo de entrega", dia),
+        ("primeira_entrega", "Primeira entrega", dia),
+        ("publico_em", "Público desde", dia),
+        ("dias_uteis_de_atraso", "Dias úteis de atraso", inteiro),
+        ("rotulo", "Rótulo", _texto),
+        ("regra", "Regra que deu o rótulo", _texto),
+        ("veiculo", "Veículo", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "ligacoes_da_rede": [
         ("relacao", "Relação", _texto),

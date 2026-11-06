@@ -247,7 +247,8 @@ def test_linhas_do_futuro_nao_mudam_o_passado():
 
 
 def test_o_bloco_nao_le_a_divida_ativa_nem_nomes_de_pessoas():
-    """ADR 0103: `pgfn_divida` bloqueada até o ponto 9; insiders só agregados."""
+    """O bloco não lê a `pgfn_divida` (a virada de 5/11/2026 a liberou, mas o cruzamento ainda não
+    existe); insiders só agregados (ADR 0103)."""
     codigo = inspect.getsource(cruzamentos).replace(cruzamentos.__doc__ or "", "")
     assert "pgfn" not in codigo.lower()
     for coluna in ("nome", "cpf", "pessoa"):

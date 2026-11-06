@@ -54,6 +54,7 @@ TERMOS_LIDOS_EM: dict[str, date] = {
     "dgagri": date(
         2026, 10, 24
     ),  # aviso legal da Comissão, lido na rodada de 24/10 (linha 396)
+    "boc": date(2026, 11, 5),  # termos do Banco relidos na hora (linha 396)
     # bancos centrais nórdicos (linha 511; termos lidos na rodada recorrente de 29/10/2026)
     "riksbank": date(2026, 10, 29),
     "norges": date(2026, 10, 29),

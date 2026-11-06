@@ -1940,6 +1940,24 @@
     },
     {
       "coletas": [
+        "boc-bcpi-semanal",
+        "boc-bcpi-mensal",
+        "boc-bcpi-anual",
+        "boc-bcpi-pesos"
+      ],
+      "familia": "boc",
+      "licencas": [
+        "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis"
+      ],
+      "link": "https://www.bankofcanada.ca/rates/price-indexes/bcpi/",
+      "marca": "vendavel",
+      "orgao": "Bank of Canada (índice de preços de commodities)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-05",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "chirps3-rnl-mensal",
         "chirps3-rnl-historico"
       ],
@@ -2944,6 +2962,13 @@
     },
     {
       "id": "termos-dgagri",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-boc",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
       "ritmo": "diaria",
@@ -6506,6 +6531,34 @@
       "termos_lidos_em": "2026-10-24"
     },
     {
+      "id": "boc-bcpi-semanal",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "boc-bcpi-mensal",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "boc-bcpi-anual",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "boc-bcpi-pesos",
+      "licenca": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
       "id": "chirps3-rnl-mensal",
       "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
       "marca": "vendavel",
@@ -8148,7 +8201,7 @@
     }
   ],
   "totais": {
-    "familias": 123,
+    "familias": 124,
     "familias_em_uso": 42,
     "fontes": 42,
     "fontes_em_consulta": 7,

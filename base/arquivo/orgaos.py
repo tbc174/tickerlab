@@ -197,6 +197,10 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "Comissão Europeia (DG AGRI, preços agroalimentares)",
         "https://agridata.ec.europa.eu/",
     ),
+    "boc": Orgao(
+        "Bank of Canada (índice de preços de commodities)",
+        "https://www.bankofcanada.ca/rates/price-indexes/bcpi/",
+    ),
     "cbs": Orgao(
         "CBS (Statistics Netherlands, Países Baixos)", "https://opendata.cbs.nl/"
     ),
