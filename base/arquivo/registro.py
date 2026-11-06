@@ -51,6 +51,9 @@ TERMOS_LIDOS_EM: dict[str, date] = {
         2026, 11, 3
     ),  # relido em 03/11 (linha 639): data.bis.org/help/legal e robots.txt
     "nasa": date(2026, 10, 22),
+    "dgagri": date(
+        2026, 10, 24
+    ),  # aviso legal da Comissão, lido na rodada de 24/10 (linha 396)
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
     "treasury": date(2026, 10, 22),

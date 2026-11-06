@@ -16,6 +16,7 @@ from base.arquivo import (
     lote_cadastros,
     lote_clima,
     lote_commodities,
+    lote_commodities_oficiais,
     lote_cvm,
     lote_eua,
     lote_licitacoes,
@@ -207,6 +208,11 @@ _LOTE_REGULADORES_SO_ARQUIVO = (
     "dado aberto de regulador ou operador do setor guardado como publicado, só pessoa jurídica e "
     "agregados (nada por titular ou beneficiário, ADR 0088); a tabela com contrato no catálogo ainda "
     "não existe"
+)
+
+_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO = (
+    "preço de commodity de órgão público guardado como o órgão publica (Comissão Europeia, citando a fonte e "
+    "indicando as mudanças); o leitor com tabela no catálogo ainda não existe"
 )
 
 _LOTE_COMMODITIES_SO_ARQUIVO = (
@@ -551,6 +557,7 @@ DESTINOS: dict[str, Destino] = {
             *lote_atencao.termos(),
             *lote_clima.termos(),
             *lote_patentes.termos(),
+            *lote_commodities_oficiais.termos(),
         )
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
@@ -588,6 +595,11 @@ DESTINOS: dict[str, Destino] = {
     # lote café, commodities e clima (linha 204 da fila, 03/11/2026): guardado no acervo; leitores depois
     **{
         f.id: _pesquisa(_LOTE_COMMODITIES_SO_ARQUIVO) for f in lote_commodities.fontes()
+    },
+    # lote commodities oficiais (linha 396 da fila, 05/11/2026): guardado no acervo; leitores depois
+    **{
+        f.id: _pesquisa(_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO)
+        for f in lote_commodities_oficiais.fontes()
     },
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`
     "contrapartes-cafe": _tabela("contraparte_cafe"),

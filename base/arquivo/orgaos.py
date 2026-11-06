@@ -188,6 +188,10 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "yahoo": Orgao("Yahoo Finance (preços)", "https://finance.yahoo.com/"),
     # Europa e organismos internacionais
     "bce": Orgao("Banco Central Europeu", "https://data.ecb.europa.eu/"),
+    "dgagri": Orgao(
+        "Comissão Europeia (DG AGRI, preços agroalimentares)",
+        "https://agridata.ec.europa.eu/",
+    ),
     "bis": Orgao(
         "BIS (Banco de Compensações Internacionais)", "https://www.bis.org/statistics/"
     ),

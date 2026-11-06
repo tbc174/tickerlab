@@ -189,6 +189,8 @@ LICENCAS = {
     "eurostat": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
     "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
     "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+    # lote commodities oficiais (linha 396; termos lidos em 24/10/2026, licencas-por-fonte.md)
+    "dgagri": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
     # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
@@ -403,6 +405,7 @@ REVENDA = {
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
     "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
     "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
+    "dgagri": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 da Comissão Europeia: crédito e indicação de mudanças
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
     "inpe": VENDAVEL_RISCO_ASSUMIDO,  # sem licença escrita no INPE Queimadas
@@ -612,6 +615,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # de guarda: o uso "unrestricted" cobre guardar, e o silêncio fica registrado aqui. A API tem termo
     # próprio (o BIS pode limitar o IP e suspender), sem proibir ler os dados.
     "bis": _ABERTA_SEM_PRAZO,
+    # DG AGRI: aviso legal da Comissão (CC BY 4.0, lido em 24/10/2026); o robots.txt de `ec.europa.eu` não
+    # fecha `/agrifood/api` (conferido em 05/11/2026) e a coleta tem pausa e se identifica
+    "dgagri": _ABERTA_SEM_PRAZO,
     # a N0 diz retenção sim, coleta "não diz" ou não lida
     "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
     "mapbiomas": ColetaEGuarda(
