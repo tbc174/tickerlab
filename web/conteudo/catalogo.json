@@ -822,6 +822,58 @@
     },
     {
       "coletas": [
+        "scb-ipc",
+        "scb-ipc-juros-fixos",
+        "scb-ipch",
+        "scb-desemprego"
+      ],
+      "familia": "scb",
+      "licencas": [
+        "CC0 (Statistics Sweden, SCB; citar o SCB)"
+      ],
+      "link": "https://www.scb.se/en/",
+      "marca": "vendavel",
+      "orgao": "Statistics Sweden (SCB, Suécia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "statfi-ipc",
+        "statfi-desemprego",
+        "statfi-pib-trimestral"
+      ],
+      "familia": "statfi",
+      "licencas": [
+        "CC BY 4.0 (Statistics Finland; citar Statistics Finland)"
+      ],
+      "link": "https://stat.fi/en",
+      "marca": "vendavel",
+      "orgao": "Statistics Finland (Finlândia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "statice-ipc",
+        "statice-pib-trimestral",
+        "statice-desemprego"
+      ],
+      "familia": "statice",
+      "licencas": [
+        "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)"
+      ],
+      "link": "https://www.statice.is/",
+      "marca": "vendavel",
+      "orgao": "Statistics Iceland (Hagstofa, Islândia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "bce-cambio-dolar",
         "bce-cambio-real",
         "bce-curva-10a",
@@ -3056,6 +3108,27 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-scb",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-statfi",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-statice",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-bce",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -4031,6 +4104,76 @@
     {
       "id": "dst-juros-por-tipo",
       "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-ipc",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-ipc-juros-fixos",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-ipch",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "scb-desemprego",
+      "licenca": "CC0 (Statistics Sweden, SCB; citar o SCB)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statfi-ipc",
+      "licenca": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statfi-desemprego",
+      "licenca": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statfi-pib-trimestral",
+      "licenca": "CC BY 4.0 (Statistics Finland; citar Statistics Finland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statice-ipc",
+      "licenca": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statice-pib-trimestral",
+      "licenca": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "statice-desemprego",
+      "licenca": "CC BY 4.0 (Statistics Iceland; citar Statistics Iceland)",
       "marca": "vendavel",
       "ritmo": "semanal",
       "termos_lidos_em": "2026-10-29"
@@ -8478,7 +8621,7 @@
     }
   ],
   "totais": {
-    "familias": 126,
+    "familias": 129,
     "familias_em_uso": 43,
     "fontes": 43,
     "fontes_em_consulta": 7,
