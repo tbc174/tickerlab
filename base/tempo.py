@@ -23,6 +23,8 @@ CANONICOS = frozenset(
 
 _POR_CANONICO: dict[str, tuple[str, ...]] = {
     "aconteceu_em": (
+        # FRE 15.7: a assembleia a que o free float se refere (pode ser anterior à entrega do FRE)
+        "ultima_assembleia_em",
         "aconteceu_em", "valido_desde", "efetiva_em", "desde", "anunciada_em", "autorizado_em",
         "data_acao", "data_entrada", "data_entrada_antes", "data_entrada_depois",
         "data_inicio_atividade", "data_inicio_atividade_antes", "data_inicio_atividade_depois",
