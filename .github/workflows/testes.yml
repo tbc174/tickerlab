@@ -163,7 +163,7 @@ jobs:
       # tests/arquivos/vulture_esperado.txt; item novo ou item que sumiu falha
       # (scripts/conferir_codigo_morto.py). O vulture fica fora do requirements.txt: é ferramenta de
       # desenvolvimento, instalada só aqui.
-      - name: vulture (código morto: não piorar)
+      - name: "vulture (código morto: não piorar)"
         if: matrix.qualidade
         run: |
           uv pip install vulture==2.16
