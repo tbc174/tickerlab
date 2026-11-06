@@ -18,6 +18,7 @@ from base.arquivo import (
     lote_commodities,
     lote_commodities_oficiais,
     lote_cvm,
+    lote_documentais,
     lote_eua,
     lote_europa_rba,
     lote_licitacoes,
@@ -427,6 +428,14 @@ DESTINOS: dict[str, Destino] = {
     # financiamentos por CNPJ (`base/financiamentos.py`; o BNDES vem do lote Brasil 2, abaixo)
     "finep-contratacao": _tabela("financiamentos_finep"),
     **{f.id: _tabela("bcb_selic_focus") for f in lote_selic.fontes()},
+    # fontes pouco visíveis (ADR 0124): os fatos aprovados viram as tabelas do PR B
+    **{
+        f.id: _planejada(
+            "fontes-pouco-visiveis/PR-B",
+            "fatos de dívida e de fundos regionais com página e prova",
+        )
+        for f in lote_documentais.fontes()
+    },
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),

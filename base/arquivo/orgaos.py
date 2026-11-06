@@ -71,6 +71,10 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "Compras.gov.br (Ministério da Gestão)", "https://dadosabertos.compras.gov.br/"
     ),
     "conab": Orgao("Conab (safras)", "https://www.gov.br/conab/"),
+    "sudeco": Orgao(
+        "Sudeco (FDCO, fundo do Centro-Oeste)", "https://www.gov.br/sudeco/"
+    ),
+    "sudam": Orgao("Sudam (FDA, fundo da Amazônia)", "https://www.gov.br/sudam/"),
     "ibama": Orgao("IBAMA (autos e embargos)", "https://dadosabertos.ibama.gov.br/"),
     "ibge": Orgao("IBGE", "https://www.ibge.gov.br/"),
     "inep": Orgao("INEP (educação)", "https://www.gov.br/inep/"),
@@ -250,5 +254,8 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     # páginas públicas guardadas como prova
     "assessoria": Orgao("Assessorias de M&A (páginas públicas)", None),
     "contrapartes": Orgao("Imprensa e páginas públicas", None),
+    "divida": Orgao(
+        "Publicações legais, FNET e prospectos (dívida de empresas fechadas)", None
+    ),
     "wayback": Orgao("Internet Archive (Wayback Machine)", "https://web.archive.org/"),
 }
