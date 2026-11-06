@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Backup cifrado do acervo no Google Drive (ADR 0123; linha 251 da fila). Roda NA VM do servidor de casa
-# (a fonte é a VM, nunca a cópia do PC nem o Drive para Desktop), todo dia pelo cron, via rodar-tarefa.sh.
+# Backup cifrado do acervo no Google Drive (ADR 0123 e Emenda 1; linha 251 da fila). Roda NA VM do servidor de
+# casa (a fonte é a VM, nunca a cópia do PC nem o Drive para Desktop), todo dia pelo cron, via rodar-tarefa.sh.
 #
-# - `rclone copy --backup-dir` datado: copia o que é novo ou mudou; o que mudou ou sumiu da origem NUNCA é
-#   apagado do Drive (a versão antiga de um arquivo alterado vai para `_versoes/AAAA-MM-DD/<parte>`).
+# - O acervo (`bruto`, `manifesto`, `ancoras`) e os backups grandes (`tickerlab-pc`, `tickerlab-acervo`) sobem
+#   em PACOTES .tar imutáveis pelo `empacotar_acervo_drive.py` (um arquivo por fonte e período fechado, com
+#   índice cifrado ao lado; Emenda 1 da ADR 0123, "Empacotar em .tar", Tiago, 06/11): o `client_id`
+#   compartilhado do rclone só aguenta ~15 arquivos pequenos por minuto, e são centenas de milhares.
+# - Os backups pequenos (`tickerlab`, `tickerlab-acessos`, `casa`, `base-antes-manifestos`) seguem arquivo a
+#   arquivo, por `rclone copy --backup-dir` datado: copia o que é novo ou mudou; o que mudou ou sumiu da origem
+#   NUNCA é apagado do Drive (a versão antiga de um arquivo alterado vai para `_versoes/AAAA-MM-DD/<parte>`).
 #   Não existe `sync` aqui: o script não sabe apagar do destino.
 # - O destino é um remoto `crypt` (nomes e conteúdo cifrados) sobre uma pasta própria do Drive. A senha e o
 #   sal ficam no gerenciador de senhas do Tiago, no cofre de segredos dele (fora do repositório) e no rclone.conf do
@@ -19,17 +24,22 @@
 # - Cada parte é independente: se uma falha, as outras ainda sobem. No fim sai com 1 e a linha "FALHAS: ..."
 #   (o rodar-tarefa.sh copia a linha para a marca e avisa o monitor push do Kuma).
 #
-# Variáveis (todas têm padrão): ACERVO, PASTA_DE_BACKUPS, BACKUPS_QUE_SOBEM, PARTES_DO_ACERVO, RCLONE,
-# RCLONE_CONFIG, REMOTO, PASTA_DE_VERSOES, BWLIMIT, LOG, DATA_DAS_VERSOES.
+# Variáveis (todas têm padrão): ACERVO, PASTA_DE_BACKUPS, BACKUPS_QUE_SOBEM, PARTES_DO_ACERVO (partes enviadas
+# arquivo a arquivo; vazio por padrão, o acervo vai em pacotes), EMPACOTADOR (comando do empacotador; vazio
+# desliga), RCLONE, RCLONE_CONFIG, REMOTO, PASTA_DE_VERSOES, BWLIMIT, LOG, DATA_DAS_VERSOES.
 set -uo pipefail
 umask 077
 
 ACERVO=${ACERVO:-/mnt/dados/tickerlab-acervo}
 PASTA_DE_BACKUPS=${PASTA_DE_BACKUPS:-/mnt/dados/backups}
-# Partes do acervo que sobem (ADR 0123, item 3). Mais pastas só com o "pode" do Tiago: basta listar aqui.
-PARTES_DO_ACERVO=${PARTES_DO_ACERVO-"manifesto ancoras bruto"}
-# Pastas de /mnt/dados/backups que sobem. A sala de dados (tickerlab-sala) fica de fora de propósito.
-BACKUPS_QUE_SOBEM=${BACKUPS_QUE_SOBEM-"tickerlab tickerlab-pc tickerlab-acervo tickerlab-acessos casa base-antes-manifestos"}
+# Partes do acervo enviadas arquivo a arquivo: nenhuma, o acervo vai em pacotes (as partes do empacotador estão
+# no `empacotar_acervo_drive.py`). Mais pastas só com o "pode" do Tiago.
+PARTES_DO_ACERVO=${PARTES_DO_ACERVO-""}
+# Pastas pequenas de /mnt/dados/backups que sobem arquivo a arquivo (`tickerlab-pc` e `tickerlab-acervo` vão em
+# pacotes). A sala de dados (tickerlab-sala) fica de fora de propósito.
+BACKUPS_QUE_SOBEM=${BACKUPS_QUE_SOBEM-"tickerlab tickerlab-acessos casa base-antes-manifestos"}
+# Empacotador: um comando (a variável é dividida em palavras de propósito).
+EMPACOTADOR=${EMPACOTADOR-"python3 $HOME/bin/empacotar_acervo_drive.py"}
 RCLONE=${RCLONE:-$HOME/bin/rclone}
 export RCLONE_CONFIG=${RCLONE_CONFIG:-$HOME/.config/tickerlab/backup-drive/rclone.conf}
 REMOTO=${REMOTO:-cripto}
@@ -62,7 +72,7 @@ fi
 falhas=()
 
 # Lista vazia nunca pode virar "tudo certo": sem nenhuma parte não há backup.
-if [ -z "${PARTES_DO_ACERVO// /}" ] && [ -z "${BACKUPS_QUE_SOBEM// /}" ]; then
+if [ -z "${PARTES_DO_ACERVO// /}" ] && [ -z "${BACKUPS_QUE_SOBEM// /}" ] && [ -z "${EMPACOTADOR// /}" ]; then
     echo "FALHAS: sem-partes-para-subir"
     exit 1
 fi
@@ -118,6 +128,24 @@ done
 for parte in $PARTES_DO_ACERVO; do
     subir "acervo-$parte" "$ACERVO/$parte" "acervo/$parte"
 done
+
+# Pacotes (acervo e backups grandes). O empacotador usa as mesmas variáveis (ACERVO, PASTA_DE_BACKUPS, RCLONE,
+# REMOTO, BWLIMIT, LOG), tem as próprias exclusões e imprime "FALHAS: ..." se algum pacote falhar.
+if [ -n "${EMPACOTADOR// /}" ]; then
+    export ACERVO PASTA_DE_BACKUPS RCLONE REMOTO BWLIMIT LOG
+    echo "$(date -Is) início: pacotes" >> "$LOG"
+    # shellcheck disable=SC2086
+    saida=$($EMPACOTADOR subir 2>>"$LOG")
+    codigo=$?
+    printf '%s\n' "$saida" | grep -v '^FALHAS:'
+    itens=$(printf '%s\n' "$saida" | sed -n 's/^FALHAS: *//p')
+    if [ -n "$itens" ]; then
+        # shellcheck disable=SC2206
+        falhas+=($itens)
+    elif [ "$codigo" -ne 0 ]; then
+        falhas+=("pacotes")
+    fi
+fi
 
 if [ "${#falhas[@]}" -gt 0 ]; then
     echo "FALHAS: ${falhas[*]}"

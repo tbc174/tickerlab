@@ -56,6 +56,8 @@ def ambiente(tmp_path: Path) -> dict[str, str]:
     return {
         **os.environ,
         "ACERVO": str(acervo),
+        "PARTES_DO_ACERVO": "manifesto ancoras bruto",
+        "EMPACOTADOR": "",  # os pacotes têm teste próprio (test_empacotar_acervo_drive.py)
         "PASTA_DE_BACKUPS": str(backups),
         "RCLONE": str(rclone),
         "RCLONE_CONFIG": str(tmp_path / "rclone.conf"),
@@ -124,7 +126,9 @@ def test_so_copia_com_pasta_de_versoes_datada(ambiente: dict[str, str]) -> None:
     resultado = rodar(BACKUP, ambiente)
     assert resultado.returncode == 0, resultado.stdout + resultado.stderr
     feitas = chamadas(ambiente)
-    assert len(feitas) == 3 + 6  # bruto, manifesto, ancoras e as seis pastas de backups
+    assert (
+        len(feitas) == 3 + 4
+    )  # bruto, manifesto, ancoras e as quatro pastas pequenas de backups
     for chamada in feitas:
         assert chamada.startswith("copy ")
         assert "--backup-dir cripto:_versoes/2026-11-05/" in chamada
@@ -208,7 +212,94 @@ def test_parte_que_falha_nao_derruba_as_outras(ambiente: dict[str, str]) -> None
     resultado = rodar(BACKUP, {**ambiente, "FALHAR_EM": "acervo/bruto"})
     assert resultado.returncode == 1
     assert "FALHAS: acervo-bruto" in resultado.stdout
-    assert len(chamadas(ambiente)) == 9  # todas as partes foram tentadas
+    assert len(chamadas(ambiente)) == 7  # todas as partes foram tentadas
+
+
+EMPACOTADOR_DE_MENTIRA = """#!/usr/bin/env bash
+echo "empacotador $*" >> "$ANOTACOES"
+if [ -n "${PACOTES_FALHAM:-}" ]; then echo "FALHAS: $PACOTES_FALHAM"; exit 1; fi
+echo "pacotes ok"
+"""
+
+
+def _com_empacotador(ambiente: dict[str, str], tmp_path: Path) -> dict[str, str]:
+    assert BASH is not None
+    falso = tmp_path / "empacotador.sh"
+    falso.write_text(EMPACOTADOR_DE_MENTIRA)
+    return {**ambiente, "EMPACOTADOR": f"{BASH} {falso}"}
+
+
+@precisa_de_bash
+def test_padrao_manda_o_acervo_para_o_empacotador_e_so_os_backups_pequenos_por_arquivo(
+    ambiente: dict[str, str], tmp_path: Path
+) -> None:
+    """Sem as variáveis, o acervo e os backups grandes vão em pacotes; só as quatro pastas pequenas em `copy`."""
+    padrao = {
+        k: v
+        for k, v in _com_empacotador(ambiente, tmp_path).items()
+        if k not in ("PARTES_DO_ACERVO", "BACKUPS_QUE_SOBEM")
+    }
+    resultado = rodar(BACKUP, padrao)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    feitas = chamadas(ambiente)
+    copias = [c for c in feitas if c.startswith("copy ")]
+    assert len(copias) == 4
+    for grande in (
+        "tickerlab-pc",
+        "tickerlab-acervo",
+        "/bruto",
+        "/manifesto",
+        "/ancoras",
+    ):
+        assert not any(grande in c.split()[1] for c in copias), grande
+    assert [c for c in feitas if c.startswith("empacotador")] == ["empacotador subir"]
+
+
+@precisa_de_bash
+def test_pacote_que_falha_marca_a_falha_e_as_outras_partes_ainda_sobem(
+    ambiente: dict[str, str], tmp_path: Path
+) -> None:
+    resultado = rodar(
+        BACKUP,
+        {**_com_empacotador(ambiente, tmp_path), "PACOTES_FALHAM": "pacotes-bruto"},
+    )
+    assert resultado.returncode == 1
+    assert resultado.stdout.count("FALHAS:") == 1
+    assert "FALHAS: pacotes-bruto" in resultado.stdout
+    assert len([c for c in chamadas(ambiente) if c.startswith("copy ")]) == 7
+
+
+@precisa_de_bash
+def test_so_o_empacotador_ligado_ja_e_um_backup(
+    ambiente: dict[str, str], tmp_path: Path
+) -> None:
+    resultado = rodar(
+        BACKUP,
+        {
+            **_com_empacotador(ambiente, tmp_path),
+            "PARTES_DO_ACERVO": "",
+            "BACKUPS_QUE_SOBEM": "",
+        },
+    )
+    assert resultado.returncode == 0, resultado.stdout
+    assert chamadas(ambiente) == ["empacotador subir"]
+
+
+@precisa_de_bash
+def test_conferencia_e_restauracao_chamam_o_empacotador(
+    ambiente: dict[str, str], tmp_path: Path
+) -> None:
+    com = _com_empacotador(ambiente, tmp_path)
+    sem_listas = {**com, "PARTES_DO_ACERVO": "", "BACKUPS_QUE_SOBEM": ""}
+    assert rodar(CONFERENCIA, sem_listas).returncode == 0
+    assert rodar(RESTAURACAO, sem_listas).returncode == 0
+    assert chamadas(ambiente) == ["empacotador conferir", "empacotador amostra"]
+    ruim = rodar(CONFERENCIA, {**sem_listas, "PACOTES_FALHAM": "pacotes-bruto"})
+    assert ruim.returncode == 1
+    assert "FALHAS: pacotes-bruto" in ruim.stdout
+    ruim = rodar(RESTAURACAO, {**sem_listas, "PACOTES_FALHAM": "x"})
+    assert ruim.returncode == 1
+    assert "FALHAS: restauracao-drive" in ruim.stdout
 
 
 @precisa_de_bash
