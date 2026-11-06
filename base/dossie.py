@@ -1442,7 +1442,7 @@ def _linhas_da_dre(como_era: pd.DataFrame) -> pd.DataFrame:
             {True: LUCRO_DO_PERIODO, False: RECEITA_DA_DRE}
         ),
         exercicio=pd.to_datetime(escolhidas["fim"]).dt.year,
-        divulgado_em=pd.to_datetime(escolhidas["divulgado_em"]),
+        divulgado_em=_sem_fuso_da_coluna(escolhidas["divulgado_em"]),
     )
 
 
@@ -1527,7 +1527,7 @@ def _releases(
     """O release de resultado contra o ITR ou a DFP: quantos valores deu para comparar e os diferentes."""
     if releases.empty:
         return [], {}
-    releases = releases[pd.to_datetime(releases["publico_em"]) <= hoje]
+    releases = releases[_sem_fuso_da_coluna(releases["publico_em"]) <= hoje]
     if releases.empty:
         return [], {}
     # o release reentregue (versão nova) substitui o anterior do mesmo período
@@ -1697,7 +1697,7 @@ def _insiders(
     """
     if negociacoes.empty:
         return [], {}
-    entregues = negociacoes[pd.to_datetime(negociacoes["entregue_em"]) <= hoje]
+    entregues = negociacoes[_sem_fuso_da_coluna(negociacoes["entregue_em"]) <= hoje]
     datas = pd.to_datetime(entregues["data"])
     do_ano = entregues[_janela(datas, hoje)]
     somas = _somas_dos_insiders(do_ano)
@@ -1729,7 +1729,7 @@ def _eventos_de_capital(
     """Os eventos de capital dos últimos 10 anos, cada um uma vez (o FRE de cada ano os repete)."""
     if eventos.empty:
         return [], pd.DataFrame()
-    eventos = eventos.assign(data=pd.to_datetime(eventos["data"]))
+    eventos = eventos.assign(data=_sem_fuso_da_coluna(eventos["data"]))
     eventos = eventos[
         (eventos["data"] <= hoje)
         & (eventos["data"] > hoje - pd.DateOffset(years=ANOS_NAS_SERIES))
@@ -1807,8 +1807,8 @@ def _proventos_por_exercicio(
     if proventos.empty or "conhecido_em" not in proventos.columns:
         return pd.DataFrame()
     conhecidos = proventos.assign(
-        conhecido_em=pd.to_datetime(proventos["conhecido_em"]),
-        exercicio=pd.to_datetime(proventos["exercicio"]),
+        conhecido_em=_sem_fuso_da_coluna(proventos["conhecido_em"]),
+        exercicio=_sem_fuso_da_coluna(proventos["exercicio"]),
     ).dropna(subset=["conhecido_em", "exercicio"])
     publicos = conhecidos[
         (conhecidos["conhecido_em"] <= hoje)
@@ -2005,7 +2005,7 @@ def _por_exercicio(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
     entregues = _entregues(tabela, hoje)
     if entregues.empty:
         return entregues
-    encerrados = entregues[pd.to_datetime(entregues["fim_do_exercicio"]) <= hoje]
+    encerrados = entregues[_sem_fuso_da_coluna(entregues["fim_do_exercicio"]) <= hoje]
     mais_novo = encerrados.groupby("fim_do_exercicio")["referencia"].transform("max")
     return encerrados[encerrados["referencia"] == mais_novo]
 
@@ -2288,14 +2288,14 @@ def _ratings_publicos(ratings: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame
     if ratings.empty:
         return ratings
     publicos = ratings[
-        (pd.to_datetime(ratings["publico_em"]) <= hoje)
+        (_sem_fuso_da_coluna(ratings["publico_em"]) <= hoje)
         & (ratings["situacao_extracao"] == EXTRAIDO)
     ]
     publicos = publicos.sort_values("publico_em", kind="stable")
     com_data = publicos[publicos["data_acao"].notna()]
     sem_data = publicos[publicos["data_acao"].isna()]
     unicos = pd.concat([com_data.drop_duplicates(MESMO_RATING), sem_data])
-    return unicos.assign(publico_em=pd.to_datetime(unicos["publico_em"]))
+    return unicos.assign(publico_em=_sem_fuso_da_coluna(unicos["publico_em"]))
 
 
 def _acoes_de_rating(ratings: pd.DataFrame) -> dict[str, int]:
@@ -2377,13 +2377,13 @@ def _assembleias_publicas(
     if assembleias.empty:
         return assembleias
     publicas = assembleias[
-        (pd.to_datetime(assembleias["publico_em"]) <= hoje)
+        (_sem_fuso_da_coluna(assembleias["publico_em"]) <= hoje)
         & (assembleias["documento"] == ASSEMBLEIA)
     ]
     ultimas = publicas.sort_values(["protocolo", "versao"]).drop_duplicates(
         "protocolo", keep="last"
     )
-    return ultimas.assign(publico_em=pd.to_datetime(ultimas["publico_em"]))
+    return ultimas.assign(publico_em=_sem_fuso_da_coluna(ultimas["publico_em"]))
 
 
 def _com_o_tema(documentos: pd.DataFrame, tema: str) -> int:
@@ -2701,10 +2701,9 @@ def ligacoes_dos_bancos(
     ligacao = ligacao.assign(
         cod_inst=ligacao["cod_inst"].astype(str).str.strip(),
         cnpj=ligacao["cnpj"].fillna("").astype(str).str.strip(),
+        data_base=_sem_fuso_da_coluna(ligacao["data_base"]),
     )
-    publica = pd.to_datetime(ligacao["data_base"]) + pd.Timedelta(
-        days=DIAS_ATE_FICAR_PUBLICO
-    )
+    publica = ligacao["data_base"] + pd.Timedelta(days=DIAS_ATE_FICAR_PUBLICO)
     ligacao = ligacao[(publica <= hoje) & ligacao["cod_inst"].isin(chaves)]
     ultima = ligacao.sort_values("data_base").drop_duplicates("cod_inst", keep="last")
     ligadas = ultima[ultima["cnpj"] != ""]
@@ -3331,7 +3330,7 @@ def _fatos_da_cvm(insolvencia: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame
     """Os documentos do IPE sobre a própria companhia, já públicos em `hoje`, uma vez por entrega
     (a reapresentação não apaga a data da primeira versão)."""
     insolvencia = insolvencia.reindex(columns=COLUNAS_DA_INSOLVENCIA)
-    publico = pd.to_datetime(insolvencia["conhecido_em"])
+    publico = _sem_fuso_da_coluna(insolvencia["conhecido_em"])
     vale = insolvencia.assign(conhecido_em=publico)[
         insolvencia["rotulo"].isin(NOMES_DOS_REGISTROS) & (publico <= hoje)
     ]
@@ -3356,7 +3355,7 @@ def _fatos_da_receita(
     """As situações especiais do cadastro do CNPJ já públicas em `hoje`: um fato por rótulo e data,
     na primeira vez que o retrato mensal o trouxe (a filial e os meses seguintes não o repetem)."""
     situacao_especial = situacao_especial.reindex(columns=COLUNAS_DA_SITUACAO_ESPECIAL)
-    publico = pd.to_datetime(situacao_especial["disponivel_em"])
+    publico = _sem_fuso_da_coluna(situacao_especial["disponivel_em"])
     vale = situacao_especial.assign(disponivel_em=publico)[
         situacao_especial["rotulo"].isin(NOMES_DOS_REGISTROS) & (publico <= hoje)
     ]
@@ -3436,6 +3435,9 @@ def secao_insolvencia(
         None
         if situacao_especial is None
         else _fatos_da_receita(situacao_especial, hoje)
+    )
+    contestacoes = contestacoes.assign(
+        recebida_em=_sem_fuso_da_coluna(contestacoes["recebida_em"])
     )
     contestadas = contestacoes[contestacoes["recebida_em"] <= hoje]
     fatos = pd.concat(
@@ -3546,7 +3548,7 @@ def raizes_do_fre_em_dia(
     if controladas.empty or "conhecido_em" not in controladas.columns:
         return set()  # sem a data de entrega não dá para saber o que já era público
     hoje = _sem_fuso(hoje)
-    publicos = controladas[pd.to_datetime(controladas["conhecido_em"]) <= hoje]
+    publicos = controladas[_sem_fuso_da_coluna(controladas["conhecido_em"]) <= hoje]
     limite = hoje - pd.DateOffset(years=ANOS_DO_FRE_EM_DIA)
     pares: set[tuple[str, str]] = set()
     for companhia, fres in publicos.groupby(publicos["cnpj_companhia"].map(raiz)):

@@ -269,11 +269,14 @@ Teste 'tl com comando desconhecido avisa e mostra a ajuda' {
 # --- instalador ---------------------------------------------------------------------------------------------
 
 $instalador = (Resolve-Path (Join-Path $pastaDosTestes '../instalar.ps1')).Path
+$pontePwsh = (Resolve-Path (Join-Path $pastaDosTestes '../ponte-pwsh.ps1')).Path
+$ponteWindowsPowerShell = (Resolve-Path (Join-Path $pastaDosTestes '../ponte-windows-powershell.ps1')).Path
 $pwsh = (Get-Process -Id $PID).Path
 
-function Instalar([string[]]$Argumentos) {
-    <# Roda o instalador num pwsh filho: assim ele não toca o perfil de verdade nem reimporta o módulo desta suíte. #>
-    & $pwsh -NoProfile -NonInteractive -File $instalador @Argumentos 2>&1 | Out-String
+function Instalar([string]$Perfil, [string]$PerfilAntigo, [string[]]$Mais = @()) {
+    <# Roda o instalador num pwsh filho, sempre com os dois perfis de teste: assim ele não toca os perfis de verdade
+       nem reimporta o módulo desta suíte. #>
+    & $pwsh -NoProfile -NonInteractive -File $instalador -Perfil $Perfil -PerfilAntigo $PerfilAntigo @Mais 2>&1 | Out-String
 }
 
 function PerfilDeTeste([string]$Nome) {
@@ -282,29 +285,68 @@ function PerfilDeTeste([string]$Nome) {
     return $caminho
 }
 
-Teste 'instalar.ps1 escreve a linha no perfil dado, avisa das janelas já abertas e não repete a linha' {
+Teste 'instalar.ps1 escreve uma linha em cada perfil dado, avisa das janelas já abertas e não repete as linhas' {
     $perfil = PerfilDeTeste 'perfil'
+    $perfilAntigo = PerfilDeTeste 'perfil-antigo'
     try {
-        $saida = Instalar @('-Perfil', $perfil)
+        $saida = Instalar $perfil $perfilAntigo
         Contem $saida 'acrescentei: Import-Module'
+        Contem $saida 'acrescentei: . '
         Contem $saida 'abertas'
         Contem $saida 'PowerShell 7'
+        Contem $saida 'Windows PowerShell 5.1'
         $linhas = @(Get-Content -LiteralPath $perfil -Encoding utf8)
         Igual $linhas.Count 1
         Contem $linhas[0] 'TickerLab.psd1'
-        Contem (Instalar @('-Perfil', $perfil)) 'nada a fazer'
+        $linhasAntigas = @(Get-Content -LiteralPath $perfilAntigo -Encoding utf8)
+        Igual $linhasAntigas.Count 1
+        Contem $linhasAntigas[0] 'ponte-windows-powershell.ps1'
+        $deNovo = Instalar $perfil $perfilAntigo
+        Contem $deNovo 'nada a fazer'
+        NaoContem $deNovo 'acrescentei'
         Igual @(Get-Content -LiteralPath $perfil -Encoding utf8).Count 1
-    } finally { Remove-Item -LiteralPath $perfil -ErrorAction SilentlyContinue }
+        Igual @(Get-Content -LiteralPath $perfilAntigo -Encoding utf8).Count 1
+    } finally { Remove-Item -LiteralPath $perfil, $perfilAntigo -ErrorAction SilentlyContinue }
 }
 
-Teste 'instalar.ps1 deixa o tl pronto na própria janela; com -SoMostrar não toca o perfil' {
+Teste 'instalar.ps1 deixa o tl pronto na própria janela; com -SoMostrar não toca perfil nenhum' {
     $perfil = PerfilDeTeste 'mostrar'
+    $perfilAntigo = PerfilDeTeste 'mostrar-antigo'
     try {
-        Contem (Instalar @('-Perfil', $perfil, '-SoMostrar')) 'acrescentaria'
-        if (Test-Path -LiteralPath $perfil) { throw 'criou o perfil só mostrando' }
-        $temTl = & $pwsh -NoProfile -NonInteractive -Command "& '$instalador' -Perfil '$perfil' 6>&1 | Out-Null; [bool](Get-Command tl -ErrorAction SilentlyContinue)"
+        $saida = Instalar $perfil $perfilAntigo @('-SoMostrar')
+        Contem $saida 'acrescentaria'
+        Contem $saida 'nada mudou'
+        foreach ($arquivo in $perfil, $perfilAntigo) {
+            if (Test-Path -LiteralPath $arquivo) { throw "criou $arquivo só mostrando" }
+        }
+        $temTl = & $pwsh -NoProfile -NonInteractive -Command "& '$instalador' -Perfil '$perfil' -PerfilAntigo '$perfilAntigo' 6>&1 | Out-Null; [bool](Get-Command tl -ErrorAction SilentlyContinue)"
         Igual $temTl 'True'
-    } finally { Remove-Item -LiteralPath $perfil -ErrorAction SilentlyContinue }
+    } finally { Remove-Item -LiteralPath $perfil, $perfilAntigo -ErrorAction SilentlyContinue }
+}
+
+# --- ponte para o Windows PowerShell 5.1 --------------------------------------------------------------------
+
+Teste 'ponte-pwsh.ps1 importa o módulo e roda o tl com os argumentos recebidos' {
+    $saida = & $pwsh -NoProfile -NonInteractive -File $pontePwsh xyz 2>&1 | Out-String
+    Contem $saida "'tl xyz'"
+    Contem $saida 'tl nova'
+}
+
+Teste 'ponte-windows-powershell.ps1 define um tl que repassa o comando a um pwsh' {
+    $saida = & $pwsh -NoProfile -NonInteractive -Command ". '$ponteWindowsPowerShell'; tl xyz" 2>&1 | Out-String
+    Contem $saida "'tl xyz'"
+    Contem $saida 'tl nova'
+}
+
+$powershellAntigo = Get-Command powershell.exe -ErrorAction SilentlyContinue
+if ($powershellAntigo) {
+    Teste 'a ponte funciona a partir do Windows PowerShell 5.1 de verdade' {
+        $saida = & $powershellAntigo.Source -NoProfile -NonInteractive -Command ". '$ponteWindowsPowerShell'; tl xyz" 2>&1 | Out-String
+        Contem $saida "'tl xyz'"
+        Contem $saida 'tl nova'
+    }
+} else {
+    Write-Host '  (sem Windows PowerShell 5.1 neste sistema: a ponte a partir dele não foi testada aqui)'
 }
 
 Write-Host ''
