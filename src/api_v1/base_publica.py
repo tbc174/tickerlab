@@ -41,21 +41,23 @@ def hoje() -> date:
     return datetime.now(dossie.FUSO).date()
 
 
-def _cabecalhos(request: Request) -> dict[str, str]:
+def cabecalhos_do_site(request: Request) -> dict[str, str]:
+    """`Vary: Origin` e, só para o site do TickerLab, o `Access-Control-Allow-Origin`."""
     cabecalhos = {"Vary": "Origin"}
     if request.headers.get("origin") == ORIGEM_DO_SITE:
         cabecalhos["Access-Control-Allow-Origin"] = ORIGEM_DO_SITE
     return cabecalhos
 
 
-def _recusar(request: Request, status: int, detalhe: object) -> HTTPException:
-    return HTTPException(status, detalhe, headers=_cabecalhos(request))
+def recusar(request: Request, status: int, detalhe: object) -> HTTPException:
+    """Uma recusa com os cabeçalhos do site: o navegador lê a mensagem em vez de um erro de CORS."""
+    return HTTPException(status, detalhe, headers=cabecalhos_do_site(request))
 
 
 def conferir_pedido(request: Request) -> None:
     """Conta também pedidos inválidos e respostas que já estão no cache."""
     if not LIMITE_POR_IP.permitir(ip_de_quem_pede(request), agora()):
-        raise _recusar(request, 429, "Muitos pedidos: espere um minuto.")
+        raise recusar(request, 429, "Muitos pedidos: espere um minuto.")
 
 
 router = APIRouter(
@@ -186,7 +188,7 @@ def buscar(
     try:
         consulta, por_cnpj = _consulta(q)
     except ValueError as erro:
-        raise _recusar(request, 422, str(erro)) from None
+        raise recusar(request, 422, str(erro)) from None
     try:
         candidatas = _companhias(consulta, por_cnpj, hoje())
         for candidata in candidatas:
@@ -195,15 +197,15 @@ def buscar(
                 return JSONResponse(
                     {**resultado, "candidatas": _outras(candidatas, cnpj)},
                     headers={
-                        **_cabecalhos(request),
+                        **cabecalhos_do_site(request),
                         "Cache-Control": "public, max-age=86400",
                     },
                 )
     except (SQLAlchemyError, OSError, regras.PessoaNaFichaError):
-        raise _recusar(
+        raise recusar(
             request, 503, "A busca está indisponível agora. Tente novamente mais tarde."
         ) from None
-    raise _recusar(
+    raise recusar(
         request,
         404,
         {"mensagem": FORA_DA_BASE, "sugestoes": vitrine.empresas_da_base()},

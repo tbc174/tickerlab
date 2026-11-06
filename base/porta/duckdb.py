@@ -243,6 +243,12 @@ def nome_da_view(tabela: str, versao: str | None = None) -> str:
     return f"{tabela}__v{str(versao).split('.')[0]}"
 
 
+def servida_pela_porta(tabela: str) -> bool:
+    """Se a porta serve a tabela por Parquet do acervo (`ARQUIVOS`): as conferidas no repositório e
+    as de `FORA_DA_PORTA` ficam de fora da consulta aberta (API e site)."""
+    return tabela in ARQUIVOS
+
+
 def arquivos_da_tabela(pasta: Path, padrao: str) -> list[Path]:
     """Os Parquets vigentes de `padrao` dentro de `pasta`, sem as versões guardadas."""
     return sorted(

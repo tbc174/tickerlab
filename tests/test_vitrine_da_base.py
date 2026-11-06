@@ -14,7 +14,8 @@ import pytest
 
 from base import vitrine
 from base.contrato import PASTA
-from base.dossie import conferir_sem_pessoas, normalizar_nome
+from base.dicionario import TABELAS
+from base.dossie import conferir_sem_pessoas, normalizar_nome, pode_consultar
 
 CVM = "ODbL (dados abertos da CVM; citar a fonte)"
 BCB = "ODbL (dados abertos do Banco Central; citar a fonte)"
@@ -199,7 +200,28 @@ def test_tabelas_do_catalogo_levam_o_que_a_linha_mostra():
     assert a.frequencia == "Mensal"
     assert a.atraso == "Até 45 dias depois do trimestre"
     assert a.historico_desde == "2010-01-01"
+    assert (
+        a.consultavel is False
+    )  # "a" não está no dicionário: só tabela real entra na consulta
     assert [t.tabela for t in linhas] == ["a", "b", "c"]  # a ordem do catálogo
+
+
+def test_consultavel_segue_a_regra_de_mostrar_e_a_porta():
+    """`consultavel` sai da mesma regra da API aberta (`pode_consultar`): tabela que pode ser mostrada
+    e que a porta serve por Parquet; a de pessoa, a barrada e a fora da porta ficam só na ficha."""
+    frases = dict.fromkeys(TABELAS, "Uma frase.")
+
+    linhas = {
+        t.tabela: t for t in vitrine.tabelas_do_catalogo(_catalogo_real(), frases)
+    }
+
+    assert linhas["pgfn_divida"].consultavel is True
+    assert (
+        linhas["cnpj_simples"].consultavel is False
+    )  # pode mostrar, mas está fora da porta
+    assert linhas["sancoes_cgu"].consultavel is False  # tabela de pessoa
+    assert all(t.consultavel == pode_consultar(nome) for nome, t in linhas.items())
+    assert sum(t.consultavel for t in linhas.values()) > 50
 
 
 # --- texto que sai para o site aberto ------------------------------------------------------------
