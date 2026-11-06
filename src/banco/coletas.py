@@ -827,6 +827,11 @@ FONTES_FORA_DOS_USOS: frozenset[str] = frozenset()
 # dossiê, a busca por CNPJ, o relatório, a exportação do acervo e o portão da API externa.
 FONTES_SO_INTERNAS: frozenset[str] = frozenset({"datajud"})
 USOS_INTERNOS = ("treinar", "rotular")
+# As famílias que mostram, rotulam e exportam, mas não treinam modelo. O DATASUS (ADR 0122, item 1): o
+# Ministério da Saúde liberou o uso comercial por escrito em 05/11/2026, e a resposta não fala de treino, que
+# fica a confirmar. Sai daqui quando houver resposta escrita sobre o treino.
+FONTES_SEM_TREINO: frozenset[str] = frozenset({"ms"})
+TREINAR = "treinar"
 
 
 class UsoSemCobranca(NamedTuple):
@@ -1007,7 +1012,8 @@ _VENDAVEIS_COM_LICENCA_ESCRITA = (VENDAVEL_ODBL, VENDAVEL_COM_ATRIBUICAO)
 
 class LicencaNaoPermiteError(Exception):
     """Treinar, rotular, exportar ou mostrar com fonte fora dos usos (`FONTES_FORA_DOS_USOS`, hoje vazia),
-    ou exportar e mostrar com fonte só interna (`FONTES_SO_INTERNAS`)."""
+    exportar e mostrar com fonte só interna (`FONTES_SO_INTERNAS`) ou treinar com fonte sem treino
+    (`FONTES_SEM_TREINO`)."""
 
 
 LIMITE_DO_DETALHE = 300
@@ -1085,8 +1091,17 @@ def so_interna(fonte: str) -> bool:
     return _familia(fonte) in FONTES_SO_INTERNAS
 
 
+def sem_treino(fonte: str) -> bool:
+    """A fonte ("ms-cnes") ou a família dela fica fora do treino de modelo (`FONTES_SEM_TREINO`)?"""
+    return _familia(fonte) in FONTES_SEM_TREINO
+
+
 def _barrada(uso: str, fonte: str) -> bool:
-    return fora_dos_usos(fonte) or (so_interna(fonte) and uso not in USOS_INTERNOS)
+    return (
+        fora_dos_usos(fonte)
+        or (so_interna(fonte) and uso not in USOS_INTERNOS)
+        or (sem_treino(fonte) and uso == TREINAR)
+    )
 
 
 def _conferir_uso(uso: str) -> None:
@@ -1099,7 +1114,7 @@ def pode_usar(uso: str, fonte: str) -> bool:
 
     Pela ADR 0102 a marca não decide: toda fonte entra em qualquer uso, com a fonte e a data citadas
     (`citacoes_das_fontes`); só entra em `FONTES_FORA_DOS_USOS` o que uma decisão nova barrar, e as
-    `FONTES_SO_INTERNAS` só treinam e rotulam. Vale para o app
+    `FONTES_SO_INTERNAS` só treinam e rotulam; as `FONTES_SEM_TREINO` fazem tudo menos treinar. Vale para o app
     (tela, PDF, newsletter e a v1 interna); a API externa tem outra regra, que nega por padrão:
     `src/portao_externo.py` (ADR 0108).
     """
@@ -1111,16 +1126,25 @@ def exigir_licenca(uso: str, fontes: Iterable[str], onde: str = "") -> None:
     """Erro (não aviso) se alguma fonte está fora de `uso` ("treinar", "rotular", "exportar" ou "mostrar").
 
     Barra o que está em `FONTES_FORA_DOS_USOS` (hoje nada) e, fora de treinar e rotular, as
-    `FONTES_SO_INTERNAS`; a marca é informação (ADR 0102). `onde` (a tabela, o script, o relatório) entra
+    `FONTES_SO_INTERNAS` e, no treino, as `FONTES_SEM_TREINO`; a marca é informação (ADR 0102). `onde` (a tabela, o script, o relatório) entra
     na mensagem.
     """
     _conferir_uso(uso)
+    # As três conferências percorrem as fontes: um gerador se esgotaria na primeira e as outras
+    # passariam vazias (a trava de treino não pegaria).
+    fontes = list(fontes)
     alvo = f" ({onde})" if onde else ""
     internas = sorted({f for f in fontes if so_interna(f) and _barrada(uso, f)})
     if internas:
         raise LicencaNaoPermiteError(
             f"{uso}{alvo} com fonte de só uso interno: {', '.join(internas)} (`FONTES_SO_INTERNAS`; "
             "só treinar e rotular)"
+        )
+    sem_modelo = sorted({f for f in fontes if sem_treino(f) and _barrada(uso, f)})
+    if sem_modelo:
+        raise LicencaNaoPermiteError(
+            f"{uso}{alvo} com fonte sem treino: {', '.join(sem_modelo)} (`FONTES_SEM_TREINO`; "
+            "a resposta escrita não cobre o treino de modelos)"
         )
     barradas = sorted({f for f in fontes if fora_dos_usos(f)})
     if barradas:
