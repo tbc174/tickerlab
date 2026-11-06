@@ -18,6 +18,7 @@ from base.arquivo import (
     lote_commodities,
     lote_cvm,
     lote_eua,
+    lote_europa_rba,
     lote_licitacoes,
     lote_nordicos,
     lote_patentes,
@@ -74,6 +75,12 @@ _IBOVESPA_FORA_DO_CATALOGO = (
 
 def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
     return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
+
+
+_LOTE_EUROPA_RBA_SO_ARQUIVO = (
+    "séries de institutos de estatística europeus e da RBA, guardadas como publicadas; "
+    "a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria"
+)
 
 
 _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
@@ -553,6 +560,7 @@ DESTINOS: dict[str, Destino] = {
             "termos-iex",
             "termos-banco-mundial",
             *lote_eua.termos(),
+            *lote_europa_rba.termos(),
             *lote_nordicos.termos(),
             *lote_cadastros.termos(),
             *lote_atencao.termos(),
@@ -570,6 +578,11 @@ DESTINOS: dict[str, Destino] = {
     **{
         f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
         for f in lote_eua.fontes()
+    },
+    # lote Europa e RBA (linha 512, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("lote-europa-rba/carga", _LOTE_EUROPA_RBA_SO_ARQUIVO)
+        for f in lote_europa_rba.fontes()
     },
     # lote SEC (rodada 4, 23/10/2026): idem, a carga na base de ML é uma fila própria
     **{
