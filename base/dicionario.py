@@ -2762,7 +2762,8 @@ def _tabelas_da_anm() -> dict[str, Tabela]:
 
 
 def _tabelas_dos_incentivos() -> dict[str, Tabela]:
-    """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE, RDE-IED e SEFAZ-PE."""
+    """Os incentivos por CNPJ (`base/incentivos.py`, Ficha Clara): REIDI, CDE, RDE-IED e SEFAZ-PE; e a
+    dívida ativa do Paraná (`base/divida_estadual.py`, linha 755), que usa a mesma situação de linha."""
     situacao = {
         "consta": (
             "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
@@ -2788,6 +2789,11 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
     so_pj = (
         "Só pessoa jurídica: CPF e nome (do cliente, do agente, do investidor, da empresa) saem na "
         "coleta; empresário individual e MEI ficam com `trata_como_pessoa`."
+    )
+    so_pj_pr = (
+        "Só pessoa jurídica: a coleta tira o CPF, o nome e a razão social (firma individual e MEI "
+        "têm o nome da pessoa), e quem a Receita guardada trata como pessoa fica com "
+        "`trata_como_pessoa`."
     )
     atraso = (
         "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o "
@@ -2905,6 +2911,40 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
             DATA,
         ),
     }
+    pr = {
+        "id_na_fonte": (
+            "O número da dívida ativa, o CNPJ e o tipo do crédito juntos por `|`",
+            TEXTO,
+        ),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "divida_ativa": (
+            "Número da inscrição em dívida ativa, como a fonte escreve",
+            TEXTO,
+        ),
+        "tipo_do_credito": (
+            "Tipo do crédito (ICMS, IPVA, PROCON, taxas...), como a fonte escreve",
+            TEXTO,
+        ),
+        "inscrito_em": (
+            "Data da inscrição do débito em dívida ativa (não é quando a base soube)",
+            DATA,
+        ),
+        "atualizado_em": ("Data da última atualização do valor, segundo a fonte", DATA),
+        "valor_do_imposto": ("Valor do imposto (principal), em reais", REAIS),
+        "valor_da_multa": ("Valor da multa, em reais", REAIS),
+        "valor_dos_juros": ("Valor dos juros, em reais", REAIS),
+        "valor_total": ("Valor total do débito na atualização, em reais", REAIS),
+        "suspensao": (
+            "Motivo da suspensão da exigibilidade (depósito judicial, suspensão da PGE...); vazio quando não há",
+            TEXTO,
+        ),
+        "com_garantia": ("Verdadeiro quando o débito tem garantia", SIM_OU_NAO),
+        "com_parcelamento_ativo": (
+            "Verdadeiro quando há parcelamento ativo do débito",
+            SIM_OU_NAO,
+        ),
+    }
     return {
         "mme_reidi": tabela(
             "mme_reidi",
@@ -2958,6 +2998,33 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
             "sefazpe",
             "Mensal (um arquivo por ano; o arquivista guarda só o que mudou)",
             pe,
+        ),
+        "sefa_pr_divida_ativa": Tabela(
+            descricao=(
+                "Débitos inscritos em dívida ativa no Paraná (Sefa-PR: ICMS, IPVA, taxas...) por CNPJ, "
+                "com o valor, a data da inscrição, a suspensão, a garantia e o parcelamento. Um "
+                "arquivo por dia forma uma série só: débito novo ou com valor ou situação diferente vira "
+                "linha nova desde o dia em que foi visto, e o débito que some do arquivo (pago, "
+                "cancelado, prescrito: a fonte não diz o motivo) ganha `consta` falso. "
+                + so_pj_pr
+            ),
+            fonte=(
+                "Sefa-PR: Portal do Devedor, lista de devedores em arquivo (licença a confirmar; "
+                "citar a fonte) (`base/divida_estadual.py`)"
+            ),
+            familia_da_fonte="sefapr",
+            frequencia="Semanal (a Sefa-PR gera o arquivo todo dia; o arquivista guarda o do dia)",
+            atraso=(
+                "A fonte não diz quando publicou cada débito: toda linha vale desde o dia em que o "
+                "arquivista a viu (a história guardada começa em 06/11/2026); a data da inscrição "
+                "fica na coluna `inscrito_em`"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/sefa_pr_divida_ativa/divida_ativa.parquet` (servidor de "
+                "casa, `scripts/carga_divida_estadual.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={**pr, **situacao},
         ),
     }
 
@@ -8796,6 +8863,9 @@ _SUS = (
 _TCES = "2026-11-04"  # os contratos dos TCEs entraram na base neste dia (linha 652)
 _INCENTIVOS = "2026-10-29"  # o REIDI, a CDE e o RDE-IED (Ficha Clara) entraram no arquivista neste dia
 _SEFAZ_PE = "2026-11-05"  # os benefícios fiscais de Pernambuco entraram no arquivista neste dia (linha 578)
+_SEFA_PR = (
+    "2026-11-06"  # a dívida ativa do Paraná entrou no arquivista neste dia (linha 755)
+)
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -9041,6 +9111,7 @@ _CONTRATO = {
     "aneel_cde": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "sefaz_pe_beneficios": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFAZ_PE, granularidade_do_publico_em="mes"),
+    "sefa_pr_divida_ativa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inscrito_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFA_PR, granularidade_do_publico_em="dia"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
@@ -9275,6 +9346,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "sefaz_pe_beneficios": {
         "pasta": "sefaz_pe_beneficios",
         "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "programa", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "sefa_pr_divida_ativa": {
+        "pasta": "sefa_pr_divida_ativa",
+        "faixas": {"valor_total": _SEM_NEGATIVO, "valor_do_imposto": _SEM_NEGATIVO},
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "divida_ativa", "tipo_do_credito", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "ans_penalidades": {
         "pasta": "ans_penalidades",

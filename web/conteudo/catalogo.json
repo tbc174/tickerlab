@@ -1691,6 +1691,21 @@
     },
     {
       "coletas": [
+        "sefapr-divida-ativa"
+      ],
+      "familia": "sefapr",
+      "licencas": [
+        "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)"
+      ],
+      "link": "https://listadevedores.sefa.pr.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Sefa-PR (Secretaria da Fazenda do Paraná)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-06",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
         "wikidata-lei",
         "wikidata-isin",
         "wikidata-cnpj",
@@ -2764,6 +2779,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-06",
+      "licenca": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Sefa-PR",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-11-04",
       "licenca": "TCE-CE: licença não localizada; risco assumido",
       "modulos": [
@@ -2820,8 +2846,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 31,
-    "tabelas": 112,
+    "orgaos": 32,
+    "tabelas": 113,
     "temas": [
       {
         "chave": "cvm",
@@ -2855,6 +2881,7 @@
         "chave": "riscos",
         "orgaos": [
           "PGFN",
+          "Sefa-PR",
           "CGU",
           "ANS",
           "MTE",
@@ -2862,8 +2889,8 @@
           "CNJ",
           "CVM"
         ],
-        "tabelas": 7,
-        "texto": "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 8,
+        "texto": "Dívida ativa da União e do Paraná, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2923,7 +2950,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 49
+      "tabelas": 50
     },
     {
       "chave": "credito_e_fidc",
@@ -6140,6 +6167,13 @@
       "termos_lidos_em": "2026-11-05"
     },
     {
+      "id": "sefapr-divida-ativa",
+      "licenca": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
       "id": "gleif-goldencopy-lei2",
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",
@@ -7991,6 +8025,17 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Débitos inscritos em dívida ativa no Paraná (Sefa-PR: ICMS, IPVA, taxas...) por CNPJ, com o valor, a data da inscrição, a suspensão, a garantia e o parcelamento.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Sefa-PR",
+      "situacao": "licenciada",
+      "tabela": "sefa_pr_divida_ativa"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -8650,11 +8695,11 @@
     }
   ],
   "totais": {
-    "familias": 130,
-    "familias_em_uso": 43,
-    "fontes": 43,
+    "familias": 131,
+    "familias_em_uso": 44,
+    "fontes": 44,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 149
+    "tabelas": 150
   }
 }

@@ -106,6 +106,7 @@ FAMILIA_DO_ENDERECO = {
     "www.dados.ms.gov.br/": "msestado",  # despesas por credor (linhas 658 e 688)
     "dados.ms.gov.br/": "msestado",
     "dados.pe.gov.br/": "sefazpe",  # benefícios fiscais da SEFAZ-PE (linha 578)
+    "listadevedores.sefa.pr.gov.br/": "sefapr",  # dívida ativa do Paraná (linha 755)
     "dados.prefeitura.sp.gov.br/": "spcapital",  # extrato de contratos (linha 658)
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
