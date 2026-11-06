@@ -183,6 +183,12 @@ _SEM_VIGIA = {
     ),
     "snb": "sem coleta: só a marca não comercial; os termos do portal data.snb.ch são um app JavaScript",
     "cnj": "a regra é a Resolução CNJ 46/2007 (norma publicada); o serviço da TPU não tem termos",
+    # fontes pouco visíveis (ADR 0124)
+    **dict.fromkeys(
+        ("sudeco", "sudam"),
+        "a licença (CC BY-ND 3.0) está no rodapé de cada página do gov.br, sem página de termos própria",
+    ),
+    "divida": "PDFs de sites diferentes guardados só como prova; não há uma página de termos a vigiar",
 }
 
 

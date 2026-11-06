@@ -72,6 +72,7 @@ def test_licenca_da_rfb_renuncias_cita_perse_e_ii_ipi():
     texto = coletas.LICENCAS["rfb-renuncias"]
     assert "PERSE" in texto
     assert "II/IPI" in texto
+    assert len(texto) <= coletas.coletas.c.licenca.type.length
 
 
 def test_originais_documentais_no_catalogo_do_arquivista():

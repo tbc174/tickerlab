@@ -52,10 +52,7 @@ LICENCAS = {
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
     "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
-    "rfb-renuncias": (
-        "DIRBI, ECF, PERSE (EFD-Contribuições) e II/IPI (DUIMP) da Receita: sem licença escrita; "
-        "risco assumido (ADR 0122)"
-    ),
+    "rfb-renuncias": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)",
     "rfb-transacoes": "Transações da Receita: sem licença escrita; risco assumido (ADR 0122)",
     "ms": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
     "tce-rn": "TCE-RN: licença não localizada; risco assumido (ADR 0122)",
