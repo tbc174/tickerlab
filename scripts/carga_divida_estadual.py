@@ -4,8 +4,9 @@
     python -m scripts.carga_divida_estadual --pasta /tmp/base  (outra pasta de saída)
     python -m scripts.carga_divida_estadual --refazer          (relê mesmo sem arquivo novo: código novo)
 
-Lê o que o arquivista já guardou da Sefa-PR (não baixa nada). Só CNPJ inteiro de dígito certo entra;
-nome e CPF nunca (ADR 0075). Saída padrão: `<TICKERLAB_ACERVO>/base/sefa_pr_divida_ativa/divida_ativa.parquet`.
+Lê o que o arquivista já guardou da Sefa-PR e da SEF-MG (não baixa nada). Só CNPJ inteiro de dígito certo entra;
+nome e CPF nunca (ADR 0075). Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<arquivo>.parquet` de `sefa_pr_divida_ativa`,
+`sef_mg_divida_ativa` e `sef_mg_parcelamentos`.
 Feita para o servidor de casa (ADR 0031), depois do arquivista; recusa rodar sem a versão do código
 (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhum arquivo de dívida ativa guardado.
 

@@ -428,6 +428,9 @@ DESTINOS: dict[str, Destino] = {
     "sefapr-divida-ativa": _tabela(
         "sefa_pr_divida_ativa"
     ),  # dívida ativa do Paraná (linha 755)
+    "sefmg-divida-ativa": _tabela(
+        "sef_mg_divida_ativa", "sef_mg_parcelamentos"
+    ),  # dívida ativa de Minas Gerais (linha 755)
     # financiamentos por CNPJ (`base/financiamentos.py`; o BNDES vem do lote Brasil 2, abaixo)
     "finep-contratacao": _tabela("financiamentos_finep"),
     **{f.id: _tabela("bcb_selic_focus") for f in lote_selic.fontes()},

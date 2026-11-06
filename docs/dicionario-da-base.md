@@ -3470,6 +3470,78 @@ Débitos inscritos em dívida ativa no Paraná (Sefa-PR: ICMS, IPVA, taxas...) p
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `sef_mg_divida_ativa`
+
+Certidões de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG, Resolução Conjunta SEF/AGE 5.625/2022) por CNPJ, com a espécie, a data da inscrição e o saldo. Uma planilha por semana forma uma série só: CDA nova ou com saldo diferente vira linha nova desde o dia em que foi vista, e a que some da planilha (paga, cancelada, prescrita: a fonte não diz o motivo) ganha `consta` falso. Só pessoa jurídica: a coleta tira o nome do devedor (firma individual leva o nome da pessoa) e as linhas com CPF no nome; quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra.
+
+- **Fonte:** SEF-MG: dívida ativa, planilhas de pessoa jurídica (Res. Conj. SEF/AGE 5.625/2022; licença a confirmar; citar a fonte) (`base/divida_estadual.py`)
+- **Licença:** SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Semanal (a SEF-MG atualiza a planilha; o arquivista guarda uma por semana)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada CDA: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); a data da inscrição fica na coluna `inscrito_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `inscrito_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sef_mg_divida_ativa/divida_ativa.parquet` (servidor de casa, `scripts/carga_divida_estadual.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O número da certidão ou do parcelamento e o CNPJ, juntos por `|` | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `cda` | Número da certidão de dívida ativa (CDA), como a fonte escreve | texto |
+| `inscrito_em` | Data da inscrição da CDA (não é quando a base soube) | data (dia) |
+| `especie` | Espécie da dívida (ICMS, IPVA, multa...), como a fonte escreve | texto |
+| `saldo_da_cda` | Saldo da CDA na data do arquivo, em reais | reais (R$), já multiplicado pela escala informada |
+| `saldo_do_nucleo` | Saldo do núcleo (o principal da dívida, sem acessórios), em reais, como a fonte informa | reais (R$), já multiplicado pela escala informada |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `sef_mg_parcelamentos`
+
+Parcelamentos de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG) por CNPJ, com a espécie, a data, a quantidade de parcelas e o débito. Mesma série semanal das CDAs: parcelamento novo ou com valor diferente vira linha nova, e o que some da planilha ganha `consta` falso. Só pessoa jurídica: a coleta tira o nome do devedor (firma individual leva o nome da pessoa) e as linhas com CPF no nome; quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra.
+
+- **Fonte:** SEF-MG: dívida ativa, planilhas de pessoa jurídica (Res. Conj. SEF/AGE 5.625/2022; licença a confirmar; citar a fonte) (`base/divida_estadual.py`)
+- **Licença:** SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Semanal (a SEF-MG atualiza a planilha; o arquivista guarda uma por semana)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada parcelamento: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); a data do parcelamento fica na coluna `parcelado_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `parcelado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sef_mg_parcelamentos/parcelamentos.parquet` (servidor de casa, `scripts/carga_divida_estadual.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O número da certidão ou do parcelamento e o CNPJ, juntos por `|` | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `parcelamento` | Número do parcelamento, como a fonte escreve | texto |
+| `parcelado_em` | Data em que o parcelamento foi feito | data (dia) |
+| `especie` | Espécie da dívida parcelada, como a fonte escreve | texto |
+| `parcelas` | Quantidade de parcelas | número inteiro |
+| `debito` | Débito parcelado, em reais, como a fonte informa | reais (R$), já multiplicado pela escala informada |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `financiamentos_bndes`
 
 Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas). **Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.
