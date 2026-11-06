@@ -28,6 +28,9 @@ no repositório, e esta carga os lê com o Python em modo isolado (`python -I`).
 
 Licença a confirmar, só uso interno (ADR 0102, Emenda 2); nada é perguntado às fontes. Recusa rodar sem a
 versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 arquivo faltando.
+
+Roda: manual (python -m scripts.carga_tces); coberto por test_carga_tces.py; ver
+dicionario-da-base.md; citado em dicionario.py.
 """
 
 import argparse

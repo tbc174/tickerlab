@@ -5,6 +5,8 @@
 Lê a base **só pela porta** (`base.porta`), compara cada par de `base/cruzada.py::PARES`, grava
 `<acervo>/placar/<dia>/cruzada.json` e imprime uma linha por par. Divergência sem explicação em
 `base/conferidas/divergencias_explicadas.csv` sai com 1 e uma linha `FALHAS: ...` (o Kuma lê). Só lê a base.
+
+Roda: manual (python -m scripts.conferir_cruzado); citado em cruzada.py.
 """
 
 import argparse

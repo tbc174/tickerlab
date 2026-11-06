@@ -12,6 +12,8 @@ numa noite: este é o número que decide.
 **As maiores pelo ativo total** (conta 1 do balanço consolidado mais novo, valor vigente): a base não
 guarda o valor de mercado, e para medir a rede o que importa é ter as empresas mais ligadas, que são
 as grandes. Só CNPJ e nome de companhia saem no arquivo (nenhuma pessoa).
+
+Roda: manual no servidor pelo porta-no-servidor.sh.
 """
 
 import argparse

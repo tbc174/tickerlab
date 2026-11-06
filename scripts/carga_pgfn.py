@@ -12,6 +12,9 @@ individual ou MEI (`trata_como_pessoa`); a 2ª soma as inscrições, um CSV de c
 (11 pedaços por CSV: ~1 GB no maior). Feita para o servidor de
 casa (ADR 0031); recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo;
 1 nenhum ZIP da PGFN guardado.
+
+Roda: cron de casa pelo carga-serie4.sh (todo mês, dia 13, às 9h20); manual no servidor pelo
+pgfn-no-servidor.sh; citado em dicionario.py.
 """
 
 import argparse

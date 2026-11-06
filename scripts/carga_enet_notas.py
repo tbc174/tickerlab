@@ -11,6 +11,8 @@ uma é um documento, com a própria entrega) e guarda só o texto por página, s
 janela da madrugada e o `--desde`.
 
 Saída 0 tudo certo; 1 se nada veio e algo falhou (o Kuma avisa).
+
+Roda: outro script (montar_base_historica.py).
 """
 
 import argparse

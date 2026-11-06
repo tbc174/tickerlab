@@ -6,6 +6,8 @@
 Para cada coleta de uma fonte de `acervo.FONTES_COM_PESSOA` cujo caminho começa em `bruto/`: confere o
 SHA-256 do arquivo contra o registro (arquivo mexido para tudo, nada é movido), move e só então troca o
 caminho no registro. Rodar de novo não faz nada. Saída 0 tudo certo; 1 falha de conferência.
+
+Roda: manual (python -m scripts.mover_acervo_restrito); sem uso registrado em 05/11/2026.
 """
 
 import argparse

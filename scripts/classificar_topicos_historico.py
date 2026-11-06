@@ -9,6 +9,8 @@ tem de existir no título; o resultado vai para `topico_modelo`, à parte, e a t
 medição. `--simular` só conta tokens e estima o custo (não cria lote, não gasta). O lote real só roda
 com `--executar` e `--autorizado-usd`: o valor que o Tiago aprovou; se a estimativa passa dele, para.
 O lacre: só entregas até 31/03/2026 (o holdout da medição fica de fora); `--teto` limita a execução.
+
+Roda: manual (python -m scripts.classificar_topicos_historico); sem uso registrado em 05/11/2026.
 """
 
 import argparse

@@ -16,6 +16,8 @@ As 8 datas-base mais novas do IF.data e os 2 anos mais novos do SCR são baixado
 (o BC revisa os números; cada revisão vira versão). O resto vem do acervo se já estiver lá. Um pedido
 por vez, com pausa; se o firewall do BC bloquear, espera 5 minutos e tenta mais uma vez. Recusa rodar
 sem a versão do código (exigência 13 da ADR 0055).
+
+Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h15); citado em dicionario.py.
 """
 
 import argparse

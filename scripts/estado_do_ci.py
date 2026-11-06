@@ -13,6 +13,8 @@ o deploy implanta o mais novo que já passou, em vez de esperar o último: com v
 mesclando, o último quase nunca tinha o teste terminado e nada ia para o ar (13/10/2026).
 
 Só stdlib, para rodar no servidor.
+
+Roda: cron do VPS pelo deploy-automatico.sh (a cada minuto: deploy automático da main com CI verde).
 """
 
 import json

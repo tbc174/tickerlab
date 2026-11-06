@@ -9,6 +9,8 @@ guardou no acervo (não baixa nada). Só CNPJ inteiro de dígito certo entra; no
 0075). Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<cadastro>.parquet`. Feita para o servidor de
 casa (ADR 0031), todo dia depois do arquivista; recusa rodar sem a versão do código (exigência 13 da
 ADR 0055). Saída 0 tudo certo; 1 nenhum cadastro de licença guardado.
+
+Roda: cron de casa pelo carga-conferencias.sh (todo dia às 5h40); citado em dicionario.py.
 """
 
 import argparse

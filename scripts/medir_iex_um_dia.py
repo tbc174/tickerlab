@@ -10,6 +10,9 @@ no disco; só as barras são gravadas, em `dados/intradiario/iex/AAAA-MM-DD.parq
 Mede: GB baixados, tempo, velocidade, memória máxima, negócios lidos e guardados, cobertura dos
 minutos. A conferência contra o fechamento oficial saiu daqui com o Yahoo (linha 175 da fila): o
 oficial voltará quando houver fonte licenciada (ver o selo em `scripts/coletar_iex_do_dia.py`).
+
+Roda: manual (python -m scripts.medir_iex_um_dia); coberto por
+test_base_manifesto_em_toda_tabela.py, test_coletar_iex.py.
 """
 
 import argparse

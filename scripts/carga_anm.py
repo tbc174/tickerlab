@@ -20,6 +20,9 @@ duas coletas mantém a data da primeira (olhar de novo não empurra o passado pa
 Ritmo mensal: o app não depende dela; o servidor de casa roda uma vez por mês. Licença da ANM não declarada:
 a confirmar, só uso interno (ADR 0102, Emenda 2); nada é perguntado à fonte. Recusa rodar sem a versão do
 código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 se alguma tabela falhou.
+
+Roda: manual (python -m scripts.carga_anm); coberto por test_carga_anm.py; ver
+dicionario-da-base.md; citado em dicionario.py.
 """
 
 import argparse

@@ -13,6 +13,9 @@ O que faz, nesta ordem (merge, nunca rebase: push forçado é proibido):
 3. nas pastas geradas, parte da versão da `main` e roda todos os geradores por cima;
 4. adiciona só as pastas geradas e faz o commit do merge.
 Depois é só `git push` (comum) e esperar o CI.
+
+Roda: manual (python -m scripts.juntar_main), pedido pelo AGENTS.md antes do merge e pelas skills
+abrir-conversa e publicar do PC.
 """
 
 import shutil

@@ -12,6 +12,8 @@ falha (saída 1, última linha `FALHAS:`) se alguma oposição passou do prazo s
 durante o pedido trouxe a pessoa de volta ao restrito; `atender` refaz a lápide de todas (sem pedir nome). Nada
 do que se imprime traz nome, CPF ou id. Evite rodar `pedido` durante a carga mensal
 (`scripts.carga_receita_retrato`); se rodou, o `conferir` acusa e o `atender` conserta.
+
+Roda: cron de casa pelo oposicao-do-titular.sh (todo dia às 6h10 e 18h10).
 """
 
 import argparse

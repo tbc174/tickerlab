@@ -18,6 +18,9 @@ semana só a busca pelo nome roda; a partir da segunda, o arquivista busca pelo 
 a carga anterior ligou a uma companhia.
 Feita para o servidor de casa (ADR 0031), toda semana depois do arquivista; recusa rodar sem a versão
 do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhuma consulta do DJEN guardada.
+
+Roda: manual (python -m scripts.carga_processos); ver dicionario-da-base.md; citado em
+dicionario.py.
 """
 
 import argparse

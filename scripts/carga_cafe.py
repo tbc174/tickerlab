@@ -21,6 +21,9 @@ manifesto e versões (`gravar_com_versoes`: com as mesmas origens, nada é lido 
 A CFTC (`cftc_cot_agro`) segue em `scripts/carga_setoriais.py --fonte cftc-cot-disaggregated`; o
 `carga-cafe.sh` roda as duas. Recusa rodar sem a versão do código (ADR 0055). Saída 0 tudo certo; 1 alguma
 tabela falhou ou não tem original (última linha `FALHAS: ...`, que vai para o Kuma).
+
+Roda: cron de casa pelo carga-cafe.sh (todo dia às 6h20); coberto por test_carga_cafe.py; ver
+dicionario-da-base.md; citado em dicionario.py.
 """
 
 import argparse

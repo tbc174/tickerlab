@@ -16,6 +16,9 @@ de um endereço entra como uma coleta (`base/setoriais/revisoes.py`), e a tabela
 valor diferente, com o dia em que a revisão foi vista. Um Parquet por arquivo da fonte: o SAMP por ano
 (`aneel/<ano>`), a Anatel por CSV (`anatel/<nome do CSV>`), a ANS e a SUSEP por ano da competência
 (`ans/<ano>`, `susep/<ano>`).
+
+Roda: cron de casa pelo carga-serie4.sh (todo mês, dia 13, às 9h00) e pelo carga-cafe.sh (todo dia
+às 6h20, só o CFTC); outro script (carga_cafe.py); citado em dicionario.py.
 """
 
 import argparse

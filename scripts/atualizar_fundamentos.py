@@ -7,6 +7,9 @@ de entrega fora do prazo (eventos do Research, `src/prazos.py`).
 Roda fora do app (no servidor, uma vez por dia); o app só lê. Usa o banco de
 `TICKERLAB_DATABASE_URL` e aplica as migrações antes. Um arquivo que ainda não existe na CVM (o DFP
 do ano corrente, antes de março) é pulado; outras falhas param a coleta sem apagar nada.
+
+Roda: cron do VPS (todo dia às 7h10); migração do banco (0044_cadastro_da_cvm.py); citado em
+demonstracoes.py, fundamentos.py.
 """
 
 import argparse

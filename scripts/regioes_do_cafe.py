@@ -11,6 +11,8 @@ Entram os municípios das áreas de cada região com pelo menos `AREA_MINIMA_HA`
 internet (`python -m scripts.regioes_do_cafe`) ou aponte uma pasta de cache (`--pasta <pasta>`;
 os JSONs baixados ficam lá e são reaproveitados). Confira o diff do CSV antes do commit: mudar a
 lista muda o clima por região e o mapa.
+
+Roda: manual (python -m scripts.regioes_do_cafe); citado em regioes.py.
 """
 
 import argparse

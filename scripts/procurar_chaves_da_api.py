@@ -7,6 +7,8 @@ repositório público tiver algo com o formato de uma chave de `src/chaves_da_ap
 Uso: `python3 scripts/procurar_chaves_da_api.py [arquivo ...]` (sem argumentos, todos os arquivos que
 o Git versiona). Imprime `arquivo:linha` e **nunca** a chave achada; sai com 1 se achar alguma.
 Só stdlib, porque roda no CI antes de instalar as dependências.
+
+Roda: CI (testes.yml).
 """
 
 import re

@@ -6,6 +6,8 @@
 Roda fora do app (no servidor, uma vez por dia); o app só lê. Grava as negociações e um evento por
 documento, cargo e operação (página Acontecimentos). Um arquivo que ainda não existe na CVM (o do
 ano novo, em janeiro) é pulado; outras falhas param a coleta sem apagar nada.
+
+Roda: cron do VPS (todo dia às 7h30); citado em negociacoes.py, por_dentro.py.
 """
 
 import argparse

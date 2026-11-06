@@ -15,6 +15,8 @@ Com `--resumos`, escreve também `<tarefa>.json` para cada tarefa falhando ou at
 falha de `src/classificar_falha.py` (tipo de uma lista fechada, sem texto do log), que vai para o
 repositório de estado lido pela equipe de conserto. O log de cada tarefa é o que o crontab passa ao
 `rodar-tarefa.sh`; no contêiner, a pasta pessoal é montada no mesmo caminho, só para leitura.
+
+Roda: cron do VPS e cron de casa pelo vigia-das-coletas.sh (minuto 7 de cada hora).
 """
 
 import argparse

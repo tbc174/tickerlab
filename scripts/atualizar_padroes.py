@@ -13,6 +13,8 @@ metodologia são os de 31/12 de cada ano.
 Com `--com-precos`, busca o preço de cada empresa no corte (último pregão até a data, no máximo
 `DIAS_DE_TOLERANCIA` antes) pelo histórico do app (Yahoo, com o cache no banco), e os múltiplos
 entram nos padrões: são a régua do setor do barato, justo ou caro. Preço de exemplo nunca entra.
+
+Roda: cron do VPS (todo dia às 8h30); citado em coletas.py, dicionario.py.
 """
 
 import argparse

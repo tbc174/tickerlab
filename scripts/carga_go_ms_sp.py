@@ -22,6 +22,9 @@ vez de gravar uma tabela vazia. Os arquivos baixados são dados de fora: ficam n
 repositório, e esta carga os lê com o Python em modo isolado (`python -I`).
 
 Recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 arquivo faltando.
+
+Roda: manual (python -m scripts.carga_go_ms_sp); coberto por test_carga_go_ms_sp.py; citado em
+registro.py.
 """
 
 import argparse

@@ -16,6 +16,9 @@ Só números: o texto sai do molde aprovado (`src/texto_do_pregao.py`), e o scri
 que esse texto sai. Arquivo que falta, número que não sai ou molde fora do aprovado fazem a última linha
 da saída ser `FALHAS: ...` e a saída 1 (o `rodar-tarefa.sh` leva ao Kuma). A véspera vem do calendário da
 B3, nunca do último arquivo guardado: um dia sem arquivo não pode virar uma variação de dois dias.
+
+Roda: cron de casa pelo gerar-pregao.sh (todo dia às 6h45); outro script (avisar_raio_x.py); citado
+em estudos.py.
 """
 
 import argparse

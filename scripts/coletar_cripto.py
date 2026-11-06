@@ -14,6 +14,9 @@
 A base fica em `<TICKERLAB_ACERVO>/base/cripto/`. Cada arquivo baixado vai para o acervo do
 original e para o registro de coletas (`com_registro`). Qualquer falha devolve 1 (o Kuma avisa) e
 nada é tratado como dado ausente: a rodada seguinte pede de novo desde o último dia guardado.
+
+Roda: cron de casa pelo coletar-cripto.sh (a cada 10 min e rodadas marcadas) e pelo freio-bitcoin.sh
+(a cada 5 min); citado em coleta.py.
 """
 
 import argparse

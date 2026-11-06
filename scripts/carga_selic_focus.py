@@ -3,6 +3,8 @@
 Lê os originais de `bcb-sgs-selic-meta` e `bcb-focus-selic-anual` (`base/arquivo/lote_selic.py`), monta o
 mesmo quadro de observações que o banco de produção guarda e grava `<acervo>/base/bcb_selic_focus/`.
 Não baixa nada. Roda no servidor de casa (`carga-serie4.sh selic-focus`).
+
+Roda: manual (python -m scripts.carga_selic_focus); sem uso registrado em 05/11/2026.
 """
 
 import argparse

@@ -7,6 +7,9 @@ imagens; não faz parte do app):
     python scripts/gerar_imagens_do_readme.py
 
 As imagens vão para `docs/imagens/`.
+
+Roda: manual (python -m scripts.gerar_imagens_do_readme; precisa do kaleido), quando os gráficos do
+README mudam; as imagens ficam em docs/imagens/.
 """
 
 from pathlib import Path

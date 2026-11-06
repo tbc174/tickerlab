@@ -7,6 +7,9 @@ Lê as tabelas da base (sanções, dívida ativa, licenças, incentivos e proces
 guardado no acervo (quem a busca do DJEN cobre) e, com `--vista`, as ligações do grupo econômico, e grava um SQLite só de leitura que o portal abre. Só entra o que é vigente e já público no dia,
 sem pessoa física. Feita para o servidor de casa (ADR 0031), depois das cargas do mês; recusa rodar sem a
 versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhuma fonte na base.
+
+Roda: cron de casa pelo carga-conferencias.sh (todo dia às 6h20) e pelo enviar-conferencias.sh (todo
+dia às 8h30); manual no servidor pelo receber-conferencias.sh.
 """
 
 import argparse

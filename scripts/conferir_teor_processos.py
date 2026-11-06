@@ -16,6 +16,9 @@
 
 Lê só o acervo (não baixa nada nem chama a API). Saída 0 tudo certo; 1 algum campo abaixo do
 critério (fica desligado: abre a ficha de falha); 2 sem a amostra do dia ou sem consulta guardada.
+
+Roda: manual (python -m scripts.conferir_teor_processos); coberto por
+test_conferir_teor_processos.py.
 """
 
 import argparse

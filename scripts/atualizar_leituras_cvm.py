@@ -12,6 +12,8 @@ A CVM limita os downloads por endereço: a coleta baixa poucos documentos, com i
 minuto, e para no primeiro sinal de limite (uma página de aviso no lugar do PDF), continuando no
 dia seguinte. Um documento que não é PDF (um .doc antigo) fica guardado com o motivo e a fila
 segue. Não apaga nada.
+
+Roda: cron do VPS (todo dia às 9h30); citado em eventos.py, leituras.py.
 """
 
 import argparse

@@ -16,6 +16,9 @@ Endereço, telefone e e-mail da fonte nunca entram; estabelecimento sem nenhum C
 Ritmo mensal: o app não depende dela; o servidor de casa roda uma vez por mês. Licença a confirmar, só uso
 interno (ADR 0102, Emenda 2); nada é perguntado à fonte. Recusa rodar sem a versão do código (exigência 13 da
 ADR 0055). Saída 0 tudo certo; 1 se alguma competência falhou.
+
+Roda: manual (python -m scripts.carga_cnes); coberto por test_carga_cnes.py; ver
+dicionario-da-base.md; citado em dicionario.py, registro.py.
 """
 
 import argparse

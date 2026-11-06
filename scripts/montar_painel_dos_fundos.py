@@ -11,6 +11,9 @@ motivo de quem fica sem empresa), um ano por vez, e grava em
 versões (`base/parquet.py::gravar_com_versoes`). As origens de cada tabela são as tabelas de entrada
 (com o SHA-256 do conteúdo anotado no manifesto delas) e a tabela conferida. Não baixa nada. Recusa
 rodar sem a versão do código (exigência 13 da ADR 0055).
+
+Roda: manual (python -m scripts.montar_painel_dos_fundos); ver dicionario-da-base.md; citado em
+dicionario.py.
 """
 
 import argparse

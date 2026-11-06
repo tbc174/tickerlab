@@ -23,6 +23,8 @@ tiver um nó do Bitcoin também pode conferir com o `ots verify` oficial.
 
 Usa a biblioteca `opentimestamps` (LGPL-3.0) e não o programa `ots`, que não abre no Windows (a
 `python-bitcoinlib` procura o OpenSSL por `ctypes`); o recibo é o mesmo formato `.ots` de sempre.
+
+Roda: cron de casa pelo ancorar-base.sh (todo dia às 0h15); citado em ancoragem.py.
 """
 
 import argparse

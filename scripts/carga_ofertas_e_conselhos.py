@@ -14,6 +14,8 @@ Lê os originais que o arquivista já guardou (não baixa nada) e grava, com man
 Nenhuma pessoa entra: as colunas de nome, CPF, nascimento e currículo nem são lidas; acionista e
 parte relacionada pessoa física só somados, sem nome nem documento (ADR 0075). Recusa rodar sem
 a versão do código (exigência 13 da ADR 0055).
+
+Roda: cron de casa pelo carga-serie4.sh (todo mês, dia 13, às 9h05); citado em dicionario.py.
 """
 
 import argparse

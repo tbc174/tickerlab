@@ -5,6 +5,8 @@ Uso: python -m scripts.validar_abs_ee ARQUIVO.xml [--limite N]
 Só lê um arquivo local (o baixado do EDGAR, com `User-Agent` declarado e no máximo 10 pedidos por segundo).
 O ABS-EE não tem CNPJ: o adaptador marca os ids como `externo`, então T07 e T08 só acusam id externo
 malformado; o resumo continua separando esses dois do resto.
+
+Roda: manual (python -m scripts.validar_abs_ee); coberto por test_securitizacao_abs_ee.py.
 """
 
 from __future__ import annotations

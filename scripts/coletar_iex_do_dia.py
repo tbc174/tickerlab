@@ -35,6 +35,8 @@ uma fonte (`oficiais`); sem ela os dias ficam sem selo e são selados quando hou
 falha (na carga antiga, um desdobramento depois do dia muda o preço oficial).
 
 Atribuição obrigatória ao mostrar estes dados: `iex_tops.ATRIBUICAO` (termos da IEX, ADR 0019).
+
+Roda: cron do VPS (todo dia às 0h30 e 5h00); outro script (medir_iex_um_dia.py).
 """
 
 import argparse
