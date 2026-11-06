@@ -88,6 +88,7 @@ ARQUIVOS: dict[str, str] = {
     "fre_capital_social": "fre_capital_social/*.parquet",
     "fre_empregados": "fre_empregados/*.parquet",
     "fre_acionistas": "fre_acionistas/*.parquet",
+    "fre_distribuicao_capital": "fre_distribuicao_capital/*.parquet",
     "fre_partes_relacionadas": "fre_partes_relacionadas/*.parquet",
     "ofertas_antigas": "ofertas/antigas.parquet",
     "ofertas_resolucao_160": "ofertas/resolucao_160.parquet",
@@ -235,6 +236,12 @@ def nome_da_view(tabela: str, versao: str | None = None) -> str:
     if versao is None:
         return tabela
     return f"{tabela}__v{str(versao).split('.')[0]}"
+
+
+def servida_pela_porta(tabela: str) -> bool:
+    """Se a porta serve a tabela por Parquet do acervo (`ARQUIVOS`): as conferidas no repositório e
+    as de `FORA_DA_PORTA` ficam de fora da consulta aberta (API e site)."""
+    return tabela in ARQUIVOS
 
 
 def arquivos_da_tabela(pasta: Path, padrao: str) -> list[Path]:

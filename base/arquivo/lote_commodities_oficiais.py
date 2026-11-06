@@ -28,6 +28,10 @@ Regras (testes em `tests/test_base_arquivo_lote_commodities_oficiais.py`), uma f
   dois endereços: as observações do grupo (de 31 KB a 1,5 MB) e a descrição das séries (nome, unidade). São
   8 pedidos por rodada, com pausa de 2 s. O mensal traz o total (`M.BCPI`) e os subíndices de energia
   (`M.ENER`), metais (`M.MTLS`) e não energia (`M.BCNE`); o semanal traz `W.BCPI`.
+- **Eurostat**, dois conjuntos da família `eurostat` (CC BY 4.0, só os países da UE: a lista é a de
+  `lote_organismos.FILTRO_DE_PAIS_DO_EUROSTAT`, um lugar só): `eurostat-precos-agricolas` (`apri_ap_crpouta`,
+  preços de produtos agrícolas, 193 KB) e `eurostat-preco-do-gas` (`nrg_pc_202`, gás para consumidores
+  domésticos, 262 KB). Um pedido cada, mensal (os dois saem por ano ou semestre).
 """
 
 import re
@@ -36,6 +40,7 @@ from datetime import UTC, date, datetime
 import sqlalchemy as sa
 
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, Fonte
+from base.arquivo.lote_organismos import EUROSTAT, FILTRO_DE_PAIS_DO_EUROSTAT
 from base.arquivo.obter import arquivo_que_pode_faltar
 
 PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS = (
@@ -137,6 +142,29 @@ def _fonte_do_bcpi(id_: str) -> Fonte:
     )
 
 
+# ---- Eurostat: preços agrícolas e de energia (família `eurostat`, só a UE) -------------------------
+CONJUNTOS_DO_EUROSTAT = {
+    "eurostat-precos-agricolas": "apri_ap_crpouta",
+    "eurostat-preco-do-gas": "nrg_pc_202",
+}
+
+
+def endereco_do_eurostat(conjunto: str) -> str:
+    """O conjunto só com os países da UE que a licença cobre (o mesmo filtro das outras séries do Eurostat)."""
+    return f"{EUROSTAT}/{conjunto}?{FILTRO_DE_PAIS_DO_EUROSTAT}&lang=EN"
+
+
+def _fonte_do_eurostat(id_: str) -> Fonte:
+    url = endereco_do_eurostat(CONJUNTOS_DO_EUROSTAT[id_])
+    return Fonte(
+        id_,
+        "mensal",  # os dois conjuntos saem por ano ou semestre; o SHA-256 decide o que é novo
+        lambda _cliente, _agora: [Alvo(url, ".json")],
+        "json",
+        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS,
+    )
+
+
 # avisos legais lidos: o vigia avisa quando o texto muda (Comissão em 24/10/2026, Bank of Canada em 05/11/2026)
 TERMOS_DOS_ORGAOS = {
     "termos-dgagri": "https://commission.europa.eu/legal-notice_en",
@@ -155,4 +183,5 @@ def fontes() -> list[Fonte]:
     return [
         *(_fonte_do_dg_agri(produto) for produto in produtos),
         *(_fonte_do_bcpi(id_) for id_ in GRUPOS_DO_BCPI),
+        *(_fonte_do_eurostat(id_) for id_ in CONJUNTOS_DO_EUROSTAT),
     ]

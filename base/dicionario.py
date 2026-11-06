@@ -4884,6 +4884,52 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "fre_distribuicao_capital": Tabela(
+        descricao=(
+            "Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie, e quantos acionistas pessoa física, pessoa jurídica e investidor institucional a companhia declara. Só contagens e percentuais, sem nome nem documento"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_distribuicao_capital/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "acionistas_pf": ("Número de acionistas pessoa física", NUMERO),
+            "acionistas_pj": ("Número de acionistas pessoa jurídica", NUMERO),
+            "acionistas_institucionais": (
+                "Número de investidores institucionais",
+                NUMERO,
+            ),
+            "circulacao_ordinarias": ("Ações ordinárias em circulação", ACOES),
+            "percentual_ordinarias": (
+                "Percentual das ordinárias em circulação, de 0 a 100 como a CVM escreve",
+                NUMERO_DECIMAL,
+            ),
+            "circulacao_preferenciais": ("Ações preferenciais em circulação", ACOES),
+            "percentual_preferenciais": (
+                "Percentual das preferenciais em circulação, de 0 a 100 como a CVM escreve",
+                NUMERO_DECIMAL,
+            ),
+            "circulacao_total": ("Total de ações em circulação", ACOES),
+            "percentual_total": (
+                "Percentual do total de ações em circulação (o free float declarado), de 0 a 100 como a CVM escreve; a CVM tem linhas fora dessa faixa",
+                NUMERO_DECIMAL,
+            ),
+            "ultima_assembleia_em": (
+                "Data da última assembleia geral a que a distribuição se refere",
+                DATA,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
     "fre_acionistas": Tabela(
         descricao=(
             "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física, com as ações e o percentual de cada espécie, desde 2010. Empresa e fundo entram com nome e CNPJ; pessoa física (ou CPF, ou nome sem cara de empresa) só somada por grupo, sem nome, CPF, UF nem nacionalidade (ADR 0075, item 5); o representante legal nem é lido"
@@ -8623,6 +8669,7 @@ _CONTRATO = {
     "fre_diversidade": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_capital_social": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_capital_social'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_empregados": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'recorte', 'grupo'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde="2023-01-01"),
+    "fre_distribuicao_capital": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_documento'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_acionistas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'id_acionista'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_partes_relacionadas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'linha'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
