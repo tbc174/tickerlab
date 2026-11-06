@@ -26,7 +26,12 @@ import pandas as pd
 from base.cnpj import normalizar_cnpj
 from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
-from src.banco.coletas import FONTES_SO_INTERNAS, licenca_da_fonte
+from src.banco.coletas import (
+    FONTES_SO_INTERNAS,
+    PARENTESES_INTERNO,
+    licenca_da_fonte,
+    licenca_do_site,
+)
 
 # o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
 ORGAOS: tuple[tuple[str, str], ...] = (
@@ -97,11 +102,6 @@ _INTERNO = re.compile(
     re.IGNORECASE,
 )
 _ENTRE_PARENTESES = re.compile(r"\s*\([^)]*\)")
-# o parêntese que cita uma decisão (ADR 0075, PR 2) ou um arquivo do repositório (base/regras.py)
-_PARENTESES_INTERNO = re.compile(
-    r"\s*\((?:(?:ADR|PR|passo|série|modelo)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)",
-    re.IGNORECASE,
-)
 _INTERNO_NA_FRASE = re.compile(
     r"servidor|VPS|\bADR\b|\b\w+/\w+\.py|lista de trabalho|\bdo app\b|\bdo Capital\b|\bB13\b",
     re.IGNORECASE,
@@ -167,12 +167,6 @@ def situacao_da_licenca(licenca: str, revenda: str) -> str:
     if "perguntar" in licenca.lower() or sem_resposta:
         return EM_CONSULTA
     return LICENCIADA
-
-
-def licenca_do_site(licenca: str) -> str:
-    """O texto da licença sem a decisão interna entre parênteses ("(ADR 0082)")."""
-    sem_decisao = _PARENTESES_INTERNO.sub("", licenca)
-    return sem_decisao.replace("perguntar a licença", "reuso em consulta")
 
 
 def repasse_do_site(licenca: str, situacao: str) -> str:
@@ -282,7 +276,7 @@ def _fim_da_primeira_frase(texto: str) -> int:
 
 def primeira_frase(texto: str) -> str:
     """A primeira frase da descrição, sem código, sem número de ADR e com até `LIMITE_DA_FRASE` letras."""
-    limpo = _PARENTESES_INTERNO.sub("", texto.replace("`", "")).strip()
+    limpo = PARENTESES_INTERNO.sub("", texto.replace("`", "")).strip()
     frase = limpo[: _fim_da_primeira_frase(limpo)].strip()
     interno = _INTERNO_NA_FRASE.search(frase)
     if interno:  # fica o que vem antes da última vírgula que precede o termo interno

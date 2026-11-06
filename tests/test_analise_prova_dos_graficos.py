@@ -8,6 +8,10 @@ a montagem leva só o que passou nas duas.
 O guia v1 pedia um porquê neutro ("Mostra, passo a passo, como..."); o Tiago achou os gráficos pouco
 interessantes, e desde a emenda 1 do plano o porquê do modelo é o achado, com número. A porta 1 de
 hoje reprova esses porquês neutros (`achado_sem_numero`), e a reserva toma o lugar deles.
+
+A entrada que os modelos leram está congelada em `entrada_da_prova_dos_graficos.json` (o hash das
+respostas é dela). A `entrada.json` acompanha a ficha de hoje (o par do gabarito) e muda quando a
+ficha ganha coluna ou seção; a da prova não muda, como `entrada_da_prova.json` na análise escrita.
 """
 
 import hashlib
@@ -23,7 +27,9 @@ from src.analise_escrita import porta1_dos_graficos as p1g
 from src.analise_escrita import reserva_dos_graficos as rg
 from tests.ajudantes_da_analise import PAR_DA_CPFL
 
-ENTRADA = json.loads((PAR_DA_CPFL / "entrada.json").read_text(encoding="utf-8"))
+ENTRADA = json.loads(
+    (PAR_DA_CPFL / "entrada_da_prova_dos_graficos.json").read_text(encoding="utf-8")
+)
 ANALISE = saida.ler_analise(
     json.loads((PAR_DA_CPFL / "gabarito.json").read_text(encoding="utf-8"))["analise"]
 )

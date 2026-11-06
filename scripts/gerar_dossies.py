@@ -142,6 +142,12 @@ class Entradas:
     insolvencia: dict[str, pd.DataFrame] | None = None
     situacao_especial: dict[str, pd.DataFrame] | None = None
     contestacoes: pd.DataFrame = field(default_factory=contestacoes_da_base.vazia)
+    # dívida ativa da União (PGFN) e rótulo de atraso na entrega (CVM) por raiz de CNPJ, como fato
+    # datado (virada de 5/11/2026, fase 1); None: a base não tem a tabela (sem seção). As duas são
+    # lidas sem `como_era_em`: a regra da data fica na seção (o documento sem entrega não tem data
+    # pública, e a porta o esconderia)
+    pgfn_divida: dict[str, pd.DataFrame] | None = None
+    rotulos_atraso: dict[str, pd.DataFrame] | None = None
     # o relatório do auditor sobre a DFP (`pareceres_dfp`); vazio: a base ainda não tem a tabela
     pareceres: pd.DataFrame = field(default_factory=pd.DataFrame)
     # o mesmo para o ITR (`pareceres_itr`) e a DMPL das DFPs (`dmpl_como_era`); vazio: sem a tabela
@@ -220,6 +226,8 @@ COLUNAS_DA_SITUACAO_ESPECIAL = (
     "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo", "data_situacao_especial",
     "mes_do_retrato", "disponivel_em",
 )  # fmt: skip
+COLUNAS_DA_DIVIDA = ("cnpj_basico", *dossie.COLUNAS_DA_DIVIDA)
+COLUNAS_DAS_ENTREGAS = ("cnpj", *dossie.COLUNAS_DAS_ENTREGAS)
 COLUNAS_DOS_RATINGS = (
     "cnpj", "agencia", "escala", "nota", "nota_original", "nivel", "perspectiva", "acao",
     "data_acao", "publico_em", "protocolo", "link", "situacao_extracao",
@@ -414,10 +422,11 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         tabela: leitor.ler(tabela, [*colunas])
         for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
     }
+    empresas = _empresas(
+        leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
+    )
     return Entradas(
-        empresas=_empresas(
-            leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
-        ),
+        empresas=empresas,
         auditores=leitor.ler("auditores"),
         trocas=leitor.ler("trocas_de_auditor"),
         controladas=controladas,
@@ -474,6 +483,10 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             "cnpj_basico",
         ),
         contestacoes=contestacoes_da_base.ler(),
+        pgfn_divida=_divida_das_companhias(leitor, empresas),
+        rotulos_atraso=_por_raiz(
+            _ler_se_existe(leitor, "rotulos_atraso", COLUNAS_DAS_ENTREGAS), "cnpj"
+        ),
         pareceres=_pareceres(leitor),
         pareceres_itr=_pareceres(leitor, "pareceres_itr"),
         dmpl=_dmpl(leitor, _dia(hoje)),
@@ -539,6 +552,25 @@ def _ler_se_existe(
     if not leitor.tem_coluna(tabela, colunas[0]):
         return None
     return leitor.ler(tabela, [*colunas])
+
+
+def _divida_das_companhias(
+    leitor: Leitor, empresas: pd.DataFrame
+) -> dict[str, pd.DataFrame] | None:
+    """A `pgfn_divida` só das raízes de CNPJ das companhias da ficha, por raiz; None sem a tabela.
+
+    A tabela tem toda empresa com dívida ativa (milhões de linhas por retrato): o filtro vai à porta,
+    em vez de ler tudo e separar um DataFrame por raiz (revisão cruzada do PR 2 da virada de 5/11).
+    """
+    if not leitor.tem_coluna("pgfn_divida", COLUNAS_DA_DIVIDA[0]):
+        return None
+    raizes = sorted(set(dossie.digitos(empresas["cnpj"]).str[:RAIZ_DO_CNPJ]))
+    if not raizes:
+        return {}
+    divida = leitor.ler(
+        "pgfn_divida", [*COLUNAS_DA_DIVIDA], filtros={"cnpj_basico": raizes}
+    )
+    return _por_raiz(divida, "cnpj_basico")
 
 
 def _por_raiz(
@@ -714,6 +746,12 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             _da_raiz(entradas.situacao_especial, c),
             contestacoes_da_base.da_empresa(entradas.contestacoes, c[:RAIZ_DO_CNPJ]),
             hoje,
+        ),
+        "divida_com_a_uniao": lambda c: dossie.secao_divida_com_a_uniao(
+            _da_raiz(entradas.pgfn_divida, c), hoje
+        ),
+        "entrega_das_demonstracoes": lambda c: dossie.secao_entrega_das_demonstracoes(
+            _da_raiz(entradas.rotulos_atraso, c), hoje
         ),
         "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }
