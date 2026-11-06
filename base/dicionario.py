@@ -3116,6 +3116,137 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_da_ordem_cronologica() -> dict[str, Tabela]:
+    """A ordem cronológica de pagamentos de Pernambuco e do Espírito Santo (`base/ordem_cronologica.py`,
+    linha 755): a mesma situação de linha da dívida ativa do Paraná."""
+    mesmas = _tabelas_dos_incentivos()["sefa_pr_divida_ativa"].colunas
+    situacao = {
+        c: mesmas[c]
+        for c in ("consta", "trata_como_pessoa", "visto_em", "disponivel_em")
+    }
+    comum = {
+        "id_na_fonte": (
+            "Empenho, documento, ordem bancária, CNPJ e valor pago juntos por `|`",
+            TEXTO,
+        ),
+        "arquivo": ("O ano do arquivo de onde a linha veio", TEXTO),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+        "codigo_ug": ("Código da unidade gestora que pagou", TEXTO),
+        "unidade_gestora": (
+            "Nome da unidade gestora (o órgão) que pagou, como a fonte escreve",
+            TEXTO,
+        ),
+        "empenho": (
+            "Número do empenho (a reserva da despesa), como a fonte escreve",
+            TEXTO,
+        ),
+    }
+    ordem = ("Número da ordem bancária do pagamento, como a fonte escreve", TEXTO)
+    categoria = ("Categoria do contrato, como a fonte escreve", TEXTO)
+    liquidado = (
+        "Dia em que a despesa foi liquidada (o estado reconheceu a dívida)",
+        DATA,
+    )
+    valor_pago = ("Valor pago, em reais", REAIS)
+    dias = (
+        (
+            "Dias entre a liquidação e o pagamento (`pago_em` menos `liquidado_em`): o prazo real "
+            "do governo; vazio quando falta uma das datas"
+        ),
+        NUMERO,
+    )
+    pe = {
+        **comum,
+        "documento": ("Número do documento de liquidação, como a fonte escreve", TEXTO),
+        "ordem_bancaria": ordem,
+        "categoria_contrato": categoria,
+        "liquidado_em": liquidado,
+        "ordem_bancaria_em": ("Dia da ordem bancária", DATA),
+        "pago_em": ("Dia do pagamento (não é quando a base soube)", DATA),
+        "valor_documento": ("Valor do documento de liquidação, em reais", REAIS),
+        "valor_pago": valor_pago,
+        "dias_ate_pagar": dias,
+    }
+    es = {
+        **comum,
+        "nota_de_liquidacao": (
+            "Número da nota de liquidação, como a fonte escreve",
+            TEXTO,
+        ),
+        "ordem_bancaria": ordem,
+        "categoria_contrato": categoria,
+        "ordem_cronologica_em": (
+            "Dia da ordem cronológica de pagamento na fonte",
+            DATA,
+        ),
+        "liquidado_em": liquidado,
+        "pago_em": (
+            "Dia da emissão da ordem bancária (a fonte não dá o dia em que o dinheiro caiu na conta)",
+            DATA,
+        ),
+        "valor_pago": valor_pago,
+        "dias_ate_pagar": dias,
+    }
+    so_pj = (
+        "Só pessoa jurídica: a coleta tira o nome do credor (firma individual leva o nome da "
+        "pessoa), o texto livre e as linhas com CPF; quem a Receita guardada trata como pessoa "
+        "fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra."
+    )
+    montagem = (
+        "Um Parquet por ano da fonte (`arquivo`): pagamento novo ou com data ou valor diferente vira "
+        "linha nova desde o dia em que foi visto, e o que some do arquivo (o estado corrigiu) ganha "
+        "`consta` falso. "
+    )
+    atraso = (
+        "A fonte não diz quando publicou cada pagamento: toda linha vale desde o dia em que o "
+        "arquivista a viu (a história guardada começa em 06/11/2026); as datas do pagamento ficam "
+        "nas colunas `liquidado_em` e `pago_em`"
+    )
+
+    def tabela(
+        nome: str, descricao: str, fonte: str, familia: str, colunas: dict
+    ) -> Tabela:
+        return Tabela(
+            descricao=descricao + " " + montagem + so_pj,
+            fonte=fonte + " (`base/ordem_cronologica.py`)",
+            familia_da_fonte=familia,
+            frequencia="Mensal (o arquivista guarda o arquivo do ano a cada coleta, só o que mudou)",
+            atraso=atraso,
+            onde=(
+                f"Parquet em `<acervo>/base/{nome}/ordem-cronologica-<ano>.parquet` (servidor de "
+                "casa, `scripts/carga_ordem_cronologica.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={**colunas, **situacao, **_ORIGEM_SEM_ANO},
+        )
+
+    return {
+        "sefaz_pe_ordem_cronologica": tabela(
+            "sefaz_pe_ordem_cronologica",
+            (
+                "Pagamentos do governo de Pernambuco a fornecedores, por CNPJ, com a unidade gestora, "
+                "o empenho, o dia da liquidação, o dia do pagamento e o valor pago. `dias_ate_pagar` "
+                "é o prazo real de pagamento do estado."
+            ),
+            "SEFAZ-PE: dados abertos (dados.pe.gov.br), ordem cronológica de pagamentos, CC BY",
+            "sefazpe",
+            pe,
+        ),
+        "es_ordem_cronologica": tabela(
+            "es_ordem_cronologica",
+            (
+                "Pagamentos do governo do Espírito Santo a fornecedores, por CNPJ, com a unidade "
+                "gestora, o empenho, a nota de liquidação, o dia da liquidação, o dia da ordem "
+                "bancária e o valor pago. `dias_ate_pagar` é o prazo real de pagamento do estado."
+            ),
+            "Governo do ES: dados abertos (dados.es.gov.br), ordem cronológica de pagamentos, CC BY",
+            "esdados",
+            es,
+        ),
+    }
+
+
 TABELAS: dict[str, Tabela] = {
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -6774,6 +6905,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_do_datajud(),
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
+    **_tabelas_da_ordem_cronologica(),
     **_tabelas_dos_financiamentos(),
     **_tabelas_da_cmed(),
     **_tabelas_dos_cadastros_em_retrato(),
@@ -8953,6 +9085,7 @@ _SEFAZ_PE = "2026-11-05"  # os benefícios fiscais de Pernambuco entraram no arq
 _SEFA_PR = (
     "2026-11-06"  # a dívida ativa do Paraná entrou no arquivista neste dia (linha 755)
 )
+_ORDEM_CRONOLOGICA = "2026-11-06"  # a ordem cronológica de pagamentos de PE e ES entrou no arquivista neste dia (linha 755)
 _SEF_MG = "2026-11-06"  # a dívida ativa de Minas Gerais entrou no arquivista neste dia (linha 755)
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
@@ -9201,6 +9334,8 @@ _CONTRATO = {
     "sefaz_pe_beneficios": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFAZ_PE, granularidade_do_publico_em="mes"),
     "sefa_pr_divida_ativa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inscrito_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFA_PR, granularidade_do_publico_em="dia"),
     "sef_mg_divida_ativa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inscrito_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEF_MG, granularidade_do_publico_em="dia"),
+    "sefaz_pe_ordem_cronologica": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "pago_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_ORDEM_CRONOLOGICA, granularidade_do_publico_em="dia"),
+    "es_ordem_cronologica": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "pago_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_ORDEM_CRONOLOGICA, granularidade_do_publico_em="dia"),
     "sef_mg_parcelamentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "parcelado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEF_MG, granularidade_do_publico_em="dia"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
@@ -9446,6 +9581,16 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "sef_mg_divida_ativa",
         "faixas": {"saldo_da_cda": _SEM_NEGATIVO},
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "cda", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "sefaz_pe_ordem_cronologica": {
+        "pasta": "sefaz_pe_ordem_cronologica",
+        "faixas": {"valor_pago": _SEM_NEGATIVO},
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "es_ordem_cronologica": {
+        "pasta": "es_ordem_cronologica",
+        "faixas": {"valor_pago": _SEM_NEGATIVO},
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "sef_mg_parcelamentos": {
         "pasta": "sef_mg_parcelamentos",

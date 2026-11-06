@@ -1,0 +1,126 @@
+{
+  "tabela": "es_ordem_cronologica",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_na_fonte": {
+      "descricao": "Empenho, documento, ordem bancária, CNPJ e valor pago juntos por `|`",
+      "unidade": "texto"
+    },
+    "arquivo": {
+      "descricao": "O ano do arquivo de onde a linha veio",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "codigo_ug": {
+      "descricao": "Código da unidade gestora que pagou",
+      "unidade": "texto"
+    },
+    "unidade_gestora": {
+      "descricao": "Nome da unidade gestora (o órgão) que pagou, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "empenho": {
+      "descricao": "Número do empenho (a reserva da despesa), como a fonte escreve",
+      "unidade": "texto"
+    },
+    "nota_de_liquidacao": {
+      "descricao": "Número da nota de liquidação, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "ordem_bancaria": {
+      "descricao": "Número da ordem bancária do pagamento, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "categoria_contrato": {
+      "descricao": "Categoria do contrato, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "ordem_cronologica_em": {
+      "descricao": "Dia da ordem cronológica de pagamento na fonte",
+      "unidade": "data (dia)"
+    },
+    "liquidado_em": {
+      "descricao": "Dia em que a despesa foi liquidada (o estado reconheceu a dívida)",
+      "unidade": "data (dia)"
+    },
+    "pago_em": {
+      "descricao": "Dia da emissão da ordem bancária (a fonte não dá o dia em que o dinheiro caiu na conta)",
+      "unidade": "data (dia)"
+    },
+    "valor_pago": {
+      "descricao": "Valor pago, em reais",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "dias_ate_pagar": {
+      "descricao": "Dias entre a liquidação e o pagamento (`pago_em` menos `liquidado_em`): o prazo real do governo; vazio quando falta uma das datas",
+      "unidade": "número inteiro"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que o arquivista viu a linha",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "arquivo",
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "pago_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "ordem_cronologica_em": "aconteceu_em",
+    "liquidado_em": "aconteceu_em",
+    "pago_em": "aconteceu_em",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-06",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": true,
+  "frequencia": "Mensal (o arquivista guarda o arquivo do ano a cada coleta, só o que mudou)",
+  "atraso": "A fonte não diz quando publicou cada pagamento: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); as datas do pagamento ficam nas colunas `liquidado_em` e `pago_em`"
+}

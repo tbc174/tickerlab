@@ -425,6 +425,8 @@ DESTINOS: dict[str, Destino] = {
     "sefazpe-beneficios": _tabela(
         "sefaz_pe_beneficios"
     ),  # incentivo estadual (linha 578)
+    "sefazpe-ordem-cronologica": _tabela("sefaz_pe_ordem_cronologica"),
+    "esdados-ordem-cronologica": _tabela("es_ordem_cronologica"),
     "sefapr-divida-ativa": _tabela(
         "sefa_pr_divida_ativa"
     ),  # dívida ativa do Paraná (linha 755)

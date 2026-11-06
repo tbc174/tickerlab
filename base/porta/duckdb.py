@@ -149,6 +149,8 @@ ARQUIVOS: dict[str, str] = {
     "sefa_pr_divida_ativa": "sefa_pr_divida_ativa/*.parquet",
     "sef_mg_divida_ativa": "sef_mg_divida_ativa/*.parquet",
     "sef_mg_parcelamentos": "sef_mg_parcelamentos/*.parquet",
+    "sefaz_pe_ordem_cronologica": "sefaz_pe_ordem_cronologica/*.parquet",
+    "es_ordem_cronologica": "es_ordem_cronologica/*.parquet",
     "ratings": "ratings/*.parquet",
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",

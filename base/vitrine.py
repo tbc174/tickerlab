@@ -51,6 +51,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"TCE-PE:", "TCE-PE"),
     (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
     (r"Sefa-PR, dívida", "Sefa-PR"),
+    (r"Governo do ES \(citar", "Governo do ES"),
     (r"SEF-MG, dívida", "SEF-MG"),
     (r"TCE-SP:", "TCE-SP"),
     (r"TCE-CE:", "TCE-CE"),
@@ -522,7 +523,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
         "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
-        "Pernambuco, contratos com estados e municípios nos tribunais de contas e o investimento "
+        "Pernambuco, a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento "
         "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
@@ -537,6 +538,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "tce_rs_contratos",
             "bcb_rde_ied",
             "sefaz_pe_beneficios",
+            "sefaz_pe_ordem_cronologica",
+            "es_ordem_cronologica",
         ),
     ),
 )

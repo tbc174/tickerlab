@@ -1676,7 +1676,8 @@
     },
     {
       "coletas": [
-        "sefazpe-beneficios"
+        "sefazpe-beneficios",
+        "sefazpe-ordem-cronologica"
       ],
       "familia": "sefazpe",
       "licencas": [
@@ -1715,6 +1716,21 @@
       "link": "https://www.fazenda.mg.gov.br/transparencia/Divida-Ativa/",
       "marca": "vendavel",
       "orgao": "SEF-MG (Secretaria de Estado de Fazenda de Minas Gerais)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-06",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
+        "esdados-ordem-cronologica"
+      ],
+      "familia": "esdados",
+      "licencas": [
+        "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor"
+      ],
+      "link": "https://dados.es.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo do Espírito Santo (dados abertos)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-06",
       "uso": "em_uso"
@@ -2551,6 +2567,17 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-11-05",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "SEFAZ-PE",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
       "modulos": [
@@ -2695,6 +2722,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-06",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Governo do ES",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
       "modulos": [
@@ -2794,17 +2832,6 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-11-05",
-      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "SEFAZ-PE",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
       "historico_desde": "2026-11-06",
       "licenca": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
       "modulos": [
@@ -2872,8 +2899,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 33,
-    "tabelas": 115,
+    "orgaos": 34,
+    "tabelas": 117,
     "temas": [
       {
         "chave": "cvm",
@@ -2960,10 +2987,11 @@
           "TCE-CE",
           "TCE-RS",
           "Banco Central",
-          "SEFAZ-PE"
+          "SEFAZ-PE",
+          "Governo do ES"
         ],
-        "tabelas": 12,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "tabelas": 14,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
         "titulo": "Dinheiro público e capital de fora"
       }
     ]
@@ -2977,7 +3005,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 52
+      "tabelas": 54
     },
     {
       "chave": "credito_e_fidc",
@@ -6208,6 +6236,20 @@
       "termos_lidos_em": "2026-11-06"
     },
     {
+      "id": "sefazpe-ordem-cronologica",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
+      "id": "esdados-ordem-cronologica",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
       "id": "gleif-goldencopy-lei2",
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",
@@ -8092,6 +8134,28 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Pagamentos do governo de Pernambuco a fornecedores, por CNPJ, com a unidade gestora, o empenho, o dia da liquidação, o dia do pagamento e o valor pago.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SEFAZ-PE",
+      "situacao": "licenciada",
+      "tabela": "sefaz_pe_ordem_cronologica"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Pagamentos do governo do Espírito Santo a fornecedores, por CNPJ, com a unidade gestora, o empenho, a nota de liquidação, o dia da liquidação, o dia da ordem bancária e o valor pago.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do ES",
+      "situacao": "licenciada",
+      "tabela": "es_ordem_cronologica"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -8751,11 +8815,11 @@
     }
   ],
   "totais": {
-    "familias": 132,
-    "familias_em_uso": 45,
-    "fontes": 45,
+    "familias": 133,
+    "familias_em_uso": 46,
+    "fontes": 46,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 152
+    "tabelas": 154
   }
 }
