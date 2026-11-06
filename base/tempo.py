@@ -98,6 +98,7 @@ COLUNAS_A_CONFERIR = frozenset(
         "primeira",
         "primeiro_no_cda",
         "ultima",
+        "ultima_assembleia_em",  # FRE 15.7: data da assembleia a que o free float se refere (pode ser anterior à entrega)
         "ultimo_no_cda",
         "ultimo_visto",
     }
