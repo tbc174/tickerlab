@@ -238,6 +238,15 @@ LICENCAS = {
     "ipea": "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea",
     # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
     "ans-demonstracoes": "Demonstrações da ANS: sem licença declarada; citar a ANS (ADR 0102)",
+    # lote Europa e RBA (lidas em 29/10/2026, linha 512)
+    "statat": "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'",
+    "statbel": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+    "cbs": "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands",
+    "cso": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+    "ines": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
+    "istat": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
+    "rba": "Maioria CC BY 4.0 (RBA); dados financeiros para uso pessoal ou comercial, sem sugerir apoio; tabelas de terceiros (ABS) e a taxa oficial têm termos próprios",
+    "snb": "Aviso do site do SNB: salvar e usar só 'for non-commercial purposes'; uso comercial pede consentimento",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -447,6 +456,15 @@ REVENDA = {
     "ipea": VENDAVEL_RISCO_ASSUMIDO,  # sem termos; cada série herda a fonte de origem (BM&FBovespa, Bacen, IBGE)
     "wipo": SO_USO_INTERNO,  # "not republish or commercially re-sell"; citar "WIPO Statistics Database"
     "ans-demonstracoes": VENDAVEL_RISCO_ASSUMIDO,
+    # lote Europa e RBA (lidas em 29/10/2026, linha 512): CC BY 4.0, citando a fonte
+    "statat": VENDAVEL_COM_ATRIBUICAO,
+    "statbel": VENDAVEL_COM_ATRIBUICAO,
+    "cbs": VENDAVEL_COM_ATRIBUICAO,
+    "cso": VENDAVEL_COM_ATRIBUICAO,
+    "ines": VENDAVEL_COM_ATRIBUICAO,
+    "istat": VENDAVEL_COM_ATRIBUICAO,
+    "rba": VENDAVEL_COM_ATRIBUICAO,  # só as tabelas próprias; sem a taxa oficial (F1) nem as do ABS
+    "snb": NAO_COMERCIAL,  # aviso do site; sem coleta (ADR 0102, Emenda 2: não pedir licença à fonte)
 }
 
 
@@ -732,6 +750,15 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "mme",
             # financiamentos (04/11): termos e robots.txt da Finep ainda não lidos
             "finep",
+            # lote Europa e RBA (05/11): termos lidos em 29/10; o SNB só tem a marca (sem coleta)
+            "statat",
+            "statbel",
+            "cbs",
+            "cso",
+            "ines",
+            "istat",
+            "rba",
+            "snb",
         ),
         _NAO_RESPONDIDA,
     ),
