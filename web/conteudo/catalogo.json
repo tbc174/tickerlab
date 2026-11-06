@@ -2249,7 +2249,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 64
+      "tabelas": 65
     },
     {
       "historico_desde": "2026-10-14",
@@ -2713,7 +2713,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 30,
-    "tabelas": 108,
+    "tabelas": 109,
     "temas": [
       {
         "chave": "cvm",
@@ -2730,8 +2730,8 @@
           "Receita Federal",
           "CVM"
         ],
-        "tabelas": 7,
-        "texto": "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
+        "tabelas": 8,
+        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
         "titulo": "Quem é dono e quem controla"
       },
       {
@@ -2800,7 +2800,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 66
+      "tabelas": 67
     },
     {
       "chave": "governo_e_sancoes",
@@ -7197,6 +7197,16 @@
     },
     {
       "atraso": null,
+      "frase": "Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_distribuicao_capital"
+    },
+    {
+      "atraso": null,
       "frase": "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -8222,6 +8232,6 @@
     "fontes": 42,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 145
+    "tabelas": 146
   }
 }
