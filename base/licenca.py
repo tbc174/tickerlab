@@ -58,6 +58,7 @@ FAMILIA_DO_ENDERECO = {
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
     "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
     "apidadosabertos.saude.gov.br/assistencia-a-saude/cnes": "ms",  # CNES por competência
+    "ftp.datasus.gov.br/": "ms",  # SIH RD e SIA PA por competência (`scripts/carga_sus.py`, linha 698)
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",

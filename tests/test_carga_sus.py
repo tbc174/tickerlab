@@ -182,3 +182,19 @@ def test_fonte_e_do_datasus_e_nao_treina():
     for sistema in (sus.SIH, sus.SIA):
         assert sistema.fonte.startswith("ms-")
         assert coletas.licenca_da_fonte(sistema.fonte)
+        assert not coletas.pode_usar("treinar", sistema.fonte)
+        assert coletas.pode_usar(coletas.MOSTRAR, sistema.fonte)
+
+
+def test_manifesto_leva_a_familia_ms_pelo_endereco_do_ftp(tmp_path: Path):
+    """As origens são `ftp://ftp.datasus.gov.br/...`: a licença do manifesto sai do DATASUS, não "a confirmar"."""
+    import json
+
+    _carregar(
+        sus.SIH, {"RDAC2607.dbc": dbc_do_sih([internacao()] * 12)}, tmp_path, PRIMEIRA
+    )
+    manifesto = json.loads(
+        (tmp_path / "sus_internacoes" / "202607.json").read_text(encoding="utf-8")
+    )
+    assert list(manifesto["licenca"]["fontes"]) == ["ms"]
+    assert "sem_fonte" not in manifesto["licenca"]

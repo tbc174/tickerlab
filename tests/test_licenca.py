@@ -234,6 +234,14 @@ def test_a_trava_segue_funcionando_para_quem_entrar_na_lista(monkeypatch):
             "tce-rs-empenhos",
         ),
         ("https://dados.tce.rs.gov.br/dados/licitacon/2024.zip", "tce-rs"),
+        (
+            "ftp://ftp.datasus.gov.br/dissemin/publicos/SIHSUS/200801_/Dados/RDAC2607.dbc",
+            "ms",
+        ),
+        (
+            "ftp://ftp.datasus.gov.br/dissemin/publicos/SIASUS/200801_/Dados/PAAC2607.dbc",
+            "ms",
+        ),
         ("https://sem-fonte.example/x.csv", None),
         ("base/conferidas/empresas.csv", None),  # conferida à mão: não traz fonte nova
     ],
