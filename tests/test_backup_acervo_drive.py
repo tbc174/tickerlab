@@ -9,6 +9,7 @@ envio que já está rodando não é atropelado por outro.
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -317,18 +318,25 @@ def test_origem_que_sumiu_e_falha_e_nao_chama_o_rclone(
 
 
 @precisa_de_bash
-def test_envio_em_andamento_nao_e_atropelado(ambiente: dict[str, str]) -> None:
+def test_envio_em_andamento_nao_e_atropelado(
+    ambiente: dict[str, str], tmp_path: Path
+) -> None:
+    trava = Path(ambiente["TMPDIR"], "tickerlab-backup-acervo-drive.lock")
+    segurando_a_trava = tmp_path / "segurando-a-trava"
+    # O marcador só nasce DEPOIS do flock: o `exec 9>` cria o arquivo da trava antes de pegá-la, então
+    # esperar o arquivo existir deixava o backup correr antes de o outro processo segurar a trava.
     segurando = subprocess.Popen(
         [
             BASH or "bash",
             "-c",
-            f'exec 9>"{ambiente["TMPDIR"]}/tickerlab-backup-acervo-drive.lock"; flock -n 9 && sleep 20',
+            f'exec 9>"{trava}"; flock -n 9 && touch "{segurando_a_trava}" && sleep 20',
         ],
     )
     try:
-        for _ in range(50):  # espera o outro pegar a trava
-            if Path(ambiente["TMPDIR"], "tickerlab-backup-acervo-drive.lock").exists():
-                break
+        prazo = time.monotonic() + 15
+        while not segurando_a_trava.exists() and time.monotonic() < prazo:
+            time.sleep(0.05)
+        assert segurando_a_trava.exists(), "o processo não chegou a segurar a trava"
         resultado = rodar(BACKUP, ambiente)
     finally:
         segurando.kill()
