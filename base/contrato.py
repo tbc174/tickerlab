@@ -52,7 +52,7 @@ def contrato_da_tabela(nome: str, tabela: Tabela) -> dict:
         },
         "chaves": list(tabela.chaves),
         "datas": dict(tabela.datas),
-        "sinonimos_de_tempo": sinonimos_de_tempo(tabela),
+        "sinonimos_de_tempo": sinonimos_de_tempo(tabela, nome),
         "historico_desde": tabela.historico_desde,
         "granularidade_do_publico_em": tabela.granularidade_do_publico_em,
         "licenca": licenca_da_fonte(tabela.familia_da_fonte),
