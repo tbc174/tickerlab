@@ -37,7 +37,9 @@ from base.arquivo import (
     lote_commodities_oficiais,
     lote_cvm,
     lote_eua,
+    lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
     lote_organismos,
     lote_patentes,
     lote_reguladores,
@@ -129,8 +131,10 @@ TERMOS = {
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
     **lote_commodities_oficiais.termos(),  # aviso legal da Comissão Europeia (DG AGRI, linha 396)
+    **lote_nordicos.termos(),  # Riksbank e Norges Bank (linha 511, 05/11/2026)
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
+    **lote_europa_rba.termos(),  # CBS, Istat e RBA (linha 512, 05/11/2026)
     **lote_licitacoes.termos(),  # sem vigia de termos neste lote (motivos em _SEM_VIGIA)
     **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
     **lote_atencao.termos(),  # Querido Diário, Crossref, OpenAlex e Senado (rodada 4)
@@ -1574,10 +1578,14 @@ FONTES: list[Fonte] = [
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY-SA, termos do site de 21/10/2026, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
+    *lote_nordicos.fontes(),  # Riksbank e Norges Bank: juros e câmbio (linha 511)
     *lote_organismos.fontes(),  # BCE, OCDE, Eurostat, BIS, FMI, Banco Mundial, NASA, NOAA, GLEIF
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
     *lote_eua.fontes(),
+    # lote Europa e RBA (linha 512, licenças lidas em 29/10/2026): institutos de estatística da Áustria,
+    # Bélgica, Países Baixos, Irlanda, Espanha e Itália, e as tabelas próprias da RBA
+    *lote_europa_rba.fontes(),
     # lote SEC (rodada 4, 23/10/2026): mais conjuntos da Data Library, corretoras, Form ADV e os
     # pacotes diários do EDGAR (linha 201 da fila)
     *lote_sec.fontes(),
