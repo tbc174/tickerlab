@@ -34,6 +34,7 @@ from base.arquivo import (
     lote_cadastros,
     lote_clima,
     lote_commodities,
+    lote_commodities_oficiais,
     lote_cvm,
     lote_eua,
     lote_europa_rba,
@@ -130,6 +131,7 @@ TERMOS = {
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    **lote_commodities_oficiais.termos(),  # aviso legal da Comissão Europeia (DG AGRI, linha 396)
     **lote_nordicos.termos(),  # Riksbank e Norges Bank (linha 511, 05/11/2026)
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
@@ -1637,6 +1639,8 @@ FONTES: list[Fonte] = [
     # lote café, commodities e clima (linha 204): USDA PSD inteiro, FAOSTAT, I-CIP da OIC, séries e boletins da
     # CONAB, outras famílias do COT, CHIRTS, SPEI e SPI do CHC, normais do INMET e MapBiomas por bioma
     *lote_commodities.fontes(),
+    # commodities oficiais com licença aberta (linha 396): DG AGRI e, nos PRs seguintes, BCPI, Eurostat, SSB, REQ e DG ENER
+    *lote_commodities_oficiais.fontes(),
     # ponte da troca do CHIRPS v2 (acaba em dez/2026): a v3 `rnl` pela cópia Zarr do Hugging Face, que o
     # robots.txt do CHC não deixa coletar direto; fonte própria, nunca soma com a v2 (linha 126 da fila)
     *chirps_v3.fontes(),

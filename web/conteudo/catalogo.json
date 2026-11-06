@@ -1917,6 +1917,24 @@
     },
     {
       "coletas": [
+        "dgagri-cereal",
+        "dgagri-oilseeds",
+        "dgagri-dairy",
+        "dgagri-sugar"
+      ],
+      "familia": "dgagri",
+      "licencas": [
+        "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças"
+      ],
+      "link": "https://agridata.ec.europa.eu/",
+      "marca": "vendavel",
+      "orgao": "Comissão Europeia (DG AGRI, preços agroalimentares)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-24",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "chirps3-rnl-mensal",
         "chirps3-rnl-historico"
       ],
@@ -2881,6 +2899,13 @@
     },
     {
       "id": "termos-igc-privacidade",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-dgagri",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
       "ritmo": "diaria",
@@ -6373,6 +6398,34 @@
       "termos_lidos_em": "2026-10-21"
     },
     {
+      "id": "dgagri-cereal",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
+      "id": "dgagri-oilseeds",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
+      "id": "dgagri-dairy",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
+      "id": "dgagri-sugar",
+      "licenca": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-24"
+    },
+    {
       "id": "chirps3-rnl-mensal",
       "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
       "marca": "vendavel",
@@ -8004,7 +8057,7 @@
     }
   ],
   "totais": {
-    "familias": 119,
+    "familias": 120,
     "familias_em_uso": 43,
     "fontes": 43,
     "fontes_em_consulta": 7,
