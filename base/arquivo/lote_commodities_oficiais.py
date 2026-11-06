@@ -10,16 +10,23 @@ Regras (testes em `tests/test_base_arquivo_lote_commodities_oficiais.py`), uma f
   - cereais, oleaginosas e laticínios viram **uma janela por ano**, do primeiro ano com dado até o ano da
     coleta: o histórico inteiro de cereais passa de 60 MB e estoura o tempo do pedido, e uma janela fechada
     muda pouco;
-  - o ano fechado leva `versao` (ano mais ano da leitura): é lido uma vez por ano, para pegar a revisão
-    tardia de um país, e não 10 MB repetidos toda semana; o ano corrente é lido toda vez e o SHA-256
-    decide se há algo novo;
+  - o portal só devolve a semana que cabe **inteira** na janela: a que atravessa a virada (29/12 a 04/01)
+    sumiria de todas. Por isso a janela de cada ano vai até 10/01 do ano seguinte (a semana de virada fica
+    inteira na do ano que fecha, e a primeira semana do ano novo repete na janela dele);
+  - a janela do ano que já fechou, baixada depois de 31/01 do ano seguinte, vale para sempre (`guardado_vale`,
+    pela data da última coleta "ok": a que foi baixada antes é relida uma vez, para pegar a revisão tardia de
+    um país); o ano corrente é lido toda vez e o SHA-256 decide se há algo novo. O `Alvo.versao` não serve
+    aqui: o arquivista só grava os cabeçalhos HTTP como versão;
   - o portal responde **404 para o ano em que o produto ainda não existe**: é `SemArquivo`, nunca falha;
   - o açúcar ignora as datas e devolve sempre o retrato inteiro (170 KB): um endereço só;
   - **sem filtro de país**: a licença é da Comissão para todos os Estados-membros;
   - a carne (`meat`) dá 404 e `beef` ainda não foi pedido (nota no fim da fila), então fica fora.
 """
 
-from datetime import datetime
+import re
+from datetime import UTC, date, datetime
+
+import sqlalchemy as sa
 
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, Fonte
 from base.arquivo.obter import arquivo_que_pode_faltar
@@ -33,6 +40,11 @@ DG_AGRI = "https://ec.europa.eu/agrifood/api"
 # primeiro ano com dado de cada produto (conferido ao vivo em 05/11/2026: antes dele o portal dá 404)
 PRIMEIRO_ANO_DO_DG_AGRI = {"cereal": 2015, "oilseeds": 2021, "dairy": 1991}
 PRODUTOS_SEM_JANELA_DO_DG_AGRI = ("sugar",)  # a API ignora `beginDate` e `endDate`
+# a semana mais longa da virada termina em 6/1; 10/1 dá folga (conferido ao vivo em 05/11/2026)
+FIM_DA_JANELA_NO_ANO_SEGUINTE = "10/01"
+# depois deste dia a janela do ano que fechou já tem as últimas semanas e as correções de janeiro
+PRIMEIRO_DIA_DA_JANELA_FECHADA = (2, 1)
+_ANO_DA_JANELA = re.compile(r"beginDate=01/01/(\d{4})&")
 
 
 def endereco_do_dg_agri(produto: str, ano: int | None = None) -> str:
@@ -40,24 +52,30 @@ def endereco_do_dg_agri(produto: str, ano: int | None = None) -> str:
     url = f"{DG_AGRI}/{produto}/prices"
     if ano is None:
         return url
-    return f"{url}?beginDate=01/01/{ano}&endDate=31/12/{ano}"
+    return (
+        f"{url}?beginDate=01/01/{ano}&endDate={FIM_DA_JANELA_NO_ANO_SEGUINTE}/{ano + 1}"
+    )
 
 
 def janelas_anuais_do_dg_agri(produto: str, agora: datetime) -> list[Alvo]:
-    """Uma janela por ano, do primeiro com dado até o corrente; o ano que já fechou é lido uma vez por ano."""
-    alvos = []
-    for ano in range(PRIMEIRO_ANO_DO_DG_AGRI[produto], agora.year + 1):
-        url = endereco_do_dg_agri(produto, ano)
-        fechado = ano < agora.year
-        alvos.append(
-            Alvo(
-                url,
-                ".json",
-                arquivo_que_pode_faltar(url),
-                versao=f"{ano}-lido-em-{agora.year}" if fechado else None,
-            )
-        )
-    return alvos
+    """Uma janela por ano, do primeiro com dado até o corrente; o 404 de ano sem dado não é falha."""
+    anos = range(PRIMEIRO_ANO_DO_DG_AGRI[produto], agora.year + 1)
+    return [
+        Alvo(url, ".json", arquivo_que_pode_faltar(url))
+        for url in (endereco_do_dg_agri(produto, ano) for ano in anos)
+    ]
+
+
+def janela_fechada_ja_guardada(anterior: sa.Row) -> bool:
+    """A última coleta "ok" da janela foi depois de fechado o ano e de janeiro? Então não muda mais."""
+    ano = _ANO_DA_JANELA.search(anterior.url)
+    if ano is None:  # o açúcar não tem janela: lido toda vez
+        return False
+    baixado = anterior.baixado_em
+    if baixado.tzinfo is None:  # o SQLite dos testes devolve sem fuso
+        baixado = baixado.replace(tzinfo=UTC)
+    mes, dia = PRIMEIRO_DIA_DA_JANELA_FECHADA
+    return baixado.date() >= date(int(ano.group(1)) + 1, mes, dia)
 
 
 def descobrir_dg_agri(produto: str) -> Descobrir:
@@ -77,6 +95,7 @@ def _fonte_do_dg_agri(produto: str) -> Fonte:
         "semanal",  # o portal publica toda semana (açúcar, por mês); o SHA-256 decide o que é novo
         descobrir_dg_agri(produto),
         "json",
+        guardado_vale=janela_fechada_ja_guardada,
         pausa_minima=PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS,
     )
 

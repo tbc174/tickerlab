@@ -1,11 +1,13 @@
 """Lote commodities oficiais (base/arquivo/lote_commodities_oficiais.py): DG AGRI e, nos PRs seguintes, as outras
 fontes oficiais da linha 396 da fila. Nada vai à internet: a descoberta só monta endereços e não pede nada."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from base.arquivo import fontes
+from base.arquivo import coleta, fontes
 from base.arquivo import lote_commodities_oficiais as lote
 from base.arquivo.coleta import Fonte
 from src.banco.coletas import SEM_LICENCA_CONHECIDA, licenca_da_fonte, revenda_da_fonte
@@ -46,26 +48,74 @@ def test_dgagri_vira_uma_janela_por_ano_do_primeiro_dado_ate_o_ano_da_coleta(
     urls = [a.url for a in _alvos(f"dgagri-{produto}")]
     assert urls[0] == (
         f"{PORTAL}/{produto}/prices?beginDate=01/01/{primeiro_ano}"
-        f"&endDate=31/12/{primeiro_ano}"
+        f"&endDate=10/01/{primeiro_ano + 1}"
     )
-    assert urls[-1].endswith(f"beginDate=01/01/{AGORA.year}&endDate=31/12/{AGORA.year}")
+    assert urls[-1].endswith(
+        f"beginDate=01/01/{AGORA.year}&endDate=10/01/{AGORA.year + 1}"
+    )
     assert len(urls) == AGORA.year - primeiro_ano + 1
     assert len(set(urls)) == len(urls)
 
 
-def test_dgagri_ano_fechado_so_e_relido_uma_vez_por_ano_e_o_corrente_sempre():
-    """Ano fechado leva `versao` (a descoberta já sabe, então não repete 10 MB por dia); o ano corrente muda toda semana."""
-    alvos = _alvos("dgagri-cereal")
-    fechados, corrente = alvos[:-1], alvos[-1]
-    assert corrente.versao is None
-    assert all(a.versao for a in fechados)
-    assert len({a.versao for a in fechados}) == len(fechados)
-    # virou o ano: o ano que fechou é relido uma vez (revisão tardia do país), com versão nova
-    depois = _fonte("dgagri-cereal").descobrir(None, datetime(2027, 1, 10, tzinfo=UTC))  # type: ignore[arg-type]
-    ano_2026_antes = next(a for a in alvos if "01/01/2026" in a.url)
-    ano_2026_depois = next(a for a in depois if "01/01/2026" in a.url)
-    assert ano_2026_antes.versao is None
-    assert ano_2026_depois.versao
+def test_dgagri_janela_vai_ate_10_01_porque_a_semana_da_virada_so_cabe_inteira_ali():
+    """O portal só devolve a semana que cabe inteira na janela (conferido ao vivo em 05/11/2026): com
+    `endDate=31/12`, a semana de 29/12 a 04/01 sumia de todas as janelas."""
+    urls = [a.url for a in _alvos("dgagri-dairy")]
+    assert all(
+        f"beginDate=01/01/{ano}&endDate=10/01/{ano + 1}" in url
+        for ano, url in zip(range(1991, AGORA.year + 1), urls, strict=True)
+    )
+
+
+def _linha(url: str, baixado_em: datetime):
+    return SimpleNamespace(url=url, baixado_em=baixado_em)
+
+
+def test_dgagri_ano_fechado_so_vale_se_baixado_depois_de_janeiro_do_ano_seguinte():
+    url = lote.endereco_do_dg_agri("cereal", 2024)
+    valida = lote.janela_fechada_ja_guardada
+    assert valida(_linha(url, datetime(2025, 2, 1, tzinfo=UTC)))
+    assert valida(_linha(url, datetime(2026, 3, 1)))  # noqa: DTZ001  # SQLite dos testes: sem fuso
+    # baixada durante o ano ou em janeiro: falta a última semana e as correções
+    assert not valida(_linha(url, datetime(2024, 11, 5, tzinfo=UTC)))
+    assert not valida(_linha(url, datetime(2025, 1, 31, tzinfo=UTC)))
+    # o ano corrente nunca vale, e o açúcar (sem janela) é lido toda vez
+    corrente = lote.endereco_do_dg_agri("cereal", AGORA.year)
+    assert not valida(_linha(corrente, AGORA))
+    assert not valida(_linha(lote.endereco_do_dg_agri("sugar"), AGORA))
+
+
+class _Portal:
+    """Cliente que só conta o que foi baixado (a descoberta do DG AGRI nunca chama `ler`)."""
+
+    def __init__(self):
+        self.baixados: list[str] = []
+
+    def cabecalhos(self, url):
+        return {"Content-Type": "application/json"}
+
+    def baixar(self, url, destino: Path):
+        self.baixados.append(url)
+        destino.write_bytes(b'[{"price": "EUR 229,29"}]')
+        return {"Content-Type": "application/json"}
+
+
+def test_dgagri_na_semana_seguinte_so_baixa_o_ano_corrente(banco, tmp_path):
+    """Regressão do P1 da revisão cruzada: a janela fechada, já guardada depois do fechamento, não é baixada de
+    novo (a `versao` do `Alvo` nunca batia: o arquivista só grava os cabeçalhos como versão)."""
+    fonte = _fonte("dgagri-cereal")
+    portal = _Portal()
+    depois_de_janeiro = datetime(2026, 11, 5, 22, tzinfo=UTC)
+    coleta.arquivar(fonte, portal, depois_de_janeiro, tmp_path / "t", pausa=0)
+    # a 1ª rodada baixa tudo (nada estava guardado); na 2ª, os anos fechados já valem
+    primeira = len(portal.baixados)
+    assert primeira == AGORA.year - 2015 + 1
+    coleta.arquivar(
+        fonte, portal, depois_de_janeiro + timedelta(days=7), tmp_path / "t", pausa=0
+    )
+    assert portal.baixados[primeira:] == [
+        lote.endereco_do_dg_agri("cereal", AGORA.year)
+    ]
 
 
 def test_dgagri_ano_sem_dado_e_nao_encontrado_e_nunca_falha():
