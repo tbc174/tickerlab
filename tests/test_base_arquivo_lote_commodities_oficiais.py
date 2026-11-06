@@ -135,7 +135,7 @@ def test_dgagri_nao_leva_carne_porque_o_endereco_dela_responde_404():
 
 
 def test_dgagri_e_json_leve_semanal_e_com_pausa_entre_pedidos():
-    for f in lote.fontes():
+    for f in (f for f in lote.fontes() if f.id.startswith("dgagri-")):
         assert f.tipo == "json", f.id
         assert f.grupo == "semanal", f.id
         assert not f.pesada, f.id
@@ -143,6 +143,50 @@ def test_dgagri_e_json_leve_semanal_e_com_pausa_entre_pedidos():
 
 
 def test_dgagri_nao_filtra_por_pais_porque_a_licenca_e_da_comissao_para_todos_os_estados():
-    for f in lote.fontes():
+    for f in (f for f in lote.fontes() if f.id.startswith("dgagri-")):
         for a in f.descobrir(None, AGORA):  # type: ignore[arg-type]
             assert "memberStateCodes" not in a.url
+
+
+# ---- Bank of Canada BCPI (Valet) -------------------------------------------------------------
+VALET = "https://www.bankofcanada.ca/valet"
+GRUPOS_DO_BCPI = {
+    "boc-bcpi-semanal": "BCPI_WEEKLY",
+    "boc-bcpi-mensal": "BCPI_MONTHLY",
+    "boc-bcpi-anual": "BCPI_ANNUAL",
+    "boc-bcpi-pesos": "BCPI_WEIGHTS",
+}
+
+
+@pytest.mark.parametrize(("id_", "grupo"), GRUPOS_DO_BCPI.items())
+def test_bcpi_guarda_as_observacoes_e_a_descricao_das_series_de_cada_grupo(id_, grupo):
+    assert [a.url for a in _alvos(id_)] == [
+        f"{VALET}/observations/group/{grupo}/json",
+        f"{VALET}/groups/{grupo}/json",
+    ]
+
+
+def test_bcpi_tem_os_quatro_grupos_e_nenhum_a_mais():
+    assert {f.id for f in lote.fontes() if f.id.startswith("boc-")} == set(
+        GRUPOS_DO_BCPI
+    )
+
+
+def test_bcpi_respeita_o_limite_de_frequencia_da_valet():
+    """Os termos do Banco proíbem burlar o limite de pedidos da Valet: poucos pedidos e com pausa."""
+    for id_ in GRUPOS_DO_BCPI:
+        fonte = _fonte(id_)
+        assert fonte.pausa_minima >= 2.0, id_
+        assert len(_alvos(id_)) == 2, id_
+        assert not fonte.pesada, id_
+        assert fonte.tipo == "json", id_
+
+
+def test_bcpi_semanal_roda_toda_semana_e_o_resto_uma_vez_por_mes():
+    assert _fonte("boc-bcpi-semanal").grupo == "semanal"
+    for id_ in ("boc-bcpi-mensal", "boc-bcpi-anual", "boc-bcpi-pesos"):
+        assert _fonte(id_).grupo == "mensal", id_
+
+
+def test_bcpi_vigia_os_termos_do_banco():
+    assert lote.termos()["termos-boc"] == "https://www.bankofcanada.ca/terms/"
