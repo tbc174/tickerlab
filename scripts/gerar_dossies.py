@@ -142,6 +142,12 @@ class Entradas:
     insolvencia: dict[str, pd.DataFrame] | None = None
     situacao_especial: dict[str, pd.DataFrame] | None = None
     contestacoes: pd.DataFrame = field(default_factory=contestacoes_da_base.vazia)
+    # dívida ativa da União (PGFN) e rótulo de atraso na entrega (CVM) por raiz de CNPJ, como fato
+    # datado (virada de 5/11/2026, fase 1); None: a base não tem a tabela (sem seção). As duas são
+    # lidas sem `como_era_em`: a regra da data fica na seção (o documento sem entrega não tem data
+    # pública, e a porta o esconderia)
+    pgfn_divida: dict[str, pd.DataFrame] | None = None
+    rotulos_atraso: dict[str, pd.DataFrame] | None = None
     # o relatório do auditor sobre a DFP (`pareceres_dfp`); vazio: a base ainda não tem a tabela
     pareceres: pd.DataFrame = field(default_factory=pd.DataFrame)
     # o mesmo para o ITR (`pareceres_itr`) e a DMPL das DFPs (`dmpl_como_era`); vazio: sem a tabela
@@ -220,6 +226,8 @@ COLUNAS_DA_SITUACAO_ESPECIAL = (
     "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo", "data_situacao_especial",
     "mes_do_retrato", "disponivel_em",
 )  # fmt: skip
+COLUNAS_DA_DIVIDA = ("cnpj_basico", *dossie.COLUNAS_DA_DIVIDA)
+COLUNAS_DAS_ENTREGAS = ("cnpj", *dossie.COLUNAS_DAS_ENTREGAS)
 COLUNAS_DOS_RATINGS = (
     "cnpj", "agencia", "escala", "nota", "nota_original", "nivel", "perspectiva", "acao",
     "data_acao", "publico_em", "protocolo", "link", "situacao_extracao",
@@ -474,6 +482,12 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             "cnpj_basico",
         ),
         contestacoes=contestacoes_da_base.ler(),
+        pgfn_divida=_por_raiz(
+            _ler_se_existe(leitor, "pgfn_divida", COLUNAS_DA_DIVIDA), "cnpj_basico"
+        ),
+        rotulos_atraso=_por_raiz(
+            _ler_se_existe(leitor, "rotulos_atraso", COLUNAS_DAS_ENTREGAS), "cnpj"
+        ),
         pareceres=_pareceres(leitor),
         pareceres_itr=_pareceres(leitor, "pareceres_itr"),
         dmpl=_dmpl(leitor, _dia(hoje)),
@@ -714,6 +728,12 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             _da_raiz(entradas.situacao_especial, c),
             contestacoes_da_base.da_empresa(entradas.contestacoes, c[:RAIZ_DO_CNPJ]),
             hoje,
+        ),
+        "divida_com_a_uniao": lambda c: dossie.secao_divida_com_a_uniao(
+            _da_raiz(entradas.pgfn_divida, c), hoje
+        ),
+        "entrega_das_demonstracoes": lambda c: dossie.secao_entrega_das_demonstracoes(
+            _da_raiz(entradas.rotulos_atraso, c), hoje
         ),
         "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }

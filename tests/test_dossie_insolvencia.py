@@ -117,15 +117,18 @@ def test_a_tabela_tem_colunas_e_titulo_declarados() -> None:
     colunas = dossie_do_app.colunas_da_tabela("registros_de_insolvencia")
     assert colunas is not None
     nomes = {coluna for coluna, _, _ in colunas}
-    assert nomes == {
-        "aconteceu_em",
-        "publico_em",
-        "registro",
-        "veiculo",
-        "situacao",
-        "contestacao",
-    }
-    assert "link" not in nomes  # o link vai ao lado, como nas outras tabelas
+    assert (
+        nomes
+        == {
+            "aconteceu_em",
+            "publico_em",
+            "registro",
+            "veiculo",
+            "situacao",
+            "contestacao",
+            "link",  # a fonte original, como nas outras tabelas que carregam o link (virada de 5/11)
+        }
+    )
     assert dossie_do_app.titulo_da_tabela("registros_de_insolvencia")
 
 

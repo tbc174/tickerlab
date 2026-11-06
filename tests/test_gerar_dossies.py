@@ -880,3 +880,85 @@ def test_ficha_sem_as_tabelas_diz_que_nao_consultou(tmp_path: Path) -> None:
     assert (
         "insolvencia" not in secoes
     )  # nenhuma das duas fontes lida: sem seção, sem promessa
+    assert "divida_com_a_uniao" not in secoes
+    assert "entrega_das_demonstracoes" not in secoes
+
+
+def _divida_e_entregas_da_cpfl(pasta: Path) -> None:
+    """Na PGFN, o retrato de 30/09 (público em 10/10) em duas linhas, um retrato que só fica público
+    depois de hoje e uma linha de pessoa natural (a porta a esconde); na CVM, a DFP no prazo, um ITR
+    entregue depois de hoje e um ITR com prazo no futuro."""
+    _gravar(
+        pasta,
+        "pgfn_divida/2026-09/sida-1-0.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL_DIGITOS] * 4,
+                "cnpj_basico": ["02429144"] * 4,
+                "tipo_divida": ["nao_previdenciaria", "fgts", "previdenciaria", "fgts"],
+                "regiao": ["SP"] * 4,
+                "tipo_devedor": ["principal"] * 4,
+                "tipo_situacao": ["Em cobrança"] * 4,
+                "situacao_inscricao": ["ATIVA EM COBRANCA"] * 4,
+                "ajuizado": [True, False, False, False],
+                "inscricoes": [3, 1, 2, 1],
+                "valor_consolidado": [1_200_000.0, 300_000.0, 7_777_777.0, 999_999.0],
+                "data_do_retrato": [D("2026-09-30")] * 4,
+                "disponivel_em": [D("2026-10-10")] * 2
+                + [D("2026-10-25"), D("2026-10-10")],
+                "trata_como_pessoa": [False, False, False, True],
+                "origem_sha256": ["b" * 64] * 4,
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "rotulos_atraso/rotulos_atraso.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL] * 3,
+                "empresa": ["CPFL ENERGIA S.A."] * 3,
+                "documento": ["DFP", "ITR", "ITR"],
+                "referencia": [D("2025-12-31"), D("2026-06-30"), D("2026-09-30")],
+                "prazo": [D("2026-03-31"), D("2026-08-14"), D("2026-11-16")],
+                "primeira_entrega": [D("2026-03-27"), D("2026-10-20"), pd.NaT],
+                "dias_uteis_de_atraso": [0, 45, 0],
+                "atrasou": [False, True, True],
+                "atraso_grave": [False, True, True],
+                "zona_cinzenta": [False] * 3,
+                "montado_em": ["2026-10-21T00:00:00-03:00"] * 3,
+            }
+        ),
+    )
+
+
+def test_ficha_traz_a_divida_e_as_entregas_so_com_fatos_ja_publicos(
+    tmp_path: Path,
+) -> None:
+    """Virada de 5/11/2026 (fase 1, PR 2): as duas tabelas entram como fato datado, sem o retrato que
+    ainda não era público, sem a linha de pessoa natural e sem a entrega que ainda não tinha acontecido."""
+    _mini_base(tmp_path / "base")
+    _divida_e_entregas_da_cpfl(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+
+    divida = secoes["divida_com_a_uniao"]
+    inscricoes = divida["tabelas"]["inscricoes_na_divida_ativa"]
+    assert [(l["tipo_divida"], l["publico_em"], l["link"]) for l in inscricoes] == [
+        ("fgts", "2026-10-10", "https://dadosabertos.pgfn.gov.br/"),
+        ("nao_previdenciaria", "2026-10-10", "https://dadosabertos.pgfn.gov.br/"),
+    ]
+    texto = json.dumps(divida, ensure_ascii=False)
+    assert "7777777" not in texto  # o retrato que só fica público em 25/10 fica fora
+    assert "999999" not in texto  # a linha de pessoa natural não sai da porta
+    assert "R$ 1,5 mi" in divida["paragrafos"][0]
+
+    entregas = secoes["entrega_das_demonstracoes"]["tabelas"]["entregas_de_dfp_e_itr"]
+    assert [
+        (l["documento"], l["prazo"], l["rotulo"], l["publico_em"]) for l in entregas
+    ] == [
+        ("ITR", "2026-08-14", "não entregue até 17/10/2026", None),
+        ("DFP", "2026-03-31", "no prazo", "2026-03-27"),
+    ]
+    assert "2026-10-20" not in json.dumps(secoes["entrega_das_demonstracoes"])
