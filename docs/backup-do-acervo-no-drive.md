@@ -51,7 +51,7 @@ listá-las em `PARTES_DO_ACERVO` do `scripts/empacotar_acervo_drive.py`.
 
 - Um pacote reúne os arquivos de **uma fonte e um período**: `bruto/<fonte>/<ano>` para anos fechados e
   `bruto/<fonte>/<ano>-<mês>` para o ano corrente; `manifesto` e `ancoras` ficam em `_tudo`; os backups, uma
-  pasta por subpasta. Passou de 20 GiB, divide (`-p01`, `-p02`...).
+  pasta por subpasta. Passou de 20 GiB, divide (`-p1`, `-p2`...).
 - Nome no Drive: `pacotes/<destino>/<grupo>/AAAA-MM-DD_HHMMSS.tar` (a data é a do envio). **Um pacote enviado
   nunca é reescrito.** Arquivo novo ou que mudou na origem (tamanho ou data) sobe em um **pacote novo** ("delta")
   na execução seguinte; a versão antiga continua no pacote antigo. Por isso a pasta cresce, nunca encolhe.
@@ -68,6 +68,8 @@ listá-las em `PARTES_DO_ACERVO` do `scripts/empacotar_acervo_drive.py`.
 - por parte, **arquivos e bytes na origem × no Drive** (o Drive pelos índices); passa quando **toda a origem está
   no Drive**; só olha arquivos com mais de 7 horas, para o que foi coletado depois do envio não acusar falta;
 - confere que cada pacote do estado existe no Drive com o tamanho do índice;
+- o sha256 da conferência mensal vem pela **amostra de restauração** (abaixo, também mensal); a leitura inteira é
+  manual (a cada três meses e sempre antes de apagar algo do PC), porque baixa o acervo todo do Drive;
 - `conferir --completo` (manual, depois da primeira subida e de vez em quando) **baixa e relê todos os pacotes**
   (sem gravar em disco), recalcula o `sha256` de cada arquivo e compara com o índice **e** com a origem. É o
   equivalente ao `cryptcheck`, que não serve com pacotes.
@@ -96,8 +98,10 @@ Cenário: a VM e o PC se perderam. Você precisa de **(1)** a conta do Google do
 5. **Restaurar um pacote inteiro** (a pasta de destino já com o caminho original):
    `rclone cat cripto:pacotes/acervo/bruto/cvm-dfp/2024/AAAA-MM-DD_HHMMSS.tar | tar -x -C /destino`
    (dentro do `.tar` os caminhos já começam em `bruto/...`, `manifesto/...` ou no nome do backup).
-   Para restaurar **tudo**, repita para cada `.tar` em ordem de data (`rclone lsf -R cripto:pacotes/acervo`);
-   se o mesmo arquivo aparece em dois pacotes, vale o do pacote **mais novo** (é a versão mais recente).
+   Para restaurar **tudo**, repita para cada `.tar` **que tenha índice** (um `.jsonl` de mesmo caminho em
+   `indices/`), em ordem de data; se o mesmo arquivo aparece em dois pacotes, vale o do pacote **mais novo**.
+   Um `.tar` sem índice é um envio que foi interrompido (o `conferir` o avisa; nada é apagado do Drive): **não o
+   use**, ele pode estar cortado e, sendo o mais novo, sobrescreveria a versão boa.
 6. **Restaurar um arquivo só**: ache a linha dele no índice (`rclone cat cripto:indices/<mesmo caminho>.jsonl |
    grep nome-do-arquivo`) e use `o` (início) e `bytes`:
    `rclone cat cripto:pacotes/<caminho>.tar --offset O --count BYTES > arquivo`.

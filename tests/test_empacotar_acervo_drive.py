@@ -60,6 +60,7 @@ else:
 def mundo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> emp.Configuracao:
     """Acervo e backups de mentira, com pessoa, `restrito/` e sala de dados no meio, e o Drive de pasta."""
     monkeypatch.setattr(emp, "ESPERA_DA_CONFERENCIA", 0.0)
+    monkeypatch.setattr(emp, "ESPERA_ENTRE_TENTATIVAS", 0.0)
     acervo = tmp_path / "acervo"
     velho = time.time() - 24 * 3600
     ano = datetime.now(tz=emp.UTC).year
@@ -310,6 +311,44 @@ def test_pacote_que_falha_nao_vira_objeto_e_os_outros_sobem(
     assert any("bcb-sgs" in str(p) for p in objetos(mundo, "pacotes"))
 
 
+def test_cota_do_google_passageira_refaz_o_pacote_sem_contar_falha(
+    mundo: emp.Configuracao, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """403 de cota por minuto some em instantes: o pacote é refeito e a rodada termina sem falha."""
+    original = emp.subir_pacote
+    tentativas: dict[str, int] = {}
+
+    def instavel(cfg: emp.Configuracao, pacote: emp.Pacote, carimbo: str):
+        chave = f"{pacote.parte.nome}/{pacote.chave}"
+        tentativas[chave] = tentativas.get(chave, 0) + 1
+        if tentativas[chave] < 3:
+            raise RuntimeError("rclone rcat falhou (rateLimitExceeded)")
+        return original(cfg, pacote, carimbo)
+
+    monkeypatch.setattr(emp, "subir_pacote", instavel)
+    assert emp.subir(mundo) == 0
+    assert tentativas and all(n == 3 for n in tentativas.values())
+    assert "bruto/cvm-dfp/2024/a.bin.gz" in membros_do_drive(mundo)
+
+
+def test_cota_que_nao_passa_acaba_em_falha_depois_das_tentativas(
+    mundo: emp.Configuracao,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    chamadas: list[str] = []
+
+    def sempre_falha(cfg: emp.Configuracao, pacote: emp.Pacote, carimbo: str):
+        chamadas.append(pacote.chave)
+        raise RuntimeError("rateLimitExceeded")
+
+    monkeypatch.setattr(emp, "subir_pacote", sempre_falha)
+    assert emp.subir(mundo) == 1
+    assert "FALHAS:" in capsys.readouterr().out
+    assert len(chamadas) % emp.TENTATIVAS_DO_PACOTE == 0 and chamadas
+    assert not objetos(mundo, "pacotes")
+
+
 def test_erro_ao_montar_o_pacote_corta_o_envio_sem_deixar_objeto(
     mundo: emp.Configuracao,
     monkeypatch: pytest.MonkeyPatch,
@@ -369,6 +408,59 @@ def test_conferencia_passa_e_acusa_falta_de_arquivo_e_de_pacote(
     objetos(mundo, "pacotes")[0].unlink()
     assert emp.conferir(mundo) == 1
     assert "pacotes com tamanho errado ou ausentes: 1" in capsys.readouterr().out
+
+
+def test_indice_aceita_nome_de_arquivo_que_nao_e_utf8() -> None:
+    """Nome em latin-1 (zip antigo) chega como texto com `surrogateescape`: o índice não pode estourar."""
+    nome = b"bruto/fonte/2019/caf\xe9.csv".decode("utf-8", "surrogateescape")
+    linha = emp.json_linha({"p": nome, "b": 1})
+    linha.encode("utf-8")
+    assert json.loads(linha)["p"] == nome
+    assert (
+        emp.json_linha({"p": "café.csv"}) == '{"p": "café.csv"}'
+    )  # nome normal segue legível
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="nome em bytes só existe no Linux")
+def test_pacote_com_nome_nao_utf8_sobe_uma_vez_so(mundo: emp.Configuracao) -> None:
+    estranho = os.fsencode(mundo.acervo) + b"/bruto/bcb-sgs/2025/caf\xe9.bin.gz"
+    with open(estranho, "wb") as f:
+        f.write(b"Z" * 10)
+    os.utime(estranho, (time.time() - 86400,) * 2)
+    assert emp.subir(mundo) == 0
+    assert emp.subir(mundo) == 0
+    assert len(objetos(mundo, "pacotes")) == len(objetos(mundo, "indices"))
+    antes = len(objetos(mundo, "pacotes"))
+    assert emp.subir(mundo) == 0
+    assert len(objetos(mundo, "pacotes")) == antes  # não sobe de novo todo dia
+
+
+def test_conferencia_avisa_pacote_sem_indice_sem_apagar_nada(
+    mundo: emp.Configuracao, capsys: pytest.CaptureFixture[str]
+) -> None:
+    emp.subir(mundo)
+    orfao = objetos(mundo, "pacotes")[0].parent / "2000-01-01_000000.tar"
+    orfao.write_bytes(b"cortado")
+    emp.conferir(mundo)
+    assert "sem índice no Drive" in capsys.readouterr().out
+    assert orfao.exists()
+
+
+def test_sigterm_derruba_o_envio_em_andamento(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """O handler mata os `rclone rcat` ativos antes de sair, para um `.tar` cortado não virar objeto completo."""
+    mortos: list[str] = []
+
+    class Envio:
+        def kill(self) -> None:
+            mortos.append("rcat")
+
+    saidas: list[int] = []
+    monkeypatch.setattr(emp.os, "_exit", saidas.append)
+    monkeypatch.setattr(emp, "ENVIOS_ATIVOS", {Envio()})
+    emp._encerrar_com_sigterm(15, None)
+    assert mortos == ["rcat"] and saidas == [143]
 
 
 def test_conferencia_com_origem_vazia_nao_passa(

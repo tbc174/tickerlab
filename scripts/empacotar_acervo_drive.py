@@ -33,6 +33,7 @@ import json
 import os
 import random
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -109,7 +110,7 @@ class Configuracao:
     remoto: str = "cripto"
     estado: Path = Path.home() / ".config/tickerlab/backup-drive/pacotes-estado.jsonl"
     log: Path | None = None
-    bwlimit: str = "07:00,2M 23:00,off"
+    bwlimit: str = "07:00,4M 23:00,off"
     paralelo: int = 2
     min_idade: float = SEGUNDOS_MIN_IDADE_SUBIDA
     limite_pacote: int = LIMITE_PACOTE_PADRAO
@@ -268,6 +269,21 @@ def planejar(
 # ---------- estado ----------
 
 
+def json_linha(objeto: dict[str, Any]) -> str:
+    """JSON de uma linha que sempre cabe em UTF-8.
+
+    Nome de arquivo com bytes que não são UTF-8 (latin-1 de um zip antigo) chega aqui como texto com
+    `surrogateescape`; escrito cru, estouraria `UnicodeEncodeError` depois do envio do pacote. Nesse caso o JSON
+    sai em ASCII (`\\udcXX`), que o `json.loads` devolve igual e o `tar` reconhece como o mesmo nome.
+    """
+    linha = json.dumps(objeto, ensure_ascii=False)
+    try:
+        linha.encode("utf-8")
+    except UnicodeEncodeError:
+        return json.dumps(objeto, ensure_ascii=True)
+    return linha
+
+
 def carregar_estado(caminho: Path) -> Estado:
     estado: Estado = {}
     if caminho.exists():
@@ -288,15 +304,14 @@ def gravar_estado(
     )  # o membro do tar leva o prefixo `sub/`; o estado guarda o relativo à parte
     with open(caminho, "a", encoding="utf-8") as saida:
         saida.writelines(
-            json.dumps(
+            json_linha(
                 {
                     "parte": parte.nome,
                     "rel": e["p"][corte:],
                     "b": e["b"],
                     "m": e["m"],
                     "pacote": pacote,
-                },
-                ensure_ascii=False,
+                }
             )
             + "\n"
             for e in entradas
@@ -448,6 +463,32 @@ def grupos(pacotes: list[Pacote]) -> list[list[Pacote]]:
     return list(por_grupo.values())
 
 
+ENVIOS_ATIVOS: set[subprocess.Popen[bytes]] = set()
+
+
+def morrer_com_o_pai(cmd: list[str]) -> list[str]:
+    """Linux: o `rclone rcat` recebe SIGKILL se o Python morrer (`setpriv --pdeathsig`, do util-linux).
+
+    Sem isso, um `kill -9` (ou o OOM killer) no Python fecha o cano, o `rcat` lê "fim do arquivo" e grava no Drive
+    um `.tar` cortado como se estivesse completo. Onde não há `setpriv` o comando segue como está.
+    """
+    setpriv = shutil.which("setpriv") if sys.platform.startswith("linux") else None
+    return [setpriv, "--pdeathsig", "KILL", *cmd] if setpriv else cmd
+
+
+def _encerrar_com_sigterm(_sinal: int, _quadro: object) -> None:
+    for envio in list(ENVIOS_ATIVOS):
+        envio.kill()  # nunca fecha o cano: o que estava subindo não vira objeto completo
+    os._exit(143)
+
+
+def proteger_os_envios() -> None:
+    """Chamado pelo `principal`: um `kill` (SIGTERM) no empacotador também derruba os envios em andamento."""
+    import signal
+
+    signal.signal(signal.SIGTERM, _encerrar_com_sigterm)
+
+
 def subir_pacote(
     cfg: Configuracao, pacote: Pacote, carimbo: str
 ) -> list[dict[str, Any]]:
@@ -455,25 +496,31 @@ def subir_pacote(
     nome = nome_no_drive(pacote, carimbo)
     alvo_tar, alvo_indice = f"pacotes/{nome}.tar", f"indices/{nome}.jsonl"
     envio = subprocess.Popen(
-        comando(
-            cfg,
-            "rcat",
-            f"{cfg.remoto}:{alvo_tar}",
-            "--bwlimit",
-            cfg.bwlimit,
-            *OPCOES_DO_ENVIO,
+        morrer_com_o_pai(
+            comando(
+                cfg,
+                "rcat",
+                f"{cfg.remoto}:{alvo_tar}",
+                "--bwlimit",
+                cfg.bwlimit,
+                *OPCOES_DO_ENVIO,
+            )
         ),
         stdin=subprocess.PIPE,
     )
+    ENVIOS_ATIVOS.add(envio)
     assert envio.stdin is not None
     try:
         entradas, total = montar_pacote(pacote, envio.stdin)
     except BaseException:
         envio.kill()  # corta o fluxo sem fechar: um envio pela metade nunca vira objeto completo no Drive
         envio.wait()
+        ENVIOS_ATIVOS.discard(envio)
         raise
     envio.stdin.close()
-    if envio.wait() != 0:
+    codigo_do_envio = envio.wait()
+    ENVIOS_ATIVOS.discard(envio)
+    if codigo_do_envio != 0:
         raise RuntimeError(
             f"rclone rcat falhou em {alvo_tar} (código {envio.returncode})"
         )
@@ -484,10 +531,7 @@ def subir_pacote(
         "criado": carimbo,
         "parte": pacote.parte.nome,
     }
-    indice = (
-        "\n".join(json.dumps(x, ensure_ascii=False) for x in [cabecalho, *entradas])
-        + "\n"
-    )
+    indice = "\n".join(json_linha(x) for x in [cabecalho, *entradas]) + "\n"
     resultado = subprocess.run(
         comando(cfg, "rcat", f"{cfg.remoto}:{alvo_indice}", *OPCOES_DO_ENVIO),
         input=indice.encode("utf-8"),
@@ -504,6 +548,32 @@ def subir_pacote(
 
 
 # ---------- subir ----------
+
+# O `client_id` compartilhado do rclone divide a cota de requisições por minuto com muita gente: o Google devolve
+# 403 `rateLimitExceeded` de vez em quando, até num envio grande. Um pacote que falha é refeito do zero (o `rcat`
+# interrompido não deixa objeto no Drive), com espera crescente, antes de contar como falha.
+TENTATIVAS_DO_PACOTE = 4
+ESPERA_ENTRE_TENTATIVAS = 90.0
+
+
+def subir_com_novas_tentativas(
+    cfg: Configuracao, pacote: Pacote, carimbo: str
+) -> list[dict[str, Any]]:
+    """`subir_pacote` com novas tentativas e espera crescente; a última falha sobe para quem chamou."""
+    for tentativa in range(1, TENTATIVAS_DO_PACOTE + 1):
+        try:
+            return subir_pacote(cfg, pacote, carimbo)
+        except RuntimeError as erro:
+            if tentativa == TENTATIVAS_DO_PACOTE:
+                raise
+            espera = ESPERA_ENTRE_TENTATIVAS * tentativa
+            registrar(
+                cfg,
+                f"nova tentativa ({tentativa}/{TENTATIVAS_DO_PACOTE}) de {nome_no_drive(pacote, carimbo)} "
+                f"em {espera:.0f}s: {erro}",
+            )
+            time.sleep(espera)
+    raise AssertionError("inalcançável")  # pragma: no cover
 
 
 def subir(
@@ -553,7 +623,7 @@ def subir(
 
     def trabalhar(pacote: Pacote) -> None:
         nonlocal enviados
-        entradas = subir_pacote(cfg, pacote, carimbo)
+        entradas = subir_com_novas_tentativas(cfg, pacote, carimbo)
         with trava:
             gravar_estado(
                 cfg.estado, pacote.parte, entradas, nome_no_drive(pacote, carimbo)
@@ -737,6 +807,22 @@ def conferir(cfg: Configuracao, completo: bool = False) -> int:
             if drive.get(c["pacote"].split(f"pacotes/{parte.destino}/", 1)[-1])
             != c["tar_bytes"]
         )
+        sem_indice = sorted(
+            c
+            for c in drive
+            if c.endswith(".tar")
+            and c
+            not in {
+                i["pacote"].split(f"pacotes/{parte.destino}/", 1)[-1]
+                for i, _ in indices
+            }
+        )
+        if sem_indice:
+            # nunca apagamos nada do Drive: o aviso fica à vista e a restauração ignora pacote sem índice
+            print(
+                f"{parte.nome}: {len(sem_indice)} pacote(s) sem índice no Drive (envio interrompido; "
+                "não use na restauração): " + ", ".join(sem_indice[:5])
+            )
         print(
             f"{parte.nome}: origem {len(origem)} arquivos / {bytes_origem} bytes; "
             f"Drive {len(no_drive)} arquivos / {bytes_drive} bytes em {len(indices)} pacotes; "
@@ -864,6 +950,8 @@ def principal(argv: list[str] | None = None) -> int:
         "RCLONE_CONFIG", str(Path.home() / ".config/tickerlab/backup-drive/rclone.conf")
     )
     tempfile.tempdir = os.environ.get("TMPDIR") or tempfile.gettempdir()
+    if args.acao == "subir":
+        proteger_os_envios()
     if args.acao == "subir":
         return subir(cfg, simular=args.simular)
     if args.acao == "conferir":
