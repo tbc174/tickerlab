@@ -802,6 +802,26 @@
     },
     {
       "coletas": [
+        "dst-ipc",
+        "dst-ipch",
+        "dst-desemprego",
+        "dst-contas-nacionais-trimestrais",
+        "dst-juros-de-mercado",
+        "dst-juros-por-tipo"
+      ],
+      "familia": "dst",
+      "licencas": [
+        "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)"
+      ],
+      "link": "https://www.dst.dk/en/",
+      "marca": "vendavel",
+      "orgao": "Statistics Denmark (Danmarks Statistik)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "bce-cambio-dolar",
         "bce-cambio-real",
         "bce-curva-10a",
@@ -2899,6 +2919,13 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-dst",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-bce",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -3834,6 +3861,48 @@
       "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
       "marca": "a_confirmar",
       "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-ipc",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-ipch",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-desemprego",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-contas-nacionais-trimestrais",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-juros-de-mercado",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "dst-juros-por-tipo",
+      "licenca": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
       "termos_lidos_em": "2026-10-29"
     },
     {
@@ -8023,7 +8092,7 @@
     }
   ],
   "totais": {
-    "familias": 119,
+    "familias": 120,
     "familias_em_uso": 42,
     "fontes": 42,
     "fontes_em_consulta": 7,

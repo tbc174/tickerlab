@@ -44,6 +44,7 @@ PASSAM_AS_MARCAS = {
     "usda",
     "faostat",
     "bis",
+    "dst",  # CC BY 4.0, termos lidos em 29/10/2026 (linha 511)
     "dgagri",  # CC BY 4.0 da Comissão Europeia, lido em 24/10/2026 (linha 396)
     "riksbank",  # reuso livre citando a fonte, termos lidos em 29/10/2026 (linha 511)
     "rfb-cnpj",
