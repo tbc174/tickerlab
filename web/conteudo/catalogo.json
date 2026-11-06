@@ -1281,7 +1281,7 @@
       ],
       "familia": "rba",
       "licencas": [
-        "Maioria CC BY 4.0 (RBA); dados financeiros para uso pessoal ou comercial, sem sugerir apoio; tabelas de terceiros (ABS) e a taxa oficial têm termos próprios"
+        "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte"
       ],
       "link": "https://www.rba.gov.au/statistics/",
       "marca": "vendavel",
@@ -4625,21 +4625,21 @@
     },
     {
       "id": "rba-cambio",
-      "licenca": "Maioria CC BY 4.0 (RBA); dados financeiros para uso pessoal ou comercial, sem sugerir apoio; tabelas de terceiros (ABS) e a taxa oficial têm termos próprios",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-29"
     },
     {
       "id": "rba-rendimentos-dos-titulos",
-      "licenca": "Maioria CC BY 4.0 (RBA); dados financeiros para uso pessoal ou comercial, sem sugerir apoio; tabelas de terceiros (ABS) e a taxa oficial têm termos próprios",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-29"
     },
     {
       "id": "rba-balanco",
-      "licenca": "Maioria CC BY 4.0 (RBA); dados financeiros para uso pessoal ou comercial, sem sugerir apoio; tabelas de terceiros (ABS) e a taxa oficial têm termos próprios",
+      "licenca": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-29"

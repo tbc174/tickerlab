@@ -248,8 +248,8 @@ LICENCAS = {
     "cso": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
     "ines": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
     "istat": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
-    "rba": "Maioria CC BY 4.0 (RBA); dados financeiros para uso pessoal ou comercial, sem sugerir apoio; tabelas de terceiros (ABS) e a taxa oficial têm termos próprios",
-    "snb": "Aviso do site do SNB: salvar e usar só 'for non-commercial purposes'; uso comercial pede consentimento",
+    "rba": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+    "snb": "SNB: só 'for non-commercial purposes'; uso comercial pede consentimento",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
