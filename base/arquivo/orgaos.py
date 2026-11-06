@@ -19,8 +19,9 @@ class Orgao:
 
 
 # famílias que não são fonte de dado: cópias dos termos de uso (prova interna da versão lida) e a lista
-# de conjuntos dos portais (metadados para achar fonte nova). Ficam fora da lista pública.
-NAO_SAO_FONTE = ("termos", "catalogo")
+# de conjuntos dos portais (metadados para achar fonte nova) e o SNB (Suíça), que só tem a marca
+# não comercial, sem coleta (linha 512). Ficam fora da lista pública.
+NAO_SAO_FONTE = ("termos", "catalogo", "snb")
 
 ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     # Brasil: reguladores e agências
@@ -188,6 +189,29 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "yahoo": Orgao("Yahoo Finance (preços)", "https://finance.yahoo.com/"),
     # Europa e organismos internacionais
     "bce": Orgao("Banco Central Europeu", "https://data.ecb.europa.eu/"),
+    "dgagri": Orgao(
+        "Comissão Europeia (DG AGRI, preços agroalimentares)",
+        "https://agridata.ec.europa.eu/",
+    ),
+    "boc": Orgao(
+        "Bank of Canada (índice de preços de commodities)",
+        "https://www.bankofcanada.ca/rates/price-indexes/bcpi/",
+    ),
+    "cbs": Orgao(
+        "CBS (Statistics Netherlands, Países Baixos)", "https://opendata.cbs.nl/"
+    ),
+    "cso": Orgao("CSO (Central Statistics Office, Irlanda)", "https://data.cso.ie/"),
+    "ines": Orgao(
+        "INE (Instituto Nacional de Estatística, Espanha)", "https://www.ine.es/"
+    ),
+    "istat": Orgao(
+        "Istat (Instituto Nacional de Estatística, Itália)", "https://www.istat.it/"
+    ),
+    "rba": Orgao(
+        "RBA (Banco Central da Austrália)", "https://www.rba.gov.au/statistics/"
+    ),
+    "statat": Orgao("Statistik Austria (Áustria)", "https://data.statistik.gv.at/"),
+    "statbel": Orgao("Statbel (Bélgica)", "https://statbel.fgov.be/"),
     "bis": Orgao(
         "BIS (Banco de Compensações Internacionais)", "https://www.bis.org/statistics/"
     ),
@@ -202,8 +226,11 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "eurostat": Orgao("Eurostat", "https://ec.europa.eu/eurostat"),
     "fmi": Orgao("FMI", "https://www.imf.org/"),
     "gleif": Orgao("GLEIF (identificador LEI)", "https://www.gleif.org/"),
+    "dst": Orgao("Statistics Denmark (Danmarks Statistik)", "https://www.dst.dk/en/"),
+    "norges": Orgao("Norges Bank (Noruega)", "https://www.norges-bank.no/en/"),
     "ocde": Orgao("OCDE", "https://www.oecd.org/"),
     "ofsi": Orgao("OFSI (sanções, Reino Unido)", "https://sanctionslist.fcdo.gov.uk/"),
+    "riksbank": Orgao("Sveriges riksbank (Suécia)", "https://www.riksbank.se/en-gb/"),
     "wipo": Orgao("OMPI (WIPO, propriedade intelectual)", "https://www.wipo.int/"),
     "worldbank": Orgao("Banco Mundial (indicadores)", "https://data.worldbank.org/"),
     # pesquisa, enciclopédias e notícias
