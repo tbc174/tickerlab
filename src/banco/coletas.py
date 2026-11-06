@@ -195,6 +195,7 @@ LICENCAS = {
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
     "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+    "dst": "CC BY 4.0 (Statistics Denmark; citar Statistics Denmark)",
     "norges": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
     # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
@@ -424,6 +425,7 @@ REVENDA = {
     "boc": VENDAVEL_COM_ATRIBUICAO,
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
+    "dst": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (termos da API do StatBank, lidos em 29/10/2026)
     "norges": A_CONFIRMAR,  # "no changes may be made" + Content-Signal ai-train=no: leitura humana antes de vender (ADR 0102 Emenda 2)
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
     "inpe": VENDAVEL_RISCO_ASSUMIDO,  # sem licença escrita no INPE Queimadas
@@ -652,6 +654,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # O Norges Bank traz `Content-Signal: ai-train=no` no robots.txt (05/11/2026), que não fecha a API
     "riksbank": _ABERTA_SEM_PRAZO,
     "norges": _ABERTA_GUARDA_NAO_DIZ,
+    "dst": _ABERTA_SEM_PRAZO,  # CC BY 4.0, API pública sem chave
     # a N0 diz retenção sim, coleta "não diz" ou não lida
     "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
     "mapbiomas": ColetaEGuarda(
