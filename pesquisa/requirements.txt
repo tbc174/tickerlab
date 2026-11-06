@@ -1,0 +1,12 @@
+# Ambiente ISOLADO do bot de pesquisa (fora do app e da imagem Docker).
+# O núcleo roda só com o requirements.txt da raiz (requests, bs4, lxml, openpyxl, pypdf).
+# O que está aqui é o que o servidor MCP e os motores opcionais pedem.
+#
+# Proibido neste projeto: Firecrawl, PyMuPDF e qualquer dependência GPL/AGPL.
+#
+#   python -m venv C:\Users\<voce>\ambientes\bot-pesquisa
+#   C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -m pip install -r requirements.txt -r pesquisa\requirements.txt
+
+mcp>=2.3,<3          # servidor MCP (MIT)
+crawl4ai>=0.9,<1     # HTML que monta o conteúdo com JavaScript (Apache-2.0); opcional
+docling>=2.148,<3    # PDF e planilha com tabela por página (MIT); opcional, lento, baixa modelos
