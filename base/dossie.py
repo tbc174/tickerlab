@@ -612,8 +612,8 @@ LIMITES = {
         "de conversão (texto livre). O free float é o percentual de ações em circulação que a "
         "companhia declara no item 15.7 do FRE (fora o controlador, os administradores e a "
         "tesouraria), na data da última assembleia que ela informa, que pode ser mais antiga que a "
-        "entrega; declarar zero ou mais de 100% é preenchimento que não faz sentido e fica de fora, "
-        "então o item pode vir de um FRE mais velho (a data aparece). Não é o capital integralizado "
+        "entrega; declarar zero ou mais de 100% é preenchimento que não faz sentido: o item some, em "
+        "vez de recuar para um FRE mais velho. Não é o capital integralizado "
         "do item 17: os dois podem diferir por serem de datas diferentes."
     ),
     "credito": (
@@ -1923,7 +1923,7 @@ PERCENTUAL_CHEIO = (
     100.0  # a CVM escreve o percentual de 0 a 100; a ficha guarda a fração
 )
 CASAS_DO_FREE_FLOAT = (
-    6  # a CVM dá o percentual com até 3 casas; a fração, 5: sobra de ruído do float
+    8  # a CVM dá o percentual com até 6 casas; a fração, 8: só tira o ruído do float
 )
 ANOS_DA_GOVERNANCA = 5  # quantos FREs (e exercícios da remuneração) as tabelas mostram
 ITENS_DA_GOVERNANCA = (  # chave do item, coluna de `governanca_por_ano`, nome, unidade
@@ -2126,26 +2126,24 @@ def _empregados_do_fre(empregados: pd.DataFrame) -> pd.DataFrame:
 
 def _free_float_por_ano(distribuicao: pd.DataFrame) -> pd.DataFrame:
     """Um FRE por linha (o mais novo primeiro): o free float declarado (fração de 0 a 1), as ações
-    em circulação e os acionistas por tipo. Fica de fora o percentual que não faz sentido (zero ou
-    acima de 100%): a companhia não preencheu direito, e mostrar seria afirmar o que não se sabe."""
+    em circulação e os acionistas por tipo. O percentual que não faz sentido (zero ou acima de
+    100%: a companhia não preencheu direito) vira vazio no `free_float`, mas a linha do FRE fica:
+    quem decide o item é o FRE mais novo, nunca um mais velho no lugar dele."""
     if distribuicao.empty:
         return pd.DataFrame()
-    valido = distribuicao[
-        distribuicao["percentual_total"].between(0, 100, inclusive="neither")
-    ]
     # o mesmo FRE pode ter dois documentos na mesma versão: vale o entregue por último
-    unico = valido.sort_values(["referencia", "conhecido_em"]).drop_duplicates(
+    unico = distribuicao.sort_values(["referencia", "conhecido_em"]).drop_duplicates(
         "referencia", keep="last"
     )
-    if unico.empty:
-        return pd.DataFrame()
     por_ano = unico.sort_values("referencia", ascending=False).head(ANOS_DA_GOVERNANCA)
+    percentual = por_ano["percentual_total"]
+    com_sentido = percentual.gt(0) & percentual.le(PERCENTUAL_CHEIO)
     return pd.DataFrame(
         {
             "ano": pd.to_datetime(por_ano["referencia"]).dt.year,
             "entregue_em": pd.to_datetime(por_ano["conhecido_em"]),
             "assembleia_em": pd.to_datetime(por_ano["ultima_assembleia_em"]),
-            "free_float": (por_ano["percentual_total"] / PERCENTUAL_CHEIO).round(
+            "free_float": (percentual.where(com_sentido) / PERCENTUAL_CHEIO).round(
                 CASAS_DO_FREE_FLOAT
             ),
             "acoes_em_circulacao": por_ano["circulacao_total"],
@@ -2157,10 +2155,14 @@ def _free_float_por_ano(distribuicao: pd.DataFrame) -> pd.DataFrame:
 
 
 def _item_do_free_float(por_ano: pd.DataFrame) -> list[dict[str, Any]]:
-    """O free float do FRE mais novo com valor que faça sentido; a data-base é a entrega do FRE."""
+    """O free float do FRE mais novo, se o que ele declara faz sentido (entre 0, exclusive, e 100%);
+    a data-base é a entrega do FRE. Se o mais novo não preencheu, não há item: um FRE mais velho
+    no lugar mostraria um número que o FRE atual contradiz."""
     if por_ano.empty:
         return []
     mais_novo = por_ano.iloc[0]
+    if pd.isna(mais_novo["free_float"]):
+        return []
     base = _data(mais_novo["entregue_em"])
     return [_item(
         "free_float", "Free float (ações em circulação)", float(mais_novo["free_float"]),
@@ -2250,7 +2252,9 @@ def secao_governanca(
         "comites": _comites_do_fre(comites),
         "capital_social": _capital_do_fre(capital),
         "empregados_do_fre": _empregados_do_fre(empregados),
-        "free_float_por_ano": free_float,
+        "free_float_por_ano": free_float.dropna(subset=["free_float"])
+        if not free_float.empty
+        else free_float,
         **tabelas_da_remuneracao,
     }
     return _secao("governanca", itens, tabelas)
@@ -3978,8 +3982,8 @@ _ORIGENS_FIXAS = {
     ),
     "free_float": Origem(
         "fre_distribuicao_capital",
-        "percentual total de ações em circulação declarado no FRE mais novo entregue com valor "
-        "entre 0 e 100% (item 15.7)",
+        "percentual total de ações em circulação declarado no FRE mais novo já entregue (item "
+        "15.7), se for maior que 0 e no máximo 100%",
     ),
     "empregados": Origem(
         "fre_empregados",

@@ -80,19 +80,41 @@ def test_tabela_anual_traz_o_fre_anterior_para_comparar() -> None:
     assert tabela[0]["entregue_em"] == "2026-07-10"
 
 
-def test_percentual_zero_ou_acima_de_100_nao_vira_free_float() -> None:
-    distribuicao = pd.DataFrame(
-        [
-            _linha(FRE_2025, 30.0),
-            _linha(FRE_2026_V2, 114.137),  # preenchimento sem sentido
-        ]
-    )
-    item = _free_float(_governanca(distribuicao))
-    # sem fingir que o FRE de 2026 disse algo: vale o de 2025, com a data dele
-    assert item["valor"] == 0.30
-    assert item["base"] == "2025-05-31"
+def test_fre_mais_novo_sem_percentual_com_sentido_nao_recua_para_um_mais_velho() -> (
+    None
+):
+    """O FRE atual diz 0% (ou mais de 100%): o item some, em vez de mostrar o número de anos atrás."""
+    for sem_sentido in (0.0, 114.137):
+        distribuicao = pd.DataFrame(
+            [_linha(FRE_2025, 30.0), _linha(FRE_2026_V2, sem_sentido)]
+        )
+        secao = _governanca(distribuicao)
+        assert secao is None  # sem o item, a seção de governança nem aparece
     zerado = pd.DataFrame([_linha(FRE_2026_V2, 0.0)])
     assert _governanca(zerado) is None
+
+
+def test_fre_sem_percentual_com_sentido_fica_vazio_e_manda_no_item() -> None:
+    distribuicao = pd.DataFrame([_linha(FRE_2025, 30.0), _linha(FRE_2026_V2, 0.0)])
+    por_ano = dossie._free_float_por_ano(distribuicao)
+    assert list(por_ano["ano"]) == [2026, 2025]  # o mais novo vem primeiro, mesmo vazio
+    assert pd.isna(por_ano.loc[0, "free_float"])
+    assert por_ano.loc[1, "free_float"] == 0.30
+    assert dossie._item_do_free_float(por_ano) == []
+
+
+def test_cem_por_cento_e_um_free_float_valido() -> None:
+    """100% é possível (sem controlador, administradores nem tesouraria com ações): não é recuo."""
+    distribuicao = pd.DataFrame([_linha(FRE_2025, 30.0), _linha(FRE_2026_V2, 100.0)])
+    item = _free_float(_governanca(distribuicao))
+    assert item["valor"] == 1.0
+    assert item["base"] == "2026-07-10"
+
+
+def test_percentual_minusculo_nao_arredonda_para_zero() -> None:
+    distribuicao = pd.DataFrame([_linha(FRE_2026_V2, 0.000018)])
+    item = _free_float(_governanca(distribuicao))
+    assert item["valor"] == 0.00000018
 
 
 def test_dois_documentos_na_mesma_versao_valem_o_entregue_por_ultimo() -> None:

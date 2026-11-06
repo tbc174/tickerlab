@@ -1586,8 +1586,8 @@ SEM_CONTROLADORA = (
 )
 SEM_FICHA_DA_BASE = "A ficha da base desta empresa ainda não chegou ao app."
 SEM_FREE_FLOAT = (
-    "A ficha não traz o free float: o FRE desta empresa não tem o item 15.7 com um percentual "
-    "de ações em circulação entre 0 e 100%."
+    "A ficha não traz o free float: o FRE mais recente desta empresa não tem o item 15.7 com um "
+    "percentual de ações em circulação maior que 0 e até 100%."
 )
 SEM_TAG_ALONG = (
     "A base ainda não tem o tag along: ele vem do estatuto e do segmento de listagem da B3, que "
