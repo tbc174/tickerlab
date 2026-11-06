@@ -37,8 +37,10 @@ NOME = "p0_1b_tendencia_btcbrl_ethbrl"
 FONTE = "Binance Vision (BTCBRL, ETHBRL), em reais, sem câmbio"
 VIZINHOS: dict[str, dict] = {
     **rodar_p0_1.VIZINHOS,
-    "banda_0.16": {"banda": round(brl.BANDA * 0.8, 10)},
-    "banda_0.24": {"banda": round(brl.BANDA * 1.2, 10)},
+    "banda_0.16": {
+        "banda": round(brl.BANDA * criterio_quant.FATOR_DO_PLATO_ABAIXO, 10)
+    },
+    "banda_0.24": {"banda": round(brl.BANDA * criterio_quant.FATOR_DO_PLATO_ACIMA, 10)},
 }
 FRACAO_DO_CORTE = rodar_p0_1.FRACAO_DO_CORTE
 T_ALVO = rodar_p0_1.T_ALVO

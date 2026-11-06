@@ -162,10 +162,16 @@ PUBLICO_EM = {
 }
 
 
-def _porta(pasta, corte: date | None = None, sem: tuple[str, ...] = ()) -> Porta:
-    """A porta com as tabelas acima (com `corte`, só o que era público até ele)."""
+def _porta(
+    pasta,
+    corte: date | None = None,
+    sem: tuple[str, ...] = (),
+    trocas: dict[str, list[dict]] | None = None,
+) -> Porta:
+    """A porta com as tabelas acima (com `corte`, só o que era público até ele; `trocas` põe outras
+    linhas no lugar das de uma tabela)."""
     extras = {}
-    for nome, linhas in TABELAS.items():
+    for nome, linhas in {**TABELAS, **(trocas or {})}.items():
         if nome in sem:
             continue
         tabela = pd.DataFrame(linhas)
@@ -240,6 +246,29 @@ def test_a_porta_nao_entrega_a_linha_da_mei(porta):
 
 def test_sem_a_rede_na_base_a_empresa_segue_com_os_numeros(tmp_path):
     with _porta(tmp_path, sem=("entidades", "identificadores")) as p:
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor == 3000.0
+        and f["divida_ativa_da_uniao"].motivo == ""
+    )
+
+
+def test_identificador_que_leva_a_uma_pessoa_na_rede_e_pessoa(tmp_path):
+    """Se a raiz do CNPJ leva a uma entidade de pessoa (id `P...`, só da vista interna), as features
+    ficam não observadas sem nem abrir a `entidades`."""
+    da_pessoa = {**IDENTIFICADORES[0], "id_entidade": ids.PREFIXO_DE_PESSOA + "1" * 20}
+    with _porta(tmp_path, trocas={"identificadores": [da_pessoa]}) as p:
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor is None
+        and f["divida_ativa_da_uniao"].motivo == fb.COMO_PESSOA
+    )
+
+
+def test_identificador_sem_a_entidade_na_rede_segue_como_empresa(tmp_path):
+    """O identificador existe, mas a entidade não está na base: nada diz que é pessoa, e a porta já
+    esconde as linhas de pessoa da PGFN, então os números seguem."""
+    with _porta(tmp_path, trocas={"entidades": [ENTIDADES[1]]}) as p:  # só a da MEI
         f = _da_base(p, EMPRESA, date(2026, 11, 1))
     assert (
         f["divida_ativa_da_uniao"].valor == 3000.0

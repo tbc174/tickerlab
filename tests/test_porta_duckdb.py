@@ -316,8 +316,8 @@ def _porta_das_dividas(pasta, tabela: Tabela = DIVIDAS):
 
 
 def test_view_esconde_as_linhas_marcadas_como_pessoa(tmp_path):
-    """A linha do empresário individual e do MEI não sai da porta, nem na vista da versão; a linha sem
-    a marca (vazia) é empresa e sai."""
+    """A linha do empresário individual e do MEI não sai da porta, nem na vista da versão; a linha com
+    a marca vazia também fica fora (na dúvida, é pessoa)."""
     _gravar(
         tmp_path,
         "dividas/2024.parquet",
@@ -330,7 +330,7 @@ def test_view_esconde_as_linhas_marcadas_como_pessoa(tmp_path):
         na_versao = con.execute(
             f"SELECT id FROM {nome_da_view('dividas', '1')} ORDER BY id"
         ).fetchall()
-    assert servidas == [("empresa",), ("sem_marca",)]
+    assert servidas == [("empresa",)]
     assert na_versao == servidas
 
 

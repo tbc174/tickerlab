@@ -9,8 +9,8 @@ Nada é copiado: cada view lê os Parquets vigentes da tabela no acervo (as vers
   `publico_em` por mês vale pelo **último dia do mês** e por ano pelo último dia do ano (o
   conservador: nada é público antes de o período terminar). Se o dicionário marca `linhas_de_pessoa`
   (a coluna booleana da pessoa natural, `trata_como_pessoa` na `pgfn_divida`), a view esconde essas
-  linhas (ADR 0075: nada negativo sobre pessoa sai da base); sem a coluna no arquivo, não serve linha
-  nenhuma (o conservador);
+  linhas (ADR 0075: nada negativo sobre pessoa sai da base), e a marca vazia também esconde; sem a
+  coluna no arquivo, não serve linha nenhuma (o conservador: na dúvida, é pessoa);
 - `<tabela>__v<N>`: a versão maior N. A de hoje é a mesma view; uma antiga traduz as colunas pelo
   contrato congelado (`base/contratos/v<N>/`): renomeada volta com o nome antigo, a que saiu volta
   vazia, a nova não aparece (D12: vista, nunca segunda cópia);
@@ -70,6 +70,8 @@ ARQUIVOS: dict[str, str] = {
     "anp_concessionarios": "setoriais/anp_concessionarios/*.parquet",
     "antt_siade": "setoriais/antt_siade/*.parquet",
     "comex_preco_medio": "setoriais/comex_preco_medio/*.parquet",
+    "comex_urf": "setoriais/comex_urf/*.parquet",
+    "comex_via": "setoriais/comex_via/*.parquet",
     "cftc_cot_agro": "setoriais/cftc/*.parquet",
     "aneel_samp": "setoriais/aneel/*.parquet",
     "anatel_acessos": "setoriais/anatel/*.parquet",
@@ -288,13 +290,14 @@ def _select_com_apelidos(
 
 
 def _sem_as_linhas_de_pessoa(select: str, tabela: Tabela, colunas: list[str]) -> str:
-    """Esconde as linhas marcadas como pessoa natural (`tabela.linhas_de_pessoa`, ADR 0075). Sem a
-    coluna no arquivo não dá para separar empresa de pessoa: a view não serve linha nenhuma."""
+    """Esconde as linhas marcadas como pessoa natural (`tabela.linhas_de_pessoa`, ADR 0075). Na dúvida
+    é pessoa: a marca vazia também esconde, e sem a coluna no arquivo (não dá para separar empresa de
+    pessoa) a view não serve linha nenhuma."""
     if not tabela.linhas_de_pessoa:
         return select
     if tabela.linhas_de_pessoa not in colunas:
         return f"{select} WHERE false"
-    return f"{select} WHERE NOT coalesce({_nome(tabela.linhas_de_pessoa)}, false)"
+    return f"{select} WHERE NOT coalesce({_nome(tabela.linhas_de_pessoa)}, true)"
 
 
 def _contratos_congelados(pasta: Path, nome: str) -> dict[int, dict]:
