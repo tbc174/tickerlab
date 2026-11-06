@@ -23,6 +23,8 @@ CANONICOS = frozenset(
 
 _POR_CANONICO: dict[str, tuple[str, ...]] = {
     "aconteceu_em": (
+        # FRE 15.7: a assembleia a que o free float se refere (pode ser anterior à entrega do FRE)
+        "ultima_assembleia_em",
         "aconteceu_em", "valido_desde", "efetiva_em", "desde", "anunciada_em", "autorizado_em",
         "data_acao", "data_entrada", "data_entrada_antes", "data_entrada_depois",
         "data_inicio_atividade", "data_inicio_atividade_antes", "data_inicio_atividade_depois",
@@ -42,9 +44,12 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
         "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud
+        # linha 440: carimbo do arquivo na fonte, dia do fato e prazo (o `datas` já os tem assim)
+        "gerado_em", "atualizado_em", "data", "prazo",
     ),
     "ate": (
         "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",
+        "confidencial_ate", "data_vencimento",  # linha 440: fim do sigilo; vencimento (como `vence_em`)
         "vigencia_fim", "fim_negociacao", "desembargada_em", "descredenciada_em", "data_encerramento", "data_encerramento_oferta",
         "data_exclusao_mei", "data_exclusao_mei_antes", "data_exclusao_mei_depois",
         "data_exclusao_simples", "data_exclusao_simples_antes", "data_exclusao_simples_depois",
@@ -55,6 +60,9 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "DT_PATRIM_LIQ", "acumulado_inicio", "acumulado_fim", "anual_fim", "balanco_fim",
         "receita_exercicio_fim", "composicao_em", "data_do_retrato", "relatorio",
         "ultima_referencia",
+        # linha 440: data-base, meses de primeira e última aparição e o mês do dado
+        "data_de_corte", "data_da_previsao", "primeira", "ultima", "primeiro_no_cda",
+        "ultimo_no_cda", "mes",
     ),
     "publico_em": (
         "publico_em", "disponivel_em", "divulgado_em", "conhecido_em", "publicado_em",
@@ -64,43 +72,39 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "primeira_entrega", "primeiro_recebido_em", "primeiro_visto",
         "disponibilizada_em", "primeira_comunicacao",
         "lista_publicada_em",  # a CMED: o Last-Modified do arquivo no portal da Anvisa
+        "ultimo_visto",  # linha 440: entrega do último FCA com o código, par do `primeiro_visto`
     ),
-    "ate_publico_em": ("ate_publico_em",),
-    "visto_em": ("visto_em",),
+    "ate_publico_em": ("ate_publico_em", "fechado_em"),  # fechado_em: a rodada soube que acabou
+    "visto_em": ("visto_em", "base_de"),  # base_de: o mês da extração em que o valor apareceu
     "coletado_em": (
         "coletado_em", "origem_coletada_em", "conferido_em", "confirmacao_em", "wayback_em",
         "teor_conferido_em",
+        # linha 440: hora do sistema (o `datas` de 6 tabelas já as usa como `coletado_em`); o
+        # `porte_publico_em` é o `baixado_em` do ZIP, apesar do nome (o corte da régua é conservador)
+        "montado_em", "calculado_em", "porte_publico_em",
     ),
 }  # fmt: skip
 
-# Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila.
+# Onde o mesmo nome de coluna tem outro sentido: (tabela, coluna) → nome canônico.
+_POR_TABELA: dict[tuple[str, str], str] = {
+    # o dia da foto: "o que se sabia neste dia"
+    ("amostra_painel", "data"): "referencia",
+    # o mês do retrato em que a mudança foi vista (o `datas` usa o mês como `publico_em`, no
+    # mês inteiro: é a data de ver, nunca anterior à de publicar; o corte não muda)
+    ("cnpj_estabelecimentos_mudancas", "mes"): "visto_em",
+    ("cnpj_qsa_mudancas", "mes"): "visto_em",
+    ("cnpj_simples_mudancas", "mes"): "visto_em",
+}
+
+# Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160
+# ganharam nome na linha 440; ficam as das linhas que as trouxeram.
 COLUNAS_A_CONFERIR = frozenset(
     {
-        "atualizado_em",
-        "base_de",
-        "calculado_em",
         "classificado_em",  # SIGBM: data da declaração que informou o CRI e o DPA
-        "confidencial_ate",
         "criado_em",  # CFEM: dia em que a ANM criou a linha (vira disponivel_em)
-        "data",
-        "data_da_previsao",
-        "data_de_corte",
         "data_edital",  # TCE-PE: emissão do edital da licitação
         "data_homologacao",  # TCE-PE: publicação da homologação (o resultado já era público?)
-        "data_vencimento",
-        "fechado_em",
-        "gerado_em",
         "informado_em",  # o órgão informou a sanção à CGU (antes de ficar pública?)
-        "mes",
-        "montado_em",
-        "porte_publico_em",
-        "prazo",
-        "primeira",
-        "primeiro_no_cda",
-        "ultima",
-        "ultima_assembleia_em",  # FRE 15.7: data da assembleia a que o free float se refere (pode ser anterior à entrega)
-        "ultimo_no_cda",
-        "ultimo_visto",
     }
 )
 
@@ -119,10 +123,11 @@ def coluna_e_temporal(tabela: Tabela, coluna: str) -> bool:
     return unidade.startswith("data") or coluna in tabela.datas.values()
 
 
-def sinonimos_de_tempo(tabela: Tabela) -> dict[str, str]:
-    """Coluna temporal → nome canônico da D6 (ou `a_conferir`)."""
+def sinonimos_de_tempo(tabela: Tabela, nome: str) -> dict[str, str]:
+    """Coluna temporal → nome canônico da D6 (ou `a_conferir`); `nome` é o da tabela (há exceções)."""
     return {
-        coluna: SINONIMO_PARA_CANONICO.get(coluna, A_CONFERIR)
+        coluna: _POR_TABELA.get((nome, coluna))
+        or SINONIMO_PARA_CANONICO.get(coluna, A_CONFERIR)
         for coluna in tabela.colunas
         if coluna_e_temporal(tabela, coluna)
     }
