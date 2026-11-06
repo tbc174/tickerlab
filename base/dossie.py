@@ -48,6 +48,7 @@ from base.contrapartes.cafe import ENDERECO_DO_CNPJ, VEICULO_DO_CNPJ
 from base.dias_uteis import dias_uteis
 from base.dicionario import TABELAS
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
+from base.porta.duckdb import servida_pela_porta
 from base.rede.ligacoes_das_fontes import (
     AUDITA,
     COLIGADA_DE,
@@ -94,6 +95,13 @@ AUDITOR_PESSOA = "Auditor pessoa física (nome não mostrado)"
 DIGITOS_DO_CNPJ = 14
 SOMA_DO_ANO, ULTIMO_MES = "soma do ano", "último mês do ano"
 CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
+# Cobrem todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma pessoa
+# natural), e não têm a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da
+# PGFN). A regra de mostrar (`pode_mostrar`) não muda; a consulta em lote (API aberta e CSV) espera a
+# marca na montagem, para não publicar a falência ou a baixa de uma pessoa (ADR 0075).
+ESPERAM_A_MARCA_DE_PESSOA = frozenset(
+    {"cnpj_situacao_especial", "cnpj_situacao_cadastral"}
+)
 COLUNAS_DE_PESSOA = frozenset(
     {"cpf", "administrador", "conselheiro", "diretor", "nome_pessoa", "socio"}
 )
@@ -124,6 +132,27 @@ def pode_mostrar(nome_da_tabela: str) -> bool:
     if tabela is None or tabela.pessoa:
         return False
     return pode_usar(MOSTRAR, tabela.familia_da_fonte)
+
+
+def tem_dia_publico(nome_da_tabela: str) -> bool:
+    """A tabela diz em cada linha o dia em que ela ficou pública (`publico_em`, coluna ou apelido)?"""
+    tabela = TABELAS.get(nome_da_tabela)
+    return tabela is not None and (
+        "publico_em" in tabela.colunas or "publico_em" in tabela.datas
+    )
+
+
+def pode_consultar(nome_da_tabela: str) -> bool:
+    """A tabela pode ser consultada e exportada de fora (API aberta e página Dados)? Só a que pode
+    ser mostrada, que a porta serve por Parquet do acervo, que diz o dia em que cada linha ficou
+    pública (a consulta corta o futuro por ele, e a virada pede o dia em toda linha exposta) e que
+    não mistura MEI e empresário individual sem a marca de pessoa. As outras ficam só na ficha do app."""
+    return (
+        pode_mostrar(nome_da_tabela)
+        and servida_pela_porta(nome_da_tabela)
+        and tem_dia_publico(nome_da_tabela)
+        and nome_da_tabela not in ESPERAM_A_MARCA_DE_PESSOA
+    )
 
 
 def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:
