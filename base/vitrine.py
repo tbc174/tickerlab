@@ -49,6 +49,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"\bCMED\b", "CMED (Anvisa)"),  # antes da Anvisa: as listas não têm a licença dela
     (r"CNES do Ministério da Saúde", "Ministério da Saúde (DATASUS)"),
     (r"TCE-PE:", "TCE-PE"),
+    (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
     (r"TCE-SP:", "TCE-SP"),
     (r"TCE-CE:", "TCE-CE"),
     (r"LicitaCon do TCE-RS", "TCE-RS"),
@@ -502,9 +503,9 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
-        "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados "
-        "e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco "
-        "Central.",
+        "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
+        "Pernambuco, contratos com estados e municípios nos tribunais de contas e o investimento "
+        "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
             "financiamentos_finep",
@@ -517,6 +518,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "tce_ce_contratos",
             "tce_rs_contratos",
             "bcb_rde_ied",
+            "sefaz_pe_beneficios",
         ),
     ),
 )

@@ -1624,6 +1624,21 @@
     },
     {
       "coletas": [
+        "sefazpe-beneficios"
+      ],
+      "familia": "sefazpe",
+      "licencas": [
+        "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social"
+      ],
+      "link": "https://dados.pe.gov.br/",
+      "marca": "vendavel",
+      "orgao": "SEFAZ-PE (Secretaria da Fazenda de Pernambuco)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-05",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
         "wikidata-lei",
         "wikidata-isin",
         "wikidata-cnpj",
@@ -2656,6 +2671,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-05",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "SEFAZ-PE",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-11-04",
       "licenca": "TCE-CE: licença não localizada; risco assumido",
       "modulos": [
@@ -2712,8 +2738,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 30,
-    "tabelas": 109,
+    "orgaos": 31,
+    "tabelas": 110,
     "temas": [
       {
         "chave": "cvm",
@@ -2788,10 +2814,11 @@
           "TCE-SP",
           "TCE-CE",
           "TCE-RS",
-          "Banco Central"
+          "Banco Central",
+          "SEFAZ-PE"
         ],
-        "tabelas": 11,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "tabelas": 12,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
         "titulo": "Dinheiro público e capital de fora"
       }
     ]
@@ -2805,7 +2832,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 46
+      "tabelas": 47
     },
     {
       "chave": "credito_e_fidc",
@@ -5910,6 +5937,13 @@
       "termos_lidos_em": "2026-10-15"
     },
     {
+      "id": "sefazpe-beneficios",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-05"
+    },
+    {
       "id": "gleif-goldencopy-lei2",
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",
@@ -7736,6 +7770,17 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas pesadas...) por CNPJ, com o CACEPE e o prazo de cada um.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-05",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SEFAZ-PE",
+      "situacao": "licenciada",
+      "tabela": "sefaz_pe_beneficios"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -8373,11 +8418,11 @@
     }
   ],
   "totais": {
-    "familias": 124,
-    "familias_em_uso": 42,
-    "fontes": 42,
+    "familias": 125,
+    "familias_em_uso": 43,
+    "fontes": 43,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 146
+    "tabelas": 147
   }
 }

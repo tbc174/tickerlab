@@ -138,6 +138,9 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "msestado": Orgao(
         "Governo de Mato Grosso do Sul (dados abertos)", "https://www.dados.ms.gov.br/"
     ),
+    "sefazpe": Orgao(
+        "SEFAZ-PE (Secretaria da Fazenda de Pernambuco)", "https://dados.pe.gov.br/"
+    ),
     "spcapital": Orgao(
         "Prefeitura de São Paulo (dados abertos)", "https://dados.prefeitura.sp.gov.br/"
     ),

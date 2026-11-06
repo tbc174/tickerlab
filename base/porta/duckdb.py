@@ -143,6 +143,7 @@ ARQUIVOS: dict[str, str] = {
     "mme_reidi": "mme_reidi/*.parquet",
     "aneel_cde": "aneel_cde/*.parquet",
     "bcb_rde_ied": "bcb_rde_ied/*.parquet",
+    "sefaz_pe_beneficios": "sefaz_pe_beneficios/*.parquet",
     "ratings": "ratings/*.parquet",
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",
