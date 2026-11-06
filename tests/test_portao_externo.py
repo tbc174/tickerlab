@@ -640,13 +640,14 @@ def test_nos_canais_do_app_o_portao_so_repete_pode_usar(canal: Canal) -> None:
 
 def test_pode_usar_libera_tudo_inclusive_a_b3_menos_as_so_internas() -> None:
     """ADR 0008, Emenda 6 (22/10/2026): a B3 entrou no app; a API externa tem a regra própria. As
-    `FONTES_SO_INTERNAS` (o DataJud) só treinam e rotulam (`tests/test_trava_so_interna.py`)."""
+    `FONTES_SO_INTERNAS` (o DataJud) só treinam e rotulam (`tests/test_trava_so_interna.py`); as
+    `FONTES_SEM_TREINO` (o DATASUS, ADR 0122) fazem tudo menos treinar (`tests/test_trava_sem_treino.py`)."""
     for familia in coletas.LICENCAS:
         for uso in coletas.USOS:
             esperado = (
                 familia not in coletas.FONTES_SO_INTERNAS
                 or uso in coletas.USOS_INTERNOS
-            )
+            ) and not (familia in coletas.FONTES_SEM_TREINO and uso == "treinar")
             assert coletas.pode_usar(uso, familia) is esperado, (familia, uso)
 
 
