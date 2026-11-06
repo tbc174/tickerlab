@@ -1,6 +1,7 @@
 """Bloqueio de uma conta só, durante um incidente (linha 306 da fila; plano de incidente, passo 4)
 
-Revisão: 0045 (reservada no quadro de sessões em 24/10; encadeada na última da `main`, 0044).
+Revisão: 0045 (reservada no quadro de sessões em 24/10; encadeada na última da `main` na hora do
+merge: a 0046, que entrou antes, em 03/11).
 Desenho, migração e texto aprovados pelo Tiago em 24/10 15h41.
 
 Até aqui o plano de incidente só sabia derrubar o app inteiro. Duas colunas novas em `usuarios`, no
@@ -20,7 +21,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0045"
-down_revision = "0044"
+down_revision = "0046"
 branch_labels = None
 depends_on = None
 

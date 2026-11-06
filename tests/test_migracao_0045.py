@@ -65,7 +65,7 @@ def _inserir(url: str, **bloqueio: object) -> uuid.UUID:
 def test_sobe_e_desce_sem_perder_a_conta(url) -> None:
     assert _colunas(url) >= COLUNAS_NOVAS
     _inserir(url, bloqueada_em=AGORA, motivo_do_bloqueio="abuso")
-    desfazer_ate("0044", url)
+    desfazer_ate("0046", url)
     assert not _colunas(url) & COLUNAS_NOVAS
     motor = criar_engine(url)
     try:
@@ -100,7 +100,7 @@ def test_sobe_e_desce_sem_apagar_os_dados_ligados_a_conta(url) -> None:
             )
     finally:
         motor.dispose()
-    desfazer_ate("0044", url)
+    desfazer_ate("0046", url)
     assert _favoritos(url) == 1
     migrar_para("head", url)
     assert _favoritos(url) == 1

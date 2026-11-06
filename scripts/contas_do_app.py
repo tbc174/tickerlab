@@ -11,6 +11,8 @@ A conta vai sempre pelo id (o painel de admin mostra), nunca pelo e-mail, e a sa
 nem nome. Só roda para quem está em `TICKERLAB_ADMINS` **e** é administrador no banco, como o
 `chaves_da_api.py`. Cada comando é uma transação, registrada na auditoria só com ids. Saída 0 deu
 certo, 1 nada mudou ou erro, 2 recusa de quem pede ou argumento inválido.
+
+Roda: manual no servidor, num incidente (plano de incidente, passo 4; registro na pasta privada).
 """
 
 import argparse
