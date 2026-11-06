@@ -61,6 +61,9 @@ que a API rotulou fora dos 300 e o `comparar` grava `<pasta>/comparacao-rotina-2
 par válido reprova).
 Com `--lotes N` (até 4), `preparar` faz N lotes na noite (`<dia>-01`, `<dia>-02`...): a rotina roda várias
 vezes por madrugada e faz um lote por rodada, cada um numa conversa nova (Tiago, 24/10/2026: acelerar).
+
+Roda: cron de casa pelo rotular-com-ia.sh (das 7h às 23h, no minuto 40); manual no servidor pelo
+amostra-ma-baixar.sh; outro script (escolher_graficos.py, escrever_analises.py, extrair_ma.py).
 """
 
 import argparse

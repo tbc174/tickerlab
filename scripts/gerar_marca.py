@@ -4,6 +4,8 @@
 
 Rodar só quando a marca mudar. Fica fora de src/ porque usa a biblioteca de imagens (Pillow),
 que o site no ar não precisa: ele só serve os arquivos já gerados.
+
+Roda: manual (python -m scripts.gerar_marca); citado em marca.py.
 """
 
 import re

@@ -16,6 +16,9 @@
 Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<ano>.parquet`. Roda no servidor de casa (ADR 0031),
 depois que o arquivista guardou os arquivos `cvm-hist-*`. Saída 0 tudo certo; 1 algum original não
 abriu (as outras tabelas e anos continuam).
+
+Roda: manual no servidor (curva-no-servidor.sh, montar-pareceres.sh, remontar-achados-codex.sh,
+remontar-insolvencia.sh); citado em dicionario.py.
 """
 
 import argparse

@@ -14,6 +14,8 @@ Google); `--admin` é dispensável quando a lista tem um e-mail só. Cada comand
 A chave nova sai **uma vez**, no stdout, depois do commit: não vai para log, arquivo nem
 auditoria (a auditoria leva só ids e o prefixo). Saída 0 deu certo, 1 nada mudou ou erro, 2 recusa
 de quem pede ou argumento inválido.
+
+Roda: manual no servidor (registro na pasta privada); citado em administracao_das_chaves.py.
 """
 
 import argparse

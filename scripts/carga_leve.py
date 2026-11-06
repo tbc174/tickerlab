@@ -5,6 +5,9 @@ Uso:
 
 Serve para ter uma ideia de como o serviço se comporta sob uso simultâneo (por exemplo, a API
 pelo túnel SSH). Não é um teste de estresse: não o aponte para serviços de terceiros.
+
+Roda: manual (python -m scripts.carga_leve); coberto por test_agente_nos_coletores.py; ver
+README.md.
 """
 
 import argparse

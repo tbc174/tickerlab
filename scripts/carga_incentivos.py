@@ -9,6 +9,8 @@ acervo (não baixa nada). Só CNPJ inteiro de dígito certo entra (no RDE, a rai
 (ADR 0075). Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<arquivo>.parquet`. Feita para o
 servidor de casa (ADR 0031), todo mês depois do arquivista; recusa rodar sem a versão do código
 (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhum arquivo de incentivo guardado.
+
+Roda: cron de casa pelo carga-conferencias.sh (todo mês, dia 13, às 4h30); citado em dicionario.py.
 """
 
 import argparse

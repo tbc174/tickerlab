@@ -5,6 +5,8 @@
 O site da TickerLab Data (`site-api/`) é escrito à mão, mas os fatos que ele repete (conjuntos, fontes,
 licenças e campos) vêm do código: `tests/test_site_api.py` confere o HTML contra este arquivo, e confere
 o arquivo contra o portão. Um conjunto que entra ou sai da API faz o teste falhar até o site acompanhar.
+
+Roda: manual (python -m scripts.gerar_site_api); coberto por test_site_api.py.
 """
 
 import json

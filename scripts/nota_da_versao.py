@@ -2,6 +2,8 @@
 
 python -m scripts.nota_da_versao 2026-10-13 --saida nota.md
 gh release create v2026.10.13 --title "..." --notes-file nota.md
+
+Roda: manual (python -m scripts.nota_da_versao); citado em novidades.py.
 """
 
 import argparse

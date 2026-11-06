@@ -3,6 +3,8 @@
 Casa: empacotar --origem analises/v1/analises --entradas analises/entradas > pacote.tar
 VPS: receber --dados dados_locais < pacote.tar (sob flock, pela chave de envio restrita).
 Os originais e as fotografias anteriores são preservados. A troca do link é atômica.
+
+Roda: manual (python -m scripts.transferir_analises); ver entrega-das-analises.md.
 """
 
 import argparse

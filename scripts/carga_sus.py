@@ -20,6 +20,9 @@ empurra para frente; o reprocesso do DATASUS que muda um número vira versão no
 Ritmo mensal no servidor de casa; o app não depende dela. Licença: ADR 0122 (vendável com atribuição,
 `FRASE_DO_DATASUS`), treino barrado. Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 Saída 0 tudo certo; 1 se alguma competência falhou.
+
+Roda: manual no servidor de casa, uma vez por mês (python -m scripts.carga_sus --sistema sih e --sistema sia;
+cron ainda não registrado em 05/11/2026); coberto por tests/test_carga_sus.py.
 """
 
 import argparse

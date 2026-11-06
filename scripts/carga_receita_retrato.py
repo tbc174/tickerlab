@@ -9,6 +9,8 @@ Simples e Sócios, anota o SHA-256 de cada um, lê em partes, grava o vigente e 
 nomes de sócios pessoa física só em `--restrita`, e apaga os ZIPs. O ZIP dos meses âncora (05/2023, 01/2024,
 01/2025, 01/2026) vai para o acervo (`--ancoras`). A chave dos pseudônimos vem de `TICKERLAB_PESSOAS_CHAVE`
 ou de `/etc/tickerlab/pessoas.chave`; sem ela nada roda. Saída 0 tudo certo; 1 falha (última linha `FALHAS:`).
+
+Roda: outro script (oposicao_do_titular.py); citado em dicionario.py, duckdb.py.
 """
 
 import argparse

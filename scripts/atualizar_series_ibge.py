@@ -10,6 +10,9 @@ Cada resposta do SIDRA fica no registro de coletas e no acervo.
 
 Roda fora do app (no servidor de casa, uma vez por dia). Uma tabela fora do ar não impede as
 outras; a tarefa sai com erro para o alarme avisar, e o dia seguinte tenta de novo.
+
+Roda: cron de casa pelo carga-cafe.sh (toda segunda às 5h30, só a PAM municipal); manual para as
+outras séries; citado em ibge_sidra.py.
 """
 
 import argparse

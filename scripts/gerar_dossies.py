@@ -14,6 +14,9 @@ regras do que pode entrar ficam em `base/dossie.py`.
 Uma seção que quebra numa empresa não derruba as outras nem a noite; uma ficha com pessoa não é gravada.
 Roda toda noite no servidor de casa, depois da rede: saída 0 tudo certo; 1 alguma falha, com a última
 linha `FALHAS: ...` (vai para o aviso do Kuma), como `scripts/montar_rede.py`.
+
+Roda: cron de casa pelo gerar-dossies.sh (todo dia às 6h40); outro script
+(gerar_pacotes_do_cafe.py); citado em dossie.py.
 """
 
 import argparse

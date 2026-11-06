@@ -1,6 +1,9 @@
 """Grava o contrato da API v1 em docs/api/openapi-v1.json (há teste que confere se está em dia).
 
 Uso: python -m scripts.gerar_openapi
+
+Roda: manual (python -m scripts.gerar_openapi); coberto por test_api_v1_contrato.py; ver README.md,
+erros-e-solucoes.md.
 """
 
 import json

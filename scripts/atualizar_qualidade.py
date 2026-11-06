@@ -9,6 +9,8 @@ Roda fora do app (no VPS, uma vez por dia, depois de `atualizar_fundamentos`, nu
 próprio: o ITR inteiro não cabe ao lado do app). Lê cada arquivo do acervo do original
 (`src/acervo.py`) e só baixa da CVM o que não estiver lá. Um arquivo que falha não para os outros;
 qualquer falha devolve 1, para a conferência das tarefas avisar.
+
+Roda: cron do VPS (todo dia às 8h15).
 """
 
 import argparse

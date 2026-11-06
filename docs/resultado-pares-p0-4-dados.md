@@ -1,5 +1,9 @@
 # Ficha P0-4 (pares por cointegração na B3): conferência da base antes da primeira tentativa
 
+> **Superado:** a base que faltava (COTAHIST anual de 2009 a 2023) foi completada no mesmo dia
+> (`docs/conferencia-base-b3-2009-2023.md`) e a ficha rodou em 03/11/2026
+> (`docs/resultado-pares-p0-4-tentativa-1.md`). Este arquivo fica só como registro da conferência.
+
 Gerado em 03/11/2026 (21h, Brasília) pela conversa "Satélites · carteira própria e trade 24/7", plano v2
 da carteira própria (ADR 0118, Emenda 1). Pré-registro quant v0.1 (hash
 `ea45eddf09e89f1cee5af3e7612fac2739cebf05ab1583e5270c6b3c2f403269`), ficha P0-4.

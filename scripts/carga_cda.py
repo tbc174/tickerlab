@@ -21,6 +21,9 @@ pedido por vez.
 - **Bloco 2** (relatório da base de crédito, 16/10/2026): as cotas de fundos que cada fundo tem (quem
   compra cotas de FIDC) vão para `<pasta>/../cda_cotas/<ano>.parquet`, com as mesmas regras
   (`base/cda.py::ler_cotas_de_fundos`). Um ano já carregado ganha a tabela sem regravar o CDA.
+
+Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h05); manual no servidor pelo
+cda-cotas-no-servidor.sh; outro script (montar_painel_dos_fundos.py); citado em dicionario.py.
 """
 
 import argparse

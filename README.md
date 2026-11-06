@@ -102,9 +102,9 @@ registrado no próprio repositório (`notas/`, `guias/`, `estudos/`).
 
 ## Em números
 
-Contados no repositório em 03/11/2026.
+Contados no repositório em 03/11/2026 (testes recontados em 05/11/2026).
 
-| 44 páginas no app | 14 ferramentas grátis | 113 tabelas catalogadas na base | mais de 80 fontes arquivadas | mais de 12 mil testes |
+| 44 páginas no app | 14 ferramentas grátis | 113 tabelas catalogadas na base | mais de 80 fontes arquivadas | mais de 14 mil testes |
 |:---:|:---:|:---:|:---:|:---:|
 | análise, estratégias, research, carteira, relatórios e conta | calculadoras e simuladores no site | com contrato de dados versionado | CVM, BCB, Tesouro, B3, reguladores, clima e cripto, em mais de 400 arquivos acompanhados | com PostgreSQL de verdade e cobertura mínima de 85% |
 
@@ -369,7 +369,7 @@ e `pre-registro-quant-p0-v0.1.md` e `v0.2.md`).
 
 ## Qualidade e testes
 
-- **Mais de 12 mil testes** (pytest) em 638 arquivos, rodando com **PostgreSQL 16 de verdade**, em
+- **Mais de 14 mil testes** (pytest) em 742 arquivos, rodando com **PostgreSQL 16 de verdade**, em
   5 máquinas ao mesmo tempo no GitHub Actions. A cobertura mínima é de **85%** (`.coveragerc`); o
   CI falha abaixo disso.
 - **Estilo e tipos:** `ruff` (estilo e formatação) e `pyright` (tipos) em todo commit.
@@ -405,6 +405,7 @@ Site público e pesquisa:
 .venv\Scripts\python -m scripts.exportar_conteudo              # conteúdo para o React
 cd web; npm ci; npm run site                                     # páginas de site/ (React)
 .venv\Scripts\python -m pip install -r requirements-trader.txt  # só para a pesquisa (Windows)
+.venv\Scripts\python -m pip install -r requirements.txt -r requirements-estudos.txt  # só para os cadernos de estudos/ (Jupyter)
 ```
 
 Testes e estilo (a suíte inteira leva cerca de 2 minutos em 4 processos):
@@ -475,8 +476,8 @@ cobrança de teste.
 
 ## Segurança e privacidade
 
-- Login com o Google, a Microsoft ou um código por e-mail; e-mail não verificado é recusado, e
-  uma forma nova de entrar só se junta a uma conta quando o e-mail foi provado dos dois lados. Cada pessoa vê apenas os próprios
+- Login com o Google (no app) ou com um código enviado por e-mail (na API e no site); e-mail não verificado
+  é recusado, e uma forma nova de entrar só se junta a uma conta quando o e-mail foi provado dos dois lados. Cada pessoa vê apenas os próprios
   dados (toda consulta filtra pelo usuário, com testes de isolamento).
 - Webhook do Stripe com assinatura verificada, idempotente e tolerante a eventos fora de ordem.
   O plano só muda pelo webhook.
@@ -609,9 +610,9 @@ autorização por escrito do autor. Ver o código no GitHub e criar um fork pela
 permitido pelos termos de uso do GitHub; isso não dá direito de uso fora dele.
 
 Componentes de terceiros continuam com as próprias licenças: as bibliotecas listadas em
-`requirements.txt`, `requirements-trader.txt` e `web/package.json`, e as fontes Manrope e
-JetBrains Mono (SIL Open Font License, textos em `static/fontes/`). Os dados abertos republicados
-seguem as licenças das fontes.
+`requirements.txt`, `requirements-trader.txt`, `requirements-estudos.txt` e `web/package.json`, e as
+fontes Manrope e JetBrains Mono (SIL Open Font License, textos em `static/fontes/`). Os dados abertos
+republicados seguem as licenças das fontes.
 
 ---
 

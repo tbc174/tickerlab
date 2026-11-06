@@ -17,6 +17,10 @@ Uma queda no meio deixa prefixos já com o mês: repetir o mês não acrescenta 
 
 Cada linha leva o SHA-256 do ZIP do mês de onde veio (`origem_sha256`, vazio na versão "saiu do arquivo"),
 quando foi montada e a versão do código. Saída 0 tudo certo; 1 falha (última linha `FALHAS:`).
+
+Roda: manual (python -m scripts.montar_historico_do_cnpj); coberto por
+test_base_manifesto_em_toda_tabela.py, test_montar_historico_do_cnpj.py; ver dicionario-da-base.md;
+citado em dicionario.py.
 """
 
 import argparse

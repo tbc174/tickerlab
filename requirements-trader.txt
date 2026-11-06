@@ -3,7 +3,6 @@
 -r requirements.txt
 scikit-learn==1.9.1
 lightgbm==4.7.0
-optuna==5.0.0
 statsmodels==0.15.0
 pyarrow==25.0.1
 xlrd==2.0.2  # planilha de dividendos de Shiller (Pesquisa 2)

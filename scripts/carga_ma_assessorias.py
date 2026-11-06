@@ -24,6 +24,9 @@ data.
 E a régua do middle market (passo 5, `base/ma_regua.py`): grava `<base>/ma/regua/negocios.parquet` com a
 receita anual da alvo de antes do negócio (a DRE da CVM já montada em `<base>/demonstracoes` e as lidas à
 mão em `base/conferidas/ma_receitas.csv`) e o porte do CNPJ do mês mais recente. Sem as datas, não mede.
+
+Roda: cron de casa pelo carga-ma.sh (todo domingo às 7h30); manual no servidor pelo
+ma-extracao-no-servidor.sh, ma-religar-356.sh; citado em dicionario.py.
 """
 
 import argparse

@@ -7,6 +7,9 @@ Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
+
+Roda: hook do Claude Code no PC (travas.py); outro script (gerar_site.py, juntar_main.py,
+markdown_simples.py); citado em amostra_do_relatorio.py, metodologia_das_notas.py.
 """
 
 import json

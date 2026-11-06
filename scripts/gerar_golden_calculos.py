@@ -9,6 +9,8 @@ refatoração, numa troca de biblioteca), o teste falha. Rodar este script **só
 um cálculo de propósito, e explicar a mudança no PR (o diff do JSON mostra o que mudou).
 
 Complementa o `golden_analise.json` (indicadores da análise do ativo e do Research).
+
+Roda: manual (python -m scripts.gerar_golden_calculos); coberto por test_golden_calculos.py.
 """
 
 import json

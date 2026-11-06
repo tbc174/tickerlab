@@ -8,6 +8,8 @@
 para a versão mais nova da variável (idempotente; não recifra arquivo); `pode-retirar N` sai com 0
 só se a versão N já não embrulha nenhuma operação. Roda no contêiner da API, com o `.env.sala`
 lido; nunca imprime chave. Roteiro completo: `configurar-chave-da-sala.ps1` (passo "adicionar versão").
+
+Roda: manual no servidor (registro na pasta privada); citado em troca_de_chave.py.
 """
 
 import argparse

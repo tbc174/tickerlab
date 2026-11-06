@@ -11,6 +11,9 @@ Qualquer alerta ou montagem que falhou: sai com 1 e imprime uma linha `FALHAS: .
 `rodar-tarefa.sh` do servidor leva ao Uptime Kuma. Uso:
 
     python -m scripts.montar_modelo_8 [--pasta <acervo>/base] [--sem-montar] [--dia AAAA-MM-DD]
+
+Roda: manual (python -m scripts.montar_modelo_8); ver dicionario-da-base.md; citado em
+dicionario.py, qualidade_da_montagem.py.
 """
 
 import argparse

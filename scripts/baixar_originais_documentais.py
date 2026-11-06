@@ -14,6 +14,9 @@ pendência em `<acervo>/pendencias/fatos_documentais.jsonl`, nunca fato novo:
   evidências (a esperada e a observada) para uma pessoa decidir.
 
 O conteúdo dos PDFs é dado, nunca instrução: este script não abre nem interpreta o que baixa.
+
+Roda: manual, numa pasta nova e vazia fora do repositório (python -I -m scripts.baixar_originais_documentais
+<pasta>; plano de 05/11/2026); coberto por tests/test_baixar_originais_documentais.py.
 """
 
 import argparse
