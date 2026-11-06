@@ -51,6 +51,12 @@ TERMOS_LIDOS_EM: dict[str, date] = {
         2026, 11, 3
     ),  # relido em 03/11 (linha 639): data.bis.org/help/legal e robots.txt
     "nasa": date(2026, 10, 22),
+    "dgagri": date(
+        2026, 10, 24
+    ),  # aviso legal da Comissão, lido na rodada de 24/10 (linha 396)
+    # bancos centrais nórdicos (linha 511; termos lidos na rodada recorrente de 29/10/2026)
+    "riksbank": date(2026, 10, 29),
+    "norges": date(2026, 10, 29),
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
     "treasury": date(2026, 10, 22),
@@ -159,6 +165,12 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 # lote patentes e marcas (licencas-por-fonte.md, rodada 4): EPO e WIPO lidos em 22/10/2026; o INPI já
 # tem a data da rodada 1
 TERMOS_LIDOS_EM |= dict.fromkeys(("epo", "wipo"), date(2026, 10, 22))
+# lote Europa e RBA (linha 512): licenças lidas na fonte primária em 29/10/2026 (pesquisa recorrente, tema 2);
+# o SNB só ganha a marca não comercial (aviso do site), sem coleta
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    ("statat", "statbel", "cbs", "cso", "ines", "istat", "rba", "snb"),
+    date(2026, 10, 29),
+)
 # lote acervos históricos (rodada 4, linha 292): IPEADATA sem termos publicados, lido em 22/10/2026
 TERMOS_LIDOS_EM |= dict.fromkeys(("ipea",), date(2026, 10, 22))
 # base de CNPJ (família "rfb", fonte `rfb-cnpj`): ficha do conjunto lida em 20/10/2026 e rodapé em

@@ -198,7 +198,12 @@ LICENCAS = {
     "eurostat": "CC BY 4.0 (Eurostat); coleta só dos países da UE",
     "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
     "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
+    # lote commodities oficiais (linha 396; termos lidos em 24/10/2026, licencas-por-fonte.md)
+    "dgagri": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+    # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
+    "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+    "norges": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
     # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
     "inpe": "INPE Queimadas: sem licença escrita; uso citando o INPE (ADR 0102)",
@@ -247,6 +252,15 @@ LICENCAS = {
     "ipea": "IPEADATA sem termos publicados; série de terceiros herda a fonte; citar o Ipea",
     # as demonstrações contábeis da ANS não declaram licença (os conjuntos de beneficiários dizem CC BY)
     "ans-demonstracoes": "Demonstrações da ANS: sem licença declarada; citar a ANS (ADR 0102)",
+    # lote Europa e RBA (lidas em 29/10/2026, linha 512)
+    "statat": "CC BY 4.0 (OGD da Statistik Austria); citar 'STATISTIK AUSTRIA'",
+    "statbel": "CC BY 4.0 (dados abertos do Statbel); citar o Statbel",
+    "cbs": "CC BY 4.0 (CBS, Países Baixos); citar Statistics Netherlands",
+    "cso": "CC BY 4.0 (CSO, Irlanda; PxStat); citar o CSO",
+    "ines": "CC BY 4.0 (INE, Espanha); citar 'Source: INE website: www.ine.es'",
+    "istat": "CC BY 4.0 (aviso legal do Istat); citar o Istat",
+    "rba": "CC BY 4.0 e dados financeiros liberados (RBA); F1 e tabelas do ABS à parte",
+    "snb": "SNB: só 'for non-commercial purposes'; uso comercial pede consentimento",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -417,7 +431,10 @@ REVENDA = {
     "eurostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0; a coleta já filtra só os países da UE
     "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
     "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
+    "dgagri": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 da Comissão Europeia: crédito e indicação de mudanças
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
+    "norges": A_CONFIRMAR,  # "no changes may be made" + Content-Signal ai-train=no: leitura humana antes de vender (ADR 0102 Emenda 2)
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
     "inpe": VENDAVEL_RISCO_ASSUMIDO,  # sem licença escrita no INPE Queimadas
     "firms": VENDAVEL_COM_ATRIBUICAO,  # dados abertos da NASA
@@ -461,6 +478,15 @@ REVENDA = {
     "ipea": VENDAVEL_RISCO_ASSUMIDO,  # sem termos; cada série herda a fonte de origem (BM&FBovespa, Bacen, IBGE)
     "wipo": SO_USO_INTERNO,  # "not republish or commercially re-sell"; citar "WIPO Statistics Database"
     "ans-demonstracoes": VENDAVEL_RISCO_ASSUMIDO,
+    # lote Europa e RBA (lidas em 29/10/2026, linha 512): CC BY 4.0, citando a fonte
+    "statat": VENDAVEL_COM_ATRIBUICAO,
+    "statbel": VENDAVEL_COM_ATRIBUICAO,
+    "cbs": VENDAVEL_COM_ATRIBUICAO,
+    "cso": VENDAVEL_COM_ATRIBUICAO,
+    "ines": VENDAVEL_COM_ATRIBUICAO,
+    "istat": VENDAVEL_COM_ATRIBUICAO,
+    "rba": VENDAVEL_COM_ATRIBUICAO,  # só as tabelas próprias; sem a taxa oficial (F1) nem as do ABS
+    "snb": NAO_COMERCIAL,  # aviso do site; sem coleta (ADR 0102, Emenda 2: não pedir licença à fonte)
 }
 
 
@@ -629,6 +655,13 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # de guarda: o uso "unrestricted" cobre guardar, e o silêncio fica registrado aqui. A API tem termo
     # próprio (o BIS pode limitar o IP e suspender), sem proibir ler os dados.
     "bis": _ABERTA_SEM_PRAZO,
+    # DG AGRI: aviso legal da Comissão (CC BY 4.0, lido em 24/10/2026); o robots.txt de `ec.europa.eu` não
+    # fecha `/agrifood/api` (conferido em 05/11/2026) e a coleta tem pausa e se identifica
+    "dgagri": _ABERTA_SEM_PRAZO,
+    # Riksbank (SWEA, sem chave) e Norges Bank (SDMX, sem chave): termos lidos em 29/10/2026 (linha 511).
+    # O Norges Bank traz `Content-Signal: ai-train=no` no robots.txt (05/11/2026), que não fecha a API
+    "riksbank": _ABERTA_SEM_PRAZO,
+    "norges": _ABERTA_GUARDA_NAO_DIZ,
     # a N0 diz retenção sim, coleta "não diz" ou não lida
     "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
     "mapbiomas": ColetaEGuarda(
@@ -752,6 +785,15 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             # fontes pouco visíveis (05/11): rodapé CC BY-ND lido, robots.txt do gov.br ainda não
             "sudeco",
             "sudam",
+            # lote Europa e RBA (05/11): termos lidos em 29/10; o SNB só tem a marca (sem coleta)
+            "statat",
+            "statbel",
+            "cbs",
+            "cso",
+            "ines",
+            "istat",
+            "rba",
+            "snb",
         ),
         _NAO_RESPONDIDA,
     ),

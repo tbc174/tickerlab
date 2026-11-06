@@ -1,0 +1,148 @@
+"""Lote commodities oficiais (base/arquivo/lote_commodities_oficiais.py): DG AGRI e, nos PRs seguintes, as outras
+fontes oficiais da linha 396 da fila. Nada vai à internet: a descoberta só monta endereços e não pede nada."""
+
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from base.arquivo import coleta, fontes
+from base.arquivo import lote_commodities_oficiais as lote
+from base.arquivo.coleta import Fonte
+from src.banco.coletas import SEM_LICENCA_CONHECIDA, licenca_da_fonte, revenda_da_fonte
+
+AGORA = datetime(2026, 11, 5, 22, tzinfo=UTC)
+PORTAL = "https://ec.europa.eu/agrifood/api"
+
+
+def _fonte(id_: str) -> Fonte:
+    return next(f for f in lote.fontes() if f.id == id_)
+
+
+def _alvos(id_: str):
+    # a descoberta do DG AGRI só monta endereços: o cliente nunca é chamado
+    return _fonte(id_).descobrir(None, AGORA)  # type: ignore[arg-type]
+
+
+def test_nenhum_id_repetido_e_todos_estao_no_registro_do_arquivista():
+    ids = [f.id for f in lote.fontes()]
+    assert len(ids) == len(set(ids))
+    todos = [f.id for f in fontes.FONTES]
+    assert len(todos) == len(set(todos))
+    assert set(ids) <= set(todos)
+
+
+def test_toda_fonte_do_lote_tem_licenca_e_revenda_conhecidas():
+    for f in lote.fontes():
+        assert licenca_da_fonte(f.id) != SEM_LICENCA_CONHECIDA, f.id
+        assert revenda_da_fonte(f.id) is not None, f.id
+
+
+@pytest.mark.parametrize(
+    ("produto", "primeiro_ano"), [("cereal", 2015), ("oilseeds", 2021), ("dairy", 1991)]
+)
+def test_dgagri_vira_uma_janela_por_ano_do_primeiro_dado_ate_o_ano_da_coleta(
+    produto, primeiro_ano
+):
+    urls = [a.url for a in _alvos(f"dgagri-{produto}")]
+    assert urls[0] == (
+        f"{PORTAL}/{produto}/prices?beginDate=01/01/{primeiro_ano}"
+        f"&endDate=10/01/{primeiro_ano + 1}"
+    )
+    assert urls[-1].endswith(
+        f"beginDate=01/01/{AGORA.year}&endDate=10/01/{AGORA.year + 1}"
+    )
+    assert len(urls) == AGORA.year - primeiro_ano + 1
+    assert len(set(urls)) == len(urls)
+
+
+def test_dgagri_janela_vai_ate_10_01_porque_a_semana_da_virada_so_cabe_inteira_ali():
+    """O portal só devolve a semana que cabe inteira na janela (conferido ao vivo em 05/11/2026): com
+    `endDate=31/12`, a semana de 29/12 a 04/01 sumia de todas as janelas."""
+    urls = [a.url for a in _alvos("dgagri-dairy")]
+    assert all(
+        f"beginDate=01/01/{ano}&endDate=10/01/{ano + 1}" in url
+        for ano, url in zip(range(1991, AGORA.year + 1), urls, strict=True)
+    )
+
+
+def _linha(url: str, baixado_em: datetime):
+    return SimpleNamespace(url=url, baixado_em=baixado_em)
+
+
+def test_dgagri_ano_fechado_so_vale_se_baixado_depois_de_janeiro_do_ano_seguinte():
+    url = lote.endereco_do_dg_agri("cereal", 2024)
+    valida = lote.janela_fechada_ja_guardada
+    assert valida(_linha(url, datetime(2025, 2, 1, tzinfo=UTC)))
+    assert valida(_linha(url, datetime(2026, 3, 1)))  # noqa: DTZ001  # SQLite dos testes: sem fuso
+    # baixada durante o ano ou em janeiro: falta a última semana e as correções
+    assert not valida(_linha(url, datetime(2024, 11, 5, tzinfo=UTC)))
+    assert not valida(_linha(url, datetime(2025, 1, 31, tzinfo=UTC)))
+    # o ano corrente nunca vale, e o açúcar (sem janela) é lido toda vez
+    corrente = lote.endereco_do_dg_agri("cereal", AGORA.year)
+    assert not valida(_linha(corrente, AGORA))
+    assert not valida(_linha(lote.endereco_do_dg_agri("sugar"), AGORA))
+
+
+class _Portal:
+    """Cliente que só conta o que foi baixado (a descoberta do DG AGRI nunca chama `ler`)."""
+
+    def __init__(self):
+        self.baixados: list[str] = []
+
+    def cabecalhos(self, url):
+        return {"Content-Type": "application/json"}
+
+    def baixar(self, url, destino: Path):
+        self.baixados.append(url)
+        destino.write_bytes(b'[{"price": "EUR 229,29"}]')
+        return {"Content-Type": "application/json"}
+
+
+def test_dgagri_na_semana_seguinte_so_baixa_o_ano_corrente(banco, tmp_path):
+    """Regressão do P1 da revisão cruzada: a janela fechada, já guardada depois do fechamento, não é baixada de
+    novo (a `versao` do `Alvo` nunca batia: o arquivista só grava os cabeçalhos como versão)."""
+    fonte = _fonte("dgagri-cereal")
+    portal = _Portal()
+    depois_de_janeiro = datetime(2026, 11, 5, 22, tzinfo=UTC)
+    coleta.arquivar(fonte, portal, depois_de_janeiro, tmp_path / "t", pausa=0)
+    # a 1ª rodada baixa tudo (nada estava guardado); na 2ª, os anos fechados já valem
+    primeira = len(portal.baixados)
+    assert primeira == AGORA.year - 2015 + 1
+    coleta.arquivar(
+        fonte, portal, depois_de_janeiro + timedelta(days=7), tmp_path / "t", pausa=0
+    )
+    assert portal.baixados[primeira:] == [
+        lote.endereco_do_dg_agri("cereal", AGORA.year)
+    ]
+
+
+def test_dgagri_ano_sem_dado_e_nao_encontrado_e_nunca_falha():
+    """O portal responde 404 para o ano em que o produto ainda não existe: é `SemArquivo`, não falha."""
+    for id_ in ("dgagri-cereal", "dgagri-oilseeds", "dgagri-dairy"):
+        assert all(a.obter is not None for a in _alvos(id_)), id_
+
+
+def test_dgagri_acucar_e_um_retrato_so_porque_a_api_ignora_as_datas():
+    alvos = _alvos("dgagri-sugar")
+    assert [a.url for a in alvos] == [f"{PORTAL}/sugar/prices"]
+
+
+def test_dgagri_nao_leva_carne_porque_o_endereco_dela_responde_404():
+    assert "dgagri-meat" not in {f.id for f in lote.fontes()}
+    assert "dgagri-beef" not in {f.id for f in lote.fontes()}
+
+
+def test_dgagri_e_json_leve_semanal_e_com_pausa_entre_pedidos():
+    for f in lote.fontes():
+        assert f.tipo == "json", f.id
+        assert f.grupo == "semanal", f.id
+        assert not f.pesada, f.id
+        assert f.pausa_minima >= 1.0, f.id
+
+
+def test_dgagri_nao_filtra_por_pais_porque_a_licenca_e_da_comissao_para_todos_os_estados():
+    for f in lote.fontes():
+        for a in f.descobrir(None, AGORA):  # type: ignore[arg-type]
+            assert "memberStateCodes" not in a.url
