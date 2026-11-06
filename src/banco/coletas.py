@@ -61,7 +61,7 @@ LICENCAS = {
     # linha 658 (fichas dos conjuntos no CKAN, lidas em 03/11/2026)
     "goias": "CC BY, licenças do Ipê do Governo de Goiás (citar a fonte)",
     "msestado": "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)",
-    "sefazpe": "CC BY, benefícios fiscais da SEFAZ de Pernambuco (citar a fonte). Só CNPJ, sem a razão social",
+    "sefazpe": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
     "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
