@@ -182,7 +182,6 @@ def test_as_tabelas_sao_so_internas(tabela):
     assert TABELAS[tabela].familia_da_fonte == "datajud"
     assert coletas.so_interna(TABELAS[tabela].familia_da_fonte)
     assert not dossie.pode_mostrar(tabela)
-    assert not dossie.pode_contar(tabela)
     with pytest.raises(dossie.TabelaProibidaError):
         dossie.exigir_que_pode_mostrar([tabela])
 

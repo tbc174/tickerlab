@@ -190,6 +190,9 @@ LICENCAS = {
     "worldbank": "CC BY 4.0 por padrão (Banco Mundial, WDI); conferir a licença de cada conjunto",
     "bis": "Termos do BIS (data.bis.org/help/legal, 03/11/2026): uso comercial citando o BIS",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
+    # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
+    "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+    "norges": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
     "noaa": "Obra do governo dos EUA (domínio público); citar a NOAA CPC",
     # lote clima e fogo (termos lidos em 23/10/2026, licencas-por-fonte.md, rodada 4)
     "inpe": "INPE Queimadas: sem licença escrita; uso citando o INPE (ADR 0102)",
@@ -404,6 +407,8 @@ REVENDA = {
     "worldbank": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (WDI); outros conjuntos podem ter licença própria
     "bis": VENDAVEL_COM_ATRIBUICAO,  # data.bis.org/help/legal, 03/11/2026; Tiago aceitou na ADR 0121, item 1
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
+    "norges": A_CONFIRMAR,  # "no changes may be made" + Content-Signal ai-train=no: leitura humana antes de vender (ADR 0102 Emenda 2)
     "noaa": VENDAVEL_COM_ATRIBUICAO,  # obra do governo dos EUA
     "inpe": VENDAVEL_RISCO_ASSUMIDO,  # sem licença escrita no INPE Queimadas
     "firms": VENDAVEL_COM_ATRIBUICAO,  # dados abertos da NASA
@@ -612,6 +617,10 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # de guarda: o uso "unrestricted" cobre guardar, e o silêncio fica registrado aqui. A API tem termo
     # próprio (o BIS pode limitar o IP e suspender), sem proibir ler os dados.
     "bis": _ABERTA_SEM_PRAZO,
+    # Riksbank (SWEA, sem chave) e Norges Bank (SDMX, sem chave): termos lidos em 29/10/2026 (linha 511).
+    # O Norges Bank traz `Content-Signal: ai-train=no` no robots.txt (05/11/2026), que não fecha a API
+    "riksbank": _ABERTA_SEM_PRAZO,
+    "norges": _ABERTA_GUARDA_NAO_DIZ,
     # a N0 diz retenção sim, coleta "não diz" ou não lida
     "chirps3": _ABERTA_SEM_PRAZO,  # robots.txt do Hugging Face: Allow: /
     "mapbiomas": ColetaEGuarda(

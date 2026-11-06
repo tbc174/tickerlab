@@ -6,14 +6,15 @@ público no dia. A PGFN e a Receita valem pelo último dia do mês em que o retr
 já lê assim); o IPE, pelo dia da entrega à CVM.
 
 Não observado (nunca estimado): tabela que não está na base, retrato que ainda não existia,
-empresário individual ou MEI na PGFN (ADR 0075: nada negativo sobre pessoa sai da base) e companhia
-sem nenhum documento do IPE até o dia. A empresa fora de um retrato público tem zero (ou "nenhuma"):
+empresário individual ou MEI (pelas `entidades` da rede, como a API externa decide; a porta esconde as
+linhas deles na PGFN, ADR 0075: nada negativo sobre pessoa sai da base) e companhia sem nenhum
+documento do IPE até o dia. A empresa fora de um retrato público tem zero (ou "nenhuma"):
 o retrato inteiro é a observação. Um documento do IPE reapresentado depois do dia some do dia (a base
 guarda só a versão mais nova nos `eventos`): a contagem pode ficar menor, nunca olha o futuro.
 
-`pgfn_divida`, `cnpj_situacao_especial` e `insolvencia` não podem aparecer no app até o parecer
-(`base/dossie.py`, `TABELAS_PROIBIDAS`): estas features são da pesquisa, sem tela. Nada aqui é nota,
-score nem opinião de crédito (B-31).
+`pgfn_divida`, `cnpj_situacao_especial` e `insolvencia` saem no app como fato datado desde a virada de
+5/11/2026 (`docs/virada-empresas-fechadas.md`); estas features seguem sendo da pesquisa, sem tela. Nada
+aqui é nota, score nem opinião de crédito (B-31).
 """
 
 from collections.abc import Callable, Sequence
@@ -24,6 +25,8 @@ import pandas as pd
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from base.porta.rede import resolver
+from base.rede.ids import PREFIXO_DE_PESSOA
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.credito.features import (
     Feature,
@@ -107,6 +110,23 @@ def _nao_observadas(
     return [nova_feature(c, None, periodo, documentos, motivo, fonte) for c in chaves]
 
 
+def _pessoa_natural(porta: Porta, raiz: str, dia: date) -> bool:
+    """O CNPJ é tratado como pessoa (empresário individual, MEI; ADR 0075) nas `entidades` da rede
+    públicas no dia, como a API externa decide (na dúvida, é pessoa). Sem a rede nesta base, ou sem
+    o CNPJ nela, False: a porta já esconde as linhas de pessoa da PGFN, então o que chega é de empresa."""
+    try:
+        id_entidade = resolver(porta.con, raiz, dia.isoformat())
+    except LookupError:
+        return False
+    if id_entidade.startswith(PREFIXO_DE_PESSOA):
+        return True
+    entidade = _ler(porta, "entidades", dia, {"id_entidade": id_entidade})
+    if entidade is None or entidade.empty:
+        return False
+    marcas = entidade.iloc[0][["mei", "trata_como_pessoa"]]
+    return any(pd.isna(marca) or bool(marca) for marca in marcas)
+
+
 # --- PGFN -----------------------------------------------------------------------------------------
 def _pgfn(porta: Porta, raiz: str, dia: date) -> list[Feature]:
     linhas = _ler(porta, "pgfn_divida", dia, {"cnpj_basico": raiz})
@@ -122,7 +142,7 @@ def _pgfn(porta: Porta, raiz: str, dia: date) -> list[Feature]:
     retrato, publico = _dia(ultimo[0]), ultimo[1]
     periodo = f"retrato de {retrato:%d/%m/%Y}"
     documentos = [DocumentoUsado(f"PGFN: dívida ativa da União, {periodo}", publico)]
-    if linhas["trata_como_pessoa"].fillna(False).astype(bool).any():
+    if _pessoa_natural(porta, raiz, dia):
         return _nao_observadas(DA_PGFN, COMO_PESSOA, FONTE_DA_PGFN, periodo, documentos)
     do_retrato = linhas[linhas["data_do_retrato"].map(_dia) == retrato]
     principal = do_retrato[do_retrato["tipo_devedor"] == DEVEDOR_PRINCIPAL]
