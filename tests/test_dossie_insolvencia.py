@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from base import contestacoes, dossie
+from base import contestacoes, dossie, palavras_vedadas
 from base.contrapartes import cafe
 from src import dossie as dossie_do_app
 from src.relatorio_empresa import ORDEM_DAS_SECOES
@@ -20,7 +20,7 @@ D = pd.Timestamp
 HOJE = D("2026-10-22")
 RAIZ = "02429144"
 FRASE_FIXA = "a falta de registro nas fontes lidas não prova que não exista"
-VEDADAS = cafe.VEDADAS_DA_ADR_0103
+VEDADAS = palavras_vedadas.VEDADAS
 JULGAMENTOS = ("avaliamos", "classificamos", "nota ", "risco", "sinal")
 
 

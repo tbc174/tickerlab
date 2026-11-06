@@ -2534,6 +2534,92 @@
       "frequencia": "Mensal (um CSV por ano e por fluxo)",
       "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar"
     },
+    "comex_urf": {
+      "tabela": "comex_urf",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "urf": {
+          "descricao": "Código da URF, o mesmo de `comex_preco_medio.urf`",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "Nome da unidade, sem o código repetido na frente (`IRF ILHEUS`)",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o nome era público (o dia da coleta que o trouxe)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "urf",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)",
+      "atraso": "Sem data própria: vale desde o dia da coleta do arquivista"
+    },
+    "comex_via": {
+      "tabela": "comex_via",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "via": {
+          "descricao": "Código da via (`01` marítima, `04` aérea...)",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "Nome da via, como o MDIC escreve (`MARITIMA`)",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o nome era público (o dia da coleta que o trouxe)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "via",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "visto_em": "visto_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Quando o MDIC muda a tabela (coletada junto com os CSVs de NCM, semanal)",
+      "atraso": "Sem data própria: vale desde o dia da coleta do arquivista"
+    },
     "aneel_samp": {
       "tabela": "aneel_samp",
       "modulo": "mercado_e_empresas",

@@ -42,6 +42,7 @@ from base.setoriais import (
     antt_siade,
     ccee,
     comex_preco_medio,
+    comex_tabelas,
     ligacao,
     ons,
     ons_capacidade,
@@ -98,6 +99,7 @@ class Revisada(NamedTuple):
     foto: bool = (
         False  # sem data própria: o 1º valor vale desde o dia da coleta que o trouxe
     )
+    fonte_dos_originais: str = ""  # tabela de apoio de outra fonte: de quem são os originais (vazio: a própria chave)
 
 
 def _ano_do_samp(url: str) -> str | None:
@@ -156,6 +158,16 @@ REVISADAS = {
     comex_preco_medio.FONTE: Revisada(
         "comex_preco_medio", list(comex_preco_medio.CHAVE), comex_preco_medio.CARIMBOS,
         comex_preco_medio.destino, comex_preco_medio.ler, "", "", lambda t: t["kg_liquido"],
+    ),
+    "comex_urf": Revisada(
+        "comex_urf", list(comex_tabelas.CHAVE_DA_URF), comex_tabelas.CARIMBOS,
+        comex_tabelas.destino_da_urf, comex_tabelas.ler_urf, "", "", lambda t: t["urf"].str.len(),
+        foto=True, fonte_dos_originais=comex_tabelas.FONTE_DOS_ORIGINAIS,
+    ),
+    "comex_via": Revisada(
+        "comex_via", list(comex_tabelas.CHAVE_DA_VIA), comex_tabelas.CARIMBOS,
+        comex_tabelas.destino_da_via, comex_tabelas.ler_via, "", "", lambda t: t["via"].str.len(),
+        foto=True, fonte_dos_originais=comex_tabelas.FONTE_DOS_ORIGINAIS,
     ),
 }  # fmt: skip
 
@@ -320,7 +332,9 @@ def carregar_revisada(
     urls = sorted(
         {
             lin.url
-            for lin in originais_mais_recentes(conexao, fonte)
+            for lin in originais_mais_recentes(
+                conexao, revisada.fonte_dos_originais or fonte
+            )
             if revisada.destino(lin.url)
         }
     )

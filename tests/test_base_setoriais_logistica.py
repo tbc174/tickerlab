@@ -17,6 +17,7 @@ from base.setoriais import (
     anp_concessionarios,
     antt_siade,
     comex_preco_medio,
+    comex_tabelas,
     ligacao,
     prazos,
     revisoes,
@@ -269,6 +270,42 @@ def test_comex_destino_so_dos_csv_de_ncm():
     )
     assert comex_preco_medio.destino(f"{COMEX}EXP_2026_TOTAIS_CONFERENCIA.csv") is None
     assert comex_preco_medio.destino("https://x/comexstat-bd/tabelas/URF.csv") is None
+
+
+TABELAS_DO_COMEX = "https://x.gov.br/comexstat-bd/tabelas/"
+
+
+def test_comex_urf_sem_o_codigo_repetido_no_nome():
+    urf = comex_tabelas.ler_urf(_ler("comex", "URF.csv"))
+    assert list(urf.columns) == list(comex_tabelas.COLUNAS_DA_URF)
+    assert not urf.duplicated(list(comex_tabelas.CHAVE_DA_URF)).any()
+    assert urf["disponivel_em"].isna().all()  # a carga põe o dia da coleta
+    nomes = urf.set_index("urf")["nome"]
+    assert nomes["0510353"] == "IRF ILHEUS"
+    assert not any(n.startswith(f"{c} - ") for c, n in nomes.items())
+
+
+def test_comex_urf_cobre_as_urf_do_preco_medio(exportacao):
+    urf = comex_tabelas.ler_urf(_ler("comex", "URF.csv"))
+    assert set(exportacao["urf"]) <= set(urf["urf"])
+
+
+def test_comex_via_traz_o_nome_de_cada_codigo():
+    via = comex_tabelas.ler_via(_ler("comex", "VIA.csv"))
+    assert list(via.columns) == list(comex_tabelas.COLUNAS_DA_VIA)
+    assert not via.duplicated(list(comex_tabelas.CHAVE_DA_VIA)).any()
+    nomes = via.set_index("via")["nome"]
+    assert nomes["00"] == "VIA NAO DECLARADA"
+    assert nomes["01"] == "MARITIMA"
+
+
+def test_comex_destino_das_tabelas_de_apoio_so_urf_e_via():
+    assert comex_tabelas.destino_da_urf(f"{TABELAS_DO_COMEX}URF.csv") == "urf"
+    assert comex_tabelas.destino_da_via(f"{TABELAS_DO_COMEX}VIA.csv") == "via"
+    assert comex_tabelas.destino_da_urf(f"{TABELAS_DO_COMEX}VIA.csv") is None
+    assert comex_tabelas.destino_da_via(f"{TABELAS_DO_COMEX}URF.csv") is None
+    assert comex_tabelas.destino_da_urf(f"{TABELAS_DO_COMEX}NCM.csv") is None
+    assert comex_tabelas.destino_da_urf(f"{COMEX}EXP_2026.csv") is None
 
 
 def test_comex_recusa_endereco_que_nao_e_de_ncm():
