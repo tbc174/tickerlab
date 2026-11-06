@@ -6,7 +6,7 @@
 #   apagado do Drive (a versão antiga de um arquivo alterado vai para `_versoes/AAAA-MM-DD/<parte>`).
 #   Não existe `sync` aqui: o script não sabe apagar do destino.
 # - O destino é um remoto `crypt` (nomes e conteúdo cifrados) sobre uma pasta própria do Drive. A senha e o
-#   sal ficam no gerenciador de senhas do Tiago, no cofre `ServidorNotebook-Segredos` e no rclone.conf do
+#   sal ficam no gerenciador de senhas do Tiago, no cofre de segredos dele (fora do repositório) e no rclone.conf do
 #   servidor (600). Este script não lê nem imprime nenhum dos dois.
 # - `restrito/` NÃO sobe (licença de dado, ADR 0115; pode próprio) e a sala de dados também não (documento de
 #   cliente): o script recusa qualquer origem com esses nomes e filtra as duas pastas em qualquer profundidade.

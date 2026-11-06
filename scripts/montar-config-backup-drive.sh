@@ -4,7 +4,7 @@
 #
 # A senha e o sal do crypt chegam PELA ENTRADA PADRÃO (duas linhas: senha e sal), nunca por argumento nem por
 # variável, e são passadas por `rclone obscure -`; este script não imprime nenhum deles. Quem alimenta a entrada
-# é o PowerShell do Tiago, que lê o arquivo do cofre `ServidorNotebook-Segredos`:
+# é o PowerShell do Tiago, que lê o arquivo do cofre de segredos dele:
 #   $linhas = Get-Content $cofre | ? { $_ -match '^(SENHA|SAL)' } | % { ($_ -split ':\s*',2)[1] }
 #   $linhas | wsl -d <distro> -- bash <este script> <arquivo-do-token>
 #

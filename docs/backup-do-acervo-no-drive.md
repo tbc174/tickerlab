@@ -1,8 +1,8 @@
 # Backup cifrado do acervo no Google Drive
 
 Decisão: ADR 0123 (pasta privada do autor). Aqui ficam o desenho, a rotina e o **passo a passo de restauração**.
-Nada neste arquivo é segredo: a senha e o sal do `crypt` ficam só no gerenciador de senhas do autor e no cofre
-`ServidorNotebook-Segredos`; a conta do Google e o Drive não são citados com nome nem endereço.
+Nada neste arquivo é segredo: a senha e o sal do `crypt` ficam só no gerenciador de senhas do autor e em
+um cofre de segredos dele fora do repositório; a conta do Google e o Drive não são citados com nome nem endereço.
 
 ## O que sobe e o que fica de fora
 
@@ -25,7 +25,7 @@ listá-las em `PARTES_DO_ACERVO`.
 
 ## Como funciona
 
-- A **fonte é a VM** `tickerlab-servidor` (`/mnt/dados/tickerlab-acervo`), nunca a cópia do PC nem o Drive para
+- A **fonte é a VM do servidor de casa** (`/mnt/dados/tickerlab-acervo`), nunca a cópia do PC nem o Drive para
   Desktop (que sincroniza e apaga junto).
 - `rclone` (MIT) instalado em `~/bin` da VM. Configuração em `~/.config/tickerlab/backup-drive/rclone.conf`
   (permissão 600, fora do Git), com dois remotos: `drive-acervo` (o Drive, com permissão só para arquivos que o
