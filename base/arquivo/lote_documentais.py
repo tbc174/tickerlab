@@ -28,6 +28,7 @@ CAMINHO_DO_MANIFESTO = (
 )
 MENSAL = "mensal"
 EXTENSAO = ".pdf"
+TIPO = "pdf"  # o arquivista confere a assinatura %PDF antes de guardar
 FONTES_DOCUMENTAIS = ("divida-documental", "sudeco-fdco", "sudam-fda")
 
 
@@ -53,6 +54,6 @@ def _descobrir_da_fonte(fonte_id: str) -> Callable[[Cliente, datetime], list[Alv
 def fontes() -> list[Fonte]:
     """As três fontes, revistas uma vez por mês (os PDFs mudam pouco; a planilha do FDCO é mensal)."""
     return [
-        Fonte(fonte_id, MENSAL, _descobrir_da_fonte(fonte_id))
+        Fonte(fonte_id, MENSAL, _descobrir_da_fonte(fonte_id), tipo=TIPO)
         for fonte_id in FONTES_DOCUMENTAIS
     ]

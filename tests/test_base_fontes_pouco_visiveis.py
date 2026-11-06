@@ -71,6 +71,9 @@ def test_originais_documentais_no_catalogo_do_arquivista():
     manifesto = lote_documentais.originais_documentais()
     for id_, fonte in por_id.items():
         assert fonte.grupo == "mensal"
+        assert (
+            fonte.tipo == "pdf"
+        )  # o arquivista recusa HTML ou outro tipo no lugar do PDF
         alvos = fonte.descobrir(_SemRede(), AGORA)
         esperados = [o["url"] for o in manifesto if o["fonte"] == id_]
         assert [a.url for a in alvos] == esperados and esperados, id_
