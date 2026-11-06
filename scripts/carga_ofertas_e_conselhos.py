@@ -60,6 +60,10 @@ TABELAS_DO_FRE: dict[str, tuple[Callable[[bytes], pd.DataFrame], list[str]]] = {
         [*DOCUMENTO, "recorte", "grupo"],
     ),
     "fre_acionistas": (fre_governanca.ler_acionistas, [*DOCUMENTO, "id_acionista"]),
+    "fre_distribuicao_capital": (
+        fre_governanca.ler_distribuicao_capital,
+        [*DOCUMENTO, "id_documento"],
+    ),
     "fre_partes_relacionadas": (
         fre_governanca.ler_partes_relacionadas,
         [*DOCUMENTO, "linha"],

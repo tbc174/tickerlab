@@ -1460,6 +1460,41 @@ Empregados por região (recorte `local`) e por posição, liderança ou não (re
 | `regiao_exterior` | Só no recorte `posicao`: como a CVM publica (`regiao_exterior`) | número com decimais, na unidade da fonte |
 | `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
 
+## `fre_distribuicao_capital`
+
+Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie, e quantos acionistas pessoa física, pessoa jurídica e investidor institucional a companhia declara. Só contagens e percentuais, sem nome nem documento
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `id_documento`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_distribuicao_capital/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `acionistas_pf` | Número de acionistas pessoa física | número inteiro |
+| `acionistas_pj` | Número de acionistas pessoa jurídica | número inteiro |
+| `acionistas_institucionais` | Número de investidores institucionais | número inteiro |
+| `circulacao_ordinarias` | Ações ordinárias em circulação | ações |
+| `percentual_ordinarias` | Percentual das ordinárias em circulação, de 0 a 100 como a CVM escreve | número com decimais, na unidade da fonte |
+| `circulacao_preferenciais` | Ações preferenciais em circulação | ações |
+| `percentual_preferenciais` | Percentual das preferenciais em circulação, de 0 a 100 como a CVM escreve | número com decimais, na unidade da fonte |
+| `circulacao_total` | Total de ações em circulação | ações |
+| `percentual_total` | Percentual do total de ações em circulação (o free float declarado), de 0 a 100 como a CVM escreve; a CVM tem linhas fora dessa faixa | número com decimais, na unidade da fonte |
+| `ultima_assembleia_em` | Data da última assembleia geral a que a distribuição se refere | data (dia) |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
 ## `fre_acionistas`
 
 Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física, com as ações e o percentual de cada espécie, desde 2010. Empresa e fundo entram com nome e CNPJ; pessoa física (ou CPF, ou nome sem cara de empresa) só somada por grupo, sem nome, CPF, UF nem nacionalidade (ADR 0075, item 5); o representante legal nem é lido
