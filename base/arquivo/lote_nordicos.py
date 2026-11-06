@@ -21,13 +21,18 @@ Regras (testes em `tests/test_base_arquivo_lote_nordicos.py`):
   `Content-Signal: ai-train=no` (conferido em 05/11/2026). Por isso a marca é **a confirmar** (vale como não
   comercial, sem treino, rótulo nem exportação) até uma leitura humana, e a ADR 0102 Emenda 2 proíbe
   perguntar à fonte. O arquivista só guarda a cópia como veio.
+- **Statistics Denmark** (StatBank): CC BY 4.0 (lido em 29/10/2026): vendável citando a fonte. A API exige
+  nomear todas as variáveis da tabela; a descoberta lê o `tableinfo` e pede cada uma com `*` (tabela com mais de
+  um milhão de células é falha, não corte silencioso);
 - **fora daqui**: SSB, Danmarks Nationalbank, Bank of Finland e Seðlabanki (licença ainda não lida).
 """
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
+from urllib.parse import quote
 
-from base.arquivo.coleta import Alvo, Cliente, Descobrir, Fonte
+from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 
 PRIMEIRO_ANO_DAS_SERIES_DIARIAS = (
     1980  # antes da primeira observação de qualquer série do lote
@@ -154,7 +159,25 @@ SERIES_DO_NORGES_BANK = (
     ),
 )
 
-SERIES = (*SERIES_DO_RIKSBANK, *SERIES_DO_NORGES_BANK)
+# ---- Statistics Denmark (StatBank; CC BY 4.0, citar "Statistics Denmark") ----------------------
+DST = "https://api.statbank.dk/v1"
+LIMITE_DE_CELULAS_DA_DST = 1_000_000  # acima disso a API recusa o pedido
+# preços (IPC e IPCH), desemprego, contas nacionais trimestrais, juros do banco central e dos bancos.
+# A tabela de câmbio diário (DNVALD) passa de 2,7 milhões de células: fica para uma janela por data.
+TABELAS_DA_DST = {
+    "ipc": "PRIS01",
+    "ipch": "PRIS07",
+    "desemprego": "AUS08",
+    "contas-nacionais-trimestrais": "NKN1",
+    "juros-de-mercado": "DNRENTM",
+    "juros-por-tipo": "MPK3",
+}
+SERIES_DA_DST = tuple(
+    Serie(f"dst-{nome}", f"{DST}/data/{tabela}/CSV", ".csv", "semanal")
+    for nome, tabela in TABELAS_DA_DST.items()
+)
+
+SERIES = (*SERIES_DO_RIKSBANK, *SERIES_DO_NORGES_BANK, *SERIES_DA_DST)
 
 
 # ---- descobertas -------------------------------------------------------------------------------
@@ -169,10 +192,32 @@ def janelas_diarias(url: str, agora: datetime, extensao: str) -> list[Alvo]:
     return [Alvo(historico, extensao), Alvo(recente, extensao)]
 
 
+def endereco_da_tabela_da_dst(cliente: Cliente, serie: Serie) -> str:
+    """O CSV da tabela inteira: a API pede todas as variáveis nomeadas, então lê o `tableinfo` antes."""
+    tabela = serie.url.rsplit("/", 2)[-2]
+    resposta = cliente.ler(f"{DST}/tableinfo/{tabela}?format=JSON&lang=en")
+    try:
+        variaveis = json.loads(resposta.conteudo)["variables"]
+        celulas = 1
+        for v in variaveis:
+            celulas *= len(v["values"])
+        ids = [v["id"] for v in variaveis]
+    except (ValueError, KeyError, TypeError) as erro:
+        raise ErroDeDescoberta(f"DST: tableinfo inesperado de {tabela}") from erro
+    if not ids or celulas > LIMITE_DE_CELULAS_DA_DST:
+        raise ErroDeDescoberta(
+            f"DST: {tabela} fora do que a API entrega ({celulas} células)"
+        )
+    filtros = "&".join(f"{quote(v)}=*" for v in ids)
+    return f"{serie.url}?lang=en&delimiter=Semicolon&{filtros}"
+
+
 def descobrir_serie(serie: Serie) -> Descobrir:
     """Um endereço por série; as diárias (`{inicio}` no endereço) viram duas janelas."""
 
-    def _descobrir(_cliente: Cliente, agora: datetime) -> list[Alvo]:
+    def _descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
+        if serie.id.startswith("dst-"):
+            return [Alvo(endereco_da_tabela_da_dst(cliente, serie), serie.extensao)]
         if "{inicio}" in serie.url:
             return janelas_diarias(serie.url, agora, serie.extensao)
         return [Alvo(serie.url, serie.extensao)]
@@ -201,6 +246,7 @@ TERMOS_DOS_NORDICOS = {
     "termos-riksbank": "https://www.riksbank.se/en-gb/about-the-riksbank/about-the-website/"
     "open-data--information-available-for-re-use/",
     "termos-norges": "https://www.norges-bank.no/en/disclaimer/",
+    "termos-dst": "https://www.dst.dk/en/Statistik/hjaelp-til-statistikbanken/api",
 }
 
 
