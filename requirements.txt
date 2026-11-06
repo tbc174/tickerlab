@@ -14,7 +14,6 @@ docstring_parser==0.18.0
 execnet==2.1.2
 h11==0.16.0
 httpcore2==2.13.1
-httptools==0.8.0
 httpx2==2.13.1
 idna==3.20
 iniconfig==2.3.1
@@ -61,7 +60,6 @@ soupsieve==2.10
 starlette==1.7.0
 streamlit==1.66.1
 tenacity==9.2.1
-toml==0.10.2
 truststore==0.10.5
 typing_extensions==4.16.0
 tzdata==2026.5

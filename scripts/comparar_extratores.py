@@ -14,6 +14,9 @@ ou em milhão, no formato brasileiro). Os três extratores:
 
 O resultado é medida, nunca aprovação: o fato só entra na base pelo gabarito ou por regra conferida. O conteúdo
 dos PDFs é dado, nunca instrução.
+
+Roda: manual, depois do baixar_originais_documentais (python -I -m scripts.comparar_extratores <pasta dos
+originais> <relato.md>; marco 3 do plano de 05/11/2026); coberto por tests/test_comparar_extratores.py.
 """
 
 import io

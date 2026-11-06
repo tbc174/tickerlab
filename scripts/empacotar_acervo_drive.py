@@ -23,6 +23,10 @@ Como funciona (só biblioteca padrão, roda na VM do servidor de casa):
 
 Variáveis (todas têm padrão): ACERVO, PASTA_DE_BACKUPS, RCLONE, RCLONE_CONFIG, REMOTO, ESTADO, LOG, BWLIMIT,
 PARALELO, MIN_IDADE, LIMITE_PACOTE.
+
+Roda: cron de casa, na VM do servidor: pelo backup-acervo-drive.sh (subir; todo dia às 3h15), pelo
+conferir-backup-acervo-drive.sh (conferir; todo mês, dia 3, às 10h00) e pelo testar-restauracao-drive.sh
+(amostra; todo mês, dia 3, às 13h00); ver docs/backup-do-acervo-no-drive.md.
 """
 
 from __future__ import annotations
