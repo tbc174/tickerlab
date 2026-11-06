@@ -16,9 +16,12 @@ from base.arquivo import (
     lote_cadastros,
     lote_clima,
     lote_commodities,
+    lote_commodities_oficiais,
     lote_cvm,
     lote_eua,
+    lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
     lote_patentes,
     lote_reguladores,
     lote_sec,
@@ -73,6 +76,12 @@ _IBOVESPA_FORA_DO_CATALOGO = (
 
 def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
     return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
+
+
+_LOTE_EUROPA_RBA_SO_ARQUIVO = (
+    "séries de institutos de estatística europeus e da RBA, guardadas como publicadas; "
+    "a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria"
+)
 
 
 _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
@@ -150,6 +159,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+_LOTE_NORDICOS_SO_ARQUIVO = (
+    "juros e câmbio dos bancos centrais nórdicos guardados como a fonte publica; a tabela com contrato "
+    "no catálogo ainda não existe"
+)
+
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
@@ -207,6 +221,11 @@ _LOTE_REGULADORES_SO_ARQUIVO = (
     "dado aberto de regulador ou operador do setor guardado como publicado, só pessoa jurídica e "
     "agregados (nada por titular ou beneficiário, ADR 0088); a tabela com contrato no catálogo ainda "
     "não existe"
+)
+
+_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO = (
+    "preço de commodity de órgão público guardado como o órgão publica (Comissão Europeia, citando a fonte e "
+    "indicando as mudanças); o leitor com tabela no catálogo ainda não existe"
 )
 
 _LOTE_COMMODITIES_SO_ARQUIVO = (
@@ -547,17 +566,30 @@ DESTINOS: dict[str, Destino] = {
             "termos-iex",
             "termos-banco-mundial",
             *lote_eua.termos(),
+            *lote_europa_rba.termos(),
+            *lote_nordicos.termos(),
             *lote_cadastros.termos(),
             *lote_atencao.termos(),
             *lote_clima.termos(),
             *lote_patentes.termos(),
+            *lote_commodities_oficiais.termos(),
         )
+    },
+    # lote nórdico (linha 511, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/nordicos", _LOTE_NORDICOS_SO_ARQUIVO)
+        for f in lote_nordicos.fontes()
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
     # publicam; a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria
     **{
         f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
         for f in lote_eua.fontes()
+    },
+    # lote Europa e RBA (linha 512, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("lote-europa-rba/carga", _LOTE_EUROPA_RBA_SO_ARQUIVO)
+        for f in lote_europa_rba.fontes()
     },
     # lote SEC (rodada 4, 23/10/2026): idem, a carga na base de ML é uma fila própria
     **{
@@ -588,6 +620,11 @@ DESTINOS: dict[str, Destino] = {
     # lote café, commodities e clima (linha 204 da fila, 03/11/2026): guardado no acervo; leitores depois
     **{
         f.id: _pesquisa(_LOTE_COMMODITIES_SO_ARQUIVO) for f in lote_commodities.fontes()
+    },
+    # lote commodities oficiais (linha 396 da fila, 05/11/2026): guardado no acervo; leitores depois
+    **{
+        f.id: _pesquisa(_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO)
+        for f in lote_commodities_oficiais.fontes()
     },
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`
     "contrapartes-cafe": _tabela("contraparte_cafe"),

@@ -1,0 +1,28 @@
+{
+  "outputStyle": "TickerLab",
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Analisando",
+      "Conferindo",
+      "Calculando",
+      "Cruzando fontes",
+      "Lendo a fila",
+      "Revisando",
+      "Testando",
+      "Medindo",
+      "Pensando",
+      "Escrevendo",
+      "Separando fato de dedução",
+      "Checando as travas",
+      "Olhando o CI",
+      "Datando as fontes",
+      "Procurando homônimos",
+      "Montando o mapa societário",
+      "Somando",
+      "Comparando",
+      "Arrumando",
+      "Rodando os testes"
+    ]
+  }
+}
