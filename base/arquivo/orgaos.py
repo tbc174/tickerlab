@@ -19,8 +19,9 @@ class Orgao:
 
 
 # famílias que não são fonte de dado: cópias dos termos de uso (prova interna da versão lida) e a lista
-# de conjuntos dos portais (metadados para achar fonte nova). Ficam fora da lista pública.
-NAO_SAO_FONTE = ("termos", "catalogo")
+# de conjuntos dos portais (metadados para achar fonte nova) e o SNB (Suíça), que só tem a marca
+# não comercial, sem coleta (linha 512). Ficam fora da lista pública.
+NAO_SAO_FONTE = ("termos", "catalogo", "snb")
 
 ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     # Brasil: reguladores e agências
@@ -191,6 +192,21 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     "yahoo": Orgao("Yahoo Finance (preços)", "https://finance.yahoo.com/"),
     # Europa e organismos internacionais
     "bce": Orgao("Banco Central Europeu", "https://data.ecb.europa.eu/"),
+    "cbs": Orgao(
+        "CBS (Statistics Netherlands, Países Baixos)", "https://opendata.cbs.nl/"
+    ),
+    "cso": Orgao("CSO (Central Statistics Office, Irlanda)", "https://data.cso.ie/"),
+    "ines": Orgao(
+        "INE (Instituto Nacional de Estatística, Espanha)", "https://www.ine.es/"
+    ),
+    "istat": Orgao(
+        "Istat (Instituto Nacional de Estatística, Itália)", "https://www.istat.it/"
+    ),
+    "rba": Orgao(
+        "RBA (Banco Central da Austrália)", "https://www.rba.gov.au/statistics/"
+    ),
+    "statat": Orgao("Statistik Austria (Áustria)", "https://data.statistik.gv.at/"),
+    "statbel": Orgao("Statbel (Bélgica)", "https://statbel.fgov.be/"),
     "bis": Orgao(
         "BIS (Banco de Compensações Internacionais)", "https://www.bis.org/statistics/"
     ),
