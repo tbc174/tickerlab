@@ -43,3 +43,9 @@ def test_sem_treino_olha_a_familia_e_nao_o_comeco_do_nome():
     assert pode_usar("treinar", "msestado") is True
     assert pode_usar("treinar", "msestado-despesas") is True
     assert coletas.sem_treino("ms-cnes") and not coletas.sem_treino("msestado")
+
+
+def test_gerador_de_fontes_nao_escapa_da_trava():
+    """`exigir_licenca` percorre as fontes mais de uma vez; um gerador não pode passar vazio."""
+    with pytest.raises(coletas.LicencaNaoPermiteError, match="sem treino"):
+        coletas.exigir_licenca("treinar", (f for f in ["ibge", "ms-cnes"]))

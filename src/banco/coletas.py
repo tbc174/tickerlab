@@ -1105,6 +1105,9 @@ def exigir_licenca(uso: str, fontes: Iterable[str], onde: str = "") -> None:
     na mensagem.
     """
     _conferir_uso(uso)
+    # As três conferências percorrem as fontes: um gerador se esgotaria na primeira e as outras
+    # passariam vazias (a trava de treino não pegaria).
+    fontes = list(fontes)
     alvo = f" ({onde})" if onde else ""
     internas = sorted({f for f in fontes if so_interna(f) and _barrada(uso, f)})
     if internas:
