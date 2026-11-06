@@ -36,6 +36,10 @@ Regras (testes em `tests/test_base_arquivo_lote_commodities_oficiais.py`), uma f
   06/11/2026): a tabela 03024, exportação semanal de salmão de cativeiro (peso e preço por quilo, fresco e
   congelado, desde 2000). Um pedido GET à API nova (`pxwebapi/v2`), que sem `valueCodes` devolve só a última
   semana; com todos os valores de cada dimensão vêm as 1.400 semanas em 80 KB. Fonte `ssb-salmao-semanal`.
+- **Weekly Oil Bulletin** (DG ENER, família `dgener`; reprodução autorizada citando a fonte, no aviso legal da
+  Comissão e na nota dentro das planilhas; lido em 06/11/2026): as quatro planilhas da página do boletim (preços
+  semanais com e sem imposto, histórico de 4,5 MB e impostos), descobertas pelos links da página porque o
+  endereço do preço semanal muda toda semana. Fonte `dgener-oil-bulletin`.
 """
 
 import re
@@ -186,11 +190,44 @@ def _fonte_do_ssb() -> Fonte:
     )
 
 
+# ---- Weekly Oil Bulletin (DG ENER; família `dgener`; reprodução autorizada citando a fonte) ---------
+PAGINA_DO_WOB = "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en"
+SITE_DA_COMISSAO_DE_ENERGIA = "https://energy.ec.europa.eu"
+# só as planilhas (preços semanais com e sem imposto, histórico e impostos); PDFs de mapa e de notas ficam fora
+PLANILHA_DO_WOB = re.compile(
+    rb'href="(/document/download/[0-9a-f-]+_en)\?filename=[^"]*\.xlsx"', re.IGNORECASE
+)
+
+
+def descobrir_wob(cliente: Cliente, _agora: datetime) -> list[Alvo]:
+    """As planilhas que a página do boletim publica hoje, sem repetir.
+
+    O endereço do preço semanal muda toda semana (nome com a data), e o do histórico "adivinhado" redireciona
+    para a home: só valem os links da página. Sem planilha na página, nenhum alvo (nada é inventado)."""
+    pagina = cliente.ler(PAGINA_DO_WOB).conteudo
+    caminhos = dict.fromkeys(m.decode("ascii") for m in PLANILHA_DO_WOB.findall(pagina))
+    return [
+        Alvo(f"{SITE_DA_COMISSAO_DE_ENERGIA}{caminho}", ".xlsx") for caminho in caminhos
+    ]
+
+
+def _fonte_do_wob() -> Fonte:
+    return Fonte(
+        "dgener-oil-bulletin",
+        "semanal",  # o boletim sai toda semana; o SHA-256 decide o que é novo
+        descobrir_wob,
+        "zip",  # XLSX é um zip
+        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_ORGAOS_EM_SEGUNDOS,
+    )
+
+
 # avisos legais lidos: o vigia avisa quando o texto muda (Comissão em 24/10/2026, Bank of Canada em 05/11/2026)
 TERMOS_DOS_ORGAOS = {
     "termos-dgagri": "https://commission.europa.eu/legal-notice_en",
     "termos-boc": "https://www.bankofcanada.ca/terms/",
     "termos-ssb": "https://www.ssb.no/en/diverse/lisens",
+    # a Comissão publica o boletim sob o mesmo aviso legal do DG AGRI; a família é outra (DG ENER)
+    "termos-dgener": "https://commission.europa.eu/legal-notice_en",
 }
 
 
@@ -207,4 +244,5 @@ def fontes() -> list[Fonte]:
         *(_fonte_do_bcpi(id_) for id_ in GRUPOS_DO_BCPI),
         *(_fonte_do_eurostat(id_) for id_ in CONJUNTOS_DO_EUROSTAT),
         _fonte_do_ssb(),
+        _fonte_do_wob(),
     ]
