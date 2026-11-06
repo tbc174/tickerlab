@@ -3542,6 +3542,93 @@ Parcelamentos de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG) po
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `sefaz_pe_ordem_cronologica`
+
+Pagamentos do governo de Pernambuco a fornecedores, por CNPJ, com a unidade gestora, o empenho, o dia da liquidação, o dia do pagamento e o valor pago. `dias_ate_pagar` é o prazo real de pagamento do estado. Um Parquet por ano da fonte (`arquivo`): pagamento novo ou com data ou valor diferente vira linha nova desde o dia em que foi visto, e o que some do arquivo (o estado corrigiu) ganha `consta` falso. Só pessoa jurídica: a coleta tira o nome do credor (firma individual leva o nome da pessoa), o texto livre e as linhas com CPF; quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra.
+
+- **Fonte:** SEFAZ-PE: dados abertos (dados.pe.gov.br), ordem cronológica de pagamentos, CC BY (`base/ordem_cronologica.py`)
+- **Licença:** CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o arquivista guarda o arquivo do ano a cada coleta, só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada pagamento: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); as datas do pagamento ficam nas colunas `liquidado_em` e `pago_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `pago_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sefaz_pe_ordem_cronologica/ordem-cronologica-<ano>.parquet` (servidor de casa, `scripts/carga_ordem_cronologica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Empenho, documento, ordem bancária, CNPJ e valor pago juntos por `|` | texto |
+| `arquivo` | O ano do arquivo de onde a linha veio | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `codigo_ug` | Código da unidade gestora que pagou | texto |
+| `unidade_gestora` | Nome da unidade gestora (o órgão) que pagou, como a fonte escreve | texto |
+| `empenho` | Número do empenho (a reserva da despesa), como a fonte escreve | texto |
+| `documento` | Número do documento de liquidação, como a fonte escreve | texto |
+| `ordem_bancaria` | Número da ordem bancária do pagamento, como a fonte escreve | texto |
+| `categoria_contrato` | Categoria do contrato, como a fonte escreve | texto |
+| `liquidado_em` | Dia em que a despesa foi liquidada (o estado reconheceu a dívida) | data (dia) |
+| `ordem_bancaria_em` | Dia da ordem bancária | data (dia) |
+| `pago_em` | Dia do pagamento (não é quando a base soube) | data (dia) |
+| `valor_documento` | Valor do documento de liquidação, em reais | reais (R$), já multiplicado pela escala informada |
+| `valor_pago` | Valor pago, em reais | reais (R$), já multiplicado pela escala informada |
+| `dias_ate_pagar` | Dias entre a liquidação e o pagamento (`pago_em` menos `liquidado_em`): o prazo real do governo; vazio quando falta uma das datas | número inteiro |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `es_ordem_cronologica`
+
+Pagamentos do governo do Espírito Santo a fornecedores, por CNPJ, com a unidade gestora, o empenho, a nota de liquidação, o dia da liquidação, o dia da ordem bancária e o valor pago. `dias_ate_pagar` é o prazo real de pagamento do estado. Um Parquet por ano da fonte (`arquivo`): pagamento novo ou com data ou valor diferente vira linha nova desde o dia em que foi visto, e o que some do arquivo (o estado corrigiu) ganha `consta` falso. Só pessoa jurídica: a coleta tira o nome do credor (firma individual leva o nome da pessoa), o texto livre e as linhas com CPF; quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra.
+
+- **Fonte:** Governo do ES: dados abertos (dados.es.gov.br), ordem cronológica de pagamentos, CC BY (`base/ordem_cronologica.py`)
+- **Licença:** CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o arquivista guarda o arquivo do ano a cada coleta, só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando publicou cada pagamento: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); as datas do pagamento ficam nas colunas `liquidado_em` e `pago_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `pago_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-06 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/es_ordem_cronologica/ordem-cronologica-<ano>.parquet` (servidor de casa, `scripts/carga_ordem_cronologica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Empenho, documento, ordem bancária, CNPJ e valor pago juntos por `|` | texto |
+| `arquivo` | O ano do arquivo de onde a linha veio | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `codigo_ug` | Código da unidade gestora que pagou | texto |
+| `unidade_gestora` | Nome da unidade gestora (o órgão) que pagou, como a fonte escreve | texto |
+| `empenho` | Número do empenho (a reserva da despesa), como a fonte escreve | texto |
+| `nota_de_liquidacao` | Número da nota de liquidação, como a fonte escreve | texto |
+| `ordem_bancaria` | Número da ordem bancária do pagamento, como a fonte escreve | texto |
+| `categoria_contrato` | Categoria do contrato, como a fonte escreve | texto |
+| `ordem_cronologica_em` | Dia da ordem cronológica de pagamento na fonte | data (dia) |
+| `liquidado_em` | Dia em que a despesa foi liquidada (o estado reconheceu a dívida) | data (dia) |
+| `pago_em` | Dia da emissão da ordem bancária (a fonte não dá o dia em que o dinheiro caiu na conta) | data (dia) |
+| `valor_pago` | Valor pago, em reais | reais (R$), já multiplicado pela escala informada |
+| `dias_ate_pagar` | Dias entre a liquidação e o pagamento (`pago_em` menos `liquidado_em`): o prazo real do governo; vazio quando falta uma das datas | número inteiro |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `financiamentos_bndes`
 
 Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas). **Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.

@@ -159,6 +159,7 @@ _SEM_VIGIA = {
         ),
         "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
     ),
+    "esdados": "o portal CKAN do ES publica a licença CC BY na ficha do conjunto, sem página de termos: nada a vigiar",
     "sefapr": "o portal da Sefa-PR não publica licença nem termos de uso da lista de devedores (a confirmar): nada a vigiar",
     "sefmg": "a SEF-MG não publica licença nem termos de uso da lista de devedores, só a base legal da divulgação (a confirmar): nada a vigiar",
     "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",

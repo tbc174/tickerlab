@@ -139,6 +139,7 @@ TERMOS_LIDOS_EM |= dict.fromkeys(("goias", "msestado", "spcapital"), date(2026, 
 TERMOS_LIDOS_EM["sefazpe"] = date(2026, 11, 5)
 # linha 755: dívida ativa da Sefa-PR; o portal não tem robots.txt (404) nem termos de uso da lista, lido em 06/11/2026
 TERMOS_LIDOS_EM["sefapr"] = date(2026, 11, 6)
+TERMOS_LIDOS_EM["esdados"] = date(2026, 11, 6)  # CC BY no CKAN do ES (linha 755)
 # linha 755: dívida ativa da SEF-MG; sem robots.txt (404) nem termos de uso da lista, só a base legal (CTN 198 §3º II), lido em 06/11/2026
 TERMOS_LIDOS_EM["sefmg"] = date(2026, 11, 6)
 # lote licitações e contratos (licencas-por-fonte.md, rodada 4, lido em 22/10/2026)
