@@ -3362,7 +3362,7 @@ Registros de investimento estrangeiro direto no Banco Central (RDE-IED) pela rai
 Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas pesadas...) por CNPJ, com o CACEPE e o prazo de cada um. Um Parquet por ano da fonte (`arquivo`); a razão social não é guardada. O prazo prorrogado vira linha nova, e o prazo (`vigencia_inicio`, `vigencia_fim`) não é a data em que a base soube do benefício (`disponivel_em`). Só pessoa jurídica: CPF e nome (do cliente, do agente, do investidor, da empresa) saem na coleta; empresário individual e MEI ficam com `trata_como_pessoa`.
 
 - **Fonte:** SEFAZ-PE: dados abertos (dados.pe.gov.br), benefícios fiscais, CC BY (`base/incentivos.py`)
-- **Licença:** CC BY, benefícios fiscais da SEFAZ de Pernambuco (citar a fonte). Só CNPJ, sem a razão social
+- **Licença:** CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social
 - **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (um arquivo por ano; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas colunas delas
