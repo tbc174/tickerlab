@@ -30,7 +30,7 @@ tempo crescer). Os efeitos dos acordos de leniência (outro CSV do mesmo ZIP) e 
 
 import io
 import zipfile
-from collections.abc import Collection, Iterator
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -41,14 +41,13 @@ import sqlalchemy as sa
 
 from base import cnpj as cnpjs
 from base import retratos as motor
-from base.parquet import LINHAGEM, gravar_se_mudou, origens_gravadas
-from base.pgfn import pessoas_pela_receita
+from base.parquet import LINHAGEM
 from src.versao_do_codigo import versao_do_codigo
 
 CODIFICACAO = "latin-1"
 SEPARADOR = ";"
 FORMATO_DA_DATA = "%d/%m/%Y"
-JA_MONTADO = {"ja_montado": 1}  # no resumo: nenhum retrato novo desde a última montagem
+JA_MONTADO = motor.JA_MONTADO
 TIPO_PESSOA_JURIDICA = "J"
 
 TEXTOS = [
@@ -280,20 +279,6 @@ def juntar_retratos(
     return motor.juntar(lidos, VALORES, _disponivel_no_primeiro)
 
 
-def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
-    if isinstance(pessoas, np.ndarray):
-        return pessoas
-    return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(pessoas), dtype=str)))
-
-
-def _destino(pasta: Path, cadastro: Cadastro) -> Path:
-    return pasta / cadastro.tabela / cadastro.nome
-
-
-def _origens(achados: list[motor.Retrato]) -> list[dict[str, str]]:
-    return [{"url": r.url, "sha256": r.sha256} for r in achados]
-
-
 def _para_gravar(
     tabela: pd.DataFrame, pessoas: np.ndarray, agora: datetime
 ) -> pd.DataFrame:
@@ -317,16 +302,6 @@ def _para_gravar(
     )
 
 
-def _lidos(
-    achados: list[motor.Retrato], cadastro: Cadastro, resumo: dict[str, int]
-) -> Iterator[tuple[motor.Retrato, pd.DataFrame]]:
-    for retrato in achados:
-        tabela, contagem = ler_retrato(retrato.caminho, cadastro)
-        for chave, valor in contagem.items():
-            resumo[chave] = resumo.get(chave, 0) + valor
-        yield retrato, tabela
-
-
 def montar(
     conexao: sa.Connection,
     pasta: Path,
@@ -340,37 +315,15 @@ def montar(
     pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas;
     sem elas, pergunta à Receita guardada (`base/pgfn.py`).
     """
-    resumo: dict[str, dict[str, int]] = {}
-    for cadastro in CADASTROS.values():
-        achados = motor.retratos(conexao, cadastro.fonte, cadastro.url_termina_em)
-        if not achados:
-            continue
-        destino = _destino(pasta, cadastro)
-        if not refazer and origens_gravadas(destino) == _origens(achados):
-            resumo[cadastro.nome] = JA_MONTADO
-            continue
-        contagem: dict[str, int] = {}
-        tabela, pulados = juntar_retratos(list(_lidos(achados, cadastro, contagem)))
-        if pessoas is None:
-            raizes = cnpjs.ordenados(
-                cnpjs.raizes_em_numeros(
-                    tabela["cnpj_basico"].drop_duplicates().astype(str)
-                )
-            )
-            de_pessoa = pessoas_pela_receita(conexao, raizes)
-        else:
-            de_pessoa = _como_numeros(pessoas)
-        gravar_se_mudou(
-            _para_gravar(tabela, de_pessoa, agora),
-            destino,
-            _origens(achados),
-            ORDEM,
-            carimbos=LINHAGEM,
-        )
-        resumo[cadastro.nome] = {
-            **contagem,
-            "retratos": len(achados),
-            "retratos_pulados": pulados,
-            "na_tabela": len(tabela),
-        }
-    return resumo
+    return motor.montar_cadastros(
+        conexao,
+        pasta,
+        agora,
+        list(CADASTROS.values()),
+        ler=ler_retrato,
+        juntar=juntar_retratos,
+        para_gravar=_para_gravar,
+        ordem=ORDEM,
+        pessoas=pessoas,
+        refazer=refazer,
+    )

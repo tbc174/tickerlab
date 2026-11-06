@@ -17,15 +17,19 @@ import gzip
 import re
 import unicodedata
 import zipfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
+from typing import Protocol
 
 import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
+from base import cnpj as cnpjs
+from base.parquet import LINHAGEM, gravar_se_mudou, origens_gravadas
+from base.pgfn import pessoas_pela_receita
 from src import acervo
 from src.banco.coletas import originais_mais_recentes, versoes_guardadas
 
@@ -183,3 +187,93 @@ def juntar(
             )
         )
     return pd.concat(eventos, ignore_index=True), pulados
+
+
+JA_MONTADO = {"ja_montado": 1}  # no resumo: nenhum retrato novo desde a última montagem
+
+
+class CadastroDeRetratos(Protocol):
+    """O que a montagem pede de um cadastro (sanções e licenças têm outros campos além destes)."""
+
+    nome: str
+    fonte: str
+    tabela: str
+    url_termina_em: str | None
+
+
+def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
+    if isinstance(pessoas, np.ndarray):
+        return pessoas
+    return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(pessoas), dtype=str)))
+
+
+def _origens(achados: list[Retrato]) -> list[dict[str, str]]:
+    return [{"url": r.url, "sha256": r.sha256} for r in achados]
+
+
+def _lidos[C: CadastroDeRetratos](
+    achados: list[Retrato],
+    cadastro: C,
+    ler: Callable[[Path, C], tuple[pd.DataFrame, dict[str, int]]],
+    resumo: dict[str, int],
+) -> Iterator[tuple[Retrato, pd.DataFrame]]:
+    for retrato in achados:
+        tabela, contagem = ler(retrato.caminho, cadastro)
+        for chave_, valor in contagem.items():
+            resumo[chave_] = resumo.get(chave_, 0) + valor
+        yield retrato, tabela
+
+
+def montar_cadastros[C: CadastroDeRetratos](
+    conexao: sa.Connection,
+    pasta: Path,
+    agora: datetime,
+    cadastros: Collection[C],
+    *,
+    ler: Callable[[Path, C], tuple[pd.DataFrame, dict[str, int]]],
+    juntar: Callable[[list[tuple[Retrato, pd.DataFrame]]], tuple[pd.DataFrame, int]],
+    para_gravar: Callable[[pd.DataFrame, np.ndarray, datetime], pd.DataFrame],
+    ordem: Sequence[str],
+    pessoas: Collection[str] | np.ndarray | None = None,
+    refazer: bool = False,
+) -> dict[str, dict[str, int]]:
+    """`<pasta>/<tabela>/<cadastro>.parquet` para cada cadastro com arquivo guardado.
+
+    Cadastro sem arquivo guardado fica de fora do resumo; sem retrato novo desde a última montagem, é
+    pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas;
+    sem elas, pergunta à Receita guardada (`base/pgfn.py`).
+    """
+    resumo: dict[str, dict[str, int]] = {}
+    for cadastro in cadastros:
+        achados = retratos(conexao, cadastro.fonte, cadastro.url_termina_em)
+        if not achados:
+            continue
+        destino = pasta / cadastro.tabela / cadastro.nome
+        if not refazer and origens_gravadas(destino) == _origens(achados):
+            resumo[cadastro.nome] = JA_MONTADO
+            continue
+        contagem: dict[str, int] = {}
+        tabela, pulados = juntar(list(_lidos(achados, cadastro, ler, contagem)))
+        if pessoas is None:
+            raizes = cnpjs.ordenados(
+                cnpjs.raizes_em_numeros(
+                    tabela["cnpj_basico"].drop_duplicates().astype(str)
+                )
+            )
+            de_pessoa = pessoas_pela_receita(conexao, raizes)
+        else:
+            de_pessoa = _como_numeros(pessoas)
+        gravar_se_mudou(
+            para_gravar(tabela, de_pessoa, agora),
+            destino,
+            _origens(achados),
+            list(ordem),
+            carimbos=LINHAGEM,
+        )
+        resumo[cadastro.nome] = {
+            **contagem,
+            "retratos": len(achados),
+            "retratos_pulados": pulados,
+            "na_tabela": len(tabela),
+        }
+    return resumo
