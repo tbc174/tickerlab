@@ -2795,6 +2795,15 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
         "têm o nome da pessoa), e quem a Receita guardada trata como pessoa fica com "
         "`trata_como_pessoa`."
     )
+    so_pj_mg = (
+        "Só pessoa jurídica: a coleta tira o nome do devedor (firma individual leva o nome da pessoa) "
+        "e as linhas com CPF no nome; quem a Receita guardada trata como pessoa fica com "
+        "`trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra."
+    )
+    mg_fonte = (
+        "SEF-MG: dívida ativa, planilhas de pessoa jurídica (Res. Conj. SEF/AGE 5.625/2022; licença "
+        "a confirmar; citar a fonte) (`base/divida_estadual.py`)"
+    )
     atraso = (
         "A fonte não diz quando publicou cada linha: toda linha vale desde o dia em que o "
         "arquivista a viu (a história guardada começa em 29/10/2026); as datas da fonte ficam nas "
@@ -2945,6 +2954,39 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
             SIM_OU_NAO,
         ),
     }
+    mg_base = {
+        "id_na_fonte": (
+            "O número da certidão ou do parcelamento e o CNPJ, juntos por `|`",
+            TEXTO,
+        ),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+    }
+    mg_cdas = {
+        **mg_base,
+        "cda": (
+            "Número da certidão de dívida ativa (CDA), como a fonte escreve",
+            TEXTO,
+        ),
+        "inscrito_em": ("Data da inscrição da CDA (não é quando a base soube)", DATA),
+        "especie": (
+            "Espécie da dívida (ICMS, IPVA, multa...), como a fonte escreve",
+            TEXTO,
+        ),
+        "saldo_da_cda": ("Saldo da CDA na data do arquivo, em reais", REAIS),
+        "saldo_do_nucleo": (
+            "Saldo do núcleo (o principal da dívida, sem acessórios), em reais, como a fonte informa",
+            REAIS,
+        ),
+    }
+    mg_parcelamentos = {
+        **mg_base,
+        "parcelamento": ("Número do parcelamento, como a fonte escreve", TEXTO),
+        "parcelado_em": ("Data em que o parcelamento foi feito", DATA),
+        "especie": ("Espécie da dívida parcelada, como a fonte escreve", TEXTO),
+        "parcelas": ("Quantidade de parcelas", NUMERO),
+        "debito": ("Débito parcelado, em reais, como a fonte informa", REAIS),
+    }
     return {
         "mme_reidi": tabela(
             "mme_reidi",
@@ -3025,6 +3067,51 @@ def _tabelas_dos_incentivos() -> dict[str, Tabela]:
             ),
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
             colunas={**pr, **situacao},
+        ),
+        "sef_mg_divida_ativa": Tabela(
+            descricao=(
+                "Certidões de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG, Resolução "
+                "Conjunta SEF/AGE 5.625/2022) por CNPJ, com a espécie, a data da inscrição e o saldo. "
+                "Uma planilha por semana forma uma série só: CDA nova ou com saldo diferente vira linha "
+                "nova desde o dia em que foi vista, e a que some da planilha (paga, cancelada, "
+                "prescrita: a fonte não diz o motivo) ganha `consta` falso. " + so_pj_mg
+            ),
+            fonte=mg_fonte,
+            familia_da_fonte="sefmg",
+            frequencia="Semanal (a SEF-MG atualiza a planilha; o arquivista guarda uma por semana)",
+            atraso=(
+                "A fonte não diz quando publicou cada CDA: toda linha vale desde o dia em que o "
+                "arquivista a viu (a história guardada começa em 06/11/2026); a data da inscrição "
+                "fica na coluna `inscrito_em`"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/sef_mg_divida_ativa/divida_ativa.parquet` (servidor de "
+                "casa, `scripts/carga_divida_estadual.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={**mg_cdas, **situacao},
+        ),
+        "sef_mg_parcelamentos": Tabela(
+            descricao=(
+                "Parcelamentos de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG) por CNPJ, "
+                "com a espécie, a data, a quantidade de parcelas e o débito. Mesma série semanal das "
+                "CDAs: parcelamento novo ou com valor diferente vira linha nova, e o que some da "
+                "planilha ganha `consta` falso. " + so_pj_mg
+            ),
+            fonte=mg_fonte,
+            familia_da_fonte="sefmg",
+            frequencia="Semanal (a SEF-MG atualiza a planilha; o arquivista guarda uma por semana)",
+            atraso=(
+                "A fonte não diz quando publicou cada parcelamento: toda linha vale desde o dia em que "
+                "o arquivista a viu (a história guardada começa em 06/11/2026); a data do parcelamento "
+                "fica na coluna `parcelado_em`"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/sef_mg_parcelamentos/parcelamentos.parquet` (servidor de "
+                "casa, `scripts/carga_divida_estadual.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={**mg_parcelamentos, **situacao},
         ),
     }
 
@@ -8866,6 +8953,7 @@ _SEFAZ_PE = "2026-11-05"  # os benefícios fiscais de Pernambuco entraram no arq
 _SEFA_PR = (
     "2026-11-06"  # a dívida ativa do Paraná entrou no arquivista neste dia (linha 755)
 )
+_SEF_MG = "2026-11-06"  # a dívida ativa de Minas Gerais entrou no arquivista neste dia (linha 755)
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -9112,6 +9200,8 @@ _CONTRATO = {
     "bcb_rde_ied": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_INCENTIVOS, granularidade_do_publico_em="mes"),
     "sefaz_pe_beneficios": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "vigencia_inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFAZ_PE, granularidade_do_publico_em="mes"),
     "sefa_pr_divida_ativa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inscrito_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEFA_PR, granularidade_do_publico_em="dia"),
+    "sef_mg_divida_ativa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inscrito_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEF_MG, granularidade_do_publico_em="dia"),
+    "sef_mg_parcelamentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "parcelado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEF_MG, granularidade_do_publico_em="dia"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
@@ -9351,6 +9441,16 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "sefa_pr_divida_ativa",
         "faixas": {"valor_total": _SEM_NEGATIVO, "valor_do_imposto": _SEM_NEGATIVO},
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "divida_ativa", "tipo_do_credito", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "sef_mg_divida_ativa": {
+        "pasta": "sef_mg_divida_ativa",
+        "faixas": {"saldo_da_cda": _SEM_NEGATIVO},
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "cda", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "sef_mg_parcelamentos": {
+        "pasta": "sef_mg_parcelamentos",
+        "faixas": {"debito": _SEM_NEGATIVO},
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "parcelamento", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "ans_penalidades": {
         "pasta": "ans_penalidades",

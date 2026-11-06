@@ -1706,6 +1706,21 @@
     },
     {
       "coletas": [
+        "sefmg-divida-ativa"
+      ],
+      "familia": "sefmg",
+      "licencas": [
+        "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)"
+      ],
+      "link": "https://www.fazenda.mg.gov.br/transparencia/Divida-Ativa/",
+      "marca": "vendavel",
+      "orgao": "SEF-MG (Secretaria de Estado de Fazenda de Minas Gerais)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-06",
+      "uso": "em_uso"
+    },
+    {
+      "coletas": [
         "wikidata-lei",
         "wikidata-isin",
         "wikidata-cnpj",
@@ -2525,6 +2540,17 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-11-06",
+      "licenca": "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "SEF-MG",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
       "modulos": [
@@ -2846,8 +2872,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 32,
-    "tabelas": 113,
+    "orgaos": 33,
+    "tabelas": 115,
     "temas": [
       {
         "chave": "cvm",
@@ -2882,6 +2908,7 @@
         "orgaos": [
           "PGFN",
           "Sefa-PR",
+          "SEF-MG",
           "CGU",
           "ANS",
           "MTE",
@@ -2889,8 +2916,8 @@
           "CNJ",
           "CVM"
         ],
-        "tabelas": 8,
-        "texto": "Dívida ativa da União e do Paraná, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 10,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2950,7 +2977,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 50
+      "tabelas": 52
     },
     {
       "chave": "credito_e_fidc",
@@ -6174,6 +6201,13 @@
       "termos_lidos_em": "2026-11-06"
     },
     {
+      "id": "sefmg-divida-ativa",
+      "licenca": "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
       "id": "gleif-goldencopy-lei2",
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",
@@ -8036,6 +8070,28 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Certidões de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG, Resolução Conjunta SEF/AGE 5.625/2022) por CNPJ, com a espécie, a data da inscrição e o saldo.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SEF-MG",
+      "situacao": "licenciada",
+      "tabela": "sef_mg_divida_ativa"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Parcelamentos de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG) por CNPJ, com a espécie, a data, a quantidade de parcelas e o débito.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SEF-MG",
+      "situacao": "licenciada",
+      "tabela": "sef_mg_parcelamentos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -8695,11 +8751,11 @@
     }
   ],
   "totais": {
-    "familias": 131,
-    "familias_em_uso": 44,
-    "fontes": 44,
+    "familias": 132,
+    "familias_em_uso": 45,
+    "fontes": 45,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 150
+    "tabelas": 152
   }
 }

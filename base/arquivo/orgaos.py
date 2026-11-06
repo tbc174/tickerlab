@@ -145,6 +145,10 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
         "Sefa-PR (Secretaria da Fazenda do Paraná)",
         "https://listadevedores.sefa.pr.gov.br/",
     ),
+    "sefmg": Orgao(
+        "SEF-MG (Secretaria de Estado de Fazenda de Minas Gerais)",
+        "https://www.fazenda.mg.gov.br/transparencia/Divida-Ativa/",
+    ),
     "spcapital": Orgao(
         "Prefeitura de São Paulo (dados abertos)", "https://dados.prefeitura.sp.gov.br/"
     ),

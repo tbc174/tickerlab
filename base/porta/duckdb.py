@@ -147,6 +147,8 @@ ARQUIVOS: dict[str, str] = {
     "bcb_rde_ied": "bcb_rde_ied/*.parquet",
     "sefaz_pe_beneficios": "sefaz_pe_beneficios/*.parquet",
     "sefa_pr_divida_ativa": "sefa_pr_divida_ativa/*.parquet",
+    "sef_mg_divida_ativa": "sef_mg_divida_ativa/*.parquet",
+    "sef_mg_parcelamentos": "sef_mg_parcelamentos/*.parquet",
     "ratings": "ratings/*.parquet",
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",
