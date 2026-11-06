@@ -200,6 +200,7 @@ LICENCAS = {
     # lote commodities oficiais (linha 396; termos lidos em 24/10/2026, licencas-por-fonte.md)
     "dgagri": "CC BY 4.0 (Comissão Europeia, DG AGRI): crédito e indicação de mudanças",
     "boc": "Bank of Canada: livre citando o Banco e as mudanças; avisar que é grátis",
+    "ssb": "CC BY 4.0 (Statistics Norway): citar o SSB, a licença e as mudanças",
     "nasa": "CC BY 4.0 (NASA POWER; citar NASA POWER)",
     # bancos centrais nórdicos (termos lidos em 29/10/2026, linha 511)
     "riksbank": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
@@ -437,6 +438,7 @@ REVENDA = {
     # Bank of Canada (termos relidos em 05/11/2026): cita o Banco e indica mudança; quem vende o conteúdo
     # avisa o comprador de que ele é grátis no site do Banco
     "boc": VENDAVEL_COM_ATRIBUICAO,
+    "ssb": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (ssb.no/en/diverse/lisens, lido em 06/11/2026)
     "nasa": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "riksbank": VENDAVEL_COM_ATRIBUICAO,  # "freely available ... enter source, Sveriges riksbank and date"
     "dst": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0 (termos da API do StatBank, lidos em 29/10/2026)
@@ -668,6 +670,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     # Bank of Canada (Valet, sem chave): termos de uso relidos em 05/11/2026; o robots.txt só fecha o wp-admin.
     # Os termos proíbem burlar o limite de pedidos da Valet: 8 pedidos por rodada e pausa de 2 s
     "boc": _ABERTA_SEM_PRAZO,
+    # SSB (API PxWeb v2, sem chave nem limite de pedidos na configuração): licença CC BY 4.0 lida em 06/11/2026;
+    # o robots.txt do ssb.no só fecha uma página de estatística
+    "ssb": _ABERTA_SEM_PRAZO,
     # Riksbank (SWEA, sem chave) e Norges Bank (SDMX, sem chave): termos lidos em 29/10/2026 (linha 511).
     # O Norges Bank traz `Content-Signal: ai-train=no` no robots.txt (05/11/2026), que não fecha a API
     "riksbank": _ABERTA_SEM_PRAZO,

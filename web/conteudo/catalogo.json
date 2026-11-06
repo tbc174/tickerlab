@@ -1975,6 +1975,21 @@
     },
     {
       "coletas": [
+        "ssb-salmao-semanal"
+      ],
+      "familia": "ssb",
+      "licencas": [
+        "CC BY 4.0 (Statistics Norway): citar o SSB, a licença e as mudanças"
+      ],
+      "link": "https://www.ssb.no/en",
+      "marca": "vendavel",
+      "orgao": "SSB (Statistics Norway, Noruega)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-06",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "chirps3-rnl-mensal",
         "chirps3-rnl-historico"
       ],
@@ -2998,6 +3013,13 @@
     },
     {
       "id": "termos-boc",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-ssb",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
       "ritmo": "diaria",
@@ -6609,6 +6631,13 @@
       "termos_lidos_em": "2026-10-22"
     },
     {
+      "id": "ssb-salmao-semanal",
+      "licenca": "CC BY 4.0 (Statistics Norway): citar o SSB, a licença e as mudanças",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
       "id": "chirps3-rnl-mensal",
       "licenca": "CHIRPS v3.0 rnl (CHC): CC BY 4.0, domínio público; DOI 10.15780/G2JQ0P",
       "marca": "vendavel",
@@ -8418,7 +8447,7 @@
     }
   ],
   "totais": {
-    "familias": 125,
+    "familias": 126,
     "familias_em_uso": 43,
     "fontes": 43,
     "fontes_em_consulta": 7,
