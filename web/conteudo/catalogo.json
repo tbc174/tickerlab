@@ -756,6 +756,52 @@
     },
     {
       "coletas": [
+        "riksbank-catalogo-de-series",
+        "riksbank-catalogo-de-grupos",
+        "riksbank-juro-diretor",
+        "riksbank-letra-3m",
+        "riksbank-titulo-2a",
+        "riksbank-titulo-5a",
+        "riksbank-titulo-10a",
+        "riksbank-cambio-real",
+        "riksbank-cambio-dolar",
+        "riksbank-cambio-euro",
+        "riksbank-cambio-libra",
+        "riksbank-cambio-coroa-norueguesa",
+        "riksbank-cambio-iene",
+        "riksbank-cambio-yuan"
+      ],
+      "familia": "riksbank",
+      "licencas": [
+        "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)"
+      ],
+      "link": "https://www.riksbank.se/en-gb/",
+      "marca": "vendavel",
+      "orgao": "Sveriges riksbank (Suécia)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "norges-cambio",
+        "norges-juro-diretor",
+        "norges-letra-3m",
+        "norges-titulo-10a"
+      ],
+      "familia": "norges",
+      "licencas": [
+        "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)"
+      ],
+      "link": "https://www.norges-bank.no/en/",
+      "marca": "a_confirmar",
+      "orgao": "Norges Bank (Noruega)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-29",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "bce-cambio-dolar",
         "bce-cambio-real",
         "bce-curva-10a",
@@ -2699,6 +2745,20 @@
       "termos_lidos_em": null
     },
     {
+      "id": "termos-riksbank",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "termos-norges",
+      "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
+      "marca": "uso_interno",
+      "ritmo": "diaria",
+      "termos_lidos_em": null
+    },
+    {
       "id": "termos-bce",
       "licenca": "Termos de uso de terceiros: só prova interna da versão lida",
       "marca": "uso_interno",
@@ -3488,6 +3548,132 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "riksbank-catalogo-de-series",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-catalogo-de-grupos",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-juro-diretor",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-letra-3m",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-titulo-2a",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-titulo-5a",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-titulo-10a",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-real",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-dolar",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-euro",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-libra",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-coroa-norueguesa",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-iene",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "riksbank-cambio-yuan",
+      "licenca": "Reuso livre citando Sveriges riksbank e a data (dados abertos do Riksbank)",
+      "marca": "vendavel",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-cambio",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-juro-diretor",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-letra-3m",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "norges-titulo-10a",
+      "licenca": "Cópia citando o Norges Bank, sem alterar o conteúdo (disclaimer do Norges Bank)",
+      "marca": "a_confirmar",
+      "ritmo": "diaria",
+      "termos_lidos_em": "2026-10-29"
     },
     {
       "id": "bce-cambio-dolar",
@@ -7529,7 +7715,7 @@
     }
   ],
   "totais": {
-    "familias": 109,
+    "familias": 111,
     "familias_em_uso": 42,
     "fontes": 42,
     "fontes_em_consulta": 7,
