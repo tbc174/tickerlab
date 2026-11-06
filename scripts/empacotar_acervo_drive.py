@@ -708,12 +708,18 @@ def ler_indices(
             [*cfg.rclone, "cat", f"{cfg.remoto}:{pasta}/{caminho}"],
             capture_output=True,
             check=True,
-        ).stdout.decode("utf-8")
+        ).stdout
         try:
-            linhas = [json.loads(x) for x in bruto.splitlines() if x.strip()]
+            texto = bruto.decode("utf-8")
+            linhas = [json.loads(x) for x in texto.splitlines() if x.strip()]
             cabecalho, entradas = linhas[0], linhas[1:]
             valido = cabecalho["arquivos"] == len(entradas)
-        except (ValueError, IndexError, KeyError, TypeError):
+        except (
+            ValueError,
+            IndexError,
+            KeyError,
+            TypeError,
+        ):  # ValueError inclui UnicodeDecodeError
             valido = False
         if not valido:
             # índice de um envio interrompido (cortado): o pacote dele não conta como enviado e
