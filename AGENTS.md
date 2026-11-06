@@ -23,18 +23,20 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 .venv\Scripts\python -m pytest -q -n 4 --dist loadgroup  # suíte inteira em 4 processos (~2 min; sem -n, ~12 min)
 .venv\Scripts\python -m pytest -q tests/test_planos.py    # um arquivo (prefira durante o trabalho)
 .venv\Scripts\python -m ruff check .
-.venv\Scripts\python -m pyright                            # tipos (src, scripts e telas; ver pyrightconfig.json)
+.venv\Scripts\python -m pyright                            # tipos (src, scripts, telas e base; ver pyrightconfig.json)
 .venv\Scripts\python -m pytest -q -n 4 --dist loadgroup --cov   # suíte + cobertura (mínimo no .coveragerc)
 .venv\Scripts\python -m ruff format app.py telas src base tests trader scripts migracoes
+.venv\Scripts\python -m scripts.conferir_codigo_morto --gravar   # regrava a lista do vulture (código morto: não piorar)
 .venv\Scripts\python -m scripts.gerar_site                # parte do Python do site (fontes, marca, relatório de exemplo, catálogo)
 .venv\Scripts\python -m scripts.exportar_conteudo         # conteúdo do Python para o React (web/conteudo/*.json)
 cd web; npm run site                                        # páginas, CSS e JS do site em site/ (React; há teste que confere)
 .venv\Scripts\python -m alembic upgrade head              # migrações do banco
+.venv\Scripts\python -m pip install -r requirements.txt -r requirements-estudos.txt   # cadernos de estudos/ (Jupyter); só no PC
 ```
 
 - A suíte inteira demora: rode em segundo plano gravando a saída num arquivo e avise o Tiago.
-- O CI (`.github/workflows/testes.yml`) roda `ruff`, `pyright`, os testes com **PostgreSQL de
-  verdade** e a **cobertura** (falha abaixo do mínimo do `.coveragerc`), e
+- O CI (`.github/workflows/testes.yml`) roda `ruff`, `pyright`, o `vulture` (código morto: não piorar), os testes com
+  **PostgreSQL de verdade** e a **cobertura** (falha abaixo do mínimo do `.coveragerc`), e
   constrói a imagem Docker conferindo que app, API, migrações e login abrem dentro dela.
   Os testes rodam em 5 máquinas ao mesmo tempo (3 partes do app, só com o `requirements.txt`, e 2
   do trader; `scripts/repartir_testes.py`); para rodar uma parte no PC: `pytest --parte=2/3` ou
@@ -82,6 +84,27 @@ cd web; npm run site                                        # páginas, CSS e JS
 - Sem internet nos testes: use `dados_de_exemplo/` e os dublês já existentes.
 - Princípio que tem teste: **sem olhar o futuro** (cortar o futuro não muda o passado).
 
+## Casa em ordem (o que o CI tranca desde 05/11/2026)
+
+Pedido do Tiago (05/11/2026): crescer organizado, sem deixar coisa sem uso. Quatro testes cobram:
+
+- **Raiz trancada:** arquivo ou pasta nova na raiz só entra na lista de `tests/test_raiz_do_repositorio.py`
+  (diga o porquê no PR). O que não é do repositório fica na pasta privada ou no `.gitignore`; o aviso do
+  início da sessão (hook do Claude) lista o que estiver solto na raiz. Nunca `git add -A`.
+- **Dependência pinada é dependência usada:** `tests/test_requirements.py` falha se um pin dos
+  `requirements*.txt` não é importado pelo código nem puxado, pelos metadados, por um pin usado. O que se usa
+  sem `import` (comando, plugin, motor carregado pelo nome) entra em `EXCECOES`, com o motivo. Pin repetido
+  falha. `requirements-estudos.txt` (Jupyter dos cadernos de `estudos/`) é só do PC: não vai ao CI nem à
+  imagem. Tirou um pacote do código: tire o pin.
+- **Todo `scripts/*.py` diz quem o roda:** a docstring termina com uma linha `Roda: ...` (cron do VPS, cron de
+  casa pelo X.sh, CI, hook, manual, outro script...), com o horário quando é agendado
+  (`tests/test_scripts_dizem_quem_roda.py`). Script sem uso registrado sai, ou ganha "sem uso registrado em
+  DD/MM/AAAA" para a próxima faxina decidir.
+- **Código morto não piora:** o CI roda o `vulture` (`scripts/conferir_codigo_morto.py`) e compara com
+  `tests/arquivos/vulture_esperado.txt`; item novo falha. Tirou código morto, ou apareceu um falso positivo
+  com motivo: `python -m scripts.conferir_codigo_morto --gravar` e o arquivo vai no commit (de novo depois
+  do `juntar_main`).
+
 ## Git e GitHub
 
 - **Nunca** commitar na `main` direto, nem `push --force`, nem reescrever histórico publicado.
@@ -128,6 +151,13 @@ cd web; npm run site                                        # páginas, CSS e JS
 - **Várias sessões podem estar abertas, de mais de uma IA.** Cada uma trabalha na própria cópia
   (`git worktree add ../analise-acoes-NOME -b ramo origin/main`); não mexa num ramo ou numa pasta
   que outra sessão esteja usando, e não use `git add -A` sem conferir o `git status`.
+- **Tarefa fechada = cópia e ramo apagados** (05/11/2026). Depois do merge, quem fechou a tarefa apaga a
+  cópia (`git worktree remove ../analise-acoes-NOME`) e o ramo local (`git branch -D ramo`; o GitHub apaga o
+  remoto ao mesclar). O `/fechar-tarefa` e o `fechar-e-seguir` fazem isso; o aviso do início da sessão (hook do
+  Claude) lista as cópias de PR já mesclado que ficaram.
+- **PR parado há mais de 7 dias** (sem commit, comentário nem CI pendente) não fica aberto esperando: vira
+  linha da fila (com o que falta e quem continua) ou fecha, com um comentário dizendo por quê. O
+  `arrumar-fila` confere e propõe; o PR do Dependabot conta também.
 - **Pastas geradas (`site/`, `novo/`, `web/conteudo/`) não se juntam à mão: se refazem.** Ramo atrás da
   `main` ou PR com conflito: `python -m scripts.juntar_main` (merge da `main`, conflito em pasta gerada
   resolvido rodando os geradores; conflito em código para e pede uma pessoa) e `git push` comum. Rode

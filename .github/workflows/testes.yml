@@ -154,10 +154,20 @@ jobs:
         if: matrix.qualidade
         run: python -m ruff format --check app.py telas src base tests trader scripts migracoes
 
-      # tipos: só src/ e scripts/ por enquanto (regras e porquês no pyrightconfig.json)
+      # tipos: src/, scripts/, telas/ e base/ (o "include", as regras e os porquês no pyrightconfig.json)
       - name: pyright (tipos)
         if: matrix.qualidade
         run: python -m pyright
+
+      # código morto em modo "não piorar": o que o vulture aponta hoje está em
+      # tests/arquivos/vulture_esperado.txt; item novo ou item que sumiu falha
+      # (scripts/conferir_codigo_morto.py). O vulture fica fora do requirements.txt: é ferramenta de
+      # desenvolvimento, instalada só aqui.
+      - name: vulture (código morto: não piorar)
+        if: matrix.qualidade
+        run: |
+          uv pip install vulture==2.16
+          python -m scripts.conferir_codigo_morto
 
       # em paralelo, um processo por núcleo lógico ("auto" contaria só os físicos: 2 no GitHub);
       # "loadgroup" reparte teste a teste, menos o grupo "postgres" do test_banco.py (o único que
@@ -211,11 +221,11 @@ jobs:
           python -m coverage combine
           python -m coverage report
 
-      - name: Testes do README (mudança só de texto)
+      - name: Testes do README e da raiz (mudança só de texto)
         if: needs.mudancas.outputs.so_texto == 'true'
         run: |
           python -m pip install pytest==9.1.1
-          python -m pytest -q --noconftest -p no:cacheprovider tests/test_publicacao.py tests/test_mudou_so_texto.py
+          python -m pytest -q --noconftest -p no:cacheprovider tests/test_publicacao.py tests/test_mudou_so_texto.py tests/test_raiz_do_repositorio.py
 
   web:
     # o front-end em React (ADR 0048): tipos, testes, build, licenças e vulnerabilidades dos pacotes

@@ -24,7 +24,8 @@ pessoas.
 
 ## Como o projeto se protege
 
-- Login só pelo Google; toda consulta ao banco filtra pelo usuário, com teste de isolamento.
+- Login pelo Google (app) ou por código de uso único enviado por e-mail (API e site); nenhuma senha é
+  guardada. Toda consulta ao banco filtra pelo usuário, com teste de isolamento.
 - Cobrança pelo Stripe **só em modo de teste**: o código recusa chaves de produção.
 - O plano só muda pelo webhook do Stripe, com assinatura verificada.
 - Segredos fora do Git; logs sem e-mail nem nome.
