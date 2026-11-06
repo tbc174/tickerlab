@@ -7,7 +7,10 @@ Nada é copiado: cada view lê os Parquets vigentes da tabela no acervo (as vers
 - `<tabela>`: as colunas como estão, mais `aconteceu_em`, `publico_em` e `coletado_em` (só as que o
   contrato dá) como **dia**. Momento em UTC vira o dia de UTC (o relógio da conexão fica em UTC);
   `publico_em` por mês vale pelo **último dia do mês** e por ano pelo último dia do ano (o
-  conservador: nada é público antes de o período terminar);
+  conservador: nada é público antes de o período terminar). Se o dicionário marca `linhas_de_pessoa`
+  (a coluna booleana da pessoa natural, `trata_como_pessoa` na `pgfn_divida`), a view esconde essas
+  linhas (ADR 0075: nada negativo sobre pessoa sai da base), e a marca vazia também esconde; sem a
+  coluna no arquivo, não serve linha nenhuma (o conservador: na dúvida, é pessoa);
 - `<tabela>__v<N>`: a versão maior N. A de hoje é a mesma view; uma antiga traduz as colunas pelo
   contrato congelado (`base/contratos/v<N>/`): renomeada volta com o nome antigo, a que saiu volta
   vazia, a nova não aparece (D12: vista, nunca segunda cópia);
@@ -280,6 +283,17 @@ def _select_com_apelidos(
     return f"SELECT {', '.join(partes)} FROM {fonte}"
 
 
+def _sem_as_linhas_de_pessoa(select: str, tabela: Tabela, colunas: list[str]) -> str:
+    """Esconde as linhas marcadas como pessoa natural (`tabela.linhas_de_pessoa`, ADR 0075). Na dúvida
+    é pessoa: a marca vazia também esconde, e sem a coluna no arquivo (não dá para separar empresa de
+    pessoa) a view não serve linha nenhuma."""
+    if not tabela.linhas_de_pessoa:
+        return select
+    if tabela.linhas_de_pessoa not in colunas:
+        return f"{select} WHERE false"
+    return f"{select} WHERE NOT coalesce({_nome(tabela.linhas_de_pessoa)}, true)"
+
+
 def _contratos_congelados(pasta: Path, nome: str) -> dict[int, dict]:
     congelados = {}
     for arquivo in pasta.glob(f"v*/{nome}.json"):
@@ -422,8 +436,11 @@ def conectar(
         for nome, fonte in fontes.items():
             if nome not in tabelas:
                 continue
-            select = _select_com_apelidos(
-                nome, tabelas[nome], _colunas(con, fonte), fonte
+            colunas = _colunas(con, fonte)
+            select = _sem_as_linhas_de_pessoa(
+                _select_com_apelidos(nome, tabelas[nome], colunas, fonte),
+                tabelas[nome],
+                colunas,
             )
             con.execute(f"CREATE VIEW {_nome(nome)} AS {select}")
             _views_das_versoes(con, nome, tabelas[nome], contratos)

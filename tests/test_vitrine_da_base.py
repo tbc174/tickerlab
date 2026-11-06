@@ -756,17 +756,14 @@ def test_parecer_com_duvida_e_insolvencia_em_24_meses():
     )
 
 
-def test_o_atraso_so_entra_como_contagem():
-    """O rótulo de atraso não pode aparecer na ficha de uma companhia (`base/dossie.py`), mas pode ser
-    contado no site; as outras tabelas dos cruzamentos podem ser mostradas."""
+def test_todas_as_tabelas_dos_cruzamentos_podem_ser_mostradas():
+    """Desde a virada de 5/11/2026 o rótulo de atraso sai como fato datado, como as outras tabelas dos
+    cruzamentos: nenhuma é só contagem."""
     from base import dossie
 
-    assert vitrine.ROTULOS_DE_ATRASO in vitrine.TABELAS_SO_EM_CONTAGEM
+    assert vitrine.ROTULOS_DE_ATRASO in vitrine.TABELAS_DOS_CRUZAMENTOS
     for tabela in vitrine.TABELAS_DOS_CRUZAMENTOS:
-        if tabela in vitrine.TABELAS_SO_EM_CONTAGEM:
-            assert not dossie.pode_mostrar(tabela) and dossie.pode_contar(tabela)
-        else:
-            assert dossie.pode_mostrar(tabela)
+        assert dossie.pode_mostrar(tabela)
 
 
 def test_cruzamentos_recusam_tabela_fora_do_catalogo():
