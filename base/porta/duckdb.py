@@ -88,6 +88,7 @@ ARQUIVOS: dict[str, str] = {
     "fre_capital_social": "fre_capital_social/*.parquet",
     "fre_empregados": "fre_empregados/*.parquet",
     "fre_acionistas": "fre_acionistas/*.parquet",
+    "fre_distribuicao_capital": "fre_distribuicao_capital/*.parquet",
     "fre_partes_relacionadas": "fre_partes_relacionadas/*.parquet",
     "ofertas_antigas": "ofertas/antigas.parquet",
     "ofertas_resolucao_160": "ofertas/resolucao_160.parquet",
