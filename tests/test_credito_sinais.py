@@ -516,6 +516,16 @@ def test_fidc_sem_fundo_e_zero_e_o_resto_nao_observado(porta):
         assert f[chave].valor is None and f[chave].motivo == si.SEM_FUNDO
 
 
+def test_fidc_sem_as_colunas_do_cedente_fica_nao_observado(tmp_path):
+    extras = {nome: pd.DataFrame(linhas) for nome, linhas in TABELAS.items()}
+    fidc = extras["fidc_informe"]
+    extras["fidc_informe"] = fidc[[c for c in fidc.columns if "_CEDENTE_" not in c]]
+    with Porta(tmp_path, arquivos={}, conferidas={}, extras=extras) as p:
+        f = _sinais(p, MUNDIAL)
+    for chave in si.DO_FIDC:
+        assert f[chave].valor is None and f[chave].motivo == si.SEM_COLUNA_DO_CEDENTE
+
+
 # --- rating ---------------------------------------------------------------------------------------
 def test_rating_mais_novo_publico_no_dia(porta):
     f = _sinais(porta, RD)

@@ -41,6 +41,10 @@ SEM_FUNDO = (
     "O CNPJ não aparece entre os maiores cedentes de nenhum FIDC nos informes dos 12 meses "
     "públicos no dia."
 )
+SEM_COLUNA_DO_CEDENTE = (
+    "Os informes de FIDC da base não trazem as colunas dos maiores cedentes: não dá para saber em "
+    "que fundo o CNPJ cede."
+)
 SEM_CARTEIRA = "Nenhum dos fundos informou carteira positiva na competência."
 SEM_RATING = (
     "Nenhum documento da CVM com rating legível da companhia era público no dia."
@@ -337,13 +341,14 @@ def _do_estado(porta: Porta, tabela: str, raiz: str, dia: date) -> list[Feature]
 # --- FIDC como cedente ----------------------------------------------------------------------------
 def _informes_em_que_cede(
     porta: Porta, cnpj_formatado: str, dia: date
-) -> tuple[pd.DataFrame, list[str]]:
+) -> tuple[pd.DataFrame | None, list[str]]:
     """Os informes dos 12 meses até o dia que listam o CNPJ entre os maiores cedentes, e as colunas
-    de CNPJ do cedente (o quadro I tem um bloco por classe de cota)."""
+    de CNPJ do cedente (o quadro I tem um bloco por classe de cota). None: a tabela não tem essas
+    colunas, e "nenhum fundo" seria uma afirmação que a base não sustenta."""
     colunas = porta.colunas("fidc_informe")
     cedentes = [coluna for coluna in colunas if _CEDENTE.match(coluna)]
     if not cedentes:
-        return pd.DataFrame(), []
+        return None, []
     aparece = " OR ".join(f'CAST("{coluna}" AS VARCHAR) = $cnpj' for coluna in cedentes)
     consulta = (
         f'SELECT * FROM "{nome_da_view("fidc_informe")}" WHERE '
@@ -384,6 +389,8 @@ def _fidc(porta: Porta, cnpj_formatado: str, dia: date) -> list[Feature]:
         informes, cedentes = _informes_em_que_cede(porta, cnpj_formatado, dia)
     except KeyError:
         return _sem_a_tabela(DO_FIDC)
+    if informes is None:
+        return _nao_observados(DO_FIDC, SEM_COLUNA_DO_CEDENTE)
     if informes.empty:
         versao = _versao_mais_nova(porta, "fidc_informe", dia)
         if versao is None:
