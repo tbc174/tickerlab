@@ -182,20 +182,40 @@ CADASTRAL = [
     ),  # sem o zero à esquerda, como em alguns meses
     _cadastral(OUTRA, "2026-09", "2026-10-10", "02", matriz=False),
 ]
+_PRAZO = {"inicio": _ts("2026-05-01"), "fim": _ts("2028-05-01")}
 CGU = [
-    _mudanca(OUTRA, "S1", "2026-05-10", cadastro="CEIS"),
-    _mudanca(OUTRA, "S1", "2026-09-03", consta=False, cadastro="CEIS"),  # saiu da lista
-    _mudanca(OUTRA, "S2", "2026-05-10", cadastro="CNEP"),
-    _mudanca(MEI, "S3", "2026-05-10", pessoa=True, cadastro="CEIS"),
+    _mudanca(OUTRA, "S1", "2026-05-10", cadastro="CEIS", **_PRAZO),
+    _mudanca(
+        OUTRA, "S1", "2026-09-03", consta=False, cadastro="CEIS", **_PRAZO
+    ),  # saiu da lista
+    _mudanca(
+        OUTRA, "S2", "2026-05-10", cadastro="CNEP", inicio=_ts("2026-05-01"), fim=None
+    ),
+    _mudanca(MEI, "S3", "2026-05-10", pessoa=True, cadastro="CEIS", **_PRAZO),
+    # ainda na lista, mas o prazo acabou antes do dia: não é vigente
+    _mudanca(
+        OUTRA,
+        "S4",
+        "2026-05-10",
+        cadastro="CEIS",
+        inicio=_ts("2025-01-01"),
+        fim=_ts("2026-07-20"),
+    ),
+    # publicada com início depois do dia: ainda não vale
+    _mudanca(
+        OUTRA, "S5", "2026-05-10", cadastro="CEIS", inicio=_ts("2027-01-01"), fim=None
+    ),
 ]
 LISTA_SUJA = [
     _mudanca(OUTRA, "L1", "2026-04-05"),
     _mudanca(OUTRA, "L2", "2026-04-05", pessoa=None),  # na dúvida, é pessoa: não entra
 ]
 IBAMA = [
-    _mudanca(OUTRA, "T1", "2026-03-01", cancelado=False, desembargado=False),
-    _mudanca(OUTRA, "T2", "2026-03-01", cancelado=False, desembargado=True),
-    _mudanca(OUTRA, "T3", "2026-03-01", cancelado=True, desembargado=False),
+    # as marcas são texto, como o IBAMA escreve (SIT_CANCELADO e SIT_DESEMBARGO)
+    _mudanca(OUTRA, "T1", "2026-03-01", cancelado="N", desembargado=None),
+    _mudanca(OUTRA, "T2", "2026-03-01", cancelado="N", desembargado="S"),
+    _mudanca(OUTRA, "T3", "2026-03-01", cancelado="S", desembargado=None),
+    _mudanca(OUTRA, "T4", "2026-03-01", cancelado=None, desembargado=" s "),
 ]
 SEFA_PR = [
     _mudanca(GPA, "P1", "2026-09-01", valor_total=100.0, suspensao=None, com_garantia=False,
@@ -395,9 +415,19 @@ def test_situacao_cadastral_sem_o_cnpj_fica_nao_observada(porta):
 
 # --- listas do governo ----------------------------------------------------------------------------
 def test_sancao_conta_so_a_versao_mais_nova_que_ainda_consta(porta):
-    assert _sinais(porta, OUTRA, date(2026, 6, 1))["sancoes_vigentes_na_cgu"].valor == 2
+    assert _sinais(porta, OUTRA, date(2026, 8, 1))["sancoes_vigentes_na_cgu"].valor == 2
     depois = _sinais(porta, OUTRA, date(2026, 10, 1))["sancoes_vigentes_na_cgu"]
     assert depois.valor == 1  # a S1 saiu da lista em setembro
+
+
+def test_sancao_com_prazo_acabado_ou_ainda_por_comecar_nao_e_vigente(porta):
+    # a S4 ainda consta, mas conta só até acabar em 20/07; a S5 só começa em 2027 e não conta
+    assert (
+        _sinais(porta, OUTRA, date(2026, 7, 15))["sancoes_vigentes_na_cgu"].valor == 3
+    )
+    assert (
+        _sinais(porta, OUTRA, date(2026, 7, 25))["sancoes_vigentes_na_cgu"].valor == 2
+    )
 
 
 def test_lista_vazia_para_o_cnpj_e_zero_com_a_data_da_lista(porta):
@@ -417,7 +447,8 @@ def test_registro_que_pode_ser_de_pessoa_nao_conta(porta):
     assert _sinais(porta, OUTRA)["registros_na_lista_suja"].valor == 1
 
 
-def test_embargo_cancelado_ou_desembargado_nao_conta(porta):
+def test_embargo_marcado_s_de_cancelado_ou_desembargado_nao_conta(porta):
+    # só o T1 (N e vazio) segue vigente; "S", com espaço ou minúsculo, tira o termo
     assert _sinais(porta, OUTRA)["embargos_vigentes_no_ibama"].valor == 1
 
 

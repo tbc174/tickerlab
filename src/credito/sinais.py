@@ -238,28 +238,50 @@ def _lista(porta: Porta, tabela: str, raiz: str, dia: date) -> _Lista | str:
     return _Lista(vigentes, DocumentoUsado(nome, versao))
 
 
-def _medir(
-    chave: str, lista: _Lista | str, medida: Callable[[pd.DataFrame], float]
-) -> Feature:
+# Como medir as linhas vigentes de uma lista no dia.
+Medida = Callable[[pd.DataFrame, date], float]
+MARCA_DO_IBAMA = "S"  # SIT_CANCELADO e SIT_DESEMBARGO: "S" marca; "N" ou vazio, não
+
+
+def _medir(chave: str, lista: _Lista | str, medida: Medida, dia: date) -> Feature:
     if isinstance(lista, str):
         return _sinal(chave, None, "", [], lista)
     periodo = f"até {lista.documento.publicado_em:%d/%m/%Y}"
-    return _sinal(chave, medida(lista.linhas), periodo, [lista.documento])
+    return _sinal(chave, medida(lista.linhas, dia), periodo, [lista.documento])
 
 
-def _quantos(linhas: pd.DataFrame) -> float:
+def _quantos(linhas: pd.DataFrame, _dia: date) -> float:
     return len(linhas)
 
 
-def _soma(coluna: str) -> Callable[[pd.DataFrame], float]:
-    return lambda linhas: float(_numeros(linhas[coluna]).sum())
+def _soma(coluna: str) -> Medida:
+    return lambda linhas, _dia: float(_numeros(linhas[coluna]).sum())
 
 
-def _sem_desembargo(linhas: pd.DataFrame) -> float:
-    return len(linhas.loc[~_sim(linhas["cancelado"]) & ~_sim(linhas["desembargado"])])
+def _vigentes_no_dia(linhas: pd.DataFrame, dia: date) -> float:
+    """Sanção que já tinha começado e não tinha acabado no dia. A CGU tira a sanção vencida da
+    lista só depois; `fim` vazio é sanção sem prazo, e `inicio` vazio conta (na dúvida, aparece)."""
+    no_dia = pd.Timestamp(dia)
+    inicio = pd.to_datetime(linhas["inicio"], errors="coerce")
+    fim = pd.to_datetime(linhas["fim"], errors="coerce")
+    vigente = (inicio.isna() | (inicio <= no_dia)) & (fim.isna() | (fim > no_dia))
+    return len(linhas.loc[vigente.astype(bool)])
 
 
-def _parana_em_aberto(linhas: pd.DataFrame) -> float:
+def _marcado_pelo_ibama(serie: pd.Series) -> pd.Series:
+    return serie.fillna("").astype(str).str.strip().str.upper().eq(MARCA_DO_IBAMA)
+
+
+def _sem_desembargo(linhas: pd.DataFrame, _dia: date) -> float:
+    """Termo de embargo que o IBAMA não marcou como cancelado nem como desembargado (as marcas são
+    texto, "S" ou "N", como a fonte escreve)."""
+    fora = _marcado_pelo_ibama(linhas["cancelado"]) | _marcado_pelo_ibama(
+        linhas["desembargado"]
+    )
+    return len(linhas.loc[~fora.astype(bool)])
+
+
+def _parana_em_aberto(linhas: pd.DataFrame, _dia: date) -> float:
     suspensao = linhas["suspensao"].fillna("").astype(str).str.strip()
     em_aberto = (
         (suspensao == "")
@@ -270,8 +292,8 @@ def _parana_em_aberto(linhas: pd.DataFrame) -> float:
 
 
 # (sinal, tabela, como medir)
-DAS_LISTAS: tuple[tuple[str, str, Callable[[pd.DataFrame], float]], ...] = (
-    ("sancoes_vigentes_na_cgu", "sancoes_cgu", _quantos),
+DAS_LISTAS: tuple[tuple[str, str, Medida], ...] = (
+    ("sancoes_vigentes_na_cgu", "sancoes_cgu", _vigentes_no_dia),
     ("registros_na_lista_suja", "mte_lista_suja", _quantos),
     ("embargos_vigentes_no_ibama", "ibama_embargos", _sem_desembargo),
     ("divida_ativa_no_parana", "sefa_pr_divida_ativa", _soma("valor_total")),
@@ -288,7 +310,8 @@ DAS_LISTAS: tuple[tuple[str, str, Callable[[pd.DataFrame], float]], ...] = (
 def _das_listas(porta: Porta, raiz: str, dia: date) -> list[Feature]:
     listas = {tabela: _lista(porta, tabela, raiz, dia) for _, tabela, _ in DAS_LISTAS}
     return [
-        _medir(chave, listas[tabela], medida) for chave, tabela, medida in DAS_LISTAS
+        _medir(chave, listas[tabela], medida, dia)
+        for chave, tabela, medida in DAS_LISTAS
     ]
 
 

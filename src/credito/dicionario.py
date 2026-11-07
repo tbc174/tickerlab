@@ -330,7 +330,10 @@ _DA_FICHA = (
         "sancoes_vigentes_na_cgu",
         "Sanções vigentes na CGU (CEIS, CNEP, CEPIM, acordos de leniência)",
         QUANTIDADE,
-        f"quantidade de registros, {_VIGENTE}",
+        (
+            f"quantidade de registros já começados e não acabados no dia (fim vazio: sem prazo), "
+            f"{_VIGENTE}"
+        ),
         "CGU: Portal da Transparência (tabela `sancoes_cgu` da base)",
         _MENSAL_DO_GOVERNO, _DEFASAGEM_DO_MES,
     ),
@@ -346,7 +349,10 @@ _DA_FICHA = (
         "embargos_vigentes_no_ibama",
         "Áreas embargadas pelo IBAMA, ainda sem desembargo",
         QUANTIDADE,
-        f"quantidade de termos de embargo não cancelados nem desembargados, {_VIGENTE}",
+        (
+            "quantidade de termos de embargo sem a marca \"S\" de cancelado nem de desembargado, "
+            f"{_VIGENTE}"
+        ),
         "IBAMA: termos de embargo (tabela `ibama_embargos` da base)",
         _MENSAL_DO_GOVERNO, _DEFASAGEM_DO_MES,
     ),
