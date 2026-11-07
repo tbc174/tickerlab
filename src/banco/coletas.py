@@ -64,6 +64,7 @@ LICENCAS = {
     "msestado": "CC BY, despesas por credor do Governo de Mato Grosso do Sul (citar a fonte)",
     "sefazpe": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
     "sefapr": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
+    "esdados": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
     "sefmg": "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)",
     "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
@@ -339,7 +340,8 @@ REVENDA = {
     "tce-ce": VENDAVEL_RISCO_ASSUMIDO,  # linha 652: nada perguntado ao TCE-CE
     "goias": VENDAVEL_COM_ATRIBUICAO,  # CC BY; uso público com a fonte aprovado pelo Tiago em 04/11/2026
     "msestado": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN; uso público com a fonte: "pode" do Tiago em 05/11/2026 (linha 688)
-    "sefazpe": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN (lida em 03/11/2026); coleta da linha 578 aberta pelo Tiago em 05/11/2026 ("Sim, abrir as 8"); nada perguntado à fonte (ADR 0102 Emenda 2)
+    "sefazpe": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN (lida em 03/11/2026; a ordem cronológica de pagamentos entrou em 06/11, linha 755); coleta da linha 578 aberta pelo Tiago em 05/11/2026 ("Sim, abrir as 8"); nada perguntado à fonte (ADR 0102 Emenda 2)
+    "esdados": VENDAVEL_COM_ATRIBUICAO,  # CC BY no CKAN do ES (lida em 06/11/2026); coleta da linha 755; nada perguntado à fonte (ADR 0102 Emenda 2)
     "sefapr": VENDAVEL_RISCO_ASSUMIDO,  # lista pública de devedores, sem licença nem termos escritos (linha 755); nada perguntado à fonte (ADR 0102 Emenda 2)
     "sefmg": VENDAVEL_RISCO_ASSUMIDO,  # idem para Minas: lista pública (Res. Conj. SEF/AGE 5.625/2022, CTN art. 198 §3º II), sem licença escrita
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
@@ -637,6 +639,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "rfb-cnpj",  # Disallow: / ; CC BY na ficha do dados.gov.br
             "goias",  # Disallow: /api/ e Crawl-Delay: 10 (04/11/2026); CC BY
             "spcapital",  # Disallow: / (04/11/2026); CC0
+            "esdados",  # dados.es.gov.br: Disallow /api/, Crawl-Delay 10 (06/11/2026); CC BY no CKAN; a coleta lê a página, não a API
             "sefazpe",  # dados.pe.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN; a coleta lê a página, não a API
             "msestado",  # www.dados.ms.gov.br: Disallow /api/, Crawl-Delay 10 (05/11/2026); CC BY no CKAN
         ),

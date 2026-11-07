@@ -42,6 +42,7 @@ from base.arquivo import (
     lote_europa_rba,
     lote_licitacoes,
     lote_nordicos,
+    lote_ordem_cronologica,
     lote_organismos,
     lote_patentes,
     lote_reguladores,
@@ -1628,6 +1629,7 @@ FONTES: list[Fonte] = [
     *lote_sefaz_pe.fontes(),
     # dívida ativa estadual (Sefa-PR; linha 755 da fila): o ZIP do dia, só CNPJ e sem o nome
     *lote_divida_estadual.fontes(),
+    *lote_ordem_cronologica.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),

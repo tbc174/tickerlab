@@ -40,6 +40,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "registro", "registrada_desde", "inicio_listagem", "inicio_negociacao",
         "entrada_em_operacao", "entrada_em_teste", "fechamento_em", "infracao_em",
         "primeira_inscricao", "ultima_inscricao", "inscrito_em", "parcelado_em",  # a dívida ativa do PR e de MG
+        "liquidado_em", "pago_em", "ordem_bancaria_em", "ordem_cronologica_em",  # a ordem cronológica de PE e ES
         "ultima_alteracao_em", "instante",
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
