@@ -231,7 +231,9 @@ def _nos_12_meses(
     linhas: pd.DataFrame, dia: date, ultimo: DocumentoUsado
 ) -> list[Feature]:
     inicio = dia - timedelta(days=DIAS_DA_JANELA)
-    janela = linhas[linhas["publico_em"].map(_dia) > inicio]
+    # pelo Timestamp: com `publico_em` em datetime64, o `map(_dia)` volta a ser datetime64 e não
+    # compara com `date`
+    janela = linhas.loc[pd.to_datetime(linhas["publico_em"]) > pd.Timestamp(inicio)]
     periodo = f"12 meses até {dia:%d/%m/%Y}"
     filtros: dict[str, Callable[[pd.DataFrame], pd.Series]] = {
         "fatos_relevantes_12_meses": lambda t: t["rotulo"] == FATO_RELEVANTE,

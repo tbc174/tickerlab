@@ -322,6 +322,17 @@ def test_sem_fato_na_janela_e_zero_com_a_data_do_ultimo_documento(porta):
     assert f["fatos_relevantes_12_meses"].disponivel_em == date(2026, 6, 1)
 
 
+def test_com_insolvencia_e_sem_evento_nenhum_conta_zero_eventos(tmp_path):
+    """Regressão (linha 754): a janela de 12 meses sobre `eventos` vazio não pode falhar."""
+    so_da_outra = [evento for evento in EVENTOS if evento["cnpj"] == _formatado(OUTRA)]
+    with _porta(tmp_path, trocas={"eventos": so_da_outra}) as porta:
+        f = _da_base(porta, EMPRESA, date(2026, 8, 1))
+    assert f["fatos_relevantes_12_meses"].valor == 0
+    assert (
+        f["eventos_de_insolvencia"].valor == 1
+    )  # a P1 (a P2 é exposição; a P3, de 09/2026)
+
+
 def test_quem_nao_entrega_a_cvm_fica_nao_observado(porta):
     f = _da_base(porta, NOVA, date(2026, 8, 1))
     for chave in (
@@ -341,7 +352,9 @@ def test_tabela_que_falta_na_base_fica_nao_observada(tmp_path):
     assert f["fatos_relevantes_12_meses"].motivo == fb.SEM_A_TABELA.format(
         tabela="eventos"
     )
-    assert f["eventos_de_insolvencia"].valor == 2  # a insolvência ainda está lá
+    assert (
+        f["eventos_de_insolvencia"].valor == 1
+    )  # a P1 (a P2 é exposição; a P3, de 09/2026)  # a insolvência ainda está lá
 
 
 def test_toda_feature_da_base_tem_a_formula_do_dicionario(porta):
