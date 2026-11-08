@@ -431,67 +431,73 @@ def test_remuneracao_nao_olha_o_fre_nem_a_dfp_do_futuro():
     assert _achar(futuro, REMUNERACAO) == _achar(passado, REMUNERACAO)
 
 
-# --- R2: dividendo acima do lucro -----------------------------------------------------------------
+# --- R2: dividendo pago acima do lucro ------------------------------------------------------------
 
 
-def _provento(
-    exercicio: int,
-    lucro_ajustado: float,
-    dividendo_total: float,
-    conhecido_em: str = "2026-05-29",
-) -> dict:
-    return {
-        "exercicio": exercicio,
-        "lucro_ajustado": lucro_ajustado,
-        "dividendo_total": dividendo_total,
-        "payout": dividendo_total / lucro_ajustado if lucro_ajustado else None,
-        "conhecido_em": conhecido_em,
-    }
-
-
-def test_dividendo_acima_do_lucro_ajustado_do_ultimo_exercicio():
-    ficha = _ficha(
-        _capital(
-            proventos=[_provento(2025, 100e6, 130e6), _provento(2024, 100e6, 50e6)]
-        )
+def _pagou_e_lucrou(exercicio: int, pago: float, lucro: float | None, **caixa) -> tuple:
+    """A DFC com os dividendos pagos e a DFP com o lucro do mesmo exercício."""
+    return (
+        _caixa(
+            _ano_de_caixa(exercicio, 90e6, 20e6, **caixa),
+            dfc=[_linha_da_dfc(exercicio, -pago)],
+        ),
+        _qualidade(lucros=[_lucro(exercicio, lucro)]),
     )
+
+
+def test_dividendo_pago_acima_do_lucro_do_ano():
+    ficha = _ficha(*_pagou_e_lucrou(2025, 130e6, 100e6, divulgado_em="2026-03-25"))
     achado = _achar(ficha, DIVIDENDO)
     assert achado.achado
+    assert "R$ 130,0 mi" in achado.frase and "R$ 100,0 mi" in achado.frase
     assert (
-        "R$ 130,0 mi" in achado.frase
-        and "R$ 100,0 mi" in achado.frase
-        and "2025" in achado.frase
+        "2025" in achado.frase and "(DFC)" in achado.frase and "(DFP)" in achado.frase
     )
-    assert achado.medido_em == "2026-05-29" and achado.fontes == (FONTE,)
-    assert achado.numeros == {"lucro_ajustado": 100e6, "dividendo_total": 130e6}
+    assert achado.medido_em == "2026-03-25"
+    assert achado.fontes == (FONTE_DO_CAIXA, FONTE)
+    assert achado.numeros == {"lucro": 100e6, "dividendos_pagos": 130e6}
 
 
-def test_dividendo_com_prejuizo_e_achado():
-    achado = _achar(
-        _ficha(_capital(proventos=[_provento(2025, -20e6, 10e6)])), DIVIDENDO
-    )
+def test_dividendo_pago_com_prejuizo_e_achado():
+    achado = _achar(_ficha(*_pagou_e_lucrou(2025, 10e6, -20e6)), DIVIDENDO)
     assert achado.achado and "prejuízo" in achado.frase
     assert "R$ 10,0 mi" in achado.frase
 
 
-def test_dividendo_abaixo_do_lucro_diz_sem_achado_com_os_numeros():
-    achado = _achar(
-        _ficha(_capital(proventos=[_provento(2025, 100e6, 50e6)])), DIVIDENDO
-    )
+def test_dividendo_pago_abaixo_do_lucro_diz_sem_achado_com_os_numeros():
+    achado = _achar(_ficha(*_pagou_e_lucrou(2025, 50e6, 100e6)), DIVIDENDO)
     assert not achado.achado and achado.frase.startswith("Sem achado.")
-    assert "R$ 50,0 mi" in achado.frase and achado.medido_em == "2026-05-29"
-    sem_dividendo = _achar(
-        _ficha(_capital(proventos=[_provento(2025, -20e6, 0.0)])), DIVIDENDO
+    assert "R$ 50,0 mi" in achado.frase and achado.medido_em == "2026-03-20"
+    sem_linha = _ficha(
+        _caixa(
+            _ano_de_caixa(2025, 90e6, 20e6),
+            dfc=[_linha_da_dfc(2025, 50e6, "6.03.01", "Captação de empréstimos")],
+        ),
+        _qualidade(lucros=[_lucro(2025, -20e6)]),
     )
-    assert not sem_dividendo.achado
+    c = _achar(sem_linha, DIVIDENDO)
+    assert not c.achado and c.medido_em and c.numeros["dividendos_pagos"] == 0.0
 
 
-def test_dividendo_sem_proventos_nao_inventa_e_nao_le_o_fre_do_futuro():
-    assert _achar(_ficha(_capital()), DIVIDENDO).medido_em is None
-    futuro = _ficha(_capital(proventos=[
-        _provento(2026, 10e6, 90e6, "2027-05-29"), _provento(2025, 100e6, 50e6),
-    ]))  # fmt: skip
-    assert not _achar(futuro, DIVIDENDO).achado
+def test_dividendo_sem_dfc_ou_lucro_nao_inventa_e_nao_le_o_futuro():
+    assert (
+        _achar(_ficha(_qualidade(lucros=[_lucro(2025, 100e6)])), DIVIDENDO).medido_em
+        is None
+    )
+    assert (
+        _achar(_ficha(_pagou_e_lucrou(2025, 50e6, None)[0]), DIVIDENDO).medido_em
+        is None
+    )
+    passado = _ficha(*_pagou_e_lucrou(2025, 50e6, 100e6))
+    futuro = _ficha(
+        _caixa(
+            _ano_de_caixa(2025, 90e6, 20e6),
+            _ano_de_caixa(2026, 90e6, 20e6, divulgado_em="2027-03-20"),
+            dfc=[_linha_da_dfc(2025, -50e6), _linha_da_dfc(2026, -90e6)],
+        ),
+        _qualidade(lucros=[_lucro(2025, 100e6), _lucro(2026, 10e6, "2027-03-20")]),
+    )
+    assert _achar(futuro, DIVIDENDO) == _achar(passado, DIVIDENDO)
 
 
 # --- R3: parecer com ressalva ou dúvida de continuidade -------------------------------------------
@@ -672,100 +678,96 @@ def test_assembleias_de_aperto_antigas_ou_nenhuma_nao_sao_achado():
 # --- R6: aumento de capital e dividendo no mesmo exercício ----------------------------------------
 
 
-def _evento(data: str, tipo="aumento", valor=300e6) -> dict:
-    return {
-        "data": data,
-        "tipo": tipo,
-        "fator": None,
-        "acoes_novas": 5e6,
-        "valor": valor,
-    }
+def _aumento(
+    exercicio: int, valor: float = 300e6, descricao="Aumento de capital"
+) -> dict:
+    return _linha_da_dfc(exercicio, valor, "6.03.02", descricao)
 
 
 def test_aumento_de_capital_e_dividendo_no_mesmo_exercicio():
-    ficha = _ficha(_capital(
-        proventos=[_provento(2025, 100e6, 50e6)],
-        eventos=[_evento("2025-08-01"), _evento("2024-02-01")],
-    ))  # fmt: skip
-    achado = _achar(ficha, CAPITAL_E_DIVIDENDO)
-    assert achado.achado
-    assert (
-        "2025" in achado.frase
-        and "R$ 300,0 mi" in achado.frase
-        and "R$ 50,0 mi" in achado.frase
-    )
-    assert "01/08/2025" in achado.frase
-    assert achado.medido_em == "2026-05-29" and achado.fontes == (FONTE,)
-    assert achado.numeros == {
-        "aumentos": 1.0,
-        "aumento_valor": 300e6,
-        "dividendo_total": 50e6,
-    }
-
-
-def test_aumento_sem_valor_informado_ainda_e_achado():
     ficha = _ficha(
-        _capital(
-            proventos=[_provento(2025, 100e6, 50e6)],
-            eventos=[_evento("2025-08-01", valor=None)],
+        _caixa(
+            _ano_de_caixa(2025, 90e6, 20e6),
+            _ano_de_caixa(2024, 90e6, 20e6, divulgado_em="2025-03-20"),
+            dfc=[
+                _aumento(2025, 200e6),
+                _aumento(2025, 100e6, "Adiantamento para futuro aumento de capital"),
+                _linha_da_dfc(2025, -50e6),
+                _aumento(2024),
+            ],
         )
     )
     achado = _achar(ficha, CAPITAL_E_DIVIDENDO)
-    assert achado.achado and "sem valor informado" in achado.frase
+    assert achado.achado
+    assert "2025" in achado.frase and "R$ 300,0 mi" in achado.frase
+    assert "R$ 50,0 mi" in achado.frase and "DFC" in achado.frase
+    assert achado.medido_em == "2026-03-20" and achado.fontes == (FONTE_DO_CAIXA,)
+    assert achado.numeros == {"aumento_de_capital": 300e6, "dividendos_pagos": 50e6}
 
 
-def test_aumento_em_outro_exercicio_desdobramento_ou_sem_dividendo_nao_e_achado():
+def test_aumento_em_outro_ano_tesouraria_custo_ou_sem_dividendo_nao_e_achado():
     outro_ano = _ficha(
-        _capital(
-            proventos=[_provento(2025, 100e6, 50e6)], eventos=[_evento("2024-08-01")]
+        _caixa(
+            _ano_de_caixa(2025, 90e6, 20e6),
+            _ano_de_caixa(2024, 90e6, 20e6, divulgado_em="2025-03-20"),
+            dfc=[_aumento(2024), _linha_da_dfc(2025, -50e6), _linha_da_dfc(2024, -1e6)],
         )
     )
     achado = _achar(outro_ano, CAPITAL_E_DIVIDENDO)
+    assert not achado.achado and achado.frase.startswith("Sem achado.")
+    assert "nenhuma entrada de aumento de capital" in achado.frase
+    assert achado.medido_em == "2026-03-20"
+    nao_e_aumento = _ficha(
+        _caixa(
+            _ano_de_caixa(2025, 90e6, 20e6),
+            dfc=[
+                _aumento(2025, 9e6, "Alienação de ações em tesouraria"),
+                _aumento(2025, 9e6, "Aumento de capital de não controladores"),
+                _aumento(2025, -2e6, "Gastos com emissão de ações"),
+                _aumento(2025, -40e6, "Redução de capital"),
+                _linha_da_dfc(2025, -50e6),
+            ],
+        )
+    )
     assert (
-        not achado.achado
-        and achado.frase.startswith("Sem achado.")
-        and achado.medido_em == "2026-05-29"
+        _achar(nao_e_aumento, CAPITAL_E_DIVIDENDO).numeros["aumento_de_capital"] == 0.0
     )
-    desdobrou = _ficha(
-        _capital(
-            proventos=[_provento(2025, 100e6, 50e6)],
-            eventos=[_evento("2025-08-01", "desdobramento")],
-        )
-    )
-    assert not _achar(desdobrou, CAPITAL_E_DIVIDENDO).achado
     sem_dividendo = _ficha(
-        _capital(
-            proventos=[_provento(2025, 100e6, 0.0)], eventos=[_evento("2025-08-01")]
-        )
+        _caixa(_ano_de_caixa(2025, 90e6, 20e6), dfc=[_aumento(2025)])
     )
-    assert not _achar(sem_dividendo, CAPITAL_E_DIVIDENDO).achado
+    c = _achar(sem_dividendo, CAPITAL_E_DIVIDENDO)
+    assert not c.achado and "R$ 300,0 mi recebidos" in c.frase
     assert (
         _achar(
-            _ficha(_capital(eventos=[_evento("2025-08-01")])), CAPITAL_E_DIVIDENDO
+            _ficha(_caixa(_ano_de_caixa(2025, 90e6, 20e6))), CAPITAL_E_DIVIDENDO
         ).medido_em
         is None
     )
 
 
 def test_aumento_e_dividendo_nao_olham_o_futuro():
-    passado = _ficha(
-        _capital(
-            proventos=[_provento(2024, 100e6, 50e6)], eventos=[_evento("2024-08-01")]
+    ano_2024 = _ano_de_caixa(2024, 90e6, 20e6, divulgado_em="2025-03-20")
+    passado = _ficha(_caixa(ano_2024, dfc=[_aumento(2024), _linha_da_dfc(2024, -50e6)]))
+    futuro = _ficha(
+        _caixa(
+            ano_2024,
+            _ano_de_caixa(2025, 90e6, 20e6, divulgado_em="2026-11-20"),
+            dfc=[
+                _aumento(2024),
+                _linha_da_dfc(2024, -50e6),
+                _linha_da_dfc(2025, -90e6),
+            ],
         )
     )
-    futuro = _ficha(_capital(
-        proventos=[_provento(2025, 100e6, 90e6, "2027-05-29"), _provento(2024, 100e6, 50e6)],
-        eventos=[_evento("2027-01-05"), _evento("2024-08-01")],
-    ))  # fmt: skip
     assert _achar(futuro, CAPITAL_E_DIVIDENDO) == _achar(passado, CAPITAL_E_DIVIDENDO)
 
 
-# --- as seis regras novas no setor e no texto do limite -------------------------------------------
+# --- as regras no setor e no texto do limite ------------------------------------------------------
 
 
 def test_setor_soma_as_regras_novas_tambem():
-    com = _ficha(_capital(proventos=[_provento(2025, 100e6, 130e6)]))
-    sem = _ficha(_capital(proventos=[_provento(2025, 100e6, 50e6)]))
+    com = _ficha(*_pagou_e_lucrou(2025, 130e6, 100e6))
+    sem = _ficha(*_pagou_e_lucrou(2025, 50e6, 100e6))
     setor = {
         c.chave: c
         for c in cruzamentos_do_setor(
@@ -1208,3 +1210,22 @@ def test_ano_sem_dfc_na_ficha_nao_vira_dividendo_zero():
     assert cruzamentos._dividendos_pagos(secao, HOJE) == {2024: 10e6}
     so_caixa = _ficha(_caixa(_ano_de_caixa(2025, 30e6, 80e6)))
     assert _achar(so_caixa, CAIXA_E_DIVIDENDO).medido_em is None
+
+
+def test_as_regras_de_dividendo_nao_leem_mais_o_fre():
+    """O FRE parou de trazer os proventos em 2022 e os aumentos de capital em 2023: olhar para ele
+    fazia as regras compararem exercícios velhos. Só o FRE na ficha não avalia nenhuma delas."""
+    so_fre = _ficha(
+        _capital(
+            proventos=[{"exercicio": 2021, "lucro_ajustado": 10e6, "dividendo_total": 90e6,
+                        "conhecido_em": "2022-05-29"}],
+            eventos=[{"data": "2021-08-01", "tipo": "aumento", "valor": 300e6}],
+        )
+    )  # fmt: skip
+    for chave in (
+        DIVIDENDO,
+        CAPITAL_E_DIVIDENDO,
+        DIVIDA_E_DIVIDENDO,
+        CAIXA_E_DIVIDENDO,
+    ):
+        assert _achar(so_fre, chave).medido_em is None, chave

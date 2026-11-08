@@ -13,7 +13,8 @@ exercício (plano "mais cruzamentos da base", 29/10/2026). Depois da virada de 5
 dívida ativa da PGFN e os rótulos de atraso (`docs/virada-empresas-fechadas.md`), mais quatro (7/11/2026):
 dívida ativa com a União em cobrança e dividendo pago, DFP entregue atrasada e refeita depois,
 dividendo pago com fluxo de caixa livre negativo e lucro sem caixa operacional em dois exercícios
-seguidos. Estes leem o dividendo pago na DFC: o FRE de 2023 em diante não traz mais a distribuição.
+seguidos. Os que olham dividendo e aumento de capital leem o que a DFC registra como pago e recebido
+no ano: o FRE de 2023 em diante não traz mais a distribuição nem os aumentos.
 
 Sem olhar o futuro: `hoje` corta tudo o que tem data depois dele; o resultado de uma data passada é o
 mesmo se a ficha trouxer linhas de depois.
@@ -69,7 +70,7 @@ TITULOS = {
     AUDITOR: "Troca de auditor",
     INSIDERS: "Gente de dentro comprando e vendendo (agregado)",
     REMUNERACAO: "Remuneração da diretoria subiu em ano de lucro menor",
-    DIVIDENDO: "Dividendo acima do lucro",
+    DIVIDENDO: "Dividendo pago acima do lucro",
     PARECER: "Parecer do auditor com ressalva ou dúvida de continuidade",
     RATING: "Rating rebaixado",
     DEBENTURISTAS: "Assembleias de debenturistas de aperto",
@@ -503,55 +504,151 @@ def remuneracao(ficha: Ficha, hoje: date) -> Cruzamento:
     return _cruzamento(REMUNERACAO, True, frase, quando, fontes, numeros)
 
 
+# --- o que a DFC registra nas atividades de financiamento ---------------------------------------
+
+SECAO_DO_CAIXA = "geracao_de_caixa"
+
+
+def _caixa_publico(
+    secao: SecaoDaFicha | None, coluna: str, hoje: date
+) -> dict[int, Mapping[str, Any]]:
+    """Os exercícios da DFP já divulgados até hoje que têm a `coluna` do caixa."""
+    return _por_exercicio(secao, "caixa_por_exercicio", "divulgado_em", hoje, coluna)
+
+
+DFC = "DFC"  # DFC_MI e DFC_MD, os dois métodos da demonstração dos fluxos de caixa
+FINANCIAMENTO = "6.03."  # as contas das atividades de financiamento na DFC
+# Os dividendos e JCP pagos e o aumento de capital recebido, como as companhias escrevem a linha
+# (medido nas DFPs de 2025). O FRE de 2023 em diante não traz mais a distribuição nem os aumentos.
+DIVIDENDOS_E_JCP = re.compile(r"dividend|juros sobre (?:o )?capital|jcp|jscp")
+AUMENTO_DE_CAPITAL = re.compile(
+    r"aumento (?:d[oe] )?capital|integraliza[çc][ãa]o de capital|aporte de capital"
+    r"|emiss[ãa]o de a[çc][õo]es|subscri[çc][ãa]o de a[çc][õo]es"
+)
+# fora: o recebido da investida, a linha dos não controladores (o caixa é da controlada, não dos
+# acionistas da companhia), as ações em tesouraria e o custo de emitir
+FORA_DO_FINANCIAMENTO = re.compile(
+    r"receb|n[ãa]o controlador|minorit|tesouraria|gasto|custo"
+)
+
+
+def _da_linha(
+    padrao: re.Pattern[str], saida: bool
+) -> Callable[[Mapping[str, Any]], bool]:
+    """A linha de financiamento da DFC com o `padrao` na descrição: saída de caixa (valor negativo)
+    ou entrada (positivo)."""
+
+    def casa(linha: Mapping[str, Any]) -> bool:
+        descricao = str(linha.get("descricao") or "").lower()
+        if linha.get("valor") is None or not str(linha.get("conta") or "").startswith(
+            FINANCIAMENTO
+        ):
+            return False
+        valor = float(linha["valor"])
+        sentido = valor < TOLERANCIA_ZERO if saida else valor > TOLERANCIA_ZERO
+        return (
+            sentido
+            and padrao.search(descricao) is not None
+            and FORA_DO_FINANCIAMENTO.search(descricao) is None
+        )
+
+    return casa
+
+
+def _sem_a_mae(linhas: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    """As linhas cuja conta mãe não está entre elas: a mãe e a filha não somam duas vezes."""
+    contas = {(linha["exercicio"], str(linha["conta"])) for linha in linhas}
+    return [
+        linha
+        for linha in linhas
+        if not any(
+            exercicio == linha["exercicio"]
+            and str(linha["conta"]).startswith(f"{conta}.")
+            for exercicio, conta in contas
+        )
+    ]
+
+
+def _linhas_da_dfc(secao: SecaoDaFicha | None, hoje: date) -> list[Mapping[str, Any]]:
+    """As linhas da DFC dos exercícios já divulgados até hoje, num método só por ano (DFC_MD ou
+    DFC_MI): o mesmo pagamento não soma duas vezes."""
+    publicos = _caixa_publico(secao, "divulgado_em", hoje)
+    da_dfc = [
+        linha
+        for linha in (secao.tabelas.get("dfc_dva_por_exercicio", []) if secao else [])
+        if str(linha.get("demonstracao") or "").startswith(DFC)
+        and int(linha["exercicio"]) in publicos
+    ]
+    metodo: dict[int, str] = {}
+    for linha in da_dfc:
+        ano = int(linha["exercicio"])
+        metodo[ano] = min(metodo.get(ano, linha["demonstracao"]), linha["demonstracao"])
+    return [
+        linha
+        for linha in da_dfc
+        if linha["demonstracao"] == metodo[int(linha["exercicio"])]
+    ]
+
+
+def _somas_da_dfc(
+    secao: SecaoDaFicha | None, hoje: date, casa: Callable[[Mapping[str, Any]], bool]
+) -> dict[int, float]:
+    """Por exercício com a DFC na ficha: a soma, em valor positivo, das linhas que casam (zero quando
+    a DFC do ano não tem a linha). Sem a DFC do ano, o ano não entra: o vazio não vira zero."""
+    linhas = _linhas_da_dfc(secao, hoje)
+    casadas = _sem_a_mae([linha for linha in linhas if casa(linha)])
+    return {
+        ano: sum(abs(float(c["valor"])) for c in casadas if int(c["exercicio"]) == ano)
+        for ano in {int(linha["exercicio"]) for linha in linhas}
+    }
+
+
+def _dividendos_pagos(secao: SecaoDaFicha | None, hoje: date) -> dict[int, float]:
+    """Os dividendos e JCP pagos aos acionistas da companhia em cada exercício (DFC)."""
+    return _somas_da_dfc(secao, hoje, _da_linha(DIVIDENDOS_E_JCP, saida=True))
+
+
+def _aumentos_recebidos(secao: SecaoDaFicha | None, hoje: date) -> dict[int, float]:
+    """O caixa recebido por aumento de capital em cada exercício (DFC); a capitalização de reservas
+    não passa pelo caixa e não entra."""
+    return _somas_da_dfc(secao, hoje, _da_linha(AUMENTO_DE_CAPITAL, saida=False))
+
+
 # --- dividendo acima do lucro --------------------------------------------------------------------
 
 
-def _proventos_publicos(
-    secao: SecaoDaFicha | None, hoje: date
-) -> list[Mapping[str, Any]]:
-    """Os proventos por exercício do FRE já entregue até hoje."""
-    if secao is None:
-        return []
-    return _ate_hoje(
-        secao.tabelas.get("proventos_por_exercicio", []), "conhecido_em", hoje
-    )
-
-
 def dividendo(ficha: Ficha, hoje: date) -> Cruzamento:
-    """O dividendo declarado sobre o último exercício passou do lucro ajustado, ou houve dividendo com prejuízo."""
-    secao = _secao(ficha, SECAO_DE_CAPITAL)
-    proventos = [
-        linha
-        for linha in _proventos_publicos(secao, hoje)
-        if linha.get("lucro_ajustado") is not None
-        and linha.get("dividendo_total") is not None
-    ]
-    if secao is None or not proventos:
+    """Os dividendos e JCP pagos no exercício mais recente passaram do lucro do mesmo exercício, ou
+    houve pagamento em ano de prejuízo. O pago (DFC) inclui o dividendo do lucro do ano anterior, que
+    sai no ano seguinte: é o payout em caixa, não o declarado sobre o exercício."""
+    caixa = _secao(ficha, SECAO_DO_CAIXA)
+    qualidade = _secao(ficha, SECAO_DE_QUALIDADE)
+    pagos = _dividendos_pagos(caixa, hoje)
+    lucros = _por_exercicio(
+        qualidade, "lucro_por_exercicio", "divulgado_em", hoje, "lucro"
+    )
+    comuns = sorted(set(pagos) & set(lucros), reverse=True)
+    if not comuns:
         return _sem_achado(
-            DIVIDENDO, "Sem o lucro ajustado e o dividendo por exercício do FRE."
+            DIVIDENDO,
+            "Sem os dividendos pagos (DFC) e o lucro do mesmo exercício (DFP).",
         )
-    ultimo = max(proventos, key=lambda linha: int(linha["exercicio"]))
-    exercicio = int(ultimo["exercicio"])
-    lucro, pago = float(ultimo["lucro_ajustado"]), float(ultimo["dividendo_total"])
-    quando = str(ultimo["conhecido_em"])[:10]
-    numeros = {"lucro_ajustado": lucro, "dividendo_total": pago}
-    fontes = tuple(secao.fontes)
+    ano = comuns[0]
+    pago, lucro = pagos[ano], float(lucros[ano]["lucro"])
+    divulgados = _caixa_publico(caixa, "divulgado_em", hoje)
+    quando = max(
+        str(divulgados[ano]["divulgado_em"])[:10], str(lucros[ano]["divulgado_em"])[:10]
+    )
+    numeros = {"lucro": lucro, "dividendos_pagos": pago}
+    fontes = _fontes(caixa, qualidade)
+    pagou = f"Em {ano} a companhia pagou {reais(pago)} de dividendos e JCP (DFC)"
     if pago <= TOLERANCIA_ZERO or pago <= lucro:
-        frase = (
-            f"Sem achado. Sobre {exercicio} a companhia declarou {reais(pago)} de dividendos, com lucro "
-            f"ajustado de {reais(lucro)} (FRE)."
-        )
+        frase = f"Sem achado. {pagou}, com lucro de {reais(lucro)} no ano (DFP)."
         return _cruzamento(DIVIDENDO, False, frase, quando, fontes, numeros)
     if lucro <= TOLERANCIA_ZERO:
-        frase = (
-            f"A companhia declarou {reais(pago)} de dividendos sobre {exercicio}, exercício com prejuízo "
-            f"ajustado de {reais(lucro)} (FRE)."
-        )
+        frase = f"{pagou}, num ano de prejuízo de {reais(lucro)} (DFP)."
     else:
-        frase = (
-            f"O dividendo declarado sobre {exercicio}, {reais(pago)}, passou do lucro ajustado do "
-            f"exercício, {reais(lucro)} (FRE)."
-        )
+        frase = f"{pagou}, mais que o lucro do ano, {reais(lucro)} (DFP)."
     return _cruzamento(DIVIDENDO, True, frase, quando, fontes, numeros)
 
 
@@ -720,70 +817,37 @@ def debenturistas(ficha: Ficha, hoje: date) -> Cruzamento:
 
 # --- aumento de capital e dividendo no mesmo exercício -------------------------------------------
 
-AUMENTO_DE_CAPITAL = "aumento"  # o `tipo` do evento na tabela `eventos_de_capital`
-
-
-def _valor_dos_aumentos(aumentos: Sequence[Mapping[str, Any]]) -> tuple[float, str]:
-    """A soma dos valores informados e como escrevê-la (o FRE nem sempre traz o valor)."""
-    informados = [float(a["valor"]) for a in aumentos if a.get("valor") is not None]
-    soma = sum(informados)
-    if not informados:
-        return soma, "sem valor informado"
-    if len(informados) < len(aumentos):
-        return soma, f"{reais(soma)} nos que informam valor"
-    return soma, reais(soma)
-
 
 def capital_e_dividendo(ficha: Ficha, hoje: date) -> Cruzamento:
-    """A companhia aumentou o capital e declarou dividendo sobre o mesmo exercício (o mais recente do FRE)."""
-    secao = _secao(ficha, SECAO_DE_CAPITAL)
-    proventos = [
-        linha
-        for linha in _proventos_publicos(secao, hoje)
-        if linha.get("dividendo_total") is not None
-    ]
-    if secao is None or not proventos:
+    """No exercício mais recente da DFC, a companhia recebeu caixa por aumento de capital e pagou
+    dividendos ou JCP: pediu dinheiro aos acionistas e devolveu no mesmo ano."""
+    caixa = _secao(ficha, SECAO_DO_CAIXA)
+    pagos = _dividendos_pagos(caixa, hoje)
+    aumentos = _aumentos_recebidos(caixa, hoje)
+    if not pagos:
         return _sem_achado(
             CAPITAL_E_DIVIDENDO,
-            "Sem o dividendo por exercício do FRE para cruzar com os eventos de capital.",
+            "Sem a DFC para cruzar o aumento de capital com os dividendos pagos.",
         )
-    ultimo = max(proventos, key=lambda linha: int(linha["exercicio"]))
-    exercicio = int(ultimo["exercicio"])
-    pago = float(ultimo["dividendo_total"])
-    quando = str(ultimo["conhecido_em"])[:10]
-    eventos = _ate_hoje(secao.tabelas.get("eventos_de_capital", []), "data", hoje)
-    aumentos = sorted(
-        (
-            evento
-            for evento in eventos
-            if str(evento.get("tipo")) == AUMENTO_DE_CAPITAL
-            and para_data(evento["data"]).year == exercicio
-        ),
-        key=lambda evento: str(evento["data"]),
-    )
-    valor, valor_escrito = _valor_dos_aumentos(aumentos)
-    numeros = {
-        "aumentos": float(len(aumentos)),
-        "aumento_valor": valor,
-        "dividendo_total": pago,
-    }
-    fontes = tuple(secao.fontes)
-    if not aumentos or pago <= TOLERANCIA_ZERO:
-        houve = (
-            f"houve {_plural(len(aumentos), 'aumento', 'aumentos')} de capital"
-            if aumentos
-            else "não houve aumento de capital"
+    ano = max(pagos)
+    pago, aumento = pagos[ano], aumentos[ano]
+    quando = str(_caixa_publico(caixa, "divulgado_em", hoje)[ano]["divulgado_em"])[:10]
+    numeros = {"aumento_de_capital": aumento, "dividendos_pagos": pago}
+    fontes = _fontes(caixa)
+    if aumento <= TOLERANCIA_ZERO or pago <= TOLERANCIA_ZERO:
+        recebeu = (
+            f"{reais(aumento)} recebidos por aumento de capital"
+            if aumento > TOLERANCIA_ZERO
+            else "nenhuma entrada de aumento de capital"
         )
         frase = (
-            f"Sem achado. Em {exercicio} {houve} e o dividendo declarado sobre o exercício foi de "
-            f"{reais(pago)} (FRE)."
+            f"Sem achado. A DFC de {ano} registra {recebeu} e {reais(pago)} de dividendos e JCP "
+            f"pagos."
         )
         return _cruzamento(CAPITAL_E_DIVIDENDO, False, frase, quando, fontes, numeros)
-    datas = ", ".join(dia(evento["data"]) for evento in aumentos)
     frase = (
-        f"Em {exercicio} a companhia aumentou o capital ({_plural(len(aumentos), 'aumento', 'aumentos')} "
-        f"no FRE, em {datas}; {valor_escrito}) e declarou {reais(pago)} de dividendos sobre o mesmo "
-        f"exercício."
+        f"Em {ano} a companhia recebeu {reais(aumento)} por aumento de capital e pagou {reais(pago)} "
+        f"de dividendos e JCP (DFC, atividades de financiamento)."
     )
     return _cruzamento(CAPITAL_E_DIVIDENDO, True, frase, quando, fontes, numeros)
 
@@ -960,82 +1024,10 @@ def atraso_e_refeito(ficha: Ficha, hoje: date) -> Cruzamento:
 
 # --- caixa livre, caixa operacional, dividendo e lucro -------------------------------------------
 
-SECAO_DO_CAIXA = "geracao_de_caixa"
 SEM_EBITDA = (
     "a DFP de {ano} não tem o EBITDA: em bancos e seguradoras ele não sai, e o caixa operacional "
     "deles mistura a intermediação financeira; a regra não olha esse caixa"
 )
-
-
-def _caixa_publico(
-    secao: SecaoDaFicha | None, coluna: str, hoje: date
-) -> dict[int, Mapping[str, Any]]:
-    """Os exercícios da DFP já divulgados até hoje que têm a `coluna` do caixa."""
-    return _por_exercicio(secao, "caixa_por_exercicio", "divulgado_em", hoje, coluna)
-
-
-DFC = "DFC"  # DFC_MI e DFC_MD, os dois métodos da demonstração dos fluxos de caixa
-FINANCIAMENTO = "6.03."  # as contas das atividades de financiamento na DFC
-# a linha de dividendos ou JCP pagos, como as companhias a escrevem (o mesmo padrão de
-# `base.indicadores_de_caixa`); "recebidos" é de quem recebe da investida, não de quem paga
-DIVIDENDOS_E_JCP = re.compile(r"dividend|juros sobre (?:o )?capital|jcp|jscp")
-RECEBIDOS = re.compile(r"receb")
-
-
-def _e_dividendo_pago(linha: Mapping[str, Any]) -> bool:
-    descricao = str(linha.get("descricao") or "").lower()
-    return (
-        str(linha.get("demonstracao") or "").startswith(DFC)
-        and str(linha.get("conta") or "").startswith(FINANCIAMENTO)
-        and linha.get("valor") is not None
-        and float(linha["valor"]) < TOLERANCIA_ZERO
-        and DIVIDENDOS_E_JCP.search(descricao) is not None
-        and RECEBIDOS.search(descricao) is None
-    )
-
-
-def _sem_a_mae(linhas: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
-    """As linhas cuja conta mãe não está entre elas: a mãe e a filha não somam duas vezes."""
-    contas = {(linha["exercicio"], str(linha["conta"])) for linha in linhas}
-    return [
-        linha
-        for linha in linhas
-        if not any(
-            exercicio == linha["exercicio"]
-            and str(linha["conta"]).startswith(f"{conta}.")
-            for exercicio, conta in contas
-        )
-    ]
-
-
-def _dividendos_pagos(secao: SecaoDaFicha | None, hoje: date) -> dict[int, float]:
-    """Por exercício da DFP já divulgada até hoje que tem a DFC na ficha: os dividendos e JCP pagos no
-    ano, em valor positivo (zero quando a DFC não tem a linha). Sem a DFC do ano, o ano não entra: o
-    vazio não vira zero inventado. Um método só por ano (DFC_MD ou DFC_MI): o mesmo pagamento não
-    soma duas vezes."""
-    publicos = _caixa_publico(secao, "divulgado_em", hoje)
-    da_dfc = [
-        linha
-        for linha in (secao.tabelas.get("dfc_dva_por_exercicio", []) if secao else [])
-        if str(linha.get("demonstracao") or "").startswith(DFC)
-        and int(linha["exercicio"]) in publicos
-    ]
-    metodo: dict[int, str] = {}
-    for linha in da_dfc:
-        ano = int(linha["exercicio"])
-        metodo[ano] = min(metodo.get(ano, linha["demonstracao"]), linha["demonstracao"])
-    linhas = [
-        linha
-        for linha in da_dfc
-        if linha["demonstracao"] == metodo[int(linha["exercicio"])]
-    ]
-    pagas = _sem_a_mae([linha for linha in linhas if _e_dividendo_pago(linha)])
-    return {
-        ano: -sum(
-            float(paga["valor"]) for paga in pagas if int(paga["exercicio"]) == ano
-        )
-        for ano in {int(linha["exercicio"]) for linha in linhas}
-    }
 
 
 def caixa_e_dividendo(ficha: Ficha, hoje: date) -> Cruzamento:
@@ -1165,16 +1157,17 @@ SEM_FONTE = "Sem dado da ficha para olhar."
 LIMITE_DOS_CRUZAMENTOS = (
     "Os cruzamentos são regras fixas sobre a ficha da noite: fundos, número refeito, auditor e o "
     "agregado dos insiders (sem nomes); a remuneração da Diretoria Estatutária contra o lucro (FRE e "
-    "DFP, total do órgão); o dividendo declarado contra o lucro ajustado e o aumento de capital no mesmo "
-    "exercício (FRE); o parecer do auditor sobre a DFP; o rating (opinião da agência, com a data) e as "
+    "DFP, total do órgão); os dividendos e JCP pagos no ano (DFC) contra o lucro do ano (DFP) e "
+    "contra o caixa recebido por aumento de capital no mesmo ano (DFC; o pago no ano inclui o "
+    "dividendo do lucro do ano anterior); o parecer do auditor sobre a DFP; o rating (opinião da agência, com a data) e as "
     "assembleias de debenturistas de aperto (rótulo do TickerLab sobre o assunto que a empresa "
     "escreveu); a dívida ativa com a União em cobrança no retrato mais novo da PGFN (o valor é o da "
     "data do retrato, e a PGFN não diz se a cobrança é contestada); a DFP entregue à CVM depois do "
     "prazo (rótulo do TickerLab sobre o índice da CVM; a zona cinzenta não conta) e refeita depois; o "
     "fluxo de caixa livre e o caixa operacional da DFP contra os dividendos e JCP pagos (DFC) e o "
     "lucro, que não se olham em bancos e seguradoras (sem EBITDA na DFP); a holding que lucra pela "
-    "equivalência patrimonial pode receber o caixa das investidas fora do caixa operacional. Mostram o que os dados registram até o dia da ficha, "
-    "nunca o que vem depois, e não são recomendação de investimento."
+    "equivalência patrimonial pode receber o caixa das investidas fora do caixa operacional. Mostram o que os dados registram até o dia da "
+    "ficha, nunca o que vem depois, e não são recomendação de investimento."
 )
 
 
