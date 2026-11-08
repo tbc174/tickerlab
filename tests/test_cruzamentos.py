@@ -8,12 +8,16 @@ import pytest
 
 from src import cruzamentos
 from src.cruzamentos import (
+    ATRASO_E_REFEITO,
     AUDITOR,
+    CAIXA_E_DIVIDENDO,
     CAPITAL_E_DIVIDENDO,
     DEBENTURISTAS,
+    DIVIDA_E_DIVIDENDO,
     DIVIDENDO,
     FUNDOS,
     INSIDERS,
+    LUCRO_SEM_CAIXA,
     PARECER,
     RATING,
     REFEITO,
@@ -246,11 +250,11 @@ def test_linhas_do_futuro_nao_mudam_o_passado():
 # --- dívida ativa e pessoas -----------------------------------------------------------------------
 
 
-def test_o_bloco_nao_le_a_divida_ativa_nem_nomes_de_pessoas():
-    """O bloco não lê a `pgfn_divida` (a virada de 5/11/2026 a liberou, mas o cruzamento ainda não
-    existe); insiders só agregados (ADR 0103)."""
+def test_o_bloco_nao_le_nomes_de_pessoas():
+    """Insiders só agregados (ADR 0103); a dívida ativa entra pela seção da ficha, que já vem sem as
+    linhas de pessoa natural (a porta da `pgfn_divida` as tira, ADR 0075)."""
     codigo = inspect.getsource(cruzamentos).replace(cruzamentos.__doc__ or "", "")
-    assert "pgfn" not in codigo.lower()
+    assert "tipo_devedor" not in codigo
     for coluna in ("nome", "cpf", "pessoa"):
         assert f'["{coluna}"]' not in codigo
 
@@ -258,10 +262,11 @@ def test_o_bloco_nao_le_a_divida_ativa_nem_nomes_de_pessoas():
 ORDEM = [
     FUNDOS, REFEITO, AUDITOR, INSIDERS,
     REMUNERACAO, DIVIDENDO, PARECER, RATING, DEBENTURISTAS, CAPITAL_E_DIVIDENDO,
+    DIVIDA_E_DIVIDENDO, ATRASO_E_REFEITO, CAIXA_E_DIVIDENDO, LUCRO_SEM_CAIXA,
 ]  # fmt: skip
 
 
-def test_os_dez_cruzamentos_sempre_na_mesma_ordem():
+def test_os_cruzamentos_sempre_na_mesma_ordem():
     chaves = [c.chave for c in cruzamentos_da_ficha(_ficha(), HOJE)]
     assert chaves == ORDEM
     assert all(not c.achado and c.frase for c in cruzamentos_da_ficha(_ficha(), HOJE))
@@ -301,7 +306,7 @@ def test_cada_regra_aceita_ficha_vazia(regra):
 
 
 # --- a seção da ficha ------------------------------------------------------------------------------
-def test_a_secao_traz_os_dez_com_data_e_fonte_em_cada_frase():
+def test_a_secao_traz_todos_com_data_e_fonte_em_cada_frase():
     ficha = _ficha(_capital(fundos=_janelas(900.0, 100.0, 500.0, 400.0)))
     secao = cruzamentos.secao_dos_cruzamentos(ficha, HOJE)
     assert secao.chave == "cruzamentos" and len(secao.paragrafos) == len(ORDEM)
@@ -784,3 +789,422 @@ def test_o_limite_cita_as_regras_novas_e_a_fonte_de_cada_uma():
     ):
         assert palavra in limite, palavra
     assert "recomendação" in limite
+
+
+def test_o_limite_cita_as_quatro_regras_de_novembro():
+    limite = cruzamentos.LIMITE_DOS_CRUZAMENTOS
+    for palavra in (
+        "dívida ativa",
+        "PGFN",
+        "prazo",
+        "caixa livre",
+        "caixa operacional",
+    ):
+        assert palavra in limite, palavra
+    assert "bancos e seguradoras" in limite
+
+
+# --- R9 e R10: caixa livre, caixa operacional, dividendo e lucro ----------------------------------
+
+FONTE_DO_CAIXA = "CVM, DFP de teste"
+
+
+def _caixa(*exercicios, dfc=()) -> SecaoDaFicha:
+    return SecaoDaFicha(
+        chave="geracao_de_caixa",
+        titulo="Geração de caixa",
+        tabelas={
+            "caixa_por_exercicio": list(exercicios),
+            "dfc_dva_por_exercicio": list(dfc),
+        },
+        fontes=[FONTE_DO_CAIXA],
+    )
+
+
+def _linha_da_dfc(
+    exercicio: int,
+    valor: float,
+    conta: str = "6.03.04",
+    descricao: str = "Dividendos pagos",
+    demonstracao: str = "DFC_MI",
+) -> dict:
+    return {
+        "demonstracao": demonstracao,
+        "conta": conta,
+        "descricao": descricao,
+        "exercicio": exercicio,
+        "valor": valor,
+    }
+
+
+def _pagou(exercicio: int, valor: float = 40e6) -> SecaoDaFicha:
+    """Só o caixa de um exercício (FCF positivo) com os dividendos pagos na DFC."""
+    return _caixa(
+        _ano_de_caixa(exercicio, 90e6, 20e6),
+        dfc=[_linha_da_dfc(exercicio, -valor)],
+    )
+
+
+def _ano_de_caixa(
+    exercicio: int,
+    caixa_operacional: float,
+    capex: float,
+    ebitda: float | None = 50e6,
+    divulgado_em: str = "2026-03-20",
+) -> dict:
+    return {
+        "exercicio": exercicio,
+        "fim": f"{exercicio}-12-31",
+        "ebitda": ebitda,
+        "caixa_operacional": caixa_operacional,
+        "capex": capex,
+        "fcf": caixa_operacional - capex,
+        "divulgado_em": divulgado_em,
+    }
+
+
+# --- R7: dívida ativa com a União e dividendo pago -------------------------------------------
+
+FONTE_DA_PGFN = "PGFN, dados abertos de teste"
+
+
+def _divida(*inscricoes) -> SecaoDaFicha:
+    return SecaoDaFicha(
+        chave="divida_com_a_uniao",
+        titulo="Dívida ativa com a União (PGFN)",
+        tabelas={"inscricoes_na_divida_ativa": list(inscricoes)},
+        fontes=[FONTE_DA_PGFN],
+    )
+
+
+def _inscricao(
+    inscricoes: int,
+    valor: float | None,
+    situacao: str = "Em cobrança",
+    retrato: str = "2026-06-30",
+    publico_em: str = "2026-07-15",
+) -> dict:
+    return {
+        "tipo_divida": "nao_previdenciaria",
+        "tipo_situacao": situacao,
+        "situacao_inscricao": "ATIVA EM COBRANCA",
+        "ajuizado": False,
+        "inscricoes": inscricoes,
+        "valor_consolidado": valor,
+        "aconteceu_em": retrato,
+        "publico_em": publico_em,
+    }
+
+
+def test_divida_em_cobranca_e_dividendo_pago_e_achado():
+    ficha = _ficha(
+        _divida(_inscricao(3, 12e6), _inscricao(1, 5e6, situacao="Garantia")),
+        _pagou(2025),
+    )
+    c = _achar(ficha, DIVIDA_E_DIVIDENDO)
+    assert c.achado
+    assert "30/06/2026" in c.frase and "3 inscrições" in c.frase and "2025" in c.frase
+    assert "em cobrança" in c.frase
+    assert c.numeros["inscricoes_em_cobranca"] == 3.0
+    assert c.numeros["valor_em_cobranca"] == 12e6
+    assert c.numeros["inscricoes"] == 4.0
+    assert c.medido_em == "2026-07-15"
+    assert c.numeros["dividendos_pagos"] == 40e6 and "DFC" in c.frase
+    assert c.fontes == (FONTE_DA_PGFN, FONTE_DO_CAIXA)
+
+
+def test_divida_so_com_garantia_ou_sem_dividendo_nao_e_achado():
+    garantida = _ficha(
+        _divida(_inscricao(2, 5e6, situacao="Garantia")),
+        _pagou(2025),
+    )
+    c = _achar(garantida, DIVIDA_E_DIVIDENDO)
+    assert not c.achado and c.frase.startswith("Sem achado.") and c.medido_em
+    sem_dividendo = _ficha(_divida(_inscricao(3, 12e6)), _pagou(2025, 0.0))
+    assert not _achar(sem_dividendo, DIVIDA_E_DIVIDENDO).achado
+
+
+def test_retrato_anterior_ao_exercicio_do_dividendo_nao_e_achado():
+    """Inscrição de um retrato de 2024 não diz nada sobre o dividendo de 2025."""
+    ficha = _ficha(
+        _divida(_inscricao(3, 12e6, retrato="2024-12-31", publico_em="2025-01-20")),
+        _pagou(2025),
+    )
+    assert not _achar(ficha, DIVIDA_E_DIVIDENDO).achado
+
+
+def test_divida_sem_inscricao_diz_sem_achado_e_sem_secao_nao_avalia():
+    sem_linha = _ficha(_divida(), _pagou(2025))
+    c = _achar(sem_linha, DIVIDA_E_DIVIDENDO)
+    assert not c.achado and c.frase.startswith("Sem achado.") and c.medido_em
+    sem_secao = _achar(_ficha(_pagou(2025)), DIVIDA_E_DIVIDENDO)
+    assert not sem_secao.achado and sem_secao.medido_em is None
+
+
+def test_divida_usa_o_retrato_mais_novo_ja_publico_e_nao_o_do_futuro():
+    passado = _ficha(
+        _divida(_inscricao(2, 1e6, situacao="Garantia")),
+        _pagou(2025),
+    )
+    futuro = _ficha(
+        _divida(
+            _inscricao(2, 1e6, situacao="Garantia"),
+            _inscricao(9, 9e9, retrato="2026-09-30", publico_em="2026-10-25"),
+        ),
+        _pagou(2025),
+    )
+    assert _achar(futuro, DIVIDA_E_DIVIDENDO) == _achar(passado, DIVIDA_E_DIVIDENDO)
+    retrato_antigo_com_divida = _ficha(
+        _divida(
+            _inscricao(5, 2e6, retrato="2026-03-31", publico_em="2026-04-15"),
+            _inscricao(2, 1e6, situacao="Garantia"),
+        ),
+        _pagou(2025),
+    )
+    assert not _achar(retrato_antigo_com_divida, DIVIDA_E_DIVIDENDO).achado
+
+
+# --- R8: balanço entregue atrasado e refeito depois -----------------------------------------------
+
+
+def _entregas(*linhas) -> SecaoDaFicha:
+    return SecaoDaFicha(
+        chave="entrega_das_demonstracoes",
+        titulo="Entrega das demonstrações",
+        tabelas={"entregas_de_dfp_e_itr": list(linhas)},
+        fontes=["CVM, índice de entregas de teste"],
+    )
+
+
+def _entrega(
+    referencia: str, rotulo: str, publico_em: str | None, dias: int = 0, documento="DFP"
+) -> dict:
+    return {
+        "documento": documento,
+        "referencia": referencia,
+        "prazo": f"{int(referencia[:4]) + 1}-03-31",
+        "primeira_entrega": publico_em,
+        "publico_em": publico_em,
+        "dias_uteis_de_atraso": dias,
+        "rotulo": rotulo,
+    }
+
+
+def _refeito(exercicio: int, trocado_em: str) -> dict:
+    return {"exercicio": exercicio, "trocado_em": trocado_em, "linha": "lucro"}
+
+
+def test_os_rotulos_do_atraso_sao_os_da_ficha():
+    from base import dossie
+
+    assert cruzamentos.ROTULOS_DE_ATRASO == (
+        dossie.ATRASOU,
+        dossie.ATRASO_GRAVE_NO_ROTULO,
+    )
+
+
+def test_dfp_atrasada_e_refeita_depois_e_achado():
+    ficha = _ficha(
+        _entregas(
+            _entrega("2024-12-31", "atraso grave", "2025-05-20", dias=34),
+            _entrega("2025-12-31", "no prazo", "2026-03-30"),
+        ),
+        _qualidade(refeitos=[_refeito(2024, "2026-03-30")]),
+    )
+    c = _achar(ficha, ATRASO_E_REFEITO)
+    assert c.achado
+    assert (
+        "2024" in c.frase and "atraso grave" in c.frase and "34 dias úteis" in c.frase
+    )
+    assert c.numeros == {"dfps": 2.0, "atrasadas": 1.0, "atrasadas_e_refeitas": 1.0}
+    assert c.medido_em == "2026-03-30"
+
+
+def test_atraso_sem_refeito_zona_cinzenta_ou_itr_nao_e_achado():
+    so_atraso = _ficha(
+        _entregas(_entrega("2024-12-31", "atrasou", "2025-04-10", dias=7)),
+        _qualidade(refeitos=[_refeito(2023, "2025-04-10")]),
+    )
+    c = _achar(so_atraso, ATRASO_E_REFEITO)
+    assert not c.achado and c.frase.startswith("Sem achado.") and c.medido_em
+    cinzenta = _ficha(
+        _entregas(_entrega("2024-12-31", "zona cinzenta", "2025-04-02", dias=1)),
+        _qualidade(refeitos=[_refeito(2024, "2026-03-30")]),
+    )
+    assert not _achar(cinzenta, ATRASO_E_REFEITO).achado
+    itr = _ficha(
+        _entregas(
+            _entrega("2024-09-30", "atrasou", "2024-12-01", dias=10, documento="ITR")
+        ),
+        _qualidade(refeitos=[_refeito(2024, "2026-03-30")]),
+    )
+    assert not _achar(itr, ATRASO_E_REFEITO).achado
+
+
+def test_atraso_e_refeito_nao_olham_o_futuro():
+    entregas = _entregas(_entrega("2024-12-31", "atrasou", "2025-04-10", dias=7))
+    passado = _ficha(entregas, _qualidade())
+    futuro = _ficha(entregas, _qualidade(refeitos=[_refeito(2024, "2026-11-30")]))
+    assert _achar(futuro, ATRASO_E_REFEITO) == _achar(passado, ATRASO_E_REFEITO)
+    nao_entregue = _ficha(
+        _entregas(_entrega("2025-12-31", "não entregue até 19/10/2026", None)),
+        _qualidade(refeitos=[_refeito(2025, "2026-01-10")]),
+    )
+    assert _achar(nao_entregue, ATRASO_E_REFEITO).medido_em is None
+
+
+def test_dividendo_com_caixa_livre_negativo_e_achado():
+    ficha = _ficha(
+        _caixa(
+            _ano_de_caixa(2025, 30e6, 80e6),
+            dfc=[
+                _linha_da_dfc(2025, -30e6),
+                _linha_da_dfc(
+                    2025, -10e6, "6.03.05", "Juros sobre o capital próprio pagos"
+                ),
+            ],
+        )
+    )
+    c = _achar(ficha, CAIXA_E_DIVIDENDO)
+    assert c.achado and "2025" in c.frase and "DFC" in c.frase
+    assert c.numeros["fcf"] == -50e6 and c.numeros["dividendos_pagos"] == 40e6
+    assert c.medido_em == "2026-03-20"
+    assert c.fontes == (FONTE_DO_CAIXA,)
+
+
+def test_caixa_livre_positivo_ou_sem_dividendo_nao_e_achado():
+    positivo = _ficha(_pagou(2025))
+    c = _achar(positivo, CAIXA_E_DIVIDENDO)
+    assert not c.achado and c.frase.startswith("Sem achado.")
+    sem_linha = _ficha(
+        _caixa(
+            _ano_de_caixa(2025, 30e6, 80e6),
+            dfc=[_linha_da_dfc(2025, 50e6, "6.03.01", "Captação de empréstimos")],
+        )
+    )
+    c = _achar(sem_linha, CAIXA_E_DIVIDENDO)
+    assert not c.achado and c.medido_em and c.numeros["dividendos_pagos"] == 0.0
+
+
+def test_banco_ou_seguradora_sem_ebitda_nao_e_avaliado_no_caixa():
+    ficha = _ficha(
+        _caixa(
+            _ano_de_caixa(2025, -30e6, 5e6, ebitda=None),
+            _ano_de_caixa(2024, -10e6, 5e6, ebitda=None),
+            dfc=[_linha_da_dfc(2025, -40e6)],
+        ),
+        _qualidade(lucros=[_lucro(2025, 100e6), _lucro(2024, 90e6)]),
+    )
+    for chave in (CAIXA_E_DIVIDENDO, LUCRO_SEM_CAIXA):
+        c = _achar(ficha, chave)
+        assert not c.achado and c.medido_em is None
+        assert "bancos e seguradoras" in c.frase
+
+
+def test_caixa_e_dividendo_nao_olham_o_futuro():
+    passado = _ficha(
+        _caixa(
+            _ano_de_caixa(2024, 90e6, 20e6, divulgado_em="2025-03-20"),
+            dfc=[_linha_da_dfc(2024, -40e6)],
+        )
+    )
+    futuro = _ficha(
+        _caixa(
+            _ano_de_caixa(2024, 90e6, 20e6, divulgado_em="2025-03-20"),
+            _ano_de_caixa(2025, 30e6, 80e6, divulgado_em="2026-11-20"),
+            dfc=[_linha_da_dfc(2024, -40e6), _linha_da_dfc(2025, -40e6)],
+        )
+    )
+    assert _achar(futuro, CAIXA_E_DIVIDENDO) == _achar(passado, CAIXA_E_DIVIDENDO)
+
+
+def test_lucro_com_caixa_operacional_negativo_dois_anos_seguidos_e_achado():
+    ficha = _ficha(
+        _caixa(_ano_de_caixa(2025, -20e6, 5e6), _ano_de_caixa(2024, -15e6, 5e6)),
+        _qualidade(lucros=[_lucro(2025, 100e6), _lucro(2024, 90e6)]),
+    )
+    c = _achar(ficha, LUCRO_SEM_CAIXA)
+    assert c.achado and "2024" in c.frase and "2025" in c.frase
+    assert c.numeros["caixa_operacional"] == -20e6 and c.numeros["lucro"] == 100e6
+    assert c.fontes == (FONTE, FONTE_DO_CAIXA)
+
+
+def test_lucro_sem_caixa_em_um_ano_so_ou_com_prejuizo_nao_e_achado():
+    um_ano = _ficha(
+        _caixa(_ano_de_caixa(2025, -20e6, 5e6), _ano_de_caixa(2024, 40e6, 5e6)),
+        _qualidade(lucros=[_lucro(2025, 100e6), _lucro(2024, 90e6)]),
+    )
+    c = _achar(um_ano, LUCRO_SEM_CAIXA)
+    assert not c.achado and c.frase.startswith("Sem achado.") and c.medido_em
+    prejuizo = _ficha(
+        _caixa(_ano_de_caixa(2025, -20e6, 5e6), _ano_de_caixa(2024, -15e6, 5e6)),
+        _qualidade(lucros=[_lucro(2025, -10e6), _lucro(2024, 90e6)]),
+    )
+    assert not _achar(prejuizo, LUCRO_SEM_CAIXA).achado
+
+
+def test_lucro_sem_caixa_precisa_de_dois_exercicios_seguidos():
+    salto = _ficha(
+        _caixa(_ano_de_caixa(2025, -20e6, 5e6), _ano_de_caixa(2023, -15e6, 5e6)),
+        _qualidade(lucros=[_lucro(2025, 100e6), _lucro(2023, 90e6)]),
+    )
+    c = _achar(salto, LUCRO_SEM_CAIXA)
+    assert not c.achado and c.medido_em is None
+
+
+def test_setor_conta_as_quatro_regras_de_novembro():
+    com = _ficha(
+        _caixa(_ano_de_caixa(2025, 30e6, 80e6), dfc=[_linha_da_dfc(2025, -40e6)])
+    )
+    setor = {
+        c.chave: c for c in cruzamentos_do_setor({"Alfa": com, "Beta": _ficha()}, HOJE)
+    }
+    caixa = setor[CAIXA_E_DIVIDENDO]
+    assert (caixa.com_achado, caixa.avaliadas) == (1, 1)
+    assert setor[DIVIDA_E_DIVIDENDO].avaliadas == 0
+
+
+def test_lucro_vazio_na_dfp_nao_quebra_a_remuneracao_nem_o_caixa():
+    """Regressão (07/11/2026): 22 das 412 fichas de 03/11 trazem um exercício com o lucro vazio (a DFP
+    sem a linha); a remuneração quebrava com `float(None)` e derrubava a seção inteira."""
+    ficha = _ficha(
+        _governanca(_diretoria(2025, 12e6), _diretoria(2024, 10e6)),
+        _qualidade(lucros=[_lucro(2025, None), _lucro(2024, 90e6), _lucro(2023, 80e6)]),
+        _caixa(_ano_de_caixa(2025, -20e6, 5e6), _ano_de_caixa(2024, -15e6, 5e6)),
+    )
+    remuneracao = _achar(ficha, REMUNERACAO)
+    assert not remuneracao.achado and remuneracao.medido_em is None
+    sem_caixa = _achar(ficha, LUCRO_SEM_CAIXA)
+    assert not sem_caixa.achado and sem_caixa.medido_em is None
+
+
+def test_dividendos_pagos_na_dfc_sem_contar_a_mae_recebidos_nem_entradas():
+    """A soma sai das atividades de financiamento: a filha não soma junto com a mãe, o dividendo
+    recebido da investida e a linha positiva não entram, e um método só por ano."""
+    secao = _caixa(
+        _ano_de_caixa(2025, 30e6, 80e6),
+        dfc=[
+            _linha_da_dfc(2025, -50e6, "6.03.04", "Dividendos e JCP pagos"),
+            _linha_da_dfc(2025, -30e6, "6.03.04.01", "Dividendos pagos"),
+            _linha_da_dfc(2025, -20e6, "6.03.04.02", "JCP pagos"),
+            _linha_da_dfc(
+                2025, -9e6, "6.02.03", "Dividendos pagos a não controladores"
+            ),
+            _linha_da_dfc(2025, 7e6, "6.03.06", "Dividendos recebidos de controladas"),
+            _linha_da_dfc(2025, -7e6, "6.03.07", "Dividendos recebidos (devolvidos)"),
+            _linha_da_dfc(2025, 3e6, "6.03.08", "Dividendos prescritos"),
+            _linha_da_dfc(2025, -50e6, "6.03.04", "Dividendos pagos", "DFC_MD"),
+        ],
+    )
+    assert cruzamentos._dividendos_pagos(secao, HOJE) == {2025: 50e6}
+
+
+def test_ano_sem_dfc_na_ficha_nao_vira_dividendo_zero():
+    secao = _caixa(
+        _ano_de_caixa(2025, 30e6, 80e6),
+        _ano_de_caixa(2024, 30e6, 80e6),
+        dfc=[_linha_da_dfc(2024, -10e6)],
+    )
+    assert cruzamentos._dividendos_pagos(secao, HOJE) == {2024: 10e6}
+    so_caixa = _ficha(_caixa(_ano_de_caixa(2025, 30e6, 80e6)))
+    assert _achar(so_caixa, CAIXA_E_DIVIDENDO).medido_em is None
