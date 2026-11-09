@@ -49,6 +49,7 @@ PASTAS_DA_RAIZ = frozenset(
         ".streamlit",
         ".vscode",
         "base",
+        "cli",
         "conteudo",
         "dados_de_exemplo",
         "docs",

@@ -1,0 +1,692 @@
+"""A CLI `tickerlab` (linha 772; ADR 0127) contra a API externa de verdade, montada em memória.
+
+Cada teste roda o comando pelo `CliRunner` do click, com o cliente HTTP trocado pelo `TestClient` do app de
+verdade (`src.api.criar_app`, API externa ligada, banco SQLite novo, uma organização e uma chave de teste).
+As demonstrações leem uma base de verdade gravada no `tmp_path`; a empresa e o fundo trocam só a leitura da
+base por uma resposta pronta, para a chave, a quota, o consumo, o envelope e a tradução serem os de verdade.
+
+Riscos que estes testes pegam: a chave aparecer numa saída ou num log; a tabela perder a fonte ou a data; o
+`--json` não ser o envelope da API; um erro da API virar um traceback ou um código de saída errado.
+"""
+
+import contextlib
+import json
+import logging
+import os
+import stat
+from datetime import date
+from typing import ClassVar
+
+import httpx
+import pytest
+from click.testing import CliRunner
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from tickerlab import cliente, comandos, configuracao, formato
+from tickerlab.cliente import Saida
+
+from base.porta import Porta
+from src import api
+from src.api_externa import acesso, rotas
+from src.api_externa.conjuntos import empresas, fundos
+from src.api_externa.envelope import campo
+from src.banco import chaves_da_api as cb
+from tests import ajudantes_da_api_externa as aj
+from tests.test_api_externa_demonstracoes import (
+    AGORA,
+    EMPRESA,
+    SEM_DEMONSTRACOES,
+    _base,
+    _regras_das_demonstracoes,
+)
+
+PUBLICO_EM = date(2026, 10, 31)
+
+
+# ---------------------------------------------------------------- a API em memória
+
+
+class _Empresas:
+    """A leitura da Receita trocada por uma resposta pronta; guarda o que a rota pediu."""
+
+    pedidos: ClassVar[list[tuple[str, date]]] = []
+
+    def empresa(self, cnpj: str, dia: date) -> empresas.EmpresaServida:
+        self.pedidos.append((cnpj, dia))
+        corpo = {
+            "cnpj": cnpj,
+            "como_era_em": dia.isoformat(),
+            "situacao_cadastral": _campo("ATIVA", "rfb-cnpj"),
+            "razao_social": _campo("ALFA ENERGIA S.A.", "rfb-cnpj"),
+            "matriz": _campo(True, "rfb-cnpj"),
+        }
+        return empresas.EmpresaServida(corpo, {"rfb-cnpj"}, 1)
+
+
+class _Fundos:
+    pedidos: ClassVar[list[tuple[str, date, float | None]]] = []
+
+    def fundo(self, cnpj: str, dia: date, retorno: float | None) -> fundos.FundoServido:
+        self.pedidos.append((cnpj, dia, retorno))
+        cadastro = "cvm-cadastros"
+        corpo = {
+            "cnpj": cnpj,
+            "como_era_em": dia.isoformat(),
+            "cadastro": {
+                "nome": _campo("ALFA FIC FIM", cadastro),
+                "taxa_administracao_pct_ao_ano": _campo(1.5, cadastro),
+            },
+            "custo_da_taxa": {
+                "hipotese": {"capital_inicial": 100000, "retorno_suposto": retorno},
+                "prazos": [
+                    {"anos": 1, "ficou_com_a_taxa": _campo(1612.5, cadastro)},
+                    {"anos": 5, "ficou_com_a_taxa": _campo(8932.25, cadastro)},
+                ],
+            },
+            "carteira": {
+                "posicoes": [
+                    {
+                        "codigo": _campo("PETR4", "cvm-hist-cda"),
+                        "valor": _campo(2500000.0, "cvm-hist-cda"),
+                    }
+                ],
+                "cortada": True,
+            },
+        }
+        return fundos.FundoServido(corpo, {cadastro, "cvm-hist-cda"}, 2)
+
+
+def _campo(valor: object, fonte: str) -> dict:
+    return campo(valor, fonte=fonte, publico_em=PUBLICO_EM, visto_em=None)
+
+
+@pytest.fixture
+def base_das_demonstracoes(tmp_path, monkeypatch):
+    base = tmp_path / "base"
+    arquivo = base / "demonstracoes" / "2025.parquet"
+    arquivo.parent.mkdir(parents=True)
+    _base().to_parquet(arquivo, index=False)
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_das_demonstracoes)
+
+
+@pytest.fixture
+def leituras_prontas(monkeypatch):
+    """A empresa e o fundo sem a base: só a leitura troca, a rota é a de verdade."""
+    _Empresas.pedidos, _Fundos.pedidos = [], []
+    monkeypatch.setattr(rotas, "abrir_porta", lambda _banco: contextlib.nullcontext())
+    monkeypatch.setattr(rotas, "_leitor_de_empresas", lambda *_a: _Empresas())
+    monkeypatch.setattr(rotas, "_leitor", lambda *_a: _Fundos())
+
+
+@pytest.fixture
+def cenario(banco):
+    """Uma organização com chave e contrato dos três conjuntos de dado."""
+    ator = aj.admin(banco)
+    org = aj.organizacao(banco, ator)
+    chave = aj.chave(banco, ator, org)
+    for conjunto in ("companies", "financials", "funds"):
+        aj.contrato(banco, ator, org, conjunto=conjunto)
+    return ator, org, chave
+
+
+@pytest.fixture
+def chave(cenario) -> str:
+    return cenario[2].valor
+
+
+@pytest.fixture
+def api_em_memoria(monkeypatch, banco) -> TestClient:
+    return aj.cliente_da_api(monkeypatch, AGORA)
+
+
+@pytest.fixture
+def rodar(api_em_memoria, tmp_path):
+    """Roda `tickerlab ...` contra a API em memória, com a pasta de configuração só do teste."""
+
+    def rodar_(*argumentos: str, http=api_em_memoria, entrada=None, **ambiente):
+        env = {
+            configuracao.VARIAVEL_DA_PASTA: str(tmp_path / "config"),
+            configuracao.VARIAVEL_DA_CHAVE: None,
+            configuracao.VARIAVEL_DO_ENDERECO: None,
+        } | ambiente
+        return CliRunner().invoke(
+            comandos.principal,
+            list(argumentos),
+            obj=lambda _endereco: http,
+            env=env,
+            input=entrada,
+        )
+
+    return rodar_
+
+
+def _com_chave(chave: str) -> dict[str, str]:
+    return {configuracao.VARIAVEL_DA_CHAVE: chave}
+
+
+# ---------------------------------------------------------------- empresa
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_empresa_em_tabela_tem_fonte_data_e_aviso(rodar, chave):
+    resultado = rodar("empresa", "11.111.111/0001-91", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    assert "CNPJ: 11111111000191" in saida
+    assert "Como era em: 2026-11-10" in saida
+    linha = next(l for l in saida.splitlines() if l.startswith("registration_status"))
+    assert "ATIVA" in linha and "rfb-cnpj" in linha and "2026-10-31" in linha
+    assert "head_office" in saida and "sim" in saida
+    assert "Fontes (cite ao usar estes números):\n- rfb-cnpj:" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_empresa_aceita_cnpj_com_ou_sem_pontuacao(rodar, chave):
+    for escrito in ("11.111.111/0001-91", "11111111000191", " 11111111/0001-91 "):
+        assert rodar("empresa", escrito, **_com_chave(chave)).exit_code == 0
+    assert {cnpj for cnpj, _dia in _Empresas.pedidos} == {"11111111000191"}
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_empresa_em_json_e_o_envelope_da_api(rodar, chave, api_em_memoria):
+    resultado = rodar("empresa", "11111111000191", "--json", **_com_chave(chave))
+    assert resultado.exit_code == 0
+    corpo = json.loads(resultado.stdout)
+    direto = api_em_memoria.get(
+        "/data/v1/companies/11111111000191", headers=aj.bearer(chave)
+    ).json()
+    assert corpo == direto
+    assert corpo["registration_status"] == {
+        "value": "ATIVA",
+        "source": "rfb-cnpj",
+        "published_at": "2026-10-31",
+        "observed_at": None,
+    }
+    assert corpo["sources"][0]["source"] == "rfb-cnpj"
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_como_era_vai_para_a_api(rodar, chave):
+    resultado = rodar(
+        "empresa", "11111111000191", "--como-era", "2025-06-30", **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0
+    assert _Empresas.pedidos == [("11111111000191", date(2025, 6, 30))]
+
+
+# ---------------------------------------------------------------- demonstrações (base de verdade)
+
+
+@pytest.mark.usefixtures("base_das_demonstracoes")
+def test_demonstracoes_em_tabela(rodar, chave):
+    resultado = rodar("demonstracoes", EMPRESA, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    linhas = resultado.stdout.splitlines()
+    cabecalho = next(l for l in linhas if l.startswith("statement"))
+    assert cabecalho.split()[-3:] == ["fonte", "público", "em"]
+    receita_de_2025 = next(
+        l for l in linhas if "2025-01-01" in l and "2025-12-31" in l and "3.01" in l
+    )
+    assert "200" in receita_de_2025
+    assert "cvm-hist-dfp" in receita_de_2025 and "2026-03-15" in receita_de_2025
+    assert (
+        "- cvm-hist-dfp:" in resultado.stdout and "- cvm-hist-itr:" in resultado.stdout
+    )
+
+
+@pytest.mark.usefixtures("base_das_demonstracoes")
+def test_demonstracoes_como_eram_e_por_periodo(rodar, chave):
+    resultado = rodar(
+        "demonstracoes", EMPRESA, "--como-era", "2025-04-01", "--periodo",
+        "2024-12-31", "--json", **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    corpo = json.loads(resultado.stdout)
+    assert corpo["known_at"] == "2025-04-01"
+    (linha,) = corpo["rows"]
+    assert linha["value"]["value"] == 100.0  # a versão 1, antes da reapresentação
+    assert linha["revision"]["value"] == 1
+
+
+@pytest.mark.usefixtures("base_das_demonstracoes")
+def test_demonstracoes_cortadas_avisam(rodar, chave, monkeypatch):
+    monkeypatch.setattr(acesso, "linhas_por_resposta", lambda _contexto: 2)
+    resultado = rodar("demonstracoes", EMPRESA, **_com_chave(chave))
+    assert resultado.exit_code == 0
+    assert formato.AVISO_DE_CORTE in resultado.stdout
+
+
+@pytest.mark.usefixtures("base_das_demonstracoes")
+def test_cnpj_sem_demonstracoes_sai_com_codigo_de_sem_dado(rodar, chave):
+    resultado = rodar("demonstracoes", SEM_DEMONSTRACOES, **_com_chave(chave))
+    assert resultado.exit_code == Saida.SEM_DADO
+    assert resultado.stdout == ""
+    assert "Não há dado disponível" in resultado.stderr
+    assert "tickerlab catalogo" in resultado.stderr
+
+
+@pytest.mark.usefixtures("base_das_demonstracoes")
+def test_conjunto_fora_do_contrato_tambem_e_sem_dado(rodar, banco):
+    ator = aj.admin(banco)
+    beta = aj.organizacao(banco, ator, nome="Beta Wealth")
+    chave_da_beta = aj.chave(banco, ator, beta).valor  # sem contrato nenhum
+    resultado = rodar("demonstracoes", EMPRESA, **_com_chave(chave_da_beta))
+    assert resultado.exit_code == Saida.SEM_DADO
+
+
+# ---------------------------------------------------------------- fundo
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_fundo_em_tabela_tem_cada_bloco_com_fonte(rodar, chave):
+    resultado = rodar(
+        "fundo", "11111111000191", "--retorno-suposto", "0.12", **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    assert _Fundos.pedidos[0][2] == 0.12
+    assert "## profile" in saida and "## fee_cost › horizons" in saida
+    assert "## holdings › positions" in saida
+    taxa = next(l for l in saida.splitlines() if l.startswith("management_fee"))
+    assert "1,50" in taxa and "cvm-cadastros" in taxa
+    assert "1.612,50" in saida  # número no jeito brasileiro
+    assert "2.500.000" in saida
+    assert "initial_amount: 100.000" in saida
+    assert formato.AVISO_DE_CORTE in saida
+    assert "- cvm-cadastros:" in saida and "- cvm-hist-cda:" in saida
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_fundo_sem_retorno_suposto_nao_manda_o_parametro(rodar, chave):
+    assert rodar("fundo", "11111111000191", **_com_chave(chave)).exit_code == 0
+    assert _Fundos.pedidos[0][2] is None
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_retorno_suposto_fora_do_plausivel_e_pedido_invalido(rodar, chave):
+    resultado = rodar(
+        "fundo", "11111111000191", "--retorno-suposto", "5", **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.PEDIDO_INVALIDO
+    assert "--retorno-suposto" in resultado.stderr
+
+
+# ---------------------------------------------------------------- catálogo e consumo
+
+
+def test_catalogo_em_tabela_e_json(rodar, banco, monkeypatch):
+    ator = aj.admin(banco)
+    alfa = aj.organizacao(banco, ator)
+    chave = aj.chave(banco, ator, alfa).valor
+    aj.contrato(banco, ator, alfa)  # dfp
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: aj.portao_liberando())
+    tabela = rodar("catalogo", **_com_chave(chave))
+    assert tabela.exit_code == 0, tabela.output
+    linha = next(l for l in tabela.stdout.splitlines() if l.startswith("dfp"))
+    assert linha.split() == ["dfp", "analysis", "value", "cvm-dfp"]
+    assert "- cvm-dfp: Fonte: " in tabela.stdout
+    corpo = json.loads(rodar("catalogo", "--json", **_com_chave(chave)).stdout)
+    assert corpo["datasets"][0]["dataset"] == "dfp"
+
+
+def test_catalogo_vazio_diz_o_que_fazer(rodar, chave):
+    resultado = rodar("catalogo", **_com_chave(chave))
+    assert resultado.exit_code == 0
+    assert "ainda não tem nenhum conjunto liberado" in resultado.stdout
+    assert "Fontes: nenhuma fonte nesta resposta." in resultado.stdout
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_consumo_mostra_o_mes_e_os_limites(rodar, chave):
+    rodar("empresa", EMPRESA, **_com_chave(chave))
+    resultado = rodar("consumo", **_com_chave(chave))
+    assert resultado.exit_code == 0
+    pedidos = next(
+        l for l in resultado.stdout.splitlines() if l.startswith("pedidos no mês")
+    )
+    assert pedidos.split()[-1] == "1"
+    assert (
+        "Fonte: TickerLab, consumo da sua organização no mês 2026-11"
+        in resultado.stdout
+    )
+    corpo = json.loads(rodar("consumo", "--json", **_com_chave(chave)).stdout)
+    assert corpo["requests"] == 1 and corpo["month"] == "2026-11"
+
+
+# ---------------------------------------------------------------- erros e códigos de saída
+
+
+def test_sem_chave_sai_com_codigo_da_chave(rodar):
+    resultado = rodar("consumo")
+    assert resultado.exit_code == Saida.CHAVE
+    assert "tickerlab login" in resultado.stderr
+
+
+def test_chave_recusada(rodar, cenario):
+    resultado = rodar("consumo", **_com_chave("tld_aaaaaaaa_" + "x" * 43))
+    assert resultado.exit_code == Saida.CHAVE
+    assert "recusou a chave" in resultado.stderr
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_quota_do_mes_e_limite_do_minuto(rodar, chave, monkeypatch):
+    def sem_quota(*_a, **_k):
+        raise HTTPException(429, detail=acesso.CODIGO_DA_QUOTA_DO_MES)
+
+    monkeypatch.setattr(acesso, "exigir_quota", sem_quota)
+    resultado = rodar("empresa", EMPRESA, **_com_chave(chave))
+    assert resultado.exit_code == Saida.LIMITE
+    assert "quota de pedidos do mês acabou" in resultado.stderr
+
+    def sem_minuto(*_a, **_k):
+        raise HTTPException(
+            429, detail=acesso.CODIGO_DO_LIMITE_DO_MINUTO, headers={"Retry-After": "60"}
+        )
+
+    monkeypatch.setattr(acesso, "_conferir_minuto", sem_minuto)
+    resultado = rodar("catalogo", **_com_chave(chave))
+    assert resultado.exit_code == Saida.LIMITE
+    assert "tente de novo em 60 segundos" in resultado.stderr
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_digito_errado_e_pedido_invalido(rodar, chave):
+    resultado = rodar("empresa", "11111111000100", **_com_chave(chave))
+    assert resultado.exit_code == Saida.PEDIDO_INVALIDO
+    assert "dígito verificador" in resultado.stderr
+
+
+def test_cnpj_mal_escrito_nem_chega_a_api(rodar, chave):
+    # http=None: se a CLI tentasse falar com a API, o comando quebraria (código 1)
+    resultado = rodar("empresa", "123", http=None, **_com_chave(chave))
+    assert resultado.exit_code == Saida.USO
+    assert "14 caracteres" in resultado.output
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_data_no_futuro_e_pedido_invalido(rodar, chave):
+    resultado = rodar(
+        "empresa", EMPRESA, "--como-era", "2030-01-01", **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.PEDIDO_INVALIDO
+    assert "futuro" in resultado.stderr
+
+
+def test_base_fora_do_ar(rodar, chave, monkeypatch):
+    def sem_base(_banco):
+        raise OSError("sem disco")
+
+    monkeypatch.setattr(rotas, "abrir_porta", sem_base)
+    resultado = rodar("empresa", EMPRESA, **_com_chave(chave))
+    assert resultado.exit_code == Saida.FORA_DO_AR
+    assert "fora do ar" in resultado.stderr
+
+
+def test_api_externa_desligada_no_endereco(rodar, chave, banco):
+    desligada = TestClient(api.criar_app({}))
+    resultado = rodar("consumo", http=desligada, **_com_chave(chave))
+    assert resultado.exit_code == Saida.FORA_DO_AR
+    assert "TICKERLAB_API_URL" in resultado.stderr
+
+
+def _http_falso(responder) -> httpx.Client:
+    return httpx.Client(
+        base_url="https://api.exemplo.test", transport=httpx.MockTransport(responder)
+    )
+
+
+def test_sem_internet(rodar, chave):
+    def cai(pedido: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("sem rede", request=pedido)
+
+    resultado = rodar("consumo", http=_http_falso(cai), **_com_chave(chave))
+    assert resultado.exit_code == Saida.FORA_DO_AR
+    assert "Não consegui falar com a API" in resultado.stderr
+
+
+def test_resposta_que_nao_e_json(rodar, chave):
+    resultado = rodar(
+        "consumo",
+        http=_http_falso(lambda _p: httpx.Response(200, text="<html>")),
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == Saida.FORA_DO_AR
+
+
+def test_a_chave_vai_so_no_cabecalho(rodar, chave):
+    vistos: list[httpx.Request] = []
+
+    def guardar(pedido: httpx.Request) -> httpx.Response:
+        vistos.append(pedido)
+        return httpx.Response(200, json={"month": "2026-11"})
+
+    rodar("consumo", http=_http_falso(guardar), **_com_chave(chave))
+    (pedido,) = vistos
+    assert pedido.headers["Authorization"] == f"Bearer {chave}"
+    assert chave not in str(pedido.url)
+
+
+def test_endereco_sem_https_e_recusado(rodar, chave):
+    resultado = rodar(
+        "consumo",
+        http=None,
+        **_com_chave(chave),
+        **{configuracao.VARIAVEL_DO_ENDERECO: "http://api.exemplo.com"},
+    )
+    assert resultado.exit_code == Saida.USO
+    assert "https://" in resultado.stderr
+
+
+@pytest.mark.parametrize(
+    ("endereco", "esperado"),
+    [
+        (None, "https://api.tickerlab.com.br"),
+        ("https://api.exemplo.com/", "https://api.exemplo.com"),
+        ("http://localhost:8000", "http://localhost:8000"),
+        ("http://127.0.0.1:8000", "http://127.0.0.1:8000"),
+        ("http://api.tickerlab.localhost", "http://api.tickerlab.localhost"),
+    ],
+)
+def test_enderecos_aceitos(endereco, esperado):
+    ambiente = {} if endereco is None else {configuracao.VARIAVEL_DO_ENDERECO: endereco}
+    assert configuracao.endereco_da_api(ambiente) == esperado
+
+
+# ---------------------------------------------------------------- a chave nunca aparece
+
+
+@pytest.mark.usefixtures("leituras_prontas", "base_das_demonstracoes")
+def test_a_chave_nao_aparece_em_saida_nem_log(rodar, chave, caplog):
+    caplog.set_level(logging.DEBUG)
+    resultados = [
+        rodar(*comando, **_com_chave(chave))
+        for comando in (
+            ("empresa", EMPRESA),
+            ("empresa", EMPRESA, "--json"),
+            ("demonstracoes", SEM_DEMONSTRACOES),  # erro
+            ("empresa", "11111111000100"),  # erro
+            ("catalogo", "--json"),
+            ("consumo",),
+        )
+    ]
+    resultados.append(rodar("login", entrada=f"{chave}\n"))
+    resultados.append(rodar("consumo", **_com_chave("tld_aaaaaaaa_" + "x" * 43)))
+    for resultado in resultados:
+        assert chave not in resultado.output
+        assert chave not in resultado.stderr
+    assert chave not in caplog.text
+    assert "tld_aaaaaaaa_" not in caplog.text
+
+
+# ---------------------------------------------------------------- login e logout
+
+
+def test_login_confere_grava_so_para_o_dono_e_vale_sem_a_variavel(
+    rodar, chave, tmp_path
+):
+    resultado = rodar("login", entrada=f"{chave}\n")
+    assert resultado.exit_code == 0, resultado.output
+    arquivo = tmp_path / "config" / configuracao.NOME_DO_ARQUIVO
+    assert json.loads(arquivo.read_text(encoding="utf-8")) == {"api_key": chave}
+    if os.name != "nt":  # no Windows, a pasta do usuário já é só da conta
+        assert stat.S_IMODE(arquivo.stat().st_mode) == configuracao.SO_O_DONO_LE
+    assert rodar("consumo").exit_code == 0  # sem TICKERLAB_API_KEY: lê o arquivo
+
+
+def test_login_com_chave_recusada_nao_grava(rodar, cenario, tmp_path):
+    resultado = rodar("login", entrada="tld_aaaaaaaa_" + "x" * 43 + "\n")
+    assert resultado.exit_code == Saida.CHAVE
+    assert not (tmp_path / "config" / configuracao.NOME_DO_ARQUIVO).exists()
+
+
+def test_login_sem_conferir_e_logout(rodar, tmp_path):
+    resultado = rodar("login", "--sem-conferir", entrada="tld_qualquer\n", http=None)
+    assert resultado.exit_code == 0
+    arquivo = tmp_path / "config" / configuracao.NOME_DO_ARQUIVO
+    assert arquivo.exists()
+    assert "Chave apagada" in rodar("logout").stdout
+    assert not arquivo.exists()
+    assert "Não havia chave" in rodar("logout").stdout
+
+
+def test_login_com_espaco_no_meio_e_recusado(rodar, tmp_path):
+    resultado = rodar("login", "--sem-conferir", entrada="tld_abc def\n")
+    assert resultado.exit_code == Saida.USO
+    assert not (tmp_path / "config" / configuracao.NOME_DO_ARQUIVO).exists()
+
+
+def test_variavel_vale_mais_que_o_arquivo(tmp_path):
+    ambiente = {configuracao.VARIAVEL_DA_PASTA: str(tmp_path)}
+    configuracao.gravar_chave("tld_do_arquivo", ambiente)
+    assert configuracao.chave_da_api(ambiente) == "tld_do_arquivo"
+    com_variavel = ambiente | {configuracao.VARIAVEL_DA_CHAVE: " tld_da_variavel "}
+    assert configuracao.chave_da_api(com_variavel) == "tld_da_variavel"
+
+
+def test_arquivo_estragado_pede_login_de_novo(tmp_path):
+    ambiente = {configuracao.VARIAVEL_DA_PASTA: str(tmp_path)}
+    configuracao.arquivo_da_chave(ambiente).write_text("{", encoding="utf-8")
+    with pytest.raises(configuracao.ConfiguracaoInvalidaError, match="login"):
+        configuracao.chave_da_api(ambiente)
+
+
+def test_pasta_da_configuracao_por_sistema():
+    assert configuracao.pasta_da_configuracao(
+        {configuracao.VARIAVEL_DA_PASTA: "/x"}
+    ) == configuracao.Path("/x")
+    # sem APPDATA (Linux, macOS), a pasta segue o XDG
+    assert configuracao.pasta_da_configuracao(
+        {"XDG_CONFIG_HOME": "/home/a/.config"}
+    ) == configuracao.Path("/home/a/.config/tickerlab")
+
+
+# ---------------------------------------------------------------- instruções e pacote
+
+
+def test_instrucoes_do_agente(rodar):
+    agentes = rodar("instrucoes")
+    assert agentes.exit_code == 0
+    assert "Nada é recomendação de investimento" in agentes.stdout
+    assert "Não invente número que a CLI não devolveu" in agentes.stdout
+    for comando in ("empresa", "demonstracoes", "fundo", "catalogo", "consumo"):
+        assert f"tickerlab {comando}" in agentes.stdout
+    skill = rodar("instrucoes", "skill").stdout
+    assert skill.startswith("---\nname: tickerlab\ndescription: ")
+
+
+def test_codigos_de_saida_documentados_batem():
+    """Os códigos das instruções do agente são os da `Saida`."""
+    texto = (
+        configuracao.Path(comandos.__file__).parent / "instrucoes" / "AGENTS.md"
+    ).read_text(encoding="utf-8")
+    for codigo in Saida:
+        assert f"| {int(codigo)} |" in texto
+
+
+def test_versao_e_ajuda(rodar):
+    assert "tickerlab, version 0.1.0" in rodar("--version").stdout
+    ajuda = rodar("--help").stdout
+    assert "recomendação de investimento" in ajuda
+    assert rodar("empresa", "--help").exit_code == 0
+
+
+def test_o_pacote_so_depende_de_click_e_httpx():
+    """O cliente não pode levar o `src/` (nem o resto do repositório) para o PC de quem o instala."""
+    import tomllib
+
+    pacote = configuracao.Path(comandos.__file__).parents[1]
+    projeto = tomllib.loads((pacote / "pyproject.toml").read_text(encoding="utf-8"))
+    assert [d.split(">")[0] for d in projeto["project"]["dependencies"]] == [
+        "click",
+        "httpx",
+    ]
+    assert projeto["project"]["scripts"] == {
+        "tickerlab": "tickerlab.comandos:principal"
+    }
+    for arquivo in (pacote / "tickerlab").glob("*.py"):
+        codigo = arquivo.read_text(encoding="utf-8")
+        for proibido in (
+            "from src",
+            "import src",
+            "from base",
+            "import base",
+            "streamlit",
+        ):
+            assert proibido not in codigo, (arquivo.name, proibido)
+
+
+# ---------------------------------------------------------------- formato
+
+
+@pytest.mark.parametrize(
+    ("valor", "texto"),
+    [
+        (1234567.891, "1.234.567,89"),
+        (1000.0, "1.000"),
+        (-5, "-5"),
+        (0.12, "0,12"),
+        (True, "sim"),
+        (False, "não"),
+        (None, "—"),
+        ("", "—"),
+        ({"value": 2.5, "source": "x"}, "2,50"),
+        ("a" * 50, "a" * 39 + "…"),
+    ],
+)
+def test_celula(valor, texto):
+    assert formato.celula(valor) == texto
+
+
+def test_tabela_alinha_as_colunas():
+    texto = formato.tabela(("a", "bb"), [("ccc", "d"), ("e", "ffff")])
+    assert texto.splitlines() == ["a    bb", "---  ----", "ccc  d", "e    ffff"]
+
+
+def test_mensagem_de_status_desconhecido():
+    resposta = httpx.Response(418, json={"detail": "teapot"})
+    erro = cliente.erro_da_resposta(resposta, "https://api.exemplo.com")
+    assert erro.exit_code == Saida.ERRO
+    validacao = cliente.erro_da_resposta(
+        httpx.Response(422, json={"detail": [{"msg": "x"}]}), "https://x"
+    )
+    assert validacao.exit_code == Saida.PEDIDO_INVALIDO
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_o_consumo_da_cli_e_o_do_banco(rodar, chave, cenario, banco):
+    _ator, org, _chave = cenario
+    rodar("empresa", EMPRESA, **_com_chave(chave))
+    rodar("catalogo", **_com_chave(chave))  # não conta
+    with banco.connect() as conexao:
+        assert cb.consumo_do_mes(conexao, org.id, AGORA.date()).pedidos == 1
+
+
+def test_o_cliente_http_de_verdade_nao_leva_a_chave():
+    """O cliente que a CLI abre fora dos testes: endereço, tempo máximo e nenhum cabeçalho com a chave."""
+    with cliente.abrir_http("https://api.exemplo.com") as http:
+        assert str(http.base_url) == "https://api.exemplo.com"
+        assert http.timeout.read == cliente.TEMPO_MAXIMO
+        assert http.headers["User-Agent"].startswith("tickerlab-cli/")
+        assert "Authorization" not in http.headers

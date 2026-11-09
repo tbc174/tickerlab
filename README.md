@@ -573,6 +573,7 @@ base/                 a base de dados: arquivista, ponto no tempo, linhagem, con
   contratos/          catálogo e contratos versionados das tabelas
   conferidas/         tabelas conferidas à mão
   cripto/, leitor/, modelos/   dados de cripto, lote de medição do leitor e rótulos dos modelos
+cli/                  a CLI `tickerlab` (pacote à parte, só click e httpx): a API externa no terminal e no agente
 trader/               TickerLab Trade: pesquisa de trading, só leitura do MetaTrader 5
 web/                  React + TypeScript: o site, as ferramentas e o app novo
 site/                 site público estático (gerado)

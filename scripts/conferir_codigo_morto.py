@@ -32,10 +32,11 @@ ESPERADO = Path("tests/arquivos/vulture_esperado.txt")
 
 # Os mesmos alvos e a mesma confiança do relatório de 05/11/2026 (pasta privada). `tests` entra para
 # que o que só os testes usam não conte como morto (isso é outro relatório, mensal e não bloqueante).
-ALVOS = ("src", "telas", "base", "scripts", "trader", "tests", "app.py")
+ALVOS = ("src", "telas", "base", "scripts", "trader", "tests", "app.py", "cli")
 CONFIANCA_MINIMA = 60
 # Decoradores que registram a função em outro lugar (rotas do FastAPI, fixtures do pytest,
-# validadores do Pydantic, caches e fragmentos do Streamlit, eventos do SQLAlchemy): quem os leva
+# validadores do Pydantic, caches e fragmentos do Streamlit, eventos do SQLAlchemy, comandos do click da
+# CLI `tickerlab`): quem os leva
 # não é código morto. Padrão com ponto casa com qualquer objeto na frente (`@app.get`, `@rotas.get`).
 DECORADORES_IGNORADOS = (
     "@*.route",
@@ -56,6 +57,8 @@ DECORADORES_IGNORADOS = (
     "@*.fragment",
     "@*.dialog",
     "@*.listens_for",
+    "@*.command",
+    "@*.group",
 )
 
 # Saídas do vulture 2.16: 0 sem achado e 3 com achado são normais; 1 (arquivo ilegível) e 2
