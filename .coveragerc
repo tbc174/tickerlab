@@ -10,6 +10,7 @@ source =
     telas
     trader
     app
+    cli
 omit =
     # o painel do trader só roda no Windows: no CI (Linux) os testes dele são pulados
     trader/interface/*

@@ -6,6 +6,9 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .ruff_cache/
+# o que o `pip install` e o `pip wheel` da CLI deixam em cli/
+cli/build/
+*.egg-info/
 
 # Segredos: nunca commitar
 .env
