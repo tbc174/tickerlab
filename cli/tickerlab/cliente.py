@@ -3,8 +3,13 @@
 A chave vai só no cabeçalho `Authorization: Bearer` (a API recusa a chave pela URL) e nunca entra numa
 mensagem: as mensagens dizem o que fazer, não repetem o pedido. Os códigos de saída são distintos por tipo
 de problema, para o agente decidir sem ler o texto (`Saida`).
+
+O limite do minuto (HTTP 429 que não é a quota do mês) não derruba o comando de primeira: a CLI espera o
+`Retry-After` uma vez e repete o pedido, para quem não programa não ter de rodar de novo à mão. Espera
+acima de `ESPERA_MAXIMA`, ou ilegível, vira o erro de sempre: o terminal nunca fica preso.
 """
 
+import time
 from collections.abc import Callable, Mapping
 from enum import IntEnum
 from typing import IO
@@ -15,6 +20,11 @@ import httpx
 from tickerlab import __version__
 
 PREFIXO = "/data/v1"
+ESPERA_MAXIMA = (
+    60  # segundos: o limite é por minuto; mais que isso não é o limite do minuto
+)
+CODIGO_DA_QUOTA_DO_MES = "monthly_quota_exceeded"
+esperar: Callable[[float], None] = time.sleep  # os testes trocam, para não dormir
 TEMPO_MAXIMO = (
     30.0  # segundos: a maior resposta (100 linhas de demonstrações) sai bem antes disso
 )
@@ -63,7 +73,7 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
         ),
         Saida.CHAVE,
     ),
-    (429, "monthly_quota_exceeded"): (
+    (429, CODIGO_DA_QUOTA_DO_MES): (
         "A quota de pedidos do mês acabou. Veja o consumo com `tickerlab consumo`; ela volta no dia 1º.",
         Saida.LIMITE,
     ),
@@ -140,6 +150,18 @@ def erro_da_resposta(resposta: httpx.Response, endereco: str) -> ErroDaCli:
     return ErroDaCli(f"Resposta inesperada da API (HTTP {status}).", Saida.ERRO)
 
 
+def _espera_do_minuto(resposta: httpx.Response) -> int | None:
+    """Os segundos a esperar se a recusa é o limite do minuto e a espera é curta; None nos outros casos."""
+    if resposta.status_code != httpx.codes.TOO_MANY_REQUESTS:
+        return None
+    if _detalhe(resposta) == CODIGO_DA_QUOTA_DO_MES:
+        return None
+    texto = resposta.headers.get("Retry-After", "")
+    if not texto.isdigit() or int(texto) > ESPERA_MAXIMA:
+        return None
+    return int(texto)
+
+
 class ApiDoTickerlab:
     """Os pedidos à API externa com uma chave; cada método devolve o corpo da resposta, já em JSON."""
 
@@ -149,7 +171,24 @@ class ApiDoTickerlab:
         self.endereco = endereco
 
     def pedir(self, caminho: str, parametros: Mapping[str, str] | None = None) -> dict:
-        """GET em `/data/v1<caminho>`; `ErroDaCli` se a API recusa, não responde ou responde sem JSON."""
+        """GET em `/data/v1<caminho>`; `ErroDaCli` se a API recusa, não responde ou responde sem JSON.
+
+        No limite do minuto, espera o `Retry-After` (até `ESPERA_MAXIMA`) e tenta mais uma vez.
+        """
+        resposta = self._get(caminho, parametros)
+        segundos = _espera_do_minuto(resposta)
+        if segundos is not None:
+            click.echo(
+                f"Limite de pedidos por minuto: esperando {segundos} segundos e tentando de novo...",
+                err=True,
+            )
+            esperar(segundos)
+            resposta = self._get(caminho, parametros)
+        return self._corpo(resposta)
+
+    def _get(
+        self, caminho: str, parametros: Mapping[str, str] | None
+    ) -> httpx.Response:
         try:
             resposta = self._http.get(
                 PREFIXO + caminho,
@@ -163,6 +202,9 @@ class ApiDoTickerlab:
                 "Confira a internet e TICKERLAB_API_URL.",
                 Saida.FORA_DO_AR,
             ) from None
+        return resposta
+
+    def _corpo(self, resposta: httpx.Response) -> dict:
         if resposta.status_code != httpx.codes.OK:
             raise erro_da_resposta(resposta, self.endereco)
         try:
