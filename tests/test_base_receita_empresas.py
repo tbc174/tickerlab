@@ -74,3 +74,56 @@ def test_vista_deixa_de_fora_mei_e_raiz_desconhecida():
     assert list(vista["cnpj_basico"]) == ["33000167", "12ABC345"]
     assert list(vista.columns) == list(re_.COLUNAS_DA_VISTA)
     assert "logradouro" not in vista.columns and "cep" not in vista.columns
+
+
+def test_prefixo_sem_nenhum_registro_no_simples_nao_quebra_a_vista():
+    """Um prefixo de raiz sem arquivo do Simples chega vazio e sem colunas (as raízes 99... em 2026-10)."""
+    estabelecimentos = pd.DataFrame(
+        {
+            "cnpj": ["33000167000101"],
+            "cnpj_basico": ["33000167"],
+            "matriz": [True],
+            "situacao_cadastral": ["02"],
+            "data_inicio_atividade": pd.to_datetime(["1953-10-03"]),
+            "cnae_principal": ["0600001"],
+            "uf": ["RJ"],
+            "municipio": ["6001"],
+        }
+    )
+    vista = re_.estabelecimentos_sem_pessoa(
+        estabelecimentos, _empresas(), pd.DataFrame()
+    )
+    assert list(vista["cnpj_basico"]) == ["33000167"]
+
+
+def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
+    from base.receita_empresas import _empresas_pj
+
+    parte = pd.DataFrame(
+        {
+            "cnpj_basico": [str(n) for n in range(8)],
+            "razao_social": [
+                "MARIA DE PAULA-52998224725 LTDA",
+                "JOAO DA SILVA 529982247251 LTDA",
+                "CASA 12345678000195 LTDA",
+                "FULANO 529982247-25 LTDA",
+                "FULANO 529 982 247 25 LTDA",
+                "FULANO 529.982.247.25 LTDA",
+                "FULANO 529982247/25 LTDA",
+                "CASA 12.345.678/0001-95 LTDA",
+            ],
+            "natureza_juridica": ["2062"] * 8,
+            "porte": ["01"] * 8,
+        }
+    )
+    razoes = list(_empresas_pj(parte)["razao_social"])
+    assert razoes == [
+        "MARIA DE PAULA LTDA",
+        "JOAO DA SILVA LTDA",
+        "CASA 12345678000195 LTDA",
+        "FULANO LTDA",
+        "FULANO LTDA",
+        "FULANO LTDA",
+        "FULANO LTDA",
+        "CASA 12.345.678/0001-95 LTDA",
+    ]
