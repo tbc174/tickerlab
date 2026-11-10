@@ -81,6 +81,31 @@
       "valor"
     ]
   },
+  "profiles": {
+    "fontes": {
+      "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-itr": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "data_exclusao_simples",
+      "data_opcao_simples",
+      "data_situacao_cadastral",
+      "dias_uteis_de_atraso",
+      "documento",
+      "matriz",
+      "mes_do_retrato",
+      "motivo_situacao",
+      "natureza_juridica",
+      "optante_simples",
+      "prazo",
+      "primeira_entrega",
+      "razao_social",
+      "referencia",
+      "situacao_cadastral",
+      "situacao_da_entrega"
+    ]
+  },
   "sectors": {
     "fontes": {
       "anatel-acessos": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",

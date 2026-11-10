@@ -3,7 +3,7 @@
 `LeitorDeFicha(porta, permitido).ficha(cnpj, como_era_em)` junta, em tipos simples e com as chaves em
 português (a rota traduz na saída), o que a base sabia da empresa no dia, campo a campo pelo portão:
 
-- `cadastro`: a situação cadastral, a razão social, a natureza jurídica e o Simples como eram, pelo mesmo
+- `cadastro_na_receita`: a situação cadastral, a razão social, a natureza jurídica e o Simples como eram, pelo mesmo
   leitor de `companies` (`LeitorDeEmpresas`): o perfil não lê nada da Receita por outro caminho;
 - `entregas`: cada DFP e ITR que a companhia aberta devia até o dia, com o prazo da CVM, a primeira
   entrega e a situação da entrega, pela mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`).
@@ -42,6 +42,8 @@ CAMPOS_DAS_ENTREGAS = (
 )  # fmt: skip
 # contas nossas sobre o índice da CVM (o rótulo e os dias úteis), não o dado como a fonte publicou
 DERIVADOS = frozenset({"dias_uteis_de_atraso", "situacao_da_entrega"})
+# as colunas de `rotulos_atraso` de onde sai a situação da entrega (`_situacao_entregue`)
+COLUNAS_DA_SITUACAO = ("atrasou", "atraso_grave", "zona_cinzenta")
 CHAVES_DO_PEDIDO = ("cnpj", "como_era_em")
 
 # a situação de cada entrega, em código de fora (D7): a regra de cada rótulo é a da tabela (`rotulos_atraso`)
@@ -151,10 +153,11 @@ class LeitorDeFicha:
         if fonte is None:
             return None
         valores, publico_em = entrega_no_dia(linha, dia)
+        # só os campos da lista saem, nesta ordem: um campo novo em `entrega_no_dia` não escapa sozinho
         servidos = {
-            nome: campo(valor, fonte=fonte, publico_em=publico_em.date(), visto_em=None)
-            for nome, valor in valores.items()
-            if self.permitido(fonte, nome, nome in DERIVADOS)
+            nome: campo(valores[nome], fonte=fonte, publico_em=publico_em.date(), visto_em=None)
+            for nome in CAMPOS_DAS_ENTREGAS
+            if nome in valores and self.permitido(fonte, nome, nome in DERIVADOS)
         }  # fmt: skip
         return (servidos, fonte) if servidos else None
 
@@ -188,7 +191,7 @@ class LeitorDeFicha:
         if cadastro is None:
             return None
         blocos: dict[str, object] = {
-            "cadastro": {
+            "cadastro_na_receita": {
                 nome: valor
                 for nome, valor in cadastro.corpo.items()
                 if nome not in CHAVES_DO_PEDIDO

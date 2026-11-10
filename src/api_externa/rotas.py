@@ -32,6 +32,7 @@ from src.api_externa.conjuntos import (
     credito,
     demonstracoes,
     empresas,
+    ficha,
     fundos,
     setores,
 )
@@ -355,6 +356,24 @@ def empresa(cnpj: str, contexto: Chave, known_at: date | None = None) -> object:
         lambda conexao, porta: _leitor_de_empresas(conexao, porta, contexto).empresa(
             numeros, dia
         ),
+    )
+
+
+@router.get("/companies/{cnpj}/profile")
+def perfil_da_empresa(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> object:
+    """O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)
+    e, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a
+    situação da entrega. MEI, empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    return _um_pedido(
+        contexto,
+        ficha.CONJUNTO,
+        lambda conexao, porta: ficha.LeitorDeFicha(
+            porta, _portao(conexao, contexto, ficha.CONJUNTO)
+        ).ficha(numeros, dia),
     )
 
 

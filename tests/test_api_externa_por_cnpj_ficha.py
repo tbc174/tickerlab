@@ -96,15 +96,18 @@ def test_perfil_junta_o_cadastro_e_as_entregas_com_fonte_e_data(pasta):
     assert servida is not None
     corpo = servida.corpo
     assert corpo["cnpj"] == EMPRESA and corpo["como_era_em"] == "2025-06-30"
-    situacao = corpo["cadastro"]["situacao_cadastral"]
+    situacao = corpo["cadastro_na_receita"]["situacao_cadastral"]
     assert situacao == {
         "valor": "02",
         "fonte": RECEITA,
         "publico_em": "2025-01-31",
         "visto_em": None,
     }
-    assert corpo["cadastro"]["razao_social"]["valor"] == "ALFA S.A."
-    assert "cnpj" not in corpo["cadastro"] and "como_era_em" not in corpo["cadastro"]
+    assert corpo["cadastro_na_receita"]["razao_social"]["valor"] == "ALFA S.A."
+    assert (
+        "cnpj" not in corpo["cadastro_na_receita"]
+        and "como_era_em" not in corpo["cadastro_na_receita"]
+    )
     entregas = [_valores(linha) for linha in corpo["entregas"]]
     assert [e["situacao_da_entrega"] for e in entregas] == [
         ficha.NAO_ENTREGUE, ficha.NAO_ENTREGUE, ficha.ZONA_CINZENTA, ficha.NO_PRAZO,
@@ -176,7 +179,7 @@ def test_falta_so_sai_ate_o_dia_em_que_a_base_conferiu(pasta):
 def test_nada_publicado_depois_do_dia_sai(pasta, dia):
     corpo = _corpo(pasta, dia=dia)
     envelopes = [
-        *corpo["cadastro"].values(),
+        *corpo["cadastro_na_receita"].values(),
         *(e for linha in corpo.get("entregas", []) for e in linha.values()),
     ]
     assert all(date.fromisoformat(e["publico_em"]) <= dia for e in envelopes)
