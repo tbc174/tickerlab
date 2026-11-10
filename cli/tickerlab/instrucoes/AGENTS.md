@@ -6,7 +6,7 @@ TickerLab, as regras de quem programa estão no `AGENTS.md` da raiz; este aqui �
 
 ## O que a CLI faz
 
-Busca dados de empresas e fundos do Brasil na API do TickerLab Data. Cada número sai com a **fonte**, o
+Busca dados de empresas, fundos e setores do Brasil na API do TickerLab Data. Cada número sai com a **fonte**, o
 **dia em que ficou público** e a licença da fonte. A CLI não calcula nada por conta própria: o que ela
 devolve é o que a API serviu.
 
@@ -17,10 +17,14 @@ devolve é o que a API serviu.
 | `tickerlab empresa <cnpj> [--como-era AAAA-MM-DD]` | Situação cadastral na Receita Federal (com data e motivo), matriz ou filial, mês do retrato; da raiz do CNPJ, razão social, natureza jurídica e opção pelo Simples, cada um na versão que valia no dia. |
 | `tickerlab demonstracoes <cnpj> [--como-era AAAA-MM-DD] [--periodo AAAA-MM-DD]` | DFP e ITR da companhia aberta (CVM): uma linha por conta e período, com o documento, a data de referência, a versão (reapresentação) e a data de entrega. Do período mais novo para o mais velho. |
 | `tickerlab fundo <cnpj> [--como-era AAAA-MM-DD] [--retorno-suposto 0.12]` | Cadastro e taxas do fundo, a carteira declarada (CDA) e, com `--retorno-suposto`, a conta de quanto a taxa de administração leva em alguns prazos, sobre um capital de exemplo. |
+| `tickerlab setor [<chave>] [--como-era AAAA-MM-DD]` | Sem chave, a lista dos setores (`eletricas`, `bancos`...) com o dia da ficha; não gasta a quota. Com a chave, o mercado do setor por série da agência (tamanho, CR4, HHI e a faixa de concentração do CADE, por ano), a fatia de cada companhia aberta, quem são elas e as notas de método (`notes`). Sai como a ficha da última noite o deixou: `--como-era` antes dela dá o código 5. |
 | `tickerlab catalogo` | O que a chave pode pedir hoje: conjuntos, campos, fontes e licenças. Não gasta a quota. |
 | `tickerlab consumo` | Pedidos do mês, limites do plano e o que ainda cabe. Não gasta a quota. |
 
-- O CNPJ entra com ou sem pontuação (`33.000.167/0001-01` ou `33000167000101`).
+- O CNPJ entra com ou sem pontuação (`33.000.167/0001-01` ou `33000167000101`). A chave do setor é a da
+  lista (`tickerlab setor`), em minúsculas.
+- No setor, leia as `notes` antes de concluir: parte do mercado pode estar contada por entidade, e aí a
+  concentração real é maior ou igual à mostrada. Diga isso junto do número.
 - `--como-era` mostra o dado **como era público naquele dia**: nada publicado depois entra. Use para
   reconstruir o que se sabia numa data (um precedente de M&A, um comitê de crédito).
 - **Use `--json` sempre que for ler a resposta por programa.** O JSON é o envelope inteiro da API: cada
@@ -34,10 +38,10 @@ devolve é o que a API serviu.
 | Código | Quer dizer | O que fazer |
 |---|---|---|
 | 0 | ok | |
-| 2 | comando ou CNPJ mal escrito, ou endereço da API inseguro | corrija o comando |
+| 2 | comando, CNPJ ou chave do setor mal escritos, ou endereço da API inseguro | corrija o comando |
 | 3 | sem chave, ou a chave foi recusada | peça à pessoa para rodar `tickerlab login`; **nunca** peça a chave no chat |
 | 4 | limite do minuto ou quota do mês | espere (o texto diz quanto) ou veja `tickerlab consumo` |
-| 5 | nada disponível para este pedido | o CNPJ não tem o dado na data, ou o conjunto não está no contrato: veja `tickerlab catalogo`. Não insista com variações do mesmo pedido |
+| 5 | nada disponível para este pedido | o CNPJ (ou o setor) não tem o dado na data, ou o conjunto não está no contrato: veja `tickerlab catalogo`. Não insista com variações do mesmo pedido |
 | 6 | a API recusou o pedido (dígito do CNPJ, data no futuro...) | corrija o pedido |
 | 7 | API fora do ar ou sem internet | tente de novo mais tarde |
 | 1 | erro inesperado | conte à pessoa |
