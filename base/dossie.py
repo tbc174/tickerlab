@@ -95,13 +95,12 @@ AUDITOR_PESSOA = "Auditor pessoa física (nome não mostrado)"
 DIGITOS_DO_CNPJ = 14
 SOMA_DO_ANO, ULTIMO_MES = "soma do ano", "último mês do ano"
 CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
-# Cobrem todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma pessoa
-# natural), e não têm a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da
+# Cobre todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma pessoa
+# natural), e não tem a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da
 # PGFN). A regra de mostrar (`pode_mostrar`) não muda; a consulta em lote (API aberta e CSV) espera a
-# marca na montagem, para não publicar a falência ou a baixa de uma pessoa (ADR 0075).
-ESPERAM_A_MARCA_DE_PESSOA = frozenset(
-    {"cnpj_situacao_especial", "cnpj_situacao_cadastral"}
-)
+# marca na montagem, para não publicar a baixa de uma pessoa (ADR 0075). A `cnpj_situacao_especial`
+# ganhou a marca em 10/11/2026 (linha 787) e saiu daqui.
+ESPERAM_A_MARCA_DE_PESSOA = frozenset({"cnpj_situacao_cadastral"})
 COLUNAS_DE_PESSOA = frozenset(
     {"cpf", "administrador", "conselheiro", "diretor", "nome_pessoa", "socio"}
 )

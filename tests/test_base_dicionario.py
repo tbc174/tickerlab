@@ -327,7 +327,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     ]  # fmt: skip
     situacao = [
         "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo",
-        "data_situacao_especial", "mes_do_retrato", "disponivel_em",
+        "data_situacao_especial", "mes_do_retrato", "disponivel_em", "trata_como_pessoa",
     ]  # fmt: skip
     curva = [
         "data_base", "curva", "prazo_anos", "taxa", "titulos", "maior_prazo_anos",

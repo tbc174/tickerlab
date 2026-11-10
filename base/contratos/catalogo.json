@@ -6069,7 +6069,7 @@
       "tabela": "cnpj_situacao_especial",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "2.0.0",
+      "versao": "2.1.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -6102,6 +6102,10 @@
         "disponivel_em": {
           "descricao": "Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo baixado depois)",
           "unidade": "data (dia)"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada no dia da montagem não tem (ADR 0075): a linha não sai da porta",
+          "unidade": "verdadeiro ou falso"
         },
         "origem_sha256": {
           "descricao": "SHA-256 do arquivo original no acervo",
@@ -6141,7 +6145,8 @@
       "revenda": "vendável com atribuição à fonte",
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
-      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
+      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "cnpj_situacao_cadastral": {
       "tabela": "cnpj_situacao_cadastral",

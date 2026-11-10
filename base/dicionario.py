@@ -6735,7 +6735,8 @@ TABELAS: dict[str, Tabela] = {
             'Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recuperação, '
             'em liquidação, intervenção...), um retrato por mês guardado: o histórico "como era na '
             'data" nasce da sequência dos retratos. Nome, endereço, telefone e e-mail nunca entram '
-            "(LGPD)."
+            "(LGPD). A linha do empresário individual, do MEI e da pessoa física (`trata_como_pessoa`, "
+            "ADR 0075) não sai da porta."
         ),
         fonte="Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos",
         familia_da_fonte="rfb-cnpj",
@@ -6773,6 +6774,13 @@ TABELAS: dict[str, Tabela] = {
                     "baixado depois)"
                 ),
                 DATA,
+            ),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                    "Receita guardada no dia da montagem não tem (ADR 0075): a linha não sai da porta"
+                ),
+                SIM_OU_NAO,
             ),
             **_ORIGEM_SEM_ANO,
         },
@@ -9169,7 +9177,7 @@ _CONTRATO = {
     "proventos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro; 3.0.0 (17/10/2026): uma linha por versão da entrega
-    "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): público desde `disponivel_em`, não do mês do arquivo
+    "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="2.1.0"),  # 2.0.0 (17/10/2026): público desde `disponivel_em`, não do mês do arquivo; 2.1.0 (10/11/2026): `trata_como_pessoa`, e a porta deixa de servir a linha de pessoa natural (linha 787, ADR 0075)
     "cnpj_situacao_cadastral": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_cadastral", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj",), datas={"aconteceu_em": "data_situacao_cadastral"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
