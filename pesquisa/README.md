@@ -51,6 +51,31 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\iniciar_servid
   `~/.gemini/config/mcp_config.json`, config do PC: só com o "pode" do Tiago).
 - **Claude**: `claude mcp add pesquisa -- <python.exe> -I <iniciar_servidor.py> <pasta>`.
 
+## Agente com modelo grátis (OpenRouter)
+
+`pesquisa/agente.py` deixa um modelo de linguagem conduzir o bot sozinho, sem o Claude, o Codex ou o
+Gemini na frente: o modelo pede as ferramentas, e o bot busca, baixa, lê e confere. O modelo grátis
+inventa mais; por isso o relatório põe primeiro os fatos que o `validar_fato` **confirmou** (trecho
+literal no original, com hash e lugar), depois os pendentes e, por último, a conclusão do modelo,
+marcada como **não conferida**. Hipótese com CPF é recusada antes de chamar o modelo.
+
+```powershell
+# a chave: crie em openrouter.ai e ponha OPENROUTER_API_KEY=... no .env da raiz (nunca pelo chat)
+C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.py --listar-modelos
+C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.py "a ANEEL publica a capacidade instalada por usina com CNPJ"
+C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.py "..." --modelo google/gemma-4-31b-it:free
+```
+
+- **Cota** (`pesquisa/openrouter.py`): os modelos `:free` têm limite por conta, não por chave: 20 pedidos
+  por minuto e 50 por dia (1.000 por dia depois de comprar US$ 10 em créditos uma vez; `--limite-diario 1000`).
+  A cota é um SQLite (`<pasta>/cota-openrouter.sqlite`, ou `--cota`) que **vários agentes dividem**: no
+  minuto cheio o agente espera; no dia cheio a rodada encerra com o que já tem.
+- Cada resposta do modelo gasta 1 pedido; a rodada para em 30 respostas (`--passos`).
+- O padrão é `openrouter/free` (o roteador escolhe um modelo grátis de pé). A lista de modelos grátis muda
+  toda semana, então é lida na hora (`--listar-modelos`), nunca fixada no código.
+- Só dado público de empresa vai à OpenRouter: os provedores dos modelos grátis podem guardar o que recebem.
+- O relatório fica em `<pasta>/relatorios/rodada-<data>-<modelo>.md`.
+
 ## Motores opcionais
 
 - **Docling** (MIT) para PDF e planilha com tabela por página: `motor="docling"` (lento, baixa modelos na 1ª vez).
