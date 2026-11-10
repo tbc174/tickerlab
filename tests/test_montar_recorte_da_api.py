@@ -240,16 +240,31 @@ def test_tabela_com_pessoa_ou_duvida_fica_em_casa(tabela, tmp_path):
         envio.montar(tmp_path / "base", tmp_path / "saida", (tabela,))
 
 
-def _empresas_pj(base: Path, linhas: str) -> None:
+TABELAS_PJ = ("cnpj_empresas_pj", "cnpj_estabelecimentos_pj")
+
+
+def _empresas_pj(
+    base: Path, linhas: str, raizes_com_estabelecimento: str = "('00000000')"
+) -> None:
     _parquet(
         base / "cnpj_empresas_pj" / "00.parquet",
         f"SELECT * FROM (VALUES {linhas}) t(cnpj_basico, razao_social, natureza_juridica, porte)",
     )
+    _parquet(
+        base / "cnpj_estabelecimentos_pj" / "00.parquet",
+        f"SELECT * FROM (VALUES {raizes_com_estabelecimento}) t(cnpj_basico)",
+    )
+
+
+def _raizes_da_saida(saida: Path) -> list[str]:
+    arquivo = saida / "cnpj_empresas_pj" / "00.parquet"
+    linhas = duckdb.sql(f"SELECT cnpj_basico FROM '{arquivo.as_posix()}'").fetchall()
+    return sorted(r[0] for r in linhas)
 
 
 def test_as_tabelas_pj_do_cnpj_estao_no_degrau_2():
     """Pode da Diretoria de 10/11/2026 18h31 (Emenda 4), linha 796."""
-    for nome in ("cnpj_empresas_pj", "cnpj_estabelecimentos_pj"):
+    for nome in TABELAS_PJ:
         assert nome in envio.tabelas_do_degrau(2)
         assert nome not in envio.FICAM_EM_CASA
     # o histórico (MEI e EI sem marca por linha) segue em casa
@@ -259,8 +274,27 @@ def test_as_tabelas_pj_do_cnpj_estao_no_degrau_2():
 def test_empresas_pj_limpa_sai_inteira(tmp_path):
     base = tmp_path / "base"
     _empresas_pj(base, "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais')")
-    resultados = envio.montar(base, tmp_path / "saida", ("cnpj_empresas_pj",))
-    assert resultados[0].copiados == 1
+    envio.montar(base, tmp_path / "saida", TABELAS_PJ)
+    assert _raizes_da_saida(tmp_path / "saida") == ["00000000"]
+
+
+def test_mei_com_natureza_de_empresa_nao_sai_em_empresas_pj(tmp_path):
+    """A vista de estabelecimentos tira o MEI; a raiz dele sai de `cnpj_empresas_pj` junto (razão = nome)."""
+    base = tmp_path / "base"
+    _empresas_pj(
+        base,
+        "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais'), "
+        "('55555555', 'FULANO DE TAL', '2062', 'micro')",
+    )
+    envio.montar(base, tmp_path / "saida", TABELAS_PJ)
+    assert _raizes_da_saida(tmp_path / "saida") == ["00000000"]
+
+
+def test_empresas_pj_nao_vai_sem_estabelecimentos(tmp_path):
+    base = tmp_path / "base"
+    _empresas_pj(base, "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais')")
+    with pytest.raises(envio.RecorteErro, match="junto"):
+        envio.montar(base, tmp_path / "saida", ("cnpj_empresas_pj",))
 
 
 @pytest.mark.parametrize(
@@ -275,12 +309,18 @@ def test_empresas_pj_limpa_sai_inteira(tmp_path):
 )
 def test_empresas_pj_com_pessoa_na_saida_e_recusada(tmp_path, razao, natureza):
     base = tmp_path / "base"
-    _empresas_pj(base, f"('11111111', '{razao}', '{natureza}', 'micro')")
+    _empresas_pj(
+        base, f"('11111111', '{razao}', '{natureza}', 'micro')", "('11111111')"
+    )
     with pytest.raises(envio.RecorteErro, match="saiu com pessoa"):
-        envio.montar(base, tmp_path / "saida", ("cnpj_empresas_pj",))
+        envio.montar(base, tmp_path / "saida", TABELAS_PJ)
 
 
 def test_cnpj_de_14_digitos_na_razao_nao_e_pessoa(tmp_path):
     base = tmp_path / "base"
-    _empresas_pj(base, "('22222222', 'FILIAL DA 12345678000190 SA', '2062', 'demais')")
-    envio.montar(base, tmp_path / "saida", ("cnpj_empresas_pj",))
+    _empresas_pj(
+        base,
+        "('22222222', 'FILIAL DA 12345678000190 SA', '2062', 'demais')",
+        "('22222222')",
+    )
+    envio.montar(base, tmp_path / "saida", TABELAS_PJ)
