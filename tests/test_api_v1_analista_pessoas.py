@@ -137,6 +137,13 @@ def test_cnpj_invalido_422_sem_repetir_o_texto(cliente, casa):
         assert resposta.json()["detail"] == analista.CNPJ_INVALIDO
 
 
+@pytest.mark.parametrize("corpo", [{}, {"cnpj": 12}, ["lista"], b"{", b""])
+def test_corpo_invalido_de_quem_pode_422_sem_repetir_o_que_veio(cliente, casa, corpo):
+    resposta = _enviar(cliente, ROTA, corpo)
+    assert resposta.status_code == 422
+    assert resposta.json() == {"detail": analista.CNPJ_INVALIDO}
+
+
 def test_acervo_fora_deste_servidor_503(cliente, casa, monkeypatch):
     monkeypatch.delenv(pessoa.VARIAVEL)
     resposta = cliente.post(ROTA, json={"cnpj": EMPRESA})
@@ -147,9 +154,19 @@ def test_acervo_fora_deste_servidor_503(cliente, casa, monkeypatch):
 # ---------------------------------------------------------------- quem não pode
 
 
+JSON = {"content-type": "application/json"}
+
+
+def _enviar(cliente, rota, corpo):
+    """`corpo` em bytes vai cru (JSON malformado); o resto vai como JSON."""
+    if isinstance(corpo, bytes):
+        return cliente.post(rota, content=corpo, headers=JSON)
+    return cliente.post(rota, json=corpo)
+
+
 def _igual_a_rota_que_nao_existe(cliente, corpo) -> None:
-    resposta = cliente.post(ROTA, json=corpo)
-    inexistente = cliente.post(INEXISTENTE, json=corpo)
+    resposta = _enviar(cliente, ROTA, corpo)
+    inexistente = _enviar(cliente, INEXISTENTE, corpo)
     assert resposta.status_code == inexistente.status_code == 404
     assert resposta.content == inexistente.content
     assert resposta.headers["content-type"] == inexistente.headers["content-type"]
@@ -163,6 +180,9 @@ CORPOS = [
     {"cnpj": "x" * 500},
     {},  # sem o campo
     {"cnpj": 12},
+    ["lista"],
+    b"{",  # JSON malformado
+    b"",
 ]
 
 
@@ -194,8 +214,8 @@ def test_quem_nao_pode_nao_faz_o_servidor_tocar_o_acervo(
     monkeypatch.setattr(pessoa, "pasta_do_acervo", _nao_le)
     monkeypatch.setattr(pessoa.cnpj_, "normalizar_cnpj", _nao_le)
     for corpo in CORPOS:
-        assert cliente_da_bia.post(ROTA, json=corpo).status_code == 404
-        assert cliente.post(ROTA, json=corpo).status_code == 404  # sem organização
+        assert _enviar(cliente_da_bia, ROTA, corpo).status_code == 404
+        assert _enviar(cliente, ROTA, corpo).status_code == 404  # sem organização
     assert _vistas(banco) == []
 
 

@@ -13,6 +13,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from base import cnpj as cnpj_
@@ -39,7 +40,11 @@ LIMITES = (
 
 
 class AcervoIndisponivelError(RuntimeError):
-    """O acervo de pessoa não está neste servidor (a variável não foi definida ou a pasta não existe)."""
+    """O acervo de pessoa não está neste servidor (sem a variável, sem a pasta) ou não pôde ser lido."""
+
+
+class CnpjInvalidoError(ValueError):
+    """O texto pedido não tem a forma de um CNPJ."""
 
 
 @dataclass(frozen=True)
@@ -72,18 +77,22 @@ def _linha(linha: dict) -> dict[str, str | None]:
 def socios_da_empresa(pasta: Path, cnpj: str) -> Socios:
     """Os sócios pessoa física adultos da empresa do CNPJ, do mais antigo ao mais novo.
 
-    `ValueError` se o CNPJ é inválido. Empresa sem sócio pessoa física no acervo: lista vazia.
+    `CnpjInvalidoError` se o CNPJ é inválido; `AcervoIndisponivelError` se o arquivo não pôde ser lido.
+    Empresa sem sócio pessoa física no acervo: lista vazia.
     """
     normalizado = cnpj_.normalizar_cnpj(cnpj)
     if not normalizado:
-        raise ValueError("CNPJ inválido")
+        raise CnpjInvalidoError("CNPJ inválido")
     raiz = normalizado[:TAMANHO_DA_RAIZ]
     arquivo = pasta / SOCIOS / f"{raiz[:PREFIXO]}.parquet"
     if not arquivo.is_file():
         return Socios([], 0, None)
-    tabela = pq.read_table(
-        arquivo, columns=COLUNAS, filters=[("cnpj_basico", "=", raiz)]
-    )
+    try:
+        tabela = pq.read_table(
+            arquivo, columns=COLUNAS, filters=[("cnpj_basico", "=", raiz)]
+        )
+    except (pa.ArrowException, OSError) as erro:
+        raise AcervoIndisponivelError("acervo de pessoa ilegível") from erro
     linhas = [linha for linha in tabela.to_pylist() if linha["nome_socio"]]
     linhas.sort(
         key=lambda s: (

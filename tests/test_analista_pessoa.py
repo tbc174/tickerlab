@@ -99,7 +99,7 @@ def test_mostra_ate_o_maximo_e_diz_o_total(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("cnpj", ["", "123", "../../etc/passwd", "11222333/../x"])
 def test_cnpj_invalido_nao_vira_caminho(tmp_path, cnpj):
-    with pytest.raises(ValueError, match="CNPJ"):
+    with pytest.raises(pessoa.CnpjInvalidoError):
         pessoa.socios_da_empresa(_acervo(tmp_path, LINHAS), cnpj)
 
 
@@ -112,6 +112,13 @@ def test_pasta_do_acervo_vem_da_variavel(tmp_path, monkeypatch):
         pessoa.pasta_do_acervo()
     monkeypatch.setenv(pessoa.VARIAVEL, str(_acervo(tmp_path, LINHAS)))
     assert pessoa.pasta_do_acervo() == tmp_path
+
+
+def test_arquivo_estragado_e_acervo_indisponivel_nao_cnpj_invalido(tmp_path):
+    acervo = _acervo(tmp_path, LINHAS)
+    (acervo / pessoa.SOCIOS / "11.parquet").write_bytes(b"isto nao e parquet")
+    with pytest.raises(pessoa.AcervoIndisponivelError):
+        pessoa.socios_da_empresa(acervo, EMPRESA)
 
 
 def test_os_limites_dizem_o_que_fica_de_fora():
