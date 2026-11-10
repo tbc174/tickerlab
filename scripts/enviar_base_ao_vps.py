@@ -44,9 +44,6 @@ log = logging.getLogger("enviar_base_ao_vps")
 # O núcleo da API externa (`src/api_externa/conjuntos/`): demonstrações, rede (empresas) e fundos.
 DEGRAU_1 = (
     "demonstracoes_como_era",
-    "entidades",
-    "identificadores",
-    "ligacoes",
     "cadastro_de_fundos",
     "carteiras_dos_fundos",
 )
@@ -58,6 +55,12 @@ FICAM_EM_CASA = (
     "comex_preco_medio",
     "fidc_informe",
     "processos_partes",
+    # Rede e situação especial têm pessoa (MEI, EI, `nao_informada` com nome, falência de MEI): só vão ao VPS
+    # filtradas pela vista publicada, depois da linha 787 (Diretoria, 10/11/2026).
+    "entidades",
+    "identificadores",
+    "ligacoes",
+    "cnpj_situacao_especial",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.

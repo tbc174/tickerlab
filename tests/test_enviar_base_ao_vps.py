@@ -68,6 +68,17 @@ def test_nenhuma_tabela_da_lista_e_de_pessoa_nem_mora_em_pasta_proibida():
         assert ARQUIVOS[nome].split("/")[0] not in envio.PASTAS_PROIBIDAS, nome
 
 
+@pytest.mark.parametrize(
+    "nome", ["entidades", "identificadores", "ligacoes", "cnpj_situacao_especial"]
+)
+def test_rede_e_situacao_especial_nao_vao_ate_a_linha_787(nome):
+    """Têm pessoa (MEI, EI, nome em `nao_informada`): só filtradas pela vista publicada."""
+    assert nome in envio.FICAM_EM_CASA
+    assert nome not in envio.tabelas_do_degrau(2)
+    with pytest.raises(envio.RecorteErro, match="fica em casa"):
+        envio.conferir_a_lista((nome,))
+
+
 def test_tabela_fora_da_lista_e_recusada():
     with pytest.raises(envio.RecorteErro, match="fica em casa"):
         envio.conferir_a_lista(("scr_credito",))
