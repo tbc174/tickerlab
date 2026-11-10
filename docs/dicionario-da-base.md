@@ -5193,7 +5193,7 @@ Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `a
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Refeita a cada montagem de `auditores`
 - **Atraso de divulgação:** A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)
-- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj`, `efetiva_em`, `novo_id`
 - **Três datas:** aconteceu_em = `efetiva_em`; publico_em = `conhecido_em`
