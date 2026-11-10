@@ -13,6 +13,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
+import pandas as pd
 import sqlalchemy as sa
 
 from base import cnpj as cnpj_da_base
@@ -52,6 +53,10 @@ FONTE_DO_CADASTRO = (
 )
 SECOES_DO_GRUPO_E_DA_REDE = ("auditor_e_controladas", "rede")
 
+FORA_DO_QUE_A_PLATAFORMA_MOSTRA = (
+    "Este CNPJ está fora do que a plataforma mostra: o TickerLab não exibe cadastro de MEI nem de "
+    "empresário individual, que são dado de pessoa física."
+)
 FORA_DA_BASE_ABERTA = "Este CNPJ não está na base do TickerLab. Não aparecer aqui não quer dizer que a empresa não exista."
 DESLIGADO = (
     (
@@ -65,8 +70,8 @@ DESLIGADO = (
     "Dívida com a União e atrasos de pagamento: esperam um parecer jurídico.",
     "Sanções e dívidas entre empresas da rede: esperam um parecer jurídico.",
     (
-        "Nome de sócio ou administrador pessoa física: não aparece; a linha mostra só a qualificação e o mês "
-        "de entrada."
+        "Sócio ou administrador pessoa física, MEI e empresário individual: não aparecem (nem nome, nem "
+        "qualificação, nem contagem)."
     ),
     "Endereço: só o município e a UF; telefone e e-mail nunca aparecem.",
     "Ligações de 2 ou mais saltos e busca por nome ou ticker: depois de medir o uso da busca.",
@@ -331,8 +336,10 @@ def montar_relatorio_da_fechada(
     )
 
 
-def relatorio_fora_da_base_aberta(cnpj: str) -> RelatorioDoCnpj:
-    """A resposta para o CNPJ que nem a CVM nem o cadastro da Receita da base têm."""
+def relatorio_fora_da_base_aberta(
+    cnpj: str, aviso: str = FORA_DA_BASE_ABERTA
+) -> RelatorioDoCnpj:
+    """A resposta para o CNPJ que nem a CVM nem o cadastro da Receita da base têm (ou que é pessoa)."""
     return RelatorioDoCnpj(
         situacao=FORA,
         cnpj=cnpj_da_base.formatar(cnpj),
@@ -343,8 +350,26 @@ def relatorio_fora_da_base_aberta(cnpj: str) -> RelatorioDoCnpj:
         fontes=[],
         limites=com_a_contestacao(list(LIMITES_DA_BUSCA)),
         desligado=list(DESLIGADO),
-        avisos=[FORA_DA_BASE_ABERTA],
+        avisos=[aviso],
     )
+
+
+def e_pessoa_fisica(cadastro: cadastro_da_receita.CadastroDaReceita) -> bool:
+    """MEI (hoje ou já foi) ou empresário individual. Na dúvida, é pessoa.
+
+    A vista ainda não traz a natureza jurídica; o empresário individual é achado pelo que o marca na
+    Receita: não há quadro de sócios. Quando a vista levar a natureza (213-5 e grupo 4), confira-a aqui.
+    """
+    simples = cadastro.simples
+    if simples is not None and (
+        _sim(simples.get("optante_mei")) or not pd.isna(simples.get("data_opcao_mei"))
+    ):
+        return True
+    return cadastro.socios.empty
+
+
+def _sim(valor: object) -> bool:
+    return not pd.isna(valor) and bool(valor)  # type: ignore[arg-type]
 
 
 def buscar_por_cnpj(
@@ -363,6 +388,8 @@ def buscar_por_cnpj(
         cadastro = cadastro_da_receita.cadastro_do_cnpj(cnpj, vista)
         if cadastro is None:
             return relatorio_fora_da_base_aberta(cnpj)
+        if e_pessoa_fisica(cadastro):
+            return relatorio_fora_da_base_aberta(cnpj, FORA_DO_QUE_A_PLATAFORMA_MOSTRA)
         return montar_relatorio_da_fechada(cadastro, cnpj, plano)
     cadastro = secao_cadastro(conexao, ficha.cnpj)
     return montar_relatorio_do_cnpj(
