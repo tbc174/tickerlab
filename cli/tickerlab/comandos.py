@@ -153,6 +153,12 @@ def principal() -> None:
 @principal.command()
 @argumento_cnpj
 @opcao_como_era
+@click.option(
+    "--so-cadastro",
+    is_flag=True,
+    help="Só o cadastro na Receita (a rota /companies/{cnpj}), sem as entregas à CVM; serve à chave que "
+    "tem só o conjunto `companies`.",
+)
 @opcao_planilha
 @opcao_json
 @click.pass_context
@@ -160,11 +166,19 @@ def empresa(
     contexto: click.Context,
     cnpj: str,
     como_era: datetime | None,
+    so_cadastro: bool,
     como_json: bool,
     destino: Path | None,
 ) -> None:
-    """Situação cadastral, razão social, natureza jurídica e Simples do CNPJ, na Receita Federal."""
-    corpo = _api(contexto).empresa(cnpj, _dia(como_era))
+    """O perfil da empresa: cadastro na Receita e, da companhia aberta, cada DFP e ITR com o prazo da CVM.
+
+    O cadastro traz a situação (com data e motivo), matriz ou filial, razão social, natureza jurídica e
+    Simples. As entregas dizem, de cada DFP e ITR devida até o dia, o prazo, quando saiu a primeira
+    versão, os dias úteis de atraso e a situação (on_time, gray_zone, late, severely_late, not_filed).
+    """
+    api = _api(contexto)
+    dia = _dia(como_era)
+    corpo = api.empresa(cnpj, dia) if so_cadastro else api.perfil(cnpj, dia)
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
 
 
