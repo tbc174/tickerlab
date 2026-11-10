@@ -94,3 +94,26 @@ def test_prefixo_sem_nenhum_registro_no_simples_nao_quebra_a_vista():
         estabelecimentos, _empresas(), pd.DataFrame()
     )
     assert list(vista["cnpj_basico"]) == ["33000167"]
+
+
+def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
+    from base.receita_empresas import _empresas_pj
+
+    parte = pd.DataFrame(
+        {
+            "cnpj_basico": ["1", "2", "3"],
+            "razao_social": [
+                "MARIA DE PAULA-52998224725 LTDA",
+                "JOAO DA SILVA 529982247251 LTDA",
+                "CASA 12345678000195 LTDA",
+            ],
+            "natureza_juridica": ["2062"] * 3,
+            "porte": ["01"] * 3,
+        }
+    )
+    razoes = list(_empresas_pj(parte)["razao_social"])
+    assert razoes == [
+        "MARIA DE PAULA LTDA",
+        "JOAO DA SILVA LTDA",
+        "CASA 12345678000195 LTDA",
+    ]

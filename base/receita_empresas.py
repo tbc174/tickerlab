@@ -9,7 +9,9 @@ município e UF. Desenho no plano da API externa, "Achado para a fila".
   deles é o nome e o CPF da pessoa;
 - a vista deixa de fora o MEI (opção pelo MEI no Simples), mesmo com natureza de empresa, e a raiz que não
   está na tabela de empresas (na dúvida, é pessoa);
-- na razão social das outras, um CPF escrito no texto sai (`base.pessoas.sem_cpf`);
+- na razão social das outras, um CPF escrito no texto sai (`base.pessoas.sem_cpf`); também sai qualquer
+  sequência de 11 ou 12 dígitos soltos (CPF colado a hífen ou com dígito a mais, achado na carga de 10/11/2026;
+  CNPJ tem 14 e fica);
 - a vista só tem o CNPJ, a situação, a abertura, a atividade, o município e a UF: sem logradouro, CEP,
   contato nem nome fantasia.
 
@@ -18,6 +20,7 @@ social; natureza; qualificação; capital; porte; ente federativo. Capital, qual
 ente federativo não são lidos.
 """
 
+import re
 import zipfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -38,13 +41,25 @@ COLUNAS_DA_VISTA = (
 )  # fmt: skip
 
 
+NUMERO_COMPRIDO_DE_PESSOA = re.compile(r"-?(?<!\d)\d{11,12}(?!\d)")
+ESPACOS = re.compile(r"\s{2,}")
+
+
+def _sem_numero_de_pessoa(razao: pd.Series) -> pd.Series:
+    """Tira 11 ou 12 dígitos soltos da razão social (CPF mal escrito); CNPJ (14) não é tocado."""
+    limpo = razao.str.replace(NUMERO_COMPRIDO_DE_PESSOA, "", regex=True)
+    return limpo.str.replace(ESPACOS, " ", regex=True).str.strip(" -")
+
+
 def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
     natureza = parte["natureza_juridica"].str.strip()
     juridica = ~natureza.map(natureza_de_pessoa).astype(bool)
     saida = pd.DataFrame(
         {
             "cnpj_basico": parte["cnpj_basico"].str.strip(),
-            "razao_social": tirar_cpf_da_coluna(parte["razao_social"].str.strip()),
+            "razao_social": _sem_numero_de_pessoa(
+                tirar_cpf_da_coluna(parte["razao_social"].str.strip())
+            ),
             "natureza_juridica": natureza,
             "porte": parte["porte"].str.strip().map(PORTES).fillna("nao_informado"),
         }
