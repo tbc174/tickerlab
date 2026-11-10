@@ -254,3 +254,32 @@ def test_cada_par_diz_de_que_tabelas_e_prova() -> None:
     for par in PARES:
         assert par.tabelas and set(par.tabelas) <= set(TABELAS)
         assert par_sem_dados(par, "x").como_dict()["tabelas"] == list(par.tabelas)
+
+
+def test_par_informativo_fica_visivel_mas_nunca_deixa_o_placar_vermelho() -> None:
+    """Regra: o par só conta para a exigência 6 quando os dois lados medem o mesmo perímetro."""
+    informativo = Par(
+        "perimetros",
+        "d",
+        ("k",),
+        Tolerancia(),
+        OUTRO_ORGAO,
+        informativo="perímetros diferentes",
+    )
+    r = comparar(informativo, _lado(x=1.0), _lado(x=9.0), set())
+    assert r.diferentes == 1 and r.sem_explicacao == 1
+    assert not r.vermelho
+    dia = montar_relatorio_do_dia("2026-11-10", [r])
+    assert dia["vermelho"] is False
+    assert dia["por_independencia"] == {}  # não soma na prova
+    assert (
+        dia["pares"][0]["informativo"] == "perímetros diferentes"
+    )  # e continua à vista
+
+
+def test_pares_dos_bancos_sao_informativos_com_a_causa() -> None:
+    from base.cruzada import PARES
+
+    bancos = [p for p in PARES if p.nome.startswith("banco_")]
+    assert len(bancos) == 2
+    assert all("perímetro" in p.informativo for p in bancos)

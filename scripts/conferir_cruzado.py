@@ -140,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
             f"{r.diferentes} diferentes ({r.sem_explicacao} sem explicação), "
             f"só A {r.so_em_a}, só B {r.so_em_b}"
         )
+        if r.informativo:
+            print(f"  INFORMATIVO (fora da exigência 6): {r.informativo}")
     print(f"gravado em {gravar(args.dia, relatorios)}")
     vermelhos = [
         f"{r.par} ({r.sem_explicacao} sem explicação)" for r in relatorios if r.vermelho
