@@ -12,7 +12,7 @@ import re
 import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup
@@ -31,6 +31,7 @@ COMECO_DE_HTML = re.compile(
 )
 ESPACOS = re.compile(r"\s+")
 TIPOS_DE_DOCUMENTO = frozenset({"pdf", "xlsx", "csv", "zip"})
+EXTENSOES_DE_TEXTO_EM_TABELA = frozenset({".csv", ".txt", ".tsv"})
 
 
 @dataclass(frozen=True)
@@ -80,8 +81,11 @@ def limpar(texto: str) -> str:
     return ESPACOS.sub(" ", texto).strip()
 
 
-def descobrir_tipo(caminho: Path) -> str:
-    """O tipo pelo conteúdo (o nome do arquivo mente): pdf, xlsx, zip, html, csv ou desconhecido."""
+def descobrir_tipo(caminho: Path, nome_original: str | None = None) -> str:
+    """O tipo pelo conteúdo (o nome do arquivo mente): pdf, xlsx, zip, html, csv ou desconhecido.
+
+    Texto puro não tem assinatura; aí vale a extensão do `nome_original` (o caminho da URL),
+    porque o arquivo em `caminho` pode ser um temporário `.tmp`."""
     with caminho.open("rb") as arquivo:
         inicio = arquivo.read(2048)
     if inicio.startswith(ASSINATURA_PDF):
@@ -90,7 +94,8 @@ def descobrir_tipo(caminho: Path) -> str:
         return "xlsx" if _zip_e_planilha(caminho) else "zip"
     if COMECO_DE_HTML.match(inicio):
         return "html"
-    if caminho.suffix.lower() in {".csv", ".txt", ".tsv"}:
+    sufixo = PurePosixPath(nome_original).suffix if nome_original else caminho.suffix
+    if sufixo.lower() in EXTENSOES_DE_TEXTO_EM_TABELA:
         return "csv"
     return "desconhecido"
 

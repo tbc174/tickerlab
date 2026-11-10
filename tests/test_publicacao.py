@@ -75,6 +75,15 @@ def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
         assert dentro not in dockerignore.splitlines()
 
 
+def test_imagem_trava_as_dependencias_transitivas_com_o_requirements_completo():
+    """Linha 758: sem o `-c`, dezenas de pacotes que o pip puxa ficariam na versão do dia do build."""
+    dockerfile = (RAIZ / "Dockerfile").read_text(encoding="utf-8")
+    assert "COPY requirements.txt requirements-prod.txt" in dockerfile
+    assert "pip install -r requirements-prod.txt -c requirements.txt" in dockerfile
+    dockerignore = (RAIZ / ".dockerignore").read_text(encoding="utf-8")
+    assert "requirements.txt" not in dockerignore.splitlines()
+
+
 def test_compose_publica_as_portas_so_em_localhost():
     compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
     portas = re.findall(r'^\s+- "([\d.]+:\d+:\d+)"\s*$', compose, flags=re.MULTILINE)
