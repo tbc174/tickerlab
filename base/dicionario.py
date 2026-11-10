@@ -132,6 +132,9 @@ class Tabela:
     # numa tabela de empresas, a coluna booleana que marca as linhas de pessoa natural (empresário
     # individual e MEI, ADR 0075): a porta não serve essas linhas
     linhas_de_pessoa: str = ""
+    # tabela sem a marca acima, mas com linhas de pessoa natural que a rota da API tira (o que são,
+    # por exemplo "raízes de empresário individual e MEI"); só muda o texto do dicionário
+    pessoa_tirada_na_rota: str = ""
     chaves: tuple[str, ...] = ()  # colunas que identificam uma linha
     datas: dict[str, str] = field(
         default_factory=dict
@@ -9264,10 +9267,10 @@ _CONTRATO = {
     "cnpj_estabelecimentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj",), datas={"aconteceu_em": "data_situacao_cadastral"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
@@ -9758,6 +9761,8 @@ def _dado_de_pessoa(tabela: Tabela) -> str:
     """ "sim", "não", ou "sim em casa" quando a porta tira por linha as marcadas (`linhas_de_pessoa`)."""
     if tabela.pessoa:
         return "sim"
+    if tabela.pessoa_tirada_na_rota:
+        return f"sim em casa ({tabela.pessoa_tirada_na_rota}); a rota da API tira essas linhas"
     if tabela.linhas_de_pessoa:
         return f"sim em casa (linhas com `{tabela.linhas_de_pessoa}`); o recorte da API e a porta as tiram"
     return "não"

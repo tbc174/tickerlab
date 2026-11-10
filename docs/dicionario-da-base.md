@@ -2611,7 +2611,7 @@ Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão de
 - **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
 - **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
 - **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (raízes de empresário individual e MEI); a rota da API tira essas linhas
 - **Chaves:** `cnpj_basico`, `mes_do_retrato`
 - **Três datas:** publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
@@ -2645,7 +2645,7 @@ Natureza jurídica e razão social de cada empresa, versão por versão desde 05
 - **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
 - **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
 - **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (raízes de empresário individual e MEI); a rota da API tira essas linhas
 - **Chaves:** `cnpj_basico`, `mes_do_retrato`
 - **Três datas:** publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
