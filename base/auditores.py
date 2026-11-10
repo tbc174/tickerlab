@@ -345,17 +345,23 @@ def raizes_a_perguntar(trocas: pd.DataFrame, auditores: pd.DataFrame) -> np.ndar
     )
 
 
+def _de_pessoa(valores: pd.Series, pessoas: np.ndarray) -> np.ndarray:
+    """Para cada CNPJ, se pode ser de pessoa: vazio ou ilegível (sem raiz) é; com raiz, se está em
+    `pessoas` (as raízes de pessoa, em números ordenados)."""
+    raizes = valores.map(cnpjs.raiz)
+    de_pessoa = raizes.isna().to_numpy().copy()
+    legivel = ~de_pessoa
+    de_pessoa[legivel] = cnpjs.contem(pessoas, cnpjs.raizes_em_numeros(raizes[legivel]))
+    return de_pessoa
+
+
 def _ids_de_pessoa(auditores: pd.DataFrame, pessoas: np.ndarray) -> set[str]:
     """Os auditores fora das redes que, em alguma linha, vêm sem CNPJ de firma ou com a raiz de pessoa.
 
     Basta uma linha: o mesmo código da CVM com CNPJ num ano e sem ele noutro fica na dúvida, e na
     dúvida é pessoa (a ficha, `base/dossie.py::_nome_do_auditor`, também esconde o sem CNPJ)."""
     fora = auditores[~_da_rede(auditores)]
-    cnpj = fora["auditor_cnpj"]
-    com_cnpj = cnpj.notna()
-    de_pessoa = ~com_cnpj
-    de_pessoa[com_cnpj] = cnpjs.contem(pessoas, _raizes(cnpj[com_cnpj]))
-    return set(fora.loc[de_pessoa, "auditor_id"])
+    return set(fora.loc[_de_pessoa(fora["auditor_cnpj"], pessoas), "auditor_id"])
 
 
 def com_a_marca_de_pessoa(
@@ -366,20 +372,21 @@ def com_a_marca_de_pessoa(
     saídas de `pessoas_pela_receita`)."""
     ids = _ids_de_pessoa(auditores, pessoas)
 
+    # o id `nome:` leva o nome inteiro, que pode ter o próprio separador: compara com os limites dele
+    # em volta, e não pelas partes do `split` (que partiriam "nome:silva + associados" em dois)
+    cercados = [f"{SEPARADOR_DE_IDS}{i}{SEPARADOR_DE_IDS}" for i in ids]
+
     def tem_pessoa(juntos: str) -> bool:
-        return any(i in ids for i in juntos.split(SEPARADOR_DE_IDS))
+        cercado = f"{SEPARADOR_DE_IDS}{juntos}{SEPARADOR_DE_IDS}"
+        return any(i in cercado for i in cercados)
 
     auditor_pessoa = trocas["anterior_id"].map(tem_pessoa) | trocas["novo_id"].map(
         tem_pessoa
     )
-    empresa = trocas["cnpj"].map(cnpjs.raiz)
-    empresa_pessoa = empresa.isna().to_numpy().copy()
-    conhecida = ~empresa_pessoa
-    empresa_pessoa[conhecida] = cnpjs.contem(
-        pessoas, cnpjs.raizes_em_numeros(empresa[conhecida])
-    )
     return trocas.assign(
-        trata_como_pessoa=(auditor_pessoa.to_numpy(dtype=bool) | empresa_pessoa)
+        trata_como_pessoa=(
+            auditor_pessoa.to_numpy(dtype=bool) | _de_pessoa(trocas["cnpj"], pessoas)
+        )
     )
 
 

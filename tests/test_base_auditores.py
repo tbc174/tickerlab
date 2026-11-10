@@ -771,3 +771,34 @@ def test_contrato_das_trocas_declara_as_linhas_de_pessoa():
     tabela = TABELAS["trocas_de_auditor"]
     assert tabela.linhas_de_pessoa == "trata_como_pessoa"
     assert "trata_como_pessoa" in tabela.colunas
+
+
+def test_auditor_sem_codigo_com_o_separador_no_nome_continua_pessoa(
+    tmp_path, monkeypatch
+):
+    """O id `nome:` leva o nome inteiro, que pode ter o " + " da auditoria conjunta (revisão do #972)."""
+    sem_codigo = ("Silva + Associados", "", "")
+    marcas, _ = _montar_com_receita(
+        tmp_path,
+        monkeypatch,
+        {
+            2019: _ano(2019, "2019-05-10", (KPMG, "2014-01-01")),
+            2020: _ano(2020, "2020-06-15", (sem_codigo, "2020-04-01")),
+            2021: _ano(2021, "2021-06-15", (EY, "2021-04-01")),
+        },
+    )
+    assert marcas == {"nome:silva + associados": True, "rede:ey": True}
+
+
+def test_empresa_sem_cnpj_legivel_e_pessoa():
+    """Sem raiz não há como perguntar à Receita: na dúvida, é pessoa."""
+    trocas = pd.DataFrame(
+        {
+            "cnpj": [None, "abc", "11.111.111/0001-11"],
+            "anterior_id": ["rede:kpmg"] * 3,
+            "novo_id": ["rede:ey"] * 3,
+        }
+    )
+    sem_firmas = pd.DataFrame({"auditor_id": ["rede:ey"], "auditor_cnpj": [None]})
+    marcadas = auditores.com_a_marca_de_pessoa(trocas, sem_firmas, _numeros([]))
+    assert marcadas["trata_como_pessoa"].tolist() == [True, True, False]
