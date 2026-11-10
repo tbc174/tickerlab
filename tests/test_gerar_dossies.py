@@ -998,3 +998,66 @@ def test_a_pgfn_e_lida_so_para_as_companhias_da_ficha(tmp_path: Path) -> None:
         )
     assert entradas.pgfn_divida is not None
     assert set(entradas.pgfn_divida) == {CPFL_DIGITOS[:8]}  # a Sem Nada não tem linha
+
+
+def _trocas_com_uma_de_pessoa(pasta: Path, marca: list[object] | None) -> None:
+    """Duas trocas da CPFL: entre firmas das redes e uma com auditor sem CNPJ de firma (que pode ser
+    pessoa física). `marca` é a coluna `trata_como_pessoa`; None grava o arquivo antigo, sem ela."""
+    trocas = pd.DataFrame(
+        {
+            "cnpj": [CPFL, CPFL],
+            "efetiva_em": [D("2020-04-01"), D("2025-04-01")],
+            "anterior": ["KPMG", "Auditoria Sem Registro"],
+            "novo": ["Auditoria Sem Registro", "Deloitte"],
+            "anos_com_o_anterior": [5.0, 5.0],
+            "conhecido_em": [D("2020-05-10"), D("2025-05-10")],
+        }
+    )
+    if marca is not None:
+        trocas["trata_como_pessoa"] = marca
+    _gravar(pasta, "trocas_de_auditor/trocas.parquet", trocas)
+
+
+def _trocas_na_ficha(saida: Path) -> list[dict]:
+    texto = (saida / "2026-10-17" / f"{CPFL_DIGITOS}.json").read_text(encoding="utf-8")
+    assert "Auditoria Sem Registro" not in texto
+    ficha = json.loads(texto)
+    auditor = next(s for s in ficha["secoes"] if s["chave"] == "auditor_e_controladas")
+    return auditor["tabelas"].get("trocas_de_auditor", [])
+
+
+@pytest.mark.parametrize(
+    "marca",
+    [
+        [True, True],
+        [True, None],  # vazia: na dúvida é pessoa
+        None,  # arquivo de antes da marca: a porta não serve linha nenhuma
+    ],
+)
+def test_troca_marcada_como_pessoa_nao_chega_a_ficha(
+    tmp_path: Path, marca: list[object] | None
+) -> None:
+    """A ficha lê as trocas pela porta, que tira as linhas com `trata_como_pessoa` (fila 789, ADR
+    0075): o nome do auditor que pode ser pessoa física não chega à ficha, nem ao VPS com ela."""
+    _mini_base(tmp_path / "base")
+    _trocas_com_uma_de_pessoa(tmp_path / "base", marca)
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    assert _trocas_na_ficha(tmp_path / "dossies") == []
+
+
+def test_troca_sem_a_marca_chega_a_ficha(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    trocas = pd.DataFrame(
+        {
+            "cnpj": [CPFL],
+            "efetiva_em": [D("2025-04-01")],
+            "anterior": ["KPMG"],
+            "novo": ["Deloitte"],
+            "anos_com_o_anterior": [5.0],
+            "conhecido_em": [D("2025-05-10")],
+            "trata_como_pessoa": [False],
+        }
+    )
+    _gravar(tmp_path / "base", "trocas_de_auditor/trocas.parquet", trocas)
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    assert [t["novo"] for t in _trocas_na_ficha(tmp_path / "dossies")] == ["Deloitte"]
