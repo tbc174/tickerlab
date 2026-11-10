@@ -211,15 +211,17 @@ def _campos(
     tabelas: tuple[str, ...],
     campos: tuple[str, ...],
     prova: str,
+    finalidade: Finalidade = Finalidade.ANALISE,
 ) -> tuple[LinhaDeDireito, ...]:
-    """Uma linha por fonte e campo: fato de empresa, para análise, pela API externa, desde o beta."""
+    """Uma linha por fonte e campo: fato de empresa, para a finalidade (análise, se nada for dito), pela
+    API externa, desde o beta."""
     return tuple(
         LinhaDeDireito(
             fonte,
             conjunto,
             campo,
             Canal.API_EXTERNA,
-            Finalidade.ANALISE,
+            finalidade,
             Categoria.FATO_DE_PJ,
             BETA_COMECA_EM,
             prova,
@@ -312,6 +314,46 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("carteiras_dos_fundos",),
         ("competencia", "codigo", "isin", "emissor", "tipo", "quantidade", "valor"),
         _PROVA_CVM,
+    ),
+    # credit (linha 754, PR 2): os fatos da ficha de crédito, para crédito (dossiê), contas nossas sobre
+    # tabelas que já saem em outros conjuntos ou são da CVM; a rota (`conjuntos/credito.py`) tira quem é
+    # pessoa como `companies` e não serve as regras de elegibilidade. Sem rating, insolvência nem SCR.
+    *_campos(
+        ("rfb-cnpj",),
+        "credit",
+        ("cnpj_situacao_cadastral",),
+        ("situacao_cadastral_na_receita",),
+        _PROVA_RECEITA,
+        Finalidade.CREDITO,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "credit",
+        ("cnpj_situacao_especial",),
+        ("situacao_especial_na_receita",),
+        _PROVA_RECEITA,
+        Finalidade.CREDITO,
+    ),
+    *_campos(
+        ("cvm-hist-ipe",),
+        "credit",
+        ("eventos",),
+        ("fatos_relevantes_12_meses",),
+        _PROVA_CVM,
+        Finalidade.CREDITO,
+    ),
+    *_campos(
+        ("cvm-fidc",),
+        "credit",
+        ("fidc_informe",),
+        (
+            "fundos_em_que_cede",
+            "maior_participacao_como_cedente",
+            "carteira_dos_fundos_em_que_cede",
+            "maior_inadimplencia_dos_fundos_em_que_cede",
+        ),
+        _PROVA_CVM,
+        Finalidade.CREDITO,
     ),
 )
 
