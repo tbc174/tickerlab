@@ -106,6 +106,7 @@ def test_pessoa_e_cnpj_que_nao_existe_dao_a_mesma_resposta(cliente, cnpj):
         "ficha": None,
         "fontes": [],
         "limites": list(leitura.LIMITES),
+        "o_que_vem": leitura.blocos_como_lista(),
     }
 
 
@@ -211,3 +212,12 @@ def test_planilha_de_ficha_que_nao_sai_404_igual_para_todos(cliente, monkeypatch
         rotas_da_api_externa, "regras_da_api", leitura_de_mentira._sem_prontidao
     )
     assert cliente.post(PLANILHA, json={"cnpj": EMPRESA}).json() == mei.json()
+
+
+def test_toda_resposta_diz_o_que_a_ficha_traz(cliente, monkeypatch):
+    """Sem prontidão a tela mostra o que vem (os blocos e a fonte de cada um); o corpo é sempre o mesmo."""
+    monkeypatch.setattr(
+        rotas_da_api_externa, "regras_da_api", leitura_de_mentira._sem_prontidao
+    )
+    sem_prontidao = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
+    assert sem_prontidao["o_que_vem"] == leitura.blocos_como_lista()

@@ -183,3 +183,24 @@ def test_permitido_na_tela_usa_o_canal_da_api_externa_nao_o_do_app():
     assert permitido("rfb-cnpj", "razao_social", False)
     # campo fora das linhas de `profiles` nunca sai, mesmo de fonte liberada
     assert not permitido("rfb-cnpj", "telefone", False)
+
+
+# ---------------------------------------------------------------- o que a ficha traz (sem prontidão)
+
+
+def test_blocos_dizem_o_que_a_ficha_traz_e_a_fonte_sem_data_nem_numero():
+    """Diretoria (10/11): sem prontidão, a tela diz o que vem e de onde, sem data prometida nem número."""
+    titulos = [bloco.titulo for bloco in leitura.BLOCOS]
+    assert titulos == ["Cadastro na Receita Federal", "Entregas de balanço à CVM"]
+    for bloco in leitura.BLOCOS:
+        assert bloco.fonte and bloco.o_que_traz.endswith(".")
+        texto = f"{bloco.titulo} {bloco.fonte} {bloco.o_que_traz}"
+        assert not any(caractere.isdigit() for caractere in texto), texto
+
+
+def test_blocos_em_tipos_simples():
+    assert leitura.blocos_como_lista()[0] == {
+        "titulo": "Cadastro na Receita Federal",
+        "fonte": leitura.BLOCOS[0].fonte,
+        "o_que_traz": leitura.BLOCOS[0].o_que_traz,
+    }

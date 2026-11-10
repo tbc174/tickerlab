@@ -199,6 +199,17 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "o_que_mudou",
+        "O que mudou",
+        GRUPO_TOPO,
+        ":material/new_releases:",
+        "O que entrou no app a cada dia, com o link para abrir.",
+        area=AREA_CONTA,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/o-que-mudou", (), "OQueMudouV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "relatorio",
         "Gerar relatório",
         GRUPO_TOPO,

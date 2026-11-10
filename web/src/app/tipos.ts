@@ -999,10 +999,29 @@ export interface FichaDoCnpjV1 {
 }
 
 /** A ficha da empresa (tela do analista, POST /v1/analista/ficha): o estado decide o que a tela mostra. */
+export interface BlocoDaFichaV1 {
+  titulo: string;
+  fonte: string;
+  o_que_traz: string;
+}
+
 export interface FichaDaEmpresaV1 {
   // nao_liberada: o dado ainda não foi liberado; nao_disponivel: a base não serve este CNPJ
   estado: "pronta" | "nao_liberada" | "nao_disponivel";
   ficha: FichaDoCnpjV1 | null;
   fontes: FonteDaFichaV1[];
   limites: string[]; // "Limites e cuidados": sempre presentes
+  o_que_vem: BlocoDaFichaV1[]; // os blocos da ficha e a fonte de cada um, para quando o dado não sai
+}
+
+// O que mudou (linha 804): uma linha por entrega, a mais nova primeiro; url é o endereço da página no app
+export interface EntregaDoDiaV1 {
+  data: string;
+  o_que: string;
+  titulo: string;
+  url: string;
+}
+
+export interface OQueMudouV1 {
+  entregas: EntregaDoDiaV1[];
 }

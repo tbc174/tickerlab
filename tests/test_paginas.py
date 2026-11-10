@@ -195,6 +195,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "admin",
                 "sala_de_dados",
                 "boas_vindas_beta",
+                "o_que_mudou",
             },
         ),
         ("ajuda", {"guia", "termos", "privacidade", "trade"}),
@@ -279,6 +280,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "mapa_do_cafe",
         "painel_do_cafe",
         "boas_vindas_beta",
+        "o_que_mudou",
     }
 
 
