@@ -144,26 +144,37 @@ Pessoas físicas (sócios, MEI, empresários individuais, contatos) **não** sae
 ## 5. Ensaio no PC do Tiago, contra a API local (rede de segurança)
 
 Se a produção não estiver liberada no dia, o mesmo roteiro roda contra a API ligada no próprio PC, com a base local. O
-`tickerlab` só troca o endereço (`TICKERLAB_API_URL`). Passo a passo (PowerShell, na cópia do repositório):
+`tickerlab` só troca o endereço (`TICKERLAB_API_URL`). Tudo vive numa pasta **fora do repositório, do OneDrive e do
+`TickerLab-Acervo`** (no ensaio de 10/11: `C:\Users\tiago\TickerLab-Ensaio`, com `acervo\base`, `dossies\atual`,
+`ensaio.db` e a chave).
 
-```powershell
-$env:TICKERLAB_API_EXTERNA = "1"
-$env:TICKERLAB_ACERVO = "C:\Users\tiago\TickerLab-Acervo"
-$env:TICKERLAB_DOSSIES = "<pasta com a subpasta atual>"   # atual = cópia de acervo\dossies\<último dia>
-$env:TICKERLAB_DATABASE_URL = "sqlite:///ensaio.db"
-python -m alembic upgrade head
-python -m uvicorn src.api:app --port 8765
-```
+1. **Base:** o mesmo recorte que vai ao VPS (`python -m scripts.montar_recorte_da_api --degrau 2`), gerado na VM de casa
+   (a base inteira lá, sem pessoa) e copiado para `<pasta>\acervo\base`. Fichas: a última noite de
+   `acervo\dossies\<dia>` copiada para `<pasta>\dossies\atual`. **Antes de usar, conferir por contagem que não há
+   pessoa** (nenhuma chave de sócio/administrador, nenhum padrão de CPF); achou, para e avisa a Diretoria.
+2. **Banco e chave:** `$env:TICKERLAB_DATABASE_URL = "sqlite:///<pasta>/ensaio.db"` e
+   `python -m scripts.ensaio_local --saida-da-chave <pasta>\chave.txt` (migrações, administrador de ensaio,
+   organização, direitos dos cinco conjuntos e a chave, que só vai para o arquivo).
+3. **Subir a API** com `TICKERLAB_API_EXTERNA=1`, `TICKERLAB_ACERVO=<pasta>\acervo`, `TICKERLAB_DOSSIES=<pasta>\dossies` e
+   `uvicorn src.api:app --port 8765`, **por um lançador fora do repositório** que, antes, preenche
+   `base.prontidao.PRONTIDAO` na memória do processo (uma prova de ensaio por tabela, com `independencia` preenchida: sem
+   ela a prova cruzada não vale). O portão de produção não muda; sem o lançador a API do ensaio responde `sem_prontidao`,
+   como a de produção responde hoje.
+4. `$env:TICKERLAB_API_URL = "http://127.0.0.1:8765"`, `tickerlab login` e o roteiro da seção 3.
 
-Numa segunda janela: criar a organização de ensaio e a chave de ensaio (`scripts/chaves_da_api.py`: `criar-organizacao`,
-`conceder-direito` e `emitir-chave`), então `$env:TICKERLAB_API_URL = "http://127.0.0.1:8765"` e `tickerlab login`.
+**O que responde, rota por rota (ensaio de 10/11/2026, recorte do degrau 2 e fichas de 07/11; cada "sim" vale "com
+prontidão de ensaio", não com a prontidão real da linha 784):**
 
-**O que foi conferido em 10/11/2026 (ensaio de verdade, com a base local de 03/11):** a API sobe, a chave entra, `consumo`
-e a lista de `setor` respondem. **Mas `setor eletricas`, `empresa` e `catalogo` voltam vazios e `demonstracoes` dá erro
-500**, porque o portão da API só libera tabela com as três provas de prontidão (linha 784) e a base local ainda não as
-tem; `demonstracoes` precisa também da tabela de demonstrações no banco local. Para o ensaio funcionar falta: (1) a
-prontidão das tabelas usadas (784), ou regras de ensaio só para o PC do Tiago; (2) a carga local das tabelas de
-Empresas e de demonstrações; (3) a cópia da base de volta ao dia (a cópia diária parou em 03/11).
+| Rota | Resposta | O que a faz responder / falta |
+|---|---|---|
+| `/data/v1/catalog`, `/usage` | sim (200) | só o banco local |
+| `/data/v1/companies/{cnpj}/financials` | sim (200) | `demonstracoes_como_era` do recorte |
+| `/data/v1/sectors` e `/sectors/{setor}` | sim (200; `eletricas` com ~99 KB) | fichas de `dossies/atual` |
+| `/data/v1/funds/{cnpj}` | sim (200), **só a carteira** | CDA do recorte; o **cadastro** (taxas, classe) não sai porque o registro de coletas, que dá a data de publicação, não está no recorte |
+| `/data/v1/companies/{cnpj}` e `/profile` | **não** (404 `not_available`) | espera a carga das tabelas de empresas só-PJ e a vista de estabelecimentos (linha 584) e a contagem de zero pessoa; **não se copia pessoa para destravar** |
+
+Limites do ensaio: roda sem a internet e sem o VPS, mas **depende da VM de casa para refazer a base** (o recorte sai de
+lá). Serve de base para um conector local (linha 570).
 
 ## 6. Para quem coordena
 
