@@ -31,6 +31,7 @@ LIMITADA = exemplo.cnpj(exemplo.LIMITADA)
 FILIAL = exemplo.cnpj(exemplo.LIMITADA, "0002")
 MEI = exemplo.cnpj(exemplo.MEI)
 EMPRESARIO_INDIVIDUAL = exemplo.cnpj(exemplo.EMPRESARIO_INDIVIDUAL)
+PRODUTOR_RURAL = exemplo.cnpj(exemplo.PRODUTOR_RURAL)
 SECOES_DA_FECHADA = [
     "cadastro_da_receita",
     "simples_e_mei",
@@ -196,6 +197,14 @@ def test_empresario_individual_fica_fora_do_que_a_plataforma_mostra(
     assert rel.secoes == [] and rel.avisos == [busca.FORA_DO_QUE_A_PLATAFORMA_MOSTRA]
 
 
+def test_pessoa_com_linha_de_titular_no_quadro_fica_fora(
+    banco, sem_fichas, vista
+) -> None:
+    rel = _buscar(banco, sem_fichas, vista, PRODUTOR_RURAL)
+    assert rel.situacao == busca.FORA
+    assert rel.secoes == [] and rel.avisos == [busca.FORA_DO_QUE_A_PLATAFORMA_MOSTRA]
+
+
 def test_mei_e_ei_com_filial_tambem_ficam_fora(banco, sem_fichas, vista) -> None:
     filial_do_mei = exemplo.cnpj(exemplo.MEI, "0002")
     assert _buscar(banco, sem_fichas, vista, filial_do_mei).situacao == busca.FORA
@@ -254,7 +263,7 @@ def test_desligado_sem_as_linhas_das_fechadas(banco, sem_fichas, vista) -> None:
 def test_rota_nega_mei_e_ei(cliente, banco) -> None:
     with banco.begin() as conexao:
         mudar_plano(conexao, rotas._id_da_ana_no(banco), "pro")
-    for texto in (MEI, EMPRESARIO_INDIVIDUAL):
+    for texto in (MEI, EMPRESARIO_INDIVIDUAL, PRODUTOR_RURAL):
         resposta = cliente.post("/api/v1/busca-por-cnpj", json={"cnpj": texto})
         assert resposta.status_code == 200, resposta.text
         dados = resposta.json()

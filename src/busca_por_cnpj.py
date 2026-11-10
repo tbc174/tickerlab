@@ -54,9 +54,12 @@ FONTE_DO_CADASTRO = (
 SECOES_DO_GRUPO_E_DA_REDE = ("auditor_e_controladas", "rede")
 
 FORA_DO_QUE_A_PLATAFORMA_MOSTRA = (
-    "Este CNPJ está fora do que a plataforma mostra: o TickerLab não exibe cadastro de MEI nem de "
-    "empresário individual, que são dado de pessoa física."
+    "Este CNPJ está fora do que a plataforma mostra. Não aparecer aqui não quer dizer que a empresa "
+    "não exista."
 )
+# qualificações de sócio pessoa física que marcam o CNPJ de uma pessoa: Empresário, Empresário
+# Individual (titular), Produtor Rural e Titular de empresa individual (50, 51, 59, 65 a 68)
+QUALIFICACOES_DE_PESSOA = frozenset({"50", "51", "59", "65", "66", "67", "68"})
 FORA_DA_BASE_ABERTA = "Este CNPJ não está na base do TickerLab. Não aparecer aqui não quer dizer que a empresa não exista."
 DESLIGADO = (
     (
@@ -358,14 +361,21 @@ def e_pessoa_fisica(cadastro: cadastro_da_receita.CadastroDaReceita) -> bool:
     """MEI (hoje ou já foi) ou empresário individual. Na dúvida, é pessoa.
 
     A vista ainda não traz a natureza jurídica; o empresário individual é achado pelo que o marca na
-    Receita: não há quadro de sócios. Quando a vista levar a natureza (213-5 e grupo 4), confira-a aqui.
+    Receita: não há quadro de sócios, ou há só a linha do próprio titular (qualificação de Empresário,
+    Produtor Rural ou Titular). Quando a vista levar a natureza (213-5 e grupo 4), confira-a aqui.
     """
     simples = cadastro.simples
     if simples is not None and (
         _sim(simples.get("optante_mei")) or not pd.isna(simples.get("data_opcao_mei"))
     ):
         return True
-    return cadastro.socios.empty
+    if cadastro.socios.empty:
+        return True
+    socios = cadastro.socios
+    qualificacao = (
+        socios["qualificacao"].fillna("").astype(str).str.strip().str.zfill(2)
+    )
+    return bool(qualificacao.isin(QUALIFICACOES_DE_PESSOA).any())
 
 
 def _sim(valor: object) -> bool:
