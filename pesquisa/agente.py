@@ -20,6 +20,9 @@ from pesquisa.pesquisador import Pesquisador
 
 MAXIMO_DE_PASSOS = 30  # respostas do modelo por rodada; cada uma gasta 1 pedido da cota
 MAXIMO_DA_RESPOSTA_DA_FERRAMENTA = 12_000  # caracteres devolvidos ao modelo por chamada
+FORA_DO_NOME_DE_ARQUIVO = re.compile(
+    r"[^A-Za-z0-9._-]"
+)  # ":" no Windows abre um fluxo NTFS escondido
 CPF = re.compile(r"(?<!\d)(\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})(?!\d)")
 
 INSTRUCOES = """Você é um pesquisador de dados empresariais do TickerLab. A rodada já está aberta com
@@ -116,7 +119,11 @@ class Modelo(Protocol):
     def responder(self, mensagens: list[dict], ferramentas: list[dict]) -> dict: ...
 
 
-class CotaDoModeloEsgotada(Exception):
+class FalhaDoModelo(Exception):
+    """O modelo não respondeu (erro do serviço, 429 que não passou); o agente encerra com o que já tem."""
+
+
+class CotaDoModeloEsgotada(FalhaDoModelo):
     """O modelo não pode mais responder hoje; o agente encerra com o que já tem."""
 
 
@@ -218,6 +225,9 @@ def rodar_agente(
         except CotaDoModeloEsgotada as erro:
             relatorio.parou_por = f"cota do modelo: {erro}"
             return relatorio
+        except FalhaDoModelo as erro:
+            relatorio.parou_por = f"modelo falhou: {erro}"
+            return relatorio
         relatorio.passos += 1
         mensagens.append(mensagem)
         chamadas = mensagem.get("tool_calls") or []
@@ -254,7 +264,8 @@ def escrever_relatorio(relatorio: Relatorio, pasta: Path) -> Path:
     """Grava o relatório em Markdown: confirmados, pendentes e, por último, a conclusão do modelo."""
     pasta.mkdir(parents=True, exist_ok=True)
     carimbo = relatorio.inicio[:19].replace(":", "").replace("-", "")
-    arquivo = pasta / f"rodada-{carimbo}-{relatorio.modelo.replace('/', '_')}.md"
+    modelo = FORA_DO_NOME_DE_ARQUIVO.sub("_", relatorio.modelo)
+    arquivo = pasta / f"rodada-{carimbo}-{modelo}.md"
     confirmados = "\n".join(map(_linha_de_fato, relatorio.confirmados)) or "- nenhum"
     pendentes = (
         "\n".join(

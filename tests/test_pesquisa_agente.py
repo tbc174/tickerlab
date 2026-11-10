@@ -194,6 +194,34 @@ def test_cota_esgotada_no_meio_encerra_com_o_que_ja_tem(tmp_path: Path):
     assert relatorio.parou_por.startswith("cota do modelo")
 
 
+def test_modelo_que_falha_encerra_a_rodada_e_o_relatorio_sai(tmp_path: Path):
+    """Regressão de 10/11/2026: o Gemma grátis seguiu em 429 e a exceção derrubava a rodada sem relatório."""
+
+    class ModeloQueFalha(ModeloRoteirizado):
+        def responder(self, mensagens: list[dict], ferramentas: list[dict]) -> dict:
+            if self.conversas:
+                raise openrouter.ErroDoModelo(
+                    "OpenRouter respondeu 429: Provider returned error"
+                )
+            return super().responder(mensagens, ferramentas)
+
+    relatorio = agente.rodar_agente(
+        HIPOTESE, _pesquisador(tmp_path), ModeloQueFalha(ROTEIRO_COMPLETO)
+    )
+    assert relatorio.parou_por.startswith("modelo falhou: OpenRouter respondeu 429")
+    assert agente.escrever_relatorio(relatorio, tmp_path / "relatorios").is_file()
+
+
+def test_nome_do_relatorio_nao_tem_dois_pontos(tmp_path: Path):
+    """Regressão de 10/11/2026: `modelo:free` no nome virava fluxo NTFS escondido no Windows."""
+    relatorio = agente.Relatorio(
+        HIPOTESE, "nvidia/nemotron-3-ultra:free", "2026-11-10T20:34:24"
+    )
+    arquivo = agente.escrever_relatorio(relatorio, tmp_path)
+    assert arquivo.name == "rodada-20261110T203424-nvidia_nemotron-3-ultra_free.md"
+    assert [p.name for p in tmp_path.iterdir()] == [arquivo.name]
+
+
 # --- OpenRouter ---------------------------------------------------------------------------
 
 

@@ -21,7 +21,7 @@ from typing import Protocol
 
 import requests
 
-from pesquisa.agente import CotaDoModeloEsgotada
+from pesquisa.agente import CotaDoModeloEsgotada, FalhaDoModelo
 
 URL_DO_CHAT = "https://openrouter.ai/api/v1/chat/completions"
 URL_DOS_MODELOS = "https://openrouter.ai/api/v1/models"
@@ -44,7 +44,7 @@ class SemChave(Exception):
     """Falta a chave da OpenRouter (`OPENROUTER_API_KEY` no ambiente ou no `.env`)."""
 
 
-class ErroDoModelo(Exception):
+class ErroDoModelo(FalhaDoModelo):
     """A OpenRouter respondeu com erro; a mensagem leva o status, nunca a chave."""
 
 

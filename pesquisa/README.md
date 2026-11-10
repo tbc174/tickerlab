@@ -73,6 +73,9 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
 - Cada resposta do modelo gasta 1 pedido; a rodada para em 30 respostas (`--passos`).
 - O padrão é `openrouter/free` (o roteador escolhe um modelo grátis de pé). A lista de modelos grátis muda
   toda semana, então é lida na hora (`--listar-modelos`), nunca fixada no código.
+  Na 1ª rodada (10/11/2026) o roteador caiu num modelo que respondeu texto sem sentido (nada foi
+  confirmado, como deve ser) e o `nvidia/nemotron-3-ultra-550b-a55b:free` confirmou o fato em 4 passos:
+  se o padrão falhar, escolha um modelo da lista com `--modelo`.
 - Só dado público de empresa vai à OpenRouter: os provedores dos modelos grátis podem guardar o que recebem.
 - O relatório fica em `<pasta>/relatorios/rodada-<data>-<modelo>.md`.
 
