@@ -196,6 +196,7 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 | `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita (conjunto `companies`) | sim |
 | `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 | `GET /data/v1/companies/{cnpj}/profile` | o perfil da empresa: o cadastro na Receita e as entregas de DFP e ITR à CVM como eram (`profiles`, ver abaixo) | sim, 1 |
+| `GET /data/v1/companies/{cnpj}/comparables` | os pares da companhia aberta no mesmo grupo de setores, com os números do último DFP e a mediana de cada razão (`comparables`, ver abaixo) | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
 | `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
 | `POST /data/v1/funds/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
@@ -246,6 +247,29 @@ que a base a conferiu (a montagem da tabela). A situação e os dias úteis são
 trata como derivado. A dívida com a União (PGFN) fica fora. Sem cadastro no dia, nada sai: o perfil de
 pessoa (MEI, empresário individual) e de quem a rede não conhece é `not_available`. O perfil não traz
 porte, CNAE nem município.
+
+### Comparáveis (`comparables`, linha 736)
+
+Os pares de uma companhia aberta como eram no dia (`conjuntos/comparaveis.py`):
+
+- `sector_group`: o grupo de setores da empresa (o mesmo de `src/setores.py`, que o app usa), pelo setor do
+  último FCA já entregue à CVM (`fca_geral`, como era: a empresa que muda de setor muda de pares no dia da
+  entrega do FCA novo);
+- `subject_company` e `peers`: cada companhia com o cadastro do FCA (`company_name`, `sector`) e os números
+  do último DFP já entregue (`demonstracoes_como_era`, consolidado; sem ele, o individual): `revenue` (DRE
+  3.01), `ebitda` (EBIT mais D&A, a mesma conta de `base/indicadores_de_caixa.py`), `net_income`,
+  `net_assets` (patrimônio líquido), `net_debt` (empréstimos e financiamentos menos caixa e aplicações) e as
+  razões `ebitda_margin`, `net_margin`, `return_on_equity` e `net_debt_to_ebitda` (só com o denominador
+  positivo). Par é quem tem DFP de um exercício que terminou até 18 meses antes do dia; os pares vêm da
+  maior receita para a menor e são cortados no limite de linhas do plano (`truncated`);
+- `peer_medians`: a mediana de cada razão entre todos os pares (sem a empresa pedida), só quando pelo
+  menos 8 pares a têm.
+
+Cada número traz o dia da entrega do DFP; o cadastro, o dia da entrega do FCA. Número que a base não tem
+some, nunca vira zero. EBITDA, dívida líquida, as razões e o grupo de setores são contas nossas; o portão
+os trata como derivado. Bancos e seguradoras têm outro plano de contas: as razões deles não se comparam às
+das outras empresas. Empresa sem FCA no dia, setor que não cai em nenhum grupo, pessoa (MEI, empresário
+individual) e quem a rede não conhece saem `not_available`; par que a rede trata como pessoa não entra.
 
 ### Ficha de crédito (`credit`, linha 754)
 

@@ -419,3 +419,16 @@ def test_sem_base_neste_servidor_da_503(cliente, cenario, monkeypatch):
 
     monkeypatch.setattr(rotas, "abrir_porta", sem_base)
     assert _get(cliente, cenario).status_code == 503
+
+
+def test_404_de_hoje_e_so_a_falta_de_prontidao_da_tabela():
+    """Linha 792: com as regras de verdade o portão nega `/financials` por `sem_prontidao`, não por
+    contrato, marca ou licença; quando a 784 der a prontidão de `demonstracoes_como_era`, a rota abre."""
+    hoje = AGORA.date()
+    for fonte in ("cvm-hist-dfp", "cvm-hist-itr"):
+        pedido = portao.Pedido(
+            fonte, demonstracoes.CONJUNTO, "valor", portao.Canal.API_EXTERNA.value,
+            portao.Finalidade.ANALISE.value,
+        )  # fmt: skip
+        assert portao.decidir(pedido, hoje).motivo is portao.Motivo.SEM_PRONTIDAO
+        assert portao.decidir(pedido, hoje, _regras_das_demonstracoes()).libera

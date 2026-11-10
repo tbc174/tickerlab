@@ -132,6 +132,9 @@ class Tabela:
     # numa tabela de empresas, a coluna booleana que marca as linhas de pessoa natural (empresário
     # individual e MEI, ADR 0075): a porta não serve essas linhas
     linhas_de_pessoa: str = ""
+    # tabela sem a marca acima, mas com linhas de pessoa natural que a rota da API tira (o que são,
+    # por exemplo "raízes de empresário individual e MEI"); só muda o texto do dicionário
+    pessoa_tirada_na_rota: str = ""
     chaves: tuple[str, ...] = ()  # colunas que identificam uma linha
     datas: dict[str, str] = field(
         default_factory=dict
@@ -516,8 +519,9 @@ def _historicos_do_cnpj() -> dict[str, Tabela]:
                 "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, "
                 "com desde quando cada uma era pública: a versão que vale na data D é a última com "
                 "`disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do "
-                "CNPJ; a última versão de cada raiz é conferida com o vigente. Sem dado de pessoa além "
-                "do próprio CNPJ. " + _FINALIDADE_DO_CNPJ
+                "CNPJ; a última versão de cada raiz é conferida com o vigente. A tabela tem as raízes de "
+                "empresário individual e MEI (CNPJ de pessoa natural, `optante_mei`): a rota da API tira "
+                "essas linhas, e a tabela em si não as separa. " + _FINALIDADE_DO_CNPJ
             ),
             fonte=(
                 "Receita Federal: dados abertos do CNPJ, `Simples.zip` (`scripts/montar_historico_do_cnpj.py simples`)"
@@ -536,7 +540,9 @@ def _historicos_do_cnpj() -> dict[str, Tabela]:
                 "social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do "
                 "grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor "
                 "(ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do "
-                "responsável e ente federativo não são lidos. " + _FINALIDADE_DO_CNPJ
+                "responsável e ente federativo não são lidos. A tabela tem as raízes de empresário "
+                "individual (2135) e MEI, com a razão social vazia; a rota da API tira essas linhas. "
+                + _FINALIDADE_DO_CNPJ
             ),
             fonte=(
                 "Receita Federal: dados abertos do CNPJ, `Empresas*.zip` (`scripts/montar_historico_do_cnpj.py empresas`)"
@@ -6630,7 +6636,8 @@ TABELAS: dict[str, Tabela] = {
         descricao=(
             "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, "
             "resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega "
-            "reapresentada fica só na versão mais nova."
+            "reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: "
+            "contagem calculada por ela, não coluna desta tabela."
         ),
         fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
         familia_da_fonte="cvm",
@@ -6819,7 +6826,8 @@ TABELAS: dict[str, Tabela] = {
             'Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recuperação, '
             'em liquidação, intervenção...), um retrato por mês guardado: o histórico "como era na '
             'data" nasce da sequência dos retratos. Nome, endereço, telefone e e-mail nunca entram '
-            "(LGPD)."
+            "(LGPD). A linha do empresário individual, do MEI e da pessoa física (`trata_como_pessoa`, "
+            "ADR 0075) não sai da porta."
         ),
         fonte="Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos",
         familia_da_fonte="rfb-cnpj",
@@ -6857,6 +6865,13 @@ TABELAS: dict[str, Tabela] = {
                     "baixado depois)"
                 ),
                 DATA,
+            ),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                    "Receita guardada no dia da montagem não tem (ADR 0075): a linha não sai da porta"
+                ),
+                SIM_OU_NAO,
             ),
             **_ORIGEM_SEM_ANO,
         },
@@ -7493,7 +7508,8 @@ TABELAS: dict[str, Tabela] = {
     "trocas_de_auditor": Tabela(
         descricao=(
             'Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de '
-            "`auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois)"
+            "`auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca "
+            "com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta."
         ),
         fonte="CVM: dados abertos do FCA, pela tabela `auditores`",
         familia_da_fonte="cvm",
@@ -7516,6 +7532,15 @@ TABELAS: dict[str, Tabela] = {
             "novo": ("Nome da firma nova", TEXTO),
             "anos_com_o_anterior": ("Tempo com a firma anterior", "anos"),
             "id_documento": ("Número na CVM do FCA que mostrou a troca", TEXTO),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro quando o auditor anterior ou o novo vem sem CNPJ de firma (pode ser "
+                    "pessoa física) ou tem a raiz de empresário individual, natureza do grupo 4 ou MEI, "
+                    "ou quando a Receita guardada no dia da montagem não tem a raiz da empresa ou da "
+                    "firma (ADR 0075): a linha não sai da porta"
+                ),
+                SIM_OU_NAO,
+            ),
             "montado_em": ("Quando a tabela foi montada", MOMENTO),
             "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
@@ -7835,7 +7860,8 @@ TABELAS: dict[str, Tabela] = {
     ),
     "rotulos_atraso": Tabela(
         descricao=(
-            "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, "
+            "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030; a rota da API acrescenta "
+            "`situacao_da_entrega`, campo calculado por ela, não coluna desta tabela): uma linha por companhia, "
             "documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. "
             "Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa "
             "no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o "
@@ -9254,15 +9280,15 @@ _CONTRATO = {
     "proventos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro; 3.0.0 (17/10/2026): uma linha por versão da entrega
-    "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): público desde `disponivel_em`, não do mês do arquivo
+    "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="2.1.0"),  # 2.0.0 (17/10/2026): público desde `disponivel_em`, não do mês do arquivo; 2.1.0 (10/11/2026): `trata_como_pessoa`, e a porta deixa de servir a linha de pessoa natural (linha 787, ADR 0075)
     "cnpj_situacao_cadastral": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_cadastral", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj",), datas={"aconteceu_em": "data_situacao_cadastral"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
@@ -9434,7 +9460,7 @@ _CONTRATO = {
     "securitizacao_cedente_devedor": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_securitizadora", "codigo_certificado", "papel", "cnpj", "versao"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2019-01-01"),
     "notas_dfp": _contrato(modulo=_ME, pessoa=True, chaves=("cnpj", "referencia", "versao", "pagina"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "fca_geral": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
-    "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "trocas_de_auditor": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),  # 1.1.0 (10/11/2026): `trata_como_pessoa`, e a porta deixa de servir a troca com auditor que pode ser pessoa física (linha 789, ADR 0075)
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "bcb_selic_focus": _contrato(modulo="macro", chaves=("serie", "referencia", "divulgado_em"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "release_x_oficial": _contrato(modulo=_ME, chaves=("protocolo", "linha", "periodo_lido", "leitura"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "montado_em"}, historico_desde=_CVM),
@@ -9749,6 +9775,17 @@ def _datas_em_texto(tabela: Tabela) -> str:
     )
 
 
+def _dado_de_pessoa(tabela: Tabela) -> str:
+    """ "sim", "não", ou "sim em casa" quando a porta tira por linha as marcadas (`linhas_de_pessoa`)."""
+    if tabela.pessoa:
+        return "sim"
+    if tabela.pessoa_tirada_na_rota:
+        return f"sim em casa ({tabela.pessoa_tirada_na_rota}); a rota da API tira essas linhas"
+    if tabela.linhas_de_pessoa:
+        return f"sim em casa (linhas com `{tabela.linhas_de_pessoa}`); o recorte da API e a porta as tiram"
+    return "não"
+
+
 def _tabela_em_markdown(nome: str, tabela: Tabela) -> list[str]:
     linhas = [
         f"## `{nome}`",
@@ -9765,7 +9802,7 @@ def _tabela_em_markdown(nome: str, tabela: Tabela) -> list[str]:
         ),
         f"- **Frequência:** {tabela.frequencia}",
         f"- **Atraso de divulgação:** {tabela.atraso}",
-        f"- **Módulo:** {tabela.modulo} · **Contém dado de pessoa:** {'sim' if tabela.pessoa else 'não'}",
+        f"- **Módulo:** {tabela.modulo} · **Contém dado de pessoa:** {_dado_de_pessoa(tabela)}",
         *(
             [
                 (

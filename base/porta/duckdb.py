@@ -33,7 +33,9 @@ from base.contrato import PASTA as PASTA_DOS_CONTRATOS
 from base.contrato import versao_em_numeros
 from base.dicionario import TABELAS, Tabela
 from base.parquet import VERSAO_GUARDADA
+from base.rede.ids import PREFIXO_DE_PESSOA
 from base.rede.ligacoes import VIGENTE
+from base.rede.vistas import TIPOS_NEGATIVOS
 
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parents[2]
 APELIDOS = ("aconteceu_em", "publico_em", "coletado_em")
@@ -315,6 +317,91 @@ def _sem_as_linhas_de_pessoa(select: str, tabela: Tabela, colunas: list[str]) ->
     return f"{select} WHERE NOT coalesce({_nome(tabela.linhas_de_pessoa)}, true)"
 
 
+# --- a rede sem pessoa (linha 787; ADR 0075 e `base/rede/vistas.py`) ------------------------------
+SEM_EMPRESAS = "SELECT CAST(NULL AS VARCHAR) AS id_entidade WHERE false"
+
+
+def _empresas_da_rede(con: duckdb.DuckDBPyConnection, fontes: Mapping[str, str]) -> str:
+    """SQL com os `id_entidade` que a rede diz que não são pessoa. Sem a tabela de entidades, ou sem a
+    marca nela, nenhum: na dúvida, é pessoa."""
+    fonte = fontes.get("entidades")
+    if fonte is None or not {"id_entidade", "trata_como_pessoa"} <= set(
+        _colunas(con, fonte)
+    ):
+        return SEM_EMPRESAS
+    return (
+        f"SELECT id_entidade FROM {fonte} "
+        "WHERE id_entidade IS NOT NULL AND NOT coalesce(trata_como_pessoa, true)"
+    )
+
+
+def _sem_nome_de_pessoa(select: str, colunas: list[str]) -> str:
+    """`entidades`: a linha fica (é ela que diz que o id é de pessoa), o nome de quem é tratado como
+    pessoa sai. Sem a marca no arquivo, nenhum nome sai."""
+    if "nome" not in colunas:
+        return select
+    nome = (
+        "CASE WHEN coalesce(trata_como_pessoa, true) THEN NULL ELSE nome END"
+        if "trata_como_pessoa" in colunas
+        else "NULL"
+    )
+    return f"SELECT * REPLACE (CAST({nome} AS VARCHAR) AS nome) FROM ({select})"
+
+
+SISTEMAS_DE_CNPJ = ("cnpj_raiz", "cnpj")
+TAMANHO_DA_RAIZ = 8  # a raiz do CNPJ: os 8 primeiros dígitos
+
+
+def _sem_ids_de_pessoa(select: str, colunas: list[str]) -> str:
+    """`identificadores` sem o id de pessoa (P..., só da vista interna; o hash sai do CPF). O CNPJ de
+    quem é tratado como pessoa fica, porque é por ele que as rotas, o crédito e a API externa sabem
+    que aquele CNPJ é de pessoa (sem a linha, o "não achou" viraria empresa):
+
+    - leva à entidade E marcada (MEI, EI), que sai sem o nome; o id E não esconde ninguém (é o
+      SHA-256 da raiz);
+    - se leva a uma pessoa da rede, o id sai sem o hash: `P` e a raiz da própria linha (um por
+      raiz, para que a rede de uma pessoa não junte os CNPJs de todas).
+
+    Outro identificador de pessoa (CPF, por exemplo) não sai. Sem o `id_entidade` ou o `sistema`
+    no arquivo, nenhum."""
+    if not {"id_entidade", "sistema"} <= set(colunas):
+        return f"{select} WHERE false"
+    pessoa = _texto(PREFIXO_DE_PESSOA)
+    de_cnpj = ", ".join(_texto(s) for s in SISTEMAS_DE_CNPJ)
+    return (
+        f"SELECT * REPLACE (CASE WHEN starts_with(id_entidade, {pessoa}) "
+        f"THEN {pessoa} || left(valor, {TAMANHO_DA_RAIZ}) "
+        f"ELSE id_entidade END AS id_entidade) FROM ({select}) "
+        f"WHERE NOT starts_with(id_entidade, {pessoa}) OR sistema IN ({de_cnpj})"
+    )
+
+
+def _ligacoes_publicadas(select: str, colunas: list[str], empresas: str) -> str:
+    """`ligacoes` como a vista publicada (`base/rede/vistas.py::vista_publicada`): sem ponta vazia,
+    sem aresta de pessoa e sem sinal negativo sobre quem não é empresa. Sem as pontas ou o tipo no
+    arquivo, nenhuma (não dá para saber quem é pessoa)."""
+    if not {"de", "para", "tipo"} <= set(colunas):
+        return f"{select} WHERE false"
+    pessoa = _texto(PREFIXO_DE_PESSOA)
+    negativos = ", ".join(_texto(t) for t in TIPOS_NEGATIVOS)
+    return (
+        f"SELECT * FROM ({select}) WHERE de IS NOT NULL AND para IS NOT NULL "
+        f"AND NOT starts_with(de, {pessoa}) AND NOT starts_with(para, {pessoa}) "
+        f"AND (coalesce(tipo NOT IN ({negativos}), true) OR de IN ({empresas}))"
+    )
+
+
+def _rede_sem_pessoa(nome: str, select: str, colunas: list[str], empresas: str) -> str:
+    """O que a porta serve das três tabelas da rede: nada que seja pessoa, para quem quer que leia."""
+    if nome == "entidades":
+        return _sem_nome_de_pessoa(select, colunas)
+    if nome == "identificadores":
+        return _sem_ids_de_pessoa(select, colunas)
+    if nome == "ligacoes":
+        return _ligacoes_publicadas(select, colunas, empresas)
+    return select
+
+
 def _contratos_congelados(pasta: Path, nome: str) -> dict[int, dict]:
     congelados = {}
     for arquivo in pasta.glob(f"v*/{nome}.json"):
@@ -454,14 +541,20 @@ def conectar(
         for nome, tabela in (extras or {}).items():
             con.register(f"_extra_{nome}", tabela)
             fontes[nome] = _nome(f"_extra_{nome}")
+        empresas = _empresas_da_rede(con, fontes)
         for nome, fonte in fontes.items():
             if nome not in tabelas:
                 continue
             colunas = _colunas(con, fonte)
-            select = _sem_as_linhas_de_pessoa(
-                _select_com_apelidos(nome, tabelas[nome], colunas, fonte),
-                tabelas[nome],
+            select = _rede_sem_pessoa(
+                nome,
+                _sem_as_linhas_de_pessoa(
+                    _select_com_apelidos(nome, tabelas[nome], colunas, fonte),
+                    tabelas[nome],
+                    colunas,
+                ),
                 colunas,
+                empresas,
             )
             con.execute(f"CREATE VIEW {_nome(nome)} AS {select}")
             _views_das_versoes(con, nome, tabelas[nome], contratos)

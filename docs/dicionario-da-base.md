@@ -2116,7 +2116,7 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital informados no 
 
 ## `eventos`
 
-Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega reapresentada fica só na versão mais nova.
+Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: contagem calculada por ela, não coluna desta tabela.
 
 - **Fonte:** CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -2305,18 +2305,19 @@ Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falên
 
 ## `cnpj_situacao_especial`
 
-Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado: o histórico "como era na data" nasce da sequência dos retratos. Nome, endereço, telefone e e-mail nunca entram (LGPD).
+Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado: o histórico "como era na data" nasce da sequência dos retratos. Nome, endereço, telefone e e-mail nunca entram (LGPD). A linha do empresário individual, do MEI e da pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta.
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
 - **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)
 - **Atraso de divulgação:** A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj`, `mes_do_retrato`
 - **Três datas:** aconteceu_em = `data_situacao_especial`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 2.0.0
+- **Versão do contrato:** 2.1.0
 - **Onde fica:** Parquet em `<acervo>/base/cnpj_situacao_especial/<AAAA-MM>.parquet` (servidor de casa)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -2330,6 +2331,7 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 | `data_situacao_especial` | Data da situação especial informada | data (dia) |
 | `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
 | `disponivel_em` | Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo baixado depois) | data (dia) |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada no dia da montagem não tem (ADR 0075): a linha não sai da porta | verdadeiro ou falso |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
@@ -2603,7 +2605,7 @@ O que mudou de um mês para o outro em `cnpj_qsa`: uma linha por entrada, saída
 
 ## `cnpj_simples_historico`
 
-Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com `disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do CNPJ; a última versão de cada raiz é conferida com o vigente. Sem dado de pessoa além do próprio CNPJ. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com `disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do CNPJ; a última versão de cada raiz é conferida com o vigente. A tabela tem as raízes de empresário individual e MEI (CNPJ de pessoa natural, `optante_mei`): a rota da API tira essas linhas, e a tabela em si não as separa. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ, `Simples.zip` (`scripts/montar_historico_do_cnpj.py simples`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
@@ -2611,7 +2613,7 @@ Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão de
 - **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
 - **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
 - **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (raízes de empresário individual e MEI); a rota da API tira essas linhas
 - **Chaves:** `cnpj_basico`, `mes_do_retrato`
 - **Três datas:** publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
@@ -2637,7 +2639,7 @@ Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão de
 
 ## `cnpj_empresas_historico`
 
-Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública. Montada mês a mês dos `Empresas*.zip`. **A razão social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor (ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do responsável e ente federativo não são lidos. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública. Montada mês a mês dos `Empresas*.zip`. **A razão social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor (ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do responsável e ente federativo não são lidos. A tabela tem as raízes de empresário individual (2135) e MEI, com a razão social vazia; a rota da API tira essas linhas. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ, `Empresas*.zip` (`scripts/montar_historico_do_cnpj.py empresas`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
@@ -2645,7 +2647,7 @@ Natureza jurídica e razão social de cada empresa, versão por versão desde 05
 - **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
 - **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
 - **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (raízes de empresário individual e MEI); a rota da API tira essas linhas
 - **Chaves:** `cnpj_basico`, `mes_do_retrato`
 - **Três datas:** publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
@@ -2738,7 +2740,7 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 - **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)
 - **Atraso de divulgação:** O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj`, `tipo_divida`, `regiao`, `tipo_devedor`, `tipo_situacao`, `situacao_inscricao`, `ajuizado`, `data_do_retrato`
 - **Três datas:** aconteceu_em = `data_do_retrato`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
@@ -5186,18 +5188,19 @@ Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registr
 
 ## `trocas_de_auditor`
 
-Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois)
+Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta.
 
 - **Fonte:** CVM: dados abertos do FCA, pela tabela `auditores`
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Refeita a cada montagem de `auditores`
 - **Atraso de divulgação:** A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)
-- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj`, `efetiva_em`, `novo_id`
 - **Três datas:** aconteceu_em = `efetiva_em`; publico_em = `conhecido_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/trocas_de_auditor/trocas.parquet` (servidor de casa)
 - **Linhagem:** `id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do original); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -5213,6 +5216,7 @@ Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `a
 | `novo` | Nome da firma nova | texto |
 | `anos_com_o_anterior` | Tempo com a firma anterior | anos |
 | `id_documento` | Número na CVM do FCA que mostrou a troca | texto |
+| `trata_como_pessoa` | Verdadeiro quando o auditor anterior ou o novo vem sem CNPJ de firma (pode ser pessoa física) ou tem a raiz de empresário individual, natureza do grupo 4 ou MEI, ou quando a Receita guardada no dia da montagem não tem a raiz da empresa ou da firma (ADR 0075): a linha não sai da porta | verdadeiro ou falso |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
@@ -5434,7 +5438,7 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 
 ## `rotulos_atraso`
 
-Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o documento que a empresa devia: registrada e ativa no cadastro da CVM na data do prazo. Ficam de fora o que ela manda para pedir o registro (prazo antes do primeiro registro ou entre dois registros), o que manda depois do cancelamento e o das empresas fora do cadastro (quase todas emissores estrangeiros); o manifesto conta quantos ficaram de fora, por motivo (`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
+Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030; a rota da API acrescenta `situacao_da_entrega`, campo calculado por ela, não coluna desta tabela): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o documento que a empresa devia: registrada e ativa no cadastro da CVM na data do prazo. Ficam de fora o que ela manda para pedir o registro (prazo antes do primeiro registro ou entre dois registros), o que manda depois do cancelamento e o das empresas fora do cadastro (quase todas emissores estrangeiros); o manifesto conta quantos ficaram de fora, por motivo (`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
 
 - **Fonte:** CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
