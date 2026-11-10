@@ -20,8 +20,9 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
      período, com documento, versão e data de entrega.
    - `tickerlab fundo <cnpj> [--retorno-suposto 0.12] --json`: cadastro, taxas e carteira do fundo (CVM).
    - `tickerlab prospectar --cnae 3511 --uf SP [--porte demais] [--aberta-antes AAAA-MM-DD] --json`: empresas do
-     cadastro da Receita por atividade, lugar, porte e idade (pelo menos um filtro; só empresa, sem sócio nem
-     contato). `next_cursor` preenchido: há mais páginas; `--todas` busca todas (um pedido por página).
+     cadastro da Receita por atividade, lugar, porte e idade (pelo menos um filtro além da situação; os filtros
+     repetem, até 50 valores; `--municipio` é o nome ou o código da Receita, não o do IBGE; só empresa, sem sócio
+     nem contato). `next_cursor` preenchido: há mais páginas; `--todas` busca todas (um pedido por página).
    - `tickerlab setor --json`: os setores disponíveis (não gasta a quota); `tickerlab setor <chave> --json`:
      mercado, CR4, HHI e faixa do CADE por ano, a fatia de cada companhia aberta e as `notes` de método (leia
      antes de concluir sobre concentração).
