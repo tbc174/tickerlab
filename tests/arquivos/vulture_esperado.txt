@@ -175,7 +175,6 @@ src/commodities/cafe/painel.py: unused variable 'vendidos_lotes' (60% confidence
 src/comps_por_transacao.py: unused variable 'alvo_cnpj' (60% confidence)
 src/credito/dossie.py: unused variable 'referente_a' (60% confidence)
 src/divida/capacidade.py: unused variable 'choque_na_taxa_em_pb' (60% confidence)
-src/divida/capacidade.py: unused variable 'hipotese' (60% confidence)
 src/divida/cenarios.py: unused variable 'total_das_parcelas' (60% confidence)
 src/divida/instrumentos.py: unused variable 'emissor_nome' (60% confidence)
 src/divida/instrumentos.py: unused variable 'numero_da_emissao' (60% confidence)
