@@ -191,8 +191,10 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 |---|---|---|
 | `GET /data/v1/catalog` | o que esta chave pode pedir hoje: conjuntos, campos, licença e atribuição de cada fonte | não |
 | `GET /data/v1/usage` | o consumo do mês da organização e o que falta da quota | não |
+| `GET /data/v1/credit/{cnpj}` | a ficha de crédito da empresa como era em `known_at` (só fatos, ver abaixo) | sim, 1 |
+| `POST /data/v1/credit/batch` | a mesma ficha para até 100 CNPJs, com o status de cada um | sim, 1 por CNPJ |
 
-As duas contam no limite do minuto. Endereços, campos e códigos saem em **inglês**; as tabelas e o
+Todas contam no limite do minuto (o lote conta 1). Endereços, campos e códigos saem em **inglês**; as tabelas e o
 código continuam em português, e a tradução mora num lugar só (`nomes.py`): um nome sem tradução não
 sai.
 
@@ -207,3 +209,16 @@ e 1 no limite do minuto, e devolve o lote inteiro com 429 se ele não couber (`l
 | 401 | chave ausente, errada ou revogada, ou organização suspensa (`invalid_api_key`) |
 | 404 | API externa desligada |
 | 429 | limite do minuto (`rate_limited`) ou quota do mês (`monthly_quota_exceeded`) |
+
+### Ficha de crédito (`credit`, linha 754)
+
+Os fatos públicos de uma empresa que um FIDC ou uma plataforma de duplicatas consulta sobre o cedente
+e o sacado: a situação na Receita e a situação especial, os fatos relevantes dos últimos 12 meses na
+CVM e a presença como cedente nos FIDCs (informe mensal da CVM). Cada fato sai no envelope, com a fonte
+e o dia em que ficou público; nada publicado depois de `known_at` entra. O contrato precisa do conjunto
+`credit` com a finalidade `credito` (um contrato de análise não abre a ficha).
+
+Ficam fora, na leitura mais estreita: os resultados das regras de elegibilidade (sobre quem emite valor
+mobiliário seria opinião de crédito, que é de agência registrada: Resolução CVM 9/2020, art. 1º),
+rating, insolvência, o SCR (só agregado) e as fontes cujas marcas não deixam redistribuir. Pessoa
+natural (MEI, empresário individual) e CNPJ que a rede não conhece saem `not_available`.
