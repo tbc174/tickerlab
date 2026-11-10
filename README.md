@@ -35,7 +35,7 @@ original.
 | Parte | O que é | Para quem |
 |---|---|---|
 | **Base de dados por CNPJ** | os arquivos oficiais guardados com o hash de cada um, em tabelas "como eram na data": uma consulta a um dia nunca enxerga o que só foi publicado depois | a origem de tudo o que vem abaixo |
-| **API e CLI de dados** (TickerLab Data) | a mesma base por HTTP (`/data/v1`) e no terminal (`tickerlab empresa <cnpj>`), para sistemas e agentes de IA: perfil, demonstrações, comparáveis, setor, fundos e busca de empresas | quem integra dados ou faz prospecção e análise por CNPJ |
+| **API e CLI de dados** (TickerLab Data) | a mesma base por HTTP (`/data/v1`) e no terminal (`tickerlab empresa <cnpj>`), para sistemas e agentes de IA: perfil, demonstrações, setor, fundos e busca de empresas (e, só pela API, os comparáveis) | quem integra dados ou faz prospecção e análise por CNPJ |
 | **App de análise e backtest** | relatório da empresa e do setor, Research com os fatos da CVM e da SEC, carteira, relatórios em PDF e teste de estratégias com dados do passado | quem analisa empresas e ativos |
 | **Site público** | o produto, as fontes da base uma a uma, 14 ferramentas grátis, o pregão do dia e os estudos abertos | qualquer pessoa, sem login |
 
@@ -72,7 +72,7 @@ Guia completo: [`docs/cli.md`](docs/cli.md) e [`docs/api/README.md`](docs/api/RE
 | App (`app.tickerlab.com.br`) | no ar, em fase de testes, com beta por convite: as telas novas em React na raiz e as demais na versão clássica (Streamlit), em `/classico/` |
 | Site e documentação da API (`api.tickerlab.com.br`) | no ar: a página da TickerLab Data e a documentação das rotas |
 | API externa de dados (`/data/v1`) | pronta no código e **desligada em produção**; liga com `TICKERLAB_API_EXTERNA=1` |
-| API de leitura do app (`/api/v1`) | pronta e **desligada em produção**; no ar só as rotas públicas que o site usa, sem login e sem preço bruto |
+| API de leitura do app (`/api/v1`) | no ar: serve as telas novas do app, com login e sem preço bruto |
 | CLI `tickerlab` | instalável a partir deste repositório; ainda não publicada em índice de pacotes |
 | Cobrança | Stripe **só em modo de teste**: nenhum pagamento real é feito |
 | Base de dados | em construção contínua, com coletas diárias e âncora no Bitcoin toda noite |
@@ -86,9 +86,9 @@ Contados no repositório em 10/11/2026.
 |:---:|:---:|:---:|:---:|:---:|
 | no catálogo da base, com contrato versionado | na página Dados do site, 46 já em uso numa tela, relatório ou API | acompanhados pelo arquivista | no mapa de `src/paginas.py` | calculadoras e simuladores no site |
 
-| 12 estratégias | ~1.700 ativos | 800 arquivos de teste | 44 migrações | mais de 980 pull requests |
+| 12 estratégias | ~1.700 ativos | mais de 800 arquivos de teste | 45 migrações | mais de 940 pull requests mesclados |
 |:---:|:---:|:---:|:---:|:---:|
-| tendência e reversão, com custos e stops | na busca: B3, S&P 500, índices, cripto e câmbio | mais de 11 mil funções de teste (mais de 14 mil casos, contados em 05/11/2026) | do banco, de 0001 a 0046 (Alembic) | desde 10/10/2026, cada um com CI verde |
+| tendência e reversão, com custos e stops | na busca: B3, S&P 500, índices, cripto e câmbio | mais de 11 mil funções de teste (mais de 14 mil casos, contados em 05/11/2026) | do banco, de 0001 a 0047 (Alembic) | desde 11/10/2026; hoje nada entra sem CI verde |
 
 ## A base de dados
 
@@ -117,8 +117,8 @@ cada original e responde como os dados **eram** em qualquer data.
 
 ## API e CLI de dados (TickerLab Data)
 
-Um serviço FastAPI (`src/api.py`) com duas APIs, as duas desligadas em produção até a decisão do
-autor:
+Um serviço FastAPI (`src/api.py`) com duas APIs: a de leitura está no ar, servindo o app; a
+externa fica desligada em produção até a decisão do autor.
 
 - **API externa (`/data/v1`)**, para quem integra. A organização entra por uma chave no cabeçalho
   (na URL, o pedido é recusado), com quota do mês e limite por minuto. Cada campo sai num envelope
@@ -218,7 +218,7 @@ tendência, depois de custos e descontando a sorte de testar muitas ideias?**
 
 ## Qualidade e testes
 
-- **Mais de 14 mil testes** (pytest) em 800 arquivos, com **PostgreSQL 16 de verdade**, repartidos
+- **Mais de 14 mil testes** (pytest) em mais de 800 arquivos, com **PostgreSQL 16 de verdade**, repartidos
   em 5 máquinas no GitHub Actions. O CI falha se a cobertura ficar abaixo de **85%** (`.coveragerc`).
 - **Estilo, tipos e código morto:** `ruff`, `pyright` e `vulture` em todo commit.
 - **Testes "golden":** guardam os números da análise, das estratégias e da carteira; um número que
@@ -281,10 +281,12 @@ Segredos nunca vão para o Git: ficam em `.env` (modelo em `.env.example`) e em
 O `compose.yaml` sobe dois serviços com a mesma imagem (a que usa o `requirements-prod.txt`):
 `tickerlab` (o app) e `tickerlab-api` (FastAPI). As portas ficam só em `127.0.0.1`; o acesso de
 fora chega por um túnel, sem nenhuma porta aberta para a internet. As migrações do Alembic são
-aplicadas quando o contêiner sobe.
+aplicadas quando o contêiner sobe. O PostgreSQL não está no `compose.yaml`: ele fica numa rede Docker
+externa chamada `db`, que precisa existir antes.
 
 ```bash
 mkdir -p dados_locais && touch .streamlit/secrets.toml
+docker network create db   # só na primeira vez; o PostgreSQL entra nesta rede
 docker compose up -d --build
 ```
 
@@ -347,8 +349,8 @@ Actions. Na pesquisa: scikit-learn, LightGBM, statsmodels, PyTorch (CPU) e o pac
 Para uma avaliação justa, o que ainda **não** está pronto:
 
 - **Sem receita:** a cobrança está em modo de teste.
-- **APIs desligadas em produção:** a externa e a de leitura estão prontas no código e esperam a
-  decisão de ligar.
+- **API externa desligada em produção:** a `/data/v1` está pronta no código e espera a decisão de
+  ligar. A de leitura (`/api/v1`) já serve o app.
 - **App em migração:** parte das páginas ainda está no Streamlit (a versão clássica).
 - **Base em construção:** sem a carga do histórico completo do COTAHIST da B3; os intradiários são
   só para pesquisa e não aparecem no app.
