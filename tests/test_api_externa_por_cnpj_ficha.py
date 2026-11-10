@@ -153,6 +153,12 @@ def test_depois_da_entrega_vale_o_rotulo_da_tabela(pasta):
     assert itr_2025["situacao_da_entrega"] == ficha.NO_PRAZO
 
 
+def test_atraso_que_nao_e_grave_nem_zona_cinzenta_sai_como_late(tmp_path):
+    atrasou = [("ITR", "2023-09-30", "2023-11-14", "2023-11-24", 8, True, False, False)]
+    entregas = _corpo(_base(tmp_path, _rotulos(atrasou)))["entregas"]
+    assert [_valores(e)["situacao_da_entrega"] for e in entregas] == [ficha.ATRASOU]
+
+
 def test_falta_so_sai_ate_o_dia_em_que_a_base_conferiu(pasta):
     """A tabela foi montada em 01/10/2025: o ITR que nunca veio não ganha falta datada depois disso."""
     entregas = [_valores(e) for e in _corpo(pasta, dia=date(2026, 6, 30))["entregas"]]

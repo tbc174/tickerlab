@@ -244,8 +244,8 @@ Sem olhar o futuro: a entrega que só aconteceu depois de `known_at` sai `not_fi
 os dias úteis contam até o dia pedido; a falta de um documento vale pelo prazo e só conta até o dia em
 que a base a conferiu (a montagem da tabela). A situação e os dias úteis são contas nossas; o portão as
 trata como derivado. A dívida com a União (PGFN) fica fora. Sem cadastro no dia, nada sai: o perfil de
-pessoa (MEI, empresário individual) e de quem a rede não conhece é `not_available`. O porte, o CNAE e o
-município entram quando as tabelas da linha 584 chegarem à `main`.
+pessoa (MEI, empresário individual) e de quem a rede não conhece é `not_available`. O perfil não traz
+porte, CNAE nem município.
 
 ### Ficha de crédito (`credit`, linha 754)
 
