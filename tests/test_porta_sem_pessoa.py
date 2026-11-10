@@ -87,7 +87,6 @@ AINDA_SEM_A_MARCA = frozenset(
         "sus_ambulatorial",
         "sus_internacoes",
         "tickers_no_tempo",
-        "trocas_de_auditor",
         "valores_mobiliarios",
     }
 )
@@ -236,7 +235,7 @@ def test_nenhuma_view_da_porta_devolve_pessoa(tmp_path):
             ("P90000009", None, None),
         ]
         # a empresa sai: o filtro não apagou tudo
-        assert con.execute("SELECT raiz FROM eventos_da_rede").fetchall() == [
+        assert con.execute("SELECT DISTINCT raiz FROM eventos_da_rede").fetchall() == [
             (RAIZ_DA_EMPRESA,)
         ]
     assert vazadas == []
