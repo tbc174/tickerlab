@@ -346,14 +346,40 @@ def _sem_nome_de_pessoa(select: str, colunas: list[str]) -> str:
     return f"SELECT * REPLACE (CAST({nome} AS VARCHAR) AS nome) FROM ({select})"
 
 
-def _so_de_empresas(select: str, empresas: str) -> str:
-    """`identificadores`: só os de quem a rede diz que é empresa (o CNPJ do MEI é a pessoa)."""
-    return f"SELECT * FROM ({select}) WHERE id_entidade IN ({empresas})"
+SISTEMAS_DE_CNPJ = ("cnpj_raiz", "cnpj")
+TAMANHO_DA_RAIZ = 8  # a raiz do CNPJ: os 8 primeiros dígitos
 
 
-def _ligacoes_publicadas(select: str, empresas: str) -> str:
+def _sem_ids_de_pessoa(select: str, colunas: list[str]) -> str:
+    """`identificadores` sem o id de pessoa (P..., só da vista interna; o hash sai do CPF). O CNPJ de
+    quem é tratado como pessoa fica, porque é por ele que as rotas, o crédito e a API externa sabem
+    que aquele CNPJ é de pessoa (sem a linha, o "não achou" viraria empresa):
+
+    - leva à entidade E marcada (MEI, EI), que sai sem o nome; o id E não esconde ninguém (é o
+      SHA-256 da raiz);
+    - se leva a uma pessoa da rede, o id sai sem o hash: `P` e a raiz da própria linha (um por
+      raiz, para que a rede de uma pessoa não junte os CNPJs de todas).
+
+    Outro identificador de pessoa (CPF, por exemplo) não sai. Sem o `id_entidade` ou o `sistema`
+    no arquivo, nenhum."""
+    if not {"id_entidade", "sistema"} <= set(colunas):
+        return f"{select} WHERE false"
+    pessoa = _texto(PREFIXO_DE_PESSOA)
+    de_cnpj = ", ".join(_texto(s) for s in SISTEMAS_DE_CNPJ)
+    return (
+        f"SELECT * REPLACE (CASE WHEN starts_with(id_entidade, {pessoa}) "
+        f"THEN {pessoa} || left(valor, {TAMANHO_DA_RAIZ}) "
+        f"ELSE id_entidade END AS id_entidade) FROM ({select}) "
+        f"WHERE NOT starts_with(id_entidade, {pessoa}) OR sistema IN ({de_cnpj})"
+    )
+
+
+def _ligacoes_publicadas(select: str, colunas: list[str], empresas: str) -> str:
     """`ligacoes` como a vista publicada (`base/rede/vistas.py::vista_publicada`): sem ponta vazia,
-    sem aresta de pessoa e sem sinal negativo sobre quem não é empresa."""
+    sem aresta de pessoa e sem sinal negativo sobre quem não é empresa. Sem as pontas ou o tipo no
+    arquivo, nenhuma (não dá para saber quem é pessoa)."""
+    if not {"de", "para", "tipo"} <= set(colunas):
+        return f"{select} WHERE false"
     pessoa = _texto(PREFIXO_DE_PESSOA)
     negativos = ", ".join(_texto(t) for t in TIPOS_NEGATIVOS)
     return (
@@ -368,9 +394,9 @@ def _rede_sem_pessoa(nome: str, select: str, colunas: list[str], empresas: str) 
     if nome == "entidades":
         return _sem_nome_de_pessoa(select, colunas)
     if nome == "identificadores":
-        return _so_de_empresas(select, empresas)
+        return _sem_ids_de_pessoa(select, colunas)
     if nome == "ligacoes":
-        return _ligacoes_publicadas(select, empresas)
+        return _ligacoes_publicadas(select, colunas, empresas)
     return select
 
 

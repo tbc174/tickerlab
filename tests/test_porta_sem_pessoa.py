@@ -3,7 +3,8 @@
 Duas travas:
 
 - **o comportamento:** um acervo de mentira com MEI, empresário individual, natureza não informada e
-  pessoa na rede (todos fictícios); nenhuma view da conexão devolve a raiz, o nome ou o id da pessoa;
+  pessoa na rede (todos fictícios); nenhuma view da conexão devolve a raiz, o nome ou o id da pessoa
+  (a raiz do MEI só nos `identificadores`, levando à entidade marcada e sem nome);
 - **o contrato:** toda tabela da consulta em lote (`pode_consultar`) com coluna de CNPJ tem a marca de
   pessoa (`linhas_de_pessoa`), é da rede (filtrada na porta) ou está no inventário congelado abaixo, que
   a fila 789 confere uma a uma. O inventário só encolhe: tabela nova sem a marca falha aqui.
@@ -17,6 +18,7 @@ import pytest
 
 from base.dicionario import TABELAS
 from base.dossie import pode_consultar
+from base.porta import Porta
 from base.porta.duckdb import ARQUIVOS, conectar
 
 RAIZ_DO_MEI, RAIZ_SEM_MARCA, RAIZ_DA_EMPRESA = "90000001", "90000002", "12345678"
@@ -166,7 +168,7 @@ def _gravar_acervo_com_pessoa(pasta: Path) -> None:
             }
         ),
     )
-    donos = [EMPRESA_A, ENTIDADE_MEI, SEM_NATUREZA]
+    donos = [EMPRESA_A, ENTIDADE_MEI, SEM_NATUREZA, PESSOA]
     _gravar(
         pasta,
         ARQUIVOS["identificadores"],
@@ -174,11 +176,17 @@ def _gravar_acervo_com_pessoa(pasta: Path) -> None:
             {
                 "id_entidade": donos,
                 "sistema": ["cnpj_raiz"] * len(donos),
-                "valor": [RAIZ_DA_EMPRESA, RAIZ_DO_MEI, RAIZ_SEM_MARCA],
+                "valor": [RAIZ_DA_EMPRESA, RAIZ_DO_MEI, RAIZ_SEM_MARCA, "90000009"],
                 "publico_em": pd.to_datetime(["2010-01-01"] * len(donos)),
             }
         ),
     )
+
+
+def _da_identificacao(view: str) -> bool:
+    """`identificadores` e as versões dele: o CNPJ de quem é tratado como pessoa fica ali de
+    propósito (leva à entidade marcada); conferido à parte."""
+    return view == "identificadores" or view.startswith("identificadores__")
 
 
 def _linhas_de_pessoa(con, view: str) -> list[str]:
@@ -193,7 +201,9 @@ def _linhas_de_pessoa(con, view: str) -> list[str]:
 
 def test_nenhuma_view_da_porta_devolve_pessoa(tmp_path):
     """Varre toda view da conexão (tabelas, versões e `eventos_da_rede`): nenhuma raiz de MEI ou de
-    marca vazia, nenhum nome de entidade tratada como pessoa, nenhum id de pessoa (P...)."""
+    marca vazia, nenhum nome de entidade tratada como pessoa, nenhum id de pessoa (P...). A exceção é
+    a identificação: o CNPJ do MEI nos `identificadores` leva à entidade marcada, sem nome, e é por
+    ela que as rotas sabem que é pessoa."""
     _gravar_acervo_com_pessoa(tmp_path)
     with conectar(tmp_path) as con:
         views = [
@@ -203,7 +213,25 @@ def test_nenhuma_view_da_porta_devolve_pessoa(tmp_path):
             ).fetchall()
         ]
         assert {*COM_A_MARCA, *DA_REDE, "eventos_da_rede"} <= set(views)
-        vazadas = [linha for view in views for linha in _linhas_de_pessoa(con, view)]
+        vazadas = [
+            linha
+            for view in views
+            if not _da_identificacao(view)
+            for linha in _linhas_de_pessoa(con, view)
+        ]
+        # o CNPJ de pessoa nos identificadores só leva a entidade marcada e sem nome, ou ao id `P`
+        # e a raiz, sem o hash
+        destinos = con.execute(
+            "SELECT i.id_entidade, e.trata_como_pessoa, e.nome FROM identificadores i "
+            "LEFT JOIN entidades e USING (id_entidade) WHERE i.valor IN ($mei, $sem_marca) "
+            "OR starts_with(i.id_entidade, 'P')",
+            {"mei": RAIZ_DO_MEI, "sem_marca": RAIZ_SEM_MARCA},
+        ).fetchall()
+        assert sorted(destinos) == [
+            (ENTIDADE_MEI, True, None),
+            (SEM_NATUREZA, True, None),
+            ("P90000009", None, None),
+        ]
         # a empresa sai: o filtro não apagou tudo
         assert con.execute("SELECT raiz FROM eventos_da_rede").fetchall() == [
             (RAIZ_DA_EMPRESA,)
@@ -237,3 +265,19 @@ def test_a_rede_e_consultavel_so_porque_a_porta_a_filtra():
     """Se a rede sair de `ARQUIVOS` (outro caminho até o Parquet), o filtro da porta some junto."""
     assert set(ARQUIVOS) >= DA_REDE
     assert all(pode_consultar(nome) for nome in DA_REDE)
+
+
+def test_so_a_trava_ve_o_nome_que_a_view_esconde(tmp_path):
+    """O nome de pessoa sai da view, mas a trava da ficha (`nomes_de_pessoa_da_rede`) ainda o vê,
+    para barrar o texto que o cite; o nome de empresa não entra na lista."""
+    _gravar_acervo_com_pessoa(tmp_path)
+    with Porta(tmp_path) as porta:
+        assert porta.nomes_de_pessoa_da_rede() == [NOME_FICTICIO]
+        servidos = porta.con.execute("SELECT nome FROM entidades").fetchall()
+    assert (NOME_FICTICIO,) not in servidos
+
+
+def test_sem_a_rede_a_trava_nao_tem_nomes(tmp_path):
+    _gravar(tmp_path, _caminho(ARQUIVOS[COM_A_MARCA[0]]), _com_a_marca(COM_A_MARCA[0]))
+    with Porta(tmp_path) as porta:
+        assert porta.nomes_de_pessoa_da_rede() == []

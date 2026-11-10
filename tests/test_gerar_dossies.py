@@ -847,6 +847,7 @@ def _insolvencia_da_cpfl(pasta: Path) -> None:
                 "data_situacao_especial": [D("2026-08-20")] * 2,
                 "mes_do_retrato": [D("2026-09-01")] * 2,
                 "origem_coletada_em": [D("2026-10-01")] * 2,
+                "trata_como_pessoa": [False] * 2,
                 "disponivel_em": [D("2026-09-15")] * 2,
             }
         ),

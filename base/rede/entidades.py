@@ -60,15 +60,11 @@ def com_natureza(
     papel = entidades["tipo"] == VALOR_MOBILIARIO
     natureza = natureza.fillna(NAO_INFORMADA).mask(papel, NAO_SE_APLICA)
     fonte = fonte.mask(papel, NAO_SE_APLICA)
-    trata_como_pessoa = (
-        natureza.map(natureza_de_pessoa) | mei | (natureza == NAO_INFORMADA)
-    )
+    pessoa_com_cnpj = natureza.map(natureza_de_pessoa) | mei
     return entidades.drop(columns=["natureza_da_fonte"]).assign(
-        # quem é tratado como pessoa não leva nome: a natureza não informada também, porque a fonte
-        # de empresa não garante empresa (a CVM registra auditor pessoa física; linha 787)
-        nome=entidades["nome"].where(~trata_como_pessoa, None),
+        nome=entidades["nome"].where(~pessoa_com_cnpj, None),
         natureza_juridica=natureza,
         natureza_fonte=fonte,
         mei=mei,
-        trata_como_pessoa=trata_como_pessoa,
+        trata_como_pessoa=pessoa_com_cnpj | (natureza == NAO_INFORMADA),
     )

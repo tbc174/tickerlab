@@ -23,6 +23,7 @@ from base.porta.duckdb import (
     nome_da_view,
     sem_o_fim_futuro,
 )
+from base.porta.rede import resolver
 
 
 def _tabela(**campos: object) -> Tabela:
@@ -985,20 +986,28 @@ def test_sem_as_entidades_nenhum_sinal_negativo_sai(tmp_path):
     assert tipos == {"controlada_de", "coligada_de"}
 
 
-def test_identificador_de_quem_e_tratado_como_pessoa_nao_sai(tmp_path):
-    """O CNPJ do MEI é a pessoa: o identificador de quem é tratado como pessoa (ou está fora das
-    entidades) não sai. Quem pergunta pelo CNPJ dele não acha a entidade, e as rotas já tratam o
-    "não achou" como "não é empresa"."""
+def test_identificador_leva_o_mei_a_entidade_marcada_e_o_de_pessoa_nao_sai(tmp_path):
+    """O hash P (pessoa da vista interna) não sai, nem o CPF. O CNPJ do MEI sai, sim: é ele que leva à
+    entidade marcada `trata_como_pessoa` (sem nome) e diz às rotas e ao crédito que aquele CNPJ é de
+    pessoa; o CNPJ que leva a uma pessoa da rede sai com o id `P` e a raiz, sem o hash. Escondê-los faria o "não achou"
+    virar empresa nesses consumidores."""
     _gravar_rede_com_pessoa(tmp_path)
-    donos = [EMPRESA_A, ENTIDADE_MEI, SEM_NATUREZA, FORA_DA_REDE, PESSOA]
+    donos = [EMPRESA_A, ENTIDADE_MEI, SEM_NATUREZA, FORA_DA_REDE, PESSOA, PESSOA]
     _gravar(
         tmp_path,
         "rede/identificadores.parquet",
         pd.DataFrame(
             {
                 "id_entidade": donos,
-                "sistema": ["cnpj_raiz"] * len(donos),
-                "valor": ["12345678", RAIZ_DO_MEI, "90000002", "90000003", "90000004"],
+                "sistema": ["cnpj_raiz"] * (len(donos) - 1) + ["cpf"],
+                "valor": [
+                    "12345678",
+                    RAIZ_DO_MEI,
+                    "90000002",
+                    "90000003",
+                    "90000004",
+                    "x",
+                ],
                 "desde": [None] * len(donos),
                 "ate": [None] * len(donos),
                 "publico_em": pd.to_datetime(["2010-01-01"] * len(donos)),
@@ -1009,4 +1018,53 @@ def test_identificador_de_quem_e_tratado_como_pessoa_nao_sai(tmp_path):
         servidos = con.execute(
             "SELECT id_entidade, valor FROM identificadores"
         ).fetchall()
-    assert servidos == [(EMPRESA_A, "12345678")]
+    assert sorted(servidos) == sorted(
+        [
+            (EMPRESA_A, "12345678"),
+            (ENTIDADE_MEI, RAIZ_DO_MEI),
+            (SEM_NATUREZA, "90000002"),
+            (FORA_DA_REDE, "90000003"),
+            ("P90000004", "90000004"),
+        ]
+    )
+
+
+def test_rede_de_uma_pessoa_nao_traz_o_cnpj_de_outra(tmp_path):
+    """Duas pessoas da rede com CNPJ: cada uma resolve para o seu id mascarado, e a rede de uma não
+    traz o CNPJ da outra (o id sem o hash não pode juntar todas as pessoas num só)."""
+    _gravar_rede_com_pessoa(tmp_path)
+    outra = "P" + "9" * 20
+    donos = [PESSOA, PESSOA, outra]
+    _gravar(
+        tmp_path,
+        "rede/identificadores.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": donos,
+                "sistema": ["cnpj_raiz", "cnpj", "cnpj_raiz"],
+                "valor": ["90000004", "90000004000100", "90000005"],
+                "desde": [None] * len(donos),
+                "ate": [None] * len(donos),
+                "publico_em": pd.to_datetime(["2010-01-01"] * len(donos)),
+            }
+        ),
+    )
+    with conectar(tmp_path) as con:
+        centro = resolver(con, "90000004000100", None)
+        valores = con.execute(
+            "SELECT valor FROM identificadores WHERE id_entidade = $id", {"id": centro}
+        ).fetchall()
+    assert centro == "P90000004"
+    assert sorted(valores) == [("90000004",), ("90000004000100",)]
+
+
+def test_rede_sem_as_colunas_das_pontas_nao_serve_nada(tmp_path):
+    """Arquivo das ligações sem `de`/`para` (montagem antiga ou parcial): não dá para saber quem é
+    pessoa, então nada sai, e a conexão abre do mesmo jeito."""
+    _gravar(
+        tmp_path,
+        "rede/ligacoes.parquet",
+        pd.DataFrame({"aconteceu_em": pd.to_datetime(["2020-01-01"])}),
+    )
+    with conectar(tmp_path) as con:
+        assert con.execute("SELECT count(*) FROM ligacoes").fetchone() == (0,)

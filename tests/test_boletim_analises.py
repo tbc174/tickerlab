@@ -87,7 +87,9 @@ def raiz(tmp_path):
         "data_registro": pd.to_datetime(["2026-10-01", "2026-01-15", "2026-05-01", "2025-06-01"]),
         "valor_total_registrado": [100.0, 50.0, 30.0, 40.0],
     }))  # fmt: skip
+    # as pontas são de empresa (E...): a porta só serve aresta cujas duas pontas ela vê (linha 787)
     _grava(r, "rede/ligacoes", pd.DataFrame({
+        "de": ["E" + "1" * 20] * 4, "para": ["E" + "2" * 20] * 4,
         "tipo": ["detem", "detem", "audita", "controlada_de"],
         "fonte": ["cvm-cda", "cvm-cda", "cvm-fca", "cvm-fre"],
         "ate": pd.to_datetime([None, "2025-01-01", None, None]),

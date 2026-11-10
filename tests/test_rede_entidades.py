@@ -72,10 +72,10 @@ def test_ei_213_5_e_mei_marcados_como_pessoa():
     }
 
 
-def test_quem_e_tratado_como_pessoa_nao_leva_nome():
-    """EI, MEI e grupo 4: o nome é o da pessoa (nível 2 da ADR 0075: só id, nunca nome). A natureza
-    não informada também (linha 787): a fonte de empresa não garante empresa, a CVM registra auditor
-    pessoa física. Na dúvida é pessoa, e o nome sai junto com a dúvida."""
+def test_pessoa_com_cnpj_nao_leva_nome():
+    """EI, MEI e grupo 4: o nome é o da pessoa (nível 2 da ADR 0075: só id, nunca nome)."""
     tabela = entidades.com_natureza(_entidades(), *_receita()).set_index("id_entidade")
-    assert tabela.loc[["E3", "E4", "E5", "E6"], "nome"].isna().all()
-    assert tabela.loc[["E1", "E2"], "nome"].notna().all()
+    assert tabela.loc[["E3", "E4", "E6"], "nome"].isna().all()
+    assert (
+        tabela.loc["E5", "nome"] == "SEM DADO SA"
+    )  # nao_informada veio de fonte de empresa
