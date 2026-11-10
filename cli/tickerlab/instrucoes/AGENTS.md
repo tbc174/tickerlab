@@ -46,7 +46,7 @@ devolve é o que a API serviu.
 | 0 | ok | |
 | 2 | comando, CNPJ ou chave do setor mal escritos, ou endereço da API inseguro | corrija o comando |
 | 3 | sem chave, ou a chave foi recusada | peça à pessoa para rodar `tickerlab login`; **nunca** peça a chave no chat |
-| 4 | limite do minuto ou quota do mês | espere (o texto diz quanto) ou veja `tickerlab consumo` |
+| 4 | limite do minuto ou quota do mês | a CLI já esperou e repetiu uma vez no limite do minuto; espere (o texto diz quanto) ou veja `tickerlab consumo` |
 | 5 | nada disponível para este pedido | o CNPJ (ou o setor) não tem o dado na data, ou o conjunto não está no contrato: veja `tickerlab catalogo`. Não insista com variações do mesmo pedido |
 | 6 | a API recusou o pedido (dígito do CNPJ, data no futuro...) | corrija o pedido |
 | 7 | API fora do ar ou sem internet | tente de novo mais tarde |
