@@ -101,7 +101,10 @@ def test_pdf_nao_traz_nome_de_pessoa(banco, com_a_petrobras) -> None:
     texto = _pdf(banco, com_a_petrobras)
     assert not re.search(r"\d{3}\.\d{3}\.\d{3}-\d{2}", texto)
     assert not re.search(r"\b(Diretor|Conselheir|Administrador|Acionista)", texto)
-    assert "Sócio ou administrador pessoa física, MEI e empresário individual: não aparecem" in texto
+    assert (
+        "Sócio ou administrador pessoa física, MEI e empresário individual: não aparecem"
+        in texto
+    )
 
 
 @pytest.mark.parametrize(
