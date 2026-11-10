@@ -33,6 +33,13 @@ NAO_DISPONIVEL = "nao_disponivel"
 # a âncora da ficha: sem a situação cadastral, o leitor não serve nada (`LeitorDeEmpresas`)
 ANCORA = (empresas_.FONTE, "situacao_cadastral")
 
+# os limites da ficha da API, menos o nome de campo para quem programa (`known_at`): o analista lê "o dia da
+# ficha", que a tela mostra no topo; os outros são os mesmos, na mesma ordem
+DIA_DA_FICHA = "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois do dia da ficha entra."
+LIMITES = tuple(
+    DIA_DA_FICHA if "known_at" in limite else limite for limite in ficha_.LIMITES
+)
+
 
 @dataclass(frozen=True)
 class Resposta:
@@ -86,6 +93,5 @@ def ficha(
     servida = ficha_.LeitorDeFicha(porta, permitido).ficha(cnpj, dia)
     if servida is None:
         return Resposta(NAO_DISPONIVEL)
-    return Resposta(
-        PRONTA, servida.corpo, fontes_da_resposta(servida.fontes), servida.linhas
-    )
+    corpo = {**servida.corpo, "limites": list(LIMITES)}
+    return Resposta(PRONTA, corpo, fontes_da_resposta(servida.fontes), servida.linhas)

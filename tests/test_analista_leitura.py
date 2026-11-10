@@ -71,9 +71,8 @@ def test_ficha_pronta_traz_o_corpo_do_leitor_da_api_e_as_fontes(pasta):
             porta, leitura.permitido_na_tela(ficha.CONJUNTO, HOJE, _regras())
         ).ficha(EMPRESA, HOJE)
     assert da_api is not None
-    assert (
-        resposta.corpo == da_api.corpo
-    )  # risco 3: o mesmo corpo, sem tradução nem campo a mais
+    # risco 3: o mesmo corpo, sem tradução nem campo a mais; só os limites são os da tela
+    assert resposta.corpo == {**da_api.corpo, "limites": list(leitura.LIMITES)}
     assert resposta.linhas == da_api.linhas
     assert {f["fonte"] for f in resposta.fontes} == da_api.fontes
     assert resposta.corpo["cadastro_na_receita"]["razao_social"]["fonte"] == "rfb-cnpj"
@@ -99,6 +98,17 @@ def test_como_era_em_no_futuro_vale_hoje(pasta):
     """A tela não deixa pedir um dia depois de hoje: vale o dia de hoje."""
     resposta = _ficha(pasta, como_era_em=date(2030, 1, 1))
     assert resposta.corpo["como_era_em"] == HOJE.isoformat()
+
+
+def test_limites_da_tela_em_portugues_sem_nome_de_campo_da_api(pasta):
+    """Os limites da ficha da API falam em `known_at`, o nome do campo para quem programa; o analista lê
+    "o dia da ficha". Os outros limites são os mesmos, e o corpo (a planilha lê dele) traz os da tela."""
+    assert all("known_at" not in limite for limite in leitura.LIMITES)
+    assert len(leitura.LIMITES) == len(ficha.LIMITES)
+    assert set(ficha.LIMITES) - set(leitura.LIMITES) == {
+        limite for limite in ficha.LIMITES if "known_at" in limite
+    }
+    assert _ficha(pasta).corpo["limites"] == list(leitura.LIMITES)
 
 
 # ---------------------------------------------------------------- pessoa e o que não existe

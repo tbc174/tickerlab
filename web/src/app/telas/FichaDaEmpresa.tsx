@@ -57,6 +57,11 @@ const SITUACOES_DA_ENTREGA: Record<string, string> = {
 };
 
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+const MES_ISO = /^(\d{4})-(\d{2})$/;
+const CNPJ_SO_DIGITOS = /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/;
+
+/** "02429144000193" → "02.429.144/0001-93", como o analista digita; outro formato sai como veio. */
+const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, "$1.$2.$3/$4-$5");
 
 const nomeDoCampo = (chave: string) => NOMES_DOS_CAMPOS[chave] ?? chave;
 
@@ -66,7 +71,8 @@ function textoDoValor(chave: string, valor: CampoComFonteV1["valor"]): string {
   const texto = String(valor);
   if (chave === "situacao_cadastral") return SITUACOES_CADASTRAIS[texto.padStart(2, "0")] ?? `código ${texto}`;
   if (chave === "situacao_da_entrega") return SITUACOES_DA_ENTREGA[texto] ?? texto;
-  return DATA_ISO.test(texto) ? formatarData(texto) : texto;
+  if (DATA_ISO.test(texto)) return formatarData(texto);
+  return texto.replace(MES_ISO, "$2/$1"); // "2026-09" → "09/2026" (o mês do cadastro)
 }
 
 function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {
@@ -224,7 +230,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
   return (
     <>
       <p>
-        CNPJ {ficha.cnpj}
+        CNPJ {cnpjComPontuacao(ficha.cnpj)}
         <span className="apagado"> · como a base conhecia em {formatarData(ficha.como_era_em)}</span>
       </p>
       <BaixarPlanilha rota={rota} cnpj={cnpj} />

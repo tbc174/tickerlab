@@ -8,6 +8,7 @@ fora do ar (503), os três estados e a planilha. A porta e as regras do portão 
 
 import io
 import logging
+import shutil
 
 import openpyxl
 import pytest
@@ -16,7 +17,7 @@ from base.porta import Porta
 from src import paginas
 from src.analista import leitura
 from src.api_externa import rotas as rotas_da_api_externa
-from src.api_externa.conjuntos import empresas, ficha
+from src.api_externa.conjuntos import empresas
 from src.api_v1 import analista
 from src.banco.usuarios import mudar_plano
 from tests import test_analista_leitura as leitura_de_mentira
@@ -72,7 +73,7 @@ def test_ficha_pronta_com_fonte_data_e_limites(cliente):
         "cvm-hist-itr",
     }
     assert all(f["atribuicao"] and f["licenca"] for f in dados["fontes"])
-    assert dados["limites"] == list(ficha.LIMITES)
+    assert dados["limites"] == list(leitura.LIMITES)
 
 
 def test_a_rota_devolve_o_mesmo_corpo_da_leitura(cliente, base):
@@ -104,7 +105,7 @@ def test_pessoa_e_cnpj_que_nao_existe_dao_a_mesma_resposta(cliente, cnpj):
         "estado": leitura.NAO_DISPONIVEL,
         "ficha": None,
         "fontes": [],
-        "limites": list(ficha.LIMITES),
+        "limites": list(leitura.LIMITES),
     }
 
 
@@ -167,6 +168,17 @@ def test_base_fora_do_ar_503_sem_dizer_onde(cliente, monkeypatch):
     resposta = cliente.post(ROTA, json={"cnpj": EMPRESA})
     assert resposta.status_code == 503
     assert "caminho" not in resposta.text
+
+
+@pytest.mark.parametrize("rota", [ROTA, PLANILHA])
+def test_tabela_que_falta_na_base_e_503_nao_500(cliente, base, rota):
+    # o portão diz "pronta", mas a base deste servidor não tem o arquivo da tabela (achado na prévia,
+    # com o acervo do PC, que não tem a situação cadastral): a tela mostra "base fora do ar", não um
+    # erro sem mensagem, e a resposta não diz o caminho nem o nome da tabela
+    shutil.rmtree(base / "cnpj_situacao_cadastral")
+    resposta = cliente.post(rota, json={"cnpj": EMPRESA})
+    assert resposta.status_code == 503
+    assert resposta.json() == {"detail": analista.BASE_FORA_DO_AR}
 
 
 def test_cnpj_nao_vai_para_o_log(cliente, caplog):

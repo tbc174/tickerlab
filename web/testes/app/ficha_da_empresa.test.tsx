@@ -28,6 +28,7 @@ const PRONTA: FichaDaEmpresaV1 = {
       situacao_cadastral: campo("02"),
       matriz: campo(true),
       data_situacao_cadastral: campo("2005-11-03"),
+      mes_do_retrato: campo("2026-09"),
     },
     entregas: [
       {
@@ -97,6 +98,8 @@ describe("ficha da empresa", () => {
     const limites = screen.getByRole("region", { name: "Limites e cuidados" });
     expect(within(limites).getByText(/recomendação de investimento/)).toBeTruthy();
     expect(screen.getByText(/como a base conhecia em 10\/11\/2026/)).toBeTruthy();
+    expect(screen.getByText(/^CNPJ 02\.429\.144\/0001-93/)).toBeTruthy();
+    expect(within(cadastro).getByRole("row", { name: /Mês do cadastro/ }).textContent).toContain("09/2026");
   });
 
   it("sem entregas: a frase fixa no lugar da tabela", async () => {

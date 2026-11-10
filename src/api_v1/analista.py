@@ -25,7 +25,6 @@ from pydantic import BaseModel
 from base.porta import Porta
 from src.analista import leitura, planilha
 from src.api_externa import rotas as rotas_da_api_externa
-from src.api_externa.conjuntos.ficha import LIMITES
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
 from src.banco.conexao import obter_engine
@@ -70,6 +69,11 @@ def _porta() -> Generator[Porta]:
                 yield porta
             except (duckdb.Error, OSError) as erro:
                 raise HTTPException(status_code=503, detail=BASE_FORA_DO_AR) from erro
+            except KeyError as erro:
+                # o portão libera uma tabela que a base deste servidor não tem (a porta diz qual e onde):
+                # para quem usa, é a base fora do ar; o nome e o caminho ficam só no log do servidor
+                log.warning("ficha do analista: tabela fora desta base: %s", erro)
+                raise HTTPException(status_code=503, detail=BASE_FORA_DO_AR) from erro
 
 
 def _ficha_do_pedido(pedido: PedidoDaFichaV1) -> leitura.Resposta:
@@ -96,7 +100,7 @@ def ficha_da_empresa(
     """A ficha do CNPJ: o cadastro na Receita e, da companhia aberta, as entregas à CVM, cada campo com a
     fonte e o dia em que ficou público. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece
     saem `nao_disponivel`, sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`."""
-    return esquemas.de_ficha_do_analista(_ficha_do_pedido(pedido), LIMITES)
+    return esquemas.de_ficha_do_analista(_ficha_do_pedido(pedido), leitura.LIMITES)
 
 
 @router.post("/ficha/planilha", response_class=Response)
