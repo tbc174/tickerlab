@@ -37,6 +37,7 @@ import duckdb
 from base.dicionario import TABELAS
 from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
 from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
+from base.rede.entidades import EMPRESARIO_INDIVIDUAL, GRUPO_DAS_PESSOAS_FISICAS
 from src import acervo
 
 log = logging.getLogger("montar_recorte_da_api")
@@ -74,9 +75,6 @@ FICAM_EM_CASA = (
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
-    # sem pessoa por desenho (linha 584), mas ir ao VPS é decisão do recorte (739): até lá ficam em casa
-    "cnpj_empresas_pj",
-    "cnpj_estabelecimentos_pj",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
@@ -98,6 +96,9 @@ DEGRAU_2_ACRESCENTA = (
     "rotulos_atraso", "securitizacao_cedente_devedor", "securitizacao_certificados",
     "sus_ambulatorial", "sus_internacoes", "susep_seguros", "tickers_no_tempo",
     "usda_psd_cafe", "valores_mobiliarios",
+    # sem pessoa por desenho (linha 584): 213-5, grupo 4, MEI e CPF fora na origem; a saída ainda é conferida
+    # aqui (`conferir_sem_pessoa_do_cnpj`). Pode da Diretoria, 10/11/2026 18h31 (Emenda 4), linha 796.
+    "cnpj_empresas_pj", "cnpj_estabelecimentos_pj",
 )  # fmt: skip
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
@@ -239,6 +240,28 @@ def conferir_saida(con: duckdb.DuckDBPyConnection, nome: str, arquivo: Path) -> 
         raise RecorteErro(f"{nome}: {arquivo.name} saiu com linha de pessoa")
 
 
+# Os mesmos padrões de `base.receita_empresas.NUMERO_COMPRIDO_DE_PESSOA`, na sintaxe do DuckDB (RE2).
+_NUMERO_DE_PESSOA = r"(^|\D)(\d{11,12}|\d{3}[.\s]?\d{3}[.\s]?\d{3}[-./\s]?\d{2})(\D|$)"
+
+
+def conferir_sem_pessoa_do_cnpj(
+    con: duckdb.DuckDBPyConnection, nome: str, arquivo: Path
+) -> None:
+    """Na saída de `cnpj_empresas_pj`: nenhum 213-5, grupo 4 ou número de CPF na razão social."""
+    if nome != "cnpj_empresas_pj":
+        return
+    fonte = f"read_parquet({_aspas(arquivo.as_posix())})"
+    achadas = con.execute(
+        f"SELECT count(*) FROM {fonte} WHERE trim(natureza_juridica) = '{EMPRESARIO_INDIVIDUAL}' "
+        f"OR trim(natureza_juridica) LIKE '{GRUPO_DAS_PESSOAS_FISICAS}%' "
+        f"OR regexp_matches(razao_social, '{_NUMERO_DE_PESSOA}')"
+    ).fetchone()
+    if achadas and achadas[0]:
+        raise RecorteErro(
+            f"{nome}: {arquivo.name} saiu com pessoa ({achadas[0]} linha(s))"
+        )
+
+
 def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]:
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
     conferir_a_lista(tabelas)
@@ -256,6 +279,7 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
                 destino = saida / relativo
                 igual, tirou = recortar_arquivo(con, nome, origem, destino)
                 conferir_saida(con, nome, destino)
+                conferir_sem_pessoa_do_cnpj(con, nome, destino)
                 copiados += igual
                 recortados += not igual
                 tiradas += tirou

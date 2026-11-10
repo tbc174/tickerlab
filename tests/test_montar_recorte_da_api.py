@@ -238,3 +238,49 @@ def test_tabela_com_pessoa_ou_duvida_fica_em_casa(tabela, tmp_path):
     assert tabela not in envio.DEGRAU_1 + envio.DEGRAU_2_ACRESCENTA
     with pytest.raises(envio.RecorteErro, match="fica em casa"):
         envio.montar(tmp_path / "base", tmp_path / "saida", (tabela,))
+
+
+def _empresas_pj(base: Path, linhas: str) -> None:
+    _parquet(
+        base / "cnpj_empresas_pj" / "00.parquet",
+        f"SELECT * FROM (VALUES {linhas}) t(cnpj_basico, razao_social, natureza_juridica, porte)",
+    )
+
+
+def test_as_tabelas_pj_do_cnpj_estao_no_degrau_2():
+    """Pode da Diretoria de 10/11/2026 18h31 (Emenda 4), linha 796."""
+    for nome in ("cnpj_empresas_pj", "cnpj_estabelecimentos_pj"):
+        assert nome in envio.tabelas_do_degrau(2)
+        assert nome not in envio.FICAM_EM_CASA
+    # o histórico (MEI e EI sem marca por linha) segue em casa
+    assert "cnpj_empresas_historico" in envio.FICAM_EM_CASA
+
+
+def test_empresas_pj_limpa_sai_inteira(tmp_path):
+    base = tmp_path / "base"
+    _empresas_pj(base, "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais')")
+    resultados = envio.montar(base, tmp_path / "saida", ("cnpj_empresas_pj",))
+    assert resultados[0].copiados == 1
+
+
+@pytest.mark.parametrize(
+    ("razao", "natureza"),
+    [
+        ("EMPRESA 123.456.789-09 LTDA", "2062"),
+        ("EMPRESA 12345678909 LTDA", "2062"),
+        ("EMPRESA 123456789012 LTDA", "2062"),
+        ("JOAO DA SILVA", "2135"),
+        ("MARIA", "4014"),
+    ],
+)
+def test_empresas_pj_com_pessoa_na_saida_e_recusada(tmp_path, razao, natureza):
+    base = tmp_path / "base"
+    _empresas_pj(base, f"('11111111', '{razao}', '{natureza}', 'micro')")
+    with pytest.raises(envio.RecorteErro, match="saiu com pessoa"):
+        envio.montar(base, tmp_path / "saida", ("cnpj_empresas_pj",))
+
+
+def test_cnpj_de_14_digitos_na_razao_nao_e_pessoa(tmp_path):
+    base = tmp_path / "base"
+    _empresas_pj(base, "('22222222', 'FILIAL DA 12345678000190 SA', '2062', 'demais')")
+    envio.montar(base, tmp_path / "saida", ("cnpj_empresas_pj",))
