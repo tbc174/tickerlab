@@ -10,9 +10,9 @@ WORKDIR /app
 
 # dependências primeiro: esta camada só é refeita quando o requirements-prod.txt muda
 # (o pip que vem na imagem do Python fica velho: o trivy acusou falha corrigida em versão nova)
-COPY requirements-prod.txt .
+COPY requirements.txt requirements-prod.txt ./
 RUN pip install --upgrade pip==26.2.1 \
-    && pip install -r requirements-prod.txt
+    && pip install -r requirements-prod.txt -c requirements.txt
 
 COPY .streamlit ./.streamlit
 COPY static ./static

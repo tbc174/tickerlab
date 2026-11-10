@@ -17,7 +17,6 @@ dados_sala
 .env
 .env.sala
 README.md
-requirements.txt
 requirements-estudos.txt
 requirements-trader.txt
 ruff.toml
