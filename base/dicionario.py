@@ -132,6 +132,9 @@ class Tabela:
     # numa tabela de empresas, a coluna booleana que marca as linhas de pessoa natural (empresário
     # individual e MEI, ADR 0075): a porta não serve essas linhas
     linhas_de_pessoa: str = ""
+    # tabela sem a marca acima, mas com linhas de pessoa natural que a rota da API tira (o que são,
+    # por exemplo "raízes de empresário individual e MEI"); só muda o texto do dicionário
+    pessoa_tirada_na_rota: str = ""
     chaves: tuple[str, ...] = ()  # colunas que identificam uma linha
     datas: dict[str, str] = field(
         default_factory=dict
@@ -516,8 +519,9 @@ def _historicos_do_cnpj() -> dict[str, Tabela]:
                 "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, "
                 "com desde quando cada uma era pública: a versão que vale na data D é a última com "
                 "`disponivel_em` até D. Montada do retrato vigente e das mudanças mensais da base do "
-                "CNPJ; a última versão de cada raiz é conferida com o vigente. Sem dado de pessoa além "
-                "do próprio CNPJ. " + _FINALIDADE_DO_CNPJ
+                "CNPJ; a última versão de cada raiz é conferida com o vigente. A tabela tem as raízes de "
+                "empresário individual e MEI (CNPJ de pessoa natural, `optante_mei`): a rota da API tira "
+                "essas linhas, e a tabela em si não as separa. " + _FINALIDADE_DO_CNPJ
             ),
             fonte=(
                 "Receita Federal: dados abertos do CNPJ, `Simples.zip` (`scripts/montar_historico_do_cnpj.py simples`)"
@@ -536,7 +540,9 @@ def _historicos_do_cnpj() -> dict[str, Tabela]:
                 "social de pessoa nunca entra:** a do empresário individual e do MEI (213-5) e a do "
                 "grupo 4 (pessoas físicas) trazem o nome e o CPF da pessoa e saem vazias no leitor "
                 "(ADR 0106); nas outras, um CPF escrito no texto sai. Capital, porte, qualificação do "
-                "responsável e ente federativo não são lidos. " + _FINALIDADE_DO_CNPJ
+                "responsável e ente federativo não são lidos. A tabela tem as raízes de empresário "
+                "individual (2135) e MEI, com a razão social vazia; a rota da API tira essas linhas. "
+                + _FINALIDADE_DO_CNPJ
             ),
             fonte=(
                 "Receita Federal: dados abertos do CNPJ, `Empresas*.zip` (`scripts/montar_historico_do_cnpj.py empresas`)"
@@ -562,6 +568,90 @@ def _historicos_do_cnpj() -> dict[str, Tabela]:
                     TEXTO,
                 ),
                 **carimbos,
+            },
+            **comum,  # type: ignore[arg-type]
+        ),
+    }
+
+
+def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
+    """As duas tabelas sem pessoa do CNPJ (linha 584, `base/receita_empresas.py`): o que a rota `/companies`
+    da API externa serve para qualquer pessoa jurídica."""
+    retrato = {
+        "mes_do_retrato": (
+            "Mês do arquivo da Receita de onde a linha veio",
+            "AAAA-MM",
+        ),
+        "disponivel_em": (
+            (
+                "Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). "
+                "A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês"
+            ),
+            DATA,
+        ),
+        **{c: v for c, v in _ORIGEM_SEM_ANO.items() if c != "origem_coletada_em"},
+    }
+    comum = {
+        "fonte": (
+            "Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)"
+        ),
+        "familia_da_fonte": "rfb-cnpj",
+        "frequencia": _FREQUENCIA_DO_CNPJ,
+        "atraso": _ATRASO_DO_CNPJ,
+        "linhagem": (
+            "Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`); `montado_em` diz "
+            "quando a tabela foi montada. " + COM_VERSAO_DO_CODIGO
+        ),
+        "ressalva_de_revenda": _RESSALVA_DO_CNPJ,
+    }
+    return {
+        "cnpj_empresas_pj": Tabela(
+            descricao=(
+                "Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, "
+                "o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas "
+                "físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto "
+                "sai. Sem sócios. " + _FINALIDADE_DO_CNPJ
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cnpj_empresas_pj/<2 primeiros caracteres da raiz>.parquet` "
+                "(servidor de casa)"
+            ),
+            colunas={
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+                "razao_social": ("Razão social como a Receita publica", TEXTO),
+                "natureza_juridica": (
+                    "Código da natureza jurídica (tabela da Receita, 4 dígitos)",
+                    TEXTO,
+                ),
+                "porte": (
+                    "nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita)",
+                    TEXTO,
+                ),
+                **retrato,
+            },
+            **comum,  # type: ignore[arg-type]
+        ),
+        "cnpj_estabelecimentos_pj": Tabela(
+            descricao=(
+                "Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do "
+                "mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica "
+                "de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, "
+                "CEP...). " + _CONTATOS_FORA + ". " + _FINALIDADE_DO_CNPJ
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cnpj_estabelecimentos_pj/<2 primeiros caracteres da raiz>.parquet` "
+                "(servidor de casa)"
+            ),
+            colunas={
+                "cnpj": _ESTABELECIMENTO["cnpj"],
+                "cnpj_basico": _ESTABELECIMENTO["cnpj_basico"],
+                "matriz": _ESTABELECIMENTO["matriz"],
+                "situacao_cadastral": _ESTABELECIMENTO["situacao_cadastral"],
+                "data_inicio_atividade": _ESTABELECIMENTO["data_inicio_atividade"],
+                "cnae_principal": _ESTABELECIMENTO["cnae_principal"],
+                "uf": _ESTABELECIMENTO["uf"],
+                "municipio": _ESTABELECIMENTO["municipio"],
+                **retrato,
             },
             **comum,  # type: ignore[arg-type]
         ),
@@ -6546,7 +6636,8 @@ TABELAS: dict[str, Tabela] = {
         descricao=(
             "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, "
             "resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega "
-            "reapresentada fica só na versão mais nova."
+            "reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: "
+            "contagem calculada por ela, não coluna desta tabela."
         ),
         fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
         familia_da_fonte="cvm",
@@ -6825,6 +6916,7 @@ TABELAS: dict[str, Tabela] = {
     ),
     **_tabelas_do_cnpj(),
     **_historicos_do_cnpj(),
+    **_tabelas_sem_pessoa_do_cnpj(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -7750,7 +7842,8 @@ TABELAS: dict[str, Tabela] = {
     ),
     "rotulos_atraso": Tabela(
         descricao=(
-            "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, "
+            "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030; a rota da API acrescenta "
+            "`situacao_da_entrega`, campo calculado por ela, não coluna desta tabela): uma linha por companhia, "
             "documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. "
             "Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa "
             "no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o "
@@ -9174,8 +9267,10 @@ _CONTRATO = {
     "cnpj_estabelecimentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj",), datas={"aconteceu_em": "data_situacao_cadastral"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
@@ -9662,6 +9757,17 @@ def _datas_em_texto(tabela: Tabela) -> str:
     )
 
 
+def _dado_de_pessoa(tabela: Tabela) -> str:
+    """ "sim", "não", ou "sim em casa" quando a porta tira por linha as marcadas (`linhas_de_pessoa`)."""
+    if tabela.pessoa:
+        return "sim"
+    if tabela.pessoa_tirada_na_rota:
+        return f"sim em casa ({tabela.pessoa_tirada_na_rota}); a rota da API tira essas linhas"
+    if tabela.linhas_de_pessoa:
+        return f"sim em casa (linhas com `{tabela.linhas_de_pessoa}`); o recorte da API e a porta as tiram"
+    return "não"
+
+
 def _tabela_em_markdown(nome: str, tabela: Tabela) -> list[str]:
     linhas = [
         f"## `{nome}`",
@@ -9678,7 +9784,7 @@ def _tabela_em_markdown(nome: str, tabela: Tabela) -> list[str]:
         ),
         f"- **Frequência:** {tabela.frequencia}",
         f"- **Atraso de divulgação:** {tabela.atraso}",
-        f"- **Módulo:** {tabela.modulo} · **Contém dado de pessoa:** {'sim' if tabela.pessoa else 'não'}",
+        f"- **Módulo:** {tabela.modulo} · **Contém dado de pessoa:** {_dado_de_pessoa(tabela)}",
         *(
             [
                 (

@@ -6972,6 +6972,146 @@
       "frequencia": "Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam",
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`). As datas de opção e de exclusão do Simples são as que a Receita informa e podem ser anteriores ao retrato em que apareceram"
     },
+    "cnpj_empresas_pj": {
+      "tabela": "cnpj_empresas_pj",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "razao_social": {
+          "descricao": "Razão social como a Receita publica",
+          "unidade": "texto"
+        },
+        "natureza_juridica": {
+          "descricao": "Código da natureza jurídica (tabela da Receita, 4 dígitos)",
+          "unidade": "texto"
+        },
+        "porte": {
+          "descricao": "nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita)",
+          "unidade": "texto"
+        },
+        "mes_do_retrato": {
+          "descricao": "Mês do arquivo da Receita de onde a linha veio",
+          "unidade": "AAAA-MM"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_basico"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+    },
+    "cnpj_estabelecimentos_pj": {
+      "tabela": "cnpj_estabelecimentos_pj",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ com os 14 caracteres (com letras no CNPJ novo)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "matriz": {
+          "descricao": "Verdadeiro na matriz, falso na filial",
+          "unidade": "verdadeiro ou falso"
+        },
+        "situacao_cadastral": {
+          "descricao": "Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada)",
+          "unidade": "texto"
+        },
+        "data_inicio_atividade": {
+          "descricao": "Data de início da atividade; vazio quando a Receita põe zero",
+          "unidade": "data (dia)"
+        },
+        "cnae_principal": {
+          "descricao": "Código da atividade principal (CNAE fiscal, 7 dígitos)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "Sigla do estado",
+          "unidade": "texto"
+        },
+        "municipio": {
+          "descricao": "Código do município na Receita (não é o código do IBGE)",
+          "unidade": "texto"
+        },
+        "mes_do_retrato": {
+          "descricao": "Mês do arquivo da Receita de onde a linha veio",
+          "unidade": "AAAA-MM"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em",
+        "aconteceu_em": "data_inicio_atividade"
+      },
+      "sinonimos_de_tempo": {
+        "data_inicio_atividade": "aconteceu_em",
+        "disponivel_em": "publico_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+    },
     "pgfn_divida": {
       "tabela": "pgfn_divida",
       "modulo": "governo_e_sancoes",

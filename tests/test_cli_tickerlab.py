@@ -18,20 +18,22 @@ from datetime import date
 from typing import ClassVar
 
 import httpx
+import openpyxl
 import pytest
 from click.testing import CliRunner
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from tickerlab import cliente, comandos, configuracao, formato
+from tickerlab import cliente, comandos, configuracao, formato, planilha
 from tickerlab.cliente import Saida
 
 from base.porta import Porta
 from src import api
 from src.api_externa import acesso, rotas
-from src.api_externa.conjuntos import empresas, fundos
+from src.api_externa.conjuntos import empresas, ficha, fundos, setores
 from src.api_externa.envelope import campo
 from src.banco import chaves_da_api as cb
 from tests import ajudantes_da_api_externa as aj
+from tests import test_api_externa_por_cnpj_ficha as ficha_de_mentira
 from tests.test_api_externa_demonstracoes import (
     AGORA,
     EMPRESA,
@@ -39,6 +41,10 @@ from tests.test_api_externa_demonstracoes import (
     _base,
     _regras_das_demonstracoes,
 )
+from tests.test_api_externa_por_cnpj_perfil import _regras as _regras_do_perfil
+from tests.test_api_externa_setores import DIA_DA_NOITE
+from tests.test_api_externa_setores import _regras as _regras_do_setor
+from tests.test_relatorio_setor import CPFL, OUTRA, gravar_noite
 
 PUBLICO_EM = date(2026, 10, 31)
 
@@ -170,7 +176,9 @@ def _com_chave(chave: str) -> dict[str, str]:
 
 @pytest.mark.usefixtures("leituras_prontas")
 def test_empresa_em_tabela_tem_fonte_data_e_aviso(rodar, chave):
-    resultado = rodar("empresa", "11.111.111/0001-91", **_com_chave(chave))
+    resultado = rodar(
+        "empresa", "--so-cadastro", "11.111.111/0001-91", **_com_chave(chave)
+    )
     assert resultado.exit_code == 0, resultado.output
     saida = resultado.stdout
     assert "CNPJ: 11111111000191" in saida
@@ -185,13 +193,18 @@ def test_empresa_em_tabela_tem_fonte_data_e_aviso(rodar, chave):
 @pytest.mark.usefixtures("leituras_prontas")
 def test_empresa_aceita_cnpj_com_ou_sem_pontuacao(rodar, chave):
     for escrito in ("11.111.111/0001-91", "11111111000191", " 11111111/0001-91 "):
-        assert rodar("empresa", escrito, **_com_chave(chave)).exit_code == 0
+        assert (
+            rodar("empresa", "--so-cadastro", escrito, **_com_chave(chave)).exit_code
+            == 0
+        )
     assert {cnpj for cnpj, _dia in _Empresas.pedidos} == {"11111111000191"}
 
 
 @pytest.mark.usefixtures("leituras_prontas")
 def test_empresa_em_json_e_o_envelope_da_api(rodar, chave, api_em_memoria):
-    resultado = rodar("empresa", "11111111000191", "--json", **_com_chave(chave))
+    resultado = rodar(
+        "empresa", "--so-cadastro", "11111111000191", "--json", **_com_chave(chave)
+    )
     assert resultado.exit_code == 0
     corpo = json.loads(resultado.stdout)
     direto = api_em_memoria.get(
@@ -210,10 +223,98 @@ def test_empresa_em_json_e_o_envelope_da_api(rodar, chave, api_em_memoria):
 @pytest.mark.usefixtures("leituras_prontas")
 def test_como_era_vai_para_a_api(rodar, chave):
     resultado = rodar(
-        "empresa", "11111111000191", "--como-era", "2025-06-30", **_com_chave(chave)
+        "empresa",
+        "--so-cadastro",
+        "11111111000191",
+        "--como-era",
+        "2025-06-30",
+        **_com_chave(chave),
     )
     assert resultado.exit_code == 0
     assert _Empresas.pedidos == [("11111111000191", date(2025, 6, 30))]
+
+
+# ---------------------------------------------------------------- empresa: o perfil (cadastro e entregas à CVM)
+
+
+@pytest.fixture
+def perfil_pronto(banco, cenario, monkeypatch, tmp_path):
+    """A base de mentira do perfil (Receita e entregas), as tabelas prontas e o contrato de `profiles`."""
+    base = ficha_de_mentira._base(tmp_path, ficha_de_mentira._rotulos())
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_do_perfil)
+    ator, org, _chave = cenario
+    aj.contrato(banco, ator, org, conjunto=ficha.CONJUNTO)
+
+
+@pytest.mark.usefixtures("perfil_pronto")
+def test_empresa_e_o_perfil_com_cadastro_e_entregas(rodar, chave):
+    resultado = rodar("empresa", EMPRESA, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    assert "## registration" in saida and "rfb-cnpj" in saida
+    entregas = saida.split("## periodic_filings", 1)[1]
+    dfp_2023 = next(l for l in entregas.splitlines() if "2023-12-31" in l)
+    assert "DFP" in dfp_2023 and ficha.NO_PRAZO in dfp_2023 and "2024-03-20" in dfp_2023
+    assert "cvm-hist-dfp" in dfp_2023
+    assert "- cvm-hist-dfp:" in saida and "- rfb-cnpj:" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+@pytest.mark.usefixtures("perfil_pronto")
+def test_empresa_em_json_e_o_envelope_do_perfil(rodar, chave, api_em_memoria):
+    resultado = rodar("empresa", EMPRESA, "--json", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    direto = api_em_memoria.get(
+        f"/data/v1/companies/{EMPRESA}/profile", headers=aj.bearer(chave)
+    ).json()
+    assert json.loads(resultado.stdout) == direto
+    assert direto["periodic_filings"][0]["filing_status"]["source"].startswith("cvm-")
+
+
+@pytest.mark.usefixtures("perfil_pronto")
+def test_empresa_como_era_nao_mostra_a_entrega_que_veio_depois(rodar, chave):
+    resultado = rodar(
+        "empresa", EMPRESA, "--como-era", "2025-06-30", "--json", **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    corpo = json.loads(resultado.stdout)
+    dfp_2024 = next(
+        linha
+        for linha in corpo["periodic_filings"]
+        if linha["reference_period"]["value"] == "2024-12-31"
+    )
+    assert dfp_2024["filing_status"]["value"] == ficha.NAO_ENTREGUE
+
+
+@pytest.mark.usefixtures("perfil_pronto")
+def test_empresa_em_planilha_tem_a_aba_das_entregas(rodar, chave, tmp_path):
+    arquivo = tmp_path / "alfa.xlsx"
+    resultado = rodar(
+        "empresa", EMPRESA, "--planilha", str(arquivo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    assert list(abas) == ["campos", "periodic_filings", "limits", "fontes"]
+    entregas = _linhas_com_cabecalho(abas["periodic_filings"])
+    assert {e["filing_status"] for e in entregas} >= {ficha.NO_PRAZO}
+    campos = {linha[0]: linha for linha in abas["campos"][1:]}
+    assert campos["registration › legal_name"][2] == "rfb-cnpj"
+
+
+def test_chave_sem_o_perfil_usa_so_o_cadastro(rodar, chave, tmp_path, monkeypatch):
+    """A chave com só `companies` no contrato: o perfil é sem dado (código 5), o cadastro sai."""
+    base = ficha_de_mentira._base(tmp_path, ficha_de_mentira._rotulos())
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_do_perfil)
+    perfil = rodar("empresa", EMPRESA, **_com_chave(chave))
+    assert perfil.exit_code == Saida.SEM_DADO
+    assert "tickerlab catalogo" in perfil.output
+    cadastro = rodar("empresa", "--so-cadastro", EMPRESA, "--json", **_com_chave(chave))
+    assert cadastro.exit_code == 0, cadastro.output
+    corpo = json.loads(cadastro.stdout)
+    assert corpo["legal_name"]["source"] == "rfb-cnpj"
+    assert "periodic_filings" not in corpo
 
 
 # ---------------------------------------------------------------- demonstrações (base de verdade)
@@ -313,6 +414,313 @@ def test_retorno_suposto_fora_do_plausivel_e_pedido_invalido(rodar, chave):
     assert "--retorno-suposto" in resultado.stderr
 
 
+# ---------------------------------------------------------------- setor (molde D, a ficha da noite)
+
+
+@pytest.fixture
+def setor_pronto(banco, cenario, monkeypatch, tmp_path):
+    """A noite das elétricas gravada, o contrato de `sectors` e as tabelas do setor prontas."""
+    _noite_das_eletricas(tmp_path, monkeypatch)
+    ator, org, _chave = cenario
+    aj.contrato(banco, ator, org, conjunto=setores.CONJUNTO)
+
+
+def _noite_das_eletricas(tmp_path, monkeypatch) -> None:
+    """A ficha da noite com as elétricas, a pasta das fichas apontando para ela e as regras do setor."""
+    pasta = tmp_path / "noite"
+    pasta.mkdir()
+    gravar_noite(pasta)
+    monkeypatch.setenv("TICKERLAB_DOSSIES", str(pasta))
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_do_setor)
+
+
+def _pedidos_do_mes(banco, cenario) -> int:
+    with banco.connect() as conexao:
+        return cb.consumo_do_mes(conexao, cenario[1].id, AGORA.date()).pedidos
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_sem_chave_lista_os_setores_sem_gastar_a_quota(
+    rodar, chave, banco, cenario
+):
+    resultado = rodar("setor", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    linha = next(l for l in resultado.stdout.splitlines() if l.startswith("eletricas"))
+    assert "Elétricas" in linha and DIA_DA_NOITE in linha
+    assert "tickerlab setor eletricas" in resultado.stdout
+    corpo = json.loads(rodar("setor", "--json", **_com_chave(chave)).stdout)
+    assert corpo == {
+        "sectors": [
+            {"sector": "eletricas", "name": "Elétricas", "known_at": DIA_DA_NOITE}
+        ]
+    }
+    assert _pedidos_do_mes(banco, cenario) == 0
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_em_tabela_tem_cada_serie_com_fonte_e_data(rodar, chave):
+    resultado = rodar("setor", "eletricas", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    assert "Setor: eletricas" in saida and f"Como era em: {DIA_DA_NOITE}" in saida
+    assert "## by_series › aneel_consumidores › concentration" in saida
+    assert "## by_series › aneel_consumidores › member_shares" in saida
+    hhi = next(l for l in saida.splitlines() if l.startswith("2025") and "4.626" in l)
+    assert "aneel-samp" in hhi and DIA_DA_NOITE in hhi
+    membros = saida.split("## members", 1)[1]
+    assert CPFL in membros and OUTRA in membros and "cvm-cadastros" in membros
+    assert "- aneel-samp:" in saida and "- cvm-cadastros:" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_em_json_e_o_envelope_da_api(
+    rodar, chave, api_em_memoria, banco, cenario
+):
+    resultado = rodar("setor", "eletricas", "--json", **_com_chave(chave))
+    assert resultado.exit_code == 0
+    direto = api_em_memoria.get(
+        "/data/v1/sectors/eletricas", headers=aj.bearer(chave)
+    ).json()
+    assert json.loads(resultado.stdout) == direto
+    assert direto["by_series"][0]["concentration"][0]["hhi"]["source"] == "aneel-samp"
+    assert _pedidos_do_mes(banco, cenario) == 2  # o setor gasta a quota; a lista, não
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_como_era_antes_da_noite_e_sem_dado(rodar, chave):
+    resultado = rodar(
+        "setor", "eletricas", "--como-era", "2026-10-01", **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.SEM_DADO
+    assert resultado.stdout == ""
+    assert "Não há dado disponível" in resultado.stderr
+    assert (
+        rodar(
+            "setor", "eletricas", "--como-era", DIA_DA_NOITE, **_com_chave(chave)
+        ).exit_code
+        == 0
+    )
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_desconhecido_e_sem_dado_e_chave_mal_escrita_nem_chega_a_api(
+    rodar, chave, banco, cenario
+):
+    assert rodar("setor", "petroleo", **_com_chave(chave)).exit_code == Saida.SEM_DADO
+    antes = _pedidos_do_mes(banco, cenario)
+    for mal_escrita in (
+        "../catalog",
+        "Elétricas",
+        "bancos?known_at=2020-01-01",
+        "x" * 41,
+    ):
+        resultado = rodar("setor", mal_escrita, **_com_chave(chave))
+        assert resultado.exit_code == Saida.USO, mal_escrita
+        assert "tickerlab setor" in resultado.output
+    assert _pedidos_do_mes(banco, cenario) == antes
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_cortado_avisa(rodar, chave, monkeypatch):
+    monkeypatch.setattr(acesso, "linhas_por_resposta", lambda _contexto: 2)
+    resultado = rodar("setor", "eletricas", **_com_chave(chave))
+    assert resultado.exit_code == 0
+    assert formato.AVISO_DE_CORTE in resultado.stdout
+
+
+def test_setor_fora_do_contrato_e_sem_dado(rodar, chave, tmp_path, monkeypatch):
+    _noite_das_eletricas(
+        tmp_path, monkeypatch
+    )  # a chave tem contrato, mas não de `sectors`
+    assert rodar("setor", "eletricas", **_com_chave(chave)).exit_code == Saida.SEM_DADO
+
+
+# ---------------------------------------------------------------- planilha (CSV e XLSX, para o Excel)
+
+
+def _abrir_xlsx(arquivo) -> dict[str, list[tuple]]:
+    """As abas do XLSX como o Excel as leria (openpyxl só nos testes; o pacote não depende dele)."""
+    pasta = openpyxl.load_workbook(arquivo)
+    return {
+        aba.title: list(aba.iter_rows(values_only=True)) for aba in pasta.worksheets
+    }
+
+
+def _linhas_com_cabecalho(linhas: list[tuple]) -> list[dict]:
+    cabecalho, *resto = linhas
+    return [dict(zip(cabecalho, linha, strict=True)) for linha in resto]
+
+
+@pytest.mark.usefixtures("base_das_demonstracoes")
+def test_demonstracoes_em_xlsx_tem_numero_fonte_e_data_em_cada_linha(
+    rodar, chave, tmp_path
+):
+    arquivo = tmp_path / "alfa.xlsx"
+    resultado = rodar(
+        "demonstracoes", EMPRESA, "--planilha", str(arquivo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert "Planilha gravada" in resultado.stdout and str(arquivo) in resultado.stdout
+    assert "- cvm-hist-dfp:" in resultado.stdout
+    assert resultado.stdout.rstrip().endswith(formato.AVISO)
+    abas = _abrir_xlsx(arquivo)
+    assert list(abas) == ["campos", "rows", "fontes"]
+    linhas = _linhas_com_cabecalho(abas["rows"])
+    receita = next(
+        l for l in linhas
+        if l["account"] == "3.01" and str(l["end"]).startswith("2025-12-31")
+        and str(l["start"]).startswith("2025-01-01")
+    )  # fmt: skip
+    assert receita["value"] == 200  # número, não texto formatado
+    assert (
+        receita["fonte"] == "cvm-hist-dfp" and receita["publicado_em"] == "2026-03-15"
+    )
+    campos = {linha[0]: linha[1] for linha in abas["campos"][1:]}
+    assert campos["cnpj"] == EMPRESA
+    fontes = {linha[0]: linha[1] for linha in abas["fontes"][1:]}
+    assert "cvm-hist-dfp" in fontes and fontes["aviso"] == formato.AVISO
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_em_xlsx_tem_uma_aba_por_tabela(rodar, chave, tmp_path):
+    arquivo = tmp_path / "eletricas.xlsx"
+    resultado = rodar(
+        "setor", "eletricas", "--planilha", str(arquivo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    assert all(len(nome) <= planilha.LIMITE_DO_NOME_DA_ABA for nome in abas)
+    concentracao = next(nome for nome in abas if nome.endswith(".concentration"))
+    assert concentracao.startswith("aneel_consumidor")  # a série que distingue as abas
+    hhi = next(
+        l for l in _linhas_com_cabecalho(abas[concentracao]) if l["year"] == 2025
+    )
+    assert hhi["hhi"] == pytest.approx(4626, abs=1)
+    assert hhi["fonte"] == "aneel-samp" and hhi["publicado_em"] == DIA_DA_NOITE
+    membros = [l["cnpj"] for l in _linhas_com_cabecalho(abas["members"])]
+    assert CPFL in membros and OUTRA in membros
+    assert abas["fontes"][-1] == ("aviso", formato.AVISO, None)
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_lista_de_setores_em_csv_para_o_excel(rodar, chave, tmp_path):
+    arquivo = tmp_path / "setores.csv"
+    resultado = rodar("setor", "--planilha", str(arquivo), **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    conteudo = arquivo.read_bytes()
+    assert conteudo.startswith(b"\xef\xbb\xbf")  # o Excel só lê o acento com o BOM
+    assert conteudo.decode("utf-8-sig").splitlines() == [
+        "sector;name;known_at",
+        f"eletricas;Elétricas;{DIA_DA_NOITE}",
+    ]
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_fundo_em_csv_e_um_arquivo_por_tabela_com_virgula_decimal(
+    rodar, chave, tmp_path
+):
+    arquivo = tmp_path / "fundo.csv"
+    resultado = rodar(
+        "fundo", "11111111000191", "--planilha", str(arquivo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    gravados = sorted(p.name for p in tmp_path.glob("fundo-*.csv"))
+    assert gravados == [
+        "fundo-campos.csv",
+        "fundo-fee_cost_horizons.csv",
+        "fundo-holdings_positions.csv",
+    ]
+    assert not arquivo.exists()
+    for nome in gravados:
+        assert nome in resultado.stdout
+    campos = (tmp_path / "fundo-campos.csv").read_text(encoding="utf-8-sig")
+    assert (
+        "profile › management_fee_pct_per_year;1,5;cvm-cadastros;2026-10-31" in campos
+    )
+    prazos = (tmp_path / "fundo-fee_cost_horizons.csv").read_text(encoding="utf-8-sig")
+    assert prazos.splitlines()[1] == "1;1612,5;cvm-cadastros;2026-10-31"
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_planilha_com_json_grava_e_imprime_o_envelope(rodar, chave, tmp_path):
+    arquivo = tmp_path / "alfa.xlsx"
+    resultado = rodar(
+        "empresa",
+        "--so-cadastro",
+        EMPRESA,
+        "--planilha",
+        str(arquivo),
+        "--json",
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout)["legal_name"]["value"] == "ALFA ENERGIA S.A."
+    campos = {l[0]: l for l in _abrir_xlsx(arquivo)["campos"][1:]}
+    assert campos["legal_name"][1:3] == ("ALFA ENERGIA S.A.", "rfb-cnpj")
+    assert campos["head_office"][1] is True
+
+
+def test_planilha_de_extensao_desconhecida_nem_chega_a_api(rodar, chave, tmp_path):
+    resultado = rodar(
+        "empresa", "--so-cadastro", EMPRESA, "--planilha", str(tmp_path / "alfa.ods"), http=None,
+        **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == Saida.USO
+    assert ".xlsx" in resultado.output and ".csv" in resultado.output
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_planilha_em_pasta_que_nao_existe_e_erro_claro(rodar, chave, tmp_path):
+    destino = tmp_path / "nao-existe" / "alfa.xlsx"
+    resultado = rodar(
+        "empresa",
+        "--so-cadastro",
+        EMPRESA,
+        "--planilha",
+        str(destino),
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == Saida.ERRO
+    assert "não consegui gravar a planilha" in resultado.output
+
+
+@pytest.mark.parametrize("texto", ["=HYPERLINK(1)", "+1", "-1", "@SOMA(1)", "\t=1"])
+def test_texto_que_parece_formula_nao_vira_formula(texto, tmp_path):
+    tabela = planilha.Tabela("t", ["nome"], [[texto]])
+    assert planilha.texto_do_csv(tabela).splitlines()[1].strip('"') == "'" + texto
+    arquivo = tmp_path / "t.xlsx"
+    arquivo.write_bytes(planilha.conteudo_do_xlsx([tabela]))
+    celula = openpyxl.load_workbook(arquivo).active["A2"]  # type: ignore[index]
+    assert celula.data_type == "s"  # texto, nunca fórmula
+
+
+def test_numero_negativo_continua_numero_no_csv():
+    tabela = planilha.Tabela("t", ["valor"], [[-1.5], [-2]])
+    assert planilha.texto_do_csv(tabela).splitlines()[1:] == ["-1,5", "-2"]
+
+
+def test_nomes_das_abas_que_o_excel_aceita():
+    tabelas = [
+        planilha.Tabela("a › b:c/d", []),
+        planilha.Tabela("by_series › aneel_consumidores › concentration", []),
+        planilha.Tabela("by_series › aneel_consumidores_outra › concentration", []),
+        planilha.Tabela("CAMPOS", []),
+        planilha.Tabela("campos", []),
+    ]
+    nomes = planilha.nomes_das_abas(tabelas)
+    assert nomes[0] == "a.b_c_d"
+    assert nomes[1] == "aneel_consumidore.concentration"
+    assert len({n.lower() for n in nomes}) == len(nomes)
+    assert all(len(n) <= planilha.LIMITE_DO_NOME_DA_ABA for n in nomes)
+    assert nomes[4] == "campos~2"
+
+
+def test_a_mesma_resposta_da_o_mesmo_xlsx():
+    tabela = planilha.Tabela("t", ["a"], [[1], ["x & <y>"], [None], [True]])
+    assert planilha.conteudo_do_xlsx([tabela]) == planilha.conteudo_do_xlsx([tabela])
+
+
 # ---------------------------------------------------------------- catálogo e consumo
 
 
@@ -340,7 +748,7 @@ def test_catalogo_vazio_diz_o_que_fazer(rodar, chave):
 
 @pytest.mark.usefixtures("leituras_prontas")
 def test_consumo_mostra_o_mes_e_os_limites(rodar, chave):
-    rodar("empresa", EMPRESA, **_com_chave(chave))
+    rodar("empresa", "--so-cadastro", EMPRESA, **_com_chave(chave))
     resultado = rodar("consumo", **_com_chave(chave))
     assert resultado.exit_code == 0
     pedidos = next(
@@ -376,7 +784,7 @@ def test_quota_do_mes_e_limite_do_minuto(rodar, chave, monkeypatch):
         raise HTTPException(429, detail=acesso.CODIGO_DA_QUOTA_DO_MES)
 
     monkeypatch.setattr(acesso, "exigir_quota", sem_quota)
-    resultado = rodar("empresa", EMPRESA, **_com_chave(chave))
+    resultado = rodar("empresa", "--so-cadastro", EMPRESA, **_com_chave(chave))
     assert resultado.exit_code == Saida.LIMITE
     assert "quota de pedidos do mês acabou" in resultado.stderr
 
@@ -393,14 +801,14 @@ def test_quota_do_mes_e_limite_do_minuto(rodar, chave, monkeypatch):
 
 @pytest.mark.usefixtures("leituras_prontas")
 def test_digito_errado_e_pedido_invalido(rodar, chave):
-    resultado = rodar("empresa", "11111111000100", **_com_chave(chave))
+    resultado = rodar("empresa", "--so-cadastro", "11111111000100", **_com_chave(chave))
     assert resultado.exit_code == Saida.PEDIDO_INVALIDO
     assert "dígito verificador" in resultado.stderr
 
 
 def test_cnpj_mal_escrito_nem_chega_a_api(rodar, chave):
     # http=None: se a CLI tentasse falar com a API, o comando quebraria (código 1)
-    resultado = rodar("empresa", "123", http=None, **_com_chave(chave))
+    resultado = rodar("empresa", "--so-cadastro", "123", http=None, **_com_chave(chave))
     assert resultado.exit_code == Saida.USO
     assert "14 caracteres" in resultado.output
 
@@ -408,7 +816,12 @@ def test_cnpj_mal_escrito_nem_chega_a_api(rodar, chave):
 @pytest.mark.usefixtures("leituras_prontas")
 def test_data_no_futuro_e_pedido_invalido(rodar, chave):
     resultado = rodar(
-        "empresa", EMPRESA, "--como-era", "2030-01-01", **_com_chave(chave)
+        "empresa",
+        "--so-cadastro",
+        EMPRESA,
+        "--como-era",
+        "2030-01-01",
+        **_com_chave(chave),
     )
     assert resultado.exit_code == Saida.PEDIDO_INVALIDO
     assert "futuro" in resultado.stderr
@@ -419,7 +832,7 @@ def test_base_fora_do_ar(rodar, chave, monkeypatch):
         raise OSError("sem disco")
 
     monkeypatch.setattr(rotas, "abrir_porta", sem_base)
-    resultado = rodar("empresa", EMPRESA, **_com_chave(chave))
+    resultado = rodar("empresa", "--so-cadastro", EMPRESA, **_com_chave(chave))
     assert resultado.exit_code == Saida.FORA_DO_AR
     assert "fora do ar" in resultado.stderr
 
@@ -503,10 +916,10 @@ def test_a_chave_nao_aparece_em_saida_nem_log(rodar, chave, caplog):
     resultados = [
         rodar(*comando, **_com_chave(chave))
         for comando in (
-            ("empresa", EMPRESA),
-            ("empresa", EMPRESA, "--json"),
+            ("empresa", "--so-cadastro", EMPRESA),
+            ("empresa", "--so-cadastro", EMPRESA, "--json"),
             ("demonstracoes", SEM_DEMONSTRACOES),  # erro
-            ("empresa", "11111111000100"),  # erro
+            ("empresa", "--so-cadastro", "11111111000100"),  # erro
             ("catalogo", "--json"),
             ("consumo",),
         )
@@ -590,9 +1003,17 @@ def test_instrucoes_do_agente(rodar):
     assert agentes.exit_code == 0
     assert "Nada é recomendação de investimento" in agentes.stdout
     assert "Não invente número que a CLI não devolveu" in agentes.stdout
-    for comando in ("empresa", "demonstracoes", "fundo", "catalogo", "consumo"):
+    for comando in (
+        "empresa",
+        "demonstracoes",
+        "fundo",
+        "setor",
+        "catalogo",
+        "consumo",
+    ):
         assert f"tickerlab {comando}" in agentes.stdout
     skill = rodar("instrucoes", "skill").stdout
+    assert "--planilha" in agentes.stdout and "--planilha" in skill
     assert skill.startswith("---\nname: tickerlab\ndescription: ")
 
 
@@ -659,6 +1080,12 @@ def test_celula(valor, texto):
     assert formato.celula(valor) == texto
 
 
+def test_ano_sai_sem_milhar():
+    assert formato.celula({"value": 2025, "source": "x"}, "year") == "2025"
+    assert formato.celula(2025, "value") == "2.025"
+    assert formato.celula(2025.5, "year") == "2.025,50"  # só o inteiro é ano
+
+
 def test_tabela_alinha_as_colunas():
     texto = formato.tabela(("a", "bb"), [("ccc", "d"), ("e", "ffff")])
     assert texto.splitlines() == ["a    bb", "---  ----", "ccc  d", "e    ffff"]
@@ -677,7 +1104,7 @@ def test_mensagem_de_status_desconhecido():
 @pytest.mark.usefixtures("leituras_prontas")
 def test_o_consumo_da_cli_e_o_do_banco(rodar, chave, cenario, banco):
     _ator, org, _chave = cenario
-    rodar("empresa", EMPRESA, **_com_chave(chave))
+    rodar("empresa", "--so-cadastro", EMPRESA, **_com_chave(chave))
     rodar("catalogo", **_com_chave(chave))  # não conta
     with banco.connect() as conexao:
         assert cb.consumo_do_mes(conexao, org.id, AGORA.date()).pedidos == 1

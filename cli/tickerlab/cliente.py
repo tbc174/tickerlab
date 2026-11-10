@@ -51,9 +51,9 @@ SEM_CHAVE = (
     "ou defina TICKERLAB_API_KEY."
 )
 SEM_DADO = (
-    "Não há dado disponível para este pedido com a sua chave: o CNPJ pode não ter este dado na data "
-    "pedida, ou o conjunto não está no contrato da sua organização. A API não diz qual dos dois, de "
-    "propósito. Veja o que a sua chave pode pedir com `tickerlab catalogo`."
+    "Não há dado disponível para este pedido com a sua chave: o CNPJ (ou o setor) pode não ter este dado "
+    "na data pedida, ou o conjunto não está no contrato da sua organização. A API não diz qual dos dois, "
+    "de propósito. Veja o que a sua chave pode pedir com `tickerlab catalogo`."
 )
 MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
     (401, "invalid_api_key"): (
@@ -185,6 +185,9 @@ class ApiDoTickerlab:
     def empresa(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}", _datas(known_at=como_era))
 
+    def perfil(self, cnpj: str, como_era: str | None) -> dict:
+        return self.pedir(f"/companies/{cnpj}/profile", _datas(known_at=como_era))
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:
@@ -200,6 +203,12 @@ class ApiDoTickerlab:
         if retorno_suposto is not None:
             parametros["assumed_return"] = repr(retorno_suposto)
         return self.pedir(f"/funds/{cnpj}", parametros)
+
+    def setores(self) -> dict:
+        return self.pedir("/sectors")
+
+    def setor(self, chave: str, como_era: str | None) -> dict:
+        return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))
 
 
 def _datas(**datas: str | None) -> dict[str, str]:
