@@ -328,3 +328,32 @@ def test_conjuntos_do_catalogo_ignora_o_que_nao_e_conjunto():
 
 def test_toda_chave_de_setor_da_api_e_aceita():
     assert all(ferramentas._CHAVE_DO_SETOR.fullmatch(c) for c in setores.POR_CHAVE)
+
+
+def test_api_fora_do_ar_vira_frase_sem_o_endereco_interno(caplog):
+    catalogo = aj.api_de_mentira({})
+
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        if pedido.url.path.endswith("/catalog"):
+            return catalogo.handle_request(pedido)
+        raise httpx.ConnectError("sem rota para tickerlab-api:8000", request=pedido)
+
+    with aj.conector(httpx.MockTransport(responder)) as cliente:
+        erro, texto = aj.chamar(cliente, aj.CHAVE_DE_MENTIRA, "setores")
+    assert erro and "tickerlab-api" not in texto
+    assert aj.CHAVE_DE_MENTIRA not in caplog.text
+
+
+def test_demonstracoes_passa_a_data_conhecida():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/financials": httpx.Response(200, json={"rows": []})
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "demonstracoes",
+            cnpj="11111111000191", como_era_em="2026-03-31",
+        )  # fmt: skip
+    assert corpo == {"rows": []}
+    (pedido,) = [p for p in pedidos if p.url.path.endswith("/financials")]
+    assert pedido.url.params.get("known_at") == "2026-03-31"
