@@ -30,6 +30,9 @@ devolve é o que a API serviu.
 - **Use `--json` sempre que for ler a resposta por programa.** O JSON é o envelope inteiro da API: cada
   campo vem como `{"value", "source", "published_at", "observed_at"}`, e a resposta termina com `sources`
   (licença e frase de atribuição de cada fonte). A tabela, sem `--json`, é para a pessoa ler.
+- `--planilha ARQUIVO.xlsx` (ou `.csv`) nos comandos de dado grava a resposta para o Excel, quando a pessoa
+  pedir uma planilha: uma aba por tabela, mais `campos` e `fontes`; cada linha com `fonte` e `publicado_em`.
+  Para ler você mesmo, continue com `--json`; os dois juntos gravam o arquivo e imprimem o JSON.
 - `truncated: true` quer dizer que a resposta foi cortada no limite de linhas do plano: diga isso no texto,
   não trate a lista como completa. Para menos linhas, use `--periodo` nas demonstrações.
 
