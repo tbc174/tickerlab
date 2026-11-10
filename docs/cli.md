@@ -10,13 +10,29 @@ O código fica em `cli/`. É um pacote à parte, que depende só de `click` e `h
 
 ## Instalar
 
+Num PC de fora (Windows, sem o repositório e **sem o Git**), com o Python 3.11 ou mais novo instalado do python.org
+(marcando "Add python.exe to PATH"):
+
+```powershell
+py -m pip install --user pipx
+py -m pipx ensurepath          # feche e abra o terminal depois deste
+pipx install "https://github.com/tbc174/tickerlab/archive/refs/heads/main.zip#subdirectory=cli"
+tickerlab --help
+```
+
+O `pipx` põe a CLI num ambiente só dela, sem misturar com outros pacotes do Python da pessoa. Para atualizar, o
+mesmo `pipx install ... --force`. O endereço é o zip da `main` no GitHub (o repositório é público): o `pip` baixa,
+entra em `cli/` e instala, sem precisar do Git (conferido num ambiente limpo em 10/11/2026).
+
+Para quem tem o Git ou mexe no código:
+
 ```powershell
 pip install "git+https://github.com/tbc174/tickerlab#subdirectory=cli"   # de um ramo ou da main
 pip install -e cli                                                        # no repositório, para mexer
 ```
 
 Publicar o pacote (PyPI, Homebrew) e escolher o nome público dele são decisões do Tiago (nível 1). Até lá, a
-instalação é pelo Git.
+instalação é pelo zip ou pelo Git.
 
 ## Chave e endereço
 
@@ -76,7 +92,8 @@ Os erros da API saem em português, na saída de erro, cada tipo com um código 
 
 - `2`: comando errado.
 - `3`: chave (falta ou foi recusada).
-- `4`: limite ou quota.
+- `4`: limite ou quota. No limite do minuto, a CLI espera o `Retry-After` uma vez (até 60 segundos, avisando no
+  stderr) e repete o pedido; só sai com `4` se o limite continuar, ou se for a quota do mês.
 - `5`: nada disponível, que também cobre o campo que o portão não libera, para não contar o que existe.
 - `6`: pedido recusado.
 - `7`: fora do ar.

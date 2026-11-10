@@ -402,6 +402,7 @@ def test_eventos_da_rede(tmp_path):
                 "conhecido_em": ["2024-01-10"],
                 "anterior": ["Firma A"],
                 "novo": ["Firma B"],
+                "trata_como_pessoa": [False],
             }
         ),
     )

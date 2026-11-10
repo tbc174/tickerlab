@@ -794,9 +794,64 @@ def test_quota_do_mes_e_limite_do_minuto(rodar, chave, monkeypatch):
         )
 
     monkeypatch.setattr(acesso, "_conferir_minuto", sem_minuto)
+    esperas: list[float] = []
+    monkeypatch.setattr(cliente, "esperar", esperas.append)
     resultado = rodar("catalogo", **_com_chave(chave))
     assert resultado.exit_code == Saida.LIMITE
     assert "tente de novo em 60 segundos" in resultado.stderr
+    assert esperas == [60]  # esperou uma vez, e o limite continuou
+
+
+def _limite_do_minuto_e_depois(corpo: dict, retry_after: str):
+    """Um servidor que recusa o 1º pedido pelo limite do minuto e responde `corpo` nos seguintes."""
+    pedidos: list[httpx.Request] = []
+
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        pedidos.append(pedido)
+        if len(pedidos) == 1:
+            return httpx.Response(
+                429,
+                json={"detail": acesso.CODIGO_DO_LIMITE_DO_MINUTO},
+                headers={"Retry-After": retry_after},
+            )
+        return httpx.Response(200, json=corpo)
+
+    return _http_falso(responder), pedidos
+
+
+def test_limite_do_minuto_espera_e_tenta_de_novo_sozinho(rodar, chave, monkeypatch):
+    esperas: list[float] = []
+    monkeypatch.setattr(cliente, "esperar", esperas.append)
+    http, pedidos = _limite_do_minuto_e_depois({"datasets": []}, "7")
+    resultado = rodar("catalogo", "--json", http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert esperas == [7] and len(pedidos) == 2
+    assert "esperando 7 segundos" in resultado.stderr
+    assert json.loads(resultado.stdout) == {"datasets": []}
+
+
+@pytest.mark.parametrize("retry_after", ["3600", "Wed, 21 Oct 2026 07:28:00 GMT"])
+def test_espera_longa_ou_ilegivel_nao_prende_o_terminal(
+    rodar, chave, monkeypatch, retry_after
+):
+    esperas: list[float] = []
+    monkeypatch.setattr(cliente, "esperar", esperas.append)
+    http, pedidos = _limite_do_minuto_e_depois({}, retry_after)
+    resultado = rodar("catalogo", http=http, **_com_chave(chave))
+    assert resultado.exit_code == Saida.LIMITE
+    assert esperas == [] and len(pedidos) == 1
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_quota_do_mes_nao_espera(rodar, chave, monkeypatch):
+    def sem_quota(*_a, **_k):
+        raise HTTPException(429, detail=acesso.CODIGO_DA_QUOTA_DO_MES)
+
+    monkeypatch.setattr(acesso, "exigir_quota", sem_quota)
+    esperas: list[float] = []
+    monkeypatch.setattr(cliente, "esperar", esperas.append)
+    resultado = rodar("empresa", "--so-cadastro", EMPRESA, **_com_chave(chave))
+    assert resultado.exit_code == Saida.LIMITE and esperas == []
 
 
 @pytest.mark.usefixtures("leituras_prontas")

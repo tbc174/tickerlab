@@ -5188,18 +5188,19 @@ Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registr
 
 ## `trocas_de_auditor`
 
-Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois)
+Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta.
 
 - **Fonte:** CVM: dados abertos do FCA, pela tabela `auditores`
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Refeita a cada montagem de `auditores`
 - **Atraso de divulgação:** A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)
-- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj`, `efetiva_em`, `novo_id`
 - **Três datas:** aconteceu_em = `efetiva_em`; publico_em = `conhecido_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/trocas_de_auditor/trocas.parquet` (servidor de casa)
 - **Linhagem:** `id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do original); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -5215,6 +5216,7 @@ Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `a
 | `novo` | Nome da firma nova | texto |
 | `anos_com_o_anterior` | Tempo com a firma anterior | anos |
 | `id_documento` | Número na CVM do FCA que mostrou a troca | texto |
+| `trata_como_pessoa` | Verdadeiro quando o auditor anterior ou o novo vem sem CNPJ de firma (pode ser pessoa física) ou tem a raiz de empresário individual, natureza do grupo 4 ou MEI, ou quando a Receita guardada no dia da montagem não tem a raiz da empresa ou da firma (ADR 0075): a linha não sai da porta | verdadeiro ou falso |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
