@@ -10,7 +10,7 @@ acima de `ESPERA_MAXIMA`, ou ilegível, vira o erro de sempre: o terminal nunca 
 """
 
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from enum import IntEnum
 from typing import IO
 
@@ -25,6 +25,10 @@ ESPERA_MAXIMA = (
 )
 CODIGO_DA_QUOTA_DO_MES = "monthly_quota_exceeded"
 esperar: Callable[[float], None] = time.sleep  # os testes trocam, para não dormir
+PAGINAS_MAXIMAS = 100  # `prospectar --todas`: até 100 pedidos de uma vez; o resto fica no próximo cursor
+CAMINHO_DA_BUSCA = "/companies"
+
+Parametros = Mapping[str, str | Sequence[str]]
 TEMPO_MAXIMO = (
     30.0  # segundos: a maior resposta (100 linhas de demonstrações) sai bem antes disso
 )
@@ -89,6 +93,17 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
     (400, "invalid_assumed_return"): (
         "O --retorno-suposto precisa ser uma fração ao ano entre -1 e 1 (0.12 quer dizer 12% ao ano).",
         Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_filter"): (
+        (
+            "A API recusou um dos filtros (CNAE, UF, município, porte, natureza, situação ou data). "
+            "Confira com `tickerlab prospectar --help`."
+        ),
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "filter_required"): (
+        "A busca precisa de pelo menos um filtro (por exemplo --cnae 3511 --uf SP).",
+        Saida.USO,
     ),
     (400, "api_key_in_url"): (
         (
@@ -170,7 +185,7 @@ class ApiDoTickerlab:
         self._chave = chave
         self.endereco = endereco
 
-    def pedir(self, caminho: str, parametros: Mapping[str, str] | None = None) -> dict:
+    def pedir(self, caminho: str, parametros: Parametros | None = None) -> dict:
         """GET em `/data/v1<caminho>`; `ErroDaCli` se a API recusa, não responde ou responde sem JSON.
 
         No limite do minuto, espera o `Retry-After` (até `ESPERA_MAXIMA`) e tenta mais uma vez.
@@ -186,9 +201,7 @@ class ApiDoTickerlab:
             resposta = self._get(caminho, parametros)
         return self._corpo(resposta)
 
-    def _get(
-        self, caminho: str, parametros: Mapping[str, str] | None
-    ) -> httpx.Response:
+    def _get(self, caminho: str, parametros: Parametros | None) -> httpx.Response:
         try:
             resposta = self._http.get(
                 PREFIXO + caminho,
@@ -246,11 +259,53 @@ class ApiDoTickerlab:
             parametros["assumed_return"] = repr(retorno_suposto)
         return self.pedir(f"/funds/{cnpj}", parametros)
 
+    def buscar_empresas(self, filtros: Parametros, todas: bool = False) -> dict:
+        """A busca de empresas por filtros; com `todas`, segue o cursor até o fim (ou `PAGINAS_MAXIMAS`).
+
+        Cada página é um pedido da quota. As páginas viram uma resposta só: as empresas em sequência, as
+        fontes sem repetir, e `truncated`/`next_cursor` da última página (cursor vazio = acabou).
+        """
+        corpo = self.pedir(CAMINHO_DA_BUSCA, filtros)
+        paginas = 1
+        while todas and corpo.get("next_cursor") and paginas < PAGINAS_MAXIMAS:
+            paginas += 1
+            click.echo(
+                f"{len(corpo.get('companies') or [])} empresas até agora; buscando a página {paginas}...",
+                err=True,
+            )
+            seguinte = self.pedir(
+                CAMINHO_DA_BUSCA, {**filtros, "cursor": str(corpo["next_cursor"])}
+            )
+            corpo = juntar_paginas(corpo, seguinte)
+        return corpo
+
     def setores(self) -> dict:
         return self.pedir("/sectors")
 
     def setor(self, chave: str, como_era: str | None) -> dict:
         return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))
+
+
+def juntar_paginas(anterior: Mapping, seguinte: Mapping) -> dict:
+    """Duas páginas da busca numa resposta só (a ordem das empresas é a da API, por CNPJ)."""
+    fontes = list(anterior.get("sources") or [])
+    vistas = {_chave_da_fonte(fonte) for fonte in fontes}
+    for fonte in seguinte.get("sources") or []:
+        if _chave_da_fonte(fonte) not in vistas:
+            fontes.append(fonte)
+            vistas.add(_chave_da_fonte(fonte))
+    return {
+        **seguinte,
+        "companies": [
+            *(anterior.get("companies") or []),
+            *(seguinte.get("companies") or []),
+        ],
+        "sources": fontes,
+    }
+
+
+def _chave_da_fonte(fonte: object) -> str:
+    return str(fonte.get("source")) if isinstance(fonte, Mapping) else str(fonte)
 
 
 def _datas(**datas: str | None) -> dict[str, str]:
