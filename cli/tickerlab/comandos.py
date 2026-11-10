@@ -35,6 +35,8 @@ from tickerlab.configuracao import (
 # pontuação que o CNPJ costuma trazer; o resto (letras do CNPJ alfanumérico, números) fica
 PONTUACAO_DO_CNPJ = re.compile(r"[.\-/\s]")
 FORMATO_DO_CNPJ = re.compile(r"[0-9A-Z]{14}")
+# a chave do setor como a API a dá (`tickerlab setor` lista); nada além disso chega ao endereço do pedido
+FORMATO_DO_SETOR = re.compile(r"[a-z0-9_]{1,40}")
 INSTRUCOES = {"agents": "AGENTS.md", "skill": "SKILL.md"}
 
 Formatar = Callable[[dict], str]
@@ -53,6 +55,18 @@ def normalizar_cnpj(texto: str) -> str:
 
 def _cnpj(_contexto: click.Context, _parametro: click.Parameter, valor: str) -> str:
     return normalizar_cnpj(valor)
+
+
+def _setor(
+    _contexto: click.Context, _parametro: click.Parameter, valor: str | None
+) -> str | None:
+    """A chave do setor em letras minúsculas, números e `_`; a lista certa sai de `tickerlab setor`."""
+    if valor is not None and not FORMATO_DO_SETOR.fullmatch(valor):
+        raise click.BadParameter(
+            "a chave do setor é como `eletricas` ou `saude_suplementar`; veja a lista com `tickerlab setor`.",
+            param_hint="CHAVE",
+        )
+    return valor
 
 
 def _dia(valor: datetime | None) -> str | None:
@@ -157,6 +171,29 @@ def fundo(
     """Cadastro, taxas e carteira do fundo (CVM); com --retorno-suposto, o custo da taxa em prazos."""
     corpo = _api(contexto).fundo(cnpj, _dia(como_era), retorno_suposto)
     _mostrar(corpo, como_json, formato.resposta_de_dado)
+
+
+@principal.command()
+@click.argument("chave", required=False, callback=_setor)
+@opcao_como_era
+@opcao_json
+@click.pass_context
+def setor(
+    contexto: click.Context,
+    chave: str | None,
+    como_era: datetime | None,
+    como_json: bool,
+) -> None:
+    """O mercado do setor (tamanho, CR4 e HHI por ano), a fatia de cada companhia aberta e quem são.
+
+    Sem CHAVE, lista os setores disponíveis, sem gastar a quota. O setor sai como a ficha da última noite
+    o deixou: --como-era antes dela não tem resposta.
+    """
+    api = _api(contexto)
+    if chave is None:
+        _mostrar(api.setores(), como_json, formato.setores)
+        return
+    _mostrar(api.setor(chave, _dia(como_era)), como_json, formato.resposta_de_dado)
 
 
 @principal.command()

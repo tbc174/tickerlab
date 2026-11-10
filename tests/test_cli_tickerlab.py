@@ -28,7 +28,7 @@ from tickerlab.cliente import Saida
 from base.porta import Porta
 from src import api
 from src.api_externa import acesso, rotas
-from src.api_externa.conjuntos import empresas, fundos
+from src.api_externa.conjuntos import empresas, fundos, setores
 from src.api_externa.envelope import campo
 from src.banco import chaves_da_api as cb
 from tests import ajudantes_da_api_externa as aj
@@ -39,6 +39,9 @@ from tests.test_api_externa_demonstracoes import (
     _base,
     _regras_das_demonstracoes,
 )
+from tests.test_api_externa_setores import DIA_DA_NOITE
+from tests.test_api_externa_setores import _regras as _regras_do_setor
+from tests.test_relatorio_setor import CPFL, OUTRA, gravar_noite
 
 PUBLICO_EM = date(2026, 10, 31)
 
@@ -311,6 +314,128 @@ def test_retorno_suposto_fora_do_plausivel_e_pedido_invalido(rodar, chave):
     )
     assert resultado.exit_code == Saida.PEDIDO_INVALIDO
     assert "--retorno-suposto" in resultado.stderr
+
+
+# ---------------------------------------------------------------- setor (molde D, a ficha da noite)
+
+
+@pytest.fixture
+def setor_pronto(banco, cenario, monkeypatch, tmp_path):
+    """A noite das elétricas gravada, o contrato de `sectors` e as tabelas do setor prontas."""
+    _noite_das_eletricas(tmp_path, monkeypatch)
+    ator, org, _chave = cenario
+    aj.contrato(banco, ator, org, conjunto=setores.CONJUNTO)
+
+
+def _noite_das_eletricas(tmp_path, monkeypatch) -> None:
+    """A ficha da noite com as elétricas, a pasta das fichas apontando para ela e as regras do setor."""
+    pasta = tmp_path / "noite"
+    pasta.mkdir()
+    gravar_noite(pasta)
+    monkeypatch.setenv("TICKERLAB_DOSSIES", str(pasta))
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_do_setor)
+
+
+def _pedidos_do_mes(banco, cenario) -> int:
+    with banco.connect() as conexao:
+        return cb.consumo_do_mes(conexao, cenario[1].id, AGORA.date()).pedidos
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_sem_chave_lista_os_setores_sem_gastar_a_quota(
+    rodar, chave, banco, cenario
+):
+    resultado = rodar("setor", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    linha = next(l for l in resultado.stdout.splitlines() if l.startswith("eletricas"))
+    assert "Elétricas" in linha and DIA_DA_NOITE in linha
+    assert "tickerlab setor eletricas" in resultado.stdout
+    corpo = json.loads(rodar("setor", "--json", **_com_chave(chave)).stdout)
+    assert corpo == {
+        "sectors": [
+            {"sector": "eletricas", "name": "Elétricas", "known_at": DIA_DA_NOITE}
+        ]
+    }
+    assert _pedidos_do_mes(banco, cenario) == 0
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_em_tabela_tem_cada_serie_com_fonte_e_data(rodar, chave):
+    resultado = rodar("setor", "eletricas", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    assert "Setor: eletricas" in saida and f"Como era em: {DIA_DA_NOITE}" in saida
+    assert "## by_series › aneel_consumidores › concentration" in saida
+    assert "## by_series › aneel_consumidores › member_shares" in saida
+    hhi = next(l for l in saida.splitlines() if l.startswith("2025") and "4.626" in l)
+    assert "aneel-samp" in hhi and DIA_DA_NOITE in hhi
+    membros = saida.split("## members", 1)[1]
+    assert CPFL in membros and OUTRA in membros and "cvm-cadastros" in membros
+    assert "- aneel-samp:" in saida and "- cvm-cadastros:" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_em_json_e_o_envelope_da_api(
+    rodar, chave, api_em_memoria, banco, cenario
+):
+    resultado = rodar("setor", "eletricas", "--json", **_com_chave(chave))
+    assert resultado.exit_code == 0
+    direto = api_em_memoria.get(
+        "/data/v1/sectors/eletricas", headers=aj.bearer(chave)
+    ).json()
+    assert json.loads(resultado.stdout) == direto
+    assert direto["by_series"][0]["concentration"][0]["hhi"]["source"] == "aneel-samp"
+    assert _pedidos_do_mes(banco, cenario) == 2  # o setor gasta a quota; a lista, não
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_como_era_antes_da_noite_e_sem_dado(rodar, chave):
+    resultado = rodar(
+        "setor", "eletricas", "--como-era", "2026-10-01", **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.SEM_DADO
+    assert resultado.stdout == ""
+    assert "Não há dado disponível" in resultado.stderr
+    assert (
+        rodar(
+            "setor", "eletricas", "--como-era", DIA_DA_NOITE, **_com_chave(chave)
+        ).exit_code
+        == 0
+    )
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_desconhecido_e_sem_dado_e_chave_mal_escrita_nem_chega_a_api(
+    rodar, chave, banco, cenario
+):
+    assert rodar("setor", "petroleo", **_com_chave(chave)).exit_code == Saida.SEM_DADO
+    antes = _pedidos_do_mes(banco, cenario)
+    for mal_escrita in (
+        "../catalog",
+        "Elétricas",
+        "bancos?known_at=2020-01-01",
+        "x" * 41,
+    ):
+        resultado = rodar("setor", mal_escrita, **_com_chave(chave))
+        assert resultado.exit_code == Saida.USO, mal_escrita
+        assert "tickerlab setor" in resultado.output
+    assert _pedidos_do_mes(banco, cenario) == antes
+
+
+@pytest.mark.usefixtures("setor_pronto")
+def test_setor_cortado_avisa(rodar, chave, monkeypatch):
+    monkeypatch.setattr(acesso, "linhas_por_resposta", lambda _contexto: 2)
+    resultado = rodar("setor", "eletricas", **_com_chave(chave))
+    assert resultado.exit_code == 0
+    assert formato.AVISO_DE_CORTE in resultado.stdout
+
+
+def test_setor_fora_do_contrato_e_sem_dado(rodar, chave, tmp_path, monkeypatch):
+    _noite_das_eletricas(
+        tmp_path, monkeypatch
+    )  # a chave tem contrato, mas não de `sectors`
+    assert rodar("setor", "eletricas", **_com_chave(chave)).exit_code == Saida.SEM_DADO
 
 
 # ---------------------------------------------------------------- catálogo e consumo
@@ -590,7 +715,14 @@ def test_instrucoes_do_agente(rodar):
     assert agentes.exit_code == 0
     assert "Nada é recomendação de investimento" in agentes.stdout
     assert "Não invente número que a CLI não devolveu" in agentes.stdout
-    for comando in ("empresa", "demonstracoes", "fundo", "catalogo", "consumo"):
+    for comando in (
+        "empresa",
+        "demonstracoes",
+        "fundo",
+        "setor",
+        "catalogo",
+        "consumo",
+    ):
         assert f"tickerlab {comando}" in agentes.stdout
     skill = rodar("instrucoes", "skill").stdout
     assert skill.startswith("---\nname: tickerlab\ndescription: ")
@@ -657,6 +789,12 @@ def test_o_pacote_so_depende_de_click_e_httpx():
 )
 def test_celula(valor, texto):
     assert formato.celula(valor) == texto
+
+
+def test_ano_sai_sem_milhar():
+    assert formato.celula({"value": 2025, "source": "x"}, "year") == "2025"
+    assert formato.celula(2025, "value") == "2.025"
+    assert formato.celula(2025.5, "year") == "2.025,50"  # só o inteiro é ano
 
 
 def test_tabela_alinha_as_colunas():
