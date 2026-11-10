@@ -106,7 +106,7 @@ def _tabelas_dos_bancos(p: porta.Porta, dia: str) -> dict[str, pd.DataFrame]:
 def _tabelas_do_enet(p: porta.Porta, dia: str) -> dict[str, pd.DataFrame]:
     """A amostra sorteada: nossa leitura da versão sorteada e o que o ENET trouxe (`scripts/conferir_enet.py`)."""
     amostra = pd.read_csv(AMOSTRA_DO_ENET, dtype=str)
-    arquivo = acervo_placar() / "enet_amostra.parquet"
+    arquivo = acervo_placar() / "enet_amostra.csv.gz"
     if not arquivo.exists():
         raise KeyError(
             f"falta o ENET da amostra ({arquivo.name}); rode scripts.conferir_enet baixar"
@@ -117,13 +117,18 @@ def _tabelas_do_enet(p: porta.Porta, dia: str) -> dict[str, pd.DataFrame]:
         filtros={
             "cnpj": sorted(amostra["cnpj"]),
             "documento": "DFP",
-            "referencia": sorted({pd.Timestamp(d).date() for d in amostra["referencia"]}),
+            "referencia": sorted(
+                {pd.Timestamp(d).date() for d in amostra["referencia"]}
+            ),
         },
         colunas=COLUNAS_DA_DFP + ["inicio", "fim", "versao"],
     )
     versao = amostra.set_index("cnpj")["versao"].astype(int)
     nossa = nossa[nossa["versao"] == nossa["cnpj"].map(versao)]
-    return {"demonstracoes_como_era": nossa, "enet_amostra": pd.read_parquet(arquivo)}
+    return {
+        "demonstracoes_como_era": nossa,
+        "enet_amostra": pd.read_csv(arquivo, dtype={"cnpj": str}),
+    }
 
 
 def tabelas_do_par(p: porta.Porta, par: Par, dia: str) -> dict[str, pd.DataFrame]:

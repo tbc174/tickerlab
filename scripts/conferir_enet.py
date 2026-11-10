@@ -11,7 +11,7 @@ para o par `dfp_enet_x_nossa_leitura` (`base/cruzada.py`) comparar.
   10 bancos, 5 seguradoras e 35 não financeiras. A lista é gravada em `base/conferidas/amostra_enet.csv` **antes**
   de qualquer pacote ser baixado: a amostra não se ajusta depois de ver o resultado.
 - **`baixar`** baixa o pacote de cada linha da lista (um por vez, com pausa, em pasta nova) e grava as contas
-  lidas em `<acervo>/placar/enet_amostra.parquet`.
+  lidas em `<acervo>/placar/enet_amostra.csv.gz`.
 
 Roda: manual, uma vez por rodada de prova da exigência 6 (a prova vale 90 dias).
 """
@@ -26,12 +26,11 @@ import zipfile
 from pathlib import Path
 
 import pandas as pd
-import requests
 
-from base.arquivo.agente import AGENTE
 from base.contas_cvm import ler_indice
 from base.enet import DocumentoEnet, ler_xml_enet
 from base.enet_coleta import Baixador, xml_do_pacote
+from src import rede
 
 SEMENTE = 20261110
 ANO = 2024
@@ -54,7 +53,7 @@ TEMPO_LIMITE = 120
 
 
 def _baixar(url: str) -> bytes:
-    resposta = requests.get(url, headers={"User-Agent": AGENTE}, timeout=TEMPO_LIMITE)
+    resposta = rede.obter(url, timeout=TEMPO_LIMITE)
     resposta.raise_for_status()
     return resposta.content
 
@@ -157,9 +156,9 @@ def comando_baixar(pasta: Path) -> int:
     raiz = acervo.pasta_do_acervo()
     if raiz is None:
         raise SystemExit("o acervo está desligado: defina TICKERLAB_ACERVO")
-    destino = raiz / "placar" / "enet_amostra.parquet"
+    destino = raiz / "placar" / "enet_amostra.csv.gz"
     destino.parent.mkdir(parents=True, exist_ok=True)
-    contas.to_parquet(destino, index=False)
+    contas.to_csv(destino, index=False)
     print(f"{len(contas)} contas de {contas['cnpj'].nunique()} companhias em {destino}")
     return 0
 
