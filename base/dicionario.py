@@ -627,6 +627,14 @@ def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
                     "nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita)",
                     TEXTO,
                 ),
+                "capital_social": (
+                    "Capital social declarado à Receita (aproximação do porte, não é faturamento; 0 se ilegível)",
+                    REAIS_EXATOS,
+                ),
+                "n_estabelecimentos": (
+                    "Estabelecimentos ativos da raiz (matriz e filiais) no retrato, contados na montagem",
+                    NUMERO,
+                ),
                 **retrato,
             },
             **comum,  # type: ignore[arg-type]
@@ -9286,7 +9294,7 @@ _CONTRATO = {
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.1.0"),  # 1.1.0 (10/11/2026): colunas `capital_social` e `n_estabelecimentos` (linha 794)
     "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),

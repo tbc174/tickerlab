@@ -267,7 +267,7 @@
     },
     "/data/v1/companies": {
       "get": {
-        "description": "Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),\nUF, município, porte, natureza jurídica, situação, abertura e matriz, no retrato da Receita que valia\nem `known_at`. Pelo menos um filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte.",
+        "description": "Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),\nUF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,\n`capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que\nvalia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,\npor CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um\nfiltro; 50 por página (máximo 100); `next_cursor` traz a seguinte.",
         "operationId": "busca_de_empresas_data_v1_companies_get",
         "parameters": [
           {
@@ -396,6 +396,70 @@
                 }
               ],
               "title": "Head Office"
+            }
+          },
+          {
+            "in": "query",
+            "name": "capital_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Capital Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "capital_max",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Capital Max"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branches_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branches Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
             }
           },
           {

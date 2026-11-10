@@ -110,6 +110,8 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "empresas": "companies",
     "proximo_cursor": "next_cursor",
     "porte": "size",
+    "capital_social": "share_capital",
+    "n_estabelecimentos": "active_establishments",
     "cnae_principal": "cnae_code",
     "uf": "state_code",
     "municipio": "municipality",

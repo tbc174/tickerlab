@@ -286,7 +286,13 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("rfb-cnpj",),
         "prospecting",
         ("cnpj_empresas_pj",),
-        ("razao_social", "natureza_juridica", "porte"),
+        (
+            "razao_social",
+            "natureza_juridica",
+            "porte",
+            "capital_social",
+            "n_estabelecimentos",
+        ),
         _PROVA_RECEITA,
     ),
     *_campos(

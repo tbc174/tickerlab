@@ -42,12 +42,13 @@ ESTABELECIMENTOS = [
     ("22222222000191", "22222222", True, "02", "2022-03-15", "4711302", "SP", "7107", "2026-10", "2026-10-31"),
 ]
 EMPRESAS = [
-    ("11111111", "ALFA TECNOLOGIA S.A.", "2054", "demais", "2026-09", "2026-09-30"),
-    ("22222222", "BETA COMERCIO LTDA", "2062", "pequeno", "2026-09", "2026-09-30"),
-    ("33333333", "GAMA SERVICOS LTDA", "2062", "micro", "2026-09", "2026-09-30"),
-    ("44444444", "DELTA MINERACAO S.A.", "2046", "demais", "2026-09", "2026-09-30"),
-    ("11111111", "ALFA TECNOLOGIA S.A.", "2054", "demais", "2026-10", "2026-10-31"),
-    ("22222222", "BETA COMERCIO LTDA", "2062", "pequeno", "2026-10", "2026-10-31"),
+    # raiz, razão, natureza, porte, capital, estabelecimentos ativos, mês, disponível em
+    ("11111111", "ALFA TECNOLOGIA S.A.", "2054", "demais", 5_000_000.0, 2, "2026-09", "2026-09-30"),
+    ("22222222", "BETA COMERCIO LTDA", "2062", "pequeno", 100_000.0, 1, "2026-09", "2026-09-30"),
+    ("33333333", "GAMA SERVICOS LTDA", "2062", "micro", 50_000.0, 0, "2026-09", "2026-09-30"),
+    ("44444444", "DELTA MINERACAO S.A.", "2046", "demais", 5_000_000.0, 1, "2026-09", "2026-09-30"),
+    ("11111111", "ALFA TECNOLOGIA S.A.", "2054", "demais", 6_000_000.0, 1, "2026-10", "2026-10-31"),
+    ("22222222", "BETA COMERCIO LTDA", "2062", "pequeno", 100_000.0, 1, "2026-10", "2026-10-31"),
 ]
 # fmt: on
 
@@ -69,8 +70,8 @@ def _empresas() -> pd.DataFrame:
     tabela = pd.DataFrame(
         EMPRESAS,
         columns=[
-            "cnpj_basico", "razao_social", "natureza_juridica", "porte", "mes_do_retrato",
-            "disponivel_em",
+            "cnpj_basico", "razao_social", "natureza_juridica", "porte", "capital_social",
+            "n_estabelecimentos", "mes_do_retrato", "disponivel_em",
         ],
     )  # fmt: skip
     tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
@@ -170,6 +171,7 @@ def test_nenhum_campo_de_pessoa_sai(cliente, cenario):
     assert set(corpo["companies"][0]) <= {
         "cnpj", "legal_name", "legal_nature_code", "size", "registration_status",
         "opened_at", "cnae_code", "state_code", "municipality", "head_office",
+        "share_capital", "active_establishments",
     }  # fmt: skip
 
 
@@ -338,3 +340,138 @@ def test_filtro_por_campo_negado_pelo_portao_nao_serve_de_oraculo(
 def test_lista_de_filtro_grande_demais_e_400(cliente, cenario):
     muitos = [str(10 + i) for i in range(prospeccao.VALORES_MAXIMOS + 1)]
     assert _get(cliente, cenario, cnae=muitos).status_code == 400
+
+
+# ---------------------------------------------------------------- capital, estabelecimentos e ordem
+# em 15/10 vale o retrato de setembro; ativos: ALFA (2 estabelecimentos, 5 mi), BETA (1, 100 mil) e DELTA (1, 5 mi)
+
+SETEMBRO = {"known_at": "2026-10-15"}
+
+
+def test_capital_e_estabelecimentos_saem_como_numero_com_fonte(cliente, cenario):
+    corpo = _get(cliente, cenario, cnae="4711302").json()
+    (empresa,) = corpo["companies"]
+    assert empresa["share_capital"]["value"] == 100_000.0
+    assert empresa["share_capital"]["source"] == "rfb-cnpj"
+    assert empresa["active_establishments"]["value"] == 1
+
+
+def test_filtro_de_capital_minimo_e_maximo(cliente, cenario):
+    grandes = _get(cliente, cenario, capital_min=1_000_000, **SETEMBRO)
+    assert _cnpjs(grandes) == ["11111111000191", "11111111000272", "44444444000191"]
+    pequena = _get(cliente, cenario, capital_max=200_000, **SETEMBRO)
+    assert _cnpjs(pequena) == ["22222222000191"]
+    faixa = _get(cliente, cenario, capital_min=100_000, capital_max=100_000, **SETEMBRO)
+    assert _cnpjs(faixa) == ["22222222000191"]
+
+
+def test_filtro_de_estabelecimentos_ativos_minimo(cliente, cenario):
+    resposta = _get(cliente, cenario, branches_min=2, **SETEMBRO)
+    assert _cnpjs(resposta) == ["11111111000191", "11111111000272"]
+
+
+def test_ordem_por_capital_decrescente_desempata_pelo_cnpj(cliente, cenario):
+    resposta = _get(cliente, cenario, capital_min=1, sort="-capital", **SETEMBRO)
+    assert _cnpjs(resposta) == [
+        "11111111000191", "11111111000272", "44444444000191", "22222222000191",
+    ]  # fmt: skip
+
+
+def test_ordem_por_capital_crescente(cliente, cenario):
+    resposta = _get(cliente, cenario, capital_min=1, sort="capital", **SETEMBRO)
+    assert _cnpjs(resposta) == [
+        "22222222000191", "11111111000191", "11111111000272", "44444444000191",
+    ]  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("sort", "esperado"),
+    [
+        ("-capital", ["11111111000191", "11111111000272", "44444444000191", "22222222000191"]),
+        ("capital", ["22222222000191", "11111111000191", "11111111000272", "44444444000191"]),
+        ("-branches", ["11111111000191", "11111111000272", "22222222000191", "44444444000191"]),
+        ("branches", ["22222222000191", "44444444000191", "11111111000191", "11111111000272"]),
+    ],
+)  # fmt: skip
+def test_cursor_da_ordem_percorre_tudo_sem_repetir_nem_pular(
+    cliente, cenario, sort, esperado
+):
+    vistos: list[str] = []
+    cursor = None
+    for _ in range(10):
+        parametros = {"capital_min": 1, "sort": sort, "limit": 1, **SETEMBRO}
+        if cursor:
+            parametros["cursor"] = cursor
+        corpo = _get(cliente, cenario, **parametros).json()
+        vistos += [e["cnpj"] for e in corpo["companies"]]
+        cursor = corpo["next_cursor"]
+        if not cursor:
+            break
+    assert vistos == esperado
+
+
+def test_cursor_de_uma_ordem_nao_serve_em_outra(cliente, cenario):
+    pagina = _get(cliente, cenario, capital_min=1, sort="-capital", limit=1, **SETEMBRO)
+    cursor = pagina.json()["next_cursor"]
+    outra = _get(
+        cliente,
+        cenario,
+        capital_min=1,
+        sort="capital",
+        cursor=cursor,
+        limit=1,
+        **SETEMBRO,
+    )
+    assert (
+        outra.status_code == 200
+    )  # mesma família de ordem: o cursor vale o valor, não a direção
+    por_cnpj = _get(cliente, cenario, capital_min=1, cursor=cursor, **SETEMBRO)
+    assert por_cnpj.status_code == 400
+    assert por_cnpj.json()["detail"] == "invalid_cursor"
+    simples = _get(cliente, cenario, capital_min=1, limit=1, **SETEMBRO)
+    ordenado = _get(
+        cliente, cenario, capital_min=1, sort="-capital",
+        cursor=simples.json().get("next_cursor"), **SETEMBRO,
+    )  # fmt: skip
+    assert ordenado.status_code == 400
+
+
+@pytest.mark.parametrize(
+    "parametros",
+    [
+        {"capital_min": -1},
+        {"capital_min": 10, "capital_max": 5},
+        {"capital_min": "nan"},
+        {"capital_max": "inf"},
+        {"capital_min": 1e20},
+        {"branches_min": 0},
+        {"branches_min": 2_000_000},
+        {"cnae": "62", "sort": "faturamento"},
+        {"cnae": "62", "sort": "--capital"},
+    ],
+)
+def test_capital_estabelecimentos_ou_ordem_invalidos_sao_400(
+    cliente, cenario, parametros
+):
+    assert _get(cliente, cenario, **parametros).status_code in (400, 422)
+
+
+def test_so_a_ordem_nao_basta_como_filtro(cliente, cenario):
+    resposta = _get(cliente, cenario, sort="-capital")
+    assert resposta.status_code == 400
+    assert resposta.json()["detail"] == "filter_required"
+
+
+def test_tabela_montada_antes_do_capital_nao_quebra_a_busca_sem_esse_filtro(
+    cliente, cenario, pasta
+):
+    for arquivo in (pasta / prospeccao.EMPRESAS).glob("*.parquet"):
+        tabela = pd.read_parquet(arquivo).drop(
+            columns=["capital_social", "n_estabelecimentos"]
+        )
+        tabela.to_parquet(arquivo, index=False)
+    antiga = _get(cliente, cenario, cnae="4711302")
+    assert antiga.status_code == 200
+    (empresa,) = antiga.json()["companies"]
+    assert "share_capital" not in empresa
+    assert _get(cliente, cenario, capital_min=1).status_code == 404

@@ -113,6 +113,7 @@ def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
                 "CASA 12.345.678/0001-95 LTDA",
             ],
             "natureza_juridica": ["2062"] * 8,
+            "capital_social": ["1000,00"] * 8,
             "porte": ["01"] * 8,
         }
     )
@@ -127,3 +128,32 @@ def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
         "FULANO LTDA",
         "CASA 12.345.678/0001-95 LTDA",
     ]
+
+
+def test_capital_vira_numero_e_ilegivel_vira_zero():
+    from base.receita_empresas import _empresas_pj
+
+    parte = pd.DataFrame(
+        {
+            "cnpj_basico": ["1", "2", "3"],
+            "razao_social": ["A LTDA", "B LTDA", "C LTDA"],
+            "natureza_juridica": ["2062"] * 3,
+            "capital_social": ["1500000,50", "0,00", "x"],
+            "porte": ["05"] * 3,
+        }
+    )
+    assert list(_empresas_pj(parte)["capital_social"]) == [1500000.5, 0.0, 0.0]
+
+
+def test_n_estabelecimentos_conta_so_os_ativos_da_raiz():
+    from base.receita_empresas import com_estabelecimentos_ativos
+
+    empresas = pd.DataFrame({"cnpj_basico": ["1", "2", "3"]})
+    vista = pd.DataFrame(
+        {
+            "cnpj_basico": ["1", "1", "1", "2"],
+            "situacao_cadastral": ["02", "02", "08", "08"],
+        }
+    )
+    contados = com_estabelecimentos_ativos(empresas, vista)
+    assert list(contados["n_estabelecimentos"]) == [2, 0, 0]
