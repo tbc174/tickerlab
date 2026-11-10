@@ -206,14 +206,18 @@ def _contas_do_balanco(bpa: pd.DataFrame, bpp: pd.DataFrame) -> pd.DataFrame:
 # a baixa e o recebimento ficam de fora (medido no DFP 2025 real)
 _COMPRA_DE_ATIVO = (
     r"^(?:aquisic|compra|adic|investiment|aplicac|no |em |imobilizado|intangivel|ativo "
-    r"imobilizado|ativo intangivel)"
+    r"imobilizado|ativo intangivel|ativo contratual|ativo financeiro|concessao)"
 )
+# concessionárias: a obra vai para o ativo contratual ("Concessão Serviço Público (Ativo Contratual)")
+# ou para o ativo financeiro da concessão, e não para o imobilizado. "Ativo financeiro" sozinho é
+# aplicação, não obra: só conta com "concessão" na descrição
+_ATIVO_DE_CAPEX = r"imobiliz|intangiv|contratual|concessao"
 _SAIDA_DE_ATIVO = r"venda|alienac|baixa|recebi"
 
 
 def e_capex(descricoes: pd.Series) -> pd.Series:
     """Quais linhas (descrições sem acento, em minúsculas) do fluxo de investimento são capex."""
-    ativo = descricoes.str.contains(r"imobiliz|intangiv", regex=True)
+    ativo = descricoes.str.contains(_ATIVO_DE_CAPEX, regex=True)
     compra = descricoes.str.match(_COMPRA_DE_ATIVO)
     saida = descricoes.str.contains(_SAIDA_DE_ATIVO, regex=True)
     return ativo & compra & ~saida
