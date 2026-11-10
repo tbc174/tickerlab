@@ -16,6 +16,7 @@ import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
 import { MapaDoCafe } from "./telas/MapaDoCafe";
 import { MeusDados } from "./telas/MeusDados";
+import { OQueMudou } from "./telas/OQueMudou";
 import { PainelDoCafe } from "./telas/PainelDoCafe";
 import { Planos } from "./telas/Planos";
 import { PrecosDeReferencia } from "./telas/PrecosDeReferencia";
@@ -43,6 +44,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   relatorio_empresa: (pagina) => <RelatorioEmpresa pagina={pagina} />,
   busca_por_cnpj: (pagina) => <BuscaPorCnpj pagina={pagina} />,
   ficha_da_empresa: (pagina) => <FichaDaEmpresa pagina={pagina} />,
+  o_que_mudou: (pagina) => <OQueMudou pagina={pagina} />,
   relatorio_do_setor: (pagina) => <RelatorioDoSetor pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,

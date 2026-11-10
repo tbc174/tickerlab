@@ -42,6 +42,38 @@ LIMITES = tuple(
 
 
 @dataclass(frozen=True)
+class Bloco:
+    """Um bloco da ficha, para a tela dizer o que vem antes de o dado ser liberado (sem data nem número)."""
+
+    titulo: str
+    fonte: str
+    o_que_traz: str
+
+
+BLOCOS = (
+    Bloco(
+        "Cadastro na Receita Federal",
+        "Receita Federal, dados abertos do CNPJ",
+        "Razão social, natureza jurídica, situação cadastral e desde quando, se é matriz ou filial e a "
+        "opção pelo Simples Nacional.",
+    ),
+    Bloco(
+        "Entregas de balanço à CVM",
+        "CVM, demonstrações financeiras anuais e trimestrais",
+        "Só da companhia aberta: cada balanço entregue, o prazo, o dia da entrega e se atrasou.",
+    ),
+)
+
+
+def blocos_como_lista() -> list[dict[str, str]]:
+    """Os blocos em tipos simples (a rota devolve sempre; a tela os mostra quando a ficha não sai)."""
+    return [
+        {"titulo": b.titulo, "fonte": b.fonte, "o_que_traz": b.o_que_traz}
+        for b in BLOCOS
+    ]
+
+
+@dataclass(frozen=True)
 class Resposta:
     """O que a tela recebe: o estado, o corpo do leitor (só quando pronta), as fontes com a atribuição e
     quantas linhas foram servidas (a planilha e o medidor contam por aqui)."""

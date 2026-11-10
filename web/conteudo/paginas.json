@@ -12,6 +12,23 @@
     "url": "inicio"
   },
   {
+    "area": "conta",
+    "chave": "o_que_mudou",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "OQueMudouV1",
+      "rota": "/v1/o-que-mudou"
+    },
+    "descricao": "O que entrou no app a cada dia, com o link para abrir.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "O que mudou",
+    "url": "o-que-mudou"
+  },
+  {
     "area": "ativo",
     "chave": "relatorio",
     "contrato": null,
