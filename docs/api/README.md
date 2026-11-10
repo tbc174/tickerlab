@@ -200,6 +200,8 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 | `POST /data/v1/funds/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 | `GET /data/v1/credit/{cnpj}` | a ficha de crédito da empresa como era em `known_at` (só fatos, ver abaixo) | sim, 1 |
 | `POST /data/v1/credit/batch` | a mesma ficha para até 100 CNPJs, com o status de cada um | sim, 1 por CNPJ |
+| `GET /data/v1/sectors` | os setores do relatório que a ficha da noite tem, com o dia dela | não |
+| `GET /data/v1/sectors/{key}` | o mercado de um setor (molde D, ver abaixo) | sim, 1 |
 
 Todas contam no limite do minuto (o lote conta 1). Toda leitura de dado aceita **`known_at=AAAA-MM-DD`**:
 a resposta é a que a base dava naquele dia (só o que já era público nele, sem a revisão que veio depois);
@@ -237,6 +239,23 @@ Ficam fora, na leitura mais estreita: os resultados das regras de elegibilidade 
 mobiliário seria opinião de crédito, que é de agência registrada: Resolução CVM 9/2020, art. 1º),
 rating, insolvência, o SCR (só agregado) e as fontes cujas marcas não deixam redistribuir. Pessoa
 natural (MEI, empresário individual) e CNPJ que a rede não conhece saem `not_available`.
+
+### Setor (`sectors`, linha 781)
+
+O molde D de `docs/padrao-de-analise.md` para os setores do relatório (`src/relatorio_setor.py`:
+`eletricas`, `bancos`, `seguros`, `saude_suplementar`, `telecom`): por série de agência, o total do
+mercado, CR4, HHI, a faixa e a variação do HHI por ano; a fatia de cada companhia aberta; e a lista das
+companhias, com o motivo de estarem no setor. É a exceção ao "só pela porta da base": a rota lê a seção
+`setor` da ficha da noite (`src.dossie.secao_do_setor`), onde a conta sobre várias tabelas já está feita e
+conferida (a mesma do app e do PDF). Cada coluna passa pelo portão com a fonte de onde saiu: a concentração
+é **agregado** de mercado (a única linha de direito `agregado` da API) e a fatia é fato de companhia, as
+duas pela fonte da agência; a lista, pela CVM. A prontidão confere também a ligação às companhias
+(`empresa_serie`, `cadastro_das_companhias`).
+
+A base não guarda quando a agência publicou cada mês, então `published_at` é o dia da noite e `observed_at`
+sai vazio; só existe a noite mais nova, e um `known_at` antes dela sai `not_available`. Linha sem CNPJ de
+14 dígitos não sai: nenhuma pessoa física. O lado a lado por entidade e o mercado de energia (CCEE, ONS)
+ficam fora desta versão.
 
 ## Mudou uma rota da `/data/v1`?
 

@@ -16,7 +16,7 @@ from base.dossie import COLUNAS_DE_PESSOA
 from base.prontidao import Prontidao, Prova, prova_publicavel
 from base.raio_x_de_fundo import CADASTRO, CAMPOS_DO_CADASTRO
 from src import portao_externo as portao
-from src.api_externa.conjuntos import credito, empresas
+from src.api_externa.conjuntos import credito, empresas, setores
 from src.banco.coletas import Marca, marca_da_fonte
 from src.portao_externo import (
     DIREITOS_DA_API_EXTERNA,
@@ -31,12 +31,23 @@ from src.portao_externo import (
 )
 
 # "companies" entra com a rota dele (PR 4), que tira MEI e empresário individual linha a linha; "credit"
-# (linha 754, PR 2) é o único de crédito
-CONJUNTOS_DO_BETA = {"companies", "financials", "funds", "credit"}
+# (linha 754, PR 2) é o único de crédito; "sectors" (linha 781) é o único com agregado de mercado
+CONJUNTOS_DO_BETA = {"companies", "financials", "funds", "credit", "sectors"}
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
 CAMPOS_DO_CUSTO = {"sem_taxa", "com_taxa", "ficou_com_a_taxa", "fracao_do_resultado"}
 DEPOIS_DO_COMECO = date(2026, 11, 10)
+# o setor é uma conta da noite: a série da agência (1ª tabela, a da fonte) ligada às companhias abertas pela
+# tabela conferida da CVM; a prontidão confere também a ligação, que não é alimentada pela fonte da série
+TABELAS_DA_LIGACAO_DO_SETOR = {"empresa_serie", "cadastro_das_companhias"}
+# fonte com carga própria, fora do arquivista (`DESTINOS` só tem as dele): a tabela que ela alimenta, cuja
+# linhagem no dicionário cita a fonte (`scripts/carga_bcb_credito.py`, o IF.data pela API do BC)
+FONTES_DE_CARGA_PROPRIA = {"bcb-ifdata": "ifdata_valores"}
+CAMPOS_DO_SETOR = {
+    *setores.COLUNAS_DA_CONCENTRACAO,
+    *setores.COLUNAS_DA_PARTICIPACAO,
+    *setores.COLUNAS_DOS_MEMBROS,
+}
 
 
 def _pedido(linha: LinhaDeDireito) -> Pedido:
@@ -60,8 +71,18 @@ def _da_familia(fonte: str, familia: str) -> bool:
     return fonte == familia or fonte.startswith(f"{familia}-")
 
 
-def test_o_beta_tem_os_quatro_conjuntos():
+def test_o_beta_tem_os_cinco_conjuntos():
     assert {linha.conjunto for linha in DIREITOS_DA_API_EXTERNA} == CONJUNTOS_DO_BETA
+
+
+def _categoria_esperada(linha: LinhaDeDireito) -> Categoria:
+    """Agregado só na concentração do mercado do setor; todo o resto é fato de empresa."""
+    do_mercado = (
+        linha.conjunto == setores.CONJUNTO
+        and linha.fonte != setores.FONTE_DOS_MEMBROS
+        and linha.campo in setores.COLUNAS_DA_CONCENTRACAO
+    )
+    return Categoria.AGREGADO if do_mercado else Categoria.FATO_DE_PJ
 
 
 def test_toda_linha_e_fato_de_empresa_para_analise_na_api_externa():
@@ -69,7 +90,7 @@ def test_toda_linha_e_fato_de_empresa_para_analise_na_api_externa():
         assert linha.canal is Canal.API_EXTERNA, linha
         esperada = FINALIDADE_DO_CONJUNTO.get(linha.conjunto, Finalidade.ANALISE)
         assert linha.finalidade is esperada, linha
-        assert linha.categoria is Categoria.FATO_DE_PJ, linha
+        assert linha.categoria is _categoria_esperada(linha), linha
         assert linha.categoria not in NUNCA_SAEM, linha
         assert linha.vigente_ate is None, linha
 
@@ -94,9 +115,17 @@ def test_toda_tabela_existe_e_nao_guarda_dado_de_pessoa():
 
 def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
     for linha in DIREITOS_DA_API_EXTERNA:
-        assert linha.fonte in DESTINOS, linha
-        for tabela in linha.tabelas:
-            assert tabela in DESTINOS[linha.fonte].tabelas, (linha, tabela)
+        tabelas = linha.tabelas
+        if linha.conjunto == setores.CONJUNTO:
+            assert set(tabelas[1:]) <= TABELAS_DA_LIGACAO_DO_SETOR, linha
+            tabelas = tabelas[:1]
+        for tabela in tabelas:
+            if linha.fonte in FONTES_DE_CARGA_PROPRIA:
+                assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
+                assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)
+            else:
+                assert linha.fonte in DESTINOS, linha
+                assert tabela in DESTINOS[linha.fonte].tabelas, (linha, tabela)
             assert _da_familia(linha.fonte, TABELAS[tabela].familia_da_fonte), linha
 
 
@@ -106,6 +135,10 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
         if linha.conjunto == credito.CONJUNTO:
             # fato da ficha: conta nossa sobre a tabela (`test_api_externa_credito` confere a origem)
             assert linha.tabelas == (credito.FATOS[linha.campo].tabela,), linha
+            continue
+        if linha.conjunto == setores.CONJUNTO:
+            # coluna da ficha da noite (`test_api_externa_setores` confere que a ficha a traz)
+            assert linha.campo in CAMPOS_DO_SETOR, linha
             continue
         colunas = {c for tabela in linha.tabelas for c in TABELAS[tabela].colunas}
         if linha.tabelas == (CADASTRO,):

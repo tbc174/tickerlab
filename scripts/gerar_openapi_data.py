@@ -59,6 +59,8 @@ ERROS: dict[str, tuple[int, str]] = {
 SEMPRE = ("api_key_in_url", "invalid_api_key", "rate_limited")
 DE_DADO = ("monthly_quota_exceeded", "invalid_known_at", "service_unavailable")
 DE_UM_CNPJ = ("invalid_cnpj", "not_available")
+# rota de dado que lê a ficha da noite, não a base (`conjuntos/setores.py`): sem o 503 da base, com o 404
+DA_FICHA_DA_NOITE = ("/data/v1/sectors/{key}",)
 
 
 def _parametros(operacao: dict) -> set[str]:
@@ -71,14 +73,17 @@ def _lote(operacao: dict) -> bool:
 
 def codigos_da_operacao(caminho: str, operacao: dict) -> list[str]:
     """Os códigos de erro que uma rota pode dar, pela forma dela: toda rota passa pela chave e pelo
-    limite do minuto; a de dado (com `known_at` ou lote) gasta a quota e lê a base; a de um CNPJ pode não
-    ter o que servir."""
+    limite do minuto; a de dado (com `known_at` ou lote) gasta a quota e lê a base (a da ficha da noite
+    não lê a base); a de um CNPJ, e a da ficha da noite, pode não ter o que servir."""
     parametros = _parametros(operacao)
     codigos = list(SEMPRE)
     if "known_at" in parametros or _lote(operacao):
         codigos += DE_DADO
     if "{cnpj}" in caminho:
         codigos += DE_UM_CNPJ
+    if caminho in DA_FICHA_DA_NOITE:
+        codigos.remove("service_unavailable")
+        codigos.append("not_available")
     if "assumed_return" in parametros:
         codigos.append("invalid_assumed_return")
     if _lote(operacao):
