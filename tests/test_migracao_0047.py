@@ -28,6 +28,9 @@ def url(tmp_path):
     migrar_para("head", url)
     yield url
     if URL_DE_TESTE:
+        # a volta da 0039 recusa conta sem identidade do Google: as contas do teste saem antes
+        _gravar(url, sa.delete(usuarios))
+        _gravar(url, sa.delete(organizacoes))
         migrar_para("base", url)
 
 
