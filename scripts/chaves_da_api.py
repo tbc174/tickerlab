@@ -220,7 +220,8 @@ def _vincular_membro(
 def _desvincular_membro(
     conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
 ) -> str:
-    conta = mb.conta_do_email_confirmado(conexao, args.email)
+    # pelo id, tirar um membro nunca depende de o e-mail dele continuar confirmado e único
+    conta = args.conta or mb.conta_do_email_confirmado(conexao, args.email)
     mudou = mb.desvincular_membro(
         conexao, organizacao_id=args.organizacao, usuario_id=conta, ator_id=ator
     )
@@ -357,13 +358,21 @@ def _montar_argumentos() -> argparse.ArgumentParser:
         comando("reativar-organizacao", _reativar_organizacao, "as chaves voltam")
     )
     com_organizacao(comando("ver", _ver, "chaves, direitos, membros e consumo do mês"))
-    for nome, funcao, ajuda in (
-        ("vincular-membro", _vincular_membro, "a conta passa a ser da organização"),
-        ("desvincular-membro", _desvincular_membro, "a conta deixa de ser"),
-    ):
-        com_organizacao(comando(nome, funcao, ajuda)).add_argument(
-            "--email", required=True, help="e-mail com que a pessoa entra no app"
+    ajuda_do_email = "e-mail que a pessoa confirmou ao entrar no app"
+    com_organizacao(
+        comando(
+            "vincular-membro", _vincular_membro, "a conta passa a ser da organização"
         )
+    ).add_argument("--email", required=True, help=ajuda_do_email)
+    quem_sai = com_organizacao(
+        comando("desvincular-membro", _desvincular_membro, "a conta deixa de ser")
+    ).add_mutually_exclusive_group(required=True)
+    quem_sai.add_argument("--email", help=ajuda_do_email)
+    quem_sai.add_argument(
+        "--conta",
+        type=uuid.UUID,
+        help="id da conta (o `ver` mostra): tira o membro mesmo se o e-mail mudou",
+    )
 
     suspender_conjunto = comando(
         "suspender-conjunto",

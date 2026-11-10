@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 from scripts import chaves_da_api as script
 from src.banco import membros_da_organizacao as mb
-from src.banco.modelo import auditoria, identidades
+from src.banco.modelo import auditoria, identidades, usuarios
 from src.banco.usuarios import entrar
 
 ADMIN = "admin-808@exemplo.com"
@@ -183,3 +183,63 @@ def test_duas_contas_com_o_email_confirmado_e_o_vinculo_e_recusado(
     assert codigo == 1 and "Mais de uma conta" in erro
     with banco.connect() as conexao:
         assert mb.listar_membros(conexao, casa) == []
+
+
+def _confirmar(banco, conta, confirmado=True):
+    with banco.begin() as conexao:
+        conexao.execute(
+            sa.update(identidades)
+            .where(identidades.c.usuario_id == conta.id)
+            .values(email_confirmado=confirmado)
+        )
+
+
+def test_email_com_outra_caixa_e_espaco_acha_a_mesma_conta(capsys, casa, analista):
+    codigo, saida, erro = _vincular(capsys, casa, email=f"  {MEMBRO.upper()} ")
+    assert codigo == 0, erro
+    assert _id_na_saida(saida) == analista.id
+
+
+def test_conta_apagada_nao_e_vinculada(banco, capsys, casa, analista):
+    with banco.begin() as conexao:
+        conexao.execute(
+            sa.update(usuarios)
+            .where(usuarios.c.id == analista.id)
+            .values(excluido_em=datetime.now(UTC))
+        )
+    codigo, _, _ = _vincular(capsys, casa)
+    assert codigo == 1
+    with banco.connect() as conexao:
+        assert mb.listar_membros(conexao, casa) == []
+
+
+def test_desvincular_pelo_email_recusa_o_ambiguo_e_pelo_id_sempre_tira(
+    banco, capsys, casa, analista, intruso
+):
+    _vincular(capsys, casa)
+    _confirmar(banco, intruso)
+    codigo, _, erro = _desvincular(capsys, casa)
+    assert codigo == 1 and "Mais de uma conta" in erro
+    with banco.connect() as conexao:
+        assert len(mb.listar_membros(conexao, casa)) == 1
+
+    codigo, saida, erro = _rodar(
+        capsys, "desvincular-membro", str(casa), "--conta", str(analista.id)
+    )
+    assert codigo == 0, erro
+    assert _id_na_saida(saida) == analista.id
+    with banco.connect() as conexao:
+        assert mb.listar_membros(conexao, casa) == []
+
+
+def test_desvincular_pelo_id_tira_quem_deixou_de_ter_o_email_confirmado(
+    banco, capsys, casa, analista
+):
+    _vincular(capsys, casa)
+    _confirmar(banco, analista, confirmado=False)
+    codigo, _, _ = _desvincular(capsys, casa)
+    assert codigo == 1
+    codigo, _, erro = _rodar(
+        capsys, "desvincular-membro", str(casa), "--conta", str(analista.id)
+    )
+    assert codigo == 0, erro
