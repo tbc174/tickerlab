@@ -50,6 +50,7 @@ PASTAS_DA_RAIZ = frozenset(
         ".vscode",
         "base",
         "cli",
+        "conector_remoto",
         "conteudo",
         "dados_de_exemplo",
         "docs",
