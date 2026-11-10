@@ -10,7 +10,8 @@ Comandos: `criar-organizacao`, `conceder-direito`, `suspender-direito`, `reativa
 as organizações de uma vez, `suspender-conjunto`, `reativar-conjunto` e `conjuntos-suspensos`.
 
 Membros (ADR 0128, Emenda 1): `vincular-membro` e `desvincular-membro` ligam a conta de quem entra no
-app (pelo e-mail do login) à organização. A tela com login só mostra pessoa física do cadastro da
+app à organização, pelo e-mail que ela **confirmou** num login (conta sem e-mail confirmado, ou e-mail
+confirmado por mais de uma conta, é recusada). A tela com login só mostra pessoa física do cadastro da
 Receita a membro de organização com o direito `pessoa_na_tela` (finalidade `analise`) vigente, dado
 pelo `conceder-direito` e tirado pelo `suspender-direito`. A saída e a auditoria levam só o id da conta.
 
@@ -46,7 +47,6 @@ from src.banco.modelo import (
     MOTIVOS_DA_SUSPENSAO,
     PLANOS_DA_API,
 )
-from src.banco.usuarios import buscar_por_email
 from src.chaves_da_api import ChaveNova
 from src.configuracao import url_do_banco
 
@@ -205,22 +205,13 @@ def _reativar_conjunto(
     )
 
 
-def _conta_do_email(conexao: sa.Connection, email: str) -> uuid.UUID:
-    conta = buscar_por_email(conexao, email)
-    if conta is None:
-        raise mb.ContaInexistenteError(
-            "Nenhuma conta com este e-mail: a pessoa precisa entrar no app antes."
-        )
-    return conta.id
-
-
 def _vincular_membro(
     conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
 ) -> str:
     membro = mb.vincular_membro(
         conexao,
         organizacao_id=args.organizacao,
-        usuario_id=_conta_do_email(conexao, args.email),
+        usuario_id=mb.conta_do_email_confirmado(conexao, args.email),
         ator_id=ator,
     )
     return f"Membro vinculado: conta {membro.usuario_id}"
@@ -229,7 +220,7 @@ def _vincular_membro(
 def _desvincular_membro(
     conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
 ) -> str:
-    conta = _conta_do_email(conexao, args.email)
+    conta = mb.conta_do_email_confirmado(conexao, args.email)
     mudou = mb.desvincular_membro(
         conexao, organizacao_id=args.organizacao, usuario_id=conta, ator_id=ator
     )

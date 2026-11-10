@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 from scripts import chaves_da_api as script
 from src.banco import membros_da_organizacao as mb
-from src.banco.modelo import auditoria
+from src.banco.modelo import auditoria, identidades
 from src.banco.usuarios import entrar
 
 ADMIN = "admin-808@exemplo.com"
@@ -36,7 +36,20 @@ def admin(banco, monkeypatch):
 @pytest.fixture
 def analista(banco):
     with banco.begin() as conexao:
-        return entrar(conexao, "g-analista-808", MEMBRO, "Analista Exemplo")[0]
+        return entrar(
+            conexao,
+            "g-analista-808",
+            MEMBRO,
+            "Analista Exemplo",
+            email_confirmado=True,
+        )[0]
+
+
+@pytest.fixture
+def intruso(banco):
+    """Quem se cadastrou antes com o e-mail do analista, sem confirmá-lo (P0 da revisão cruzada)."""
+    with banco.begin() as conexao:
+        return entrar(conexao, "g-intruso-808", MEMBRO, "Intruso Exemplo")[0]
 
 
 def _rodar(capsys, *argumentos, admin=ADMIN):
@@ -133,5 +146,40 @@ def test_email_sem_conta_e_vinculo_repetido_dao_erro_sem_eco(capsys, casa, anali
 def test_quem_nao_e_admin_nao_vincula(banco, capsys, casa, analista):
     codigo, _, erro = _vincular(capsys, casa, admin=MEMBRO)
     assert codigo == 2 and "Recusado" in erro
+    with banco.connect() as conexao:
+        assert mb.listar_membros(conexao, casa) == []
+
+
+def test_conta_com_o_mesmo_email_sem_confirmar_nunca_e_a_vinculada(
+    banco, capsys, casa, intruso, analista
+):
+    assert intruso.id != analista.id
+    codigo, saida, erro = _vincular(capsys, casa)
+    assert codigo == 0, erro
+    assert _id_na_saida(saida) == analista.id
+    with banco.connect() as conexao:
+        assert [m.usuario_id for m in mb.listar_membros(conexao, casa)] == [analista.id]
+
+
+def test_so_a_conta_sem_confirmar_existe_e_o_vinculo_e_recusado(
+    banco, capsys, casa, intruso
+):
+    codigo, _, erro = _vincular(capsys, casa)
+    assert codigo == 1 and "confirmado" in erro
+    with banco.connect() as conexao:
+        assert mb.listar_membros(conexao, casa) == []
+
+
+def test_duas_contas_com_o_email_confirmado_e_o_vinculo_e_recusado(
+    banco, capsys, casa, analista, intruso
+):
+    with banco.begin() as conexao:
+        conexao.execute(
+            sa.update(identidades)
+            .where(identidades.c.usuario_id == intruso.id)
+            .values(email_confirmado=True)
+        )
+    codigo, _, erro = _vincular(capsys, casa)
+    assert codigo == 1 and "Mais de uma conta" in erro
     with banco.connect() as conexao:
         assert mb.listar_membros(conexao, casa) == []

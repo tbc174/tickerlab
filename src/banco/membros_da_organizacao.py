@@ -20,7 +20,12 @@ import sqlalchemy as sa
 
 from src import auditoria
 from src.banco import chaves_da_api as cb
-from src.banco.modelo import membros_da_organizacao, organizacoes, usuarios
+from src.banco.modelo import (
+    identidades,
+    membros_da_organizacao,
+    organizacoes,
+    usuarios,
+)
 
 CONJUNTO_DE_PESSOA_NA_TELA = "pessoa_na_tela"
 FINALIDADE_DA_TELA = "analise"
@@ -28,6 +33,10 @@ FINALIDADE_DA_TELA = "analise"
 
 class ContaInexistenteError(ValueError):
     """A conta não existe (ou foi apagada)."""
+
+
+class ContaAmbiguaError(ValueError):
+    """Mais de uma conta provou o mesmo e-mail: não dá para saber qual vincular."""
 
 
 class JaEMembroError(ValueError):
@@ -62,6 +71,36 @@ def _conta_existe(conexao: sa.Connection, usuario_id: uuid.UUID) -> bool:
             )
         )
     ).scalar_one()
+
+
+def conta_do_email_confirmado(conexao: sa.Connection, email: str) -> uuid.UUID:
+    """A única conta ativa que **provou** este e-mail num login (`identidades.email_confirmado`).
+
+    Não usa `usuarios.email`: ele não é único nem provado, então quem se cadastrasse com o e-mail de
+    um analista sem confirmá-lo seria vinculado no lugar dele (achado P0 da revisão cruzada do PR 1).
+    Zero contas ou mais de uma: recusa, sem escolher.
+    """
+    contas = (
+        conexao.execute(
+            sa.select(usuarios.c.id)
+            .join(identidades, identidades.c.usuario_id == usuarios.c.id)
+            .where(
+                identidades.c.email == (email or "").strip().lower(),
+                identidades.c.email_confirmado.is_(True),
+                usuarios.c.excluido_em.is_(None),
+            )
+            .distinct()
+        )
+        .scalars()
+        .all()
+    )
+    if not contas:
+        raise ContaInexistenteError(
+            "Nenhuma conta com este e-mail confirmado: a pessoa precisa entrar no app antes."
+        )
+    if len(contas) > 1:
+        raise ContaAmbiguaError("Mais de uma conta com este e-mail confirmado.")
+    return contas[0]
 
 
 def _vinculo(conexao: sa.Connection, usuario_id: uuid.UUID) -> sa.Row | None:
