@@ -3722,7 +3722,7 @@ def _dia_conferido(rotulos: pd.DataFrame, dia: pd.Timestamp) -> pd.Timestamp:
     return dia if pd.isna(montagem) else min(pd.Timestamp(montagem), dia)
 
 
-def _entregas_conhecidas_em(rotulos: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
+def entregas_conhecidas_em(rotulos: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
     """As linhas de `rotulos_atraso` que a ficha de `dia` pode mostrar, do prazo mais novo ao mais
     antigo: a entrega com prazo vencido até `dia` e, sem entrega, o documento com prazo vencido até
     `conferido_ate`, o último dia em que a base conferiu a falta (`dia` ou, se a tabela é mais antiga
@@ -3855,7 +3855,7 @@ def secao_entrega_das_demonstracoes(
     if rotulos is None:
         return None
     dia = pd.Timestamp(hoje).normalize()
-    conhecidas = _entregas_conhecidas_em(rotulos, dia)
+    conhecidas = entregas_conhecidas_em(rotulos, dia)
     linhas = pd.DataFrame(
         [_linha_da_entrega(linha, dia) for _, linha in conhecidas.iterrows()],
         dtype=object,

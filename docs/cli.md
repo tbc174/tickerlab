@@ -34,17 +34,23 @@ vir de dois lugares:
 endereço sem HTTPS, a não ser que ele aponte para a própria máquina (`localhost`, `127.0.0.1`, `*.localhost`).
 Assim, a chave não vai em texto aberto pela rede.
 
-## Os cinco comandos
+## Os comandos
 
 | Comando | Rota | Gasta a quota |
 |---|---|---|
 | `tickerlab empresa <cnpj> [--como-era AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}` | sim |
 | `tickerlab demonstracoes <cnpj> [--como-era ...] [--periodo AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}/financials` | sim |
 | `tickerlab fundo <cnpj> [--como-era ...] [--retorno-suposto 0.12]` | `GET /data/v1/funds/{cnpj}` | sim |
+| `tickerlab setor` | `GET /data/v1/sectors` | não |
+| `tickerlab setor <chave> [--como-era ...]` | `GET /data/v1/sectors/{key}` | sim |
 | `tickerlab catalogo` | `GET /data/v1/catalog` | não |
 | `tickerlab consumo` | `GET /data/v1/usage` | não |
 
-- O CNPJ entra com ou sem pontuação.
+- O CNPJ entra com ou sem pontuação. A chave do setor (`eletricas`, `bancos`...) só aceita minúsculas, números e
+  `_`; outra coisa para no código 2, sem chegar à API.
+- O setor (molde D, linha 773; rota da linha 781) sai como a ficha da última noite o deixou. Na tabela, cada série
+  da agência vira um bloco com a concentração e a fatia de cada companhia, e as notas de método (`notes`) saem como
+  itens. O ano sai sem separador de milhar.
 - Com `--json`, o comando imprime a resposta da API como ela veio, com `value`, `source`, `published_at` e
   `observed_at` em cada campo e `sources` no fim.
 - Sem `--json`, imprime uma tabela por bloco, com a fonte e a data de publicação de cada campo ou linha. A tabela
@@ -101,4 +107,6 @@ não usam internet e cobrem:
 Para rodar: `.venv\Scripts\python -m pytest -q tests/test_cli_tickerlab.py`. O `pytest.ini` e o
 `pyrightconfig.json` põem `cli/` no caminho, sem instalar o pacote.
 
-Fora desta versão: os comandos de M&A (linha 773) e o servidor MCP (linha 570).
+Os comandos de M&A da linha 773 entram um por PR, quando a rota de cada um existe na API: `setor` já está aqui;
+`dossie`, `grupo` e `comparaveis` esperam as rotas da linha 736; `exportar` e `precedentes`, as linhas 782 e 783. O
+servidor MCP é a linha 570.

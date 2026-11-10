@@ -106,6 +106,28 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "optante_simples": "simples_nacional",
     "data_opcao_simples": "simples_nacional_since",
     "data_exclusao_simples": "simples_nacional_until",
+    # sectors: o mercado do setor (molde D, linha 781)
+    "setor": "sector",
+    "setores": "sectors",
+    "por_serie": "by_series",
+    "serie": "series",
+    "concentracao": "concentration",
+    "participacao_dos_membros": "member_shares",
+    "membros": "members",
+    "avisos": "notes",
+    "ano": "year",
+    "participantes": "participants",
+    "total": "market_total",
+    "cr4": "cr4",
+    "hhi": "hhi",
+    "faixa": "concentration_band",
+    "delta_hhi": "hhi_change",
+    "meses": "months_of_data",
+    "ultimo_mes": "last_month",
+    "por_entidade": "share_counted_by_entity",
+    "empresa": "company_name",
+    "participacao": "market_share",
+    "motivo": "membership_reason",
     # credit: os fatos da ficha de crédito (linha 754)
     "situacao_cadastral_na_receita": "rfb_registration_status",
     "situacao_especial_na_receita": "rfb_special_status",
@@ -114,6 +136,13 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "maior_participacao_como_cedente": "largest_assignor_share_in_a_fidc",
     "carteira_dos_fundos_em_que_cede": "fidc_receivables_as_assignor",
     "maior_inadimplencia_dos_fundos_em_que_cede": "highest_fidc_delinquency_as_assignor",
+    # profiles: o perfil por CNPJ (linha 736, PR 2), o cadastro e as entregas de DFP e ITR como eram
+    "cadastro_na_receita": "registration",
+    "entregas": "periodic_filings",
+    "prazo": "due_date",
+    "primeira_entrega": "first_filed_on",
+    "dias_uteis_de_atraso": "business_days_late",
+    "situacao_da_entrega": "filing_status",
 }
 
 

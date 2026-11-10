@@ -203,6 +203,18 @@ class LinhaDeDireito(NamedTuple):
 BETA_COMECA_EM = date(2026, 11, 3)
 _PROVA_CVM = "ADR 0108 D2.2 e D3: dados abertos da CVM, ODbL, revenda com atribuição"
 _PROVA_RECEITA = "ADR 0108 D2.2 e D3: dados abertos do CNPJ da Receita, CC BY, revenda com atribuição"
+_PROVA_DAS_AGENCIAS = (
+    "ADR 0108 D2.2 e D3: dados abertos da agência (ANEEL e BC em ODbL; SUSEP, ANS e Anatel em CC BY), "
+    "marca vendável, revenda com atribuição"
+)
+# as séries de agência dos setores do relatório (molde D): fonte e tabela do dicionário
+_SERIES_DOS_SETORES = (
+    ("aneel-samp", "aneel_samp"),
+    ("bcb-ifdata", "ifdata_valores"),
+    ("susep-ses", "susep_seguros"),
+    ("ans-beneficiarios", "ans_beneficiarios"),
+    ("anatel-acessos", "anatel_acessos"),
+)
 
 
 def _campos(
@@ -212,9 +224,10 @@ def _campos(
     campos: tuple[str, ...],
     prova: str,
     finalidade: Finalidade = Finalidade.ANALISE,
+    categoria: Categoria = Categoria.FATO_DE_PJ,
 ) -> tuple[LinhaDeDireito, ...]:
-    """Uma linha por fonte e campo: fato de empresa, para a finalidade (análise, se nada for dito), pela
-    API externa, desde o beta."""
+    """Uma linha por fonte e campo: fato de empresa (ou a `categoria` dada), para a finalidade (análise,
+    se nada for dito), pela API externa, desde o beta."""
     return tuple(
         LinhaDeDireito(
             fonte,
@@ -222,7 +235,7 @@ def _campos(
             campo,
             Canal.API_EXTERNA,
             finalidade,
-            Categoria.FATO_DE_PJ,
+            categoria,
             BETA_COMECA_EM,
             prova,
             tabelas=tabelas,
@@ -315,6 +328,48 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("competencia", "codigo", "isin", "emissor", "tipo", "quantidade", "valor"),
         _PROVA_CVM,
     ),
+    # sectors (linha 781): o mercado do setor do molde D, da ficha da noite. A concentração é agregado
+    # do mercado; a participação e a lista são de companhia aberta (a rota tira a linha sem CNPJ de 14
+    # dígitos). Cada série de agência sai pela fonte dela, das tabelas dela e da ligação às companhias.
+    *(
+        linha
+        for fonte, tabela in _SERIES_DOS_SETORES
+        for linha in (
+            *_campos(
+                (fonte,),
+                "sectors",
+                (tabela, "empresa_serie"),
+                (
+                    "ano",
+                    "participantes",
+                    "total",
+                    "cr4",
+                    "hhi",
+                    "faixa",
+                    "delta_hhi",
+                    "meses",
+                    "ultimo_mes",
+                    "por_entidade",
+                ),
+                _PROVA_DAS_AGENCIAS,
+                categoria=Categoria.AGREGADO,
+            ),
+            *_campos(
+                (fonte,),
+                "sectors",
+                (tabela, "empresa_serie", "cadastro_das_companhias"),
+                ("cnpj", "empresa", "valor", "participacao"),
+                _PROVA_DAS_AGENCIAS,
+            ),
+        )
+    ),
+    *_campos(
+        ("cvm-cadastros",),
+        "sectors",
+        ("cadastro_das_companhias", "empresa_serie"),
+        ("cnpj", "empresa", "motivo"),
+        _PROVA_CVM,
+    ),
     # credit (linha 754, PR 2): os fatos da ficha de crédito, para crédito (dossiê), contas nossas sobre
     # tabelas que já saem em outros conjuntos ou são da CVM; a rota (`conjuntos/credito.py`) tira quem é
     # pessoa como `companies` e não serve as regras de elegibilidade. Sem rating, insolvência nem SCR.
@@ -354,6 +409,51 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ),
         _PROVA_CVM,
         Finalidade.CREDITO,
+    ),
+    # profiles (linha 736, PR 2): o perfil por CNPJ. O cadastro é o de `companies`, pelo mesmo leitor, que
+    # tira quem é pessoa linha a linha (`conjuntos/ficha.py`); as entregas de DFP e ITR saem de
+    # `rotulos_atraso`, montada dos arquivos anuais da DFP e do ITR da CVM (o índice das entregas), com a
+    # situação de cada entrega (conta nossa sobre as colunas da tabela).
+    *_campos(
+        ("rfb-cnpj",),
+        "profiles",
+        ("cnpj_situacao_cadastral",),
+        (
+            "situacao_cadastral",
+            "data_situacao_cadastral",
+            "motivo_situacao",
+            "matriz",
+            "mes_do_retrato",
+        ),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "profiles",
+        ("cnpj_empresas_historico",),
+        ("razao_social", "natureza_juridica"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "profiles",
+        ("cnpj_simples_historico",),
+        ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("cvm-hist-dfp", "cvm-hist-itr"),
+        "profiles",
+        ("rotulos_atraso",),
+        (
+            "documento",
+            "referencia",
+            "prazo",
+            "primeira_entrega",
+            "dias_uteis_de_atraso",
+            "situacao_da_entrega",
+        ),
+        _PROVA_CVM,
     ),
 )
 
