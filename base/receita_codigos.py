@@ -8,6 +8,7 @@ tela nunca esconder um valor nem inventar um nome.
 """
 
 import csv
+import unicodedata
 from functools import cache
 from pathlib import Path
 
@@ -58,6 +59,18 @@ def cnae(codigo: str | None) -> str | None:
 def municipio(codigo: str | None) -> str | None:
     """O município pelo código da Receita (não é o do IBGE: `0003` → "PORTO VELHO")."""
     return _traduzir("municipios", codigo)
+
+
+def codigos_do_municipio(nome: str) -> list[str]:
+    """Os códigos da Receita do município de nome `nome` (sem acento nem caixa: "São Paulo" acha
+    `SAO PAULO`); mais de um se o nome se repete em estados diferentes, nenhum se não existe."""
+    procurado = _sem_acento(nome)
+    return sorted(c for c, texto in _tabela("municipios").items() if texto == procurado)
+
+
+def _sem_acento(texto: str) -> str:
+    base = unicodedata.normalize("NFKD", texto.strip().upper())
+    return "".join(c for c in base if not unicodedata.combining(c))
 
 
 def pais(codigo: str | None) -> str | None:

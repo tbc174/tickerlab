@@ -16,7 +16,7 @@ from base.dossie import COLUNAS_DE_PESSOA
 from base.prontidao import Prontidao, Prova, prova_publicavel
 from base.raio_x_de_fundo import CADASTRO, CAMPOS_DO_CADASTRO
 from src import portao_externo as portao
-from src.api_externa.conjuntos import credito, empresas, ficha, setores
+from src.api_externa.conjuntos import credito, empresas, ficha, prospeccao, setores
 from src.banco.coletas import Marca, marca_da_fonte
 from src.portao_externo import (
     DIREITOS_DA_API_EXTERNA,
@@ -40,6 +40,7 @@ CONJUNTOS_DO_BETA = {
     "credit",
     "sectors",
     "profiles",
+    "prospecting",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
@@ -84,7 +85,7 @@ def _da_familia(fonte: str, familia: str) -> bool:
     return fonte == familia or fonte.startswith(f"{familia}-")
 
 
-def test_o_beta_tem_os_seis_conjuntos():
+def test_o_beta_tem_os_sete_conjuntos():
     assert {linha.conjunto for linha in DIREITOS_DA_API_EXTERNA} == CONJUNTOS_DO_BETA
 
 
@@ -192,6 +193,11 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
         (tabela,) = linha.tabelas
         if linha.conjunto == credito.CONJUNTO:
             assert (tabela, linha.campo) in da_ficha, linha
+            continue
+        if linha.conjunto == prospeccao.CONJUNTO:
+            # a busca lê só as duas tabelas montadas sem pessoa (linha 584): o corte é na montagem
+            assert tabela in {prospeccao.EMPRESAS, prospeccao.ESTABELECIMENTOS}, linha
+            assert linha.campo in prospeccao.CAMPOS, linha
             continue
         # o perfil lê o cadastro pelo mesmo leitor de `companies` (`conjuntos/ficha.py`)
         assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha

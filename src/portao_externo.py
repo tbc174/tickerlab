@@ -279,6 +279,30 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
         _PROVA_RECEITA,
     ),
+    # prospecting (linha 794): a busca de empresas. Lê só as duas tabelas sem pessoa do CNPJ (linha 584:
+    # `cnpj_empresas_pj` e `cnpj_estabelecimentos_pj`, sem empresário individual, grupo 4, MEI, endereço fino
+    # nem contato); por isso a linha de direito vale para o campo inteiro.
+    *_campos(
+        ("rfb-cnpj",),
+        "prospecting",
+        ("cnpj_empresas_pj",),
+        ("razao_social", "natureza_juridica", "porte"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "prospecting",
+        ("cnpj_estabelecimentos_pj",),
+        (
+            "situacao_cadastral",
+            "data_inicio_atividade",
+            "cnae_principal",
+            "uf",
+            "municipio",
+            "matriz",
+        ),
+        _PROVA_RECEITA,
+    ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),
         "financials",
