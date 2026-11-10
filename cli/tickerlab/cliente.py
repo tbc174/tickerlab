@@ -185,6 +185,9 @@ class ApiDoTickerlab:
     def empresa(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}", _datas(known_at=como_era))
 
+    def perfil(self, cnpj: str, como_era: str | None) -> dict:
+        return self.pedir(f"/companies/{cnpj}/profile", _datas(known_at=como_era))
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:

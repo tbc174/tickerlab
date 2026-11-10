@@ -167,3 +167,23 @@ def test_sem_pessoa_natural_no_resultado(porta):
     raio = raio_x_de_fundo(porta, FUNDO)
     proibidas = {"gestor", "cpf_cnpj_gestor", "pf_pj_gestor", "administrador"}
     assert not proibidas & set(raio.cadastro)
+
+
+@pytest.mark.parametrize("dt_reg", ["2015-01-01", "01/01/2015", "lixo", "", None])
+def test_dt_reg_como_texto_nao_derruba_o_raio_x(tmp_path, dt_reg):
+    """Regressão da linha 792: `DT_REG` chegou como texto no VPS e `'>'` entre str e Timestamp dava 500."""
+    cadastro = _cadastro().astype({"DT_REG": "object"})
+    cadastro["DT_REG"] = dt_reg
+    _gravar(tmp_path, "fidc/cadastro/cad_fi.parquet", cadastro)
+    with Porta(tmp_path) as p:
+        raio = raio_x_de_fundo(p, FUNDO, como_era_em="2025-01-01")
+    assert raio.cnpj == FUNDO
+
+
+def test_dt_reg_texto_posterior_a_d_ainda_vale_como_nao_existia(tmp_path):
+    cadastro = _cadastro().astype({"DT_REG": "object"})
+    cadastro["DT_REG"] = "2015-01-01"
+    _gravar(tmp_path, "fidc/cadastro/cad_fi.parquet", cadastro)
+    with Porta(tmp_path) as p:
+        raio = raio_x_de_fundo(p, FUNDO, como_era_em="2014-12-31")
+    assert any("ainda não existia" in lacuna for lacuna in raio.lacunas)

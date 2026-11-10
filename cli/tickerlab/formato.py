@@ -106,12 +106,12 @@ def _tabela_de_linhas(linhas: Sequence[Mapping]) -> str:
     return tabela(cabecalho, corpo)
 
 
-def _tem_listas(item: Mapping) -> bool:
+def tem_listas(item: Mapping) -> bool:
     """O item da lista guarda outras listas (as séries do setor): vira um bloco, não uma linha de tabela."""
     return any(isinstance(valor, list) for valor in item.values())
 
 
-def _rotulo(item: Mapping, posicao: int) -> str:
+def rotulo_do_item(item: Mapping, posicao: int) -> str:
     """O nome do bloco de um item: o primeiro texto solto dele (a série), ou a posição na lista."""
     for valor in item.values():
         if isinstance(valor, str):
@@ -122,9 +122,9 @@ def _rotulo(item: Mapping, posicao: int) -> str:
 def _lista(titulo: str, itens: list, partes: list[str]) -> None:
     """Uma lista da resposta: linhas numa tabela, textos como itens, e o item com listas dentro em blocos."""
     dicionarios = [item for item in itens if isinstance(item, Mapping)]
-    if dicionarios and all(_tem_listas(item) for item in dicionarios):
+    if dicionarios and all(tem_listas(item) for item in dicionarios):
         for posicao, item in enumerate(dicionarios, start=1):
-            _blocos(f"{titulo} › {_rotulo(item, posicao)}", item, partes)
+            _blocos(f"{titulo} › {rotulo_do_item(item, posicao)}", item, partes)
         return
     partes.append(f"## {titulo}")
     if dicionarios:
@@ -244,3 +244,15 @@ def consumo(corpo: Mapping) -> str:
     ]
     texto = tabela(("item", "valor"), [(nome, celula(v)) for nome, v in linhas])
     return f"{texto}\n\nFonte: TickerLab, consumo da sua organização no mês {corpo.get('month')} (UTC)."
+
+
+def planilha_gravada(arquivos: Sequence[object], corpo: Mapping) -> str:
+    """A confirmação de que a planilha foi gravada: onde, as fontes a citar e o aviso."""
+    lista = "\n".join(f"- {arquivo}" for arquivo in arquivos)
+    return "\n\n".join(
+        [
+            f"Planilha gravada (cada linha com a fonte e a data):\n{lista}",
+            fontes(corpo.get("sources")),
+            AVISO,
+        ]
+    )
