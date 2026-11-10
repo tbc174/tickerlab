@@ -80,5 +80,32 @@
       "tipo",
       "valor"
     ]
+  },
+  "sectors": {
+    "fontes": {
+      "anatel-acessos": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "aneel-samp": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "ans-beneficiarios": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "bcb-ifdata": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "cvm-cadastros": "ODbL (dados abertos da CVM; citar a fonte)",
+      "susep-ses": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas"
+    },
+    "campos": [
+      "ano",
+      "cnpj",
+      "cr4",
+      "delta_hhi",
+      "empresa",
+      "faixa",
+      "hhi",
+      "meses",
+      "motivo",
+      "participacao",
+      "participantes",
+      "por_entidade",
+      "total",
+      "ultimo_mes",
+      "valor"
+    ]
   }
 }
