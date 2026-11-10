@@ -74,3 +74,23 @@ def test_vista_deixa_de_fora_mei_e_raiz_desconhecida():
     assert list(vista["cnpj_basico"]) == ["33000167", "12ABC345"]
     assert list(vista.columns) == list(re_.COLUNAS_DA_VISTA)
     assert "logradouro" not in vista.columns and "cep" not in vista.columns
+
+
+def test_prefixo_sem_nenhum_registro_no_simples_nao_quebra_a_vista():
+    """Um prefixo de raiz sem arquivo do Simples chega vazio e sem colunas (as raízes 99... em 2026-10)."""
+    estabelecimentos = pd.DataFrame(
+        {
+            "cnpj": ["33000167000101"],
+            "cnpj_basico": ["33000167"],
+            "matriz": [True],
+            "situacao_cadastral": ["02"],
+            "data_inicio_atividade": pd.to_datetime(["1953-10-03"]),
+            "cnae_principal": ["0600001"],
+            "uf": ["RJ"],
+            "municipio": ["6001"],
+        }
+    )
+    vista = re_.estabelecimentos_sem_pessoa(
+        estabelecimentos, _empresas(), pd.DataFrame()
+    )
+    assert list(vista["cnpj_basico"]) == ["33000167"]

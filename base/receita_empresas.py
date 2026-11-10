@@ -80,7 +80,13 @@ def estabelecimentos_sem_pessoa(
     saída de `ler_empresas_pj` e `simples` a de `ler_simples`. Fica só a raiz que está em `empresas_pj` (a
     que a tabela de empresas não conhece, ou é de pessoa, sai) e que não optou pelo MEI.
     """
-    mei = set(simples.loc[simples["optante_mei"].astype(bool), "cnpj_basico"])
+    # prefixo sem nenhum registro no Simples (ex.: raízes 99...) chega vazio, sem colunas: ninguém é MEI
+    # lá, porque todo MEI tem registro no Simples
+    mei = (
+        set(simples.loc[simples["optante_mei"].astype(bool), "cnpj_basico"])
+        if "optante_mei" in simples.columns
+        else set()
+    )
     vista = estabelecimentos[
         estabelecimentos["cnpj_basico"].isin(set(empresas_pj["cnpj_basico"]))
         & ~estabelecimentos["cnpj_basico"].isin(mei)
