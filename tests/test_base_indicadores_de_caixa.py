@@ -221,3 +221,19 @@ def test_zip_real_ebitda_so_fora_dos_bancos(reais):
     assert petrobras["fonte_da_depreciacao"] == "DFC_MI 6.01.01.04"
     assert petrobras["ebitda"] == petrobras["ebit"] + 67_033_000_000.0
     assert pd.isna(reais.loc[BB, "ebitda"]) and pd.isna(reais.loc[ITAU, "ebitda"])
+
+
+def test_capex_da_concessionaria_conta_o_ativo_contratual_e_o_ativo_financeiro():
+    """COELBA: a obra vai para "Concessão Serviço Público (Ativo Contratual)", não para o imobilizado."""
+    obra = _linha(
+        "DFC_MI", "6.02.07", "Concessão Serviço Público (Ativo Contratual)", -1000.0
+    )
+    financeiro = _linha(
+        "DFC_MI", "6.02.08", "Adições ao Ativo Financeiro da Concessão", -40.0
+    )
+    recebido = _linha(
+        "DFC_MI", "6.02.09", "Recebimento de Ativo Financeiro da Concessão", 5.0
+    )
+    aplicacao = _linha("DFC_MI", "6.02.10", "Aplicação em Ativo Financeiro", -8.0)
+    linha = _um(indicadores_de_caixa(_empresa(obra, financeiro, recebido, aplicacao)))
+    assert linha["capex"] == (350.0 + 1000.0 + 40.0) * M
