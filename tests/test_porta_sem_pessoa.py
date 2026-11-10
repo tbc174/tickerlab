@@ -91,6 +91,9 @@ AINDA_SEM_A_MARCA = frozenset(
         "valores_mobiliarios",
     }
 )
+# Sem pessoa por construção: a montagem nem deixa entrar o empresário individual (213-5) nem o
+# grupo 4 (linha 584; o contrato de cada uma diz). Não precisam da marca por linha.
+SEM_PESSOA_NA_MONTAGEM = frozenset({"cnpj_empresas_pj", "cnpj_estabelecimentos_pj"})
 COM_A_MARCA = sorted(
     nome
     for nome, tabela in TABELAS.items()
@@ -256,6 +259,7 @@ def test_toda_consultavel_com_cnpj_tem_a_marca_ou_esta_no_inventario():
         if pode_consultar(nome)
         and not tabela.linhas_de_pessoa
         and nome not in DA_REDE
+        and nome not in SEM_PESSOA_NA_MONTAGEM
         and any(COLUNA_DE_CNPJ.search(coluna) for coluna in tabela.colunas)
     }
     assert sem_a_marca == AINDA_SEM_A_MARCA

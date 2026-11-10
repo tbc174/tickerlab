@@ -2312,7 +2312,7 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 - **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)
 - **Atraso de divulgação:** A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj`, `mes_do_retrato`
 - **Três datas:** aconteceu_em = `data_situacao_especial`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
