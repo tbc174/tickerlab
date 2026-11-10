@@ -475,3 +475,12 @@ def test_tabela_montada_antes_do_capital_nao_quebra_a_busca_sem_esse_filtro(
     (empresa,) = antiga.json()["companies"]
     assert "share_capital" not in empresa
     assert _get(cliente, cenario, capital_min=1).status_code == 404
+
+
+def test_cursor_com_numero_gigante_e_400_e_nao_500(cliente, cenario):
+    import base64
+
+    texto = '[' + "9" * 400 + ', "11111111000191"]'
+    cursor = base64.urlsafe_b64encode(texto.encode()).decode().rstrip("=")
+    resposta = _get(cliente, cenario, capital_min=1, sort="capital", cursor=cursor, **SETEMBRO)
+    assert resposta.status_code == 400
