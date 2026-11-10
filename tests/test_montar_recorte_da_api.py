@@ -104,7 +104,9 @@ def test_linha_de_pessoa_e_a_sem_marca_nao_saem(tmp_path):
     assert resultados[0].recortados == 1
 
 
-def test_coluna_de_pessoa_e_coluna_desconhecida_nao_saem(tmp_path):
+def test_coluna_de_pessoa_e_coluna_desconhecida_nao_saem(tmp_path, monkeypatch):
+    # a tabela de exemplo já não está na lista (fica em casa): o filtro de coluna é testado sem a lista
+    monkeypatch.setattr(envio, "conferir_a_lista", lambda tabelas: None)
     base = _base_de_mentira(tmp_path)
     saida = tmp_path / "saida"
     envio.montar(base, saida, ("ofertas_resolucao_160",))
@@ -216,3 +218,23 @@ def test_link_simbolico_na_saida_nao_vai_no_tar(tmp_path):
         pytest.skip("sem permissão para link simbólico")
     with pytest.raises(envio.RecorteErro, match="link simbólico"):
         envio.empacotar(saida, io.BytesIO())
+
+
+@pytest.mark.parametrize(
+    "tabela",
+    [
+        "anatel_acessos",
+        "ifdata_cadastro",
+        "carteiras_bloco_8",
+        "controladas",
+        "auditores",
+        "ofertas_antigas",
+        "trocas_de_auditor",
+        "ofertas_resolucao_160",
+    ],
+)
+def test_tabela_com_pessoa_ou_duvida_fica_em_casa(tabela, tmp_path):
+    # achadas pela 789 em 10/11/2026 (linha 739): nunca no degrau 1 nem no 2
+    assert tabela not in envio.DEGRAU_1 + envio.DEGRAU_2_ACRESCENTA
+    with pytest.raises(envio.RecorteErro, match="fica em casa"):
+        envio.montar(tmp_path / "base", tmp_path / "saida", (tabela,))

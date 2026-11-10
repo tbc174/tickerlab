@@ -61,6 +61,16 @@ FICAM_EM_CASA = (
     "identificadores",
     "ligacoes",
     "cnpj_situacao_especial",
+    # Têm linha de pessoa (EI/MEI, auditor sem CNPJ de firma) ou dúvida, achadas pela 789 em 10/11/2026 depois de
+    # subirem no degrau 2; apagadas do VPS com o pode da Diretoria. Só voltam com a marca de pessoa por linha.
+    "anatel_acessos",
+    "ifdata_cadastro",
+    "carteiras_bloco_8",
+    "controladas",
+    "auditores",
+    "ofertas_antigas",
+    "trocas_de_auditor",
+    "ofertas_resolucao_160",
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
@@ -71,25 +81,23 @@ FICAM_EM_CASA = (
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
 DEGRAU_2_ACRESCENTA = (
-    "anac_estatistico", "anatel_acessos", "aneel_samp", "anm_amb_agua_mineral",
+    "anac_estatistico", "aneel_samp", "anm_amb_agua_mineral",
     "anm_amb_producao_beneficiada", "anm_amb_producao_bruta", "anm_cfem_arrecadacao",
     "anm_sigbm_barragens", "anp_concessionarios", "anp_vendas", "ans_beneficiarios",
-    "antt_siade", "area_cafe_municipio", "auditores", "bcb_selic_focus",
-    "carteiras_bloco_8", "ccee_pld", "cda_cotas", "cftc_cot_agro", "clima_regiao_cafe",
+    "antt_siade", "area_cafe_municipio", "bcb_selic_focus",
+    "ccee_pld", "cda_cotas", "cftc_cot_agro", "clima_regiao_cafe",
     "cnes_competencias",
     "codigos_invalidos", "comex_cafe", "comex_urf", "comex_via", "conab_cafe",
-    "controladas", "curva_juros", "cvm_fiagro", "debentures_assembleias", "dmpl_como_era",
+    "curva_juros", "cvm_fiagro", "debentures_assembleias", "dmpl_como_era",
     "emissores", "eventos", "faostat_cafe", "fca_geral", "fre_capital_social",
     "fre_comites", "fre_conselho", "fre_distribuicao_capital", "fre_diversidade",
-    "fre_empregados", "fre_remuneracao", "fre_remuneracao_extremos", "ifdata_cadastro",
-    "ifdata_valores", "insolvencia", "ma_candidatos", "ma_datas", "ma_regua", "negociacoes",
-    "noticias_fatos", "noticias_numeros", "ofertas_antigas", "ofertas_resolucao_160",
-    "ons_capacidade", "ons_restricao", "painel_dos_fundos", "pareceres_dfp",
+    "fre_empregados", "fre_remuneracao", "fre_remuneracao_extremos", "ifdata_valores", "insolvencia", "ma_candidatos", "ma_datas", "ma_regua", "negociacoes",
+    "noticias_fatos", "noticias_numeros", "ons_capacidade", "ons_restricao", "painel_dos_fundos", "pareceres_dfp",
     "pareceres_itr", "pgfn_divida", "processos", "processos_comunicacoes",
     "processos_nas_notas", "ratings", "release_x_oficial",
     "rotulos_atraso", "securitizacao_cedente_devedor", "securitizacao_certificados",
     "sus_ambulatorial", "sus_internacoes", "susep_seguros", "tickers_no_tempo",
-    "trocas_de_auditor", "usda_psd_cafe", "valores_mobiliarios",
+    "usda_psd_cafe", "valores_mobiliarios",
 )  # fmt: skip
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
