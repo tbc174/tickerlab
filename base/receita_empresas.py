@@ -10,7 +10,7 @@ município e UF. Desenho no plano da API externa, "Achado para a fila".
 - a vista deixa de fora o MEI (opção pelo MEI no Simples), mesmo com natureza de empresa, e a raiz que não
   está na tabela de empresas (na dúvida, é pessoa);
 - na razão social das outras, um CPF escrito no texto sai (`base.pessoas.sem_cpf`); também sai qualquer
-  sequência de 11 ou 12 dígitos soltos (CPF colado a hífen ou com dígito a mais, achado na carga de 10/11/2026;
+  sequência de 11 ou 12 dígitos soltos, ou escrita como CPF com separadores fora do padrão (CPF colado a hífen ou com dígito a mais, achado na carga de 10/11/2026;
   CNPJ tem 14 e fica);
 - a vista só tem o CNPJ, a situação, a abertura, a atividade, o município e a UF: sem logradouro, CEP,
   contato nem nome fantasia.
@@ -41,7 +41,9 @@ COLUNAS_DA_VISTA = (
 )  # fmt: skip
 
 
-NUMERO_COMPRIDO_DE_PESSOA = re.compile(r"-?(?<!\d)\d{11,12}(?!\d)")
+NUMERO_COMPRIDO_DE_PESSOA = re.compile(
+    r"-?(?<!\d)(?:\d{11,12}|\d{3}[.\s]?\d{3}[.\s]?\d{3}[-./\s]?\d{2})(?!\d)"
+)
 ESPACOS = re.compile(r"\s{2,}")
 
 

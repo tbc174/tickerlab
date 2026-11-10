@@ -101,14 +101,19 @@ def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
 
     parte = pd.DataFrame(
         {
-            "cnpj_basico": ["1", "2", "3"],
+            "cnpj_basico": [str(n) for n in range(8)],
             "razao_social": [
                 "MARIA DE PAULA-52998224725 LTDA",
                 "JOAO DA SILVA 529982247251 LTDA",
                 "CASA 12345678000195 LTDA",
+                "FULANO 529982247-25 LTDA",
+                "FULANO 529 982 247 25 LTDA",
+                "FULANO 529.982.247.25 LTDA",
+                "FULANO 529982247/25 LTDA",
+                "CASA 12.345.678/0001-95 LTDA",
             ],
-            "natureza_juridica": ["2062"] * 3,
-            "porte": ["01"] * 3,
+            "natureza_juridica": ["2062"] * 8,
+            "porte": ["01"] * 8,
         }
     )
     razoes = list(_empresas_pj(parte)["razao_social"])
@@ -116,4 +121,9 @@ def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
         "MARIA DE PAULA LTDA",
         "JOAO DA SILVA LTDA",
         "CASA 12345678000195 LTDA",
+        "FULANO LTDA",
+        "FULANO LTDA",
+        "FULANO LTDA",
+        "FULANO LTDA",
+        "CASA 12.345.678/0001-95 LTDA",
     ]
