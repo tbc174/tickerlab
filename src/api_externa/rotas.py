@@ -29,6 +29,7 @@ from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organiz
 from src.api_externa.conjuntos import (
     Permitido,
     Servido,
+    credito,
     demonstracoes,
     empresas,
     fundos,
@@ -48,7 +49,8 @@ ChaveSemQuota = Annotated[
 ]
 Chave = Annotated[ContextoDaChave, Depends(acesso.exigir_chave)]
 
-FINALIDADE = Finalidade.ANALISE.value  # o beta só tem contratos de análise
+FINALIDADE = Finalidade.ANALISE.value  # a dos conjuntos do beta; `credit` é de crédito
+FINALIDADE_DE_CREDITO = Finalidade.CREDITO.value
 NAO_DISPONIVEL = "not_available"
 # 100% ao ano: acima disso a conta de exemplo deixa de ser plausível
 RETORNO_SUPOSTO_MAXIMO = 1.0
@@ -109,7 +111,10 @@ def _retorno_pedido(assumed_return: float | None) -> float | None:
 
 
 def _portao(
-    conexao: sa.Connection, contexto: ContextoDaChave, conjunto: str
+    conexao: sa.Connection,
+    contexto: ContextoDaChave,
+    conjunto: str,
+    finalidade: str = FINALIDADE,
 ) -> Permitido:
     """O contrato da organização e o portão, uma pergunta por fonte e campo dentro do pedido."""
     hoje = acesso.agora().date()
@@ -119,7 +124,7 @@ def _portao(
     def permitido(fonte: str, campo: str, derivado: bool) -> bool:
         return acesso.autorizar(
             conexao, contexto, fonte=fonte, conjunto=conjunto, campo=campo,
-            finalidade=FINALIDADE, hoje=hoje, derivado=derivado, regras=regras,
+            finalidade=finalidade, hoje=hoje, derivado=derivado, regras=regras,
         ).libera  # fmt: skip
 
     return permitido
@@ -171,6 +176,7 @@ def _lote(
     cnpjs: list[object],
     dia: date,
     leitor: Callable[[sa.Connection, Porta], LerUm],
+    finalidade: str = FINALIDADE,
 ) -> object:
     """Um lote de dado: cada CNPJ como na rota de um, com a situação de cada item; conta um pedido por
     CNPJ válido e distinto. O lote inteiro cabe na quota ou volta 429 antes de ler qualquer CNPJ."""
@@ -194,7 +200,7 @@ def _lote(
                 fontes |= servido.fontes
                 linhas += servido.linhas
         registrar_consumo(
-            conexao, contexto, conjunto=conjunto, finalidade=FINALIDADE,
+            conexao, contexto, conjunto=conjunto, finalidade=finalidade,
             linhas=linhas, pedidos=lido.pedidos, agora=acesso.agora(),
         )  # fmt: skip
     itens += [
@@ -227,6 +233,7 @@ def _um_pedido(
     contexto: ContextoDaChave,
     conjunto: str,
     ler: Callable[[sa.Connection, Porta], Servido | None],
+    finalidade: str = FINALIDADE,
 ) -> object:
     """Um pedido de dado: lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
 
@@ -234,20 +241,21 @@ def _um_pedido(
         with _porta(conexao) as porta:
             return ler(conexao, porta)
 
-    return _pedido_contado(contexto, conjunto, pela_porta)
+    return _pedido_contado(contexto, conjunto, pela_porta, finalidade)
 
 
 def _pedido_contado(
     contexto: ContextoDaChave,
     conjunto: str,
     ler: Callable[[sa.Connection], Servido | None],
+    finalidade: str = FINALIDADE,
 ) -> object:
     """Lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
     with obter_engine().begin() as conexao:
         servido = ler(conexao)
         # o 404 sai depois do `with` para o consumo não voltar atrás
         registrar_consumo(
-            conexao, contexto, conjunto=conjunto, finalidade=FINALIDADE,
+            conexao, contexto, conjunto=conjunto, finalidade=finalidade,
             linhas=0 if servido is None else servido.linhas, negado=servido is None,
             agora=acesso.agora(),
         )  # fmt: skip
@@ -347,6 +355,50 @@ def empresa(cnpj: str, contexto: Chave, known_at: date | None = None) -> object:
         lambda conexao, porta: _leitor_de_empresas(conexao, porta, contexto).empresa(
             numeros, dia
         ),
+    )
+
+
+def _leitor_de_credito(
+    conexao: sa.Connection, porta: Porta, contexto: ContextoDaChave
+) -> credito.LeitorDeCredito:
+    return credito.LeitorDeCredito(
+        porta,
+        _portao(conexao, contexto, credito.CONJUNTO, FINALIDADE_DE_CREDITO),
+    )
+
+
+# antes de `/credit/{cnpj}` só por clareza: um é POST, o outro GET
+@router.post("/credit/batch")
+def lote_de_credito(pedido: LoteDeEmpresas, contexto: Chave) -> object:
+    """O mesmo de `/credit/{cnpj}` para cada CNPJ (os sacados de uma carteira, por exemplo); conta um
+    pedido por CNPJ válido e distinto."""
+    dia = _dia_pedido(pedido.known_at)
+
+    def leitor(conexao: sa.Connection, porta: Porta) -> LerUm:
+        credito_ = _leitor_de_credito(conexao, porta, contexto)
+        return lambda cnpj: credito_.ficha(cnpj, dia)
+
+    return _lote(
+        contexto, credito.CONJUNTO, pedido.cnpjs, dia, leitor, FINALIDADE_DE_CREDITO
+    )
+
+
+@router.get("/credit/{cnpj}")
+def ficha_de_credito(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> object:
+    """Os fatos da ficha de crédito da empresa (cedente ou sacado) como eram em `known_at`, cada um com a
+    fonte e o dia em que ficou público; fatos, sem regra, nota nem opinião. MEI, empresário individual e
+    o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    return _um_pedido(
+        contexto,
+        credito.CONJUNTO,
+        lambda conexao, porta: _leitor_de_credito(conexao, porta, contexto).ficha(
+            numeros, dia
+        ),
+        FINALIDADE_DE_CREDITO,
     )
 
 
