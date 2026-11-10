@@ -57,6 +57,14 @@ Assim, a chave não vai em texto aberto pela rede.
   termina com as fontes (licença e frase de atribuição) e com o aviso de que nada é recomendação de investimento.
   Os nomes dos campos saem como a API os dá, para a pessoa e o agente falarem dos mesmos nomes.
 - Uma resposta cortada no limite do plano (`truncated`) ganha um aviso na tabela.
+- Com `--planilha ARQUIVO` (em `empresa`, `demonstracoes`, `fundo` e `setor`), grava a resposta para o Excel, em
+  vez de imprimir a tabela (pedido da Diretoria de 10/11: a equipe da casa de M&A leva os dados para o Excel).
+  `.xlsx` dá uma aba por tabela da resposta, a aba `campos` (os campos soltos) e a aba `fontes` (atribuição,
+  licença e o aviso); `.csv` dá um arquivo por tabela (`ARQUIVO-<tabela>.csv` quando há mais de uma), com `;`,
+  vírgula decimal e BOM, que é o que o Excel em português abre direto. Cada linha leva as colunas `fonte` e
+  `publicado_em`; os números vão como números. Texto que começa com `=`, `+`, `-` ou `@` ganha um apóstrofo no CSV
+  (e no XLSX vai como texto), para o nome de uma empresa nunca virar fórmula. O XLSX é escrito com a biblioteca
+  padrão (`cli/tickerlab/planilha.py`), sem dependência nova; os testes o leem com o `openpyxl`.
 
 Os erros da API saem em português, na saída de erro, cada tipo com um código de saída. A lista inteira está em
 `cli/tickerlab/instrucoes/AGENTS.md`, e um teste confere que ela bate com o código. Em resumo:
@@ -102,7 +110,8 @@ não usam internet e cobrem:
 - login e logout;
 - a pasta e a permissão do arquivo;
 - o HTTPS;
-- que a chave não aparece em nenhuma saída nem log.
+- que a chave não aparece em nenhuma saída nem log;
+- a planilha: abas, números como números, fonte e data por linha, CSV para o Excel e texto que não vira fórmula.
 
 Para rodar: `.venv\Scripts\python -m pytest -q tests/test_cli_tickerlab.py`. O `pytest.ini` e o
 `pyrightconfig.json` põem `cli/` no caminho, sem instalar o pacote.
