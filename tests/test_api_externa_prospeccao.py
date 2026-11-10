@@ -264,6 +264,7 @@ def test_limite_passa_do_maximo_e_e_cortado(cliente, cenario):
         {"registration_status": "ativa"},  # a situação sozinha não conta como filtro
         {"cnae": "abc"},
         {"cnae": "1"},
+        {"cnae": "٦٢"},  # dígitos que não são 0 a 9
         {"state": "SPX"},
         {"size": "gigante"},
         {"registration_status": "morta", "cnae": "62"},

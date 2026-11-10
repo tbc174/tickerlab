@@ -110,7 +110,7 @@ class BuscaServida:
 
 def _digitos(texto: str, minimo: int, maximo: int) -> str:
     limpo = texto.strip()
-    if not limpo.isdigit() or not minimo <= len(limpo) <= maximo:
+    if not (limpo.isascii() and limpo.isdigit()) or not minimo <= len(limpo) <= maximo:
         raise FiltroInvalido
     return limpo
 
@@ -119,7 +119,7 @@ def _codigos_de_municipio(pedidos: list[str]) -> tuple[str, ...]:
     """O código da Receita (4 dígitos) ou o nome (sem acento nem caixa) vira os códigos da Receita."""
     codigos: set[str] = set()
     for pedido in pedidos:
-        if pedido.strip().isdigit():
+        if pedido.strip().isascii() and pedido.strip().isdigit():
             codigos.add(
                 _digitos(pedido, 1, TAMANHO_DO_MUNICIPIO).zfill(TAMANHO_DO_MUNICIPIO)
             )
@@ -162,7 +162,7 @@ def _cnpj_do_cursor(cursor: str) -> str:
         texto = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
     except (binascii.Error, UnicodeDecodeError) as erro:
         raise FiltroInvalido("invalid_cursor") from erro
-    if len(texto) != TAMANHO_DO_CNPJ or not texto.isalnum():
+    if len(texto) != TAMANHO_DO_CNPJ or not (texto.isascii() and texto.isalnum()):
         raise FiltroInvalido("invalid_cursor")
     return texto
 
