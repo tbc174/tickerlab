@@ -44,7 +44,8 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
 _PONTUACAO_DO_CNPJ = re.compile(r"[\s./-]")
-_CHAVE_DO_SETOR = re.compile(r"[A-Za-z0-9_.-]{1,80}")
+# como as chaves de `setores` (minúsculas e `_`): sem ponto, nada de `..` virar outra rota
+_CHAVE_DO_SETOR = re.compile(r"[a-z0-9][a-z0-9_-]{0,79}")
 _CODIGO_DA_API = re.compile(r"[a-z_]{1,40}")
 LIMITE_MAXIMO_DA_BUSCA = 100
 LIMITE_PADRAO_DA_BUSCA = 50

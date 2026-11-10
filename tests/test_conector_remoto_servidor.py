@@ -199,10 +199,13 @@ def test_cnpj_com_pontuacao_e_letras_vai_limpo():
     assert corpo == {"peers": []}
 
 
-def test_setor_com_caminho_montado_e_recusado():
+@pytest.mark.parametrize(
+    "chave", ["..", ".", "../catalog", "bancos/..", "Bancos", "_x"]
+)
+def test_setor_com_caminho_montado_e_recusado(chave):
     pedidos: list[httpx.Request] = []
     with _conector(pedidos=pedidos) as cliente:
-        erro, _ = aj.chamar(cliente, aj.CHAVE_DE_MENTIRA, "setor", chave="../catalog")
+        erro, _ = aj.chamar(cliente, aj.CHAVE_DE_MENTIRA, "setor", chave=chave)
     assert erro
     assert [p.url.path for p in pedidos] == ["/data/v1/catalog"]
 
@@ -321,3 +324,7 @@ def test_conjuntos_do_catalogo_ignora_o_que_nao_e_conjunto():
     assert acesso.conjuntos_do_catalogo(corpo) == frozenset({"a"})
     assert acesso.conjuntos_do_catalogo(None) == frozenset()
     assert acesso.conjuntos_do_catalogo(json.loads('{"datasets": null}')) == frozenset()
+
+
+def test_toda_chave_de_setor_da_api_e_aceita():
+    assert all(ferramentas._CHAVE_DO_SETOR.fullmatch(c) for c in setores.POR_CHAVE)

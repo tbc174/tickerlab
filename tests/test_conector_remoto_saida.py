@@ -36,7 +36,8 @@ def test_nenhum_nome_de_saida_da_api_parece_pessoa(nome):
     [
         "partners", "shareholder_name", "cpf", "socios", "boardDirectors", "beneficial_owner",
         "natural_person", "administrator_since", "email", "phone_number", "street_address",
-        "credit_score", "PD", "birth_date", "qsa",
+        "credit_score", "PD", "birth_date", "qsa", "Sócio", "SÓCIOS", "endereço",
+        "contato", "legal_representative", "contactInfo",
     ],
 )  # fmt: skip
 def test_chave_de_pessoa_e_achada_em_qualquer_forma(chave):
@@ -50,6 +51,7 @@ def test_chave_de_pessoa_e_achada_em_qualquer_forma(chave):
         "sócio ***123456**",
         "***.123.456-**",
         "fale com ana@exemplo.com.br",
+        "documento 11144477735",
     ],
 )
 def test_cpf_inteiro_ou_mascarado_e_email_no_texto(texto):
@@ -58,8 +60,11 @@ def test_cpf_inteiro_ou_mascarado_e_email_no_texto(texto):
 
 @pytest.mark.parametrize(
     "texto",
-    ["11.111.111/0001-91", "2026-10-31", "ALFA TECNOLOGIA S.A.", "R$ 1.234.567,89"],
-)
+    [
+        "11.111.111/0001-91", "11111111000191", "2026-10-31", "ALFA TECNOLOGIA S.A.",
+        "R$ 1.234.567,89", "12345678901", "11111111111",
+    ],
+)  # fmt: skip
 def test_cnpj_data_e_numero_nao_sao_pessoa(texto):
     assert not pessoa.texto_de_pessoa(texto)
 
