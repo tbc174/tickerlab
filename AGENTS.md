@@ -231,8 +231,9 @@ residencial. O relatório de companhia aberta continua seguindo a análise compl
 contato"): na tela com login, a organização com a permissão `pessoa_na_tela`, desligada por padrão, vê do
 cadastro público da Receita o nome do sócio pessoa física, a qualificação e a data de entrada, MEI e empresário
 individual, e telefone, e-mail e endereço do estabelecimento. Sem CPF, sem menor de idade, nada de pessoa fora
-da Receita; API por chave, CLI, site e conector seguem sem pessoa. A permissão se confere no servidor
-(`src/banco/membros_da_organizacao.py`), com teste de duas organizações e de conta sem organização.
+da Receita; API por chave, CLI, site e conector remoto seguem sem pessoa; nenhum dado de pessoa real em teste,
+exemplo ou log. A permissão se confere no servidor (`src/banco/membros_da_organizacao.py`), com teste de duas
+organizações e de conta sem organização; ligar a permissão numa organização em produção é só do Tiago.
 
 ## `trader/` (pesquisa de trading)
 
