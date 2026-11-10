@@ -8,6 +8,7 @@ import json
 import os
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from importlib import resources
 from pathlib import Path
@@ -39,6 +40,27 @@ FORMATO_DO_CNPJ = re.compile(r"[0-9A-Z]{14}")
 # a chave do setor como a API a dá (`tickerlab setor` lista); nada além disso chega ao endereço do pedido
 FORMATO_DO_SETOR = re.compile(r"[a-z0-9_]{1,40}")
 INSTRUCOES = {"agents": "AGENTS.md", "skill": "SKILL.md"}
+# os filtros da busca (`prospectar`): o formato de cada um, conferido antes de gastar um pedido
+# o CNAE: a subclasse inteira (7 dígitos) ou um prefixo (divisão, grupo, classe)
+FORMATO_DO_CNAE = re.compile(r"\d{2,7}")
+FORMATO_DA_UF = re.compile(r"[A-Z]{2}")
+# o município: o código da Receita (até 4 dígitos, não o do IBGE) ou o nome, que a API procura
+FORMATO_DO_CODIGO_DO_MUNICIPIO = re.compile(r"\d{1,4}")
+TAMANHO_MAXIMO_DO_NOME = 60
+FORMATO_DA_NATUREZA = re.compile(
+    r"\d{1,4}"
+)  # a natureza da Receita (2054) ou o começo dela (2)
+PONTUACAO_DE_CODIGO = re.compile(r"[.\-/\s]")
+SITUACOES = ("ativa", "baixada", "inapta", "suspensa", "nula")
+VALORES_MAXIMOS = 50  # por filtro, o mesmo limite da API
+# o porte como a Receita o escreve, em português na CLI e em inglês na API
+PORTES = {
+    "micro": "micro",
+    "pequena": "small",
+    "demais": "other",
+    "nao_informado": "not_informed",
+}
+POR_PAGINA_MAXIMO = 100
 
 Formatar = Callable[[dict], str]
 
@@ -68,6 +90,97 @@ def _setor(
             param_hint="CHAVE",
         )
     return valor
+
+
+def _codigos(
+    formato_: re.Pattern[str], explicacao: str
+) -> Callable[[click.Context, click.Parameter, object], object]:
+    """Um conferidor de código (CNAE, UF, município, natureza) que tira a pontuação e recusa o resto."""
+
+    def conferir(
+        _contexto: click.Context, parametro: click.Parameter, valores: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        _no_maximo(valores, parametro)
+        limpos = []
+        for texto in valores:
+            codigo = PONTUACAO_DE_CODIGO.sub("", texto).upper()
+            if not formato_.fullmatch(codigo):
+                raise click.BadParameter(explicacao, param_hint=f"--{parametro.name}")
+            limpos.append(codigo)
+        return tuple(limpos)
+
+    return conferir
+
+
+def _no_maximo(valores: tuple[str, ...], parametro: click.Parameter) -> None:
+    if len(valores) > VALORES_MAXIMOS:
+        raise click.BadParameter(
+            f"no máximo {VALORES_MAXIMOS} valores por filtro.",
+            param_hint=f"--{parametro.name}",
+        )
+
+
+def _municipios(
+    _contexto: click.Context, parametro: click.Parameter, valores: tuple[str, ...]
+) -> tuple[str, ...]:
+    """O código da Receita (até 4 dígitos) ou o nome do município; quem procura o nome é a API."""
+    _no_maximo(valores, parametro)
+    limpos = []
+    for texto in valores:
+        valor = texto.strip()
+        e_codigo = FORMATO_DO_CODIGO_DO_MUNICIPIO.fullmatch(valor)
+        if not e_codigo and (
+            valor.isdigit() or not valor or len(valor) > TAMANHO_MAXIMO_DO_NOME
+        ):
+            raise click.BadParameter(
+                "o município é o nome (Campinas) ou o código da Receita, de até 4 dígitos (7107 é São "
+                "Paulo); o código do IBGE, de 7 dígitos, não vale aqui.",
+                param_hint="--municipio",
+            )
+        limpos.append(valor)
+    return tuple(limpos)
+
+
+@dataclass(frozen=True)
+class FiltrosDaBusca:
+    """Os filtros do `prospectar` como a CLI os recebe (cada um pode ter vários valores)."""
+
+    cnae: tuple[str, ...] = ()
+    uf: tuple[str, ...] = ()
+    municipio: tuple[str, ...] = ()
+    porte: tuple[str, ...] = ()
+    natureza: tuple[str, ...] = ()
+    situacao: tuple[str, ...] = ()
+    aberta_depois: datetime | None = None
+    aberta_antes: datetime | None = None
+    so_matriz: bool = False
+
+    def para_a_api(self) -> dict[str, str | list[str]]:
+        """Os filtros com os nomes da API; erro de uso se não há nenhum além da situação."""
+        listas = {
+            "cnae": list(self.cnae),
+            "state": list(self.uf),
+            "municipality": list(self.municipio),
+            "size": [PORTES[porte] for porte in self.porte],
+            "legal_nature": list(self.natureza),
+        }
+        unicos = {
+            "opened_after": _dia(self.aberta_depois),
+            "opened_before": _dia(self.aberta_antes),
+            "head_office": "true" if self.so_matriz else None,
+        }
+        filtros: dict[str, str | list[str]] = {
+            **{nome: valores for nome, valores in listas.items() if valores},
+            **{nome: valor for nome, valor in unicos.items() if valor},
+        }
+        if not filtros:
+            raise click.UsageError(
+                "diga pelo menos um filtro além da situação, como `tickerlab prospectar --cnae 3511 "
+                "--uf SP`: a busca sem filtro devolveria a base inteira."
+            )
+        if self.situacao:
+            filtros["registration_status"] = list(self.situacao)
+        return filtros
 
 
 def _dia(valor: datetime | None) -> str | None:
@@ -255,6 +368,103 @@ def setor(
     _mostrar(
         api.setor(chave, _dia(como_era)), como_json, formato.resposta_de_dado, destino
     )
+
+
+@principal.command()
+@click.option(
+    "--cnae",
+    multiple=True,
+    callback=_codigos(
+        FORMATO_DO_CNAE,
+        "o CNAE tem de 2 a 7 dígitos (com ou sem pontuação): 35 é a divisão, 3511501 a subclasse.",
+    ),
+    help="Atividade principal (CNAE fiscal), inteira ou só o começo: 35, 351, 3511501. Pode repetir.",
+)
+@click.option(
+    "--uf",
+    multiple=True,
+    callback=_codigos(FORMATO_DA_UF, "a UF tem 2 letras, como SP."),
+    help="Estado do estabelecimento (2 letras). Pode repetir.",
+)
+@click.option(
+    "--municipio",
+    multiple=True,
+    callback=_municipios,
+    help="Município: o nome (Campinas; junte --uf se o nome existe em mais de um estado) ou o código "
+    "da Receita (até 4 dígitos; 7107 é São Paulo). Não é o código do IBGE. Pode repetir.",
+)
+@click.option(
+    "--porte",
+    multiple=True,
+    type=click.Choice(list(PORTES)),
+    help="Porte declarado à Receita: micro, pequena, demais ou nao_informado. Pode repetir.",
+)
+@click.option(
+    "--natureza",
+    multiple=True,
+    callback=_codigos(
+        FORMATO_DA_NATUREZA,
+        "a natureza jurídica tem até 4 dígitos, como 2054 (S.A. fechada) ou só o começo, como 2.",
+    ),
+    help="Natureza jurídica da Receita, inteira ou o começo (2054 é S.A. fechada, 2062 é limitada). "
+    "Pode repetir.",
+)
+@click.option(
+    "--situacao",
+    multiple=True,
+    type=click.Choice(SITUACOES),
+    help="Situação cadastral na Receita; sem ela, só as ativas. Não conta como filtro. Pode repetir.",
+)
+@click.option(
+    "--aberta-depois",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    help="Só as abertas a partir deste dia (AAAA-MM-DD).",
+)
+@click.option(
+    "--aberta-antes",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    help="Só as abertas antes deste dia (AAAA-MM-DD); para empresas com mais de 10 anos, 10 anos atrás.",
+)
+@click.option(
+    "--so-matriz", is_flag=True, help="Só a matriz de cada empresa, sem as filiais."
+)
+@click.option(
+    "--por-pagina",
+    type=click.IntRange(1, POR_PAGINA_MAXIMO),
+    help=f"Empresas por página (até {POR_PAGINA_MAXIMO}; sem ela, o padrão da API).",
+)
+@click.option(
+    "--todas",
+    is_flag=True,
+    help="Busca todas as páginas, uma atrás da outra (cada página é um pedido da quota).",
+)
+@opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def prospectar(
+    contexto: click.Context,
+    por_pagina: int | None,
+    todas: bool,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+    **filtros_da_cli: object,
+) -> None:
+    """Empresas por atividade, lugar, porte e idade, do cadastro da Receita (só empresa, nunca pessoa).
+
+    Pelo menos um filtro além da situação. A resposta vem em páginas, por ordem de CNPJ: sem --todas, só a
+    primeira (e o aviso de que há mais). Com --planilha lista.xlsx, a lista vai para o Excel, com a fonte e
+    a data de cada linha. Não traz sócio, contato nem endereço: para a ficha de uma empresa,
+    `tickerlab empresa`.
+    """
+    filtros = FiltrosDaBusca(**filtros_da_cli).para_a_api()  # type: ignore[arg-type]
+    if por_pagina is not None:
+        filtros["limit"] = str(por_pagina)
+    if como_era is not None:
+        filtros["known_at"] = como_era.date().isoformat()
+    corpo = _api(contexto).buscar_empresas(filtros, todas)
+    _mostrar(corpo, como_json, formato.prospeccao, destino)
 
 
 @principal.command()

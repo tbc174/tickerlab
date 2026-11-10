@@ -58,6 +58,7 @@ Assim, a chave não vai em texto aberto pela rede.
 | `tickerlab empresa <cnpj> --so-cadastro` | `GET /data/v1/companies/{cnpj}` | sim |
 | `tickerlab demonstracoes <cnpj> [--como-era ...] [--periodo AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}/financials` | sim |
 | `tickerlab fundo <cnpj> [--como-era ...] [--retorno-suposto 0.12]` | `GET /data/v1/funds/{cnpj}` | sim |
+| `tickerlab prospectar --cnae ... [--uf ..] [--todas] ...` | `GET /data/v1/companies` (busca, rota da linha 794) | sim, um pedido por página |
 | `tickerlab setor` | `GET /data/v1/sectors` | não |
 | `tickerlab setor <chave> [--como-era ...]` | `GET /data/v1/sectors/{key}` | sim |
 | `tickerlab catalogo` | `GET /data/v1/catalog` | não |
@@ -67,6 +68,17 @@ Assim, a chave não vai em texto aberto pela rede.
   devida até o dia, com o prazo da CVM, a primeira entrega, os dias úteis de atraso e a situação (`on_time`,
   `gray_zone`, `late`, `severely_late`, `not_filed`), mais os limites da leitura (`limits`). O perfil pede o
   conjunto `profiles` no contrato; a chave que tem só `companies` usa `--so-cadastro`.
+- `tickerlab prospectar` busca empresas no cadastro da Receita (só empresa: sem sócio, contato nem endereço) pelos
+  filtros `--cnae` (2 a 7 dígitos), `--uf`, `--municipio` (o nome, ou o código **da Receita**, de até 4 dígitos;
+  o do IBGE não vale), `--porte` (`micro`, `pequena`, `demais`, `nao_informado`, que a API recebe como
+  `micro|small|other|not_informed`), `--natureza` (até 4 dígitos, ou o começo), `--situacao` (`ativa`, `baixada`,
+  `inapta`, `suspensa`, `nula`; sem ela, as ativas), `--aberta-depois`, `--aberta-antes` (a idade da empresa vira
+  data de abertura) e `--so-matriz`. Os filtros de lista podem repetir, até 50 valores cada. Pelo menos um filtro
+  além da situação e da data: sem ele, o comando para no código 2 sem chegar à API, porque a busca devolveria a
+  base inteira. A rota pede o conjunto `prospecting` no contrato da organização; sem ele, o código 5. A resposta vem em páginas por ordem de CNPJ
+  (`--por-pagina` até 100; o padrão da API é 50) com um `next_cursor` opaco. Sem `--todas`, sai a primeira página e
+  o aviso de que há mais; com `--todas`, a CLI segue o cursor (até 100 páginas por vez, avisando no stderr) e junta
+  as páginas numa resposta só, com as fontes sem repetir. A rota é da linha 584 (PR #973), combinada em 10/11/2026.
 - O CNPJ entra com ou sem pontuação. A chave do setor (`eletricas`, `bancos`...) só aceita minúsculas, números e
   `_`; outra coisa para no código 2, sem chegar à API.
 - O setor (molde D, linha 773; rota da linha 781) sai como a ficha da última noite o deixou. Na tabela, cada série
@@ -78,7 +90,7 @@ Assim, a chave não vai em texto aberto pela rede.
   termina com as fontes (licença e frase de atribuição) e com o aviso de que nada é recomendação de investimento.
   Os nomes dos campos saem como a API os dá, para a pessoa e o agente falarem dos mesmos nomes.
 - Uma resposta cortada no limite do plano (`truncated`) ganha um aviso na tabela.
-- Com `--planilha ARQUIVO` (em `empresa`, `demonstracoes`, `fundo` e `setor`), grava a resposta para o Excel, em
+- Com `--planilha ARQUIVO` (em `empresa`, `demonstracoes`, `fundo`, `setor` e `prospectar`), grava a resposta para o Excel, em
   vez de imprimir a tabela (pedido da Diretoria de 10/11: a equipe da casa de M&A leva os dados para o Excel).
   `.xlsx` dá uma aba por tabela da resposta, a aba `campos` (os campos soltos) e a aba `fontes` (atribuição,
   licença e o aviso); `.csv` dá um arquivo por tabela (`ARQUIVO-<tabela>.csv` quando há mais de uma), com `;`,
@@ -138,6 +150,6 @@ não usam internet e cobrem:
 Para rodar: `.venv\Scripts\python -m pytest -q tests/test_cli_tickerlab.py`. O `pytest.ini` e o
 `pyrightconfig.json` põem `cli/` no caminho, sem instalar o pacote.
 
-Os comandos de M&A da linha 773 entram um por PR, quando a rota de cada um existe na API: `setor` e o perfil do
-`empresa` já estão aqui; os eventos, os vínculos e os comparáveis esperam as outras rotas da linha 736; `exportar` e `precedentes`, as linhas 782 e 783. O
+Os comandos de M&A da linha 773 entram um por PR, quando a rota de cada um existe na API: `setor`, o perfil do
+`empresa` e o `prospectar` já estão aqui; os eventos, os vínculos e os comparáveis esperam as outras rotas da linha 736; `exportar` e `precedentes`, as linhas 782 e 783. O
 servidor MCP é a linha 570.

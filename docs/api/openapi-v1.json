@@ -531,6 +531,30 @@
         "title": "BlocoDaBienalidadeV1",
         "type": "object"
       },
+      "BlocoDaFichaV1": {
+        "description": "Um bloco da ficha: o título, a fonte e o que ele traz (sem data nem número).",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "o_que_traz": {
+            "title": "O Que Traz",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "fonte",
+          "o_que_traz"
+        ],
+        "title": "BlocoDaFichaV1",
+        "type": "object"
+      },
       "BlocoDaSafraV1": {
         "properties": {
           "chave": {
@@ -1955,6 +1979,36 @@
         "title": "EntradaDoNumeroV1",
         "type": "object"
       },
+      "EntregaDoDiaV1": {
+        "description": "Uma linha de \"O que mudou\": o dia, o que entrou e a página para abrir.",
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "o_que": {
+            "title": "O Que",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "o_que",
+          "titulo",
+          "url"
+        ],
+        "title": "EntregaDoDiaV1",
+        "type": "object"
+      },
       "ErroDaSafraV1": {
         "properties": {
           "erro_mil_sacas": {
@@ -2447,13 +2501,21 @@
             },
             "title": "Limites",
             "type": "array"
+          },
+          "o_que_vem": {
+            "items": {
+              "$ref": "#/components/schemas/BlocoDaFichaV1"
+            },
+            "title": "O Que Vem",
+            "type": "array"
           }
         },
         "required": [
           "estado",
           "ficha",
           "fontes",
-          "limites"
+          "limites",
+          "o_que_vem"
         ],
         "title": "FichaDaEmpresaV1",
         "type": "object"
@@ -3991,6 +4053,23 @@
           "legenda"
         ],
         "title": "NumeroDeJurosV1",
+        "type": "object"
+      },
+      "OQueMudouV1": {
+        "description": "O que entrou no app a cada dia (`src/o_que_mudou.py`), a mais nova primeiro.",
+        "properties": {
+          "entregas": {
+            "items": {
+              "$ref": "#/components/schemas/EntregaDoDiaV1"
+            },
+            "title": "Entregas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entregas"
+        ],
+        "title": "OQueMudouV1",
         "type": "object"
       },
       "OpcaoDeRegiaoV1": {
@@ -7032,6 +7111,25 @@
           }
         },
         "summary": "Meus Dados"
+      }
+    },
+    "/v1/o-que-mudou": {
+      "get": {
+        "description": "As entregas visíveis do app, a mais nova primeiro.",
+        "operationId": "o_que_mudou_no_app_v1_o_que_mudou_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OQueMudouV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "O Que Mudou No App"
       }
     },
     "/v1/pagamento-da-assinatura": {

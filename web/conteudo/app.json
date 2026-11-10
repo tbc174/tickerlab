@@ -87,6 +87,7 @@
       "frase": "O que é seu: simulações guardadas, plano e privacidade.",
       "icone": "conta",
       "paginas": [
+        "o_que_mudou",
         "simulacoes",
         "meus_dados",
         "planos",
