@@ -66,7 +66,14 @@ services:
       # Docker (a porta 8000 só está em 127.0.0.1, então quem chega é o túnel). Ajuste se a rede mudar.
       TICKERLAB_REGISTRO_DE_ACESSO: /app/registros/acesso-api.log
       TICKERLAB_PROXIES_CONFIAVEIS: 172.18.0.1
+      # a base que a API lê (linha 739): só o recorte sem pessoa que o servidor de casa envia
+      # (scripts/montar_recorte_da_api.py). Pasta ausente ou vazia: a API sobe igual e as rotas de dado
+      # respondem 503; a rota /saude não lê a base.
+      TICKERLAB_ACERVO: /app/acervo
     volumes:
+      # só leitura; o recebedor do VPS (~/bin/receber-base-api.sh) troca a pasta base/ por inteiro. Crie
+      # a pasta antes do deploy (mkdir -p acervo_api/base); se faltar, o Docker cria uma vazia.
+      - ./acervo_api:/app/acervo:ro
       # onde fica o registro de acesso; sobrevive ao deploy. ANTES do primeiro "up":
       #   mkdir -p registros && sudo chown 1000:1000 registros && sudo chmod 750 registros
       - ./registros:/app/registros
