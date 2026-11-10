@@ -17,6 +17,12 @@ from src.banco.coletas import FRASES_DAS_FONTES, SEM_LICENCA_CONHECIDA, licenca_
 # todo PDF do app (`citacoes_das_fontes`), que hoje só citam as fontes restritas.
 ATRIBUICOES_DA_API = {
     "cvm": "Fonte: CVM, Portal de Dados Abertos (ODbL)",
+    # as agências do setor (molde D, linha 781), só as séries que a rota `sectors` serve
+    "aneel-samp": "Fonte: ANEEL, Dados Abertos, SAMP (ODbL)",
+    "bcb-ifdata": "Fonte: Banco Central do Brasil, IF.data (ODbL)",
+    "susep-ses": "Fonte: SUSEP, SES, dados abertos (CC BY)",
+    "ans-beneficiarios": "Fonte: ANS, dados abertos (CC BY)",
+    "anatel-acessos": "Fonte: Anatel, dados abertos (CC BY)",
 }
 
 

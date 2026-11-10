@@ -174,6 +174,8 @@ isso, as rotas nem são montadas (respondem 404). O MCP vem depois do beta.
 | Fonte, data e atribuição de cada campo | `src/api_externa/envelope.py` |
 | Consulta em lote | `src/api_externa/lote.py` |
 | Nomes de fora (inglês) e de dentro (português) | `src/api_externa/nomes.py` |
+| O que cada conjunto lê da base | `src/api_externa/conjuntos/` |
+| **Contrato publicado (OpenAPI)** | [`openapi-data-v1.json`](openapi-data-v1.json), gerado por `scripts/gerar_openapi_data.py` |
 
 ## Chave
 
@@ -191,19 +193,76 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 |---|---|---|
 | `GET /data/v1/catalog` | o que esta chave pode pedir hoje: conjuntos, campos, licença e atribuição de cada fonte | não |
 | `GET /data/v1/usage` | o consumo do mês da organização e o que falta da quota | não |
+| `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita (conjunto `companies`) | sim |
+| `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
+| `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
+| `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
+| `POST /data/v1/funds/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
+| `GET /data/v1/credit/{cnpj}` | a ficha de crédito da empresa como era em `known_at` (só fatos, ver abaixo) | sim, 1 |
+| `POST /data/v1/credit/batch` | a mesma ficha para até 100 CNPJs, com o status de cada um | sim, 1 por CNPJ |
+| `GET /data/v1/sectors` | os setores do relatório que a ficha da noite tem, com o dia dela | não |
+| `GET /data/v1/sectors/{key}` | o mercado de um setor (molde D, ver abaixo) | sim, 1 |
 
-As duas contam no limite do minuto. Endereços, campos e códigos saem em **inglês**; as tabelas e o
-código continuam em português, e a tradução mora num lugar só (`nomes.py`): um nome sem tradução não
-sai.
+Todas contam no limite do minuto (o lote conta 1). Toda leitura de dado aceita **`known_at=AAAA-MM-DD`**:
+a resposta é a que a base dava naquele dia (só o que já era público nele, sem a revisão que veio depois);
+sem ele, hoje. Endereços, campos e códigos saem em **inglês**; as tabelas e o código continuam em
+português, e a tradução mora num lugar só (`nomes.py`): um nome sem tradução não sai.
 
-**Já em código, esperando a rota de dado:** cada campo sai com o valor, a fonte, o dia em que ficou
-público e o momento em que o TickerLab o viu, mais a licença e a frase de atribuição de cada fonte
-usada (`envelope.py`); a consulta em lote aceita até 100 CNPJs por chamada, conta N na quota do mês
-e 1 no limite do minuto, e devolve o lote inteiro com 429 se ele não couber (`lote.py`).
+Cada campo sai com o valor, a fonte, o dia em que ficou público e o momento em que o TickerLab o viu,
+mais a licença e a frase de atribuição de cada fonte usada (`envelope.py`). O lote aceita até 100
+CNPJs por chamada, conta N na quota do mês e 1 no limite do minuto, devolve o lote inteiro com 429 se
+ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `invalid_cnpj`).
 
-| Resposta | Quando |
-|---|---|
-| 400 | chave na URL (`api_key_in_url`) |
-| 401 | chave ausente, errada ou revogada, ou organização suspensa (`invalid_api_key`) |
-| 404 | API externa desligada |
-| 429 | limite do minuto (`rate_limited`) ou quota do mês (`monthly_quota_exceeded`) |
+**MEI, empresário individual e pessoa física nunca saem:** o CNPJ de uma pessoa responde
+`not_available`, igual a um CNPJ que não existe.
+
+| Resposta | `detail` | Quando |
+|---|---|---|
+| 400 | `api_key_in_url` | chave na URL |
+| 400 | `invalid_cnpj`, `invalid_known_at`, `invalid_assumed_return`, `invalid_batch` | CNPJ que não é CNPJ, `known_at` no futuro, retorno fora do plausível, lote vazio ou com mais de 100 |
+| 401 | `invalid_api_key` | chave ausente, errada ou revogada, ou organização suspensa |
+| 404 | `not_available` | nada a servir: CNPJ fora da base, pessoa, contrato ou direito que não cobre, tabela sem prontidão (a resposta não diz qual); com `Not Found`, a API externa está desligada |
+| 429 | `rate_limited`, `monthly_quota_exceeded` | limite do minuto ou quota do mês |
+| 503 | `service_unavailable` | a base não está disponível neste servidor agora |
+
+O contrato traz, rota a rota, os códigos que cada uma pode dar.
+
+### Ficha de crédito (`credit`, linha 754)
+
+Os fatos públicos de uma empresa que um FIDC ou uma plataforma de duplicatas consulta sobre o cedente
+e o sacado: a situação na Receita e a situação especial, os fatos relevantes dos últimos 12 meses na
+CVM e a presença como cedente nos FIDCs (informe mensal da CVM). Cada fato sai no envelope, com a fonte
+e o dia em que ficou público; nada publicado depois de `known_at` entra. O contrato precisa do conjunto
+`credit` com a finalidade `credito` (um contrato de análise não abre a ficha).
+
+Ficam fora, na leitura mais estreita: os resultados das regras de elegibilidade (sobre quem emite valor
+mobiliário seria opinião de crédito, que é de agência registrada: Resolução CVM 9/2020, art. 1º),
+rating, insolvência, o SCR (só agregado) e as fontes cujas marcas não deixam redistribuir. Pessoa
+natural (MEI, empresário individual) e CNPJ que a rede não conhece saem `not_available`.
+
+### Setor (`sectors`, linha 781)
+
+O molde D de `docs/padrao-de-analise.md` para os setores do relatório (`src/relatorio_setor.py`:
+`eletricas`, `bancos`, `seguros`, `saude_suplementar`, `telecom`): por série de agência, o total do
+mercado, CR4, HHI, a faixa e a variação do HHI por ano; a fatia de cada companhia aberta; e a lista das
+companhias, com o motivo de estarem no setor. É a exceção ao "só pela porta da base": a rota lê a seção
+`setor` da ficha da noite (`src.dossie.secao_do_setor`), onde a conta sobre várias tabelas já está feita e
+conferida (a mesma do app e do PDF). Cada coluna passa pelo portão com a fonte de onde saiu: a concentração
+é **agregado** de mercado (a única linha de direito `agregado` da API) e a fatia é fato de companhia, as
+duas pela fonte da agência; a lista, pela CVM. A prontidão confere também a ligação às companhias
+(`empresa_serie`, `cadastro_das_companhias`).
+
+A base não guarda quando a agência publicou cada mês, então `published_at` é o dia da noite e `observed_at`
+sai vazio; só existe a noite mais nova, e um `known_at` antes dela sai `not_available`. Linha sem CNPJ de
+14 dígitos não sai: nenhuma pessoa física. O lado a lado por entidade e o mercado de energia (CCEE, ONS)
+ficam fora desta versão.
+
+## Mudou uma rota da `/data/v1`?
+
+```powershell
+.venv\Scripts\python -m scripts.gerar_openapi_data
+```
+
+Revise o diff de `docs/api/openapi-data-v1.json` no PR: é o que a CLI (`cli/`) e os clientes leem.
+O teste (`tests/test_api_externa_por_cnpj_contrato.py`) falha se o arquivo ficar velho, se um código
+de erro do código não estiver no contrato, ou se uma leitura por CNPJ não aceitar `known_at`.

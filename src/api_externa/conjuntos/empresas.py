@@ -92,32 +92,35 @@ def _sim(valor: object) -> bool:
     return valor is None or bool(pd.isna(valor)) or bool(valor)  # type: ignore[arg-type]
 
 
+def e_empresa(porta: Porta, cnpj: str) -> bool:
+    """A rede de hoje conhece o CNPJ como uma só empresa que não é pessoa; qualquer dúvida é não.
+
+    Também serve à rota de crédito (`conjuntos/credito.py`): as duas tiram pessoa do mesmo jeito."""
+    con = porta.con
+    if "entidades" not in views(con):
+        return False
+    try:
+        id_entidade = resolver(con, cnpj, None)
+    except LookupError:
+        return False
+    if id_entidade.startswith(PREFIXO_DE_PESSOA):
+        return False
+    achadas = con.execute(
+        "SELECT tipo, mei, trata_como_pessoa FROM entidades WHERE id_entidade = $id",
+        {"id": id_entidade},
+    ).fetchall()
+    if len(achadas) != 1:
+        return False
+    tipo, mei, trata_como_pessoa = achadas[0]
+    return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
+
+
 class LeitorDeEmpresas:
     """Lê a situação cadastral de uma empresa de uma porta para um pedido."""
 
     def __init__(self, porta: Porta, permitido: Permitido) -> None:
         self.porta = porta
         self.permitido = permitido
-
-    def _e_empresa(self, cnpj: str) -> bool:
-        """A rede de hoje conhece o CNPJ como uma só empresa que não é pessoa; qualquer dúvida é não."""
-        con = self.porta.con
-        if "entidades" not in views(con):
-            return False
-        try:
-            id_entidade = resolver(con, cnpj, None)
-        except LookupError:
-            return False
-        if id_entidade.startswith(PREFIXO_DE_PESSOA):
-            return False
-        achadas = con.execute(
-            "SELECT tipo, mei, trata_como_pessoa FROM entidades WHERE id_entidade = $id",
-            {"id": id_entidade},
-        ).fetchall()
-        if len(achadas) != 1:
-            return False
-        tipo, mei, trata_como_pessoa = achadas[0]
-        return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
 
     def _versao(
         self, historico: Historico, raiz: str, como_era_em: date
@@ -153,7 +156,7 @@ class LeitorDeEmpresas:
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
-        if not self._e_empresa(normal):
+        if not e_empresa(self.porta, normal):
             return None
         retratos = self.porta.ler(
             TABELA,

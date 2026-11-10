@@ -28,6 +28,7 @@ dados_locais/
 
 # Sala de dados (arquivos cifrados de cada operação; B-20)
 dados_sala/
+acervo_api/
 
 # Segredos do Streamlit (login do Google): nunca commitar
 .streamlit/secrets.toml
