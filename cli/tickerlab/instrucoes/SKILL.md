@@ -23,6 +23,8 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab catalogo --json`: o que a chave pode pedir hoje (não gasta a quota).
    - `tickerlab consumo --json`: pedidos do mês e limites (não gasta a quota).
    - `--como-era AAAA-MM-DD` em qualquer comando de dado: o dado como era público naquele dia.
+   - `--planilha ARQUIVO.xlsx` (ou `.csv`) em qualquer comando de dado, quando a pessoa quiser a planilha para
+     o Excel: uma aba por tabela, com `fonte` e `publicado_em` em cada linha, e a aba `fontes`.
 3. Código de saída: 0 ok; 2 comando errado; 3 sem chave ou chave recusada (peça `tickerlab login` à pessoa,
    nunca a chave no chat); 4 limite ou quota; 5 nada disponível (veja `tickerlab catalogo`, não insista);
    6 pedido recusado; 7 API fora do ar; 1 erro inesperado. A mensagem sai em stderr.
