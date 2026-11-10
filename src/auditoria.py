@@ -62,6 +62,10 @@ ACAO_DIREITO_SUSPENSO = "direito_suspenso"
 ACAO_DIREITO_REATIVADO = "direito_reativado"
 ACAO_CONJUNTO_SUSPENSO = "conjunto_suspenso"
 ACAO_CONJUNTO_REATIVADO = "conjunto_reativado"
+# Membros da organização (ADR 0128, Emenda 1): o alvo é a conta, o detalhe é só o id da organização;
+# nunca nome nem e-mail de quem foi vinculado.
+ACAO_MEMBRO_VINCULADO = "membro_vinculado"
+ACAO_MEMBRO_DESVINCULADO = "membro_desvinculado"
 # bloqueio de uma conta no incidente (0045): detalhes só com o motivo (código) e quantas sessões
 ACAO_CONTA_BLOQUEADA = "conta_bloqueada"
 ACAO_CONTA_DESBLOQUEADA = "conta_desbloqueada"
