@@ -30,7 +30,9 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
+from base import cnpj as cnpjs
 from base.parquet import LINHAGEM, gravar_se_mudou
+from base.pgfn import pessoas_pela_receita
 from base.publicacao import dia_da_coleta
 from src import acervo
 from src.banco.coletas import originais_mais_recentes, versoes_guardadas
@@ -467,6 +469,30 @@ def disponivel_em(conexao: sa.Connection, original: sa.Row, mes: str) -> date:
     return max(fim_do_mes, dia_da_coleta(primeira).date())
 
 
+def com_a_marca_de_pessoa(
+    conexao: sa.Connection, por_mes: dict[str, pd.DataFrame]
+) -> dict[str, pd.DataFrame]:
+    """Cada mês com `trata_como_pessoa` (ADR 0075): empresário individual, natureza do grupo 4, MEI ou
+    raiz que a Receita guardada não tem (sem a Receita, todas). A Receita é a do mês mais recente,
+    perguntada uma vez só pelas raízes de todos os meses, como na PGFN (`base/pgfn.py`)."""
+    if not por_mes:
+        return {}
+    raizes = cnpjs.ordenados(
+        cnpjs.raizes_em_numeros(
+            pd.concat([t["cnpj_basico"] for t in por_mes.values()], ignore_index=True)
+        )
+    )
+    pessoas = pessoas_pela_receita(conexao, raizes)
+    return {
+        mes: tabela.assign(
+            trata_como_pessoa=cnpjs.contem(
+                pessoas, cnpjs.raizes_em_numeros(tabela["cnpj_basico"])
+            )
+        )
+        for mes, tabela in por_mes.items()
+    }
+
+
 def montar_situacao_especial(
     conexao: sa.Connection, pasta: Path, agora: datetime
 ) -> dict[str, int]:
@@ -474,7 +500,8 @@ def montar_situacao_especial(
 
     O CNPJ só mostra o retrato do mês: cada mês guardado vira um retrato, e o histórico "como era na
     data" nasce da sequência deles (`mes_do_retrato`, mais `data_situacao_especial` da Receita).
-    Cada retrato vale desde `disponivel_em`, não do mês do arquivo.
+    Cada retrato vale desde `disponivel_em`, não do mês do arquivo. A linha do empresário individual,
+    do MEI e da pessoa física sai com `trata_como_pessoa` (`com_a_marca_de_pessoa`).
     """
     por_mes: dict[str, list[pd.DataFrame]] = {}
     origens: dict[str, list[dict[str, str]]] = {}
@@ -495,9 +522,12 @@ def montar_situacao_especial(
         origens.setdefault(achado.group(1), []).append(
             {"url": original.url, "sha256": original.sha256}
         )
+    tabelas = com_a_marca_de_pessoa(
+        conexao,
+        {mes: pd.concat(partes, ignore_index=True) for mes, partes in por_mes.items()},
+    )
     linhas: dict[str, int] = {}
-    for mes, partes in por_mes.items():
-        tabela = pd.concat(partes, ignore_index=True)
+    for mes, tabela in tabelas.items():
         gravar_se_mudou(
             tabela,
             pasta / "cnpj_situacao_especial" / f"{mes}.parquet",
