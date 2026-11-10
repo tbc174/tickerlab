@@ -6,6 +6,7 @@ dia em que o dado ficou público. Risco 4: texto da base (a razão social) nunca
 """
 
 import io
+import zipfile
 from datetime import date
 
 import openpyxl
@@ -111,6 +112,15 @@ def test_texto_da_base_nunca_vira_formula(perigoso):
 
 def test_mesma_resposta_da_o_mesmo_arquivo():
     assert planilha.xlsx(_corpo()) == planilha.xlsx(_corpo())
+
+
+def test_toda_entrada_do_zip_tem_a_data_fixa():
+    """O openpyxl grava a hora do relógio em cada entrada do zip: duas chamadas em segundos diferentes davam
+    bytes diferentes (o teste acima falhou no CI da main em 10/11/2026)."""
+    with zipfile.ZipFile(io.BytesIO(planilha.xlsx(_corpo()))) as arquivo:
+        assert {info.date_time for info in arquivo.infolist()} == {
+            planilha.DATA_FIXA_DO_ZIP
+        }
 
 
 def test_mesmas_abas_linhas_e_colunas_da_planilha_da_cli():

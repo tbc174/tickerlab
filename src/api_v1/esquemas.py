@@ -1554,6 +1554,14 @@ class FichaDoCnpjV1(BaseModel):
     )
 
 
+class BlocoDaFichaV1(BaseModel):
+    """Um bloco da ficha: o título, a fonte e o que ele traz (sem data nem número)."""
+
+    titulo: str
+    fonte: str
+    o_que_traz: str
+
+
 class FichaDaEmpresaV1(BaseModel):
     """A resposta da tela: o estado, a ficha (só quando pronta), as fontes e os limites, sempre."""
 
@@ -1561,6 +1569,9 @@ class FichaDaEmpresaV1(BaseModel):
     ficha: FichaDoCnpjV1 | None
     fontes: list[FonteDaFichaV1]
     limites: list[str]
+    o_que_vem: list[
+        BlocoDaFichaV1
+    ]  # o que a ficha traz, para a tela dizer antes de o dado sair
 
 
 def de_ficha_do_analista(
@@ -1573,4 +1584,23 @@ def de_ficha_do_analista(
         else FichaDoCnpjV1.model_validate(resposta.corpo),
         fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
         limites=list(limites),
+        o_que_vem=[
+            BlocoDaFichaV1.model_validate(bloco)
+            for bloco in leitura_do_analista.blocos_como_lista()
+        ],
     )
+
+
+class EntregaDoDiaV1(BaseModel):
+    """Uma linha de "O que mudou": o dia, o que entrou e a página para abrir."""
+
+    data: date
+    o_que: str
+    titulo: str
+    url: str
+
+
+class OQueMudouV1(BaseModel):
+    """O que entrou no app a cada dia (`src/o_que_mudou.py`), a mais nova primeiro."""
+
+    entregas: list[EntregaDoDiaV1]

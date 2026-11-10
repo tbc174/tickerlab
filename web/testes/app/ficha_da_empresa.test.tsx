@@ -14,6 +14,11 @@ const LIMITES = [
   "Nada aqui é recomendação de investimento.",
 ];
 
+const O_QUE_VEM = [
+  { titulo: "Cadastro na Receita Federal", fonte: "Receita Federal", o_que_traz: "Razão social e situação." },
+  { titulo: "Entregas de balanço à CVM", fonte: "CVM", o_que_traz: "Só da companhia aberta." },
+];
+
 function campo(valor: CampoComFonteV1["valor"], fonte = "rfb-cnpj", publico_em = "2026-10-31"): CampoComFonteV1 {
   return { valor, fonte, publico_em, visto_em: null };
 }
@@ -43,10 +48,17 @@ const PRONTA: FichaDaEmpresaV1 = {
     { fonte: "cvm-hist-dfp", licenca: "ODbL", atribuicao: "Comissão de Valores Mobiliários" },
   ],
   limites: LIMITES,
+  o_que_vem: O_QUE_VEM,
 };
 const SEM_ENTREGAS: FichaDaEmpresaV1 = { ...PRONTA, ficha: { ...PRONTA.ficha!, entregas: null } };
-const NAO_LIBERADA: FichaDaEmpresaV1 = { estado: "nao_liberada", ficha: null, fontes: [], limites: LIMITES };
-const NAO_DISPONIVEL: FichaDaEmpresaV1 = { estado: "nao_disponivel", ficha: null, fontes: [], limites: LIMITES };
+const NAO_LIBERADA: FichaDaEmpresaV1 = {
+  estado: "nao_liberada",
+  ficha: null,
+  fontes: [],
+  limites: LIMITES,
+  o_que_vem: O_QUE_VEM,
+};
+const NAO_DISPONIVEL: FichaDaEmpresaV1 = { ...NAO_LIBERADA, estado: "nao_disponivel" };
 
 function abrir(resposta: () => Response) {
   return abrirApp("/ficha-da-empresa", {
@@ -115,6 +127,13 @@ describe("ficha da empresa", () => {
     await verFicha(CNPJ);
     expect(await screen.findByText(/Dado ainda não liberado/)).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
+    // o que a ficha vai trazer, com a fonte de cada bloco (Diretoria, 10/11): sem data nem número
+    const vem = screen.getByRole("region", { name: "O que a ficha vai trazer" });
+    const itens = within(vem).getAllByRole("listitem");
+    expect(itens.map((i) => i.textContent)).toEqual([
+      "Cadastro na Receita FederalRazão social e situação.Fonte: Receita Federal",
+      "Entregas de balanço à CVMSó da companhia aberta.Fonte: CVM",
+    ]);
     expect(screen.queryByRole("button", { name: "Baixar em Excel" })).toBeNull();
     expect(screen.getByRole("region", { name: "Limites e cuidados" })).toBeTruthy();
   });
@@ -123,6 +142,7 @@ describe("ficha da empresa", () => {
     abrir(() => respostaJson(200, NAO_DISPONIVEL));
     await verFicha("11.222.333/0001-81");
     expect((await screen.findByRole("note")).textContent).toBe("Ficha não disponível para este CNPJ.");
+    expect(screen.queryByRole("region", { name: "O que a ficha vai trazer" })).toBeNull();
     expect(screen.queryByText(/11\.222\.333/)).toBeNull();
     expect(screen.queryByRole("region", { name: "Cadastro na Receita" })).toBeNull();
   });

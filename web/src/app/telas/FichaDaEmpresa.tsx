@@ -10,7 +10,7 @@ import { ErroDaApi, baixar } from "../api";
 import { Carregando } from "../Carregando";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
-import type { CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
+import type { BlocoDaFichaV1, CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
 
@@ -214,15 +214,37 @@ function BaixarPlanilha({ rota, cnpj }: { rota: string; cnpj: string }) {
   );
 }
 
+/** Enquanto o dado não é liberado: o que a ficha vai trazer, bloco a bloco, com a fonte de cada um. */
+function OQueVem({ blocos }: { blocos: BlocoDaFichaV1[] }) {
+  return (
+    <>
+      <p className="apagado" role="note">
+        Dado ainda não liberado: a ficha entra nesta tela quando a conferência da tabela terminar.
+      </p>
+      {blocos.length > 0 ? (
+        <section aria-label="O que a ficha vai trazer">
+          <h2>O que a ficha vai trazer</h2>
+          <ul className="telas-do-app">
+            {blocos.map((bloco) => (
+              <li key={bloco.titulo} className="cartao">
+                <strong>{bloco.titulo}</strong>
+                <p>{bloco.o_que_traz}</p>
+                <p className="apagado">Fonte: {bloco.fonte}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
 function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; cnpj: string }) {
-  if (dados.estado === "nao_liberada" || dados.ficha === null) {
-    const texto =
-      dados.estado === "nao_liberada"
-        ? "Dado ainda não liberado: a ficha entra nesta tela quando a base passar pela conferência que a libera também na API."
-        : "Ficha não disponível para este CNPJ.";
+  if (dados.estado === "nao_liberada") return <OQueVem blocos={dados.o_que_vem} />;
+  if (dados.ficha === null) {
     return (
       <p className="apagado" role="note">
-        {texto}
+        Ficha não disponível para este CNPJ.
       </p>
     );
   }
