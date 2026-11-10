@@ -82,7 +82,7 @@ def ficha(
 ) -> Resposta:
     """A ficha do CNPJ como era em `como_era_em` (hoje, se vazio ou no futuro), pelo `LeitorDeFicha` da API.
 
-    `ValueError` se o CNPJ é inválido (a rota responde 400)."""
+    `ValueError` se o CNPJ é inválido (a rota responde 422)."""
     if not cnpj_.normalizar_cnpj(cnpj):
         raise ValueError("CNPJ inválido")
     dia = hoje if como_era_em is None else min(como_era_em, hoje)
