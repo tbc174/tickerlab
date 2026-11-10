@@ -974,3 +974,35 @@ export interface PainelDoCafeV1 {
   calendario: BlocoDoCafeV1<CalendarioDoCafeV1>;
   contrapartes: BlocoDoCafeV1<ContrapartesDoCafeV1>;
 }
+
+/** Um campo da ficha do CNPJ (tela do analista): o valor, a fonte e o dia em que ficou público. */
+export interface CampoComFonteV1 {
+  valor: string | number | boolean | null;
+  fonte: string;
+  publico_em: string; // AAAA-MM-DD
+  visto_em: string | null;
+}
+
+/** Uma fonte usada na ficha, com a licença e a frase de atribuição que ela pede. */
+export interface FonteDaFichaV1 {
+  fonte: string;
+  licenca: string;
+  atribuicao: string;
+}
+
+/** A ficha como a base a conhecia no dia (as chaves do leitor da API externa, em português). */
+export interface FichaDoCnpjV1 {
+  cnpj: string;
+  como_era_em: string; // AAAA-MM-DD
+  cadastro_na_receita: Record<string, CampoComFonteV1>;
+  entregas?: Record<string, CampoComFonteV1>[] | null; // só da companhia aberta (DFP e ITR)
+}
+
+/** A ficha da empresa (tela do analista, POST /v1/analista/ficha): o estado decide o que a tela mostra. */
+export interface FichaDaEmpresaV1 {
+  // nao_liberada: o dado ainda não foi liberado; nao_disponivel: a base não serve este CNPJ
+  estado: "pronta" | "nao_liberada" | "nao_disponivel";
+  ficha: FichaDoCnpjV1 | null;
+  fontes: FonteDaFichaV1[];
+  limites: string[]; // "Limites e cuidados": sempre presentes
+}

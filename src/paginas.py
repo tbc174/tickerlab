@@ -6,7 +6,12 @@ mudar o texto de ajuda ou trocar de grupo, é só mexer aqui.
 
 from dataclasses import dataclass
 
-from src.planos import APRENDIZADO_DE_MAQUINA, PARES, motivo_sem_acesso
+from src.planos import (
+    APRENDIZADO_DE_MAQUINA,
+    DOSSIE_DA_BASE,
+    PARES,
+    motivo_sem_acesso,
+)
 
 # Páginas sem grupo: aparecem direto na barra do menu (o Streamlit as põe no começo)
 GRUPO_TOPO = ""
@@ -604,6 +609,31 @@ PAGINAS = (
                 ),
             ),
             "BuscaPorCnpjV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
+        "ficha_da_empresa",
+        "Ficha da empresa",
+        GRUPO_AVANCADO,  # tem recurso do plano (test_o_grupo_avancado_tem_so_paginas_pro_e_so_ele)
+        ":material/business_center:",
+        "Digite o CNPJ de uma empresa e veja o cadastro na Receita e, da companhia aberta, as entregas "
+        "de balanço à CVM, com a fonte e a data de cada campo. Baixe tudo em Excel.",
+        area=AREA_ACOMPANHAR,
+        recurso=DOSSIE_DA_BASE,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "POST",
+            "/v1/analista/ficha",
+            (
+                Entrada(
+                    "cnpj",
+                    "texto",
+                    "O CNPJ da empresa, com ou sem pontuação.",
+                    obrigatoria=True,
+                ),
+            ),
+            "FichaDaEmpresaV1",
         ),
         so_no_app_novo=True,
     ),

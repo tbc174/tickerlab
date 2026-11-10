@@ -1408,6 +1408,60 @@
         "title": "CambioDoCafeV1",
         "type": "object"
       },
+      "CampoComFonteV1": {
+        "description": "Um campo no envelope da API externa: o valor, a fonte e o dia em que ficou público.",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "publico_em": {
+            "format": "date",
+            "title": "Publico Em",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "visto_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visto Em"
+          }
+        },
+        "required": [
+          "valor",
+          "fonte",
+          "publico_em",
+          "visto_em"
+        ],
+        "title": "CampoComFonteV1",
+        "type": "object"
+      },
       "ChecagemV1": {
         "properties": {
           "explicacao": {
@@ -2363,6 +2417,92 @@
         "title": "FichaDaContraparteV1",
         "type": "object"
       },
+      "FichaDaEmpresaV1": {
+        "description": "A resposta da tela: o estado, a ficha (só quando pronta), as fontes e os limites, sempre.",
+        "properties": {
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "ficha": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FichaDoCnpjV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "ficha",
+          "fontes",
+          "limites"
+        ],
+        "title": "FichaDaEmpresaV1",
+        "type": "object"
+      },
+      "FichaDoCnpjV1": {
+        "description": "A ficha como a base a conhecia no dia, com as chaves do leitor da API externa (em português).",
+        "properties": {
+          "cadastro_na_receita": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Cadastro Na Receita",
+            "type": "object"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "como_era_em": {
+            "format": "date",
+            "title": "Como Era Em",
+            "type": "string"
+          },
+          "entregas": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/CampoComFonteV1"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entregas"
+          }
+        },
+        "required": [
+          "cnpj",
+          "como_era_em",
+          "cadastro_na_receita"
+        ],
+        "title": "FichaDoCnpjV1",
+        "type": "object"
+      },
       "FichaV1": {
         "description": "A ficha \"Foi sorte?\" do backtest (ADR 0037, D1 e D2), com os textos de `src/ficha.py`.",
         "properties": {
@@ -2420,6 +2560,30 @@
           "nota"
         ],
         "title": "FichaV1",
+        "type": "object"
+      },
+      "FonteDaFichaV1": {
+        "description": "Uma fonte usada na ficha, com a licença e a frase de atribuição que ela pede.",
+        "properties": {
+          "atribuicao": {
+            "title": "Atribuicao",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "licenca": {
+            "title": "Licenca",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fonte",
+          "licenca",
+          "atribuicao"
+        ],
+        "title": "FonteDaFichaV1",
         "type": "object"
       },
       "FraseDaAnaliseV1": {
@@ -4173,6 +4337,19 @@
           "url"
         ],
         "title": "PassoDoBetaV1",
+        "type": "object"
+      },
+      "PedidoDaFichaV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "PedidoDaFichaV1",
         "type": "object"
       },
       "PedidoDeBacktestV1": {
@@ -6138,6 +6315,77 @@
           }
         },
         "summary": "Registrar O Aceite"
+      }
+    },
+    "/v1/analista/ficha": {
+      "post": {
+        "description": "A ficha do CNPJ: o cadastro na Receita e, da companhia aberta, as entregas à CVM, cada campo com a\nfonte e o dia em que ficou público. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece\nsaem `nao_disponivel`, sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`.",
+        "operationId": "ficha_da_empresa_v1_analista_ficha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FichaDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ficha Da Empresa"
+      }
+    },
+    "/v1/analista/ficha/planilha": {
+      "post": {
+        "description": "A mesma ficha em Excel (mesmo acesso, mesmo plano), com a aba das fontes e o aviso.",
+        "operationId": "ficha_da_empresa_em_planilha_v1_analista_ficha_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ficha Da Empresa Em Planilha"
       }
     },
     "/v1/apagar-simulacao": {

@@ -28,6 +28,7 @@ from src import (
     relatorio_setor,
     topicos,
 )
+from src.analista import leitura as leitura_do_analista
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.banco.dados_do_usuario import Simulacao
@@ -1519,4 +1520,57 @@ def de_boas_vindas_do_beta() -> BoasVindasDoBetaV1:
         como_responder=beta.COMO_RESPONDER,
         total_de_minutos=beta.TOTAL_DE_MINUTOS,
         roteiro=[PassoDoBetaV1(**asdict(passo)) for passo in beta.ROTEIRO],
+    )
+
+
+# --- Tela do analista (linha 798): a ficha da empresa, pelo leitor da API externa ------------------
+
+
+class CampoComFonteV1(BaseModel):
+    """Um campo no envelope da API externa: o valor, a fonte e o dia em que ficou público."""
+
+    valor: str | int | float | bool | None
+    fonte: str
+    publico_em: date
+    visto_em: date | None
+
+
+class FonteDaFichaV1(BaseModel):
+    """Uma fonte usada na ficha, com a licença e a frase de atribuição que ela pede."""
+
+    fonte: str
+    licenca: str
+    atribuicao: str
+
+
+class FichaDoCnpjV1(BaseModel):
+    """A ficha como a base a conhecia no dia, com as chaves do leitor da API externa (em português)."""
+
+    cnpj: str
+    como_era_em: date
+    cadastro_na_receita: dict[str, CampoComFonteV1]
+    entregas: list[dict[str, CampoComFonteV1]] | None = (
+        None  # só da companhia aberta (DFP e ITR)
+    )
+
+
+class FichaDaEmpresaV1(BaseModel):
+    """A resposta da tela: o estado, a ficha (só quando pronta), as fontes e os limites, sempre."""
+
+    estado: str  # "pronta", "nao_liberada" (o portão ainda não deixa sair) ou "nao_disponivel"
+    ficha: FichaDoCnpjV1 | None
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def de_ficha_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> FichaDaEmpresaV1:
+    return FichaDaEmpresaV1(
+        estado=resposta.estado,
+        ficha=None
+        if resposta.corpo is None
+        else FichaDoCnpjV1.model_validate(resposta.corpo),
+        fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
+        limites=list(limites),
     )
