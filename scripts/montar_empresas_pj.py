@@ -113,6 +113,9 @@ def montar(
     cnpj: Path, destino: Path, mes: str, zips: list[Path], agora: datetime
 ) -> dict[str, int]:
     """Grava as duas tabelas do `mes` e devolve as linhas de cada uma."""
+    if not list((cnpj / "vigente" / "simples").glob("*")):
+        # sem a tabela do Simples inteira não há como excluir o MEI: parar (só um prefixo sem registro é normal)
+        raise ErroDeLayout(f"tabela do Simples ausente em {cnpj / 'vigente'}")
     shas = {z.name: carga.sha256_do_arquivo(z) for z in zips}
     origens = _origens({mes: shas})
     trabalho = destino / EMPRESAS / TRABALHO
