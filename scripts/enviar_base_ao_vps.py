@@ -61,6 +61,9 @@ FICAM_EM_CASA = (
     "identificadores",
     "ligacoes",
     "cnpj_situacao_especial",
+    # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
+    "cnpj_empresas_historico",
+    "cnpj_simples_historico",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
@@ -70,7 +73,7 @@ DEGRAU_2_ACRESCENTA = (
     "anm_sigbm_barragens", "anp_concessionarios", "anp_vendas", "ans_beneficiarios",
     "antt_siade", "area_cafe_municipio", "auditores", "bcb_selic_focus",
     "carteiras_bloco_8", "ccee_pld", "cda_cotas", "cftc_cot_agro", "clima_regiao_cafe",
-    "cnes_competencias", "cnpj_empresas_historico", "cnpj_simples_historico",
+    "cnes_competencias",
     "codigos_invalidos", "comex_cafe", "comex_urf", "comex_via", "conab_cafe",
     "controladas", "curva_juros", "cvm_fiagro", "debentures_assembleias", "dmpl_como_era",
     "emissores", "eventos", "faostat_cafe", "fca_geral", "fre_capital_social",
@@ -258,7 +261,11 @@ def empacotar(saida: Path, destino: io.BufferedIOBase) -> int:
     """Escreve o tar de `saida` (caminhos relativos, só arquivo comum). Devolve quantos arquivos."""
     total = 0
     with tarfile.open(fileobj=destino, mode="w|") as tar:  # type: ignore[call-overload]
-        for arquivo in sorted(p for p in saida.rglob("*") if p.is_file()):
+        for arquivo in sorted(saida.rglob("*")):
+            if arquivo.is_symlink():
+                raise RecorteErro(f"{arquivo} é link simbólico")
+            if not arquivo.is_file():
+                continue
             info = tar.gettarinfo(
                 str(arquivo), arcname=arquivo.relative_to(saida).as_posix()
             )
@@ -304,6 +311,12 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
+def _exigir_saida_vazia(saida: Path) -> None:
+    """O tar leva tudo o que está em `saida`: sobra de rodada antiga (ou de outra versão) não pode ir junto."""
+    if saida.exists() and any(saida.iterdir()):
+        raise RecorteErro(f"a pasta de saída {saida} não está vazia")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _argumentos(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -320,6 +333,7 @@ def main(argv: list[str] | None = None) -> int:
         temporaria = tempfile.mkdtemp(prefix="base-api-")
         saida = Path(temporaria)
     try:
+        _exigir_saida_vazia(saida)
         resultados = montar(base, saida, tabelas_do_degrau(args.degrau))
         for r in resultados:
             log.info(

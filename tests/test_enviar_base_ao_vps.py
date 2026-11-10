@@ -192,3 +192,27 @@ def test_o_compose_monta_o_recorte_so_para_leitura_na_api():
     assert "TICKERLAB_ACERVO: /app/acervo" in api
     assert "TICKERLAB_API_EXTERNA" not in api
     assert "TICKERLAB_API_V1" not in api
+
+
+def test_saida_com_sobra_de_rodada_antiga_derruba_o_envio(tmp_path, capsys):
+    """O tar leva tudo o que está na pasta de saída: sobra (ex.: rede com pessoa) não pode ir junto."""
+    base = _base_de_mentira(tmp_path)
+    saida = tmp_path / "saida"
+    (saida / "rede").mkdir(parents=True)
+    (saida / "rede" / "entidades.parquet").write_bytes(b"velho")
+    codigo = envio.main(["--degrau", "1", "--base", str(base), "--saida", str(saida)])
+    assert codigo == 1
+    assert "não está vazia" in capsys.readouterr().out
+
+
+def test_link_simbolico_na_saida_nao_vai_no_tar(tmp_path):
+    saida = tmp_path / "saida"
+    saida.mkdir()
+    alvo = tmp_path / "fora.parquet"
+    alvo.write_bytes(b"x")
+    try:
+        (saida / "atalho.parquet").symlink_to(alvo)
+    except OSError:
+        pytest.skip("sem permissão para link simbólico")
+    with pytest.raises(envio.RecorteErro, match="link simbólico"):
+        envio.empacotar(saida, io.BytesIO())
