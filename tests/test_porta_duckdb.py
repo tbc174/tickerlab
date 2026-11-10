@@ -23,6 +23,7 @@ from base.porta.duckdb import (
     nome_da_view,
     sem_o_fim_futuro,
 )
+from base.porta.rede import resolver
 
 
 def _tabela(**campos: object) -> Tabela:
@@ -417,6 +418,7 @@ def test_eventos_da_rede(tmp_path):
                 "mes_do_retrato": ["2024-07"],
                 "disponivel_em": [pd.Timestamp("2024-07-31").date()],
                 "origem_coletada_em": ["2024-07-10T12:00:00+00:00"],
+                "trata_como_pessoa": [False],
             }
         ),
     )
@@ -431,6 +433,18 @@ def test_eventos_da_rede(tmp_path):
                 "desde": [None, None],
                 "ate": [None, None],
                 "publico_em": pd.to_datetime(["2010-01-01", "2010-01-01"]),
+            }
+        ),
+    )
+    _gravar(  # E1 é empresa: sem isso a porta não serve o identificador dela (linha 787)
+        tmp_path,
+        "rede/entidades.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": ["E1"],
+                "tipo": ["empresa"],
+                "trata_como_pessoa": [False],
+                "publico_em": pd.to_datetime(["2010-01-01"]),
             }
         ),
     )
@@ -827,3 +841,231 @@ def test_ler_em_lotes_traz_numa_consulta_o_que_as_paginas_trazem(tmp_path):
     pd.testing.assert_frame_equal(cortados, paginas.head(10))
     assert list(em_2024.columns) == ["cnpj", "valor"]
     assert set(em_2024["cnpj"]) == {"C1"} and em_2024["valor"].is_monotonic_increasing
+
+
+# --- linha 787: nenhuma pessoa sai da porta (ADR 0075) -------------------------------------------
+RAIZ_DO_MEI = "90000001"  # fictícia
+
+
+def _situacao_especial(cnpjs: list[str], pessoa: list[bool | None]) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "cnpj": cnpjs,
+            "cnpj_basico": [c[:8] for c in cnpjs],
+            "rotulo": ["falencia"] * len(cnpjs),
+            "situacao_especial": ["FALIDO"] * len(cnpjs),
+            "data_situacao_especial": ["2024-07-05"] * len(cnpjs),
+            "mes_do_retrato": ["2024-07"] * len(cnpjs),
+            "disponivel_em": [pd.Timestamp("2024-07-31").date()] * len(cnpjs),
+            "origem_coletada_em": ["2024-07-10T12:00:00+00:00"] * len(cnpjs),
+            "trata_como_pessoa": pessoa,
+        }
+    )
+
+
+def test_falencia_do_mei_nao_sai_nos_eventos_da_rede(tmp_path):
+    """A falência do MEI (marcada na montagem) não sai na tabela nem nos eventos da rede; a da
+    empresa sai. A marca vazia também esconde (na dúvida, é pessoa)."""
+    _gravar(
+        tmp_path,
+        "cnpj_situacao_especial/2024-07.parquet",
+        _situacao_especial(
+            ["12345678000100", f"{RAIZ_DO_MEI}000100", "90000002000100"],
+            [False, True, None],
+        ),
+    )
+    with conectar(tmp_path) as con:
+        na_tabela = con.execute("SELECT cnpj FROM cnpj_situacao_especial").fetchall()
+        nos_eventos = con.execute("SELECT raiz FROM eventos_da_rede").fetchall()
+    assert na_tabela == [("12345678000100",)]
+    assert nos_eventos == [("12345678",)]
+
+
+def test_situacao_especial_sem_a_marca_nao_serve_nada(tmp_path):
+    """O arquivo montado antes da marca não separa empresa de pessoa: até a montagem nova, nada sai."""
+    _gravar(
+        tmp_path,
+        "cnpj_situacao_especial/2024-07.parquet",
+        _situacao_especial(["12345678000100"], [False]).drop(
+            columns="trata_como_pessoa"
+        ),
+    )
+    with conectar(tmp_path) as con:
+        assert con.execute("SELECT count(*) FROM eventos_da_rede").fetchone() == (0,)
+
+
+EMPRESA_A, EMPRESA_B, ORGAO = "E" + "a" * 20, "E" + "b" * 20, "E" + "f" * 20
+ENTIDADE_MEI, SEM_NATUREZA, FORA_DA_REDE = (
+    "E" + "c" * 20,
+    "E" + "d" * 20,
+    "E" + "9" * 20,
+)
+PESSOA = "P" + "e" * 20
+NOME_FICTICIO = "Nome Ficticio de Exemplo"
+
+
+def _gravar_rede_com_pessoa(pasta: Path) -> None:
+    _gravar(
+        pasta,
+        "rede/entidades.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": [EMPRESA_A, EMPRESA_B, ENTIDADE_MEI, SEM_NATUREZA],
+                "tipo": ["empresa"] * 4,
+                "nome": ["Alfa Exemplo S.A.", "Beta Exemplo Ltda", None, NOME_FICTICIO],
+                "natureza_juridica": ["2054", "2062", "2135", None],
+                "natureza_fonte": ["receita", "receita", "receita", "nao_informada"],
+                "mei": [False, False, True, False],
+                "trata_como_pessoa": [False, False, True, True],
+                "fontes": ["teste"] * 4,
+                "publico_em": pd.to_datetime(["2020-01-01"] * 4),
+            }
+        ),
+    )
+    arestas = [
+        (EMPRESA_A, EMPRESA_B, "controlada_de"),  # sai
+        (ENTIDADE_MEI, EMPRESA_A, "coligada_de"),  # sai: não é sinal negativo
+        (EMPRESA_A, ORGAO, "sancionada_por"),  # sai: negativo sobre empresa
+        (PESSOA, EMPRESA_A, "socio_de"),  # fica: aresta de pessoa
+        (EMPRESA_B, PESSOA, "socio_de"),  # fica: aresta de pessoa
+        (ENTIDADE_MEI, ORGAO, "sancionada_por"),  # fica: negativo sobre o MEI
+        (SEM_NATUREZA, ORGAO, "deve_a"),  # fica: negativo sobre quem pode ser pessoa
+        (FORA_DA_REDE, ORGAO, "deve_a"),  # fica: fora da rede conta como pessoa
+        (None, EMPRESA_A, "socio_de"),  # fica: a lápide sem a ponta
+    ]
+    _gravar(
+        pasta,
+        "rede/ligacoes.parquet",
+        pd.DataFrame(
+            {
+                "de": [a[0] for a in arestas],
+                "para": [a[1] for a in arestas],
+                "tipo": [a[2] for a in arestas],
+                "papel": [None] * len(arestas),
+                "aconteceu_em": pd.to_datetime(["2020-01-01"] * len(arestas)),
+                "publico_em": pd.to_datetime(["2020-01-02"] * len(arestas)),
+                "coletado_em": pd.to_datetime(["2020-01-03"] * len(arestas)),
+                "fonte": ["teste"] * len(arestas),
+            }
+        ),
+    )
+
+
+def test_entidade_tratada_como_pessoa_sai_sem_o_nome(tmp_path):
+    """A entidade de natureza não informada guardava o nome: a porta o apaga de quem é tratado como
+    pessoa, mas a linha fica (é ela que diz às rotas que o CNPJ é de pessoa)."""
+    _gravar_rede_com_pessoa(tmp_path)
+    with conectar(tmp_path) as con:
+        nomes = dict(con.execute("SELECT id_entidade, nome FROM entidades").fetchall())
+    assert nomes == {
+        EMPRESA_A: "Alfa Exemplo S.A.",
+        EMPRESA_B: "Beta Exemplo Ltda",
+        ENTIDADE_MEI: None,
+        SEM_NATUREZA: None,
+    }
+
+
+def test_ligacoes_saem_pela_vista_publicada(tmp_path):
+    """A porta serve as ligações como a vista publicada (`base/rede/vistas.py`): sem aresta de pessoa,
+    sem a lápide sem ponta e sem sinal negativo sobre quem não é empresa."""
+    _gravar_rede_com_pessoa(tmp_path)
+    with conectar(tmp_path) as con:
+        servidas = set(con.execute("SELECT de, para, tipo FROM ligacoes").fetchall())
+    assert servidas == {
+        (EMPRESA_A, EMPRESA_B, "controlada_de"),
+        (ENTIDADE_MEI, EMPRESA_A, "coligada_de"),
+        (EMPRESA_A, ORGAO, "sancionada_por"),
+    }
+
+
+def test_sem_as_entidades_nenhum_sinal_negativo_sai(tmp_path):
+    """Sem a tabela de entidades não dá para saber quem é empresa: todo sinal negativo fica."""
+    _gravar_rede_com_pessoa(tmp_path)
+    (tmp_path / "rede" / "entidades.parquet").unlink()
+    with conectar(tmp_path) as con:
+        tipos = {t for (t,) in con.execute("SELECT tipo FROM ligacoes").fetchall()}
+    assert tipos == {"controlada_de", "coligada_de"}
+
+
+def test_identificador_leva_o_mei_a_entidade_marcada_e_o_de_pessoa_nao_sai(tmp_path):
+    """O hash P (pessoa da vista interna) não sai, nem o CPF. O CNPJ do MEI sai, sim: é ele que leva à
+    entidade marcada `trata_como_pessoa` (sem nome) e diz às rotas e ao crédito que aquele CNPJ é de
+    pessoa; o CNPJ que leva a uma pessoa da rede sai com o id `P` e a raiz, sem o hash. Escondê-los faria o "não achou"
+    virar empresa nesses consumidores."""
+    _gravar_rede_com_pessoa(tmp_path)
+    donos = [EMPRESA_A, ENTIDADE_MEI, SEM_NATUREZA, FORA_DA_REDE, PESSOA, PESSOA]
+    _gravar(
+        tmp_path,
+        "rede/identificadores.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": donos,
+                "sistema": ["cnpj_raiz"] * (len(donos) - 1) + ["cpf"],
+                "valor": [
+                    "12345678",
+                    RAIZ_DO_MEI,
+                    "90000002",
+                    "90000003",
+                    "90000004",
+                    "x",
+                ],
+                "desde": [None] * len(donos),
+                "ate": [None] * len(donos),
+                "publico_em": pd.to_datetime(["2010-01-01"] * len(donos)),
+            }
+        ),
+    )
+    with conectar(tmp_path) as con:
+        servidos = con.execute(
+            "SELECT id_entidade, valor FROM identificadores"
+        ).fetchall()
+    assert sorted(servidos) == sorted(
+        [
+            (EMPRESA_A, "12345678"),
+            (ENTIDADE_MEI, RAIZ_DO_MEI),
+            (SEM_NATUREZA, "90000002"),
+            (FORA_DA_REDE, "90000003"),
+            ("P90000004", "90000004"),
+        ]
+    )
+
+
+def test_rede_de_uma_pessoa_nao_traz_o_cnpj_de_outra(tmp_path):
+    """Duas pessoas da rede com CNPJ: cada uma resolve para o seu id mascarado, e a rede de uma não
+    traz o CNPJ da outra (o id sem o hash não pode juntar todas as pessoas num só)."""
+    _gravar_rede_com_pessoa(tmp_path)
+    outra = "P" + "9" * 20
+    donos = [PESSOA, PESSOA, outra]
+    _gravar(
+        tmp_path,
+        "rede/identificadores.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": donos,
+                "sistema": ["cnpj_raiz", "cnpj", "cnpj_raiz"],
+                "valor": ["90000004", "90000004000100", "90000005"],
+                "desde": [None] * len(donos),
+                "ate": [None] * len(donos),
+                "publico_em": pd.to_datetime(["2010-01-01"] * len(donos)),
+            }
+        ),
+    )
+    with conectar(tmp_path) as con:
+        centro = resolver(con, "90000004000100", None)
+        valores = con.execute(
+            "SELECT valor FROM identificadores WHERE id_entidade = $id", {"id": centro}
+        ).fetchall()
+    assert centro == "P90000004"
+    assert sorted(valores) == [("90000004",), ("90000004000100",)]
+
+
+def test_rede_sem_as_colunas_das_pontas_nao_serve_nada(tmp_path):
+    """Arquivo das ligações sem `de`/`para` (montagem antiga ou parcial): não dá para saber quem é
+    pessoa, então nada sai, e a conexão abre do mesmo jeito."""
+    _gravar(
+        tmp_path,
+        "rede/ligacoes.parquet",
+        pd.DataFrame({"aconteceu_em": pd.to_datetime(["2020-01-01"])}),
+    )
+    with conectar(tmp_path) as con:
+        assert con.execute("SELECT count(*) FROM ligacoes").fetchone() == (0,)
