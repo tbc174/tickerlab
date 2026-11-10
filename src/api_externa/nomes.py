@@ -136,6 +136,13 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "maior_participacao_como_cedente": "largest_assignor_share_in_a_fidc",
     "carteira_dos_fundos_em_que_cede": "fidc_receivables_as_assignor",
     "maior_inadimplencia_dos_fundos_em_que_cede": "highest_fidc_delinquency_as_assignor",
+    # profiles: o perfil por CNPJ (linha 736, PR 2), o cadastro e as entregas de DFP e ITR como eram
+    "cadastro_na_receita": "registration",
+    "entregas": "periodic_filings",
+    "prazo": "due_date",
+    "primeira_entrega": "first_filed_on",
+    "dias_uteis_de_atraso": "business_days_late",
+    "situacao_da_entrega": "filing_status",
 }
 
 
