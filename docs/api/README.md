@@ -174,6 +174,8 @@ isso, as rotas nem são montadas (respondem 404). O MCP vem depois do beta.
 | Fonte, data e atribuição de cada campo | `src/api_externa/envelope.py` |
 | Consulta em lote | `src/api_externa/lote.py` |
 | Nomes de fora (inglês) e de dentro (português) | `src/api_externa/nomes.py` |
+| O que cada conjunto lê da base | `src/api_externa/conjuntos/` |
+| **Contrato publicado (OpenAPI)** | [`openapi-data-v1.json`](openapi-data-v1.json), gerado por `scripts/gerar_openapi_data.py` |
 
 ## Chave
 
@@ -191,19 +193,42 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 |---|---|---|
 | `GET /data/v1/catalog` | o que esta chave pode pedir hoje: conjuntos, campos, licença e atribuição de cada fonte | não |
 | `GET /data/v1/usage` | o consumo do mês da organização e o que falta da quota | não |
+| `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita (conjunto `companies`) | sim |
+| `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
+| `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
+| `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
+| `POST /data/v1/funds/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 
-As duas contam no limite do minuto. Endereços, campos e códigos saem em **inglês**; as tabelas e o
-código continuam em português, e a tradução mora num lugar só (`nomes.py`): um nome sem tradução não
-sai.
+Todas contam no limite do minuto. Toda leitura de dado aceita **`known_at=AAAA-MM-DD`**: a resposta
+é a que a base dava naquele dia (só o que já era público nele, sem a revisão que veio depois); sem
+ele, hoje. Endereços, campos e códigos saem em **inglês**; as tabelas e o código continuam em
+português, e a tradução mora num lugar só (`nomes.py`): um nome sem tradução não sai.
 
-**Já em código, esperando a rota de dado:** cada campo sai com o valor, a fonte, o dia em que ficou
-público e o momento em que o TickerLab o viu, mais a licença e a frase de atribuição de cada fonte
-usada (`envelope.py`); a consulta em lote aceita até 100 CNPJs por chamada, conta N na quota do mês
-e 1 no limite do minuto, e devolve o lote inteiro com 429 se ele não couber (`lote.py`).
+Cada campo sai com o valor, a fonte, o dia em que ficou público e o momento em que o TickerLab o viu,
+mais a licença e a frase de atribuição de cada fonte usada (`envelope.py`). O lote aceita até 100
+CNPJs por chamada, conta N na quota do mês e 1 no limite do minuto, devolve o lote inteiro com 429 se
+ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `invalid_cnpj`).
 
-| Resposta | Quando |
-|---|---|
-| 400 | chave na URL (`api_key_in_url`) |
-| 401 | chave ausente, errada ou revogada, ou organização suspensa (`invalid_api_key`) |
-| 404 | API externa desligada |
-| 429 | limite do minuto (`rate_limited`) ou quota do mês (`monthly_quota_exceeded`) |
+**MEI, empresário individual e pessoa física nunca saem:** o CNPJ de uma pessoa responde
+`not_available`, igual a um CNPJ que não existe.
+
+| Resposta | `detail` | Quando |
+|---|---|---|
+| 400 | `api_key_in_url` | chave na URL |
+| 400 | `invalid_cnpj`, `invalid_known_at`, `invalid_assumed_return`, `invalid_batch` | CNPJ que não é CNPJ, `known_at` no futuro, retorno fora do plausível, lote vazio ou com mais de 100 |
+| 401 | `invalid_api_key` | chave ausente, errada ou revogada, ou organização suspensa |
+| 404 | `not_available` | nada a servir: CNPJ fora da base, pessoa, contrato ou direito que não cobre, tabela sem prontidão (a resposta não diz qual); com `Not Found`, a API externa está desligada |
+| 429 | `rate_limited`, `monthly_quota_exceeded` | limite do minuto ou quota do mês |
+| 503 | `service_unavailable` | a base não está disponível neste servidor agora |
+
+O contrato traz, rota a rota, os códigos que cada uma pode dar.
+
+## Mudou uma rota da `/data/v1`?
+
+```powershell
+.venv\Scripts\python -m scripts.gerar_openapi_data
+```
+
+Revise o diff de `docs/api/openapi-data-v1.json` no PR: é o que a CLI (`cli/`) e os clientes leem.
+O teste (`tests/test_api_externa_por_cnpj_contrato.py`) falha se o arquivo ficar velho, se um código
+de erro do código não estiver no contrato, ou se uma leitura por CNPJ não aceitar `known_at`.
