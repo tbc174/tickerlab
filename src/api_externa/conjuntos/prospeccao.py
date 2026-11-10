@@ -42,7 +42,14 @@ ESTABELECIMENTOS = "cnpj_estabelecimentos_pj"
 EMPRESAS = "cnpj_empresas_pj"
 LIMITE_PADRAO = 50
 LIMITE_MAXIMO = 100
-PORTES = ("micro", "pequeno", "demais", "nao_informado")
+# o porte como a Receita o grava na base -> como a API o diz (a Receita não diz "grande": 05 é "demais")
+PORTES_DE_FORA = {
+    "micro": "micro",
+    "pequeno": "small",
+    "demais": "other",
+    "nao_informado": "not_informed",
+}
+PORTES_DA_BASE = {fora: base for base, fora in PORTES_DE_FORA.items()}
 SITUACOES = {
     "ativa": "02",
     "baixada": "08",
@@ -62,6 +69,7 @@ TAMANHO_DO_CNPJ = 14
 TAMANHO_DO_MUNICIPIO = 4
 CNAE_MINIMO, CNAE_MAXIMO = 2, 7
 NATUREZA_MAXIMA = 4
+VALORES_MAXIMOS = 50  # por filtro: a lista do pedido não monta SQL sem fim
 
 
 class FiltroInvalido(ValueError):
@@ -97,6 +105,16 @@ class Busca:
                 self.aberta_antes, self.aberta_depois,
             )
         ) + (self.matriz is not None)  # fmt: skip
+
+    def campos_filtrados(self) -> set[str]:
+        """Os campos da base que esta busca usa para filtrar (a situação sempre filtra)."""
+        usados = {
+            "cnae_principal": self.cnaes, "uf": self.ufs, "municipio": self.municipios,
+            "porte": self.portes, "natureza_juridica": self.naturezas,
+            "data_inicio_atividade": self.aberta_antes or self.aberta_depois,
+            "matriz": self.matriz is not None,
+        }  # fmt: skip
+        return {"situacao_cadastral", *(nome for nome, uso in usados.items() if uso)}
 
 
 @dataclass(frozen=True)
@@ -177,11 +195,16 @@ def busca_dos_pedidos(
     se algo está fora do vocabulário ou da forma, ou se não há filtro nenhum além da situação."""
     if limit is not None and limit < 1:
         raise FiltroInvalido
+    listas = (cnae, state, municipality, size, legal_nature, registration_status)
+    if any(len(valores) > VALORES_MAXIMOS for valores in listas):
+        raise FiltroInvalido
     busca = Busca(
         cnaes=tuple(sorted({_digitos(c, CNAE_MINIMO, CNAE_MAXIMO) for c in cnae})),
         ufs=_ufs(state),
         municipios=_codigos_de_municipio(municipality),
-        portes=_um_de(size, PORTES),
+        portes=tuple(
+            sorted(PORTES_DA_BASE[p] for p in _um_de(size, tuple(PORTES_DA_BASE)))
+        ),
         naturezas=tuple(
             sorted({_digitos(n, 1, NATUREZA_MAXIMA) for n in legal_nature})
         ),
@@ -270,8 +293,20 @@ class LeitorDeProspeccao:
             meses.append(None if achado is None else achado[0])
         return None if None in meses else min(meses)
 
+    def _liberados(self, busca: Busca) -> bool:
+        """O portão libera algum campo e todo campo que serve de filtro? Filtro por campo negado seria um
+        oráculo do valor que o portão nega, e o CNPJ sozinho não sai."""
+        if not any(self.permitido(FONTE, nome, False) for nome in CAMPOS):
+            return False
+        return all(
+            self.permitido(FONTE, campo_, False) for campo_ in busca.campos_filtrados()
+        )
+
     def buscar(self, busca: Busca, como_era_em: date) -> BuscaServida | None:
-        """Uma página da busca no retrato que valia em `como_era_em`; None se não há retrato público ainda."""
+        """Uma página da busca no retrato que valia em `como_era_em`; None se não há retrato público ainda
+        ou se o portão nega a busca (sem contrato do conjunto, ou filtro por campo negado)."""
+        if not self._liberados(busca):
+            return None
         mes = self._mes_do_retrato(como_era_em)
         if mes is None:
             return None
@@ -321,4 +356,6 @@ def _valor(nome: str, valor: object) -> object:
         return pd.Timestamp(valor).date().isoformat()  # type: ignore[arg-type]
     if nome == "matriz":
         return bool(valor)
+    if nome == "porte":
+        return PORTES_DE_FORA.get(str(valor), str(valor))
     return str(valor)

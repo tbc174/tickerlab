@@ -144,7 +144,7 @@ def test_uma_empresa_sai_com_fonte_e_dia_em_que_ficou_publica(cliente, cenario):
         "published_at": "2026-10-31",
         "observed_at": None,
     }
-    assert empresa["size"]["value"] == "pequeno"
+    assert empresa["size"]["value"] == "small"
     assert empresa["opened_at"]["value"] == "2022-03-15"
     assert empresa["state_code"]["value"] == "SP"
     assert empresa["head_office"]["value"] is True
@@ -203,7 +203,7 @@ def test_cnae_por_prefixo_uf_e_municipio_por_nome_ou_codigo(cliente, cenario):
 
 
 def test_porte_natureza_abertura_e_matriz(cliente, cenario):
-    assert _cnpjs(_get(cliente, cenario, size="pequeno")) == ["22222222000191"]
+    assert _cnpjs(_get(cliente, cenario, size="small")) == ["22222222000191"]
     assert _cnpjs(_get(cliente, cenario, legal_nature="205")) == ["11111111000191"]
     depois = _get(cliente, cenario, opened_after="2020-01-01")
     assert _cnpjs(depois) == ["22222222000191"]
@@ -267,6 +267,7 @@ def test_limite_passa_do_maximo_e_e_cortado(cliente, cenario):
         {"cnae": "٦٢"},  # dígitos que não são 0 a 9
         {"state": "SPX"},
         {"size": "gigante"},
+        {"size": "pequeno"},  # o vocabulário de fora é em inglês
         {"registration_status": "morta", "cnae": "62"},
         {"municipality": "Cidade Que Nao Existe", "state": "SP"},
         {"cnae": "62", "cursor": "isto-nao-e-um-cursor!"},
@@ -305,3 +306,35 @@ def test_busca_dos_pedidos_aceita_so_a_situacao_padrao():
     )  # fmt: skip
     assert busca.situacoes == ("02",)
     assert busca.limite == prospeccao.LIMITE_PADRAO
+
+
+def test_sem_contrato_do_conjunto_a_busca_nao_entrega_nem_cnpj(
+    banco, monkeypatch, pasta
+):
+    ator = aj.admin(banco)
+    org = aj.organizacao(banco, ator)
+    chave = aj.chave(banco, ator, org)
+    aj.contrato(banco, ator, org, conjunto="companies")  # contrato de outro conjunto
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_da_busca)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    resposta = cliente.get(
+        ROTA, params={"cnae": "62", "size": "micro"}, headers=aj.bearer(chave.valor)
+    )
+    assert resposta.status_code == 404
+    assert "cnpj" not in resposta.text
+
+
+def test_filtro_por_campo_negado_pelo_portao_nao_serve_de_oraculo(
+    cliente, cenario, monkeypatch
+):
+    def sem_porte(_conexao, _contexto, _conjunto):
+        return lambda fonte, campo, _publico: campo != "porte"
+
+    monkeypatch.setattr(rotas, "_portao", sem_porte)
+    assert _get(cliente, cenario, size="micro").status_code == 404
+    assert _get(cliente, cenario, cnae="62").status_code == 200
+
+
+def test_lista_de_filtro_grande_demais_e_400(cliente, cenario):
+    muitos = [str(10 + i) for i in range(prospeccao.VALORES_MAXIMOS + 1)]
+    assert _get(cliente, cenario, cnae=muitos).status_code == 400
