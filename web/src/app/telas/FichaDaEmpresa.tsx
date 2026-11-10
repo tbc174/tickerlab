@@ -4,6 +4,7 @@
 // não aparece aqui. Como na Busca por CNPJ, o CNPJ vai no corpo do POST, nunca no endereço, e nada é
 // pedido antes de a pessoa buscar. "Limites e cuidados" fica sempre à vista depois da busca.
 import { type FormEvent, useState } from "react";
+import { useLocation } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../CabecalhoDaTela";
 import { ErroDaApi, baixar } from "../api";
@@ -280,9 +281,18 @@ function Resultado({ pagina, cnpj }: { pagina: PaginaDoApp; cnpj: string }) {
 const ANTES_DA_BUSCA =
   "A ficha mostra o cadastro da Receita Federal e, das companhias abertas, as entregas de balanço à CVM, com a fonte e a data de cada campo. Pessoa física, MEI e empresário individual não aparecem. Nada aqui é recomendação de investimento.";
 
+/** O CNPJ que a tela "Encontrar empresas" manda pelo estado da navegação (nunca pelo endereço), se veio. */
+function cnpjDaNavegacao(estado: unknown): string | null {
+  const cnpj = (estado as { cnpj?: unknown } | null)?.cnpj;
+  return typeof cnpj === "string" && cnpj !== "" ? cnpj : null;
+}
+
 export function FichaDaEmpresa({ pagina }: { pagina: PaginaDoApp }) {
-  const [rascunho, setRascunho] = useState("");
-  const [buscado, setBuscado] = useState<{ cnpj: string; vez: number } | null>(null);
+  const vindo = cnpjDaNavegacao(useLocation().state);
+  const [rascunho, setRascunho] = useState(vindo ?? "");
+  const [buscado, setBuscado] = useState<{ cnpj: string; vez: number } | null>(
+    vindo === null ? null : { cnpj: vindo, vez: 1 },
+  );
   const buscar = (evento: FormEvent) => {
     evento.preventDefault();
     const cnpj = rascunho.trim();
