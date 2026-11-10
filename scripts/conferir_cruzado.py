@@ -117,7 +117,7 @@ def _tabelas_do_enet(p: porta.Porta, dia: str) -> dict[str, pd.DataFrame]:
         filtros={
             "cnpj": sorted(amostra["cnpj"]),
             "documento": "DFP",
-            "referencia": sorted(set(amostra["referencia"])),
+            "referencia": sorted({pd.Timestamp(d).date() for d in amostra["referencia"]}),
         },
         colunas=COLUNAS_DA_DFP + ["inicio", "fim", "versao"],
     )
