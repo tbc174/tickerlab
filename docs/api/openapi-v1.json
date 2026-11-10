@@ -1237,6 +1237,90 @@
         "title": "BoasVindasDoBetaV1",
         "type": "object"
       },
+      "BuscaDeEmpresasV1": {
+        "description": "A resposta da busca: o estado, as empresas (só quando pronta), o cursor da página seguinte, as fontes,\nos limites e as opções do formulário, sempre.",
+        "properties": {
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "empresas": {
+            "items": {
+              "$ref": "#/components/schemas/EmpresaDaBuscaV1"
+            },
+            "title": "Empresas",
+            "type": "array"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "proximo_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo Cursor"
+          },
+          "setores": {
+            "items": {
+              "$ref": "#/components/schemas/SetorDaBuscaV1"
+            },
+            "title": "Setores",
+            "type": "array"
+          },
+          "ufs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ufs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "empresas",
+          "cortada",
+          "proximo_cursor",
+          "fontes",
+          "limites",
+          "setores",
+          "ufs"
+        ],
+        "title": "BuscaDeEmpresasV1",
+        "type": "object"
+      },
       "BuscaPorCnpjV1": {
         "description": "O relatório do CNPJ (molde B): as seções no formato do relatório da empresa.",
         "properties": {
@@ -1887,6 +1971,143 @@
           "url"
         ],
         "title": "DocumentoUsadoV1",
+        "type": "object"
+      },
+      "EmpresaDaBuscaV1": {
+        "description": "Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão\nnão serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita.",
+        "properties": {
+          "cnae_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnae Descricao"
+          },
+          "cnae_principal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "data_inicio_atividade": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matriz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipio Nome"
+          },
+          "natureza_juridica": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Porte Descricao"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "situacao_cadastral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "EmpresaDaBuscaV1",
         "type": "object"
       },
       "EncerradasV1": {
@@ -4418,6 +4639,53 @@
         "title": "PassoDoBetaV1",
         "type": "object"
       },
+      "PedidoDaBuscaV1": {
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "idade_minima": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idade Minima"
+          },
+          "setores": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Setores",
+            "type": "array"
+          },
+          "ufs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 27,
+            "title": "Ufs",
+            "type": "array"
+          }
+        },
+        "title": "PedidoDaBuscaV1",
+        "type": "object"
+      },
       "PedidoDaFichaV1": {
         "properties": {
           "cnpj": {
@@ -5944,6 +6212,25 @@
         "title": "SecaoDoRelatorioV1",
         "type": "object"
       },
+      "SetorDaBuscaV1": {
+        "description": "Um setor que a tela oferece: a letra da seção do CNAE e o nome do IBGE.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "SetorDaBuscaV1",
+        "type": "object"
+      },
       "SetorV1": {
         "description": "Um setor do relatório: a chave que vai em `/v1/relatorio-setor?setor=` e quantas companhias.",
         "properties": {
@@ -6394,6 +6681,77 @@
           }
         },
         "summary": "Registrar O Aceite"
+      }
+    },
+    "/v1/analista/empresas": {
+      "post": {
+        "description": "Uma página de empresas (a matriz ativa) por setor, UF e idade mínima, cada campo com a fonte e o dia\nem que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o\nportão ainda não libera sai `nao_liberada`.",
+        "operationId": "encontrar_empresas_v1_analista_empresas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaBuscaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuscaDeEmpresasV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encontrar Empresas"
+      }
+    },
+    "/v1/analista/empresas/planilha": {
+      "post": {
+        "description": "A mesma busca em Excel (mesmo acesso, mesmo plano): até dez páginas, com os nomes ao lado dos códigos,\na aba das fontes e o aviso.",
+        "operationId": "encontrar_empresas_em_planilha_v1_analista_empresas_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaBuscaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encontrar Empresas Em Planilha"
       }
     },
     "/v1/analista/ficha": {

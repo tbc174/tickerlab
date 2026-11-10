@@ -31,6 +31,14 @@ ENTREGAS: tuple[Entrega, ...] = (
     Entrega(
         data=date(2026, 11, 10),
         o_que=(
+            "Encontrar empresas: escolha o setor, o estado e a idade mínima e veja as empresas ativas, "
+            "com a fonte e a data de cada campo. Abra a ficha de cada uma e baixe a lista em Excel."
+        ),
+        pagina="encontrar_empresas",
+    ),
+    Entrega(
+        data=date(2026, 11, 10),
+        o_que=(
             "O que mudou: esta página, com o que entrou no app a cada dia e o link para abrir. A ficha "
             "da empresa passa a mostrar o que vai trazer enquanto o dado não é liberado."
         ),

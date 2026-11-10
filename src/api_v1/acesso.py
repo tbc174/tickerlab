@@ -276,6 +276,7 @@ ROTAS_DE_ARQUIVO = {
     "/v1/relatorio-empresa/apresentacao": "/v1/relatorio-empresa",
     "/v1/relatorio-empresa/markdown": "/v1/relatorio-empresa",
     "/v1/analista/ficha/planilha": "/v1/analista/ficha",
+    "/v1/analista/empresas/planilha": "/v1/analista/empresas",
 }
 
 

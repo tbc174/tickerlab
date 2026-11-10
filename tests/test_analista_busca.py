@@ -43,14 +43,19 @@ def _sem_prontidao() -> portao.Regras:
     return dataclasses.replace(portao.regras_vigentes(), prontidao={})
 
 
-@pytest.fixture
-def pasta(tmp_path):
+def base_de_teste(tmp_path):
+    """A base de mentira da prospecção numa pasta (os testes da rota usam a mesma)."""
     base = tmp_path / "base"
     base_de_mentira._gravar(
         base, prospeccao.ESTABELECIMENTOS, base_de_mentira._estabelecimentos()
     )
     base_de_mentira._gravar(base, prospeccao.EMPRESAS, base_de_mentira._empresas())
     return base
+
+
+@pytest.fixture
+def pasta(tmp_path):
+    return base_de_teste(tmp_path)
 
 
 def _buscar(pasta, regras=None, hoje=HOJE, **filtros):
@@ -197,3 +202,48 @@ def test_opcoes_e_limites_em_tipos_simples():
         isinstance(limite, str) and limite.endswith(".") for limite in busca.LIMITES
     )
     assert not any(c.isdigit() for limite in busca.LIMITES for c in limite)
+
+
+def test_legivel_poe_o_nome_ao_lado_do_codigo_sem_mudar_o_que_veio(pasta):
+    (empresa,) = _buscar(pasta, setores=("J",)).corpo["empresas"]
+    legivel = busca.legivel(empresa)
+    assert (
+        legivel["cnae_descricao"]
+        == "Desenvolvimento de programas de computador sob encomenda"
+    )
+    assert legivel["municipio_nome"] == "BELO HORIZONTE"
+    assert legivel["porte_descricao"] == "Demais"
+    assert {k: v for k, v in legivel.items() if k in empresa} == empresa
+
+
+def test_legivel_nao_inventa_nome_de_campo_que_o_portao_nao_serviu():
+    so_o_cnpj = {"cnpj": "11111111000191"}
+    assert busca.legivel(so_o_cnpj) == so_o_cnpj
+
+
+def test_planilha_junta_as_paginas_ate_o_teto(pasta, monkeypatch):
+    monkeypatch.setattr(busca, "TAMANHO_DA_PAGINA", 1)
+    with Porta(pasta) as porta:
+        filtros = busca.Filtros(ufs=("SP", "MG"))
+        tudo = busca.para_planilha(porta, filtros, hoje=HOJE, regras=_regras())
+        monkeypatch.setattr(busca, "PAGINAS_DA_PLANILHA", 1)
+        cortada = busca.para_planilha(porta, filtros, hoje=HOJE, regras=_regras())
+    assert [e["cnpj"] for e in tudo.corpo["empresas"]] == [
+        "11111111000191",
+        "22222222000191",
+    ]
+    assert tudo.corpo["cortada"] is False
+    assert tudo.linhas == 2
+    assert "proximo_cursor" not in tudo.corpo
+    assert tudo.corpo["empresas"][0]["municipio_nome"] == "BELO HORIZONTE"
+    assert [e["cnpj"] for e in cortada.corpo["empresas"]] == ["11111111000191"]
+    assert cortada.corpo["cortada"] is True
+
+
+def test_planilha_sem_filtro_ou_sem_prontidao_nao_le(pasta):
+    with Porta(pasta) as porta:
+        vazia = busca.para_planilha(porta, busca.Filtros(), hoje=HOJE, regras=_regras())
+        negada = busca.para_planilha(
+            porta, busca.Filtros(ufs=("SP",)), hoje=HOJE, regras=_sem_prontidao()
+        )
+    assert vazia.corpo is None and negada.corpo is None

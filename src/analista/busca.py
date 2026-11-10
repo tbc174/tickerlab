@@ -13,10 +13,11 @@ dele veria pela API. Só os filtros que quem não programa entende:
 Sempre a matriz ativa (uma linha por empresa). Capital, filiais e ordenação vêm depois (linha 584).
 """
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 
-from base import cnae, cnes
+from base import cnae, cnes, receita_codigos
 from base.porta import Porta
 from src.analista import leitura
 from src.api_externa.conjuntos import prospeccao
@@ -35,6 +36,7 @@ UFS: tuple[str, ...] = cnes.UFS
 SETORES_MAXIMOS = 3
 IDADE_MAXIMA = 100
 TAMANHO_DA_PAGINA = 50
+PAGINAS_DA_PLANILHA = 10  # o Excel leva no máximo dez páginas da tela de uma vez
 _DIVISOES_DO_CNAE = range(1, 100)
 
 LIMITES = (
@@ -82,6 +84,33 @@ def aberta_ate(hoje: date, anos: int) -> date:
         return hoje.replace(year=hoje.year - anos)
     except ValueError:
         return hoje.replace(year=hoje.year - anos, day=hoje.day - 1)
+
+
+# o porte como a API o diz -> como a Receita o escreve no cadastro
+PORTES = {
+    "micro": "Microempresa",
+    "small": "Empresa de pequeno porte",
+    "other": "Demais",
+    "not_informed": "Não informado",
+}
+# o campo servido -> o nome legível ao lado e a tabela de códigos da Receita que o traduz
+_DESCRICOES = (
+    ("cnae_principal", "cnae_descricao", receita_codigos.cnae),
+    ("municipio", "municipio_nome", receita_codigos.municipio),
+    ("porte", "porte_descricao", PORTES.get),
+)
+
+
+def legivel(empresa: Mapping) -> dict:
+    """A empresa como o leitor a serviu, mais o nome ao lado de cada código (CNAE, município e porte), pelas
+    tabelas de códigos da Receita. Só de campo servido: o que o portão nega continua de fora."""
+    nomes: dict[str, str] = {}
+    for campo, nome, traduzir in _DESCRICOES:
+        servido = empresa.get(campo)
+        valor = servido.get("valor") if isinstance(servido, Mapping) else None
+        if valor is not None and (traduzido := traduzir(str(valor))):
+            nomes[nome] = traduzido
+    return {**empresa, **nomes}
 
 
 def _validar(filtros: Filtros) -> None:
@@ -144,4 +173,39 @@ def buscar(
         servida.corpo,
         fontes_da_resposta(servida.fontes),
         servida.linhas,
+    )
+
+
+def para_planilha(
+    porta: Porta, filtros: Filtros, *, hoje: date, regras: Regras | None = None
+) -> leitura.Resposta:
+    """A busca para o Excel: as páginas seguidas, até `PAGINAS_DA_PLANILHA`, com os nomes ao lado dos
+    códigos; `cortada` diz se ficou empresa de fora. Os mesmos estados de `buscar`."""
+    resposta = buscar(porta, filtros, hoje=hoje, regras=regras)
+    if resposta.corpo is None:
+        return resposta
+    empresas = list(resposta.corpo["empresas"])
+    fontes = {fonte["fonte"]: fonte for fonte in resposta.fontes}
+    corpo = resposta.corpo
+    for _ in range(PAGINAS_DA_PLANILHA - 1):
+        if not corpo["cortada"]:
+            break
+        seguinte = buscar(
+            porta,
+            replace(filtros, cursor=corpo["proximo_cursor"]),
+            hoje=hoje,
+            regras=regras,
+        )
+        if seguinte.corpo is None:
+            break
+        corpo = seguinte.corpo
+        empresas += corpo["empresas"]
+        fontes |= {fonte["fonte"]: fonte for fonte in seguinte.fontes}
+    junta = {
+        "como_era_em": resposta.corpo["como_era_em"],
+        "empresas": [legivel(empresa) for empresa in empresas],
+        "cortada": corpo["cortada"],
+    }
+    return leitura.Resposta(
+        leitura.PRONTA, junta, [fontes[f] for f in sorted(fontes)], len(empresas)
     )
