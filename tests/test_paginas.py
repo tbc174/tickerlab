@@ -182,6 +182,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "mapa_do_cafe",
                 "painel_do_cafe",
                 "busca_por_cnpj",
+                "ficha_da_empresa",
                 "relatorio_do_setor",
             },
         ),
@@ -269,6 +270,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "linha_do_tempo",
         "relatorio_empresa",
         "busca_por_cnpj",
+        "ficha_da_empresa",
         "relatorio_do_setor",
         "planos",
         "meus_dados",
@@ -307,6 +309,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     # o PDF da busca por CNPJ e o do setor herdam o contrato da rota JSON (acesso.ROTAS_DE_ARQUIVO)
     assert set(_openapi()["paths"]) - usadas == {
         "/v1/busca-por-cnpj/pdf",
+        "/v1/analista/ficha/planilha",  # a planilha herda o contrato da ficha
         "/v1/relatorio-setor/pdf",
         "/v1/relatorio-setor/apresentacao",
         "/v1/relatorio-empresa/apresentacao",

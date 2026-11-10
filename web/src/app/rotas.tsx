@@ -9,6 +9,7 @@ import { navegador } from "./navegador";
 import { Backtest } from "./telas/Backtest";
 import { BoasVindasDoBeta } from "./telas/BoasVindasDoBeta";
 import { BuscaPorCnpj } from "./telas/BuscaPorCnpj";
+import { FichaDaEmpresa } from "./telas/FichaDaEmpresa";
 import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
@@ -41,6 +42,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   planos: (pagina) => <Planos pagina={pagina} />,
   relatorio_empresa: (pagina) => <RelatorioEmpresa pagina={pagina} />,
   busca_por_cnpj: (pagina) => <BuscaPorCnpj pagina={pagina} />,
+  ficha_da_empresa: (pagina) => <FichaDaEmpresa pagina={pagina} />,
   relatorio_do_setor: (pagina) => <RelatorioDoSetor pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
