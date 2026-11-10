@@ -40,6 +40,7 @@ NOME_DA_PASTA = "acervo_pessoa"
 SOCIOS = "socios_pf"
 ARQUIVOS_DE_SOCIOS = "Socios"
 TRABALHO = "_trabalho"
+ANTIGA = "_antiga"  # a tabela anterior, posta de lado só durante a troca
 MANIFESTO = "manifesto.json"
 MES = "mes_do_retrato"
 CHAVE = ["cnpj_basico", "nome_socio", "qualificacao", "data_entrada"]
@@ -106,8 +107,19 @@ def _gravar_prefixos(trabalho: Path, pronta: Path, mes: str) -> dict[str, int]:
 
 
 def _trocar(pronta: Path, atual: Path) -> None:
-    shutil.rmtree(atual, ignore_errors=True)
-    pronta.rename(atual)
+    """Põe a tabela nova no lugar da atual sem deixar uma tabela pela metade: a antiga sai inteira para
+    o lado (um `rename`), a nova entra, e só então a antiga é apagada. Se a nova não entra, a antiga volta."""
+    antiga = atual.with_name(atual.name + ANTIGA)
+    shutil.rmtree(antiga, ignore_errors=True)
+    if atual.exists():
+        atual.rename(antiga)
+    try:
+        pronta.rename(atual)
+    except OSError:
+        if antiga.exists():
+            antiga.rename(atual)
+        raise
+    shutil.rmtree(antiga, ignore_errors=True)
 
 
 def montar(

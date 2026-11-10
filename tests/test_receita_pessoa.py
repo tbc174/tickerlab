@@ -104,6 +104,22 @@ def test_qualificacao_de_menor_ou_incapaz_fica_fora(codigo):
     assert descartes == {rp.QUALIFICACAO_DE_MENOR: 1}
 
 
+@pytest.mark.parametrize("codigo", sorted(rp.QUALIFICACOES_DE_QUEM_REPRESENTA))
+def test_quem_esta_no_quadro_por_um_menor_ou_incapaz_fica_fora(codigo):
+    socios, descartes = _ler(
+        _linha("11222333", "2", "RESPONSAVEL EXEMPLO", qualificacao=codigo)
+    )
+    assert socios.empty
+    assert descartes == {rp.QUALIFICACAO_DE_REPRESENTANTE: 1}
+
+
+def test_as_qualificacoes_de_quem_representa_batem_com_a_tabela_da_receita():
+    from base.receita_codigos import qualificacao
+
+    nomes = {qualificacao(c) for c in rp.QUALIFICACOES_DE_QUEM_REPRESENTA}
+    assert nomes == {"Curador", "Mãe", "Pai", "Tutor"}
+
+
 def test_as_qualificacoes_de_menor_batem_com_a_tabela_da_receita():
     from base.receita_codigos import qualificacao
 

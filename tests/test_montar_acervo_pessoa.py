@@ -105,6 +105,25 @@ def test_remontar_troca_a_tabela_inteira(tmp_path):
     assert len(_tabela(destino)) == 2
 
 
+def test_troca_que_falha_devolve_a_tabela_anterior_inteira(tmp_path, monkeypatch):
+    atual, pronta = tmp_path / "socios_pf", tmp_path / "pronta"
+    atual.mkdir()
+    (atual / "11.parquet").write_bytes(b"anterior")
+    pronta.mkdir()
+    renomear = Path.rename
+
+    def falha_ao_entrar(origem, alvo):
+        if origem == pronta:
+            raise OSError("disco")
+        return renomear(origem, alvo)
+
+    monkeypatch.setattr(Path, "rename", falha_ao_entrar)
+    with pytest.raises(OSError, match="disco"):
+        montar._trocar(pronta, atual)
+    assert (atual / "11.parquet").read_bytes() == b"anterior"
+    assert not (tmp_path / ("socios_pf" + montar.ANTIGA)).exists()
+
+
 @pytest.mark.parametrize("pasta", ["base/acervo_pessoa", "acervo_pessoa"])
 def test_destino_dentro_do_acervo_e_recusado(tmp_path, pasta):
     cnpj, bruto = _acervo(tmp_path)

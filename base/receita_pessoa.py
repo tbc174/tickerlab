@@ -40,6 +40,9 @@ FAIXAS_DE_MENOR = {"1", "2"}  # 0 a 12 anos; 13 a 20 anos
 FAIXAS_DE_ADULTO = {"3", "4", "5", "6", "7", "8", "9"}  # 21 a 30 ... mais de 80
 # 29 e 58: sócio incapaz; 30: sócio menor; 67 e 68: titular incapaz e titular menor
 QUALIFICACOES_DE_MENOR_OU_INCAPAZ = {"29", "30", "58", "67", "68"}
+# 09: curador; 14: mãe; 15: pai; 35: tutor. Quem aparece assim está no quadro por um menor ou incapaz:
+# mostrar o nome com esse rótulo diria que há um menor ali, e de que família.
+QUALIFICACOES_DE_QUEM_REPRESENTA = {"09", "14", "15", "35"}
 SEM_REPRESENTANTE = {"", "0", "00", "***000000**", "00000000000"}
 
 NAO_E_PESSOA_FISICA = "nao_e_pessoa_fisica"
@@ -47,10 +50,11 @@ MENOR_PELA_FAIXA = "menor_pela_faixa"
 FAIXA_DESCONHECIDA = "faixa_desconhecida"
 COM_REPRESENTANTE = "com_representante_legal"
 QUALIFICACAO_DE_MENOR = "qualificacao_de_menor_ou_incapaz"
+QUALIFICACAO_DE_REPRESENTANTE = "qualificacao_de_quem_representa"
 SEM_NOME = "sem_nome"
 MOTIVOS = (
     NAO_E_PESSOA_FISICA, MENOR_PELA_FAIXA, FAIXA_DESCONHECIDA, COM_REPRESENTANTE,
-    QUALIFICACAO_DE_MENOR, SEM_NOME,
+    QUALIFICACAO_DE_MENOR, QUALIFICACAO_DE_REPRESENTANTE, SEM_NOME,
 )  # fmt: skip
 
 
@@ -69,15 +73,16 @@ def _motivo_do_descarte(parte: pd.DataFrame) -> pd.Series:
         | (parte["nome_do_representante"].str.strip() != "")
         | ~parte["qualificacao_do_representante"].str.strip().isin(SEM_REPRESENTANTE)
     )
+    qualificacao = parte["qualificacao"].str.strip().str.zfill(2)
     condicoes = {
         NAO_E_PESSOA_FISICA: parte["tipo_socio"].str.strip() != TIPO_PESSOA_FISICA,
         MENOR_PELA_FAIXA: faixa.isin(FAIXAS_DE_MENOR),
         FAIXA_DESCONHECIDA: ~faixa.isin(FAIXAS_DE_ADULTO),
         COM_REPRESENTANTE: com_representante,
-        QUALIFICACAO_DE_MENOR: parte["qualificacao"]
-        .str.strip()
-        .str.zfill(2)
-        .isin(QUALIFICACOES_DE_MENOR_OU_INCAPAZ),
+        QUALIFICACAO_DE_MENOR: qualificacao.isin(QUALIFICACOES_DE_MENOR_OU_INCAPAZ),
+        QUALIFICACAO_DE_REPRESENTANTE: qualificacao.isin(
+            QUALIFICACOES_DE_QUEM_REPRESENTA
+        ),
         SEM_NOME: parte["nome_socio"].str.strip() == "",
     }
     motivo = pd.Series("", index=parte.index)
