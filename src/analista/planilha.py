@@ -12,6 +12,7 @@ Texto da base (a razão social, por exemplo) vai sempre como texto, nunca como f
 """
 
 import io
+import zipfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -26,6 +27,14 @@ SEPARADOR = " › "
 AVISO = "Nada aqui é recomendação de investimento."  # o mesmo aviso da CLI (`tickerlab.formato.AVISO`)
 LIMITE_DO_NOME_DA_ABA = 31  # o Excel não abre aba com nome maior
 DATA_FIXA = datetime(2026, 1, 1, tzinfo=UTC)  # a mesma resposta dá o mesmo arquivo
+DATA_FIXA_DO_ZIP = (
+    2026,
+    1,
+    1,
+    0,
+    0,
+    0,
+)  # o openpyxl grava a hora do relógio em cada entrada do zip
 
 Valor = str | int | float | bool | None
 
@@ -155,4 +164,19 @@ def xlsx(corpo: Mapping) -> bytes:
                     )
     saida = io.BytesIO()
     pasta.save(saida)
+    return _com_data_fixa(saida.getvalue())
+
+
+def _com_data_fixa(conteudo: bytes) -> bytes:
+    """O mesmo zip com a data fixa em cada entrada (como `cli/tickerlab/planilha.py`): duas chamadas em
+    segundos diferentes davam bytes diferentes."""
+    saida = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(conteudo)) as original,
+        zipfile.ZipFile(saida, "w", zipfile.ZIP_DEFLATED) as fixo,
+    ):
+        for entrada in original.infolist():
+            info = zipfile.ZipInfo(entrada.filename, DATA_FIXA_DO_ZIP)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            fixo.writestr(info, original.read(entrada))
     return saida.getvalue()
