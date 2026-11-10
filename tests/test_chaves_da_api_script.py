@@ -428,3 +428,104 @@ def test_ver_mostra_o_estado_de_cada_chave(banco, admin, capsys):
     assert "de saída, vale até" in saida
     assert "revogada em" in saida
     assert "ativa" in saida  # a substituta da rotação
+
+
+# ---------------------------------------------------------------- lote para uma equipe (linha 795)
+
+
+def _com_limite(monkeypatch, chaves):
+    from src.planos import LimitesDaApi
+
+    monkeypatch.setattr(
+        cb,
+        "limites_da_api",
+        lambda _plano: LimitesDaApi("Teste", 60, 10_000, 1_000, chaves),
+    )
+
+
+def test_emitir_chaves_da_uma_chave_por_rotulo_e_o_banco_nao_guarda_o_rotulo(
+    banco, admin, capsys, monkeypatch, caplog
+):
+    _com_limite(monkeypatch, 5)
+    organizacao_id = _criar_organizacao(capsys)
+    with caplog.at_level(logging.DEBUG):
+        codigo, saida, erro = _rodar(
+            capsys, "emitir-chaves", str(organizacao_id), "--rotulos", "Ana, Bruno,Caio"
+        )
+    assert codigo == 0, erro
+    chaves = [m.group(0) for m in FORMATO.finditer(saida)]
+    assert len(chaves) == len(set(chaves)) == 3
+    assert [linha.split(";")[0] for linha in saida.splitlines()[-3:]] == [
+        "Ana",
+        "Bruno",
+        "Caio",
+    ]
+    for chave in chaves:
+        assert _conferir(banco, chave).organizacao_id == organizacao_id
+        assert chave not in erro and chave not in caplog.text
+    with banco.connect() as conexao:
+        # nome de pessoa não vai para o banco nem para a auditoria
+        texto = repr(conexao.execute(sa.select(auditoria)).fetchall())
+        assert "Ana" not in texto and "Bruno" not in texto
+        assert all(chave not in texto for chave in chaves)
+
+
+def test_emitir_chaves_por_quantidade_numera_as_chaves(
+    banco, admin, capsys, monkeypatch
+):
+    _com_limite(monkeypatch, 5)
+    organizacao_id = _criar_organizacao(capsys)
+    codigo, saida, _ = _rodar(
+        capsys, "emitir-chaves", str(organizacao_id), "--quantidade", "2"
+    )
+    assert codigo == 0
+    assert [linha.split(";")[0] for linha in saida.splitlines()[-2:]] == ["1", "2"]
+
+
+def test_emitir_chaves_e_tudo_ou_nada_quando_o_plano_nao_comporta(
+    banco, admin, capsys, monkeypatch
+):
+    _com_limite(monkeypatch, 2)
+    organizacao_id = _criar_organizacao(capsys)
+    codigo, saida, erro = _rodar(
+        capsys, "emitir-chaves", str(organizacao_id), "--quantidade", "3"
+    )
+    assert codigo == 1
+    assert not FORMATO.search(saida + erro)
+    with banco.connect() as conexao:
+        assert (
+            conexao.execute(
+                sa.select(sa.func.count()).select_from(chaves_da_api)
+            ).scalar_one()
+            == 0
+        )
+
+
+@pytest.mark.parametrize(
+    "argumentos",
+    [
+        [],
+        ["--quantidade", "0"],
+        ["--quantidade", "101"],
+        ["--rotulos", "Ana,,Caio"],
+        ["--rotulos", "Ana,Ana"],
+        ["--rotulos", "A;B"],
+    ],
+)
+def test_emitir_chaves_recusa_pedido_sem_sentido(
+    banco, admin, capsys, monkeypatch, argumentos
+):
+    _com_limite(monkeypatch, 500)
+    organizacao_id = _criar_organizacao(capsys)
+    codigo, saida, erro = _rodar(
+        capsys, "emitir-chaves", str(organizacao_id), *argumentos
+    )
+    assert codigo == 1 and not FORMATO.search(saida + erro)
+
+
+def test_emitir_chaves_so_para_admin(banco, capsys, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_ADMINS", ADMIN)
+    codigo, saida, _ = _rodar(
+        capsys, "emitir-chaves", str(uuid.uuid4()), "--quantidade", "1"
+    )
+    assert codigo == 2 and not FORMATO.search(saida)

@@ -5,7 +5,7 @@
 No VPS, a pasta `scripts/` não entra na imagem: o arquivo vai pelo stdin para o contêiner do app,
 `docker exec -i tickerlab python - COMANDO ... < scripts/chaves_da_api.py` (em `/opt/stacks/tickerlab`).
 Comandos: `criar-organizacao`, `conceder-direito`, `suspender-direito`, `reativar-direito`,
-`emitir-chave`, `rotacionar-chave`, `revogar-chave`, `suspender-organizacao`,
+`emitir-chave`, `emitir-chaves` (lote: uma chave por pessoa de uma equipe), `rotacionar-chave`, `revogar-chave`, `suspender-organizacao`,
 `reativar-organizacao`, `ver` (chaves pelo prefixo, direitos vigentes e consumo do mês) e, para todas
 as organizações de uma vez, `suspender-conjunto`, `reativar-conjunto` e `conjuntos-suspensos`.
 
@@ -127,6 +127,39 @@ def _emitir_chave(
 ) -> str:
     nova = cb.emitir_chave(conexao, organizacao_id=args.organizacao, ator_id=ator)
     return _texto_da_chave(nova, "Chave emitida")
+
+
+MAXIMO_DO_LOTE = 100  # uma equipe; mais que isso é engano de digitação
+
+
+def _emitir_chaves(
+    conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
+) -> str:
+    """Uma chave por pessoa, tudo ou nada: se o plano não comporta o lote, nenhuma sai.
+
+    O rótulo (quem recebe cada chave) só existe na saída deste comando; o banco e a auditoria
+    guardam o prefixo e o id, nunca o nome de uma pessoa. Quem pede guarda a lista rótulo → prefixo.
+    """
+    rotulos = [r.strip() for r in args.rotulos.split(",")] if args.rotulos else []
+    if any(not r or ";" in r for r in rotulos):
+        raise cb.OrganizacaoInvalidaError("Rótulo vazio ou com ponto e vírgula.")
+    if len(set(rotulos)) != len(rotulos):
+        raise cb.OrganizacaoInvalidaError("Rótulo repetido.")
+    quantidade = len(rotulos) or args.quantidade
+    if not 1 <= (quantidade or 0) <= MAXIMO_DO_LOTE:
+        raise cb.OrganizacaoInvalidaError(
+            f"Peça de 1 a {MAXIMO_DO_LOTE} chaves (--quantidade ou --rotulos)."
+        )
+    linhas = ["rotulo;prefixo;id;chave"]
+    for numero in range(quantidade):
+        nova = cb.emitir_chave(conexao, organizacao_id=args.organizacao, ator_id=ator)
+        rotulo = rotulos[numero] if rotulos else str(numero + 1)
+        linhas.append(f"{rotulo};{nova.prefixo};{nova.chave_id};{nova.valor}")
+    return (
+        f"{quantidade} chaves emitidas. Elas aparecem só agora; guarde esta saída num "
+        "arquivo seu, entregue cada uma só à pessoa dela e não guarde cópia:\n"
+        + "\n".join(linhas)
+    )
 
 
 def _rotacionar_chave(
@@ -301,6 +334,11 @@ def _montar_argumentos() -> argparse.ArgumentParser:
         )
 
     com_organizacao(comando("emitir-chave", _emitir_chave, "uma chave nova"))
+    lote = com_organizacao(
+        comando("emitir-chaves", _emitir_chaves, "uma chave por pessoa, em lote")
+    )
+    lote.add_argument("--quantidade", type=int, help="quantas chaves (rótulos 1, 2...)")
+    lote.add_argument("--rotulos", help="nomes separados por vírgula, uma chave cada")
     for nome, funcao, ajuda in (
         ("rotacionar-chave", _rotacionar_chave, "troca a chave, com prazo"),
         ("revogar-chave", _revogar_chave, "a chave para de entrar na hora"),
