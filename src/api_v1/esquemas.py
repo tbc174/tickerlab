@@ -28,6 +28,7 @@ from src import (
     relatorio_setor,
     topicos,
 )
+from src.analista import busca as busca_do_analista
 from src.analista import leitura as leitura_do_analista
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
@@ -1588,6 +1589,68 @@ def de_ficha_do_analista(
             BlocoDaFichaV1.model_validate(bloco)
             for bloco in leitura_do_analista.blocos_como_lista()
         ],
+    )
+
+
+class EmpresaDaBuscaV1(BaseModel):
+    """Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão
+    não serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita."""
+
+    cnpj: str
+    razao_social: CampoComFonteV1 | None = None
+    natureza_juridica: CampoComFonteV1 | None = None
+    porte: CampoComFonteV1 | None = None
+    situacao_cadastral: CampoComFonteV1 | None = None
+    data_inicio_atividade: CampoComFonteV1 | None = None
+    cnae_principal: CampoComFonteV1 | None = None
+    uf: CampoComFonteV1 | None = None
+    municipio: CampoComFonteV1 | None = None
+    matriz: CampoComFonteV1 | None = None
+    cnae_descricao: str | None = None
+    municipio_nome: str | None = None
+    porte_descricao: str | None = None
+
+
+class SetorDaBuscaV1(BaseModel):
+    """Um setor que a tela oferece: a letra da seção do CNAE e o nome do IBGE."""
+
+    codigo: str
+    nome: str
+
+
+class BuscaDeEmpresasV1(BaseModel):
+    """A resposta da busca: o estado, as empresas (só quando pronta), o cursor da página seguinte, as fontes,
+    os limites e as opções do formulário, sempre."""
+
+    estado: str  # "pronta", "sem_filtro" (nada lido) ou "nao_liberada" (o portão ainda não deixa sair)
+    como_era_em: date | None
+    empresas: list[EmpresaDaBuscaV1]
+    cortada: bool
+    proximo_cursor: str | None
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+    setores: list[SetorDaBuscaV1]
+    ufs: list[str]
+
+
+def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpresasV1:
+    corpo = resposta.corpo or {}
+    return BuscaDeEmpresasV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        empresas=[
+            EmpresaDaBuscaV1.model_validate(busca_do_analista.legivel(empresa))
+            for empresa in corpo.get("empresas", [])
+        ],
+        cortada=bool(corpo.get("cortada")),
+        proximo_cursor=corpo.get("proximo_cursor"),
+        fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
+        limites=list(busca_do_analista.LIMITES),
+        setores=[
+            SetorDaBuscaV1.model_validate(setor)
+            for setor in busca_do_analista.setores_como_lista()
+        ],
+        ufs=list(busca_do_analista.UFS),
     )
 
 

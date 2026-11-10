@@ -800,6 +800,64 @@
   },
   {
     "area": "acompanhar",
+    "chave": "encontrar_empresas",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "Até três setores (seções do CNAE do IBGE), pela letra.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "setores",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "lista de textos"
+        },
+        {
+          "descricao": "Os estados da sede, pela sigla.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ufs",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "lista de textos"
+        },
+        {
+          "descricao": "Anos desde a abertura na Receita, no mínimo.",
+          "maximo": 100,
+          "minimo": 1,
+          "nome": "idade_minima",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "inteiro"
+        },
+        {
+          "descricao": "A página seguinte, como a resposta anterior deu.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "cursor",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "POST",
+      "resposta": "BuscaDeEmpresasV1",
+      "rota": "/v1/analista/empresas"
+    },
+    "descricao": "Escolha o setor, o estado e a idade mínima e veja as empresas ativas que se encaixam, com a fonte e a data de cada campo. Abra a ficha de cada uma e baixe a lista em Excel.",
+    "e_pro": true,
+    "grupo": "Avançado (Pro)",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Encontrar empresas",
+    "url": "encontrar-empresas"
+  },
+  {
+    "area": "acompanhar",
     "chave": "relatorio_do_setor",
     "contrato": {
       "entradas": [
