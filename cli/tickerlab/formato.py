@@ -9,7 +9,15 @@ from collections.abc import Iterable, Mapping, Sequence
 
 VAZIO = "—"
 LARGURA_MAXIMA = 40  # caracteres por célula; o resto vira "…" (o --json traz tudo)
-IDENTIFICACAO = {"cnpj": "CNPJ", "known_at": "Como era em"}
+IDENTIFICACAO = {
+    "cnpj": "CNPJ",
+    "sector": "Setor",
+    "name": "Nome",
+    "known_at": "Como era em",
+}
+SEM_MILHAR = frozenset(
+    {"year", "years"}
+)  # campos que são um ano ou uma contagem de anos: 2025, não 2.025
 AVISO_DE_CORTE = "Atenção: a resposta foi cortada no limite de linhas do plano; há mais dados que estes."
 AVISO = "Nada aqui é recomendação de investimento."
 
@@ -28,14 +36,17 @@ def _numero(valor: float) -> str:
     return texto.replace(",", "_").replace(".", ",").replace("_", ".")
 
 
-def celula(valor: object) -> str:
-    """Um valor como texto curto: número no jeito brasileiro, sim e não, vazio como travessão."""
+def celula(valor: object, nome: str = "") -> str:
+    """Um valor como texto curto: número no jeito brasileiro (o ano sem milhar), sim e não, vazio como
+    travessão. `nome` é o do campo."""
     if e_envelope(valor):
         valor = valor["value"]  # type: ignore[index]
     if valor is None or valor == "":
         texto = VAZIO
     elif isinstance(valor, bool):
         texto = "sim" if valor else "não"
+    elif nome in SEM_MILHAR and isinstance(valor, int):
+        texto = str(valor)
     elif isinstance(valor, int | float):
         texto = _numero(float(valor))
     else:
@@ -68,7 +79,7 @@ def _tabela_de_campos(campos: Mapping[str, Mapping]) -> str:
     return tabela(
         ("campo", "valor", "fonte", "público em"),
         [
-            (nome, celula(env), str(env["source"]), _data_do_envelope(env))
+            (nome, celula(env, nome), str(env["source"]), _data_do_envelope(env))
             for nome, env in campos.items()
         ],
     )
@@ -88,18 +99,47 @@ def _tabela_de_linhas(linhas: Sequence[Mapping]) -> str:
     cabecalho = [*colunas, *(("fonte", "público em") if com_fonte else ())]
     corpo = []
     for linha in linhas:
-        celulas = [celula(linha.get(nome)) for nome in colunas]
+        celulas = [celula(linha.get(nome), nome) for nome in colunas]
         if com_fonte:
             celulas += _fonte_e_data_da_linha(linha)
         corpo.append(celulas)
     return tabela(cabecalho, corpo)
 
 
+def tem_listas(item: Mapping) -> bool:
+    """O item da lista guarda outras listas (as séries do setor): vira um bloco, não uma linha de tabela."""
+    return any(isinstance(valor, list) for valor in item.values())
+
+
+def rotulo_do_item(item: Mapping, posicao: int) -> str:
+    """O nome do bloco de um item: o primeiro texto solto dele (a série), ou a posição na lista."""
+    for valor in item.values():
+        if isinstance(valor, str):
+            return valor
+    return str(posicao)
+
+
+def _lista(titulo: str, itens: list, partes: list[str]) -> None:
+    """Uma lista da resposta: linhas numa tabela, textos como itens, e o item com listas dentro em blocos."""
+    dicionarios = [item for item in itens if isinstance(item, Mapping)]
+    if dicionarios and all(tem_listas(item) for item in dicionarios):
+        for posicao, item in enumerate(dicionarios, start=1):
+            _blocos(f"{titulo} › {rotulo_do_item(item, posicao)}", item, partes)
+        return
+    partes.append(f"## {titulo}")
+    if dicionarios:
+        partes.append(_tabela_de_linhas(dicionarios))
+    elif textos := [str(item) for item in itens if isinstance(item, str)]:
+        partes.append("\n".join(f"- {texto}" for texto in textos))
+    else:
+        partes.append(VAZIO)
+
+
 def _blocos(titulo: str, dado: Mapping, partes: list[str]) -> None:
     """Um bloco por nível da resposta: campos com fonte numa tabela, listas em tabela, o resto em linhas."""
     campos = {nome: valor for nome, valor in dado.items() if e_envelope(valor)}
     soltos = [
-        f"{IDENTIFICACAO.get(nome, nome)}: {celula(valor)}"
+        f"{IDENTIFICACAO.get(nome, nome)}: {celula(valor, nome)}"
         for nome, valor in dado.items()
         if not e_envelope(valor)
         and not isinstance(valor, Mapping | list)
@@ -118,9 +158,7 @@ def _blocos(titulo: str, dado: Mapping, partes: list[str]) -> None:
         if isinstance(valor, Mapping):
             _blocos(filho, valor, partes)
         elif isinstance(valor, list):
-            partes.append(f"## {filho}")
-            dicionarios = [item for item in valor if isinstance(item, Mapping)]
-            partes.append(_tabela_de_linhas(dicionarios) if dicionarios else VAZIO)
+            _lista(filho, valor, partes)
     if dado.get("truncated") is True:
         partes.append(AVISO_DE_CORTE)
 
@@ -142,6 +180,27 @@ def resposta_de_dado(corpo: Mapping) -> str:
     _blocos("", corpo, partes)
     partes += [fontes(corpo.get("sources")), AVISO]
     return "\n\n".join(partes)
+
+
+def setores(corpo: Mapping) -> str:
+    """Os setores que a ficha da noite tem, com o dia dela; a lista não traz dado nem gasta a quota."""
+    lista = [s for s in corpo.get("sectors") or [] if isinstance(s, Mapping)]
+    if not lista:
+        return (
+            "Nenhum setor disponível agora: a ficha da noite ainda não gravou nenhum."
+        )
+    topo = tabela(
+        ("setor", "nome", "como era em"),
+        [
+            (celula(s.get("sector")), celula(s.get("name")), celula(s.get("known_at")))
+            for s in lista
+        ],
+    )
+    exemplo = celula(lista[0].get("sector"))
+    return (
+        f"{topo}\n\nPeça um setor com `tickerlab setor {exemplo}` (mercado, concentração e as companhias "
+        "abertas dele, com a fonte de cada número)."
+    )
 
 
 def catalogo(corpo: Mapping) -> str:
@@ -185,3 +244,15 @@ def consumo(corpo: Mapping) -> str:
     ]
     texto = tabela(("item", "valor"), [(nome, celula(v)) for nome, v in linhas])
     return f"{texto}\n\nFonte: TickerLab, consumo da sua organização no mês {corpo.get('month')} (UTC)."
+
+
+def planilha_gravada(arquivos: Sequence[object], corpo: Mapping) -> str:
+    """A confirmação de que a planilha foi gravada: onde, as fontes a citar e o aviso."""
+    lista = "\n".join(f"- {arquivo}" for arquivo in arquivos)
+    return "\n\n".join(
+        [
+            f"Planilha gravada (cada linha com a fonte e a data):\n{lista}",
+            fontes(corpo.get("sources")),
+            AVISO,
+        ]
+    )

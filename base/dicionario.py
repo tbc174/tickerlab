@@ -568,6 +568,90 @@ def _historicos_do_cnpj() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
+    """As duas tabelas sem pessoa do CNPJ (linha 584, `base/receita_empresas.py`): o que a rota `/companies`
+    da API externa serve para qualquer pessoa jurídica."""
+    retrato = {
+        "mes_do_retrato": (
+            "Mês do arquivo da Receita de onde a linha veio",
+            "AAAA-MM",
+        ),
+        "disponivel_em": (
+            (
+                "Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). "
+                "A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês"
+            ),
+            DATA,
+        ),
+        **{c: v for c, v in _ORIGEM_SEM_ANO.items() if c != "origem_coletada_em"},
+    }
+    comum = {
+        "fonte": (
+            "Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)"
+        ),
+        "familia_da_fonte": "rfb-cnpj",
+        "frequencia": _FREQUENCIA_DO_CNPJ,
+        "atraso": _ATRASO_DO_CNPJ,
+        "linhagem": (
+            "Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`); `montado_em` diz "
+            "quando a tabela foi montada. " + COM_VERSAO_DO_CODIGO
+        ),
+        "ressalva_de_revenda": _RESSALVA_DO_CNPJ,
+    }
+    return {
+        "cnpj_empresas_pj": Tabela(
+            descricao=(
+                "Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, "
+                "o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas "
+                "físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto "
+                "sai. Sem sócios. " + _FINALIDADE_DO_CNPJ
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cnpj_empresas_pj/<2 primeiros caracteres da raiz>.parquet` "
+                "(servidor de casa)"
+            ),
+            colunas={
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+                "razao_social": ("Razão social como a Receita publica", TEXTO),
+                "natureza_juridica": (
+                    "Código da natureza jurídica (tabela da Receita, 4 dígitos)",
+                    TEXTO,
+                ),
+                "porte": (
+                    "nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita)",
+                    TEXTO,
+                ),
+                **retrato,
+            },
+            **comum,  # type: ignore[arg-type]
+        ),
+        "cnpj_estabelecimentos_pj": Tabela(
+            descricao=(
+                "Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do "
+                "mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica "
+                "de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, "
+                "CEP...). " + _CONTATOS_FORA + ". " + _FINALIDADE_DO_CNPJ
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cnpj_estabelecimentos_pj/<2 primeiros caracteres da raiz>.parquet` "
+                "(servidor de casa)"
+            ),
+            colunas={
+                "cnpj": _ESTABELECIMENTO["cnpj"],
+                "cnpj_basico": _ESTABELECIMENTO["cnpj_basico"],
+                "matriz": _ESTABELECIMENTO["matriz"],
+                "situacao_cadastral": _ESTABELECIMENTO["situacao_cadastral"],
+                "data_inicio_atividade": _ESTABELECIMENTO["data_inicio_atividade"],
+                "cnae_principal": _ESTABELECIMENTO["cnae_principal"],
+                "uf": _ESTABELECIMENTO["uf"],
+                "municipio": _ESTABELECIMENTO["municipio"],
+                **retrato,
+            },
+            **comum,  # type: ignore[arg-type]
+        ),
+    }
+
+
 def _tabelas_das_sancoes() -> dict[str, Tabela]:
     """As sanções por CNPJ (`base/sancoes.py`): uma tabela por família de licença, para a marca da CGU
     (só uso interno) não se misturar com a da ANS (vende com atribuição)."""
@@ -6825,6 +6909,7 @@ TABELAS: dict[str, Tabela] = {
     ),
     **_tabelas_do_cnpj(),
     **_historicos_do_cnpj(),
+    **_tabelas_sem_pessoa_do_cnpj(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -9185,6 +9270,8 @@ _CONTRATO = {
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),

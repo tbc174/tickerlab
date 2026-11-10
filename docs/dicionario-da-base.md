@@ -2665,6 +2665,70 @@ Natureza jurídica e razão social de cada empresa, versão por versão desde 05
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `cnpj_empresas_pj`
+
+Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto sai. Sem sócios. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_empresas_pj/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `razao_social` | Razão social como a Receita publica | texto |
+| `natureza_juridica` | Código da natureza jurídica (tabela da Receita, 4 dígitos) | texto |
+| `porte` | nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita) | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
+| `disponivel_em` | Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `cnpj_estabelecimentos_pj`
+
+Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, CEP...). Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`
+- **Três datas:** publico_em = `disponivel_em`; aconteceu_em = `data_inicio_atividade`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_estabelecimentos_pj/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ com os 14 caracteres (com letras no CNPJ novo) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `matriz` | Verdadeiro na matriz, falso na filial | verdadeiro ou falso |
+| `situacao_cadastral` | Código da situação cadastral da Receita (2 ativa, 3 suspensa, 4 inapta, 8 baixada) | texto |
+| `data_inicio_atividade` | Data de início da atividade; vazio quando a Receita põe zero | data (dia) |
+| `cnae_principal` | Código da atividade principal (CNAE fiscal, 7 dígitos) | texto |
+| `uf` | Sigla do estado | texto |
+| `municipio` | Código do município na Receita (não é o código do IBGE) | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
+| `disponivel_em` | Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa` e a porta não os serve.

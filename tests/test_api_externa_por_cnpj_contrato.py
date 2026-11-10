@@ -20,6 +20,7 @@ ROTAS_QUE_JA_EXISTEM = {
     "/data/v1/usage",
     "/data/v1/companies/{cnpj}",
     "/data/v1/companies/{cnpj}/financials",
+    "/data/v1/companies/{cnpj}/profile",
     "/data/v1/companies/batch",
     "/data/v1/funds/{cnpj}",
     "/data/v1/funds/batch",

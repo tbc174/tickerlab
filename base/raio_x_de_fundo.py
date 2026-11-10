@@ -144,6 +144,17 @@ def _carteira(porta: Porta, cnpj: str, dia: object) -> tuple[str | None, list[di
     return str(_limpo(ultima)), linhas
 
 
+def _registro_depois_de(dt_reg: object, dia: pd.Timestamp) -> bool:
+    """Se o registro é posterior a `dia`. Data ilegível (texto ruim) não prova nada: não corta o fundo."""
+    if dt_reg is None:
+        return False
+    try:
+        registro = pd.to_datetime(dt_reg, errors="coerce", dayfirst=True)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return bool(pd.notna(registro) and registro > dia)
+
+
 def raio_x_de_fundo(porta: Porta, cnpj: str, como_era_em: object = None) -> RaioX:
     """O raio-x do fundo `cnpj`; com `como_era_em` (dia), só o que já era público nesse dia.
 
@@ -159,7 +170,7 @@ def raio_x_de_fundo(porta: Porta, cnpj: str, como_era_em: object = None) -> Raio
     custos: dict[int, dict] = {}
     if linha is None:
         lacunas.append("o fundo não está no cadastro da CVM desta base")
-    elif dia is not None and pd.notna(linha["DT_REG"]) and linha["DT_REG"] > dia:
+    elif dia is not None and _registro_depois_de(linha["DT_REG"], dia):
         lacunas.append(
             f"o fundo ainda não existia em {dia.date()} (registro posterior)"
         )

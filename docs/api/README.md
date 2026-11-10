@@ -195,6 +195,7 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 | `GET /data/v1/usage` | o consumo do mês da organização e o que falta da quota | não |
 | `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita (conjunto `companies`) | sim |
 | `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
+| `GET /data/v1/companies/{cnpj}/profile` | o perfil da empresa: o cadastro na Receita e as entregas de DFP e ITR à CVM como eram (`profiles`, ver abaixo) | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
 | `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
 | `POST /data/v1/funds/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
@@ -226,6 +227,25 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 | 503 | `service_unavailable` | a base não está disponível neste servidor agora |
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
+
+### Perfil (`profiles`, linha 736)
+
+O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/ficha.py`):
+
+- `registration`: o cadastro na Receita, pelo mesmo leitor de `/companies/{cnpj}` (a situação, a razão
+  social, a natureza jurídica e o Simples como eram);
+- `periodic_filings`: da companhia aberta, cada DFP e ITR que ela devia até o dia, da mais nova à mais
+  velha, com o prazo da CVM (feriados e prorrogações), o dia da primeira entrega, os dias úteis de atraso
+  e a situação: `on_time`, `gray_zone` (atraso curto, que um feriado local pode explicar), `late`,
+  `severely_late` ou `not_filed`. Vem de `rotulos_atraso` (o índice das entregas da DFP e do ITR), pela
+  mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`).
+
+Sem olhar o futuro: a entrega que só aconteceu depois de `known_at` sai `not_filed`, sem a data dela, e
+os dias úteis contam até o dia pedido; a falta de um documento vale pelo prazo e só conta até o dia em
+que a base a conferiu (a montagem da tabela). A situação e os dias úteis são contas nossas; o portão as
+trata como derivado. A dívida com a União (PGFN) fica fora. Sem cadastro no dia, nada sai: o perfil de
+pessoa (MEI, empresário individual) e de quem a rede não conhece é `not_available`. O perfil não traz
+porte, CNAE nem município.
 
 ### Ficha de crédito (`credit`, linha 754)
 
