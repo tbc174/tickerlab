@@ -8,7 +8,8 @@ e com as chaves em português (a rota traduz na saída), o que a base sabia no d
 - `empresa_pedida` e `pares`: as companhias do mesmo grupo, cada uma com o cadastro do FCA e os números do
   último DFP já entregue (`demonstracoes_como_era`): receita, EBITDA, lucro, patrimônio, dívida líquida e as
   razões entre eles. Par é quem tem DFP de um exercício recente (`IDADE_MAXIMA_DO_EXERCICIO`); os pares vêm
-  da maior receita para a menor, cortados no limite de linhas do plano;
+  da maior receita para a menor (sem direito à receita, pela ordem do CNPJ), cortados no limite de linhas do
+  plano;
 - `medianas_dos_pares`: a mediana de cada razão entre os pares (sem a empresa pedida), só com pelo menos
   `setores.MINIMO_DE_EMPRESAS` pares que a têm (abaixo disso é ruído, como no app).
 
@@ -171,11 +172,17 @@ def _lucro(linhas: pd.DataFrame) -> float | None:
     )
 
 
-def _ebitda(linhas: pd.DataFrame, fim: pd.Timestamp) -> float | None:
-    """O EBITDA pela mesma conta da ficha de caixa (`base.indicadores_de_caixa`: EBIT + D&A)."""
-    tabela = caixa.indicadores_de_caixa(linhas)
-    tabela = tabela[(tabela["fim"] == fim) & tabela["ebitda"].notna()]
-    return None if tabela.empty else float(tabela["ebitda"].iloc[0])
+def _ebitdas(exercicios: list[pd.DataFrame]) -> dict[tuple[str, pd.Timestamp], float]:
+    """O EBITDA de cada (cnpj, fim) pela mesma conta da ficha de caixa (`base.indicadores_de_caixa`: EBIT +
+    D&A), numa conta só para todas as companhias (o período lá já separa por cnpj e grupo)."""
+    if not exercicios:
+        return {}
+    tabela = caixa.indicadores_de_caixa(pd.concat(exercicios, ignore_index=True))
+    tabela = tabela[tabela["ebitda"].notna()]
+    return {
+        (str(linha.cnpj), pd.Timestamp(linha.fim)): float(linha.ebitda)
+        for linha in tabela.itertuples(index=False)
+    }
 
 
 def _divida_liquida(linhas: pd.DataFrame) -> float | None:
@@ -200,12 +207,14 @@ def _dividir(numerador: float | None, denominador: float | None) -> float | None
     return numerador / denominador
 
 
-def numeros_do_exercicio(linhas: pd.DataFrame, fim: pd.Timestamp) -> dict[str, float]:
-    """Os números e as razões de um exercício, a partir das linhas do DFP de um grupo (con ou ind)."""
+def numeros_do_exercicio(
+    linhas: pd.DataFrame, ebitda: float | None
+) -> dict[str, float]:
+    """Os números e as razões de um exercício, a partir das linhas do DFP de um grupo (con ou ind) e do
+    EBITDA já calculado (`_ebitdas`)."""
     linhas = linhas.assign(s=linhas["descricao"].map(_simples))
     dre = linhas[linhas["demonstracao"] == "DRE"]
     receita = _um(dre[dre["conta"] == "3.01"])
-    ebitda = _ebitda(linhas, fim)
     lucro = _lucro(linhas)
     patrimonio = _patrimonio(linhas)
     divida = _divida_liquida(linhas)
@@ -236,6 +245,24 @@ def _do_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
     return linhas.sort_values(["divulgado_em", "versao"]).drop_duplicates(
         chave, keep="last"
     )
+
+
+def _exercicios_recentes(
+    dfps: pd.DataFrame, mais_velho: pd.Timestamp
+) -> dict[str, tuple[pd.Timestamp, pd.DataFrame]]:
+    """O último exercício de cada companhia (cnpj formatado), se não for mais velho que `mais_velho`: o fim e
+    as linhas dele (`_do_exercicio`)."""
+    exercicios = {}
+    for formatado, linhas in (
+        {} if dfps.empty else dict(tuple(dfps.groupby("cnpj")))
+    ).items():
+        fim = pd.Timestamp(linhas["fim"].max())
+        if fim >= mais_velho:
+            exercicios[str(formatado)] = (
+                fim,
+                _do_exercicio(linhas[linhas["fim"] == fim]),
+            )
+    return exercicios
 
 
 class LeitorDeComparaveis:
@@ -289,8 +316,10 @@ class LeitorDeComparaveis:
     ) -> dict[str, _Companhia]:
         """Cada companhia dos cadastros com os números do último DFP recente (sem ele, só o cadastro)."""
         dfps = self._dfps(list(cadastros["cnpj"]), como_era_em)
-        mais_velho = pd.Timestamp(como_era_em) - IDADE_MAXIMA_DO_EXERCICIO
-        por_cnpj = {} if dfps.empty else dict(tuple(dfps.groupby("cnpj")))
+        exercicios = _exercicios_recentes(
+            dfps, pd.Timestamp(como_era_em) - IDADE_MAXIMA_DO_EXERCICIO
+        )
+        ebitdas = _ebitdas([linhas for _fim, linhas in exercicios.values()])
         companhias = {}
         for linha in cadastros.itertuples(index=False):
             companhia = _Companhia(
@@ -299,14 +328,15 @@ class LeitorDeComparaveis:
                 setor=str(linha.setor),
                 cadastro_publico_em=pd.Timestamp(linha.conhecido_em).date(),
             )
-            linhas = por_cnpj.get(cnpj_.formatar(companhia.cnpj))
-            if linhas is not None and (linhas["fim"] >= mais_velho).any():
-                fim = linhas["fim"].max()
-                do_exercicio = _do_exercicio(linhas[linhas["fim"] == fim])
+            formatado = cnpj_.formatar(companhia.cnpj)
+            if formatado in exercicios:
+                fim, do_exercicio = exercicios[formatado]
                 companhia = replace(
                     companhia,
-                    exercicio=pd.Timestamp(fim).date(),
-                    numeros=numeros_do_exercicio(do_exercicio, fim),
+                    exercicio=fim.date(),
+                    numeros=numeros_do_exercicio(
+                        do_exercicio, ebitdas.get((formatado, fim))
+                    ),
                     numeros_publicos_em=pd.Timestamp(
                         do_exercicio["divulgado_em"].max()
                     ).date(),
@@ -399,13 +429,18 @@ class LeitorDeComparaveis:
         ]
         companhias = self._companhias(candidatas, como_era_em)
         pedida = companhias[normal]
+        # sem direito à receita, a ordem não pode entregá-la: os pares vão pela ordem do CNPJ
+        pela_receita = self.permitido(FONTE_DOS_NUMEROS, "receita", False)
         pares = sorted(
             (
                 c
                 for c in companhias.values()
                 if c.cnpj != normal and c.exercicio is not None
             ),
-            key=lambda c: (-c.numeros.get("receita", float("-inf")), c.cnpj),
+            key=lambda c: (
+                -c.numeros.get("receita", float("-inf")) if pela_receita else 0.0,
+                c.cnpj,
+            ),
         )
         return self._resposta(normal, como_era_em, grupo, pedida, pares)
 

@@ -445,6 +445,16 @@ def test_portao_que_nega_um_campo_tira_so_ele(pasta):
     assert "roe" not in corpo["medianas_dos_pares"]
 
 
+def test_sem_direito_a_receita_a_ordem_dos_pares_nao_a_entrega(pasta):
+    """A ordem pela receita contaria o ranking de um campo negado: sem ele, os pares vão pela ordem do CNPJ."""
+    corpo = _corpo(pasta, permitido=lambda _f, campo, _d: campo != "receita")
+    assert all("receita" not in par for par in corpo["pares"])
+    assert _pares(corpo) == sorted(_pares(corpo))
+    assert _pares(_corpo(pasta)) != sorted(
+        _pares(corpo)
+    )  # com a receita, a ordem é outra
+
+
 def test_pares_cortados_no_limite_do_plano(pasta):
     servida = _ler(pasta, linhas_maximas=4)
     assert servida is not None
