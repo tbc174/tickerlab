@@ -15,6 +15,7 @@ import pytest
 
 from base import prontidao
 from base.prontidao import Prontidao, Prova
+from scripts.gerar_openapi_data import openapi_data_v1
 from src import dossie
 from src import portao_externo as portao
 from src.api_externa import acesso, rotas
@@ -270,3 +271,11 @@ def test_as_linhas_dos_setores_sao_de_empresa_ou_de_mercado():
     # cada fonte de agência sai só das tabelas dela e da ligação às companhias
     for linha in linhas:
         assert linha.tabelas, linha
+
+
+def test_o_contrato_publicado_tem_os_erros_que_a_rota_do_setor_da():
+    caminhos = openapi_data_v1()["paths"]
+    do_setor = caminhos["/data/v1/sectors/{key}"]["get"]["responses"]
+    assert {"400", "401", "404", "429"} <= set(do_setor)
+    assert "503" not in do_setor  # lê a ficha da noite, não a base
+    assert {"404", "503"}.isdisjoint(caminhos["/data/v1/sectors"]["get"]["responses"])
