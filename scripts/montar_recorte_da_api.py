@@ -64,6 +64,9 @@ FICAM_EM_CASA = (
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
+    # sem pessoa por desenho (linha 584), mas ir ao VPS é decisão do recorte (739): até lá ficam em casa
+    "cnpj_empresas_pj",
+    "cnpj_estabelecimentos_pj",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
