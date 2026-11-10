@@ -67,7 +67,7 @@ services:
       TICKERLAB_REGISTRO_DE_ACESSO: /app/registros/acesso-api.log
       TICKERLAB_PROXIES_CONFIAVEIS: 172.18.0.1
       # a base que a API lê (linha 739): só o recorte sem pessoa que o servidor de casa envia
-      # (scripts/enviar_base_ao_vps.py). Pasta ausente ou vazia: a API sobe igual e as rotas de dado
+      # (scripts/montar_recorte_da_api.py). Pasta ausente ou vazia: a API sobe igual e as rotas de dado
       # respondem 503; a rota /saude não lê a base.
       TICKERLAB_ACERVO: /app/acervo
     volumes:

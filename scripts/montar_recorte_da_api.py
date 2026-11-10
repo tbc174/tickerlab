@@ -13,8 +13,8 @@ as tabelas de pessoa nem são lidos. Arquivo sem nada a tirar segue **byte a byt
 continua valendo para a linhagem); arquivo com coluna ou linha a tirar é regravado, e a saída é lida de novo e
 conferida antes do envio: pessoa na saída é erro e nada sai.
 
-    python -m scripts.enviar_base_ao_vps --degrau 1 --base <acervo>/base --saida /tmp/base-api
-    python -m scripts.enviar_base_ao_vps --degrau 2 --base <acervo>/base --enviar
+    python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
+    python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
 
 Saída 0 tudo certo; 1 falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
 
@@ -39,7 +39,7 @@ from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
 from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
 from src import acervo
 
-log = logging.getLogger("enviar_base_ao_vps")
+log = logging.getLogger("montar_recorte_da_api")
 
 # O núcleo da API externa (`src/api_externa/conjuntos/`): demonstrações, rede (empresas) e fundos.
 DEGRAU_1 = (

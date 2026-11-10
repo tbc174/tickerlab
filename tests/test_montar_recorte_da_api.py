@@ -10,7 +10,7 @@ import pytest
 from base.dicionario import TABELAS
 from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
 from base.porta.duckdb import ARQUIVOS
-from scripts import enviar_base_ao_vps as envio
+from scripts import montar_recorte_da_api as envio
 
 
 def _parquet(caminho: Path, selecao: str) -> None:
