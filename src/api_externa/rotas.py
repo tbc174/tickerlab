@@ -345,20 +345,28 @@ def busca_de_empresas(
     opened_before: date | None = None,
     opened_after: date | None = None,
     head_office: bool | None = None,
+    capital_min: float | None = None,
+    capital_max: float | None = None,
+    branches_min: int | None = None,
+    sort: str | None = None,
     cursor: str | None = None,
     limit: int | None = None,
     known_at: date | None = None,
 ) -> object:
     """Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),
-    UF, município, porte, natureza jurídica, situação, abertura e matriz, no retrato da Receita que valia
-    em `known_at`. Pelo menos um filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte."""
+    UF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,
+    `capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que
+    valia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,
+    por CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um
+    filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte."""
     dia = _dia_pedido(known_at)
     try:
         busca = prospeccao.busca_dos_pedidos(
             cnae=cnae, state=state, municipality=municipality, size=size,
             legal_nature=legal_nature, registration_status=registration_status,
             opened_before=opened_before, opened_after=opened_after, head_office=head_office,
-            cursor=cursor, limit=limit,
+            cursor=cursor, limit=limit, capital_min=capital_min, capital_max=capital_max,
+            branches_min=branches_min, sort=sort,
         )  # fmt: skip
     except prospeccao.FiltroInvalido as erro:
         raise _recusa(erro.codigo) from erro

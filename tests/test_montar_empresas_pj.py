@@ -66,6 +66,10 @@ def test_monta_as_duas_tabelas_sem_pessoa(tmp_path):
     assert list(vista["cnpj_basico"]) == ["33000167"]
     assert "logradouro" not in vista.columns
     assert "FULANO" not in empresas.to_csv()
+    # capital lido do arquivo e estabelecimentos ativos contados na vista (a MEI nem entra nela)
+    petroleo = empresas[empresas["cnpj_basico"] == "33000167"].iloc[0]
+    assert petroleo["capital_social"] == 1000.0
+    assert petroleo["n_estabelecimentos"] == 1
 
 
 def test_remontar_o_mesmo_mes_nao_regrava(tmp_path):
