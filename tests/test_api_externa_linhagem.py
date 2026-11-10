@@ -16,7 +16,14 @@ from base.dossie import COLUNAS_DE_PESSOA
 from base.prontidao import Prontidao, Prova, prova_publicavel
 from base.raio_x_de_fundo import CADASTRO, CAMPOS_DO_CADASTRO
 from src import portao_externo as portao
-from src.api_externa.conjuntos import credito, empresas, ficha, prospeccao, setores
+from src.api_externa.conjuntos import (
+    comparaveis,
+    credito,
+    empresas,
+    ficha,
+    prospeccao,
+    setores,
+)
 from src.banco.coletas import Marca, marca_da_fonte
 from src.portao_externo import (
     DIREITOS_DA_API_EXTERNA,
@@ -32,7 +39,8 @@ from src.portao_externo import (
 
 # "companies" entra com a rota dele (PR 4), que tira MEI e empresário individual linha a linha; "credit"
 # (linha 754, PR 2) é o único de crédito; "sectors" (linha 781) é o único com agregado de mercado;
-# "profiles" (linha 736, PR 2) repete o cadastro de "companies" e junta as entregas de DFP e ITR
+# "profiles" (linha 736, PR 2) repete o cadastro de "companies" e junta as entregas de DFP e ITR;
+# "comparables" (linha 736, PR 3) junta o setor do FCA e os números do DFP dos pares
 CONJUNTOS_DO_BETA = {
     "companies",
     "financials",
@@ -41,6 +49,7 @@ CONJUNTOS_DO_BETA = {
     "sectors",
     "profiles",
     "prospecting",
+    "comparables",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
@@ -163,6 +172,10 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
         if linha.conjunto == ficha.CONJUNTO and linha.campo == "situacao_da_entrega":
             # conta nossa sobre as colunas booleanas da tabela (`ficha._situacao_entregue`)
             assert set(ficha.COLUNAS_DA_SITUACAO) <= colunas, linha
+            continue
+        if linha.conjunto == comparaveis.CONJUNTO and linha.campo not in colunas:
+            # conta nossa sobre as colunas da tabela: o grupo do setor, o fim do exercício, as somas e razões
+            assert set(comparaveis.ORIGEM_DAS_CONTAS[linha.campo]) <= colunas, linha
             continue
         if linha.tabelas == (CADASTRO,):
             colunas |= do_raio_x

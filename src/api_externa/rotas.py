@@ -29,6 +29,7 @@ from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organiz
 from src.api_externa.conjuntos import (
     Permitido,
     Servido,
+    comparaveis,
     credito,
     demonstracoes,
     empresas,
@@ -415,6 +416,27 @@ def perfil_da_empresa(
         lambda conexao, porta: ficha.LeitorDeFicha(
             porta, _portao(conexao, contexto, ficha.CONJUNTO)
         ).ficha(numeros, dia),
+    )
+
+
+@router.get("/companies/{cnpj}/comparables")
+def comparaveis_da_empresa(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> object:
+    """Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores
+    (pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida
+    líquida e as razões), e a mediana de cada razão entre os pares. Empresa sem FCA no dia, MEI,
+    empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    return _um_pedido(
+        contexto,
+        comparaveis.CONJUNTO,
+        lambda conexao, porta: comparaveis.LeitorDeComparaveis(
+            porta,
+            _portao(conexao, contexto, comparaveis.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).comparaveis(numeros, dia),
     )
 
 

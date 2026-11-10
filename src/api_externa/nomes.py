@@ -151,6 +151,20 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "primeira_entrega": "first_filed_on",
     "dias_uteis_de_atraso": "business_days_late",
     "situacao_da_entrega": "filing_status",
+    # comparables: os pares da companhia aberta (linha 736, PR 3), com os números do último DFP
+    "grupo_de_setores": "sector_group",
+    "empresa_pedida": "subject_company",
+    "pares": "peers",
+    "medianas_dos_pares": "peer_medians",
+    "exercicio": "fiscal_year_end",
+    "receita": "revenue",
+    "ebitda": "ebitda",
+    "lucro_liquido": "net_income",
+    "divida_liquida": "net_debt",
+    "margem_ebitda": "ebitda_margin",
+    "margem_liquida": "net_margin",
+    "roe": "return_on_equity",
+    "divida_liquida_sobre_ebitda": "net_debt_to_ebitda",
 }
 
 
