@@ -16,6 +16,22 @@
       "situacao_cadastral"
     ]
   },
+  "credit": {
+    "fontes": {
+      "cvm-fidc": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-ipe": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "carteira_dos_fundos_em_que_cede",
+      "fatos_relevantes_12_meses",
+      "fundos_em_que_cede",
+      "maior_inadimplencia_dos_fundos_em_que_cede",
+      "maior_participacao_como_cedente",
+      "situacao_cadastral_na_receita",
+      "situacao_especial_na_receita"
+    ]
+  },
   "financials": {
     "fontes": {
       "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",

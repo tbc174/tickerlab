@@ -106,6 +106,14 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "optante_simples": "simples_nacional",
     "data_opcao_simples": "simples_nacional_since",
     "data_exclusao_simples": "simples_nacional_until",
+    # credit: os fatos da ficha de crédito (linha 754)
+    "situacao_cadastral_na_receita": "rfb_registration_status",
+    "situacao_especial_na_receita": "rfb_special_status",
+    "fatos_relevantes_12_meses": "material_facts_12m",
+    "fundos_em_que_cede": "fidcs_as_assignor",
+    "maior_participacao_como_cedente": "largest_assignor_share_in_a_fidc",
+    "carteira_dos_fundos_em_que_cede": "fidc_receivables_as_assignor",
+    "maior_inadimplencia_dos_fundos_em_que_cede": "highest_fidc_delinquency_as_assignor",
 }
 
 

@@ -198,10 +198,12 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 | `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
 | `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
 | `POST /data/v1/funds/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
+| `GET /data/v1/credit/{cnpj}` | a ficha de crédito da empresa como era em `known_at` (só fatos, ver abaixo) | sim, 1 |
+| `POST /data/v1/credit/batch` | a mesma ficha para até 100 CNPJs, com o status de cada um | sim, 1 por CNPJ |
 
-Todas contam no limite do minuto. Toda leitura de dado aceita **`known_at=AAAA-MM-DD`**: a resposta
-é a que a base dava naquele dia (só o que já era público nele, sem a revisão que veio depois); sem
-ele, hoje. Endereços, campos e códigos saem em **inglês**; as tabelas e o código continuam em
+Todas contam no limite do minuto (o lote conta 1). Toda leitura de dado aceita **`known_at=AAAA-MM-DD`**:
+a resposta é a que a base dava naquele dia (só o que já era público nele, sem a revisão que veio depois);
+sem ele, hoje. Endereços, campos e códigos saem em **inglês**; as tabelas e o código continuam em
 português, e a tradução mora num lugar só (`nomes.py`): um nome sem tradução não sai.
 
 Cada campo sai com o valor, a fonte, o dia em que ficou público e o momento em que o TickerLab o viu,
@@ -222,6 +224,19 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 | 503 | `service_unavailable` | a base não está disponível neste servidor agora |
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
+
+### Ficha de crédito (`credit`, linha 754)
+
+Os fatos públicos de uma empresa que um FIDC ou uma plataforma de duplicatas consulta sobre o cedente
+e o sacado: a situação na Receita e a situação especial, os fatos relevantes dos últimos 12 meses na
+CVM e a presença como cedente nos FIDCs (informe mensal da CVM). Cada fato sai no envelope, com a fonte
+e o dia em que ficou público; nada publicado depois de `known_at` entra. O contrato precisa do conjunto
+`credit` com a finalidade `credito` (um contrato de análise não abre a ficha).
+
+Ficam fora, na leitura mais estreita: os resultados das regras de elegibilidade (sobre quem emite valor
+mobiliário seria opinião de crédito, que é de agência registrada: Resolução CVM 9/2020, art. 1º),
+rating, insolvência, o SCR (só agregado) e as fontes cujas marcas não deixam redistribuir. Pessoa
+natural (MEI, empresário individual) e CNPJ que a rede não conhece saem `not_available`.
 
 ## Mudou uma rota da `/data/v1`?
 
