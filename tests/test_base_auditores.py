@@ -13,6 +13,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from base import auditores, historico
+from base import cnpj as cnpjs
 from base.ancoragem import parquets_sem_manifesto
 from base.dicionario import TABELAS
 from base.ponto_no_tempo import divulgacao_publica
@@ -510,7 +511,8 @@ def test_trocas_saem_dos_anos_de_auditores_gravados_na_base(tmp_path, monkeypatc
         tabela.to_parquet(tmp_path / "auditores" / f"{ano}.parquet", index=False)
     agora = datetime(2026, 10, 14, 12, tzinfo=UTC)
 
-    assert auditores.montar_trocas(tmp_path, agora) == 1
+    monkeypatch.setattr(auditores, "pessoas_pela_receita", lambda _c, _r: _numeros([]))
+    assert auditores.montar_trocas(None, tmp_path, agora) == 1
 
     gravada = pd.read_parquet(tmp_path / "trocas_de_auditor" / "trocas.parquet")
     assert gravada["novo_id"].tolist() == ["rede:ey"]
@@ -521,7 +523,9 @@ def test_trocas_saem_dos_anos_de_auditores_gravados_na_base(tmp_path, monkeypatc
 
 
 def test_sem_auditores_gravados_nao_monta_trocas(tmp_path):
-    assert auditores.montar_trocas(tmp_path, datetime(2026, 10, 14, tzinfo=UTC)) == 0
+    assert (
+        auditores.montar_trocas(None, tmp_path, datetime(2026, 10, 14, tzinfo=UTC)) == 0
+    )
     assert not (tmp_path / "trocas_de_auditor").exists()
 
 
@@ -629,7 +633,9 @@ def test_trocas_ignoram_versoes_guardadas_dos_auditores(tmp_path, monkeypatch):
     _ano(2020, "2020-06-15", (EY, "2020-04-01")).to_parquet(
         tmp_path / "auditores" / "2019.v1.parquet", index=False
     )
-    assert auditores.montar_trocas(tmp_path, datetime(2026, 10, 14, tzinfo=UTC)) == 0
+    assert (
+        auditores.montar_trocas(None, tmp_path, datetime(2026, 10, 14, tzinfo=UTC)) == 0
+    )
 
 
 CONFERIDAS = Path(__file__).resolve().parent.parent / "base" / "conferidas"
@@ -659,3 +665,109 @@ def test_no_fca_do_pedido_de_registro_o_registro_seguinte_nunca_e_cedo_demais():
     # o que a conferência mediu: o recebimento sozinho erraria 1 em 3
     diferem = enviado[com_pagina] > recebido[com_pagina]
     assert (int(diferem.sum()), int((~com_pagina).sum())) == (20, 1)
+
+
+# --- marca de pessoa nas trocas (fila 789, ADR 0075): a linha marcada não sai da porta ---
+
+SEM_CNPJ = ("Auditoria Sem Registro", "", "007777")  # nome informado, sem CNPJ de firma
+PEQUENA = ("Pequena Auditoria", "22.222.222/0001-22", "008888")  # firma fora das redes
+
+
+def _numeros(raizes):
+    return cnpjs.raizes_em_numeros(pd.Series(list(raizes), dtype=str))
+
+
+def _montar_com_receita(tmp_path, monkeypatch, anos, pessoas=()):
+    """Monta as trocas com uma Receita de mentira: as raízes em `pessoas` são de pessoa."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    perguntadas: list[list[str]] = []
+
+    def receita(_conexao, raizes):
+        perguntadas.append(sorted(raizes.tolist()))
+        return cnpjs.ordenados(_numeros(pessoas))
+
+    monkeypatch.setattr(auditores, "pessoas_pela_receita", receita)
+    (tmp_path / "auditores").mkdir(exist_ok=True)
+    for ano, tabela in anos.items():
+        tabela.to_parquet(tmp_path / "auditores" / f"{ano}.parquet", index=False)
+    auditores.montar_trocas(None, tmp_path, datetime(2026, 11, 10, tzinfo=UTC))
+    gravada = pd.read_parquet(tmp_path / "trocas_de_auditor" / "trocas.parquet")
+    return gravada.set_index("novo_id")["trata_como_pessoa"].to_dict(), perguntadas
+
+
+def test_troca_entre_firmas_das_redes_nao_e_pessoa(tmp_path, monkeypatch):
+    marcas, _ = _montar_com_receita(
+        tmp_path,
+        monkeypatch,
+        {
+            2019: _ano(2019, "2019-05-10", (KPMG, "2014-01-01")),
+            2020: _ano(2020, "2020-06-15", (EY, "2020-04-01")),
+        },
+    )
+    assert marcas == {"rede:ey": False}
+
+
+def test_troca_com_auditor_sem_cnpj_de_firma_e_tratada_como_pessoa(
+    tmp_path, monkeypatch
+):
+    """Sem CNPJ de firma, o nome pode ser de pessoa (a ficha já o esconde): na dúvida, é pessoa."""
+    marcas, _ = _montar_com_receita(
+        tmp_path,
+        monkeypatch,
+        {
+            2019: _ano(2019, "2019-05-10", (KPMG, "2014-01-01")),
+            2020: _ano(2020, "2020-06-15", (SEM_CNPJ, "2020-04-01")),
+            2021: _ano(2021, "2021-06-15", (EY, "2021-04-01")),
+        },
+    )
+    assert marcas == {"cvm:007777": True, "rede:ey": True}
+
+
+def test_auditor_que_ja_apareceu_sem_cnpj_continua_pessoa(tmp_path, monkeypatch):
+    """O mesmo código da CVM com CNPJ num ano e sem ele noutro: basta uma linha sem CNPJ."""
+    sem_cnpj_no_comeco = (PEQUENA[0], "", PEQUENA[2])
+    marcas, _ = _montar_com_receita(
+        tmp_path,
+        monkeypatch,
+        {
+            2018: _ano(2018, "2018-05-10", (sem_cnpj_no_comeco, "2016-01-01")),
+            2019: _ano(2019, "2019-05-10", (PEQUENA, "2016-01-01")),
+            2020: _ano(2020, "2020-06-15", (EY, "2020-04-01")),
+        },
+    )
+    assert marcas == {"rede:ey": True}
+
+
+def test_firma_fora_das_redes_com_raiz_de_pessoa_na_receita_e_pessoa(
+    tmp_path, monkeypatch
+):
+    anos = {
+        2019: _ano(2019, "2019-05-10", (KPMG, "2014-01-01")),
+        2020: _ano(2020, "2020-06-15", (PEQUENA, "2020-04-01")),
+    }
+    marcas, perguntadas = _montar_com_receita(tmp_path, monkeypatch, anos, ["22222222"])
+    assert marcas == {"cvm:008888": True}
+    # a Receita é perguntada uma vez, pelas raízes das empresas e das firmas fora das redes
+    assert perguntadas == [sorted(_numeros(["11111111", "22222222"]).tolist())]
+
+    marcas, _ = _montar_com_receita(tmp_path, monkeypatch, anos)
+    assert marcas == {"cvm:008888": False}
+
+
+def test_empresa_com_raiz_de_pessoa_na_receita_e_pessoa(tmp_path, monkeypatch):
+    marcas, _ = _montar_com_receita(
+        tmp_path,
+        monkeypatch,
+        {
+            2019: _ano(2019, "2019-05-10", (KPMG, "2014-01-01")),
+            2020: _ano(2020, "2020-06-15", (EY, "2020-04-01")),
+        },
+        ["11111111"],
+    )
+    assert marcas == {"rede:ey": True}
+
+
+def test_contrato_das_trocas_declara_as_linhas_de_pessoa():
+    tabela = TABELAS["trocas_de_auditor"]
+    assert tabela.linhas_de_pessoa == "trata_como_pessoa"
+    assert "trata_como_pessoa" in tabela.colunas

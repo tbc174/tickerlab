@@ -14029,7 +14029,7 @@
       "tabela": "trocas_de_auditor",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -14071,6 +14071,10 @@
           "descricao": "Número na CVM do FCA que mostrou a troca",
           "unidade": "texto"
         },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro quando o auditor anterior ou o novo vem sem CNPJ de firma (pode ser pessoa física) ou tem a raiz de empresário individual, natureza do grupo 4 ou MEI, ou quando a Receita guardada no dia da montagem não tem a raiz da empresa ou da firma (ADR 0075): a linha não sai da porta",
+          "unidade": "verdadeiro ou falso"
+        },
         "montado_em": {
           "descricao": "Quando a tabela foi montada",
           "unidade": "data e hora (UTC)"
@@ -14100,7 +14104,8 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Refeita a cada montagem de `auditores`",
-      "atraso": "A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)"
+      "atraso": "A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "curva_juros": {
       "tabela": "curva_juros",

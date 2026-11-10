@@ -7,7 +7,9 @@ do formulário de cada empresa; a data em que a CVM recebeu essa versão vem do 
 pode ser mais tarde que a da primeira notícia, nunca mais cedo.
 
 LGPD: o sócio responsável técnico (nome e CPF) nunca entra, e o auditor pessoa física (CPF no lugar do
-CNPJ, raro) fica só com o código da CVM.
+CNPJ, raro) fica só com o código da CVM. Nas trocas, `trata_como_pessoa` marca a que envolve auditor
+sem CNPJ de firma, firma que a Receita diz ser de pessoa, ou empresa de pessoa (ADR 0075): a porta não a
+serve.
 
 A firma é identificada pela **rede**, lida do nome (KPMG, EY, PwC, Deloitte, BDO, Grant Thornton...): nem
 o CNPJ nem o código da CVM bastam, porque a mesma firma usa várias raízes de CNPJ, há empresa que informou o
@@ -26,8 +28,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import sqlalchemy as sa
 
+from base import cnpj as cnpjs
 from base.cnpj import SEPARADORES
 from base.cnpj import completo as cnpj_completo
 from base.parquet import (
@@ -36,6 +41,7 @@ from base.parquet import (
     gravar_se_mudou,
     origem_de_tabela,
 )
+from base.pgfn import pessoas_pela_receita
 from src.versao_do_codigo import versao_do_codigo
 
 CODIFICACAO_DA_CVM = "latin-1"
@@ -51,6 +57,7 @@ COLUNAS_DAS_TROCAS = (
 # referência indica a troca (um encerrado há anos é história antiga, não notícia daquele ano)
 ENCERRADO_HA_POUCO = timedelta(days=366)
 DIAS_POR_ANO = 365.25
+SEPARADOR_DE_IDS = " + "  # auditoria conjunta: os ids das firmas juntos (`_troca`)
 # rede → padrão no nome sem acento e em minúsculas (a primeira que casar vale). A Terco entrou na EY em
 # 2010 ("Ernst & Young Terco"): "Terco Grant Thornton" é a mesma firma, então conta como EY
 REDES = (
@@ -252,9 +259,9 @@ def _troca(
         "empresa": documento["empresa"].iloc[-1],
         "conhecido_em": recebido,
         "efetiva_em": efetiva,
-        "anterior_id": " + ".join(sorted(saidas)),
+        "anterior_id": SEPARADOR_DE_IDS.join(sorted(saidas)),
         "anterior": _nome(estado.nomes, saidas),
-        "novo_id": " + ".join(sorted(entradas)),
+        "novo_id": SEPARADOR_DE_IDS.join(sorted(entradas)),
         "novo": _nome(estado.nomes, entradas),
         "anos_com_o_anterior": anos,
         "id_documento": documento["id_documento"].iloc[0],
@@ -316,11 +323,72 @@ def trocas_de_auditor(auditores: pd.DataFrame) -> pd.DataFrame:
 DATAS = ("referencia", "conhecido_em", "inicio", "fim")
 
 
-def montar_trocas(pasta: Path, agora: datetime) -> int:
+def _da_rede(auditores: pd.DataFrame) -> pd.Series:
+    return auditores["auditor_id"].str.startswith("rede:")
+
+
+def _raizes(valores: pd.Series) -> np.ndarray:
+    """As raízes (em números, `base/cnpj.py`) dos CNPJs informados; os vazios ficam de fora."""
+    return cnpjs.raizes_em_numeros(valores.dropna().map(cnpjs.raiz).dropna())
+
+
+def raizes_a_perguntar(trocas: pd.DataFrame, auditores: pd.DataFrame) -> np.ndarray:
+    """As raízes que a Receita precisa dizer se são de pessoa: as das empresas e as das firmas fora das
+    redes (as das redes são firmas pelo nome; `_identidade`)."""
+    return cnpjs.ordenados(
+        np.concatenate(
+            [
+                _raizes(trocas["cnpj"]),
+                _raizes(auditores.loc[~_da_rede(auditores), "auditor_cnpj"]),
+            ]
+        )
+    )
+
+
+def _ids_de_pessoa(auditores: pd.DataFrame, pessoas: np.ndarray) -> set[str]:
+    """Os auditores fora das redes que, em alguma linha, vêm sem CNPJ de firma ou com a raiz de pessoa.
+
+    Basta uma linha: o mesmo código da CVM com CNPJ num ano e sem ele noutro fica na dúvida, e na
+    dúvida é pessoa (a ficha, `base/dossie.py::_nome_do_auditor`, também esconde o sem CNPJ)."""
+    fora = auditores[~_da_rede(auditores)]
+    cnpj = fora["auditor_cnpj"]
+    com_cnpj = cnpj.notna()
+    de_pessoa = ~com_cnpj
+    de_pessoa[com_cnpj] = cnpjs.contem(pessoas, _raizes(cnpj[com_cnpj]))
+    return set(fora.loc[de_pessoa, "auditor_id"])
+
+
+def com_a_marca_de_pessoa(
+    trocas: pd.DataFrame, auditores: pd.DataFrame, pessoas: np.ndarray
+) -> pd.DataFrame:
+    """As trocas com `trata_como_pessoa` (ADR 0075): auditor anterior ou novo que pode ser pessoa
+    (`_ids_de_pessoa`) ou empresa com a raiz em `pessoas` (as raízes de pessoa, em números ordenados,
+    saídas de `pessoas_pela_receita`)."""
+    ids = _ids_de_pessoa(auditores, pessoas)
+
+    def tem_pessoa(juntos: str) -> bool:
+        return any(i in ids for i in juntos.split(SEPARADOR_DE_IDS))
+
+    auditor_pessoa = trocas["anterior_id"].map(tem_pessoa) | trocas["novo_id"].map(
+        tem_pessoa
+    )
+    empresa = trocas["cnpj"].map(cnpjs.raiz)
+    empresa_pessoa = empresa.isna().to_numpy().copy()
+    conhecida = ~empresa_pessoa
+    empresa_pessoa[conhecida] = cnpjs.contem(
+        pessoas, cnpjs.raizes_em_numeros(empresa[conhecida])
+    )
+    return trocas.assign(
+        trata_como_pessoa=(auditor_pessoa.to_numpy(dtype=bool) | empresa_pessoa)
+    )
+
+
+def montar_trocas(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     """`<pasta>/trocas_de_auditor/trocas.parquet` a partir de todos os anos de `<pasta>/auditores/`.
 
     Roda depois de `historico.montar("auditores", ...)`; devolve quantas trocas gravou (0 e nada
-    gravado quando ainda não há ano de auditores na base).
+    gravado quando ainda não há ano de auditores na base). A Receita guardada (pela `conexao`) diz
+    quais raízes são de pessoa; sem ela, todas são (`pessoas_pela_receita`).
     """
     anos = arquivos_atuais(pasta / "auditores")
     if not anos:
@@ -329,7 +397,14 @@ def montar_trocas(pasta: Path, agora: datetime) -> int:
     for coluna in DATAS:
         todos[coluna] = pd.to_datetime(todos[coluna], errors="coerce").dt.date
     todos = todos.astype(object).where(todos.notna(), None)
-    trocas = trocas_de_auditor(todos).assign(
+    trocas = trocas_de_auditor(todos)
+    # sem troca não há o que perguntar à Receita (ler os arquivos dela leva minutos)
+    pessoas = (
+        pessoas_pela_receita(conexao, raizes_a_perguntar(trocas, todos))
+        if len(trocas)
+        else np.array([], dtype=np.int64)
+    )
+    trocas = com_a_marca_de_pessoa(trocas, todos, pessoas).assign(
         montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
     )
     gravar_se_mudou(
