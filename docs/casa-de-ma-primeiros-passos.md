@@ -96,11 +96,12 @@ tickerlab empresa 02.429.144/0001-93
 tickerlab demonstracoes 02.429.144/0001-93
 ```
 
-O primeiro traz situação cadastral, razão social, natureza jurídica e Simples, direto da Receita Federal. O segundo traz
-DFP e ITR da CVM, cada conta com o documento, a versão e a data de entrega. Para ver como a empresa **era** numa data:
-acrescente `--como-era 2024-12-31`.
-🚧 A ficha completa em um só comando (cadastro, prazos e entregas da CVM, vínculos e comparáveis) depende da linha 736
-(a rota `/companies/{cnpj}/profile` já está na API; falta o comando na CLI, linha 773).
+O primeiro traz o perfil: situação cadastral, razão social, natureza jurídica e Simples, direto da Receita Federal, e,
+de companhia aberta, cada DFP e ITR devida, com o prazo da CVM, quando saiu, os dias úteis de atraso e a situação
+(`on_time` no prazo, `gray_zone` atraso curto, `late`, `severely_late`, `not_filed`). O segundo traz DFP e ITR da CVM,
+cada conta com o documento, a versão e a data de entrega. Para ver como a empresa **era** numa data: acrescente
+`--como-era 2024-12-31`.
+🚧 Os vínculos e os comparáveis na mesma ficha dependem das outras rotas da linha 736.
 
 **Minutos 8 a 9: comparar**
 
@@ -109,14 +110,16 @@ lado. 🚧 O comando que compara sozinho (`comparaveis`) ainda não existe.
 
 **Minuto 10: levar para a planilha**
 
-Acrescente `--json` ao final de qualquer comando e salve num arquivo:
+Acrescente `--planilha` e o nome do arquivo a qualquer comando de empresa, fundo ou setor:
 
 ```powershell
-tickerlab demonstracoes 02.429.144/0001-93 --json > demonstracoes-cpfl.json
+tickerlab demonstracoes 02.429.144/0001-93 --planilha cpfl.xlsx
 ```
 
-No Excel: aba **Dados**, **Obter Dados**, **De Arquivo**, **De JSON**.
-🚧 A exportação direta para planilha (`exportar`) é a linha 782 e ainda não existe.
+O `.xlsx` abre direto no Excel: uma aba por tabela, cada linha com a fonte e a data em que o dado ficou público, e a aba
+`fontes` com a frase de atribuição que a licença pede. Prefere CSV? Use `--planilha cpfl.csv` (separado por ponto e
+vírgula, com vírgula decimal, um arquivo por tabela).
+🚧 A apresentação pronta (`exportar`, o deck) é a linha 782 e ainda não existe.
 
 ### Quanto o roteiro gasta de cota
 

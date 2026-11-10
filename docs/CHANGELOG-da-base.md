@@ -21,6 +21,8 @@ muda de unidade ou de chave; menor: coluna nova; correção: dado.
 - `pgfn_divida`: 1.0.0 → 1.0.1
 - `processos_comunicacoes`: 1.0.0 → 1.2.0
   - colunas novas: `achada_por`, `disponibilizada_em`, `resultado`, `resultado_trecho`, `teor_conferido_em`, `tipo_de_ato`, `valor_citado`
+- `trocas_de_auditor`: 1.0.0 → 1.1.0
+  - colunas novas: `trata_como_pessoa`
 - `empresa_serie`: 1.0.0 → 1.1.0
   - colunas novas: `ate`, `ate_publico_em`, `vigente`
 - `ligacoes`: 1.0.0 → 1.1.0

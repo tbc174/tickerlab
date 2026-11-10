@@ -14,7 +14,7 @@ devolve é o que a API serviu.
 
 | Comando | O que devolve |
 |---|---|
-| `tickerlab empresa <cnpj> [--como-era AAAA-MM-DD]` | Situação cadastral na Receita Federal (com data e motivo), matriz ou filial, mês do retrato; da raiz do CNPJ, razão social, natureza jurídica e opção pelo Simples, cada um na versão que valia no dia. |
+| `tickerlab empresa <cnpj> [--como-era AAAA-MM-DD] [--so-cadastro]` | O perfil: em `registration`, a situação cadastral na Receita Federal (com data e motivo), matriz ou filial, mês do retrato, razão social, natureza jurídica e opção pelo Simples, cada um na versão que valia no dia; em `periodic_filings`, de companhia aberta, cada DFP e ITR devida até o dia, com prazo da CVM, primeira entrega, dias úteis de atraso e situação (`on_time`, `gray_zone`, `late`, `severely_late`, `not_filed`); em `limits`, o que a leitura não cobre. `--so-cadastro` traz só o cadastro (para a chave sem o conjunto `profiles`). |
 | `tickerlab demonstracoes <cnpj> [--como-era AAAA-MM-DD] [--periodo AAAA-MM-DD]` | DFP e ITR da companhia aberta (CVM): uma linha por conta e período, com o documento, a data de referência, a versão (reapresentação) e a data de entrega. Do período mais novo para o mais velho. |
 | `tickerlab fundo <cnpj> [--como-era AAAA-MM-DD] [--retorno-suposto 0.12]` | Cadastro e taxas do fundo, a carteira declarada (CDA) e, com `--retorno-suposto`, a conta de quanto a taxa de administração leva em alguns prazos, sobre um capital de exemplo. |
 | `tickerlab setor [<chave>] [--como-era AAAA-MM-DD]` | Sem chave, a lista dos setores (`eletricas`, `bancos`...) com o dia da ficha; não gasta a quota. Com a chave, o mercado do setor por série da agência (tamanho, CR4, HHI e a faixa de concentração do CADE, por ano), a fatia de cada companhia aberta, quem são elas e as notas de método (`notes`). Sai como a ficha da última noite o deixou: `--como-era` antes dela dá o código 5. |
@@ -23,6 +23,9 @@ devolve é o que a API serviu.
 
 - O CNPJ entra com ou sem pontuação (`33.000.167/0001-01` ou `33000167000101`). A chave do setor é a da
   lista (`tickerlab setor`), em minúsculas.
+- Nas entregas, `not_filed` quer dizer não entregue **até o dia pedido**; empresa sem `periodic_filings` não é
+  companhia aberta no cadastro da CVM (não quer dizer que nada era devido). A situação é uma regra sobre o
+  prazo, não opinião sobre a empresa: leia `limits` e diga isso junto.
 - No setor, leia as `notes` antes de concluir: parte do mercado pode estar contada por entidade, e aí a
   concentração real é maior ou igual à mostrada. Diga isso junto do número.
 - `--como-era` mostra o dado **como era público naquele dia**: nada publicado depois entra. Use para
@@ -43,7 +46,7 @@ devolve é o que a API serviu.
 | 0 | ok | |
 | 2 | comando, CNPJ ou chave do setor mal escritos, ou endereço da API inseguro | corrija o comando |
 | 3 | sem chave, ou a chave foi recusada | peça à pessoa para rodar `tickerlab login`; **nunca** peça a chave no chat |
-| 4 | limite do minuto ou quota do mês | espere (o texto diz quanto) ou veja `tickerlab consumo` |
+| 4 | limite do minuto ou quota do mês | a CLI já esperou e repetiu uma vez no limite do minuto; espere (o texto diz quanto) ou veja `tickerlab consumo` |
 | 5 | nada disponível para este pedido | o CNPJ (ou o setor) não tem o dado na data, ou o conjunto não está no contrato: veja `tickerlab catalogo`. Não insista com variações do mesmo pedido |
 | 6 | a API recusou o pedido (dígito do CNPJ, data no futuro...) | corrija o pedido |
 | 7 | API fora do ar ou sem internet | tente de novo mais tarde |

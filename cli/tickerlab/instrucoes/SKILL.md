@@ -1,6 +1,6 @@
 ---
 name: tickerlab
-description: Busca dados oficiais de empresas, fundos e setores do Brasil (Receita Federal, CVM, agências reguladoras) pela CLI `tickerlab`, com fonte e data em cada número. Use quando a pessoa pedir a situação cadastral de um CNPJ, as demonstrações financeiras (DFP, ITR) de uma companhia aberta, o cadastro, as taxas ou a carteira de um fundo, o tamanho e a concentração (CR4, HHI) de um setor regulado e a fatia de cada companhia aberta nele, o que a chave do TickerLab pode pedir ou quanto da quota já foi usado, e para análise de empresa, M&A ou crédito que precise desses números.
+description: Busca dados oficiais de empresas, fundos e setores do Brasil (Receita Federal, CVM, agências reguladoras) pela CLI `tickerlab`, com fonte e data em cada número. Use quando a pessoa pedir a situação cadastral de um CNPJ, se uma companhia aberta entrega a DFP e o ITR no prazo, as demonstrações financeiras (DFP, ITR) de uma companhia aberta, o cadastro, as taxas ou a carteira de um fundo, o tamanho e a concentração (CR4, HHI) de um setor regulado e a fatia de cada companhia aberta nele, o que a chave do TickerLab pode pedir ou quanto da quota já foi usado, e para análise de empresa, M&A ou crédito que precise desses números.
 ---
 
 # TickerLab CLI
@@ -13,7 +13,9 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
 1. Rode sempre com `--json` e leia o envelope: cada campo é `{"value", "source", "published_at", ...}` e
    `sources` traz a licença e a frase de atribuição de cada fonte.
 2. Comandos:
-   - `tickerlab empresa <cnpj> --json`: situação cadastral, razão social, natureza jurídica, Simples (Receita).
+   - `tickerlab empresa <cnpj> --json`: o perfil: cadastro na Receita (situação, razão social, natureza
+     jurídica, Simples) e, de companhia aberta, cada DFP e ITR com prazo da CVM, atraso e situação da entrega;
+     leia `limits`. `--so-cadastro` traz só o cadastro.
    - `tickerlab demonstracoes <cnpj> [--periodo AAAA-MM-DD] --json`: DFP e ITR (CVM), uma linha por conta e
      período, com documento, versão e data de entrega.
    - `tickerlab fundo <cnpj> [--retorno-suposto 0.12] --json`: cadastro, taxas e carteira do fundo (CVM).
