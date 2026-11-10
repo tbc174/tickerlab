@@ -7500,7 +7500,8 @@ TABELAS: dict[str, Tabela] = {
     "trocas_de_auditor": Tabela(
         descricao=(
             'Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de '
-            "`auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois)"
+            "`auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca "
+            "com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta."
         ),
         fonte="CVM: dados abertos do FCA, pela tabela `auditores`",
         familia_da_fonte="cvm",
@@ -7523,6 +7524,15 @@ TABELAS: dict[str, Tabela] = {
             "novo": ("Nome da firma nova", TEXTO),
             "anos_com_o_anterior": ("Tempo com a firma anterior", "anos"),
             "id_documento": ("Número na CVM do FCA que mostrou a troca", TEXTO),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro quando o auditor anterior ou o novo vem sem CNPJ de firma (pode ser "
+                    "pessoa física) ou tem a raiz de empresário individual, natureza do grupo 4 ou MEI, "
+                    "ou quando a Receita guardada no dia da montagem não tem a raiz da empresa ou da "
+                    "firma (ADR 0075): a linha não sai da porta"
+                ),
+                SIM_OU_NAO,
+            ),
             "montado_em": ("Quando a tabela foi montada", MOMENTO),
             "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
@@ -9442,7 +9452,7 @@ _CONTRATO = {
     "securitizacao_cedente_devedor": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_securitizadora", "codigo_certificado", "papel", "cnpj", "versao"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2019-01-01"),
     "notas_dfp": _contrato(modulo=_ME, pessoa=True, chaves=("cnpj", "referencia", "versao", "pagina"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "fca_geral": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
-    "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "trocas_de_auditor": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),  # 1.1.0 (10/11/2026): `trata_como_pessoa`, e a porta deixa de servir a troca com auditor que pode ser pessoa física (linha 789, ADR 0075)
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "bcb_selic_focus": _contrato(modulo="macro", chaves=("serie", "referencia", "divulgado_em"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "release_x_oficial": _contrato(modulo=_ME, chaves=("protocolo", "linha", "periodo_lido", "leitura"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "montado_em"}, historico_desde=_CVM),

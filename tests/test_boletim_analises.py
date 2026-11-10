@@ -59,7 +59,7 @@ def raiz(tmp_path):
     _grava(r, "trocas_de_auditor/trocas", pd.DataFrame({
         "cnpj": ["1"] * 4, "empresa": [NOME_SECRETO] * 4, "anterior": ["X"] * 4, "novo": ["Y"] * 4,
         "efetiva_em": pd.to_datetime(["2022-01-01", "2022-01-01", "2023-01-01", "2017-01-01"]).date,
-        "anos_com_o_anterior": [5.0, 5.0, 2.0, 5.0],
+        "anos_com_o_anterior": [5.0, 5.0, 2.0, 5.0], "trata_como_pessoa": [False] * 4,
     }))  # fmt: skip
     datas = ["2026-10-13", "2026-09-12", "2025-10-13"]
     _grava(r, "curva_juros/2026", pd.DataFrame({

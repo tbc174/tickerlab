@@ -125,7 +125,11 @@ def main(argv: list[str] | None = None) -> int:
                 log.info("%s: %d exemplos", ATRASO, linhas)
                 continue
             if nome == TROCAS:
-                log.info("%s: %d trocas", TROCAS, auditores.montar_trocas(pasta, agora))
+                log.info(
+                    "%s: %d trocas",
+                    TROCAS,
+                    auditores.montar_trocas(conexao, pasta, agora),
+                )
                 continue
             try:
                 linhas = historico.montar(nome, conexao, pasta, agora)

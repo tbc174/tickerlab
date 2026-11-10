@@ -365,6 +365,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         ],
         "trocas_de_auditor": [
             *auditores.COLUNAS_DAS_TROCAS,
+            "trata_como_pessoa",
             "montado_em",
             "versao_do_codigo",
         ],
