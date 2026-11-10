@@ -7924,7 +7924,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
+      "consultavel": true,
       "frase": "Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7935,7 +7935,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
+      "consultavel": true,
       "frase": "Estabelecimentos (matriz e filiais) das pessoas jurídicas de cnpj_empresas_pj, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
