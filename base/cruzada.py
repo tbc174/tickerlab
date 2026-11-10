@@ -327,6 +327,31 @@ TOLERANCIA_DOS_BANCOS = Tolerancia(relativa=0.02)
 # a meta vem em % ao ano com duas casas; meio ponto-base de folga só para o ponto flutuante
 TOLERANCIA_DA_SELIC = Tolerancia(absoluta=0.005)
 
+CHAVE_DA_CONTA = ("cnpj", "grupo", "demonstracao", "conta", "ordem", "inicio", "fim")
+
+
+def _com_datas_em_texto(contas: pd.DataFrame) -> pd.DataFrame:
+    """Balanço não tem início: a data vazia vira texto vazio nos dois lados, para a chave casar."""
+    contas = contas.copy()
+    for coluna in ("inicio", "fim"):
+        contas[coluna] = (
+            pd.to_datetime(contas[coluna]).dt.strftime("%Y-%m-%d").fillna("")
+        )
+    return contas
+
+
+def _preparar_enet(
+    tabelas: Mapping[str, pd.DataFrame],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Nossa leitura da DFP (dados abertos) × a mesma DFP lida do pacote do ENET, só o último exercício."""
+    nossa = tabelas["demonstracoes_como_era"]
+    enet = tabelas["enet_amostra"]
+    return (
+        _com_datas_em_texto(nossa[nossa["ordem"] == "ultimo"]),
+        _com_datas_em_texto(enet[enet["ordem"] == "ultimo"]),
+    )
+
+
 _PERIMETRO_DOS_BANCOS = (
     "perímetros diferentes: o IF.data mede o balanço do conglomerado (perímetro do Banco Central) e a DFP "
     "é o consolidado da CVM; em 10/11/2026 a diferença mediana era de ~7%, de 2010 a 2025, nunca dentro "
@@ -334,6 +359,18 @@ _PERIMETRO_DOS_BANCOS = (
 )
 
 PARES: tuple[Par, ...] = (
+    Par(
+        nome="dfp_enet_x_nossa_leitura",
+        descricao=(
+            "Contas da DFP do último exercício de uma amostra sorteada (`base/conferidas/amostra_enet.csv`): "
+            "nossa leitura dos dados abertos da CVM × o mesmo documento no pacote do ENET"
+        ),
+        chave=CHAVE_DA_CONTA,
+        tolerancia=Tolerancia(relativa=0.02),
+        independencia=MESMO_DOCUMENTO,
+        preparar=_preparar_enet,
+        tabelas=("demonstracoes_como_era",),
+    ),
     Par(
         nome="selic_meta_sgs_x_copom",
         descricao="Meta da Selic no SGS 432 no dia seguinte a cada reunião × meta no comunicado do Copom",

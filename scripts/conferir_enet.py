@@ -21,6 +21,7 @@ import csv
 import io
 import random
 import sys
+import time
 import zipfile
 from pathlib import Path
 
@@ -29,7 +30,7 @@ import requests
 
 from base.arquivo.agente import AGENTE
 from base.contas_cvm import ler_indice
-from base.enet import ler_xml_enet
+from base.enet import DocumentoEnet, ler_xml_enet
 from base.enet_coleta import Baixador, xml_do_pacote
 
 SEMENTE = 20261110
@@ -113,20 +114,36 @@ def comando_sortear(pasta: Path) -> int:
     return 0
 
 
+TENTATIVAS = 3
+PAUSA_ENTRE_TENTATIVAS = (
+    60  # segundos: o ENET às vezes responde "serviço indisponível" no lugar do zip
+)
+
+
+def _documento_do_enet(
+    baixador: Baixador, cnpj: str, link: str, pasta: Path
+) -> DocumentoEnet | None:
+    """Baixa o pacote do link e lê o XML; tenta de novo quando a CVM devolve erro no lugar do zip."""
+    for tentativa in range(1, TENTATIVAS + 1):
+        pacote = baixador.baixar(link)
+        nome = cnpj.replace("/", "").replace(".", "").replace("-", "")
+        (pasta / f"{nome}.zip").write_bytes(pacote)
+        try:
+            return ler_xml_enet(xml_do_pacote(pacote))
+        except (zipfile.BadZipFile, ValueError) as erro:
+            print(f"AVISO: {cnpj} não lido (tentativa {tentativa}): {erro}")
+            if tentativa < TENTATIVAS:
+                time.sleep(PAUSA_ENTRE_TENTATIVAS)
+    return None
+
+
 def contas_do_enet(amostra: pd.DataFrame, pasta: Path) -> pd.DataFrame:
     """Baixa cada pacote da amostra e junta as contas lidas do XML (última versão, no formato da tabela)."""
     baixador = Baixador()
     partes = []
     for linha in amostra.itertuples():
-        pacote = baixador.baixar(linha.link)
-        (
-            pasta
-            / f"{linha.cnpj.replace('/', '').replace('.', '').replace('-', '')}.zip"
-        ).write_bytes(pacote)
-        try:
-            documento = ler_xml_enet(xml_do_pacote(pacote))
-        except (zipfile.BadZipFile, ValueError) as erro:
-            print(f"AVISO: {linha.cnpj} não lido: {erro}")
+        documento = _documento_do_enet(baixador, linha.cnpj, linha.link, pasta)
+        if documento is None:
             continue
         partes.append(documento.contas.assign(cnpj=linha.cnpj))
     return pd.concat(partes, ignore_index=True)
@@ -137,7 +154,10 @@ def comando_baixar(pasta: Path) -> int:
 
     amostra = pd.read_csv(AMOSTRA, dtype=str)
     contas = contas_do_enet(amostra, pasta)
-    destino = acervo.pasta_do_acervo() / "placar" / "enet_amostra.parquet"
+    raiz = acervo.pasta_do_acervo()
+    if raiz is None:
+        raise SystemExit("o acervo está desligado: defina TICKERLAB_ACERVO")
+    destino = raiz / "placar" / "enet_amostra.parquet"
     destino.parent.mkdir(parents=True, exist_ok=True)
     contas.to_parquet(destino, index=False)
     print(f"{len(contas)} contas de {contas['cnpj'].nunique()} companhias em {destino}")
