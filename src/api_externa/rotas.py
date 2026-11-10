@@ -32,6 +32,7 @@ from src.api_externa.conjuntos import (
     demonstracoes,
     empresas,
     fundos,
+    setores,
 )
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import traduzir_chaves
@@ -228,9 +229,22 @@ def _um_pedido(
     ler: Callable[[sa.Connection, Porta], Servido | None],
 ) -> object:
     """Um pedido de dado: lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
-    with obter_engine().begin() as conexao:
+
+    def pela_porta(conexao: sa.Connection) -> Servido | None:
         with _porta(conexao) as porta:
-            servido = ler(conexao, porta)
+            return ler(conexao, porta)
+
+    return _pedido_contado(contexto, conjunto, pela_porta)
+
+
+def _pedido_contado(
+    contexto: ContextoDaChave,
+    conjunto: str,
+    ler: Callable[[sa.Connection], Servido | None],
+) -> object:
+    """Lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
+    with obter_engine().begin() as conexao:
+        servido = ler(conexao)
         # o 404 sai depois do `with` para o consumo não voltar atrás
         registrar_consumo(
             conexao, contexto, conjunto=conjunto, finalidade=FINALIDADE,
@@ -334,3 +348,25 @@ def empresa(cnpj: str, contexto: Chave, known_at: date | None = None) -> object:
             numeros, dia
         ),
     )
+
+
+@router.get("/sectors")
+def lista_de_setores(contexto: ChaveSemQuota) -> object:
+    """Os setores que a última noite gravou, com o dia dela; não serve dado (não gasta a quota do mês)."""
+    return traduzir_chaves({"setores": setores.disponiveis()})
+
+
+@router.get("/sectors/{key}")
+def setor(key: str, contexto: Chave, known_at: date | None = None) -> object:
+    """O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem
+    são, como a última noite os deixou; `known_at` antes da noite sai `not_available`."""
+    dia = _dia_pedido(known_at)
+
+    def ler(conexao: sa.Connection) -> Servido | None:
+        leitor = setores.LeitorDeSetores(
+            _portao(conexao, contexto, setores.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        )
+        return leitor.setor(key, dia)
+
+    return _pedido_contado(contexto, setores.CONJUNTO, ler)
