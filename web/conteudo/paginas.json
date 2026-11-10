@@ -755,6 +755,34 @@
   },
   {
     "area": "acompanhar",
+    "chave": "ficha_da_empresa",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O CNPJ da empresa, com ou sem pontuação.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "cnpj",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "POST",
+      "resposta": "FichaDaEmpresaV1",
+      "rota": "/v1/analista/ficha"
+    },
+    "descricao": "Digite o CNPJ de uma empresa e veja o cadastro na Receita e, da companhia aberta, as entregas de balanço à CVM, com a fonte e a data de cada campo. Baixe tudo em Excel.",
+    "e_pro": true,
+    "grupo": "Avançado (Pro)",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Ficha da empresa",
+    "url": "ficha-da-empresa"
+  },
+  {
+    "area": "acompanhar",
     "chave": "relatorio_do_setor",
     "contrato": {
       "entradas": [
