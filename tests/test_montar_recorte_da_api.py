@@ -472,3 +472,42 @@ def test_situacao_nao_vai_sem_empresas_pj(tmp_path):
     _situacao(base, "('00.000.000/0001-91', '00000000')")
     with pytest.raises(envio.RecorteErro, match="junto"):
         envio.montar(base, tmp_path / "saida", ("cnpj_situacao_cadastral",))
+
+
+def test_a_conexao_despeja_na_temporaria_do_sistema_e_nao_na_pasta_atual(
+    tmp_path, monkeypatch
+):
+    """Regressão de 11/11/2026: no cron, o DuckDB tentou criar `.tmp` na `/app` da imagem (sem permissão)."""
+    atual = tmp_path / "atual"
+    atual.mkdir()
+    (atual / ".tmp").write_text("um arquivo no lugar da pasta: criar `.tmp` falharia")
+    monkeypatch.chdir(atual)
+    temporaria = tmp_path / "temporaria"
+    monkeypatch.setattr(envio, "PASTA_TEMPORARIA", temporaria)
+    con = envio.conectar()
+    try:
+        con.execute("SET memory_limit = '200MB'")
+        con.execute("SET threads = 1")
+        # ordena mais do que cabe na memória: o DuckDB precisa despejar em arquivo temporário
+        linhas = con.execute(
+            "SELECT count(*) FROM (SELECT i, md5(i::VARCHAR) AS h FROM range(12000000) t(i) ORDER BY h)"
+        ).fetchone()
+        pasta = con.execute("SELECT current_setting('temp_directory')").fetchone()
+    finally:
+        con.close()
+    assert linhas == (12000000,)
+    assert pasta is not None and Path(pasta[0]) == temporaria
+    assert (atual / ".tmp").is_file()  # nada foi criado na pasta atual
+
+
+def test_montar_usa_a_conexao_com_a_temporaria(tmp_path, monkeypatch):
+    usadas = []
+    original = envio.conectar
+
+    def espiao():
+        usadas.append(True)
+        return original()
+
+    monkeypatch.setattr(envio, "conectar", espiao)
+    envio.montar(tmp_path / "base", tmp_path / "saida", ())
+    assert usadas == [True]
