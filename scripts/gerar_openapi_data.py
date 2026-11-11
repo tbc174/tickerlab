@@ -46,6 +46,8 @@ ERROS: dict[str, tuple[int, str]] = {
         "`assumed_return` não é um número ou está fora do plausível",
     ),
     "invalid_batch": (400, "o lote está vazio ou passa de 100 CNPJs"),
+    "invalid_cursor": (400, "`cursor` que não veio da página anterior desta rota"),
+    "invalid_event_type": (400, "`types` com um tipo de evento que não existe"),
     "not_available": (
         404,
         (
@@ -88,6 +90,10 @@ def codigos_da_operacao(caminho: str, operacao: dict) -> list[str]:
         codigos.append("invalid_assumed_return")
     if _lote(operacao):
         codigos.append("invalid_batch")
+    if "cursor" in parametros:
+        codigos.append("invalid_cursor")
+    if "types" in parametros:
+        codigos.append("invalid_event_type")
     return codigos
 
 

@@ -54,6 +54,23 @@
       "situacao_especial_na_receita"
     ]
   },
+  "events": {
+    "fontes": {
+      "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-ipe": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "anos_com_o_anterior",
+      "anterior",
+      "categoria",
+      "efetiva_em",
+      "link",
+      "novo",
+      "protocolo",
+      "referencia",
+      "tipo"
+    ]
+  },
   "financials": {
     "fontes": {
       "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
