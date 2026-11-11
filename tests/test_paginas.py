@@ -313,32 +313,35 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     usadas = {c.rota for c in _contratos().values()}
     # /eu, /conta, /sair e o aceite são da conta e /configuracao é do login, não de uma página;
     # o PDF da busca por CNPJ e o do setor herdam o contrato da rota JSON (acesso.ROTAS_DE_ARQUIVO)
-    assert set(_openapi()["paths"]) - usadas == {
-        "/v1/busca-por-cnpj/pdf",
-        "/v1/analista/ficha/planilha",  # a planilha herda o contrato da ficha
-        "/v1/analista/ficha/eventos",  # os eventos herdam o acesso da ficha e a tela os pede com o CNPJ dela
-        "/v1/analista/empresas/planilha",  # a planilha herda o contrato da busca
-        "/v1/analista/comparar/planilha",  # a planilha herda o contrato da comparação
-        "/v1/relatorio-setor/pdf",
-        "/v1/relatorio-setor/apresentacao",
-        "/v1/relatorio-empresa/apresentacao",
-        "/v1/relatorio-empresa/markdown",
-        "/v1/eu",
-        "/v1/conta",
-        "/v1/sair",
-        "/v1/sair-de-todos",
-        "/v1/entrada/codigo",
-        "/v1/entrada/confirmar",
-        "/v1/aceite-dos-termos",
-        "/v1/revogar-link",
-        "/v1/salvar-simulacao",
-        "/v1/apagar-simulacao",
-        "/v1/meus-dados",
-        "/v1/pagamento-da-assinatura",
-        "/v1/portal-da-assinatura",
-        "/v1/setores",  # a lista de setores da página "Relatório do setor"
-        "/v1/configuracao",
-    }
+    assert (
+        set(_openapi()["paths"]) - usadas
+        == {
+            "/v1/busca-por-cnpj/pdf",
+            "/v1/analista/ficha/planilha",  # a planilha herda o contrato da ficha
+            "/v1/analista/ficha/eventos",  # os eventos herdam o acesso da ficha e a tela os pede com o CNPJ dela
+            "/v1/analista/empresas/planilha",  # a planilha herda o contrato da busca
+            "/v1/analista/comparar/planilha",  # a planilha herda o contrato da comparação
+            "/v1/relatorio-setor/pdf",
+            "/v1/relatorio-setor/apresentacao",
+            "/v1/relatorio-empresa/apresentacao",
+            "/v1/relatorio-empresa/markdown",
+            "/v1/eu",
+            "/v1/conta",
+            "/v1/sair",
+            "/v1/sair-de-todos",
+            "/v1/entrada/codigo",
+            "/v1/entrada/confirmar",
+            "/v1/aceite-dos-termos",
+            "/v1/revogar-link",
+            "/v1/salvar-simulacao",
+            "/v1/apagar-simulacao",
+            "/v1/meus-dados",
+            "/v1/pagamento-da-assinatura",
+            "/v1/portal-da-assinatura",
+            "/v1/setores",  # a lista de setores da página "Relatório do setor"
+            "/v1/configuracao",
+        }
+    )
 
 
 def test_periodos_do_contrato_sao_os_do_app():
