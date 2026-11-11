@@ -197,10 +197,10 @@ def _situacoes(pedidos: list[str]) -> tuple[str, ...]:
     return tuple(sorted(SITUACOES[nome] for nome in nomes))
 
 
-def cursor_de(cnpj: str, valor: float | None = None) -> str:
-    """O cursor opaco que a próxima página manda de volta: o último CNPJ e, se a ordem não é por CNPJ, o
-    valor da ordem dele (JSON dentro do base64; o texto do CNPJ sozinho é a ordem por CNPJ)."""
-    texto = cnpj if valor is None else json.dumps([valor, cnpj])
+def cursor_de(cnpj: str, valor: float | None = None, coluna: str | None = None) -> str:
+    """O cursor opaco que a próxima página manda de volta: o último CNPJ e, se a ordem não é por CNPJ, a
+    coluna e o valor da ordem dele (JSON dentro do base64; o texto do CNPJ sozinho é a ordem por CNPJ)."""
+    texto = cnpj if valor is None else json.dumps([coluna, valor, cnpj])
     return base64.urlsafe_b64encode(texto.encode()).decode().rstrip("=")
 
 
@@ -214,20 +214,23 @@ def _cnpj_valido(texto: object) -> str:
     return texto
 
 
-def _do_cursor(cursor: str) -> tuple[str, float | None]:
-    """(CNPJ, valor da ordem ou None) do cursor; `FiltroInvalido("invalid_cursor")` se não é nosso."""
+def _do_cursor(cursor: str) -> tuple[str, str | None, float | None]:
+    """(CNPJ, coluna da ordem, valor da ordem) do cursor, os dois últimos None na ordem por CNPJ;
+    `FiltroInvalido("invalid_cursor")` se não é nosso."""
     try:
         texto = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
         if texto.startswith("["):
-            valor, cnpj = json.loads(texto)
+            coluna, valor, cnpj = json.loads(texto)
+            if coluna not in ORDENS.values():
+                raise FiltroInvalido("invalid_cursor")
             if isinstance(valor, bool) or not isinstance(valor, int | float):
                 raise FiltroInvalido("invalid_cursor")
             if not math.isfinite(valor):
                 raise FiltroInvalido("invalid_cursor")
-            return _cnpj_valido(cnpj), float(valor)
+            return _cnpj_valido(cnpj), coluna, float(valor)
     except (binascii.Error, UnicodeDecodeError, ValueError, OverflowError) as erro:
         raise FiltroInvalido("invalid_cursor") from erro
-    return _cnpj_valido(texto), None
+    return _cnpj_valido(texto), None, None
 
 
 def _ordem(sort: str | None) -> tuple[str | None, bool]:
@@ -273,9 +276,13 @@ def busca_dos_pedidos(
     if branches_min is not None and not 1 <= branches_min <= FILIAIS_MAXIMAS:
         raise FiltroInvalido
     ordem, decrescente = _ordem(sort)
-    depois_de, valor_depois_de = (None, None) if cursor is None else _do_cursor(cursor)
-    if cursor is not None and (ordem is None) != (valor_depois_de is None):
-        raise FiltroInvalido("invalid_cursor")  # cursor de outra ordem
+    depois_de, coluna_do_cursor, valor_depois_de = (
+        (None, None, None) if cursor is None else _do_cursor(cursor)
+    )
+    if cursor is not None and coluna_do_cursor != ordem:
+        raise FiltroInvalido(
+            "invalid_cursor"
+        )  # cursor de outra ordem (ou da ordem por CNPJ)
     listas = (cnae, state, municipality, size, legal_nature, registration_status)
     if any(len(valores) > VALORES_MAXIMOS for valores in listas):
         raise FiltroInvalido
@@ -370,18 +377,22 @@ def _depois_do_cursor(busca: Busca, parametros: dict[str, object]) -> str:
     if busca.ordem is None:
         return "e.cnpj > $cursor"
     parametros["cursor_valor"] = busca.valor_depois_de
-    coluna = f"p.{busca.ordem}"  # a coluna vem de ORDENS, nunca do pedido
+    coluna = _valor_da_ordem(busca)
     depois = "<" if busca.decrescente else ">"
     return f"({coluna} {depois} $cursor_valor OR ({coluna} = $cursor_valor AND e.cnpj > $cursor))"
+
+
+def _valor_da_ordem(busca: Busca) -> str:
+    """O valor que ordena, com capital ou contagem ausente (tabela remontada em partes) valendo 0, igual no
+    ORDER BY, no filtro do cursor e no cursor: uma linha sem valor não some da paginação."""
+    return f"COALESCE(p.{busca.ordem}, 0)"  # a coluna vem de ORDENS, nunca do pedido
 
 
 def _ordenacao(busca: Busca) -> str:
     if busca.ordem is None:
         return "e.cnpj"
     sentido = "DESC" if busca.decrescente else "ASC"
-    return (
-        f"p.{busca.ordem} {sentido}, e.cnpj"  # a coluna vem de ORDENS, nunca do pedido
-    )
+    return f"{_valor_da_ordem(busca)} {sentido}, e.cnpj"
 
 
 def _aspas(nome: str) -> str:
@@ -456,8 +467,12 @@ class LeitorDeProspeccao:
     @staticmethod
     def _proximo_cursor(busca: Busca, achadas: pd.DataFrame) -> str:
         ultima = achadas.iloc[-1]
-        valor = None if busca.ordem is None else float(ultima[busca.ordem])
-        return cursor_de(str(ultima["cnpj"]), valor)
+        if busca.ordem is None:
+            return cursor_de(str(ultima["cnpj"]))
+        valor = ultima[busca.ordem]
+        return cursor_de(
+            str(ultima["cnpj"]), 0.0 if pd.isna(valor) else float(valor), busca.ordem
+        )
 
     def _empresa(self, linha: pd.Series) -> dict[str, object]:
         """Uma empresa: o CNPJ e, em envelope, os campos que o portão libera."""
