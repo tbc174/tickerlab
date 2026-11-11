@@ -7220,7 +7220,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA (\"demais ativos não codificados\"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -7242,7 +7242,7 @@
     },
     {
       "atraso": "Entregue em até 15 dias",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (tab_I a tab_X_7) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -7396,7 +7396,7 @@
     },
     {
       "atraso": "O dia seguinte",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte.",
       "frequencia": "Diária",
       "historico_desde": "2026-10-14",
@@ -7462,7 +7462,7 @@
     },
     {
       "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7506,7 +7506,7 @@
     },
     {
       "atraso": "Agosto/2026 estava publicado em 14/10/2026",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Acessos de banda larga fixa, telefonia móvel e TV por assinatura da Anatel por prestadora (CNPJ), mês e UF, desde 2005 (móvel), 2007 (banda larga) e 2012 (TV), somados os municípios.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7638,7 +7638,7 @@
     },
     {
       "atraso": "Nenhum além das datas da própria oferta",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -7649,7 +7649,7 @@
     },
     {
       "atraso": "Nenhum além das datas da própria oferta",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por CNPJ do emissor, no formato da CVM, sem os textos livres (devedores, garantias, lastro, destinação dos recursos).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -7704,7 +7704,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidade, conglomerados e CNPJ do líder de cada instituição e conglomerado, com a raiz do CNPJ que liga à bolsa.",
       "frequencia": "Trimestral",
       "historico_desde": "2010-01-01",
@@ -7726,7 +7726,7 @@
     },
     {
       "atraso": "Publicado ~30 dias depois do fim do mês",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, modalidade.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
@@ -8012,7 +8012,7 @@
     },
     {
       "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo.",
       "frequencia": "Semanal",
       "historico_desde": "2025-01-01",
@@ -8485,7 +8485,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início e fim).",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -8573,7 +8573,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Rótulo \"trocou de auditor\": cada troca de firma, montada de todos os anos de auditores na ordem de entrega dos FCAs (uma troca nunca é reescrita depois).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8639,7 +8639,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8760,7 +8760,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Quando cada negócio de M&A das assessorias ficou público, provado, e a confirmação por fonte oficial; uma linha por página.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -8771,7 +8771,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
