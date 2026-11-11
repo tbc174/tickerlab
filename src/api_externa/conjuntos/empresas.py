@@ -18,14 +18,16 @@ conhece, o que é fundo ou outra coisa, e o conflito (o mesmo CNPJ em duas entid
 hoje: quem hoje se sabe pessoa não sai nem numa data em que ainda não se sabia.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date
 
 import pandas as pd
 
 from base import cnpj as cnpj_
+from base.cnpj import SEPARADORES
 from base.porta import Porta
-from base.porta.rede import resolver, views
+from base.porta.rede import ID_DE_ENTIDADE, OUTROS_SISTEMAS, resolver, views
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
 
@@ -44,6 +46,7 @@ RAIZ = "cnpj_basico"
 MES = "mes_do_retrato"
 CONSTA = "consta"
 TAMANHO_DA_RAIZ = 8
+_LISTA = "(SELECT unnest(${}))"  # um parâmetro com lista, como tabela (junção por hash)
 
 
 @dataclass(frozen=True)
@@ -92,10 +95,116 @@ def _sim(valor: object) -> bool:
     return valor is None or bool(pd.isna(valor)) or bool(valor)  # type: ignore[arg-type]
 
 
+def _tentativas(texto: str) -> list[list[tuple[str, str]]]:
+    """Os (sistema, valor) por onde procurar o texto, na ordem do `resolver` da rede: o CNPJ inteiro (o
+    fundo), a raiz (a empresa) e, por fim, os outros sistemas."""
+    tentativas: list[list[tuple[str, str]]] = []
+    if len(texto) == cnpj_.TAMANHO:
+        tentativas += [[("cnpj", texto)], [("cnpj_raiz", texto[:TAMANHO_DA_RAIZ])]]
+    elif len(texto) == TAMANHO_DA_RAIZ:
+        tentativas.append([("cnpj_raiz", texto)])
+    tentativas.append([(sistema, texto) for sistema in OUTROS_SISTEMAS])
+    return tentativas
+
+
+def _procuras(cnpjs: list[str]) -> dict[str, list[list[tuple[str, str]]]]:
+    """De cada CNPJ que não tem a forma de um id da rede, as tentativas de achá-lo pelos identificadores."""
+    return {
+        cnpj: _tentativas(SEPARADORES.sub("", cnpj.strip()).upper())
+        for cnpj in cnpjs
+        if not ID_DE_ENTIDADE.match(cnpj)
+    }
+
+
+def _ids_por_identificador(
+    porta: Porta, pares: set[tuple[str, str]]
+) -> dict[tuple[str, str], set[str | None]]:
+    """Os ids da rede de cada (sistema, valor) pedido, numa consulta só."""
+    achados = porta.con.execute(
+        "SELECT DISTINCT sistema, valor, id_entidade FROM identificadores "
+        f"WHERE sistema IN {_LISTA.format('sistemas')} AND valor IN {_LISTA.format('valores')}",
+        {
+            "sistemas": sorted({sistema for sistema, _ in pares}),
+            "valores": sorted({valor for _, valor in pares}),
+        },
+    ).fetchall()
+    ids: dict[tuple[str, str], set[str | None]] = {}
+    for sistema, valor, id_entidade in achados:
+        ids.setdefault((sistema, valor), set()).add(id_entidade)
+    return ids
+
+
+def _linhas_por_id(porta: Porta, ids: set[str]) -> dict[str, list[tuple]]:
+    """As linhas de `entidades` (tipo, MEI e pessoa) de cada id pedido, numa consulta só."""
+    achadas = porta.con.execute(
+        "SELECT id_entidade, tipo, mei, trata_como_pessoa FROM entidades "
+        f"WHERE id_entidade IN {_LISTA.format('ids')}",
+        {"ids": sorted(ids)},
+    ).fetchall()
+    linhas: dict[str, list[tuple]] = {}
+    for id_entidade, *linha in achadas:
+        linhas.setdefault(id_entidade, []).append(tuple(linha))
+    return linhas
+
+
+def _id_pelos_identificadores(
+    tentativas: list[list[tuple[str, str]]],
+    ids: dict[tuple[str, str], set[str | None]],
+) -> str | None:
+    """O id da primeira tentativa que acha alguém; None se nenhuma acha ou se ela acha mais de um."""
+    for pares in tentativas:
+        achados = set().union(*(ids.get(par, set()) for par in pares))
+        if achados:
+            return achados.pop() if len(achados) == 1 else None
+    return None
+
+
+def _e_uma_empresa(id_entidade: str | None, linhas: dict[str, list[tuple]]) -> bool:
+    """O id é de uma só entidade, do tipo empresa, que não é MEI nem tratada como pessoa."""
+    if id_entidade is None or id_entidade.startswith(PREFIXO_DE_PESSOA):
+        return False
+    achadas = linhas.get(id_entidade, [])
+    if len(achadas) != 1:
+        return False
+    tipo, mei, trata_como_pessoa = achadas[0]
+    return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
+
+
+def e_empresas(porta: Porta, cnpjs: Iterable[str]) -> dict[str, bool]:
+    """De cada CNPJ, se a rede de hoje o conhece como uma só empresa que não é pessoa; qualquer dúvida é não.
+
+    A trava de pessoa de `e_empresa` (ADR 0108 D2.2), em lote: uma consulta aos identificadores e uma às
+    entidades para o lote inteiro, em vez de até cinco por CNPJ (linha 806: os comparáveis perguntam por
+    todas as candidatas do grupo). O caminho é o do `resolver` da rede: o texto que já é um id de
+    `entidades` vale por si; senão, vale a primeira tentativa que achar alguém (CNPJ inteiro, raiz, outros
+    sistemas), e achar mais de um é conflito. A regra final (`_e_uma_empresa`) é a mesma função nos dois; o
+    caminho até o id tem teste que o compara com o `resolver`, item a item
+    (`tests/test_api_externa_e_empresas.py`)."""
+    pedidos = list(dict.fromkeys(cnpjs))
+    existem = views(porta.con)
+    if not pedidos or "entidades" not in existem:
+        return dict.fromkeys(pedidos, False)
+    procuras = _procuras(pedidos) if "identificadores" in existem else {}
+    pares = {par for tentativas in procuras.values() for t in tentativas for par in t}
+    ids = _ids_por_identificador(porta, pares) if pares else {}
+    candidatos = {i for achados in ids.values() for i in achados if i is not None}
+    linhas = _linhas_por_id(porta, candidatos | set(pedidos))
+    return {
+        cnpj: _e_uma_empresa(
+            cnpj
+            if cnpj in linhas
+            else _id_pelos_identificadores(procuras.get(cnpj, []), ids),
+            linhas,
+        )
+        for cnpj in pedidos
+    }
+
+
 def e_empresa(porta: Porta, cnpj: str) -> bool:
     """A rede de hoje conhece o CNPJ como uma só empresa que não é pessoa; qualquer dúvida é não.
 
-    Também serve à rota de crédito (`conjuntos/credito.py`): as duas tiram pessoa do mesmo jeito."""
+    Também serve à rota de crédito (`conjuntos/credito.py`): as duas tiram pessoa do mesmo jeito. Para
+    muitos CNPJs de uma vez, `e_empresas`: a mesma resposta (há teste), sem uma ida à rede por CNPJ."""
     con = porta.con
     if "entidades" not in views(con):
         return False
@@ -103,16 +212,11 @@ def e_empresa(porta: Porta, cnpj: str) -> bool:
         id_entidade = resolver(con, cnpj, None)
     except LookupError:
         return False
-    if id_entidade.startswith(PREFIXO_DE_PESSOA):
-        return False
     achadas = con.execute(
         "SELECT tipo, mei, trata_como_pessoa FROM entidades WHERE id_entidade = $id",
         {"id": id_entidade},
     ).fetchall()
-    if len(achadas) != 1:
-        return False
-    tipo, mei, trata_como_pessoa = achadas[0]
-    return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
+    return _e_uma_empresa(id_entidade, {id_entidade: achadas})
 
 
 class LeitorDeEmpresas:
