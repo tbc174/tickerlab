@@ -148,3 +148,19 @@ def test_limite_conta_o_ipv6_pela_faixa_64():
         limite.falhou(f"2001:db8:1:2::{final + 1}")
     assert limite.bloqueado("2001:db8:1:2:ffff::9")
     assert not limite.bloqueado("2001:db8:1:3::1")
+
+
+def test_producao_sem_a_chave_do_servidor_nao_sobe():
+    with pytest.raises(ChaveInvalida, match="obrigatória"):
+        ler_configuracao({"TICKERLAB_MCP_EXIGIR_CHAVE": "1"})
+    with pytest.raises(ChaveInvalida, match="obrigatória"):
+        ler_configuracao(
+            {"TICKERLAB_MCP_EXIGIR_CHAVE": "1", "TICKERLAB_MCP_CHAVE_DOS_TOKENS": "  "}
+        )
+    chave = nova_chave()
+    com_chave = ler_configuracao(
+        {"TICKERLAB_MCP_EXIGIR_CHAVE": "1", "TICKERLAB_MCP_CHAVE_DOS_TOKENS": chave}
+    )
+    assert com_chave.chave_dos_tokens == ler_chave(chave)
+    # fora da produção (no PC, nos testes) segue subindo com a chave do processo
+    assert ler_configuracao({}).chave_dos_tokens is None
