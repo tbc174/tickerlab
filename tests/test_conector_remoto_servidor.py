@@ -463,6 +463,13 @@ def test_vinculos_traduz_os_tipos_e_passa_a_profundidade_e_a_data():
             cnpj="11111111000191",
             profundidade=4,
         )
+        raso_demais, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "vinculos",
+            cnpj="11111111000191",
+            profundidade=0,
+        )
         tipo_errado, _ = aj.chamar(
             cliente,
             aj.CHAVE_DE_MENTIRA,
@@ -479,7 +486,9 @@ def test_vinculos_traduz_os_tipos_e_passa_a_profundidade_e_a_data():
     assert primeiro.url.params.get("known_at") == "2026-03-31"
     assert segundo.url.params.get("depth") == "1"
     assert "types" not in segundo.url.params and "known_at" not in segundo.url.params
-    assert fundo_demais and tipo_errado  # fora dos limites nem chega à API
+    assert (
+        fundo_demais and raso_demais and tipo_errado
+    )  # fora dos limites nem chega à API
 
 
 def test_tipos_de_vinculo_sao_os_da_api():
