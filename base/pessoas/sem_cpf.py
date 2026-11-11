@@ -15,6 +15,12 @@ from base.arquivo.lote_brasil2 import CPF_NO_TEXTO
 from base.cnpj import cpf_confere
 
 ESPACOS = re.compile(r"\s{2,}")
+# CPF pontuado fora do padrão, que `CPF_NO_TEXTO` não pega: espaço em volta do hífen ("123.456.789 - 09"),
+# "123 456 789 09" etc. Com a palavra CPF na frente sai sempre; sem ela, só se os dígitos fecham como CPF.
+CPF_COM_SEPARADOR_LARGO = re.compile(
+    r"(?P<palavra>\bCPF\W{0,3})?(?<![\d.,/*-])\d{3}[.\s]{0,2}\d{3}[.\s]{0,2}\d{3}\s{0,2}[-–.]\s{0,2}\d{2}(?!\d|[.,/-]\d)",
+    re.IGNORECASE,
+)
 
 
 def _sai_se_for_cpf(achado: re.Match[str]) -> str:
@@ -26,11 +32,21 @@ def _sai_se_for_cpf(achado: re.Match[str]) -> str:
     return trecho
 
 
+def _sai_o_cpf_largo(achado: re.Match[str]) -> str:
+    """Vazio se tem a palavra CPF na frente ou se os dígitos fecham como CPF; senão, o próprio trecho."""
+    digitos = re.sub(r"\D", "", achado.group())
+    if achado.group("palavra") or (len(digitos) == 11 and cpf_confere(digitos)):
+        return ""
+    return achado.group()
+
+
 def tirar_cpf[T: (str, None)](nome: T) -> T:
     """O nome sem o CPF; `None` e texto vazio passam como estão."""
     if not nome:
         return nome
-    limpo = CPF_NO_TEXTO.sub(_sai_se_for_cpf, nome)
+    limpo = CPF_COM_SEPARADOR_LARGO.sub(
+        _sai_o_cpf_largo, CPF_NO_TEXTO.sub(_sai_se_for_cpf, nome)
+    )
     if limpo == nome:
         return nome
     return ESPACOS.sub(" ", limpo).strip()  # type: ignore[return-value]
