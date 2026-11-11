@@ -35,8 +35,14 @@ from pathlib import Path
 import duckdb
 
 from base.dicionario import TABELAS
-from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
-from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
+from base.dossie import (
+    COLUNAS_DE_PESSOA,
+    SO_PELA_API_EXTERNA,
+    pode_consultar,
+    pode_mostrar,
+    tem_dia_publico,
+)
+from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela, servida_pela_porta
 from base.rede.entidades import EMPRESARIO_INDIVIDUAL, GRUPO_DAS_PESSOAS_FISICAS
 from src import acervo
 
@@ -75,9 +81,6 @@ FICAM_EM_CASA = (
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
-    # sem pessoa por desenho (linha 810, PR 2), material da lista de compradores do modo dono: ir ao VPS é outra
-    # decisão, com o pode da Diretoria
-    "entradas_de_socio_pj",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
@@ -102,6 +105,10 @@ DEGRAU_2_ACRESCENTA = (
     # sem pessoa por desenho (linha 584): 213-5, grupo 4 e CPF fora na origem; o MEI com natureza de empresa sai aqui (`tirar_raizes_de_mei`); a saída ainda é conferida
     # aqui (`conferir_sem_pessoa_do_cnpj`). Pode da Diretoria, 10/11/2026 18h31 (Emenda 4), linha 796.
     "cnpj_empresas_pj", "cnpj_estabelecimentos_pj",
+    # sem pessoa por desenho (linha 810, PR 2): sócia PJ de empresa PJ, só para a API externa (a consulta aberta
+    # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_entradas_so_pj`
+    # exige `cnpj_empresas_pj` na mesma saída. Pode da Diretoria, 11/11/2026 (Emenda 4).
+    "entradas_de_socio_pj",
 )  # fmt: skip
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
@@ -143,7 +150,15 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
             raise RecorteErro(f"{nome}: tabela de pessoa natural")
         if nome in FICAM_EM_CASA:
             raise RecorteErro(f"{nome}: fica em casa")
-        if nome not in DEGRAU_1 and not pode_consultar(nome):
+        if nome in SO_PELA_API_EXTERNA:
+            # fora da consulta aberta só por estar nesta lista: o resto da regra de consultar ainda vale
+            if not (
+                pode_mostrar(nome)
+                and servida_pela_porta(nome)
+                and tem_dia_publico(nome)
+            ):
+                raise RecorteErro(f"{nome}: a API externa não pode servi-la")
+        elif nome not in DEGRAU_1 and not pode_consultar(nome):
             raise RecorteErro(f"{nome}: a consulta aberta não a libera")
         if ARQUIVOS[nome].split("/")[0] in PASTAS_PROIBIDAS:
             raise RecorteErro(f"{nome}: mora em pasta proibida")
@@ -304,6 +319,41 @@ def tirar_raizes_de_mei(
     return tiradas
 
 
+def conferir_entradas_so_pj(
+    con: duckdb.DuckDBPyConnection, saida: Path, tabelas: tuple[str, ...]
+) -> None:
+    """Toda raiz (a empresa e a sócia) de `entradas_de_socio_pj` da saída está em `cnpj_empresas_pj` da saída.
+
+    A tabela é PJ com PJ por desenho (linha 810); a garantia não pode depender da contagem de um dia: a raiz
+    que a saída de empresas não tem (fora da lista, ou MEI tirado por `tirar_raizes_de_mei`) derruba o envio.
+    """
+    if "entradas_de_socio_pj" not in tabelas:
+        return
+    if "cnpj_empresas_pj" not in tabelas:
+        raise RecorteErro("entradas_de_socio_pj só vai junto com cnpj_empresas_pj")
+    entradas = sorted((saida / "entradas_de_socio_pj").glob("*.parquet"))
+    empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
+    if not entradas:
+        return
+    if not empresas:
+        raise RecorteErro(
+            "entradas_de_socio_pj sem cnpj_empresas_pj na saída para conferir"
+        )
+    lista = ", ".join(_aspas(a.as_posix()) for a in empresas)
+    fonte = ", ".join(_aspas(a.as_posix()) for a in entradas)
+    fora = con.execute(
+        f"WITH pj AS (SELECT DISTINCT cnpj_basico FROM read_parquet([{lista}])) "
+        f"SELECT count(*) FROM read_parquet([{fonte}]) e "
+        "LEFT JOIN pj a ON a.cnpj_basico = e.cnpj_basico "
+        "LEFT JOIN pj b ON b.cnpj_basico = e.raiz_socio_pj "
+        "WHERE a.cnpj_basico IS NULL OR b.cnpj_basico IS NULL"  # raiz nula também é fora
+    ).fetchone()
+    if fora and fora[0]:
+        raise RecorteErro(
+            f"entradas_de_socio_pj: {fora[0]} linha(s) com raiz fora da lista sem pessoa"
+        )
+
+
 def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]:
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
     conferir_a_lista(tabelas)
@@ -332,6 +382,7 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
         tiradas_de_mei = tirar_raizes_de_mei(con, saida, tabelas)
         if tiradas_de_mei:
             log.info("cnpj_empresas_pj: %d raiz(es) de MEI tiradas", tiradas_de_mei)
+        conferir_entradas_so_pj(con, saida, tabelas)
     finally:
         con.close()
     return resultados

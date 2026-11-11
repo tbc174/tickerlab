@@ -3,7 +3,8 @@ na IA deles ou na minha pra fazer pesquisas específicas e mais complexas com a 
 
 Todo comando de leitura da CLI tem uma ferramenta no conector, e a ferramenta faz à API externa os mesmos
 pedidos que o comando faz: mesma rota e mesmos parâmetros, portanto a mesma regra. Comando novo na CLI
-sem ferramenta faz este teste falhar, a menos que entre em `SEM_FERRAMENTA` com o motivo escrito.
+sem ferramenta faz este teste falhar, a menos que entre em `SEM_FERRAMENTA` com o motivo escrito; ferramenta
+sem comando, só em `SO_NO_CONECTOR`, também com o motivo.
 """
 
 import httpx
@@ -33,6 +34,13 @@ SEM_FERRAMENTA: dict[str, str] = {
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
     "eventos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pelo PR 1014 da 773)",
     "compradores": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pelo PR da 773)",
+    "vinculos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pela 773)",
+}
+
+# ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
+SO_NO_CONECTOR: dict[str, str] = {
+    "vinculos": "o comando `vinculos` entra na CLI pela linha 773; quando entrar, passa a "
+    "FERRAMENTAS_DO_COMANDO e ganha um caso em CASOS",
 }
 
 ENDERECO = "https://api.exemplo.test"
@@ -138,7 +146,9 @@ def test_todo_comando_da_cli_tem_ferramenta_ou_motivo_escrito():
 
 def test_toda_ferramenta_do_conector_corresponde_a_um_comando():
     cobertas = {f for lista in FERRAMENTAS_DO_COMANDO.values() for f in lista}
-    assert cobertas == set(ferramentas.CONJUNTOS_DA_FERRAMENTA)
+    assert cobertas | set(SO_NO_CONECTOR) == set(ferramentas.CONJUNTOS_DA_FERRAMENTA)
+    assert not cobertas & set(SO_NO_CONECTOR)  # ou tem comando, ou está na lista
+    assert all(motivo.strip() for motivo in SO_NO_CONECTOR.values())
 
 
 def test_os_casos_cobrem_todo_comando_de_leitura():

@@ -57,6 +57,8 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Ficha da empresa | a triagem de um CNPJ antes da reunião: cadastro na Receita, situação, atividade e, se for companhia aberta, as entregas à CVM |
 | Comparáveis | empresas parecidas com a do CNPJ |
 | Demonstrações | os números publicados, quando a empresa publica |
+| Eventos | O que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho. |
+| Vínculos | As controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM. Só companhia aberta informa, uma vez por ano. |
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
 | Setores e setor | o panorama de um setor |
 | O que posso ver | o que a sua chave libera |

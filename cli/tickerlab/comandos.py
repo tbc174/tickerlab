@@ -63,6 +63,13 @@ PORTES = {
 POR_PAGINA_MAXIMO = 100
 # os tipos de evento como a CLI os recebe e como a API os chama
 TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
+# os tipos de vínculo como a CLI os recebe e como a API os chama
+TIPOS_DE_VINCULO = {
+    "controlada": "subsidiary_of",
+    "coligada": "affiliate_of",
+    "participada": "investee_of",
+    "auditor": "audits",
+}
 
 Formatar = Callable[[dict], str]
 
@@ -389,6 +396,53 @@ def compradores(
     intenção de compra: leia os `limits`.
     """
     corpo = _api(contexto).compradores(cnae, uf, anos, limite, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
+@click.option(
+    "--profundidade",
+    type=click.IntRange(1, 3),
+    default=1,
+    show_default=True,
+    help="Quantos saltos a partir da empresa (1 a 3): os vínculos dos vínculos.",
+)
+@click.option(
+    "--tipo",
+    "tipos",
+    multiple=True,
+    type=click.Choice(sorted(TIPOS_DE_VINCULO)),
+    help="Só um tipo (pode repetir): controlada, coligada, participada (a sociedade e a participação no capital, "
+    "pelo FRE) ou auditor (a firma que auditava a companhia, pelo FCA). Sem ela, todos.",
+)
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def vinculos(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    profundidade: int,
+    tipos: tuple[str, ...],
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Os vínculos da empresa como eram no dia: controladas, coligadas, participadas e o auditor.
+
+    Cada vínculo traz as duas pontas (id na rede, raiz do CNPJ e a razão social que valia no dia), a
+    participação no capital como o FRE informou e as datas. Só companhia aberta informa controle e
+    coligação, uma vez por ano: leia os `limits`. Pessoa física não sai.
+    """
+    corpo = _api(contexto).vinculos(
+        cnpj,
+        _dia(como_era),
+        profundidade,
+        [TIPOS_DE_VINCULO[tipo] for tipo in tipos],
+    )
+    if not como_json:
+        corpo = formato.vinculos_em_linhas(corpo)
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
 
 

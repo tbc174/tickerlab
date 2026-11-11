@@ -279,6 +279,7 @@ ROTAS_DE_ARQUIVO = {
     "/v1/analista/comparar/planilha": "/v1/analista/comparar",
     # o plano é o da ficha; quem vê pessoa é outra conferência, na própria rota (analista_pessoas.py)
     "/v1/analista/ficha/pessoas": "/v1/analista/ficha",
+    "/v1/analista/ficha/contato": "/v1/analista/ficha",
     "/v1/analista/empresas/planilha": "/v1/analista/empresas",
 }
 
