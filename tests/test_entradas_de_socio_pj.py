@@ -389,3 +389,54 @@ def test_cortar_o_futuro_nao_muda_o_passado_com_retrato_com_defeito(corte):
 def test_o_retrato_com_defeito_da_base_e_so_o_de_2024_09():
     """Nenhuma regra geral sem evidência: só o mês contado no ensaio de 11/11/2026."""
     assert dict(socios_pj.RETRATOS_COM_DEFEITO) == {"2024-09": "2024-10"}
+
+
+def _montar_cenario(retratos: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    return socios_pj.entradas_e_saidas(
+        retratos["2023-08"],
+        _mudancas(retratos, "2023-08"),
+        PRIMEIRO_MES,
+        PESSOAS_JURIDICAS,
+        DEFEITO,
+    )
+
+
+def _trocar_data(retratos, mes, empresa, socio, data):
+    quadro = retratos[mes]
+    linha = (quadro["cnpj_basico"] == empresa) & (quadro["raiz_socio_pj"] == socio)
+    quadro.loc[linha, "data_entrada"] = pd.Timestamp(data)
+
+
+def test_some_no_defeito_e_volta_com_outra_data_e_data_corrigida():
+    """Revisão cruzada (P1): a holding some de A em 2023-07 e volta em 2023-08 com outra data. Comparando 08 com
+    06, a Receita só trocou a data: nada de saída nem de entrada nova."""
+    retratos = _com_retrato_com_defeito()
+    _trocar_data(retratos, "2023-08", EMPRESA_A, HOLDING, "2011-01-01")
+    assert _da_dupla(_montar_cenario(retratos), EMPRESA_A, HOLDING) == [
+        ("data_corrigida", pd.Timestamp("2011-01-01"), "2023-08"),
+        ("entrou", pd.Timestamp("2010-03-01"), PRIMEIRO_MES),
+    ]
+
+
+def test_data_que_so_existe_no_defeito_nao_aparece():
+    """Revisão cruzada (P2): o fundo entra em A no retrato com defeito com uma data, e a Receita a troca no mês
+    seguinte: vale só a data do mês seguinte, numa linha só."""
+    retratos = _com_retrato_com_defeito()
+    _trocar_data(retratos, "2023-08", EMPRESA_A, FUNDO, "2023-07-15")
+    tabela = _montar_cenario(retratos)
+    assert _da_dupla(tabela, EMPRESA_A, FUNDO) == [
+        ("entrou", pd.Timestamp("2023-07-15"), "2023-08")
+    ]
+    assert pd.Timestamp("2023-07-01") not in set(tabela["data_entrada"])
+
+
+def test_duas_trocas_de_data_em_volta_do_defeito_viram_uma():
+    """Revisão cruzada (P2): A→B em 2023-07 e B→C em 2023-08 é uma correção só, de A para C."""
+    retratos = _retratos()
+    for mes, data in (("2023-07", "2011-01-01"), ("2023-08", "2012-01-01")):
+        _trocar_data(retratos, mes, EMPRESA_A, HOLDING, data)
+    tabela = _montar_cenario(retratos)
+    assert _da_dupla(tabela, EMPRESA_A, HOLDING) == [
+        ("data_corrigida", pd.Timestamp("2012-01-01"), "2023-08"),
+        ("entrou", pd.Timestamp("2010-03-01"), PRIMEIRO_MES),
+    ]

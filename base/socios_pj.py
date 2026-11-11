@@ -18,8 +18,9 @@ Três regras:
   raiz que deixou de ser só empresa some da história inteira, porque a privacidade vem antes do ponto no
   tempo;
 - **sem movimento fantasma:** sair e entrar com os mesmos dados no mesmo mês não é movimento; e as mudanças de
-  um retrato com defeito conhecido (`RETRATOS_COM_DEFEITO`) passam para o mês seguinte, como se a base
-  comparasse o seguinte direto com o anterior.
+  um retrato com defeito conhecido (`RETRATOS_COM_DEFEITO`) se juntam às do mês seguinte, como se a base
+  comparasse o seguinte direto com o anterior (um sócio aparece duas vezes na mesma empresa só em casos
+  raros; aí os dois contam como um).
 
 O ponto no tempo vale para todo mês que não é retrato com defeito: montar com o vigente do próprio retrato com
 defeito não é um ponto válido (é o arquivo errado).
@@ -79,9 +80,44 @@ def _lado(mudancas: pd.DataFrame, tipos: Collection[str], lado: str) -> pd.DataF
 def _sem_retratos_com_defeito(
     mudancas: pd.DataFrame, retratos_com_defeito: Mapping[str, str]
 ) -> pd.DataFrame:
-    """As mudanças de um retrato com defeito passam para o mês seguinte: lá, quem saiu e voltou (ou entrou e
-    saiu) com os mesmos dados vira par fantasma do mesmo mês e some; o resto conta naquele mês."""
-    return mudancas.assign(mes=mudancas["mes"].replace(dict(retratos_com_defeito)))
+    """As mudanças de um retrato com defeito e as do mês seguinte viram uma só por sócio (empresa e raiz): o lado
+    de antes da primeira contra o de depois da última, no mês seguinte. É comparar o mês seguinte direto com o
+    anterior ao defeito: quem sumiu e voltou igual não se mexeu, quem voltou com outra data teve a data corrigida,
+    e nenhuma data que só existe no retrato com defeito aparece."""
+    seguinte = mudancas["mes"].replace(dict(retratos_com_defeito))
+    no_seguinte = seguinte.isin(set(retratos_com_defeito.values()))
+    if not no_seguinte.any():
+        return mudancas
+    chave = ["mes", EMPRESA, SOCIO]
+    juntas = (
+        mudancas[no_seguinte]
+        .assign(_original=mudancas["mes"], mes=seguinte)
+        .sort_values([*chave, "_original"], kind="stable")
+    )
+    primeira = juntas.drop_duplicates(chave, keep="first").set_index(chave)
+    ultima = juntas.drop_duplicates(chave, keep="last").set_index(chave)
+    tinha, tem = primeira["tipo"].ne(ENTROU), ultima["tipo"].ne(SAIU)
+    composta = pd.DataFrame(index=primeira.index)
+    for coluna in (ENTRADA, QUALIFICACAO):
+        composta[f"{coluna}_antes"] = primeira[f"{coluna}_antes"].where(tinha)
+        composta[f"{coluna}_depois"] = ultima[f"{coluna}_depois"].where(tem)
+    composta[f"{ENTRADA}_antes"] = pd.to_datetime(composta[f"{ENTRADA}_antes"])
+    composta[f"{ENTRADA}_depois"] = pd.to_datetime(composta[f"{ENTRADA}_depois"])
+    igual = pd.Series(True, index=composta.index)
+    for coluna in (ENTRADA, QUALIFICACAO):
+        antes, depois = composta[f"{coluna}_antes"], composta[f"{coluna}_depois"]
+        igual &= antes.eq(depois) | (antes.isna() & depois.isna())
+    composta["tipo"] = SAIU
+    composta.loc[tem, "tipo"] = ENTROU
+    composta.loc[tinha & tem, "tipo"] = MUDOU
+    composta = composta[(tinha | tem) & ~(tinha & tem & igual)]
+    return pd.concat(
+        [
+            mudancas[~no_seguinte],
+            composta.reset_index().assign(tipo_socio=TIPO_PESSOA_JURIDICA),
+        ],
+        ignore_index=True,
+    )
 
 
 def _sem_fantasmas(
