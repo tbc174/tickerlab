@@ -15,6 +15,7 @@ import sqlalchemy as sa
 
 from src.api_externa import envelope
 from src.api_externa.acesso import autorizar
+from src.api_externa.conjuntos import novidades
 from src.api_externa.nomes import para_fora
 from src.banco.chaves_da_api import consumo_do_mes, direitos_vigentes
 from src.chaves_da_api import ContextoDaChave
@@ -68,6 +69,10 @@ def catalogo_da_organizacao(
             {"campo": para_fora(linha.campo), "fonte": linha.fonte}
         )
         fontes.add(linha.fonte)
+    for direito in direitos_vigentes(conexao, contexto.organizacao_id, hoje):
+        # `research` não tem campo no dicionário (é arquivo de citações): o contrato basta para listar
+        if direito.conjunto == novidades.CONJUNTO:
+            por_conjunto.setdefault((direito.conjunto, direito.finalidade), [])
     conjuntos = [
         {"conjunto": conjunto, "finalidade": para_fora(finalidade), "campos": campos}
         for (conjunto, finalidade), campos in sorted(por_conjunto.items())

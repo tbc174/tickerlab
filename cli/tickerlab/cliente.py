@@ -405,6 +405,9 @@ class ApiDoTickerlab:
     def setores(self) -> dict:
         return self.pedir("/sectors")
 
+    def novidades(self, dias: int) -> dict:
+        return self.pedir("/research/news", {"days": str(dias)})
+
     def setor(self, chave: str, como_era: str | None) -> dict:
         return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))
 

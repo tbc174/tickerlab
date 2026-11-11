@@ -23,6 +23,7 @@ from src.api_externa.conjuntos import (
     eventos,
     ficha,
     fundos,
+    novidades,
     prospeccao,
     setores,
     vinculos,
@@ -145,7 +146,7 @@ def test_conjuntos_das_ferramentas_sao_os_da_api():
     da_api = {
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
         demonstracoes.CONJUNTO, setores.CONJUNTO, fundos.CONJUNTO,
-        eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO,
+        eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO, novidades.CONJUNTO,
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api

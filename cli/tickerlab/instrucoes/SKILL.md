@@ -41,6 +41,8 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab setor --json`: os setores disponíveis (não gasta a quota); `tickerlab setor <chave> --json`:
      mercado, CR4, HHI e faixa do CADE por ano, a fatia de cada companhia aberta e as `notes` de método (leia
      antes de concluir sobre concentração).
+   - `tickerlab novidades [--dias 1-30] --json`: as fontes que a pesquisa provou na semana (órgão, data, trecho
+     literal, endereço e sha256 do original). Lista vazia: diga "nenhuma fonte nova provada na semana"; não invente.
    - `tickerlab catalogo --json`: o que a chave pode pedir hoje (não gasta a quota).
    - `tickerlab consumo --json`: pedidos do mês e limites (não gasta a quota).
    - `--como-era AAAA-MM-DD` em qualquer comando de dado: o dado como era público naquele dia.

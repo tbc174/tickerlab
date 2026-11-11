@@ -25,6 +25,7 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "vinculos": ("vinculos",),
     "compradores": ("compradores_do_setor",),
     "fundo": ("fundo",),
+    "novidades": ("novidades",),
     "setor": ("setores", "setor"),  # sem chave, a lista; com chave, o setor
     "catalogo": ("o_que_posso_ver",),
     "consumo": ("o_que_posso_ver",),
@@ -96,6 +97,7 @@ CASOS = [
         {"cnpj": CNPJ, "como_era_em": UM_DIA, "retorno_suposto": 0.1},
         id="fundo",
     ),
+    pytest.param(["novidades", "--dias", "14"], "novidades", {"dias": 14}, id="novidades"),
     pytest.param(["setor"], "setores", {}, id="setores"),
     pytest.param(
         ["setor", "combustiveis", "--como-era", UM_DIA],

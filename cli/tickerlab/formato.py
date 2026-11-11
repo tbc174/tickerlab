@@ -278,6 +278,22 @@ def setores(corpo: Mapping) -> str:
     )
 
 
+def novidades(corpo: Mapping) -> str:
+    """As fontes que a pesquisa provou na janela: órgão, data, trecho literal e o hash do original."""
+    itens = [i for i in corpo.get("items") or [] if isinstance(i, Mapping)]
+    if not itens:
+        return "Nenhuma fonte nova provada na semana."
+    blocos = [
+        f"{celula(i.get('agency'))} · {celula(i.get('date'))}\n"
+        f"  “{i.get('excerpt')}”\n"
+        f"  original: {i.get('source_url')}\n"
+        f"  sha256: {i.get('original_sha256')}"
+        for i in itens
+    ]
+    cabeca = f"{len(itens)} fonte(s) provada(s) pela pesquisa (trecho literal e hash do original):"
+    return "\n\n".join([cabeca, *blocos, AVISO])
+
+
 def catalogo(corpo: Mapping) -> str:
     """O que a chave pode pedir hoje: conjunto, finalidade, campo e fonte, e as licenças no fim."""
     conjuntos = [c for c in corpo.get("datasets") or [] if isinstance(c, Mapping)]
