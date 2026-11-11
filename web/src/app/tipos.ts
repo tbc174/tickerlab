@@ -1014,6 +1014,47 @@ export interface FichaDaEmpresaV1 {
   o_que_vem: BlocoDaFichaV1[]; // os blocos da ficha e a fonte de cada um, para quando o dado não sai
 }
 
+// Comparar empresas (tela do analista, linha 798): uma empresa por linha, cada campo com a fonte e o dia.
+// Quem a base não serve (pessoa, MEI, CNPJ desconhecido) vem só com o cnpj e estado "nao_disponivel".
+export interface EmpresaComparadaV1 {
+  cnpj: string;
+  estado: "pronta" | "nao_disponivel";
+  razao_social: CampoComFonteV1 | null;
+  situacao_cadastral: CampoComFonteV1 | null;
+  data_situacao_cadastral: CampoComFonteV1 | null;
+  motivo_situacao: CampoComFonteV1 | null;
+  natureza_juridica: CampoComFonteV1 | null;
+  matriz: CampoComFonteV1 | null;
+  mes_do_retrato: CampoComFonteV1 | null;
+  optante_simples: CampoComFonteV1 | null;
+  data_opcao_simples: CampoComFonteV1 | null;
+  data_exclusao_simples: CampoComFonteV1 | null;
+  porte: CampoComFonteV1 | null;
+  data_inicio_atividade: CampoComFonteV1 | null;
+  cnae_principal: CampoComFonteV1 | null;
+  uf: CampoComFonteV1 | null;
+  municipio: CampoComFonteV1 | null;
+  capital_social: CampoComFonteV1 | null;
+  n_estabelecimentos: CampoComFonteV1 | null;
+  porte_descricao: string | null;
+  cnae_descricao: string | null;
+  municipio_nome: string | null;
+  ultima_entrega_documento: CampoComFonteV1 | null;
+  ultima_entrega_referencia: CampoComFonteV1 | null;
+  ultima_entrega_situacao: CampoComFonteV1 | null;
+  entregas_conhecidas: number | null; // conta nossa: as entregas à CVM que a base conhecia no dia
+  entregas_com_atraso: number | null; // atrasou, atraso grave e não entregue (a zona cinzenta não conta)
+}
+
+export interface ComparacaoDeEmpresasV1 {
+  // nao_liberada: o dado ainda não foi liberado (estado da tela, nunca erro)
+  estado: "pronta" | "nao_liberada";
+  como_era_em: string | null;
+  empresas: EmpresaComparadaV1[];
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}
+
 // O que mudou (linha 804): uma linha por entrega, a mais nova primeiro; url é o endereço da página no app
 export interface EntregaDoDiaV1 {
   data: string;

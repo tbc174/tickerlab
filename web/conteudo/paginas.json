@@ -858,6 +858,34 @@
   },
   {
     "area": "acompanhar",
+    "chave": "comparar_empresas",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "De dois a cinco CNPJs diferentes, com ou sem pontuação.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "cnpjs",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "lista de textos"
+        }
+      ],
+      "metodo": "POST",
+      "resposta": "ComparacaoDeEmpresasV1",
+      "rota": "/v1/analista/comparar"
+    },
+    "descricao": "Ponha de duas a cinco empresas lado a lado, pelo CNPJ: situação, natureza, porte, abertura, atividade, lugar, capital e as entregas à CVM da companhia aberta, com a fonte e a data de cada campo. Baixe a comparação em Excel.",
+    "e_pro": true,
+    "grupo": "Avançado (Pro)",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Comparar empresas",
+    "url": "comparar-empresas"
+  },
+  {
+    "area": "acompanhar",
     "chave": "relatorio_do_setor",
     "contrato": {
       "entradas": [

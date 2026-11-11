@@ -29,6 +29,14 @@ class Entrega:
 
 ENTREGAS: tuple[Entrega, ...] = (
     Entrega(
+        data=date(2026, 11, 11),
+        o_que=(
+            "Comparar empresas: ponha de duas a cinco empresas lado a lado pelo CNPJ, cada campo com a fonte "
+            "e a data. Leve a empresa da ficha para a comparação e baixe tudo em Excel."
+        ),
+        pagina="comparar_empresas",
+    ),
+    Entrega(
         data=date(2026, 11, 10),
         o_que=(
             "Encontrar empresas: escolha o setor, o estado e a idade mínima e veja as empresas ativas, "

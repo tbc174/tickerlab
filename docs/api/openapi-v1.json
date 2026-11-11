@@ -1624,6 +1624,56 @@
         "title": "ClimaDaRegiaoV1",
         "type": "object"
       },
+      "ComparacaoDeEmpresasV1": {
+        "description": "A resposta da comparação: o estado, as empresas na ordem do pedido (só quando pronta), as fontes e os\nlimites, sempre.",
+        "properties": {
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "empresas": {
+            "items": {
+              "$ref": "#/components/schemas/EmpresaComparadaV1"
+            },
+            "title": "Empresas",
+            "type": "array"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "empresas",
+          "fontes",
+          "limites"
+        ],
+        "title": "ComparacaoDeEmpresasV1",
+        "type": "object"
+      },
       "ComparacaoDoAtivoV1": {
         "properties": {
           "ativo": {
@@ -1971,6 +2021,280 @@
           "url"
         ],
         "title": "DocumentoUsadoV1",
+        "type": "object"
+      },
+      "EmpresaComparadaV1": {
+        "description": "Uma empresa na comparação, numa linha: o cadastro da ficha, os campos da busca e o resumo das entregas\nà CVM, cada campo com a fonte e o dia (None se o portão não serve ou se a empresa não está disponível).",
+        "properties": {
+          "capital_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnae_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnae Descricao"
+          },
+          "cnae_principal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "data_exclusao_simples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_inicio_atividade": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_opcao_simples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_situacao_cadastral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entregas_com_atraso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entregas Com Atraso"
+          },
+          "entregas_conhecidas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entregas Conhecidas"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "matriz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mes_do_retrato": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo_situacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipio Nome"
+          },
+          "n_estabelecimentos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "natureza_juridica": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "optante_simples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Porte Descricao"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "situacao_cadastral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ultima_entrega_documento": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ultima_entrega_referencia": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ultima_entrega_situacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cnpj",
+          "estado"
+        ],
+        "title": "EmpresaComparadaV1",
         "type": "object"
       },
       "EmpresaDaBuscaV1": {
@@ -4686,6 +5010,22 @@
         "title": "PedidoDaBuscaV1",
         "type": "object"
       },
+      "PedidoDaComparacaoV1": {
+        "properties": {
+          "cnpjs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cnpjs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cnpjs"
+        ],
+        "title": "PedidoDaComparacaoV1",
+        "type": "object"
+      },
       "PedidoDaFichaV1": {
         "properties": {
           "cnpj": {
@@ -6681,6 +7021,77 @@
           }
         },
         "summary": "Registrar O Aceite"
+      }
+    },
+    "/v1/analista/comparar": {
+      "post": {
+        "description": "De dois a cinco CNPJs lado a lado: o cadastro na Receita, o porte, a abertura, a atividade, o lugar, o\ncapital, os estabelecimentos e, da companhia aberta, a última entrega à CVM e os atrasos, cada campo com\na fonte e o dia. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece saem `nao_disponivel`,\nsem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`.",
+        "operationId": "comparar_empresas_v1_analista_comparar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaComparacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparacaoDeEmpresasV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comparar Empresas"
+      }
+    },
+    "/v1/analista/comparar/planilha": {
+      "post": {
+        "description": "A mesma comparação em Excel (mesmo acesso, mesmo plano), uma linha por empresa, com a aba das fontes\ne o aviso.",
+        "operationId": "comparar_empresas_em_planilha_v1_analista_comparar_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaComparacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comparar Empresas Em Planilha"
       }
     },
     "/v1/analista/empresas": {

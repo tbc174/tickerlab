@@ -117,13 +117,15 @@ class Busca:
         None  # o valor da ordem desse último (só quando há `ordem`)
     )
     limite: int = LIMITE_PADRAO
+    # CNPJs certos (14 dígitos), para a comparação da tela do analista; a API externa não recebe este filtro
+    cnpjs: tuple[str, ...] = ()
 
     def filtros(self) -> int:
         """Quantos filtros além da situação foram pedidos."""
         return sum(
             bool(v)
             for v in (
-                self.cnaes, self.ufs, self.municipios, self.portes, self.naturezas,
+                self.cnaes, self.ufs, self.municipios, self.portes, self.naturezas, self.cnpjs,
                 self.aberta_antes, self.aberta_depois,
             )
         ) + sum(
@@ -329,6 +331,8 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
         "e.mes_do_retrato = $mes",
         _em("e.situacao_cadastral", busca.situacoes, "s", parametros),
     ]
+    if busca.cnpjs:
+        condicoes.append(_em("e.cnpj", busca.cnpjs, "j", parametros))
     if busca.cnaes:
         condicoes.append(_prefixos("e.cnae_principal", busca.cnaes, "c", parametros))
     if busca.ufs:

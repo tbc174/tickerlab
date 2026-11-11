@@ -686,6 +686,32 @@ PAGINAS = (
         so_no_app_novo=True,
     ),
     Pagina(
+        "comparar_empresas",
+        "Comparar empresas",
+        GRUPO_AVANCADO,  # tem recurso do plano (test_o_grupo_avancado_tem_so_paginas_pro_e_so_ele)
+        ":material/compare_arrows:",
+        "Ponha de duas a cinco empresas lado a lado, pelo CNPJ: situação, natureza, porte, abertura, "
+        "atividade, lugar, capital e as entregas à CVM da companhia aberta, com a fonte e a data de cada "
+        "campo. Baixe a comparação em Excel.",
+        area=AREA_ACOMPANHAR,
+        recurso=DOSSIE_DA_BASE,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "POST",
+            "/v1/analista/comparar",
+            (
+                Entrada(
+                    "cnpjs",
+                    "lista de textos",
+                    "De dois a cinco CNPJs diferentes, com ou sem pontuação.",
+                    obrigatoria=True,
+                ),
+            ),
+            "ComparacaoDeEmpresasV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "relatorio_do_setor",
         "Relatório do setor",
         GRUPO_RESEARCH,
