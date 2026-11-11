@@ -66,6 +66,9 @@ ACAO_CONJUNTO_REATIVADO = "conjunto_reativado"
 # nunca nome nem e-mail de quem foi vinculado.
 ACAO_MEMBRO_VINCULADO = "membro_vinculado"
 ACAO_MEMBRO_DESVINCULADO = "membro_desvinculado"
+# Pessoa física vista na tela da equipe: o ator é a conta, o alvo é a organização, o detalhe é só o tipo
+# ("socios"...) e quantas linhas saíram; nunca o CNPJ consultado nem o nome de quem apareceu.
+ACAO_PESSOA_VISTA = "pessoa_vista"
 # bloqueio de uma conta no incidente (0045): detalhes só com o motivo (código) e quantas sessões
 ACAO_CONTA_BLOQUEADA = "conta_bloqueada"
 ACAO_CONTA_DESBLOQUEADA = "conta_desbloqueada"

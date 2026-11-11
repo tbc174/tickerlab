@@ -110,6 +110,8 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "empresas": "companies",
     "proximo_cursor": "next_cursor",
     "porte": "size",
+    "capital_social": "share_capital",
+    "n_estabelecimentos": "active_establishments",
     "cnae_principal": "cnae_code",
     "uf": "state_code",
     "municipio": "municipality",
@@ -165,6 +167,16 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "margem_liquida": "net_margin",
     "roe": "return_on_equity",
     "divida_liquida_sobre_ebitda": "net_debt_to_ebitda",
+    # events: os documentos do IPE e as trocas de auditor (linha 736, PR 4)
+    "eventos": "events",
+    "tipo_de_evento": "event_type",
+    "protocolo": "filing_id",
+    "categoria": "category",
+    "link": "document_url",
+    "efetiva_em": "effective_on",
+    "anterior": "previous",
+    "novo": "new",
+    "anos_com_o_anterior": "years_with_previous",
 }
 
 

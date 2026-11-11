@@ -286,7 +286,13 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("rfb-cnpj",),
         "prospecting",
         ("cnpj_empresas_pj",),
-        ("razao_social", "natureza_juridica", "porte"),
+        (
+            "razao_social",
+            "natureza_juridica",
+            "porte",
+            "capital_social",
+            "n_estabelecimentos",
+        ),
         _PROVA_RECEITA,
     ),
     *_campos(
@@ -506,6 +512,24 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "roe",
             "divida_liquida_sobre_ebitda",
         ),
+        _PROVA_CVM,
+    ),
+    # events (linha 736, PR 4): os documentos do IPE (`eventos`), só o que a CVM classifica e o endereço (o
+    # assunto livre pode ter nome de pessoa e não sai), e as trocas de auditor (`trocas_de_auditor`, montada
+    # dos FCAs; a porta esconde a troca com auditor que pode ser pessoa física). Quem é pessoa sai antes,
+    # pela rede (`conjuntos/eventos.py`). A insolvência rotulada nunca sai (D2.4).
+    *_campos(
+        ("cvm-hist-ipe",),
+        "events",
+        ("eventos",),
+        ("protocolo", "categoria", "tipo", "referencia", "link"),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-fca",),
+        "events",
+        ("trocas_de_auditor",),
+        ("efetiva_em", "anterior", "novo", "anos_com_o_anterior"),
         _PROVA_CVM,
     ),
 )

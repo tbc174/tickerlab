@@ -13,8 +13,10 @@ CNPJ que saiu do arquivo naquele mês não aparece.
 
 **Busca:** filtros por CNAE (prefixo de 2 a 7 dígitos), UF, município (código da Receita ou nome), porte,
 natureza jurídica (prefixo), situação cadastral (padrão ativa), abertura (antes e depois de uma data) e
-matriz. Pelo menos um filtro além da situação: ninguém baixa a base inteira. Ordem por CNPJ, com cursor
-opaco (o último CNPJ da página) e `limite` (padrão 50, no máximo 100 e o que o plano deixa por resposta).
+matriz, capital social (mínimo e máximo) e número mínimo de estabelecimentos ativos. Pelo menos um filtro
+além da situação: ninguém baixa a base inteira. Ordem por CNPJ (padrão), por capital social ou por número de
+estabelecimentos, crescente ou decrescente (`-` na frente), sempre com o CNPJ como desempate; cursor opaco
+(o último CNPJ da página, e o valor da ordenação quando ela não é por CNPJ) e `limite` (padrão 50, no máximo 100 e o que o plano deixa por resposta).
 Sem total: contar custaria uma varredura a mais por chamada. A consulta lê só as colunas pedidas dos
 arquivos Parquet (formato em colunas), com os filtros empurrados para a leitura.
 
@@ -25,6 +27,8 @@ PR depois, se a Diretoria autorizar; entra como mais um filtro deste mesmo leito
 
 import base64
 import binascii
+import json
+import math
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -60,7 +64,14 @@ SITUACOES = {
 CAMPOS_DO_ESTABELECIMENTO = (
     "situacao_cadastral", "data_inicio_atividade", "cnae_principal", "uf", "municipio", "matriz",
 )  # fmt: skip
-CAMPOS_DA_EMPRESA = ("razao_social", "natureza_juridica", "porte")
+CAMPOS_DA_EMPRESA = (
+    "razao_social", "natureza_juridica", "porte", "capital_social", "n_estabelecimentos",
+)  # fmt: skip
+# a ordem pedida (`sort`) -> a coluna da base; o `-` na frente é decrescente
+ORDENS = {"capital": "capital_social", "branches": "n_estabelecimentos"}
+CAPITAL_MAXIMO = (
+    1e15  # acima disso o número não é capital: recusa em vez de comparar lixo
+)
 CAMPOS = (*CAMPOS_DA_EMPRESA, *CAMPOS_DO_ESTABELECIMENTO)
 PUBLICADO_EM = "publico_em"
 MES = "mes_do_retrato"
@@ -69,6 +80,7 @@ TAMANHO_DO_CNPJ = 14
 TAMANHO_DO_MUNICIPIO = 4
 CNAE_MINIMO, CNAE_MAXIMO = 2, 7
 NATUREZA_MAXIMA = 4
+FILIAIS_MAXIMAS = 1_000_000
 VALORES_MAXIMOS = 50  # por filtro: a lista do pedido não monta SQL sem fim
 
 
@@ -93,7 +105,17 @@ class Busca:
     aberta_antes: date | None = None
     aberta_depois: date | None = None
     matriz: bool | None = None
-    depois_de: str | None = None
+    capital_min: float | None = None
+    capital_max: float | None = None
+    filiais_min: int | None = None
+    ordem: str | None = (
+        None  # coluna da base (`capital_social` ou `n_estabelecimentos`); None é por CNPJ
+    )
+    decrescente: bool = False
+    depois_de: str | None = None  # CNPJ do último da página anterior
+    valor_depois_de: float | None = (
+        None  # o valor da ordem desse último (só quando há `ordem`)
+    )
     limite: int = LIMITE_PADRAO
 
     def filtros(self) -> int:
@@ -104,7 +126,10 @@ class Busca:
                 self.cnaes, self.ufs, self.municipios, self.portes, self.naturezas,
                 self.aberta_antes, self.aberta_depois,
             )
-        ) + (self.matriz is not None)  # fmt: skip
+        ) + sum(
+            v is not None
+            for v in (self.matriz, self.capital_min, self.capital_max, self.filiais_min)
+        )  # fmt: skip
 
     def campos_filtrados(self) -> set[str]:
         """Os campos da base que esta busca usa para filtrar (a situação sempre filtra)."""
@@ -113,6 +138,8 @@ class Busca:
             "porte": self.portes, "natureza_juridica": self.naturezas,
             "data_inicio_atividade": self.aberta_antes or self.aberta_depois,
             "matriz": self.matriz is not None,
+            "capital_social": self.capital_min is not None or self.capital_max is not None or self.ordem == "capital_social",
+            "n_estabelecimentos": self.filiais_min is not None or self.ordem == "n_estabelecimentos",
         }  # fmt: skip
         return {"situacao_cadastral", *(nome for nome, uso in usados.items() if uso)}
 
@@ -170,19 +197,66 @@ def _situacoes(pedidos: list[str]) -> tuple[str, ...]:
     return tuple(sorted(SITUACOES[nome] for nome in nomes))
 
 
-def cursor_de(cnpj: str) -> str:
-    """O cursor opaco que a próxima página manda de volta."""
-    return base64.urlsafe_b64encode(cnpj.encode()).decode().rstrip("=")
+def cursor_de(cnpj: str, valor: float | None = None, coluna: str | None = None) -> str:
+    """O cursor opaco que a próxima página manda de volta: o último CNPJ e, se a ordem não é por CNPJ, a
+    coluna e o valor da ordem dele (JSON dentro do base64; o texto do CNPJ sozinho é a ordem por CNPJ)."""
+    texto = cnpj if valor is None else json.dumps([coluna, valor, cnpj])
+    return base64.urlsafe_b64encode(texto.encode()).decode().rstrip("=")
 
 
-def _cnpj_do_cursor(cursor: str) -> str:
-    try:
-        texto = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
-    except (binascii.Error, UnicodeDecodeError) as erro:
-        raise FiltroInvalido("invalid_cursor") from erro
-    if len(texto) != TAMANHO_DO_CNPJ or not (texto.isascii() and texto.isalnum()):
+def _cnpj_valido(texto: object) -> str:
+    if (
+        not isinstance(texto, str)
+        or len(texto) != TAMANHO_DO_CNPJ
+        or not (texto.isascii() and texto.isalnum())
+    ):
         raise FiltroInvalido("invalid_cursor")
     return texto
+
+
+def _do_cursor(cursor: str) -> tuple[str, str | None, float | None]:
+    """(CNPJ, coluna da ordem, valor da ordem) do cursor, os dois últimos None na ordem por CNPJ;
+    `FiltroInvalido("invalid_cursor")` se não é nosso."""
+    try:
+        texto = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
+        if texto.startswith("["):
+            coluna, valor, cnpj = json.loads(texto)
+            if coluna not in ORDENS.values():
+                raise FiltroInvalido("invalid_cursor")
+            if isinstance(valor, bool) or not isinstance(valor, int | float):
+                raise FiltroInvalido("invalid_cursor")
+            if not math.isfinite(valor):
+                raise FiltroInvalido("invalid_cursor")
+            return _cnpj_valido(cnpj), coluna, float(valor)
+    except (
+        binascii.Error,
+        UnicodeDecodeError,
+        ValueError,
+        OverflowError,
+        RecursionError,
+    ) as erro:
+        raise FiltroInvalido("invalid_cursor") from erro
+    return _cnpj_valido(texto), None, None
+
+
+def _ordem(sort: str | None) -> tuple[str | None, bool]:
+    """`capital`, `-capital`, `branches` ou `-branches` -> (coluna, decrescente); sem ordem é por CNPJ."""
+    if sort is None:
+        return None, False
+    pedido = sort.strip().lower()
+    decrescente = pedido.startswith("-")
+    nome = pedido.removeprefix("-")
+    if nome not in ORDENS:
+        raise FiltroInvalido
+    return ORDENS[nome], decrescente
+
+
+def _numero(valor: float | None, maximo: float) -> float | None:
+    if valor is None:
+        return None
+    if not math.isfinite(valor) or not 0 <= valor <= maximo:
+        raise FiltroInvalido
+    return float(valor)
 
 
 def busca_dos_pedidos(
@@ -190,11 +264,31 @@ def busca_dos_pedidos(
     cnae: list[str], state: list[str], municipality: list[str], size: list[str],
     legal_nature: list[str], registration_status: list[str], opened_before: date | None,
     opened_after: date | None, head_office: bool | None, cursor: str | None, limit: int | None,
+    capital_min: float | None = None, capital_max: float | None = None,
+    branches_min: int | None = None, sort: str | None = None,
 ) -> Busca:  # fmt: skip
     """Os filtros da rota (nomes de fora, valores como o cliente escreve) viram uma `Busca`; `FiltroInvalido`
     se algo está fora do vocabulário ou da forma, ou se não há filtro nenhum além da situação."""
     if limit is not None and limit < 1:
         raise FiltroInvalido
+    capital_min = _numero(capital_min, CAPITAL_MAXIMO)
+    capital_max = _numero(capital_max, CAPITAL_MAXIMO)
+    if (
+        capital_min is not None
+        and capital_max is not None
+        and capital_min > capital_max
+    ):
+        raise FiltroInvalido
+    if branches_min is not None and not 1 <= branches_min <= FILIAIS_MAXIMAS:
+        raise FiltroInvalido
+    ordem, decrescente = _ordem(sort)
+    depois_de, coluna_do_cursor, valor_depois_de = (
+        (None, None, None) if cursor is None else _do_cursor(cursor)
+    )
+    if cursor is not None and coluna_do_cursor != ordem:
+        raise FiltroInvalido(
+            "invalid_cursor"
+        )  # cursor de outra ordem (ou da ordem por CNPJ)
     listas = (cnae, state, municipality, size, legal_nature, registration_status)
     if any(len(valores) > VALORES_MAXIMOS for valores in listas):
         raise FiltroInvalido
@@ -212,7 +306,13 @@ def busca_dos_pedidos(
         aberta_antes=opened_before,
         aberta_depois=opened_after,
         matriz=head_office,
-        depois_de=None if cursor is None else _cnpj_do_cursor(cursor),
+        capital_min=capital_min,
+        capital_max=capital_max,
+        filiais_min=branches_min,
+        ordem=ordem,
+        decrescente=decrescente,
+        depois_de=depois_de,
+        valor_depois_de=valor_depois_de,
         limite=min(limit or LIMITE_PADRAO, LIMITE_MAXIMO),
     )
     if not busca.filtros():
@@ -263,10 +363,42 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
     if busca.matriz is not None:
         condicoes.append("e.matriz = $matriz")
         parametros["matriz"] = busca.matriz
+    if busca.capital_min is not None:
+        condicoes.append("p.capital_social >= $capital_min")
+        parametros["capital_min"] = busca.capital_min
+    if busca.capital_max is not None:
+        condicoes.append("p.capital_social <= $capital_max")
+        parametros["capital_max"] = busca.capital_max
+    if busca.filiais_min is not None:
+        condicoes.append("p.n_estabelecimentos >= $filiais_min")
+        parametros["filiais_min"] = busca.filiais_min
     if busca.depois_de:
-        condicoes.append("e.cnpj > $cursor")
-        parametros["cursor"] = busca.depois_de
+        condicoes.append(_depois_do_cursor(busca, parametros))
     return condicoes, parametros
+
+
+def _depois_do_cursor(busca: Busca, parametros: dict[str, object]) -> str:
+    """Só o que vem depois do último da página anterior, na ordem pedida (CNPJ desempata sempre, crescente)."""
+    parametros["cursor"] = busca.depois_de
+    if busca.ordem is None:
+        return "e.cnpj > $cursor"
+    parametros["cursor_valor"] = busca.valor_depois_de
+    coluna = _valor_da_ordem(busca)
+    depois = "<" if busca.decrescente else ">"
+    return f"({coluna} {depois} $cursor_valor OR ({coluna} = $cursor_valor AND e.cnpj > $cursor))"
+
+
+def _valor_da_ordem(busca: Busca) -> str:
+    """O valor que ordena, com capital ou contagem ausente (tabela remontada em partes) valendo 0, igual no
+    ORDER BY, no filtro do cursor e no cursor: uma linha sem valor não some da paginação."""
+    return f"COALESCE(p.{busca.ordem}, 0)"  # a coluna vem de ORDENS, nunca do pedido
+
+
+def _ordenacao(busca: Busca) -> str:
+    if busca.ordem is None:
+        return "e.cnpj"
+    sentido = "DESC" if busca.decrescente else "ASC"
+    return f"{_valor_da_ordem(busca)} {sentido}, e.cnpj"
 
 
 def _aspas(nome: str) -> str:
@@ -310,18 +442,21 @@ class LeitorDeProspeccao:
         mes = self._mes_do_retrato(como_era_em)
         if mes is None:
             return None
+        existentes = set(self.porta.colunas(EMPRESAS))
+        if not busca.campos_filtrados() <= existentes | set(CAMPOS_DO_ESTABELECIMENTO):
+            return None  # a tabela montada antes de capital e estabelecimentos não responde a esse filtro
         limite = max(1, min(busca.limite, self.linhas_maximas))
         condicoes, parametros = _onde(busca, mes)
         parametros["limite"] = limite + 1
         consulta = (
             f"SELECT e.cnpj, e.{PUBLICADO_EM}, e.{MES}, "
-            + ", ".join(f"p.{c}" for c in CAMPOS_DA_EMPRESA)
+            + ", ".join(f"p.{c}" for c in CAMPOS_DA_EMPRESA if c in existentes)
             + ", "
             + ", ".join(f"e.{c}" for c in CAMPOS_DO_ESTABELECIMENTO)
             + f" FROM {_aspas(nome_da_view(ESTABELECIMENTOS))} e"
             + f" JOIN {_aspas(nome_da_view(EMPRESAS))} p"
             + f" ON p.cnpj_basico = e.cnpj_basico AND p.{MES} = e.{MES}"
-            + f" WHERE {' AND '.join(condicoes)} ORDER BY e.cnpj LIMIT $limite"
+            + f" WHERE {' AND '.join(condicoes)} ORDER BY {_ordenacao(busca)} LIMIT $limite"
         )
         achadas = self.porta.con.execute(consulta, parametros).df()
         cortada = len(achadas) > limite
@@ -331,11 +466,19 @@ class LeitorDeProspeccao:
             "como_era_em": como_era_em.isoformat(),
             "empresas": empresas,
             "cortada": cortada,
-            "proximo_cursor": cursor_de(str(achadas["cnpj"].iloc[-1]))
-            if cortada
-            else None,
+            "proximo_cursor": self._proximo_cursor(busca, achadas) if cortada else None,
         }
         return BuscaServida(corpo, {FONTE} if empresas else set(), len(empresas))
+
+    @staticmethod
+    def _proximo_cursor(busca: Busca, achadas: pd.DataFrame) -> str:
+        ultima = achadas.iloc[-1]
+        if busca.ordem is None:
+            return cursor_de(str(ultima["cnpj"]))
+        valor = ultima[busca.ordem]
+        return cursor_de(
+            str(ultima["cnpj"]), 0.0 if pd.isna(valor) else float(valor), busca.ordem
+        )
 
     def _empresa(self, linha: pd.Series) -> dict[str, object]:
         """Uma empresa: o CNPJ e, em envelope, os campos que o portão libera."""
@@ -343,7 +486,7 @@ class LeitorDeProspeccao:
         servidos = {
             nome: campo(_valor(nome, linha[nome]), fonte=FONTE, publico_em=publico_em, visto_em=None)
             for nome in CAMPOS
-            if self.permitido(FONTE, nome, False)
+            if nome in linha.index and self.permitido(FONTE, nome, False)
         }  # fmt: skip
         return {"cnpj": str(linha["cnpj"]), **servidos}
 
@@ -358,4 +501,8 @@ def _valor(nome: str, valor: object) -> object:
         return bool(valor)
     if nome == "porte":
         return PORTES_DE_FORA.get(str(valor), str(valor))
+    if nome == "capital_social":
+        return float(valor)  # type: ignore[arg-type]
+    if nome == "n_estabelecimentos":
+        return int(valor)  # type: ignore[call-overload]
     return str(valor)

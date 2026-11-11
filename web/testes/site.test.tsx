@@ -155,7 +155,7 @@ describe("página inicial v2", () => {
   const html = renderizar("index.html");
 
   it("o título é a assinatura do manual", () => {
-    expect(semTags(trecho(html, '<h1 id="titulo-heroi">', "</h1>"))).toBe(ASSINATURA);
+    expect(semTags(trecho(html, '<h1 id="titulo-heroi">', "</h1>"))).toBe(esc(ASSINATURA));
   });
 
   it("o bento das frentes saiu da inicial: backtest e carteira vivem em Ferramentas", () => {
@@ -557,11 +557,9 @@ describe("Raio-X do choque de 26/10/2026 (pode do Tiago para publicar, 26/10)", 
       expect(() => readFileSync(join(SITE, arquivo))).not.toThrow();
   });
 
-  it("a página inicial chama para o estudo, no selo do topo e na faixa logo abaixo", () => {
-    const inicio = renderizar("index.html");
-    expect(inicio.split(DADOS_DO_RAIO_X.caminho).length - 1).toBeGreaterThanOrEqual(3);
-    expect(semTags(inicio)).toContain("Estudo do dia");
-    expect(inicio).toContain(`href="${PDF_DO_RAIO_X}"`);
+  it("o estudo saiu da página inicial e continua em Relatórios", () => {
+    expect(semTags(renderizar("index.html"))).not.toContain("Estudo do dia");
+    expect(renderizar("relatorios.html")).toContain(`href="${DADOS_DO_RAIO_X.caminho}"`);
   });
 });
 

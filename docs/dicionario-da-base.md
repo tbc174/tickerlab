@@ -506,6 +506,46 @@ O administrador de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linh
 | `DT_INI_ADMIN` | Início do administrador no fundo | data (dia) |
 | `DT_FIM_ADMIN` | Fim do administrador no fundo (vazio: sem fim declarado) | data (dia) |
 
+## `registro_de_fundos`
+
+O registro de fundos da CVM 175 (`registro_fundo`): todo fundo registrado, com o tipo (FIP, FII, FIDC, FIAGRO, FI...), a situação, o administrador e o gestor. É o cadastro em dia dos fundos de participação (FIP), que o `cadastro_de_fundos` antigo quase não traz mais: serve para reconhecer um fundo no quadro de sócios da Receita. Uma linha por fundo e gestor (o fundo com mais de um gestor repete). Fundos cancelados continuam. Sem dado pessoal: o gestor pessoa física fica só com a marca PF, sem CPF e sem nome, e o diretor responsável fica fora
+
+- **Fonte:** CVM: registro de fundos e classes da CVM 175 (`registro_fundo_classe.zip`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)
+- **Atraso de divulgação:** Do dia: é um retrato do registro na data da coleta
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `ID_Registro_Fundo`, `CPF_CNPJ_Gestor`
+- **Três datas:** aconteceu_em = `Data_Registro`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)
+- **Linhagem:** O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `ID_Registro_Fundo` | Identificador do registro do fundo na CVM | texto |
+| `CNPJ_Fundo` | CNPJ do fundo (14 dígitos) | texto |
+| `Codigo_CVM` | Código do fundo na CVM | texto |
+| `Data_Registro` | Data do registro na CVM | data (dia) |
+| `Data_Constituicao` | Data de constituição | data (dia) |
+| `Tipo_Fundo` | Tipo do fundo (FIP, FII, FIDC, FIAGRO, FI...) | texto |
+| `Denominacao_Social` | Nome do fundo | texto |
+| `Data_Cancelamento` | Data do cancelamento (vazio: ativo) | data (dia) |
+| `Situacao` | Situação (em funcionamento normal, cancelado...) | texto |
+| `Data_Inicio_Situacao` | Início da situação | data (dia) |
+| `Data_Adaptacao_RCVM175` | Data da adaptação à Resolução CVM 175 | data (dia) |
+| `Data_Inicio_Exercicio_Social` | Início do exercício social | data (dia) |
+| `Data_Fim_Exercicio_Social` | Fim do exercício social | data (dia) |
+| `Patrimonio_Liquido` | Patrimônio líquido | reais (R$) |
+| `Data_Patrimonio_Liquido` | Data do patrimônio líquido | data (dia) |
+| `CNPJ_Administrador` | CNPJ do administrador | texto |
+| `Administrador` | Nome do administrador (empresa) | texto |
+| `Tipo_Pessoa_Gestor` | PF ou PJ: o gestor é pessoa física ou jurídica | texto |
+| `CPF_CNPJ_Gestor` | CNPJ do gestor; vazio quando o gestor é pessoa física | texto |
+| `Gestor` | Nome do gestor; vazio quando é pessoa física | texto |
+
 ## `painel_dos_fundos`
 
 Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ). O emissor vira CNPJ pelo FCA e, no que falta (empresas que saíram antes de 2018), pela tabela conferida `base/conferidas/emissores_antigos.csv`; cada ano tem pelo menos 95% do valor comprado com CNPJ (`cobertura`), e o resto está em `buracos`. Inclui empresas que saíram da bolsa (sem viés de sobrevivência)
@@ -2681,7 +2721,7 @@ Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ abert
 - **Chaves:** `cnpj_basico`
 - **Três datas:** publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/cnpj_empresas_pj/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
 - **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -2691,6 +2731,8 @@ Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ abert
 | `razao_social` | Razão social como a Receita publica | texto |
 | `natureza_juridica` | Código da natureza jurídica (tabela da Receita, 4 dígitos) | texto |
 | `porte` | nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita) | texto |
+| `capital_social` | Capital social declarado à Receita (aproximação do porte, não é faturamento; 0 se ilegível) | reais (R$) |
+| `n_estabelecimentos` | Estabelecimentos ativos da raiz (matriz e filiais) no retrato, contados na montagem | número inteiro |
 | `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
 | `disponivel_em` | Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |

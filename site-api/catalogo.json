@@ -54,6 +54,23 @@
       "situacao_especial_na_receita"
     ]
   },
+  "events": {
+    "fontes": {
+      "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-ipe": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "anos_com_o_anterior",
+      "anterior",
+      "categoria",
+      "efetiva_em",
+      "link",
+      "novo",
+      "protocolo",
+      "referencia",
+      "tipo"
+    ]
+  },
   "financials": {
     "fontes": {
       "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -133,10 +150,12 @@
       "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
     },
     "campos": [
+      "capital_social",
       "cnae_principal",
       "data_inicio_atividade",
       "matriz",
       "municipio",
+      "n_estabelecimentos",
       "natureza_juridica",
       "porte",
       "razao_social",

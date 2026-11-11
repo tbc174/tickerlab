@@ -4,8 +4,8 @@
 
 Para o mês do retrato vigente da base do CNPJ (o último do `manifesto.json`) baixa os `Empresas*.zip` (fonte
 oficial, ~500 MB, apagados ao fim) e grava, repartidas pelos 2 primeiros caracteres da raiz:
-- `cnpj_empresas_pj/<xx>.parquet`: razão social, natureza e porte de toda pessoa jurídica (empresário
-  individual e grupo 4 nem saem do leitor);
+- `cnpj_empresas_pj/<xx>.parquet`: razão social, natureza, porte, capital social e número de estabelecimentos ativos de toda pessoa
+  jurídica (empresário individual e grupo 4 nem saem do leitor);
 - `cnpj_estabelecimentos_pj/<xx>.parquet`: os estabelecimentos dessas empresas, sem o MEI e sem endereço fino.
 
 **Só acrescenta tabelas novas:** não lê nem toca nas outras pastas de `--destino`. Remontar o mesmo mês não
@@ -97,13 +97,14 @@ def _um_prefixo(
         return
     empresas = empresas.drop_duplicates("cnpj_basico", keep="last")
     sha = empresas.pop("origem_sha256")
-    tabela = _no_retrato(empresas, mes, sha, agora)
-    _gravar(EMPRESAS, destino, pasta.name, tabela, origens, "cnpj_basico", contagem)
     vista = empresas_pj.estabelecimentos_sem_pessoa(
         _vigente(cnpj, "estabelecimentos", pasta.name),
         empresas,
         _vigente(cnpj, "simples", pasta.name),
     )
+    com_filiais = empresas_pj.com_estabelecimentos_ativos(empresas, vista)
+    tabela = _no_retrato(com_filiais, mes, sha, agora)
+    _gravar(EMPRESAS, destino, pasta.name, tabela, origens, "cnpj_basico", contagem)
     sha_da_vista = pd.Series([origens[0]["sha256"] if origens else ""] * len(vista))
     tabela = _no_retrato(vista, mes, sha_da_vista, agora)
     _gravar(ESTABELECIMENTOS, destino, pasta.name, tabela, origens, "cnpj", contagem)

@@ -10,7 +10,7 @@ export const AREAS_DO_MENU = ["ativo", "estrategias", "acompanhar"];
 
 export interface ItemDoMenu {
   pagina: PaginaDoApp;
-  pronta: boolean; // já tem tela em React; as outras aparecem "em breve", sem link
+  pronta: boolean; // já tem tela em React; as outras só existem na versão clássica e não vão ao menu
 }
 
 const PAGINA_DA_CHAVE = new Map(paginasDoApp.map((p) => [p.chave, p]));
@@ -31,7 +31,14 @@ export function areaDoEndereco(caminho: string): string | null {
   return paginasDoApp.find((p) => p.url === url)?.area ?? null;
 }
 
+/** As telas de uma área que já abrem no app novo: é o que o menu mostra (linha que não abre confunde). */
+export function telasProntasDaArea(area: string): PaginaDoApp[] {
+  return itensDaArea(area)
+    .filter((item) => item.pronta)
+    .map((item) => item.pagina);
+}
+
 /** A tela que a aba de uma área abre no celular: a primeira pronta dela. */
 export function primeiraPronta(area: string): PaginaDoApp | undefined {
-  return itensDaArea(area).find((item) => item.pronta)?.pagina;
+  return telasProntasDaArea(area)[0];
 }

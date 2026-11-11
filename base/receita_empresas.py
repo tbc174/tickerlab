@@ -16,8 +16,11 @@ município e UF. Desenho no plano da API externa, "Achado para a fila".
   contato nem nome fantasia.
 
 Layout do `Empresas*.zip` (conferido em 15/10/2026): sem cabeçalho, `;`, aspas, latin-1; básico; razão
-social; natureza; qualificação; capital; porte; ente federativo. Capital, qualificação do responsável e
-ente federativo não são lidos.
+social; natureza; qualificação; capital; porte; ente federativo. O capital social ("1000,00") é lido e
+vira número (`capital_social`; ilegível vira 0); qualificação do responsável e ente federativo não são lidos.
+
+`n_estabelecimentos` (estabelecimentos **ativos** da raiz na vista, matriz e filiais) é contado na montagem
+(`com_estabelecimentos_ativos`), para a busca filtrar e ordenar sem varrer a vista inteira a cada pedido.
 """
 
 import re
@@ -33,7 +36,10 @@ from base.receita_retrato import CODIFICACAO, TAMANHO_DA_PARTE, _conferir_campos
 from base.rede.entidades import natureza_de_pessoa
 
 CAMPOS_NO_ARQUIVO_DE_EMPRESAS = 7
-EMPRESA = {0: "cnpj_basico", 1: "razao_social", 2: "natureza_juridica", 5: "porte"}
+EMPRESA = {
+    0: "cnpj_basico", 1: "razao_social", 2: "natureza_juridica", 4: "capital_social", 5: "porte",
+}  # fmt: skip
+ATIVA = "02"
 PORTES = {"00": "nao_informado", "01": "micro", "03": "pequeno", "05": "demais"}
 COLUNAS_DA_VISTA = (
     "cnpj", "cnpj_basico", "matriz", "situacao_cadastral", "data_inicio_atividade",
@@ -53,6 +59,14 @@ def _sem_numero_de_pessoa(razao: pd.Series) -> pd.Series:
     return limpo.str.replace(ESPACOS, " ", regex=True).str.strip(" -")
 
 
+def _capital(texto: pd.Series) -> pd.Series:
+    """O capital como a Receita escreve ("1000,00", vírgula decimal, sem milhar) em número; ilegível vira 0."""
+    numero = pd.to_numeric(
+        texto.str.strip().str.replace(",", ".", regex=False), errors="coerce"
+    )
+    return numero.fillna(0.0).astype("float64")
+
+
 def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
     natureza = parte["natureza_juridica"].str.strip()
     juridica = ~natureza.map(natureza_de_pessoa).astype(bool)
@@ -63,6 +77,7 @@ def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
                 tirar_cpf_da_coluna(parte["razao_social"].str.strip())
             ),
             "natureza_juridica": natureza,
+            "capital_social": _capital(parte["capital_social"]),
             "porte": parte["porte"].str.strip().map(PORTES).fillna("nao_informado"),
         }
     )
@@ -70,7 +85,7 @@ def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
 
 
 def ler_empresas_pj(arquivo_zip: Path | IO[bytes]) -> Iterator[pd.DataFrame]:
-    """(cnpj_basico, razao_social, natureza_juridica, porte) das pessoas jurídicas de um `Empresas*.zip`.
+    """(cnpj_basico, razao_social, natureza_juridica, capital_social, porte) das pessoas jurídicas de um `Empresas*.zip`.
 
     Empresário individual e grupo 4 são descartados antes de qualquer coisa ser guardada. `porte` sai como
     `nao_informado`, `micro`, `pequeno` ou `demais`.
@@ -109,3 +124,13 @@ def estabelecimentos_sem_pessoa(
         & ~estabelecimentos["cnpj_basico"].isin(mei)
     ]
     return vista[list(COLUNAS_DA_VISTA)].reset_index(drop=True)
+
+
+def com_estabelecimentos_ativos(
+    empresas_pj: pd.DataFrame, vista: pd.DataFrame
+) -> pd.DataFrame:
+    """`empresas_pj` com `n_estabelecimentos`: os estabelecimentos ativos da raiz na `vista` (0 se nenhum)."""
+    ativos = vista.loc[vista["situacao_cadastral"] == ATIVA, "cnpj_basico"]
+    contagem = ativos.value_counts()
+    numero = empresas_pj["cnpj_basico"].map(contagem).fillna(0).astype("int64")
+    return empresas_pj.assign(n_estabelecimentos=numero)

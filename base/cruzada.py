@@ -59,6 +59,10 @@ class Par:
     preparar: Preparar | None = None
     # as tabelas do dicionário para as quais o par é prova (a prontidão da API é por tabela)
     tabelas: tuple[str, ...] = ()
+    # Regra: o par só conta para a exigência 6 quando os dois lados medem o mesmo perímetro. Par cujos
+    # lados medem perímetros diferentes fica visível, rebaixado, com a causa escrita aqui: nunca
+    # prova uma tabela, nunca deixa o placar vermelho.
+    informativo: str = ""
 
 
 @dataclass(frozen=True)
@@ -84,6 +88,7 @@ class Relatorio:
     divergencias: list[Divergencia] = field(default_factory=list)
     tabelas: tuple[str, ...] = ()
     sem_dados: str = ""  # por que o par não rodou (tabela ausente); vazio quando rodou
+    informativo: str = ""  # a causa de o par não valer para a exigência 6 (vazio: vale)
 
     @property
     def sem_explicacao(self) -> int:
@@ -91,7 +96,7 @@ class Relatorio:
 
     @property
     def vermelho(self) -> bool:
-        return self.sem_explicacao > 0
+        return self.sem_explicacao > 0 and not self.informativo
 
     def como_dict(self) -> dict[str, object]:
         return {
@@ -107,6 +112,7 @@ class Relatorio:
             "vermelho": self.vermelho,
             "tabelas": list(self.tabelas),
             "sem_dados": self.sem_dados,
+            "informativo": self.informativo,
             "divergencias": [
                 vars(d) for d in self.divergencias[:MAXIMO_DE_DIVERGENCIAS_NO_JSON]
             ],
@@ -147,6 +153,7 @@ def par_sem_dados(par: Par, motivo: str) -> Relatorio:
         0,
         tabelas=par.tabelas,
         sem_dados=motivo,
+        informativo=par.informativo,
     )
 
 
@@ -189,6 +196,7 @@ def comparar(
         so_em_b=len(lado_b.index.difference(lado_a.index)),
         divergencias=divergencias,
         tabelas=par.tabelas,
+        informativo=par.informativo,
     )
 
 
@@ -201,6 +209,8 @@ def montar_relatorio_do_dia(
         lambda: {"comparadas": 0, "diferentes": 0, "sem_explicacao": 0}
     )
     for r in relatorios:
+        if r.informativo:  # não conta para a exigência 6
+            continue
         soma = por_independencia[r.independencia]
         soma["comparadas"] += r.comparadas
         soma["diferentes"] += r.diferentes
@@ -317,7 +327,50 @@ TOLERANCIA_DOS_BANCOS = Tolerancia(relativa=0.02)
 # a meta vem em % ao ano com duas casas; meio ponto-base de folga só para o ponto flutuante
 TOLERANCIA_DA_SELIC = Tolerancia(absoluta=0.005)
 
+CHAVE_DA_CONTA = ("cnpj", "grupo", "demonstracao", "conta", "ordem", "inicio", "fim")
+
+
+def _com_datas_em_texto(contas: pd.DataFrame) -> pd.DataFrame:
+    """Balanço não tem início: a data vazia vira texto vazio nos dois lados, para a chave casar."""
+    contas = contas.copy()
+    for coluna in ("inicio", "fim"):
+        contas[coluna] = (
+            pd.to_datetime(contas[coluna]).dt.strftime("%Y-%m-%d").fillna("")
+        )
+    return contas
+
+
+def _preparar_enet(
+    tabelas: Mapping[str, pd.DataFrame],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Nossa leitura da DFP (dados abertos) × a mesma DFP lida do pacote do ENET, só o último exercício."""
+    nossa = tabelas["demonstracoes_como_era"]
+    enet = tabelas["enet_amostra"]
+    return (
+        _com_datas_em_texto(nossa[nossa["ordem"] == "ultimo"]),
+        _com_datas_em_texto(enet[enet["ordem"] == "ultimo"]),
+    )
+
+
+_PERIMETRO_DOS_BANCOS = (
+    "perímetros diferentes: o IF.data mede o balanço do conglomerado (perímetro do Banco Central) e a DFP "
+    "é o consolidado da CVM; em 10/11/2026 a diferença mediana era de ~7%, de 2010 a 2025, nunca dentro "
+    "dos 2%. Não prova nem reprova a tabela"
+)
+
 PARES: tuple[Par, ...] = (
+    Par(
+        nome="dfp_enet_x_nossa_leitura",
+        descricao=(
+            "Contas da DFP do último exercício de uma amostra sorteada (`base/conferidas/amostra_enet.csv`): "
+            "nossa leitura dos dados abertos da CVM × o mesmo documento no pacote do ENET"
+        ),
+        chave=CHAVE_DA_CONTA,
+        tolerancia=Tolerancia(relativa=0.02),
+        independencia=MESMO_DOCUMENTO,
+        preparar=_preparar_enet,
+        tabelas=("demonstracoes_como_era",),
+    ),
     Par(
         nome="selic_meta_sgs_x_copom",
         descricao="Meta da Selic no SGS 432 no dia seguinte a cada reunião × meta no comunicado do Copom",
@@ -333,6 +386,7 @@ PARES: tuple[Par, ...] = (
         chave=("cnpj", "data_base"),
         tolerancia=TOLERANCIA_DOS_BANCOS,
         independencia=OUTRO_ORGAO,
+        informativo=_PERIMETRO_DOS_BANCOS,
         preparar=_preparar_ativo,
         tabelas=("ifdata_valores", "demonstracoes_como_era"),
     ),
@@ -342,6 +396,7 @@ PARES: tuple[Par, ...] = (
         chave=("cnpj", "data_base"),
         tolerancia=TOLERANCIA_DOS_BANCOS,
         independencia=OUTRO_ORGAO,
+        informativo=_PERIMETRO_DOS_BANCOS,
         preparar=_preparar_patrimonio,
         tabelas=("ifdata_valores", "demonstracoes_como_era"),
     ),

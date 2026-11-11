@@ -1,12 +1,16 @@
 """Quem é o analista: a chave da API dele, conferida na própria API (`/catalog`).
 
-Entrada provisória do PR 1: a IA manda `Authorization: Bearer <chave tld_...>`. O PR 2 troca a entrada
-pelo OAuth (o token passa a levar a chave cifrada), e o resto do conector não muda: as ferramentas só
-leem o `AcessoDoAnalista` do pedido.
+A IA manda ou o token do OAuth, que leva a chave cifrada (`oauth.py`), ou a própria chave
+(`Authorization: Bearer tld_...`, a entrada direta do Claude Code). As ferramentas só leem o
+`AcessoDoAnalista` do pedido.
 
 O catálogo de cada chave fica 60 s na memória do processo, para a lista de ferramentas não gastar um
 pedido do minuto da organização a cada mensagem. Uma chave revogada continua na lista por esse tempo,
 mas nada sai: cada ferramenta chama a API com a chave, e a API recusa na hora.
+
+Só 401 e 403 do `/catalog` dizem que a chave não vale. Limite de pedidos (429), erro da API (5xx) ou
+qualquer outra resposta viram `ApiIndisponivel`: quem chamou trata como falha passageira (a página diz
+que o TickerLab não respondeu, e a renovação não gasta o token).
 """
 
 import hashlib
@@ -15,6 +19,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import httpx
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken
 from pydantic import Field
@@ -26,6 +31,12 @@ FORMATO_DA_CHAVE = re.compile(r"tld_([a-z2-7]{8})_[A-Za-z0-9_-]{43}")
 CLIENTE_DA_ENTRADA_DIRETA = "chave-direta"
 VALIDADE_DO_CATALOGO_S = 60.0
 MAXIMO_NA_MEMORIA = 1_000
+# o que a API responde para chave revogada ou que nunca existiu (`src/api_v1/acesso.py`)
+STATUS_DE_CHAVE_RECUSADA = frozenset({401, 403})
+
+
+class ApiIndisponivel(httpx.HTTPError):
+    """A API respondeu, mas sem dizer se a chave vale (429, 5xx...): falha passageira, não recusa."""
 
 
 class AcessoDoAnalista(AccessToken):
@@ -95,10 +106,23 @@ class VerificadorDeChave:
         guardado = self._memoria.get(impressao)
         if guardado is not None and guardado.vence_em > self._relogio():
             return guardado.acesso
+        return await self.conferir_na_api(token)
+
+    async def conferir_na_api(self, token: str) -> AcessoDoAnalista | None:
+        """Confere a chave na API agora, sem a memória (a página de entrada e a renovação do token).
+
+        None se a API recusa a chave (401/403); `ApiIndisponivel` (um `httpx.HTTPError`) se ela não
+        respondeu se a chave vale."""
+        identificador = id_da_chave(token)
+        if identificador is None:
+            return None
+        impressao = hashlib.sha256(token.encode()).hexdigest()
         resposta = await self._cliente.get(token, "/catalog")
-        if not resposta.ok:
+        if resposta.status in STATUS_DE_CHAVE_RECUSADA:
             self._memoria.pop(impressao, None)
             return None
+        if not resposta.ok:
+            raise ApiIndisponivel(f"a API respondeu {resposta.status} no /catalog")
         acesso = AcessoDoAnalista(
             token=token,
             client_id=CLIENTE_DA_ENTRADA_DIRETA,

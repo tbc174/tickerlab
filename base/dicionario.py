@@ -627,6 +627,14 @@ def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
                     "nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita)",
                     TEXTO,
                 ),
+                "capital_social": (
+                    "Capital social declarado à Receita (aproximação do porte, não é faturamento; 0 se ilegível)",
+                    REAIS_EXATOS,
+                ),
+                "n_estabelecimentos": (
+                    "Estabelecimentos ativos da raiz (matriz e filiais) no retrato, contados na montagem",
+                    NUMERO,
+                ),
                 **retrato,
             },
             **comum,  # type: ignore[arg-type]
@@ -4104,6 +4112,55 @@ TABELAS: dict[str, Tabela] = {
                 "Fim do administrador no fundo (vazio: sem fim declarado)",
                 DATA,
             ),
+        },
+    ),
+    "registro_de_fundos": Tabela(
+        descricao=(
+            "O registro de fundos da CVM 175 (`registro_fundo`): todo fundo registrado, com o tipo "
+            "(FIP, FII, FIDC, FIAGRO, FI...), a situação, o administrador e o gestor. É o cadastro em dia "
+            "dos fundos de participação (FIP), que o `cadastro_de_fundos` antigo quase não traz mais: "
+            "serve para reconhecer um fundo no quadro de sócios da Receita. Uma linha por fundo e "
+            "gestor (o fundo com mais de um gestor repete). Fundos cancelados continuam. Sem dado "
+            "pessoal: o gestor pessoa física fica só com a marca PF, sem CPF e sem nome, e o diretor "
+            "responsável fica fora"
+        ),
+        fonte="CVM: registro de fundos e classes da CVM 175 (`registro_fundo_classe.zip`)",
+        familia_da_fonte="cvm",
+        frequencia="Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+        atraso="Do dia: é um retrato do registro na data da coleta",
+        onde="Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)",
+        linhagem=(
+            "O `.json` da tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no "
+            "acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou."
+        ),
+        # os nomes são os da CVM 175 (`meta_registro_fundo_classe.txt`); tudo chega como texto
+        colunas={
+            "ID_Registro_Fundo": ("Identificador do registro do fundo na CVM", TEXTO),
+            "CNPJ_Fundo": ("CNPJ do fundo (14 dígitos)", TEXTO),
+            "Codigo_CVM": ("Código do fundo na CVM", TEXTO),
+            "Data_Registro": ("Data do registro na CVM", DATA),
+            "Data_Constituicao": ("Data de constituição", DATA),
+            "Tipo_Fundo": ("Tipo do fundo (FIP, FII, FIDC, FIAGRO, FI...)", TEXTO),
+            "Denominacao_Social": ("Nome do fundo", TEXTO),
+            "Data_Cancelamento": ("Data do cancelamento (vazio: ativo)", DATA),
+            "Situacao": ("Situação (em funcionamento normal, cancelado...)", TEXTO),
+            "Data_Inicio_Situacao": ("Início da situação", DATA),
+            "Data_Adaptacao_RCVM175": ("Data da adaptação à Resolução CVM 175", DATA),
+            "Data_Inicio_Exercicio_Social": ("Início do exercício social", DATA),
+            "Data_Fim_Exercicio_Social": ("Fim do exercício social", DATA),
+            "Patrimonio_Liquido": ("Patrimônio líquido", "reais (R$)"),
+            "Data_Patrimonio_Liquido": ("Data do patrimônio líquido", DATA),
+            "CNPJ_Administrador": ("CNPJ do administrador", TEXTO),
+            "Administrador": ("Nome do administrador (empresa)", TEXTO),
+            "Tipo_Pessoa_Gestor": (
+                "PF ou PJ: o gestor é pessoa física ou jurídica",
+                TEXTO,
+            ),
+            "CPF_CNPJ_Gestor": (
+                "CNPJ do gestor; vazio quando o gestor é pessoa física",
+                TEXTO,
+            ),
+            "Gestor": ("Nome do gestor; vazio quando é pessoa física", TEXTO),
         },
     ),
     "painel_dos_fundos": Tabela(
@@ -9228,6 +9285,7 @@ _CONTRATO = {
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
     "cadastro_gestor_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_GESTOR"), datas={"aconteceu_em": "DT_INI_GESTOR"}, historico_desde=_CVM),
     "cadastro_admin_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_ADMIN"), datas={"aconteceu_em": "DT_INI_ADMIN"}, historico_desde=_CVM),
+    "registro_de_fundos": _contrato(modulo=_FIDC, chaves=("ID_Registro_Fundo", "CPF_CNPJ_Gestor"), datas={"aconteceu_em": "Data_Registro"}, historico_desde=_CVM),
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
     "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM, versao_do_contrato="1.1.0"),
@@ -9286,7 +9344,7 @@ _CONTRATO = {
     "cnpj_estabelecimentos_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.1.0"),  # 1.1.0 (10/11/2026): colunas `capital_social` e `n_estabelecimentos` (linha 794)
     "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),

@@ -33,6 +33,7 @@ from src.api_externa.conjuntos import (
     credito,
     demonstracoes,
     empresas,
+    eventos,
     ficha,
     fundos,
     prospeccao,
@@ -345,20 +346,28 @@ def busca_de_empresas(
     opened_before: date | None = None,
     opened_after: date | None = None,
     head_office: bool | None = None,
+    capital_min: float | None = None,
+    capital_max: float | None = None,
+    branches_min: int | None = None,
+    sort: str | None = None,
     cursor: str | None = None,
     limit: int | None = None,
     known_at: date | None = None,
 ) -> object:
     """Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),
-    UF, município, porte, natureza jurídica, situação, abertura e matriz, no retrato da Receita que valia
-    em `known_at`. Pelo menos um filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte."""
+    UF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,
+    `capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que
+    valia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,
+    por CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um
+    filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte."""
     dia = _dia_pedido(known_at)
     try:
         busca = prospeccao.busca_dos_pedidos(
             cnae=cnae, state=state, municipality=municipality, size=size,
             legal_nature=legal_nature, registration_status=registration_status,
             opened_before=opened_before, opened_after=opened_after, head_office=head_office,
-            cursor=cursor, limit=limit,
+            cursor=cursor, limit=limit, capital_min=capital_min, capital_max=capital_max,
+            branches_min=branches_min, sort=sort,
         )  # fmt: skip
     except prospeccao.FiltroInvalido as erro:
         raise _recusa(erro.codigo) from erro
@@ -416,6 +425,37 @@ def perfil_da_empresa(
         lambda conexao, porta: ficha.LeitorDeFicha(
             porta, _portao(conexao, contexto, ficha.CONJUNTO)
         ).ficha(numeros, dia),
+    )
+
+
+@router.get("/companies/{cnpj}/events")
+def eventos_da_empresa(
+    cnpj: str,
+    contexto: Chave,
+    known_at: date | None = None,
+    types: Annotated[list[str], Query()] = [],  # noqa: B006 - o FastAPI copia o padrão
+    cursor: str | None = None,
+) -> object:
+    """Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à
+    CVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor
+    (`auditor_change`). `types` filtra; a página vai até o limite de linhas do plano e `next_cursor` traz a
+    seguinte. MEI, empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    try:
+        tipos = eventos.tipos_do_pedido(types)
+        if cursor is not None:
+            eventos.chave_do_cursor(cursor)
+    except eventos.PedidoInvalido as erro:
+        raise _recusa(erro.codigo) from erro
+    return _um_pedido(
+        contexto,
+        eventos.CONJUNTO,
+        lambda conexao, porta: eventos.LeitorDeEventos(
+            porta,
+            _portao(conexao, contexto, eventos.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).eventos(numeros, dia, tipos, cursor),
     )
 
 
