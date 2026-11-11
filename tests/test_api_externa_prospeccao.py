@@ -536,3 +536,76 @@ def test_cursor_ordenado_cabe_no_limite_da_tela_do_analista():
         "ZZZZZZZZZZZZZZ", 999_999_999_999_999.99, "n_estabelecimentos"
     )
     assert len(maior) <= TAMANHO_MAXIMO_DO_CURSOR
+
+
+# --- a busca em dois passos (linha 584): o corte nos estabelecimentos, a junção só nas linhas da página ---
+
+
+def _leitor(base) -> prospeccao.LeitorDeProspeccao:
+    return prospeccao.LeitorDeProspeccao(Porta(base), lambda *_: True, 100)
+
+
+BUSCAS_DE_DOIS_PASSOS = [
+    prospeccao.Busca(ufs=("SP",)),
+    prospeccao.Busca(cnaes=("62",)),
+    prospeccao.Busca(ufs=("SP", "RJ"), cnaes=("4711", "0600")),
+    prospeccao.Busca(municipios=("7107",), matriz=True),
+    prospeccao.Busca(ufs=("SP",), situacoes=("02", "08")),
+]
+
+
+def _paginas(leitor, busca, como_era_em):
+    """Todas as páginas de uma busca, de uma em uma empresa, pelo cursor."""
+    paginas = []
+    while True:
+        servida = leitor.buscar(busca, como_era_em)
+        paginas.append(servida.corpo)
+        if not servida.corpo["cortada"]:
+            return paginas
+        ultimo = servida.corpo["empresas"][-1]["cnpj"]
+        busca = dataclasses.replace(busca, depois_de=ultimo)
+
+
+@pytest.mark.parametrize("busca", BUSCAS_DE_DOIS_PASSOS)
+def test_dois_passos_respondem_igual_a_juncao_primeiro(pasta, monkeypatch, busca):
+    busca = dataclasses.replace(busca, limite=1)
+    hoje = date(2026, 11, 10)
+    leitor = _leitor(pasta)
+    em_dois_passos = _paginas(leitor, busca, hoje)
+    monkeypatch.setattr(prospeccao, "_depende_da_empresa", lambda _busca: True)
+    assert _paginas(leitor, busca, hoje) == em_dois_passos
+
+
+def test_estabelecimento_sem_empresa_nao_estraga_o_corte_da_pagina(tmp_path):
+    estabelecimentos = _estabelecimentos()
+    novos = pd.DataFrame(
+        [
+            # a raiz 00000000 não tem empresa; a 66666666 tem
+            ("00000000000191", "00000000", True, "02", "2020-01-01", "6201501", "SP", "7107", "2026-10", "2026-10-31"),
+            ("66666666000191", "66666666", True, "02", "2020-01-01", "6201501", "SP", "7107", "2026-10", "2026-10-31"),
+        ],
+        columns=estabelecimentos.columns[:10],
+    )  # fmt: skip
+    novos["data_inicio_atividade"] = pd.to_datetime(novos["data_inicio_atividade"])
+    novos["disponivel_em"] = pd.to_datetime(novos["disponivel_em"]).dt.date
+    empresas = pd.concat(
+        [
+            _empresas(),
+            pd.DataFrame(
+                [("66666666", "OMEGA LTDA", "2062", "micro", 1_000.0, 1, "2026-10", "2026-10-31")],
+                columns=_empresas().columns[:8],
+            ).assign(disponivel_em=date(2026, 10, 31), **CARIMBOS),
+        ]
+    )  # fmt: skip
+    base = tmp_path / "base"
+    _gravar(
+        base,
+        prospeccao.ESTABELECIMENTOS,
+        pd.concat([estabelecimentos, novos.assign(**CARIMBOS)]),
+    )
+    _gravar(base, prospeccao.EMPRESAS, empresas)
+    servida = _leitor(base).buscar(
+        prospeccao.Busca(ufs=("SP",), limite=1), date(2026, 11, 10)
+    )
+    assert [e["cnpj"] for e in servida.corpo["empresas"]] == ["22222222000191"]
+    assert servida.corpo["cortada"] is True  # ainda há a 66666666 depois

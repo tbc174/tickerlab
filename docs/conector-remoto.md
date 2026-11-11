@@ -113,11 +113,12 @@ caso, ou se cria a ferramenta ou se escreve o motivo em `SEM_FERRAMENTA`, como j
 | `empresa` | `ficha_da_empresa` |
 | `comparaveis` | `comparaveis` |
 | `demonstracoes` | `demonstracoes` |
+| `eventos` | `eventos` (tipos e `cursor`) |
 | `fundo` | `fundo` |
 | `setor` | `setores` e `setor` |
 | `catalogo` e `consumo` | `o_que_posso_ver` |
 
-Eventos e vínculos da empresa entram quando a API os servir (linha 736), pelo mesmo caminho: rota na API,
+Os vínculos da empresa entram quando a API os servir (linha 736), pelo mesmo caminho: rota na API,
 comando na CLI e ferramenta aqui, com a paridade cobrando.
 
 ## Em produção
