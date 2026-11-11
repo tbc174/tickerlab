@@ -13,6 +13,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import stat
 from datetime import date
 from typing import ClassVar
@@ -2007,3 +2008,19 @@ def test_dossie_em_planilha_tem_aba_das_fontes(rodar, chave, tmp_path):
     assert resultado.exit_code == 0, resultado.output
     abas = _abrir_xlsx(arquivo)
     assert any("fonte" in aba.lower() for aba in abas)
+
+
+def test_dossie_exportado_so_chama_rotas_de_pj_e_nao_leva_cpf(rodar, chave, tmp_path):
+    responder, vistos = _secoes_do_dossie({"/links": 404})
+    arquivo = tmp_path / "dossie.xlsx"
+    resultado = rodar(
+        "dossie", "11111111000191", "--planilha", str(arquivo),
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos == ["/profile", "/events", "/links", "/comparables"]
+    celulas = " ".join(
+        str(c) for linhas in _abrir_xlsx(arquivo).values() for l in linhas for c in l
+    )
+    assert not re.search(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", celulas)
+    assert "não achado:" in celulas

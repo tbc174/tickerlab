@@ -304,7 +304,12 @@ class ApiDoTickerlab:
                     Saida.SEM_DADO,
                 ):
                     raise
-                lacunas.append({"section": nome, "reason": erro.format_message()})
+                lacunas.append(
+                    {
+                        "section": nome,
+                        "reason": "não achado: " + erro.format_message(),
+                    }
+                )
                 continue
             fontes += resposta.pop("sources", None) or []
             limites += resposta.pop("limits", None) or []
