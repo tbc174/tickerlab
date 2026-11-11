@@ -316,6 +316,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     assert set(_openapi()["paths"]) - usadas == {
         "/v1/busca-por-cnpj/pdf",
         "/v1/analista/ficha/planilha",  # a planilha herda o contrato da ficha
+        "/v1/analista/ficha/eventos",  # os eventos herdam o acesso da ficha e a tela os pede com o CNPJ dela
         "/v1/analista/empresas/planilha",  # a planilha herda o contrato da busca
         "/v1/analista/comparar/planilha",  # a planilha herda o contrato da comparação
         "/v1/relatorio-setor/pdf",
