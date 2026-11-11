@@ -3,6 +3,7 @@
 import { pregaoDoDia } from "../conteudo";
 import { TopoDaPagina } from "../site/Fundo";
 import { DataDoPregao } from "../site/CorpoDoPregao";
+import { GUIAS, dadosDoGuia } from "./Guias";
 import { DADOS as DADOS_DO_PREGAO } from "./PregaoDoDia";
 import { DADOS as DADOS_DO_RAIO_X, MOMENTO_DO_RAIO_X, RAIO_X } from "./RaioXDoChoque";
 import { DADOS as DADOS_DA_EMPRESA } from "./RelatorioExemplo";
@@ -81,6 +82,24 @@ export function Relatorios() {
               <p>{r.descricao}</p>
             </article>
           ))}
+        </div>
+      </section>
+      <section className="faixa secao" aria-labelledby="titulo-guias">
+        <h2 id="titulo-guias" className="olho">
+          Guias de busca
+        </h2>
+        <div className="grade dois">
+          {GUIAS.map((guia) => {
+            const dados = dadosDoGuia(guia);
+            return (
+              <article className="cartao cartao-de-relatorio" key={dados.caminho}>
+                <h3>
+                  <a href={dados.caminho}>{dados.titulo}</a>
+                </h3>
+                <p>{dados.descricao}</p>
+              </article>
+            );
+          })}
         </div>
       </section>
     </>
