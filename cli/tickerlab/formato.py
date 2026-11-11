@@ -205,6 +205,37 @@ def prospeccao(corpo: Mapping) -> str:
     )
 
 
+def _ponta(ponta: object) -> str:
+    """Uma ponta do vínculo em uma célula: a razão social que valia no dia e a raiz do CNPJ."""
+    if not isinstance(ponta, Mapping):
+        return VAZIO
+    nome = ponta.get("legal_name")
+    nome = nome.get("value") if isinstance(nome, Mapping) else None
+    raiz = f"({ponta.get('cnpj_root') or VAZIO})"
+    return f"{nome} {raiz}" if nome else raiz
+
+
+def vinculos_em_linhas(corpo: Mapping) -> dict:
+    """A resposta dos vínculos com as pontas `from` e `to` achatadas em `de` e `para` (tabela e planilha);
+    o `--json` não passa por aqui. A fonte do nome (Receita) continua em `sources`."""
+    linhas = []
+    for vinculo in corpo.get("links") or []:
+        if not isinstance(vinculo, Mapping):
+            continue
+        resto = {k: v for k, v in vinculo.items() if k not in ("from", "to")}
+        origem, destino = vinculo.get("from"), vinculo.get("to")
+        linhas.append(
+            {
+                "hops": resto.pop("hops", None),
+                "kind": resto.pop("kind", None),
+                "de": _ponta(origem),
+                "para": _ponta(destino),
+                **resto,
+            }
+        )
+    return {**corpo, "links": linhas}
+
+
 def eventos(corpo: Mapping) -> str:
     """Os eventos da empresa: quantos vieram, se há mais, e cada um com a fonte e a data."""
     return _paginada(

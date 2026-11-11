@@ -25,8 +25,20 @@
       "rotulo": "Início"
     },
     {
+      "chave": "empresas",
+      "frase": "Estude uma empresa pelo CNPJ: encontre, abra a ficha, compare e veja o setor.",
+      "icone": "empresas",
+      "paginas": [
+        "encontrar_empresas",
+        "ficha_da_empresa",
+        "comparar_empresas",
+        "relatorio_do_setor"
+      ],
+      "rotulo": "Empresas"
+    },
+    {
       "chave": "ativo",
-      "frase": "Entenda um ativo: preço, risco, a empresa e quem tem a ação.",
+      "frase": "Entenda um ativo da bolsa: preço, risco, a empresa e quem tem a ação.",
       "icone": "ativo",
       "paginas": [
         "visao_geral",
@@ -41,12 +53,12 @@
         "comparar",
         "relatorio"
       ],
-      "rotulo": "Ativo"
+      "rotulo": "Companhias abertas"
     },
     {
-      "chave": "estrategias",
-      "frase": "Teste regras de compra e venda no passado, com custos.",
-      "icone": "estrategias",
+      "chave": "mais",
+      "frase": "Regras testadas no passado, com custos, e o que você acompanha: teses, carteira, alertas, juros e inflação.",
+      "icone": "mais",
       "paginas": [
         "backtest",
         "ranking",
@@ -54,15 +66,7 @@
         "experimentos",
         "regimes",
         "aprendizado",
-        "pares"
-      ],
-      "rotulo": "Estratégias"
-    },
-    {
-      "chave": "acompanhar",
-      "frase": "O que você acompanha: acontecimentos, teses, carteira, alertas, juros e inflação.",
-      "icone": "acompanhar",
-      "paginas": [
+        "pares",
         "research",
         "diario_de_teses",
         "carteira_b3",
@@ -70,10 +74,6 @@
         "precos_de_referencia",
         "simulador_de_trava",
         "busca_por_cnpj",
-        "ficha_da_empresa",
-        "encontrar_empresas",
-        "comparar_empresas",
-        "relatorio_do_setor",
         "newsletter",
         "carteira_research",
         "alertas",
@@ -82,7 +82,7 @@
         "mapa_do_cafe",
         "painel_do_cafe"
       ],
-      "rotulo": "Acompanhar"
+      "rotulo": "Mais"
     },
     {
       "chave": "conta",

@@ -15,12 +15,18 @@ afterEach(() => {
 });
 
 describe("cabeçalho da tela", () => {
-  it("a tela de Risco abre com o olho da área (Ativo), o título como h1 e a descrição da página", async () => {
+  it("a tela de Risco abre com o olho da área, o título como h1 e a descrição da página", async () => {
     abrirApp("/risco", { rotas: () => new Promise(() => {}) as never });
     const cabecalho = (await screen.findByRole("heading", { level: 1, name: "Risco" })).closest("header");
     expect(cabecalho?.classList.contains("cabecalho-da-tela")).toBe(true);
-    expect(within(cabecalho as HTMLElement).getByText("Ativo").classList.contains("olho")).toBe(true);
+    expect(within(cabecalho as HTMLElement).getByText("Companhias abertas").classList.contains("olho")).toBe(true);
     expect(within(cabecalho as HTMLElement).getByText(RISCO.descricao)).toBeTruthy();
+  });
+
+  it("tela da área Mais fica sem olho: 'Mais' não diz nada sobre a tela", async () => {
+    abrirApp("/backtest", { rotas: () => new Promise(() => {}) as never });
+    const cabecalho = (await screen.findByRole("heading", { level: 1, name: "Backtest" })).closest("header");
+    expect(cabecalho?.querySelector(".olho")).toBeNull();
   });
 
   it("as ações ficam à direita do título", () => {
