@@ -155,7 +155,7 @@ Se a produção não estiver liberada no dia, o mesmo roteiro roda contra a API 
 2. **Banco e chave:** `$env:TICKERLAB_DATABASE_URL = "sqlite:///<pasta>/ensaio.db"` e
    `python -m scripts.ensaio_local --saida-da-chave <pasta>\chave.txt` (migrações, administrador de ensaio,
    organização, direitos dos cinco conjuntos e a chave, que só vai para o arquivo).
-3. **Subir a API** com `TICKERLAB_AMBIENTE=ensaio`, `TICKERLAB_API_EXTERNA=1`, `TICKERLAB_ACERVO=<pasta>cervo`,
+3. **Subir a API** com `TICKERLAB_AMBIENTE=ensaio`, `TICKERLAB_API_EXTERNA=1`, `TICKERLAB_ACERVO=<pasta>\acervo`,
    `TICKERLAB_DOSSIES=<pasta>\dossies` e `uvicorn src.api:app --port 8765`. Com `TICKERLAB_AMBIENTE=ensaio` (valor exato),
    `base.prontidao.registro_vigente()` dá a toda tabela do dicionário uma prova de ensaio (do dia anterior), sem tirar
    o registro de verdade; com qualquer outro valor, inclusive `producao` ou nenhum, nada muda e o portão responde
