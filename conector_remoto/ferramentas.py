@@ -40,6 +40,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "eventos": frozenset({"events"}),
     "fundo": frozenset({"funds"}),
     "vinculos": frozenset({"links"}),
+    "compradores_do_setor": frozenset({"buyers"}),
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
@@ -63,6 +64,9 @@ TIPOS_DE_VINCULO = {
     "auditor": "audits",
 }
 PROFUNDIDADE_MAXIMA = 3  # a da API (`src/api_externa/conjuntos/vinculos.py`)
+# os da API (`src/api_externa/conjuntos/compradores.py`)
+ANOS_MAXIMO_DOS_COMPRADORES = 10
+LIMITE_MAXIMO_DOS_COMPRADORES = 50
 
 MENSAGEM_DE_PESSOA = (
     "Resposta recusada: ela trazia um campo de pessoa física, que este conector não entrega. "
@@ -342,7 +346,7 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             {"known_at": _dia(como_era_em), "period_end": _dia(fim_do_periodo)},
         )
 
-    _registrar_eventos_vinculos_e_fundo(servidor, pedidos)
+    _registrar_eventos_rede_e_fundo(servidor, pedidos)
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)
     async def setores() -> str:
@@ -385,8 +389,8 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         return pedidos.entregar(juntos, "o_que_posso_ver")
 
 
-def _registrar_eventos_vinculos_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> None:
-    """As ferramentas que traduzem listas de nomes em português para a API (à parte, para a
+def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """Eventos, vínculos, compradores do setor e fundo (à parte, para a
     `registrar_ferramentas` não crescer demais); chamada no meio dela, para a ordem da lista ficar."""
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)
@@ -457,6 +461,54 @@ def _registrar_eventos_vinculos_e_fundo(servidor: MCPServer, pedidos: Pedidos) -
             "known_at": _dia(como_era_em),
             "depth": str(profundidade),  # como a CLI
             "types": [TIPOS_DE_VINCULO[tipo] for tipo in tipos or ()],
+        })  # fmt: skip
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def compradores_do_setor(
+        cnae: Annotated[
+            str,
+            Field(
+                min_length=5,
+                max_length=12,
+                description="CNAE do setor: a classe (5 dígitos) ou a subclasse (7 dígitos); pontuação vale.",
+            ),
+        ],
+        uf: Annotated[
+            str | None,
+            Field(
+                pattern=r"^[A-Za-z]{2}$",
+                description="Sigla da UF, ex.: 'SP'. Vazio = o país todo.",
+            ),
+        ] = None,
+        anos: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=ANOS_MAXIMO_DOS_COMPRADORES,
+                description="Quantos anos para trás olhar (1 a 10). Vazio = 3.",
+            ),
+        ] = None,
+        limite: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DOS_COMPRADORES,
+                description="Quantos compradores trazer (1 a 50). Vazio = 20.",
+            ),
+        ] = None,
+        como_era_em: ComoEraEm = None,
+    ) -> str:
+        """Quem já se mexeu num setor: as empresas que entraram como sócias de empresas ativas do CNAE (na
+        UF, se dada), os fundos (FIP) sócios delas e as companhias abertas com controlada no setor, nos
+        últimos `anos`, como era no dia. Cada comprador traz os sinais e até 5 exemplos por sinal, com fonte
+        e data. Só pessoa jurídica. A ordem é pelo número de sinais: é movimento passado, não intenção de
+        compra (leia os `limits`)."""
+        return await pedidos.pedir("compradores_do_setor", "/buyers", {
+            "cnae": cnae,
+            "state": uf,
+            "years": None if anos is None else str(anos),
+            "limit": None if limite is None else str(limite),
+            "known_at": _dia(como_era_em),
         })  # fmt: skip
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)

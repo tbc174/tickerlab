@@ -22,6 +22,7 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "comparaveis": ("comparaveis",),
     "demonstracoes": ("demonstracoes",),
     "eventos": ("eventos",),
+    "vinculos": ("vinculos",),
     "fundo": ("fundo",),
     "setor": ("setores", "setor"),  # sem chave, a lista; com chave, o setor
     "catalogo": ("o_que_posso_ver",),
@@ -32,14 +33,12 @@ SEM_FERRAMENTA: dict[str, str] = {
     "login": "guarda a chave no PC; no conector a chave entra pela página /autorizar do OAuth",
     "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
-    "eventos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pelo PR 1014 da 773)",
-    "vinculos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pela 773)",
 }
 
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
 SO_NO_CONECTOR: dict[str, str] = {
-    "vinculos": "o comando `vinculos` entra na CLI pela linha 773; quando entrar, passa a "
-    "FERRAMENTAS_DO_COMANDO e ganha um caso em CASOS",
+    "compradores_do_setor": "a rota /buyers entrou pelo PR 1032 (linha 810) sem comando na CLI; quando "
+    "a CLI o ganhar, passa a FERRAMENTAS_DO_COMANDO e ganha um caso em CASOS",
 }
 
 ENDERECO = "https://api.exemplo.test"
@@ -79,6 +78,12 @@ CASOS = [
         "eventos",
         {"cnpj": CNPJ, "como_era_em": UM_DIA, "tipos": ["auditor"]},
         id="eventos",
+    ),
+    pytest.param(
+        ["vinculos", CNPJ, "--como-era", UM_DIA, "--profundidade", "2", "--tipo", "coligada"],
+        "vinculos",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA, "profundidade": 2, "tipos": ["coligada"]},
+        id="vinculos",
     ),
     pytest.param(
         ["fundo", CNPJ, "--como-era", UM_DIA, "--retorno-suposto", "0.1"],
