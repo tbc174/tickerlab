@@ -92,7 +92,7 @@ def _por_que_nao(linha: sqlite3.Row, fato: dict[str, object], corte: str) -> str
     if not fonte_liberada(achado[0]):
         return MOTIVO_SEM_REVENDA
     texto = f"{fato.get('afirmacao', '')}\n{fato['trecho']}"
-    if achar_cpf(texto):
+    if achar_cpf(f"{texto}\n{url}\n{fato.get('posicao', '')}"):
         raise CpfNoTrechoError(
             "um trecho confirmado tem cara de CPF: revise a memória do bot antes de exportar"
         )

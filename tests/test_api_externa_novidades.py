@@ -43,7 +43,9 @@ def _publicar(tmp_path, monkeypatch, itens, gerado_em="2026-11-11T09:00:00+00:00
 @pytest.fixture
 def chave(banco):
     ator = aj.admin(banco)
-    return aj.chave(banco, ator, aj.organizacao(banco, ator))
+    org = aj.organizacao(banco, ator)
+    aj.contrato(banco, ator, org, conjunto=novidades.CONJUNTO)
+    return aj.chave(banco, ator, org)
 
 
 @pytest.fixture
@@ -163,3 +165,19 @@ def test_o_limite_de_linhas_do_plano_corta(cliente, chave, tmp_path, monkeypatch
 
 def test_sem_chave_e_401(cliente):
     assert cliente.get(ROTA).status_code in (400, 401)
+
+
+def test_sem_contrato_do_conjunto_a_rota_nega(banco, cliente, tmp_path, monkeypatch):
+    _publicar(tmp_path, monkeypatch, [_item()])
+    ator = aj.admin(banco)
+    org = aj.organizacao(banco, ator)
+    aj.contrato(banco, ator, org, conjunto="companies")  # outro conjunto não vale
+    sem_contrato = aj.chave(banco, ator, org)
+    resposta = _get(cliente, sem_contrato)
+    assert resposta.status_code == 404
+    assert "trecho" not in resposta.text and "excerpt" not in resposta.text
+
+
+def test_catalogo_lista_research_so_com_contrato(banco, cliente, chave):
+    corpo = cliente.get("/data/v1/catalog", headers=aj.bearer(chave.valor)).json()
+    assert "research" in {c["dataset"] for c in corpo["datasets"]}

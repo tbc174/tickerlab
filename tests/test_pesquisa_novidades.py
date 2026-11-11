@@ -104,6 +104,14 @@ def test_fora_da_janela_nao_sai(tmp_path):
         "Sócio 52998224725 entrou na empresa em 2025",
         "Sócio 529 982 247 25 entrou na empresa em 2025",
         "Sócio 529.982.24725 entrou na empresa em 2025",
+        "inscrito sob o nº 52998224725.",
+        "ID-52998224725 entrou",
+        "CPF 529.982.247–25 entrou",
+        "Sócio 529 982 247 25 entrou",
+        "Sócio 529.982.247/25 entrou",
+        "Sócio 529 . 982 . 247 - 25 entrou",
+        "Sócio ５２９．９８２．２４７－２５ entrou",
+        "JOSE DA SILVA | ***.982.247-** | R$ 10.000",
     ],
 )
 def test_cpf_no_trecho_derruba_o_exportador(tmp_path, trecho):
@@ -175,3 +183,19 @@ def test_script_para_e_nao_grava_se_achar_cpf(tmp_path, capsys):
     assert codigo == 2
     assert not destino.exists()
     assert "PAROU" in capsys.readouterr().err
+
+
+def test_pessoa_fisica_e_url_com_cpf_nao_saem(tmp_path):
+    memoria = _memoria(tmp_path)
+    _visto(memoria, url="https://dados.cvm.gov.br/x.csv?cpf=" + "52998224725")
+    _fato(memoria)
+    with pytest.raises(novidades.CpfNoTrechoError):
+        novidades.exportar(memoria, agora=datetime.now(UTC))
+
+
+def test_endereco_com_barra_invertida_ou_sem_http_nao_e_orgao():
+    from src.novidades_da_pesquisa import orgao_da_url
+
+    assert orgao_da_url("https://dados.cvm.gov.br/x") is not None
+    assert orgao_da_url(r"https://evil.com\@dados.cvm.gov.br/x") is None
+    assert orgao_da_url("javascript://dados.cvm.gov.br/x") is None

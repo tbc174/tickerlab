@@ -93,7 +93,7 @@ def _item_publicavel(bruto: object) -> dict[str, str] | None:
         return None
     if not (HASH.fullmatch(sha) and DATA.fullmatch(data) and trecho):
         return None
-    if not texto_publicavel(afirmacao, trecho):
+    if not texto_publicavel(afirmacao, trecho, url, posicao):
         return None
     return {
         "orgao": achado[1],

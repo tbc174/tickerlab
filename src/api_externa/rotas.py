@@ -415,6 +415,22 @@ def compradores_do_setor(
     )
 
 
+def _novidades_do_contrato(
+    contexto: ContextoDaChave, conexao: sa.Connection, dias: int
+) -> novidades.NovidadesServidas | None:
+    """As novidades, só se o contrato da organização tem o conjunto `research` (D8); senão 404 e negado."""
+    hoje = acesso.agora().date()
+    if not acesso.contrato_permite(
+        conexao,
+        contexto.organizacao_id,
+        conjunto=novidades.CONJUNTO,
+        finalidade=FINALIDADE,
+        dia=hoje,
+    ):
+        return None
+    return novidades.novidades(dias, acesso.linhas_por_resposta(contexto), hoje)
+
+
 @router.get("/research/news")
 def novidades_da_pesquisa(contexto: Chave, days: int | None = None) -> object:
     """As fontes que a pesquisa provou nos últimos `days` dias (padrão 7, até 30): cada uma com o órgão
@@ -427,9 +443,7 @@ def novidades_da_pesquisa(contexto: Chave, days: int | None = None) -> object:
     return _pedido_contado(
         contexto,
         novidades.CONJUNTO,
-        lambda _conexao: novidades.novidades(
-            dias, acesso.linhas_por_resposta(contexto), acesso.agora().date()
-        ),
+        lambda conexao: _novidades_do_contrato(contexto, conexao, dias),
     )
 
 

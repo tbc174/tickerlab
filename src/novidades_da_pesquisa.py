@@ -6,6 +6,7 @@ física. Sem Streamlit e sem acesso ao banco: tipos simples.
 """
 
 import re
+import unicodedata
 from urllib.parse import urlsplit
 
 TRECHO_MAXIMO = 300  # citação curta, não a página
@@ -32,12 +33,13 @@ ORGAOS: dict[str, tuple[str, str]] = {
 }
 
 CPF_FORMATADO = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)")
-ONZE_DIGITOS = re.compile(r"(?<![\d.\-/])\d{11}(?![\d.\-/])")
-SEPARADOR_ENTRE_DIGITOS = re.compile(
-    r"(?<=\d)[ .\-](?=\d)"
-)  # "529 982 247 25", "529.982.24725"
+ONZE_DIGITOS = re.compile(r"(?<!\d)\d{11}(?!\d)")
+# qualquer separador comum entre dígitos (espaço, ponto, traços Unicode, barra, vírgula, sublinhado)
+SEPARADOR_ENTRE_DIGITOS = re.compile(r"(?<=\d)[\s.\-‐-―−/,_]{1,3}(?=\d)")
+CPF_MASCARADO = re.compile(r"[*xX•#]{3}\D{0,2}\d{3}\D{0,2}\d{3}\D{0,2}[*xX•#]{2}")
 MARCAS_DE_PESSOA = re.compile(
-    r"\b(?:cpf|rg|sr\.|sra\.|dr\.|dra\.|nascid[oa]|filiação)(?!\w)", re.IGNORECASE
+    r"\b(?:cpf|rg|sr\.|sra\.|dr\.|dra\.|nascid[oa]|filiação|pessoa\s+f[ií]sica)(?!\w)",
+    re.IGNORECASE,
 )
 
 
@@ -52,12 +54,14 @@ def _cpf_valido(onze: str) -> bool:
 
 
 def achar_cpf(texto: str) -> bool:
-    """Formato de CPF, ou 11 dígitos (também com espaço ou ponto no meio) com os dígitos verificadores certos."""
-    if CPF_FORMATADO.search(texto):
+    """CPF formatado, mascarado ou com 11 dígitos (separados por qualquer pontuação) com os verificadores certos.
+
+    Texto em NFKC (largura total, espaço não separável). Na dúvida, para: falso alarme é aceitável.
+    """
+    texto = unicodedata.normalize("NFKC", texto)
+    if CPF_FORMATADO.search(texto) or CPF_MASCARADO.search(texto):
         return True
-    colado = SEPARADOR_ENTRE_DIGITOS.sub(
-        "", texto
-    )  # na dúvida, para (falso alarme é aceitável)
+    colado = SEPARADOR_ENTRE_DIGITOS.sub("", texto)
     return any(
         _cpf_valido(achado)
         for variante in (texto, colado)
@@ -67,7 +71,10 @@ def achar_cpf(texto: str) -> bool:
 
 def orgao_da_url(url: str) -> tuple[str, str] | None:
     """(fonte, órgão) do endereço, se o domínio é de um órgão da tabela; senão None."""
-    return ORGAOS.get((urlsplit(url).hostname or "").lower())
+    partes = urlsplit(url)
+    if partes.scheme not in ("http", "https") or "\\" in url:
+        return None
+    return ORGAOS.get((partes.hostname or "").lower())
 
 
 def fonte_liberada(fonte: str) -> bool:
@@ -83,11 +90,11 @@ def fonte_liberada(fonte: str) -> bool:
     ).startswith("vendável")
 
 
-def texto_publicavel(afirmacao: str, trecho: str) -> bool:
-    """Citação curta e sem CPF nem marca de pessoa física."""
+def texto_publicavel(afirmacao: str, trecho: str, *outros: str) -> bool:
+    """Citação curta e sem CPF nem marca de pessoa física; `outros` (endereço, posição) sem CPF."""
     texto = f"{afirmacao}\n{trecho}"
     return (
         0 < len(trecho) <= TRECHO_MAXIMO
-        and not achar_cpf(texto)
+        and not achar_cpf("\n".join((texto, *outros)))
         and not MARCAS_DE_PESSOA.search(texto)
     )
