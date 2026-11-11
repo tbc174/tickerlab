@@ -2,7 +2,7 @@
 
 Três rotas em `/v1/base/tabelas`, com o mesmo limite por IP e a mesma origem permitida da busca
 pública (`base_publica`): a lista das tabelas consultáveis, uma página de uma tabela em JSON e a
-tabela em CSV, página a página. Só sai o que `base.dossie.pode_consultar` deixa (tabela que pode ser
+tabela em CSV, página a página. Só sai o que `base.dossie.pode_consultar_aberto` deixa (tabela que pode ser
 mostrada e que a porta serve por Parquet do acervo); tabela de pessoa, barrada, fora da porta ou
 inexistente responde o mesmo 404, sem dizer o motivo. As colunas de pessoa
 (`base.dossie.COLUNAS_DE_PESSOA`) nunca saem, e a view da porta já esconde as linhas de pessoa
@@ -115,7 +115,7 @@ def limpar_cache() -> None:
 # --- o que pode sair ------------------------------------------------------------------------------
 def _tabela_consultavel(request: Request, nome: str) -> Tabela:
     """A tabela pedida; o mesmo 404 para a que não existe, a de pessoa, a barrada e a fora da porta."""
-    if not regras.pode_consultar(nome):
+    if not regras.pode_consultar_aberto(nome):
         raise recusar(request, 404, NAO_ENCONTRADA)
     return TABELAS[nome]
 
@@ -174,13 +174,14 @@ def _entrada_da_lista(linha: vitrine.TabelaDoSite) -> dict[str, object]:
 
 @lru_cache(maxsize=1)
 def _lista() -> tuple[dict[str, object], ...]:
-    """Uma entrada por tabela consultável, na ordem do catálogo (a mesma da página Dados)."""
+    """Uma entrada por tabela consultável, na ordem do catálogo (a mesma da página Dados). A prontidão da
+    tabela do CNPJ muda com o tempo (a prova vence): ela se confere a cada pedido, em `listar`, fora do cache."""
     catalogo = vitrine.catalogo_publico(contrato.catalogo())
     frases = {nome: vitrine.primeira_frase(t.descricao) for nome, t in TABELAS.items()}
     return tuple(
         _entrada_da_lista(linha)
         for linha in vitrine.tabelas_do_catalogo(catalogo, frases)
-        if linha.consultavel
+        if regras.pode_consultar(linha.tabela)
     )
 
 
@@ -345,7 +346,11 @@ def listar(request: Request) -> JSONResponse:
     """As tabelas que podem ser consultadas e exportadas, com colunas, chaves, fonte e licença."""
     return JSONResponse(
         {
-            "tabelas": list(_lista()),
+            "tabelas": [
+                entrada
+                for entrada in _lista()
+                if regras.pode_consultar_aberto(str(entrada["tabela"]))
+            ],
             "limite_maximo": LIMITE_MAXIMO,
             "teto_do_csv": TETO_DO_CSV,
         },
