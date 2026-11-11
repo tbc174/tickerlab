@@ -57,6 +57,7 @@ Assim, a chave não vai em texto aberto pela rede.
 | `tickerlab empresa <cnpj> [--como-era AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}/profile` | sim |
 | `tickerlab empresa <cnpj> --so-cadastro` | `GET /data/v1/companies/{cnpj}` | sim |
 | `tickerlab comparaveis <cnpj> [--como-era ...]` | `GET /data/v1/companies/{cnpj}/comparables` (rota da linha 736) | sim |
+| `tickerlab compradores --cnae <5 ou 7 dígitos> [--uf SP] [--anos 3] [--limite 20]` | `GET /data/v1/buyers` (rota da linha 810) | sim, um pedido |
 | `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo ...]` | `GET /data/v1/companies/{cnpj}/links` (rota da linha 736) | sim |
 | `tickerlab eventos <cnpj> [--tipo ...] [--todas]` | `GET /data/v1/companies/{cnpj}/events` (rota da linha 736) | sim, um pedido por página |
 | `tickerlab demonstracoes <cnpj> [--como-era ...] [--periodo AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}/financials` | sim |
@@ -75,6 +76,9 @@ Assim, a chave não vai em texto aberto pela rede.
   dia), cada uma com os números do último DFP (`revenue`, `ebitda`, `net_income`, `net_assets`, `net_debt` e as
   razões), a mediana de cada razão entre os pares (`peer_medians`) e os `limits`. Com `--como-era`, os pares de
   então: a empresa que mudou de setor no FCA muda de pares. Pede o conjunto `comparables` no contrato.
+- `tickerlab compradores` lista candidatos a comprador do setor: quem entrou como sócio, fundo sócio ou controla
+  empresa do setor nos últimos `--anos` (1 a 10), só pessoa jurídica, com os sinais e as evidências (empresa do
+  setor, UF e data). Movimento passado não é intenção de compra: leia os `limits`.
 - `tickerlab vinculos` traz os vínculos da empresa como eram no dia, de 1 a 3 saltos (`--profundidade`): de quem ela
   era controlada, coligada ou participada e quem ela controlava (pelo FRE, com a participação no capital) e a firma
   que a auditava (pelo FCA). `--tipo controlada|coligada|participada|auditor` (repete) filtra. Cada ponta sai com o
@@ -108,7 +112,7 @@ Assim, a chave não vai em texto aberto pela rede.
   termina com as fontes (licença e frase de atribuição) e com o aviso de que nada é recomendação de investimento.
   Os nomes dos campos saem como a API os dá, para a pessoa e o agente falarem dos mesmos nomes.
 - Uma resposta cortada no limite do plano (`truncated`) ganha um aviso na tabela.
-- Com `--planilha ARQUIVO` (em `empresa`, `comparaveis`, `eventos`, `vinculos`, `demonstracoes`, `fundo`, `setor` e `prospectar`), grava a resposta para o Excel, em
+- Com `--planilha ARQUIVO` (em `empresa`, `comparaveis`, `eventos`, `vinculos`, `compradores`, `demonstracoes`, `fundo`, `setor` e `prospectar`), grava a resposta para o Excel, em
   vez de imprimir a tabela (pedido da Diretoria de 10/11: a equipe da casa de M&A leva os dados para o Excel).
   `.xlsx` dá uma aba por tabela da resposta, a aba `campos` (os campos soltos) e a aba `fontes` (atribuição,
   licença e o aviso); `.csv` dá um arquivo por tabela (`ARQUIVO-<tabela>.csv` quando há mais de uma), com `;`,
@@ -169,5 +173,5 @@ Para rodar: `.venv\Scripts\python -m pytest -q tests/test_cli_tickerlab.py`. O `
 `pyrightconfig.json` põem `cli/` no caminho, sem instalar o pacote.
 
 Os comandos de M&A da linha 773 entram um por PR, quando a rota de cada um existe na API: `setor`, o perfil do
-`empresa`, o `prospectar`, o `comparaveis`, o `eventos` e o `vinculos` já estão aqui; `exportar` e `precedentes`, as linhas 782 e 783. O
+`empresa`, o `prospectar`, o `comparaveis`, o `eventos`, o `vinculos` e o `compradores` já estão aqui; `exportar` é o `--planilha` de cada comando (sem rota nova) e `precedentes` (783) segue travado pela licença. O
 servidor MCP é a linha 570.
