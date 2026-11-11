@@ -1281,6 +1281,13 @@
             "title": "Limites",
             "type": "array"
           },
+          "ordens": {
+            "items": {
+              "$ref": "#/components/schemas/OrdemDaBuscaV1"
+            },
+            "title": "Ordens",
+            "type": "array"
+          },
           "proximo_cursor": {
             "anyOf": [
               {
@@ -1316,7 +1323,8 @@
           "fontes",
           "limites",
           "setores",
-          "ufs"
+          "ufs",
+          "ordens"
         ],
         "title": "BuscaDeEmpresasV1",
         "type": "object"
@@ -2300,6 +2308,16 @@
       "EmpresaDaBuscaV1": {
         "description": "Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão\nnão serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita.",
         "properties": {
+          "capital_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "cnae_descricao": {
             "anyOf": [
               {
@@ -2365,6 +2383,16 @@
               }
             ],
             "title": "Municipio Nome"
+          },
+          "n_estabelecimentos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "natureza_juridica": {
             "anyOf": [
@@ -4640,6 +4668,25 @@
         "title": "OpcaoDeRegiaoV1",
         "type": "object"
       },
+      "OrdemDaBuscaV1": {
+        "description": "Uma ordem que a tela oferece além da do CNPJ (o código vai de volta no pedido).",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "OrdemDaBuscaV1",
+        "type": "object"
+      },
       "PainelDeNumerosV1": {
         "description": "Os números da visão geral (frações: 0.12 = 12%).",
         "properties": {
@@ -4965,6 +5012,32 @@
       },
       "PedidoDaBuscaV1": {
         "properties": {
+          "capital_maximo": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Maximo"
+          },
+          "capital_minimo": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Minimo"
+          },
           "cursor": {
             "anyOf": [
               {
@@ -4976,6 +5049,19 @@
               }
             ],
             "title": "Cursor"
+          },
+          "estabelecimentos_minimo": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estabelecimentos Minimo"
           },
           "idade_minima": {
             "anyOf": [
@@ -4989,6 +5075,18 @@
               }
             ],
             "title": "Idade Minima"
+          },
+          "ordem": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordem"
           },
           "setores": {
             "items": {
@@ -7096,7 +7194,7 @@
     },
     "/v1/analista/empresas": {
       "post": {
-        "description": "Uma página de empresas (a matriz ativa) por setor, UF e idade mínima, cada campo com a fonte e o dia\nem que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o\nportão ainda não libera sai `nao_liberada`.",
+        "description": "Uma página de empresas (a matriz ativa) pelos filtros da tela, cada campo com a fonte e o dia\nem que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o\nportão ainda não libera sai `nao_liberada`.",
         "operationId": "encontrar_empresas_v1_analista_empresas_post",
         "requestBody": {
           "content": {

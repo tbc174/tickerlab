@@ -3,8 +3,8 @@
 `POST /v1/analista/ficha` devolve a ficha do CNPJ pedido (cadastro na Receita e, da companhia aberta, as
 entregas à CVM), e `POST /v1/analista/ficha/planilha` a mesma ficha em Excel. As duas pedem a conta logada,
 os termos aceitos e o plano da página `ficha_da_empresa` (`src/paginas.py`, recurso Dossiê da base).
-`POST /v1/analista/empresas` busca empresas por setor, UF e idade mínima (página `encontrar_empresas`, o
-mesmo recurso), e `POST /v1/analista/empresas/planilha` leva a busca para o Excel.
+`POST /v1/analista/empresas` busca empresas por setor, UF, idade mínima, capital social e estabelecimentos
+ativos, com a ordem por um deles (página `encontrar_empresas`, o mesmo recurso), e `POST /v1/analista/empresas/planilha` leva a busca para o Excel.
 `POST /v1/analista/comparar` põe de dois a cinco CNPJs lado a lado (página `comparar_empresas`, o mesmo
 recurso), e `POST /v1/analista/comparar/planilha` leva a comparação para o Excel.
 
@@ -43,8 +43,10 @@ NOME_DA_PLANILHA = (
 )
 PAGINA_DA_BUSCA = "encontrar_empresas"
 NOME_DA_PLANILHA_DA_BUSCA = "empresas-tickerlab.xlsx"
-TAMANHO_MAXIMO_DO_CURSOR = (
-    256  # o cursor ordenado (coluna, valor e CNPJ em JSON) passa de 70 caracteres
+# o cursor ordenado (coluna, valor e CNPJ em JSON) passa de 70 caracteres
+TAMANHO_MAXIMO_DO_CURSOR = 256
+TAMANHO_MAXIMO_DA_ORDEM = (
+    32  # a ordem fora da lista o leitor recusa (422) sem repetir o texto
 )
 BUSCA_INDISPONIVEL = "Busca não disponível: escolha um filtro e tente de novo."
 FILTRO_INVALIDO = "Filtro fora do que a tela oferece."
@@ -70,6 +72,12 @@ class PedidoDaBuscaV1(BaseModel):
     setores: list[str] = Field(default_factory=list, max_length=busca.SETORES_MAXIMOS)
     ufs: list[str] = Field(default_factory=list, max_length=len(busca.UFS))
     idade_minima: int | None = Field(None, ge=1, le=busca.IDADE_MAXIMA)
+    capital_minimo: float | None = Field(None, ge=0, le=busca.CAPITAL_MAXIMO)
+    capital_maximo: float | None = Field(None, ge=0, le=busca.CAPITAL_MAXIMO)
+    estabelecimentos_minimo: int | None = Field(
+        None, ge=1, le=busca.ESTABELECIMENTOS_MAXIMOS
+    )
+    ordem: str | None = Field(None, max_length=TAMANHO_MAXIMO_DA_ORDEM)
     cursor: str | None = Field(None, max_length=TAMANHO_MAXIMO_DO_CURSOR)
 
     def filtros(self) -> busca.Filtros:
@@ -77,6 +85,10 @@ class PedidoDaBuscaV1(BaseModel):
             setores=tuple(self.setores),
             ufs=tuple(self.ufs),
             idade_minima=self.idade_minima,
+            capital_minimo=self.capital_minimo,
+            capital_maximo=self.capital_maximo,
+            estabelecimentos_minimo=self.estabelecimentos_minimo,
+            ordem=self.ordem,
             cursor=self.cursor,
         )
 
@@ -178,7 +190,7 @@ def _busca_do_pedido(
 def encontrar_empresas(
     _conta: Conta, pedido: PedidoDaBuscaV1
 ) -> esquemas.BuscaDeEmpresasV1:
-    """Uma página de empresas (a matriz ativa) por setor, UF e idade mínima, cada campo com a fonte e o dia
+    """Uma página de empresas (a matriz ativa) pelos filtros da tela, cada campo com a fonte e o dia
     em que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o
     portão ainda não libera sai `nao_liberada`."""
     return esquemas.de_busca_do_analista(_busca_do_pedido(pedido, para_planilha=False))

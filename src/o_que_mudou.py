@@ -37,6 +37,15 @@ ENTREGAS: tuple[Entrega, ...] = (
         pagina="comparar_empresas",
     ),
     Entrega(
+        data=date(2026, 11, 11),
+        o_que=(
+            "Encontrar empresas: agora também por capital social e número de estabelecimentos ativos, "
+            "com a lista em ordem de um deles. É só uma aproximação do tamanho: nenhum dos dois mede "
+            "faturamento."
+        ),
+        pagina="encontrar_empresas",
+    ),
+    Entrega(
         data=date(2026, 11, 10),
         o_que=(
             "Encontrar empresas: escolha o setor, o estado e a idade mínima e veja as empresas ativas, "

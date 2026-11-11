@@ -834,6 +834,46 @@
           "tipo": "inteiro"
         },
         {
+          "descricao": "Capital social declarado na Receita, em reais, no mínimo (aproximação do tamanho).",
+          "maximo": 1000000000000000.0,
+          "minimo": 0,
+          "nome": "capital_minimo",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        },
+        {
+          "descricao": "Capital social declarado na Receita, em reais, no máximo (aproximação do tamanho).",
+          "maximo": 1000000000000000.0,
+          "minimo": 0,
+          "nome": "capital_maximo",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        },
+        {
+          "descricao": "Estabelecimentos ativos (matriz e filiais), no mínimo (aproximação do tamanho).",
+          "maximo": 1000000,
+          "minimo": 1,
+          "nome": "estabelecimentos_minimo",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "inteiro"
+        },
+        {
+          "descricao": "maior_capital, menor_capital ou mais_estabelecimentos; sem ordem, pelo CNPJ.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ordem",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
           "descricao": "A página seguinte, como a resposta anterior deu.",
           "maximo": null,
           "minimo": null,

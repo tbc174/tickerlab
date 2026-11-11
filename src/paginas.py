@@ -676,6 +676,32 @@ PAGINAS = (
                     maximo=100,
                 ),
                 Entrada(
+                    "capital_minimo",
+                    "numero",
+                    "Capital social declarado na Receita, em reais, no mínimo (aproximação do tamanho).",
+                    minimo=0,
+                    maximo=1000000000000000.0,
+                ),
+                Entrada(
+                    "capital_maximo",
+                    "numero",
+                    "Capital social declarado na Receita, em reais, no máximo (aproximação do tamanho).",
+                    minimo=0,
+                    maximo=1000000000000000.0,
+                ),
+                Entrada(
+                    "estabelecimentos_minimo",
+                    "inteiro",
+                    "Estabelecimentos ativos (matriz e filiais), no mínimo (aproximação do tamanho).",
+                    minimo=1,
+                    maximo=1000000,
+                ),
+                Entrada(
+                    "ordem",
+                    "texto",
+                    "maior_capital, menor_capital ou mais_estabelecimentos; sem ordem, pelo CNPJ.",
+                ),
+                Entrada(
                     "cursor",
                     "texto",
                     "A página seguinte, como a resposta anterior deu.",
