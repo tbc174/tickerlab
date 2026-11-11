@@ -85,6 +85,39 @@ def test_registro_recusa_endereco_de_volta_fora_da_lista(api, enderecos):
     assert resposta.json()["error"] == "invalid_redirect_uri"
 
 
+@pytest.mark.parametrize(
+    "troca",
+    [
+        {"redirect_uris": [ao.VOLTA_DO_CLAUDE] * 5},
+        {"token_endpoint_auth_method": "private_key_jwt"},
+        {"grant_types": ["authorization_code", "client_credentials"]},
+        {"scope": "x" * 201},
+    ],
+)
+def test_registro_recusa_metadados_fora_do_aceito(api, troca):
+    corpo = {
+        "redirect_uris": [ao.VOLTA_DO_CLAUDE],
+        "token_endpoint_auth_method": "none",
+        "grant_types": ["authorization_code", "refresh_token"],
+        "response_types": ["code"],
+    } | troca
+    with aj.conector(api.transporte) as cliente:
+        resposta = cliente.post("/register", json=corpo)
+    assert resposta.status_code == 400, resposta.text
+    assert "client_id" not in resposta.json()
+
+
+def test_authorize_com_state_gigante_nao_chega_a_pagina(api):
+    with aj.conector(api.transporte) as cliente:
+        registrado = ao.registrar_ok(cliente)
+        resposta = ao.autorizar(
+            cliente, registrado["client_id"], ao.pkce()[1], state="s" * 1_025
+        )
+    local = resposta.headers.get("location", "")
+    assert "/autorizar?pedido=" not in local
+    assert "error=invalid_request" in local or resposta.status_code == 400
+
+
 def test_registro_nao_grava_nada_e_sobrevive_a_outro_processo_com_a_mesma_chave(api):
     ambiente = {"TICKERLAB_MCP_CHAVE_DOS_TOKENS": nova_chave()}
     with aj.conector(api.transporte, ambiente) as cliente:
@@ -233,6 +266,19 @@ def test_pedido_mexido_ou_vazio_mostra_erro(api):
         mexido = cliente.get("/autorizar?pedido=" + quote("A" * 80))
     assert vazio.status_code == mexido.status_code == 400
     assert "venceu ou não é válido" in mexido.text
+
+
+def test_post_com_pedido_mexido_e_recusado_e_conta_no_limite(api):
+    with aj.conector(api.transporte) as cliente:
+        registrado = ao.registrar_ok(cliente)
+        endereco = ao.endereco_da_pagina(cliente, registrado["client_id"], ao.pkce()[1])
+        _, pedido, csrf = ao.abrir_pagina(cliente, endereco)
+        respostas = [
+            ao.enviar_chave(cliente, "A" * 80, csrf, ao.CHAVE_A) for _ in range(20)
+        ]
+        depois = ao.enviar_chave(cliente, pedido, csrf, ao.CHAVE_A)
+    assert {r.status_code for r in respostas} == {400}
+    assert depois.status_code == 429
 
 
 def test_post_sem_o_csrf_certo_e_recusado(api):
