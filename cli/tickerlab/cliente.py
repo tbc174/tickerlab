@@ -109,6 +109,22 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
         "Tipo de evento desconhecido. Confira com `tickerlab eventos --help`.",
         Saida.PEDIDO_INVALIDO,
     ),
+    (400, "invalid_cnae"): (
+        "A API recusou o CNAE: use 5 ou 7 dígitos (3511501 é a subclasse; 35115 é a classe).",
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_state"): (
+        "A API recusou a UF: use 2 letras, como SP.",
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_years"): (
+        "Os anos vão de 1 a 10.",
+        Saida.USO,
+    ),
+    (400, "invalid_limit"): (
+        "O limite vai de 1 a 50 compradores.",
+        Saida.USO,
+    ),
     (400, "invalid_cursor"): (
         "A API não reconheceu a página pedida. Rode o comando de novo, do começo.",
         Saida.PEDIDO_INVALIDO,
@@ -253,6 +269,22 @@ class ApiDoTickerlab:
 
     def comparaveis(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}/comparables", _datas(known_at=como_era))
+
+    def compradores(
+        self,
+        cnae: str,
+        uf: str | None,
+        anos: int,
+        limite: int,
+        como_era: str | None,
+    ) -> dict:
+        parametros = {
+            "cnae": cnae,
+            "years": str(anos),
+            "limit": str(limite),
+            **_datas(state=uf, known_at=como_era),
+        }
+        return self.pedir("/buyers", parametros)
 
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None

@@ -1079,6 +1079,7 @@ def test_instrucoes_do_agente(rodar):
         "prospectar",
         "comparaveis",
         "eventos",
+        "compradores",
         "catalogo",
         "consumo",
     ):
@@ -1699,3 +1700,103 @@ def test_eventos_recusa_da_api_em_portugues(rodar, chave, codigo, trecho):
     )
     assert resultado.exit_code == Saida.PEDIDO_INVALIDO
     assert trecho in resultado.stderr
+
+
+CORPO_DE_COMPRADORES = {
+    "buyers": [
+        {
+            "entity_id": "pj:99999999",
+            "legal_name": {
+                "value": "COMPRADORA EXEMPLO S.A.",
+                "source": "rfb-cnpj",
+                "published_at": "2026-10-01",
+                "observed_at": "2026-10-02",
+            },
+            "signals": {
+                "value": ["entrou_como_socio"],
+                "source": "rfb-cnpj",
+                "published_at": "2026-10-01",
+                "observed_at": "2026-10-02",
+            },
+        }
+    ],
+    "limits": [
+        {"source": "rfb-cnpj", "text": "Movimento passado não é intenção de compra."}
+    ],
+}
+
+
+def _pedir_compradores(rodar, chave, *argumentos):
+    vistos: list[httpx.Request] = []
+
+    def guardar(pedido: httpx.Request) -> httpx.Response:
+        vistos.append(pedido)
+        return httpx.Response(200, json=CORPO_DE_COMPRADORES)
+
+    resultado = rodar(
+        "compradores", *argumentos, http=_http_falso(guardar), **_com_chave(chave)
+    )
+    return resultado, vistos
+
+
+def test_compradores_pede_a_rota_com_os_filtros(rodar, chave):
+    resultado, vistos = _pedir_compradores(
+        rodar, chave, "--cnae", "3511-5/01", "--uf", "sp", "--anos", "5",
+        "--limite", "10", "--como-era", "2026-03-31",
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = vistos
+    assert pedido.url.path == "/data/v1/buyers"
+    assert dict(pedido.url.params) == {
+        "cnae": "3511501",
+        "state": "SP",
+        "years": "5",
+        "limit": "10",
+        "known_at": "2026-03-31",
+    }
+    assert "COMPRADORA EXEMPLO S.A." in resultado.stdout
+    assert "## limits" in resultado.stdout
+    assert resultado.stdout.rstrip().endswith(formato.AVISO)
+
+
+def test_compradores_padrao_de_anos_e_limite(rodar, chave):
+    resultado, vistos = _pedir_compradores(rodar, chave, "--cnae", "35115")
+    assert resultado.exit_code == 0, resultado.output
+    parametros = dict(vistos[0].url.params)
+    assert parametros["years"] == "3" and parametros["limit"] == "20"
+    assert "state" not in parametros
+
+
+def test_compradores_em_json_e_o_envelope_da_rota(rodar, chave):
+    resultado, _ = _pedir_compradores(rodar, chave, "--cnae", "35115", "--json")
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout) == CORPO_DE_COMPRADORES
+
+
+@pytest.mark.parametrize(
+    "argumentos",
+    [
+        ("--cnae", "351"),
+        ("--cnae", "35115", "--uf", "SAO"),
+        ("--cnae", "35115", "--anos", "11"),
+        ("--cnae", "35115", "--limite", "51"),
+        (),
+    ],
+)
+def test_compradores_pedido_ruim_nem_chega_a_api(rodar, chave, argumentos):
+    resultado, vistos = _pedir_compradores(rodar, chave, *argumentos)
+    assert resultado.exit_code == Saida.USO
+    assert vistos == []
+
+
+def test_compradores_recusa_da_api_vira_mensagem_clara(rodar, chave):
+    def recusa(_p: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            400, json={"detail": "invalid_cnae"}
+        )
+
+    resultado = rodar(
+        "compradores", "--cnae", "35115", http=_http_falso(recusa), **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.PEDIDO_INVALIDO
+    assert "5 ou 7 dígitos" in resultado.stderr

@@ -321,6 +321,77 @@ def comparaveis(
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
 
 
+def _um_codigo(
+    formato_: re.Pattern[str], explicacao: str
+) -> Callable[[click.Context, click.Parameter, str | None], str | None]:
+    """Um conferidor de um código só (sem repetir) que tira a pontuação e recusa o resto."""
+
+    def conferir(
+        _contexto: click.Context, parametro: click.Parameter, valor: str | None
+    ) -> str | None:
+        if valor is None:
+            return None
+        codigo = PONTUACAO_DE_CODIGO.sub("", valor).upper()
+        if not formato_.fullmatch(codigo):
+            raise click.BadParameter(explicacao, param_hint=f"--{parametro.name}")
+        return codigo
+
+    return conferir
+
+
+@principal.command()
+@click.option(
+    "--cnae",
+    required=True,
+    callback=_um_codigo(
+        re.compile(r"\d{5}|\d{7}"),
+        "o CNAE tem 5 dígitos (a classe) ou 7 (a subclasse), com ou sem pontuação.",
+    ),
+    help="Atividade do setor (CNAE fiscal): 5 dígitos (a classe, como 35115) ou 7 (a subclasse).",
+)
+@click.option(
+    "--uf",
+    callback=_um_codigo(FORMATO_DA_UF, "a UF tem 2 letras, como SP."),
+    help="Estado do estabelecimento (2 letras). Sem ela, o país todo.",
+)
+@click.option(
+    "--anos",
+    type=click.IntRange(1, 10),
+    default=3,
+    show_default=True,
+    help="Quantos anos para trás olhar os movimentos (1 a 10).",
+)
+@click.option(
+    "--limite",
+    type=click.IntRange(1, 50),
+    default=20,
+    show_default=True,
+    help="Quantos compradores trazer (1 a 50; o plano pode cortar antes).",
+)
+@opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def compradores(
+    contexto: click.Context,
+    cnae: str,
+    uf: str | None,
+    anos: int,
+    limite: int,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Quem comprou ou entrou como sócio no setor nos últimos anos: candidatos a comprador.
+
+    Só pessoa jurídica. Cada comprador traz os sinais (entrou como sócio, fundo sócio, controla empresa
+    do setor) e as evidências, com exemplos da empresa do setor, a UF e a data. Movimento passado não é
+    intenção de compra: leia os `limits`.
+    """
+    corpo = _api(contexto).compradores(cnae, uf, anos, limite, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
 @principal.command()
 @argumento_cnpj
 @opcao_como_era

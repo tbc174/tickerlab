@@ -19,6 +19,9 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab comparaveis <cnpj> [--como-era AAAA-MM-DD] --json`: as companhias abertas do mesmo grupo de
      setores, cada uma com o último DFP (receita, EBITDA, lucro, dívida líquida e razões), e a mediana de cada
      razão em `peer_medians`; leia `limits` antes de comparar múltiplos.
+   - `tickerlab compradores --cnae <5 ou 7 dígitos> [--uf SP] [--anos 3] [--limite 20] --json`: candidatos a
+     comprador do setor (entrou como sócio, fundo sócio, controla empresa do setor), só pessoa jurídica, com
+     sinais e evidências. Movimento passado não é intenção de compra: leia `limits`.
    - `tickerlab eventos <cnpj> [--tipo documento|auditor] [--como-era AAAA-MM-DD] --json`: documentos entregues à
      CVM (fato relevante, comunicado, assembleia...) e trocas de auditor, do mais novo ao mais velho, com o
      endereço de cada documento; `next_cursor` preenchido: há mais, `--todas` busca todas. Leia `limits`: sem
