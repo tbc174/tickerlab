@@ -7825,7 +7825,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7913,7 +7913,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com disponivel_em até D.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7924,7 +7924,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7935,7 +7935,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7946,7 +7946,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Estabelecimentos (matriz e filiais) das pessoas jurídicas de cnpj_empresas_pj, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -8683,7 +8683,7 @@
     },
     {
       "atraso": "O da fonte mais lenta de cada entidade",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Uma linha por entidade da rede: empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8694,7 +8694,7 @@
     },
     {
       "atraso": "O ticker vale da entrega do FCA que o trouxe",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (codigo_<fonte>).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8705,7 +8705,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Uma linha por relação entre duas entidades da rede, com as três datas: sociedade controlada, coligada ou participada da companhia (FRE).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
