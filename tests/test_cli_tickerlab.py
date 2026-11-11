@@ -32,6 +32,7 @@ from src.api_externa import acesso, rotas
 from src.api_externa.conjuntos import (
     comparaveis,
     empresas,
+    eventos,
     ficha,
     fundos,
     prospeccao,
@@ -42,6 +43,8 @@ from src.banco import chaves_da_api as cb
 from tests import ajudantes_da_api_externa as aj
 from tests import test_api_externa_por_cnpj_comparaveis as comparaveis_de_mentira
 from tests import test_api_externa_por_cnpj_comparaveis_rota as rota_dos_comparaveis
+from tests import test_api_externa_por_cnpj_eventos as eventos_de_mentira
+from tests import test_api_externa_por_cnpj_eventos_rota as rota_dos_eventos
 from tests import test_api_externa_por_cnpj_ficha as ficha_de_mentira
 from tests import test_api_externa_prospeccao as busca_de_mentira
 from tests.test_api_externa_demonstracoes import (
@@ -1075,6 +1078,7 @@ def test_instrucoes_do_agente(rodar):
         "setor",
         "prospectar",
         "comparaveis",
+        "eventos",
         "catalogo",
         "consumo",
     ):
@@ -1556,3 +1560,142 @@ def test_comparaveis_fora_do_contrato_e_sem_dado(rodar, chave, tmp_path, monkeyp
     monkeypatch.setattr(rotas, "regras_da_api", rota_dos_comparaveis._regras)
     resultado = rodar("comparaveis", comparaveis_de_mentira.ALFA, **_com_chave(chave))
     assert resultado.exit_code == Saida.SEM_DADO, resultado.output
+
+
+# ---------------------------------------------------------------- eventos (rota da linha 736, PR 4)
+
+DIA_DOS_EVENTOS = eventos_de_mentira.DIA.isoformat()
+
+
+@pytest.fixture
+def eventos_prontos(banco, cenario, monkeypatch, tmp_path):
+    """A base de mentira dos eventos, as tabelas prontas e o contrato de `events`."""
+    base = eventos_de_mentira.gravar_base(tmp_path / "base")
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", rota_dos_eventos._regras)
+    ator, org, _chave = cenario
+    aj.contrato(banco, ator, org, conjunto=eventos.CONJUNTO)
+
+
+@pytest.mark.usefixtures("eventos_prontos")
+def test_eventos_em_tabela_tem_cada_evento_com_fonte_e_data(rodar, chave):
+    resultado = rodar(
+        "eventos", eventos_de_mentira.ALFA, "--como-era", DIA_DOS_EVENTOS,
+        **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    assert saida.startswith(
+        f"{rota_dos_eventos.EVENTOS_NO_DIA} eventos nesta resposta."
+    )
+    assert "Há mais" not in saida
+    troca = next(linha for linha in saida.splitlines() if "AUDITORA DOIS" in linha)
+    assert "cvm-hist-fca" in troca and "2025-05-31" in troca
+    documento = next(linha for linha in saida.splitlines() if "Fato Relevante" in linha)
+    assert "cvm-hist-ipe" in documento
+    assert "## limits" in saida and "- cvm-hist-ipe:" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+@pytest.mark.usefixtures("eventos_prontos")
+def test_eventos_em_json_e_o_envelope_da_rota(rodar, chave, api_em_memoria):
+    alfa = eventos_de_mentira.ALFA
+    resultado = rodar(
+        "eventos", alfa, "--como-era", DIA_DOS_EVENTOS, "--json", **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    direto = api_em_memoria.get(
+        f"/data/v1/companies/{alfa}/events",
+        params={"known_at": DIA_DOS_EVENTOS},
+        headers=aj.bearer(chave),
+    ).json()
+    assert json.loads(resultado.stdout) == direto
+    assert len(direto["events"]) == rota_dos_eventos.EVENTOS_NO_DIA
+
+
+@pytest.mark.usefixtures("eventos_prontos")
+def test_eventos_tipo_auditor_traz_so_a_troca(rodar, chave):
+    resultado = rodar(
+        "eventos", eventos_de_mentira.ALFA, "--como-era", DIA_DOS_EVENTOS,
+        "--tipo", "auditor", "--json", **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    corpo = json.loads(resultado.stdout)
+    assert [e["event_type"] for e in corpo["events"]] == ["auditor_change"]
+    assert {f["source"] for f in corpo["sources"]} == {"cvm-hist-fca"}
+
+
+@pytest.mark.usefixtures("eventos_prontos")
+def test_eventos_sem_como_era_trazem_o_que_veio_depois(rodar, chave):
+    resultado = rodar("eventos", eventos_de_mentira.ALFA, "--json", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    corpo = json.loads(resultado.stdout)
+    assert "P4" in {
+        e["filing_id"]["value"] for e in corpo["events"] if "filing_id" in e
+    }
+
+
+@pytest.mark.usefixtures("eventos_prontos")
+def test_eventos_pagina_avisa_que_ha_mais_e_todas_junta_tudo(rodar, chave, monkeypatch):
+    monkeypatch.setattr(acesso, "linhas_por_resposta", lambda _contexto: 3)
+    argumentos = ("eventos", eventos_de_mentira.ALFA, "--como-era", DIA_DOS_EVENTOS)
+    uma = rodar(*argumentos, **_com_chave(chave))
+    assert uma.exit_code == 0, uma.output
+    assert uma.stdout.startswith(
+        "3 eventos nesta resposta. Há mais: rode de novo com --todas"
+    )
+    todas = rodar(*argumentos, "--todas", "--json", **_com_chave(chave))
+    assert todas.exit_code == 0, todas.output
+    corpo = json.loads(todas.stdout)
+    assert len(corpo["events"]) == rota_dos_eventos.EVENTOS_NO_DIA
+    assert corpo["next_cursor"] is None and corpo["truncated"] is False
+    assert {f["source"] for f in corpo["sources"]} == {"cvm-hist-ipe", "cvm-hist-fca"}
+    assert "buscando a página 2" in todas.stderr
+
+
+@pytest.mark.usefixtures("eventos_prontos")
+def test_eventos_em_planilha_tem_uma_linha_por_evento(rodar, chave, tmp_path):
+    arquivo = tmp_path / "eventos.xlsx"
+    resultado = rodar(
+        "eventos", eventos_de_mentira.ALFA, "--como-era", DIA_DOS_EVENTOS,
+        "--planilha", str(arquivo), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    assert {"events", "fontes"} <= set(abas)
+    linhas = _linhas_com_cabecalho(abas["events"])
+    assert len(linhas) == rota_dos_eventos.EVENTOS_NO_DIA
+    assert {linha["fonte"] for linha in linhas} == {"cvm-hist-ipe", "cvm-hist-fca"}
+
+
+def test_eventos_fora_do_contrato_e_sem_dado(rodar, chave, tmp_path, monkeypatch):
+    base = eventos_de_mentira.gravar_base(tmp_path / "base")
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", rota_dos_eventos._regras)
+    resultado = rodar("eventos", eventos_de_mentira.ALFA, **_com_chave(chave))
+    assert resultado.exit_code == Saida.SEM_DADO, resultado.output
+
+
+def test_eventos_tipo_desconhecido_nem_chega_a_api(rodar, chave):
+    resultado = rodar(
+        "eventos",
+        eventos_de_mentira.ALFA,
+        "--tipo",
+        "fusao",
+        http=None,
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == Saida.USO, resultado.output
+
+
+@pytest.mark.parametrize(
+    ("codigo", "trecho"),
+    [("invalid_event_type", "Tipo de evento"), ("invalid_cursor", "página pedida")],
+)
+def test_eventos_recusa_da_api_em_portugues(rodar, chave, codigo, trecho):
+    http = _http_falso(lambda _p: httpx.Response(400, json={"detail": codigo}))
+    resultado = rodar(
+        "eventos", eventos_de_mentira.ALFA, http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.PEDIDO_INVALIDO
+    assert trecho in resultado.stderr
