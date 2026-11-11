@@ -92,7 +92,10 @@ AINDA_SEM_A_MARCA = frozenset(
 )
 # Sem pessoa por construção: a montagem nem deixa entrar o empresário individual (213-5) nem o
 # grupo 4 (linha 584; o contrato de cada uma diz). Não precisam da marca por linha.
-SEM_PESSOA_NA_MONTAGEM = frozenset({"cnpj_empresas_pj", "cnpj_estabelecimentos_pj"})
+# sem pessoa por desenho: o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
+SEM_PESSOA_NA_MONTAGEM = frozenset(
+    {"cnpj_empresas_pj", "cnpj_estabelecimentos_pj", "entradas_de_socio_pj"}
+)
 COM_A_MARCA = sorted(
     nome
     for nome, tabela in TABELAS.items()

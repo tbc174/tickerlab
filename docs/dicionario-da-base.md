@@ -2773,6 +2773,36 @@ Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `entradas_de_socio_pj`
+
+Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: que empresa entrou como sócia de que empresa, com a data de entrada que a Receita dá, e o mês em que a base viu a entrada (ou a saída). Diz quem já fez movimentos parecidos, não quem quer comprar: holding de família, reorganização e aumento de capital também entram, e entrar como sócio não é aquisição. **Sem pessoa:** só sócio do tipo 1 e só raízes de `cnpj_estabelecimentos_pj`, dos dois lados (fora MEI, empresário individual e grupo 4, mesmo com CNPJ); a lista é a do mês mais recente, e quem deixou de ser só empresa some da história inteira. Sair e entrar com os mesmos dados no mesmo mês (a troca de layout de 2024-09) não conta; sair e voltar depois conta como entrada nova; a Receita trocar a data de entrada de quem continuou é `data_corrigida`, não entrada. Antes de 2023-06 só há quem ainda estava no primeiro retrato: quem entrou e saiu antes disso não aparece. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, quadro de sócios vigente e mudanças de cada mês (`scripts/montar_entradas_de_socio_pj.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `movimento`, `cnpj_basico`, `raiz_socio_pj`, `data_entrada`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`; aconteceu_em = `data_entrada`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/entradas_de_socio_pj/<2 primeiros caracteres da raiz da empresa>.parquet` (servidor de casa)
+- **Linhagem:** Derivada de `cnpj_qsa`, `cnpj_qsa_mudancas` e `cnpj_estabelecimentos_pj`; o manifesto de cada Parquet lista o SHA-256 dos ZIPs de sócios da Receita de todos os meses lidos. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `movimento` | entrou, saiu ou data_corrigida (a Receita trocou a data de entrada de quem continuou) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) da empresa em que o sócio entrou ou de que saiu | texto |
+| `raiz_socio_pj` | Raiz do CNPJ (8 caracteres) da pessoa jurídica que entrou como sócia ou saiu | texto |
+| `data_entrada` | Data de entrada na sociedade, como a Receita publica (na saída, a da entrada que acabou) | data (dia) |
+| `qualificacao` | Código da qualificação do sócio no mês em que a base viu o movimento | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a base viu o movimento; para quem já estava no primeiro retrato (2023-05), esse mês | AAAA-MM |
+| `disponivel_em` | Desde quando o movimento era público: o dia 21 do mês do retrato (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês | data (dia) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa` e a porta não os serve.
