@@ -128,10 +128,11 @@ jobs:
         if: matrix.dependencias == 'requirements-trader.txt'
         timeout-minutes: 8
         run: |
-          # 11/11/2026: a máquina do GitHub parou de alcançar o espelho do Ubuntu por http (porta 80;
-          # "Ign" a cada 20 s, no espelho da Azure e no arquivo oficial) e derrubou todo PR com
-          # código. Por https os dois respondem. Então: 1ª tentativa no arquivo oficial por https,
-          # 2ª no espelho da Azure por https, 3ª no espelho padrão da imagem, como era.
+          # 11/11/2026: a máquina do GitHub deixou de alcançar o arquivo do Ubuntu (o oficial e o da
+          # Azure, por http e por https: "Ign" até estourar o tempo) e derrubou todo PR com código,
+          # enquanto outros sites respondiam. Então o passo testa cada espelho em 10 s antes de
+          # usá-lo e, se o padrão da imagem não responde, vai a espelhos de outras redes. O apt
+          # confere a assinatura do Ubuntu em qualquer espelho.
           pacotes="libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3"
           if dpkg -s $pacotes >/dev/null 2>&1; then
             echo "bibliotecas do Qt já estão na imagem"
@@ -139,20 +140,21 @@ jobs:
           fi
           apt_opcoes="-o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20"
           fontes="/etc/apt/sources.list.d/ubuntu.sources"
+          versao="$(. /etc/os-release && echo "$VERSION_CODENAME")"
           sudo cp "$fontes" /tmp/ubuntu.sources.original
-          tentativa=0
-          for espelho in https://archive.ubuntu.com/ubuntu/ https://azure.archive.ubuntu.com/ubuntu/ original; do
-            tentativa=$((tentativa + 1))
-            sudo cp /tmp/ubuntu.sources.original "$fontes"
-            if [ "$espelho" != original ]; then
-              sudo sed -i -E "s#^URIs: .*#URIs: $espelho#" "$fontes"
+          for espelho in             http://azure.archive.ubuntu.com/ubuntu/             https://archive.ubuntu.com/ubuntu/             https://mirrors.edge.kernel.org/ubuntu/             https://mirror.us.leaseweb.net/ubuntu/             https://ubuntu.osuosl.org/ubuntu/             https://ftp.halifax.rwth-aachen.de/ubuntu/; do
+            if ! curl -fsS -m 10 -o /dev/null "${espelho}dists/${versao}-updates/InRelease"; then
+              echo "espelho sem resposta em 10 s: $espelho"
+              continue
             fi
-            if sudo timeout 100 apt-get $apt_opcoes update               && sudo timeout 100 apt-get $apt_opcoes install -y --no-install-recommends $pacotes; then
+            sudo cp /tmp/ubuntu.sources.original "$fontes"
+            sudo sed -i -E "s#^URIs: .*#URIs: $espelho#" "$fontes"
+            if sudo timeout 90 apt-get $apt_opcoes update               && sudo timeout 90 apt-get $apt_opcoes install -y --no-install-recommends $pacotes; then
               exit 0
             fi
-            echo "apt-get falhou na tentativa $tentativa ($espelho); tentando o próximo espelho"
-            sleep 5
+            echo "apt-get falhou com o espelho $espelho; tentando o próximo"
           done
+          echo "nenhum espelho do Ubuntu respondeu"
           exit 1
 
       # o torch do PyPI para Linux traz as bibliotecas de GPU da NVIDIA (vários GB); a pesquisa só
