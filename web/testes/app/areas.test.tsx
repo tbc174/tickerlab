@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-// O menu do app novo por áreas (ADR 0096, PR 2 da reorganização): Ativo, Estratégias e Acompanhar, cada
-// uma só com as telas que abrem (as que ainda não estão no app novo ficam atrás de um link só para a versão
-// clássica, no fim do menu), favoritos no topo, áreas que recolhem e o trilho de ícones entre 761 e 1.100 px.
+// O menu do app novo por áreas (ADR 0096; linha 822): Empresas (o caminho do analista) no topo, Companhias
+// abertas e Mais, que nasce recolhida; cada uma só com as telas que abrem (as que ainda não estão no app
+// novo ficam atrás de um link só para a versão clássica, no fim do menu), favoritos no topo, áreas que
+// recolhem e o trilho de ícones entre 761 e 1.100 px.
 // A Conta fica no menu da pessoa.
 // O jsdom não aplica CSS: as regras que o Chrome mostrou faltar são conferidas como texto.
 import { readFileSync } from "node:fs";
@@ -24,15 +25,16 @@ afterEach(() => {
 });
 
 describe("as áreas (vindas de src/paginas.py)", () => {
-  it("a ordem é Início, Ativo, Estratégias, Acompanhar, Conta e Ajuda", () => {
-    expect(AREAS.map((a) => a.rotulo)).toEqual(["Início", "Ativo", "Estratégias", "Acompanhar", "Conta", "Ajuda"]);
+  it("a ordem é Início, Empresas, Companhias abertas, Mais, Conta e Ajuda", () => {
+    expect(AREAS.map((a) => a.rotulo)).toEqual(["Início", "Empresas", "Companhias abertas", "Mais", "Conta", "Ajuda"]);
   });
 
   it("cada endereço sabe a sua área; o início é a área Início", () => {
     expect(areaDoEndereco("/")).toBe("inicio");
     expect(areaDoEndereco("/risco")).toBe("ativo");
-    expect(areaDoEndereco("/backtest/")).toBe("estrategias");
-    expect(areaDoEndereco("/juros-e-inflacao")).toBe("acompanhar");
+    expect(areaDoEndereco("/ficha-da-empresa")).toBe("empresas");
+    expect(areaDoEndereco("/backtest/")).toBe("mais");
+    expect(areaDoEndereco("/juros-e-inflacao")).toBe("mais");
     expect(areaDoEndereco("/planos")).toBe("conta");
     expect(areaDoEndereco("/nao-existe")).toBeNull();
   });
@@ -51,13 +53,46 @@ describe("menu lateral por áreas", () => {
     const titulos = within(menu())
       .getAllByRole("heading")
       .map((h) => h.textContent);
-    expect(titulos).toEqual(["Ativo", "Estratégias", "Acompanhar"]);
-    const ativo = secao("Ativo");
+    expect(titulos).toEqual(["Empresas", "Companhias abertas", "Mais"]);
+    const ativo = secao("Companhias abertas");
     expect(within(ativo).getByRole("link", { name: "Visão geral" }).getAttribute("href")).toBe("/visao-geral");
     expect(within(ativo).getByRole("link", { name: "Comparar ativos" })).toBeTruthy();
     // ainda não está no app novo: não aparece (o menu não mostra linha que não abre)
     expect(within(menu()).queryByText("Correlação e beta")).toBeNull();
     expect(within(menu()).getByRole("link", { name: "Início" }).getAttribute("href")).toBe("/");
+  });
+
+  it("Empresas vem primeiro, com o caminho do analista na ordem: encontrar, ficha e comparar", async () => {
+    abrirTela("/risco");
+    await screen.findByRole("heading", { level: 1, name: "Risco" });
+    const links = within(secao("Empresas")).getAllByRole("link");
+    expect(links.map((a) => a.getAttribute("href")).slice(0, 3)).toEqual([
+      "/encontrar-empresas",
+      "/ficha-da-empresa",
+      "/comparar-empresas",
+    ]);
+    const botao = within(secao("Empresas")).getByRole("button", { name: "Empresas" });
+    expect(botao.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("a área Mais nasce recolhida, com as telas dela lá dentro, e abre no clique", async () => {
+    abrirTela("/risco");
+    await screen.findByRole("heading", { level: 1, name: "Risco" });
+    const botao = within(secao("Mais")).getByRole("button", { name: "Mais" });
+    expect(botao.getAttribute("aria-expanded")).toBe("false");
+    expect(secao("Mais").querySelector("ul")!.hidden).toBe(true);
+    // recolhida, não apagada: o Backtest segue na lista
+    expect(secao("Mais").querySelector('a[href="/backtest"]')).not.toBeNull();
+    fireEvent.click(botao);
+    expect(botao.getAttribute("aria-expanded")).toBe("true");
+    expect(JSON.parse(localStorage.getItem("tickerlab.menu.areas-recolhidas")!)).toEqual([]);
+  });
+
+  it("chegar numa tela da área Mais abre a área (o link da tela aberta fica à vista)", async () => {
+    abrirTela("/backtest");
+    await screen.findByRole("heading", { level: 1, name: "Backtest" });
+    const botao = within(secao("Mais")).getByRole("button", { name: "Mais" });
+    await waitFor(() => expect(botao.getAttribute("aria-expanded")).toBe("true"));
   });
 
   it("nenhuma linha do menu é 'em breve': toda tela listada tem link", async () => {
@@ -72,7 +107,8 @@ describe("menu lateral por áreas", () => {
       const prontas = telasProntasDaArea(area).map((p) => p.titulo);
       expect(prontas.length).toBeGreaterThan(0);
       const rotulo = AREAS.find((a) => a.chave === area)!.rotulo;
-      expect(within(secao(rotulo)).getAllByRole("link").map((a) => a.textContent)).toEqual(prontas);
+      // pelo DOM, não pelo papel: a lista da área recolhida ("Mais") está escondida e segue completa
+      expect([...secao(rotulo).querySelectorAll(".itens-da-area a")].map((a) => a.textContent)).toEqual(prontas);
     }
   });
 
@@ -94,35 +130,36 @@ describe("menu lateral por áreas", () => {
   });
 
   it("a área da tela aberta vem expandida e o link da tela leva aria-current", async () => {
-    localStorage.setItem("tickerlab.menu.recolhidas", JSON.stringify(["ativo"]));
+    localStorage.setItem("tickerlab.menu.areas-recolhidas", JSON.stringify(["ativo"]));
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
-    const botao = within(secao("Ativo")).getByRole("button", { name: "Ativo" });
+    const botao = within(secao("Companhias abertas")).getByRole("button", { name: "Companhias abertas" });
     // o menu nasce junto com a tela (a moldura só vem depois do login): a área abre no efeito da chegada
     await waitFor(() => expect(botao.getAttribute("aria-expanded")).toBe("true"));
-    expect(within(secao("Ativo")).getByRole("link", { name: "Risco" }).getAttribute("aria-current")).toBe("page");
-    expect(JSON.parse(localStorage.getItem("tickerlab.menu.recolhidas")!)).toEqual([]);
+    const risco = within(secao("Companhias abertas")).getByRole("link", { name: "Risco" });
+    expect(risco.getAttribute("aria-current")).toBe("page");
+    expect(JSON.parse(localStorage.getItem("tickerlab.menu.areas-recolhidas")!)).toEqual([]);
   });
 
   it("recolher uma área esconde as telas dela e fica guardado no navegador", async () => {
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
-    const botao = within(secao("Estratégias")).getByRole("button", { name: "Estratégias" });
+    const botao = within(secao("Empresas")).getByRole("button", { name: "Empresas" });
     expect(botao.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(botao);
     expect(botao.getAttribute("aria-expanded")).toBe("false");
-    expect(secao("Estratégias").querySelector("ul")!.hidden).toBe(true);
-    expect(JSON.parse(localStorage.getItem("tickerlab.menu.recolhidas")!)).toEqual(["estrategias"]);
+    expect(secao("Empresas").querySelector("ul")!.hidden).toBe(true);
+    expect(JSON.parse(localStorage.getItem("tickerlab.menu.areas-recolhidas")!)).toEqual(["mais", "empresas"]);
   });
 
   it("a área da tela aberta também recolhe (só abre sozinha ao chegar numa tela dela)", async () => {
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
-    const botao = within(secao("Ativo")).getByRole("button", { name: "Ativo" });
+    const botao = within(secao("Companhias abertas")).getByRole("button", { name: "Companhias abertas" });
     fireEvent.click(botao);
     expect(botao.getAttribute("aria-expanded")).toBe("false");
-    expect(secao("Ativo").querySelector("ul")!.hidden).toBe(true);
-    expect(JSON.parse(localStorage.getItem("tickerlab.menu.recolhidas")!)).toEqual(["ativo"]);
+    expect(secao("Companhias abertas").querySelector("ul")!.hidden).toBe(true);
+    expect(JSON.parse(localStorage.getItem("tickerlab.menu.areas-recolhidas")!)).toEqual(["mais", "ativo"]);
   });
 
   it("o CSS respeita o hidden da lista recolhida (o display: flex dela ganhava do hidden)", () => {
@@ -133,7 +170,7 @@ describe("menu lateral por áreas", () => {
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
     expect(within(menu()).queryByRole("heading", { name: "Favoritos" })).toBeNull();
-    const estrela = within(secao("Ativo")).getByRole("button", { name: "Favoritar Risco" });
+    const estrela = within(secao("Companhias abertas")).getByRole("button", { name: "Favoritar Risco" });
     expect(estrela.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(estrela);
     expect(JSON.parse(localStorage.getItem("tickerlab.menu.favoritos")!)).toEqual(["risco"]);
@@ -150,7 +187,7 @@ describe("menu lateral por áreas", () => {
 
   it("favorito guardado de uma tela que saiu do app (ou lixo no navegador) não quebra o menu", async () => {
     localStorage.setItem("tickerlab.menu.favoritos", JSON.stringify(["nao_existe", 3, "backtest"]));
-    localStorage.setItem("tickerlab.menu.recolhidas", "{isto não é json");
+    localStorage.setItem("tickerlab.menu.areas-recolhidas", "{isto não é json");
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
     const favoritos = within(secao("Favoritos")).getAllByRole("link").map((a) => a.textContent);
@@ -166,7 +203,7 @@ describe("menu lateral por áreas", () => {
     });
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
-    fireEvent.click(within(secao("Ativo")).getByRole("button", { name: "Favoritar Risco" }));
+    fireEvent.click(within(secao("Companhias abertas")).getByRole("button", { name: "Favoritar Risco" }));
     expect(within(secao("Favoritos")).getByRole("link", { name: "Risco" })).toBeTruthy();
     vi.restoreAllMocks();
   });
@@ -184,7 +221,8 @@ describe("trilho de ícones entre 761 e 1.100 px", () => {
     await screen.findByRole("heading", { level: 1, name: "Risco" });
     expect(menu().classList.contains("trilho")).toBe(true);
     // o nome da área continua para o leitor de tela e no "title" do botão
-    expect(within(secao("Ativo")).getByRole("button", { name: "Ativo" }).getAttribute("title")).toBe("Ativo");
+    const botao = within(secao("Companhias abertas")).getByRole("button", { name: "Companhias abertas" });
+    expect(botao.getAttribute("title")).toBe("Companhias abertas");
   });
 
   it("no PC largo, sem trilho", async () => {

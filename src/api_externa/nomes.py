@@ -186,6 +186,22 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "id_na_rede": "entity_id",
     "raiz_do_cnpj": "cnpj_root",
     "participacao_no_capital": "ownership_pct",
+    # buyers: quem já se mexeu num setor (linha 810, PR 4), só pessoa jurídica
+    "compradores": "buyers",
+    "total_de_compradores": "total_buyers",
+    "sinais": "signals",
+    "provas": "evidence",
+    "quantas": "count",
+    "exemplos": "examples",
+    "desde": "since",
+    "empresas_ativas": "active_companies",
+    "empresa_do_setor": "sector_company",
+    "data_entrada": "entry_date",
+    "ainda_socio": "stake_still_held",
+    "entrou_como_socio": "took_stake",
+    "fundo_socio": "fund_stake",
+    "controla_no_setor": "controls_in_sector",
+    "Tipo_Fundo": "fund_type",  # o campo do portão do sinal do FIP (não sai como chave)
 }
 
 

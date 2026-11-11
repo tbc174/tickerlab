@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
-// O Início do app novo é o Workspace (ADR 0062; Workspace, PRs 2 e 3): os cartões "Acontecimentos novos",
-// "Variação do preço" e "Estratégias acompanhadas", todos de um pedido só ao Pulse, a janela que o F5 não
-// encolhe e a lista de telas embaixo. Os acontecimentos e as variações vêm de exemplos/pulse.json, gravado
-// por tests/test_app_novo_mesmos_numeros.py com as funções da API (os mesmos números do app atual).
+// O Início do app novo abre pelo caminho do analista (linha 822): os passos encontrar, ficha e comparar, o
+// link "O que mudou no app" e, só para a conta que acompanha algum ativo ou estratégia, o Workspace (ADR 0062)
+// embaixo: os cartões "Acontecimentos novos", "Variação do preço" e "Estratégias acompanhadas", todos de um
+// pedido só ao Pulse, com a janela que o F5 não encolhe. Os acontecimentos e as variações vêm de
+// exemplos/pulse.json, gravado por tests/test_app_novo_mesmos_numeros.py com as funções da API.
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { paginasDoApp } from "../../src/conteudo";
+import { temTelaPronta } from "../../src/app/rotas";
 import { abrirApp, respostaJson } from "./ajudantes";
 import exemplo from "./exemplos/pulse.json";
 
@@ -77,13 +80,73 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("o Início é o Workspace", () => {
-  it("manda as outras telas para a versão clássica, com a concordância certa", async () => {
+/** A conta que não acompanha nada: sem estratégia salva e sem ativo guardado. */
+const NADA_ACOMPANHADO = {
+  ...PULSE,
+  estrategias: [],
+  avisos: [],
+  acontecimentos: [],
+  variacoes: [],
+  sem_variacao: [],
+  avisos_dos_ativos: [],
+};
+const passos = () => screen.findByRole("list", { name: "Passos" }, { timeout: 5000 });
+
+describe("o Início abre pelo caminho do analista", () => {
+  it("os passos, na ordem: encontrar, ficha e comparar (este só quando a página existe)", async () => {
+    abrir();
+    const links = within(await passos()).getAllByRole("link");
+    // só a página que já abre no app novo vira passo (o mesmo filtro da tela)
+    const esperados = ["encontrar_empresas", "ficha_da_empresa", "comparar_empresas"].flatMap(
+      (chave) => paginasDoApp.find((p) => p.chave === chave && p.contrato !== null && temTelaPronta(chave)) ?? [],
+    );
+    expect(esperados.length).toBeGreaterThanOrEqual(2);
+    expect(links.map((l) => l.textContent)).toEqual(esperados.map((p) => p.titulo));
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(esperados.map((p) => `/${p.url}`));
+    expect(links.slice(0, 2).map((l) => l.getAttribute("href"))).toEqual(["/encontrar-empresas", "/ficha-da-empresa"]);
+  });
+
+  it("cada passo traz o número e a frase da página (a mesma do menu e do site)", async () => {
+    abrir();
+    const [primeiro] = within(await passos()).getAllByRole("listitem");
+    const encontrar = paginasDoApp.find((p) => p.chave === "encontrar_empresas")!;
+    expect(within(primeiro).getByText("Passo 1")).toBeTruthy();
+    expect(within(primeiro).getByText(encontrar.descricao)).toBeTruthy();
+  });
+
+  it("leva ao que mudou no app", async () => {
+    abrir();
+    await passos();
+    expect(screen.getByRole("link", { name: "O que mudou no app" }).getAttribute("href")).toBe("/o-que-mudou");
+  });
+
+  it("a lista crua de telas saiu do Início", async () => {
     abrir();
     await cartao();
-    const link = screen.getByRole("link", { name: "versão clássica" });
-    expect(link.parentElement?.textContent).toMatch(/continuam na versão clássica\./);
+    expect(screen.queryByRole("list", { name: "Telas novas" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "As telas novas do TickerLab" })).toBeNull();
   });
+
+  it("a conta que não acompanha nada não vê o Workspace: só os passos", async () => {
+    const { buscar } = abrir(() => respostaJson(200, NADA_ACOMPANHADO));
+    await passos();
+    await vi.waitFor(() => expect(pedidosDoPulse(buscar)).toHaveLength(1));
+    // o início da janela só é guardado na aba quando a resposta do Pulse chega: é o sinal de que a tela já a leu
+    await vi.waitFor(() => expect(sessionStorage.getItem("tickerlab.workspace.inicio-da-janela")).toBe(JANELA.inicio));
+    await new Promise((pronto) => setTimeout(pronto, 0)); // a tela se refaz com a resposta
+    expect(screen.queryByRole("heading", { name: "Seu Workspace" })).toBeNull();
+    expect(screen.queryByRole("region")).toBeNull();
+    expect(screen.queryByText(JANELA.texto)).toBeNull();
+  });
+
+  it("os passos vêm antes do Workspace", async () => {
+    abrir();
+    const [lista, titulo] = [await passos(), await screen.findByRole("heading", { name: "Seu Workspace" })];
+    expect(lista.compareDocumentPosition(titulo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("o Workspace no Início, para quem acompanha algo", () => {
 
   it("pede o Pulse uma vez e mostra o texto da janela", async () => {
     const { buscar } = abrir();
@@ -131,22 +194,13 @@ describe("o Início é o Workspace", () => {
     expect(within(c).getByRole("link", { name: "Rodar um backtest" }).getAttribute("href")).toBe("/backtest");
   });
 
-  it("a lista de telas continua embaixo do cartão, e o Pulse não aparece nela", async () => {
-    abrir();
-    const c = await cartao();
-    const telas = await screen.findByRole("list", { name: "Telas novas" });
-    expect(c.compareDocumentPosition(telas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(telas).getByRole("link", { name: "Visão geral" })).toBeTruthy();
-    expect(within(telas).queryByRole("link", { name: "Pulse" })).toBeNull();
-  });
-
-  it("se o Pulse falha, um erro só no lugar dos cartões, e as telas continuam", async () => {
+  it("se o Pulse falha, um erro só no lugar dos cartões, e os passos continuam", async () => {
     abrir(() => respostaJson(503, { detail: "fora do ar" }));
-    const c = await cartao("O que mudou");
+    const c = await cartao("Seu Workspace");
     expect(await within(c).findByRole("alert")).toBeTruthy();
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(screen.queryByRole("region", { name: "Estratégias acompanhadas" })).toBeNull();
-    expect(screen.getByRole("list", { name: "Telas novas" })).toBeTruthy();
+    expect(within(await passos()).getAllByRole("link").length).toBeGreaterThanOrEqual(2);
   });
 
   it("os cartões vêm na ordem: acontecimentos, variação, estratégias", async () => {

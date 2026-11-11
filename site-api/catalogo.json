@@ -1,4 +1,21 @@
 {
+  "buyers": {
+    "fontes": {
+      "cvm-fidc-base": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-fre": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "Tipo_Fundo",
+      "cnae_principal",
+      "data_entrada",
+      "participacao",
+      "razao_social",
+      "referencia",
+      "tipo",
+      "uf"
+    ]
+  },
   "companies": {
     "fontes": {
       "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"

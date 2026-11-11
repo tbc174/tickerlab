@@ -155,11 +155,11 @@ Se a produção não estiver liberada no dia, o mesmo roteiro roda contra a API 
 2. **Banco e chave:** `$env:TICKERLAB_DATABASE_URL = "sqlite:///<pasta>/ensaio.db"` e
    `python -m scripts.ensaio_local --saida-da-chave <pasta>\chave.txt` (migrações, administrador de ensaio,
    organização, direitos dos cinco conjuntos e a chave, que só vai para o arquivo).
-3. **Subir a API** com `TICKERLAB_API_EXTERNA=1`, `TICKERLAB_ACERVO=<pasta>\acervo`, `TICKERLAB_DOSSIES=<pasta>\dossies` e
-   `uvicorn src.api:app --port 8765`, **por um lançador fora do repositório** que, antes, preenche
-   `base.prontidao.PRONTIDAO` na memória do processo (uma prova de ensaio por tabela, com `independencia` preenchida: sem
-   ela a prova cruzada não vale). O portão de produção não muda; sem o lançador a API do ensaio responde `sem_prontidao`,
-   como a de produção responde hoje.
+3. **Subir a API** com `TICKERLAB_AMBIENTE=ensaio`, `TICKERLAB_API_EXTERNA=1`, `TICKERLAB_ACERVO=<pasta>\acervo`,
+   `TICKERLAB_DOSSIES=<pasta>\dossies` e `uvicorn src.api:app --port 8765`. Com `TICKERLAB_AMBIENTE=ensaio` (valor exato),
+   `base.prontidao.registro_vigente()` dá a toda tabela do dicionário uma prova de ensaio (do dia anterior), sem tirar
+   o registro de verdade; com qualquer outro valor, inclusive `producao` ou nenhum, nada muda e o portão responde
+   `sem_prontidao` como em produção (há teste dos dois lados).
 4. `$env:TICKERLAB_API_URL = "http://127.0.0.1:8765"`, `tickerlab login` e o roteiro da seção 3.
 
 **O que responde, rota por rota (ensaio de 10/11/2026, recorte do degrau 2 e fichas de 07/11; cada "sim" vale "com
@@ -171,7 +171,16 @@ prontidão de ensaio", não com a prontidão real da linha 784):**
 | `/data/v1/companies/{cnpj}/financials` | sim (200) | `demonstracoes_como_era` do recorte |
 | `/data/v1/sectors` e `/sectors/{setor}` | sim (200; `eletricas` com ~99 KB) | fichas de `dossies/atual` |
 | `/data/v1/funds/{cnpj}` | sim (200), **só a carteira** | CDA do recorte; o **cadastro** (taxas, classe) não sai porque o registro de coletas, que dá a data de publicação, não está no recorte |
-| `/data/v1/companies/{cnpj}` e `/profile` | **não** (404 `not_available`) | espera a carga das tabelas de empresas só-PJ e a vista de estabelecimentos (linha 584) e a contagem de zero pessoa; **não se copia pessoa para destravar** |
+| `/data/v1/companies` (prospecção) | sim (200) | as duas tabelas de empresas só-PJ do recorte (linha 796) |
+| `/data/v1/companies/{cnpj}/events`, `/links`, `/comparables` | sim (200) | `eventos`, `trocas_de_auditor`, `fca_geral` do recorte e a **rede** (entidades, identificadores, ligações) copiada sem pessoa nem MEI (contagem: 0 de pessoa, 0 de MEI) |
+| `/data/v1/companies/{cnpj}` e `/profile` (a ficha) | sim (200), **só no ensaio** | `cnpj_situacao_cadastral` **derivada do retrato vigente** (2026-10, público desde 21/10): só PJ do recorte, só códigos. Consulta com `known_at` antes de 21/10 dá `not_available` |
+
+**O que a ficha mostra no ensaio e NÃO mostrará em produção enquanto a linha 841 (montagem real da situação
+cadastral mês a mês, mesa Dados) não fechar:** a situação cadastral, a data e o motivo, o mês do retrato e a matriz.
+No ensaio ela é um único retrato (2026-10); em produção só haverá a série de verdade depois da 841. **Não prometer na
+apresentação a ficha cadastral "como era" em datas antigas nem a série de situações.** A situação, a razão social e o
+Simples do histórico datado (linha 686) também dependem de tabelas que só o ensaio tem hoje. O que está na produção
+na segunda é só o que a seção 5 marca como carregado lá.
 
 Limites do ensaio: roda sem a internet e sem o VPS, mas **depende da VM de casa para refazer a base** (o recorte sai de
 lá). Serve de base para um conector local (linha 570).

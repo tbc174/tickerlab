@@ -1014,6 +1014,23 @@ export interface FichaDaEmpresaV1 {
   o_que_vem: BlocoDaFichaV1[]; // os blocos da ficha e a fonte de cada um, para quando o dado não sai
 }
 
+/** Um evento da empresa na ficha: documento à CVM (`ipe_filing`) ou troca de auditor (`auditor_change`). */
+export interface EventoDaEmpresaV1 {
+  tipo: string;
+  campos: Record<string, CampoComFonteV1>;
+}
+
+/** Os eventos da empresa (tela do analista, POST /v1/analista/ficha/eventos), uma página por vez. */
+export interface EventosDaEmpresaV1 {
+  estado: "pronta" | "nao_liberada" | "nao_disponivel";
+  como_era_em: string | null; // AAAA-MM-DD
+  eventos: EventoDaEmpresaV1[];
+  cortada: boolean;
+  proximo_cursor: string | null; // abre a página seguinte
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}
+
 // Comparar empresas (tela do analista, linha 798): uma empresa por linha, cada campo com a fonte e o dia.
 // Quem a base não serve (pessoa, MEI, CNPJ desconhecido) vem só com o cnpj e estado "nao_disponivel".
 export interface EmpresaComparadaV1 {
