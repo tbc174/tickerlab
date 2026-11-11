@@ -73,6 +73,7 @@ def test_item_provado_sai_com_orgao_data_trecho_hash_e_atribuicao(
             "source_url": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/exemplo.csv",
             "date": "2026-11-10",
             "excerpt": "Parque Exemplo Eólico: 120 MW, vigência 2035, CNPJ 11.222.333/0001-81",
+            "excerpt_cut": "",
             "original_sha256": HASH,
             "location": "linha 3",
         }
@@ -117,6 +118,11 @@ def test_dias_fora_de_1_a_30_e_400(cliente, chave, dias):
     assert "invalid_days" in resposta.text
 
 
+def test_recorte_do_trecho_passa_adiante(cliente, chave, tmp_path, monkeypatch):
+    _publicar(tmp_path, monkeypatch, [_item(recorte="ambos")])
+    assert _get(cliente, chave).json()["items"][0]["excerpt_cut"] == "ambos"
+
+
 @pytest.mark.parametrize(
     "ruim",
     [
@@ -157,6 +163,9 @@ def test_dias_fora_de_1_a_30_e_400(cliente, chave, dias):
         ),  # fonte com linha de pessoa
         _item(fonte_url="https://portaldatransparencia.gov.br/x"),
         _item(data="ontem"),
+        _item(recorte="meio"),
+        _item(recorte=["ambos"]),  # lista no JSON: item inválido, não erro 500
+        _item(recorte={"a": 1}),
         _item(afirmacao=7),
         _item(trecho=7),
         "não é um item",

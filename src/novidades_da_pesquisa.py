@@ -12,6 +12,13 @@ from urllib.parse import urlsplit
 from base.cnpj import dv_confere
 from src.pessoa_no_texto import telefone_no_texto, texto_de_pessoa
 
+# como o trecho foi recortado do original (marcado fora das aspas por quem mostra)
+SEM_CORTE = ""
+CORTE_NO_INICIO = "inicio"
+CORTE_NO_FIM = "fim"
+CORTE_NOS_DOIS = "ambos"
+RECORTES = frozenset({SEM_CORTE, CORTE_NO_INICIO, CORTE_NO_FIM, CORTE_NOS_DOIS})
+
 TRECHO_MAXIMO = 300  # citação curta, não a página
 CNPJ_TAMANHO = 14
 

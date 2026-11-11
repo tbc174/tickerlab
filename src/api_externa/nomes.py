@@ -209,6 +209,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "fonte_url": "source_url",
     "data": "date",
     "trecho": "excerpt",
+    "recorte": "excerpt_cut",
     "sha256": "original_sha256",
     "posicao": "location",
     "Tipo_Fundo": "fund_type",  # o campo do portão do sinal do FIP (não sai como chave)

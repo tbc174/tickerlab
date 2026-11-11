@@ -1967,6 +1967,15 @@ def test_novidades_pede_a_rota_e_mostra_orgao_trecho_e_hash(rodar, chave):
     assert "a" * 64 in resultado.stdout
 
 
+def test_novidades_marca_o_recorte_fora_das_aspas(rodar, chave):
+    item = CORPO_DE_NOVIDADES["items"][0] | {"excerpt_cut": "ambos"}
+    corpo = CORPO_DE_NOVIDADES | {"items": [item]}
+    resultado, _ = _pedir_novidades(rodar, chave, corpo)
+    assert "vigência 2035”  [recorte: o original continua antes e depois]" in (
+        resultado.stdout
+    )
+
+
 def test_novidades_sem_nada_diz_que_nao_ha(rodar, chave):
     vazio = {"generated_at": None, "days": 7, "total_news": 0, "items": []}
     resultado, _ = _pedir_novidades(rodar, chave, vazio)

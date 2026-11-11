@@ -165,6 +165,55 @@ def test_trecho_acima_do_maximo_nao_sai(tmp_path):
     assert saida.descartados == {novidades.MOTIVO_TRECHO_LONGO: 1}
 
 
+def _trecho_longo(antes: str = "", depois: str = "") -> str:
+    return f"{antes}{'palavra ' * 60}{CNPJ} Parque 120 MW {'palavra ' * 60}{depois}".strip()
+
+
+def test_trecho_longo_sai_como_janela_em_volta_do_valor_e_o_hash_e_o_do_original(
+    tmp_path,
+):
+    memoria = _memoria(tmp_path)
+    _visto(memoria)
+    original = _trecho_longo()
+    _fato(memoria, trecho=original)
+    saida = novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    assert saida.descartados == {}
+    item = saida.itens[0]
+    assert item["trecho"] in original and "120" in item["trecho"]
+    assert len(item["trecho"]) <= novidades.TRECHO_MAXIMO
+    assert item["recorte"] == "ambos"
+    assert item["sha256"] == HASH
+
+
+def test_trecho_curto_sai_sem_recorte(tmp_path):
+    memoria = _memoria(tmp_path)
+    _visto(memoria)
+    _fato(memoria)
+    assert (
+        novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC)).itens[0][
+            "recorte"
+        ]
+        == ""
+    )
+
+
+def test_marca_de_pessoa_fora_da_janela_ainda_derruba_o_item(tmp_path):
+    memoria = _memoria(tmp_path)
+    _visto(memoria)
+    _fato(memoria, trecho=_trecho_longo(antes="O Sr. Fulano Inventado assinou. "))
+    saida = novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    assert saida.itens == []
+    assert saida.descartados == {novidades.MOTIVO_PESSOA: 1}
+
+
+def test_cpf_fora_da_janela_ainda_derruba_o_exportador(tmp_path):
+    memoria = _memoria(tmp_path)
+    _visto(memoria)
+    _fato(memoria, trecho=_trecho_longo(depois=f" sócio {CPF_INVENTADO}"))
+    with pytest.raises(novidades.CpfNoTrechoError):
+        novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+
+
 def test_mesmo_original_e_trecho_so_uma_vez(tmp_path):
     memoria = _memoria(tmp_path)
     _visto(memoria)
@@ -295,3 +344,13 @@ def test_script_sem_base_do_acervo_para_e_nao_grava(tmp_path, capsys, monkeypatc
     )
     assert codigo == 3
     assert not destino.exists()
+
+
+def test_janela_que_perde_o_cnpj_derruba_o_item(tmp_path):
+    memoria = _memoria(tmp_path)
+    _visto(memoria)
+    longe = f"{CNPJ} {'palavra ' * 60}Parque 120 MW {'palavra ' * 60}"
+    _fato(memoria, trecho=longe)
+    saida = novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    assert saida.itens == []
+    assert saida.descartados == {novidades.MOTIVO_SEM_CNPJ: 1}

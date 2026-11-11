@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from pesquisa.janela import Janela, janela_do_valor
 from pesquisa.memoria import Memoria
 from src.novidades_da_pesquisa import (
     MARCAS_DE_PESSOA,
@@ -36,8 +37,8 @@ MOTIVO_PESSOA = "marca de pessoa física no texto"
 MOTIVO_FORA_DA_JANELA = "fora da janela de dias"
 MOTIVO_NAO_CONFIRMADO = "veredito não confirmado"
 MOTIVO_REPETIDO = "mesmo original e mesmo trecho já exportados"
-MOTIVO_TRECHO_LONGO = "trecho acima do máximo"
-MOTIVO_SEM_CNPJ = "sem CNPJ válido no trecho"
+MOTIVO_TRECHO_LONGO = "trecho acima do máximo e sem janela em volta do valor"
+MOTIVO_SEM_CNPJ = "sem CNPJ válido no trecho servido"
 MOTIVO_CNPJ_FORA_DA_LISTA = "CNPJ fora da lista sem pessoa do acervo"
 MOTIVO_SEM_REVENDA = "fonte sem licença ou sem revenda liberada"
 
@@ -72,17 +73,26 @@ def _consultar(caminho: Path) -> list[sqlite3.Row]:
         ).fetchall()
 
 
+def _janela(fato: dict[str, object]) -> Janela | None:
+    return janela_do_valor(
+        str(fato["trecho"]), str(fato.get("valor") or ""), TRECHO_MAXIMO
+    )
+
+
 def _item(fato: dict[str, object], linha: sqlite3.Row) -> dict[str, str]:
     url = linha["url_final"] or linha["url"]
     quando = linha["quando"]
     fonte, orgao = orgao_da_url(url) or ("", "")
+    janela = _janela(fato)
+    assert janela is not None  # `_por_que_nao` já descartou o fato sem janela
     return {
         "orgao": orgao,
         "fonte": fonte,
         "fonte_url": url,
         "data": quando[:10],
-        "afirmacao": str(fato.get("afirmacao") or ""),
-        "trecho": str(fato["trecho"]),
+        "afirmacao": str(fato.get("afirmacao") or ""),  # interno: a API não serve
+        "trecho": janela.texto,
+        "recorte": janela.recorte,
         "sha256": str(fato["sha256"]),
         "posicao": str(fato.get("posicao") or ""),
     }
@@ -120,13 +130,13 @@ def _por_que_nao(
         return MOTIVO_CONTATO
     if MARCAS_DE_PESSOA.search(textos):
         return MOTIVO_PESSOA
-    if len(trecho) > TRECHO_MAXIMO:
+    janela = _janela(fato)
+    if janela is None:
         return MOTIVO_TRECHO_LONGO
-    cnpjs = cnpjs_validos(
-        trecho
-    )  # a prova de quem é o valor tem de estar no trecho que sai
-    if not cnpjs:
+    # a prova de quem é o valor tem de estar na janela que sai (não só no trecho inteiro)
+    if not cnpjs_validos(janela.texto):
         return MOTIVO_SEM_CNPJ
+    cnpjs = cnpjs_validos(trecho) | cnpjs_validos(janela.texto)
     if not all(e_empresa(cnpj) for cnpj in cnpjs):
         return MOTIVO_CNPJ_FORA_DA_LISTA
     return None
