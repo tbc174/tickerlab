@@ -311,6 +311,8 @@ def test_a_saida_limpa_passa_e_da_as_contagens(tmp_path):
         ("entidades", _entidade(ALFA, natureza_juridica="'4090'")),
         ("entidades", _entidade(ALFA, natureza_juridica="'nao_informada'")),
         ("entidades", _entidade(ALFA, natureza_juridica="NULL")),
+        ("entidades", _entidade(ALFA, natureza_juridica="''")),  # vazia: na dúvida, pessoa
+        ("entidades", _entidade(ALFA, natureza_juridica="'  '")),
         ("entidades", _entidade(PESSOA)),
         ("entidades", _entidade("NULL")),
         ("entidades", _entidade(SEM_CNPJ)),  # sem CNPJ: não dá para conferir na lista sem pessoa

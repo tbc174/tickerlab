@@ -81,7 +81,8 @@ def _e_pj(alias: str = "") -> str:
     return (
         f"{a}id_entidade IS NOT NULL AND NOT starts_with({a}id_entidade, {_aspas(PREFIXO_DE_PESSOA)}) "
         f"AND coalesce({a}trata_como_pessoa, true) = false AND coalesce({a}mei, true) = false "
-        f"AND {natureza} IS NOT NULL AND {natureza} <> {_aspas(EMPRESARIO_INDIVIDUAL)} "
+        f"AND {natureza} IS NOT NULL AND {natureza} <> '' "  # vazia é pessoa (falha fechada)
+        f"AND {natureza} <> {_aspas(EMPRESARIO_INDIVIDUAL)} "
         f"AND NOT starts_with({natureza}, {_aspas(GRUPO_DAS_PESSOAS_FISICAS)}) "
         f"AND {natureza} <> {_aspas(NAO_INFORMADA)}"
     )
