@@ -12,6 +12,7 @@ import { BuscaPorCnpj } from "./telas/BuscaPorCnpj";
 import { EncontrarEmpresas } from "./telas/EncontrarEmpresas";
 import { FichaDaEmpresa } from "./telas/FichaDaEmpresa";
 import { Comparar } from "./telas/Comparar";
+import { CompararEmpresas } from "./telas/CompararEmpresas";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
@@ -46,6 +47,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   busca_por_cnpj: (pagina) => <BuscaPorCnpj pagina={pagina} />,
   ficha_da_empresa: (pagina) => <FichaDaEmpresa pagina={pagina} />,
   encontrar_empresas: (pagina) => <EncontrarEmpresas pagina={pagina} />,
+  comparar_empresas: (pagina) => <CompararEmpresas pagina={pagina} />,
   o_que_mudou: (pagina) => <OQueMudou pagina={pagina} />,
   relatorio_do_setor: (pagina) => <RelatorioDoSetor pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
