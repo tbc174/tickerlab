@@ -439,6 +439,21 @@ def test_base_sem_a_rede_nao_serve_nenhuma_empresa(tmp_path, cenario, monkeypatc
     assert resposta.json() == {"detail": "not_available"}
 
 
+def test_base_sem_a_tabela_da_situacao_da_not_available_e_nao_erro(
+    tmp_path, cenario, monkeypatch
+):
+    """A tabela ainda não montada numa base (ensaio local) é "sem retrato público", nunca um 500."""
+    base = tmp_path / "sem_situacao"
+    _gravar_base(base, _retratos())
+    for arquivo in (base / TABELA).glob("*.parquet"):
+        arquivo.unlink()
+    (base / TABELA).rmdir()
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    resposta = _get(aj.cliente_da_api(monkeypatch, AGORA), cenario)
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
 # ---------------------------------------------------------------- sem olhar o futuro
 
 

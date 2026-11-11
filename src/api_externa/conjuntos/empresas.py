@@ -156,8 +156,8 @@ class LeitorDeEmpresas:
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
-        if not e_empresa(self.porta, normal):
-            return None
+        if not e_empresa(self.porta, normal) or TABELA not in views(self.porta.con):
+            return None  # base sem a tabela (ainda não montada): sem retrato público, como as irmãs
         retratos = self.porta.ler(
             TABELA,
             como_era_em=como_era_em,
