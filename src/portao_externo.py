@@ -557,6 +557,44 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("razao_social",),
         _PROVA_RECEITA,
     ),
+    # buyers (linha 810, PR 4): quem já se mexeu num setor, só pessoa jurídica. O setor e os nomes saem das
+    # duas tabelas sem pessoa do CNPJ (linha 584); as entradas, da tabela de sócios PJ (só sócio do tipo 1);
+    # o FIP, do registro de fundos da CVM; a controlada, do FRE. A linha vale para o campo inteiro.
+    *_campos(
+        ("rfb-cnpj",),
+        "buyers",
+        ("cnpj_empresas_pj",),
+        ("razao_social",),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "buyers",
+        ("cnpj_estabelecimentos_pj",),
+        ("cnae_principal", "uf"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "buyers",
+        ("entradas_de_socio_pj",),
+        ("data_entrada",),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("cvm-fidc-base",),
+        "buyers",
+        ("registro_de_fundos",),
+        ("Tipo_Fundo",),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-fre",),
+        "buyers",
+        ("controladas",),
+        ("tipo", "participacao", "referencia"),
+        _PROVA_CVM,
+    ),
 )
 
 
