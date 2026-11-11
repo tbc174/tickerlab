@@ -94,7 +94,8 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
   const token = useConta()?.token ?? null;
   const rotaDosEventos = `${rota}${CAMINHO}`;
   const primeira = usarPedido<EventosDaEmpresaV1>(rotaDosEventos, {}, { cnpj });
-  const [seguintes, setSeguintes] = useState<EventosDaEmpresaV1[]>([]);
+  // as páginas seguintes levam o CNPJ de que vieram: uma resposta atrasada de outra empresa nunca entra na lista
+  const [seguintes, setSeguintes] = useState<{ cnpj: string; pagina: EventosDaEmpresaV1 }[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [falhou, setFalhou] = useState(false);
 
@@ -106,7 +107,7 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
 
   if (primeira.estado !== "pronto") return null; // carregando ou qualquer falha: a ficha segue sem a seção
   const dados = primeira.dados;
-  const todas = [dados, ...seguintes];
+  const todas = [dados, ...seguintes.filter((s) => s.cnpj === cnpj).map((s) => s.pagina)];
   const eventos = todas.flatMap((pagina) => pagina.eventos);
   const cursor = todas[todas.length - 1]?.proximo_cursor ?? null;
 
@@ -116,7 +117,7 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
     setFalhou(false);
     try {
       const pagina = await pedir<EventosDaEmpresaV1>(rotaDosEventos, token, {}, { cnpj, cursor });
-      setSeguintes((anteriores) => [...anteriores, pagina]);
+      setSeguintes((anteriores) => [...anteriores, { cnpj, pagina }]);
     } catch {
       setFalhou(true);
     } finally {
