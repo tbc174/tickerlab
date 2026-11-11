@@ -16,6 +16,7 @@ dados_sala
 *.sqlite
 .env
 .env.sala
+.env.mcp
 README.md
 requirements-estudos.txt
 requirements-trader.txt
@@ -23,4 +24,5 @@ ruff.toml
 pytest.ini
 Dockerfile
 compose.yaml
+compose.conector.yaml
 .streamlit/secrets.toml

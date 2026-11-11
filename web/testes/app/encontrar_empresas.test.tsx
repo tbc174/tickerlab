@@ -2,7 +2,8 @@
 // Encontrar empresas (tela do analista, linha 798): o formulário abre com as opções da API (um pedido sem
 // filtro, que não lê a base), a busca manda os filtros no corpo do POST, "Carregar mais" pede a página
 // seguinte pelo cursor e o link de cada empresa abre a ficha com o CNPJ no estado da navegação, nunca no
-// endereço. "Sem prontidão" é um estado da tela ("dado ainda não liberado"), nunca um erro.
+// endereço. "Sem prontidão" é um estado da tela ("dado ainda não liberado"), nunca um erro. Capital social e
+// estabelecimentos ativos filtram e ordenam, e a tela diz que são só uma aproximação do tamanho.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { BuscaDeEmpresasV1, CampoComFonteV1, EmpresaDaBuscaV1 } from "../../src/app/tipos";
@@ -28,6 +29,8 @@ function empresa(cnpj: string, razao: string): EmpresaDaBuscaV1 {
     uf: campo("MG"),
     municipio: campo("4123"),
     matriz: campo(true),
+    capital_social: campo(6000000),
+    n_estabelecimentos: campo(2),
     cnae_descricao: "Desenvolvimento de programas de computador sob encomenda",
     municipio_nome: "BELO HORIZONTE",
     porte_descricao: "Demais",
@@ -49,6 +52,10 @@ const OPCOES: BuscaDeEmpresasV1 = {
     { codigo: "J", nome: "Informação e comunicação" },
   ],
   ufs: ["MG", "SP"],
+  ordens: [
+    { codigo: "maior_capital", nome: "Maior capital social" },
+    { codigo: "mais_estabelecimentos", nome: "Mais estabelecimentos ativos" },
+  ],
 };
 const FONTES = [{ fonte: "rfb-cnpj", licenca: "CC BY 4.0", atribuicao: "Receita Federal do Brasil" }];
 const PRIMEIRA: BuscaDeEmpresasV1 = {
@@ -130,6 +137,38 @@ describe("encontrar empresas", () => {
     const limites = screen.getByRole("region", { name: "Limites e cuidados" });
     expect(within(limites).getByText(/recomendação de investimento/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Baixar em Excel" })).toBeTruthy();
+  });
+
+  it("capital, estabelecimentos e ordem vão no corpo; a tabela mostra os dois, como aproximação", async () => {
+    const { buscar } = abrir(PRIMEIRA);
+    const capital = await screen.findByLabelText("Capital social mínimo (R$)");
+    expect(screen.getByText(/só uma aproximação do tamanho/)).toBeTruthy();
+    fireEvent.change(capital, { target: { value: "1000000" } });
+    fireEvent.change(screen.getByLabelText("Estabelecimentos ativos, no mínimo"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
+    fireEvent.click(screen.getByRole("button", { name: "Encontrar empresas" }));
+    const linha = await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(corpos(buscar)[1]).toEqual({
+      setores: [],
+      ufs: [],
+      capital_minimo: 1000000,
+      estabelecimentos_minimo: 2,
+      ordem: "maior_capital",
+    });
+    expect(linha.textContent).toMatch(/R\$\s6\.000\.000/);
+    expect(screen.getByRole("columnheader", { name: "Estabelecimentos ativos" })).toBeTruthy();
+    // a ordem vai junto no "Carregar mais", com o cursor
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    await screen.findByRole("row", { name: /EMPRESA BETA LTDA/ });
+    expect(corpos(buscar).at(-1)).toMatchObject({ ordem: "maior_capital", cursor: "cursor-2" });
+  });
+
+  it("a ordem sozinha não é filtro: o botão segue desligado", async () => {
+    abrir(PRIMEIRA);
+    fireEvent.change(await screen.findByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
+    expect((screen.getByRole("button", { name: "Encontrar empresas" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Capital social máximo (R$)"), { target: { value: "500000" } });
+    expect((screen.getByRole("button", { name: "Encontrar empresas" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("carregar mais: manda o cursor com os mesmos filtros e junta a página seguinte embaixo", async () => {

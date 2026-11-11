@@ -182,20 +182,37 @@ def resposta_de_dado(corpo: Mapping) -> str:
     return "\n\n".join(partes)
 
 
-def prospeccao(corpo: Mapping) -> str:
-    """A busca de empresas: quantas vieram, se há mais, e cada empresa com a fonte e a data."""
-    empresas = [e for e in corpo.get("companies") or [] if isinstance(e, Mapping)]
-    if not empresas:
-        topo = "Nenhuma empresa com estes filtros. Afrouxe algum (CNAE mais curto, sem município...)."
-    else:
-        topo = f"{len(empresas)} empresas nesta resposta."
+def _paginada(corpo: Mapping, lista: str, nome: str, vazia: str) -> str:
+    """Uma resposta em páginas: quantas linhas vieram, se há mais, e cada linha com a fonte e a data."""
+    linhas = [e for e in corpo.get(lista) or [] if isinstance(e, Mapping)]
+    topo = f"{len(linhas)} {nome} nesta resposta." if linhas else vazia
     if corpo.get("next_cursor"):
         topo += (
             " Há mais: rode de novo com --todas para buscar as outras páginas (cada página é um pedido "
             "da quota)."
         )
-    resto = {nome: valor for nome, valor in corpo.items() if nome != "next_cursor"}
+    resto = {chave: valor for chave, valor in corpo.items() if chave != "next_cursor"}
     return f"{topo}\n\n{resposta_de_dado(resto)}"
+
+
+def prospeccao(corpo: Mapping) -> str:
+    """A busca de empresas: quantas vieram, se há mais, e cada empresa com a fonte e a data."""
+    return _paginada(
+        corpo,
+        "companies",
+        "empresas",
+        "Nenhuma empresa com estes filtros. Afrouxe algum (CNAE mais curto, sem município...).",
+    )
+
+
+def eventos(corpo: Mapping) -> str:
+    """Os eventos da empresa: quantos vieram, se há mais, e cada um com a fonte e a data."""
+    return _paginada(
+        corpo,
+        "events",
+        "eventos",
+        "Nenhum evento da empresa até o dia. Sem evento não quer dizer que nada aconteceu.",
+    )
 
 
 def setores(corpo: Mapping) -> str:

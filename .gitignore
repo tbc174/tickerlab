@@ -13,6 +13,7 @@ cli/build/
 # Segredos: nunca commitar
 .env
 .env.sala
+.env.mcp
 *.key
 
 # Dados baixados (podem ser baixados de novo)
