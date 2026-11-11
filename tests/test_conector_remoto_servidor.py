@@ -12,7 +12,7 @@ import httpx
 import pytest
 from tickerlab import comandos
 
-from conector_remoto import acesso, ferramentas
+from conector_remoto import acesso, ferramentas, servidor
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.saida import TETO_DE_CARACTERES
 from src.api_externa.conjuntos import (
@@ -109,6 +109,20 @@ def test_lista_so_o_que_o_catalogo_da_chave_libera():
         )
     assert nomes == ["demonstracoes", "o_que_posso_ver"]
     assert erro and texto == ferramentas.MENSAGEM_NAO_LIBERADA
+
+
+def test_orientacao_do_dossie_cita_so_ferramentas_que_existem_na_ordem():
+    assert set(servidor.FERRAMENTAS_DO_DOSSIE) <= set(
+        ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )
+    posicoes = [
+        servidor.INSTRUCOES.index(f"`{nome}`")
+        for nome in servidor.FERRAMENTAS_DO_DOSSIE
+    ]
+    assert posicoes == sorted(posicoes)
+    assert (
+        "dossie" not in ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )  # a IA compõe; sem ferramenta própria
 
 
 def test_todas_as_ferramentas_so_leem():
