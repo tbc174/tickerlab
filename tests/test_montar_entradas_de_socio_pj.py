@@ -131,3 +131,21 @@ def test_ensaio_so_conta(tmp_path, capsys):
     assert _rodar(cnpj, destino, "--ensaio") == 0
     assert "'entrou': 2" in capsys.readouterr().out
     assert not (destino / socios_pj.TABELA).exists()
+
+
+def test_lista_reduzida_as_raizes_do_qsa_sem_raiz_fora_da_lista(tmp_path):
+    """A lista sem pessoa é lida só nas raízes do QSA (memória), e nenhuma raiz fora dela sai na tabela."""
+    cnpj, destino = _acervo(tmp_path)
+    lista = destino / "cnpj_estabelecimentos_pj" / "11.parquet"
+    fora_do_qsa = ["99999999", "98888888"]
+    pd.DataFrame(
+        {"cnpj_basico": [EMPRESA, HOLDING, *fora_do_qsa], "mes_do_retrato": "2023-06"}
+    ).to_parquet(lista, index=False)  # o fundo deixou de ser só empresa
+    assert script._pessoas_juridicas(destino, "2023-06", {EMPRESA, HOLDING, FUNDO}) == {
+        EMPRESA,
+        HOLDING,
+    }
+    assert _rodar(cnpj, destino) == 0
+    tabela = pd.read_parquet(destino / socios_pj.TABELA / "11.parquet")
+    raizes = set(tabela["cnpj_basico"]) | set(tabela["raiz_socio_pj"])
+    assert raizes == {EMPRESA, HOLDING}

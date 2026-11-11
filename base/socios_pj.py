@@ -17,11 +17,16 @@ Três regras:
   montar até M é o mesmo que montar tudo e cortar em M. A lista é a do mês mais recente (só ela existe): uma
   raiz que deixou de ser só empresa some da história inteira, porque a privacidade vem antes do ponto no
   tempo;
-- **sem movimento fantasma:** sair e entrar com os mesmos dados no mesmo mês não é movimento (a troca de
-  layout de 2024-09 fez isso com mais de 100 mil sócios PJ).
+- **sem movimento fantasma:** sair e entrar com os mesmos dados no mesmo mês não é movimento; e as mudanças de
+  um retrato com defeito conhecido (`RETRATOS_COM_DEFEITO`) se juntam às do mês seguinte, como se a base
+  comparasse o seguinte direto com o anterior (um sócio aparece duas vezes na mesma empresa só em casos
+  raros; aí os dois contam como um).
+
+O ponto no tempo vale para todo mês que não é retrato com defeito: montar com o vigente do próprio retrato com
+defeito não é um ponto válido (é o arquivo errado).
 """
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 import pandas as pd
 
@@ -43,6 +48,12 @@ _JA_ESTAVA, _NOVA = 0, 1
 _DEPOIS_DE_TODO_MES = (
     "9999-12"  # o vigente sem mudança só vale quando não há notícia mais antiga
 )
+# Retrato da Receita com defeito conhecido → o mês em que as mudanças dele passam a contar. O de 2024-09 tirou
+# uns 115 mil sócios PJ que voltaram em 2024-10 com a mesma data de entrada e pôs uns 113 mil que só existem
+# nele (116.055 das 116.116 voltas com a mesma data da base inteira; ensaio de 11/11/2026). Comparar 2024-10
+# direto com 2024-08 desfaz os dois; o que mudou de verdade aparece em 2024-10, com o piso de publicação dele.
+# Só entra mês aqui com contagem assim: nenhuma regra geral sem evidência.
+RETRATOS_COM_DEFEITO: Mapping[str, str] = {"2024-09": "2024-10"}
 
 
 def _so_pessoa_juridica(socios: pd.DataFrame) -> pd.DataFrame:
@@ -63,6 +74,49 @@ def _lado(mudancas: pd.DataFrame, tipos: Collection[str], lado: str) -> pd.DataF
             ENTRADA: pd.to_datetime(escolhidas[f"{ENTRADA}_{lado}"]),
             QUALIFICACAO: escolhidas[f"{QUALIFICACAO}_{lado}"],
         }
+    )
+
+
+def _sem_retratos_com_defeito(
+    mudancas: pd.DataFrame, retratos_com_defeito: Mapping[str, str]
+) -> pd.DataFrame:
+    """As mudanças de um retrato com defeito e as do mês seguinte viram uma só por sócio (empresa e raiz): o lado
+    de antes da primeira contra o de depois da última, no mês seguinte. É comparar o mês seguinte direto com o
+    anterior ao defeito: quem sumiu e voltou igual não se mexeu, quem voltou com outra data teve a data corrigida,
+    e nenhuma data que só existe no retrato com defeito aparece."""
+    seguinte = mudancas["mes"].replace(dict(retratos_com_defeito))
+    no_seguinte = seguinte.isin(set(retratos_com_defeito.values()))
+    if not no_seguinte.any():
+        return mudancas
+    chave = ["mes", EMPRESA, SOCIO]
+    juntas = (
+        mudancas[no_seguinte]
+        .assign(_original=mudancas["mes"], mes=seguinte)
+        .sort_values([*chave, "_original"], kind="stable")
+    )
+    primeira = juntas.drop_duplicates(chave, keep="first").set_index(chave)
+    ultima = juntas.drop_duplicates(chave, keep="last").set_index(chave)
+    tinha, tem = primeira["tipo"].ne(ENTROU), ultima["tipo"].ne(SAIU)
+    composta = pd.DataFrame(index=primeira.index)
+    for coluna in (ENTRADA, QUALIFICACAO):
+        composta[f"{coluna}_antes"] = primeira[f"{coluna}_antes"].where(tinha)
+        composta[f"{coluna}_depois"] = ultima[f"{coluna}_depois"].where(tem)
+    composta[f"{ENTRADA}_antes"] = pd.to_datetime(composta[f"{ENTRADA}_antes"])
+    composta[f"{ENTRADA}_depois"] = pd.to_datetime(composta[f"{ENTRADA}_depois"])
+    igual = pd.Series(True, index=composta.index)
+    for coluna in (ENTRADA, QUALIFICACAO):
+        antes, depois = composta[f"{coluna}_antes"], composta[f"{coluna}_depois"]
+        igual &= antes.eq(depois) | (antes.isna() & depois.isna())
+    composta["tipo"] = SAIU
+    composta.loc[tem, "tipo"] = ENTROU
+    composta.loc[tinha & tem, "tipo"] = MUDOU
+    composta = composta[(tinha | tem) & ~(tinha & tem & igual)]
+    return pd.concat(
+        [
+            mudancas[~no_seguinte],
+            composta.reset_index().assign(tipo_socio=TIPO_PESSOA_JURIDICA),
+        ],
+        ignore_index=True,
     )
 
 
@@ -117,13 +171,14 @@ def entradas_e_saidas(
     mudancas: pd.DataFrame,
     primeiro_mes: str,
     pessoas_juridicas: Collection[str],
+    retratos_com_defeito: Mapping[str, str] = RETRATOS_COM_DEFEITO,
 ) -> pd.DataFrame:
     """As entradas e saídas de sócio PJ entre raízes de `pessoas_juridicas` (as colunas de `COLUNAS`).
 
     `vigente` é o QSA do último mês de `mudancas`; `primeiro_mes` (AAAA-MM) é o do retrato inicial da base.
     """
     atual = _so_pessoa_juridica(vigente)[[*IDENTIDADE, QUALIFICACAO]]
-    pj = _so_pessoa_juridica(mudancas)
+    pj = _sem_retratos_com_defeito(_so_pessoa_juridica(mudancas), retratos_com_defeito)
     entradas, saidas = _sem_fantasmas(
         _lado(pj, [ENTROU], "depois"), _lado(pj, [SAIU], "antes")
     )

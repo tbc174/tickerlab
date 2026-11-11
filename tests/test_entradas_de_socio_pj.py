@@ -315,3 +315,128 @@ def test_porta_serve_a_tabela_com_a_data_de_entrada(tmp_path):
             f"WHERE movimento = 'entrou' AND cnpj_basico = '{EMPRESA_C}'"
         ).fetchall()
     assert linhas == [(FUNDO, date(2023, 6, 2))]
+
+
+DEFEITO = {
+    "2023-07": "2023-08"
+}  # nos dados de mentira, 2023-07 faz o papel do retrato de 2024-09
+
+
+def _com_retrato_com_defeito() -> dict[str, pd.DataFrame]:
+    """O retrato de 2023-07 vem com defeito, como o de 2024-09 da Receita: tira a holding de A (que volta em
+    2023-08 igual) e põe a gestora em C, que só existe nele. O resto de 2023-07 é verdade (a gestora sai de B
+    e o fundo entra em A)."""
+    retratos = _retratos()
+    julho = retratos["2023-07"]
+    holding_em_a = (julho["cnpj_basico"] == EMPRESA_A) & (
+        julho["raiz_socio_pj"] == HOLDING
+    )
+    fantasma = pd.DataFrame([_socio_pj(EMPRESA_C, GESTORA, "2020-01-01")])
+    retratos["2023-07"] = pd.concat([julho[~holding_em_a], fantasma], ignore_index=True)
+    return retratos
+
+
+def _montar_com_defeito(ate: str, defeito: dict[str, str] = DEFEITO) -> pd.DataFrame:
+    retratos = _com_retrato_com_defeito()
+    return socios_pj.entradas_e_saidas(
+        retratos[ate],
+        _mudancas(retratos, ate),
+        PRIMEIRO_MES,
+        PESSOAS_JURIDICAS,
+        defeito,
+    )
+
+
+def test_sem_a_regra_o_retrato_com_defeito_inventa_movimentos():
+    """O cenário reproduz o defeito: sem a regra, a holding sai e volta e a gestora aparece em C."""
+    tabela = _montar_com_defeito("2023-08", defeito={})
+    assert ("saiu", pd.Timestamp("2010-03-01"), "2023-07") in _da_dupla(
+        tabela, EMPRESA_A, HOLDING
+    )
+    assert _da_dupla(tabela, EMPRESA_C, GESTORA) != []
+
+
+def test_retrato_com_defeito_conta_no_mes_seguinte():
+    """Comparar 2023-08 direto com 2023-06: some o que o defeito inventou, e o que mudou de verdade aparece em
+    2023-08, com o piso de publicação de 2023-08 (nunca com o mês do retrato com defeito)."""
+    tabela = _montar_com_defeito("2023-08")
+    assert "2023-07" not in set(tabela["mes_do_retrato"])
+    assert _da_dupla(tabela, EMPRESA_A, HOLDING) == [
+        ("entrou", pd.Timestamp("2010-03-01"), PRIMEIRO_MES)
+    ]
+    assert _da_dupla(tabela, EMPRESA_C, GESTORA) == []
+    assert _da_dupla(tabela, EMPRESA_B, GESTORA) == [
+        ("entrou", pd.Timestamp("2015-06-10"), PRIMEIRO_MES),
+        ("saiu", pd.Timestamp("2015-06-10"), "2023-08"),
+    ]
+    assert _da_dupla(tabela, EMPRESA_A, FUNDO) == [
+        ("entrou", pd.Timestamp("2023-07-01"), "2023-08")
+    ]
+    depois_do_defeito = tabela[tabela["mes_do_retrato"] == "2023-08"]
+    assert set(depois_do_defeito["disponivel_em"]) == {
+        pd.Timestamp(receita_diff.disponivel_em("2023-08"))
+    }
+
+
+@pytest.mark.parametrize("corte", [m for m in MESES if m not in DEFEITO])
+def test_cortar_o_futuro_nao_muda_o_passado_com_retrato_com_defeito(corte):
+    """Fora o próprio retrato com defeito (que não é um ponto válido), montar até o corte é cortar o todo."""
+    tudo = _montar_com_defeito(MESES[-1])
+    ate_o_corte = tudo[tudo["mes_do_retrato"] <= corte]
+    assert _como_lista(_montar_com_defeito(corte)) == _como_lista(ate_o_corte)
+
+
+def test_o_retrato_com_defeito_da_base_e_so_o_de_2024_09():
+    """Nenhuma regra geral sem evidência: só o mês contado no ensaio de 11/11/2026."""
+    assert dict(socios_pj.RETRATOS_COM_DEFEITO) == {"2024-09": "2024-10"}
+
+
+def _montar_cenario(retratos: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    return socios_pj.entradas_e_saidas(
+        retratos["2023-08"],
+        _mudancas(retratos, "2023-08"),
+        PRIMEIRO_MES,
+        PESSOAS_JURIDICAS,
+        DEFEITO,
+    )
+
+
+def _trocar_data(retratos, mes, empresa, socio, data):
+    quadro = retratos[mes]
+    linha = (quadro["cnpj_basico"] == empresa) & (quadro["raiz_socio_pj"] == socio)
+    quadro.loc[linha, "data_entrada"] = pd.Timestamp(data)
+
+
+def test_some_no_defeito_e_volta_com_outra_data_e_data_corrigida():
+    """Revisão cruzada (P1): a holding some de A em 2023-07 e volta em 2023-08 com outra data. Comparando 08 com
+    06, a Receita só trocou a data: nada de saída nem de entrada nova."""
+    retratos = _com_retrato_com_defeito()
+    _trocar_data(retratos, "2023-08", EMPRESA_A, HOLDING, "2011-01-01")
+    assert _da_dupla(_montar_cenario(retratos), EMPRESA_A, HOLDING) == [
+        ("data_corrigida", pd.Timestamp("2011-01-01"), "2023-08"),
+        ("entrou", pd.Timestamp("2010-03-01"), PRIMEIRO_MES),
+    ]
+
+
+def test_data_que_so_existe_no_defeito_nao_aparece():
+    """Revisão cruzada (P2): o fundo entra em A no retrato com defeito com uma data, e a Receita a troca no mês
+    seguinte: vale só a data do mês seguinte, numa linha só."""
+    retratos = _com_retrato_com_defeito()
+    _trocar_data(retratos, "2023-08", EMPRESA_A, FUNDO, "2023-07-15")
+    tabela = _montar_cenario(retratos)
+    assert _da_dupla(tabela, EMPRESA_A, FUNDO) == [
+        ("entrou", pd.Timestamp("2023-07-15"), "2023-08")
+    ]
+    assert pd.Timestamp("2023-07-01") not in set(tabela["data_entrada"])
+
+
+def test_duas_trocas_de_data_em_volta_do_defeito_viram_uma():
+    """Revisão cruzada (P2): A→B em 2023-07 e B→C em 2023-08 é uma correção só, de A para C."""
+    retratos = _retratos()
+    for mes, data in (("2023-07", "2011-01-01"), ("2023-08", "2012-01-01")):
+        _trocar_data(retratos, mes, EMPRESA_A, HOLDING, data)
+    tabela = _montar_cenario(retratos)
+    assert _da_dupla(tabela, EMPRESA_A, HOLDING) == [
+        ("data_corrigida", pd.Timestamp("2012-01-01"), "2023-08"),
+        ("entrou", pd.Timestamp("2010-03-01"), PRIMEIRO_MES),
+    ]

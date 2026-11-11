@@ -79,26 +79,37 @@ def _ler_socios_pj(pasta: Path, colunas: list[str]) -> pd.DataFrame:
     )
 
 
-def _pessoas_juridicas(destino: Path, mes: str) -> set[str]:
-    """As raízes da lista sem pessoa do CNPJ, que tem de ser do `mes` do QSA vigente."""
+def _pessoas_juridicas(destino: Path, mes: str, raizes: set[str]) -> set[str]:
+    """As `raizes` que estão na lista sem pessoa do CNPJ, que tem de ser do `mes` do QSA vigente.
+
+    Lê uma partição por vez e guarda só as raízes que aparecem no QSA PJ: a lista inteira (21 milhões de
+    raízes em 11/2026) não cabia em 8 GB, e o filtro da tabela olha só essas raízes."""
     arquivos = arquivos_da_tabela(destino / ESTABELECIMENTOS, "*.parquet")
     if not arquivos:
         raise ErroDeLayout(
             f"{ESTABELECIMENTOS} ausente em {destino}: rode antes o montar_empresas_pj"
         )
-    lista = pd.concat(
-        [
-            pd.read_parquet(a, columns=["cnpj_basico", "mes_do_retrato"])
-            for a in arquivos
-        ],
-        ignore_index=True,
-    )
-    meses = set(lista["mes_do_retrato"])
+    meses: set[str] = set()
+    na_lista: set[str] = set()
+    for arquivo in arquivos:
+        parte = pd.read_parquet(arquivo, columns=["cnpj_basico", "mes_do_retrato"])
+        meses.update(parte["mes_do_retrato"].unique())
+        na_lista.update(parte.loc[parte["cnpj_basico"].isin(raizes), "cnpj_basico"])
     if meses != {mes}:
         raise ErroDeLayout(
             f"{ESTABELECIMENTOS} é de {sorted(meses)} e o QSA vigente de {mes}: rode antes o montar_empresas_pj"
         )
-    return set(lista["cnpj_basico"])
+    return na_lista
+
+
+def _raizes(*tabelas: pd.DataFrame) -> set[str]:
+    """As raízes dos dois lados (empresa e sócia) das `tabelas` do QSA."""
+    return {
+        raiz
+        for tabela in tabelas
+        for coluna in ("cnpj_basico", "raiz_socio_pj")
+        for raiz in tabela[coluna].dropna().unique()
+    }
 
 
 def montar(
@@ -107,11 +118,13 @@ def montar(
     """Monta a tabela com o QSA de `cnpj` e devolve as linhas de cada movimento."""
     manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
     meses = sorted(manifesto["meses"])
+    vigente = _ler_socios_pj(cnpj / "vigente" / "qsa", COLUNAS_DO_QSA)
+    mudancas = _ler_socios_pj(cnpj / "mudancas" / "qsa", COLUNAS_DAS_MUDANCAS)
     tabela = socios_pj.entradas_e_saidas(
-        _ler_socios_pj(cnpj / "vigente" / "qsa", COLUNAS_DO_QSA),
-        _ler_socios_pj(cnpj / "mudancas" / "qsa", COLUNAS_DAS_MUDANCAS),
+        vigente,
+        mudancas,
         meses[0],
-        _pessoas_juridicas(destino, meses[-1]),
+        _pessoas_juridicas(destino, meses[-1], _raizes(vigente, mudancas)),
     )
     contagem = {str(k): int(v) for k, v in tabela["movimento"].value_counts().items()}
     if gravar:
