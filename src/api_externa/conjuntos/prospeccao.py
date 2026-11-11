@@ -228,7 +228,13 @@ def _do_cursor(cursor: str) -> tuple[str, str | None, float | None]:
             if not math.isfinite(valor):
                 raise FiltroInvalido("invalid_cursor")
             return _cnpj_valido(cnpj), coluna, float(valor)
-    except (binascii.Error, UnicodeDecodeError, ValueError, OverflowError) as erro:
+    except (
+        binascii.Error,
+        UnicodeDecodeError,
+        ValueError,
+        OverflowError,
+        RecursionError,
+    ) as erro:
         raise FiltroInvalido("invalid_cursor") from erro
     return _cnpj_valido(texto), None, None
 

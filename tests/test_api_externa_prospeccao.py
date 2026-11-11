@@ -517,3 +517,22 @@ def test_capital_ausente_nao_quebra_o_carregar_mais(cliente, cenario, pasta):
         if not cursor:
             break
     assert len(vistos) == len(set(vistos)) == 4
+
+
+def test_cursor_aninhado_demais_e_400_e_nao_500(cliente, cenario):
+    import base64
+
+    cursor = base64.urlsafe_b64encode(b"[" * 3000).decode().rstrip("=")
+    resposta = _get(
+        cliente, cenario, capital_min=1, sort="capital", cursor=cursor, **SETEMBRO
+    )
+    assert resposta.status_code == 400
+
+
+def test_cursor_ordenado_cabe_no_limite_da_tela_do_analista():
+    from src.api_v1.analista import TAMANHO_MAXIMO_DO_CURSOR
+
+    maior = prospeccao.cursor_de(
+        "ZZZZZZZZZZZZZZ", 999_999_999_999_999.99, "n_estabelecimentos"
+    )
+    assert len(maior) <= TAMANHO_MAXIMO_DO_CURSOR
