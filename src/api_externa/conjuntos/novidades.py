@@ -95,7 +95,7 @@ def _item_publicavel(bruto: object) -> dict[str, str] | None:
     if not (HASH.fullmatch(sha) and DATA.fullmatch(data) and trecho):
         return None
     recorte = bruto.get("recorte", "")  # itens antigos não têm o campo: sem corte
-    if recorte not in RECORTES:
+    if not isinstance(recorte, str) or recorte not in RECORTES:
         return None
     if not texto_publicavel(afirmacao, trecho, url, posicao):
         return None

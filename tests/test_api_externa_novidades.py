@@ -23,7 +23,7 @@ def _item(**outros) -> dict:
         "fonte": "cvm",
         "fonte_url": "https://dados.cvm.gov.br/dados/exemplo.csv",
         "data": "2026-11-10",
-        "afirmacao": "Parque Exemplo: 120 MW",
+        "afirmacao": "Parque Exemplo (CNPJ 11.222.333/0001-81): 120 MW",
         "trecho": "Parque Exemplo Eólico: 120 MW, vigência 2035",
         "sha256": HASH,
         "posicao": "linha 3",
@@ -72,7 +72,7 @@ def test_item_provado_sai_com_orgao_data_trecho_hash_e_atribuicao(
             "source": "cvm",
             "source_url": "https://dados.cvm.gov.br/dados/exemplo.csv",
             "date": "2026-11-10",
-            "claim": "Parque Exemplo: 120 MW",
+            "claim": "Parque Exemplo (CNPJ 11.222.333/0001-81): 120 MW",
             "excerpt": "Parque Exemplo Eólico: 120 MW, vigência 2035",
             "excerpt_cut": "",
             "original_sha256": HASH,
@@ -139,8 +139,20 @@ def test_recorte_do_trecho_passa_adiante(cliente, chave, tmp_path, monkeypatch):
         _item(trecho="Sócio com CPF 529.982.247-25 entrou em 2025"),
         _item(trecho="Sócio 52998224725 entrou em 2025"),
         _item(trecho="O Sr. Fulano Inventado assinou o contrato em 2025"),
+        _item(
+            afirmacao="Multa de 120.000,00", trecho="NOME FICTICIO | multa | 120.000,00"
+        ),
+        _item(
+            afirmacao="Multa", trecho="Empresa 11.222.333/0001-80 | multa"
+        ),  # CNPJ com DV errado
+        _item(
+            fonte_url="https://dadosabertos.tcu.gov.br/x"
+        ),  # fonte com linha de pessoa
+        _item(fonte_url="https://portaldatransparencia.gov.br/x"),
         _item(data="ontem"),
         _item(recorte="meio"),
+        _item(recorte=["ambos"]),  # lista no JSON: item inválido, não erro 500
+        _item(recorte={"a": 1}),
         _item(afirmacao=7),
         "não é um item",
     ],

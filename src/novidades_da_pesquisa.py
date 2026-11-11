@@ -9,6 +9,8 @@ import re
 import unicodedata
 from urllib.parse import urlsplit
 
+from base.cnpj import SEPARADORES, dv_confere
+
 # como o trecho foi recortado do original (marcado fora das aspas por quem mostra)
 SEM_CORTE = ""
 CORTE_NO_INICIO = "inicio"
@@ -18,27 +20,22 @@ RECORTES = frozenset({SEM_CORTE, CORTE_NO_INICIO, CORTE_NO_FIM, CORTE_NOS_DOIS})
 
 TRECHO_MAXIMO = 300  # citação curta, não a página
 
-# domínio -> (chave da fonte no catálogo de licenças `LICENCAS`, nome do órgão). Domínio fora daqui não sai
-# (portal genérico, que serve vários órgãos, também não: não diz de quem é a prova).
+# domínio -> (chave da fonte no catálogo de licenças `LICENCAS`, nome do órgão). Lista de fontes **só de empresa**,
+# negada por padrão (Diretoria, 11/11/2026, ADR 0128): fonte que traz linha de pessoa física (TCU, Portal da
+# Transparência, PNCP, PGFN, SUSEP...) ou mista fica fora até existir lista por conjunto. Domínio fora daqui não sai.
 ORGAOS: dict[str, tuple[str, str]] = {
     "dados.cvm.gov.br": ("cvm", "CVM"),
     "conteudo.cvm.gov.br": ("cvm", "CVM"),
     "dadosabertos.bcb.gov.br": ("bcb", "Banco Central do Brasil"),
     "www.bcb.gov.br": ("bcb", "Banco Central do Brasil"),
-    "www.bndes.gov.br": ("bndes", "BNDES"),
-    "pncp.gov.br": ("pncp", "PNCP"),
     "dadosabertos.aneel.gov.br": ("aneel", "ANEEL"),
-    "dadosabertos.ans.gov.br": ("ans", "ANS"),
-    "dados.pgfn.gov.br": ("pgfn", "PGFN"),
-    "dadosabertos.ibama.gov.br": ("ibama", "IBAMA"),
-    "sidra.ibge.gov.br": ("ibge", "IBGE"),
-    "www.ibge.gov.br": ("ibge", "IBGE"),
-    "www.susep.gov.br": ("susep", "SUSEP"),
     "dados.anp.gov.br": ("anp", "ANP"),
-    "dadosabertos.tcu.gov.br": ("tcu", "TCU"),
-    "portaldatransparencia.gov.br": ("cgu", "CGU"),
 }
 
+# CNPJ (numérico ou alfanumérico), com ou sem pontuação, solto no texto
+CNPJ_NO_TEXTO = re.compile(
+    r"(?<![0-9A-Za-z])[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}/?[0-9A-Z]{4}-?\d{2}(?![0-9A-Za-z])"
+)
 CPF_FORMATADO = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)")
 ONZE_DIGITOS = re.compile(r"(?<!\d)\d{11}(?!\d)")
 # qualquer separador comum entre dígitos (espaço, ponto, traços Unicode, barra, vírgula, sublinhado)
@@ -76,6 +73,12 @@ def achar_cpf(texto: str) -> bool:
     )
 
 
+def cnpjs_validos(texto: str) -> set[str]:
+    """Os CNPJs (14 caracteres, sem pontuação) do texto cujos dígitos verificadores conferem."""
+    achados = (SEPARADORES.sub("", m.group()) for m in CNPJ_NO_TEXTO.finditer(texto))
+    return {cnpj for cnpj in achados if dv_confere(cnpj)}
+
+
 def orgao_da_url(url: str) -> tuple[str, str] | None:
     """(fonte, órgão) do endereço, se o domínio é de um órgão da tabela; senão None."""
     partes = urlsplit(url)
@@ -98,10 +101,11 @@ def fonte_liberada(fonte: str) -> bool:
 
 
 def texto_publicavel(afirmacao: str, trecho: str, *outros: str) -> bool:
-    """Citação curta e sem CPF nem marca de pessoa física; `outros` (endereço, posição) sem CPF."""
+    """Citação curta, com CNPJ válido, sem CPF nem marca de pessoa física; `outros` (endereço, posição) sem CPF."""
     texto = f"{afirmacao}\n{trecho}"
     return (
         0 < len(trecho) <= TRECHO_MAXIMO
+        and bool(cnpjs_validos(texto))
         and not achar_cpf("\n".join((texto, *outros)))
         and not MARCAS_DE_PESSOA.search(texto)
     )

@@ -418,7 +418,11 @@ def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:
     ) -> str:
         """As fontes que a pesquisa do TickerLab provou na semana: de cada uma, o órgão público, a data, o
         trecho literal e o hash (sha256) do original, que prova que o trecho está lá. Só entra o que tem
-        prova gravada; sem nada novo, a lista vem vazia: diga ao analista que não há fonte nova provada."""
+        prova gravada; sem nada novo, a lista vem vazia: diga ao analista que não há fonte nova provada.
+
+        O `excerpt` é uma citação literal de até 300 caracteres. Se `excerpt_cut` vem preenchido (`inicio`, `fim`
+        ou `ambos`), o trecho é só um pedaço do original, que continua antes e/ou depois: ao citar, diga que é
+        um recorte e nunca complete o texto nem acrescente reticências dentro das aspas."""
         return await pedidos.pedir("novidades", "/research/news", {
             "days": None if dias is None else str(dias),
         })  # fmt: skip

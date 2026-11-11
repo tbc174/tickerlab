@@ -6,6 +6,7 @@ literal** do trecho (nada reescrito, nenhuma reticência dentro do texto), cont�
 marca o corte **fora** das aspas (`recorte`). O hash continua sendo o do original inteiro.
 """
 
+import re
 from dataclasses import dataclass
 
 from src.novidades_da_pesquisa import (
@@ -20,6 +21,11 @@ from src.novidades_da_pesquisa import (
 class Janela:
     texto: str
     recorte: str  # SEM_CORTE, CORTE_NO_INICIO, CORTE_NO_FIM ou CORTE_NOS_DOIS
+
+
+def _com_limite(valor: str) -> re.Pattern[str]:
+    """O valor inteiro, sem letra nem dígito colado antes ou depois ("120" não casa em "2120" nem "1200")."""
+    return re.compile(rf"(?<!\w){re.escape(valor.strip())}(?!\w)", re.IGNORECASE)
 
 
 def _recorte(comeco: int, fim: int, tamanho: int) -> str:
@@ -50,15 +56,15 @@ def janela_do_valor(trecho: str, valor: str, maximo: int) -> Janela | None:
     """A janela de até `maximo` caracteres do `trecho` que contém o `valor`; None se não dá.
 
     Trecho que já cabe sai igual (sem corte). Valor vazio, que não aparece no trecho (a busca ignora a
-    caixa) ou maior que o máximo: None (o fato fica de fora, nunca um texto inventado).
+    caixa e exige limite: sem letra nem dígito colado), que aparece mais de uma vez ou maior que o máximo: None (o fato fica de fora, nunca um texto inventado).
     """
     if len(trecho) <= maximo:
         return Janela(trecho, SEM_CORTE)
-    achado = trecho.lower().find(valor.lower()) if valor.strip() else -1
-    if achado == -1 or len(valor) > maximo:
-        return None
-    ate = achado + len(valor)
-    folga = (maximo - len(valor)) // 2
+    ocorrencias = list(_com_limite(valor).finditer(trecho)) if valor.strip() else []
+    if len(ocorrencias) != 1 or len(valor.strip()) > maximo:
+        return None  # valor ausente ou ambíguo (mais de uma vez com limite): o fato fica de fora
+    achado, ate = ocorrencias[0].span()
+    folga = (maximo - (ate - achado)) // 2
     comeco = max(0, min(achado - folga, len(trecho) - maximo))
     fim = min(len(trecho), comeco + maximo)
     comeco, fim = _sem_cortar_palavra(trecho, comeco, fim, achado, ate)
@@ -68,7 +74,7 @@ def janela_do_valor(trecho: str, valor: str, maximo: int) -> Janela | None:
         not texto
         or len(texto) > maximo
         or texto not in trecho
-        or valor.lower() not in texto.lower()
+        or len(_com_limite(valor).findall(texto)) != 1
     ):
         return None
     return Janela(texto, _recorte(comeco, fim, len(trecho)))

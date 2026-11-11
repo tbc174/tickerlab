@@ -9,6 +9,7 @@ o endereço de onde o original veio) e só de **órgão público da tabela `ORGA
 
 import json
 import sqlite3
+from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -20,6 +21,7 @@ from src.novidades_da_pesquisa import (
     MARCAS_DE_PESSOA,
     TRECHO_MAXIMO,
     achar_cpf,
+    cnpjs_validos,
     fonte_liberada,
     orgao_da_url,
 )
@@ -34,6 +36,8 @@ MOTIVO_FORA_DA_JANELA = "fora da janela de dias"
 MOTIVO_NAO_CONFIRMADO = "veredito não confirmado"
 MOTIVO_REPETIDO = "mesmo original e mesmo trecho já exportados"
 MOTIVO_TRECHO_LONGO = "trecho acima do máximo e sem janela em volta do valor"
+MOTIVO_SEM_CNPJ = "sem CNPJ válido na afirmação nem no trecho"
+MOTIVO_CNPJ_FORA_DA_LISTA = "CNPJ fora da lista sem pessoa do acervo"
 MOTIVO_SEM_REVENDA = "fonte sem licença ou sem revenda liberada"
 
 
@@ -88,7 +92,12 @@ def _item(fato: dict[str, object], url: str, quando: str) -> dict[str, str]:
     }
 
 
-def _por_que_nao(linha: sqlite3.Row, fato: dict[str, object], corte: str) -> str | None:
+def _por_que_nao(
+    linha: sqlite3.Row,
+    fato: dict[str, object],
+    corte: str,
+    e_empresa: Callable[[str], bool],
+) -> str | None:
     if linha["veredito"] != "confirmado":
         return MOTIVO_NAO_CONFIRMADO
     if linha["quando"] < corte:
@@ -108,22 +117,34 @@ def _por_que_nao(linha: sqlite3.Row, fato: dict[str, object], corte: str) -> str
         )
     if MARCAS_DE_PESSOA.search(texto):
         return MOTIVO_PESSOA
+    cnpjs = cnpjs_validos(texto)
+    if not cnpjs:
+        return MOTIVO_SEM_CNPJ
+    if not all(e_empresa(cnpj) for cnpj in cnpjs):
+        return MOTIVO_CNPJ_FORA_DA_LISTA
     if _janela(fato) is None:
         return MOTIVO_TRECHO_LONGO
     return None
 
 
 def exportar(
-    memoria: Memoria, *, dias: int = DIAS_PADRAO, agora: datetime | None = None
+    memoria: Memoria,
+    *,
+    e_empresa: Callable[[str], bool],
+    dias: int = DIAS_PADRAO,
+    agora: datetime | None = None,
 ) -> Exportacao:
-    """Os itens provados nos últimos `dias`, mais novos primeiro. CPF no texto levanta `CpfNoTrechoError`."""
+    """Os itens provados nos últimos `dias`, mais novos primeiro. CPF no texto levanta `CpfNoTrechoError`.
+
+    `e_empresa(cnpj)` diz se o CNPJ (14 caracteres) está na lista sem pessoa do acervo; só sai o fato cujos
+    CNPJs estão todos nela (sem CNPJ válido, não sai). Sem acervo não há como responder: quem chama não exporta."""
     agora = agora or datetime.now(UTC)
     corte = (agora - timedelta(days=dias)).isoformat()
     saida = Exportacao(itens=[], gerado_em=agora.isoformat(timespec="seconds"))
     vistos: set[tuple[str, str]] = set()
     for linha in _consultar(memoria.caminho):
         fato = json.loads(linha["fato"])
-        motivo = _por_que_nao(linha, fato, corte)
+        motivo = _por_que_nao(linha, fato, corte, e_empresa)
         chave = (str(fato.get("sha256")), str(fato.get("trecho")))
         if motivo is None and chave in vistos:
             motivo = MOTIVO_REPETIDO

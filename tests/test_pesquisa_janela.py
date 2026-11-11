@@ -60,3 +60,25 @@ def test_valor_acha_sem_ligar_para_a_caixa():
 @pytest.mark.parametrize("valor", ["", "   ", "999 GW", "x" * (TRECHO_MAXIMO + 1)])
 def test_fato_sem_valor_localizavel_fica_de_fora(valor):
     assert janela_do_valor(_linha(80, 80), valor, TRECHO_MAXIMO) is None
+
+
+def test_valor_nao_casa_dentro_de_outro_numero():
+    # "120" aparece em "2120" (sem limite) e em "120 MW" (com limite): a janela tem de trazer o "120 MW"
+    trecho = (
+        "Planilha1 linha 12 | Contrato 2120/2024 | "
+        + "coluna | " * 60
+        + "Parque Exemplo | 120 MW | vigencia 2035"
+    )
+    janela = janela_do_valor(trecho, "120", TRECHO_MAXIMO)
+    assert janela is not None and "120 MW" in janela.texto
+    assert "2120" not in janela.texto
+
+
+def test_valor_so_dentro_de_outro_numero_fica_de_fora():
+    trecho = "Contrato 2120/2024 | " + "coluna | " * 60 + "sem o valor"
+    assert janela_do_valor(trecho, "120", TRECHO_MAXIMO) is None
+
+
+def test_valor_que_aparece_mais_de_uma_vez_com_limite_fica_de_fora():
+    trecho = "120 MW em janeiro | " + "coluna | " * 60 + "e 120 MW em março"
+    assert janela_do_valor(trecho, "120 MW", TRECHO_MAXIMO) is None

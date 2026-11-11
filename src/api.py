@@ -260,8 +260,10 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
             nova.include_router(rotas, prefix="/api")
     if api_externa_ligada(ambiente):
         # a API paga da TickerLab Data (B-32a): desligada até o "pode" do Tiago para ligar
+        from src.api_externa.compressao import GzipSoNaApiExterna
         from src.api_externa.rotas import router as router_da_api_externa
 
+        nova.add_middleware(GzipSoNaApiExterna)  # o financials de 1,2 MB (linha 848)
         nova.include_router(router_da_api_externa)
         nova.include_router(router_da_api_externa, prefix="/api")
     _montar_site_da_api(nova)

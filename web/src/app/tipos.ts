@@ -1031,6 +1031,30 @@ export interface EventosDaEmpresaV1 {
   limites: string[];
 }
 
+/** Uma ponta do vínculo: a raiz do CNPJ (8 dígitos) e o nome do dia, quando a base tem. */
+export interface PontaDoVinculoV1 {
+  raiz_do_cnpj: string | null;
+  razao_social: CampoComFonteV1 | null;
+}
+
+/** Um vínculo entre empresas (controle, coligação, participação ou auditoria); os campos levam fonte e dia. */
+export interface VinculoDaEmpresaV1 {
+  salto: number;
+  de: PontaDoVinculoV1;
+  para: PontaDoVinculoV1;
+  campos: Record<string, CampoComFonteV1>;
+}
+
+/** Os vínculos da empresa (tela do analista, POST /v1/analista/ficha/vinculos). */
+export interface VinculosDaEmpresaV1 {
+  estado: "pronta" | "nao_liberada" | "nao_disponivel";
+  como_era_em: string | null; // AAAA-MM-DD
+  vinculos: VinculoDaEmpresaV1[];
+  cortada: boolean;
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}
+
 // Comparar empresas (tela do analista, linha 798): uma empresa por linha, cada campo com a fonte e o dia.
 // Quem a base não serve (pessoa, MEI, CNPJ desconhecido) vem só com o cnpj e estado "nao_disponivel".
 export interface EmpresaComparadaV1 {
