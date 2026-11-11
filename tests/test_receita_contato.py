@@ -155,3 +155,41 @@ def test_cnpj_com_letras_sai_em_maiusculas():
 def test_layout_com_campo_a_mais_quebra_a_leitura():
     with pytest.raises(ErroDeLayout):
         list(rc.ler_contato(_zip(_linha().rstrip("\n") + ';"X"\n')))
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "CPF 529982247-25", "CPF:529982247-25", "CPF 529 982 247 25", "CPF-52998224725",
+        "CPF/52998224725", "N.52998224725", "CASA,52998224725", "529.982.247/25",
+    ],
+)  # fmt: skip
+def test_cpf_em_formatos_variados_no_complemento_sai(texto):
+    tabela, _ = _ler(_linha(complemento=texto))
+    achado = (
+        "" if pd.isna(tabela.loc[0, "complemento"]) else tabela.loc[0, "complemento"]
+    )
+    assert sum(c.isdigit() for c in achado) < 11
+
+
+def test_cpf_no_numero_sai():
+    tabela, _ = _ler(_linha(numero="529982247-25"))
+    assert pd.isna(tabela.loc[0, "numero"])
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "529_982_247_25@exemplo.com", "529/982/247/25@exemplo.com",
+        "contato@52998224725.com.br", "contato@529.982.247-25.com",
+    ],
+)  # fmt: skip
+def test_cpf_em_formatos_variados_no_email_deixa_o_email_vazio(email):
+    tabela, _ = _ler(_linha(email=email))
+    assert pd.isna(tabela.loc[0, "email"])
+
+
+def test_numero_de_rua_e_cep_comuns_nao_sao_confundidos_com_cpf():
+    tabela, _ = _ler(_linha(numero="1234", complemento="BLOCO 2 APTO 301"))
+    assert tabela.loc[0, "numero"] == "1234"
+    assert tabela.loc[0, "complemento"] == "BLOCO 2 APTO 301"

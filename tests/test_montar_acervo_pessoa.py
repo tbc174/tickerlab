@@ -229,3 +229,27 @@ def test_main_com_destino_recusado_sai_com_falha(tmp_path, capsys):
     argumentos = ["--cnpj", str(cnpj), "--bruto", str(bruto), "--destino", str(destino)]
     assert montar.main(argumentos) == 1
     assert capsys.readouterr().out.strip().splitlines()[-1].startswith("FALHAS:")
+
+
+def test_falha_na_leitura_do_contato_deixa_socios_e_manifesto_como_estavam(
+    tmp_path, monkeypatch
+):
+    cnpj, bruto = _acervo(tmp_path)
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    montar.carregar(cnpj, bruto, destino, AGORA)
+    antes = (destino / montar.MANIFESTO).read_text(encoding="utf-8")
+    socios_antes = _tabela(destino).to_csv()
+
+    def quebra(_arquivo):
+        raise RuntimeError("layout novo")
+        yield  # pragma: no cover
+
+    tabelas = montar.TABELAS
+    monkeypatch.setattr(
+        montar, "TABELAS", (tabelas[0], tabelas[1]._replace(ler=quebra))
+    )
+    with pytest.raises(RuntimeError):
+        montar.carregar(cnpj, bruto, destino, AGORA)
+    assert (destino / montar.MANIFESTO).read_text(encoding="utf-8") == antes
+    assert _tabela(destino).to_csv() == socios_antes
+    assert not (destino / montar.TRABALHO).exists()

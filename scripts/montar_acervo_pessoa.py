@@ -171,19 +171,14 @@ def _trocar(pronta: Path, atual: Path) -> None:
     shutil.rmtree(antiga, ignore_errors=True)
 
 
-def _montar_tabela(
-    tabela: Tabela, destino: Path, mes: str, zips: dict[str, Path]
+def _preparar_tabela(
+    tabela: Tabela, trabalho: Path, mes: str, zips: dict[str, Path]
 ) -> tuple[dict[str, int], Counter[str]]:
-    trabalho = destino / TRABALHO
-    shutil.rmtree(trabalho, ignore_errors=True)
-    try:
-        descartes = _repartir_os_zips(tabela, zips, trabalho / "partes")
-        contagem = _gravar_prefixos(
-            tabela, trabalho / "partes", trabalho / tabela.nome, mes
-        )
-        _trocar(trabalho / tabela.nome, destino / tabela.nome)
-    finally:
-        shutil.rmtree(trabalho, ignore_errors=True)
+    """Lê os ZIPs e grava a tabela pronta em `trabalho/<nome>`, sem tocar no destino."""
+    descartes = _repartir_os_zips(tabela, zips, trabalho / f"{tabela.nome}-partes")
+    contagem = _gravar_prefixos(
+        tabela, trabalho / f"{tabela.nome}-partes", trabalho / tabela.nome, mes
+    )
     return contagem, descartes
 
 
@@ -194,7 +189,11 @@ def montar(
     shas: dict[str, str],
     agora: datetime,
 ) -> dict:
-    """Grava as tabelas do `mes` e o manifesto; devolve o manifesto (só números e SHA-256)."""
+    """Grava as tabelas do `mes` e o manifesto; devolve o manifesto (só números e SHA-256).
+
+    Todas as tabelas ficam prontas na pasta de trabalho antes de qualquer troca: se a leitura de uma falha,
+    o destino e o manifesto continuam como estavam (mês único em todas as tabelas).
+    """
     for arquivos in zips.values():
         for nome, arquivo in arquivos.items():
             if carga.sha256_do_arquivo(arquivo) != shas[nome]:
@@ -202,11 +201,20 @@ def montar(
                     f"o SHA-256 de {nome} não confere com o manifesto"
                 )
     destino.mkdir(parents=True, exist_ok=True)
+    trabalho = destino / TRABALHO
+    shutil.rmtree(trabalho, ignore_errors=True)
     contagens, descartes = {}, {}
-    for tabela in TABELAS:
-        contagem, da_tabela = _montar_tabela(tabela, destino, mes, zips[tabela.nome])
-        contagens[tabela.nome] = contagem
-        descartes |= {motivo: da_tabela.get(motivo, 0) for motivo in tabela.motivos}
+    try:
+        for tabela in TABELAS:
+            contagem, da_tabela = _preparar_tabela(
+                tabela, trabalho, mes, zips[tabela.nome]
+            )
+            contagens[tabela.nome] = contagem
+            descartes |= {motivo: da_tabela.get(motivo, 0) for motivo in tabela.motivos}
+        for tabela in TABELAS:
+            _trocar(trabalho / tabela.nome, destino / tabela.nome)
+    finally:
+        shutil.rmtree(trabalho, ignore_errors=True)
     manifesto = {
         MES: mes,
         "montado_em": agora.isoformat(),

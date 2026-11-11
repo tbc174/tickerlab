@@ -47,8 +47,8 @@ NUMERO_DO_TELEFONE = (
 CEP = r"\d{8}"
 EMAIL = r"[^@\s]+@[^@\s]+\.[^@\s]+"
 TAMANHO_MAXIMO_DO_EMAIL = 115  # o do campo no layout da Receita
-ONZE_DIGITOS = r"\d{11}"
-PONTUACAO_DE_CPF = r"[.\-]"
+# onze dígitos com qualquer separador entre eles (espaço, ponto, traço, barra, vírgula...), sem dígito colado
+ONZE_DIGITOS_SEPARADOS = r"(?<!\d)\d(?:[^\w]|_)*(?:\d(?:[^\w]|_)*){9}\d(?!\d)"
 
 NAO_ATIVO = "estabelecimento_nao_ativo"
 TELEFONE_FORA_DO_FORMATO = "telefone_fora_do_formato"
@@ -84,8 +84,7 @@ def _email(coluna: pd.Series, descartes: Counter[str]) -> pd.Series:
     email = coluna.str.strip().str.lower()
     informado = email != ""
     forma = email.str.fullmatch(EMAIL) & (email.str.len() <= TAMANHO_MAXIMO_DO_EMAIL)
-    nome = email.str.split("@").str[0].str.replace(PONTUACAO_DE_CPF, "", regex=True)
-    cara_de_cpf = nome.str.contains(ONZE_DIGITOS, regex=True)
+    cara_de_cpf = email.str.contains(ONZE_DIGITOS_SEPARADOS, regex=True)
     descartes[EMAIL_FORA_DO_FORMATO] += int((informado & ~forma).sum())
     descartes[EMAIL_COM_CARA_DE_CPF] += int((forma & cara_de_cpf).sum())
     return email.where(forma & ~cara_de_cpf)
@@ -94,6 +93,7 @@ def _email(coluna: pd.Series, descartes: Counter[str]) -> pd.Series:
 def _texto(coluna: pd.Series) -> pd.Series:
     """O texto do endereço sem CPF e sem espaço sobrando; vazio vira ausente."""
     limpo = tirar_cpf_da_coluna(coluna.str.strip())
+    limpo = limpo.str.replace(ONZE_DIGITOS_SEPARADOS, " ", regex=True)
     limpo = limpo.str.replace(r"\s{2,}", " ", regex=True).str.strip()
     return limpo.mask(limpo == "")
 
