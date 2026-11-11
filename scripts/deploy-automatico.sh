@@ -47,19 +47,23 @@ saudavel() {
 # a imagem leva o commit que está implantado (versão do código; ADR 0055, exigência 13). Vale
 # também na volta para a versão anterior: o commit é lido na hora de subir.
 #
-# O conector remoto dos analistas (compose.conector.yaml, linha 570) só entra quando o .env.mcp, com a
-# chave dele, existe na pasta: antes disso o deploy nem o vê, e depois ele acompanha cada versão como o
-# app e a API. Na volta para um commit sem o arquivo, fica só o compose.yaml. A saúde do conector não
-# reverte o deploy (o app não depende dele).
-arquivos_do_compose() {
-  if [ -f "$PASTA/.env.mcp" ] && [ -f "$PASTA/compose.conector.yaml" ]; then
-    echo "compose.yaml:compose.conector.yaml"
-  else
-    echo compose.yaml
-  fi
-}
+# Só o app e a API (compose.yaml) decidem se a versão fica: o conector remoto dos analistas
+# (compose.conector.yaml, linha 570) sobe num passo à parte, que nunca falha o deploy. Ele só entra
+# quando o .env.mcp, com a chave dele, existe na pasta (antes disso o deploy nem o vê) e depois
+# acompanha cada versão, na mesma imagem. Se ele não subir (porta ocupada, .env.mcp malformado), fica
+# a linha no log, e o app e a API seguem: um serviço opcional não reverte nem trava os commits.
 subir() {
-  TICKERLAB_VERSAO="$(git rev-parse HEAD)" COMPOSE_FILE="$(arquivos_do_compose)"     docker compose up -d --build >> "$LOG" 2>&1
+  TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose up -d --build >> "$LOG" 2>&1 || return 1
+  subir_o_conector
+}
+
+subir_o_conector() {
+  [ -f "$PASTA/.env.mcp" ] && [ -f "$PASTA/compose.conector.yaml" ] || return 0
+  if ! TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose -f compose.yaml -f compose.conector.yaml \
+    up -d --no-build --no-deps tickerlab-mcp >> "$LOG" 2>&1; then
+    registrar "$(git rev-parse --short=8 HEAD): o conector remoto (tickerlab-mcp) não subiu; app e API seguem"
+  fi
+  return 0
 }
 
 esperar() {

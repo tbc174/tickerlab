@@ -12,7 +12,7 @@ A chave sela os tokens do OAuth dos analistas (linha 570, `docs/conector-remoto.
 Só usa a biblioteca padrão do Python, para rodar direto no VPS, fora do contêiner:
 
     cd /opt/stacks/tickerlab && python3 scripts/gravar_chave_do_conector.py
-    docker compose up -d tickerlab-mcp
+    docker compose -f compose.yaml -f compose.conector.yaml up -d tickerlab-mcp
 
 Roda: manual, pelo Tiago no VPS (antes do primeiro "up" do tickerlab-mcp e no incidente de chave vazada).
 """
@@ -107,7 +107,7 @@ def principal(
         return 1
     print(
         f"Chave do conector gravada em {opcoes.arquivo} (permissão 600). "
-        "Agora: docker compose up -d tickerlab-mcp"
+        "Agora: docker compose -f compose.yaml -f compose.conector.yaml up -d tickerlab-mcp"
     )
     return 0
 

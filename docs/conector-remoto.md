@@ -102,8 +102,10 @@ A chave do servidor nunca aparece em `repr`, log ou mensagem de erro (há teste)
 ## Em produção
 
 O serviço `tickerlab-mcp` fica num arquivo à parte, `compose.conector.yaml`, que o `docker compose up`
-comum não lê: o deploy automático só o soma ao `compose.yaml` quando o `.env.mcp` existe, então o merge
-não sobe contêiner nenhum, e depois do primeiro `up` o conector acompanha cada versão. Ele usa a mesma
+comum não lê. O deploy automático sobe primeiro o app e a API só com o `compose.yaml`, e só eles decidem
+se a versão fica. Depois, num passo à parte, sobe o conector, e só quando o `.env.mcp` existe. Assim o merge
+não sobe contêiner nenhum, e depois do primeiro `up` o conector acompanha cada versão. Se ele não subir,
+fica uma linha no log do deploy, mas o app e a API não são revertidos (há teste em `tests/test_estado_do_ci.py`). Ele usa a mesma
 imagem do app, com outro comando (`python -m conector_remoto`). Ele não monta volume nenhum (nem acervo, nem sala, nem cache), não lê o
 `.env` do app e roda com o disco só de leitura, sem poderes extras (`cap_drop: ALL`). A porta 8010 fica
 só no `127.0.0.1` do VPS, e o `CF-Connecting-IP` só vale vindo do gateway da rede do Docker
@@ -121,8 +123,8 @@ O guia para quem usa o conector está em `docs/guia-do-analista-conector.md`.
 Quem tem a chave do servidor e um token capturado lê a chave do analista dentro dele. Então:
 
 1. **Troque a chave do servidor.** No VPS: `python3 scripts/gravar_chave_do_conector.py --trocar` (a
-   chave nova vai para o `.env.mcp` sem aparecer na tela nem no log) e `docker compose up -d
-   tickerlab-mcp`. Todos os tokens e registros antigos
+   chave nova vai para o `.env.mcp` sem aparecer na tela nem no log) e `docker compose -f compose.yaml
+   -f compose.conector.yaml up -d tickerlab-mcp`. Todos os tokens e registros antigos
    deixam de abrir: cada analista entra de novo pela página `/autorizar`.
 2. **Revogue as chaves das pessoas** que usaram o conector desde a data provável do vazamento e entregue
    chaves novas. Sem isso, quem copiou um token antes da troca ainda teria a chave de dentro dele.

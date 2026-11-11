@@ -149,8 +149,10 @@ def test_imagem_leva_a_versao_do_codigo():
     compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
     assert "TICKERLAB_VERSAO: ${TICKERLAB_VERSAO:-}" in compose
     deploy = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
-    assert 'TICKERLAB_VERSAO="$(git rev-parse HEAD)" COMPOSE_FILE=' in deploy
-    assert "docker compose up -d --build" in deploy
+    assert (
+        'TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose up -d --build'
+        in deploy
+    )
 
 
 def _servicos_do_compose() -> dict[str, str]:
@@ -204,9 +206,10 @@ def test_conector_remoto_nao_ve_acervo_banco_nem_segredo_do_app():
     # o merge não sobe o conector: o deploy só soma o arquivo dele quando o .env.mcp existe
     deploy = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
     assert (
-        'if [ -f "$PASTA/.env.mcp" ] && [ -f "$PASTA/compose.conector.yaml" ]' in deploy
+        '[ -f "$PASTA/.env.mcp" ] && [ -f "$PASTA/compose.conector.yaml" ] || return 0'
+        in deploy
     )
-    assert 'echo "compose.yaml:compose.conector.yaml"' in deploy
+    assert "docker compose -f compose.yaml -f compose.conector.yaml" in deploy
     assert conector["command"] == ["python", "-m", "conector_remoto"]
     assert conector["ports"] == ["127.0.0.1:8010:8010"]
     assert "volumes" not in conector  # nada de acervo, sala, cache nem secrets.toml
