@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from base.porta import Porta
-from src.analista import busca, comparacao, leitura, planilha
+from src.analista import busca, comparacao, eventos, leitura, planilha
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
@@ -54,6 +54,7 @@ TIPO_DA_PLANILHA = "application/vnd.openxmlformats-officedocument.spreadsheetml.
 TAMANHO_MAXIMO_DO_CNPJ = 32  # com pontuação e espaços; o resto é erro de quem chama
 CNPJ_INVALIDO = "CNPJ inválido: confira os 14 caracteres."
 FICHA_INDISPONIVEL = "Ficha não disponível."
+CURSOR_INVALIDO = "Cursor inválido: peça a primeira página de novo."
 PAGINA_DA_COMPARACAO = "comparar_empresas"
 NOME_DA_PLANILHA_DA_COMPARACAO = "comparacao-de-empresas-tickerlab.xlsx"
 COMPARACAO_INVALIDA = "Escolha de 2 a 5 CNPJs diferentes, cada um com 14 caracteres."
@@ -165,6 +166,44 @@ def ficha_da_empresa_em_planilha(_conta: Conta, pedido: PedidoDaFichaV1) -> Resp
             "Cache-Control": "no-store",
         },
     )
+
+
+class PedidoDosEventosV1(BaseModel):
+    cnpj: str  # sem limite aqui: o 422 do FastAPI repetiria o texto pedido (os limites ficam na rota)
+    cursor: str | None = None
+
+
+@router.post("/ficha/eventos")
+def eventos_da_empresa(
+    _conta: Conta, pedido: PedidoDosEventosV1
+) -> esquemas.EventosDaEmpresaV1:
+    """Os documentos à CVM e as trocas de auditor da empresa, do mais novo ao mais velho, por página. Mesmo
+    acesso, mesmo plano e mesmos estados da ficha; `proximo_cursor` abre a página seguinte."""
+    if len(pedido.cnpj) > TAMANHO_MAXIMO_DO_CNPJ:
+        raise HTTPException(status_code=422, detail=CNPJ_INVALIDO)
+    if (
+        pedido.cursor is not None
+        and len(pedido.cursor) > eventos.TAMANHO_MAXIMO_DO_CURSOR
+    ):
+        raise HTTPException(status_code=422, detail=CURSOR_INVALIDO)
+    with _porta() as porta:
+        try:
+            resposta = eventos.eventos(
+                porta,
+                pedido.cnpj,
+                hoje=hoje(),
+                cursor=pedido.cursor,
+                regras=rotas_da_api_externa.regras_da_api(),
+            )
+        except ValueError as erro:  # inclui eventos.PedidoInvalido
+            detalhe = (
+                CURSOR_INVALIDO
+                if isinstance(erro, eventos.PedidoInvalido)
+                else CNPJ_INVALIDO
+            )
+            raise HTTPException(status_code=422, detail=detalhe) from erro
+    log.info("eventos do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
+    return esquemas.de_eventos_do_analista(resposta, eventos.LIMITES)
 
 
 def _busca_do_pedido(

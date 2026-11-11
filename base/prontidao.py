@@ -12,9 +12,10 @@ revisão do dicionário. A prova é um identificador curto, sem caminho, IP, end
 catálogo também vai para o site público.
 """
 
+import os
 import re
 from collections.abc import Iterable, Mapping
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from functools import cache
 from typing import NamedTuple
@@ -124,3 +125,39 @@ def negacao_da_prontidao(
         if falta is not None:
             return falta
     return None
+
+
+# Ensaio local (linha 800): no PC, com `TICKERLAB_AMBIENTE=ensaio`, toda tabela do dicionário vale como pronta,
+# para a apresentação responder sem o VPS. Qualquer outro valor, inclusive vazio, e "producao", deixa o registro
+# de verdade intacto (falha fechada: só o valor exato liga).
+VARIAVEL_DO_AMBIENTE = "TICKERLAB_AMBIENTE"
+AMBIENTE_DE_ENSAIO = "ensaio"
+PROVA_DE_ENSAIO = "ensaio-local"
+CABECALHO_DO_ENSAIO = "X-TickerLab-Ensaio"
+AVISO_DO_ENSAIO = "ensaio local: dado sem prontidao conferida"
+
+
+def em_ensaio(ambiente: Mapping[str, str] | None = None) -> bool:
+    """O processo roda no ensaio local (`TICKERLAB_AMBIENTE=ensaio`, valor exato)?"""
+    texto = (ambiente if ambiente is not None else os.environ).get(
+        VARIAVEL_DO_AMBIENTE, ""
+    )
+    return texto.strip().lower() == AMBIENTE_DE_ENSAIO
+
+
+def registro_vigente(
+    ambiente: Mapping[str, str] | None = None, hoje: date | None = None
+) -> Mapping[str, Prontidao]:
+    """O registro que o portão e o catálogo leem: o de verdade, ou, só no ensaio, o de verdade mais uma prova
+    de ensaio (datada de ontem) nas tabelas que ainda não têm registro. Fora do ensaio devolve `PRONTIDAO`
+    mesmo (o mesmo objeto)."""
+    if not em_ensaio(ambiente):
+        return PRONTIDAO
+    # ontem (UTC): vale em qualquer fuso do Brasil, e a prova de ensaio nunca vence no dia
+    dia = hoje or datetime.now(UTC).date() - timedelta(days=1)
+    prova = Prova(dia, PROVA_DE_ENSAIO, PROVA_DE_ENSAIO)
+    de_ensaio = {
+        nome: Prontidao(versao, prova, prova, prova)
+        for nome, versao in versoes_maiores().items()
+    }
+    return {**de_ensaio, **PRONTIDAO}

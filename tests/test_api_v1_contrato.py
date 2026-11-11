@@ -60,6 +60,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/busca-por-cnpj/pdf",
         "/v1/analista/ficha",
         "/v1/analista/ficha/planilha",
+        "/v1/analista/ficha/eventos",
         "/v1/analista/empresas",
         "/v1/analista/empresas/planilha",
         "/v1/analista/comparar",

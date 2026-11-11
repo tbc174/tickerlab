@@ -2760,6 +2760,96 @@
         "title": "EuV1",
         "type": "object"
       },
+      "EventoDaEmpresaV1": {
+        "description": "Um evento da empresa: o tipo (`ipe_filing` ou `auditor_change`) e os campos dele, cada um com fonte e dia.",
+        "properties": {
+          "campos": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Campos",
+            "type": "object"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "campos"
+        ],
+        "title": "EventoDaEmpresaV1",
+        "type": "object"
+      },
+      "EventosDaEmpresaV1": {
+        "description": "Os eventos da empresa na ficha (linha 798, PR 4): o estado, a página, o cursor da seguinte, as fontes e\nos limites, sempre.",
+        "properties": {
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "eventos": {
+            "items": {
+              "$ref": "#/components/schemas/EventoDaEmpresaV1"
+            },
+            "title": "Eventos",
+            "type": "array"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "proximo_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo Cursor"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "eventos",
+          "cortada",
+          "proximo_cursor",
+          "fontes",
+          "limites"
+        ],
+        "title": "EventosDaEmpresaV1",
+        "type": "object"
+      },
       "ExpectativaV1": {
         "properties": {
           "ano": {
@@ -5331,6 +5421,30 @@
         "title": "PedidoDeSimulacaoV1",
         "type": "object"
       },
+      "PedidoDosEventosV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "PedidoDosEventosV1",
+        "type": "object"
+      },
       "PiorQuedaV1": {
         "properties": {
           "data_fundo": {
@@ -7300,6 +7414,45 @@
           }
         },
         "summary": "Ficha Da Empresa"
+      }
+    },
+    "/v1/analista/ficha/eventos": {
+      "post": {
+        "description": "Os documentos à CVM e as trocas de auditor da empresa, do mais novo ao mais velho, por página. Mesmo\nacesso, mesmo plano e mesmos estados da ficha; `proximo_cursor` abre a página seguinte.",
+        "operationId": "eventos_da_empresa_v1_analista_ficha_eventos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDosEventosV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventosDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Eventos Da Empresa"
       }
     },
     "/v1/analista/ficha/planilha": {
