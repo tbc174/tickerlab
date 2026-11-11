@@ -209,3 +209,102 @@ def test_a_versao_de_cada_mes_e_o_retrato_daquele_mes(historia):
         pd.testing.assert_frame_equal(
             ate_o_corte.reset_index(drop=True), do_inteiro.reset_index(drop=True)
         )
+
+
+# --- retrato da Receita com defeito conhecido (estabelecimentos de 2024-10) -------------------------
+DEFEITO = {
+    "2023-07": "2023-08"
+}  # no cenário, o retrato de 2023-07 faz o papel do de 2024-10
+MESES_COM_DEFEITO = ("2023-05", "2023-06", "2023-07", "2023-08", "2023-09")
+NOVA, IRMA = "11111111000373", "22222222000203"
+
+
+def _com_retrato_com_defeito() -> list[list[dict]]:
+    """Como o de 2024-10: estabelecimentos em dobro e outros faltando, tudo desfeito no mês seguinte."""
+    normal = [
+        _estabelecimento(EMPRESA, "02", "2010-01-01"),
+        _estabelecimento(OUTRA, "02", "2015-01-01"),
+        _estabelecimento(IRMA, "02", "2016-01-01"),
+    ]
+    defeito = [
+        _estabelecimento(EMPRESA, "02", "2010-01-01"),
+        _estabelecimento(EMPRESA, "02", "2010-01-01"),  # a mesma linha em dobro
+        _estabelecimento(IRMA, "02", "2016-01-01"),
+        _estabelecimento(
+            IRMA, "08", "2023-07-03", "01"
+        ),  # em dobro, com outro conteúdo
+        _estabelecimento(
+            FILIAL, "02", "2023-07-01"
+        ),  # só existe no retrato com defeito
+        _estabelecimento(
+            NOVA, "02", "2023-07-10"
+        ),  # nova de verdade: fica no mês seguinte
+        # a OUTRA falta
+    ]
+    depois = [
+        _estabelecimento(EMPRESA, "02", "2010-01-01"),
+        _estabelecimento(
+            OUTRA, "08", "2023-07-20", "01"
+        ),  # volta já baixada: mudou de verdade
+        _estabelecimento(IRMA, "02", "2016-01-01"),
+        _estabelecimento(NOVA, "02", "2023-07-10"),
+    ]
+    return [normal, normal, defeito, depois, depois]
+
+
+def _montar_com_defeito(ate: str, defeito=DEFEITO) -> pd.DataFrame:
+    meses = [m for m in MESES_COM_DEFEITO if m <= ate]
+    retratos = _com_retrato_com_defeito()[: len(meses)]
+    frames = [_frame(r) for r in retratos]
+    partes = [
+        diff(a, b, ["cnpj"], m)
+        for a, b, m in zip(frames, frames[1:], meses[1:], strict=False)
+    ]
+    mudancas = pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
+    return sc.versoes(frames[-1], mudancas, meses[0], RAIZES_PJ, defeito)
+
+
+def test_sem_o_mapa_o_retrato_com_defeito_quebra_a_conferencia():
+    """A regressão do que se viu na base: a cópia em dobro sai no mês seguinte e o CNPJ parece ter saído."""
+    with pytest.raises(historico.HistoricoNaoConfere):
+        _montar_com_defeito(MESES_COM_DEFEITO[-1], defeito={})
+
+
+def test_retrato_com_defeito_nao_vira_versao_e_as_mudancas_contam_no_seguinte():
+    versoes = _montar_com_defeito(MESES_COM_DEFEITO[-1])
+    assert "2023-07" not in set(versoes[historico.MES])
+    assert list(_de(versoes, EMPRESA)[historico.MES]) == [
+        "2023-05"
+    ]  # a cópia em dobro some
+    assert list(_de(versoes, IRMA)[historico.MES]) == [
+        "2023-05"
+    ]  # o dobro com outro conteúdo também
+    assert _de(versoes, FILIAL).empty  # o que só existia no defeito nunca aparece
+    outra = _de(
+        versoes, OUTRA
+    )  # a falta não vira saída: compara 2023-08 direto com 2023-06
+    assert list(outra[historico.MES]) == ["2023-05", "2023-08"]
+    assert list(outra[historico.CONSTA]) == [True, True]
+    assert list(outra["situacao_cadastral"]) == ["02", "08"]
+    assert list(_de(versoes, NOVA)[historico.MES]) == ["2023-08"]
+
+
+def test_nada_do_retrato_com_defeito_vale_antes_do_piso_do_mes_seguinte():
+    """Sem olhar o futuro: o que mudou no retrato com defeito só passa a valer no piso do mês seguinte."""
+    versoes = _montar_com_defeito(MESES_COM_DEFEITO[-1])
+    piso = pd.Timestamp(disponivel_em("2023-08"))
+    depois_do_inicio = versoes[versoes[historico.MES] > "2023-06"]
+    assert (depois_do_inicio["disponivel_em"].map(pd.Timestamp) >= piso).all()
+
+
+@pytest.mark.parametrize("corte", [m for m in MESES_COM_DEFEITO if m not in DEFEITO])
+def test_cortar_o_futuro_nao_muda_o_passado_com_retrato_com_defeito(corte):
+    """Fora o próprio retrato com defeito (que não é um ponto válido), montar até o corte é cortar o todo."""
+    tudo = _montar_com_defeito(MESES_COM_DEFEITO[-1])
+    ate_o_corte = tudo[tudo[historico.MES] <= corte].reset_index(drop=True)
+    pd.testing.assert_frame_equal(_montar_com_defeito(corte), ate_o_corte)
+
+
+def test_o_retrato_com_defeito_de_estabelecimentos_e_so_o_de_2024_10():
+    """Nenhuma regra geral sem evidência: só o mês contado no diagnóstico de 11/11/2026."""
+    assert dict(sc.RETRATOS_COM_DEFEITO) == {"2024-10": "2024-11"}
