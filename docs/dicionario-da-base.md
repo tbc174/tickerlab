@@ -2377,38 +2377,6 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
-## `cnpj_situacao_cadastral`
-
-Situação cadastral de cada estabelecimento do CNPJ (nula, ativa, suspensa, inapta ou baixada), um retrato por mês guardado: o histórico "como era na data" nasce da sequência dos retratos. Só o CNPJ e os códigos da Receita entram; nome fantasia, razão social, endereço e contatos nunca entram (ADR 0106).
-
-- **Fonte:** Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos
-- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
-- **Revenda:** vendável com atribuição à fonte
-- **Frequência:** Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)
-- **Atraso de divulgação:** A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_cadastral` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
-- **Chaves:** `cnpj`, `mes_do_retrato`
-- **Três datas:** aconteceu_em = `data_situacao_cadastral`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
-- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/cnpj_situacao_cadastral/<AAAA-MM>.parquet` (servidor de casa)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
-
-| Coluna | O que é | Unidade |
-|---|---|---|
-| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
-| `cnpj_basico` | Raiz do CNPJ (8 dígitos): a empresa | texto |
-| `matriz` | Verdadeiro na matriz, falso na filial | verdadeiro ou falso |
-| `situacao_cadastral` | Código da situação cadastral: 01 nula, 02 ativa, 03 suspensa, 04 inapta, 08 baixada | texto |
-| `data_situacao_cadastral` | Data da situação cadastral informada | data (dia) |
-| `motivo_situacao` | Código do motivo da situação cadastral, como a Receita publica (tabela de motivos) | texto |
-| `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
-| `disponivel_em` | Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo baixado depois) | data (dia) |
-| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
-| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
-| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
-| `versao_do_codigo` | Commit do código que montou a tabela | texto |
-
 ## `cnpj_estabelecimentos`
 
 Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação cadastral, datas, atividade (CNAE), endereço e situação especial. Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5). O endereço de empresário individual e de MEI deve ficar só até o município e a UF, mas o leitor da tabela de empresas, que diz quem é quem, ainda não existe: por ora a carga grava o endereço inteiro de todos, e por isso a tabela conta como dado de pessoa. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
@@ -2673,6 +2641,39 @@ Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão de
 | `optante_mei` | Verdadeiro se a empresa é MEI | verdadeiro ou falso |
 | `data_opcao_mei` | Data do enquadramento como MEI; vazio quando a Receita põe zero | data (dia) |
 | `data_exclusao_mei` | Data do desenquadramento do MEI; vazio quando a Receita põe zero | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `cnpj_situacao_cadastral`
+
+Situação cadastral de cada estabelecimento (01 nula, 02 ativa, 03 suspensa, 04 inapta, 08 baixada), com a data e o motivo, versão por versão desde 05/2023 e com desde quando cada uma era pública: a versão que vale na data D é a última com `disponivel_em` até D. Montada do retrato vigente e das mudanças mensais dos estabelecimentos da base do CNPJ (linha 841); só nasce versão quando a situação, a data, o motivo ou a matriz mudam, e a última versão de cada estabelecimento é conferida com o vigente. **Só pessoa jurídica:** entram só os estabelecimentos das raízes de `cnpj_estabelecimentos_pj` do mesmo mês do vigente (fora MEI, empresário individual e grupo 4); quem hoje não é só empresa some da história inteira. Nome fantasia, razão social, endereço e contatos nem são lidos (ADR 0106). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos (`scripts/montar_historico_do_cnpj.py situacao`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal: cada retrato novo da Receita só acrescenta versões; as antigas não mudam
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar por volta do dia 14; a versão vale desde o dia 21 do mês (`disponivel_em`)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `mes_do_retrato`
+- **Três datas:** aconteceu_em = `data_situacao_cadastral`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 2.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_situacao_cadastral/<2 primeiros caracteres do CNPJ>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`, vazio na versão "saiu do arquivo"); o manifesto de cada Parquet lista os ZIPs de todos os meses. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 dígitos, com a pontuação) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita em que a versão apareceu; o primeiro mês da base (2023-05) traz o que já estava lá | AAAA-MM |
+| `disponivel_em` | Desde quando a versão era pública: o dia 21 do mês do retrato, o piso de publicação (`base/receita_diff.disponivel_em`, dia 14 mais 7 de folga). Vale até a versão seguinte. A porta, como nas outras fontes de governo, só a mostra a partir do último dia do mês | data (dia) |
+| `consta` | Falso quando o estabelecimento saiu do arquivo naquele mês (os campos vêm vazios) | verdadeiro ou falso |
+| `matriz` | Verdadeiro na matriz, falso na filial | verdadeiro ou falso |
+| `situacao_cadastral` | Código da situação cadastral: 01 nula, 02 ativa, 03 suspensa, 04 inapta, 08 baixada | texto |
+| `data_situacao_cadastral` | Data da situação cadastral que a Receita informa; pode ser anterior ao retrato em que a versão apareceu | data (dia) |
+| `motivo_situacao` | Código do motivo da situação cadastral, como a Receita publica (tabela de motivos) | texto |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |

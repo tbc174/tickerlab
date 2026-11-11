@@ -340,17 +340,6 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "eventos_de_capital": [*fre.COLUNAS_DOS_EVENTOS, *da_historica],
         "insolvencia": [*rotulos.COLUNAS, *da_historica],
         "cnpj_situacao_especial": [*situacao, *origem],
-        "cnpj_situacao_cadastral": [
-            "cnpj",
-            "cnpj_basico",
-            "matriz",
-            "situacao_cadastral",
-            "data_situacao_cadastral",
-            "motivo_situacao",
-            "mes_do_retrato",
-            "disponivel_em",
-            *origem,
-        ],
         "auditores": [*auditores.COLUNAS, *da_historica],
         "pareceres_dfp": [*pareceres.COLUNAS, *da_historica],
         "pareceres_itr": [*pareceres.COLUNAS, *da_historica],
@@ -435,12 +424,15 @@ def test_contrato_comeca_na_versao_1():
     mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado), e `ifdata_cadastro` e
     `scr_credito` 2.0.0 (25/10/2026), o mesmo: a chave ganhou o `visto_em`, e `demonstracoes_como_era` 3.0.0 e
     `dmpl_como_era` 2.0.0 (03/11/2026, API A3), a chave ganhou `ordem`, `inicio` e `fim` (a DRE do ITR traz o
-    trimestre e o acumulado; sem elas a chave se repetia em milhões de linhas)."""
+    trimestre e o acumulado; sem elas a chave se repetia em milhões de linhas), e `cnpj_situacao_cadastral`
+    2.0.0 (11/11/2026, linha 841), uma linha por versão de cada estabelecimento em vez do retrato de cada mês
+    (quem pegava o último mês passa a ter de pegar a última versão de cada CNPJ)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
     assert maiores.pop("cnpj_situacao_especial") == "2"
+    assert maiores.pop("cnpj_situacao_cadastral") == "2"
     assert maiores.pop("demonstracoes_como_era") == "3"
     assert maiores.pop("dmpl_como_era") == "2"
     assert maiores.pop("ifdata_valores") == "2"

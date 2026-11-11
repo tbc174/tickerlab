@@ -1,124 +1,116 @@
-"""B-30c: situação cadastral do CNPJ (ativa, baixada, inapta, suspensa, nula) mês a mês, com histórico.
+"""B-30c: situação cadastral do CNPJ (ativa, baixada, inapta, suspensa, nula), só de pessoa jurídica, com histórico.
 
-A Receita só publica o retrato do mês; a situação "como era no dia D" nasce da sequência dos retratos
-guardados, como na `cnpj_situacao_especial` (a irmã, `base/rotulos.py`): um Parquet por mês em
-`<pasta>/cnpj_situacao_cadastral/<AAAA-MM>.parquet`, cada retrato valendo desde `disponivel_em` (nunca
-desde o mês do arquivo, que olharia o futuro).
+A Receita só publica o retrato do mês. A base do CNPJ (`scripts/carga_receita_mes.py`) guarda o retrato vigente
+e as mudanças de cada mês desde 2023-05; daqui sai uma linha por versão de cada estabelecimento (linha 841),
+como o histórico do Simples (`base/cnpj_historico.py`):
 
-Só CNPJ e códigos entram (ADR 0106): nome fantasia, razão social, endereço e contatos nem são lidos; o
-nome fantasia do MEI costuma ser o nome da pessoa. O código vira texto pela `base/receita_codigos.py`.
+- `mes_do_retrato`: o mês da Receita em que a versão apareceu; `disponivel_em`: desde quando era pública;
+- `consta`: falso quando o estabelecimento saiu do arquivo naquele mês (os campos vêm vazios);
+- a situação, a data e o motivo, como a Receita os publicou.
+
+A versão que vale em D é a última com `disponivel_em <= D` (nunca o mês do arquivo, que olharia o futuro). Uma
+versão só nasce quando um destes campos muda (mudança de telefone ou endereço não conta): guardar o retrato
+inteiro de cada mês daria quase um bilhão de linhas.
+
+**Sem pessoa:** só entram os estabelecimentos das raízes da lista sem pessoa do CNPJ (`cnpj_estabelecimentos_pj`,
+de `scripts/montar_empresas_pj.py`: fora MEI, empresário individual e grupo 4), a do mês do retrato vigente.
+Como nas entradas de sócio PJ, quem hoje não é só empresa some da história inteira. Nome fantasia, razão social,
+endereço e contatos nem são lidos (ADR 0106).
 """
 
-import io
-from datetime import datetime
-from pathlib import Path
+from collections.abc import Collection
 
 import pandas as pd
-import sqlalchemy as sa
 
-from base.parquet import LINHAGEM, gravar_se_mudou
-from base.receita_retrato import CAMPOS_DO_ESTABELECIMENTO, MATRIZ, _datas, _partes
-from base.rotulos import MES_NA_PASTA, disponivel_em
-from src import acervo
-from src.banco.coletas import originais_mais_recentes
-from src.versao_do_codigo import versao_do_codigo
+from base import cnpj_historico as historico
 
 TABELA = "cnpj_situacao_cadastral"
-# posição de cada campo no arquivo de estabelecimentos (layout conferido em 15/10/2026)
-POSICOES = {
-    0: "cnpj_basico", 1: "ordem", 2: "dv", 3: "matriz", 5: "situacao_cadastral",
-    6: "data_situacao_cadastral", 7: "motivo_situacao",
-}  # fmt: skip
-COLUNAS = (
-    "cnpj", "cnpj_basico", "matriz", "situacao_cadastral", "data_situacao_cadastral",
-    "motivo_situacao",
+# a lista sem pessoa de `scripts/montar_empresas_pj.py` (o mesmo nome lá; há teste que confere)
+LISTA_SEM_PESSOA = "cnpj_estabelecimentos_pj"
+CHAVE = ("cnpj",)
+CAMPOS = (
+    "cnpj_basico", "matriz", "situacao_cadastral", "data_situacao_cadastral", "motivo_situacao",
 )  # fmt: skip
+CODIGOS = ("situacao_cadastral", "motivo_situacao")
+# as colunas que se leem das mudanças de estabelecimentos (o resto do arquivo nunca vira coluna)
+COLUNAS_DAS_MUDANCAS = (
+    "mes", "tipo", "cnpj", "ordem",
+    *(f"{campo}{lado}" for campo in CAMPOS for lado in (historico.ANTES, historico.DEPOIS)),
+)  # fmt: skip
+COLUNAS = (
+    "cnpj", *CAMPOS, historico.MES, historico.DISPONIVEL_EM, historico.CONSTA,
+)  # fmt: skip
+TAMANHO_DA_RAIZ = 8
 TAMANHO_DO_CODIGO = 2  # a base guarda sem o zero à esquerda em alguns meses
+
+
+def da_raiz(cnpj: pd.Series) -> pd.Series:
+    """A raiz (8 primeiros caracteres) de cada CNPJ de 14 caracteres."""
+    return cnpj.astype(str).str[:TAMANHO_DA_RAIZ]
+
+
+def so_das_raizes(tabela: pd.DataFrame, raizes: Collection[str]) -> pd.DataFrame:
+    """As linhas cujo CNPJ é de uma das `raizes` (a lista sem pessoa)."""
+    return tabela[da_raiz(tabela["cnpj"]).isin(set(raizes))].reset_index(drop=True)
 
 
 def _codigo(serie: pd.Series) -> pd.Series:
     """O código de dois dígitos; vazio fica vazio."""
-    texto = serie.str.strip()
-    return texto.where(texto == "", texto.str.zfill(TAMANHO_DO_CODIGO))
+    texto = serie.astype("string").str.strip()
+    return texto.where(texto.isna() | (texto == ""), texto.str.zfill(TAMANHO_DO_CODIGO))
 
 
-def ler_situacao_cadastral_do_cnpj(conteudo_do_zip: bytes) -> pd.DataFrame:
-    """Um registro por estabelecimento num `Estabelecimentos*.zip`: CNPJ e os três campos da situação.
+def _formatado(cnpj: pd.Series) -> pd.Series:
+    """`12.345.678/0001-90`, como as outras tabelas do CNPJ servidas pela porta."""
+    texto = cnpj.astype(str)
+    return (
+        texto.str[:2] + "." + texto.str[2:5] + "." + texto.str[5:8] + "/"
+        + texto.str[8:12] + "-" + texto.str[12:]
+    )  # fmt: skip
 
-    Lê por partes (o mês inteiro tem 70 milhões de linhas) e só as posições pedidas: o resto do arquivo
-    nunca vira coluna.
+
+def versoes(
+    vigente: pd.DataFrame,
+    mudancas: pd.DataFrame,
+    primeiro_mes: str,
+    raizes_pj: Collection[str],
+) -> pd.DataFrame:
+    """As versões dos estabelecimentos das `raizes_pj`, do retrato vigente e das mudanças de todos os meses.
+
+    A última versão de cada estabelecimento que consta tem de ser o vigente (`HistoricoNaoConfere` se não é).
     """
-    partes = []
-    for parte in _partes(
-        io.BytesIO(conteudo_do_zip), CAMPOS_DO_ESTABELECIMENTO, POSICOES
-    ):
-        parte = parte.rename(columns=POSICOES)
-        basico, ordem, dv = (
-            parte[c].str.strip() for c in ("cnpj_basico", "ordem", "dv")
-        )
-        partes.append(
-            pd.DataFrame(
-                {
-                    "cnpj": (
-                        basico.str[:2]
-                        + "."
-                        + basico.str[2:5]
-                        + "."
-                        + basico.str[5:8]
-                        + "/"
-                        + ordem
-                        + "-"
-                        + dv
-                    ),
-                    "cnpj_basico": basico,
-                    "matriz": parte["matriz"].str.strip() == MATRIZ,
-                    "situacao_cadastral": _codigo(parte["situacao_cadastral"]),
-                    "data_situacao_cadastral": _datas(
-                        parte["data_situacao_cadastral"]
-                    ).dt.date,
-                    "motivo_situacao": _codigo(parte["motivo_situacao"]),
-                }
-            )
-        )
-    if not partes:
-        return pd.DataFrame({coluna: [] for coluna in COLUNAS})
-    return pd.concat(partes, ignore_index=True)[list(COLUNAS)]
+    vigente = so_das_raizes(vigente, raizes_pj)[[*CHAVE, *CAMPOS]]
+    if not mudancas.empty:
+        mudancas = so_das_raizes(mudancas, raizes_pj)
+    feitas = historico.versoes_das_mudancas(
+        vigente, mudancas, CHAVE, CAMPOS, primeiro_mes
+    )
+    historico.conferir_com_o_vigente(feitas, vigente, CHAVE, CAMPOS)
+    return _sem_repeticao(_para_servir(feitas))
 
 
-def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> dict[str, int]:
-    """`<pasta>/cnpj_situacao_cadastral/<AAAA-MM>.parquet` para cada mês do CNPJ guardado.
+def _sem_repeticao(feitas: pd.DataFrame) -> pd.DataFrame:
+    """Tira a versão igual à anterior do mesmo estabelecimento.
 
-    Devolve as linhas por mês. Reprocessar os meses guardados não regrava o que não mudou.
+    A mudança de outro campo (telefone, endereço), ou o mesmo código escrito sem o zero à esquerda, não é
+    versão nova da situação: vem depois de `_para_servir`, com os códigos e as datas já iguais. A
+    versão que fica é a mais antiga, a desde quando aquele valor valia. As versões vêm ordenadas por CNPJ e mês.
     """
-    por_mes: dict[str, list[pd.DataFrame]] = {}
-    origens: dict[str, list[dict[str, str]]] = {}
-    for original in originais_mais_recentes(conexao, "rfb-cnpj"):
-        achado = MES_NA_PASTA.search(original.url)
-        conteudo = acervo.ler_original(original.caminho_do_original)
-        if achado is None or conteudo is None:
-            continue
-        mes = achado.group(1)
-        tabela = ler_situacao_cadastral_do_cnpj(conteudo).assign(
-            mes_do_retrato=mes,
-            disponivel_em=disponivel_em(conexao, original, mes),
-            origem_sha256=original.sha256,
-            origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
-            montado_em=agora.isoformat(),
-            versao_do_codigo=versao_do_codigo(),
-        )
-        por_mes.setdefault(mes, []).append(tabela)
-        origens.setdefault(mes, []).append(
-            {"url": original.url, "sha256": original.sha256}
-        )
-    linhas: dict[str, int] = {}
-    for mes, partes in por_mes.items():
-        tabela = pd.concat(partes, ignore_index=True)
-        gravar_se_mudou(
-            tabela,
-            pasta / TABELA / f"{mes}.parquet",
-            origens[mes],
-            ["cnpj"],
-            carimbos=LINHAGEM,
-        )
-        linhas[mes] = len(tabela)
-    return linhas
+    valores = feitas[[*CAMPOS, historico.CONSTA]].astype("string").fillna("")
+    mesmo_cnpj = feitas["cnpj"].eq(feitas["cnpj"].shift())
+    igual = valores.eq(valores.shift()).all(axis=1)
+    return feitas[~(mesmo_cnpj & igual)].reset_index(drop=True)
+
+
+def _para_servir(feitas: pd.DataFrame) -> pd.DataFrame:
+    """Raiz preenchida também na versão de quem saiu, códigos com dois dígitos, data sem hora e CNPJ formatado."""
+    feitas = feitas.copy()
+    feitas["cnpj_basico"] = da_raiz(feitas["cnpj"])
+    for coluna in CODIGOS:
+        feitas[coluna] = _codigo(feitas[coluna])
+    feitas["data_situacao_cadastral"] = pd.to_datetime(
+        feitas["data_situacao_cadastral"]
+    ).dt.date
+    feitas["matriz"] = feitas["matriz"].astype("boolean")
+    feitas["cnpj"] = _formatado(feitas["cnpj"])
+    return feitas[list(COLUNAS)]
