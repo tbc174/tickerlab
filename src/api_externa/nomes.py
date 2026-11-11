@@ -167,6 +167,16 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "margem_liquida": "net_margin",
     "roe": "return_on_equity",
     "divida_liquida_sobre_ebitda": "net_debt_to_ebitda",
+    # events: os documentos do IPE e as trocas de auditor (linha 736, PR 4)
+    "eventos": "events",
+    "tipo_de_evento": "event_type",
+    "protocolo": "filing_id",
+    "categoria": "category",
+    "link": "document_url",
+    "efetiva_em": "effective_on",
+    "anterior": "previous",
+    "novo": "new",
+    "anos_com_o_anterior": "years_with_previous",
 }
 
 

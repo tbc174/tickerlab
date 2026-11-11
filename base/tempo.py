@@ -37,6 +37,8 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "data_registro", "data_registro_oferta", "data_requerimento",
         "DT_CONST", "DT_REG", "DT_INI_ATIV", "DT_INI_CLASSE", "DT_INI_SIT",
         "DT_INI_GESTOR", "DT_INI_ADMIN",
+        # o registro de fundos da CVM 175 (`registro_de_fundos`)
+        "Data_Registro", "Data_Constituicao", "Data_Inicio_Situacao", "Data_Adaptacao_RCVM175",
         "registro", "registrada_desde", "inicio_listagem", "inicio_negociacao",
         "entrada_em_operacao", "entrada_em_teste", "fechamento_em", "infracao_em",
         "primeira_inscricao", "ultima_inscricao", "inscrito_em", "parcelado_em",  # a dívida ativa do PR e de MG
@@ -50,7 +52,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "gerado_em", "atualizado_em", "data", "prazo",
     ),
     "ate": (
-        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",
+        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "Data_Cancelamento", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",
         "confidencial_ate", "data_vencimento",  # linha 440: fim do sigilo; vencimento (como `vence_em`)
         "vigencia_fim", "fim_negociacao", "desembargada_em", "descredenciada_em", "data_encerramento", "data_encerramento_oferta",
         "data_exclusao_mei", "data_exclusao_mei_antes", "data_exclusao_mei_depois",
@@ -59,6 +61,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
     "referencia": (
         "referencia", "competencia", "data_base", "exercicio", "inicio", "fim",
         "inicio_do_exercicio", "fim_do_exercicio", "DT_INI_EXERC", "DT_FIM_EXERC",
+        "Data_Inicio_Exercicio_Social", "Data_Fim_Exercicio_Social", "Data_Patrimonio_Liquido",
         "DT_PATRIM_LIQ", "acumulado_inicio", "acumulado_fim", "anual_fim", "balanco_fim",
         "receita_exercicio_fim", "composicao_em", "data_do_retrato", "relatorio",
         "ultima_referencia",
