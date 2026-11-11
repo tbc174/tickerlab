@@ -120,6 +120,20 @@
       "valor"
     ]
   },
+  "links": {
+    "fontes": {
+      "cvm-cadastros": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-fre": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "aconteceu_em",
+      "ate",
+      "nome",
+      "participacao",
+      "tipo"
+    ]
+  },
   "profiles": {
     "fontes": {
       "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",

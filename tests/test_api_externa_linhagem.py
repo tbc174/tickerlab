@@ -41,7 +41,7 @@ from src.portao_externo import (
 # (linha 754, PR 2) é o único de crédito; "sectors" (linha 781) é o único com agregado de mercado;
 # "profiles" (linha 736, PR 2) repete o cadastro de "companies" e junta as entregas de DFP e ITR;
 # "comparables" (linha 736, PR 3) junta o setor do FCA e os números do DFP dos pares; "events" (linha 736,
-# PR 4) lista os documentos do IPE e as trocas de auditor
+# PR 4) lista os documentos do IPE e as trocas de auditor; "links" (linha 736, PR 5) lê a rede de entidades
 CONJUNTOS_DO_BETA = {
     "companies",
     "financials",
@@ -52,6 +52,7 @@ CONJUNTOS_DO_BETA = {
     "prospecting",
     "comparables",
     "events",
+    "links",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
@@ -66,6 +67,14 @@ FONTES_DE_CARGA_PROPRIA = {"bcb-ifdata": "ifdata_valores"}
 # tabela montada na base a partir de outra que a fonte alimenta (as trocas de auditor saem dos auditores de
 # cada FCA, `base/auditores.py`): a de origem é a que está nos destinos do arquivista
 MONTADAS_DE_OUTRA_TABELA = {"trocas_de_auditor": "auditores"}
+# a rede de entidades (ADR 0077, `base/rede/montar.py`) é montada de várias tabelas; a de cada fonte que sai em
+# `links` é a que está nos destinos do arquivista: as controladas do FRE, os auditores do FCA e o cadastro
+TABELAS_DA_REDE = {"ligacoes", "entidades", "identificadores"}
+ORIGEM_NA_REDE = {
+    "cvm-hist-fre": "controladas",
+    "cvm-hist-fca": "auditores",
+    "cvm-cadastros": "cadastro_das_companhias",
+}
 # tabela montada na base histórica com os arquivos anuais da fonte (o manifesto lista cada um), fora dos
 # destinos do arquivista: as entregas do perfil saem do índice das entregas da DFP e do ITR
 MONTADAS_DOS_ARQUIVOS_DA_FONTE = {
@@ -159,6 +168,8 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
             else:
                 assert linha.fonte in DESTINOS, linha
                 origem = MONTADAS_DE_OUTRA_TABELA.get(tabela, tabela)
+                if tabela in TABELAS_DA_REDE:
+                    origem = ORIGEM_NA_REDE[linha.fonte]
                 assert origem in DESTINOS[linha.fonte].tabelas, (linha, tabela)
             assert _da_familia(linha.fonte, TABELAS[tabela].familia_da_fonte), linha
 

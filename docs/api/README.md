@@ -197,6 +197,7 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 | `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 | `GET /data/v1/companies/{cnpj}/profile` | o perfil da empresa: o cadastro na Receita e as entregas de DFP e ITR à CVM como eram (`profiles`, ver abaixo) | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/comparables` | os pares da companhia aberta no mesmo grupo de setores, com os números do último DFP e a mediana de cada razão (`comparables`, ver abaixo) | sim, 1 |
+| `GET /data/v1/companies/{cnpj}/links` | os vínculos da empresa na rede (controle, coligação e participação pelo FRE, auditoria pelo FCA), de 1 a 3 saltos (`links`, ver abaixo); `depth` e `types` | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/events` | os documentos da companhia no IPE da CVM e as trocas de auditor, do mais novo ao mais velho (`events`, ver abaixo); `types` filtra, `cursor` pega a página seguinte | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
 | `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
@@ -289,6 +290,26 @@ filtra. A página vai até o limite de linhas do plano (`truncated`); `next_curs
 nem repetir evento. A rotulagem de insolvência nunca sai (inferência
 individual); a empresa sem eventos não quer dizer que nada aconteceu. Pessoa (MEI, empresário individual) e
 quem a rede não conhece saem `not_available`.
+
+### Vínculos (`links`, linha 736)
+
+Os vínculos de uma empresa como eram no dia (`conjuntos/vinculos.py`), lidos da rede de entidades do TickerLab
+(ADR 0077) de 1 a 3 saltos (`depth`), nos dois sentidos:
+
+- `subsidiary_of`, `affiliate_of` e `investee_of`: a sociedade controlada, coligada ou só participada da outra
+  (`from` é a controlada; `to`, quem a controla), com `ownership_pct`, como o FRE informou (`controladas`, fonte
+  `cvm-hist-fre`);
+- `audits`: a firma de auditoria (`from`) que auditava a companhia (`to`), pelo FCA (`auditores`, fonte
+  `cvm-hist-fca`).
+
+Cada vínculo traz `hops` (o salto a partir da empresa pedida), `kind` (o tipo, no envelope, com a fonte e o
+dia em que ficou público), `valid_from` e, quando acabou, `valid_until`. Cada ponta sai com `entity_id` (o id
+na rede), `cnpj_root` e `name`, este só quando o nome veio do cadastro, do FRE ou do FCA da CVM. Nada publicado
+depois de `known_at` entra, e o fim que só se soube depois do dia não aparece. `types` filtra (repetível); a
+lista vai até o limite de linhas do plano (`truncated`). O fundo que detém o papel, o conglomerado do Banco
+Central e a série do regulador não saem por aqui. A ponta que é pessoa (MEI, empresário individual, sócio
+pessoa física) ou que a rede trata como pessoa não sai, nem a ligação com ela; a empresa sem vínculos não quer
+dizer que ela não tenha grupo. Pessoa e quem a rede não conhece saem `not_available`.
 
 ### Ficha de crédito (`credit`, linha 754)
 

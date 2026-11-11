@@ -532,6 +532,31 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("efetiva_em", "anterior", "novo", "anos_com_o_anterior"),
         _PROVA_CVM,
     ),
+    # links (linha 736, PR 5): as ligações da rede (`ligacoes`, ADR 0077) que vêm do FRE (controle, coligação e
+    # participação, `controladas`) e do FCA (auditoria, `auditores`), e o nome da ponta quando ele veio do
+    # cadastro, do FRE ou do FCA da CVM (`entidades`). A rede é montada dessas tabelas; a ponta que é pessoa
+    # ou que a rede trata como pessoa não sai (`conjuntos/vinculos.py`), e as outras ligações não são lidas.
+    *_campos(
+        ("cvm-hist-fre",),
+        "links",
+        ("ligacoes", "entidades", "identificadores"),
+        ("tipo", "participacao", "aconteceu_em", "ate"),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-fca",),
+        "links",
+        ("ligacoes", "entidades", "identificadores"),
+        ("tipo", "aconteceu_em", "ate"),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-cadastros", "cvm-hist-fre", "cvm-hist-fca"),
+        "links",
+        ("entidades",),
+        ("nome",),
+        _PROVA_CVM,
+    ),
 )
 
 
