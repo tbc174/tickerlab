@@ -6,7 +6,8 @@ Duas APIs, no mesmo serviço FastAPI (`src/api.py`):
 - **API externa de dados (`/data/v1`, TickerLab Data)**, para quem integra: a organização entra pela
   chave dela. Ver [a seção dela](#api-externa-de-dados-datav1).
 
-As duas estão **desligadas** em produção.
+Em produção, a de leitura está **no ar** e serve o app; a externa segue **desligada**. Cada uma só
+entra no serviço com a variável dela (`TICKERLAB_API_V1=1` e `TICKERLAB_API_EXTERNA=1`).
 
 # API de leitura (v1)
 
@@ -14,8 +15,9 @@ A interface nova do TickerLab (React, ADR 0048) não calcula nada: ela pede os n
 chama as mesmas funções de `src/` que as telas do Streamlit usam. Assim, o número na tela nova é o
 mesmo da tela antiga.
 
-**Estado:** pronta e **desligada** em produção. Ela só responde com `TICKERLAB_API_V1=1` e
-`TICKERLAB_GOOGLE_CLIENT_ID` no ambiente; sem isso, toda rota `/api/v1/...` responde 404.
+**Estado:** **no ar** em produção, servindo o app (com login). As rotas só são montadas com
+`TICKERLAB_API_V1=1` no ambiente; sem isso, toda rota `/api/v1/...` responde 404. O login pelo Google
+precisa também de `TICKERLAB_GOOGLE_CLIENT_ID`; sem ele, responde 503.
 
 ## Onde está cada coisa
 
@@ -120,12 +122,13 @@ quando o IP passa do limite por minuto; 503 quando a porta não abre, a tabela n
 as portas ao mesmo tempo estão todas ocupadas (no máximo 2 por processo, cada uma com 512MB e 2
 threads do DuckDB: o contêiner é pequeno e serve também o webhook).
 
-**Em produção isto ainda não responde:** a API v1 está desligada (`TICKERLAB_API_V1=1` liga) e o
-contêiner da API (`compose.yaml`, serviço `tickerlab-api`) não monta o acervo da base; para a página
-Dados consultar de verdade, a API precisa de `TICKERLAB_ACERVO` apontando para a cópia da base montada
-no contêiner. Até lá, a página Dados não mostra a coluna "Consulta", a frase nem o painel: eles nascem
-escondidos e só aparecem quando `GET /api/v1/base/tabelas` responde. A `fidc_informe` (410 colunas)
-não cabe nos 512MB da porta nem numa leitura simples: a consulta dela dá 503 até um PR próprio.
+**Em produção, estas rotas dependem da base montada no contêiner:** a API v1 está no ar, e o contêiner
+da API (`compose.yaml`, serviço `tickerlab-api`) lê a base de `TICKERLAB_ACERVO`, uma pasta só de
+leitura com o recorte sem pessoa que `scripts/montar_recorte_da_api.py` envia. Com a pasta ausente ou
+vazia, a API sobe igual e estas rotas respondem 503; a tabela que não está no recorte também dá 503.
+Na página Dados, a coluna "Consulta", a frase e o painel nascem escondidos e só aparecem quando
+`GET /api/v1/base/tabelas` responde. A `fidc_informe` (410 colunas) não cabe nos 512MB da porta nem
+numa leitura simples e fica fora do recorte: a consulta dela dá 503 até um PR próprio.
 
 Sem `taxa`, a taxa livre de risco é o CDI do período (zero se o Banco Central não responder), como
 na tela. Toda resposta traz `ativo` com o período real, a origem dos preços (`atual`,

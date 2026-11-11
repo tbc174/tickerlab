@@ -1,4 +1,4 @@
-"""Encontrar empresas na tela do analista (linha 798, PR 3): setor, UF e idade mínima.
+"""Encontrar empresas na tela do analista (linha 798, PR 3): setor, UF, idade, capital e estabelecimentos.
 
 A tela busca pelo mesmo leitor da API externa (`LeitorDeProspeccao`, `GET /data/v1/companies`), com o mesmo
 portão e a mesma prontidão das tabelas (`leitura.permitido_na_tela`): o analista vê na tela só o que a chave
@@ -8,9 +8,12 @@ dele veria pela API. Só os filtros que quem não programa entende:
   fora a administração pública (O), os serviços domésticos (T, empregador pessoa física) e os organismos
   internacionais (U): nenhum é alvo de mandato de M&A;
 - UF da matriz;
-- idade mínima em anos, contada da abertura na Receita até hoje.
+- idade mínima em anos, contada da abertura na Receita até hoje;
+- capital social declarado (mínimo e máximo) e número mínimo de estabelecimentos ativos, com a ordem por um
+  deles. São uma aproximação do tamanho: a Receita não tem "médio porte" nem faturamento, e a tela não sugere
+  um nem outro.
 
-Sempre a matriz ativa (uma linha por empresa). Capital, filiais e ordenação vêm depois (linha 584).
+Sempre a matriz ativa (uma linha por empresa).
 """
 
 from collections.abc import Mapping
@@ -38,6 +41,14 @@ IDADE_MAXIMA = 100
 TAMANHO_DA_PAGINA = 50
 PAGINAS_DA_PLANILHA = 10  # o Excel leva no máximo dez páginas da tela de uma vez
 _DIVISOES_DO_CNAE = range(1, 100)
+CAPITAL_MAXIMO = prospeccao.CAPITAL_MAXIMO
+ESTABELECIMENTOS_MAXIMOS = prospeccao.FILIAIS_MAXIMAS
+# a ordem como a tela a oferece -> a ordem da API (`sort`) e o nome na tela; sem ordem é pelo CNPJ
+ORDENS: dict[str, tuple[str, str]] = {
+    "maior_capital": ("-capital", "Maior capital social"),
+    "menor_capital": ("capital", "Menor capital social"),
+    "mais_estabelecimentos": ("-branches", "Mais estabelecimentos ativos"),
+}
 
 LIMITES = (
     "Uma linha por empresa: a matriz, com cadastro ativo na Receita Federal.",
@@ -45,6 +56,10 @@ LIMITES = (
     "A idade conta a partir da data de abertura no cadastro da Receita, até hoje.",
     "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de hoje entra.",
     "O porte da Receita é o declarado no cadastro e não mede faturamento.",
+    (
+        "Capital social e número de estabelecimentos ativos são só uma aproximação do tamanho: o capital é "
+        "o declarado na Receita, não o patrimônio, e nenhum dos dois mede faturamento."
+    ),
     "Nada aqui é recomendação de investimento.",
 )
 
@@ -56,11 +71,21 @@ class Filtros:
     setores: tuple[str, ...] = ()
     ufs: tuple[str, ...] = ()
     idade_minima: int | None = None
+    capital_minimo: float | None = None
+    capital_maximo: float | None = None
+    estabelecimentos_minimo: int | None = None
+    ordem: str | None = None  # uma chave de `ORDENS`; None é pelo CNPJ
     cursor: str | None = None
 
     def vazio(self) -> bool:
-        """Nenhum filtro: a tela não lê a base inteira."""
-        return not self.setores and not self.ufs and self.idade_minima is None
+        """Nenhum filtro (a ordem não filtra): a tela não lê a base inteira."""
+        numeros = (
+            self.idade_minima,
+            self.capital_minimo,
+            self.capital_maximo,
+            self.estabelecimentos_minimo,
+        )
+        return not self.setores and not self.ufs and all(n is None for n in numeros)
 
 
 def divisoes(setor: str) -> tuple[str, ...]:
@@ -71,6 +96,11 @@ def divisoes(setor: str) -> tuple[str, ...]:
         for d in _DIVISOES_DO_CNAE
         if cnae.secao_do_cnae(f"{d:02d}00000") == nome
     )
+
+
+def ordens_como_lista() -> list[dict[str, str]]:
+    """As ordens que a tela oferece além da do CNPJ, para o formulário."""
+    return [{"codigo": codigo, "nome": nome} for codigo, (_, nome) in ORDENS.items()]
 
 
 def setores_como_lista() -> list[dict[str, str]]:
@@ -123,6 +153,9 @@ def _validar(filtros: Filtros) -> None:
     idade = filtros.idade_minima
     if idade is not None and not 1 <= idade <= IDADE_MAXIMA:
         raise FiltroInvalido
+    if filtros.ordem is not None and filtros.ordem not in ORDENS:
+        raise FiltroInvalido
+    # capital e estabelecimentos: a faixa e o mínimo acima do máximo o leitor da API confere
 
 
 def busca_da_api(filtros: Filtros, hoje: date) -> prospeccao.Busca:
@@ -145,6 +178,10 @@ def busca_da_api(filtros: Filtros, hoje: date) -> prospeccao.Busca:
         head_office=True,
         cursor=filtros.cursor,
         limit=TAMANHO_DA_PAGINA,
+        capital_min=filtros.capital_minimo,
+        capital_max=filtros.capital_maximo,
+        branches_min=filtros.estabelecimentos_minimo,
+        sort=None if filtros.ordem is None else ORDENS[filtros.ordem][0],
     )
 
 
