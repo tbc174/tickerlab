@@ -117,12 +117,10 @@ caso, ou se cria a ferramenta ou se escreve o motivo em `SEM_FERRAMENTA`, como j
 | `fundo` | `fundo` |
 | `setor` | `setores` e `setor` |
 | `catalogo` e `consumo` | `o_que_posso_ver` |
-| `vinculos` (entra pela linha 773) | `vinculos` (tipos, `profundidade` de 1 a 3 e a data) |
+| `vinculos` | `vinculos` (tipos, `profundidade` de 1 a 3 e a data) |
 
-A ferramenta `vinculos` (rota `/companies/{cnpj}/links` da API, conjunto `links`) chegou antes do comando da
-CLI. Até o comando entrar, ela fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo. Quando ele
-entrar, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Os nomes dos tipos (controlada, coligada,
-participada, auditor) são os da CLI, e um teste confere que viram os tipos da API.
+Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
+quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso.
 
 Compradores do setor e o comparar de duas a cinco empresas ainda não têm rota na API externa. Entram pelo
 mesmo caminho: rota na API, comando na CLI e ferramenta aqui, com a paridade cobrando.

@@ -499,10 +499,8 @@ def test_tipos_de_vinculo_sao_os_da_api():
     assert ferramentas.PROFUNDIDADE_MAXIMA == vinculos.PROFUNDIDADE_MAXIMA
 
 
-def test_tipos_de_vinculo_sao_os_da_cli_quando_ela_os_tiver():
-    # o comando `vinculos` entra na CLI pela linha 773; até lá, nada a comparar
-    da_cli = getattr(comandos, "TIPOS_DE_VINCULO", ferramentas.TIPOS_DE_VINCULO)
-    assert da_cli == ferramentas.TIPOS_DE_VINCULO
+def test_tipos_de_vinculo_sao_os_da_cli():
+    assert ferramentas.TIPOS_DE_VINCULO == comandos.TIPOS_DE_VINCULO
 
 
 def test_tipos_de_evento_sao_os_da_cli_e_os_da_api():
