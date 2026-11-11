@@ -1668,6 +1668,68 @@ def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpre
     )
 
 
+class EmpresaComparadaV1(BaseModel):
+    """Uma empresa na comparação, numa linha: o cadastro da ficha, os campos da busca e o resumo das entregas
+    à CVM, cada campo com a fonte e o dia (None se o portão não serve ou se a empresa não está disponível)."""
+
+    cnpj: str
+    estado: str  # "pronta" ou "nao_disponivel" (pessoa, MEI ou CNPJ que a base não conhece, sem dizer qual)
+    razao_social: CampoComFonteV1 | None = None
+    natureza_juridica: CampoComFonteV1 | None = None
+    situacao_cadastral: CampoComFonteV1 | None = None
+    data_situacao_cadastral: CampoComFonteV1 | None = None
+    motivo_situacao: CampoComFonteV1 | None = None
+    matriz: CampoComFonteV1 | None = None
+    mes_do_retrato: CampoComFonteV1 | None = None
+    optante_simples: CampoComFonteV1 | None = None
+    data_opcao_simples: CampoComFonteV1 | None = None
+    data_exclusao_simples: CampoComFonteV1 | None = None
+    porte: CampoComFonteV1 | None = None
+    data_inicio_atividade: CampoComFonteV1 | None = None
+    cnae_principal: CampoComFonteV1 | None = None
+    uf: CampoComFonteV1 | None = None
+    municipio: CampoComFonteV1 | None = None
+    capital_social: CampoComFonteV1 | None = None
+    n_estabelecimentos: CampoComFonteV1 | None = None
+    cnae_descricao: str | None = None
+    municipio_nome: str | None = None
+    porte_descricao: str | None = None
+    ultima_entrega_documento: CampoComFonteV1 | None = None
+    ultima_entrega_referencia: CampoComFonteV1 | None = None
+    ultima_entrega_situacao: CampoComFonteV1 | None = None
+    entregas_conhecidas: int | None = (
+        None  # conta nossa sobre as entregas à CVM que a base conhecia
+    )
+    entregas_com_atraso: int | None = None
+
+
+class ComparacaoDeEmpresasV1(BaseModel):
+    """A resposta da comparação: o estado, as empresas na ordem do pedido (só quando pronta), as fontes e os
+    limites, sempre."""
+
+    estado: str  # "pronta" ou "nao_liberada" (o portão ainda não deixa sair o cadastro)
+    como_era_em: date | None = None
+    empresas: list[EmpresaComparadaV1]
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def de_comparacao_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> ComparacaoDeEmpresasV1:
+    corpo = resposta.corpo or {}
+    return ComparacaoDeEmpresasV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        empresas=[
+            EmpresaComparadaV1.model_validate(empresa)
+            for empresa in corpo.get("empresas", [])
+        ],
+        fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
+        limites=list(limites),
+    )
+
+
 class EntregaDoDiaV1(BaseModel):
     """Uma linha de "O que mudou": o dia, o que entrou e a página para abrir."""
 

@@ -184,6 +184,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "busca_por_cnpj",
                 "ficha_da_empresa",
                 "encontrar_empresas",
+                "comparar_empresas",
                 "relatorio_do_setor",
             },
         ),
@@ -274,6 +275,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "busca_por_cnpj",
         "ficha_da_empresa",
         "encontrar_empresas",
+        "comparar_empresas",
         "relatorio_do_setor",
         "planos",
         "meus_dados",
@@ -315,6 +317,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/busca-por-cnpj/pdf",
         "/v1/analista/ficha/planilha",  # a planilha herda o contrato da ficha
         "/v1/analista/empresas/planilha",  # a planilha herda o contrato da busca
+        "/v1/analista/comparar/planilha",  # a planilha herda o contrato da comparação
         "/v1/relatorio-setor/pdf",
         "/v1/relatorio-setor/apresentacao",
         "/v1/relatorio-empresa/apresentacao",

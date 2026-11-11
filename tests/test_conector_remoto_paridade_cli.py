@@ -20,6 +20,7 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "empresa": ("ficha_da_empresa",),
     "comparaveis": ("comparaveis",),
     "demonstracoes": ("demonstracoes",),
+    "eventos": ("eventos",),
     "fundo": ("fundo",),
     "setor": ("setores", "setor"),  # sem chave, a lista; com chave, o setor
     "catalogo": ("o_que_posso_ver",),
@@ -30,6 +31,7 @@ SEM_FERRAMENTA: dict[str, str] = {
     "login": "guarda a chave no PC; no conector a chave entra pela página /autorizar do OAuth",
     "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
+    "eventos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pelo PR 1014 da 773)",
 }
 
 ENDERECO = "https://api.exemplo.test"
@@ -63,6 +65,12 @@ CASOS = [
         "demonstracoes",
         {"cnpj": CNPJ, "como_era_em": UM_DIA, "fim_do_periodo": "2025-12-31"},
         id="demonstracoes",
+    ),
+    pytest.param(
+        ["eventos", CNPJ, "--como-era", UM_DIA, "--tipo", "auditor"],
+        "eventos",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA, "tipos": ["auditor"]},
+        id="eventos",
     ),
     pytest.param(
         ["fundo", CNPJ, "--como-era", UM_DIA, "--retorno-suposto", "0.1"],

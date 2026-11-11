@@ -5,6 +5,8 @@ entregas à CVM), e `POST /v1/analista/ficha/planilha` a mesma ficha em Excel. A
 os termos aceitos e o plano da página `ficha_da_empresa` (`src/paginas.py`, recurso Dossiê da base).
 `POST /v1/analista/empresas` busca empresas por setor, UF, idade mínima, capital social e estabelecimentos
 ativos, com a ordem por um deles (página `encontrar_empresas`, o mesmo recurso), e `POST /v1/analista/empresas/planilha` leva a busca para o Excel.
+`POST /v1/analista/comparar` põe de dois a cinco CNPJs lado a lado (página `comparar_empresas`, o mesmo
+recurso), e `POST /v1/analista/comparar/planilha` leva a comparação para o Excel.
 
 Nada aqui lê a base por outro caminho: a porta e as regras do portão são as da API externa
 (`src/api_externa/rotas.py`, `abrir_porta` e `regras_da_api`), e a leitura é a do leitor da API
@@ -25,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from base.porta import Porta
-from src.analista import busca, leitura, planilha
+from src.analista import busca, comparacao, leitura, planilha
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
@@ -52,6 +54,10 @@ TIPO_DA_PLANILHA = "application/vnd.openxmlformats-officedocument.spreadsheetml.
 TAMANHO_MAXIMO_DO_CNPJ = 32  # com pontuação e espaços; o resto é erro de quem chama
 CNPJ_INVALIDO = "CNPJ inválido: confira os 14 caracteres."
 FICHA_INDISPONIVEL = "Ficha não disponível."
+PAGINA_DA_COMPARACAO = "comparar_empresas"
+NOME_DA_PLANILHA_DA_COMPARACAO = "comparacao-de-empresas-tickerlab.xlsx"
+COMPARACAO_INVALIDA = "Escolha de 2 a 5 CNPJs diferentes, cada um com 14 caracteres."
+COMPARACAO_INDISPONIVEL = "Comparação não disponível."
 BASE_FORA_DO_AR = "A base não está disponível agora. Tente de novo em alguns minutos."
 
 Conta = Annotated[Usuario, Depends(conta_com_acesso)]
@@ -85,6 +91,11 @@ class PedidoDaBuscaV1(BaseModel):
             ordem=self.ordem,
             cursor=self.cursor,
         )
+
+
+class PedidoDaComparacaoV1(BaseModel):
+    # sem limite aqui: o 422 do FastAPI repetiria o texto pedido (os limites ficam na rota)
+    cnpjs: list[str]
 
 
 def hoje() -> date:
@@ -198,6 +209,58 @@ def encontrar_empresas_em_planilha(_conta: Conta, pedido: PedidoDaBuscaV1) -> Re
         media_type=TIPO_DA_PLANILHA,
         headers={
             "Content-Disposition": f'attachment; filename="{NOME_DA_PLANILHA_DA_BUSCA}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+def _comparacao_do_pedido(pedido: PedidoDaComparacaoV1) -> leitura.Resposta:
+    cnpjs = pedido.cnpjs
+    if len(cnpjs) > comparacao.MAXIMO or any(
+        len(cnpj) > TAMANHO_MAXIMO_DO_CNPJ for cnpj in cnpjs
+    ):
+        raise HTTPException(status_code=422, detail=COMPARACAO_INVALIDA)
+    with _porta() as porta:
+        try:
+            resposta = comparacao.comparar(
+                porta, cnpjs, hoje=hoje(), regras=rotas_da_api_externa.regras_da_api()
+            )
+        except (
+            comparacao.PedidoInvalido
+        ) as erro:  # só o pedido; erro da base não vira 422
+            raise HTTPException(status_code=422, detail=COMPARACAO_INVALIDA) from erro
+    log.info("comparação do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
+    return resposta
+
+
+@router.post("/comparar")
+def comparar_empresas(
+    _conta: Conta, pedido: PedidoDaComparacaoV1
+) -> esquemas.ComparacaoDeEmpresasV1:
+    """De dois a cinco CNPJs lado a lado: o cadastro na Receita, o porte, a abertura, a atividade, o lugar, o
+    capital, os estabelecimentos e, da companhia aberta, a última entrega à CVM e os atrasos, cada campo com
+    a fonte e o dia. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece saem `nao_disponivel`,
+    sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`."""
+    return esquemas.de_comparacao_do_analista(
+        _comparacao_do_pedido(pedido), comparacao.LIMITES
+    )
+
+
+@router.post("/comparar/planilha", response_class=Response)
+def comparar_empresas_em_planilha(
+    _conta: Conta, pedido: PedidoDaComparacaoV1
+) -> Response:
+    """A mesma comparação em Excel (mesmo acesso, mesmo plano), uma linha por empresa, com a aba das fontes
+    e o aviso."""
+    resposta = _comparacao_do_pedido(pedido)
+    if resposta.corpo is None:
+        raise HTTPException(status_code=404, detail=COMPARACAO_INDISPONIVEL)
+    corpo = resposta.corpo | {"fontes": resposta.fontes}
+    return Response(
+        content=planilha.xlsx(corpo),
+        media_type=TIPO_DA_PLANILHA,
+        headers={
+            "Content-Disposition": f'attachment; filename="{NOME_DA_PLANILHA_DA_COMPARACAO}"',
             "Cache-Control": "no-store",
         },
     )
