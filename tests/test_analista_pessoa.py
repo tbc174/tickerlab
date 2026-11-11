@@ -124,3 +124,139 @@ def test_arquivo_estragado_e_acervo_indisponivel_nao_cnpj_invalido(tmp_path):
 def test_os_limites_dizem_o_que_fica_de_fora():
     texto = " ".join(pessoa.LIMITES).lower()
     assert "menor" in texto and "cpf" in texto and "retrato" in texto
+
+
+# ---------------------------------------------------------------- contato do estabelecimento
+
+
+def _contato(cnpj, matriz=True, **campos):
+    """Um estabelecimento de mentira no formato do montador (`contato/<xx>.parquet`)."""
+    return {
+        "cnpj_basico": cnpj[:8],
+        "cnpj": cnpj,
+        "matriz": matriz,
+        "tipo_logradouro": "RUA",
+        "logradouro": "DOS EXEMPLOS",
+        "numero": "100",
+        "complemento": None,
+        "bairro": "CENTRO",
+        "cep": "01001000",
+        "municipio": "7107",
+        "uf": "SP",
+        "telefone_1": "1130001000",
+        "telefone_2": None,
+        "email": "contato@exemplo.com.br",
+    } | campos
+
+
+FILIAL = "11222333000262"
+CONTATOS = [
+    _contato(FILIAL, matriz=False, telefone_2="11990001000", complemento="LOJA 3"),
+    _contato(EMPRESA),
+    _contato(OUTRA, email=None, telefone_1=None),
+    _contato("22333444000181"),
+]
+
+
+def _acervo_de_contato(pasta: Path, linhas: list[dict], **colunas_a_mais) -> Path:
+    tabela = pd.DataFrame(linhas).assign(mes_do_retrato=MES, **colunas_a_mais)
+    (pasta / pessoa.CONTATO).mkdir(parents=True)
+    for prefixo, parte in tabela.groupby(tabela["cnpj_basico"].str[:2]):
+        parte.to_parquet(pasta / pessoa.CONTATO / f"{prefixo}.parquet", index=False)
+    return pasta
+
+
+def test_contato_so_da_empresa_a_matriz_antes_da_filial(tmp_path):
+    contato = pessoa.contato_da_empresa(_acervo_de_contato(tmp_path, CONTATOS), EMPRESA)
+    assert contato.estabelecimentos == [
+        {
+            "cnpj": EMPRESA,
+            "matriz": True,
+            "logradouro": "RUA DOS EXEMPLOS, 100",
+            "bairro": "CENTRO",
+            "cep": "01001000",
+            "municipio": "SAO PAULO",
+            "uf": "SP",
+            "telefones": ["1130001000"],
+            "email": "contato@exemplo.com.br",
+        },
+        {
+            "cnpj": FILIAL,
+            "matriz": False,
+            "logradouro": "RUA DOS EXEMPLOS, 100, LOJA 3",
+            "bairro": "CENTRO",
+            "cep": "01001000",
+            "municipio": "SAO PAULO",
+            "uf": "SP",
+            "telefones": ["1130001000", "11990001000"],
+            "email": "contato@exemplo.com.br",
+        },
+    ]
+    assert contato.total == 2 and contato.mes_do_retrato == MES
+
+
+def test_o_estabelecimento_pedido_vem_primeiro(tmp_path):
+    acervo = _acervo_de_contato(tmp_path, CONTATOS)
+    contato = pessoa.contato_da_empresa(acervo, "11.222.333/0002-62")
+    assert [e["cnpj"] for e in contato.estabelecimentos] == [FILIAL, EMPRESA]
+
+
+def test_contato_sem_telefone_nem_email_sai_so_com_o_endereco(tmp_path):
+    contato = pessoa.contato_da_empresa(_acervo_de_contato(tmp_path, CONTATOS), OUTRA)
+    (unico,) = contato.estabelecimentos
+    assert unico["telefones"] == [] and unico["email"] is None
+    assert unico["logradouro"] == "RUA DOS EXEMPLOS, 100"
+
+
+def test_coluna_a_mais_no_contato_nunca_sai(tmp_path):
+    acervo = _acervo_de_contato(tmp_path, CONTATOS, nome_fantasia="FANTASIA EXEMPLO")
+    contato = pessoa.contato_da_empresa(acervo, EMPRESA)
+    assert "FANTASIA" not in str(contato)
+
+
+def test_empresa_sem_estabelecimento_ativo_sai_vazia(tmp_path):
+    acervo = _acervo_de_contato(tmp_path, CONTATOS)
+    for cnpj in ("11000000000100", "99000000000100"):  # com e sem arquivo do prefixo
+        assert pessoa.contato_da_empresa(acervo, cnpj) == pessoa.Contato([], 0, None)
+
+
+def test_contato_mostra_ate_o_maximo_e_diz_o_total(tmp_path, monkeypatch):
+    monkeypatch.setattr(pessoa, "MAXIMO_DE_ESTABELECIMENTOS", 1)
+    contato = pessoa.contato_da_empresa(_acervo_de_contato(tmp_path, CONTATOS), FILIAL)
+    assert [e["cnpj"] for e in contato.estabelecimentos] == [FILIAL]
+    assert contato.total == 2
+
+
+def test_municipio_desconhecido_sai_com_o_codigo(tmp_path):
+    linhas = [_contato(EMPRESA, municipio="0000", tipo_logradouro=None)]
+    (unico,) = pessoa.contato_da_empresa(
+        _acervo_de_contato(tmp_path, linhas), EMPRESA
+    ).estabelecimentos
+    assert unico["municipio"] == "código 0000"
+    assert unico["logradouro"] == "DOS EXEMPLOS, 100"
+
+
+@pytest.mark.parametrize("cnpj", ["", "123", "../../etc/passwd", "11222333/../x"])
+def test_cnpj_invalido_no_contato_nao_vira_caminho(tmp_path, cnpj):
+    with pytest.raises(pessoa.CnpjInvalidoError):
+        pessoa.contato_da_empresa(_acervo_de_contato(tmp_path, CONTATOS), cnpj)
+
+
+def test_sem_a_tabela_de_contato_o_acervo_esta_indisponivel(tmp_path):
+    acervo = _acervo(
+        tmp_path, LINHAS
+    )  # só os sócios: o contato ainda não foi montado aqui
+    with pytest.raises(pessoa.AcervoIndisponivelError):
+        pessoa.contato_da_empresa(acervo, EMPRESA)
+
+
+def test_contato_estragado_e_acervo_indisponivel(tmp_path):
+    acervo = _acervo_de_contato(tmp_path, CONTATOS)
+    (acervo / pessoa.CONTATO / "11.parquet").write_bytes(b"isto nao e parquet")
+    with pytest.raises(pessoa.AcervoIndisponivelError):
+        pessoa.contato_da_empresa(acervo, EMPRESA)
+
+
+def test_os_limites_do_contato_avisam_do_mei_e_do_retrato():
+    texto = " ".join(pessoa.LIMITES_DO_CONTATO).lower()
+    assert "mei" in texto and "retrato" in texto and "ativos" in texto

@@ -1,4 +1,5 @@
-"""Montagem do `acervo_pessoa/` (linha 808): arquivos de mentira, sem internet. Todo nome é inventado."""
+"""Montagem do `acervo_pessoa/` (linha 808): arquivos de mentira, sem internet. Todo nome, endereço,
+telefone e e-mail aqui é inventado."""
 
 import hashlib
 import json
@@ -9,8 +10,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from base import receita_contato as rc
 from base import receita_pessoa as rp
 from scripts import montar_acervo_pessoa as montar
+from tests.test_receita_contato import _linha as _estabelecimento
 
 AGORA = datetime(2026, 11, 10, tzinfo=UTC)
 SEM_REP = '"***000000**";"";"00"'
@@ -32,6 +35,18 @@ SOCIOS_0 = (
 SOCIOS_1 = _linha("22333444", "2", "BELTRANO EXEMPLO") + _linha(
     "22333444", "2", "REPRESENTADO EXEMPLO", representante='"***654321**";"MAE";"35"'
 )
+ESTABELECIMENTOS_0 = (
+    _estabelecimento("11222333", "0001", "81")
+    + _estabelecimento("11222333", "0001", "81")  # repetido: sai um só
+    + _estabelecimento("11222333", "0002", "62", matriz="2", situacao_cadastral="08")
+    + _estabelecimento("22333444", "0001", "81", email="52998224725@exemplo.com")
+)
+MEMBROS = {"Socios": "K.SOCIOCSV", "Estabelecimentos": "K.ESTABELE"}
+ZIPS = (
+    ("Socios0.zip", SOCIOS_0),
+    ("Socios1.zip", SOCIOS_1),
+    ("Estabelecimentos0.zip", ESTABELECIMENTOS_0),
+)
 
 
 def _acervo(tmp_path: Path) -> tuple[Path, Path]:
@@ -41,10 +56,11 @@ def _acervo(tmp_path: Path) -> tuple[Path, Path]:
     cnpj.mkdir(parents=True)
     (bruto / "2026").mkdir(parents=True)
     arquivos = {}
-    for nome, texto in (("Socios0.zip", SOCIOS_0), ("Socios1.zip", SOCIOS_1)):
+    for nome, texto in ZIPS:
         provisorio = tmp_path / nome
         with zipfile.ZipFile(provisorio, "w") as arquivo:
-            arquivo.writestr("K.SOCIOCSV", texto.encode("latin-1"))
+            membro = next(m for comeco, m in MEMBROS.items() if nome.startswith(comeco))
+            arquivo.writestr(membro, texto.encode("latin-1"))
         sha = hashlib.sha256(provisorio.read_bytes()).hexdigest()
         provisorio.rename(bruto / "2026" / f"{sha}.zip")
         arquivos[nome] = sha
@@ -54,8 +70,8 @@ def _acervo(tmp_path: Path) -> tuple[Path, Path]:
     return cnpj, bruto
 
 
-def _tabela(destino: Path) -> pd.DataFrame:
-    partes = sorted((destino / montar.SOCIOS).glob("*.parquet"))
+def _tabela(destino: Path, nome: str = montar.SOCIOS) -> pd.DataFrame:
+    partes = sorted((destino / nome).glob("*.parquet"))
     return pd.concat([pd.read_parquet(p) for p in partes], ignore_index=True)
 
 
@@ -78,11 +94,38 @@ def test_monta_so_os_adultos_e_conta_os_descartes(tmp_path):
         "11.parquet",
         "22.parquet",
     ]
-    assert manifesto["tabelas"] == {montar.SOCIOS: {"linhas": 2, "empresas": 2}}
+    assert manifesto["tabelas"][montar.SOCIOS] == {"linhas": 2, "empresas": 2}
     assert manifesto["descartes"][rp.MENOR_PELA_FAIXA] == 1
     assert manifesto["descartes"][rp.COM_REPRESENTANTE] == 1
     assert manifesto["descartes"][rp.NAO_E_PESSOA_FISICA] == 1
     assert not (destino / montar.TRABALHO).exists()
+
+
+def test_monta_o_contato_so_dos_estabelecimentos_ativos(tmp_path):
+    cnpj, bruto = _acervo(tmp_path)
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    manifesto = montar.carregar(cnpj, bruto, destino, AGORA)
+
+    tabela = _tabela(destino, montar.CONTATO)
+    assert list(tabela["cnpj"]) == ["11222333000181", "22333444000181"]
+    assert set(tabela.columns) == {*rc.COLUNAS, "mes_do_retrato"}
+    assert set(tabela["mes_do_retrato"]) == {"2026-10"}
+    assert list(tabela["email"].isna()) == [False, True]
+    assert manifesto["tabelas"][montar.CONTATO] == {"linhas": 2, "empresas": 2}
+    assert manifesto["descartes"][rc.NAO_ATIVO] == 1
+    assert manifesto["descartes"][rc.EMAIL_COM_CARA_DE_CPF] == 1
+    assert set(manifesto["descartes"]) == {*rp.MOTIVOS, *rc.MOTIVOS}
+
+
+def test_sem_os_zips_de_uma_tabela_nada_e_montado(tmp_path):
+    cnpj, bruto = _acervo(tmp_path)
+    manifesto = json.loads((cnpj / "manifesto.json").read_text())
+    del manifesto["meses"]["2026-10"]["arquivos"]["Estabelecimentos0.zip"]
+    (cnpj / "manifesto.json").write_text(json.dumps(manifesto))
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    with pytest.raises(montar.ZipAusenteError):
+        montar.carregar(cnpj, bruto, destino, AGORA)
+    assert not destino.exists()
 
 
 def test_manifesto_gravado_so_tem_numeros_e_sha(tmp_path):
@@ -90,7 +133,8 @@ def test_manifesto_gravado_so_tem_numeros_e_sha(tmp_path):
     destino = tmp_path / "fora" / "acervo_pessoa"
     montar.carregar(cnpj, bruto, destino, AGORA)
     texto = (destino / montar.MANIFESTO).read_text(encoding="utf-8")
-    assert "EXEMPLO" not in texto and "***" not in texto
+    assert "EXEMPLO" not in texto.upper() and "***" not in texto
+    assert "3000" not in texto  # nem telefone
     assert json.loads(texto)["mes_do_retrato"] == "2026-10"
 
 
@@ -166,6 +210,7 @@ def test_ensaio_diz_o_mes_e_nao_grava(tmp_path, capsys):
     assert montar.main([*argumentos, "--ensaio"]) == 0
     saida = capsys.readouterr().out
     assert "2026-10" in saida and "Socios0.zip" in saida
+    assert "Estabelecimentos0.zip" in saida
     assert not destino.exists()
 
 
@@ -175,7 +220,7 @@ def test_main_monta_e_a_saida_nao_tem_nome(tmp_path, capsys):
     argumentos = ["--cnpj", str(cnpj), "--bruto", str(bruto), "--destino", str(destino)]
     assert montar.main(argumentos) == 0
     saida = capsys.readouterr().out
-    assert '"linhas": 2' in saida and "EXEMPLO" not in saida
+    assert '"linhas": 2' in saida and "EXEMPLO" not in saida.upper()
 
 
 def test_main_com_destino_recusado_sai_com_falha(tmp_path, capsys):
