@@ -82,3 +82,19 @@ def test_valor_so_dentro_de_outro_numero_fica_de_fora():
 def test_valor_que_aparece_mais_de_uma_vez_com_limite_fica_de_fora():
     trecho = "120 MW em janeiro | " + "coluna | " * 60 + "e 120 MW em março"
     assert janela_do_valor(trecho, "120 MW", TRECHO_MAXIMO) is None
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [" total 1.120 kW", " total 1,120 kW", " total 120.000,00", " total -120 kW"],
+)
+def test_numero_ligado_a_outro_digito_nao_e_o_valor(extra):
+    trecho = "Usina X potencia 120 MW " + "campo " * 70 + extra
+    janela = janela_do_valor(trecho, "120", 300)
+    # "120" aparece de verdade só em "120 MW" — as vizinhas "1.120", "120.000" e "-120" são outros números
+    assert janela is not None and "120 MW" in janela.texto
+
+
+def test_valor_so_em_numero_maior_nao_tem_janela():
+    trecho = "campo " * 70 + " total 1.120 kW"
+    assert janela_do_valor(trecho, "120", 300) is None

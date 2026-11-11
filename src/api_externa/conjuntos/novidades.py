@@ -6,8 +6,9 @@ servidor por outro passo; a rota só lê o arquivo, não consulta o banco da bas
 
 Não passa pelo portão de campos (D10 exige tabela do dicionário com prontidão, e isto é um arquivo de citações
 conferidas, não uma tabela da base). Em troca, a leitura **repete** as regras do exportador, item a item
-(`src/novidades_da_pesquisa.py`): órgão da tabela, fonte com licença e revenda liberada, hash de 64 hex,
-citação curta e sem CPF nem marca de pessoa. A chave e a quota são as de sempre; cada fonte usada leva a
+(`src/novidades_da_pesquisa.py`): conjunto da lista, fonte com licença e revenda liberada, hash de 64 hex,
+citação curta com CNPJ válido no próprio trecho servido e sem CPF, e-mail, telefone nem marca de pessoa. A
+afirmação do bot (texto livre de modelo) não sai por aqui. A chave e a quota são as de sempre; cada fonte usada leva a
 atribuição da licença. Arquivo ausente, ilegível ou vazio: lista vazia e `gerado_em` nulo, nunca item inventado.
 """
 
@@ -29,6 +30,7 @@ from src.novidades_da_pesquisa import (
 CONJUNTO = "research"
 VARIAVEL_DO_ARQUIVO = "TICKERLAB_NOVIDADES"
 NOME_DO_ARQUIVO = "novidades.json"
+CODIGO_DIAS_INVALIDOS = "invalid_days"
 DIAS_PADRAO = 7
 DIAS_MAXIMO = 30
 HASH = re.compile(r"[0-9a-f]{64}")
@@ -55,7 +57,7 @@ def dias_do_pedido(dias: int | None) -> int:
     if dias is None:
         return DIAS_PADRAO
     if not 1 <= dias <= DIAS_MAXIMO:
-        raise PedidoInvalido("invalid_days")
+        raise PedidoInvalido(CODIGO_DIAS_INVALIDOS)
     return dias
 
 
@@ -84,11 +86,14 @@ def _item_publicavel(bruto: object) -> dict[str, str] | None:
         return None
     campos = {
         nome: bruto.get(nome)
-        for nome in ("fonte_url", "data", "afirmacao", "trecho", "sha256", "posicao")
+        for nome in ("fonte_url", "data", "trecho", "sha256", "posicao")
     }
-    if not all(isinstance(valor, str) for valor in campos.values()):
+    afirmacao = bruto.get(
+        "afirmacao", ""
+    )  # fica no arquivo interno; aqui só é conferida, nunca servida
+    if not all(isinstance(valor, str) for valor in (*campos.values(), afirmacao)):
         return None
-    url, data, afirmacao, trecho, sha, posicao = (str(v) for v in campos.values())
+    url, data, trecho, sha, posicao = (str(v) for v in campos.values())
     achado = orgao_da_url(url)
     if achado is None or not fonte_liberada(achado[0]):
         return None
@@ -97,14 +102,13 @@ def _item_publicavel(bruto: object) -> dict[str, str] | None:
     recorte = bruto.get("recorte", "")  # itens antigos não têm o campo: sem corte
     if not isinstance(recorte, str) or recorte not in RECORTES:
         return None
-    if not texto_publicavel(afirmacao, trecho, url, posicao):
+    if not texto_publicavel(trecho, afirmacao, posicao, url=url):
         return None
     return {
         "orgao": achado[1],
         "fonte": achado[0],
         "fonte_url": url,
         "data": data,
-        "afirmacao": afirmacao,
         "trecho": trecho,
         "recorte": recorte,
         "sha256": sha,

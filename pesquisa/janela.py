@@ -24,8 +24,18 @@ class Janela:
 
 
 def _com_limite(valor: str) -> re.Pattern[str]:
-    """O valor inteiro, sem letra nem dígito colado antes ou depois ("120" não casa em "2120" nem "1200")."""
-    return re.compile(rf"(?<!\w){re.escape(valor.strip())}(?!\w)", re.IGNORECASE)
+    """O valor inteiro, sem letra nem dígito colado antes ou depois ("120" não casa em "2120" nem "1200").
+
+    Número ligado por ".", "," ou "-" a outro dígito é parte do mesmo número, não fronteira: "120" não casa
+    em "1.120", em "120.000,00" nem em "-120" (nem "120,00" em "1.120,00")."""
+    valor = valor.strip()
+    antes = r"(?<!\w)"
+    depois = r"(?!\w)"
+    if valor[:1].isdigit():
+        antes += r"(?<!\d[.,])(?<!-)"
+    if valor[-1:].isdigit():
+        depois += r"(?![.,]\d)"
+    return re.compile(rf"{antes}{re.escape(valor)}{depois}", re.IGNORECASE)
 
 
 def _recorte(comeco: int, fim: int, tamanho: int) -> str:

@@ -2,9 +2,9 @@
 
 Lê a memória do bot (`Memoria`, tabela `fato`) e monta o `novidades.json`: cada item com o órgão, a data, o
 trecho literal e o sha256 do original. Só sai o que tem **prova gravada** (veredito `confirmado`, trecho, hash e
-o endereço de onde o original veio) e só de **órgão público da tabela `ORGAOS`**. O trecho é uma citação curta
+o endereço de onde o original veio) e só de **conjunto público da lista `CONJUNTOS`** (domínio e caminho; os dois endereços, o pedido e o final). O trecho é uma citação curta
 (`TRECHO_MAXIMO`). Pessoa física: CPF no texto **derruba o exportador** (não descarta calado); marca de pessoa
-(tratamento, documento) descarta o item e conta o motivo. O envio do arquivo ao servidor é outro passo.
+(tratamento, documento), e-mail ou telefone descarta o item e conta o motivo. O envio do arquivo ao servidor é outro passo.
 """
 
 import json
@@ -24,19 +24,21 @@ from src.novidades_da_pesquisa import (
     cnpjs_validos,
     fonte_liberada,
     orgao_da_url,
+    sinal_de_contato,
 )
 
 DIAS_PADRAO = 7
 VERSAO = 1
 
 MOTIVO_SEM_PROVA = "sem trecho, hash ou endereço da fonte"
-MOTIVO_ORGAO = "domínio fora da tabela de órgãos"
+MOTIVO_ORGAO = "endereço fora da lista de conjuntos"
+MOTIVO_CONTATO = "e-mail ou telefone no texto"
 MOTIVO_PESSOA = "marca de pessoa física no texto"
 MOTIVO_FORA_DA_JANELA = "fora da janela de dias"
 MOTIVO_NAO_CONFIRMADO = "veredito não confirmado"
 MOTIVO_REPETIDO = "mesmo original e mesmo trecho já exportados"
 MOTIVO_TRECHO_LONGO = "trecho acima do máximo e sem janela em volta do valor"
-MOTIVO_SEM_CNPJ = "sem CNPJ válido na afirmação nem no trecho"
+MOTIVO_SEM_CNPJ = "sem CNPJ válido no trecho servido"
 MOTIVO_CNPJ_FORA_DA_LISTA = "CNPJ fora da lista sem pessoa do acervo"
 MOTIVO_SEM_REVENDA = "fonte sem licença ou sem revenda liberada"
 
@@ -63,8 +65,10 @@ def _consultar(caminho: Path) -> list[sqlite3.Row]:
         conexao.row_factory = sqlite3.Row
         return conexao.execute(
             "SELECT f.fato, f.veredito, f.quando, "
-            "(SELECT COALESCE(v.url_final, v.url) FROM visto v "
-            "WHERE v.sha256 = json_extract(f.fato, '$.sha256') LIMIT 1) AS url "
+            "(SELECT v.url FROM visto v "
+            "WHERE v.sha256 = json_extract(f.fato, '$.sha256') LIMIT 1) AS url, "
+            "(SELECT v.url_final FROM visto v "
+            "WHERE v.sha256 = json_extract(f.fato, '$.sha256') LIMIT 1) AS url_final "
             "FROM fato f ORDER BY f.quando DESC, f.id DESC"
         ).fetchall()
 
@@ -75,7 +79,9 @@ def _janela(fato: dict[str, object]) -> Janela | None:
     )
 
 
-def _item(fato: dict[str, object], url: str, quando: str) -> dict[str, str]:
+def _item(fato: dict[str, object], linha: sqlite3.Row) -> dict[str, str]:
+    url = linha["url_final"] or linha["url"]
+    quando = linha["quando"]
     fonte, orgao = orgao_da_url(url) or ("", "")
     janela = _janela(fato)
     assert janela is not None  # `_por_que_nao` já descartou o fato sem janela
@@ -84,7 +90,7 @@ def _item(fato: dict[str, object], url: str, quando: str) -> dict[str, str]:
         "fonte": fonte,
         "fonte_url": url,
         "data": quando[:10],
-        "afirmacao": str(fato.get("afirmacao") or ""),
+        "afirmacao": str(fato.get("afirmacao") or ""),  # interno: a API não serve
         "trecho": janela.texto,
         "recorte": janela.recorte,
         "sha256": str(fato["sha256"]),
@@ -102,28 +108,37 @@ def _por_que_nao(
         return MOTIVO_NAO_CONFIRMADO
     if linha["quando"] < corte:
         return MOTIVO_FORA_DA_JANELA
-    url = linha["url"] or ""
+    url, url_final = linha["url"] or "", linha["url_final"] or ""
     if not (fato.get("trecho") and fato.get("sha256") and url):
         return MOTIVO_SEM_PROVA
-    achado = orgao_da_url(url)
-    if achado is None:
+    # os dois endereços (o pedido e o que respondeu) precisam estar na lista de conjuntos
+    achados = [orgao_da_url(u) for u in (url, url_final) if u]
+    if any(achado is None for achado in achados) or achados[0] is None:
         return MOTIVO_ORGAO
-    if not fonte_liberada(achado[0]):
+    if not fonte_liberada(achados[0][0]):
         return MOTIVO_SEM_REVENDA
-    texto = f"{fato.get('afirmacao', '')}\n{fato['trecho']}"
-    if achar_cpf(f"{texto}\n{url}\n{fato.get('posicao', '')}"):
+    trecho = str(fato["trecho"])
+    textos = " | ".join(
+        (str(fato.get("afirmacao", "")), trecho, str(fato.get("posicao", "")))
+    )
+    enderecos = f"{url} {url_final}"
+    if achar_cpf(f"{textos} {enderecos}"):
         raise CpfNoTrechoError(
             "um trecho confirmado tem cara de CPF: revise a memória do bot antes de exportar"
         )
-    if MARCAS_DE_PESSOA.search(texto):
+    if sinal_de_contato(f"{textos} {enderecos}"):
+        return MOTIVO_CONTATO
+    if MARCAS_DE_PESSOA.search(textos):
         return MOTIVO_PESSOA
-    cnpjs = cnpjs_validos(texto)
-    if not cnpjs:
+    janela = _janela(fato)
+    if janela is None:
+        return MOTIVO_TRECHO_LONGO
+    # a prova de quem é o valor tem de estar na janela que sai (não só no trecho inteiro)
+    if not cnpjs_validos(janela.texto):
         return MOTIVO_SEM_CNPJ
+    cnpjs = cnpjs_validos(trecho) | cnpjs_validos(janela.texto)
     if not all(e_empresa(cnpj) for cnpj in cnpjs):
         return MOTIVO_CNPJ_FORA_DA_LISTA
-    if _janela(fato) is None:
-        return MOTIVO_TRECHO_LONGO
     return None
 
 
@@ -152,7 +167,7 @@ def exportar(
             saida.contar(motivo)
             continue
         vistos.add(chave)
-        saida.itens.append(_item(fato, linha["url"], linha["quando"]))
+        saida.itens.append(_item(fato, linha))
     return saida
 
 

@@ -42,7 +42,7 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
      mercado, CR4, HHI e faixa do CADE por ano, a fatia de cada companhia aberta e as `notes` de método (leia
      antes de concluir sobre concentração).
    - `tickerlab novidades [--dias 1-30] --json`: as fontes que a pesquisa provou na semana (órgão, data, trecho
-     literal de até 300 caracteres, `excerpt_cut` quando é só um pedaço do original, endereço e sha256 do
+     literal de até 300 caracteres, `excerpt_cut` quando é só um pedaço do trecho do bot (vazio não prova que é o original completo), endereço e sha256 do
      original). Lista vazia: diga "nenhuma fonte nova provada na semana"; não invente.
    - `tickerlab catalogo --json`: o que a chave pode pedir hoje (não gasta a quota).
    - `tickerlab consumo --json`: pedidos do mês e limites (não gasta a quota).

@@ -3102,14 +3102,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "api_key_in_url"
+                        "api_key_in_url",
+                        "invalid_days"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho"
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_days`: `days` fora de 1 a 30"
           },
           "401": {
             "content": {
@@ -3131,6 +3132,27 @@
               }
             },
             "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
           },
           "422": {
             "content": {
@@ -3154,14 +3176,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "rate_limited"
+                        "rate_limited",
+                        "monthly_quota_exceeded"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano"
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
           }
         },
         "summary": "Novidades Da Pesquisa"
