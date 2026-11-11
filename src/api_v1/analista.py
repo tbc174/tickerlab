@@ -41,8 +41,8 @@ NOME_DA_PLANILHA = (
 )
 PAGINA_DA_BUSCA = "encontrar_empresas"
 NOME_DA_PLANILHA_DA_BUSCA = "empresas-tickerlab.xlsx"
-# o cursor do leitor tem perto de vinte caracteres, ou uns cinquenta quando leva o valor da ordem
-TAMANHO_MAXIMO_DO_CURSOR = 128
+# o cursor ordenado (coluna, valor e CNPJ em JSON) passa de 70 caracteres
+TAMANHO_MAXIMO_DO_CURSOR = 256
 TAMANHO_MAXIMO_DA_ORDEM = (
     32  # a ordem fora da lista o leitor recusa (422) sem repetir o texto
 )
