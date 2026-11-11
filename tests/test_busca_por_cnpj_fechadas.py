@@ -30,6 +30,8 @@ HOJE = date(2026, 10, 24)
 LIMITADA = exemplo.cnpj(exemplo.LIMITADA)
 FILIAL = exemplo.cnpj(exemplo.LIMITADA, "0002")
 MEI = exemplo.cnpj(exemplo.MEI)
+EMPRESARIO_INDIVIDUAL = exemplo.cnpj(exemplo.EMPRESARIO_INDIVIDUAL)
+PRODUTOR_RURAL = exemplo.cnpj(exemplo.PRODUTOR_RURAL)
 SECOES_DA_FECHADA = [
     "cadastro_da_receita",
     "simples_e_mei",
@@ -132,21 +134,20 @@ def test_simples_estabelecimentos_e_mudancas(banco, sem_fichas, vista) -> None:
     ]
 
 
-def test_socio_pf_sem_nome_com_portao_fechado(banco, sem_fichas, vista) -> None:
+def test_socio_pf_nao_aparece_nem_contado(banco, sem_fichas, vista) -> None:
     rel = _buscar(banco, sem_fichas, vista)
     socios = _secao(rel, "socios_da_receita").tabelas["socios_da_receita"]
     assert socios == [
-        {
-            "socio": "sócio pessoa física",
-            "qualificacao": "administrador",
-            "desde": "03/2019",
-        },
         {
             "socio": "pessoa jurídica 33.000.167",
             "qualificacao": "sócio",
             "desde": "08/2024",
         },
     ]
+    assert "sócio pessoa física" not in _tudo(rel)
+    assert "administrador" not in json.dumps(
+        rel.como_dict()["secoes"], ensure_ascii=False
+    )
     tudo = _tudo(rel)
     assert exemplo.NOME_DO_SOCIO not in tudo and exemplo.ID_DO_SOCIO not in tudo
     # o pseudônimo não sai de casa: a vista guarda o quadro com o id vazio
@@ -165,7 +166,7 @@ def test_sem_contatos_na_busca(banco, sem_fichas, vista) -> None:
         assert not finos & {
             c.removesuffix("_antes").removesuffix("_depois") for c in tabela
         }
-    for texto in (LIMITADA, MEI):
+    for texto in (LIMITADA, MEI, EMPRESARIO_INDIVIDUAL):
         tudo = _tudo(_buscar(banco, sem_fichas, vista, texto))
         for contato in (
             exemplo.TELEFONE_DO_MEI,
@@ -178,16 +179,41 @@ def test_sem_contatos_na_busca(banco, sem_fichas, vista) -> None:
             assert contato not in tudo
 
 
-def test_mei_so_municipio(banco, sem_fichas, vista) -> None:
+def test_mei_fica_fora_do_que_a_plataforma_mostra(banco, sem_fichas, vista) -> None:
     rel = _buscar(banco, sem_fichas, vista, MEI)
-    itens = _itens(rel)
-    assert itens["local"].texto == "SAO PAULO/SP"
-    assert _itens(rel, "simples_e_mei")["mei"].texto == "Sim, desde 12/03/2019"
-    # nenhum sinal negativo de MEI nas seções: nem a situação especial nem o motivo da situação
-    tudo = json.dumps(rel.como_dict()["secoes"], ensure_ascii=False).upper()
-    assert "RECUPERACAO" not in tudo and "RECUPERAÇÃO" not in tudo
-    assert "OMISS" not in tudo
-    assert not {"situacao_especial", "motivo"} & set(itens)
+    assert rel.situacao == busca.FORA
+    assert rel.secoes == [] and rel.fontes == [] and rel.empresa == ""
+    assert rel.avisos == [busca.FORA_DO_QUE_A_PLATAFORMA_MOSTRA]
+    tudo = _tudo(rel)
+    for dado in (exemplo.RUA_DO_MEI, exemplo.TELEFONE_DO_MEI, "SAO PAULO", "09602"):
+        assert dado not in tudo
+
+
+def test_empresario_individual_fica_fora_do_que_a_plataforma_mostra(
+    banco, sem_fichas, vista
+) -> None:
+    rel = _buscar(banco, sem_fichas, vista, EMPRESARIO_INDIVIDUAL)
+    assert rel.situacao == busca.FORA
+    assert rel.secoes == [] and rel.avisos == [busca.FORA_DO_QUE_A_PLATAFORMA_MOSTRA]
+
+
+def test_pessoa_com_linha_de_titular_no_quadro_fica_fora(
+    banco, sem_fichas, vista
+) -> None:
+    rel = _buscar(banco, sem_fichas, vista, PRODUTOR_RURAL)
+    assert rel.situacao == busca.FORA
+    assert rel.secoes == [] and rel.avisos == [busca.FORA_DO_QUE_A_PLATAFORMA_MOSTRA]
+
+
+def test_mei_e_ei_com_filial_tambem_ficam_fora(banco, sem_fichas, vista) -> None:
+    filial_do_mei = exemplo.cnpj(exemplo.MEI, "0002")
+    assert _buscar(banco, sem_fichas, vista, filial_do_mei).situacao == busca.FORA
+
+
+def test_mudancas_nao_trazem_socio_pessoa_fisica(banco, sem_fichas, vista) -> None:
+    rel = _buscar(banco, sem_fichas, vista)
+    mudancas = _secao(rel, "mudancas_da_receita").tabelas["mudancas_da_receita"]
+    assert not any("pessoa física" in m["mudanca"] for m in mudancas)
 
 
 def test_filial_da_fechada_mostra_o_estabelecimento_pedido(
@@ -233,9 +259,27 @@ def test_desligado_sem_as_linhas_das_fechadas(banco, sem_fichas, vista) -> None:
         assert any("Dívida com a União" in linha for linha in desligado)
 
 
+@pytest.mark.usefixtures("vista_no_servidor")
+def test_rota_nega_mei_e_ei(cliente, banco) -> None:
+    with banco.begin() as conexao:
+        mudar_plano(conexao, rotas._id_da_ana_no(banco), "pro")
+    for texto in (MEI, EMPRESARIO_INDIVIDUAL, PRODUTOR_RURAL):
+        resposta = cliente.post("/api/v1/busca-por-cnpj", json={"cnpj": texto})
+        assert resposta.status_code == 200, resposta.text
+        dados = resposta.json()
+        assert dados["situacao"] == "fora_da_base_aberta"
+        assert dados["secoes"] == [] and dados["avisos"] == [
+            busca.FORA_DO_QUE_A_PLATAFORMA_MOSTRA
+        ]
+        assert exemplo.RUA_DO_MEI not in resposta.text
+        pdf = cliente.post("/api/v1/busca-por-cnpj/pdf", json={"cnpj": texto})
+        assert pdf.status_code == 200 and "SAO PAULO" not in _texto_do_pdf(pdf.content)
+
+
 def test_cnpj_da_fechada_nao_vai_para_o_log(banco, sem_fichas, vista, caplog) -> None:
     with caplog.at_level(logging.DEBUG):
         _buscar(banco, sem_fichas, vista, MEI)
+        _buscar(banco, sem_fichas, vista, EMPRESARIO_INDIVIDUAL)
         _buscar(banco, sem_fichas, vista, LIMITADA)
     todo = " ".join(r.getMessage() for r in caplog.records)
     for raiz in (exemplo.MEI, exemplo.LIMITADA, "98.765.432", "12.345.678"):
@@ -267,7 +311,7 @@ def test_pdf_da_fechada(banco, sem_fichas, vista) -> None:
     texto = _texto_do_pdf(relatorio_do_cnpj(_buscar(banco, sem_fichas, vista)))
     assert f"Relatório do CNPJ {cnpj_da_base.formatar(LIMITADA)}" in texto
     assert "Cadastro da Receita de 09/2024" in texto
-    assert "sócio pessoa física" in texto and "Limites e cuidados" in texto
+    assert "sócio pessoa física" not in texto and "Limites e cuidados" in texto
     assert FRASE_DA_RECEITA in texto
     assert exemplo.NOME_DO_SOCIO not in texto
 
@@ -283,7 +327,7 @@ def test_rota_da_fechada(cliente, banco, vista_no_servidor, caplog) -> None:
     with banco.begin() as conexao:
         mudar_plano(conexao, rotas._id_da_ana_no(banco), "pro")
     with caplog.at_level(logging.DEBUG):
-        resposta = cliente.post("/api/v1/busca-por-cnpj", json={"cnpj": MEI})
+        resposta = cliente.post("/api/v1/busca-por-cnpj", json={"cnpj": LIMITADA})
         pdf = cliente.post("/api/v1/busca-por-cnpj/pdf", json={"cnpj": LIMITADA})
     assert resposta.status_code == 200, resposta.text
     dados = resposta.json()
@@ -305,27 +349,26 @@ def _linha(**campos):
     return next(pd.DataFrame([campos]).itertuples())
 
 
-def test_mudancas_de_socio_nunca_dizem_o_nome() -> None:
+def test_mudancas_de_socio_so_da_pessoa_juridica() -> None:
     from src import relatorio_da_receita as receita
 
-    pf = {"tipo_socio": "2", "raiz_socio_pj": ""}
-    saiu = _linha(tipo="saiu", qualificacao_antes="05", **pf)
-    assert (
-        receita._mudancas_de_socio(saiu) == "saiu: sócio pessoa física, administrador"
-    )
-    mudou = _linha(
-        tipo="mudou",
-        qualificacao_antes="22",
-        qualificacao_depois="05",
-        data_entrada_antes=pd.Timestamp("2019-03-15"),
-        data_entrada_depois=pd.Timestamp("2020-01-10"),
-        **pf,
-    )
-    assert receita._mudancas_de_socio(mudou) == (
-        "sócio pessoa física: qualificação sócio → administrador; "
-        "sócio pessoa física: entrada 03/2019 → 01/2020"
-    )
-    assert receita._quem("3", "", "105") == "sócio estrangeiro (BRASIL)"
+    for tipo in ("2", "3"):
+        pf = {"tipo_socio": tipo, "raiz_socio_pj": ""}
+        saiu = _linha(tipo="saiu", qualificacao_antes="05", **pf)
+        assert receita._mudancas_de_socio(saiu) == ""
+        mudou = _linha(
+            tipo="mudou",
+            qualificacao_antes="22",
+            qualificacao_depois="05",
+            data_entrada_antes=pd.Timestamp("2019-03-15"),
+            data_entrada_depois=pd.Timestamp("2020-01-10"),
+            **pf,
+        )
+        assert receita._mudancas_de_socio(mudou) == ""
+    pj = {"tipo_socio": "1", "raiz_socio_pj": exemplo.SOCIO_PJ}
+    assert receita._mudancas_de_socio(
+        _linha(tipo="saiu", qualificacao_antes="22", **pj)
+    ) == ("saiu: pessoa jurídica 33.000.167, sócio")
 
 
 def test_mudancas_de_estabelecimento_e_do_simples() -> None:
