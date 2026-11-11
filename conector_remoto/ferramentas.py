@@ -37,6 +37,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "ficha_da_empresa": frozenset({"profiles", "companies"}),
     "comparaveis": frozenset({"comparables"}),
     "demonstracoes": frozenset({"financials"}),
+    "fundo": frozenset({"funds"}),
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
@@ -196,7 +197,7 @@ class Pedidos:
 
 
 def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
-    """Põe as sete ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
+    """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
     pedidos = Pedidos(cliente)
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)
@@ -327,6 +328,38 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             "demonstracoes",
             f"/companies/{numeros}/financials",
             {"known_at": _dia(como_era_em), "period_end": _dia(fim_do_periodo)},
+        )
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def fundo(
+        cnpj: Cnpj,
+        como_era_em: ComoEraEm = None,
+        retorno_suposto: Annotated[
+            float | None,
+            Field(
+                gt=-1,
+                le=1,
+                description=(
+                    "Retorno anual suposto, em fração (0.10 = 10% ao ano), só para calcular quanto a "
+                    "taxa custa em 5 e 20 anos. É uma hipótese de quem pergunta, não uma previsão."
+                ),
+            ),
+        ] = None,
+    ) -> str:
+        """O raio-x de um fundo de investimento na CVM: cadastro (classe, situação, patrimônio e
+        taxas), a carteira da competência mais nova já pública e, com `retorno_suposto`, o custo da
+        taxa em 5 e 20 anos. Cada valor traz a fonte e o dia em que ficou público."""
+        numeros = cnpj_do_pedido(cnpj)
+        return await pedidos.pedir(
+            "fundo",
+            f"/funds/{numeros}",
+            {
+                "known_at": _dia(como_era_em),
+                # como a CLI: o número como texto, sem arredondar
+                "assumed_return": None
+                if retorno_suposto is None
+                else repr(retorno_suposto),
+            },
         )
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)

@@ -54,9 +54,10 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Consulta | Para quê |
 |---|---|
 | Buscar empresas | achar empresas por atividade (CNAE), UF, município, porte ou idade |
-| Ficha da empresa | a triagem de um CNPJ antes da reunião: cadastro, atividade, onde opera, eventos |
+| Ficha da empresa | a triagem de um CNPJ antes da reunião: cadastro na Receita, situação, atividade e, se for companhia aberta, as entregas à CVM |
 | Comparáveis | empresas parecidas com a do CNPJ |
 | Demonstrações | os números publicados, quando a empresa publica |
+| Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
 | Setores e setor | o panorama de um setor |
 | O que posso ver | o que a sua chave libera |
 
@@ -67,6 +68,39 @@ Exemplos de pedidos:
 - "Faça a triagem do CNPJ 00.000.000/0001-00 para uma reunião amanhã, com a fonte de cada ponto."
 - "Liste empresas de embalagens plásticas em Santa Catarina com mais de 15 anos."
 - "Quem são os comparáveis desta empresa? Monte uma tabela."
+
+## Pesquisas em vários passos
+
+A IA pode encadear as consultas: o resultado de uma vira a entrada da seguinte. Cada busca traz no
+máximo 100 empresas. Se a lista vier cortada, peça "continue da próxima página" e a IA
+segue de onde parou. Três roteiros prontos para colar e adaptar:
+
+**1. Mapa de alvos num setor e numa UF.**
+
+> "Liste as empresas ativas de fabricação de embalagens plásticas em Santa Catarina, só matrizes, abertas
+> antes de 2010. Para as 10 mais antigas, faça a ficha de cada uma e monte uma tabela com a razão social,
+> a abertura, a atividade principal, o porte e a situação, com a fonte e a data de cada coluna."
+
+A IA usa **Buscar empresas** e depois a **Ficha da empresa**, uma vez por CNPJ.
+
+**2. Quem compraria: o setor e as companhias abertas dele.**
+
+> "Mostre os setores que o TickerLab acompanha e escolha o mais próximo de embalagens. Nesse setor, quem
+> concentra o mercado? Das companhias abertas que aparecem, traga os comparáveis e a receita, o EBITDA e
+> a dívida líquida do último ano, numa tabela com a fonte."
+
+A IA usa **Setores e setor**, depois **Comparáveis** e **Demonstrações** das companhias abertas que
+aparecerem.
+
+**3. O que mudou desde uma data.**
+
+> "Faça a ficha do CNPJ 00.000.000/0001-00 como era em 31/12/2024 e como é hoje, e diga o que mudou:
+> situação, atividade, porte. Se for companhia aberta, compare também as demonstrações dos dois anos."
+
+A IA usa a **Ficha da empresa** duas vezes ("como era em" e hoje) e, se couber, as **Demonstrações**.
+
+Em todo roteiro, peça a fonte e a data de cada informação. A IA separa o que a base diz do que ela
+deduz, mas confira antes de levar para um material.
 
 ## Limites e cuidados
 
