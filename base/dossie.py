@@ -95,12 +95,13 @@ AUDITOR_PESSOA = "Auditor pessoa física (nome não mostrado)"
 DIGITOS_DO_CNPJ = 14
 SOMA_DO_ANO, ULTIMO_MES = "soma do ano", "último mês do ano"
 CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
-# Cobre todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma pessoa
-# natural), e não tem a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da
-# PGFN). A regra de mostrar (`pode_mostrar`) não muda; a consulta em lote (API aberta e CSV) espera a
-# marca na montagem, para não publicar a baixa de uma pessoa (ADR 0075). A `cnpj_situacao_especial`
-# ganhou a marca em 10/11/2026 (linha 787) e saiu daqui.
-ESPERAM_A_MARCA_DE_PESSOA = frozenset({"cnpj_situacao_cadastral"})
+# Tabela que cobre todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma
+# pessoa natural), sem a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da PGFN).
+# A regra de mostrar (`pode_mostrar`) não muda; a consulta em lote (API aberta e CSV) espera a marca na
+# montagem, para não publicar a baixa de uma pessoa (ADR 0075). Vazia desde 11/11/2026: a
+# `cnpj_situacao_especial` ganhou a marca (linha 787) e a `cnpj_situacao_cadastral` passou a ser montada só
+# das raízes sem pessoa (linha 841) e foi para `SO_PELA_API_EXTERNA`.
+ESPERAM_A_MARCA_DE_PESSOA: frozenset[str] = frozenset()
 # A família do CNPJ na consulta aberta (v1, sem login nem chave): as `cnpj_*` e as derivadas dela (a rede de
 # entidades e as entradas de sócio PJ). Só entram na lista e nas linhas quando a prontidão da tabela
 # (`base/prontidao.py::PRONTIDAO`, ADR 0108) está em dia; sem ela, a mesma recusa de tabela inexistente (Tiago,
@@ -121,7 +122,8 @@ def e_do_cnpj(nome_da_tabela: str) -> bool:
 
 # Servidas só pela API externa paga, atrás do portão e da prontidão (D10): a consulta aberta e a página Dados
 # não as mostram. A leitura mais estreita da Diretoria (11/11/2026, linha 810): nada novo fica aberto sem prontidão.
-SO_PELA_API_EXTERNA = frozenset({"entradas_de_socio_pj"})
+# A situação cadastral (linha 841) entrou pela mesma leitura: montada só das raízes sem pessoa, mas nova.
+SO_PELA_API_EXTERNA = frozenset({"entradas_de_socio_pj", "cnpj_situacao_cadastral"})
 COLUNAS_DE_PESSOA = frozenset(
     {"cpf", "administrador", "conselheiro", "diretor", "nome_pessoa", "socio"}
 )

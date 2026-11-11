@@ -106,9 +106,12 @@ DEGRAU_2_ACRESCENTA = (
     # aqui (`conferir_sem_pessoa_do_cnpj`). Pode da Diretoria, 10/11/2026 18h31 (Emenda 4), linha 796.
     "cnpj_empresas_pj", "cnpj_estabelecimentos_pj",
     # sem pessoa por desenho (linha 810, PR 2): sócia PJ de empresa PJ, só para a API externa (a consulta aberta
-    # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_entradas_so_pj`
+    # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_raizes_so_pj`
     # exige `cnpj_empresas_pj` na mesma saída. Pode da Diretoria, 11/11/2026 (Emenda 4).
     "entradas_de_socio_pj",
+    # sem pessoa por desenho (linha 841): só das raízes de `cnpj_estabelecimentos_pj`, só para a API externa
+    # (ficha por CNPJ e crédito). A mesma guarda (`conferir_raizes_so_pj`) confere cada raiz na saída.
+    "cnpj_situacao_cadastral",
 )  # fmt: skip
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
@@ -319,39 +322,76 @@ def tirar_raizes_de_mei(
     return tiradas
 
 
-def conferir_entradas_so_pj(
+# As tabelas só de PJ por desenho e as colunas de raiz de cada uma: toda raiz tem de estar em `cnpj_empresas_pj`
+# da mesma saída (`conferir_raizes_so_pj`).
+RAIZES_SO_PJ: dict[str, tuple[str, ...]] = {
+    "entradas_de_socio_pj": (
+        "cnpj_basico",
+        "raiz_socio_pj",
+    ),  # a empresa e a sócia (linha 810)
+    "cnpj_situacao_cadastral": ("cnpj_basico",),  # o estabelecimento (linha 841)
+}
+# A tabela que também traz o CNPJ inteiro: a raiz conferida tem de ser a do CNPJ (senão a guarda olharia outra).
+CNPJ_DA_RAIZ: dict[str, str] = {"cnpj_situacao_cadastral": "cnpj"}
+
+
+def conferir_raizes_so_pj(
     con: duckdb.DuckDBPyConnection, saida: Path, tabelas: tuple[str, ...]
 ) -> None:
-    """Toda raiz (a empresa e a sócia) de `entradas_de_socio_pj` da saída está em `cnpj_empresas_pj` da saída.
+    """Toda raiz das tabelas de `RAIZES_SO_PJ` da saída está em `cnpj_empresas_pj` da saída.
 
-    A tabela é PJ com PJ por desenho (linha 810); a garantia não pode depender da contagem de um dia: a raiz
-    que a saída de empresas não tem (fora da lista, ou MEI tirado por `tirar_raizes_de_mei`) derruba o envio.
+    As tabelas são só PJ por desenho (linhas 810 e 841); a garantia não pode depender da contagem de um dia: a
+    raiz que a saída de empresas não tem (fora da lista, ou MEI tirado por `tirar_raizes_de_mei`) derruba o envio.
     """
-    if "entradas_de_socio_pj" not in tabelas:
-        return
-    if "cnpj_empresas_pj" not in tabelas:
-        raise RecorteErro("entradas_de_socio_pj só vai junto com cnpj_empresas_pj")
-    entradas = sorted((saida / "entradas_de_socio_pj").glob("*.parquet"))
-    empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
-    if not entradas:
-        return
-    if not empresas:
-        raise RecorteErro(
-            "entradas_de_socio_pj sem cnpj_empresas_pj na saída para conferir"
-        )
+    for nome, colunas in RAIZES_SO_PJ.items():
+        if nome not in tabelas:
+            continue
+        if "cnpj_empresas_pj" not in tabelas:
+            raise RecorteErro(f"{nome} só vai junto com cnpj_empresas_pj")
+        arquivos = sorted((saida / nome).glob("*.parquet"))
+        empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
+        if not arquivos:
+            continue
+        if not empresas:
+            raise RecorteErro(f"{nome} sem cnpj_empresas_pj na saída para conferir")
+        _conferir_raizes(con, nome, colunas, arquivos, empresas)
+
+
+def _conferir_raizes(
+    con: duckdb.DuckDBPyConnection,
+    nome: str,
+    colunas: tuple[str, ...],
+    arquivos: list[Path],
+    empresas: list[Path],
+) -> None:
     lista = ", ".join(_aspas(a.as_posix()) for a in empresas)
-    fonte = ", ".join(_aspas(a.as_posix()) for a in entradas)
+    fonte = ", ".join(_aspas(a.as_posix()) for a in arquivos)
+    juncoes = " ".join(
+        f'LEFT JOIN pj j{i} ON j{i}.cnpj_basico = t."{coluna}"'
+        for i, coluna in enumerate(colunas)
+    )
+    # raiz nula também é fora: a junção não acha nada
+    fora_da_lista = " OR ".join(
+        f"j{i}.cnpj_basico IS NULL" for i in range(len(colunas))
+    )
     fora = con.execute(
         f"WITH pj AS (SELECT DISTINCT cnpj_basico FROM read_parquet([{lista}])) "
-        f"SELECT count(*) FROM read_parquet([{fonte}]) e "
-        "LEFT JOIN pj a ON a.cnpj_basico = e.cnpj_basico "
-        "LEFT JOIN pj b ON b.cnpj_basico = e.raiz_socio_pj "
-        "WHERE a.cnpj_basico IS NULL OR b.cnpj_basico IS NULL"  # raiz nula também é fora
+        f"SELECT count(*) FROM read_parquet([{fonte}]) t {juncoes} WHERE {fora_da_lista}"
     ).fetchone()
     if fora and fora[0]:
         raise RecorteErro(
-            f"entradas_de_socio_pj: {fora[0]} linha(s) com raiz fora da lista sem pessoa"
+            f"{nome}: {fora[0]} linha(s) com raiz fora da lista sem pessoa"
         )
+    if nome in CNPJ_DA_RAIZ:
+        trocadas = con.execute(
+            f"SELECT count(*) FROM read_parquet([{fonte}]) "
+            f"WHERE cnpj_basico IS DISTINCT FROM "
+            f"left(regexp_replace(\"{CNPJ_DA_RAIZ[nome]}\", '[^0-9]', '', 'g'), 8)"
+        ).fetchone()
+        if trocadas and trocadas[0]:
+            raise RecorteErro(
+                f"{nome}: {trocadas[0]} linha(s) com a raiz diferente da do CNPJ"
+            )
 
 
 def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]:
@@ -382,7 +422,7 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
         tiradas_de_mei = tirar_raizes_de_mei(con, saida, tabelas)
         if tiradas_de_mei:
             log.info("cnpj_empresas_pj: %d raiz(es) de MEI tiradas", tiradas_de_mei)
-        conferir_entradas_so_pj(con, saida, tabelas)
+        conferir_raizes_so_pj(con, saida, tabelas)
     finally:
         con.close()
     return resultados
