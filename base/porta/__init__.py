@@ -408,20 +408,19 @@ class Porta:
             raise ValueError(f"{tabela}: coluna {faltam[0]!r} não existe")
         agrupar = ", ".join(_nome(c) for c in chave)
         um = self.con.execute
-        linhas = int(um(f"SELECT count(*) FROM {_nome(view)}").fetchone()[0])  # type: ignore[index]
+
+        def numero_de(sql: str) -> int:
+            linha = um(sql).fetchone()
+            return int(linha[0]) if linha else 0
+
+        linhas = numero_de(f"SELECT count(*) FROM {_nome(view)}")
         vazios = {
-            c: int(
-                um(
-                    f"SELECT count(*) FROM {_nome(view)} WHERE {_nome(c)} IS NULL"
-                ).fetchone()[0]
-            )  # type: ignore[index]
+            c: numero_de(f"SELECT count(*) FROM {_nome(view)} WHERE {_nome(c)} IS NULL")
             for c in chave
         }
-        repetidas = int(
-            um(
-                f"SELECT coalesce(sum(n - 1), 0) FROM (SELECT count(*) AS n FROM {_nome(view)} "
-                f"GROUP BY {agrupar} HAVING count(*) > 1)"
-            ).fetchone()[0]  # type: ignore[index]
+        repetidas = numero_de(
+            f"SELECT coalesce(sum(n - 1), 0) FROM (SELECT count(*) AS n FROM {_nome(view)} "
+            f"GROUP BY {agrupar} HAVING count(*) > 1)"
         )
         por_ano: dict[int, tuple[int, float | None]] = {}
         if periodo:
