@@ -198,9 +198,10 @@ class LeitorDeEmpresas:
         }  # fmt: skip
 
     def empresa(self, cnpj: str, como_era_em: date) -> EmpresaServida | None:
-        """A situação cadastral do CNPJ no retrato mais novo já público em `como_era_em` e, da raiz, a
+        """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, a
         versão do histórico datado que valia no dia, só com o que o portão libera; None se o CNPJ não é de
-        empresa, se não há retrato público da situação ou se nada sai."""
+        empresa, se não há versão pública da situação, se o estabelecimento tinha saído do arquivo ou se
+        nada sai."""
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
@@ -210,11 +211,13 @@ class LeitorDeEmpresas:
             TABELA,
             como_era_em=como_era_em,
             filtros={"cnpj": cnpj_.formatar(normal)},
-            colunas=[*CAMPOS, PUBLICADO_EM],
+            colunas=[*CAMPOS, CONSTA, PUBLICADO_EM],
         )
         if retratos.empty:
             return None
         retrato = retratos.sort_values([MES, PUBLICADO_EM]).iloc[-1]
+        if not bool(retrato[CONSTA]):
+            return None  # o estabelecimento tinha saído do arquivo da Receita no dia pedido
         servidos = self._servidos(retrato, CAMPOS)
         for historico in HISTORICOS:
             versao = self._versao(historico, normal[:TAMANHO_DA_RAIZ], como_era_em)

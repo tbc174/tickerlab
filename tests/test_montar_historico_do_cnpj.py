@@ -217,3 +217,153 @@ def test_empresas_mes_pela_metade_nao_duplica_versao(tmp_path):
     zips = _baixar(tmp_path)("2023-07", tmp_path)
     assert montar.processar_mes_de_empresas("2023-07", destino, zips, AGORA) == 0
     pd.testing.assert_frame_equal(_historico_de_empresas(destino), antes)
+
+
+# --- Situação cadastral (linha 841) ----------------------------------------------------------------
+EMPRESA, OUTRA, MEI = (
+    "11111111000111",
+    "22222222000122",
+    "11999999000199",
+)  # o MEI no prefixo 11
+
+
+def _estabelecimento(cnpj: str, situacao: str, fone: str = "1") -> dict:
+    return {
+        "cnpj": cnpj,
+        "cnpj_basico": cnpj[:8],
+        "matriz": True,
+        "situacao_cadastral": situacao,
+        "data_situacao_cadastral": pd.Timestamp("2010-01-01"),
+        "motivo_situacao": "00",
+        "nome_fantasia": "FANTASIA",  # o resto do arquivo: nunca vira coluna
+        "telefone": fone,
+    }
+
+
+ESTABELECIMENTOS = [
+    pd.DataFrame([_estabelecimento(EMPRESA, "02"), _estabelecimento(OUTRA, "02"), _estabelecimento(MEI, "02")]),
+    pd.DataFrame([_estabelecimento(EMPRESA, "02", "2"), _estabelecimento(OUTRA, "08"), _estabelecimento(MEI, "08")]),
+    pd.DataFrame([_estabelecimento(EMPRESA, "04", "2"), _estabelecimento(MEI, "08")]),
+]  # fmt: skip
+
+
+def _base_com_estabelecimentos(pasta: Path) -> Path:
+    """Vigente de estabelecimentos por prefixo, mudanças por mês (o último numa pasta) e o manifesto."""
+    cnpj = _base_do_cnpj(pasta)
+    vigente = cnpj / "vigente" / "estabelecimentos"
+    vigente.mkdir(parents=True)
+    ultimo = ESTABELECIMENTOS[-1]
+    for prefixo, parte in ultimo.groupby(ultimo["cnpj"].str[:2]):
+        parte.to_parquet(vigente / f"{prefixo}.parquet", index=False)
+    mudancas = cnpj / "mudancas" / "estabelecimentos"
+    mudancas.mkdir(parents=True)
+    pares = zip(ESTABELECIMENTOS, ESTABELECIMENTOS[1:], MESES[1:], strict=False)
+    for antes, depois, mes in pares:
+        mudou = diff(antes, depois, ["cnpj"], mes)
+        if mes == MESES[-1]:
+            (mudancas / mes).mkdir()
+            mudou.to_parquet(mudancas / mes / "parte-0.parquet", index=False)
+        else:
+            mudou.to_parquet(mudancas / f"{mes}.parquet", index=False)
+    manifesto = json.loads((cnpj / "manifesto.json").read_text(encoding="utf-8"))
+    for mes in MESES:
+        manifesto["meses"][mes]["arquivos"]["Estabelecimentos0.zip"] = f"est-{mes}"
+    (cnpj / "manifesto.json").write_text(json.dumps(manifesto), encoding="utf-8")
+    return cnpj
+
+
+def _lista_sem_pessoa(destino: Path, mes: str = MESES[-1]) -> None:
+    """A lista sem pessoa (`montar_empresas_pj`): a raiz do MEI não está."""
+    for prefixo, raizes in (("11", [EMPRESA[:8]]), ("22", [OUTRA[:8]])):
+        pasta = destino / montar.LISTA_SEM_PESSOA
+        pasta.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({"cnpj_basico": raizes, historico.MES: mes}).to_parquet(
+            pasta / f"{prefixo}.parquet", index=False
+        )
+
+
+def test_a_lista_sem_pessoa_e_a_do_montar_empresas_pj():
+    from scripts import montar_empresas_pj
+
+    assert montar.LISTA_SEM_PESSOA == montar_empresas_pj.ESTABELECIMENTOS
+
+
+def _situacoes(destino: Path) -> pd.DataFrame:
+    arquivos = sorted((destino / montar.SITUACAO).glob("??.parquet"))
+    return pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)
+
+
+def test_situacao_vira_versoes_so_de_pj_com_a_origem_de_cada_mes(tmp_path):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    contagem = montar.montar_situacao(cnpj, destino, AGORA)
+    assert set(contagem) == {"11", "22"}
+    assert not (destino / montar.SITUACAO / montar.TRABALHO).exists()
+    versoes = _situacoes(destino)
+    assert set(versoes["cnpj_basico"]) == {EMPRESA[:8], OUTRA[:8]}  # nada do MEI
+    assert "nome_fantasia" not in versoes.columns and "telefone" not in versoes.columns
+    empresa = versoes[versoes["cnpj"] == "11.111.111/0001-11"]
+    # o telefone mudou em 2023-06: não é versão nova
+    assert list(empresa[historico.MES]) == ["2023-05", "2023-07"]
+    assert list(empresa["situacao_cadastral"]) == ["02", "04"]
+    assert list(empresa["origem_sha256"]) == ["est-2023-05", "est-2023-07"]
+    outra = versoes[versoes["cnpj"] == "22.222.222/0001-22"]
+    assert list(outra[historico.CONSTA]) == [True, True, False]
+    assert (destino / montar.SITUACAO / "11.json").is_file()
+
+
+def test_situacao_com_a_lista_de_outro_mes_para_tudo(tmp_path, capsys):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino, mes="2023-06")
+    saida = montar.main(["situacao", "--cnpj", str(cnpj), "--destino", str(destino)])
+    assert saida == 1
+    assert "ListaSemPessoaForaDoMes" in capsys.readouterr().out
+    assert not (destino / montar.SITUACAO / "11.parquet").exists()
+    assert not (destino / montar.SITUACAO / montar.TRABALHO).exists()
+
+
+def test_situacao_sem_a_lista_sem_pessoa_nao_monta(tmp_path):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    with pytest.raises(montar.ListaSemPessoaForaDoMes):
+        montar.montar_situacao(cnpj, destino, AGORA)
+
+
+def test_situacao_com_arquivo_do_formato_antigo_na_pasta_nao_monta(tmp_path):
+    """O `<AAAA-MM>.parquet` da montagem antiga tinha MEI e não tinha `consta`: a porta leria os dois juntos."""
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    antiga = destino / montar.SITUACAO
+    antiga.mkdir(parents=True)
+    (antiga / "2026-10.parquet").write_bytes(b"")
+    with pytest.raises(montar.SituacaoNoFormatoAntigo):
+        montar.montar_situacao(cnpj, destino, AGORA)
+    assert not (antiga / "11.parquet").exists()
+
+
+def test_main_da_situacao(tmp_path):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    argumentos = ["situacao", "--cnpj", str(cnpj), "--destino", str(destino)]
+    assert montar.main(argumentos) == 0
+    assert (destino / montar.SITUACAO / "22.parquet").is_file()
+
+
+def test_a_porta_le_a_situacao_como_era_sem_o_futuro(tmp_path):
+    """Antes do primeiro retrato público nada sai (a ficha dá not_available); a versão de 2023-07 só vale
+    a partir do último dia do mês."""
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    montar.montar_situacao(cnpj, destino, AGORA)
+    porta = Porta(destino, None)
+
+    def situacao_em(dia: date) -> list[str]:
+        linhas = porta.ler(
+            "cnpj_situacao_cadastral",
+            como_era_em=dia,
+            filtros={"cnpj": "11.111.111/0001-11"},
+        )
+        return list(linhas.sort_values(historico.MES)["situacao_cadastral"])
+
+    assert situacao_em(date(2023, 5, 30)) == []
+    assert situacao_em(date(2023, 7, 30)) == ["02"]
+    assert situacao_em(date(2023, 7, 31)) == ["02", "04"]
