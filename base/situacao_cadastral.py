@@ -18,7 +18,7 @@ Como nas entradas de sócio PJ, quem hoje não é só empresa some da história 
 endereço e contatos nem são lidos (ADR 0106).
 """
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 import pandas as pd
 
@@ -42,6 +42,14 @@ COLUNAS = (
 )  # fmt: skip
 TAMANHO_DA_RAIZ = 8
 TAMANHO_DO_CODIGO = 2  # a base guarda sem o zero à esquerda em alguns meses
+# Retrato da Receita com defeito conhecido → o mês em que as mudanças dele passam a contar. O de estabelecimentos
+# de 2024-10 trouxe 4.634.796 CNPJs em dobro (a cópia com `ordem` 1) e deixou 3.054.993 de fora; em 2024-11 as
+# mesmas 4.634.796 cópias saíram e os mesmos 3.054.993 voltaram (diagnóstico de 11/11/2026, todos os meses de
+# estabelecimentos, Simples e QSA varridos: fora este, só o QSA de 2024-09, em `base/socios_pj.py`). Os SHA-256
+# dos 10 zips do mês são distintos. Sem isto, a cópia que sai em 2024-11 parece o CNPJ saindo e o histórico não
+# confere com o vigente. Os arquivos de mudanças ficam como a Receita publicou; só a leitura junta os dois meses.
+# Só entra mês aqui com contagem assim: nenhuma regra geral sem evidência.
+RETRATOS_COM_DEFEITO: Mapping[str, str] = {"2024-10": "2024-11"}
 
 
 def da_raiz(cnpj: pd.Series) -> pd.Series:
@@ -74,14 +82,20 @@ def versoes(
     mudancas: pd.DataFrame,
     primeiro_mes: str,
     raizes_pj: Collection[str],
+    retratos_com_defeito: Mapping[str, str] = RETRATOS_COM_DEFEITO,
 ) -> pd.DataFrame:
     """As versões dos estabelecimentos das `raizes_pj`, do retrato vigente e das mudanças de todos os meses.
 
+    As mudanças de um retrato com defeito (`RETRATOS_COM_DEFEITO`) contam no mês seguinte, juntas com as dele.
     A última versão de cada estabelecimento que consta tem de ser o vigente (`HistoricoNaoConfere` se não é).
+    O ponto no tempo vale para todo mês que não é retrato com defeito: montar com o vigente do próprio retrato
+    com defeito não é um ponto válido (é o arquivo errado).
     """
     vigente = so_das_raizes(vigente, raizes_pj)[[*CHAVE, *CAMPOS]]
     if not mudancas.empty:
-        mudancas = so_das_raizes(mudancas, raizes_pj)
+        mudancas = historico.juntar_retratos_com_defeito(
+            so_das_raizes(mudancas, raizes_pj), CHAVE, CAMPOS, retratos_com_defeito
+        )
     feitas = historico.versoes_das_mudancas(
         vigente, mudancas, CHAVE, CAMPOS, primeiro_mes
     )
