@@ -278,6 +278,48 @@ class ApiDoTickerlab:
     def comparaveis(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}/comparables", _datas(known_at=como_era))
 
+    def dossie(self, cnpj: str, como_era: str | None) -> dict:
+        """O perfil, os eventos, os vínculos e os comparáveis de um CNPJ numa resposta só (4 pedidos).
+
+        O perfil é obrigatório (sem ele, o erro sobe). Nas outras seções, uma chave sem o conjunto ou um
+        CNPJ sem dado vira uma lacuna dita em `gaps`, não um dossiê que some com a seção sem avisar.
+        As fontes e os limites de cada seção se juntam no topo, sem repetir.
+        """
+        corpo: dict = {"cnpj": cnpj, "known_at": como_era}
+        secoes: list[tuple[str, Callable[[], dict]]] = [
+            ("profile", lambda: self.perfil(cnpj, como_era)),
+            ("events", lambda: self.eventos(cnpj, como_era, [], False)),
+            ("links", lambda: self.vinculos(cnpj, como_era, 1, [])),
+            ("comparables", lambda: self.comparaveis(cnpj, como_era)),
+        ]
+        lacunas: list[dict] = []
+        fontes: list = []
+        limites: list = []
+        for nome, pedir in secoes:
+            try:
+                resposta = pedir()
+            except ErroDaCli as erro:
+                if nome == "profile" or erro.exit_code not in (
+                    Saida.CHAVE,
+                    Saida.SEM_DADO,
+                ):
+                    raise
+                lacunas.append(
+                    {
+                        "section": nome,
+                        "reason": "não achado: " + erro.format_message(),
+                    }
+                )
+                continue
+            fontes += resposta.pop("sources", None) or []
+            limites += resposta.pop("limits", None) or []
+            corpo[nome] = resposta
+        corpo["gaps"] = lacunas
+        corpo["requests_used"] = len(secoes)
+        corpo["limits"] = [i for n, i in enumerate(limites) if i not in limites[:n]]
+        corpo["sources"] = [i for n, i in enumerate(fontes) if i not in fontes[:n]]
+        return corpo
+
     def compradores(
         self,
         cnae: str,

@@ -275,6 +275,29 @@ def principal() -> None:
 @principal.command()
 @argumento_cnpj
 @opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def dossie(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """O dossiê do CNPJ: perfil, eventos, vínculos e comparáveis numa saída só, com fonte e data.
+
+    Gasta 4 pedidos da quota. O perfil é obrigatório; uma seção que a chave não cobre, ou sem dado, aparece
+    em `gaps` com o motivo (não achado não quer dizer que não existe). Só pessoa jurídica. Com
+    `--planilha`, vai para o Excel com uma aba por tabela e as fontes.
+    """
+    corpo = _api(contexto).dossie(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.dossie, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
 @click.option(
     "--so-cadastro",
     is_flag=True,

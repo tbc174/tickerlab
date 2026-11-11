@@ -33,6 +33,7 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
 SEM_FERRAMENTA: dict[str, str] = {
     "login": "guarda a chave no PC; no conector a chave entra pela página /autorizar do OAuth",
     "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
+    "dossie": "Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)",
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
 }
 
