@@ -20,6 +20,7 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "empresa": ("ficha_da_empresa",),
     "comparaveis": ("comparaveis",),
     "demonstracoes": ("demonstracoes",),
+    "eventos": ("eventos",),
     "fundo": ("fundo",),
     "setor": ("setores", "setor"),  # sem chave, a lista; com chave, o setor
     "catalogo": ("o_que_posso_ver",),
@@ -63,6 +64,12 @@ CASOS = [
         "demonstracoes",
         {"cnpj": CNPJ, "como_era_em": UM_DIA, "fim_do_periodo": "2025-12-31"},
         id="demonstracoes",
+    ),
+    pytest.param(
+        ["eventos", CNPJ, "--como-era", UM_DIA, "--tipo", "auditor"],
+        "eventos",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA, "tipos": ["auditor"]},
+        id="eventos",
     ),
     pytest.param(
         ["fundo", CNPJ, "--como-era", UM_DIA, "--retorno-suposto", "0.1"],

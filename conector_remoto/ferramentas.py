@@ -37,6 +37,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "ficha_da_empresa": frozenset({"profiles", "companies"}),
     "comparaveis": frozenset({"comparables"}),
     "demonstracoes": frozenset({"financials"}),
+    "eventos": frozenset({"events"}),
     "fundo": frozenset({"funds"}),
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
@@ -51,6 +52,8 @@ _CODIGO_DA_API = re.compile(r"[a-z_]{1,40}")
 LIMITE_MAXIMO_DA_BUSCA = 100
 LIMITE_PADRAO_DA_BUSCA = 50
 ESPERA_PADRAO_S = 60
+# o nome em português (o mesmo da CLI) -> o tipo de evento da API
+TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
 
 MENSAGEM_DE_PESSOA = (
     "Resposta recusada: ela trazia um campo de pessoa física, que este conector não entrega. "
@@ -329,6 +332,41 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             f"/companies/{numeros}/financials",
             {"known_at": _dia(como_era_em), "period_end": _dia(fim_do_periodo)},
         )
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def eventos(
+        cnpj: Cnpj,
+        tipos: Annotated[
+            list[Literal["documento", "auditor"]] | None,
+            Field(
+                max_length=len(TIPOS_DE_EVENTO),
+                description=(
+                    "Só estes tipos: documento (o que a companhia entregou à CVM pelo IPE: fato "
+                    "relevante, comunicado, assembleia...) ou auditor (troca de auditor, pelo FCA). "
+                    "Vazio = todos."
+                ),
+            ),
+        ] = None,
+        cursor: Annotated[
+            str | None,
+            Field(
+                max_length=200,
+                description="O `next_cursor` da página anterior, para a seguinte.",
+            ),
+        ] = None,
+        como_era_em: ComoEraEm = None,
+    ) -> str:
+        """Os eventos da empresa, do mais novo ao mais velho: cada documento entregue à CVM (protocolo,
+        categoria, tipo, data de referência e endereço; o assunto escrito pela companhia não sai) e cada
+        troca de auditor (a firma anterior, a nova, o dia e os anos com a anterior). Cada valor traz a
+        fonte e o dia em que ficou público; a página vai até o limite do plano e `next_cursor` traz a
+        seguinte."""
+        numeros = cnpj_do_pedido(cnpj)
+        return await pedidos.pedir("eventos", f"/companies/{numeros}/events", {
+            "types": [TIPOS_DE_EVENTO[tipo] for tipo in tipos or ()],
+            "cursor": cursor,
+            "known_at": _dia(como_era_em),
+        })  # fmt: skip
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)
     async def fundo(
