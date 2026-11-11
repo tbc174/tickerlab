@@ -31,12 +31,12 @@ describe("rotas do app novo", () => {
     expect(TELAS_DO_APP.filter((p) => p.e_pro).map((p) => p.url)).toEqual(["ficha-da-empresa", "encontrar-empresas"]);
   });
 
-  it("a página inicial lista as telas novas", async () => {
+  it("a página inicial abre pelos passos do analista", async () => {
     abrir("/");
     // o <main> do aviso "Carregando" é trocado quando a configuração chega: pegar o de depois
     await screen.findByRole("navigation", { name: "Telas" });
     const principal = screen.getByRole("main");
-    expect(await within(principal).findByRole("link", { name: "Visão geral" })).toBeTruthy();
+    expect(await within(principal).findByRole("link", { name: "Encontrar empresas" })).toBeTruthy();
   });
 
   it("endereço desconhecido mostra que a página não existe", async () => {
