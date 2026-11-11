@@ -78,7 +78,7 @@ services:
       # onde fica o registro de acesso; sobrevive ao deploy. ANTES do primeiro "up":
       #   mkdir -p registros && sudo chown 1000:1000 registros && sudo chmod 750 registros
       - ./registros:/app/registros
-      # a API v1 (leitura, montada com TICKERLAB_API_V1=1) calcula com o mesmo cache de preços do app
+      # a API v1 (leitura; serve o app) calcula com o mesmo cache de preços do app
       - ./dados_locais:/app/dados_locais
       # os arquivos cifrados da sala de dados (src/sala/guarda.py); só a API tem a chave
       - ./dados_sala:/app/dados_sala
