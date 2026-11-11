@@ -194,6 +194,17 @@ class ListaSemPessoaForaDoMes(RuntimeError):
     """A lista sem pessoa do CNPJ falta ou não é do mês do vigente: rode antes o `montar_empresas_pj`."""
 
 
+class SituacaoNoFormatoAntigo(RuntimeError):
+    """A pasta tem `<AAAA-MM>.parquet` da montagem antiga (todos os estabelecimentos, com MEI, e sem `consta`).
+
+    A porta lê `*.parquet` da pasta inteira: misturados aos novos, voltariam pessoa e versões sem `consta`.
+    Apague-os (ou mova-os para fora da pasta) antes de montar.
+    """
+
+
+FORMATO_ANTIGO = "[0-9][0-9][0-9][0-9]-[0-9][0-9]*.parquet"
+
+
 def _colunas_do_arquivo(arquivo: Path, colunas: Iterable[str]) -> list[str]:
     nomes = set(pq.ParquetFile(arquivo).schema_arrow.names)
     return [c for c in colunas if c in nomes]
@@ -258,6 +269,11 @@ def montar_situacao(cnpj: Path, destino: Path, agora: datetime) -> dict[str, int
     """`<destino>/cnpj_situacao_cadastral/<xx>.parquet` do vigente e das mudanças de estabelecimentos, só PJ."""
     if not (destino / LISTA_SEM_PESSOA).is_dir():
         raise ListaSemPessoaForaDoMes(f"{LISTA_SEM_PESSOA} ausente em {destino}")
+    antigos = sorted(p.name for p in (destino / SITUACAO).glob(FORMATO_ANTIGO))
+    if antigos:
+        raise SituacaoNoFormatoAntigo(
+            f"{SITUACAO} tem arquivos do formato antigo: {antigos[:3]}"
+        )
     manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
     meses = sorted(manifesto["meses"])
     zips = {m: _zips_do_mes(manifesto, m, ZIP_DE_ESTABELECIMENTOS) for m in meses}
@@ -428,6 +444,7 @@ def main(argv: list[str] | None = None) -> int:
         ErroDeLayout,
         MesForaDeOrdem,
         ListaSemPessoaForaDoMes,
+        SituacaoNoFormatoAntigo,
     ) as erro:
         print(
             f"FALHAS: histórico do CNPJ: {type(erro).__name__}: {erro}"[

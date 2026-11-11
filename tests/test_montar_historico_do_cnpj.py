@@ -328,6 +328,18 @@ def test_situacao_sem_a_lista_sem_pessoa_nao_monta(tmp_path):
         montar.montar_situacao(cnpj, destino, AGORA)
 
 
+def test_situacao_com_arquivo_do_formato_antigo_na_pasta_nao_monta(tmp_path):
+    """O `<AAAA-MM>.parquet` da montagem antiga tinha MEI e não tinha `consta`: a porta leria os dois juntos."""
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    antiga = destino / montar.SITUACAO
+    antiga.mkdir(parents=True)
+    (antiga / "2026-10.parquet").write_bytes(b"")
+    with pytest.raises(montar.SituacaoNoFormatoAntigo):
+        montar.montar_situacao(cnpj, destino, AGORA)
+    assert not (antiga / "11.parquet").exists()
+
+
 def test_main_da_situacao(tmp_path):
     cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
     _lista_sem_pessoa(destino)
