@@ -480,9 +480,59 @@ def test_tabela_montada_antes_do_capital_nao_quebra_a_busca_sem_esse_filtro(
 def test_cursor_com_numero_gigante_e_400_e_nao_500(cliente, cenario):
     import base64
 
-    texto = "[" + "9" * 400 + ', "11111111000191"]'
+    texto = '["capital_social", ' + "9" * 400 + ', "11111111000191"]'
     cursor = base64.urlsafe_b64encode(texto.encode()).decode().rstrip("=")
     resposta = _get(
         cliente, cenario, capital_min=1, sort="capital", cursor=cursor, **SETEMBRO
     )
     assert resposta.status_code == 400
+
+
+def test_cursor_de_uma_coluna_nao_serve_em_outra(cliente, cenario):
+    pagina = _get(cliente, cenario, capital_min=1, sort="capital", limit=1, **SETEMBRO)
+    cursor = pagina.json()["next_cursor"]
+    outra = _get(
+        cliente, cenario, capital_min=1, sort="branches", cursor=cursor, **SETEMBRO
+    )
+    assert outra.status_code == 400
+    assert outra.json()["detail"] == "invalid_cursor"
+
+
+def test_capital_ausente_nao_quebra_o_carregar_mais(cliente, cenario, pasta):
+    for arquivo in (pasta / prospeccao.EMPRESAS).glob("*.parquet"):
+        tabela = pd.read_parquet(arquivo)
+        tabela["capital_social"] = float("nan")
+        tabela.to_parquet(arquivo, index=False)
+    vistos: list[str] = []
+    cursor = None
+    for _ in range(10):
+        parametros = {"branches_min": 1, "sort": "capital", "limit": 1, **SETEMBRO}
+        if cursor:
+            parametros["cursor"] = cursor
+        resposta = _get(cliente, cenario, **parametros)
+        assert resposta.status_code == 200
+        corpo = resposta.json()
+        vistos += [e["cnpj"] for e in corpo["companies"]]
+        cursor = corpo["next_cursor"]
+        if not cursor:
+            break
+    assert len(vistos) == len(set(vistos)) == 4
+
+
+def test_cursor_aninhado_demais_e_400_e_nao_500(cliente, cenario):
+    import base64
+
+    cursor = base64.urlsafe_b64encode(b"[" * 3000).decode().rstrip("=")
+    resposta = _get(
+        cliente, cenario, capital_min=1, sort="capital", cursor=cursor, **SETEMBRO
+    )
+    assert resposta.status_code == 400
+
+
+def test_cursor_ordenado_cabe_no_limite_da_tela_do_analista():
+    from src.api_v1.analista import TAMANHO_MAXIMO_DO_CURSOR
+
+    maior = prospeccao.cursor_de(
+        "ZZZZZZZZZZZZZZ", 999_999_999_999_999.99, "n_estabelecimentos"
+    )
+    assert len(maior) <= TAMANHO_MAXIMO_DO_CURSOR

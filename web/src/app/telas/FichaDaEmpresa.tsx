@@ -14,6 +14,7 @@ import { formatarData } from "../formatar";
 import type { BlocoDaFichaV1, CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
+import { SociosDaFicha } from "./SociosDaFicha";
 
 const NOME_DA_PLANILHA = "ficha-da-empresa-tickerlab.xlsx"; // sem o CNPJ: o nome do arquivo não carrega dado
 const TAMANHO_MAXIMO_DO_CNPJ = 20; // com a pontuação cabem 18; sobra folga para espaços colados
@@ -258,6 +259,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
       </p>
       <BaixarPlanilha rota={rota} cnpj={cnpj} />
       <Cadastro ficha={ficha} />
+      <SociosDaFicha rota={rota} cnpj={cnpj} />
       <Entregas entregas={ficha.entregas} />
       {dados.fontes.length > 0 ? <Fontes fontes={dados.fontes} /> : null}
     </>

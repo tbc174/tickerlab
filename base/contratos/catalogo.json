@@ -1257,6 +1257,118 @@
       "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
       "atraso": "Sem data pública por linha: vale o início e o fim que a CVM declara"
     },
+    "registro_de_fundos": {
+      "tabela": "registro_de_fundos",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "ID_Registro_Fundo": {
+          "descricao": "Identificador do registro do fundo na CVM",
+          "unidade": "texto"
+        },
+        "CNPJ_Fundo": {
+          "descricao": "CNPJ do fundo (14 dígitos)",
+          "unidade": "texto"
+        },
+        "Codigo_CVM": {
+          "descricao": "Código do fundo na CVM",
+          "unidade": "texto"
+        },
+        "Data_Registro": {
+          "descricao": "Data do registro na CVM",
+          "unidade": "data (dia)"
+        },
+        "Data_Constituicao": {
+          "descricao": "Data de constituição",
+          "unidade": "data (dia)"
+        },
+        "Tipo_Fundo": {
+          "descricao": "Tipo do fundo (FIP, FII, FIDC, FIAGRO, FI...)",
+          "unidade": "texto"
+        },
+        "Denominacao_Social": {
+          "descricao": "Nome do fundo",
+          "unidade": "texto"
+        },
+        "Data_Cancelamento": {
+          "descricao": "Data do cancelamento (vazio: ativo)",
+          "unidade": "data (dia)"
+        },
+        "Situacao": {
+          "descricao": "Situação (em funcionamento normal, cancelado...)",
+          "unidade": "texto"
+        },
+        "Data_Inicio_Situacao": {
+          "descricao": "Início da situação",
+          "unidade": "data (dia)"
+        },
+        "Data_Adaptacao_RCVM175": {
+          "descricao": "Data da adaptação à Resolução CVM 175",
+          "unidade": "data (dia)"
+        },
+        "Data_Inicio_Exercicio_Social": {
+          "descricao": "Início do exercício social",
+          "unidade": "data (dia)"
+        },
+        "Data_Fim_Exercicio_Social": {
+          "descricao": "Fim do exercício social",
+          "unidade": "data (dia)"
+        },
+        "Patrimonio_Liquido": {
+          "descricao": "Patrimônio líquido",
+          "unidade": "reais (R$)"
+        },
+        "Data_Patrimonio_Liquido": {
+          "descricao": "Data do patrimônio líquido",
+          "unidade": "data (dia)"
+        },
+        "CNPJ_Administrador": {
+          "descricao": "CNPJ do administrador",
+          "unidade": "texto"
+        },
+        "Administrador": {
+          "descricao": "Nome do administrador (empresa)",
+          "unidade": "texto"
+        },
+        "Tipo_Pessoa_Gestor": {
+          "descricao": "PF ou PJ: o gestor é pessoa física ou jurídica",
+          "unidade": "texto"
+        },
+        "CPF_CNPJ_Gestor": {
+          "descricao": "CNPJ do gestor; vazio quando o gestor é pessoa física",
+          "unidade": "texto"
+        },
+        "Gestor": {
+          "descricao": "Nome do gestor; vazio quando é pessoa física",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "ID_Registro_Fundo",
+        "CPF_CNPJ_Gestor"
+      ],
+      "datas": {
+        "aconteceu_em": "Data_Registro"
+      },
+      "sinonimos_de_tempo": {
+        "Data_Registro": "aconteceu_em",
+        "Data_Constituicao": "aconteceu_em",
+        "Data_Cancelamento": "ate",
+        "Data_Inicio_Situacao": "aconteceu_em",
+        "Data_Adaptacao_RCVM175": "aconteceu_em",
+        "Data_Inicio_Exercicio_Social": "referencia",
+        "Data_Fim_Exercicio_Social": "referencia",
+        "Data_Patrimonio_Liquido": "referencia"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+      "atraso": "Do dia: é um retrato do registro na data da coleta"
+    },
     "painel_dos_fundos": {
       "tabela": "painel_dos_fundos",
       "modulo": "credito_e_fidc",

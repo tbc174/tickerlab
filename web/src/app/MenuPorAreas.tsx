@@ -1,17 +1,20 @@
 // O menu lateral do app novo por áreas (ADR 0096): o Início no topo, os favoritos da pessoa e uma seção
-// por área (Ativo, Estratégias, Acompanhar) que recolhe. A tela que ainda não está no app novo aparece
-// apagada, "em breve", sem link morto. Entre 761 e 1.100 px o menu vira um trilho de ícones e as telas
-// de cada área abrem ao lado, ao passar o mouse ou com o Tab.
+// por área (Ativo, Estratégias, Acompanhar) que recolhe. O menu só mostra a tela que abre: as que ainda
+// só existem na versão clássica ficam atrás de um link só, no fim (plano de 11/11/2026: 20 das 35 linhas
+// apareciam apagadas, "em breve"). Entre 761 e 1.100 px o menu vira um trilho de ícones e as telas de
+// cada área abrem ao lado, ao passar o mouse ou com o Tab.
 // Favoritos e áreas recolhidas ficam no localStorage do navegador (preferência de tela, sem dado pessoal);
 // se o navegador recusar (navegação privada), valem só nesta visita.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { linkDoClassico } from "./classico";
-import { AREAS, AREAS_DO_MENU, type ItemDoMenu, areaDoEndereco, itensDaArea, primeiraPronta } from "./areas";
+import { AREAS, AREAS_DO_MENU, areaDoEndereco, primeiraPronta, telasProntasDaArea } from "./areas";
+import type { PaginaDoApp } from "../conteudo";
 import { Icone } from "./Icone";
 
 const FAVORITOS = "tickerlab.menu.favoritos";
 const RECOLHIDAS = "tickerlab.menu.recolhidas";
+const OUTRAS_TELAS = "Outras telas na versão clássica";
 const CONSULTA_DO_TRILHO = "(min-width: 761px) and (max-width: 1100px)";
 
 /** Uma lista de chaves guardada no navegador; lixo ou navegador que recusa viram lista vazia. */
@@ -61,26 +64,16 @@ function useTrilho(): boolean {
 
 // as telas que podem ser favoritas: as prontas das áreas do menu, pela chave
 const PRONTAS = new Map(
-  AREAS_DO_MENU.flatMap((area) => itensDaArea(area))
-    .filter((item) => item.pronta)
-    .map((item) => [item.pagina.chave, item] as const),
+  AREAS_DO_MENU.flatMap((area) => telasProntasDaArea(area)).map((pagina) => [pagina.chave, pagina] as const),
 );
 
 interface PropriedadesDoItem {
-  item: ItemDoMenu;
+  pagina: PaginaDoApp;
   favorita: boolean;
   alternarFavorita(chave: string): void;
 }
 
-function ItemDaArea({ item, favorita, alternarFavorita }: PropriedadesDoItem) {
-  const { pagina, pronta } = item;
-  if (!pronta) {
-    return (
-      <li className="em-breve">
-        <span>{pagina.titulo}</span> <span className="selo-em-breve">em breve</span>
-      </li>
-    );
-  }
+function ItemDaArea({ pagina, favorita, alternarFavorita }: PropriedadesDoItem) {
   return (
     <li>
       <NavLink to={`/${pagina.url}`}>{pagina.titulo}</NavLink>
@@ -133,7 +126,7 @@ export function MenuPorAreas() {
           </h2>
           <ul className="itens-da-area">
             {validos.map((chave) => (
-              <ItemDaArea key={chave} item={PRONTAS.get(chave)!} favorita alternarFavorita={alternarFavorita} />
+              <ItemDaArea key={chave} pagina={PRONTAS.get(chave)!} favorita alternarFavorita={alternarFavorita} />
             ))}
           </ul>
         </section>
@@ -157,11 +150,11 @@ export function MenuPorAreas() {
             </h2>
             {/* no trilho a lista abre ao lado pelo CSS (:hover e :focus-within), recolhida ou não */}
             <ul id={lista} className="itens-da-area" hidden={!trilho && !aberta}>
-              {itensDaArea(area.chave).map((item) => (
+              {telasProntasDaArea(area.chave).map((pagina) => (
                 <ItemDaArea
-                  key={item.pagina.chave}
-                  item={item}
-                  favorita={validos.includes(item.pagina.chave)}
+                  key={pagina.chave}
+                  pagina={pagina}
+                  favorita={validos.includes(pagina.chave)}
                   alternarFavorita={alternarFavorita}
                 />
               ))}
@@ -169,6 +162,11 @@ export function MenuPorAreas() {
           </section>
         );
       })}
+      {/* o que ainda só existe no Streamlit: um link só, no lugar de uma linha apagada por tela */}
+      <a className="classico-do-menu" href={linkDoClassico()} title={OUTRAS_TELAS}>
+        <Icone nome="mais" />
+        <span className="rotulo-do-menu">{OUTRAS_TELAS}</span>
+      </a>
     </nav>
   );
 }
@@ -178,7 +176,7 @@ export function MenuPorAreas() {
 // na folha "Mais": as telas prontas de cada área e as da Conta
 const AREAS_DA_FOLHA = AREAS.filter((a) => [...AREAS_DO_MENU, "conta"].includes(a.chave)).map((area) => ({
   area,
-  telas: itensDaArea(area.chave).filter((item) => item.pronta),
+  telas: telasProntasDaArea(area.chave),
 }));
 
 /** Início, uma aba por área (abre a primeira tela pronta dela) e "Mais", que abre a folha com todas. */
@@ -258,7 +256,7 @@ export function AbasDoCelular() {
         {AREAS_DA_FOLHA.map(({ area, telas }) => (
           <section key={area.chave}>
             <h3>{area.rotulo}</h3>
-            {telas.map(({ pagina }) => (
+            {telas.map((pagina) => (
               <NavLink key={pagina.chave} to={`/${pagina.url}`} onClick={fechar}>
                 {pagina.titulo}
               </NavLink>

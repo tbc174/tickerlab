@@ -33,6 +33,7 @@ from src.api_externa.conjuntos import (
     credito,
     demonstracoes,
     empresas,
+    eventos,
     ficha,
     fundos,
     prospeccao,
@@ -424,6 +425,37 @@ def perfil_da_empresa(
         lambda conexao, porta: ficha.LeitorDeFicha(
             porta, _portao(conexao, contexto, ficha.CONJUNTO)
         ).ficha(numeros, dia),
+    )
+
+
+@router.get("/companies/{cnpj}/events")
+def eventos_da_empresa(
+    cnpj: str,
+    contexto: Chave,
+    known_at: date | None = None,
+    types: Annotated[list[str], Query()] = [],  # noqa: B006 - o FastAPI copia o padrão
+    cursor: str | None = None,
+) -> object:
+    """Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à
+    CVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor
+    (`auditor_change`). `types` filtra; a página vai até o limite de linhas do plano e `next_cursor` traz a
+    seguinte. MEI, empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    try:
+        tipos = eventos.tipos_do_pedido(types)
+        if cursor is not None:
+            eventos.chave_do_cursor(cursor)
+    except eventos.PedidoInvalido as erro:
+        raise _recusa(erro.codigo) from erro
+    return _um_pedido(
+        contexto,
+        eventos.CONJUNTO,
+        lambda conexao, porta: eventos.LeitorDeEventos(
+            porta,
+            _portao(conexao, contexto, eventos.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).eventos(numeros, dia, tipos, cursor),
     )
 
 
