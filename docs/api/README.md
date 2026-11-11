@@ -304,8 +304,9 @@ Os vínculos de uma empresa como eram no dia (`conjuntos/vinculos.py`), lidos da
 
 Cada vínculo traz `hops` (o salto a partir da empresa pedida), `kind` (o tipo, no envelope, com a fonte e o
 dia em que ficou público), `valid_from` e, quando acabou, `valid_until`. Cada ponta sai com `entity_id` (o id
-na rede), `cnpj_root` e `name`, este só quando o nome veio do cadastro, do FRE ou do FCA da CVM. Nada publicado
-depois de `known_at` entra, e o fim que só se soube depois do dia não aparece. `types` filtra (repetível); a
+na rede), `cnpj_root` e `legal_name`: a razão social que valia em `known_at`, do histórico datado da Receita
+(`rfb-cnpj`, o mesmo de `GET /companies/{cnpj}`, que começa em 05/2023; antes dele, ou numa ponta sem CNPJ, a
+ponta sai sem nome). Nada publicado depois de `known_at` entra, e o fim que só se soube depois do dia não aparece. `types` filtra (repetível); a
 lista vai até o limite de linhas do plano (`truncated`). O fundo que detém o papel, o conglomerado do Banco
 Central e a série do regulador não saem por aqui. A ponta que é pessoa (MEI, empresário individual, sócio
 pessoa física) ou que a rede trata como pessoa não sai, nem a ligação com ela; a empresa sem vínculos não quer

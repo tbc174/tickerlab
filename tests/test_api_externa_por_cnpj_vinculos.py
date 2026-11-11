@@ -4,7 +4,9 @@ Base de mentira, sem internet; os CNPJs são de ninguém. A ALFA é controlada d
 controla a NETA, que controla a BISNETA), tem uma coligada e é auditada por uma firma. Uma controlada só ficou
 pública depois do dia; uma acabou e se soube antes do dia; outra acabou, mas só se soube depois. Há também o
 que nunca sai: a controlada que a rede trata como pessoa, o sócio pessoa física, o fundo que detém o papel e a
-série do regulador. Riscos: olhar o futuro, vazar pessoa e servir ligação ou nome de fonte sem direito.
+série do regulador. O nome de cada ponta vem do histórico datado da Receita: a ALFA mudou de nome depois do
+dia, a COLIGADA não tem retrato e a VENDIDA_DEPOIS saiu do arquivo antes do dia. Riscos: olhar o futuro (também
+no nome, que a rede guarda só como é hoje), vazar pessoa e servir ligação ou nome de fonte sem direito.
 """
 
 from datetime import date
@@ -18,7 +20,7 @@ from base.rede import ligacoes as ligacoes_da_rede
 from src.api_externa.conjuntos import vinculos
 
 DIA = date(2025, 6, 30)
-FRE, FCA, CADASTRO = "cvm-hist-fre", "cvm-hist-fca", "cvm-cadastros"
+FRE, FCA, RECEITA = "cvm-hist-fre", "cvm-hist-fca", "rfb-cnpj"
 
 
 def _cnpj(raiz: str, ordem: str = "0001") -> str:
@@ -46,6 +48,23 @@ ALFA = _cnpj("11111111")
 PESSOA = _cnpj("33333333")
 FORA_DA_REDE = _cnpj("44444444")
 
+# o histórico datado da razão social (cnpj_empresas_historico): (raiz, mês do retrato, disponível em, consta,
+# natureza, razão social). O nome da rede (ENTIDADES) é o de hoje e nunca sai.
+NOMES = [
+    ("11111111", "2023-05", "2023-05-21", True, "2046", "ALFA LTDA"),
+    ("11111111", "2025-07", "2025-07-21", True, "2046", "ALFA HOLDING S.A."),
+    ("22222222", "2023-05", "2023-05-21", True, "2046", "MAE PARTICIPACOES S.A."),
+    ("55555555", "2023-05", "2023-05-21", True, "2062", "FILHA LTDA"),
+    ("56565656", "2023-05", "2023-05-21", True, "2062", "NETA LTDA"),
+    ("57575757", "2023-05", "2023-05-21", True, "2062", "BISNETA LTDA"),
+    ("67676767", "2023-05", "2023-05-21", True, "2062", "FUTURA LTDA"),
+    ("68686868", "2023-05", "2023-05-21", True, "2062", "VENDIDA LTDA"),
+    ("69696969", "2023-05", "2023-05-21", True, "2062", "VENDIDA DEPOIS LTDA"),
+    ("69696969", "2025-03", "2025-03-21", False, None, None),
+    ("99999999", "2023-05", "2023-05-21", True, "2240", "AUDITORA UM"),
+    ("12121212", "2023-05", "2023-05-21", True, "2135", None),
+]  # fmt: skip
+
 # (de, para, tipo, participação, aconteceu em, público em, até, fim público em, fonte)
 LIGACOES = [
     ("EALFA", "EMAE", "controlada_de", 60.0, "2018-12-31", "2019-05-31", None, None, "cvm-fre"),
@@ -72,8 +91,25 @@ def _gravar(pasta, caminho: str, tabela: pd.DataFrame) -> None:
     tabela.to_parquet(arquivo, index=False)
 
 
-def gravar_base(base, ligacoes: list[tuple] | None = None):
+def _gravar_nomes(base, nomes: list[tuple]) -> None:
+    tabela = pd.DataFrame(
+        nomes,
+        columns=["cnpj_basico", "mes_do_retrato", "disponivel_em", "consta", "natureza_juridica", "razao_social"],
+    )  # fmt: skip
+    tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
+    tabela = tabela.assign(
+        origem_sha256="0" * 64,
+        montado_em=pd.Timestamp("2026-11-05", tz="UTC"),
+        versao_do_codigo="teste",
+    )
+    _gravar(base, "cnpj_empresas_historico/1.parquet", tabela)
+
+
+def gravar_base(
+    base, ligacoes: list[tuple] | None = None, nomes: list[tuple] | None = None
+):
     """A base de mentira dos vínculos (também a da rota, em `..._vinculos_rota.py`)."""
+    _gravar_nomes(base, NOMES if nomes is None else nomes)
     entidades = pd.DataFrame(
         ENTIDADES,
         columns=["id_entidade", "raiz", "tipo", "nome", "fontes", "trata_como_pessoa", "publico_em"],
@@ -166,22 +202,25 @@ def test_os_vinculos_de_um_salto_como_eram_no_dia(pasta):
     assert servido.corpo["profundidade"] == 1
     assert servido.corpo["cortada"] is False
     assert servido.linhas == 5
-    assert servido.fontes == {FRE, FCA, CADASTRO}
+    assert servido.fontes == {FRE, FCA, RECEITA}
 
 
 def test_cada_campo_sai_no_envelope_com_a_fonte_e_o_dia_publico(pasta):
     (mae, filha, *_resto) = _ler(pasta).corpo["vinculos"]
     assert mae["salto"] == 1
-    assert mae["de"] == {
-        "id_na_rede": "EALFA",
-        "raiz_do_cnpj": "11111111",
-        "nome": {
-            "valor": "ALFA S.A.",
-            "fonte": CADASTRO,
-            "publico_em": "2010-01-01",
-            "visto_em": None,
-        },
-    }
+    assert (
+        mae["de"]
+        == {
+            "id_na_rede": "EALFA",
+            "raiz_do_cnpj": "11111111",
+            "razao_social": {
+                "valor": "ALFA LTDA",
+                "fonte": RECEITA,
+                "publico_em": "2023-05-31",  # o retrato é mensal: vale pelo último dia do mês
+                "visto_em": None,
+            },
+        }
+    )
     assert mae["participacao_no_capital"] == {
         "valor": 60.0, "fonte": FRE, "publico_em": "2019-05-31", "visto_em": None,
     }  # fmt: skip
@@ -193,26 +232,79 @@ def test_cada_campo_sai_no_envelope_com_a_fonte_e_o_dia_publico(pasta):
     }
     assert mae["aconteceu_em"]["valor"] == "2018-12-31"
     assert "ate" not in mae  # ainda vale
-    assert filha["de"]["nome"]["fonte"] == FRE  # o nome da FILHA veio do FRE
+    assert filha["de"]["razao_social"]["valor"] == "FILHA LTDA"
 
 
 def test_o_auditor_sai_pelo_fca_sem_participacao(pasta):
     auditoria = _ler(pasta).corpo["vinculos"][-1]
     assert auditoria["tipo"]["valor"] == "audits"
-    assert auditoria["de"]["nome"] == {
-        "valor": "AUDITORA UM", "fonte": FCA, "publico_em": "2010-01-01", "visto_em": None,
+    assert auditoria["de"]["razao_social"] == {
+        "valor": "AUDITORA UM", "fonte": RECEITA, "publico_em": "2023-05-31", "visto_em": None,
     }  # fmt: skip
     assert "participacao_no_capital" not in auditoria
     assert auditoria["tipo"]["fonte"] == FCA
 
 
-def test_o_nome_que_veio_de_fonte_sem_direito_nao_sai(pasta):
+def test_ponta_sem_retrato_da_receita_sai_sem_nome(pasta):
     coligada = next(
         v for v in _ler(pasta).corpo["vinculos"] if v["tipo"]["valor"] == "affiliate_of"
     )
-    # o nome da coligada é o do GLEIF (mais confiável que o FRE na rede), que não sai pela API externa
+    # a rede sabe um nome (do GLEIF), mas ele é o de hoje e de fonte que não sai: só o da Receita no dia sai
     assert coligada["de"] == {"id_na_rede": "ECOLIGADA", "raiz_do_cnpj": "66666666"}
     assert coligada["participacao_no_capital"]["valor"] == 30.0
+
+
+def _nome(servido, id_na_rede: str) -> object:
+    for vinculo in servido.corpo["vinculos"]:
+        for ponta in (vinculo["de"], vinculo["para"]):
+            if ponta["id_na_rede"] == id_na_rede:
+                return ponta.get("razao_social", {}).get("valor")
+    raise AssertionError(f"{id_na_rede} não está nos vínculos")
+
+
+def test_o_nome_da_ponta_e_o_que_valia_no_dia_nao_o_de_hoje(pasta):
+    # a ALFA virou ALFA HOLDING em 07/2025: no dia ela ainda era ALFA LTDA (o nome da rede, ALFA S.A., é o de hoje)
+    assert _nome(_ler(pasta), "EALFA") == "ALFA LTDA"
+    assert _nome(_ler(pasta, dia=date(2025, 7, 31)), "EALFA") == "ALFA HOLDING S.A."
+
+
+def test_antes_do_primeiro_retrato_a_ponta_sai_sem_nome(pasta):
+    servido = _ler(pasta, dia=date(2022, 6, 1))
+    assert servido.corpo["vinculos"]
+    assert all(
+        "razao_social" not in v["de"] and "razao_social" not in v["para"]
+        for v in servido.corpo["vinculos"]
+    )
+    assert RECEITA not in servido.fontes
+
+
+def test_a_raiz_que_saiu_do_arquivo_sai_sem_nome(pasta):
+    # a VENDIDA_DEPOIS não consta do retrato de 03/2025 (o último antes do dia)
+    assert _nome(_ler(pasta), "EVENDIDA_DEPOIS") is None
+    assert (
+        _nome(_ler(pasta, dia=date(2025, 3, 1)), "EVENDIDA_DEPOIS")
+        == "VENDIDA DEPOIS LTDA"
+    )
+
+
+def test_a_ponta_que_era_empresario_individual_sai_sem_nome_no_periodo(tmp_path):
+    # a MAE era empresário individual (razão social vazia, ADR 0106) até virar S.A. depois do dia
+    nomes = [linha for linha in NOMES if linha[0] != "22222222"] + [
+        ("22222222", "2023-05", "2023-05-21", True, "2135", None),
+        ("22222222", "2025-07", "2025-07-21", True, "2046", "MAE PARTICIPACOES S.A."),
+    ]
+    pasta = gravar_base(tmp_path / "base", nomes=nomes)
+    assert _nome(_ler(pasta), "EMAE") is None
+    assert _nome(_ler(pasta, dia=date(2025, 7, 31)), "EMAE") == "MAE PARTICIPACOES S.A."
+
+
+def test_sem_o_historico_da_receita_as_pontas_saem_sem_nome(pasta):
+    for arquivo in (pasta / "cnpj_empresas_historico").glob("*.parquet"):
+        arquivo.unlink()
+    (pasta / "cnpj_empresas_historico").rmdir()
+    servido = _ler(pasta)
+    assert len(servido.corpo["vinculos"]) == 5
+    assert RECEITA not in servido.fontes
 
 
 def test_a_ligacao_publicada_depois_do_dia_nao_entra(pasta):
@@ -243,7 +335,11 @@ def test_nenhum_campo_publicado_depois_do_dia(pasta):
     for dia in (date(2019, 6, 1), date(2022, 6, 1), DIA, date(2025, 12, 31)):
         servido = _ler(pasta, dia=dia, profundidade=3)
         for vinculo in servido.corpo["vinculos"]:
-            for valor in vinculo.values():
+            pontas = (
+                vinculo["de"].get("razao_social"),
+                vinculo["para"].get("razao_social"),
+            )
+            for valor in (*vinculo.values(), *pontas):
                 if isinstance(valor, dict) and "publico_em" in valor:
                     assert valor["publico_em"] <= dia.isoformat(), (dia, vinculo)
 
@@ -251,7 +347,8 @@ def test_nenhum_campo_publicado_depois_do_dia(pasta):
 def test_cortar_o_futuro_da_base_nao_muda_a_resposta(tmp_path):
     inteira = gravar_base(tmp_path / "inteira")
     sem_futuro = [linha for linha in LIGACOES if linha[5] <= DIA.isoformat()]
-    cortada = gravar_base(tmp_path / "cortada", sem_futuro)
+    nomes_sem_futuro = [linha for linha in NOMES if linha[2] <= DIA.isoformat()]
+    cortada = gravar_base(tmp_path / "cortada", sem_futuro, nomes_sem_futuro)
     assert _ler(inteira).corpo == _ler(cortada).corpo
 
 
@@ -346,16 +443,16 @@ def test_campo_negado_some_e_sem_o_tipo_a_ligacao_nao_sai(pasta):
 
 
 def test_nome_negado_some_mas_a_ponta_fica(pasta):
-    def sem_nome(_fonte: str, nome: str, _derivado: bool) -> bool:
-        return nome != "nome"
+    def sem_nome(fonte: str, nome: str, _derivado: bool) -> bool:
+        return (fonte, nome) != (RECEITA, "razao_social")
 
     servido = _ler(pasta, permitido=sem_nome)
     assert servido.corpo["vinculos"]
     assert all(
-        "nome" not in v["de"] and "nome" not in v["para"]
+        "razao_social" not in v["de"] and "razao_social" not in v["para"]
         for v in servido.corpo["vinculos"]
     )
-    assert CADASTRO not in servido.fontes
+    assert RECEITA not in servido.fontes
 
 
 def test_sem_nenhum_tipo_liberado_nada_sai(pasta):
@@ -376,29 +473,20 @@ def test_cnpj_invalido_e_erro(pasta):
         _ler(pasta, cnpj="123")
 
 
-@pytest.mark.parametrize(
-    ("fontes", "esperada"),
-    [
-        ("cvm-cadastro,cvm-fre", CADASTRO),
-        ("cvm-fre", FRE),
-        ("cvm-fca-auditores", FCA),
-        ("cvm-fre,gleif", None),
-        ("bcb-ifdata", None),
-        ("", None),
-        (None, None),
-    ],
-)
-def test_a_fonte_do_nome_e_a_mais_confiavel_que_pode_sair(fontes, esperada):
-    assert vinculos.fonte_do_nome(fontes) == esperada
+def test_a_pagina_cortada_so_busca_o_nome_das_pontas_dela(pasta, monkeypatch):
+    raizes_pedidas = []
+    original = vinculos.LeitorDeVinculos._nomes
 
+    def espiao(self, raizes, como_era_em):
+        raizes_pedidas.append(set(raizes))
+        return original(self, raizes, como_era_em)
 
-def test_a_prioridade_do_nome_e_a_da_montagem_da_rede():
-    from base.rede.montar import PRIORIDADE_DO_NOME
-
-    pela_montagem = tuple(
-        sorted(PRIORIDADE_DO_NOME, key=PRIORIDADE_DO_NOME.__getitem__)
-    )
-    assert pela_montagem == vinculos.PRIORIDADE_DO_NOME
+    monkeypatch.setattr(vinculos.LeitorDeVinculos, "_nomes", espiao)
+    servido = _ler(pasta, linhas_maximas=1)
+    assert servido.corpo["cortada"] is True
+    assert raizes_pedidas == [
+        {"11111111", "22222222"}
+    ]  # só a ALFA e a MAE, da única ligação da página
 
 
 def test_as_fontes_na_rede_sao_as_que_a_montagem_grava():

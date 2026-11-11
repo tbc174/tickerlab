@@ -9,9 +9,10 @@ simples (a rota traduz as chaves na saída) cada ligação que valia no dia:
 - `audits`: a firma de auditoria que auditava a companhia, pelo FCA (`auditores`, fonte `cvm-hist-fca`).
 
 As outras ligações da rede (o fundo que detém o papel, quem emite o valor mobiliário, o conglomerado do BC e a
-série do regulador) não saem por aqui. Cada ponta sai com o id da rede, a raiz do CNPJ e o nome, quando o nome
-veio de uma fonte que pode sair (o cadastro, o FRE ou o FCA da CVM); cada campo sai no envelope, com a fonte e o
-dia em que ficou público.
+série do regulador) não saem por aqui. Cada ponta sai com o id da rede, a raiz do CNPJ e a razão social que valia
+no dia, do histórico datado da Receita (`cnpj_empresas_historico`, o mesmo de `/companies`); o nome guardado na
+rede é o de hoje e não sai (num dia do passado, ele seria um dado do futuro). Cada campo sai no envelope, com a
+fonte e o dia em que ficou público.
 
 Sem olhar o futuro: a porta só devolve a ligação já pública no dia e esconde o fim que só se soube depois (D5:
 a ligação que acabou depois do dia ainda aparece no dia). Pessoa não sai (ADR 0108 D2.2): o CNPJ pedido só é
@@ -29,15 +30,24 @@ from base import cnpj as cnpj_
 from base.porta import Porta
 from base.porta.rede import views
 from src.api_externa.conjuntos import Permitido
-from src.api_externa.conjuntos.empresas import e_empresa
+from src.api_externa.conjuntos.empresas import (
+    CONSTA,
+    MES,
+    PUBLICADO_EM,
+    RAIZ,
+    e_empresa,
+)
+from src.api_externa.conjuntos.empresas import FONTE as RECEITA
 from src.api_externa.envelope import campo
 
 CONJUNTO = "links"
 CODIGO_DA_PROFUNDIDADE_INVALIDA = "invalid_depth"
 CODIGO_DO_TIPO_INVALIDO = "invalid_link_type"
 PROFUNDIDADE_MAXIMA = 3
-FRE, FCA, CADASTRO = "cvm-hist-fre", "cvm-hist-fca", "cvm-cadastros"
+FRE, FCA = "cvm-hist-fre", "cvm-hist-fca"
 SISTEMA_DA_RAIZ = "cnpj_raiz"
+HISTORICO_DOS_NOMES = "cnpj_empresas_historico"
+NOME = "razao_social"
 
 
 @dataclass(frozen=True)
@@ -61,28 +71,6 @@ TIPOS: dict[str, TipoDeVinculo] = {
 TIPO_PELO_NOME_DE_FORA = {tipo.de_fora: nome for nome, tipo in TIPOS.items()}
 # a chave da resposta quando a coluna tem outro sentido em outro conjunto ("participacao" é a do mercado)
 CHAVE_NA_RESPOSTA = {"participacao": "participacao_no_capital"}
-# quem deu o nome da entidade (`base/rede/montar.py::PRIORIDADE_DO_NOME`, da mais confiável à menos) e a fonte
-# do portão de cada uma; o nome que veio de outra (GLEIF, IF.data, carteira de fundo...) não sai
-PRIORIDADE_DO_NOME = (
-    "cvm-cadastro",
-    "cvm-fundos",
-    "bcb-ifdata",
-    "gleif",
-    "cvm-fre",
-    "cvm-fundos-participantes",
-    "conferida-emissores",
-    "empresa_serie",
-    "cvm-fca",
-    "cvm-fca-auditores",
-    "cvm-cda",
-)
-FONTE_DO_NOME = {
-    "cvm-cadastro": CADASTRO,
-    "cvm-fre": FRE,
-    "cvm-fca": FCA,
-    "cvm-fca-auditores": FCA,
-}
-
 LIMITES = (
     (
         "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra, e a "
@@ -99,6 +87,10 @@ LIMITES = (
     (
         "Uma empresa sem vínculos não quer dizer que ela não tenha grupo: quer dizer que nenhuma fonte servida "
         "mostra um no dia. Nada aqui é recomendação de investimento."
+    ),
+    (
+        "O nome de cada ponta é a razão social que valia no dia, do histórico da Receita (que começa em 05/2023): "
+        "antes dele, ou numa ponta sem CNPJ, a ponta sai sem nome."
     ),
     "Pessoa natural (MEI, empresário individual, sócio pessoa física) não é servida.",
 )
@@ -153,26 +145,12 @@ def _numero(valor: object) -> float | None:
     return float(valor)  # type: ignore[arg-type]
 
 
-def fonte_do_nome(fontes: object) -> str | None:
-    """A fonte do portão do nome da entidade: a mais confiável entre as dela, se for uma que pode sair."""
-    if not isinstance(fontes, str):
-        return None
-    dela = {f.strip() for f in fontes.split(",")}
-    for fonte in PRIORIDADE_DO_NOME:
-        if fonte in dela:
-            return FONTE_DO_NOME.get(fonte)
-    return None
-
-
 @dataclass(frozen=True)
 class _Ponta:
     """Uma entidade da rede que pode sair como ponta (empresa já pública no dia, que não é pessoa)."""
 
     id_entidade: str
     raiz: str | None
-    nome: str | None
-    fonte_do_nome: str | None
-    publico_em: date
 
 
 class LeitorDeVinculos:
@@ -212,27 +190,55 @@ class LeitorDeVinculos:
                 or _sim(pessoa)
             ):  # type: ignore[arg-type]
                 continue
-            nome = linha.get("nome")
             pontas[str(linha["id_entidade"])] = _Ponta(
-                str(linha["id_entidade"]),
-                raizes.get(linha["id_entidade"]),
-                nome if isinstance(nome, str) and nome.strip() else None,
-                fonte_do_nome(linha.get("fontes")),
-                publico_em,
+                str(linha["id_entidade"]), raizes.get(linha["id_entidade"])
             )
         return pontas
 
-    def _ponta(self, ponta: _Ponta, fontes: set[str]) -> dict[str, object]:
+    def _nomes(
+        self, raizes: set[str], como_era_em: date
+    ) -> dict[str, tuple[str, date]]:
+        """A razão social de cada raiz no retrato mais novo já público no dia, com o dia em que ele ficou
+        público; a raiz sem retrato público no dia, ou que tinha saído do arquivo, fica de fora."""
+        if (
+            not raizes
+            or not self.permitido(RECEITA, NOME, False)
+            or HISTORICO_DOS_NOMES not in views(self.porta.con)
+        ):
+            return {}
+        versoes = self.porta.ler(
+            HISTORICO_DOS_NOMES,
+            como_era_em=como_era_em,
+            filtros={RAIZ: sorted(raizes)},
+            colunas=[RAIZ, NOME, MES, CONSTA, PUBLICADO_EM],
+        )
+        if versoes.empty:
+            return {}
+        ultimas = versoes.sort_values([RAIZ, MES, PUBLICADO_EM]).groupby(RAIZ).tail(1)
+        nomes = {}
+        for linha in ultimas.to_dict("records"):
+            nome = linha[NOME]
+            if _sim(linha[CONSTA]) and isinstance(nome, str) and nome.strip():
+                nomes[str(linha[RAIZ])] = (
+                    nome,
+                    pd.Timestamp(linha[PUBLICADO_EM]).date(),
+                )
+        return nomes
+
+    @staticmethod
+    def _ponta(
+        ponta: _Ponta, nomes: dict[str, tuple[str, date]], fontes: set[str]
+    ) -> dict[str, object]:
         saida: dict[str, object] = {
             "id_na_rede": ponta.id_entidade,
             "raiz_do_cnpj": ponta.raiz,
         }
-        fonte = ponta.fonte_do_nome
-        if ponta.nome and fonte and self.permitido(fonte, "nome", False):
-            saida["nome"] = campo(
-                ponta.nome, fonte=fonte, publico_em=ponta.publico_em, visto_em=None
+        if ponta.raiz in nomes:
+            nome, publico_em = nomes[ponta.raiz]
+            saida[NOME] = campo(
+                nome, fonte=RECEITA, publico_em=publico_em, visto_em=None
             )
-            fontes.add(fonte)
+            fontes.add(RECEITA)
         return saida
 
     def _vinculo(
@@ -240,14 +246,15 @@ class LeitorDeVinculos:
         linha: dict,
         servidos: tuple[str, ...],
         pontas: dict[str, _Ponta],
+        nomes: dict[str, tuple[str, date]],
         fontes: set[str],
     ) -> dict[str, object]:
         tipo = TIPOS[linha["tipo"]]
         publico_em = _dia(linha["publico_em"])
         vinculo: dict[str, object] = {
             "salto": int(linha["salto"]),
-            "de": self._ponta(pontas[linha["de"]], fontes),
-            "para": self._ponta(pontas[linha["para"]], fontes),
+            "de": self._ponta(pontas[linha["de"]], nomes, fontes),
+            "para": self._ponta(pontas[linha["para"]], nomes, fontes),
         }
         # o tipo sai no envelope com o nome de fora (`subsidiary_of`...): é ele que leva a fonte e o dia público
         valores = {
@@ -287,19 +294,27 @@ class LeitorDeVinculos:
             return None
         if not e_empresa(self.porta, normal):
             return None
-        todos = self._da_rede(normal, como_era_em, profundidade, servidos)
+        ligacoes, pontas = self._da_rede(normal, como_era_em, profundidade, servidos)
+        # corta antes de montar: com depth=3 e uma firma de auditoria no meio, a rede tem milhares de ligações
         cabem = max(self.linhas_maximas, 1)
-        pagina, cortada = todos[:cabem], len(todos) > cabem
+        cortada = len(ligacoes) > cabem
+        pagina = ligacoes.head(cabem).to_dict("records")
+        raizes = {pontas[linha[p]].raiz for linha in pagina for p in ("de", "para")}
+        nomes = self._nomes({r for r in raizes if r}, como_era_em)
+        fontes: set[str] = set()
+        lista = [
+            self._vinculo(linha, servidos[linha["tipo"]], pontas, nomes, fontes)
+            for linha in pagina
+        ]
         corpo: dict[str, object] = {
             "cnpj": normal,
             "como_era_em": como_era_em.isoformat(),
             "profundidade": profundidade,
-            "vinculos": [v for v, _ in pagina],
+            "vinculos": lista,
             "cortada": cortada,
             "limites": list(LIMITES),
         }
-        fontes = set().union(*(f for _, f in pagina)) if pagina else set()
-        return VinculosServidos(corpo=corpo, fontes=fontes, linhas=len(pagina))
+        return VinculosServidos(corpo=corpo, fontes=fontes, linhas=len(lista))
 
     def _da_rede(
         self,
@@ -307,10 +322,10 @@ class LeitorDeVinculos:
         como_era_em: date,
         profundidade: int,
         servidos: dict[str, tuple[str, ...]],
-    ) -> list[tuple[dict[str, object], set[str]]]:
-        """Cada vínculo servido, na ordem (salto, tipo, pontas, início), com as fontes que ele usou."""
+    ) -> tuple[pd.DataFrame, dict[str, _Ponta]]:
+        """As ligações que podem sair, na ordem (salto, tipo, pontas, início), e as pontas que podem sair."""
         if "ligacoes" not in views(self.porta.con):
-            return []
+            return pd.DataFrame(), {}
         try:
             rede = self.porta.rede(
                 cnpj,
@@ -319,11 +334,11 @@ class LeitorDeVinculos:
                 profundidade=profundidade,
             )
         except LookupError:  # a empresa ainda não estava na rede no dia
-            return []
+            return pd.DataFrame(), {}
         pontas = self._pontas(rede.entidades, rede.identificadores)
         ligacoes = rede.ligacoes
         if ligacoes.empty:
-            return []
+            return pd.DataFrame(), {}
         esperada = ligacoes["tipo"].map(
             lambda t: TIPOS[t].fonte_na_rede if t in TIPOS else None
         )
@@ -334,13 +349,19 @@ class LeitorDeVinculos:
             & ligacoes["para"].isin(list(pontas))
         ]
         ordem = list(TIPOS)
-        ligacoes = ligacoes.assign(
-            _ordem=ligacoes["tipo"].map(ordem.index)
-        ).sort_values(["salto", "_ordem", "de", "para", "aconteceu_em"], kind="stable")
-        saida = []
-        for linha in ligacoes.to_dict("records"):
-            fontes: set[str] = set()
-            saida.append(
-                (self._vinculo(linha, servidos[linha["tipo"]], pontas, fontes), fontes)
-            )
-        return saida
+        ligacoes = ligacoes.assign(_ordem=ligacoes["tipo"].map(ordem.index))
+        # o desempate vai até as colunas servidas: a página cortada sai igual em toda execução
+        chave = [
+            "salto",
+            "_ordem",
+            "de",
+            "para",
+            "aconteceu_em",
+            "ate",
+            "participacao",
+            "publico_em",
+        ]
+        ligacoes = ligacoes.sort_values(
+            [c for c in chave if c in ligacoes.columns], kind="stable"
+        )
+        return ligacoes, pontas

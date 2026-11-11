@@ -27,7 +27,8 @@ from tests import test_api_externa_por_cnpj_vinculos as vinculos_de_mentira
 AGORA = empresas_de_mentira.AGORA
 ALFA = vinculos_de_mentira.ALFA
 DIA = vinculos_de_mentira.DIA.isoformat()
-TABELAS_PRONTAS = ("ligacoes", "entidades", "identificadores")
+TABELAS_DA_REDE = ("ligacoes", "entidades", "identificadores")
+TABELAS_PRONTAS = (*TABELAS_DA_REDE, "cnpj_empresas_historico")
 # no dia, a um salto: a MAE, a FILHA, a VENDIDA_DEPOIS (o fim só se soube depois), a COLIGADA e a AUDITORA
 VINCULOS_NO_DIA = 5
 
@@ -103,7 +104,7 @@ def test_vinculos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     assert mae["from"] == {
         "entity_id": "EALFA",
         "cnpj_root": "11111111",
-        "name": {"value": "ALFA S.A.", "source": "cvm-cadastros", "published_at": "2010-01-01", "observed_at": None},
+        "legal_name": {"value": "ALFA LTDA", "source": "rfb-cnpj", "published_at": "2023-05-31", "observed_at": None},
     }  # fmt: skip
     assert mae["to"]["entity_id"] == "EMAE"
     assert mae["ownership_pct"] == {
@@ -111,8 +112,9 @@ def test_vinculos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     }  # fmt: skip
     assert mae["valid_from"]["value"] == "2018-12-31"
     atribuicoes = {f["source"]: f["attribution"] for f in corpo["sources"]}
-    assert set(atribuicoes) == {"cvm-hist-fre", "cvm-hist-fca", "cvm-cadastros"}
-    assert all("CVM" in texto for texto in atribuicoes.values())
+    assert set(atribuicoes) == {"cvm-hist-fre", "cvm-hist-fca", "rfb-cnpj"}
+    assert "CVM" in atribuicoes["cvm-hist-fre"] and "CVM" in atribuicoes["cvm-hist-fca"]
+    assert "Receita" in atribuicoes["rfb-cnpj"]
 
 
 def test_known_at_no_passado_nao_mostra_o_que_veio_depois(cliente, cenario):
@@ -120,7 +122,11 @@ def test_known_at_no_passado_nao_mostra_o_que_veio_depois(cliente, cenario):
     envelopes = [
         valor
         for v in corpo["links"]
-        for valor in (*v.values(), v["from"].get("name"), v["to"].get("name"))
+        for valor in (
+            *v.values(),
+            v["from"].get("legal_name"),
+            v["to"].get("legal_name"),
+        )
         if isinstance(valor, dict) and "published_at" in valor
     ]
     assert envelopes and all(e["published_at"] <= DIA for e in envelopes)
@@ -140,7 +146,7 @@ def test_depth_e_types_filtram(cliente, cenario):
     ).json()
     assert set(_tipos(corpo)) == {"subsidiary_of"}
     assert max(v["hops"] for v in corpo["links"]) == 3
-    assert {f["source"] for f in corpo["sources"]} == {"cvm-hist-fre", "cvm-cadastros"}
+    assert {f["source"] for f in corpo["sources"]} == {"cvm-hist-fre", "rfb-cnpj"}
 
 
 def test_a_lista_vai_ate_o_limite_de_linhas(cliente, cenario, monkeypatch):
@@ -248,11 +254,26 @@ def test_sem_o_tipo_do_fca_a_auditoria_nao_sai(cliente, cenario, monkeypatch):
     assert "cvm-hist-fca" not in {f["source"] for f in corpo["sources"]}
 
 
-def test_sem_o_nome_do_cadastro_a_ponta_sai_sem_nome(cliente, cenario, monkeypatch):
-    regras = _sem(_regras(), "nome", "cvm-cadastros")
+def test_sem_a_razao_social_da_receita_a_ponta_sai_sem_nome(
+    cliente, cenario, monkeypatch
+):
+    regras = _sem(_regras(), "razao_social", "rfb-cnpj")
     monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
     mae = _get(cliente, cenario, known_at=DIA).json()["links"][0]
     assert mae["from"] == {"entity_id": "EALFA", "cnpj_root": "11111111"}
+
+
+def test_sem_a_prontidao_do_historico_os_vinculos_saem_sem_nome(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(TABELAS_DA_REDE))
+    corpo = _get(cliente, cenario, known_at=DIA).json()
+    assert len(corpo["links"]) == VINCULOS_NO_DIA
+    assert all(
+        "legal_name" not in v["from"] and "legal_name" not in v["to"]
+        for v in corpo["links"]
+    )
+    assert "rfb-cnpj" not in {f["source"] for f in corpo["sources"]}
 
 
 # ---------------------------------------------------------------- erros e consumo

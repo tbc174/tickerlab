@@ -122,15 +122,15 @@
   },
   "links": {
     "fontes": {
-      "cvm-cadastros": "ODbL (dados abertos da CVM; citar a fonte)",
       "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)",
-      "cvm-hist-fre": "ODbL (dados abertos da CVM; citar a fonte)"
+      "cvm-hist-fre": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
     },
     "campos": [
       "aconteceu_em",
       "ate",
-      "nome",
       "participacao",
+      "razao_social",
       "tipo"
     ]
   },
