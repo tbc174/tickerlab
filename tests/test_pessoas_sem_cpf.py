@@ -88,3 +88,28 @@ def test_a_tela_do_dossie_tira_o_cpf():
     from src.dossie import _texto
 
     assert _texto(f"MEI DE FULANO {_cpf_valido('987654321')}") == "MEI DE FULANO"
+
+
+def test_tira_o_cpf_com_outros_separadores_e_colado_a_palavra_cpf():
+    # revisão cruzada do PR 1019: só espaço, travessões, vírgula, barra e "CPF-"/"CPF/" colados ao número
+    v = _cpf_valido("123456789")
+    g = (v[:3], v[3:6], v[6:9], v[9:])
+    formas = [
+        f"{g[0]} {g[1]} {g[2]} {g[3]}",
+        f"{g[0]}.{g[1]}.{g[2]} {g[3]}",
+        f"{v[:9]} {g[3]}",
+        f"{g[0]}.{g[1]}.{g[2]}—{g[3]}",
+        f"{g[0]}-{g[1]}-{g[2]}-{g[3]}",
+        f"{g[0]},{g[1]},{g[2]}-{g[3]}",
+        f"{g[0]}.{g[1]}.{g[2]}/{g[3]}",
+        f"CPF-{g[0]}.{g[1]}.{g[2]} - {g[3]}",
+        f"CPF/{g[0]}.{g[1]}.{g[2]}-{g[3]}",
+    ]
+    for forma in formas:
+        limpo = tirar_cpf(f"FULANO {forma} ME")
+        assert not re.search(r"\d{3}", limpo), forma
+
+
+def test_cnpj_e_numero_que_nao_fecha_como_cpf_ficam():
+    assert tirar_cpf("EMPRESA 11.222.333/0001-81 ME") == "EMPRESA 11.222.333/0001-81 ME"
+    assert tirar_cpf("EMPRESA 123 456 789 00 ME") == "EMPRESA 123 456 789 00 ME"

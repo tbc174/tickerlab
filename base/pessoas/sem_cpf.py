@@ -15,10 +15,13 @@ from base.arquivo.lote_brasil2 import CPF_NO_TEXTO
 from base.cnpj import cpf_confere
 
 ESPACOS = re.compile(r"\s{2,}")
-# CPF pontuado fora do padrão, que `CPF_NO_TEXTO` não pega: espaço em volta do hífen ("123.456.789 - 09"),
-# "123 456 789 09" etc. Com a palavra CPF na frente sai sempre; sem ela, só se os dígitos fecham como CPF.
+# CPF escrito fora do padrão, que `CPF_NO_TEXTO` não pega: espaço, vírgula, barra ou travessão entre os grupos
+# ("123.456.789 - 09", "123 456 789 09", "123-456-789-09"). Com a palavra CPF na frente sai sempre; sem ela,
+# só se os dígitos fecham como CPF.
+SEPARADOR_LARGO = r"[\s.,/\-‐-―]{0,3}"
 CPF_COM_SEPARADOR_LARGO = re.compile(
-    r"(?P<palavra>\bCPF\W{0,3})?(?<![\d.,/*-])\d{3}[.\s]{0,2}\d{3}[.\s]{0,2}\d{3}\s{0,2}[-–.]\s{0,2}\d{2}(?!\d|[.,/-]\d)",
+    r"(?:(?P<palavra>\bCPF\W{0,3})|(?<![\d.,/*-]))"
+    rf"\d{{3}}{SEPARADOR_LARGO}\d{{3}}{SEPARADOR_LARGO}\d{{3}}{SEPARADOR_LARGO}\d{{2}}(?!\d|[.,/-]\d)",
     re.IGNORECASE,
 )
 
