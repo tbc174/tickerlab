@@ -60,7 +60,7 @@ export const GUIAS: Guia[] = [
     passos: [
       "Abra o Relatório da empresa no app e digite o ticker da companhia.",
       "Em “Auditor e controladas”, veja a tabela “Trocas de auditor”: a firma anterior, a nova, a data e os anos com a anterior.",
-      "Para acompanhar um setor inteiro, abra o Relatório do setor e veja o auditor atual de cada companhia lado a lado.",
+      "Para acompanhar um setor, abra o relatório semanal do setor elétrico, que traz o auditor atual de cada companhia lado a lado.",
     ],
     naoResponde: [
       "A CVM tem regra de rodízio de auditores; o TickerLab mostra as datas dos mandatos, mas não afirma se a regra foi cumprida em cada caso.",
@@ -69,8 +69,7 @@ export const GUIAS: Guia[] = [
     ],
     veja: [
       ["Quem audita uma companhia aberta", "/quem-audita-uma-companhia-aberta.html"],
-      ["Abrir o Relatório do setor no app", ATALHO_SETOR],
-      ["Relatório do setor elétrico", "/relatorio-de-setor-eletricas.html"],
+      ["Relatório do setor elétrico, com o auditor atual de cada companhia", "/relatorio-de-setor-eletricas.html"],
       ["De onde vêm os dados", "/metodologia.html"],
     ],
   },
@@ -177,6 +176,9 @@ function tabelaDoCatalogo(nome: string): TabelaDaBase {
   return tabela;
 }
 
+// o catálogo traz 2010 (padrão da CVM) para as ofertas, que começam em 1989 e 2023: a data real está na frase
+const SEM_DESDE = new Set(["ofertas_antigas", "ofertas_resolucao_160"]);
+
 function desde(iso: string): string {
   return iso.slice(0, 4);
 }
@@ -204,8 +206,8 @@ export function GuiaDeBusca({ guia }: { guia: Guia }) {
             <li key={nome}>
               {t.frase}{" "}
               <small>
-                Fonte: {t.orgao}; atualização: {t.frequencia.toLowerCase()}; histórico desde{" "}
-                {desde(t.historico_desde)}.
+                Fonte: {t.orgao}; atualização: {t.frequencia.toLowerCase()}
+                {SEM_DESDE.has(nome) ? "." : `; histórico desde ${desde(t.historico_desde)}.`}
               </small>
             </li>
           );
