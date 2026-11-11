@@ -71,7 +71,8 @@ AVISO_SEM_CHAVE = (
 FERRAMENTAS_DO_DOSSIE = ("ficha_da_empresa", "eventos", "vinculos", "comparaveis")
 ORIENTACAO_DO_DOSSIE = (
     "Para um dossiê de uma empresa, chame, com o mesmo CNPJ e o mesmo `como_era_em`, nesta ordem: "
-    "`ficha_da_empresa`, `eventos`, `vinculos` (profundidade 1) e `comparaveis`. Junte numa ficha "
+    "`ficha_da_empresa`, `eventos`, `vinculos` (profundidade 1) e `comparaveis` (só se for "
+    "companhia aberta; se não for, anote a lacuna sem chamar). Junte numa ficha "
     "só, com a fonte e a data de cada bloco, e liste à parte o que faltou e por quê (ferramenta "
     'que a chave não vê, ou resposta "Não disponível"), sem preencher a lacuna com estimativa.'
 )
