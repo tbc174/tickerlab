@@ -71,9 +71,7 @@ def principal(argv: list[str]) -> int:
         args.modelo or openrouter.MODELO_PADRAO,
         cota,
     )
-    renderizador = (
-        renderizacao.renderizar if renderizacao.crawl4ai_instalado() else None
-    )
+    renderizador = renderizacao.escolher_renderizador()
     pesquisador = Pesquisador(args.pasta, ClienteHttp(), renderizador=renderizador)
     relatorio = agente.rodar_agente(
         args.hipotese,
