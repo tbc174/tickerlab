@@ -23,7 +23,9 @@ nem copiar dados de um lugar para o outro.
 Os nomes dos menus podem mudar um pouco de uma versão do Claude para outra. O endereço e a página do
 TickerLab não mudam.
 
-## Ligar no ChatGPT
+## Se você usa o ChatGPT
+
+O mesmo conector também funciona no ChatGPT, com a mesma chave.
 
 1. Em **Configurações → Apps e conectores**, crie um conector novo com o endereço
    `https://mcp.tickerlab.com.br/mcp` e a autenticação **OAuth**. Nas contas de empresa, quem administra o
