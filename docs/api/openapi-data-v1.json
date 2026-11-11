@@ -139,6 +139,229 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/data/v1/buyers": {
+      "get": {
+        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas\ncom controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por\nsinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra.",
+        "operationId": "compradores_do_setor_data_v1_buyers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cnae",
+            "required": true,
+            "schema": {
+              "title": "Cnae",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "years",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Years"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Compradores Do Setor Data V1 Buyers Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Compradores Do Setor"
+      }
+    },
     "/data/v1/catalog": {
       "get": {
         "description": "O que esta chave pode pedir hoje: conjuntos, campos, licença e atribuição de cada fonte.",
@@ -1650,6 +1873,228 @@
           }
         },
         "summary": "Demonstracoes Da Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/links": {
+      "get": {
+        "description": "Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,\ncoligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e\na firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano\n(`truncated`). MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "operationId": "vinculos_da_empresa_data_v1_companies__cnpj__links_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Depth",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Types",
+              "type": "array"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Vinculos Da Empresa Data V1 Companies  Cnpj  Links Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj",
+                        "invalid_link_type",
+                        "invalid_depth"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ; `invalid_link_type`: `types` com um tipo de vínculo que não existe; `invalid_depth`: `depth` fora de 1 a 3"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Vinculos Da Empresa"
       }
     },
     "/data/v1/companies/{cnpj}/profile": {

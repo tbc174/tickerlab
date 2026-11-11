@@ -35,7 +35,7 @@ import re
 import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any, NamedTuple
 
 import pandas as pd
@@ -95,12 +95,52 @@ AUDITOR_PESSOA = "Auditor pessoa física (nome não mostrado)"
 DIGITOS_DO_CNPJ = 14
 SOMA_DO_ANO, ULTIMO_MES = "soma do ano", "último mês do ano"
 CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
-# Cobre todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma pessoa
-# natural), e não tem a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da
-# PGFN). A regra de mostrar (`pode_mostrar`) não muda; a consulta em lote (API aberta e CSV) espera a
-# marca na montagem, para não publicar a baixa de uma pessoa (ADR 0075). A `cnpj_situacao_especial`
-# ganhou a marca em 10/11/2026 (linha 787) e saiu daqui.
-ESPERAM_A_MARCA_DE_PESSOA = frozenset({"cnpj_situacao_cadastral"})
+# Tabela que cobre todo estabelecimento do CNPJ, inclusive o MEI e o empresário individual (o CNPJ de uma
+# pessoa natural), sem a marca que separa a pessoa (`linhas_de_pessoa`, como a `trata_como_pessoa` da PGFN).
+# A regra de mostrar (`pode_mostrar`) não muda; a consulta em lote (API aberta e CSV) espera a marca na
+# montagem, para não publicar a baixa de uma pessoa (ADR 0075). Vazia desde 11/11/2026: a
+# `cnpj_situacao_especial` ganhou a marca (linha 787) e a `cnpj_situacao_cadastral` passou a ser montada só
+# das raízes sem pessoa (linha 841) e foi para `SO_PELA_API_EXTERNA`.
+ESPERAM_A_MARCA_DE_PESSOA: frozenset[str] = frozenset()
+# A família do CNPJ na consulta aberta (v1, sem login nem chave): as `cnpj_*` e as derivadas dela (a rede de
+# entidades e as entradas de sócio PJ). Só entram na lista e nas linhas quando a prontidão da tabela
+# (`base/prontidao.py::PRONTIDAO`, ADR 0108) está em dia; sem ela, a mesma recusa de tabela inexistente (Tiago,
+# 11/11/2026: "Sim, fecha"). A API por chave já exige a prontidão no portão; a tela com login não passa por aqui.
+DERIVADAS_DO_CNPJ = frozenset(
+    {"entidades", "identificadores", "ligacoes", "entradas_de_socio_pj"}
+)
+PREFIXO_DO_CNPJ = "cnpj_"
+
+
+def e_do_cnpj(nome_da_tabela: str) -> bool:
+    """A tabela é da família do CNPJ (a `cnpj_*` ou uma derivada dela)?"""
+    return (
+        nome_da_tabela.startswith(PREFIXO_DO_CNPJ)
+        or nome_da_tabela in DERIVADAS_DO_CNPJ
+    )
+
+
+# Fora da consulta aberta até a prontidão (linha 842; Tiago, 11/11/2026: "Sim, fecha"): as tabelas de
+# `FICAM_EM_CASA` (scripts/montar_recorte_da_api.py) que não são do CNPJ, que a produção só anuncia pelo nome
+# (a porta de lá não tem o arquivo), e `ma_datas` e `ma_regua`, que usam campos do CNPJ (a raiz da alvo, o porte).
+# Mesma regra da família do CNPJ: somem da lista e das linhas e voltam sozinhas quando entram em `PRONTIDAO`. Há
+# teste que cobra: tabela nova de `FICAM_EM_CASA` que a consulta libera tem de vir para cá.
+FECHADAS_ATE_A_PRONTIDAO = frozenset({
+    "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
+    "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
+    "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
+})  # fmt: skip
+
+
+def exige_prontidao_na_consulta_aberta(nome_da_tabela: str) -> bool:
+    """A consulta aberta só serve a tabela com a prontidão em dia: a do CNPJ e as `FECHADAS_ATE_A_PRONTIDAO`."""
+    return e_do_cnpj(nome_da_tabela) or nome_da_tabela in FECHADAS_ATE_A_PRONTIDAO
+
+
+# Servidas só pela API externa paga, atrás do portão e da prontidão (D10): a consulta aberta e a página Dados
+# não as mostram. A leitura mais estreita da Diretoria (11/11/2026, linha 810): nada novo fica aberto sem prontidão.
+# A situação cadastral (linha 841) entrou pela mesma leitura: montada só das raízes sem pessoa, mas nova.
+SO_PELA_API_EXTERNA = frozenset({"entradas_de_socio_pj", "cnpj_situacao_cadastral"})
 COLUNAS_DE_PESSOA = frozenset(
     {"cpf", "administrador", "conselheiro", "diretor", "nome_pessoa", "socio"}
 )
@@ -145,12 +185,35 @@ def pode_consultar(nome_da_tabela: str) -> bool:
     """A tabela pode ser consultada e exportada de fora (API aberta e página Dados)? Só a que pode
     ser mostrada, que a porta serve por Parquet do acervo, que diz o dia em que cada linha ficou
     pública (a consulta corta o futuro por ele, e a virada pede o dia em toda linha exposta) e que
-    não mistura MEI e empresário individual sem a marca de pessoa. As outras ficam só na ficha do app."""
+    não mistura MEI e empresário individual sem a marca de pessoa, nem a que só a API externa serve
+    (`SO_PELA_API_EXTERNA`). As outras ficam só na ficha do app."""
     return (
         pode_mostrar(nome_da_tabela)
         and servida_pela_porta(nome_da_tabela)
         and tem_dia_publico(nome_da_tabela)
         and nome_da_tabela not in ESPERAM_A_MARCA_DE_PESSOA
+        and nome_da_tabela not in SO_PELA_API_EXTERNA
+    )
+
+
+def pode_consultar_aberto(nome_da_tabela: str) -> bool:
+    """`pode_consultar` na consulta aberta: a tabela do CNPJ ou das `FECHADAS_ATE_A_PRONTIDAO` só sai com a prontidão em dia hoje (UTC); as
+    outras seguem a regra de sempre. Lê o registro de verdade (`PRONTIDAO`), nunca o de ensaio."""
+    if not pode_consultar(nome_da_tabela):
+        return False
+    if not exige_prontidao_na_consulta_aberta(nome_da_tabela):
+        return True
+    from base import (
+        prontidao,
+    )  # só aqui: o registro é lido a cada pedido (a tabela volta sozinha)
+
+    versoes = prontidao.versoes_maiores()
+    hoje = datetime.now(UTC).date()
+    return (
+        prontidao.negacao_da_prontidao(
+            (nome_da_tabela,), prontidao.PRONTIDAO, versoes, hoje
+        )
+        is None
     )
 
 

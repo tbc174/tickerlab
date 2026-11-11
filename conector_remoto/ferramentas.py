@@ -37,6 +37,10 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "ficha_da_empresa": frozenset({"profiles", "companies"}),
     "comparaveis": frozenset({"comparables"}),
     "demonstracoes": frozenset({"financials"}),
+    "eventos": frozenset({"events"}),
+    "fundo": frozenset({"funds"}),
+    "vinculos": frozenset({"links"}),
+    "compradores_do_setor": frozenset({"buyers"}),
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
@@ -50,6 +54,19 @@ _CODIGO_DA_API = re.compile(r"[a-z_]{1,40}")
 LIMITE_MAXIMO_DA_BUSCA = 100
 LIMITE_PADRAO_DA_BUSCA = 50
 ESPERA_PADRAO_S = 60
+# o nome em português (o mesmo da CLI) -> o tipo de evento da API
+TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
+# o nome em português (o mesmo da CLI, linha 773) -> o tipo de vínculo da API
+TIPOS_DE_VINCULO = {
+    "controlada": "subsidiary_of",
+    "coligada": "affiliate_of",
+    "participada": "investee_of",
+    "auditor": "audits",
+}
+PROFUNDIDADE_MAXIMA = 3  # a da API (`src/api_externa/conjuntos/vinculos.py`)
+# os da API (`src/api_externa/conjuntos/compradores.py`)
+ANOS_MAXIMO_DOS_COMPRADORES = 10
+LIMITE_MAXIMO_DOS_COMPRADORES = 50
 
 MENSAGEM_DE_PESSOA = (
     "Resposta recusada: ela trazia um campo de pessoa física, que este conector não entrega. "
@@ -57,6 +74,13 @@ MENSAGEM_DE_PESSOA = (
 )
 MENSAGEM_SEM_CHAVE = "Pedido sem chave do TickerLab: refaça a ligação do conector."
 MENSAGEM_NAO_LIBERADA = "Esta ferramenta não está disponível para a chave usada."
+# a pergunta "quanto a fechada fatura?" merece um "não temos" claro, não um vazio (linha 831, item d)
+MENSAGEM_SEM_DEMONSTRACAO = (
+    "Não disponível: a base só tem demonstrações financeiras de companhia aberta, entregues à CVM, "
+    "e não as tem para esse pedido, ou a chave não tem acesso a elas (a API não diz qual dos dois, "
+    "de propósito). Faturamento de empresa fechada a base não tem: capital social, porte e "
+    "financiamento não são receita, e o TickerLab não estima."
+)
 STATUS_OK = 200
 STATUS_PEDIDO_INVALIDO = 400
 STATUS_CHAVE_RECUSADA = 401
@@ -196,7 +220,7 @@ class Pedidos:
 
 
 def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
-    """Põe as sete ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
+    """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
     pedidos = Pedidos(cliente)
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)
@@ -321,13 +345,18 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         ] = None,
     ) -> str:
         """As demonstrações financeiras (DFP e ITR) da companhia aberta na CVM: um valor por conta e
-        período, com o documento, a versão e a data em que ficou público."""
+        período, com o documento, a versão e a data em que ficou público. Empresa fechada não tem:
+        a base não traz faturamento de fechada, e a ferramenta diz isso em vez de estimar."""
         numeros = cnpj_do_pedido(cnpj)
-        return await pedidos.pedir(
-            "demonstracoes",
+        resposta = await pedidos.resposta(
             f"/companies/{numeros}/financials",
             {"known_at": _dia(como_era_em), "period_end": _dia(fim_do_periodo)},
         )
+        if resposta.status == STATUS_NAO_DISPONIVEL:
+            raise ToolError(MENSAGEM_SEM_DEMONSTRACAO)
+        return pedidos.entregar(resposta, "demonstracoes")
+
+    _registrar_eventos_rede_e_fundo(servidor, pedidos)
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)
     async def setores() -> str:
@@ -368,3 +397,158 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             STATUS_OK, {"catalog": catalogo.corpo, "usage": consumo.corpo}
         )
         return pedidos.entregar(juntos, "o_que_posso_ver")
+
+
+def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """Eventos, vínculos, compradores do setor e fundo (à parte, para a
+    `registrar_ferramentas` não crescer demais); chamada no meio dela, para a ordem da lista ficar."""
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def eventos(
+        cnpj: Cnpj,
+        tipos: Annotated[
+            list[Literal["documento", "auditor"]] | None,
+            Field(
+                max_length=len(TIPOS_DE_EVENTO),
+                description=(
+                    "Só estes tipos: documento (o que a companhia entregou à CVM pelo IPE: fato "
+                    "relevante, comunicado, assembleia...) ou auditor (troca de auditor, pelo FCA). "
+                    "Vazio = todos."
+                ),
+            ),
+        ] = None,
+        cursor: Annotated[
+            str | None,
+            Field(
+                max_length=200,
+                description="O `next_cursor` da página anterior, para a seguinte.",
+            ),
+        ] = None,
+        como_era_em: ComoEraEm = None,
+    ) -> str:
+        """Os eventos da empresa, do mais novo ao mais velho: cada documento entregue à CVM (protocolo,
+        categoria, tipo, data de referência e endereço; o assunto escrito pela companhia não sai) e cada
+        troca de auditor (a firma anterior, a nova, o dia e os anos com a anterior). Cada valor traz a
+        fonte e o dia em que ficou público; a página vai até o limite do plano e `next_cursor` traz a
+        seguinte."""
+        numeros = cnpj_do_pedido(cnpj)
+        return await pedidos.pedir("eventos", f"/companies/{numeros}/events", {
+            "types": [TIPOS_DE_EVENTO[tipo] for tipo in tipos or ()],
+            "cursor": cursor,
+            "known_at": _dia(como_era_em),
+        })  # fmt: skip
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def vinculos(
+        cnpj: Cnpj,
+        profundidade: Annotated[
+            int,
+            Field(
+                ge=1,
+                le=PROFUNDIDADE_MAXIMA,
+                description="Quantos saltos a partir da empresa (1 a 3): 2 traz os vínculos dos vínculos.",
+            ),
+        ] = 1,
+        tipos: Annotated[
+            list[Literal["controlada", "coligada", "participada", "auditor"]] | None,
+            Field(
+                max_length=len(TIPOS_DE_VINCULO),
+                description=(
+                    "Só estes tipos: controlada, coligada ou participada (a sociedade e a participação "
+                    "no capital, pelo FRE) ou auditor (a firma que auditava a companhia, pelo FCA). "
+                    "Vazio = todos."
+                ),
+            ),
+        ] = None,
+        como_era_em: ComoEraEm = None,
+    ) -> str:
+        """Os vínculos da empresa como eram no dia: controladas, coligadas, participadas e o auditor.
+        Cada vínculo traz as duas pontas (id na rede, raiz do CNPJ e a razão social que valia no dia),
+        a participação no capital como o FRE informou e as datas. Só companhia aberta informa controle
+        e coligação, uma vez por ano: leia os `limits`. Sócio pessoa física não sai."""
+        numeros = cnpj_do_pedido(cnpj)
+        return await pedidos.pedir("vinculos", f"/companies/{numeros}/links", {
+            "known_at": _dia(como_era_em),
+            "depth": str(profundidade),  # como a CLI
+            "types": [TIPOS_DE_VINCULO[tipo] for tipo in tipos or ()],
+        })  # fmt: skip
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def compradores_do_setor(
+        cnae: Annotated[
+            str,
+            Field(
+                min_length=5,
+                max_length=12,
+                description="CNAE do setor: a classe (5 dígitos) ou a subclasse (7 dígitos); pontuação vale.",
+            ),
+        ],
+        uf: Annotated[
+            str | None,
+            Field(
+                pattern=r"^[A-Za-z]{2}$",
+                description="Sigla da UF, ex.: 'SP'. Vazio = o país todo.",
+            ),
+        ] = None,
+        anos: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=ANOS_MAXIMO_DOS_COMPRADORES,
+                description="Quantos anos para trás olhar (1 a 10). Vazio = 3.",
+            ),
+        ] = None,
+        limite: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DOS_COMPRADORES,
+                description="Quantos compradores trazer (1 a 50). Vazio = 20.",
+            ),
+        ] = None,
+        como_era_em: ComoEraEm = None,
+    ) -> str:
+        """Quem já se mexeu num setor: as empresas que entraram como sócias de empresas ativas do CNAE (na
+        UF, se dada), os fundos (FIP) sócios delas e as companhias abertas com controlada no setor, nos
+        últimos `anos`, como era no dia. Cada comprador traz os sinais e até 5 exemplos por sinal, com fonte
+        e data. Só pessoa jurídica. A ordem é pelo número de sinais: é movimento passado, não intenção de
+        compra (leia os `limits`)."""
+        return await pedidos.pedir("compradores_do_setor", "/buyers", {
+            "cnae": cnae,
+            "state": uf,
+            "years": None if anos is None else str(anos),
+            "limit": None if limite is None else str(limite),
+            "known_at": _dia(como_era_em),
+        })  # fmt: skip
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def fundo(
+        cnpj: Cnpj,
+        como_era_em: ComoEraEm = None,
+        retorno_suposto: Annotated[
+            float | None,
+            Field(
+                gt=-1,
+                le=1,
+                description=(
+                    "Retorno anual suposto, em fração (0.10 = 10% ao ano), só para calcular quanto a "
+                    "taxa custa em 5 e 20 anos. É uma hipótese de quem pergunta, não uma previsão."
+                ),
+            ),
+        ] = None,
+    ) -> str:
+        """O raio-x de um fundo de investimento na CVM: cadastro (classe, situação, patrimônio e
+        taxas), a carteira da competência mais nova já pública e, com `retorno_suposto`, o custo da
+        taxa em 5 e 20 anos. Cada valor traz a fonte e o dia em que ficou público."""
+        numeros = cnpj_do_pedido(cnpj)
+        return await pedidos.pedir(
+            "fundo",
+            f"/funds/{numeros}",
+            {
+                "known_at": _dia(como_era_em),
+                # como a CLI: o número como texto, sem arredondar
+                "assumed_return": None
+                if retorno_suposto is None
+                else repr(retorno_suposto),
+            },
+        )

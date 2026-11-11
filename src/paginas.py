@@ -62,31 +62,32 @@ class Area:
 
 
 AREA_INICIO = "inicio"
-AREA_ATIVO = "ativo"
-AREA_ESTRATEGIAS = "estrategias"
-AREA_ACOMPANHAR = "acompanhar"
+AREA_EMPRESAS = "empresas"  # o caminho do analista: qualquer empresa, pelo CNPJ
+# as análises de quem tem ação na bolsa; a chave ficou a de antes ("ativo")
+AREA_ABERTAS = "ativo"
+AREA_MAIS = "mais"  # estratégias e o que a conta acompanha: recolhida no menu até a pessoa abrir
 AREA_CONTA = "conta"  # no menu da pessoa, no topo
 AREA_AJUDA = "ajuda"  # no rodapé, fora do menu principal
 AREAS = {
     AREA_INICIO: Area(
         "Início", "inicio", "O que mudou nos seus ativos e por onde começar.", 1
     ),
-    AREA_ATIVO: Area(
-        "Ativo",
-        "ativo",
-        "Entenda um ativo: preço, risco, a empresa e quem tem a ação.",
+    AREA_EMPRESAS: Area(
+        "Empresas",
+        "empresas",
+        "Estude uma empresa pelo CNPJ: encontre, abra a ficha, compare e veja o setor.",
         2,
     ),
-    AREA_ESTRATEGIAS: Area(
-        "Estratégias",
-        "estrategias",
-        "Teste regras de compra e venda no passado, com custos.",
+    AREA_ABERTAS: Area(
+        "Companhias abertas",
+        "ativo",
+        "Entenda um ativo da bolsa: preço, risco, a empresa e quem tem a ação.",
         3,
     ),
-    AREA_ACOMPANHAR: Area(
-        "Acompanhar",
-        "acompanhar",
-        "O que você acompanha: acontecimentos, teses, carteira, alertas, juros e inflação.",
+    AREA_MAIS: Area(
+        "Mais",
+        "mais",
+        "Regras testadas no passado, com custos, e o que você acompanha: teses, carteira, alertas, juros e inflação.",
         4,
     ),
     AREA_CONTA: Area(
@@ -102,6 +103,14 @@ AREAS = {
 # ficam por último na área, nesta ordem: são ações sobre o ativo da tela ("Comparar com…" e o
 # relatório em PDF), não análises; a ordem é a das abas da página do ativo (PR 3 da ADR 0096)
 NO_FIM_DA_AREA = ("comparar", "relatorio")
+# vêm primeiro na área, nesta ordem: o caminho do analista (linha 822), que não é a ordem em que as
+# páginas nasceram em PAGINAS
+NO_COMECO_DA_AREA = (
+    "encontrar_empresas",
+    "ficha_da_empresa",
+    "comparar_empresas",
+    "relatorio_do_setor",
+)
 
 
 # --- Contrato de cada página (preparação 3 da ADR 0044; ADR 0048) ---------------------------
@@ -215,7 +224,7 @@ PAGINAS = (
         GRUPO_TOPO,
         ":material/picture_as_pdf:",
         "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
     ),
     Pagina(
         "guia",
@@ -261,7 +270,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/dashboard:",
         "O preço do ativo e os números-chave: retorno, risco e os dias mais extremos.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
         contrato=Contrato(
             "GET",
             "/v1/visao-geral",
@@ -287,7 +296,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/shield:",
         "Quanto o ativo já caiu e o quanto o preço oscila ao longo do tempo.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
         contrato=Contrato(
             "GET",
             "/v1/risco",
@@ -313,7 +322,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/calendar_month:",
         "Como o ativo foi em cada mês e ano, e se existem meses melhores que outros.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
         contrato=Contrato(
             "GET",
             "/v1/retorno-mensal",
@@ -327,7 +336,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/compare_arrows:",
         "Coloque dois ou mais ativos lado a lado, com o Ibovespa e o S&P 500 de referência.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
         contrato=Contrato(
             "GET",
             "/v1/comparacao",
@@ -351,7 +360,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/hub:",
         "Quanto o ativo anda junto com outros e com o mercado (o beta mede essa sensibilidade).",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
     ),
     Pagina(
         "backtest",
@@ -359,7 +368,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/history:",
         "Teste no passado: e se eu tivesse seguido esta regra de compra e venda?",
-        area=AREA_ESTRATEGIAS,
+        area=AREA_MAIS,
         contrato=Contrato(
             "POST",
             "/v1/backtest",
@@ -417,7 +426,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/leaderboard:",
         "Todas as estratégias no mesmo ativo, da melhor à pior, e quanto do resultado pode ser sorte.",
-        area=AREA_ESTRATEGIAS,
+        area=AREA_MAIS,
     ),
     Pagina(
         "carteira",
@@ -425,7 +434,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/pie_chart:",
         "Várias ações ao mesmo tempo, com regras para dividir o dinheiro entre elas.",
-        area=AREA_ESTRATEGIAS,
+        area=AREA_MAIS,
     ),
     Pagina(
         "experimentos",
@@ -433,7 +442,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/science:",
         "Perguntas clássicas respondidas com dados: aportar de uma vez ou aos poucos, rebalancear, virada do mês.",
-        area=AREA_ESTRATEGIAS,
+        area=AREA_MAIS,
     ),
     Pagina(
         "regimes",
@@ -441,7 +450,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/waves:",
         "Como uma estratégia se comporta em fases calmas e agitadas, e proteções contra quedas fortes.",
-        area=AREA_ESTRATEGIAS,
+        area=AREA_MAIS,
     ),
     Pagina(
         "aprendizado",
@@ -449,7 +458,7 @@ PAGINAS = (
         GRUPO_AVANCADO,
         ":material/psychology:",
         "Modelos que tentam prever o mercado, com validação honesta do que realmente funciona.",
-        area=AREA_ESTRATEGIAS,
+        area=AREA_MAIS,
         recurso=APRENDIZADO_DE_MAQUINA,
     ),
     Pagina(
@@ -458,7 +467,7 @@ PAGINAS = (
         GRUPO_AVANCADO,
         ":material/swap_horiz:",
         "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
-        area=AREA_ESTRATEGIAS,
+        area=AREA_MAIS,
         recurso=PARES,
     ),
     Pagina(
@@ -468,7 +477,7 @@ PAGINAS = (
         ":material/travel_explore:",
         "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, "
         "com o documento original de cada item.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -501,7 +510,7 @@ PAGINAS = (
         ":material/edit_note:",
         "O que você pensa de cada ativo, com a data em que escreveu, ligado aos backtests que "
         "você salvou.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -512,7 +521,7 @@ PAGINAS = (
         "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a "
         "carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos "
         "que você escolher, proventos recebidos e custo médio.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -522,7 +531,7 @@ PAGINAS = (
         ":material/percent:",
         "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada "
         "número (Banco Central).",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/juros-e-inflacao", (), "JurosEInflacaoV1"),
     ),
@@ -533,7 +542,7 @@ PAGINAS = (
         ":material/grain:",
         "Café (arábica e robusta), algodão e fertilizantes: o preço mensal do Banco Mundial e do "
         "FMI, com a fonte e a data de cada número.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato(
             "GET", "/v1/precos-de-referencia", (), "PrecosDeReferenciaV1"
@@ -546,7 +555,7 @@ PAGINAS = (
         ":material/balance:",
         "A sua produção de café em cada safra desde 2000: sem travar, a termo, no futuro e com "
         "opção, lado a lado com os riscos, no preço mensal. Nada do que você digita é guardado.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -556,7 +565,7 @@ PAGINAS = (
         ":material/timeline:",
         "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no "
         "mesmo eixo, com o link de cada documento.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
         contrato=Contrato(
             "GET",
             "/v1/linha-do-tempo",
@@ -583,7 +592,7 @@ PAGINAS = (
         ":material/account_balance:",
         "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
         "demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
     ),
     Pagina(
         "relatorio_empresa",
@@ -593,7 +602,7 @@ PAGINAS = (
         "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas "
         "clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada "
         "número.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
         contrato=Contrato(
             "GET", "/v1/relatorio-empresa", (ATIVO,), "RelatorioDaEmpresaV1"
         ),
@@ -606,7 +615,7 @@ PAGINAS = (
         "Digite o CNPJ de uma empresa e veja quem é: da companhia aberta, o grupo, a rede de empresas "
         "e os fatos públicos; das outras, o cadastro da Receita, o Simples e o MEI, os sócios e o que "
         "mudou em 12 meses. Com a data e a fonte de cada linha.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato(
             "POST",
@@ -630,7 +639,7 @@ PAGINAS = (
         ":material/business_center:",
         "Digite o CNPJ de uma empresa e veja o cadastro na Receita e, da companhia aberta, as entregas "
         "de balanço à CVM, com a fonte e a data de cada campo. Baixe tudo em Excel.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_EMPRESAS,
         recurso=DOSSIE_DA_BASE,
         precisa_do_ativo=False,
         contrato=Contrato(
@@ -655,7 +664,7 @@ PAGINAS = (
         ":material/travel_explore:",
         "Escolha o setor, o estado e a idade mínima e veja as empresas ativas que se encaixam, com a "
         "fonte e a data de cada campo. Abra a ficha de cada uma e baixe a lista em Excel.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_EMPRESAS,
         recurso=DOSSIE_DA_BASE,
         precisa_do_ativo=False,
         contrato=Contrato(
@@ -676,12 +685,64 @@ PAGINAS = (
                     maximo=100,
                 ),
                 Entrada(
+                    "capital_minimo",
+                    "numero",
+                    "Capital social declarado na Receita, em reais, no mínimo (aproximação do tamanho).",
+                    minimo=0,
+                    maximo=1000000000000000.0,
+                ),
+                Entrada(
+                    "capital_maximo",
+                    "numero",
+                    "Capital social declarado na Receita, em reais, no máximo (aproximação do tamanho).",
+                    minimo=0,
+                    maximo=1000000000000000.0,
+                ),
+                Entrada(
+                    "estabelecimentos_minimo",
+                    "inteiro",
+                    "Estabelecimentos ativos (matriz e filiais), no mínimo (aproximação do tamanho).",
+                    minimo=1,
+                    maximo=1000000,
+                ),
+                Entrada(
+                    "ordem",
+                    "texto",
+                    "maior_capital, menor_capital ou mais_estabelecimentos; sem ordem, pelo CNPJ.",
+                ),
+                Entrada(
                     "cursor",
                     "texto",
                     "A página seguinte, como a resposta anterior deu.",
                 ),
             ),
             "BuscaDeEmpresasV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
+        "comparar_empresas",
+        "Comparar empresas",
+        GRUPO_AVANCADO,  # tem recurso do plano (test_o_grupo_avancado_tem_so_paginas_pro_e_so_ele)
+        ":material/compare_arrows:",
+        "Ponha de duas a cinco empresas lado a lado, pelo CNPJ: situação, natureza, porte, abertura, "
+        "atividade, lugar, capital e as entregas à CVM da companhia aberta, com a fonte e a data de cada "
+        "campo. Baixe a comparação em Excel.",
+        area=AREA_EMPRESAS,
+        recurso=DOSSIE_DA_BASE,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "POST",
+            "/v1/analista/comparar",
+            (
+                Entrada(
+                    "cnpjs",
+                    "lista de textos",
+                    "De dois a cinco CNPJs diferentes, com ou sem pontuação.",
+                    obrigatoria=True,
+                ),
+            ),
+            "ComparacaoDeEmpresasV1",
         ),
         so_no_app_novo=True,
     ),
@@ -693,7 +754,7 @@ PAGINAS = (
         "Escolha um setor e veja quem está nele, o tamanho do mercado, a concentração (CR4 e HHI "
         "com a faixa do CADE), as empresas lado a lado e o que ainda não temos, com a fonte de "
         "cada número.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_EMPRESAS,
         precisa_do_ativo=False,
         contrato=Contrato(
             "GET",
@@ -717,7 +778,7 @@ PAGINAS = (
         ":material/badge:",
         "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu "
         "ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
     ),
     Pagina(
         "donos",
@@ -726,7 +787,7 @@ PAGINAS = (
         ":material/groups:",
         "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto "
         "está vendido. Carteiras oficiais entregues à CVM e à SEC.",
-        area=AREA_ATIVO,
+        area=AREA_ABERTAS,
     ),
     Pagina(
         "newsletter",
@@ -735,7 +796,7 @@ PAGINAS = (
         ":material/newspaper:",
         "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o "
         "documento de cada item. Na tela ou em PDF.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -745,7 +806,7 @@ PAGINAS = (
         ":material/donut_large:",
         "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) "
         "para o Research e a Newsletter darem mais destaque às maiores posições.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,  # guardar é do Pro: a própria página explica (sem cadeado)
     ),
     Pagina(
@@ -755,7 +816,7 @@ PAGINAS = (
         ":material/notifications:",
         "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista "
         "elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -765,7 +826,7 @@ PAGINAS = (
         ":material/tune:",
         "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só "
         "para um, e veja o efeito antes de salvar.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
     ),
     Pagina(
         "simulacoes",
@@ -783,7 +844,7 @@ PAGINAS = (
         GRUPO_CONTA,
         ":material/star:",
         "Seus ativos favoritos ordenados pela força da tendência recente (momentum).",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
     ),
     Pagina(
         "meus_dados",
@@ -846,7 +907,7 @@ PAGINAS = (
         ":material/map:",
         "Onde se produz café arábica e conilon, município a município (IBGE), e a chuva e a geada "
         "de cada região contra a normal, com a fonte e a data de cada número.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato(
             "GET",
@@ -871,7 +932,7 @@ PAGINAS = (
         ":material/coffee:",
         "Café arábica ou conilon: preço de referência, câmbio, fundos, exportações, safra da CONAB, "
         "clima e calendário, cada número com a data e a fonte.",
-        area=AREA_ACOMPANHAR,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato(
             "GET",
@@ -942,11 +1003,13 @@ def paginas_do_grupo(grupo: str) -> list[Pagina]:
 
 
 def paginas_da_area(area: str) -> list[Pagina]:
-    """As páginas da área na ordem do menu: a de PAGINAS, com as de NO_FIM_DA_AREA por último."""
+    """As páginas da área na ordem do menu: as de NO_COMECO_DA_AREA, a ordem de PAGINAS e as de NO_FIM_DA_AREA."""
     if area not in AREAS:
         raise KeyError(f"área desconhecida: {area}")
 
     def posicao(p: Pagina) -> int:
+        if p.chave in NO_COMECO_DA_AREA:
+            return NO_COMECO_DA_AREA.index(p.chave) - len(NO_COMECO_DA_AREA)
         return NO_FIM_DA_AREA.index(p.chave) + 1 if p.chave in NO_FIM_DA_AREA else 0
 
     return sorted((p for p in PAGINAS if p.area == area), key=posicao)

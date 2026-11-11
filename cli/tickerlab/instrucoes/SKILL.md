@@ -1,6 +1,6 @@
 ---
 name: tickerlab
-description: Busca dados oficiais de empresas, fundos e setores do Brasil (Receita Federal, CVM, agências reguladoras) pela CLI `tickerlab`, com fonte e data em cada número. Use quando a pessoa pedir a situação cadastral de um CNPJ, se uma companhia aberta entrega a DFP e o ITR no prazo, as demonstrações financeiras (DFP, ITR) de uma companhia aberta, o cadastro, as taxas ou a carteira de um fundo, o tamanho e a concentração (CR4, HHI) de um setor regulado e a fatia de cada companhia aberta nele, uma lista de empresas por CNAE, UF, porte e idade (prospecção), o que a chave do TickerLab pode pedir ou quanto da quota já foi usado, e para análise de empresa, M&A ou crédito que precise desses números.
+description: Busca dados oficiais de empresas, fundos e setores do Brasil (Receita Federal, CVM, agências reguladoras) pela CLI `tickerlab`, com fonte e data em cada número. Use quando a pessoa pedir a situação cadastral de um CNPJ, se uma companhia aberta entrega a DFP e o ITR no prazo, as demonstrações financeiras (DFP, ITR) de uma companhia aberta, o cadastro, as taxas ou a carteira de um fundo, o tamanho e a concentração (CR4, HHI) de um setor regulado e a fatia de cada companhia aberta nele, as controladas, coligadas e participadas e o auditor de uma companhia aberta, os fatos relevantes, comunicados e trocas de auditor de uma companhia aberta, uma lista de empresas por CNAE, UF, porte e idade (prospecção), o que a chave do TickerLab pode pedir ou quanto da quota já foi usado, e para análise de empresa, M&A ou crédito que precise desses números.
 ---
 
 # TickerLab CLI
@@ -19,6 +19,18 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab comparaveis <cnpj> [--como-era AAAA-MM-DD] --json`: as companhias abertas do mesmo grupo de
      setores, cada uma com o último DFP (receita, EBITDA, lucro, dívida líquida e razões), e a mediana de cada
      razão em `peer_medians`; leia `limits` antes de comparar múltiplos.
+   - `tickerlab compradores --cnae <5 ou 7 dígitos> [--uf SP] [--anos 3] [--limite 20] --json`: candidatos a
+     comprador do setor (entrou como sócio, fundo sócio, controla empresa do setor), só pessoa jurídica, com
+     sinais e evidências. Movimento passado não é intenção de compra: leia `limits`.
+   - `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo controlada|coligada|participada|auditor] --json`: de quem a
+     empresa era controlada, coligada ou participada, quem ela controlava (com a participação no capital) e quem a
+     auditava, como era no dia; sem pessoa física. Leia `limits` e `truncated`.
+   - `tickerlab dossie <cnpj> [--como-era AAAA-MM-DD] --json`: perfil, eventos, vínculos e comparáveis numa saída
+     só (4 pedidos da quota); leia `gaps` (seção que faltou e por quê) e `limits`.
+   - `tickerlab eventos <cnpj> [--tipo documento|auditor] [--como-era AAAA-MM-DD] --json`: documentos entregues à
+     CVM (fato relevante, comunicado, assembleia...) e trocas de auditor, do mais novo ao mais velho, com o
+     endereço de cada documento; `next_cursor` preenchido: há mais, `--todas` busca todas. Leia `limits`: sem
+     evento não quer dizer que nada aconteceu.
    - `tickerlab demonstracoes <cnpj> [--periodo AAAA-MM-DD] --json`: DFP e ITR (CVM), uma linha por conta e
      período, com documento, versão e data de entrega.
    - `tickerlab fundo <cnpj> [--retorno-suposto 0.12] --json`: cadastro, taxas e carteira do fundo (CVM).

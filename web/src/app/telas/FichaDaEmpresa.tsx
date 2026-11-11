@@ -4,7 +4,7 @@
 // não aparece aqui. Como na Busca por CNPJ, o CNPJ vai no corpo do POST, nunca no endereço, e nada é
 // pedido antes de a pessoa buscar. "Limites e cuidados" fica sempre à vista depois da busca.
 import { type FormEvent, useState } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../CabecalhoDaTela";
 import { ErroDaApi, baixar } from "../api";
@@ -13,11 +13,14 @@ import { useConta } from "../conta";
 import { formatarData } from "../formatar";
 import type { BlocoDaFichaV1, CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
+import { ContatoDaFicha } from "./ContatoDaFicha";
 import { ErroDaTela } from "./ErroDaTela";
+import { EventosDaFicha } from "./EventosDaFicha";
+import { VinculosDaFicha } from "./VinculosDaFicha";
 import { SociosDaFicha } from "./SociosDaFicha";
 
 const NOME_DA_PLANILHA = "ficha-da-empresa-tickerlab.xlsx"; // sem o CNPJ: o nome do arquivo não carrega dado
-const TAMANHO_MAXIMO_DO_CNPJ = 20; // com a pontuação cabem 18; sobra folga para espaços colados
+export const TAMANHO_MAXIMO_DO_CNPJ = 20; // com a pontuação cabem 18; sobra folga para espaços colados
 const SEM_VALOR = "—";
 
 // o nome de cada campo na tela; campo novo sem nome aparece com a chave, nunca some
@@ -63,11 +66,11 @@ const MES_ISO = /^(\d{4})-(\d{2})$/;
 const CNPJ_SO_DIGITOS = /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/;
 
 /** "02429144000193" → "02.429.144/0001-93", como o analista digita; outro formato sai como veio. */
-const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, "$1.$2.$3/$4-$5");
+export const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, "$1.$2.$3/$4-$5");
 
 const nomeDoCampo = (chave: string) => NOMES_DOS_CAMPOS[chave] ?? chave;
 
-function textoDoValor(chave: string, valor: CampoComFonteV1["valor"]): string {
+export function textoDoValor(chave: string, valor: CampoComFonteV1["valor"]): string {
   if (valor === null) return SEM_VALOR;
   if (typeof valor === "boolean") return valor ? "Sim" : "Não";
   const texto = String(valor);
@@ -152,7 +155,7 @@ function Entregas({ entregas }: { entregas: Record<string, CampoComFonteV1>[] | 
   );
 }
 
-function Fontes({ fontes }: { fontes: FonteDaFichaV1[] }) {
+export function Fontes({ fontes }: { fontes: FonteDaFichaV1[] }) {
   return (
     <section className="secao-do-relatorio" aria-labelledby="fontes-da-ficha">
       <h2 id="fontes-da-ficha">Fontes</h2>
@@ -167,7 +170,7 @@ function Fontes({ fontes }: { fontes: FonteDaFichaV1[] }) {
   );
 }
 
-function Limites({ itens }: { itens: string[] }) {
+export function Limites({ itens }: { itens: string[] }) {
   return (
     <section className="secao-do-relatorio" aria-labelledby="limites-da-ficha">
       <h2 id="limites-da-ficha">Limites e cuidados</h2>
@@ -180,7 +183,8 @@ function Limites({ itens }: { itens: string[] }) {
   );
 }
 
-function BaixarPlanilha({ rota, cnpj }: { rota: string; cnpj: string }) {
+/** O botão do Excel: pede `${rota}/planilha` com o mesmo corpo da tela e salva com um nome sem dado. */
+export function BaixarPlanilha({ rota, corpo, nome }: { rota: string; corpo: object; nome: string }) {
   const token = useConta()?.token ?? null;
   const [baixando, setBaixando] = useState(false);
   const [falha, setFalha] = useState<string | null>(null);
@@ -188,12 +192,12 @@ function BaixarPlanilha({ rota, cnpj }: { rota: string; cnpj: string }) {
     if (token === null) return;
     setBaixando(true);
     setFalha(null);
-    baixar(`${rota}/planilha`, token, { cnpj })
+    baixar(`${rota}/planilha`, token, corpo)
       .then((arquivo) => {
         const endereco = URL.createObjectURL(arquivo);
         const ancora = document.createElement("a");
         ancora.href = endereco;
-        ancora.download = NOME_DA_PLANILHA;
+        ancora.download = nome;
         ancora.click();
         URL.revokeObjectURL(endereco);
       })
@@ -257,10 +261,19 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
         CNPJ {cnpjComPontuacao(ficha.cnpj)}
         <span className="apagado"> · como a base conhecia em {formatarData(ficha.como_era_em)}</span>
       </p>
-      <BaixarPlanilha rota={rota} cnpj={cnpj} />
+      <div className="acoes-da-ficha">
+        <BaixarPlanilha rota={rota} corpo={{ cnpj }} nome={NOME_DA_PLANILHA} />
+        {/* o CNPJ vai pelo estado da navegação, nunca pelo endereço */}
+        <Link className="botao" to="/comparar-empresas" state={{ cnpjs: [ficha.cnpj] }}>
+          Pôr na comparação
+        </Link>
+      </div>
       <Cadastro ficha={ficha} />
       <SociosDaFicha rota={rota} cnpj={cnpj} />
+      <ContatoDaFicha rota={rota} cnpj={cnpj} />
       <Entregas entregas={ficha.entregas} />
+      <EventosDaFicha rota={rota} cnpj={cnpj} />
+      <VinculosDaFicha rota={rota} cnpj={cnpj} />
       {dados.fontes.length > 0 ? <Fontes fontes={dados.fontes} /> : null}
     </>
   );

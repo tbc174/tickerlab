@@ -3,7 +3,8 @@
 O lote existe só para a rota dos comparáveis não perguntar à rede uma vez por candidata; a regra de quem é
 empresa e quem é pessoa não pode mudar em nada. O lote é comparado com o `e_empresa` de hoje e com a regra
 como era antes do lote (`_regra_item_a_item`, cópia guardada aqui, com o `resolver` da rede de verdade): se
-o lote, o `e_empresa` ou o `resolver` mudarem e deixarem de dizer o mesmo, este arquivo falha. Rede de mentira, sem internet; os CNPJs são de ninguém.
+o lote, o `e_empresa` ou o `resolver` mudarem e deixarem de dizer o mesmo, este arquivo falha. Com as listas sem
+pessoa da Receita (linha 843), o lote é comparado com o `e_empresa`, com e sem a rede. Rede de mentira, sem internet; os CNPJs são de ninguém.
 """
 
 from datetime import date
@@ -16,6 +17,7 @@ from hypothesis import strategies as st
 from base.porta import Porta
 from base.porta.rede import resolver, views
 from src.api_externa.conjuntos import empresas
+from tests import test_api_externa_e_empresa as um_a_um
 
 EMPRESA = "11111111000191"
 OUTRA_EMPRESA = "12121212000191"
@@ -338,3 +340,158 @@ def test_em_qualquer_rede_o_lote_e_a_regra_item_a_item_dizem_o_mesmo(
         assert lote == {cnpj: _regra_item_a_item(porta, cnpj) for cnpj in perguntas}
         for cnpj in perguntas:
             assert empresas.e_empresa(porta, cnpj) is lote[cnpj]
+
+
+# ---------------------------------------------------------------- com as listas sem pessoa (linha 843)
+
+# os CNPJs das listas de `test_api_externa_e_empresa.py` (empresa, filial, MEI, empresário individual, grupo 4,
+# natureza vazia e nula, raiz fora da lista, só no mês velho, inexistente e raiz repetida) e os da rede daqui
+PERGUNTAS_DAS_LISTAS = [
+    um_a_um.EMPRESA, um_a_um.FILIAL, um_a_um.MEI, um_a_um.EMPRESARIO_INDIVIDUAL, um_a_um.GRUPO_4,
+    um_a_um.NATUREZA_VAZIA, um_a_um.NATUREZA_NULA, um_a_um.SEM_EMPRESA, um_a_um.SO_NO_MES_VELHO,
+    um_a_um.INEXISTENTE, um_a_um.REPETIDA, "11111111000353", "",
+]  # fmt: skip
+
+
+FECHADA = "15151515000191"  # a empresa fechada: nas listas, fora da rede
+
+
+def _base_com_listas(tmp_path, empresas_pj=None, estabelecimentos_pj=None):
+    base = tmp_path / "base"
+    um_a_um._gravar(
+        base,
+        empresas.LISTA_DE_EMPRESAS,
+        um_a_um._empresas(*([empresas_pj] if empresas_pj else [])),
+    )
+    um_a_um._gravar(
+        base,
+        empresas.LISTA_DE_ESTABELECIMENTOS,
+        um_a_um._estabelecimentos(
+            *([estabelecimentos_pj] if estabelecimentos_pj else [])
+        ),
+    )
+    return base
+
+
+def _item_a_item(porta: Porta, perguntas) -> dict[str, bool]:
+    return {cnpj: empresas.e_empresa(porta, cnpj) for cnpj in perguntas}
+
+
+def test_sem_a_rede_o_lote_decide_pelas_listas_como_o_e_empresa(tmp_path):
+    with Porta(_base_com_listas(tmp_path)) as porta:
+        assert "entidades" not in views(porta.con)
+        lote = empresas.e_empresas(porta, PERGUNTAS_DAS_LISTAS)
+        assert lote == _item_a_item(porta, PERGUNTAS_DAS_LISTAS)
+    # escrito à mão: só a empresa e a filial das duas listas, nenhuma pessoa
+    assert {cnpj for cnpj, sim in lote.items() if sim} == {
+        um_a_um.EMPRESA,
+        um_a_um.FILIAL,
+    }
+
+
+def test_com_a_rede_e_as_listas_o_lote_responde_o_mesmo_que_o_e_empresa(tmp_path):
+    """A rede decide o que conhece (pessoa e conflito não caem para as listas); o resto, as listas."""
+    base = _base_com_listas(
+        tmp_path,
+        [
+            *um_a_um.EMPRESAS,
+            (MEI[:8], "2062", "2026-10"),
+            (EM_DUAS_ENTIDADES[:8], "2062", "2026-10"),
+            (FECHADA[:8], "2062", "2026-10"),
+        ],
+        [
+            *um_a_um.ESTABELECIMENTOS,
+            (MEI, "2026-10"),
+            (EM_DUAS_ENTIDADES, "2026-10"),
+            (FECHADA, "2026-10"),
+        ],
+    )
+    perguntas = [*PERGUNTAS_DAS_LISTAS, *PERGUNTAS, FECHADA]
+    with Porta(
+        base, extras={"entidades": _entidades(), "identificadores": _identificadores()}
+    ) as porta:
+        lote = empresas.e_empresas(porta, perguntas)
+        assert lote == _item_a_item(porta, perguntas)
+    # o MEI da rede e o conflito estão nas listas de mentira, mas a rede os conhece: não
+    # (e a filial das listas é o fundo da rede daqui: vale a rede)
+    assert lote[MEI] is lote[EM_DUAS_ENTIDADES] is lote[um_a_um.FILIAL] is False
+    # a empresa fechada que a rede não conhece sai pelas listas, e o que a rede conhece como empresa também
+    assert lote[FECHADA] is lote[OUTRA_EMPRESA] is True
+
+
+def test_o_lote_com_as_listas_pergunta_um_numero_fixo_de_vezes(tmp_path):
+    with Porta(_base_com_listas(tmp_path)) as porta:
+        con = _ConexaoQueConta(porta.con)
+        porta.con = con  # type: ignore[assignment]
+        empresas.e_empresas(porta, PERGUNTAS_DAS_LISTAS[:2])
+        de_duas = con.consultas
+        con.consultas = 0
+        empresas.e_empresas(porta, PERGUNTAS_DAS_LISTAS)
+        assert con.consultas == de_duas <= MAXIMO_COM_AS_LISTAS
+
+
+MAXIMO_COM_AS_LISTAS = (
+    5  # as tabelas que existem, o mês de cada lista e uma consulta a cada lista
+)
+
+
+@settings(max_examples=100, deadline=None)
+@given(
+    empresas_pj=st.lists(
+        st.tuples(
+            st.sampled_from([c[:8] for c in PERGUNTAS_DAS_LISTAS if c]),
+            st.sampled_from(["2062", "2054", "2135", "4120", "", "  ", None]),
+            st.sampled_from(["2026-09", "2026-10"]),
+        ),
+        min_size=1,
+        max_size=8,
+    ),
+    estabelecimentos_pj=st.lists(
+        st.tuples(
+            st.sampled_from([c for c in PERGUNTAS_DAS_LISTAS if c]),
+            st.sampled_from(["2026-09", "2026-10"]),
+        ),
+        min_size=1,
+        max_size=8,
+    ),
+)
+def test_em_quaisquer_listas_o_lote_e_o_e_empresa_dizem_o_mesmo(
+    tmp_path_factory, empresas_pj, estabelecimentos_pj
+):
+    base = _base_com_listas(
+        tmp_path_factory.mktemp("listas"), empresas_pj, estabelecimentos_pj
+    )
+    with Porta(base) as porta:
+        assert empresas.e_empresas(porta, PERGUNTAS_DAS_LISTAS) == _item_a_item(
+            porta, PERGUNTAS_DAS_LISTAS
+        )
+
+
+# ---------------------------------------------------------------- identificador sem entidade
+
+SEM_ID = "74747474000191"  # o identificador existe, mas o `id_entidade` dele está vazio
+
+
+@pytest.mark.parametrize("com_as_listas", [False, True])
+def test_identificador_com_id_entidade_nulo_nao_e_empresa_e_nao_cai_para_as_listas(
+    tmp_path, com_as_listas
+):
+    """A rede menciona o CNPJ sem dizer de quem é: na dúvida, não; nem as listas o salvam."""
+    base = (
+        _base_com_listas(
+            tmp_path, [(SEM_ID[:8], "2062", "2026-10")], [(SEM_ID, "2026-10")]
+        )
+        if com_as_listas
+        else tmp_path
+    )
+    identificadores = _identificadores(
+        [*IDENTIFICADORES, (None, "cnpj_raiz", SEM_ID[:8])]
+    )
+    with Porta(
+        base, extras={"entidades": _entidades(), "identificadores": identificadores}
+    ) as porta:
+        assert empresas.e_empresa(porta, SEM_ID) is False
+        assert empresas.e_empresas(porta, [EMPRESA, SEM_ID]) == {
+            EMPRESA: True,
+            SEM_ID: False,
+        }

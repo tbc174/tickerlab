@@ -182,20 +182,79 @@ def resposta_de_dado(corpo: Mapping) -> str:
     return "\n\n".join(partes)
 
 
-def prospeccao(corpo: Mapping) -> str:
-    """A busca de empresas: quantas vieram, se há mais, e cada empresa com a fonte e a data."""
-    empresas = [e for e in corpo.get("companies") or [] if isinstance(e, Mapping)]
-    if not empresas:
-        topo = "Nenhuma empresa com estes filtros. Afrouxe algum (CNAE mais curto, sem município...)."
-    else:
-        topo = f"{len(empresas)} empresas nesta resposta."
+def _paginada(corpo: Mapping, lista: str, nome: str, vazia: str) -> str:
+    """Uma resposta em páginas: quantas linhas vieram, se há mais, e cada linha com a fonte e a data."""
+    linhas = [e for e in corpo.get(lista) or [] if isinstance(e, Mapping)]
+    topo = f"{len(linhas)} {nome} nesta resposta." if linhas else vazia
     if corpo.get("next_cursor"):
         topo += (
             " Há mais: rode de novo com --todas para buscar as outras páginas (cada página é um pedido "
             "da quota)."
         )
-    resto = {nome: valor for nome, valor in corpo.items() if nome != "next_cursor"}
+    resto = {chave: valor for chave, valor in corpo.items() if chave != "next_cursor"}
     return f"{topo}\n\n{resposta_de_dado(resto)}"
+
+
+def prospeccao(corpo: Mapping) -> str:
+    """A busca de empresas: quantas vieram, se há mais, e cada empresa com a fonte e a data."""
+    return _paginada(
+        corpo,
+        "companies",
+        "empresas",
+        "Nenhuma empresa com estes filtros. Afrouxe algum (CNAE mais curto, sem município...).",
+    )
+
+
+def _ponta(ponta: object) -> str:
+    """Uma ponta do vínculo em uma célula: a razão social que valia no dia e a raiz do CNPJ."""
+    if not isinstance(ponta, Mapping):
+        return VAZIO
+    nome = ponta.get("legal_name")
+    nome = nome.get("value") if isinstance(nome, Mapping) else None
+    raiz = f"({ponta.get('cnpj_root') or VAZIO})"
+    return f"{nome} {raiz}" if nome else raiz
+
+
+def vinculos_em_linhas(corpo: Mapping) -> dict:
+    """A resposta dos vínculos com as pontas `from` e `to` achatadas em `de` e `para` (tabela e planilha);
+    o `--json` não passa por aqui. A fonte do nome (Receita) continua em `sources`."""
+    linhas = []
+    for vinculo in corpo.get("links") or []:
+        if not isinstance(vinculo, Mapping):
+            continue
+        resto = {k: v for k, v in vinculo.items() if k not in ("from", "to")}
+        origem, destino = vinculo.get("from"), vinculo.get("to")
+        linhas.append(
+            {
+                "hops": resto.pop("hops", None),
+                "kind": resto.pop("kind", None),
+                "de": _ponta(origem),
+                "para": _ponta(destino),
+                **resto,
+            }
+        )
+    return {**corpo, "links": linhas}
+
+
+def eventos(corpo: Mapping) -> str:
+    """Os eventos da empresa: quantos vieram, se há mais, e cada um com a fonte e a data."""
+    return _paginada(
+        corpo,
+        "events",
+        "eventos",
+        "Nenhum evento da empresa até o dia. Sem evento não quer dizer que nada aconteceu.",
+    )
+
+
+def dossie(corpo: Mapping) -> str:
+    """O dossiê: quantos pedidos gastou, o que ficou de fora, e depois cada seção com fonte e data."""
+    lacunas = [g for g in corpo.get("gaps") or [] if isinstance(g, Mapping)]
+    topo = f"Dossiê: {corpo.get('requests_used')} pedidos gastos da quota."
+    if lacunas:
+        topo += " Ficou de fora: " + "; ".join(
+            f"{g.get('section')} ({g.get('reason')})" for g in lacunas
+        )
+    return f"{topo}\n\n{resposta_de_dado(corpo)}"
 
 
 def setores(corpo: Mapping) -> str:

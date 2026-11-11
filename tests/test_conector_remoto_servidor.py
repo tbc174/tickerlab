@@ -10,17 +10,22 @@ import json
 
 import httpx
 import pytest
+from tickerlab import comandos
 
-from conector_remoto import acesso, ferramentas
+from conector_remoto import acesso, ferramentas, servidor
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.saida import TETO_DE_CARACTERES
 from src.api_externa.conjuntos import (
     comparaveis,
+    compradores,
     demonstracoes,
     empresas,
+    eventos,
     ficha,
+    fundos,
     prospeccao,
     setores,
+    vinculos,
 )
 from tests import ajudantes_do_conector as aj
 
@@ -106,6 +111,20 @@ def test_lista_so_o_que_o_catalogo_da_chave_libera():
     assert erro and texto == ferramentas.MENSAGEM_NAO_LIBERADA
 
 
+def test_orientacao_do_dossie_cita_so_ferramentas_que_existem_na_ordem():
+    assert set(servidor.FERRAMENTAS_DO_DOSSIE) <= set(
+        ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )
+    posicoes = [
+        servidor.INSTRUCOES.index(f"`{nome}`")
+        for nome in servidor.FERRAMENTAS_DO_DOSSIE
+    ]
+    assert posicoes == sorted(posicoes)
+    assert (
+        "dossie" not in ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )  # a IA compõe; sem ferramenta própria
+
+
 def test_todas_as_ferramentas_so_leem():
     with _conector() as cliente:
         resposta = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list")
@@ -125,7 +144,8 @@ def test_todas_as_ferramentas_so_leem():
 def test_conjuntos_das_ferramentas_sao_os_da_api():
     da_api = {
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
-        demonstracoes.CONJUNTO, setores.CONJUNTO,
+        demonstracoes.CONJUNTO, setores.CONJUNTO, fundos.CONJUNTO,
+        eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO,
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api
@@ -357,3 +377,273 @@ def test_demonstracoes_passa_a_data_conhecida():
     assert corpo == {"rows": []}
     (pedido,) = [p for p in pedidos if p.url.path.endswith("/financials")]
     assert pedido.url.params.get("known_at") == "2026-03-31"
+
+
+def test_demonstracoes_sem_dado_diz_que_faturamento_de_fechada_nao_ha():
+    rotas = {
+        "/companies/11111111000191/financials": httpx.Response(
+            404, json={"detail": "not_available"}
+        )
+    }
+    with _conector(rotas) as cliente:
+        erro, texto = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "demonstracoes", cnpj="11111111000191"
+        )
+    assert erro
+    assert ferramentas.MENSAGEM_SEM_DEMONSTRACAO in texto
+    assert "companhia aberta" in texto and "empresa fechada" in texto
+    # não diz se faltou o dado ou o acesso (a API não conta, de propósito)
+    assert "não diz qual" in texto
+
+
+def test_fundo_passa_a_data_e_o_retorno_suposto():
+    pedidos: list[httpx.Request] = []
+    rotas = {"/funds/11111111000191": httpx.Response(200, json={"fund": {}})}
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "fundo",
+            cnpj="11.111.111/0001-91", como_era_em="2026-03-31", retorno_suposto=0.1,
+        )  # fmt: skip
+        erro, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "fundo",
+            cnpj="11111111000191",
+            retorno_suposto=3,
+        )
+    assert corpo == {"fund": {}}
+    (pedido,) = [p for p in pedidos if p.url.path.startswith("/data/v1/funds/")]
+    assert pedido.url.params.get("known_at") == "2026-03-31"
+    assert pedido.url.params.get("assumed_return") == "0.1"
+    assert erro  # retorno suposto acima de 100% ao ano nem chega à API
+
+
+def test_eventos_traduz_os_tipos_e_passa_o_cursor_e_a_data():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/events": httpx.Response(200, json={"events": []})
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "eventos",
+            cnpj="11.111.111/0001-91", tipos=["auditor", "documento"], cursor="abc",
+            como_era_em="2026-03-31",
+        )  # fmt: skip
+        erro, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "eventos",
+            cnpj="11111111000191",
+            tipos=["socio"],
+        )
+    assert corpo == {"events": []}
+    (pedido,) = [p for p in pedidos if p.url.path.endswith("/events")]
+    assert pedido.url.params.get_list("types") == ["auditor_change", "ipe_filing"]
+    assert pedido.url.params.get("cursor") == "abc"
+    assert pedido.url.params.get("known_at") == "2026-03-31"
+    assert erro  # tipo fora da lista nem chega à API
+
+
+# a forma da resposta de `/companies/{cnpj}/links` (nomes de `src/api_externa/nomes.py`), com dados de mentira
+VINCULOS_DA_API = {
+    "cnpj": "11111111000191",
+    "known_at": "2026-03-31",
+    "depth": 2,
+    "links": [
+        {
+            "kind": "subsidiary_of",
+            "from": {
+                "entity_id": "e1",
+                "cnpj_root": "22222222",
+                "legal_name": "CONTROLADA EXEMPLO S.A.",
+            },
+            "to": {
+                "entity_id": "e0",
+                "cnpj_root": "11111111",
+                "legal_name": "EMPRESA EXEMPLO S.A.",
+            },
+            "ownership_pct": 99.5,
+            "hops": 1,
+            "valid_from": "2025-05-30",
+            "source": "cvm-fre",
+            "published_at": "2025-05-30",
+        }
+    ],
+    "truncated": False,
+    "limits": ["Só companhia aberta informa controle e coligação, uma vez por ano."],
+}
+
+
+def test_vinculos_traduz_os_tipos_e_passa_a_profundidade_e_a_data():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/links": httpx.Response(200, json=VINCULOS_DA_API)
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "vinculos",
+            cnpj="11.111.111/0001-91", tipos=["coligada", "auditor"], profundidade=2,
+            como_era_em="2026-03-31",
+        )  # fmt: skip
+        padrao = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "vinculos", cnpj="11111111000191"
+        )
+        fundo_demais, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "vinculos",
+            cnpj="11111111000191",
+            profundidade=4,
+        )
+        raso_demais, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "vinculos",
+            cnpj="11111111000191",
+            profundidade=0,
+        )
+        tipo_errado, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "vinculos",
+            cnpj="11111111000191",
+            tipos=["socio"],
+        )
+    assert (
+        corpo == padrao == VINCULOS_DA_API
+    )  # os nomes de fora passam pelo filtro de pessoa
+    primeiro, segundo = [p for p in pedidos if p.url.path.endswith("/links")]
+    assert primeiro.url.params.get_list("types") == ["affiliate_of", "audits"]
+    assert primeiro.url.params.get("depth") == "2"
+    assert primeiro.url.params.get("known_at") == "2026-03-31"
+    assert segundo.url.params.get("depth") == "1"
+    assert "types" not in segundo.url.params and "known_at" not in segundo.url.params
+    assert (
+        fundo_demais and raso_demais and tipo_errado
+    )  # fora dos limites nem chega à API
+
+
+def test_tipos_de_vinculo_sao_os_da_api():
+    assert {
+        vinculos.TIPO_PELO_NOME_DE_FORA[de_fora]
+        for de_fora in ferramentas.TIPOS_DE_VINCULO.values()
+    } == set(vinculos.TIPOS)
+    assert ferramentas.PROFUNDIDADE_MAXIMA == vinculos.PROFUNDIDADE_MAXIMA
+
+
+def test_tipos_de_vinculo_sao_os_da_cli():
+    assert ferramentas.TIPOS_DE_VINCULO == comandos.TIPOS_DE_VINCULO
+
+
+def _envelope(valor: object, fonte: str = "rfb-cnpj") -> dict[str, object]:
+    return {
+        "value": valor,
+        "source": fonte,
+        "published_at": "2026-03-15",
+        "observed_at": None,
+    }
+
+
+# a forma da resposta de `/buyers` depois de `src/api_externa/nomes.py`, com dados de mentira
+COMPRADORES_DA_API = {
+    "known_at": "2026-03-31",
+    "sector": {
+        "cnae_code": "35115",
+        "state_code": "SP",
+        "years": 3,
+        "since": "2023-03-31",
+        "active_companies": 120,
+    },
+    "buyers": [
+        {
+            "cnpj_root": "22222222",
+            "legal_name": _envelope("COMPRADORA EXEMPLO S.A."),
+            "signals": ["took_stake", "controls_in_sector"],
+            "evidence": {
+                "took_stake": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "sector_company": {
+                                "cnpj_root": "33333333",
+                                "legal_name": _envelope("ALVO EXEMPLO LTDA"),
+                            },
+                            "state_code": "SP",
+                            "entry_date": _envelope("2024-06-01"),
+                            "stake_still_held": True,
+                        }
+                    ],
+                },
+                "controls_in_sector": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "sector_company": {"cnpj_root": "44444444"},
+                            "state_code": "SP",
+                            "kind": _envelope("Controlada", "cvm-fre"),
+                            "ownership_pct": _envelope(100.0, "cvm-fre"),
+                            "reference_period": _envelope("2025-12-31", "cvm-fre"),
+                        }
+                    ],
+                },
+            },
+        }
+    ],
+    "total_buyers": 1,
+    "truncated": False,
+    "limits": ["Mostra movimentos passados, não intenção de compra."],
+    "sources": [],
+}
+
+
+def test_compradores_passa_os_filtros_e_a_resposta_passa_pelo_filtro_de_pessoa():
+    pedidos: list[httpx.Request] = []
+    rotas = {"/buyers": httpx.Response(200, json=COMPRADORES_DA_API)}
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "compradores_do_setor",
+            cnae="3511-5", uf="SP", anos=5, limite=10, como_era_em="2026-03-31",
+        )  # fmt: skip
+        aj.chamar_ok(cliente, aj.CHAVE_DE_MENTIRA, "compradores_do_setor", cnae="35115")
+        recusas = [
+            aj.chamar(
+                cliente, aj.CHAVE_DE_MENTIRA, "compradores_do_setor", **argumentos
+            )[0]
+            for argumentos in (
+                {"cnae": "35115", "anos": 11},
+                {"cnae": "35115", "anos": 0},
+                {"cnae": "35115", "limite": 51},
+                {"cnae": "35115", "uf": "S?"},
+                {"cnae": "35"},
+                {},
+            )
+        ]
+    assert corpo == COMPRADORES_DA_API  # os nomes de fora passam pelo filtro de pessoa
+    primeiro, segundo = [p for p in pedidos if p.url.path.endswith("/buyers")]
+    assert dict(primeiro.url.params) == {
+        "cnae": "3511-5",
+        "state": "SP",
+        "years": "5",
+        "limit": "10",
+        "known_at": "2026-03-31",
+    }
+    assert dict(segundo.url.params) == {
+        "cnae": "35115"
+    }  # o resto fica no padrão da API
+    assert all(recusas)  # fora dos limites nem chega à API
+
+
+def test_limites_dos_compradores_sao_os_da_api():
+    assert ferramentas.ANOS_MAXIMO_DOS_COMPRADORES == compradores.ANOS_MAXIMO
+    assert ferramentas.LIMITE_MAXIMO_DOS_COMPRADORES == compradores.LIMITE_MAXIMO
+    assert (
+        min(compradores.TAMANHOS_DO_CNAE) == 5
+    )  # o `min_length` do cnae na ferramenta
+
+
+def test_tipos_de_evento_sao_os_da_cli_e_os_da_api():
+    assert ferramentas.TIPOS_DE_EVENTO == comandos.TIPOS_DE_EVENTO
+    assert set(ferramentas.TIPOS_DE_EVENTO.values()) == {
+        eventos.DOCUMENTO_DO_IPE,
+        eventos.TROCA_DE_AUDITOR,
+    }
