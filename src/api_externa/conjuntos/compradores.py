@@ -263,13 +263,10 @@ class LeitorDeCompradores:
         sinais = self._sinais_liberados()
         if not sinais:
             return None
-        chave = (
-            pedido,
-            como_era_em,
-            self.linhas_maximas,
-            sinais,
-            _impressao_da_base(self.porta),
-        )
+        impressao = _impressao_da_base(self.porta)
+        if not impressao:  # sem arquivos para vigiar o cache ficaria cego: não guarda
+            return self._montar(pedido, como_era_em, sinais)
+        chave = (pedido, como_era_em, self.linhas_maximas, sinais, impressao)
         with _TRAVA:
             guardado = _CACHE.get(chave)
             if guardado is not None:
