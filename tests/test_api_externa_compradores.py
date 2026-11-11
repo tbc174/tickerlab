@@ -355,6 +355,14 @@ def test_como_era_antes_da_versao_nova_do_fre_e_do_retrato_de_outubro(cliente, c
     assert controlada["ownership_pct"]["value"] == 60.0  # a versão 2 só chegou em 20/10
 
 
+def test_versao_nova_do_fre_sem_a_controlada_tira_o_sinal(cliente, cenario, pasta):
+    # a versão 2 do FRE de 2025 já não traz a controlada do setor: vale a versão mais nova da companhia
+    fre = _controladas().iloc[:2].assign(cnpj=[f"{ALVO_SP}000100", f"{FORA}000100"])
+    _gravar(pasta / compradores.CONTROLADAS / "2025.parquet", fre)
+    assert ABERTA not in _raizes(_get(cliente, cenario))
+    assert ABERTA in _raizes(_get(cliente, cenario, known_at="2026-10-15"))
+
+
 def test_sem_retrato_publico_na_data_e_404(cliente, cenario):
     assert _get(cliente, cenario, known_at="2026-01-01").status_code == 404
 

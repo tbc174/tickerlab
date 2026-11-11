@@ -340,16 +340,19 @@ class _Consulta:
         )
 
     def controladas(self, setor: pd.DataFrame) -> pd.DataFrame:
-        """Controladas e coligadas no setor, pelo FRE mais recente de cada companhia já recebido no dia."""
+        """Controladas e coligadas no setor, pela versão mais nova do FRE mais recente de cada companhia, já recebida no dia."""
         return self._df(
             "WITH c AS (SELECT *, regexp_replace(cnpj_companhia, '[^0-9A-Za-z]', '', 'g') AS cc, "
             "substr(regexp_replace(cnpj, '[^0-9A-Za-z]', '', 'g'), 1, 8) AS alvo "
             f"FROM {_view(CONTROLADAS)} WHERE {PUBLICADO_EM} <= CAST($dia AS DATE)), "
-            "ultimo AS (SELECT cc, max(referencia) AS referencia FROM c GROUP BY cc) "
+            # um documento só por companhia: a referência mais recente e, nela, a versão mais nova;
+            # a controlada que a versão nova tirou não sai mais
+            "ultimo AS (SELECT DISTINCT cc, referencia, versao FROM c "
+            "QUALIFY dense_rank() OVER (PARTITION BY cc ORDER BY referencia DESC, versao DESC) = 1) "
             "SELECT substr(c.cc, 1, 8) AS comprador, c.alvo, c.tipo, c.participacao, c.referencia, "
-            f"c.{PUBLICADO_EM} FROM c JOIN ultimo u USING (cc, referencia) JOIN setor s ON s.raiz = c.alvo "
-            "WHERE substr(c.cc, 1, 8) <> c.alvo "
-            "QUALIFY row_number() OVER (PARTITION BY c.cc, c.alvo ORDER BY c.versao DESC) = 1",
+            f"c.{PUBLICADO_EM} FROM c JOIN ultimo u USING (cc, referencia, versao) "
+            "JOIN setor s ON s.raiz = c.alvo WHERE substr(c.cc, 1, 8) <> c.alvo "
+            "QUALIFY row_number() OVER (PARTITION BY c.cc, c.alvo ORDER BY c.tipo) = 1",
             {"dia": dia_de(self.dia)},
             setor=setor[["raiz"]],
         )
