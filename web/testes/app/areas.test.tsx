@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 // O menu do app novo por áreas (ADR 0096, PR 2 da reorganização): Ativo, Estratégias e Acompanhar, cada
-// uma com as suas telas (as que ainda não estão no app novo aparecem apagadas, sem link), favoritos no
-// topo, áreas que recolhem e o trilho de ícones entre 761 e 1.100 px. A Conta fica no menu da pessoa.
+// uma só com as telas que abrem (as que ainda não estão no app novo ficam atrás de um link só para a versão
+// clássica, no fim do menu), favoritos no topo, áreas que recolhem e o trilho de ícones entre 761 e 1.100 px.
+// A Conta fica no menu da pessoa.
 // O jsdom não aplica CSS: as regras que o Chrome mostrou faltar são conferidas como texto.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AREAS, areaDoEndereco, itensDaArea } from "../../src/app/areas";
+import { AREAS, AREAS_DO_MENU, areaDoEndereco, itensDaArea, telasProntasDaArea } from "../../src/app/areas";
 import { abrirApp } from "./ajudantes";
 
 const CSS_DO_APP = readFileSync(join(process.cwd(), "src", "app", "app.css"), "utf8");
@@ -44,7 +45,7 @@ describe("as áreas (vindas de src/paginas.py)", () => {
 });
 
 describe("menu lateral por áreas", () => {
-  it("uma seção por área, com o rótulo como título, as telas prontas com link e as outras em breve", async () => {
+  it("uma seção por área, com o rótulo como título, e só as telas que abrem", async () => {
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
     const titulos = within(menu())
@@ -54,12 +55,33 @@ describe("menu lateral por áreas", () => {
     const ativo = secao("Ativo");
     expect(within(ativo).getByRole("link", { name: "Visão geral" }).getAttribute("href")).toBe("/visao-geral");
     expect(within(ativo).getByRole("link", { name: "Comparar ativos" })).toBeTruthy();
-    // ainda não está no app novo: apagada, com "em breve" e sem link morto
-    const correlacao = within(ativo).getByText("Correlação e beta").closest("li")!;
-    expect(correlacao.classList.contains("em-breve")).toBe(true);
-    expect(correlacao.textContent).toContain("em breve");
-    expect(correlacao.querySelector("a")).toBeNull();
+    // ainda não está no app novo: não aparece (o menu não mostra linha que não abre)
+    expect(within(menu()).queryByText("Correlação e beta")).toBeNull();
     expect(within(menu()).getByRole("link", { name: "Início" }).getAttribute("href")).toBe("/");
+  });
+
+  it("nenhuma linha do menu é 'em breve': toda tela listada tem link", async () => {
+    abrirTela("/risco");
+    await screen.findByRole("heading", { level: 1, name: "Risco" });
+    expect(menu().textContent).not.toContain("em breve");
+    const linhas = [...menu().querySelectorAll(".itens-da-area li")];
+    expect(linhas.length).toBeGreaterThan(0);
+    for (const linha of linhas) expect(linha.querySelector("a")).not.toBeNull();
+    // cada área do menu segue com ao menos uma tela, e todas as prontas dela estão lá
+    for (const area of AREAS_DO_MENU) {
+      const prontas = telasProntasDaArea(area).map((p) => p.titulo);
+      expect(prontas.length).toBeGreaterThan(0);
+      const rotulo = AREAS.find((a) => a.chave === area)!.rotulo;
+      expect(within(secao(rotulo)).getAllByRole("link").map((a) => a.textContent)).toEqual(prontas);
+    }
+  });
+
+  it("as telas que só existem na versão clássica ficam atrás de um link só, no fim do menu", async () => {
+    abrirTela("/risco");
+    await screen.findByRole("heading", { level: 1, name: "Risco" });
+    const link = within(menu()).getByRole("link", { name: "Outras telas na versão clássica" });
+    expect(link.getAttribute("href")).toBe("/classico/");
+    expect(menu().lastElementChild).toBe(link);
   });
 
   it("a Conta não fica no menu lateral: fica no menu da pessoa, no topo", async () => {
@@ -105,10 +127,6 @@ describe("menu lateral por áreas", () => {
 
   it("o CSS respeita o hidden da lista recolhida (o display: flex dela ganhava do hidden)", () => {
     expect(CSS_DO_APP).toMatch(/\.itens-da-area\[hidden\] \{ display: none; \}/);
-  });
-
-  it("tela em breve: o nome e o selo seguem na mesma linha de texto, sem coluna espremida", () => {
-    expect(CSS_DO_APP).toMatch(/\.itens-da-area li\.em-breve \{ display: block; \}/);
   });
 
   it("a estrela põe a tela em Favoritos, no topo do menu, e guarda no navegador", async () => {
