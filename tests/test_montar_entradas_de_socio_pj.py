@@ -116,6 +116,16 @@ def test_lista_sem_pessoa_de_outro_mes_para(tmp_path, capsys):
     assert not (destino / socios_pj.TABELA).exists()
 
 
+def test_sem_a_lista_sem_pessoa_para(tmp_path, capsys):
+    """Sem `cnpj_estabelecimentos_pj` não há como tirar MEI e empresário individual: não grava nada."""
+    cnpj, destino = _acervo(tmp_path)
+    for arquivo in (destino / "cnpj_estabelecimentos_pj").glob("*.parquet"):
+        arquivo.unlink()
+    assert _rodar(cnpj, destino) == 1
+    assert "montar_empresas_pj" in capsys.readouterr().out.strip().splitlines()[-1]
+    assert not (destino / socios_pj.TABELA).exists()
+
+
 def test_ensaio_so_conta(tmp_path, capsys):
     cnpj, destino = _acervo(tmp_path)
     assert _rodar(cnpj, destino, "--ensaio") == 0

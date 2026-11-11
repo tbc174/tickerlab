@@ -678,8 +678,10 @@ def _tabela_de_entradas_de_socio_pj() -> dict[str, Tabela]:
                 "comprar: holding de família, reorganização e aumento de capital também entram, e entrar "
                 "como sócio não é aquisição. **Sem pessoa:** só sócio do tipo 1 e só raízes de "
                 "`cnpj_estabelecimentos_pj`, dos dois lados (fora MEI, empresário individual e grupo 4, "
-                "mesmo com CNPJ). Sair e entrar com os mesmos dados no mesmo mês (a troca de layout de "
-                "2024-09) não conta. Antes de 2023-06 só há quem ainda estava no primeiro retrato: quem "
+                "mesmo com CNPJ); a lista é a do mês mais recente, e quem deixou de ser só empresa some da "
+                "história inteira. Sair e entrar com os mesmos dados no mesmo mês (a troca de layout de "
+                "2024-09) não conta; sair e voltar depois conta como entrada nova; a Receita trocar a data "
+                "de entrada de quem continuou é `data_corrigida`, não entrada. Antes de 2023-06 só há quem ainda estava no primeiro retrato: quem "
                 "entrou e saiu antes disso não aparece. " + _FINALIDADE_DO_CNPJ
             ),
             fonte=(
@@ -699,7 +701,10 @@ def _tabela_de_entradas_de_socio_pj() -> dict[str, Tabela]:
                 + COM_VERSAO_DO_CODIGO
             ),
             colunas={
-                "movimento": ("entrou ou saiu", TEXTO),
+                "movimento": (
+                    "entrou, saiu ou data_corrigida (a Receita trocou a data de entrada de quem continuou)",
+                    TEXTO,
+                ),
                 "cnpj_basico": (
                     "Raiz do CNPJ (8 caracteres) da empresa em que o sócio entrou ou de que saiu",
                     TEXTO,

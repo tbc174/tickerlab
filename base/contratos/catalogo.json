@@ -7244,7 +7244,7 @@
       "versao": "1.0.0",
       "colunas": {
         "movimento": {
-          "descricao": "entrou ou saiu",
+          "descricao": "entrou, saiu ou data_corrigida (a Receita trocou a data de entrada de quem continuou)",
           "unidade": "texto"
         },
         "cnpj_basico": {

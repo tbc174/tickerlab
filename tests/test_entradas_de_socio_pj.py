@@ -107,11 +107,43 @@ def _mudancas(retratos: dict[str, pd.DataFrame], ate: str) -> pd.DataFrame:
     return pd.concat(partes, ignore_index=True)
 
 
-def _montar(ate: str) -> pd.DataFrame:
-    retratos = _retratos()
+def _montar(
+    ate: str,
+    retratos: dict[str, pd.DataFrame] | None = None,
+    pessoas_juridicas: set[str] = PESSOAS_JURIDICAS,
+) -> pd.DataFrame:
+    retratos = retratos or _retratos()
     return socios_pj.entradas_e_saidas(
-        retratos[ate], _mudancas(retratos, ate), PRIMEIRO_MES, PESSOAS_JURIDICAS
+        retratos[ate], _mudancas(retratos, ate), PRIMEIRO_MES, pessoas_juridicas
     )
+
+
+def _com_volta() -> dict[str, pd.DataFrame]:
+    """A gestora sai de B em 2023-07 e volta em 2023-08 com a mesma data de entrada."""
+    retratos = _retratos()
+    volta = pd.DataFrame([_socio_pj(EMPRESA_B, GESTORA, "2015-06-10")])
+    retratos["2023-08"] = pd.concat([retratos["2023-08"], volta], ignore_index=True)
+    return retratos
+
+
+def _com_data_trocada() -> dict[str, pd.DataFrame]:
+    """Em 2023-07 a Receita troca a data de entrada da holding em A (o sócio continua)."""
+    retratos = _retratos()
+    for mes in ("2023-07", "2023-08"):
+        quadro = retratos[mes]
+        holding_em_a = (quadro["cnpj_basico"] == EMPRESA_A) & (
+            quadro["raiz_socio_pj"] == HOLDING
+        )
+        quadro.loc[holding_em_a, "data_entrada"] = pd.Timestamp("2011-01-01")
+    return retratos
+
+
+def _da_dupla(tabela: pd.DataFrame, empresa: str, socio: str) -> list[tuple]:
+    return [
+        linha[0:1] + linha[3:]
+        for linha in _como_lista(tabela)
+        if linha[1:3] == (empresa, socio)
+    ]
 
 
 def _como_lista(tabela: pd.DataFrame) -> list[tuple]:
@@ -160,6 +192,50 @@ def test_cortar_o_futuro_nao_muda_o_passado(corte):
     tudo = _montar(MESES[-1])
     ate_o_corte = tudo[tudo["mes_do_retrato"] <= corte]
     assert _como_lista(_montar(corte)) == _como_lista(ate_o_corte)
+
+
+@pytest.mark.parametrize("corte", MESES)
+@pytest.mark.parametrize("cenario", [_com_volta, _com_data_trocada])
+def test_cortar_o_futuro_nao_muda_o_passado_na_volta_e_na_data_trocada(cenario, corte):
+    tudo = _montar(MESES[-1], cenario())
+    ate_o_corte = tudo[tudo["mes_do_retrato"] <= corte]
+    assert _como_lista(_montar(corte, cenario())) == _como_lista(ate_o_corte)
+
+
+def test_quem_sai_e_volta_com_a_mesma_data_entra_de_novo():
+    """A volta é uma entrada nova, no mês em que a base a viu, mesmo com a data de entrada de antes."""
+    assert _da_dupla(_montar("2023-08", _com_volta()), EMPRESA_B, GESTORA) == [
+        ("entrou", pd.Timestamp("2015-06-10"), PRIMEIRO_MES),
+        ("entrou", pd.Timestamp("2015-06-10"), "2023-08"),
+        ("saiu", pd.Timestamp("2015-06-10"), "2023-07"),
+    ]
+
+
+def test_data_trocada_pela_receita_nao_e_entrada():
+    """O sócio continuou: a troca da data é `data_corrigida`, e não aparece entrada nova em 2023-07."""
+    tabela = _montar("2023-08", _com_data_trocada())
+    assert _da_dupla(tabela, EMPRESA_A, HOLDING) == [
+        ("data_corrigida", pd.Timestamp("2011-01-01"), "2023-07"),
+        ("entrou", pd.Timestamp("2010-03-01"), PRIMEIRO_MES),
+    ]
+    assert not (
+        (tabela["movimento"] == "entrou")
+        & (tabela["mes_do_retrato"] == "2023-07")
+        & (tabela["raiz_socio_pj"] == HOLDING)
+    ).any()
+
+
+def test_raiz_que_sai_da_lista_sem_pessoa_some_da_historia_inteira():
+    """A lista sem pessoa é a do mês mais recente e vale para todos os meses: a privacidade vem antes do ponto
+    no tempo. Quem deixou de ser só empresa some do passado; o resto não muda."""
+    com_holding = _montar("2023-08")
+    sem_holding = _montar("2023-08", pessoas_juridicas=PESSOAS_JURIDICAS - {HOLDING})
+    assert HOLDING not in set(sem_holding["raiz_socio_pj"]) | set(
+        sem_holding["cnpj_basico"]
+    )
+    assert _como_lista(sem_holding) == _como_lista(
+        com_holding[com_holding["raiz_socio_pj"] != HOLDING]
+    )
 
 
 def test_sair_e_entrar_igual_no_mesmo_mes_nao_e_movimento():

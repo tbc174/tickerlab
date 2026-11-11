@@ -2775,7 +2775,7 @@ Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`
 
 ## `entradas_de_socio_pj`
 
-Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: que empresa entrou como sócia de que empresa, com a data de entrada que a Receita dá, e o mês em que a base viu a entrada (ou a saída). Diz quem já fez movimentos parecidos, não quem quer comprar: holding de família, reorganização e aumento de capital também entram, e entrar como sócio não é aquisição. **Sem pessoa:** só sócio do tipo 1 e só raízes de `cnpj_estabelecimentos_pj`, dos dois lados (fora MEI, empresário individual e grupo 4, mesmo com CNPJ). Sair e entrar com os mesmos dados no mesmo mês (a troca de layout de 2024-09) não conta. Antes de 2023-06 só há quem ainda estava no primeiro retrato: quem entrou e saiu antes disso não aparece. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: que empresa entrou como sócia de que empresa, com a data de entrada que a Receita dá, e o mês em que a base viu a entrada (ou a saída). Diz quem já fez movimentos parecidos, não quem quer comprar: holding de família, reorganização e aumento de capital também entram, e entrar como sócio não é aquisição. **Sem pessoa:** só sócio do tipo 1 e só raízes de `cnpj_estabelecimentos_pj`, dos dois lados (fora MEI, empresário individual e grupo 4, mesmo com CNPJ); a lista é a do mês mais recente, e quem deixou de ser só empresa some da história inteira. Sair e entrar com os mesmos dados no mesmo mês (a troca de layout de 2024-09) não conta; sair e voltar depois conta como entrada nova; a Receita trocar a data de entrada de quem continuou é `data_corrigida`, não entrada. Antes de 2023-06 só há quem ainda estava no primeiro retrato: quem entrou e saiu antes disso não aparece. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ, quadro de sócios vigente e mudanças de cada mês (`scripts/montar_entradas_de_socio_pj.py`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
@@ -2793,7 +2793,7 @@ Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: q
 
 | Coluna | O que é | Unidade |
 |---|---|---|
-| `movimento` | entrou ou saiu | texto |
+| `movimento` | entrou, saiu ou data_corrigida (a Receita trocou a data de entrada de quem continuou) | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres) da empresa em que o sócio entrou ou de que saiu | texto |
 | `raiz_socio_pj` | Raiz do CNPJ (8 caracteres) da pessoa jurídica que entrou como sócia ou saiu | texto |
 | `data_entrada` | Data de entrada na sociedade, como a Receita publica (na saída, a da entrada que acabou) | data (dia) |
