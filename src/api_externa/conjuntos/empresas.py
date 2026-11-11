@@ -18,7 +18,7 @@ conhece, o que é fundo ou outra coisa, e o conflito (o mesmo CNPJ em duas entid
 hoje: quem hoje se sabe pessoa não sai nem numa data em que ainda não se sabia.
 
 Onde a rede não está (o VPS: ela fica em casa até a linha 843), a trava decide pelas listas sem pessoa da
-Receita do retrato mais novo (linha 584): o estabelecimento tem de estar em `cnpj_estabelecimentos_pj` (sem
+Receita do retrato mais novo, o mesmo nas duas (linha 584): o estabelecimento tem de estar em `cnpj_estabelecimentos_pj` (sem
 MEI) e a raiz em `cnpj_empresas_pj` (sem empresário individual nem grupo 4), com a natureza informada (a
 natureza vazia conta como pessoa, como na rede desde a linha 787). Sem a rede nem as duas listas, nada sai.
 """
@@ -134,26 +134,39 @@ def _pela_rede(porta: Porta, cnpj: str) -> bool:
     return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
 
 
-def _do_retrato_mais_novo(tabela: str) -> str:
-    view = '"' + nome_da_view(tabela) + '"'
-    return f"{MES} = (SELECT max({MES}) FROM {view})"
+def _view(tabela: str) -> str:
+    return '"' + nome_da_view(tabela) + '"'
+
+
+def _retrato_das_duas_listas(porta: Porta) -> str | None:
+    """O mês mais novo, se é o mesmo nas duas listas; senão None (uma lista de outro mês não tira o MEI
+    nem a pessoa daquele mês)."""
+    meses = {
+        porta.con.execute(f"SELECT max({MES}) FROM {_view(tabela)}").fetchone()
+        for tabela in (LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS)
+    }
+    if len(meses) != 1:
+        return None
+    (mes,) = meses.pop() or (None,)
+    return None if mes is None else str(mes)
 
 
 def _pelas_listas_sem_pessoa(porta: Porta, cnpj: str) -> bool:
-    """No retrato mais novo, o estabelecimento está na lista sem MEI e a raiz, uma só vez, na lista de empresas
-    com uma natureza informada que não é de pessoa."""
+    """No retrato mais novo, o mesmo nas duas listas, o estabelecimento está na lista sem MEI e a raiz, uma só
+    vez, na lista de empresas com uma natureza informada que não é de pessoa."""
+    mes = _retrato_das_duas_listas(porta)
+    if mes is None:
+        return False
     con = porta.con
     estabelecimentos = con.execute(
-        f'SELECT count(*) FROM "{nome_da_view(LISTA_DE_ESTABELECIMENTOS)}" WHERE cnpj = $cnpj AND '
-        + _do_retrato_mais_novo(LISTA_DE_ESTABELECIMENTOS),
-        {"cnpj": cnpj},
+        f"SELECT count(*) FROM {_view(LISTA_DE_ESTABELECIMENTOS)} WHERE cnpj = $cnpj AND {MES} = $mes",
+        {"cnpj": cnpj, "mes": mes},
     ).fetchone()
     if estabelecimentos != (1,):
         return False
     naturezas = con.execute(
-        f'SELECT natureza_juridica FROM "{nome_da_view(LISTA_DE_EMPRESAS)}" WHERE {RAIZ} = $raiz AND '
-        + _do_retrato_mais_novo(LISTA_DE_EMPRESAS),
-        {"raiz": cnpj[:TAMANHO_DA_RAIZ]},
+        f"SELECT natureza_juridica FROM {_view(LISTA_DE_EMPRESAS)} WHERE {RAIZ} = $raiz AND {MES} = $mes",
+        {"raiz": cnpj[:TAMANHO_DA_RAIZ], "mes": mes},
     ).fetchall()
     if len(naturezas) != 1:
         return False

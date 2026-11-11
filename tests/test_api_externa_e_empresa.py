@@ -143,6 +143,20 @@ def test_sem_a_rede_e_sem_uma_das_listas_ninguem_e_empresa(tmp_path, falta):
     assert not empresas.e_empresa(Porta(base), EMPRESA)
 
 
+def test_sem_a_rede_listas_de_meses_diferentes_nao_decidem(tmp_path):
+    # a de empresas já tem o mês novo e a de estabelecimentos não: o MEI do mês novo não sairia dela
+    base = tmp_path / "base"
+    _gravar(base, empresas.LISTA_DE_EMPRESAS, _empresas())
+    _gravar(
+        base,
+        empresas.LISTA_DE_ESTABELECIMENTOS,
+        _estabelecimentos([(EMPRESA, VELHO), (MEI, VELHO)]),
+    )
+    porta = Porta(base)
+    assert not empresas.e_empresa(porta, EMPRESA)
+    assert not empresas.e_empresa(porta, MEI)
+
+
 def test_sem_a_rede_nem_as_listas_ninguem_e_empresa(tmp_path):
     (tmp_path / "base").mkdir()
     assert not empresas.e_empresa(Porta(tmp_path / "base"), EMPRESA)
