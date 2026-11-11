@@ -23,7 +23,7 @@ Nada é copiado: cada view lê os Parquets vigentes da tabela no acervo (as vers
 import json
 import re
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import duckdb
@@ -451,7 +451,10 @@ def _views_das_versoes(
         )
 
 
-def _fonte_dos_arquivos(arquivos: list[Path]) -> str:
+def fonte_dos_arquivos(arquivos: Sequence[Path]) -> str:
+    """A fonte SQL que lê estes Parquets juntos (colunas pelo nome). Pública para quem confere uma saída de
+    montador já gravada (o recorte da rede só PJ, `base/rede/recorte_so_pj.py`) sem ler Parquet por fora da
+    porta."""
     lista = ", ".join(_texto(a.as_posix()) for a in arquivos)
     return f"read_parquet([{lista}], union_by_name = true)"
 
@@ -536,7 +539,7 @@ def conectar(
         for nome, padrao in arquivos.items():
             achados = arquivos_da_tabela(pasta, padrao)
             if achados:
-                fontes[nome] = _fonte_dos_arquivos(achados)
+                fontes[nome] = fonte_dos_arquivos(achados)
         for nome, caminho in conferidas.items():
             if (RAIZ_DO_REPOSITORIO / caminho).is_file():
                 fontes[nome] = _fonte_da_conferida(RAIZ_DO_REPOSITORIO / caminho)

@@ -57,7 +57,9 @@ def test_os_degraus_nao_repetem_tabela_nem_se_cruzam_com_o_que_fica_em_casa():
 
 def test_tabela_nova_que_a_porta_libera_nao_entra_sozinha():
     """Se a porta passar a mostrar uma tabela, alguém decide: degrau 2 ou fica em casa."""
-    decididas = {*envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.FICAM_EM_CASA}
+    decididas = {
+        *envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.REDE_SO_PJ, *envio.FICAM_EM_CASA,
+    }  # fmt: skip
     novas = sorted(n for n in TABELAS if pode_consultar(n) and n not in decididas)
     assert novas == []
 
@@ -68,14 +70,21 @@ def test_nenhuma_tabela_da_lista_e_de_pessoa_nem_mora_em_pasta_proibida():
         assert ARQUIVOS[nome].split("/")[0] not in envio.PASTAS_PROIBIDAS, nome
 
 
-@pytest.mark.parametrize(
-    "nome", ["entidades", "identificadores", "ligacoes", "cnpj_situacao_especial"]
-)
-def test_rede_e_situacao_especial_nao_vao_ate_a_linha_787(nome):
-    """Têm pessoa (MEI, EI, nome em `nao_informada`): só filtradas pela vista publicada."""
+def test_situacao_especial_nao_vai_ate_a_linha_787():
+    """Tem pessoa (falência de MEI): só filtrada."""
+    nome = "cnpj_situacao_especial"
     assert nome in envio.FICAM_EM_CASA
     assert nome not in envio.tabelas_do_degrau(2)
     with pytest.raises(envio.RecorteErro, match="fica em casa"):
+        envio.conferir_a_lista((nome,))
+
+
+@pytest.mark.parametrize("nome", ["entidades", "identificadores", "ligacoes"])
+def test_a_rede_so_vai_pelo_degrau_3(nome):
+    """Tem pessoa (MEI, EI, nome em `nao_informada`): só pelo filtro e pela trava (linha 843)."""
+    assert nome in envio.REDE_SO_PJ
+    assert nome not in envio.tabelas_do_degrau(2)
+    with pytest.raises(envio.RecorteErro, match="degrau 3"):
         envio.conferir_a_lista((nome,))
 
 
