@@ -1606,6 +1606,8 @@ class EmpresaDaBuscaV1(BaseModel):
     uf: CampoComFonteV1 | None = None
     municipio: CampoComFonteV1 | None = None
     matriz: CampoComFonteV1 | None = None
+    capital_social: CampoComFonteV1 | None = None  # R$, o declarado na Receita
+    n_estabelecimentos: CampoComFonteV1 | None = None  # os ativos, a matriz junto
     cnae_descricao: str | None = None
     municipio_nome: str | None = None
     porte_descricao: str | None = None
@@ -1613,6 +1615,13 @@ class EmpresaDaBuscaV1(BaseModel):
 
 class SetorDaBuscaV1(BaseModel):
     """Um setor que a tela oferece: a letra da seção do CNAE e o nome do IBGE."""
+
+    codigo: str
+    nome: str
+
+
+class OrdemDaBuscaV1(BaseModel):
+    """Uma ordem que a tela oferece além da do CNPJ (o código vai de volta no pedido)."""
 
     codigo: str
     nome: str
@@ -1631,6 +1640,7 @@ class BuscaDeEmpresasV1(BaseModel):
     limites: list[str]
     setores: list[SetorDaBuscaV1]
     ufs: list[str]
+    ordens: list[OrdemDaBuscaV1]
 
 
 def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpresasV1:
@@ -1651,6 +1661,10 @@ def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpre
             for setor in busca_do_analista.setores_como_lista()
         ],
         ufs=list(busca_do_analista.UFS),
+        ordens=[
+            OrdemDaBuscaV1.model_validate(ordem)
+            for ordem in busca_do_analista.ordens_como_lista()
+        ],
     )
 
 

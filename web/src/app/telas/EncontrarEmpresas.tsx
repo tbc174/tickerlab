@@ -1,5 +1,6 @@
 // Encontrar empresas (tela do analista, linha 798): o analista escolhe o setor (seção do CNAE do IBGE), o
-// estado e a idade mínima e vê as empresas ativas (a matriz, uma linha por empresa), cada uma com o link para a
+// estado, a idade mínima, o capital social e os estabelecimentos ativos (só uma aproximação do tamanho: nenhum
+// dos dois mede faturamento) e vê as empresas ativas (a matriz, uma linha por empresa), cada uma com o link para a
 // ficha, e baixa a lista em Excel. A rota usa o mesmo leitor e o mesmo portão da API externa: o que a API
 // negaria não aparece aqui. As opções do formulário vêm da API (um pedido sem filtro, que não lê a base);
 // "Limites e cuidados" fica sempre à vista depois da busca.
@@ -22,11 +23,18 @@ const SEM_FILTRO = {};
 const SEM_VALOR = "—";
 const CNPJ_SO_DIGITOS = /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/;
 const FALHA = "Não deu agora. Tente de novo em instantes.";
+const REAIS = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const APROXIMACAO =
+  "Capital social e estabelecimentos ativos são só uma aproximação do tamanho: nenhum dos dois mede faturamento.";
 
 export interface Filtros {
   setores: string[];
   ufs: string[];
   idade_minima?: number;
+  capital_minimo?: number;
+  capital_maximo?: number;
+  estabelecimentos_minimo?: number;
+  ordem?: string;
 }
 
 /** "02429144000193" → "02.429.144/0001-93"; outro formato sai como veio. */
@@ -34,6 +42,10 @@ const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, "$1.$2.
 
 const textoDe = (campo: CampoComFonteV1 | null) =>
   campo === null || campo.valor === null ? SEM_VALOR : String(campo.valor);
+
+/** O capital declarado em reais, sem centavos (o Excel leva o valor exato). */
+const reaisDe = (campo: CampoComFonteV1 | null | undefined) =>
+  typeof campo?.valor === "number" ? REAIS.format(campo.valor) : SEM_VALOR;
 
 /** O código e, ao lado, o nome da Receita (o nome pode faltar: o código nunca some). */
 const comNome = (campo: CampoComFonteV1 | null, nome: string | null) =>
@@ -51,6 +63,8 @@ function Empresas({ empresas }: { empresas: EmpresaDaBuscaV1[] }) {
             <th scope="col">Sede</th>
             <th scope="col">Aberta em</th>
             <th scope="col">Porte na Receita</th>
+            <th scope="col">Capital social</th>
+            <th scope="col">Estabelecimentos ativos</th>
           </tr>
         </thead>
         <tbody>
@@ -73,6 +87,8 @@ function Empresas({ empresas }: { empresas: EmpresaDaBuscaV1[] }) {
                   : SEM_VALOR}
               </td>
               <td>{empresa.porte_descricao ?? textoDe(empresa.porte)}</td>
+              <td>{reaisDe(empresa.capital_social)}</td>
+              <td>{textoDe(empresa.n_estabelecimentos ?? null)}</td>
             </tr>
           ))}
         </tbody>
@@ -231,15 +247,41 @@ function alternar(lista: string[], item: string): string[] {
   return lista.includes(item) ? lista.filter((x) => x !== item) : [...lista, item];
 }
 
+/** O texto de um campo numérico vira número; vazio fica de fora do pedido. */
+function numeroDe(texto: string): number | undefined {
+  return texto === "" ? undefined : Number(texto);
+}
+
+/** Só as chaves escolhidas: o pedido não leva filtro vazio. */
+function semVazios(filtros: Filtros): Filtros {
+  return Object.fromEntries(Object.entries(filtros).filter(([, valor]) => valor !== undefined)) as unknown as Filtros;
+}
+
 function Formulario({ opcoes, aoBuscar }: { opcoes: BuscaDeEmpresasV1; aoBuscar: (filtros: Filtros) => void }) {
   const [setores, setSetores] = useState<string[]>([]);
   const [ufs, setUfs] = useState<string[]>([]);
   const [idade, setIdade] = useState("");
-  const vazio = setores.length === 0 && ufs.length === 0 && idade === "";
+  const [capitalMinimo, setCapitalMinimo] = useState("");
+  const [capitalMaximo, setCapitalMaximo] = useState("");
+  const [estabelecimentos, setEstabelecimentos] = useState("");
+  const [ordem, setOrdem] = useState("");
+  // a ordem não filtra: sozinha, a busca leria a base inteira
+  const numeros = [idade, capitalMinimo, capitalMaximo, estabelecimentos];
+  const vazio = setores.length === 0 && ufs.length === 0 && numeros.every((n) => n === "");
   const enviar = (evento: FormEvent) => {
     evento.preventDefault();
     if (vazio) return;
-    aoBuscar({ setores, ufs, ...(idade === "" ? {} : { idade_minima: Number(idade) }) });
+    aoBuscar(
+      semVazios({
+        setores,
+        ufs,
+        idade_minima: numeroDe(idade),
+        capital_minimo: numeroDe(capitalMinimo),
+        capital_maximo: numeroDe(capitalMaximo),
+        estabelecimentos_minimo: numeroDe(estabelecimentos),
+        ordem: ordem === "" ? undefined : ordem,
+      }),
+    );
   };
   return (
     <form className="formulario-do-app" onSubmit={enviar}>
@@ -279,6 +321,51 @@ function Formulario({ opcoes, aoBuscar }: { opcoes: BuscaDeEmpresasV1; aoBuscar:
           />
         </label>
       </div>
+      <fieldset className="campos-do-formulario">
+        <legend>Tamanho</legend>
+        <p className="apagado">{APROXIMACAO}</p>
+        <label>
+          <span>Capital social mínimo (R$)</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={capitalMinimo}
+            onChange={(ev) => setCapitalMinimo(ev.target.value)}
+          />
+        </label>
+        <label>
+          <span>Capital social máximo (R$)</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={capitalMaximo}
+            onChange={(ev) => setCapitalMaximo(ev.target.value)}
+          />
+        </label>
+        <label>
+          <span>Estabelecimentos ativos, no mínimo</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={estabelecimentos}
+            onChange={(ev) => setEstabelecimentos(ev.target.value)}
+          />
+        </label>
+        <label>
+          <span>Ordenar por</span>
+          <select value={ordem} onChange={(ev) => setOrdem(ev.target.value)}>
+            <option value="">Número do CNPJ</option>
+            {opcoes.ordens.map((opcao) => (
+              <option key={opcao.codigo} value={opcao.codigo}>
+                {opcao.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+      </fieldset>
       <button className="botao primario" type="submit" disabled={vazio}>
         Encontrar empresas
       </button>
