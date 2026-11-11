@@ -140,3 +140,17 @@ def test_limite_da_conta_entra_na_chave(cliente, cenario):
     _get(cliente, cenario, limit=1)
     _get(cliente, cenario, limit=2)
     assert len(compradores._CACHE) == 2
+
+
+def test_known_at_antigo_nao_le_a_resposta_de_hoje(cliente, cenario):
+    hoje = _get(cliente, cenario)
+    assert COMPRADORA in _raizes(hoje)
+    # a entrada da COMPRADORA só ficou pública em 31/05/2025: antes disso ela não pode aparecer
+    antes = _get(cliente, cenario, known_at="2025-04-30")
+    if antes.status_code == 200:
+        assert COMPRADORA not in _raizes(antes)
+        assert (
+            antes.json() == _sem_cache(cliente, cenario, known_at="2025-04-30").json()
+        )
+    assert len(compradores._CACHE) >= 1
+    assert _get(cliente, cenario).json() == hoje.json()
