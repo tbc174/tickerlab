@@ -34,7 +34,7 @@ from base.porta.rede import views
 from base.regras import LINHA_DO_LUCRO
 from src import setores
 from src.api_externa.conjuntos import Permitido
-from src.api_externa.conjuntos.empresas import e_empresa
+from src.api_externa.conjuntos.empresas import e_empresa, e_empresas
 from src.api_externa.envelope import campo
 
 CONJUNTO = "comparables"
@@ -423,9 +423,10 @@ class LeitorDeComparaveis:
             return None
         grupo = str(dela["grupo"].iloc[0])
         candidatas = cadastros[(cadastros["grupo"] == grupo)]
+        # a trava de pessoa em lote: uma pergunta à rede pelo grupo inteiro, não uma por candidata
+        e_empresa_cada_uma = e_empresas(self.porta, candidatas["cnpj"])
         candidatas = candidatas[
-            (candidatas["cnpj"] == normal)
-            | candidatas["cnpj"].map(lambda c: e_empresa(self.porta, c))
+            (candidatas["cnpj"] == normal) | candidatas["cnpj"].map(e_empresa_cada_uma)
         ]
         companhias = self._companhias(candidatas, como_era_em)
         pedida = companhias[normal]
