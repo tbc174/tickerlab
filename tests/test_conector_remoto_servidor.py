@@ -365,6 +365,23 @@ def test_demonstracoes_passa_a_data_conhecida():
     assert pedido.url.params.get("known_at") == "2026-03-31"
 
 
+def test_demonstracoes_sem_dado_diz_que_faturamento_de_fechada_nao_ha():
+    rotas = {
+        "/companies/11111111000191/financials": httpx.Response(
+            404, json={"detail": "not_available"}
+        )
+    }
+    with _conector(rotas) as cliente:
+        erro, texto = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "demonstracoes", cnpj="11111111000191"
+        )
+    assert erro
+    assert ferramentas.MENSAGEM_SEM_DEMONSTRACAO in texto
+    assert "companhia aberta" in texto and "empresa fechada" in texto
+    # não diz se faltou o dado ou o acesso (a API não conta, de propósito)
+    assert "não diz qual" in texto
+
+
 def test_fundo_passa_a_data_e_o_retorno_suposto():
     pedidos: list[httpx.Request] = []
     rotas = {"/funds/11111111000191": httpx.Response(200, json={"fund": {}})}
