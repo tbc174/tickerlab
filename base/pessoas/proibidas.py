@@ -18,6 +18,7 @@ NOME_PROIBIDO = re.compile(
 EXCECOES = {
     "cadastro_de_fundos.CPF_CNPJ_GESTOR": "só o CNPJ do gestor; vazio quando é pessoa física (base/fidc.py)",
     "cadastro_gestor_hist.CPF_CNPJ_GESTOR": "só o CNPJ do gestor; vazio quando é pessoa física (base/fidc.py)",
+    "registro_de_fundos.CPF_CNPJ_Gestor": "só o CNPJ do gestor; vazio quando é pessoa física (base/fidc.py)",
 }
 CPF_PONTUADO = re.compile(r"^\d{3}\.\d{3}\.\d{3}-\d{2}$")
 CPF_CRU = re.compile(r"^(?!0{11}$)\d{11}$")
