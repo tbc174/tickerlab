@@ -172,7 +172,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "tipo_de_evento": "event_type",
     "protocolo": "filing_id",
     "categoria": "category",
-    "link": "url",
+    "link": "document_url",
     "efetiva_em": "effective_on",
     "anterior": "previous",
     "novo": "new",

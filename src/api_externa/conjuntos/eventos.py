@@ -39,6 +39,8 @@ from src.api_externa.envelope import campo
 CONJUNTO = "events"
 DOCUMENTO_DO_IPE = "ipe_filing"
 TROCA_DE_AUDITOR = "auditor_change"
+CODIGO_DO_TIPO_INVALIDO = "invalid_event_type"
+CODIGO_DO_CURSOR_INVALIDO = "invalid_cursor"
 
 
 @dataclass(frozen=True)
@@ -69,7 +71,7 @@ ORIGENS: dict[str, OrigemDoEvento] = {
         campos=("efetiva_em", "anterior", "novo", "anos_com_o_anterior"),
         derivados=frozenset({"anos_com_o_anterior"}),
         publico_em="conhecido_em",
-        identidade=("efetiva_em", "novo"),
+        identidade=("cnpj", "efetiva_em", "novo"),
     ),
 }
 
@@ -122,7 +124,7 @@ def tipos_do_pedido(pedidos: list[str]) -> tuple[str, ...]:
     """Os tipos pedidos (sem nenhum, todos), na ordem de `ORIGENS`; `PedidoInvalido` se um não existe."""
     desconhecidos = set(pedidos) - set(ORIGENS)
     if desconhecidos:
-        raise PedidoInvalido("invalid_event_type")
+        raise PedidoInvalido(CODIGO_DO_TIPO_INVALIDO)
     return tuple(t for t in ORIGENS if not pedidos or t in pedidos)
 
 
@@ -137,8 +139,9 @@ def chave_do_cursor(cursor: str) -> Chave:
     """A chave do último evento servido; `PedidoInvalido("invalid_cursor")` se o cursor não é nosso."""
     try:
         lida = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
-    except (binascii.Error, UnicodeDecodeError, ValueError) as erro:
-        raise PedidoInvalido("invalid_cursor") from erro
+    except (binascii.Error, UnicodeDecodeError, ValueError, RecursionError) as erro:
+        # RecursionError: o JSON forjado com milhares de colchetes aninhados
+        raise PedidoInvalido(CODIGO_DO_CURSOR_INVALIDO) from erro
     if (
         not isinstance(lida, list)
         or len(lida) != TAMANHO_DA_CHAVE
@@ -146,7 +149,7 @@ def chave_do_cursor(cursor: str) -> Chave:
         or not isinstance(lida[0], int)
         or not all(isinstance(parte, str) for parte in lida[1:])
     ):
-        raise PedidoInvalido("invalid_cursor")
+        raise PedidoInvalido(CODIGO_DO_CURSOR_INVALIDO)
     return int(lida[0]), str(lida[1]), str(lida[2])
 
 
@@ -182,11 +185,14 @@ class LeitorDeEventos:
         )
 
     def _cnpjs_da_raiz(self, tabela: str, raiz: str) -> list[str]:
-        """Os CNPJs, como a tabela os grava, dos estabelecimentos da raiz (a empresa é a pessoa jurídica)."""
+        """Os CNPJs, como a tabela os grava, dos estabelecimentos da raiz (a empresa é a pessoa jurídica). O
+        prefixo (formatado ou só com os caracteres) corta a tabela antes da conta da raiz, que confere."""
+        formatada = f"{raiz[:2]}.{raiz[2:5]}.{raiz[5:8]}"
         linhas = self.porta.con.execute(
             f'SELECT DISTINCT cnpj FROM "{tabela}" '
-            "WHERE left(upper(regexp_replace(CAST(cnpj AS VARCHAR), '[^0-9A-Za-z]', '', 'g')), 8) = $raiz",
-            {"raiz": raiz},
+            "WHERE (upper(CAST(cnpj AS VARCHAR)) LIKE $formatada OR upper(CAST(cnpj AS VARCHAR)) LIKE $crua) "
+            "AND left(upper(regexp_replace(CAST(cnpj AS VARCHAR), '[^0-9A-Za-z]', '', 'g')), 8) = $raiz",
+            {"raiz": raiz, "formatada": f"{formatada}%", "crua": f"{raiz}%"},
         ).fetchall()
         return sorted(str(linha[0]) for linha in linhas)
 

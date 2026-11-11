@@ -6,6 +6,7 @@ depois do dia; outra empresa (BETA) tem os próprios documentos. Riscos: olhar o
 a trata como pessoa, o assunto livre do IPE, o auditor pessoa física) e a página perder ou repetir evento.
 """
 
+import base64
 from datetime import date
 
 import pandas as pd
@@ -298,12 +299,40 @@ def test_a_pagina_conta_as_linhas_servidas(pasta):
 
 @pytest.mark.parametrize(
     "cursor",
-    ["nao-e-base64!", "eyJhIjogMX0", eventos.cursor_de((1, "x", "y"))[:-3] + "AAA"],
+    [
+        "nao-e-base64!",
+        "eyJhIjogMX0",
+        eventos.cursor_de((1, "x", "y"))[:-3] + "AAA",
+        # JSON forjado com colchetes aninhados demais: era RecursionError (500), revisão cruzada do PR 4
+        base64.urlsafe_b64encode(b"[" * 20000).decode(),
+    ],
 )
 def test_cursor_que_nao_e_nosso_e_pedido_invalido(pasta, cursor):
     with pytest.raises(eventos.PedidoInvalido) as erro:
         _ler(pasta, cursor=cursor)
     assert erro.value.codigo == "invalid_cursor"
+
+
+def test_a_mesma_troca_na_matriz_e_na_filial_nao_some_na_quebra_da_pagina(tmp_path):
+    """Duas trocas iguais (dia, auditor novo) entregues por dois estabelecimentos da raiz: o CNPJ desempata,
+    e a página de um evento não pula a segunda (revisão cruzada do PR 4)."""
+    base = gravar_base(tmp_path / "base")
+    trocas = _trocas()
+    repetida = trocas.iloc[[0]].assign(cnpj=cnpj_.formatar(ALFA_FILIAL))
+    pd.concat([trocas, repetida]).to_parquet(
+        base / "trocas_de_auditor" / "trocas.parquet", index=False
+    )
+    inteira = _corpo(base, tipos=(eventos.TROCA_DE_AUDITOR,))
+    vistos, cursor = 0, None
+    for _ in range(5):
+        corpo = _corpo(
+            base, tipos=(eventos.TROCA_DE_AUDITOR,), linhas_maximas=1, cursor=cursor
+        )
+        vistos += len(corpo["eventos"])
+        cursor = corpo["proximo_cursor"]
+        if cursor is None:
+            break
+    assert len(inteira["eventos"]) == vistos == 2
 
 
 def test_o_cursor_ida_e_volta():

@@ -105,7 +105,7 @@ def test_eventos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     documento = lista[1]
     assert documento["filing_id"]["value"] == "P1"
     assert documento["category"]["value"] == "Fato Relevante"
-    assert documento["url"]["value"].endswith("numProtocolo=P1")
+    assert documento["document_url"]["value"].endswith("numProtocolo=P1")
     atribuicoes = {f["source"]: f["attribution"] for f in corpo["sources"]}
     assert set(atribuicoes) == {"cvm-hist-ipe", "cvm-hist-fca"}
     assert all("CVM" in texto for texto in atribuicoes.values())
@@ -236,7 +236,7 @@ def test_campo_sem_direito_nao_aparece(cliente, cenario, monkeypatch):
     )
     corpo = _get(cliente, cenario, known_at=DIA).json()
     documentos = [e for e in corpo["events"] if e["event_type"] == "ipe_filing"]
-    assert documentos and all("url" not in e for e in documentos)
+    assert documentos and all("document_url" not in e for e in documentos)
 
 
 # ---------------------------------------------------------------- erros e consumo

@@ -277,7 +277,7 @@ individual) e quem a rede não conhece saem `not_available`; par que a rede trat
 Os eventos de uma companhia como eram no dia (`conjuntos/eventos.py`), do mais novo ao mais velho:
 
 - `ipe_filing`: cada documento entregue à CVM pelo IPE (`eventos`) com o CNPJ de qualquer estabelecimento da
-  mesma raiz: `filing_id` (protocolo), `category` e `kind` (os da CVM), `reference_period` e `url` (o documento
+  mesma raiz: `filing_id` (protocolo), `category` e `kind` (os da CVM), `reference_period` e `document_url` (o documento
   no sistema da CVM). O assunto escrito pela companhia **não sai**: é texto livre e pode trazer nome de pessoa;
 - `auditor_change`: cada troca da firma de auditoria informada nos FCAs (`trocas_de_auditor`): `previous`,
   `new`, `effective_on` e `years_with_previous` (conta nossa, marcada como derivado). A troca com auditor que
