@@ -125,10 +125,13 @@ def _uf_de_um_cnpj(p: porta.Porta, tabela: str, hoje: pd.Timestamp) -> pd.DataFr
 
 
 def _ifdata(p: porta.Porta) -> pd.DataFrame:
-    """A linha mais recente de cada raiz de CNPJ no cadastro do IF.data."""
-    colunas = ["cnpj_raiz", "instituicao", "uf", "situacao", "data_base"]
-    ifdata = p.ler("ifdata_cadastro", colunas=colunas).dropna(subset=["cnpj_raiz"])
-    ifdata["cnpj_basico"] = _digitos(ifdata["cnpj_raiz"]).str.zfill(8)
+    """A linha mais recente de cada instituição do IF.data, pela raiz do CNPJ **da própria instituição**
+    (`cod_inst` de 8 dígitos). A raiz do líder do conglomerado (`cnpj_raiz`) e as linhas de conglomerado
+    ficam de fora: conferi-las compararia a matriz do líder, não a instituição."""
+    colunas = ["cod_inst", "instituicao", "uf", "situacao", "data_base"]
+    ifdata = p.ler("ifdata_cadastro", colunas=colunas)
+    ifdata = ifdata[ifdata["cod_inst"].astype(str).str.fullmatch(r"\d{8}")].copy()
+    ifdata["cnpj_basico"] = ifdata["cod_inst"].astype(str)
     return ifdata.sort_values("data_base", ascending=False).drop_duplicates(
         "cnpj_basico"
     )
