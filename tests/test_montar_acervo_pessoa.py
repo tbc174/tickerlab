@@ -242,7 +242,6 @@ def test_falha_na_leitura_do_contato_deixa_socios_e_manifesto_como_estavam(
 
     def quebra(_arquivo):
         raise RuntimeError("layout novo")
-        yield  # pragma: no cover
 
     tabelas = montar.TABELAS
     monkeypatch.setattr(
