@@ -120,10 +120,12 @@ caso, ou se cria a ferramenta ou se escreve o motivo em `SEM_FERRAMENTA`, como j
 | `vinculos` | `vinculos` (tipos, `profundidade` de 1 a 3 e a data) |
 
 Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
-quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso.
+quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje está lá
+`compradores_do_setor`, que chama `/buyers` (conjunto `buyers`, linha 810): `cnae` (classe ou subclasse),
+`uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data.
 
-Compradores do setor e o comparar de duas a cinco empresas ainda não têm rota na API externa. Entram pelo
-mesmo caminho: rota na API, comando na CLI e ferramenta aqui, com a paridade cobrando.
+O comparar de duas a cinco empresas ainda não tem rota na API externa. Entra pelo mesmo caminho: rota na
+API, comando na CLI e ferramenta aqui, com a paridade cobrando.
 
 ## Em produção
 

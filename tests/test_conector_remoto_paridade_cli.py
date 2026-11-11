@@ -36,7 +36,10 @@ SEM_FERRAMENTA: dict[str, str] = {
 }
 
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
-SO_NO_CONECTOR: dict[str, str] = {}
+SO_NO_CONECTOR: dict[str, str] = {
+    "compradores_do_setor": "a rota /buyers entrou pelo PR 1032 (linha 810) sem comando na CLI; quando "
+    "a CLI o ganhar, passa a FERRAMENTAS_DO_COMANDO e ganha um caso em CASOS",
+}
 
 ENDERECO = "https://api.exemplo.test"
 CNPJ = "11111111000191"  # de mentira, com os dígitos verificadores certos
