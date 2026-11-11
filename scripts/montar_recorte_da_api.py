@@ -42,7 +42,12 @@ from base.dossie import (
     pode_mostrar,
     tem_dia_publico,
 )
-from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela, servida_pela_porta
+from base.porta.duckdb import (
+    ARQUIVOS,
+    PASTA_TEMPORARIA,
+    arquivos_da_tabela,
+    servida_pela_porta,
+)
 from base.rede.entidades import EMPRESARIO_INDIVIDUAL, GRUPO_DAS_PESSOAS_FISICAS
 from src import acervo
 
@@ -354,12 +359,23 @@ def conferir_entradas_so_pj(
         )
 
 
+def conectar() -> duckdb.DuckDBPyConnection:
+    """Uma conexão do DuckDB que despeja na temporária do sistema, não em `.tmp` da pasta atual.
+
+    No cron a pasta atual é a `/app` da imagem, sem permissão de escrita: a junção da conferência das entradas
+    de sócio PJ passou da memória do contêiner e o envio de 11/11/2026 caiu ali (a porta teve a mesma falha
+    em 20/10, `base.porta.duckdb.conectar`)."""
+    con = duckdb.connect()
+    con.execute("SET temp_directory = " + _aspas(str(PASTA_TEMPORARIA)))
+    return con
+
+
 def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]:
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
     conferir_a_lista(tabelas)
     base = base.resolve()
     resultados: list[Resultado] = []
-    con = duckdb.connect()
+    con = conectar()
     try:
         for nome in tabelas:
             arquivos = arquivos_da_tabela(base, ARQUIVOS[nome])
