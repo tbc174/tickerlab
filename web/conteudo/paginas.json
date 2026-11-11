@@ -351,7 +351,7 @@
     "url": "correlacao"
   },
   {
-    "area": "estrategias",
+    "area": "mais",
     "chave": "backtest",
     "contrato": {
       "entradas": [
@@ -466,7 +466,7 @@
     "url": "backtest"
   },
   {
-    "area": "estrategias",
+    "area": "mais",
     "chave": "ranking",
     "contrato": null,
     "descricao": "Todas as estratégias no mesmo ativo, da melhor à pior, e quanto do resultado pode ser sorte.",
@@ -478,7 +478,7 @@
     "url": "ranking"
   },
   {
-    "area": "estrategias",
+    "area": "mais",
     "chave": "carteira",
     "contrato": null,
     "descricao": "Várias ações ao mesmo tempo, com regras para dividir o dinheiro entre elas.",
@@ -490,7 +490,7 @@
     "url": "carteira"
   },
   {
-    "area": "estrategias",
+    "area": "mais",
     "chave": "experimentos",
     "contrato": null,
     "descricao": "Perguntas clássicas respondidas com dados: aportar de uma vez ou aos poucos, rebalancear, virada do mês.",
@@ -502,7 +502,7 @@
     "url": "experimentos"
   },
   {
-    "area": "estrategias",
+    "area": "mais",
     "chave": "regimes",
     "contrato": null,
     "descricao": "Como uma estratégia se comporta em fases calmas e agitadas, e proteções contra quedas fortes.",
@@ -514,7 +514,7 @@
     "url": "regimes"
   },
   {
-    "area": "estrategias",
+    "area": "mais",
     "chave": "aprendizado",
     "contrato": null,
     "descricao": "Modelos que tentam prever o mercado, com validação honesta do que realmente funciona.",
@@ -526,7 +526,7 @@
     "url": "aprendizado"
   },
   {
-    "area": "estrategias",
+    "area": "mais",
     "chave": "pares",
     "contrato": null,
     "descricao": "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
@@ -538,7 +538,7 @@
     "url": "pares"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "research",
     "contrato": null,
     "descricao": "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, com o documento original de cada item.",
@@ -578,7 +578,7 @@
     "url": "pulse"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "diario_de_teses",
     "contrato": null,
     "descricao": "O que você pensa de cada ativo, com a data em que escreveu, ligado aos backtests que você salvou.",
@@ -590,7 +590,7 @@
     "url": "diario-de-teses"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "carteira_b3",
     "contrato": null,
     "descricao": "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos que você escolher, proventos recebidos e custo médio.",
@@ -602,7 +602,7 @@
     "url": "carteira-b3"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "juros_e_inflacao",
     "contrato": {
       "entradas": [],
@@ -619,7 +619,7 @@
     "url": "juros-e-inflacao"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "precos_de_referencia",
     "contrato": {
       "entradas": [],
@@ -636,7 +636,7 @@
     "url": "precos-de-referencia"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "simulador_de_trava",
     "contrato": null,
     "descricao": "A sua produção de café em cada safra desde 2000: sem travar, a termo, no futuro e com opção, lado a lado com os riscos, no preço mensal. Nada do que você digita é guardado.",
@@ -743,7 +743,7 @@
     "url": "relatorio-empresa"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "busca_por_cnpj",
     "contrato": {
       "entradas": [
@@ -771,7 +771,7 @@
     "url": "busca-por-cnpj"
   },
   {
-    "area": "acompanhar",
+    "area": "empresas",
     "chave": "ficha_da_empresa",
     "contrato": {
       "entradas": [
@@ -799,7 +799,7 @@
     "url": "ficha-da-empresa"
   },
   {
-    "area": "acompanhar",
+    "area": "empresas",
     "chave": "encontrar_empresas",
     "contrato": {
       "entradas": [
@@ -897,7 +897,7 @@
     "url": "encontrar-empresas"
   },
   {
-    "area": "acompanhar",
+    "area": "empresas",
     "chave": "comparar_empresas",
     "contrato": {
       "entradas": [
@@ -925,7 +925,7 @@
     "url": "comparar-empresas"
   },
   {
-    "area": "acompanhar",
+    "area": "empresas",
     "chave": "relatorio_do_setor",
     "contrato": {
       "entradas": [
@@ -977,7 +977,7 @@
     "url": "donos"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "newsletter",
     "contrato": null,
     "descricao": "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o documento de cada item. Na tela ou em PDF.",
@@ -989,7 +989,7 @@
     "url": "newsletter"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "carteira_research",
     "contrato": null,
     "descricao": "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) para o Research e a Newsletter darem mais destaque às maiores posições.",
@@ -1001,7 +1001,7 @@
     "url": "carteira-research"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "alertas",
     "contrato": null,
     "descricao": "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
@@ -1013,7 +1013,7 @@
     "url": "alertas"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "parametros",
     "contrato": null,
     "descricao": "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só para um, e veja o efeito antes de salvar.",
@@ -1042,7 +1042,7 @@
     "url": "simulacoes"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "momentum",
     "contrato": null,
     "descricao": "Seus ativos favoritos ordenados pela força da tendência recente (momentum).",
@@ -1122,7 +1122,7 @@
     "url": "boas-vindas-beta"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "mapa_do_cafe",
     "contrato": {
       "entradas": [
@@ -1153,7 +1153,7 @@
     "url": "mapa-do-cafe"
   },
   {
-    "area": "acompanhar",
+    "area": "mais",
     "chave": "painel_do_cafe",
     "contrato": {
       "entradas": [

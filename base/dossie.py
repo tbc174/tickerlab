@@ -119,6 +119,9 @@ def e_do_cnpj(nome_da_tabela: str) -> bool:
     )
 
 
+# Servidas só pela API externa paga, atrás do portão e da prontidão (D10): a consulta aberta e a página Dados
+# não as mostram. A leitura mais estreita da Diretoria (11/11/2026, linha 810): nada novo fica aberto sem prontidão.
+SO_PELA_API_EXTERNA = frozenset({"entradas_de_socio_pj"})
 COLUNAS_DE_PESSOA = frozenset(
     {"cpf", "administrador", "conselheiro", "diretor", "nome_pessoa", "socio"}
 )
@@ -163,12 +166,14 @@ def pode_consultar(nome_da_tabela: str) -> bool:
     """A tabela pode ser consultada e exportada de fora (API aberta e página Dados)? Só a que pode
     ser mostrada, que a porta serve por Parquet do acervo, que diz o dia em que cada linha ficou
     pública (a consulta corta o futuro por ele, e a virada pede o dia em toda linha exposta) e que
-    não mistura MEI e empresário individual sem a marca de pessoa. As outras ficam só na ficha do app."""
+    não mistura MEI e empresário individual sem a marca de pessoa, nem a que só a API externa serve
+    (`SO_PELA_API_EXTERNA`). As outras ficam só na ficha do app."""
     return (
         pode_mostrar(nome_da_tabela)
         and servida_pela_porta(nome_da_tabela)
         and tem_dia_publico(nome_da_tabela)
         and nome_da_tabela not in ESPERAM_A_MARCA_DE_PESSOA
+        and nome_da_tabela not in SO_PELA_API_EXTERNA
     )
 
 

@@ -28,7 +28,7 @@ _SO_NO_APP_NOVO = paginas.Pagina(
     paginas.GRUPO_RESEARCH,
     ":material/grain:",
     "Uma página que só existe no app novo.",
-    area=paginas.AREA_ACOMPANHAR,
+    area=paginas.AREA_MAIS,
     precisa_do_ativo=False,
     contrato=paginas.Contrato("GET", "/v1/so-no-react", (), "SoNoReactV1"),
     so_no_app_novo=True,
@@ -42,7 +42,7 @@ def test_pagina_so_do_app_novo_fica_fora_do_streamlit(monkeypatch):
     assert _SO_NO_APP_NOVO not in paginas.paginas_do_grupo(paginas.GRUPO_RESEARCH)
     assert paginas.paginas_do_classico() == antes
     # no app novo ela existe como qualquer outra: tem área e entra no menu dela
-    assert _SO_NO_APP_NOVO in paginas.paginas_da_area(paginas.AREA_ACOMPANHAR)
+    assert _SO_NO_APP_NOVO in paginas.paginas_da_area(paginas.AREA_MAIS)
 
 
 def test_pagina_so_do_app_novo_precisa_de_contrato():
@@ -54,7 +54,7 @@ def test_pagina_so_do_app_novo_precisa_de_contrato():
             paginas.GRUPO_RESEARCH,
             ":material/grain:",
             "Uma página sem rota na API.",
-            area=paginas.AREA_ACOMPANHAR,
+            area=paginas.AREA_MAIS,
             so_no_app_novo=True,
         )
 
@@ -118,7 +118,8 @@ def test_areas_tem_rotulo_icone_frase_e_ordem_unica():
     assert list(paginas.AREAS) == sorted(
         paginas.AREAS, key=lambda a: paginas.AREAS[a].ordem
     )
-    assert list(paginas.AREAS)[:4] == ["inicio", "ativo", "estrategias", "acompanhar"]
+    assert list(paginas.AREAS)[:4] == ["inicio", "empresas", "ativo", "mais"]
+    assert paginas.AREAS["ativo"].rotulo == "Companhias abertas"
     for area in paginas.AREAS.values():
         assert area.rotulo and area.icone and area.frase.endswith(".")
 
@@ -129,6 +130,35 @@ def test_frases_das_areas_nao_recomendam_nem_prometem():
     for area in paginas.AREAS.values():
         frase = area.frase.lower()
         assert not any(p in frase for p in proibidas), area.rotulo
+
+
+def test_area_empresas_segue_o_caminho_do_analista():
+    """O grupo do topo do menu (linha 822): encontrar, abrir a ficha, comparar e ver o setor, nesta ordem."""
+    chaves = [p.chave for p in paginas.paginas_da_area("empresas")]
+    assert chaves == [
+        "encontrar_empresas",
+        "ficha_da_empresa",
+        "comparar_empresas",
+        "relatorio_do_setor",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("chave", "url", "grupo"),
+    [
+        ("encontrar_empresas", "encontrar-empresas", paginas.GRUPO_AVANCADO),
+        ("ficha_da_empresa", "ficha-da-empresa", paginas.GRUPO_AVANCADO),
+        ("comparar_empresas", "comparar-empresas", paginas.GRUPO_AVANCADO),
+        ("relatorio_do_setor", "relatorio-do-setor", paginas.GRUPO_RESEARCH),
+        ("backtest", "backtest", paginas.GRUPO_ESTRATEGIAS),
+        ("research", "research", paginas.GRUPO_RESEARCH),
+    ],
+)
+def test_trocar_de_area_nao_muda_endereco_nem_grupo_do_streamlit(chave, url, grupo):
+    """A área é só do menu do app novo: o endereço (link guardado) e o menu do Streamlit seguem iguais."""
+    pagina = paginas.POR_CHAVE[chave]
+    assert (pagina.url, pagina.grupo) == (url, grupo)
+    assert len({p.url for p in paginas.PAGINAS}) == len(paginas.PAGINAS)
 
 
 def test_paginas_da_area_ativo_na_ordem_das_abas():
@@ -154,7 +184,16 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
     [
         ("inicio", {"inicio", "pulse"}),
         (
-            "estrategias",
+            "empresas",
+            {
+                "encontrar_empresas",
+                "ficha_da_empresa",
+                "comparar_empresas",
+                "relatorio_do_setor",
+            },
+        ),
+        (
+            "mais",
             {
                 "backtest",
                 "ranking",
@@ -163,11 +202,6 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "regimes",
                 "pares",
                 "aprendizado",
-            },
-        ),
-        (
-            "acompanhar",
-            {
                 "research",
                 "diario_de_teses",
                 "carteira_b3",
@@ -182,10 +216,6 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "mapa_do_cafe",
                 "painel_do_cafe",
                 "busca_por_cnpj",
-                "ficha_da_empresa",
-                "encontrar_empresas",
-                "comparar_empresas",
-                "relatorio_do_setor",
             },
         ),
         (

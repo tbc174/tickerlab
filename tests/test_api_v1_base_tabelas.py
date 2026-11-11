@@ -23,9 +23,12 @@ from base.dicionario import TABELAS
 from base.dossie import (
     COLUNAS_DE_PESSOA,
     ESPERAM_A_MARCA_DE_PESSOA,
+    SO_PELA_API_EXTERNA,
     e_do_cnpj,
     pode_consultar,
     pode_consultar_aberto,
+    pode_mostrar,
+    servida_pela_porta,
     tem_dia_publico,
 )
 from base.porta import Porta
@@ -228,7 +231,6 @@ def test_familia_do_cnpj_inclui_as_cnpj_e_as_derivadas():
         "entidades",
         "identificadores",
         "ligacoes",
-        "entradas_de_socio_pj",
     } <= familia
     assert not e_do_cnpj("pgfn_divida") and not e_do_cnpj("curva_juros")
 
@@ -711,6 +713,34 @@ def test_so_e_consultavel_a_tabela_que_diz_o_dia_publico_e_separa_a_pessoa(clien
         ).json() == {"detail": base_tabelas.NAO_ENCONTRADA}
         assert cliente.get(f"{ROTA}/{nome}.csv").status_code == 404
     assert tem_dia_publico("pgfn_divida") and not tem_dia_publico("proventos")
+
+
+def test_a_que_so_a_api_externa_serve_nao_sai_na_consulta_aberta(cliente):
+    """Linha 810 (Diretoria, 11/11/2026): as entradas de sócio PJ vão ao VPS só para a API externa, atrás
+    do portão e da prontidão; a consulta aberta dá o mesmo 404 e nem a lista as mostra."""
+    assert {"entradas_de_socio_pj"} == SO_PELA_API_EXTERNA
+    nome = "entradas_de_socio_pj"
+    assert not pode_consultar(nome)
+    assert cliente.get(f"{ROTA}/{nome}").json() == {
+        "detail": base_tabelas.NAO_ENCONTRADA
+    }
+    assert cliente.get(f"{ROTA}/{nome}.csv").status_code == 404
+    assert nome not in {t["tabela"] for t in cliente.get(ROTA).json()["tabelas"]}
+
+
+def test_so_a_tabela_da_api_externa_muda_de_lado():
+    """Nenhuma outra tabela entra nem sai da consulta aberta com a lista `SO_PELA_API_EXTERNA`."""
+
+    def antes(nome: str) -> bool:
+        return (
+            pode_mostrar(nome)
+            and servida_pela_porta(nome)
+            and tem_dia_publico(nome)
+            and nome not in ESPERAM_A_MARCA_DE_PESSOA
+        )
+
+    mudaram = {nome for nome in TABELAS if pode_consultar(nome) != antes(nome)}
+    assert mudaram == {"entradas_de_socio_pj"}
 
 
 class _PortaQueFalhaNosTipos(Porta):
