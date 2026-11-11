@@ -298,6 +298,30 @@ def empresa(
 @principal.command()
 @argumento_cnpj
 @opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def comparaveis(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Os comparáveis da companhia aberta: as do mesmo grupo de setores, com os números do último DFP.
+
+    Cada par traz receita, EBITDA, lucro, patrimônio, dívida líquida e as razões (margem EBITDA, margem
+    líquida, retorno sobre o patrimônio, dívida líquida/EBITDA); `peer_medians` é a mediana de cada razão
+    entre os pares. O setor é o do FCA entregue até o dia: com --como-era, os pares de então. Leia os
+    `limits` antes de usar o número.
+    """
+    corpo = _api(contexto).comparaveis(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
 @click.option(
     "--periodo",
     type=click.DateTime(formats=["%Y-%m-%d"]),

@@ -29,10 +29,19 @@ from tickerlab.cliente import Saida
 from base.porta import Porta
 from src import api
 from src.api_externa import acesso, rotas
-from src.api_externa.conjuntos import empresas, ficha, fundos, prospeccao, setores
+from src.api_externa.conjuntos import (
+    comparaveis,
+    empresas,
+    ficha,
+    fundos,
+    prospeccao,
+    setores,
+)
 from src.api_externa.envelope import campo
 from src.banco import chaves_da_api as cb
 from tests import ajudantes_da_api_externa as aj
+from tests import test_api_externa_por_cnpj_comparaveis as comparaveis_de_mentira
+from tests import test_api_externa_por_cnpj_comparaveis_rota as rota_dos_comparaveis
 from tests import test_api_externa_por_cnpj_ficha as ficha_de_mentira
 from tests import test_api_externa_prospeccao as busca_de_mentira
 from tests.test_api_externa_demonstracoes import (
@@ -1065,6 +1074,7 @@ def test_instrucoes_do_agente(rodar):
         "fundo",
         "setor",
         "prospectar",
+        "comparaveis",
         "catalogo",
         "consumo",
     ):
@@ -1460,4 +1470,89 @@ def test_prospectar_sem_o_conjunto_no_contrato_e_sem_dado(
     monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
     monkeypatch.setattr(rotas, "regras_da_api", busca_de_mentira._regras_da_busca)
     resultado = rodar("prospectar", "--cnae", "62", **_com_chave(chave))
+    assert resultado.exit_code == Saida.SEM_DADO, resultado.output
+
+
+# ---------------------------------------------------------------- comparaveis (rota da linha 736, PR 3)
+
+DIA_DOS_PARES = comparaveis_de_mentira.DIA.isoformat()
+
+
+@pytest.fixture
+def comparaveis_prontos(banco, cenario, monkeypatch, tmp_path):
+    """A base de mentira dos comparáveis, as tabelas prontas e o contrato de `comparables`."""
+    base = comparaveis_de_mentira.gravar_base(tmp_path / "base")
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", rota_dos_comparaveis._regras)
+    ator, org, _chave = cenario
+    aj.contrato(banco, ator, org, conjunto=comparaveis.CONJUNTO)
+
+
+@pytest.mark.usefixtures("comparaveis_prontos")
+def test_comparaveis_em_tabela_tem_a_empresa_os_pares_e_as_medianas(rodar, chave):
+    resultado = rodar(
+        "comparaveis", comparaveis_de_mentira.ALFA, "--como-era", DIA_DOS_PARES,
+        **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    empresa_ = saida.split("## subject_company", 1)[1].split("## ", 1)[0]
+    receita = next(linha for linha in empresa_.splitlines() if "revenue" in linha)
+    assert "cvm-hist-dfp" in receita and "2025-03-20" in receita
+    assert "## peers" in saida and "## peer_medians" in saida and "## limits" in saida
+    assert "- cvm-hist-dfp:" in saida and "- cvm-hist-fca:" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+@pytest.mark.usefixtures("comparaveis_prontos")
+def test_comparaveis_em_json_e_o_envelope_da_rota(rodar, chave, api_em_memoria):
+    alfa = comparaveis_de_mentira.ALFA
+    resultado = rodar(
+        "comparaveis", alfa, "--como-era", DIA_DOS_PARES, "--json", **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    direto = api_em_memoria.get(
+        f"/data/v1/companies/{alfa}/comparables",
+        params={"known_at": DIA_DOS_PARES},
+        headers=aj.bearer(chave),
+    ).json()
+    assert json.loads(resultado.stdout) == direto
+    assert len(direto["peers"]) == len(comparaveis_de_mentira.PARES)
+
+
+@pytest.mark.usefixtures("comparaveis_prontos")
+def test_comparaveis_sem_como_era_sao_os_de_hoje(rodar, chave):
+    """Hoje a ALFA informou outro setor no FCA: os pares de energia não são mais dela."""
+    resultado = rodar(
+        "comparaveis", comparaveis_de_mentira.ALFA, "--json", **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    corpo = json.loads(resultado.stdout)
+    assert corpo["sector_group"]["value"] == "trade" and corpo["peers"] == []
+
+
+@pytest.mark.usefixtures("comparaveis_prontos")
+def test_comparaveis_em_planilha_tem_uma_linha_por_par(rodar, chave, tmp_path):
+    arquivo = tmp_path / "pares.xlsx"
+    resultado = rodar(
+        "comparaveis", comparaveis_de_mentira.ALFA, "--como-era", DIA_DOS_PARES,
+        "--planilha", str(arquivo), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    assert {"peers", "fontes"} <= set(abas)
+    pares = _linhas_com_cabecalho(abas["peers"])
+    assert len(pares) == len(comparaveis_de_mentira.PARES)
+    # o nome vem do FCA e os números do DFP: a linha do par cita as duas fontes
+    assert all(
+        set(p["fonte"].split(", ")) == {"cvm-hist-fca", "cvm-hist-dfp"} for p in pares
+    )
+    assert all(isinstance(p["revenue"], float) for p in pares)
+
+
+def test_comparaveis_fora_do_contrato_e_sem_dado(rodar, chave, tmp_path, monkeypatch):
+    base = comparaveis_de_mentira.gravar_base(tmp_path / "base")
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", rota_dos_comparaveis._regras)
+    resultado = rodar("comparaveis", comparaveis_de_mentira.ALFA, **_com_chave(chave))
     assert resultado.exit_code == Saida.SEM_DADO, resultado.output
