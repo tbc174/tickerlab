@@ -278,6 +278,17 @@ def setores(corpo: Mapping) -> str:
     )
 
 
+def _marca_do_recorte(recorte: object) -> str:
+    """Avisa, fora das aspas, que o trecho é só um pedaço do original (nada inventado dentro delas)."""
+    partes = {
+        "inicio": "o original continua antes",
+        "fim": "o original continua depois",
+        "ambos": "o original continua antes e depois",
+    }
+    aviso = partes.get(str(recorte))
+    return f"  [recorte: {aviso}]" if aviso else ""
+
+
 def novidades(corpo: Mapping) -> str:
     """As fontes que a pesquisa provou na janela: órgão, data, trecho literal e o hash do original."""
     itens = [i for i in corpo.get("items") or [] if isinstance(i, Mapping)]
@@ -285,7 +296,7 @@ def novidades(corpo: Mapping) -> str:
         return "Nenhuma fonte nova provada na semana."
     blocos = [
         f"{celula(i.get('agency'))} · {celula(i.get('date'))}\n"
-        f"  “{i.get('excerpt')}”\n"
+        f"  “{i.get('excerpt')}”{_marca_do_recorte(i.get('excerpt_cut'))}\n"
         f"  original: {i.get('source_url')}\n"
         f"  sha256: {i.get('original_sha256')}"
         for i in itens

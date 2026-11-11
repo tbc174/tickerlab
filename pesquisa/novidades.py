@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from pesquisa.janela import Janela, janela_do_valor
 from pesquisa.memoria import Memoria
 from src.novidades_da_pesquisa import (
     MARCAS_DE_PESSOA,
@@ -32,7 +33,7 @@ MOTIVO_PESSOA = "marca de pessoa física no texto"
 MOTIVO_FORA_DA_JANELA = "fora da janela de dias"
 MOTIVO_NAO_CONFIRMADO = "veredito não confirmado"
 MOTIVO_REPETIDO = "mesmo original e mesmo trecho já exportados"
-MOTIVO_TRECHO_LONGO = "trecho acima do máximo"
+MOTIVO_TRECHO_LONGO = "trecho acima do máximo e sem janela em volta do valor"
 MOTIVO_SEM_REVENDA = "fonte sem licença ou sem revenda liberada"
 
 
@@ -64,15 +65,24 @@ def _consultar(caminho: Path) -> list[sqlite3.Row]:
         ).fetchall()
 
 
+def _janela(fato: dict[str, object]) -> Janela | None:
+    return janela_do_valor(
+        str(fato["trecho"]), str(fato.get("valor") or ""), TRECHO_MAXIMO
+    )
+
+
 def _item(fato: dict[str, object], url: str, quando: str) -> dict[str, str]:
     fonte, orgao = orgao_da_url(url) or ("", "")
+    janela = _janela(fato)
+    assert janela is not None  # `_por_que_nao` já descartou o fato sem janela
     return {
         "orgao": orgao,
         "fonte": fonte,
         "fonte_url": url,
         "data": quando[:10],
         "afirmacao": str(fato.get("afirmacao") or ""),
-        "trecho": str(fato["trecho"]),
+        "trecho": janela.texto,
+        "recorte": janela.recorte,
         "sha256": str(fato["sha256"]),
         "posicao": str(fato.get("posicao") or ""),
     }
@@ -98,7 +108,7 @@ def _por_que_nao(linha: sqlite3.Row, fato: dict[str, object], corte: str) -> str
         )
     if MARCAS_DE_PESSOA.search(texto):
         return MOTIVO_PESSOA
-    if len(str(fato["trecho"])) > TRECHO_MAXIMO:
+    if _janela(fato) is None:
         return MOTIVO_TRECHO_LONGO
     return None
 

@@ -74,6 +74,7 @@ def test_item_provado_sai_com_orgao_data_trecho_hash_e_atribuicao(
             "date": "2026-11-10",
             "claim": "Parque Exemplo: 120 MW",
             "excerpt": "Parque Exemplo Eólico: 120 MW, vigência 2035",
+            "excerpt_cut": "",
             "original_sha256": HASH,
             "location": "linha 3",
         }
@@ -118,6 +119,11 @@ def test_dias_fora_de_1_a_30_e_400(cliente, chave, dias):
     assert "invalid_days" in resposta.text
 
 
+def test_recorte_do_trecho_passa_adiante(cliente, chave, tmp_path, monkeypatch):
+    _publicar(tmp_path, monkeypatch, [_item(recorte="ambos")])
+    assert _get(cliente, chave).json()["items"][0]["excerpt_cut"] == "ambos"
+
+
 @pytest.mark.parametrize(
     "ruim",
     [
@@ -134,6 +140,7 @@ def test_dias_fora_de_1_a_30_e_400(cliente, chave, dias):
         _item(trecho="Sócio 52998224725 entrou em 2025"),
         _item(trecho="O Sr. Fulano Inventado assinou o contrato em 2025"),
         _item(data="ontem"),
+        _item(recorte="meio"),
         _item(afirmacao=7),
         "não é um item",
     ],

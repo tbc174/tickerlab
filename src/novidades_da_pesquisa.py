@@ -9,6 +9,13 @@ import re
 import unicodedata
 from urllib.parse import urlsplit
 
+# como o trecho foi recortado do original (marcado fora das aspas por quem mostra)
+SEM_CORTE = ""
+CORTE_NO_INICIO = "inicio"
+CORTE_NO_FIM = "fim"
+CORTE_NOS_DOIS = "ambos"
+RECORTES = frozenset({SEM_CORTE, CORTE_NO_INICIO, CORTE_NO_FIM, CORTE_NOS_DOIS})
+
 TRECHO_MAXIMO = 300  # citação curta, não a página
 
 # domínio -> (chave da fonte no catálogo de licenças `LICENCAS`, nome do órgão). Domínio fora daqui não sai
