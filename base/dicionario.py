@@ -679,8 +679,10 @@ def _tabela_de_entradas_de_socio_pj() -> dict[str, Tabela]:
                 "como sócio não é aquisição. **Sem pessoa:** só sócio do tipo 1 e só raízes de "
                 "`cnpj_estabelecimentos_pj`, dos dois lados (fora MEI, empresário individual e grupo 4, "
                 "mesmo com CNPJ); a lista é a do mês mais recente, e quem deixou de ser só empresa some da "
-                "história inteira. Sair e entrar com os mesmos dados no mesmo mês (a troca de layout de "
-                "2024-09) não conta; sair e voltar depois conta como entrada nova; a Receita trocar a data "
+                "história inteira. Sair e entrar com os mesmos dados no mesmo mês não conta. **As mudanças de "
+                "setembro de 2024 aparecem em outubro de 2024:** o arquivo de sócios da Receita de 2024-09 "
+                "tirou uns 115 mil sócios PJ que voltaram em outubro e pôs uns 113 mil que só existem nele, "
+                "então a base compara outubro direto com agosto. Sair e voltar depois conta como entrada nova; a Receita trocar a data "
                 "de entrada de quem continuou é `data_corrigida`, não entrada. Antes de 2023-06 só há quem ainda estava no primeiro retrato: quem "
                 "entrou e saiu antes disso não aparece. " + _FINALIDADE_DO_CNPJ
             ),

@@ -17,11 +17,15 @@ Três regras:
   montar até M é o mesmo que montar tudo e cortar em M. A lista é a do mês mais recente (só ela existe): uma
   raiz que deixou de ser só empresa some da história inteira, porque a privacidade vem antes do ponto no
   tempo;
-- **sem movimento fantasma:** sair e entrar com os mesmos dados no mesmo mês não é movimento (a troca de
-  layout de 2024-09 fez isso com mais de 100 mil sócios PJ).
+- **sem movimento fantasma:** sair e entrar com os mesmos dados no mesmo mês não é movimento; e as mudanças de
+  um retrato com defeito conhecido (`RETRATOS_COM_DEFEITO`) passam para o mês seguinte, como se a base
+  comparasse o seguinte direto com o anterior.
+
+O ponto no tempo vale para todo mês que não é retrato com defeito: montar com o vigente do próprio retrato com
+defeito não é um ponto válido (é o arquivo errado).
 """
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 import pandas as pd
 
@@ -43,6 +47,12 @@ _JA_ESTAVA, _NOVA = 0, 1
 _DEPOIS_DE_TODO_MES = (
     "9999-12"  # o vigente sem mudança só vale quando não há notícia mais antiga
 )
+# Retrato da Receita com defeito conhecido → o mês em que as mudanças dele passam a contar. O de 2024-09 tirou
+# uns 115 mil sócios PJ que voltaram em 2024-10 com a mesma data de entrada e pôs uns 113 mil que só existem
+# nele (116.055 das 116.116 voltas com a mesma data da base inteira; ensaio de 11/11/2026). Comparar 2024-10
+# direto com 2024-08 desfaz os dois; o que mudou de verdade aparece em 2024-10, com o piso de publicação dele.
+# Só entra mês aqui com contagem assim: nenhuma regra geral sem evidência.
+RETRATOS_COM_DEFEITO: Mapping[str, str] = {"2024-09": "2024-10"}
 
 
 def _so_pessoa_juridica(socios: pd.DataFrame) -> pd.DataFrame:
@@ -64,6 +74,14 @@ def _lado(mudancas: pd.DataFrame, tipos: Collection[str], lado: str) -> pd.DataF
             QUALIFICACAO: escolhidas[f"{QUALIFICACAO}_{lado}"],
         }
     )
+
+
+def _sem_retratos_com_defeito(
+    mudancas: pd.DataFrame, retratos_com_defeito: Mapping[str, str]
+) -> pd.DataFrame:
+    """As mudanças de um retrato com defeito passam para o mês seguinte: lá, quem saiu e voltou (ou entrou e
+    saiu) com os mesmos dados vira par fantasma do mesmo mês e some; o resto conta naquele mês."""
+    return mudancas.assign(mes=mudancas["mes"].replace(dict(retratos_com_defeito)))
 
 
 def _sem_fantasmas(
@@ -117,13 +135,14 @@ def entradas_e_saidas(
     mudancas: pd.DataFrame,
     primeiro_mes: str,
     pessoas_juridicas: Collection[str],
+    retratos_com_defeito: Mapping[str, str] = RETRATOS_COM_DEFEITO,
 ) -> pd.DataFrame:
     """As entradas e saídas de sócio PJ entre raízes de `pessoas_juridicas` (as colunas de `COLUNAS`).
 
     `vigente` é o QSA do último mês de `mudancas`; `primeiro_mes` (AAAA-MM) é o do retrato inicial da base.
     """
     atual = _so_pessoa_juridica(vigente)[[*IDENTIDADE, QUALIFICACAO]]
-    pj = _so_pessoa_juridica(mudancas)
+    pj = _sem_retratos_com_defeito(_so_pessoa_juridica(mudancas), retratos_com_defeito)
     entradas, saidas = _sem_fantasmas(
         _lado(pj, [ENTROU], "depois"), _lado(pj, [SAIU], "antes")
     )
