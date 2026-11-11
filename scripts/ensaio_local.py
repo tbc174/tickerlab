@@ -8,8 +8,8 @@ de ensaio, os direitos dos cinco conjuntos da apresentação e uma chave. A chav
 dado em `--saida-da-chave` (nunca para a tela, o log ou o PR). O roteiro e as rotas que respondem estão em
 `docs/casa-de-ma-primeiros-passos.md`, seção 5.
 
-Não solta o portão de produção: a API do ensaio só responde porque quem a sobe (um lançador que fica fora do
-repositório) preenche a prontidão **na memória do processo**. Esta ferramenta não mexe em `base/prontidao.py`.
+Não solta o portão de produção: a API do ensaio só responde porque quem a sobe põe `TICKERLAB_AMBIENTE=ensaio`
+(`base.prontidao.registro_vigente`, que só liga com esse valor exato). Esta ferramenta não mexe no registro.
 
 Roda: manual, no PC do Tiago, antes de subir a API local do ensaio (sem uso em produção nem em cron).
 """

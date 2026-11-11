@@ -192,3 +192,56 @@ def test_registro_comeca_vazio() -> None:
     """D10: nenhuma tabela tem as três provas ainda (o placar da 427 é a A2b). Quando a primeira
     entrar, por PR de nível 2 da mesa Dados, este teste sai junto."""
     assert prontidao.PRONTIDAO == {}
+
+
+# ---- ensaio local (linha 800): a regra só liga com TICKERLAB_AMBIENTE=ensaio ----
+
+
+@pytest.mark.parametrize(
+    "ambiente",
+    [{}, {"TICKERLAB_AMBIENTE": ""}, {"TICKERLAB_AMBIENTE": "producao"},
+     {"TICKERLAB_AMBIENTE": "ensaio2"}, {"TICKERLAB_AMBIENTE": "local"}],
+)  # fmt: skip
+def test_fora_do_ensaio_o_registro_e_o_de_verdade(ambiente) -> None:
+    assert prontidao.em_ensaio(ambiente) is False
+    assert prontidao.registro_vigente(ambiente) is PRONTIDAO
+
+
+def test_no_ensaio_toda_tabela_do_dicionario_vale_como_pronta() -> None:
+    ambiente = {"TICKERLAB_AMBIENTE": " Ensaio "}
+    registro = prontidao.registro_vigente(ambiente, HOJE)
+    assert set(registro) >= set(TABELAS)
+    assert (
+        negacao_da_prontidao(
+            ("demonstracoes_como_era",), registro, versoes_maiores(), HOJE
+        )
+        is None
+    )
+
+
+def test_no_ensaio_o_registro_de_verdade_tem_precedencia(monkeypatch) -> None:
+    real = _pronta(versao_maior=versoes_maiores()["demonstracoes_como_era"])
+    monkeypatch.setitem(PRONTIDAO, "demonstracoes_como_era", real)
+    registro = prontidao.registro_vigente({"TICKERLAB_AMBIENTE": "ensaio"}, HOJE)
+    assert registro["demonstracoes_como_era"] is real
+
+
+def test_em_producao_o_portao_segue_negando(monkeypatch) -> None:
+    """Mesmo com a tabela no dicionário e o ambiente de produção, sem registro o portão nega."""
+    monkeypatch.setenv("TICKERLAB_AMBIENTE", "producao")
+    registro = prontidao.registro_vigente()
+    assert (
+        negacao_da_prontidao(
+            ("demonstracoes_como_era",), registro, versoes_maiores(), HOJE
+        )
+        is Falta.SEM_PRONTIDAO
+    )
+
+
+def test_regras_vigentes_do_portao_usam_o_registro_do_ambiente(monkeypatch) -> None:
+    from src import portao_externo as portao
+
+    monkeypatch.setenv("TICKERLAB_AMBIENTE", "ensaio")
+    assert "demonstracoes_como_era" in portao.regras_vigentes().prontidao
+    monkeypatch.setenv("TICKERLAB_AMBIENTE", "producao")
+    assert portao.regras_vigentes().prontidao is PRONTIDAO

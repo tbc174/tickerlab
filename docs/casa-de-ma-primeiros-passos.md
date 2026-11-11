@@ -155,11 +155,11 @@ Se a produção não estiver liberada no dia, o mesmo roteiro roda contra a API 
 2. **Banco e chave:** `$env:TICKERLAB_DATABASE_URL = "sqlite:///<pasta>/ensaio.db"` e
    `python -m scripts.ensaio_local --saida-da-chave <pasta>\chave.txt` (migrações, administrador de ensaio,
    organização, direitos dos cinco conjuntos e a chave, que só vai para o arquivo).
-3. **Subir a API** com `TICKERLAB_API_EXTERNA=1`, `TICKERLAB_ACERVO=<pasta>\acervo`, `TICKERLAB_DOSSIES=<pasta>\dossies` e
-   `uvicorn src.api:app --port 8765`, **por um lançador fora do repositório** que, antes, preenche
-   `base.prontidao.PRONTIDAO` na memória do processo (uma prova de ensaio por tabela, com `independencia` preenchida: sem
-   ela a prova cruzada não vale). O portão de produção não muda; sem o lançador a API do ensaio responde `sem_prontidao`,
-   como a de produção responde hoje.
+3. **Subir a API** com `TICKERLAB_AMBIENTE=ensaio`, `TICKERLAB_API_EXTERNA=1`, `TICKERLAB_ACERVO=<pasta>cervo`,
+   `TICKERLAB_DOSSIES=<pasta>\dossies` e `uvicorn src.api:app --port 8765`. Com `TICKERLAB_AMBIENTE=ensaio` (valor exato),
+   `base.prontidao.registro_vigente()` dá a toda tabela do dicionário uma prova de ensaio (do dia anterior), sem tirar
+   o registro de verdade; com qualquer outro valor, inclusive `producao` ou nenhum, nada muda e o portão responde
+   `sem_prontidao` como em produção (há teste dos dois lados).
 4. `$env:TICKERLAB_API_URL = "http://127.0.0.1:8765"`, `tickerlab login` e o roteiro da seção 3.
 
 **O que responde, rota por rota (ensaio de 10/11/2026, recorte do degrau 2 e fichas de 07/11; cada "sim" vale "com
