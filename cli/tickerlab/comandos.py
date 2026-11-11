@@ -61,6 +61,8 @@ PORTES = {
     "nao_informado": "not_informed",
 }
 POR_PAGINA_MAXIMO = 100
+# os tipos de evento como a CLI os recebe e como a API os chama
+TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
 
 Formatar = Callable[[dict], str]
 
@@ -317,6 +319,46 @@ def comparaveis(
     """
     corpo = _api(contexto).comparaveis(cnpj, _dia(como_era))
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
+@click.option(
+    "--tipo",
+    "tipos",
+    multiple=True,
+    type=click.Choice(sorted(TIPOS_DE_EVENTO)),
+    help="Só um tipo (pode repetir): documento (o que a companhia entregou à CVM pelo IPE: fato "
+    "relevante, comunicado, assembleia...) ou auditor (troca de auditor, pelo FCA). Sem ela, todos.",
+)
+@click.option(
+    "--todas",
+    is_flag=True,
+    help="Segue as páginas até o fim e junta tudo numa resposta (cada página é um pedido da quota).",
+)
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def eventos(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    tipos: tuple[str, ...],
+    todas: bool,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Os eventos da empresa, do mais novo ao mais velho: documentos à CVM e trocas de auditor.
+
+    O documento traz o protocolo, a categoria e o tipo da CVM, a data de referência e o endereço dele (o
+    assunto escrito pela companhia não sai). A troca de auditor traz o dia, o anterior, o novo e os anos
+    com o anterior. Com --como-era, só o que já era público no dia. Leia os `limits`.
+    """
+    corpo = _api(contexto).eventos(
+        cnpj, _dia(como_era), [TIPOS_DE_EVENTO[tipo] for tipo in tipos], todas
+    )
+    _mostrar(corpo, como_json, formato.eventos, destino)
 
 
 @principal.command()
