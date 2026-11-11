@@ -212,7 +212,10 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
     assert "versão 16" in privacidade
     for trecho in (
         "**Para todas as contas, a API, a linha de comando, o site e o conector de IA**",
-        '"sócio pessoa física", sem nome',
+        "sócio e administrador pessoa física não aparecem: nem o nome, nem a qualificação, nem quantos são",
+        "nunca para lhe oferecer algo como consumidor",
+        "só com o número interno da conta apagada",
+        "também passam pela rede da Cloudflare a caminho da tela",
         "Ela é **desligada por padrão**, dada a uma organização de cada vez, conferida no servidor",
         "o telefone, o e-mail e o endereço do estabelecimento",
         "**Nunca**: CPF (nem o CPF mascarado como a Receita publica), menor de idade",
@@ -289,7 +292,6 @@ def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais(
         "não consegue procurar documentos por nome nem por CPF",
         "no quadro de sócios da empresa que você consulta pelo CNPJ",
         "CPF mascarado como a Receita publica",
-        "têm um sócio em comum, sem dizer qual",
         "uma empresa** de cada vez e fica registrada",
         "legítimo interesse (LGPD, art. 7º, IX, e art. 10)",
         "oferta de produto ou serviço à pessoa, montagem de perfil de pessoa ou revenda de listas",
