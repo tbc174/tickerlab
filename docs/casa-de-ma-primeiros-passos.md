@@ -173,6 +173,7 @@ prontidão de ensaio", não com a prontidão real da linha 784):**
 | `/data/v1/funds/{cnpj}` | sim (200), **só a carteira** | CDA do recorte; o **cadastro** (taxas, classe) não sai porque o registro de coletas, que dá a data de publicação, não está no recorte |
 | `/data/v1/companies` (prospecção) | sim (200) | as duas tabelas de empresas só-PJ do recorte (linha 796) |
 | `/data/v1/companies/{cnpj}/events`, `/links`, `/comparables` | sim (200) | `eventos`, `trocas_de_auditor`, `fca_geral` do recorte e a **rede** (entidades, identificadores, ligações) copiada sem pessoa nem MEI (contagem: 0 de pessoa, 0 de MEI) |
+| `/data/v1/buyers` (quem compraria) | sim (200), **só o sinal de sócia PJ** (`took_stake`) | `entradas_de_socio_pj` (901.446 linhas, copiada da VM só para leitura, guarda PJ com PJ conferida: 0 linha fora da lista sem pessoa) com as duas tabelas de empresas do recorte. **Controladas (`controls_in_sector`) e fundos (`fund_stake`) ficam em casa**: fora de casa só sai o sinal de sócia PJ, e a apresentação não deve prometer os outros dois. Setor por CNAE de 5 ou 7 dígitos (`cnae=62015`, `years` até 10, `state` opcional) |
 | `/data/v1/companies/{cnpj}` e `/profile` (a ficha) | sim (200), **só no ensaio** | `cnpj_situacao_cadastral` **derivada do retrato vigente** (2026-10, público desde 21/10): só PJ do recorte, só códigos. Consulta com `known_at` antes de 21/10 dá `not_available` |
 
 **O que a ficha mostra no ensaio e NÃO mostrará em produção enquanto a linha 841 (montagem real da situação
