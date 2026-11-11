@@ -400,6 +400,26 @@ def compradores(
 
 
 @principal.command()
+@click.option(
+    "--dias",
+    type=click.IntRange(1, 30),
+    default=7,
+    show_default=True,
+    help="Quantos dias para trás olhar (1 a 30).",
+)
+@opcao_json
+@click.pass_context
+def novidades(contexto: click.Context, dias: int, como_json: bool) -> None:
+    """As fontes que a pesquisa provou na semana: órgão, data, trecho literal e hash do original.
+
+    Só fonte pública de órgão e só o que tem prova gravada (o trecho está no original, conferido pelo hash).
+    Sem nada novo, diz que não há.
+    """
+    corpo = _api(contexto).novidades(dias)
+    _mostrar(corpo, como_json, formato.novidades)
+
+
+@principal.command()
 @argumento_cnpj
 @opcao_como_era
 @click.option(

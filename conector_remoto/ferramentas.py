@@ -41,6 +41,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "fundo": frozenset({"funds"}),
     "vinculos": frozenset({"links"}),
     "compradores_do_setor": frozenset({"buyers"}),
+    "novidades": frozenset({"research"}),
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
@@ -67,6 +68,7 @@ PROFUNDIDADE_MAXIMA = 3  # a da API (`src/api_externa/conjuntos/vinculos.py`)
 # os da API (`src/api_externa/conjuntos/compradores.py`)
 ANOS_MAXIMO_DOS_COMPRADORES = 10
 LIMITE_MAXIMO_DOS_COMPRADORES = 50
+DIAS_MAXIMO_DAS_NOVIDADES = 30  # o da API (`src/api_externa/conjuntos/novidades.py`)
 
 MENSAGEM_DE_PESSOA = (
     "Resposta recusada: ela trazia um campo de pessoa física, que este conector não entrega. "
@@ -347,6 +349,7 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         )
 
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
+    _registrar_novidades(servidor, pedidos)
 
     @servidor.tool(annotations=SO_LEITURA, structured_output=False)
     async def setores() -> str:
@@ -387,6 +390,28 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             STATUS_OK, {"catalog": catalogo.corpo, "usage": consumo.corpo}
         )
         return pedidos.entregar(juntos, "o_que_posso_ver")
+
+
+def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """A ferramenta das novidades da pesquisa (linha 830)."""
+
+    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    async def novidades(
+        dias: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=DIAS_MAXIMO_DAS_NOVIDADES,
+                description="Quantos dias para trás olhar (1 a 30). Vazio = 7.",
+            ),
+        ] = None,
+    ) -> str:
+        """As fontes que a pesquisa do TickerLab provou na semana: de cada uma, o órgão público, a data, o
+        trecho literal e o hash (sha256) do original, que prova que o trecho está lá. Só entra o que tem
+        prova gravada; sem nada novo, a lista vem vazia: diga ao analista que não há fonte nova provada."""
+        return await pedidos.pedir("novidades", "/research/news", {
+            "days": None if dias is None else str(dias),
+        })  # fmt: skip
 
 
 def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> None:

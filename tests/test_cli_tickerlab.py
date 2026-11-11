@@ -1084,6 +1084,7 @@ def test_instrucoes_do_agente(rodar):
         "eventos",
         "compradores",
         "vinculos",
+        "novidades",
         "catalogo",
         "consumo",
     ):
@@ -1917,3 +1918,61 @@ def test_vinculos_recusa_da_api_em_portugues(rodar, chave, codigo, saida, trecho
     )
     assert resultado.exit_code == saida
     assert trecho in resultado.stderr
+
+
+# ---------------------------------------------------------------- novidades (fontes provadas pela pesquisa, linha 830)
+
+CORPO_DE_NOVIDADES = {
+    "generated_at": "2026-11-11T12:00:00+00:00",
+    "days": 7,
+    "total_news": 1,
+    "items": [
+        {
+            "agency": "CVM",
+            "source": "cvm",
+            "source_url": "https://dados.cvm.gov.br/dados/exemplo.csv",
+            "date": "2026-11-10",
+            "claim": "Parque Exemplo: 120 MW",
+            "excerpt": "Parque Exemplo Eólico: 120 MW, vigência 2035",
+            "original_sha256": "a" * 64,
+            "position": "linha 3",
+        }
+    ],
+}
+
+
+def _pedir_novidades(rodar, chave, corpo, *argumentos):
+    vistos: list[httpx.Request] = []
+
+    def guardar(pedido: httpx.Request) -> httpx.Response:
+        vistos.append(pedido)
+        return httpx.Response(200, json=corpo)
+
+    resultado = rodar(
+        "novidades", *argumentos, http=_http_falso(guardar), **_com_chave(chave)
+    )
+    return resultado, vistos
+
+
+def test_novidades_pede_a_rota_e_mostra_orgao_trecho_e_hash(rodar, chave):
+    resultado, vistos = _pedir_novidades(
+        rodar, chave, CORPO_DE_NOVIDADES, "--dias", "14"
+    )
+    assert resultado.exit_code == 0
+    assert vistos[0].url.path.endswith("/research/news")
+    assert vistos[0].url.params["days"] == "14"
+    assert "CVM · 2026-11-10" in resultado.stdout
+    assert "Parque Exemplo Eólico: 120 MW" in resultado.stdout
+    assert "a" * 64 in resultado.stdout
+
+
+def test_novidades_sem_nada_diz_que_nao_ha(rodar, chave):
+    vazio = {"generated_at": None, "days": 7, "total_news": 0, "items": []}
+    resultado, _ = _pedir_novidades(rodar, chave, vazio)
+    assert resultado.exit_code == 0
+    assert "Nenhuma fonte nova provada na semana" in resultado.stdout
+
+
+def test_novidades_dias_fora_da_faixa_nem_chega_a_api(rodar, chave):
+    resultado = rodar("novidades", "--dias", "31", http=None, **_com_chave(chave))
+    assert resultado.exit_code != 0

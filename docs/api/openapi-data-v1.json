@@ -3025,6 +3025,148 @@
         "summary": "Fundo"
       }
     },
+    "/data/v1/research/news": {
+      "get": {
+        "description": "As fontes que a pesquisa provou nos últimos `days` dias (padrão 7, até 30): cada uma com o órgão\npúblico, a data, o trecho literal e o sha256 do original. Só o que tem prova gravada; sem nada novo, a\nlista vem vazia.",
+        "operationId": "novidades_da_pesquisa_data_v1_research_news_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Days"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Novidades Da Pesquisa Data V1 Research News Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano"
+          }
+        },
+        "summary": "Novidades Da Pesquisa"
+      }
+    },
     "/data/v1/sectors": {
       "get": {
         "description": "Os setores que a última noite gravou, com o dia dela; não serve dado (não gasta a quota do mês).",

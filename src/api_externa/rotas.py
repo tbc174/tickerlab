@@ -37,6 +37,7 @@ from src.api_externa.conjuntos import (
     eventos,
     ficha,
     fundos,
+    novidades,
     prospeccao,
     setores,
     vinculos,
@@ -411,6 +412,24 @@ def compradores_do_setor(
             _portao(conexao, contexto, compradores.CONJUNTO),
             acesso.linhas_por_resposta(contexto),
         ).compradores(pedido, dia),
+    )
+
+
+@router.get("/research/news")
+def novidades_da_pesquisa(contexto: Chave, days: int | None = None) -> object:
+    """As fontes que a pesquisa provou nos últimos `days` dias (padrão 7, até 30): cada uma com o órgão
+    público, a data, o trecho literal e o sha256 do original. Só o que tem prova gravada; sem nada novo, a
+    lista vem vazia."""
+    try:
+        dias = novidades.dias_do_pedido(days)
+    except novidades.PedidoInvalido as erro:
+        raise _recusa(erro.codigo) from erro
+    return _pedido_contado(
+        contexto,
+        novidades.CONJUNTO,
+        lambda _conexao: novidades.novidades(
+            dias, acesso.linhas_por_resposta(contexto), acesso.agora().date()
+        ),
     )
 
 
