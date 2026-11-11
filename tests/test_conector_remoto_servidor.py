@@ -12,7 +12,7 @@ import httpx
 import pytest
 from tickerlab import comandos
 
-from conector_remoto import acesso, ferramentas
+from conector_remoto import acesso, ferramentas, servidor
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.saida import TETO_DE_CARACTERES
 from src.api_externa.conjuntos import (
@@ -110,6 +110,20 @@ def test_lista_so_o_que_o_catalogo_da_chave_libera():
         )
     assert nomes == ["demonstracoes", "o_que_posso_ver"]
     assert erro and texto == ferramentas.MENSAGEM_NAO_LIBERADA
+
+
+def test_orientacao_do_dossie_cita_so_ferramentas_que_existem_na_ordem():
+    assert set(servidor.FERRAMENTAS_DO_DOSSIE) <= set(
+        ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )
+    posicoes = [
+        servidor.INSTRUCOES.index(f"`{nome}`")
+        for nome in servidor.FERRAMENTAS_DO_DOSSIE
+    ]
+    assert posicoes == sorted(posicoes)
+    assert (
+        "dossie" not in ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )  # a IA compõe; sem ferramenta própria
 
 
 def test_todas_as_ferramentas_so_leem():
@@ -364,6 +378,23 @@ def test_demonstracoes_passa_a_data_conhecida():
     assert corpo == {"rows": []}
     (pedido,) = [p for p in pedidos if p.url.path.endswith("/financials")]
     assert pedido.url.params.get("known_at") == "2026-03-31"
+
+
+def test_demonstracoes_sem_dado_diz_que_faturamento_de_fechada_nao_ha():
+    rotas = {
+        "/companies/11111111000191/financials": httpx.Response(
+            404, json={"detail": "not_available"}
+        )
+    }
+    with _conector(rotas) as cliente:
+        erro, texto = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "demonstracoes", cnpj="11111111000191"
+        )
+    assert erro
+    assert ferramentas.MENSAGEM_SEM_DEMONSTRACAO in texto
+    assert "companhia aberta" in texto and "empresa fechada" in texto
+    # não diz se faltou o dado ou o acesso (a API não conta, de propósito)
+    assert "não diz qual" in texto
 
 
 def test_fundo_passa_a_data_e_o_retorno_suposto():

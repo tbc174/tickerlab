@@ -23,8 +23,10 @@ from base.dicionario import TABELAS
 from base.dossie import (
     COLUNAS_DE_PESSOA,
     ESPERAM_A_MARCA_DE_PESSOA,
+    FECHADAS_ATE_A_PRONTIDAO,
     SO_PELA_API_EXTERNA,
     e_do_cnpj,
+    exige_prontidao_na_consulta_aberta,
     pode_consultar,
     pode_consultar_aberto,
     pode_mostrar,
@@ -143,7 +145,7 @@ def _prontidao_de_todas_do_cnpj() -> dict[str, prontidao.Prontidao]:
     return {
         nome: prontidao.Prontidao(versao, prova, prova, prova)
         for nome, versao in prontidao.versoes_maiores().items()
-        if e_do_cnpj(nome)
+        if exige_prontidao_na_consulta_aberta(nome)
     }
 
 
@@ -220,6 +222,14 @@ def _do_cnpj_consultaveis() -> set[str]:
     return {nome for nome in TABELAS if e_do_cnpj(nome) and pode_consultar(nome)}
 
 
+def _fechadas_consultaveis() -> set[str]:
+    return {
+        nome
+        for nome in TABELAS
+        if nome in FECHADAS_ATE_A_PRONTIDAO and pode_consultar(nome)
+    }
+
+
 def test_familia_do_cnpj_inclui_as_cnpj_e_as_derivadas():
     familia = _do_cnpj_consultaveis()
     assert {
@@ -240,7 +250,11 @@ def test_sem_prontidao_a_lista_nao_anuncia_nenhuma_tabela_do_cnpj(sem_prontidao)
     assert nomes.isdisjoint(_do_cnpj_consultaveis())
     assert not any(n.startswith("cnpj_") for n in nomes)
     # as outras seguem como estavam
-    assert nomes == {n for n in TABELAS if pode_consultar(n) and not e_do_cnpj(n)}
+    assert nomes == {
+        n
+        for n in TABELAS
+        if pode_consultar(n) and not exige_prontidao_na_consulta_aberta(n)
+    }
     assert {"pgfn_divida", "curva_juros"} <= nomes
 
 
@@ -843,3 +857,46 @@ def test_csv_que_nunca_e_lido_fecha_a_porta_e_devolve_a_vaga(
         abertas[0].con.execute("SELECT 1")
     assert vagas.acquire(blocking=False)
     vagas.release()
+
+
+# --- as 15 da linha 842 -------------------------------------------------------------------------
+def test_as_15_da_linha_842_estao_no_dicionario():
+    assert len(FECHADAS_ATE_A_PRONTIDAO) == 15
+    assert set(TABELAS) >= FECHADAS_ATE_A_PRONTIDAO
+
+
+def test_sem_prontidao_a_lista_nao_anuncia_as_15(sem_prontidao):
+    nomes = {t["tabela"] for t in sem_prontidao.get(ROTA).json()["tabelas"]}
+    assert nomes.isdisjoint(FECHADAS_ATE_A_PRONTIDAO)
+    # as demais seguem como estavam
+    assert {"pgfn_divida", "curva_juros"} <= nomes
+
+
+@pytest.mark.parametrize("nome", sorted(_fechadas_consultaveis()))
+def test_sem_prontidao_as_15_nao_servem_linhas_nem_csv(sem_prontidao, nome):
+    inexistente = sem_prontidao.get(f"{ROTA}/nao_existe", headers=SITE)
+    for rota in (f"{ROTA}/{nome}", f"{ROTA}/{nome}.csv"):
+        r = sem_prontidao.get(rota, headers=SITE)
+        assert r.status_code == 404 and r.json() == inexistente.json(), rota
+
+
+def test_ma_datas_e_ma_regua_voltam_com_prontidao(cliente, monkeypatch):
+    for nome in ("ma_datas", "ma_regua"):
+        assert nome in FECHADAS_ATE_A_PRONTIDAO and pode_consultar(nome)
+        monkeypatch.setattr(prontidao, "PRONTIDAO", {})
+        assert not pode_consultar_aberto(nome)
+        monkeypatch.setattr(prontidao, "PRONTIDAO", _prontidao_de_todas_do_cnpj())
+        assert pode_consultar_aberto(nome)
+
+
+def test_ficam_em_casa_que_a_consulta_libera_estao_fechadas():
+    """Tabela nova de `FICAM_EM_CASA` que `pode_consultar` libera tem de vir para `FECHADAS_ATE_A_PRONTIDAO`
+    (ou ser do CNPJ): senão a consulta aberta a anuncia sem prontidão (linha 842)."""
+    from scripts.montar_recorte_da_api import FICAM_EM_CASA
+
+    abertas = {
+        n
+        for n in FICAM_EM_CASA
+        if n in TABELAS and pode_consultar_aberto(n) and not e_do_cnpj(n)
+    }
+    assert not abertas, sorted(abertas)

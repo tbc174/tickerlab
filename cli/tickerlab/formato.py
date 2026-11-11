@@ -246,6 +246,17 @@ def eventos(corpo: Mapping) -> str:
     )
 
 
+def dossie(corpo: Mapping) -> str:
+    """O dossiê: quantos pedidos gastou, o que ficou de fora, e depois cada seção com fonte e data."""
+    lacunas = [g for g in corpo.get("gaps") or [] if isinstance(g, Mapping)]
+    topo = f"Dossiê: {corpo.get('requests_used')} pedidos gastos da quota."
+    if lacunas:
+        topo += " Ficou de fora: " + "; ".join(
+            f"{g.get('section')} ({g.get('reason')})" for g in lacunas
+        )
+    return f"{topo}\n\n{resposta_de_dado(corpo)}"
+
+
 def setores(corpo: Mapping) -> str:
     """Os setores que a ficha da noite tem, com o dia dela; a lista não traz dado nem gasta a quota."""
     lista = [s for s in corpo.get("sectors") or [] if isinstance(s, Mapping)]

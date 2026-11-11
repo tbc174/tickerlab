@@ -120,6 +120,23 @@ def e_do_cnpj(nome_da_tabela: str) -> bool:
     )
 
 
+# Fora da consulta aberta até a prontidão (linha 842; Tiago, 11/11/2026: "Sim, fecha"): as tabelas de
+# `FICAM_EM_CASA` (scripts/montar_recorte_da_api.py) que não são do CNPJ, que a produção só anuncia pelo nome
+# (a porta de lá não tem o arquivo), e `ma_datas` e `ma_regua`, que usam campos do CNPJ (a raiz da alvo, o porte).
+# Mesma regra da família do CNPJ: somem da lista e das linhas e voltam sozinhas quando entram em `PRONTIDAO`. Há
+# teste que cobra: tabela nova de `FICAM_EM_CASA` que a consulta libera tem de vir para cá.
+FECHADAS_ATE_A_PRONTIDAO = frozenset({
+    "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
+    "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
+    "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
+})  # fmt: skip
+
+
+def exige_prontidao_na_consulta_aberta(nome_da_tabela: str) -> bool:
+    """A consulta aberta só serve a tabela com a prontidão em dia: a do CNPJ e as `FECHADAS_ATE_A_PRONTIDAO`."""
+    return e_do_cnpj(nome_da_tabela) or nome_da_tabela in FECHADAS_ATE_A_PRONTIDAO
+
+
 # Servidas só pela API externa paga, atrás do portão e da prontidão (D10): a consulta aberta e a página Dados
 # não as mostram. A leitura mais estreita da Diretoria (11/11/2026, linha 810): nada novo fica aberto sem prontidão.
 # A situação cadastral (linha 841) entrou pela mesma leitura: montada só das raízes sem pessoa, mas nova.
@@ -180,11 +197,11 @@ def pode_consultar(nome_da_tabela: str) -> bool:
 
 
 def pode_consultar_aberto(nome_da_tabela: str) -> bool:
-    """`pode_consultar` na consulta aberta: a tabela do CNPJ só sai com a prontidão em dia hoje (UTC); as
+    """`pode_consultar` na consulta aberta: a tabela do CNPJ ou das `FECHADAS_ATE_A_PRONTIDAO` só sai com a prontidão em dia hoje (UTC); as
     outras seguem a regra de sempre. Lê o registro de verdade (`PRONTIDAO`), nunca o de ensaio."""
     if not pode_consultar(nome_da_tabela):
         return False
-    if not e_do_cnpj(nome_da_tabela):
+    if not exige_prontidao_na_consulta_aberta(nome_da_tabela):
         return True
     from base import (
         prontidao,

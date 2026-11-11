@@ -76,6 +76,13 @@ MENSAGEM_DE_PESSOA = (
 )
 MENSAGEM_SEM_CHAVE = "Pedido sem chave do TickerLab: refaça a ligação do conector."
 MENSAGEM_NAO_LIBERADA = "Esta ferramenta não está disponível para a chave usada."
+# a pergunta "quanto a fechada fatura?" merece um "não temos" claro, não um vazio (linha 831, item d)
+MENSAGEM_SEM_DEMONSTRACAO = (
+    "Não disponível: a base só tem demonstrações financeiras de companhia aberta, entregues à CVM, "
+    "e não as tem para esse pedido, ou a chave não tem acesso a elas (a API não diz qual dos dois, "
+    "de propósito). Faturamento de empresa fechada a base não tem: capital social, porte e "
+    "financiamento não são receita, e o TickerLab não estima."
+)
 STATUS_OK = 200
 STATUS_PEDIDO_INVALIDO = 400
 STATUS_CHAVE_RECUSADA = 401
@@ -340,13 +347,16 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         ] = None,
     ) -> str:
         """As demonstrações financeiras (DFP e ITR) da companhia aberta na CVM: um valor por conta e
-        período, com o documento, a versão e a data em que ficou público."""
+        período, com o documento, a versão e a data em que ficou público. Empresa fechada não tem:
+        a base não traz faturamento de fechada, e a ferramenta diz isso em vez de estimar."""
         numeros = cnpj_do_pedido(cnpj)
-        return await pedidos.pedir(
-            "demonstracoes",
+        resposta = await pedidos.resposta(
             f"/companies/{numeros}/financials",
             {"known_at": _dia(como_era_em), "period_end": _dia(fim_do_periodo)},
         )
+        if resposta.status == STATUS_NAO_DISPONIVEL:
+            raise ToolError(MENSAGEM_SEM_DEMONSTRACAO)
+        return pedidos.entregar(resposta, "demonstracoes")
 
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
