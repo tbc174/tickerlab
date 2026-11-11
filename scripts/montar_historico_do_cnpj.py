@@ -209,6 +209,31 @@ class SituacaoNoFormatoAntigo(RuntimeError):
 FORMATO_ANTIGO = "[0-9][0-9][0-9][0-9]-[0-9][0-9]*.parquet"
 
 
+class SituacaoDeOutroModo(RuntimeError):
+    """A pasta tem a situação do outro modo (só do vigente ou a série completa): montar por cima mandaria o
+    que está gravado para `.vN` sem aviso. Mova a pasta para o lado, com a data, antes de trocar de modo."""
+
+
+def _conferir_o_modo_gravado(pasta: Path, ultimo_mes: str, so_vigente: bool) -> None:
+    """Só do vigente não monta por cima da série completa (meses antes do vigente), nem a série por cima
+    do só do vigente (só o mês do vigente)."""
+    gravados = sorted(pasta.glob("??.parquet"))
+    if not gravados:
+        return
+    meses = set(
+        pd.concat([pd.read_parquet(a, columns=[historico.MES]) for a in gravados])[
+            historico.MES
+        ].astype(str)
+    )
+    tem_serie = bool(meses - {ultimo_mes})
+    if so_vigente and tem_serie:
+        raise SituacaoDeOutroModo(
+            f"{SITUACAO} já tem a série completa ({min(meses)} em diante)"
+        )
+    if not so_vigente and not tem_serie:
+        raise SituacaoDeOutroModo(f"{SITUACAO} tem só o retrato vigente ({ultimo_mes})")
+
+
 def _colunas_do_arquivo(arquivo: Path, colunas: Iterable[str]) -> list[str]:
     nomes = set(pq.ParquetFile(arquivo).schema_arrow.names)
     return [c for c in colunas if c in nomes]
@@ -284,6 +309,7 @@ def montar_situacao(
         )
     manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
     meses = sorted(manifesto["meses"])
+    _conferir_o_modo_gravado(destino / SITUACAO, meses[-1], so_vigente)
     if so_vigente:
         meses = meses[-1:]
     zips = {m: _zips_do_mes(manifesto, m, ZIP_DE_ESTABELECIMENTOS) for m in meses}
@@ -466,6 +492,7 @@ def main(argv: list[str] | None = None) -> int:
         MesForaDeOrdem,
         ListaSemPessoaForaDoMes,
         SituacaoNoFormatoAntigo,
+        SituacaoDeOutroModo,
     ) as erro:
         print(
             f"FALHAS: histórico do CNPJ: {type(erro).__name__}: {erro}"[

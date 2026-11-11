@@ -459,3 +459,27 @@ def test_a_serie_completa_depois_do_so_vigente_tem_o_mesmo_contrato(tmp_path):
         "matriz",
     ]
     assert ultima[colunas].reset_index(drop=True).equals(so_vigente[colunas])
+
+
+@pytest.mark.parametrize("primeiro_so_vigente", [True, False])
+def test_trocar_de_modo_sem_mover_a_pasta_para(tmp_path, capsys, primeiro_so_vigente):
+    """Montar um modo por cima do outro mandaria o gravado para `.vN` sem aviso: para, sem regravar nada."""
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    montar.montar_situacao(cnpj, destino, AGORA, so_vigente=primeiro_so_vigente)
+    antes = _situacoes(destino)
+    argumentos = ["situacao", "--cnpj", str(cnpj), "--destino", str(destino)]
+    if not primeiro_so_vigente:
+        argumentos.append("--so-vigente")
+    assert montar.main(argumentos) == 1
+    assert "SituacaoDeOutroModo" in capsys.readouterr().out
+    assert _situacoes(destino).equals(antes)
+    assert not list((destino / montar.SITUACAO).glob("*.v*"))
+
+
+@pytest.mark.parametrize("so_vigente", [True, False])
+def test_remontar_no_mesmo_modo_continua_valendo(tmp_path, so_vigente):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    montar.montar_situacao(cnpj, destino, AGORA, so_vigente=so_vigente)
+    assert montar.montar_situacao(cnpj, destino, AGORA, so_vigente=so_vigente)
