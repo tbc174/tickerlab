@@ -1,12 +1,12 @@
 name: Tenho uma ideia
-description: Uma análise, estratégia ou melhoria que faria sentido no TickerLab.
+description: Um dado, uma consulta ou uma melhoria que faria sentido no TickerLab.
 labels: ["enhancement"]
 body:
   - type: textarea
     id: problema
     attributes:
       label: Que pergunta você quer responder?
-      description: O problema ou a dúvida por trás da ideia (ex.: "essa estratégia foi sorte?").
+      description: O problema ou a dúvida por trás da ideia (ex.: "quais empresas de um setor operam nesta UF?").
     validations:
       required: true
   - type: textarea
