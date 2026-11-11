@@ -29,10 +29,15 @@ CABECALHOS = {
 
 
 @contextmanager
-def conector(transporte: httpx.AsyncBaseTransport) -> Generator[TestClient]:
-    """O conector com a configuração de produção, falando com a API pelo `transporte`."""
-    app = criar_app(ler_configuracao({}), transporte)
-    with TestClient(app, base_url=URL_PUBLICA) as cliente:
+def conector(
+    transporte: httpx.AsyncBaseTransport,
+    ambiente: dict[str, str] | None = None,
+    ip: str = "203.0.113.10",
+) -> Generator[TestClient]:
+    """O conector com a configuração de produção, falando com a API pelo `transporte`; os pedidos
+    chegam do endereço `ip` (por padrão, um IP de fora, da faixa de documentação)."""
+    app = criar_app(ler_configuracao(ambiente or {}), transporte)
+    with TestClient(app, base_url=URL_PUBLICA, client=(ip, 50000)) as cliente:
         yield cliente
 
 

@@ -40,8 +40,6 @@
 /* o display: flex acima ganharia do atributo hidden: a área recolhida precisa desta regra */
 .itens-da-area[hidden] { display: none; }
 .itens-da-area li { display: flex; align-items: center; gap: var(--e1); }
-/* em breve: nome e selo na mesma linha de texto (em flex, o nome virava uma coluna espremida) */
-.itens-da-area li.em-breve { display: block; }
 .itens-da-area a { flex: 1; min-width: 0; }
 .estrela { display: inline-flex; padding: var(--e1); border: 0; border-radius: 6px; background: transparent;
   color: var(--apagado); cursor: pointer; opacity: .35; }
@@ -49,8 +47,11 @@
 .estrela[aria-pressed="true"] { opacity: 1; color: var(--azul-texto); }
 .estrela[aria-pressed="true"] .icone { fill: currentColor; }
 .app-menu .estrela .icone { width: 15px; height: 15px; }
-.em-breve { padding: var(--e2) var(--e3); color: var(--apagado); opacity: .6; font-size: .92rem; }
+/* o selo pequeno da Sala de dados ("prazo perto") */
 .selo-em-breve { font-size: var(--t-1); }
+/* as telas que só existem na versão clássica: um link só, no fim do menu */
+.classico-do-menu { display: flex; align-items: center; gap: var(--e2); border-top: 1px solid var(--linha);
+  font-size: var(--t-1); }
 /* trilho de ícones entre 761 e 1.100 px: o nome fica para o leitor de tela e no "title"; as telas abrem
    ao lado ao passar o mouse ou com o Tab */
 @media (min-width: 761px) and (max-width: 1100px) {
@@ -58,7 +59,7 @@
   /* o menu é sticky (uma camada própria): sem z-index, os gráficos da tela passam por cima das telas ao lado */
   .app-menu.trilho { overflow: visible; max-height: none; z-index: 7; }
   .app-menu.trilho .rotulo-do-menu { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .app-menu.trilho :is(.inicio-do-menu, .titulo-da-area button, .favoritos-do-menu .titulo-da-area) {
+  .app-menu.trilho :is(.inicio-do-menu, .classico-do-menu, .titulo-da-area button, .favoritos-do-menu .titulo-da-area) {
     justify-content: center; padding: var(--e2); }
   .app-menu.trilho .titulo-da-area button::after { content: none; }
   .app-menu.trilho .area-do-menu { position: relative; }
