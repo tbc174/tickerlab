@@ -2392,7 +2392,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 65
+      "tabelas": 66
     },
     {
       "historico_desde": "2026-10-14",
@@ -2900,7 +2900,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 34,
-    "tabelas": 119,
+    "tabelas": 120,
     "temas": [
       {
         "chave": "cvm",
@@ -3010,7 +3010,7 @@
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 16
+      "tabelas": 17
     },
     {
       "chave": "macro",
@@ -7285,6 +7285,17 @@
       "tabela": "cadastro_admin_hist"
     },
     {
+      "atraso": "Do dia: é um retrato do registro na data da coleta",
+      "consultavel": false,
+      "frase": "O registro de fundos da CVM 175 (registro_fundo): todo fundo registrado, com o tipo (FIP, FII, FIDC, FIAGRO, FI...), a situação, o administrador e o gestor.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "registro_de_fundos"
+    },
+    {
       "atraso": null,
       "consultavel": true,
       "frase": "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ).",
@@ -8842,6 +8853,6 @@
     "fontes": 46,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 156
+    "tabelas": 157
   }
 }
