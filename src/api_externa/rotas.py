@@ -38,6 +38,7 @@ from src.api_externa.conjuntos import (
     fundos,
     prospeccao,
     setores,
+    vinculos,
 )
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import traduzir_chaves
@@ -456,6 +457,36 @@ def eventos_da_empresa(
             _portao(conexao, contexto, eventos.CONJUNTO),
             acesso.linhas_por_resposta(contexto),
         ).eventos(numeros, dia, tipos, cursor),
+    )
+
+
+@router.get("/companies/{cnpj}/links")
+def vinculos_da_empresa(
+    cnpj: str,
+    contexto: Chave,
+    known_at: date | None = None,
+    depth: int = 1,
+    types: Annotated[list[str], Query()] = [],  # noqa: B006 - o FastAPI copia o padrão
+) -> object:
+    """Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,
+    coligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e
+    a firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano
+    (`truncated`). MEI, empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    try:
+        profundidade = vinculos.profundidade_do_pedido(depth)
+        tipos = vinculos.tipos_do_pedido(types)
+    except vinculos.PedidoInvalido as erro:
+        raise _recusa(erro.codigo) from erro
+    return _um_pedido(
+        contexto,
+        vinculos.CONJUNTO,
+        lambda conexao, porta: vinculos.LeitorDeVinculos(
+            porta,
+            _portao(conexao, contexto, vinculos.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).vinculos(numeros, dia, profundidade, tipos),
     )
 
 
