@@ -1592,6 +1592,46 @@ def de_ficha_do_analista(
     )
 
 
+class EventoDaEmpresaV1(BaseModel):
+    """Um evento da empresa: o tipo (`ipe_filing` ou `auditor_change`) e os campos dele, cada um com fonte e dia."""
+
+    tipo: str
+    campos: dict[str, CampoComFonteV1]
+
+
+class EventosDaEmpresaV1(BaseModel):
+    """Os eventos da empresa na ficha (linha 798, PR 4): o estado, a página, o cursor da seguinte, as fontes e
+    os limites, sempre."""
+
+    estado: str  # "pronta", "nao_liberada" ou "nao_disponivel", como a ficha
+    como_era_em: date | None
+    eventos: list[EventoDaEmpresaV1]
+    cortada: bool
+    proximo_cursor: str | None
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def _evento_do_analista(linha: dict) -> EventoDaEmpresaV1:
+    campos = {nome: valor for nome, valor in linha.items() if nome != "tipo_de_evento"}
+    return EventoDaEmpresaV1(tipo=linha["tipo_de_evento"], campos=campos)  # type: ignore[arg-type]
+
+
+def de_eventos_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> EventosDaEmpresaV1:
+    corpo = resposta.corpo or {}
+    return EventosDaEmpresaV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        eventos=[_evento_do_analista(linha) for linha in corpo.get("eventos", [])],
+        cortada=bool(corpo.get("cortada", False)),
+        proximo_cursor=corpo.get("proximo_cursor"),
+        fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
+        limites=list(limites),
+    )
+
+
 class EmpresaDaBuscaV1(BaseModel):
     """Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão
     não serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita."""
