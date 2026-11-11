@@ -6,7 +6,7 @@ Cuidados (condição 3 do aceite da linha 570):
   cliente mandou no registro), e o aviso "só continue se foi você que começou esta ligação agora";
 - a chave só vai no corpo do POST, nunca na URL; o pedido selado na URL não leva chave nenhuma;
 - não abre dentro de outra página (`frame-ancestors 'none'` e `X-Frame-Options`), não fica em cache
-  (`no-store`) e não manda `Referer`;
+  (`no-store`) e não manda `Referer` para fora do conector;
 - CSRF por cookie duplicado (`__Host-`, HttpOnly, Secure, SameSite=Strict) conferido no POST;
 - erro de chave é sempre o mesmo texto, e cada falha conta no limite por IP (o IP de verdade atrás do
   túnel, `limite.py`): passou do limite, 429 até a janela andar.
@@ -43,7 +43,9 @@ CABECALHOS_DA_PAGINA = {
     "X-Frame-Options": "DENY",
     "Cache-Control": "no-store",
     "Pragma": "no-cache",
-    "Referrer-Policy": "no-referrer",
+    # `same-origin`, e não `no-referrer`: com `no-referrer` o navegador manda `Origin: null` no POST do
+    # formulário (Fetch, "append a request Origin header"), e a proteção de Origin recusaria o analista
+    "Referrer-Policy": "same-origin",
     "X-Content-Type-Options": "nosniff",
 }
 

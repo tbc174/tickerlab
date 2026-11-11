@@ -189,7 +189,7 @@ def test_pagina_nao_abre_em_moldura_nem_fica_em_cache(api):
     assert "default-src 'none'" in politica
     assert resposta.headers["x-frame-options"] == "DENY"
     assert resposta.headers["cache-control"] == "no-store"
-    assert resposta.headers["referrer-policy"] == "no-referrer"
+    assert resposta.headers["referrer-policy"] == "same-origin"
     cookie = resposta.headers["set-cookie"]
     for atributo in (
         "__Host-tickerlab-csrf=",
@@ -208,6 +208,23 @@ def test_pagina_a_chave_vai_no_corpo_nunca_na_url(api):
         resposta, _, _ = ao.abrir_pagina(cliente, endereco)
     assert '<form method="post" action="/autorizar">' in resposta.text
     assert 'type="password" id="chave" name="chave"' in resposta.text
+
+
+def test_post_do_navegador_com_o_origin_do_conector_passa(api):
+    # o navegador manda o Origin do próprio conector no POST do formulário (regressão: com
+    # `Referrer-Policy: no-referrer` ele mandaria `Origin: null`, e a proteção de Origin daria 403)
+    origem = {"Origin": aj.URL_PUBLICA}
+    with aj.conector(api.transporte) as cliente:
+        registrado = ao.registrar_ok(cliente)
+        endereco = ao.endereco_da_pagina(cliente, registrado["client_id"], ao.pkce()[1])
+        _, pedido, csrf = ao.abrir_pagina(cliente, endereco)
+        nulo = ao.enviar_chave(
+            cliente, pedido, csrf, ao.CHAVE_A, cabecalhos={"Origin": "null"}
+        )
+        certo = ao.enviar_chave(cliente, pedido, csrf, ao.CHAVE_A, cabecalhos=origem)
+    assert nulo.status_code == 403
+    assert certo.status_code == 303, certo.text
+    assert certo.headers["location"].startswith(ao.VOLTA_DO_CLAUDE)
 
 
 def test_pedido_mexido_ou_vazio_mostra_erro(api):
