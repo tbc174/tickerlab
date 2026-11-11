@@ -83,9 +83,9 @@ const COMANDOS: [string, string, string][] = [
 
 // As travas que as instruções do agente trazem (cli/tickerlab/instrucoes/AGENTS.md, "Travas").
 const TRAVAS_DO_AGENTE: [string, string][] = [
-  ["Fonte e data em cada número", "O agente cita de onde veio e quando ficou público."],
-  ["Nenhum número inventado", "O que a CLI não devolveu, o agente diz que não achou."],
-  ["Nada é recomendação de investimento", "O agente descreve, compara e calcula; a decisão é sua."],
+  ["Fonte e data em cada número", "As instruções pedem ao agente que cite de onde veio e quando ficou público."],
+  ["Nenhum número inventado", "As instruções pedem que ele diga o que a CLI não devolveu, em vez de completar."],
+  ["Nada é recomendação de investimento", "As instruções pedem que ele descreva, compare e calcule; a decisão é sua."],
   ["Sem dado de pessoa física", "A API não serve sócio pessoa física, CPF, MEI nem empresário individual."],
   ["A chave é segredo", "Ela nunca passa pelo chat nem pelo histórico do terminal."],
 ];
@@ -111,8 +111,8 @@ const PASSOS_PARA_COMECAR: [string, ReactNode][] = [
   [
     "Entregue as instruções ao agente",
     <>
-      <code>tickerlab instrucoes</code> escreve o arquivo que ensina os comandos e as travas ao
-      Claude Code, ao Codex e a outros agentes.
+      <code>tickerlab instrucoes</code> imprime o texto que ensina os comandos e as travas ao
+      Claude Code, ao Codex e a outros agentes; guarde-o no arquivo de instruções do seu agente.
     </>,
   ],
 ];
