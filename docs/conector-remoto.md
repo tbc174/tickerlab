@@ -90,6 +90,7 @@ Compose). Vindo de outro lugar, o cabeçalho é ignorado e conta o endereço da 
 | Variável | Padrão | Para quê |
 |---|---|---|
 | `TICKERLAB_MCP_CHAVE_DOS_TOKENS` | (nenhum) | **Segredo.** 32 bytes em base64url que selam os tokens. Sem ela, o conector cria uma chave só do processo e avisa no log (reiniciar obriga todos a entrar de novo). Em produção ela é obrigatória. |
+| `TICKERLAB_MCP_EXIGIR_CHAVE` | (vazio) | `1` no compose de produção: sem a chave do servidor, o conector não sobe. |
 | `TICKERLAB_MCP_API_URL` | `http://tickerlab-api:8000` | Onde está a API externa (rede do Compose). |
 | `TICKERLAB_MCP_URL_PUBLICA` | `https://mcp.tickerlab.com.br` | O endereço público do conector; também é o `issuer` do OAuth. |
 | `TICKERLAB_MCP_HOSTS` | (vazio) | Hosts extras aceitos além do público (o resto recebe 421). |
@@ -98,12 +99,30 @@ Compose). Vindo de outro lugar, o cabeçalho é ignorado e conta o endereço da 
 
 A chave do servidor nunca aparece em `repr`, log ou mensagem de erro (há teste), nem neste repositório.
 
+## Em produção
+
+O serviço `tickerlab-mcp` fica num arquivo à parte, `compose.conector.yaml`, que o `docker compose up`
+comum não lê: o deploy automático só o soma ao `compose.yaml` quando o `.env.mcp` existe, então o merge
+não sobe contêiner nenhum, e depois do primeiro `up` o conector acompanha cada versão. Ele usa a mesma
+imagem do app, com outro comando (`python -m conector_remoto`). Ele não monta volume nenhum (nem acervo, nem sala, nem cache), não lê o
+`.env` do app e roda com o disco só de leitura, sem poderes extras (`cap_drop: ALL`). A porta 8010 fica
+só no `127.0.0.1` do VPS, e o `CF-Connecting-IP` só vale vindo do gateway da rede do Docker
+(`172.18.0.1/32`). Há teste que confere essas travas (`tests/test_publicacao.py`), e o CI sobe o
+contêiner para conferir o 401, o 421 e o 403.
+
+O único segredo fica no `.env.mcp` (permissão 600, fora do Git e da imagem), gravado por
+`python3 scripts/gravar_chave_do_conector.py`. O script cria a chave sem mostrá-la e não troca uma chave
+que já existe sem `--trocar`.
+
+O guia para quem usa o conector está em `docs/guia-do-analista-conector.md`.
+
 ## Incidente: a chave do servidor vazou
 
 Quem tem a chave do servidor e um token capturado lê a chave do analista dentro dele. Então:
 
-1. **Troque a chave do servidor.** Gere uma nova e grave no `.env` do contêiner do conector, sem eco e sem
-   log (o roteiro de produção traz o script). Reinicie o contêiner. Todos os tokens e registros antigos
+1. **Troque a chave do servidor.** No VPS: `python3 scripts/gravar_chave_do_conector.py --trocar` (a
+   chave nova vai para o `.env.mcp` sem aparecer na tela nem no log) e `docker compose up -d
+   tickerlab-mcp`. Todos os tokens e registros antigos
    deixam de abrir: cada analista entra de novo pela página `/autorizar`.
 2. **Revogue as chaves das pessoas** que usaram o conector desde a data provável do vazamento e entregue
    chaves novas. Sem isso, quem copiou um token antes da troca ainda teria a chave de dentro dele.

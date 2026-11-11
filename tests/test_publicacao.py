@@ -5,12 +5,19 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 RAIZ = Path(__file__).resolve().parent.parent
 PACOTES_QUE_O_PIP_CHAMA_DIFERENTE: dict[str, str] = {
     "fpdf": "fpdf2",
     "pptx": "python-pptx",
 }
-PACOTES_NOSSOS = {"src", "telas", "base"}  # pastas do próprio repositório, não do pip
+PACOTES_NOSSOS = {
+    "src",
+    "telas",
+    "base",
+    "conector_remoto",
+}  # pastas do próprio repositório, não do pip
 
 
 def _importados_de_terceiros() -> set[str]:
@@ -24,6 +31,8 @@ def _importados_de_terceiros() -> set[str]:
         # a porta e os sócios: a busca por CNPJ lê a vista do CNPJ por eles no servidor do app
         *(RAIZ / "base" / "porta").glob("*.py"),
         *(RAIZ / "base" / "pessoas").glob("*.py"),
+        # o conector remoto dos analistas roda na mesma imagem (contêiner tickerlab-mcp)
+        *(RAIZ / "conector_remoto").glob("*.py"),
     ]
     nomes: set[str] = set()
     for arquivo in arquivos:
@@ -63,7 +72,15 @@ def test_versoes_de_producao_sao_as_mesmas_do_requirements_completo():
 
 def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
     dockerfile = (RAIZ / "Dockerfile").read_text(encoding="utf-8")
-    for pasta in ("src", "telas", "base", "conteudo", "dados_de_exemplo", ".streamlit"):
+    for pasta in (
+        "src",
+        "telas",
+        "base",
+        "conteudo",
+        "dados_de_exemplo",
+        ".streamlit",
+        "conector_remoto",
+    ):
         assert f"COPY {pasta} " in dockerfile or f"COPY {pasta}\n" in dockerfile, pasta
     assert "COPY app.py" in dockerfile
     assert "COPY migracoes " in dockerfile and "COPY alembic.ini" in dockerfile
@@ -132,9 +149,8 @@ def test_imagem_leva_a_versao_do_codigo():
     compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
     assert "TICKERLAB_VERSAO: ${TICKERLAB_VERSAO:-}" in compose
     deploy = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
-    assert (
-        'subir() { TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose up' in deploy
-    )
+    assert 'TICKERLAB_VERSAO="$(git rev-parse HEAD)" COMPOSE_FILE=' in deploy
+    assert "docker compose up -d --build" in deploy
 
 
 def _servicos_do_compose() -> dict[str, str]:
@@ -171,3 +187,42 @@ def test_chave_e_arquivos_da_sala_ficam_fora_do_git():
 def test_a_biblioteca_da_cifra_esta_fixada_nos_dois_requirements():
     for arquivo in ("requirements.txt", "requirements-prod.txt"):
         assert _pacotes_do_requirements(arquivo).get("cryptography"), arquivo
+
+
+def _servico_do_conector() -> dict:
+    compose = yaml.safe_load(
+        (RAIZ / "compose.conector.yaml").read_text(encoding="utf-8")
+    )
+    assert list(compose["services"]) == ["tickerlab-mcp"]
+    return compose["services"]["tickerlab-mcp"]
+
+
+def test_conector_remoto_nao_ve_acervo_banco_nem_segredo_do_app():
+    """Linha 570: o contêiner do conector só fala com a API, com a chave de cada analista."""
+    conector = _servico_do_conector()
+    assert conector["image"] == "tickerlab:local"
+    # o merge não sobe o conector: o deploy só soma o arquivo dele quando o .env.mcp existe
+    deploy = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
+    assert (
+        'if [ -f "$PASTA/.env.mcp" ] && [ -f "$PASTA/compose.conector.yaml" ]' in deploy
+    )
+    assert 'echo "compose.yaml:compose.conector.yaml"' in deploy
+    assert conector["command"] == ["python", "-m", "conector_remoto"]
+    assert conector["ports"] == ["127.0.0.1:8010:8010"]
+    assert "volumes" not in conector  # nada de acervo, sala, cache nem secrets.toml
+    assert conector["env_file"] == [".env.mcp"]  # nunca o .env do app nem o .env.sala
+    ambiente = conector["environment"]
+    assert ambiente["TICKERLAB_MCP_EXIGIR_CHAVE"] == "1"
+    assert ambiente["TICKERLAB_MCP_API_URL"] == "http://tickerlab-api:8000"
+    assert not any("DATABASE" in nome or "SALA" in nome for nome in ambiente)
+    # só o gateway da rede (por onde chega o túnel) pode dizer o IP de quem chamou
+    assert ambiente["TICKERLAB_MCP_PROXIES_CONFIAVEIS"] == "172.18.0.1/32"
+    assert conector["read_only"] is True and conector["cap_drop"] == ["ALL"]
+    assert "no-new-privileges:true" in conector["security_opt"]
+    assert "mcp.tickerlab.com.br" in " ".join(conector["healthcheck"]["test"])
+
+
+def test_segredo_do_conector_fica_fora_do_git_e_da_imagem():
+    for arquivo in (".gitignore", ".dockerignore"):
+        linhas = (RAIZ / arquivo).read_text(encoding="utf-8").splitlines()
+        assert ".env.mcp" in linhas, arquivo

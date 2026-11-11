@@ -46,7 +46,21 @@ saudavel() {
 
 # a imagem leva o commit que está implantado (versão do código; ADR 0055, exigência 13). Vale
 # também na volta para a versão anterior: o commit é lido na hora de subir.
-subir() { TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose up -d --build >> "$LOG" 2>&1; }
+#
+# O conector remoto dos analistas (compose.conector.yaml, linha 570) só entra quando o .env.mcp, com a
+# chave dele, existe na pasta: antes disso o deploy nem o vê, e depois ele acompanha cada versão como o
+# app e a API. Na volta para um commit sem o arquivo, fica só o compose.yaml. A saúde do conector não
+# reverte o deploy (o app não depende dele).
+arquivos_do_compose() {
+  if [ -f "$PASTA/.env.mcp" ] && [ -f "$PASTA/compose.conector.yaml" ]; then
+    echo "compose.yaml:compose.conector.yaml"
+  else
+    echo compose.yaml
+  fi
+}
+subir() {
+  TICKERLAB_VERSAO="$(git rev-parse HEAD)" COMPOSE_FILE="$(arquivos_do_compose)"     docker compose up -d --build >> "$LOG" 2>&1
+}
 
 esperar() {
   local ate=$((SECONDS + ESPERA_MAXIMA))

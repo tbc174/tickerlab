@@ -2,7 +2,8 @@
 
 O único segredo é a chave do servidor (`TICKERLAB_MCP_CHAVE_DOS_TOKENS`), que sela os tokens do OAuth.
 Ela nunca entra em `repr`, log ou mensagem de erro; sem ela, o conector cria uma chave só para este
-processo (reiniciar derruba todos os acessos) e avisa no log, sem o valor.
+processo (reiniciar derruba todos os acessos) e avisa no log, sem o valor. Em produção o compose liga
+`TICKERLAB_MCP_EXIGIR_CHAVE=1`: aí, sem a chave, o conector nem sobe.
 """
 
 from collections.abc import Mapping
@@ -10,12 +11,15 @@ from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 from conector_remoto.limite import REDES_CONFIAVEIS_PADRAO, Rede, redes
-from conector_remoto.selo import ler_chave
+from conector_remoto.selo import ChaveInvalida, ler_chave
 
 VARIAVEL_DA_API = "TICKERLAB_MCP_API_URL"
 VARIAVEL_DA_URL_PUBLICA = "TICKERLAB_MCP_URL_PUBLICA"
 VARIAVEL_DOS_HOSTS = "TICKERLAB_MCP_HOSTS"
 VARIAVEL_DA_CHAVE_DOS_TOKENS = "TICKERLAB_MCP_CHAVE_DOS_TOKENS"
+# ligada no compose de produção: sem a chave do servidor, melhor não subir do que subir com uma chave
+# do processo, que derrubaria todos os analistas a cada reinício
+VARIAVEL_DE_EXIGIR_A_CHAVE = "TICKERLAB_MCP_EXIGIR_CHAVE"
 # de onde vem o túnel: só um pedido vindo destas redes pode dizer o IP de quem chamou (`CF-Connecting-IP`)
 VARIAVEL_DAS_REDES_CONFIAVEIS = "TICKERLAB_MCP_PROXIES_CONFIAVEIS"
 # dentro da rede do compose: o contêiner da API externa, sem passar pela internet
@@ -59,7 +63,8 @@ def _lista(texto: str) -> tuple[str, ...]:
 def ler_configuracao(ambiente: Mapping[str, str]) -> Configuracao:
     """A configuração a partir das variáveis de ambiente; o host público é sempre aceito.
 
-    Chave do servidor fora do formato levanta `ChaveInvalida` (sem o valor): melhor não subir.
+    Chave do servidor fora do formato, ou ausente com `TICKERLAB_MCP_EXIGIR_CHAVE=1`, levanta
+    `ChaveInvalida` (sem o valor): melhor não subir.
     """
     url_da_api = ambiente.get(VARIAVEL_DA_API, API_PADRAO).rstrip("/")
     url_publica = ambiente.get(VARIAVEL_DA_URL_PUBLICA, URL_PUBLICA_PADRAO).rstrip("/")
@@ -70,6 +75,13 @@ def ler_configuracao(ambiente: Mapping[str, str]) -> Configuracao:
     origem_publica = f"{urlsplit(url_publica).scheme}://{host_publico}"
     origens = tuple(dict.fromkeys((*ORIGENS_PADRAO, origem_publica)))
     texto_da_chave = ambiente.get(VARIAVEL_DA_CHAVE_DOS_TOKENS, "").strip()
+    if (
+        not texto_da_chave
+        and ambiente.get(VARIAVEL_DE_EXIGIR_A_CHAVE, "").strip() == "1"
+    ):
+        raise ChaveInvalida(
+            f"{VARIAVEL_DA_CHAVE_DOS_TOKENS} é obrigatória neste ambiente"
+        )
     texto_das_redes = ambiente.get(VARIAVEL_DAS_REDES_CONFIAVEIS, "")
     return Configuracao(
         url_da_api,
