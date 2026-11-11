@@ -33,6 +33,7 @@ SEM_FERRAMENTA: dict[str, str] = {
     "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
     "eventos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pelo PR 1014 da 773)",
+    "vinculos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pela 773)",
 }
 
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
