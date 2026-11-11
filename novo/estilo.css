@@ -344,14 +344,6 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-degrade { background: linear-gradient(90deg, #6e95ff 0%, #a9c1ff 55%, #6e95ff 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-.v2-pilula { display: inline-flex; align-items: center; gap: .55rem; margin-bottom: 1.4rem; padding: .35rem .8rem .35rem .6rem;
-  border-radius: 999px; border: 1px solid var(--linha-forte); background: rgba(16, 39, 82, .6);
-  color: var(--texto); font-size: .86rem; font-weight: 600; text-decoration: none; backdrop-filter: blur(8px);
-  transition: border-color 160ms ease; }
-.v2-pilula:hover { border-color: var(--azul-texto); }
-.v2-ponto { width: 8px; height: 8px; border-radius: 50%; background: #f5b83d; box-shadow: 0 0 0 4px rgba(245, 184, 61, .18); }
-.v2-pilula-seta { color: var(--azul-texto); transition: transform 160ms ease; }
-.v2-pilula:hover .v2-pilula-seta { transform: translateX(3px); }
 
 /* painel do número principal (Ledger): vidro escuro, um número grande, o gráfico e três métricas */
 .v2-painel-pilha { position: relative; animation: tl-chegar 700ms cubic-bezier(.2, .7, .2, 1) 220ms both; }
@@ -418,14 +410,6 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-regras-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .8rem; }
 .v2-regras-lista .como-foi-calculado { margin: 0; }
 
-/* as fontes com licença: uma pílula por fonte, com o selo nas que estão em consulta */
-.v2-lista-de-fontes { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: .6rem;
-  list-style: none; margin: 1.4rem 0 1.4rem; padding: 0; }
-.v2-lista-de-fontes li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .5rem; max-width: none;
-  padding: .7rem .9rem; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--destaque); }
-:root[data-tema="escuro"] .v2-lista-de-fontes li { background: var(--superficie); }
-.v2-lista-de-fontes strong { font-size: .98rem; letter-spacing: -0.01em; }
-.v2-lista-de-fontes span:not(.selo) { color: var(--sutil); font-size: .8rem; }
 .final .acoes { justify-content: center; }
 .v2-aviso-final { margin: 1.6rem auto 0; color: var(--apagado); font-size: .86rem; }
 
@@ -832,30 +816,36 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 @media (prefers-reduced-motion: reduce) {
   .v2-plano-destaque::before { animation: none !important; }
 }
-/* o estudo do dia (Raio-X do choque): a chamada logo abaixo do herói e o botão do PDF no fim dele */
-.v2-estudo { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.5rem 2.5rem; align-items: center;
-  margin-block: 2.5rem; padding-block: 1.75rem; border-block: 1px solid var(--linha); }
-.v2-estudo h2 { font-size: clamp(1.35rem, 2.6vw, 1.9rem); margin-bottom: .5rem; }
-.v2-estudo h2 a { color: inherit; text-decoration: none; }
-.v2-estudo h2 a:hover { color: var(--azul-texto); }
-.v2-estudo .acoes { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
-.v2-estudo-numeros { display: grid; gap: .9rem; margin: 0; }
-.v2-estudo-numeros div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
-  padding-bottom: .6rem; border-bottom: 1px solid var(--linha); }
-.v2-estudo-numeros dt { color: var(--apagado); font-size: .92rem; }
-.v2-estudo-numeros dd { margin: 0; font: 700 1.6rem/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: -0.02em; }
+/* o botão do PDF no fim do Raio-X do choque */
 .rx-baixar { max-width: 920px; padding-bottom: 2.5rem; }
-@media (max-width: 860px) {
-  .v2-estudo { grid-template-columns: minmax(0, 1fr); }
-}
 
-/* a inicial para quem analisa: a linha de para quem é, o que o app acrescenta e as últimas novidades */
+/* a inicial do posicionamento v3 (ADR 0127): a linha do que há por trás, o terminal do herói, os
+   comandos, o agente, a faixa da base e as outras janelas */
 .v2-para-quem { margin: .9rem 0 0; font-size: .95rem; line-height: 1.55; color: var(--apagado); }
-.v2-no-app-rodape { margin-top: 1.25rem; }
-.v2-no-app-rodape a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
-.v2-ultimas .cartao h3 { font-size: 1.05rem; }
-.v2-ultimas .cartao p { font-size: .92rem; }
-.v2-ultimas > .seta { display: inline-block; margin-top: 1.25rem; }
+.v2-terminal { margin: 0; }
+.v2-terminal-linhas { margin: 0; padding: .2rem 0 .3rem; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 500 .86rem/1.6 "JetBrains Mono", ui-monospace, monospace; }
+.v2-terminal-linhas code { display: block; margin-bottom: .75rem; font: inherit; }
+.v2-terminal-comentario { color: var(--apagado); }
+.v2-terminal-cifrao { color: var(--azul-texto); user-select: none; }
+.v2-comando-linha { margin: 0 0 .6rem; }
+.v2-comando-linha code { font-size: .82rem; font-weight: 600; color: var(--azul-texto); overflow-wrap: anywhere; }
+.v2-agente-colunas { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 1.5rem 3rem; margin-top: 1.75rem; }
+.v2-passos-da-cli { display: grid; gap: 1.2rem; margin: 0; padding: 0; list-style: none; counter-reset: passo; }
+.v2-passos-da-cli li { display: grid; grid-template-columns: 2rem minmax(0, 1fr); column-gap: .8rem; counter-increment: passo; max-width: none; }
+.v2-passos-da-cli li::before { content: counter(passo); grid-row: span 2; font: 700 1.15rem/1.4 "JetBrains Mono", ui-monospace, monospace;
+  color: var(--azul-texto); }
+.v2-passos-da-cli strong, .v2-passos-da-cli span { grid-column: 2; }
+.v2-passos-da-cli span { color: var(--apagado); }
+.v2-travas { display: grid; gap: .9rem; margin: 0; padding-left: 1.25rem; border-left: 2px solid var(--linha-forte); align-content: start; }
+.v2-travas dt { font-weight: 700; }
+.v2-travas dd { margin: .1rem 0 0; color: var(--apagado); font-size: .95rem; }
+.v2-base-faixa { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+.v2-janelas { padding-block: 0 clamp(2.5rem, 6vw, 4rem); }
+.v2-janelas p { max-width: 46rem; margin: 0; color: var(--apagado); }
+@media (max-width: 860px) {
+  .v2-agente-colunas, .v2-base-faixa { grid-template-columns: minmax(0, 1fr); }
+}
 
 .busca-base { margin-top: 1.6rem; scroll-margin-top: 6rem; }
 .busca-base label { display: block; margin-bottom: .5rem; font-weight: 650; }

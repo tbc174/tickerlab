@@ -274,7 +274,7 @@ def test_o_site_abre_claro_e_tem_o_botao_do_tema_escuro():
 def test_o_site_usa_o_simbolo_e_a_assinatura_do_manual():
     inicio = (SITE / "index.html").read_text(encoding="utf-8")
     assert marca.TRACO_DO_TOPO in inicio and marca.TRACO_DA_HASTE in inicio
-    assert "Dados auditáveis para quem analisa empresas no Brasil." in inicio
+    assert "A CLI de M&amp;A e análise de investimento no Brasil." in inicio
     assert 'content="https://tickerlab.com.br/marca/compartilhamento.png"' in inicio
     assert (SITE / "marca" / "compartilhamento.png").exists()
 
