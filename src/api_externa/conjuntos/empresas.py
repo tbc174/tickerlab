@@ -123,9 +123,10 @@ def e_empresa(porta: Porta, cnpj: str) -> bool:
 
 def _a_rede_menciona(porta: Porta, cnpj: str) -> bool:
     """Algum identificador da rede tem o CNPJ, a raiz dele ou o texto dele em outro sistema (os mesmos que o
-    `resolver` procura): a rede conhece o CNPJ, ainda que em mais de uma entidade."""
+    `resolver` procura): a rede conhece o CNPJ, ainda que em mais de uma entidade. Sem a view `identificadores`
+    (rede pela metade), conta como conhecido: na dúvida, não."""
     if "identificadores" not in views(porta.con):
-        return False
+        return True
     texto = SEPARADORES.sub("", cnpj.strip()).upper()
     pares = [
         ["cnpj", texto],

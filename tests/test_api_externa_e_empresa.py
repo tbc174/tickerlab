@@ -1,7 +1,8 @@
 """A trava de pessoa da API externa (`empresas.e_empresa`) com a rede e sem ela (pelas listas sem pessoa).
 
 Quando a rede conhece o CNPJ, decide ela, e pessoa ou conflito nela não cai para as listas (os casos dela
-também estão em `test_api_externa_empresas.py`). O que ela não conhece, e qualquer CNPJ sem a rede, decidem as listas sem pessoa da Receita do retrato mais novo: MEI, empresário individual, grupo 4, natureza
+também estão em `test_api_externa_empresas.py`). O que ela não conhece, e qualquer CNPJ sem a rede, decidem
+as listas sem pessoa da Receita do retrato mais novo: MEI, empresário individual, grupo 4, natureza
 vazia, raiz ausente e estabelecimento ausente dão não.
 """
 
@@ -290,3 +291,10 @@ def test_sem_a_rede_so_a_natureza_informada_e_que_nao_e_de_pessoa_passa(
     limpa = (natureza or "").strip()
     pessoa = limpa == "2135" or limpa.startswith("4")
     assert empresas.e_empresa(Porta(base), EMPRESA) == (bool(limpa) and not pessoa)
+
+
+def test_rede_sem_identificadores_nao_cai_para_as_listas(listas):
+    # carga parcial da rede (entidades sem identificadores): não dá para saber quem ela conhece; na dúvida, não
+    _gravar_rede(listas, [("E" + "1" * 20, EMPRESA[:8], "empresa", False, True)])
+    (listas / "rede" / "identificadores.parquet").unlink()
+    assert not empresas.e_empresa(Porta(listas), EMPRESA)
