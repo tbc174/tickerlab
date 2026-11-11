@@ -99,6 +99,27 @@ Compose). Vindo de outro lugar, o cabeçalho é ignorado e conta o endereço da 
 
 A chave do servidor nunca aparece em `repr`, log ou mensagem de erro (há teste), nem neste repositório.
 
+## As ferramentas e a CLI
+
+Cada comando de leitura da CLI `tickerlab` tem uma ferramenta no conector, e a ferramenta faz à API os
+mesmos pedidos que o comando faz: mesma rota e mesmos parâmetros, portanto a mesma regra. O teste
+`tests/test_conector_remoto_paridade_cli.py` falha quando um comando novo da CLI não tem ferramenta. Nesse
+caso, ou se cria a ferramenta ou se escreve o motivo em `SEM_FERRAMENTA`, como já está para `login`,
+`logout` e `instrucoes`, que não leem a base.
+
+| CLI | Conector |
+|---|---|
+| `prospectar` | `buscar_empresas` (filtros, `limite` e `cursor`) |
+| `empresa` | `ficha_da_empresa` |
+| `comparaveis` | `comparaveis` |
+| `demonstracoes` | `demonstracoes` |
+| `fundo` | `fundo` |
+| `setor` | `setores` e `setor` |
+| `catalogo` e `consumo` | `o_que_posso_ver` |
+
+Eventos e vínculos da empresa entram quando a API os servir (linha 736), pelo mesmo caminho: rota na API,
+comando na CLI e ferramenta aqui, com a paridade cobrando.
+
 ## Em produção
 
 O serviço `tickerlab-mcp` fica num arquivo à parte, `compose.conector.yaml`, que o `docker compose up`
