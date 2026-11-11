@@ -7,10 +7,13 @@ de outra pessoa cairia na conta dela.
 
 import os
 import uuid
+from datetime import date
 
 import pytest
 import sqlalchemy as sa
 
+from src.banco import chaves_da_api as cb
+from src.banco import membros_da_organizacao as mb
 from src.banco import usuarios as repo
 from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
 from src.banco.modelo import favoritos, identidades, usuarios
@@ -288,6 +291,98 @@ def test_conta_com_email_nao_confirmado_nao_captura_quem_chega_depois(motor):
         invasor, _ = repo.entrar_por_identidade(conexao, _microsoft(confirmado=False))
         dona, nova = repo.entrar_por_identidade(conexao, _pelo_email())
     assert nova and dona.id != invasor.id
+
+
+# --- endereço corporativo reaproveitado: conta de organização não recebe forma de entrar nova ----
+# (linha 812 da fila; achado da revisão cruzada do PR 982). Todo dado aqui é fictício.
+
+EMAIL_DA_EMPRESA = "analista@example.com"
+
+
+def _membro_da_organizacao(conexao: sa.Connection) -> tuple[repo.Usuario, uuid.UUID]:
+    """Conta do Google com o e-mail provado, vinculada a uma organização: (conta, organização)."""
+    admin, _ = repo.entrar(conexao, "g-admin-812", "admin-812@example.com")
+    conta, _ = repo.entrar(conexao, "g-antigo", EMAIL_DA_EMPRESA, email_confirmado=True)
+    organizacao = cb.criar_organizacao(conexao, nome="Casa Exemplo", ator_id=admin.id)
+    mb.vincular_membro(
+        conexao, organizacao_id=organizacao.id, usuario_id=conta.id, ator_id=admin.id
+    )
+    return conta, organizacao.id
+
+
+def _membros(conexao: sa.Connection, organizacao_id: uuid.UUID) -> list[uuid.UUID]:
+    return [m.usuario_id for m in mb.listar_membros(conexao, organizacao_id)]
+
+
+@pytest.mark.parametrize(
+    "nova_identidade",
+    [
+        repo.IdentidadeDoProvedor("google", "g-novo", EMAIL_DA_EMPRESA, True),
+        repo.IdentidadeDoProvedor("microsoft", "ms-novo", EMAIL_DA_EMPRESA, True),
+        repo.IdentidadeDoProvedor("email", EMAIL_DA_EMPRESA, EMAIL_DA_EMPRESA, True),
+    ],
+    ids=["google", "microsoft", "email"],
+)
+def test_novo_dono_do_email_nao_entra_na_conta_da_organizacao(motor, nova_identidade):
+    """O endereço da empresa passou para outra pessoa: ela prova o e-mail, mas não é o membro."""
+    with motor.begin() as conexao:
+        antiga, organizacao_id = _membro_da_organizacao(conexao)
+        nova, primeira_vez = repo.entrar_por_identidade(conexao, nova_identidade)
+        assert primeira_vez and nova.id != antiga.id
+        assert _identidades_da_conta(conexao, antiga.id) == [("google", "g-antigo")]
+        assert _membros(conexao, organizacao_id) == [antiga.id]
+        assert not mb.pode_ver_pessoa(conexao, nova.id, date(2026, 11, 11))
+
+
+def test_membro_continua_entrando_pela_forma_que_ja_tinha(motor):
+    with motor.begin() as conexao:
+        antiga, _ = _membro_da_organizacao(conexao)
+        de_novo, primeira_vez = repo.entrar(
+            conexao, "g-antigo", EMAIL_DA_EMPRESA, email_confirmado=True
+        )
+    assert de_novo.id == antiga.id and not primeira_vez
+
+
+def test_formas_novas_do_mesmo_email_se_juntam_fora_da_conta_da_organizacao(motor):
+    """Não nasce uma conta por tentativa: a segunda forma nova cai na conta sem vínculo."""
+    with motor.begin() as conexao:
+        antiga, organizacao_id = _membro_da_organizacao(conexao)
+        nova, _ = repo.entrar_por_identidade(
+            conexao, _microsoft(sub="ms-novo", email=EMAIL_DA_EMPRESA)
+        )
+        outra, primeira_vez = repo.entrar_por_identidade(
+            conexao, _pelo_email(EMAIL_DA_EMPRESA)
+        )
+        assert outra.id == nova.id and nova.id != antiga.id and not primeira_vez
+        assert _membros(conexao, organizacao_id) == [antiga.id]
+
+
+def test_juncao_volta_a_valer_depois_de_desvincular(motor):
+    with motor.begin() as conexao:
+        antiga, organizacao_id = _membro_da_organizacao(conexao)
+        mb.desvincular_membro(
+            conexao,
+            organizacao_id=organizacao_id,
+            usuario_id=antiga.id,
+            ator_id=antiga.id,
+        )
+        pelo_email, primeira_vez = repo.entrar_por_identidade(
+            conexao, _pelo_email(EMAIL_DA_EMPRESA)
+        )
+    assert pelo_email.id == antiga.id and not primeira_vez
+
+
+def test_vinculo_de_outra_conta_nao_impede_a_juncao(motor):
+    """A regra olha só a conta do e-mail: haver organizações no banco não muda a junção dos demais."""
+    with motor.begin() as conexao:
+        _membro_da_organizacao(conexao)
+        do_google, _ = repo.entrar(
+            conexao, "g-ana", "ana@example.com", email_confirmado=True
+        )
+        pelo_email, primeira_vez = repo.entrar_por_identidade(
+            conexao, _pelo_email("ana@example.com")
+        )
+    assert pelo_email.id == do_google.id and not primeira_vez
 
 
 def test_juntar_pelo_google_preenche_o_google_sub(motor):

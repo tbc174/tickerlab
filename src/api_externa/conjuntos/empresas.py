@@ -11,16 +11,17 @@ que já era pública em `como_era_em`, com a data dela no envelope ("pode 8" do 
 versão pública na data, de raiz que tinha saído do arquivo ou de tabela que a base não tem fica de fora; a
 situação cadastral continua sendo a âncora: sem ela, a empresa não sai.
 
-Pessoa não sai (ADR 0108 D2.2): o CNPJ só é servido se a rede o conhece como empresa e não o trata como
-pessoa (MEI, empresário individual e as naturezas de pessoa física, `trata_como_pessoa`). O que a rede não
-conhece, o que é fundo ou outra coisa, e o conflito (o mesmo CNPJ em duas entidades) saem como
-`not_available`, igual a um CNPJ que não existe: a resposta não diz qual foi o motivo. A rede usada é a de
-hoje: quem hoje se sabe pessoa não sai nem numa data em que ainda não se sabia.
+Pessoa não sai (ADR 0108 D2.2). Quando a rede conhece o CNPJ (algum identificador dela tem o CNPJ ou a raiz),
+decide ela: só sai se ela o conhece como uma só empresa que não trata como pessoa (MEI, empresário individual e
+as naturezas de pessoa física, `trata_como_pessoa`); fundo ou outra coisa e conflito (o mesmo CNPJ em duas
+entidades) saem como `not_available`, igual a um CNPJ que não existe, e **não** caem para as listas. A rede
+usada é a de hoje: quem hoje se sabe pessoa não sai nem numa data em que ainda não se sabia.
 
-Onde a rede não está (o VPS: ela fica em casa até a linha 843), a trava decide pelas listas sem pessoa da
-Receita do retrato mais novo, o mesmo nas duas (linha 584): o estabelecimento tem de estar em `cnpj_estabelecimentos_pj` (sem
-MEI) e a raiz em `cnpj_empresas_pj` (sem empresário individual nem grupo 4), com a natureza informada (a
-natureza vazia conta como pessoa, como na rede desde a linha 787). Sem a rede nem as duas listas, nada sai.
+O que a rede não conhece (a empresa fechada: ela só tem as companhias da CVM e dos reguladores, linha 843) e,
+onde ela não está, qualquer CNPJ, decidem as listas sem pessoa da Receita do retrato mais novo, o mesmo nas
+duas (linha 584): o estabelecimento tem de estar em `cnpj_estabelecimentos_pj` (sem MEI) e a raiz em
+`cnpj_empresas_pj` (sem empresário individual nem grupo 4), com a natureza informada (a natureza vazia conta
+como pessoa, como na rede desde a linha 787). Sem a rede nem as duas listas, nada sai.
 """
 
 from dataclasses import dataclass, field
@@ -29,9 +30,10 @@ from datetime import date
 import pandas as pd
 
 from base import cnpj as cnpj_
+from base.cnpj import SEPARADORES
 from base.porta import Porta
 from base.porta.duckdb import nome_da_view
-from base.porta.rede import resolver, views
+from base.porta.rede import OUTROS_SISTEMAS, resolver, views
 from base.rede.entidades import natureza_de_pessoa
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
@@ -105,23 +107,47 @@ def _sim(valor: object) -> bool:
 def e_empresa(porta: Porta, cnpj: str) -> bool:
     """O CNPJ (14 caracteres, sem pontuação) é de uma só empresa que não é pessoa; qualquer dúvida é não.
 
-    Pela rede de hoje, se a porta a tem; senão, pelas listas sem pessoa da Receita; sem nenhuma, não.
+    A rede de hoje decide se conhece o CNPJ (como pessoa, conflito ou outra coisa que não empresa, não); o
+    que ela não conhece decidem as listas sem pessoa da Receita, se a porta as tem; sem nenhuma, não (linha
+    843: a rede do VPS só tem as companhias da CVM e dos reguladores, e a empresa fechada vem das listas).
     Também serve à rota de crédito (`conjuntos/credito.py`): as duas tiram pessoa do mesmo jeito."""
     existem = views(porta.con)
     if "entidades" in existem:
-        return _pela_rede(porta, cnpj)
+        pela_rede = _pela_rede(porta, cnpj)
+        if pela_rede is not None:
+            return pela_rede
     if {LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS} <= existem:
         return _pelas_listas_sem_pessoa(porta, cnpj)
     return False
 
 
-def _pela_rede(porta: Porta, cnpj: str) -> bool:
-    """A rede conhece o CNPJ como uma só entidade, empresa, que não é MEI nem tratada como pessoa."""
+def _a_rede_menciona(porta: Porta, cnpj: str) -> bool:
+    """Algum identificador da rede tem o CNPJ, a raiz dele ou o texto dele em outro sistema (os mesmos que o
+    `resolver` procura): a rede conhece o CNPJ, ainda que em mais de uma entidade. Sem a view `identificadores`
+    (rede pela metade), conta como conhecido: na dúvida, não."""
+    if "identificadores" not in views(porta.con):
+        return True
+    texto = SEPARADORES.sub("", cnpj.strip()).upper()
+    pares = [
+        ["cnpj", texto],
+        ["cnpj_raiz", texto[:TAMANHO_DA_RAIZ]],
+        *([sistema, texto] for sistema in OUTROS_SISTEMAS),
+    ]
+    achados = porta.con.execute(
+        "SELECT count(*) FROM identificadores WHERE list_contains($pares, [sistema, valor])",
+        {"pares": pares},
+    ).fetchone()
+    return achados != (0,)
+
+
+def _pela_rede(porta: Porta, cnpj: str) -> bool | None:
+    """Se a rede conhece o CNPJ: se ele é uma só entidade, empresa, que não é MEI nem tratada como pessoa.
+    None se ela não o conhece (nem em mais de uma entidade, que é conflito: não)."""
     con = porta.con
     try:
         id_entidade = resolver(con, cnpj, None)
     except LookupError:
-        return False
+        return False if _a_rede_menciona(porta, cnpj) else None
     if id_entidade.startswith(PREFIXO_DE_PESSOA):
         return False
     achadas = con.execute(

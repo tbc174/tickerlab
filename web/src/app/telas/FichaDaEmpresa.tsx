@@ -13,6 +13,7 @@ import { useConta } from "../conta";
 import { formatarData } from "../formatar";
 import type { BlocoDaFichaV1, CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
+import { ContatoDaFicha } from "./ContatoDaFicha";
 import { ErroDaTela } from "./ErroDaTela";
 import { EventosDaFicha } from "./EventosDaFicha";
 import { VinculosDaFicha } from "./VinculosDaFicha";
@@ -269,6 +270,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
       </div>
       <Cadastro ficha={ficha} />
       <SociosDaFicha rota={rota} cnpj={cnpj} />
+      <ContatoDaFicha rota={rota} cnpj={cnpj} />
       <Entregas entregas={ficha.entregas} />
       <EventosDaFicha rota={rota} cnpj={cnpj} />
       <VinculosDaFicha rota={rota} cnpj={cnpj} />
