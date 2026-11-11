@@ -238,6 +238,18 @@ def test_raiz_que_sai_da_lista_sem_pessoa_some_da_historia_inteira():
     )
 
 
+def test_mes_sem_saida_com_a_data_de_antes_lida_como_texto():
+    """Num mês só com entradas, a data de antes vem vazia e pode ser lida como texto: não quebra a montagem."""
+    retratos = _retratos()
+    mudancas = _mudancas(retratos, "2023-06")
+    assert not (mudancas["tipo"] == "saiu").any()
+    mudancas["data_entrada_antes"] = mudancas["data_entrada_antes"].astype(object)
+    tabela = socios_pj.entradas_e_saidas(
+        retratos["2023-06"], mudancas, PRIMEIRO_MES, PESSOAS_JURIDICAS
+    )
+    assert _como_lista(tabela) == _como_lista(_montar("2023-06"))
+
+
 def test_sair_e_entrar_igual_no_mesmo_mes_nao_e_movimento():
     """Na troca de layout de 2024-09 a Receita tirou e pôs de volta milhares de sócios iguais: sem movimento."""
     retratos = _retratos()

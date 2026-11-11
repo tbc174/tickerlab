@@ -59,7 +59,8 @@ def _lado(mudancas: pd.DataFrame, tipos: Collection[str], lado: str) -> pd.DataF
             MES: escolhidas["mes"],
             EMPRESA: escolhidas[EMPRESA],
             SOCIO: escolhidas[SOCIO],
-            ENTRADA: escolhidas[f"{ENTRADA}_{lado}"],
+            # data sempre como data: um lado vazio lido como texto quebraria a junção dos fantasmas
+            ENTRADA: pd.to_datetime(escolhidas[f"{ENTRADA}_{lado}"]),
             QUALIFICACAO: escolhidas[f"{QUALIFICACAO}_{lado}"],
         }
     )
