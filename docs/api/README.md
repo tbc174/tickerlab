@@ -197,6 +197,7 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 | `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 | `GET /data/v1/companies/{cnpj}/profile` | o perfil da empresa: o cadastro na Receita e as entregas de DFP e ITR à CVM como eram (`profiles`, ver abaixo) | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/comparables` | os pares da companhia aberta no mesmo grupo de setores, com os números do último DFP e a mediana de cada razão (`comparables`, ver abaixo) | sim, 1 |
+| `GET /data/v1/companies/{cnpj}/events` | os documentos da companhia no IPE da CVM e as trocas de auditor, do mais novo ao mais velho (`events`, ver abaixo); `types` filtra, `cursor` pega a página seguinte | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
 | `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
 | `POST /data/v1/funds/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
@@ -221,7 +222,7 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 | Resposta | `detail` | Quando |
 |---|---|---|
 | 400 | `api_key_in_url` | chave na URL |
-| 400 | `invalid_cnpj`, `invalid_known_at`, `invalid_assumed_return`, `invalid_batch` | CNPJ que não é CNPJ, `known_at` no futuro, retorno fora do plausível, lote vazio ou com mais de 100 |
+| 400 | `invalid_cnpj`, `invalid_known_at`, `invalid_assumed_return`, `invalid_batch`, `invalid_cursor`, `invalid_event_type` | CNPJ que não é CNPJ, `known_at` no futuro, retorno fora do plausível, lote vazio ou com mais de 100, cursor que não veio da página anterior, tipo de evento que não existe |
 | 401 | `invalid_api_key` | chave ausente, errada ou revogada, ou organização suspensa |
 | 404 | `not_available` | nada a servir: CNPJ fora da base, pessoa, contrato ou direito que não cobre, tabela sem prontidão (a resposta não diz qual); com `Not Found`, a API externa está desligada |
 | 429 | `rate_limited`, `monthly_quota_exceeded` | limite do minuto ou quota do mês |
@@ -270,6 +271,24 @@ some, nunca vira zero. EBITDA, dívida líquida, as razões e o grupo de setores
 os trata como derivado. Bancos e seguradoras têm outro plano de contas: as razões deles não se comparam às
 das outras empresas. Empresa sem FCA no dia, setor que não cai em nenhum grupo, pessoa (MEI, empresário
 individual) e quem a rede não conhece saem `not_available`; par que a rede trata como pessoa não entra.
+
+### Eventos (`events`, linha 736)
+
+Os eventos de uma companhia como eram no dia (`conjuntos/eventos.py`), do mais novo ao mais velho:
+
+- `ipe_filing`: cada documento entregue à CVM pelo IPE (`eventos`) com o CNPJ de qualquer estabelecimento da
+  mesma raiz: `filing_id` (protocolo), `category` e `kind` (os da CVM), `reference_period` e `url` (o documento
+  no sistema da CVM). O assunto escrito pela companhia **não sai**: é texto livre e pode trazer nome de pessoa;
+- `auditor_change`: cada troca da firma de auditoria informada nos FCAs (`trocas_de_auditor`): `previous`,
+  `new`, `effective_on` e `years_with_previous` (conta nossa, marcada como derivado). A troca com auditor que
+  pode ser pessoa física não sai.
+
+Cada campo traz a fonte e o dia em que ficou público (o da entrega do documento; o do FCA que informou a
+troca); nada publicado depois de `known_at` entra. `types=ipe_filing` ou `types=auditor_change` (repetível)
+filtra. A página vai até o limite de linhas do plano (`truncated`); `next_cursor` traz a seguinte, sem perder
+nem repetir evento. A rotulagem de insolvência nunca sai (inferência
+individual); a empresa sem eventos não quer dizer que nada aconteceu. Pessoa (MEI, empresário individual) e
+quem a rede não conhece saem `not_available`.
 
 ### Ficha de crédito (`credit`, linha 754)
 
