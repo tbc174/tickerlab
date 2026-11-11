@@ -7,6 +7,7 @@
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { paginasDoApp } from "../../src/conteudo";
+import { temTelaPronta } from "../../src/app/rotas";
 import { abrirApp, respostaJson } from "./ajudantes";
 import exemplo from "./exemplos/pulse.json";
 
@@ -95,8 +96,9 @@ describe("o Início abre pelo caminho do analista", () => {
   it("os passos, na ordem: encontrar, ficha e comparar (este só quando a página existe)", async () => {
     abrir();
     const links = within(await passos()).getAllByRole("link");
+    // só a página que já abre no app novo vira passo (o mesmo filtro da tela)
     const esperados = ["encontrar_empresas", "ficha_da_empresa", "comparar_empresas"].flatMap(
-      (chave) => paginasDoApp.find((p) => p.chave === chave) ?? [],
+      (chave) => paginasDoApp.find((p) => p.chave === chave && p.contrato !== null && temTelaPronta(chave)) ?? [],
     );
     expect(esperados.length).toBeGreaterThanOrEqual(2);
     expect(links.map((l) => l.textContent)).toEqual(esperados.map((p) => p.titulo));
@@ -129,7 +131,9 @@ describe("o Início abre pelo caminho do analista", () => {
     const { buscar } = abrir(() => respostaJson(200, NADA_ACOMPANHADO));
     await passos();
     await vi.waitFor(() => expect(pedidosDoPulse(buscar)).toHaveLength(1));
-    await new Promise((pronto) => setTimeout(pronto, 50)); // a resposta do Pulse chega e a tela se refaz
+    // o início da janela só é guardado na aba quando a resposta do Pulse chega: é o sinal de que a tela já a leu
+    await vi.waitFor(() => expect(sessionStorage.getItem("tickerlab.workspace.inicio-da-janela")).toBe(JANELA.inicio));
+    await new Promise((pronto) => setTimeout(pronto, 0)); // a tela se refaz com a resposta
     expect(screen.queryByRole("heading", { name: "Seu Workspace" })).toBeNull();
     expect(screen.queryByRole("region")).toBeNull();
     expect(screen.queryByText(JANELA.texto)).toBeNull();

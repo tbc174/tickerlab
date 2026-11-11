@@ -177,6 +177,15 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "anterior": "previous",
     "novo": "new",
     "anos_com_o_anterior": "years_with_previous",
+    # links: os vínculos da empresa na rede, pelo FRE e pelo FCA (linha 736, PR 5)
+    "vinculos": "links",
+    "profundidade": "depth",
+    "salto": "hops",
+    "de": "from",
+    "para": "to",
+    "id_na_rede": "entity_id",
+    "raiz_do_cnpj": "cnpj_root",
+    "participacao_no_capital": "ownership_pct",
 }
 
 

@@ -34,6 +34,8 @@ ARQUIVOS_DA_RAIZ = frozenset(
         "app.py",
         "atualizar_b3.bat",
         "compose.yaml",
+        # o conector remoto dos analistas (linha 570): à parte, para o "up" comum não o subir
+        "compose.conector.yaml",
         "pyrightconfig.json",
         "pytest.ini",
         "requirements-estudos.txt",
