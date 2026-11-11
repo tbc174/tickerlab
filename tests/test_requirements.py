@@ -55,7 +55,7 @@ PASTAS_PULADAS = frozenset(
     {".venv", "node_modules", "site", "novo", "web", ".git", "__pycache__", "estudos"}
 )
 # o que o Dockerfile copia e tem Python (tests/, trader/ e scripts/ ficam fora da imagem)
-CODIGO_DA_IMAGEM = ("app.py", "src", "base", "telas", "migracoes")
+CODIGO_DA_IMAGEM = ("app.py", "src", "base", "telas", "migracoes", "conector_remoto")
 
 # Pins usados sem `import`: nome como o pip o vê → motivo conferido no código, no CI ou nos
 # metadados. Exceção nova só com o motivo real; exceção sem pin em nenhum arquivo falha o teste.
