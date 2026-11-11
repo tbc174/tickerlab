@@ -1,29 +1,42 @@
 // O menu lateral do app novo por áreas (ADR 0096): o Início no topo, os favoritos da pessoa e uma seção
-// por área (Ativo, Estratégias, Acompanhar) que recolhe. O menu só mostra a tela que abre: as que ainda
-// só existem na versão clássica ficam atrás de um link só, no fim (plano de 11/11/2026: 20 das 35 linhas
-// apareciam apagadas, "em breve"). Entre 761 e 1.100 px o menu vira um trilho de ícones e as telas de
+// por área (Empresas, Companhias abertas e Mais) que recolhe; a "Mais" nasce recolhida. O menu só mostra a
+// tela que abre: as que ainda só existem na versão clássica ficam atrás de um link só, no fim (plano de
+// 11/11/2026: 20 das 35 linhas apareciam apagadas, "em breve"). Entre 761 e 1.100 px o menu vira um trilho de ícones e as telas de
 // cada área abrem ao lado, ao passar o mouse ou com o Tab.
 // Favoritos e áreas recolhidas ficam no localStorage do navegador (preferência de tela, sem dado pessoal);
 // se o navegador recusar (navegação privada), valem só nesta visita.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { linkDoClassico } from "./classico";
-import { AREAS, AREAS_DO_MENU, areaDoEndereco, primeiraPronta, telasProntasDaArea } from "./areas";
+import {
+  AREAS,
+  AREAS_COM_ABA,
+  AREAS_DO_MENU,
+  AREA_MAIS,
+  areaDoEndereco,
+  primeiraPronta,
+  telasProntasDaArea,
+} from "./areas";
 import type { PaginaDoApp } from "../conteudo";
 import { Icone } from "./Icone";
 
 const FAVORITOS = "tickerlab.menu.favoritos";
-const RECOLHIDAS = "tickerlab.menu.recolhidas";
+// chave nova (era "tickerlab.menu.recolhidas"): as áreas mudaram e a "Mais" nasce recolhida para todo mundo
+const RECOLHIDAS = "tickerlab.menu.areas-recolhidas";
+const RECOLHIDAS_DE_INICIO = [AREA_MAIS];
 const OUTRAS_TELAS = "Outras telas na versão clássica";
 const CONSULTA_DO_TRILHO = "(min-width: 761px) and (max-width: 1100px)";
 
-/** Uma lista de chaves guardada no navegador; lixo ou navegador que recusa viram lista vazia. */
-function lerLista(chave: string): string[] {
+/** Uma lista de chaves guardada no navegador; nada guardado, lixo ou navegador que recusa viram a lista
+ * de início. */
+function lerLista(chave: string, deInicio: string[]): string[] {
   try {
-    const lido: unknown = JSON.parse(localStorage.getItem(chave) ?? "[]");
-    return Array.isArray(lido) ? lido.filter((item): item is string => typeof item === "string") : [];
+    const guardado = localStorage.getItem(chave);
+    if (guardado === null) return deInicio;
+    const lido: unknown = JSON.parse(guardado);
+    return Array.isArray(lido) ? lido.filter((item): item is string => typeof item === "string") : deInicio;
   } catch {
-    return [];
+    return deInicio;
   }
 }
 
@@ -36,8 +49,8 @@ function gravarLista(chave: string, lista: string[]) {
 }
 
 /** A lista de chaves com estado no React e cópia no navegador. */
-function useListaGuardada(chave: string) {
-  const [lista, setLista] = useState(() => lerLista(chave));
+function useListaGuardada(chave: string, deInicio: string[] = []) {
+  const [lista, setLista] = useState(() => lerLista(chave, deInicio));
   // estável entre renderizações: o efeito que abre a área da tela aberta depende dela
   const mudar = useCallback(
     (nova: string[]) => {
@@ -95,7 +108,7 @@ export function MenuPorAreas() {
   const atual = areaDoEndereco(useLocation().pathname);
   const trilho = useTrilho();
   const [favoritos, setFavoritos] = useListaGuardada(FAVORITOS);
-  const [recolhidas, setRecolhidas] = useListaGuardada(RECOLHIDAS);
+  const [recolhidas, setRecolhidas] = useListaGuardada(RECOLHIDAS, RECOLHIDAS_DE_INICIO);
 
   // chegar numa tela de uma área recolhida abre a área (o link da tela aberta fica à vista); só na
   // chegada: depois disso a pessoa pode recolher a área da tela aberta também
@@ -164,14 +177,14 @@ export function MenuPorAreas() {
       })}
       {/* o que ainda só existe no Streamlit: um link só, no lugar de uma linha apagada por tela */}
       <a className="classico-do-menu" href={linkDoClassico()} title={OUTRAS_TELAS}>
-        <Icone nome="mais" />
+        <Icone nome="classico" />
         <span className="rotulo-do-menu">{OUTRAS_TELAS}</span>
       </a>
     </nav>
   );
 }
 
-// --- celular (até 760 px, só CSS): 5 abas embaixo, ao alcance do polegar (ADR 0066 e 0096) ---
+// --- celular (até 760 px, só CSS): 4 abas embaixo, ao alcance do polegar (ADR 0066 e 0096) ---
 
 // na folha "Mais": as telas prontas de cada área e as da Conta
 const AREAS_DA_FOLHA = AREAS.filter((a) => [...AREAS_DO_MENU, "conta"].includes(a.chave)).map((area) => ({
@@ -179,7 +192,8 @@ const AREAS_DA_FOLHA = AREAS.filter((a) => [...AREAS_DO_MENU, "conta"].includes(
   telas: telasProntasDaArea(area.chave),
 }));
 
-/** Início, uma aba por área (abre a primeira tela pronta dela) e "Mais", que abre a folha com todas. */
+/** Início, uma aba por área do caminho principal (abre a primeira tela pronta dela) e "Mais", que abre a
+ * folha com todas as telas, as da área "Mais" inclusive. */
 export function AbasDoCelular() {
   const { pathname } = useLocation();
   const atual = areaDoEndereco(pathname);
@@ -207,7 +221,7 @@ export function AbasDoCelular() {
           <Icone nome="inicio" />
           <span>Início</span>
         </NavLink>
-        {AREAS.filter((a) => AREAS_DO_MENU.includes(a.chave)).map((area) => {
+        {AREAS.filter((a) => AREAS_COM_ABA.includes(a.chave)).map((area) => {
           const destino = primeiraPronta(area.chave);
           if (!destino) return null;
           const marcada = atual === area.chave;
@@ -227,7 +241,7 @@ export function AbasDoCelular() {
         })}
         <button
           type="button"
-          className={atual === "conta" ? "active" : undefined}
+          className={atual === "conta" || atual === AREA_MAIS ? "active" : undefined}
           aria-haspopup="dialog"
           aria-expanded={aberta}
           onClick={abrir}

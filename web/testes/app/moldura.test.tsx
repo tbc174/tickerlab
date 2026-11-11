@@ -21,7 +21,7 @@ const abas = () => screen.getByRole("navigation", { name: "Telas, atalhos" });
 /** Espera o login terminar e a tela Início abrir (o login também tem um h1 e o fundo). O primeiro
  * teste do arquivo monta o app inteiro: com o PC ocupado passa de 1 s, a espera padrão. */
 const noInicio = () =>
-  screen.findByRole("heading", { name: "As telas novas do TickerLab" }, { timeout: 5000 });
+  screen.findByRole("heading", { name: "Por onde começar" }, { timeout: 5000 });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
@@ -32,12 +32,12 @@ afterEach(() => {
 describe("abas embaixo no celular (por área, ADR 0096)", () => {
   const folha = () => document.querySelector<HTMLDialogElement>("dialog.folha-mais")!;
 
-  it("Início, as três áreas e 'Mais': toda tela pronta fica a um ou dois toques", async () => {
+  it("Início, Empresas, Companhias abertas e 'Mais': toda tela pronta fica a um ou dois toques", async () => {
     abrirApp("/");
     await noInicio();
     const nav = abas();
     const nomes = [...nav.querySelectorAll(":scope > :is(a, button)")].map((el) => el.textContent);
-    expect(nomes).toEqual(["Início", "Ativo", "Estratégias", "Acompanhar", "Mais"]);
+    expect(nomes).toEqual(["Início", "Empresas", "Companhias abertas", "Mais"]);
     expect(within(nav).getByRole("button", { name: "Mais" }).getAttribute("aria-haspopup")).toBe("dialog");
     // a folha fica fora da barra (a barra é fixa e borrada: um filho fixo dela ficaria preso nela)
     expect(nav.contains(folha())).toBe(false);
@@ -53,9 +53,8 @@ describe("abas embaixo no celular (por área, ADR 0096)", () => {
     abrirApp("/");
     await noInicio();
     const destino = (nome: string) => within(abas()).getByRole("link", { name: nome }).getAttribute("href");
-    expect(destino("Ativo")).toBe("/visao-geral");
-    expect(destino("Estratégias")).toBe("/backtest");
-    expect(destino("Acompanhar")).toBe("/juros-e-inflacao");
+    expect(destino("Empresas")).toBe("/encontrar-empresas");
+    expect(destino("Companhias abertas")).toBe("/visao-geral");
   });
 
   it("no início só a aba Início fica marcada", async () => {
@@ -65,12 +64,19 @@ describe("abas embaixo no celular (por área, ADR 0096)", () => {
     expect([...atuais].map((a) => a.textContent)).toEqual(["Início"]);
   });
 
-  it("numa tela da área Ativo, a aba Ativo fica marcada (mesmo não sendo a primeira tela dela)", async () => {
+  it("numa tela de Companhias abertas, a aba dela fica marcada (mesmo não sendo a primeira tela dela)", async () => {
     abrirApp("/risco", { rotas: () => new Promise(() => {}) as never });
     await screen.findByRole("heading", { level: 1, name: "Risco" });
     const atuais = abas().querySelectorAll("[aria-current]");
-    expect([...atuais].map((a) => a.textContent)).toEqual(["Ativo"]);
-    expect(within(abas()).getByRole("link", { name: "Ativo" }).classList.contains("active")).toBe(true);
+    expect([...atuais].map((a) => a.textContent)).toEqual(["Companhias abertas"]);
+    expect(within(abas()).getByRole("link", { name: "Companhias abertas" }).classList.contains("active")).toBe(true);
+  });
+
+  it("numa tela da área Mais (sem aba própria), o botão 'Mais' fica marcado", async () => {
+    abrirApp("/backtest", { rotas: () => new Promise(() => {}) as never });
+    await screen.findByRole("heading", { level: 1, name: "Backtest" });
+    expect(within(abas()).getByRole("button", { name: "Mais" }).classList.contains("active")).toBe(true);
+    expect(abas().querySelectorAll("[aria-current]").length).toBe(0);
   });
 
   it("'Mais' abre a folha com as telas por área e a Conta; escolher uma tela fecha", async () => {
@@ -87,7 +93,7 @@ describe("abas embaixo no celular (por área, ADR 0096)", () => {
     const titulos = within(folha())
       .getAllByRole("heading", { level: 3 })
       .map((h) => h.textContent);
-    expect(titulos).toEqual(["Ativo", "Estratégias", "Acompanhar", "Conta"]);
+    expect(titulos).toEqual(["Empresas", "Companhias abertas", "Mais", "Conta"]);
     fireEvent.click(within(folha()).getByRole("link", { name: "Juros e inflação" }));
     expect(folha().open).toBe(false);
     expect(botao.getAttribute("aria-expanded")).toBe("false");

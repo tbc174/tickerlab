@@ -1,12 +1,17 @@
-// As áreas do menu do app novo (ADR 0096): Início, Ativo, Estratégias, Acompanhar, Conta e Ajuda. Vêm de
+// As áreas do menu do app novo (ADR 0096; linha 822): Início, Empresas, Companhias abertas, Mais, Conta e
+// Ajuda. Vêm de
 // src/paginas.py (AREAS e paginas_da_area) pelo app.json: o TypeScript não repete a ordem nem o mapa.
 import { type AreaDoApp, type PaginaDoApp, conteudoDoApp, paginasDoApp } from "../conteudo";
 import { temTelaPronta } from "./rotas";
 
 export const AREAS: AreaDoApp[] = conteudoDoApp.areas;
-/** As áreas com seção no menu lateral e aba no celular. O Início é um link só; a Conta fica no menu da
- * pessoa, no topo; a Ajuda ainda não tem tela no app novo. */
-export const AREAS_DO_MENU = ["ativo", "estrategias", "acompanhar"];
+/** As áreas com seção no menu lateral. O Início é um link só; a Conta fica no menu da pessoa, no topo; a
+ * Ajuda ainda não tem tela no app novo. */
+export const AREAS_DO_MENU = ["empresas", "ativo", "mais"];
+/** A área que nasce recolhida no menu e, no celular, não tem aba: fica na folha do botão "Mais". */
+export const AREA_MAIS = "mais";
+/** As áreas com aba no celular. */
+export const AREAS_COM_ABA = AREAS_DO_MENU.filter((area) => area !== AREA_MAIS);
 
 export interface ItemDoMenu {
   pagina: PaginaDoApp;
