@@ -43,7 +43,9 @@ NOME_DA_PLANILHA = (
 )
 PAGINA_DA_BUSCA = "encontrar_empresas"
 NOME_DA_PLANILHA_DA_BUSCA = "empresas-tickerlab.xlsx"
-TAMANHO_MAXIMO_DO_CURSOR = 64  # o cursor do leitor tem perto de vinte caracteres
+TAMANHO_MAXIMO_DO_CURSOR = (
+    256  # o cursor ordenado (coluna, valor e CNPJ em JSON) passa de 70 caracteres
+)
 BUSCA_INDISPONIVEL = "Busca não disponível: escolha um filtro e tente de novo."
 FILTRO_INVALIDO = "Filtro fora do que a tela oferece."
 TIPO_DA_PLANILHA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
