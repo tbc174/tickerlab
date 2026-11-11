@@ -126,10 +126,16 @@ jobs:
       # tentativas, em vez de deixar o job inteiro esperando.
       - name: Bibliotecas do Qt
         if: matrix.dependencias == 'requirements-trader.txt'
-        timeout-minutes: 6
+        timeout-minutes: 8
         run: |
           apt_opcoes="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
           for tentativa in 1 2 3; do
+            # 11/11/2026: o espelho padrão do GitHub (lista em /etc/apt/apt-mirrors.txt) ficou parado
+            # nas 3 tentativas e derrubou todo PR com código. Da 2ª em diante, vai direto ao
+            # arquivo oficial do Ubuntu.
+            if [ "$tentativa" -gt 1 ]; then
+              sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu/|'                 /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list 2>/dev/null || true
+            fi
             if sudo timeout 120 apt-get $apt_opcoes update \
               && sudo timeout 120 apt-get $apt_opcoes install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3; then
               exit 0
