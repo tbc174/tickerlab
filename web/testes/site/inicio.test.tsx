@@ -1,14 +1,15 @@
-// A página inicial para quem analisa empresas (plano do site para quem analisa, PR 5, tarefa 9):
-// a assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
-// Raio-X aberta, as cinco vagas da vitrine, o que a base liga pelo CNPJ, os cruzamentos da base (PR 6), as quatro regras, as
-// fontes com licença e os planos.
+// A página inicial do posicionamento v3 (ADR 0127, linha 774): a assinatura da CLI de M&A e análise de
+// investimento, o terminal só com comandos que existem, o que dá para pedir, o agente e as travas, o que
+// a base tem (números do catálogo e da medição, nunca digitados), o que ela liga pelo CNPJ, os
+// cruzamentos, as quatro regras, as cinco vagas da vitrine e a chamada para pedir a chave.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { baseEmNumeros, catalogo, fatosDaBase, vitrine } from "../../src/conteudo";
 import { renderizar } from "../../src/entry-server";
 import { css } from "../../src/estilo";
 import { DADOS } from "../../src/paginas/Inicio";
-import { DADOS as DADOS_DO_RAIO_X } from "../../src/paginas/RaioXDoChoque";
-import { ASSINATURA, REGRAS_DA_BASE } from "../../src/site/textos";
+import { ASSINATURA, REGRAS_DA_BASE, URL_DA_API } from "../../src/site/textos";
 
 const html = renderizar("index.html");
 const semTags = (texto: string) => texto.replace(/<[^>]+>/g, "");
@@ -34,21 +35,64 @@ const PROIBIDAS = [
   /Bloomberg|FactSet|Refinitiv|Economatica|brapi|Status ?Invest/i,
 ];
 // o aviso obrigatório é a única "recomendação" que pode aparecer
-const AVISOS = /(Nada aqui|nada) é recomendação de investimento\.?/g;
+const AVISOS = /(Nada aqui|nada) é recomendação de investimento\.?/gi;
+// a documentação da API diz como pedir a chave
+const COMO_PEDIR_A_CHAVE = `${URL_DA_API}/documentacao/#comecar`;
+const RAIZ = join(process.cwd(), "..");
 
-describe("página inicial para quem analisa", () => {
-  it("o título é a assinatura e o subtítulo fala da coleta auditável", () => {
-    expect(semTags(trecho('<h1 id="titulo-heroi">', "</h1>"))).toBe(ASSINATURA);
+describe("página inicial da CLI de M&A e análise de investimento", () => {
+  it("o título é a assinatura, o subtítulo fala do agente e a coleta auditável continua à vista", () => {
+    expect(semTags(trecho('<h1 id="titulo-heroi">', "</h1>"))).toBe(esc(ASSINATURA));
+    expect(ASSINATURA).toMatch(/CLI de M&A e análise de investimento/);
+    expect(semTags(principal())).toContain("o seu agente de IA roda a tickerlab");
     expect(principal()).toContain(
       "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +
         "caminho até o original.",
     );
   });
 
-  it("os botões do herói levam aos dados e ao app", () => {
+  it("os botões do herói levam a como pedir a chave e aos comandos", () => {
     const heroi = trecho('<section class="heroi faixa"', "</section>");
-    expect(heroi).toMatch(/href="\/dados\.html">Ver os dados<\/a>/);
-    expect(heroi).toContain(">Abrir o app</a>");
+    expect(heroi).toContain(`href="${COMO_PEDIR_A_CHAVE}" rel="noopener">Pedir uma chave</a>`);
+    expect(heroi).toContain('href="#comandos">Ver os comandos</a>');
+    expect(html).toContain('id="comandos"');
+    // a seção da documentação que ensina a pedir a chave existe
+    const documentacao = readFileSync(join(RAIZ, "site-api", "documentacao", "index.html"), "utf8");
+    expect(documentacao).toContain('id="comecar"');
+  });
+
+  it("o terminal e os cartões só mostram comandos e opções que a CLI tem", () => {
+    const cli = readFileSync(join(RAIZ, "cli", "tickerlab", "comandos.py"), "utf8");
+    const terminal = trecho('<figure class="v2-painel v2-terminal"', "</figure>");
+    const cartoes = trecho('<section class="faixa secao v2-comandos"', "</section>");
+    const linhas = [...semTags(terminal).matchAll(/tickerlab [^\n#]+/g)].map((m) => m[0]);
+    expect(linhas.length).toBeGreaterThanOrEqual(4);
+    const citados = [...linhas, ...[...cartoes.matchAll(/<code>([^<]+)<\/code>/g)].map((m) => m[1])];
+    expect(citados.length).toBeGreaterThanOrEqual(10);
+    for (const citado of citados) {
+      const comando = citado.match(/^tickerlab ([a-z]+)/)?.[1];
+      if (comando) expect(cli, citado).toMatch(new RegExp(`^def ${comando}\\(`, "m"));
+      for (const opcao of citado.match(/--[a-z-]+/g) ?? []) expect(cli, citado).toContain(`"${opcao}"`);
+    }
+    // nenhuma saída inventada: o terminal não traz CNPJ de empresa nem valor em reais
+    expect(semTags(terminal)).not.toMatch(/R\$|\d{2}\.\d{3}\.\d{3}/);
+  });
+
+  it("o agente: os três passos, as instruções e as travas, com a de pessoa física", () => {
+    const secao = trecho('<section class="faixa secao v2-agente"', "</section>");
+    const texto = semTags(secao);
+    expect(secao.split("<li>").length - 1).toBe(3);
+    expect(secao).toContain("<code>tickerlab instrucoes</code>");
+    expect(secao).toContain("<code>tickerlab login</code>");
+    expect(texto).toContain("beta fechado, sem cobrança");
+    for (const trava of [
+      "Fonte e data em cada número",
+      "Nenhum número inventado",
+      "Nada é recomendação de investimento",
+      "Sem dado de pessoa física",
+      "A chave é segredo",
+    ])
+      expect(texto, trava).toContain(trava);
   });
 
   it("a descrição da página fala com quem analisa e cabe no Google", () => {
@@ -80,10 +124,12 @@ describe("página inicial para quem analisa", () => {
     expect(css()).not.toContain(".v2-painel-pilha { display: none; }");
   });
 
-  it("a chamada do Raio-X continua aberta, logo abaixo do herói", () => {
-    const estudo = trecho('<section class="faixa v2-estudo"', "</section>");
-    expect(estudo).toContain(`href="${DADOS_DO_RAIO_X.caminho}">Ler o Raio-X</a>`);
-    expect(html.indexOf("v2-estudo")).toBeLessThan(html.indexOf('class="faixa secao v2-vitrine"'));
+  it("o estudo do dia, as novidades e a lista de fontes saíram da inicial (ficam nas páginas delas)", () => {
+    for (const peca of ["v2-estudo", "v2-pilula", "v2-ultimas", "v2-fontes-da-base", "v2-no-app"])
+      expect(html, peca).not.toContain(peca);
+    expect(semTags(principal())).not.toContain("Estudo do dia");
+    expect(css()).not.toContain(".v2-estudo");
+    expect(renderizar("relatorios.html")).toContain("Estudo do dia");
   });
 
   it("as cinco vagas: as prontas em cima com link, as em breve embaixo, sem link", () => {
@@ -124,9 +170,21 @@ describe("página inicial para quem analisa", () => {
     });
     expect(semTags(secao)).toContain("nome de pessoa física não aparece");
     expect(secao).toContain('href="/dados.html#');
-    // fica entre a vitrine e os cruzamentos
-    expect(html.indexOf("v2-vitrine")).toBeLessThan(html.indexOf("v2-ligado-pelo-cnpj"));
-    expect(html.indexOf("v2-ligado-pelo-cnpj")).toBeLessThan(html.indexOf("v2-cruzamentos"));
+    // a ordem da página: a CLI, a base, o que ela liga, os cruzamentos e, por último, a vitrine
+    const ordem = [
+      "v2-comandos",
+      "v2-agente",
+      "v2-base-faixa",
+      "v2-ligado-pelo-cnpj",
+      "v2-cruzamentos",
+      "v2-regras",
+      "v2-vitrine",
+      "v2-janelas",
+    ];
+    const lugares = ordem.map((classe) => html.indexOf(`class="faixa secao ${classe}"`));
+    lugares[lugares.length - 1] = html.indexOf('class="faixa v2-janelas"');
+    expect(lugares.every((lugar) => lugar > 0)).toBe(true);
+    expect([...lugares].sort((a, b) => a - b)).toEqual(lugares);
   });
 
   it("os cruzamentos: cada fato com o número, a fonte e a conta recolhida, sem nome de empresa", () => {
@@ -163,18 +221,18 @@ describe("página inicial para quem analisa", () => {
     }
   });
 
-  it("as fontes com licença: todas as do catálogo, com o selo nas que estão em consulta", () => {
-    const secao = trecho('<section class="faixa secao v2-fontes-da-base"', "</section>");
-    const texto = semTags(secao);
-    for (const f of catalogo.fontes) expect(texto, f.orgao).toContain(esc(f.orgao));
-    expect(secao.match(/licença em consulta/g)).toHaveLength(catalogo.totais.fontes_em_consulta);
-    expect(secao).toContain('href="/dados.html');
+  it("sem terminal: a mesma base pelo app, pela API e pelos relatórios", () => {
+    const secao = trecho('<section class="faixa v2-janelas"', "</section>");
+    expect(secao).toContain('href="https://app.tickerlab.com.br/"');
+    expect(secao).toContain(`href="${URL_DA_API}"`);
+    expect(secao).toContain('href="/relatorios.html"');
   });
 
-  it("os planos levam aos preços e dizem que o Gratuito não pede cartão", () => {
+  it("a chamada final leva a pedir a chave e diz que o beta é fechado e sem cobrança", () => {
     const final = trecho('<section class="faixa secao final"', "</section>");
-    expect(final).toContain('href="/precos.html"');
-    expect(semTags(final)).toContain("O plano Gratuito não pede cartão");
+    expect(final).toContain(`href="${COMO_PEDIR_A_CHAVE}"`);
+    expect(final).toContain(">Abrir o app</a>");
+    expect(semTags(final)).toContain("beta fechado, sem cobrança");
   });
 
   it("sem fita de cotações, sem busca de ativos e sem o painel de PETR4", () => {
