@@ -24,6 +24,7 @@ from pathlib import Path
 import duckdb
 
 from base.dossie import COLUNAS_DE_PESSOA
+from base.porta.duckdb import fonte_dos_arquivos
 from base.rede.entidades import (
     EMPRESARIO_INDIVIDUAL,
     GRUPO_DAS_PESSOAS_FISICAS,
@@ -54,11 +55,6 @@ class RedeComPessoa(Exception):
 
 def _aspas(texto: str) -> str:
     return "'" + texto.replace("'", "''") + "'"
-
-
-def _ler(arquivos: Sequence[Path]) -> str:
-    lista = ", ".join(_aspas(a.as_posix()) for a in arquivos)
-    return f"read_parquet([{lista}], union_by_name=true)"
 
 
 def _lista_sql(valores: Sequence[str]) -> str:
@@ -118,7 +114,7 @@ def _copiar(con: duckdb.DuckDBPyConnection, consulta: str, destino: Path) -> int
     con.execute(
         f"COPY ({consulta}) TO {_aspas(destino.as_posix())} (FORMAT PARQUET, COMPRESSION ZSTD)"
     )
-    return _contar(con, f"SELECT * FROM {_ler([destino])}")
+    return _contar(con, f"SELECT * FROM {fonte_dos_arquivos([destino])}")
 
 
 def recortar_rede(
@@ -136,8 +132,8 @@ def recortar_rede(
         raise RedeComPessoa(
             "sem cnpj_empresas_pj na saída: não dá para conferir as raízes"
         )
-    fontes = {nome: _ler(origem[nome]) for nome in REDE}
-    empresas = _ler(empresas_pj)
+    fontes = {nome: fonte_dos_arquivos(origem[nome]) for nome in REDE}
+    empresas = fonte_dos_arquivos(empresas_pj)
     con.execute(
         "CREATE OR REPLACE TEMP TABLE _ids_pj AS "
         + _ids_pj(fontes["entidades"], fontes["identificadores"], empresas)
@@ -242,11 +238,11 @@ def conferir_rede_so_pj(
         raise RedeComPessoa(
             "sem cnpj_empresas_pj na saída: não dá para conferir as raízes"
         )
-    fontes = {nome: _ler([arquivos[nome]]) for nome in REDE}
+    fontes = {nome: fonte_dos_arquivos([arquivos[nome]]) for nome in REDE}
     problemas = _problemas_de_coluna(con, fontes)
     if problemas:
         raise RedeComPessoa("rede com pessoa: " + "; ".join(problemas))
-    problemas = _problemas_de_linha(con, fontes, _ler(empresas_pj))
+    problemas = _problemas_de_linha(con, fontes, fonte_dos_arquivos(empresas_pj))
     if problemas:
         raise RedeComPessoa("rede com pessoa: " + "; ".join(problemas))
     return {
