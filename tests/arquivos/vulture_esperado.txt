@@ -82,6 +82,7 @@ src/analise_escrita/modelo_da_tela.py: unused variable 'nome_do_eixo' (60% confi
 src/analise_escrita/porta3.py: unused variable 'CAMPOS_FORA_DA_NOTA' (60% confidence)
 src/analista/planilha.py: unused attribute 'creator' (60% confidence)
 src/analista/planilha.py: unused attribute 'modified' (60% confidence)
+src/api.py: unused function '_anunciar_o_ensaio' (60% confidence)
 src/api.py: unused function '_limite_do_plano' (60% confidence)
 src/api_externa/conjuntos/empresas.py: unused variable 'CAMPOS_DATADOS' (60% confidence)
 src/api_v1/analista_pessoas.py: unused variable 'entrou_em' (60% confidence)

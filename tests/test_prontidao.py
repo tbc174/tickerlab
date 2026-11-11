@@ -1,6 +1,7 @@
 """Prontidão por tabela para a API externa (ADR 0108, D10): as três provas, o prazo e o contrato."""
 
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -245,3 +246,36 @@ def test_regras_vigentes_do_portao_usam_o_registro_do_ambiente(monkeypatch) -> N
     assert "demonstracoes_como_era" in portao.regras_vigentes().prontidao
     monkeypatch.setenv("TICKERLAB_AMBIENTE", "producao")
     assert portao.regras_vigentes().prontidao is PRONTIDAO
+
+
+def test_ensaio_se_anuncia_em_toda_resposta_e_producao_nao() -> None:
+    from fastapi.testclient import TestClient
+
+    from src.api import criar_app
+
+    no_ensaio = TestClient(criar_app({"TICKERLAB_AMBIENTE": "ensaio"}))
+    assert (
+        no_ensaio.get("/saude").headers[prontidao.CABECALHO_DO_ENSAIO]
+        == prontidao.AVISO_DO_ENSAIO
+    )
+    for ambiente in ({}, {"TICKERLAB_AMBIENTE": "producao"}):
+        resposta = TestClient(criar_app(ambiente)).get("/saude")
+        assert prontidao.CABECALHO_DO_ENSAIO not in resposta.headers
+
+
+def test_deploy_de_producao_nao_aceita_o_ambiente_de_ensaio() -> None:
+    """O compose, o Dockerfile e o script de deploy nunca levam TICKERLAB_AMBIENTE=ensaio."""
+    raiz = Path(__file__).resolve().parents[1]
+    arquivos = [
+        *raiz.glob("compose*.y*ml"),
+        raiz / "Dockerfile",
+        raiz / "scripts" / "deploy-automatico.sh",
+        *raiz.glob(".env*example"),
+    ]
+    assert arquivos
+    for arquivo in arquivos:
+        if arquivo.is_file():
+            texto = arquivo.read_text(encoding="utf-8").lower()
+            assert "ambiente=ensaio" not in texto.replace(" ", ""), arquivo.name
+            assert "ambiente: ensaio" not in texto, arquivo.name
+            assert 'ambiente: "ensaio"' not in texto, arquivo.name

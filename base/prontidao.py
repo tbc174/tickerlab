@@ -133,6 +133,8 @@ def negacao_da_prontidao(
 VARIAVEL_DO_AMBIENTE = "TICKERLAB_AMBIENTE"
 AMBIENTE_DE_ENSAIO = "ensaio"
 PROVA_DE_ENSAIO = "ensaio-local"
+CABECALHO_DO_ENSAIO = "X-TickerLab-Ensaio"
+AVISO_DO_ENSAIO = "ensaio local: dado sem prontidao conferida"
 
 
 def em_ensaio(ambiente: Mapping[str, str] | None = None) -> bool:
