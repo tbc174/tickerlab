@@ -10,6 +10,7 @@ import json
 
 import httpx
 import pytest
+from tickerlab import comandos
 
 from conector_remoto import acesso, ferramentas
 from conector_remoto.cliente_api import ClienteDaApi
@@ -18,9 +19,12 @@ from src.api_externa.conjuntos import (
     comparaveis,
     demonstracoes,
     empresas,
+    eventos,
     ficha,
+    fundos,
     prospeccao,
     setores,
+    vinculos,
 )
 from tests import ajudantes_do_conector as aj
 
@@ -125,7 +129,8 @@ def test_todas_as_ferramentas_so_leem():
 def test_conjuntos_das_ferramentas_sao_os_da_api():
     da_api = {
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
-        demonstracoes.CONJUNTO, setores.CONJUNTO,
+        demonstracoes.CONJUNTO, setores.CONJUNTO, fundos.CONJUNTO,
+        eventos.CONJUNTO, vinculos.CONJUNTO,
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api
@@ -357,3 +362,152 @@ def test_demonstracoes_passa_a_data_conhecida():
     assert corpo == {"rows": []}
     (pedido,) = [p for p in pedidos if p.url.path.endswith("/financials")]
     assert pedido.url.params.get("known_at") == "2026-03-31"
+
+
+def test_fundo_passa_a_data_e_o_retorno_suposto():
+    pedidos: list[httpx.Request] = []
+    rotas = {"/funds/11111111000191": httpx.Response(200, json={"fund": {}})}
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "fundo",
+            cnpj="11.111.111/0001-91", como_era_em="2026-03-31", retorno_suposto=0.1,
+        )  # fmt: skip
+        erro, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "fundo",
+            cnpj="11111111000191",
+            retorno_suposto=3,
+        )
+    assert corpo == {"fund": {}}
+    (pedido,) = [p for p in pedidos if p.url.path.startswith("/data/v1/funds/")]
+    assert pedido.url.params.get("known_at") == "2026-03-31"
+    assert pedido.url.params.get("assumed_return") == "0.1"
+    assert erro  # retorno suposto acima de 100% ao ano nem chega à API
+
+
+def test_eventos_traduz_os_tipos_e_passa_o_cursor_e_a_data():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/events": httpx.Response(200, json={"events": []})
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "eventos",
+            cnpj="11.111.111/0001-91", tipos=["auditor", "documento"], cursor="abc",
+            como_era_em="2026-03-31",
+        )  # fmt: skip
+        erro, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "eventos",
+            cnpj="11111111000191",
+            tipos=["socio"],
+        )
+    assert corpo == {"events": []}
+    (pedido,) = [p for p in pedidos if p.url.path.endswith("/events")]
+    assert pedido.url.params.get_list("types") == ["auditor_change", "ipe_filing"]
+    assert pedido.url.params.get("cursor") == "abc"
+    assert pedido.url.params.get("known_at") == "2026-03-31"
+    assert erro  # tipo fora da lista nem chega à API
+
+
+# a forma da resposta de `/companies/{cnpj}/links` (nomes de `src/api_externa/nomes.py`), com dados de mentira
+VINCULOS_DA_API = {
+    "cnpj": "11111111000191",
+    "known_at": "2026-03-31",
+    "depth": 2,
+    "links": [
+        {
+            "kind": "subsidiary_of",
+            "from": {
+                "entity_id": "e1",
+                "cnpj_root": "22222222",
+                "legal_name": "CONTROLADA EXEMPLO S.A.",
+            },
+            "to": {
+                "entity_id": "e0",
+                "cnpj_root": "11111111",
+                "legal_name": "EMPRESA EXEMPLO S.A.",
+            },
+            "ownership_pct": 99.5,
+            "hops": 1,
+            "valid_from": "2025-05-30",
+            "source": "cvm-fre",
+            "published_at": "2025-05-30",
+        }
+    ],
+    "truncated": False,
+    "limits": ["Só companhia aberta informa controle e coligação, uma vez por ano."],
+}
+
+
+def test_vinculos_traduz_os_tipos_e_passa_a_profundidade_e_a_data():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/links": httpx.Response(200, json=VINCULOS_DA_API)
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "vinculos",
+            cnpj="11.111.111/0001-91", tipos=["coligada", "auditor"], profundidade=2,
+            como_era_em="2026-03-31",
+        )  # fmt: skip
+        padrao = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "vinculos", cnpj="11111111000191"
+        )
+        fundo_demais, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "vinculos",
+            cnpj="11111111000191",
+            profundidade=4,
+        )
+        raso_demais, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "vinculos",
+            cnpj="11111111000191",
+            profundidade=0,
+        )
+        tipo_errado, _ = aj.chamar(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "vinculos",
+            cnpj="11111111000191",
+            tipos=["socio"],
+        )
+    assert (
+        corpo == padrao == VINCULOS_DA_API
+    )  # os nomes de fora passam pelo filtro de pessoa
+    primeiro, segundo = [p for p in pedidos if p.url.path.endswith("/links")]
+    assert primeiro.url.params.get_list("types") == ["affiliate_of", "audits"]
+    assert primeiro.url.params.get("depth") == "2"
+    assert primeiro.url.params.get("known_at") == "2026-03-31"
+    assert segundo.url.params.get("depth") == "1"
+    assert "types" not in segundo.url.params and "known_at" not in segundo.url.params
+    assert (
+        fundo_demais and raso_demais and tipo_errado
+    )  # fora dos limites nem chega à API
+
+
+def test_tipos_de_vinculo_sao_os_da_api():
+    assert {
+        vinculos.TIPO_PELO_NOME_DE_FORA[de_fora]
+        for de_fora in ferramentas.TIPOS_DE_VINCULO.values()
+    } == set(vinculos.TIPOS)
+    assert ferramentas.PROFUNDIDADE_MAXIMA == vinculos.PROFUNDIDADE_MAXIMA
+
+
+def test_tipos_de_vinculo_sao_os_da_cli_quando_ela_os_tiver():
+    # o comando `vinculos` entra na CLI pela linha 773; até lá, nada a comparar
+    da_cli = getattr(comandos, "TIPOS_DE_VINCULO", ferramentas.TIPOS_DE_VINCULO)
+    assert da_cli == ferramentas.TIPOS_DE_VINCULO
+
+
+def test_tipos_de_evento_sao_os_da_cli_e_os_da_api():
+    assert ferramentas.TIPOS_DE_EVENTO == comandos.TIPOS_DE_EVENTO
+    assert set(ferramentas.TIPOS_DE_EVENTO.values()) == {
+        eventos.DOCUMENTO_DO_IPE,
+        eventos.TROCA_DE_AUDITOR,
+    }

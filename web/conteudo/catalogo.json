@@ -2403,7 +2403,7 @@
       "orgao": "Receita Federal",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 12
+      "tabelas": 13
     },
     {
       "historico_desde": "2002-01-01",
@@ -2900,7 +2900,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 34,
-    "tabelas": 120,
+    "tabelas": 121,
     "temas": [
       {
         "chave": "cvm",
@@ -2917,7 +2917,7 @@
           "Receita Federal",
           "CVM"
         ],
-        "tabelas": 8,
+        "tabelas": 9,
         "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
         "titulo": "Quem é dono e quem controla"
       },
@@ -3005,7 +3005,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 56
+      "tabelas": 57
     },
     {
       "chave": "credito_e_fidc",
@@ -7825,7 +7825,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7833,17 +7833,6 @@
       "orgao": "Receita Federal",
       "situacao": "licenciada",
       "tabela": "cnpj_situacao_especial"
-    },
-    {
-      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
-      "consultavel": false,
-      "frase": "Situação cadastral de cada estabelecimento do CNPJ (nula, ativa, suspensa, inapta ou baixada), um retrato por mês guardado: o histórico \"como era na data\" nasce da sequência dos retratos.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_situacao_cadastral"
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
@@ -7913,7 +7902,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com disponivel_em até D.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7924,7 +7913,18 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
-      "consultavel": true,
+      "consultavel": false,
+      "frase": "Situação cadastral de cada estabelecimento (01 nula, 02 ativa, 03 suspensa, 04 inapta, 08 baixada), com a data e o motivo, versão por versão desde 05/2023 e com desde quando cada uma era pública.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_situacao_cadastral"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
+      "consultavel": false,
       "frase": "Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7935,7 +7935,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7946,7 +7946,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Estabelecimentos (matriz e filiais) das pessoas jurídicas de cnpj_empresas_pj, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7954,6 +7954,17 @@
       "orgao": "Receita Federal",
       "situacao": "licenciada",
       "tabela": "cnpj_estabelecimentos_pj"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": false,
+      "frase": "Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: que empresa entrou como sócia de que empresa, com a data de entrada que a Receita dá.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "entradas_de_socio_pj"
     },
     {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
@@ -8672,7 +8683,7 @@
     },
     {
       "atraso": "O da fonte mais lenta de cada entidade",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Uma linha por entidade da rede: empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8683,7 +8694,7 @@
     },
     {
       "atraso": "O ticker vale da entrega do FCA que o trouxe",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (codigo_<fonte>).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
@@ -8694,7 +8705,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Uma linha por relação entre duas entidades da rede, com as três datas: sociedade controlada, coligada ou participada da companhia (FRE).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
@@ -8853,6 +8864,6 @@
     "fontes": 46,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 157
+    "tabelas": 158
   }
 }

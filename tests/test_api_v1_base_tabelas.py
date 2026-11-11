@@ -18,11 +18,17 @@ import duckdb
 import pandas as pd
 import pytest
 
+from base import prontidao
 from base.dicionario import TABELAS
 from base.dossie import (
     COLUNAS_DE_PESSOA,
     ESPERAM_A_MARCA_DE_PESSOA,
+    SO_PELA_API_EXTERNA,
+    e_do_cnpj,
     pode_consultar,
+    pode_consultar_aberto,
+    pode_mostrar,
+    servida_pela_porta,
     tem_dia_publico,
 )
 from base.porta import Porta
@@ -131,8 +137,20 @@ def base(tmp_path) -> Path:
     return pasta
 
 
+def _prontidao_de_todas_do_cnpj() -> dict[str, prontidao.Prontidao]:
+    """Registro de mentira: toda tabela do CNPJ com as três provas de hoje (o teste, não a produção)."""
+    prova = prontidao.Prova(datetime.now(UTC).date(), "conferida no teste", "teste")
+    return {
+        nome: prontidao.Prontidao(versao, prova, prova, prova)
+        for nome, versao in prontidao.versoes_maiores().items()
+        if e_do_cnpj(nome)
+    }
+
+
 @pytest.fixture
 def cliente(base, monkeypatch):
+    """A consulta aberta com as tabelas do CNPJ prontas; a `sem_prontidao` mostra a produção de hoje."""
+    monkeypatch.setattr(prontidao, "PRONTIDAO", _prontidao_de_todas_do_cnpj())
     base_tabelas.limpar_cache()
     monkeypatch.setattr(base_tabelas, "abrir_porta", lambda: Porta(base))
     monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
@@ -188,6 +206,104 @@ def test_lista_so_as_tabelas_consultaveis_com_colunas_fonte_e_licenca(cliente):
 def test_lista_respeita_a_trava_de_mostrar(cliente, monkeypatch):
     monkeypatch.setattr("base.dossie.pode_mostrar", lambda _: False)
     assert cliente.get(ROTA).json()["tabelas"] == []
+
+
+# --- o CNPJ só com prontidão (linha 840) ----------------------------------------------------------
+@pytest.fixture
+def sem_prontidao(cliente, monkeypatch):
+    """Como a produção hoje: o registro de prontidão vazio."""
+    monkeypatch.setattr(prontidao, "PRONTIDAO", {})
+    return cliente
+
+
+def _do_cnpj_consultaveis() -> set[str]:
+    return {nome for nome in TABELAS if e_do_cnpj(nome) and pode_consultar(nome)}
+
+
+def test_familia_do_cnpj_inclui_as_cnpj_e_as_derivadas():
+    familia = _do_cnpj_consultaveis()
+    assert {
+        "cnpj_empresas_pj",
+        "cnpj_estabelecimentos_pj",
+        "cnpj_empresas_historico",
+        "cnpj_simples_historico",
+        "cnpj_situacao_especial",
+        "entidades",
+        "identificadores",
+        "ligacoes",
+    } <= familia
+    assert not e_do_cnpj("pgfn_divida") and not e_do_cnpj("curva_juros")
+
+
+def test_sem_prontidao_a_lista_nao_anuncia_nenhuma_tabela_do_cnpj(sem_prontidao):
+    nomes = {t["tabela"] for t in sem_prontidao.get(ROTA).json()["tabelas"]}
+    assert nomes.isdisjoint(_do_cnpj_consultaveis())
+    assert not any(n.startswith("cnpj_") for n in nomes)
+    # as outras seguem como estavam
+    assert nomes == {n for n in TABELAS if pode_consultar(n) and not e_do_cnpj(n)}
+    assert {"pgfn_divida", "curva_juros"} <= nomes
+
+
+@pytest.mark.parametrize("nome", sorted(_do_cnpj_consultaveis()))
+def test_sem_prontidao_linhas_e_csv_do_cnpj_dao_o_404_de_tabela_inexistente(
+    sem_prontidao, nome
+):
+    inexistente = sem_prontidao.get(f"{ROTA}/nao_existe", headers=SITE)
+    for rota in (f"{ROTA}/{nome}", f"{ROTA}/{nome}.csv"):
+        r = sem_prontidao.get(rota, headers=SITE)
+        assert r.status_code == 404 and r.json() == inexistente.json(), rota
+
+
+def test_com_prontidao_a_tabela_do_cnpj_volta_sozinha(cliente, monkeypatch):
+    monkeypatch.setattr(prontidao, "PRONTIDAO", {})
+    assert cliente.get(f"{ROTA}/cnpj_empresas_historico").status_code == 404
+    registro = _prontidao_de_todas_do_cnpj()
+    monkeypatch.setattr(
+        prontidao,
+        "PRONTIDAO",
+        {"cnpj_empresas_historico": registro["cnpj_empresas_historico"]},
+    )
+    r = cliente.get(f"{ROTA}/cnpj_empresas_historico", headers=SITE)
+    assert r.status_code == 200 and r.json()["linhas"]
+    nomes = {t["tabela"] for t in cliente.get(ROTA).json()["tabelas"]}
+    assert "cnpj_empresas_historico" in nomes and "cnpj_empresas_pj" not in nomes
+
+
+def test_prova_vencida_tira_a_tabela_do_cnpj_de_novo(cliente, monkeypatch):
+    velha = prontidao.Prova(
+        datetime.now(UTC).date() - prontidao.PRAZO_DA_PROVA - timedelta(days=1),
+        "conferida no teste",
+        "teste",
+    )
+    versao = prontidao.versoes_maiores()["cnpj_empresas_historico"]
+    monkeypatch.setattr(
+        prontidao,
+        "PRONTIDAO",
+        {"cnpj_empresas_historico": prontidao.Prontidao(versao, velha, velha, velha)},
+    )
+    assert not pode_consultar_aberto("cnpj_empresas_historico")
+    assert cliente.get(f"{ROTA}/cnpj_empresas_historico").status_code == 404
+
+
+def test_registro_de_ensaio_nao_abre_a_consulta_aberta(cliente, monkeypatch):
+    """O ensaio liga o portão da API por chave (`registro_vigente`), nunca a consulta sem chave."""
+    monkeypatch.setattr(prontidao, "PRONTIDAO", {})
+    monkeypatch.setenv("TICKERLAB_AMBIENTE", "ensaio")
+    assert not pode_consultar_aberto("cnpj_empresas_historico")
+
+
+def test_o_que_ficou_em_casa_do_cnpj_nao_aparece_sem_prontidao(sem_prontidao):
+    from scripts.montar_recorte_da_api import FICAM_EM_CASA
+
+    nomes = {t["tabela"] for t in sem_prontidao.get(ROTA).json()["tabelas"]}
+    assert not {n for n in FICAM_EM_CASA if e_do_cnpj(n)} & nomes
+
+
+def test_api_por_chave_e_recorte_nao_mudam_com_a_trava():
+    """A trava é só da consulta aberta: `pode_consultar` (recorte, vitrine do app) segue igual."""
+    for nome in _do_cnpj_consultaveis():
+        assert pode_consultar(nome)
+    assert not pode_consultar_aberto("cnpj_empresas_pj")
 
 
 # --- o 404 igual ----------------------------------------------------------------------------------
@@ -597,6 +713,34 @@ def test_so_e_consultavel_a_tabela_que_diz_o_dia_publico_e_separa_a_pessoa(clien
         ).json() == {"detail": base_tabelas.NAO_ENCONTRADA}
         assert cliente.get(f"{ROTA}/{nome}.csv").status_code == 404
     assert tem_dia_publico("pgfn_divida") and not tem_dia_publico("proventos")
+
+
+def test_a_que_so_a_api_externa_serve_nao_sai_na_consulta_aberta(cliente):
+    """Linha 810 (Diretoria, 11/11/2026): as entradas de sócio PJ vão ao VPS só para a API externa, atrás
+    do portão e da prontidão; a consulta aberta dá o mesmo 404 e nem a lista as mostra."""
+    assert {"entradas_de_socio_pj"} == SO_PELA_API_EXTERNA
+    nome = "entradas_de_socio_pj"
+    assert not pode_consultar(nome)
+    assert cliente.get(f"{ROTA}/{nome}").json() == {
+        "detail": base_tabelas.NAO_ENCONTRADA
+    }
+    assert cliente.get(f"{ROTA}/{nome}.csv").status_code == 404
+    assert nome not in {t["tabela"] for t in cliente.get(ROTA).json()["tabelas"]}
+
+
+def test_so_a_tabela_da_api_externa_muda_de_lado():
+    """Nenhuma outra tabela entra nem sai da consulta aberta com a lista `SO_PELA_API_EXTERNA`."""
+
+    def antes(nome: str) -> bool:
+        return (
+            pode_mostrar(nome)
+            and servida_pela_porta(nome)
+            and tem_dia_publico(nome)
+            and nome not in ESPERAM_A_MARCA_DE_PESSOA
+        )
+
+    mudaram = {nome for nome in TABELAS if pode_consultar(nome) != antes(nome)}
+    assert mudaram == {"entradas_de_socio_pj"}
 
 
 class _PortaQueFalhaNosTipos(Porta):

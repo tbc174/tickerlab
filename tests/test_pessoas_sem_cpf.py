@@ -34,6 +34,20 @@ def test_tira_o_cpf_formatado_e_o_mascarado():
     assert tirar_cpf("FULANO ***.456.789-**") == "FULANO"
 
 
+def test_tira_o_cpf_com_espaco_em_volta_do_hifen():
+    # achado na recarga de 11/11/2026: "... CPF: 123.456.789 - 09 ..." passava pelo detector
+    cpf = _cpf_valido("123456789")
+    pontuado = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]} - {cpf[9:]}"
+    assert tirar_cpf(f"FULANO DE TAL {pontuado}") == "FULANO DE TAL"
+    assert tirar_cpf(f"FULANO CPF: {pontuado} ME") == "FULANO ME"
+    assert (
+        tirar_cpf("FULANO CPF: 123.456.789 - 00 ME") == "FULANO ME"
+    )  # com a palavra CPF sai sempre
+    assert (
+        tirar_cpf("FULANO 123 456 789 - 00") == "FULANO 123 456 789 - 00"
+    )  # sem a palavra e sem fechar
+
+
 def test_nome_de_empresa_nao_muda():
     assert tirar_cpf("PETROBRAS S.A.") == "PETROBRAS S.A."
     assert tirar_cpf("LOJA 24 HORAS LTDA") == "LOJA 24 HORAS LTDA"
@@ -74,3 +88,28 @@ def test_a_tela_do_dossie_tira_o_cpf():
     from src.dossie import _texto
 
     assert _texto(f"MEI DE FULANO {_cpf_valido('987654321')}") == "MEI DE FULANO"
+
+
+def test_tira_o_cpf_com_outros_separadores_e_colado_a_palavra_cpf():
+    # revisão cruzada do PR 1019: só espaço, travessões, vírgula, barra e "CPF-"/"CPF/" colados ao número
+    v = _cpf_valido("123456789")
+    g = (v[:3], v[3:6], v[6:9], v[9:])
+    formas = [
+        f"{g[0]} {g[1]} {g[2]} {g[3]}",
+        f"{g[0]}.{g[1]}.{g[2]} {g[3]}",
+        f"{v[:9]} {g[3]}",
+        f"{g[0]}.{g[1]}.{g[2]}—{g[3]}",
+        f"{g[0]}-{g[1]}-{g[2]}-{g[3]}",
+        f"{g[0]},{g[1]},{g[2]}-{g[3]}",
+        f"{g[0]}.{g[1]}.{g[2]}/{g[3]}",
+        f"CPF-{g[0]}.{g[1]}.{g[2]} - {g[3]}",
+        f"CPF/{g[0]}.{g[1]}.{g[2]}-{g[3]}",
+    ]
+    for forma in formas:
+        limpo = tirar_cpf(f"FULANO {forma} ME")
+        assert not re.search(r"\d{3}", limpo), forma
+
+
+def test_cnpj_e_numero_que_nao_fecha_como_cpf_ficam():
+    assert tirar_cpf("EMPRESA 11.222.333/0001-81 ME") == "EMPRESA 11.222.333/0001-81 ME"
+    assert tirar_cpf("EMPRESA 123 456 789 00 ME") == "EMPRESA 123 456 789 00 ME"

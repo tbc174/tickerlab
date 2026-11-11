@@ -126,17 +126,35 @@ jobs:
       # tentativas, em vez de deixar o job inteiro esperando.
       - name: Bibliotecas do Qt
         if: matrix.dependencias == 'requirements-trader.txt'
-        timeout-minutes: 6
+        timeout-minutes: 8
         run: |
-          apt_opcoes="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
-          for tentativa in 1 2 3; do
-            if sudo timeout 120 apt-get $apt_opcoes update \
-              && sudo timeout 120 apt-get $apt_opcoes install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3; then
+          # 11/11/2026: a máquina do GitHub deixou de alcançar o arquivo do Ubuntu (o oficial e o da
+          # Azure, por http e por https: "Ign" até estourar o tempo) e derrubou todo PR com código,
+          # enquanto outros sites respondiam. Então o passo testa cada espelho em 10 s antes de
+          # usá-lo e, se o padrão da imagem não responde, vai a espelhos de outras redes. O apt
+          # confere a assinatura do Ubuntu em qualquer espelho.
+          pacotes="libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3"
+          if dpkg -s $pacotes >/dev/null 2>&1; then
+            echo "bibliotecas do Qt já estão na imagem"
+            exit 0
+          fi
+          apt_opcoes="-o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20"
+          fontes="/etc/apt/sources.list.d/ubuntu.sources"
+          versao="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+          sudo cp "$fontes" /tmp/ubuntu.sources.original
+          for espelho in             http://azure.archive.ubuntu.com/ubuntu/             https://archive.ubuntu.com/ubuntu/             https://mirrors.edge.kernel.org/ubuntu/             https://mirror.us.leaseweb.net/ubuntu/             https://ubuntu.osuosl.org/ubuntu/             https://ftp.halifax.rwth-aachen.de/ubuntu/; do
+            if ! curl -fsS -m 10 -o /dev/null "${espelho}dists/${versao}-updates/InRelease"; then
+              echo "espelho sem resposta em 10 s: $espelho"
+              continue
+            fi
+            sudo cp /tmp/ubuntu.sources.original "$fontes"
+            sudo sed -i -E "s#^URIs: .*#URIs: $espelho#" "$fontes"
+            if sudo timeout 90 apt-get $apt_opcoes update               && sudo timeout 90 apt-get $apt_opcoes install -y --no-install-recommends $pacotes; then
               exit 0
             fi
-            echo "apt-get falhou na tentativa $tentativa; esperando para tentar de novo"
-            sleep 10
+            echo "apt-get falhou com o espelho $espelho; tentando o próximo"
           done
+          echo "nenhum espelho do Ubuntu respondeu"
           exit 1
 
       # o torch do PyPI para Linux traz as bibliotecas de GPU da NVIDIA (vários GB); a pesquisa só
@@ -329,3 +347,34 @@ jobs:
 
       - name: O login com o Google tem o que precisa dentro da imagem
         run: docker run --rm tickerlab:ci python -c "from authlib.integrations.starlette_client import OAuth; print('login ok')"
+
+      - name: O conector remoto abre dentro da imagem e só atende o host público
+        # linha 570 (contêiner tickerlab-mcp): sem a chave do servidor ele não sobe; com ela, o /mcp sem
+        # chave dá 401 com o endereço dos metadados do OAuth, e Host ou Origin estranhos dão 421 e 403.
+        # A chave aqui é descartável, criada só para este passo e nunca impressa.
+        run: |
+          # o compose do VPS com o arquivo do conector monta sem erro (os .env aqui são vazios)
+          touch .env .env.sala .env.mcp
+          docker compose -f compose.yaml -f compose.conector.yaml config -q
+          set +e
+          timeout 60 docker run --rm -e TICKERLAB_MCP_EXIGIR_CHAVE=1 tickerlab:ci python -m conector_remoto
+          codigo=$?
+          set -e
+          if [ "$codigo" != 1 ]; then echo "sem a chave do servidor, o conector devia parar (saiu com $codigo)"; exit 1; fi
+          CHAVE="$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("="))')"
+          docker run -d --name tickerlab-mcp -p 127.0.0.1:8010:8010 --read-only --tmpfs /tmp --cap-drop ALL \
+            -e TICKERLAB_MCP_EXIGIR_CHAVE=1 -e TICKERLAB_MCP_ESCUTA=0.0.0.0 \
+            -e TICKERLAB_MCP_CHAVE_DOS_TOKENS="$CHAVE" tickerlab:ci python -m conector_remoto
+          HOST="Host: mcp.tickerlab.com.br"
+          URL=http://127.0.0.1:8010
+          for i in $(seq 1 30); do curl -fsS -H "$HOST" "$URL/saude" && break; sleep 1; done
+          status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          if [ "$(status -H "$HOST" -X POST "$URL/mcp")" != 401 ] \
+            || ! curl -s -D - -o /dev/null -H "$HOST" -X POST "$URL/mcp" | grep -qi '^www-authenticate:.*resource_metadata=' \
+            || ! curl -fsS -H "$HOST" "$URL/.well-known/oauth-authorization-server" | grep -q '"issuer":"https://mcp.tickerlab.com.br' \
+            || [ "$(status -H 'Host: outro.example' "$URL/saude")" != 421 ] \
+            || [ "$(status -H "$HOST" -H 'Origin: https://outro.example' -X POST "$URL/mcp")" != 403 ]; then
+            docker logs tickerlab-mcp
+            exit 1
+          fi
+          echo "conector ok: 401 com os metadados, 421 e 403 para quem não é ele"

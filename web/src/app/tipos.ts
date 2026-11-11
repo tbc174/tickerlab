@@ -1014,6 +1014,64 @@ export interface FichaDaEmpresaV1 {
   o_que_vem: BlocoDaFichaV1[]; // os blocos da ficha e a fonte de cada um, para quando o dado não sai
 }
 
+/** Um evento da empresa na ficha: documento à CVM (`ipe_filing`) ou troca de auditor (`auditor_change`). */
+export interface EventoDaEmpresaV1 {
+  tipo: string;
+  campos: Record<string, CampoComFonteV1>;
+}
+
+/** Os eventos da empresa (tela do analista, POST /v1/analista/ficha/eventos), uma página por vez. */
+export interface EventosDaEmpresaV1 {
+  estado: "pronta" | "nao_liberada" | "nao_disponivel";
+  como_era_em: string | null; // AAAA-MM-DD
+  eventos: EventoDaEmpresaV1[];
+  cortada: boolean;
+  proximo_cursor: string | null; // abre a página seguinte
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}
+
+// Comparar empresas (tela do analista, linha 798): uma empresa por linha, cada campo com a fonte e o dia.
+// Quem a base não serve (pessoa, MEI, CNPJ desconhecido) vem só com o cnpj e estado "nao_disponivel".
+export interface EmpresaComparadaV1 {
+  cnpj: string;
+  estado: "pronta" | "nao_disponivel";
+  razao_social: CampoComFonteV1 | null;
+  situacao_cadastral: CampoComFonteV1 | null;
+  data_situacao_cadastral: CampoComFonteV1 | null;
+  motivo_situacao: CampoComFonteV1 | null;
+  natureza_juridica: CampoComFonteV1 | null;
+  matriz: CampoComFonteV1 | null;
+  mes_do_retrato: CampoComFonteV1 | null;
+  optante_simples: CampoComFonteV1 | null;
+  data_opcao_simples: CampoComFonteV1 | null;
+  data_exclusao_simples: CampoComFonteV1 | null;
+  porte: CampoComFonteV1 | null;
+  data_inicio_atividade: CampoComFonteV1 | null;
+  cnae_principal: CampoComFonteV1 | null;
+  uf: CampoComFonteV1 | null;
+  municipio: CampoComFonteV1 | null;
+  capital_social: CampoComFonteV1 | null;
+  n_estabelecimentos: CampoComFonteV1 | null;
+  porte_descricao: string | null;
+  cnae_descricao: string | null;
+  municipio_nome: string | null;
+  ultima_entrega_documento: CampoComFonteV1 | null;
+  ultima_entrega_referencia: CampoComFonteV1 | null;
+  ultima_entrega_situacao: CampoComFonteV1 | null;
+  entregas_conhecidas: number | null; // conta nossa: as entregas à CVM que a base conhecia no dia
+  entregas_com_atraso: number | null; // atrasou, atraso grave e não entregue (a zona cinzenta não conta)
+}
+
+export interface ComparacaoDeEmpresasV1 {
+  // nao_liberada: o dado ainda não foi liberado (estado da tela, nunca erro)
+  estado: "pronta" | "nao_liberada";
+  como_era_em: string | null;
+  empresas: EmpresaComparadaV1[];
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}
+
 // O que mudou (linha 804): uma linha por entrega, a mais nova primeiro; url é o endereço da página no app
 export interface EntregaDoDiaV1 {
   data: string;
@@ -1026,7 +1084,7 @@ export interface OQueMudouV1 {
   entregas: EntregaDoDiaV1[];
 }
 
-// Encontrar empresas (tela do analista, linha 798): a matriz ativa por setor, UF e idade mínima. Cada campo
+// Encontrar empresas (tela do analista, linha 798): a matriz ativa por setor, UF, idade, capital e estabelecimentos. Cada campo
 // vem no envelope (null se o portão não serve); os *_descricao/_nome são os nomes da Receita ao lado do código
 export interface EmpresaDaBuscaV1 {
   cnpj: string;
@@ -1039,6 +1097,8 @@ export interface EmpresaDaBuscaV1 {
   uf: CampoComFonteV1 | null;
   municipio: CampoComFonteV1 | null;
   matriz: CampoComFonteV1 | null;
+  capital_social?: CampoComFonteV1 | null; // R$, o declarado na Receita (falta na tabela antiga)
+  n_estabelecimentos?: CampoComFonteV1 | null; // os ativos, a matriz junto
   cnae_descricao: string | null;
   municipio_nome: string | null;
   porte_descricao: string | null;
@@ -1046,6 +1106,11 @@ export interface EmpresaDaBuscaV1 {
 
 export interface SetorDaBuscaV1 {
   codigo: string; // a letra da seção do CNAE (IBGE)
+  nome: string;
+}
+
+export interface OrdemDaBuscaV1 {
+  codigo: string; // vai de volta no pedido; sem ordem é pelo CNPJ
   nome: string;
 }
 
@@ -1060,4 +1125,5 @@ export interface BuscaDeEmpresasV1 {
   limites: string[];
   setores: SetorDaBuscaV1[];
   ufs: string[];
+  ordens: OrdemDaBuscaV1[];
 }

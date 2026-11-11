@@ -30,6 +30,8 @@ COPY migracoes ./migracoes
 COPY conteudo ./conteudo
 COPY site-api ./site-api
 COPY dados_de_exemplo ./dados_de_exemplo
+# o conector remoto dos analistas (servidor MCP, linha 570): contêiner tickerlab-mcp, só lê a API
+COPY conector_remoto ./conector_remoto
 
 # o commit deste código, para a linhagem dos números (ADR 0055, exigência 13):
 #   docker build --build-arg TICKERLAB_VERSAO="$(git rev-parse HEAD)" .

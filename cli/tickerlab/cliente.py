@@ -105,6 +105,22 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
         "A busca precisa de pelo menos um filtro (por exemplo --cnae 3511 --uf SP).",
         Saida.USO,
     ),
+    (400, "invalid_event_type"): (
+        "Tipo de evento desconhecido. Confira com `tickerlab eventos --help`.",
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_depth"): (
+        "A profundidade vai de 1 a 3 saltos.",
+        Saida.USO,
+    ),
+    (400, "invalid_link_type"): (
+        "Tipo de vínculo desconhecido. Confira com `tickerlab vinculos --help`.",
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_cursor"): (
+        "A API não reconheceu a página pedida. Rode o comando de novo, do começo.",
+        Saida.PEDIDO_INVALIDO,
+    ),
     (400, "api_key_in_url"): (
         (
             "A API recusou o pedido porque viu uma chave no endereço. A CLI não faz isso: confira "
@@ -246,6 +262,21 @@ class ApiDoTickerlab:
     def comparaveis(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}/comparables", _datas(known_at=como_era))
 
+    def vinculos(
+        self,
+        cnpj: str,
+        como_era: str | None,
+        profundidade: int,
+        tipos: Sequence[str],
+    ) -> dict:
+        parametros: dict[str, str | Sequence[str]] = {
+            **_datas(known_at=como_era),
+            "depth": str(profundidade),
+        }
+        if tipos:
+            parametros["types"] = list(tipos)
+        return self.pedir(f"/companies/{cnpj}/links", parametros)
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:
@@ -268,18 +299,33 @@ class ApiDoTickerlab:
         Cada página é um pedido da quota. As páginas viram uma resposta só: as empresas em sequência, as
         fontes sem repetir, e `truncated`/`next_cursor` da última página (cursor vazio = acabou).
         """
-        corpo = self.pedir(CAMINHO_DA_BUSCA, filtros)
+        return self._paginas(CAMINHO_DA_BUSCA, filtros, "companies", todas)
+
+    def eventos(
+        self, cnpj: str, como_era: str | None, tipos: Sequence[str], todas: bool
+    ) -> dict:
+        """Os eventos da empresa, do mais novo ao mais velho; com `todas`, segue o cursor como a busca."""
+        parametros: dict[str, str | Sequence[str]] = {**_datas(known_at=como_era)}
+        if tipos:
+            parametros["types"] = list(tipos)
+        return self._paginas(f"/companies/{cnpj}/events", parametros, "events", todas)
+
+    def _paginas(
+        self, caminho: str, parametros: Parametros, lista: str, todas: bool
+    ) -> dict:
+        """A primeira página e, com `todas`, as seguintes pelo `next_cursor`, juntas numa resposta só."""
+        corpo = self.pedir(caminho, parametros)
         paginas = 1
         while todas and corpo.get("next_cursor") and paginas < PAGINAS_MAXIMAS:
             paginas += 1
             click.echo(
-                f"{len(corpo.get('companies') or [])} empresas até agora; buscando a página {paginas}...",
+                f"{len(corpo.get(lista) or [])} linhas até agora; buscando a página {paginas}...",
                 err=True,
             )
             seguinte = self.pedir(
-                CAMINHO_DA_BUSCA, {**filtros, "cursor": str(corpo["next_cursor"])}
+                caminho, {**parametros, "cursor": str(corpo["next_cursor"])}
             )
-            corpo = juntar_paginas(corpo, seguinte)
+            corpo = juntar_paginas(corpo, seguinte, lista)
         return corpo
 
     def setores(self) -> dict:
@@ -289,8 +335,10 @@ class ApiDoTickerlab:
         return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))
 
 
-def juntar_paginas(anterior: Mapping, seguinte: Mapping) -> dict:
-    """Duas páginas da busca numa resposta só (a ordem das empresas é a da API, por CNPJ)."""
+def juntar_paginas(
+    anterior: Mapping, seguinte: Mapping, lista: str = "companies"
+) -> dict:
+    """Duas páginas numa resposta só: as linhas de `lista` na ordem da API e as fontes sem repetir."""
     fontes = list(anterior.get("sources") or [])
     vistas = {_chave_da_fonte(fonte) for fonte in fontes}
     for fonte in seguinte.get("sources") or []:
@@ -299,10 +347,7 @@ def juntar_paginas(anterior: Mapping, seguinte: Mapping) -> dict:
             vistas.add(_chave_da_fonte(fonte))
     return {
         **seguinte,
-        "companies": [
-            *(anterior.get("companies") or []),
-            *(seguinte.get("companies") or []),
-        ],
+        lista: [*(anterior.get(lista) or []), *(seguinte.get(lista) or [])],
         "sources": fontes,
     }
 

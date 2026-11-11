@@ -367,3 +367,9 @@
 .nota-da-sala { display: flex; flex-direction: column; gap: var(--e1); }
 .nota-da-sala input { width: 100%; padding: var(--e2) var(--e3); border-radius: 8px; }
 .secao-do-relatorio ul { padding-left: var(--e4); }
+
+/* tela do analista (linha 798): as ações da ficha e a comparação lado a lado */
+.acoes-da-ficha { display: flex; flex-wrap: wrap; gap: var(--e2); align-items: center; margin: var(--e3) 0; }
+.cnpjs-da-comparacao { display: flex; flex-wrap: wrap; gap: var(--e3); align-items: end; }
+.cnpjs-da-comparacao .botao { min-height: 44px; }
+.celula-comparada small { display: block; }

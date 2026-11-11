@@ -12,15 +12,16 @@ import html
 import json
 import logging
 import os
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import stripe
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from base.prontidao import AVISO_DO_ENSAIO, CABECALHO_DO_ENSAIO, em_ensaio
 from src.api_externa import api_externa_ligada
 from src.api_v1 import api_v1_ligada
 from src.banco import newsletter_por_email, novidades_por_email
@@ -188,6 +189,16 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     )
     nova.include_router(router)
     nova.include_router(router, prefix="/api")
+    if em_ensaio(ambiente):
+        # ensaio local (linha 800): toda resposta diz que é ensaio, com dado sem prontidão conferida
+        @nova.middleware("http")
+        async def _anunciar_o_ensaio(
+            pedido: Request, seguir: Callable[[Request], Awaitable[Response]]
+        ) -> Response:
+            resposta = await seguir(pedido)
+            resposta.headers[CABECALHO_DO_ENSAIO] = AVISO_DO_ENSAIO
+            return resposta
+
     # os limites por IP da v1 leem daqui (src/api_v1/compartilhados.py: ip_de_quem_pede)
     nova.state.proxies_confiaveis = proxies_pelo_ambiente(ambiente)
     registro = registro_pelo_ambiente(ambiente)

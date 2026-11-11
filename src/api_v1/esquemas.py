@@ -1592,6 +1592,46 @@ def de_ficha_do_analista(
     )
 
 
+class EventoDaEmpresaV1(BaseModel):
+    """Um evento da empresa: o tipo (`ipe_filing` ou `auditor_change`) e os campos dele, cada um com fonte e dia."""
+
+    tipo: str
+    campos: dict[str, CampoComFonteV1]
+
+
+class EventosDaEmpresaV1(BaseModel):
+    """Os eventos da empresa na ficha (linha 798, PR 4): o estado, a página, o cursor da seguinte, as fontes e
+    os limites, sempre."""
+
+    estado: str  # "pronta", "nao_liberada" ou "nao_disponivel", como a ficha
+    como_era_em: date | None
+    eventos: list[EventoDaEmpresaV1]
+    cortada: bool
+    proximo_cursor: str | None
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def _evento_do_analista(linha: dict) -> EventoDaEmpresaV1:
+    campos = {nome: valor for nome, valor in linha.items() if nome != "tipo_de_evento"}
+    return EventoDaEmpresaV1(tipo=linha["tipo_de_evento"], campos=campos)  # type: ignore[arg-type]
+
+
+def de_eventos_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> EventosDaEmpresaV1:
+    corpo = resposta.corpo or {}
+    return EventosDaEmpresaV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        eventos=[_evento_do_analista(linha) for linha in corpo.get("eventos", [])],
+        cortada=bool(corpo.get("cortada", False)),
+        proximo_cursor=corpo.get("proximo_cursor"),
+        fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
+        limites=list(limites),
+    )
+
+
 class EmpresaDaBuscaV1(BaseModel):
     """Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão
     não serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita."""
@@ -1606,6 +1646,8 @@ class EmpresaDaBuscaV1(BaseModel):
     uf: CampoComFonteV1 | None = None
     municipio: CampoComFonteV1 | None = None
     matriz: CampoComFonteV1 | None = None
+    capital_social: CampoComFonteV1 | None = None  # R$, o declarado na Receita
+    n_estabelecimentos: CampoComFonteV1 | None = None  # os ativos, a matriz junto
     cnae_descricao: str | None = None
     municipio_nome: str | None = None
     porte_descricao: str | None = None
@@ -1613,6 +1655,13 @@ class EmpresaDaBuscaV1(BaseModel):
 
 class SetorDaBuscaV1(BaseModel):
     """Um setor que a tela oferece: a letra da seção do CNAE e o nome do IBGE."""
+
+    codigo: str
+    nome: str
+
+
+class OrdemDaBuscaV1(BaseModel):
+    """Uma ordem que a tela oferece além da do CNPJ (o código vai de volta no pedido)."""
 
     codigo: str
     nome: str
@@ -1631,6 +1680,7 @@ class BuscaDeEmpresasV1(BaseModel):
     limites: list[str]
     setores: list[SetorDaBuscaV1]
     ufs: list[str]
+    ordens: list[OrdemDaBuscaV1]
 
 
 def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpresasV1:
@@ -1651,6 +1701,72 @@ def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpre
             for setor in busca_do_analista.setores_como_lista()
         ],
         ufs=list(busca_do_analista.UFS),
+        ordens=[
+            OrdemDaBuscaV1.model_validate(ordem)
+            for ordem in busca_do_analista.ordens_como_lista()
+        ],
+    )
+
+
+class EmpresaComparadaV1(BaseModel):
+    """Uma empresa na comparação, numa linha: o cadastro da ficha, os campos da busca e o resumo das entregas
+    à CVM, cada campo com a fonte e o dia (None se o portão não serve ou se a empresa não está disponível)."""
+
+    cnpj: str
+    estado: str  # "pronta" ou "nao_disponivel" (pessoa, MEI ou CNPJ que a base não conhece, sem dizer qual)
+    razao_social: CampoComFonteV1 | None = None
+    natureza_juridica: CampoComFonteV1 | None = None
+    situacao_cadastral: CampoComFonteV1 | None = None
+    data_situacao_cadastral: CampoComFonteV1 | None = None
+    motivo_situacao: CampoComFonteV1 | None = None
+    matriz: CampoComFonteV1 | None = None
+    mes_do_retrato: CampoComFonteV1 | None = None
+    optante_simples: CampoComFonteV1 | None = None
+    data_opcao_simples: CampoComFonteV1 | None = None
+    data_exclusao_simples: CampoComFonteV1 | None = None
+    porte: CampoComFonteV1 | None = None
+    data_inicio_atividade: CampoComFonteV1 | None = None
+    cnae_principal: CampoComFonteV1 | None = None
+    uf: CampoComFonteV1 | None = None
+    municipio: CampoComFonteV1 | None = None
+    capital_social: CampoComFonteV1 | None = None
+    n_estabelecimentos: CampoComFonteV1 | None = None
+    cnae_descricao: str | None = None
+    municipio_nome: str | None = None
+    porte_descricao: str | None = None
+    ultima_entrega_documento: CampoComFonteV1 | None = None
+    ultima_entrega_referencia: CampoComFonteV1 | None = None
+    ultima_entrega_situacao: CampoComFonteV1 | None = None
+    entregas_conhecidas: int | None = (
+        None  # conta nossa sobre as entregas à CVM que a base conhecia
+    )
+    entregas_com_atraso: int | None = None
+
+
+class ComparacaoDeEmpresasV1(BaseModel):
+    """A resposta da comparação: o estado, as empresas na ordem do pedido (só quando pronta), as fontes e os
+    limites, sempre."""
+
+    estado: str  # "pronta" ou "nao_liberada" (o portão ainda não deixa sair o cadastro)
+    como_era_em: date | None = None
+    empresas: list[EmpresaComparadaV1]
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def de_comparacao_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> ComparacaoDeEmpresasV1:
+    corpo = resposta.corpo or {}
+    return ComparacaoDeEmpresasV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        empresas=[
+            EmpresaComparadaV1.model_validate(empresa)
+            for empresa in corpo.get("empresas", [])
+        ],
+        fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
+        limites=list(limites),
     )
 
 

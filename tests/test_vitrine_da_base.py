@@ -15,7 +15,11 @@ import pytest
 from base import vitrine
 from base.contrato import PASTA
 from base.dicionario import TABELAS
-from base.dossie import conferir_sem_pessoas, normalizar_nome, pode_consultar
+from base.dossie import (
+    conferir_sem_pessoas,
+    normalizar_nome,
+    pode_consultar_aberto,
+)
 
 CVM = "ODbL (dados abertos da CVM; citar a fonte)"
 BCB = "ODbL (dados abertos do Banco Central; citar a fonte)"
@@ -220,7 +224,9 @@ def test_consultavel_segue_a_regra_de_mostrar_e_a_porta():
         linhas["cnpj_simples"].consultavel is False
     )  # pode mostrar, mas está fora da porta
     assert linhas["sancoes_cgu"].consultavel is False  # tabela de pessoa
-    assert all(t.consultavel == pode_consultar(nome) for nome, t in linhas.items())
+    assert all(
+        t.consultavel == pode_consultar_aberto(nome) for nome, t in linhas.items()
+    )
     assert sum(t.consultavel for t in linhas.values()) > 50
 
 

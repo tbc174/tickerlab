@@ -189,19 +189,30 @@ def _pgfn_por_situacao(porta: Porta, raiz: str, dia: date) -> list[Feature]:
 
 # --- Receita: situação cadastral ------------------------------------------------------------------
 def _situacao_cadastral(porta: Porta, raiz: str, dia: date) -> Feature:
+    """A situação da matriz (ou, sem ela, de uma filial) na versão de cada estabelecimento que valia no dia.
+
+    A tabela guarda uma linha por versão (linha 841): a de cada CNPJ é a do retrato mais novo já público, e
+    quem tinha saído do arquivo (`consta` falso) não conta.
+    """
     chave = "situacao_cadastral_na_receita"
     linhas = fb._ler(porta, "cnpj_situacao_cadastral", dia, {"cnpj_basico": raiz})
     if linhas is None:
         return _sem_a_tabela([chave])[0]
-    if linhas.empty:
+    valendo = (
+        linhas.assign(_mes=linhas["mes_do_retrato"].astype(str))
+        .sort_values(["cnpj", "_mes", "publico_em"])
+        .groupby("cnpj", sort=False)
+        .tail(1)
+    )
+    valendo = valendo.loc[_sim(valendo["consta"])]
+    if valendo.empty:
         return _sinal(chave, None, "", [], SEM_O_CNPJ.format(fonte="Receita"))
-    meses = linhas["mes_do_retrato"].astype(str)
-    mes = max(meses)
-    do_mes = linhas[meses == mes]
-    linha = do_mes.sort_values("matriz", ascending=False).iloc[0]  # a matriz primeiro
+    linha = valendo.sort_values(
+        ["matriz", "_mes", "cnpj"], ascending=[False, False, True]
+    ).iloc[0]  # a matriz primeiro
     codigo = str(linha["situacao_cadastral"]).strip().zfill(2)
-    periodo = f"retrato de {mes}"
-    publico = fb._dia(do_mes["publico_em"].max())
+    periodo = f"versão do retrato de {linha['_mes']}"
+    publico = fb._dia(linha["publico_em"])
     documentos = [
         DocumentoUsado(f"Receita: situação cadastral do CNPJ, {periodo}", publico)
     ]

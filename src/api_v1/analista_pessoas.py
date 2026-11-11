@@ -1,7 +1,9 @@
-"""Pessoa física na tela da equipe (ADR 0128, Emenda 1; linha 808): os sócios da empresa da ficha.
+"""Pessoa física na tela da equipe (ADR 0128, Emenda 1; linha 808): os sócios e o contato da empresa da ficha.
 
 `POST /v1/analista/ficha/pessoas` devolve, do cadastro público da Receita, os sócios pessoa física adultos do
 CNPJ pedido: nome, qualificação e data de entrada. Sem CPF e sem menor de idade (o acervo já nasce assim).
+`POST /v1/analista/ficha/contato` devolve o endereço, os telefones e o e-mail dos estabelecimentos ativos da
+empresa (no MEI e no empresário individual costumam ser os da pessoa, por isso a mesma permissão).
 
 Quem vê: a conta logada, com os termos aceitos e o plano da ficha, **e** membro de uma organização cujo
 contrato tem a permissão `pessoa_na_tela` vigente (`src/banco/membros_da_organizacao.py`). A permissão nasce
@@ -18,6 +20,8 @@ o tipo e quantas linhas saíram; nunca o CNPJ nem um nome. O log do app grava s�
 
 import logging
 import uuid
+from collections.abc import Callable
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -35,7 +39,9 @@ log = logging.getLogger(__name__)
 
 PRONTA = "pronta"
 SEM_SOCIOS = "sem_socios"
+SEM_CONTATO = "sem_contato"
 TIPO_SOCIOS = "socios"
+TIPO_CONTATO = "contato"
 
 Conta = Annotated[Usuario, Depends(conta_com_acesso)]
 router = APIRouter(prefix="/v1/analista", dependencies=[Depends(exigir_api_ligada)])
@@ -61,6 +67,29 @@ class SociosDaEmpresaV1(BaseModel):
         str  # "pronta" ou "sem_socios" (nenhum sócio pessoa física adulto no retrato)
     )
     socios: list[SocioDaEmpresaV1]
+    total: int
+    fonte: FonteDosSociosV1
+    limites: list[str]
+
+
+class EstabelecimentoV1(BaseModel):
+    cnpj: str
+    matriz: bool
+    logradouro: str | None  # tipo, nome, número e complemento, numa linha
+    bairro: str | None
+    cep: str | None
+    municipio: str | None
+    uf: str | None
+    telefones: list[str]  # DDD e número, só dígitos
+    email: str | None
+
+
+class ContatoDaEmpresaV1(BaseModel):
+    """O contato dos estabelecimentos ativos da empresa: o estado, a lista (o CNPJ pedido primeiro), o
+    total (a lista pode vir cortada), a fonte e os limites, sempre."""
+
+    estado: str  # "pronta" ou "sem_contato" (nenhum estabelecimento ativo no retrato)
+    estabelecimentos: list[EstabelecimentoV1]
     total: int
     fonte: FonteDosSociosV1
     limites: list[str]
@@ -93,15 +122,27 @@ async def pedido_de_quem_pode(
 Pedido = Annotated[analista.PedidoDaFichaV1, Depends(pedido_de_quem_pode)]
 
 
-def _registrar(conta: Usuario, organizacao: uuid.UUID, linhas: int) -> None:
+def _registrar(conta: Usuario, organizacao: uuid.UUID, tipo: str, linhas: int) -> None:
     with obter_engine().begin() as banco:
         auditoria.registrar(
             banco,
             conta.id,
             auditoria.ACAO_PESSOA_VISTA,
             alvo_id=organizacao,
-            detalhes={"tipo": TIPO_SOCIOS, "linhas": linhas},
+            detalhes={"tipo": tipo, "linhas": linhas},
         )
+
+
+def _ler[T](leitor: Callable[[Path, str], T], pedido: analista.PedidoDaFichaV1) -> T:
+    """O que o leitor do acervo de pessoa devolve para o CNPJ pedido; 422 e 503 sem repetir o que veio."""
+    if len(pedido.cnpj) > analista.TAMANHO_MAXIMO_DO_CNPJ:
+        raise HTTPException(status_code=422, detail=analista.CNPJ_INVALIDO)
+    try:
+        return leitor(pessoa.pasta_do_acervo(), pedido.cnpj)
+    except pessoa.CnpjInvalidoError as erro:
+        raise HTTPException(status_code=422, detail=analista.CNPJ_INVALIDO) from erro
+    except pessoa.AcervoIndisponivelError as erro:
+        raise HTTPException(status_code=503, detail=analista.BASE_FORA_DO_AR) from erro
 
 
 @router.post("/ficha/pessoas")
@@ -113,16 +154,9 @@ def socios_da_ficha(
 ) -> SociosDaEmpresaV1:
     """Os sócios pessoa física adultos do CNPJ, do quadro da Receita: nome, qualificação e data de entrada.
     Só para a organização com a permissão; para as outras contas a rota não existe (404)."""
-    if len(pedido.cnpj) > analista.TAMANHO_MAXIMO_DO_CNPJ:
-        raise HTTPException(status_code=422, detail=analista.CNPJ_INVALIDO)
-    try:
-        socios = pessoa.socios_da_empresa(pessoa.pasta_do_acervo(), pedido.cnpj)
-    except pessoa.CnpjInvalidoError as erro:
-        raise HTTPException(status_code=422, detail=analista.CNPJ_INVALIDO) from erro
-    except pessoa.AcervoIndisponivelError as erro:
-        raise HTTPException(status_code=503, detail=analista.BASE_FORA_DO_AR) from erro
+    socios = _ler(pessoa.socios_da_empresa, pedido)
     # a auditoria vem antes da resposta: se não gravar, nada sai
-    _registrar(conta, organizacao, len(socios.socios))
+    _registrar(conta, organizacao, TIPO_SOCIOS, len(socios.socios))
     estado = PRONTA if socios.socios else SEM_SOCIOS
     log.info("sócios da ficha: %s", estado)  # só o estado, nunca o CNPJ nem um nome
     resposta.headers["Cache-Control"] = "no-store"
@@ -136,4 +170,34 @@ def socios_da_ficha(
             mes_do_retrato=socios.mes_do_retrato,
         ),
         limites=list(pessoa.LIMITES),
+    )
+
+
+@router.post("/ficha/contato")
+def contato_da_ficha(
+    conta: Conta,
+    organizacao: Organizacao,
+    pedido: Pedido,
+    resposta: Response,
+) -> ContatoDaEmpresaV1:
+    """O endereço, os telefones e o e-mail dos estabelecimentos ativos do CNPJ, do cadastro da Receita.
+    Só para a organização com a permissão; para as outras contas a rota não existe (404)."""
+    contato = _ler(pessoa.contato_da_empresa, pedido)
+    # a auditoria vem antes da resposta: se não gravar, nada sai
+    _registrar(conta, organizacao, TIPO_CONTATO, len(contato.estabelecimentos))
+    estado = PRONTA if contato.estabelecimentos else SEM_CONTATO
+    log.info("contato da ficha: %s", estado)  # só o estado, nunca o CNPJ nem o contato
+    resposta.headers["Cache-Control"] = "no-store"
+    return ContatoDaEmpresaV1(
+        estado=estado,
+        estabelecimentos=[
+            EstabelecimentoV1.model_validate(e) for e in contato.estabelecimentos
+        ],
+        total=contato.total,
+        fonte=FonteDosSociosV1(
+            fonte=pessoa.FONTE,
+            atribuicao=pessoa.ATRIBUICAO_DO_CONTATO,
+            mes_do_retrato=contato.mes_do_retrato,
+        ),
+        limites=list(pessoa.LIMITES_DO_CONTATO),
     )

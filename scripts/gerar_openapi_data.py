@@ -48,6 +48,8 @@ ERROS: dict[str, tuple[int, str]] = {
     "invalid_batch": (400, "o lote está vazio ou passa de 100 CNPJs"),
     "invalid_cursor": (400, "`cursor` que não veio da página anterior desta rota"),
     "invalid_event_type": (400, "`types` com um tipo de evento que não existe"),
+    "invalid_depth": (400, "`depth` fora de 1 a 3"),
+    "invalid_link_type": (400, "`types` com um tipo de vínculo que não existe"),
     "not_available": (
         404,
         (
@@ -63,6 +65,7 @@ DE_DADO = ("monthly_quota_exceeded", "invalid_known_at", "service_unavailable")
 DE_UM_CNPJ = ("invalid_cnpj", "not_available")
 # rota de dado que lê a ficha da noite, não a base (`conjuntos/setores.py`): sem o 503 da base, com o 404
 DA_FICHA_DA_NOITE = ("/data/v1/sectors/{key}",)
+DOS_VINCULOS = "/links"
 
 
 def _parametros(operacao: dict) -> set[str]:
@@ -93,7 +96,11 @@ def codigos_da_operacao(caminho: str, operacao: dict) -> list[str]:
     if "cursor" in parametros:
         codigos.append("invalid_cursor")
     if "types" in parametros:
-        codigos.append("invalid_event_type")
+        # o mesmo parâmetro filtra os eventos e os vínculos, cada rota com o seu código
+        de_vinculo = caminho.endswith(DOS_VINCULOS)
+        codigos.append("invalid_link_type" if de_vinculo else "invalid_event_type")
+    if "depth" in parametros:
+        codigos.append("invalid_depth")
     return codigos
 
 

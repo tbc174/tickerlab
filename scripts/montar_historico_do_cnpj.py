@@ -3,12 +3,17 @@
     python -m scripts.montar_historico_do_cnpj simples --cnpj <base do CNPJ> --destino <acervo>/base
     python -m scripts.montar_historico_do_cnpj empresas --destino <acervo>/base --ensaio   (só lista os meses)
     python -m scripts.montar_historico_do_cnpj empresas --destino <acervo>/base [--ate AAAA-MM]
+    python -m scripts.montar_historico_do_cnpj situacao --cnpj <base do CNPJ> --destino <acervo>/base
 
 `simples`: `cnpj_simples_historico/<xx>.parquet` (um arquivo pelos 2 primeiros caracteres da raiz), do vigente
 e das mudanças que a carga do CNPJ já guardou (`scripts/carga_receita_mes.py`). As mudanças são repartidas
 pelo prefixo numa pasta de trabalho (cada mês é lido uma vez só); depois cada prefixo vira versões e a última
 versão de cada raiz é conferida com o vigente (`HistoricoNaoConfere` para tudo). Remontar sem mês novo não
 regrava nada (`gravar_se_mudou`).
+
+`situacao`: `cnpj_situacao_cadastral/<xx>.parquet` (linha 841, `base/situacao_cadastral.py`), como o `simples`,
+mas dos estabelecimentos e só das raízes da lista sem pessoa (`cnpj_estabelecimentos_pj`, que tem de ser do mês
+do vigente: rode antes o `montar_empresas_pj`). As mudanças são lidas em blocos e só nas colunas da situação.
 
 `empresas`: `cnpj_empresas_historico/<xx>.parquet`, um mês por vez, em ordem, retomando do último gravado
 (`meses.json` da pasta). Baixa os `Empresas*.zip` do mês (fonte oficial, ~500 MB), lê só raiz, razão social
@@ -35,8 +40,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 from base import cnpj_historico as historico
+from base import situacao_cadastral
 from base.parquet import gravar_se_mudou
 from base.receita_retrato import ErroDeLayout
 from scripts import carga_receita_mes as carga
@@ -51,6 +58,12 @@ SIMPLES = "cnpj_simples_historico"
 EMPRESAS = "cnpj_empresas_historico"
 ZIP_DO_SIMPLES = "Simples"
 ZIP_DE_EMPRESAS = "Empresas"
+SITUACAO = situacao_cadastral.TABELA
+LISTA_SEM_PESSOA = situacao_cadastral.LISTA_SEM_PESSOA
+ZIP_DE_ESTABELECIMENTOS = "Estabelecimentos"
+LINHAS_POR_BLOCO = (
+    1_000_000  # um mês de mudanças chega a 8 milhões de linhas: lido em blocos
+)
 MESES = "meses.json"
 TRABALHO = "_trabalho"
 PREFIXO = carga.PREFIXO
@@ -176,6 +189,130 @@ def montar_simples(cnpj: Path, destino: Path, agora: datetime) -> dict[str, int]
     return contagem
 
 
+# --- Situação cadastral (linha 841) ----------------------------------------------------------------
+class ListaSemPessoaForaDoMes(RuntimeError):
+    """A lista sem pessoa do CNPJ falta ou não é do mês do vigente: rode antes o `montar_empresas_pj`."""
+
+
+class SituacaoNoFormatoAntigo(RuntimeError):
+    """A pasta tem `<AAAA-MM>.parquet` da montagem antiga (todos os estabelecimentos, com MEI, e sem `consta`).
+
+    A porta lê `*.parquet` da pasta inteira: misturados aos novos, voltariam pessoa e versões sem `consta`.
+    Apague-os (ou mova-os para fora da pasta) antes de montar.
+    """
+
+
+FORMATO_ANTIGO = "[0-9][0-9][0-9][0-9]-[0-9][0-9]*.parquet"
+
+
+def _colunas_do_arquivo(arquivo: Path, colunas: Iterable[str]) -> list[str]:
+    nomes = set(pq.ParquetFile(arquivo).schema_arrow.names)
+    return [c for c in colunas if c in nomes]
+
+
+def _repartir_mudancas_de_estabelecimentos(cnpj: Path, trabalho: Path) -> None:
+    """As mudanças de estabelecimentos de todos os meses, só nas colunas da situação, uma pasta por prefixo."""
+    pasta = cnpj / "mudancas" / "estabelecimentos"
+    meses = sorted({p.name.removesuffix(".parquet") for p in pasta.glob("*")} - {""})
+    for mes in (m for m in meses if not m.endswith(".json")):
+        arquivos = _arquivos(pasta / f"{mes}.parquet") or _arquivos(pasta / mes)
+        for numero, arquivo in enumerate(arquivos):
+            colunas = _colunas_do_arquivo(
+                arquivo, situacao_cadastral.COLUNAS_DAS_MUDANCAS
+            )
+            lotes = pq.ParquetFile(arquivo).iter_batches(
+                batch_size=LINHAS_POR_BLOCO, columns=colunas
+            )
+            for bloco, lote in enumerate(lotes):
+                parte = lote.to_pandas()
+                for coluna in situacao_cadastral.COLUNAS_DAS_MUDANCAS:
+                    if coluna not in parte.columns:
+                        parte[coluna] = None
+                for prefixo, do_prefixo in parte.groupby(parte["cnpj"].str[:PREFIXO]):
+                    destino = trabalho / str(prefixo)
+                    destino.mkdir(parents=True, exist_ok=True)
+                    do_prefixo.to_parquet(
+                        destino / f"{mes}-{numero:03d}-{bloco:04d}.parquet",
+                        index=False,
+                    )
+
+
+def _raizes_sem_pessoa(destino: Path, prefixo: str, mes: str) -> set[str]:
+    """As raízes do `prefixo` na lista sem pessoa, que tem de ser do `mes` do vigente."""
+    pasta = destino / LISTA_SEM_PESSOA
+    arquivos = _arquivos(pasta / f"{prefixo}.parquet") or _arquivos(pasta / prefixo)
+    if not arquivos:
+        return set()
+    lista = pd.concat(
+        [pd.read_parquet(a, columns=["cnpj_basico", historico.MES]) for a in arquivos],
+        ignore_index=True,
+    )
+    meses = set(lista[historico.MES].astype(str))
+    if meses != {mes}:
+        raise ListaSemPessoaForaDoMes(
+            f"{LISTA_SEM_PESSOA}/{prefixo} é de {sorted(meses)} e o vigente de {mes}"
+        )
+    return set(lista["cnpj_basico"])
+
+
+def _vigente_da_situacao(cnpj: Path, prefixo: str) -> pd.DataFrame:
+    pasta = cnpj / "vigente" / "estabelecimentos"
+    arquivos = _arquivos(pasta / f"{prefixo}.parquet") or _arquivos(pasta / prefixo)
+    colunas = [*situacao_cadastral.CHAVE, *situacao_cadastral.CAMPOS]
+    partes = [pd.read_parquet(a, columns=colunas) for a in arquivos]
+    if not partes:
+        return pd.DataFrame(columns=colunas)
+    return pd.concat(partes, ignore_index=True)
+
+
+def montar_situacao(cnpj: Path, destino: Path, agora: datetime) -> dict[str, int]:
+    """`<destino>/cnpj_situacao_cadastral/<xx>.parquet` do vigente e das mudanças de estabelecimentos, só PJ."""
+    if not (destino / LISTA_SEM_PESSOA).is_dir():
+        raise ListaSemPessoaForaDoMes(f"{LISTA_SEM_PESSOA} ausente em {destino}")
+    antigos = sorted(p.name for p in (destino / SITUACAO).glob(FORMATO_ANTIGO))
+    if antigos:
+        raise SituacaoNoFormatoAntigo(
+            f"{SITUACAO} tem arquivos do formato antigo: {antigos[:3]}"
+        )
+    manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
+    meses = sorted(manifesto["meses"])
+    zips = {m: _zips_do_mes(manifesto, m, ZIP_DE_ESTABELECIMENTOS) for m in meses}
+    sha_do_mes = {m: next(iter(z.values()), "") for m, z in zips.items()}
+    origens = _origens(zips)
+    trabalho = destino / SITUACAO / TRABALHO
+    shutil.rmtree(trabalho, ignore_errors=True)
+    vigente = cnpj / "vigente" / "estabelecimentos"
+    contagem: dict[str, int] = {}
+    try:
+        _repartir_mudancas_de_estabelecimentos(cnpj, trabalho)
+        for prefixo in _prefixos(vigente, trabalho):
+            raizes = _raizes_sem_pessoa(destino, prefixo, meses[-1])
+            if not raizes:
+                continue
+            mudancas = _ler(_arquivos(trabalho / prefixo))
+            versoes = situacao_cadastral.versoes(
+                _vigente_da_situacao(cnpj, prefixo),
+                mudancas if mudancas is not None else pd.DataFrame(),
+                meses[0],
+                raizes,
+            )
+            versoes = _carimbar(versoes, versoes[historico.MES].map(sha_do_mes), agora)
+            gravar_se_mudou(
+                versoes,
+                destino / SITUACAO / prefixo,
+                origens,
+                [*situacao_cadastral.CHAVE, historico.MES],
+                carimbos=CARIMBOS,
+            )
+            contagem[prefixo] = len(versoes)
+    finally:
+        shutil.rmtree(trabalho, ignore_errors=True)
+    log.info(
+        "situação: %d versões em %d prefixos", sum(contagem.values()), len(contagem)
+    )
+    return contagem
+
+
 # --- Empresas --------------------------------------------------------------------------------------
 def _meses_gravados(pasta: Path) -> dict[str, dict[str, str]]:
     arquivo = pasta / MESES
@@ -281,6 +418,11 @@ def main(argv: list[str] | None = None) -> int:
         "--cnpj", type=Path, required=True, help="a base do CNPJ (vigente e mudanças)"
     )
     simples.add_argument("--destino", type=Path, required=True)
+    situacao = tarefas.add_parser("situacao")
+    situacao.add_argument(
+        "--cnpj", type=Path, required=True, help="a base do CNPJ (vigente e mudanças)"
+    )
+    situacao.add_argument("--destino", type=Path, required=True)
     empresas = tarefas.add_parser("empresas")
     empresas.add_argument("--destino", type=Path, required=True)
     empresas.add_argument("--ate", default=None, help="último mês (AAAA-MM)")
@@ -293,8 +435,17 @@ def main(argv: list[str] | None = None) -> int:
         if opcoes.tarefa == "simples":
             montar_simples(opcoes.cnpj, opcoes.destino, datetime.now(UTC))
             return 0
+        if opcoes.tarefa == "situacao":
+            montar_situacao(opcoes.cnpj, opcoes.destino, datetime.now(UTC))
+            return 0
         return _main_empresas(opcoes)  # pragma: no cover - rede
-    except (historico.HistoricoNaoConfere, ErroDeLayout, MesForaDeOrdem) as erro:
+    except (
+        historico.HistoricoNaoConfere,
+        ErroDeLayout,
+        MesForaDeOrdem,
+        ListaSemPessoaForaDoMes,
+        SituacaoNoFormatoAntigo,
+    ) as erro:
         print(
             f"FALHAS: histórico do CNPJ: {type(erro).__name__}: {erro}"[
                 :TAMANHO_MAXIMO_DO_RESUMO

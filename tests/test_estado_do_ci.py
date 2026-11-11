@@ -266,7 +266,11 @@ echo "nova $* $travas" > "$FALSO_MARCA"
 """
 FALSOS = {
     "flock": '[ "${*: -1}" != "${FALSO_TRAVA_OCUPADA:-}" ]\n',
-    "docker": 'echo "docker $*" >> "$FALSO_CHAMADAS"\n',
+    # o conector remoto (linha 570) pode falhar ao subir, sem mexer no resto
+    "docker": (
+        'echo "docker $*" >> "$FALSO_CHAMADAS"\n'
+        'case "$*" in *tickerlab-mcp*) [ -z "${FALSO_CONECTOR_FALHA:-}" ] ;; esac\n'
+    ),
     "sleep": "exit 0\n",
     # a API do GitHub responde o combinado; a saúde só vem com o commit certo no ar
     "curl": (
@@ -437,6 +441,57 @@ def test_modo_implantar_volta_e_anota_o_commit_que_nao_ficou_saudavel(tmp_path):
     assert "versão anterior restaurada" in cenario.texto(cenario.log)
     assert cenario.texto(tmp_path / "revertidos").split() == [cenario.novo]
     assert not (tmp_path / "ultimo-aviso").exists()  # a marca não mora no último aviso
+
+
+def _implantar_com_o_conector(tmp_path: Path, *, chave: bool, falha: bool) -> Cenario:
+    """O servidor já no commit novo, com o compose do conector e (se `chave`) o .env.mcp."""
+    cenario = _cenario(tmp_path)
+    (cenario.servidor / "compose.conector.yaml").write_text(
+        "services: {}\n", encoding="utf-8"
+    )
+    if chave:
+        (cenario.servidor / ".env.mcp").write_text("X=1\n", encoding="utf-8")
+    if falha:
+        cenario.ambiente["FALSO_CONECTOR_FALHA"] = "1"
+    _git(cenario.servidor, "fetch", "-q", "origin", "main")
+    _git(cenario.servidor, "merge", "--ff-only", "-q", cenario.novo)
+    return cenario
+
+
+def test_conector_que_nao_sobe_nao_reverte_o_app_nem_a_api(tmp_path):
+    """Linha 570 (revisão cruzada do PR 3): só o app e a API decidem se a versão fica. Se o
+    tickerlab-mcp não sobe (porta ocupada, .env.mcp malformado), o deploy segue e deixa a linha."""
+    cenario = _implantar_com_o_conector(tmp_path, chave=True, falha=True)
+    saida = cenario.rodar("--implantar", cenario.no_ar, cenario.novo)
+    assert saida.returncode == 0, saida.stderr
+    assert cenario.head() == cenario.novo
+    assert not (tmp_path / "revertidos").exists()
+    log = cenario.texto(cenario.log)
+    assert "implantado e saudável" in log and "(tickerlab-mcp) não subiu" in log
+    chamadas = cenario.texto(cenario.chamadas).splitlines()
+    assert (
+        "docker compose up -d --build" in chamadas
+    )  # o app e a API, só com o compose.yaml
+    conector = [c for c in chamadas if "tickerlab-mcp" in c]
+    assert len(conector) == 1
+    assert "-f compose.yaml -f compose.conector.yaml" in conector[0]
+    assert "--no-build" in conector[0] and "--no-deps" in conector[0]
+
+
+def test_conector_com_a_chave_sobe_a_cada_versao(tmp_path):
+    cenario = _implantar_com_o_conector(tmp_path, chave=True, falha=False)
+    saida = cenario.rodar("--implantar", cenario.no_ar, cenario.novo)
+    assert saida.returncode == 0, saida.stderr
+    assert "tickerlab-mcp" in cenario.texto(cenario.chamadas)
+    assert "não subiu" not in cenario.texto(cenario.log)
+
+
+def test_sem_o_env_mcp_o_deploy_nem_ve_o_conector(tmp_path):
+    """O merge do PR 3 não sobe o conector: sem a chave do servidor, o deploy segue como antes."""
+    cenario = _implantar_com_o_conector(tmp_path, chave=False, falha=False)
+    saida = cenario.rodar("--implantar", cenario.no_ar, cenario.novo)
+    assert saida.returncode == 0, saida.stderr
+    assert "tickerlab-mcp" not in cenario.texto(cenario.chamadas)
 
 
 def test_commit_revertido_nao_e_tentado_de_novo_mesmo_depois_de_outro_aviso(tmp_path):
