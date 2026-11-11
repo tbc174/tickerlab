@@ -59,7 +59,7 @@ def raiz(tmp_path):
     _grava(r, "trocas_de_auditor/trocas", pd.DataFrame({
         "cnpj": ["1"] * 4, "empresa": [NOME_SECRETO] * 4, "anterior": ["X"] * 4, "novo": ["Y"] * 4,
         "efetiva_em": pd.to_datetime(["2022-01-01", "2022-01-01", "2023-01-01", "2017-01-01"]).date,
-        "anos_com_o_anterior": [5.0, 5.0, 2.0, 5.0],
+        "anos_com_o_anterior": [5.0, 5.0, 2.0, 5.0], "trata_como_pessoa": [False] * 4,
     }))  # fmt: skip
     datas = ["2026-10-13", "2026-09-12", "2025-10-13"]
     _grava(r, "curva_juros/2026", pd.DataFrame({
@@ -87,7 +87,9 @@ def raiz(tmp_path):
         "data_registro": pd.to_datetime(["2026-10-01", "2026-01-15", "2026-05-01", "2025-06-01"]),
         "valor_total_registrado": [100.0, 50.0, 30.0, 40.0],
     }))  # fmt: skip
+    # as pontas são de empresa (E...): a porta só serve aresta cujas duas pontas ela vê (linha 787)
     _grava(r, "rede/ligacoes", pd.DataFrame({
+        "de": ["E" + "1" * 20] * 4, "para": ["E" + "2" * 20] * 4,
         "tipo": ["detem", "detem", "audita", "controlada_de"],
         "fonte": ["cvm-cda", "cvm-cda", "cvm-fca", "cvm-fre"],
         "ate": pd.to_datetime([None, "2025-01-01", None, None]),

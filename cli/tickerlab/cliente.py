@@ -3,9 +3,14 @@
 A chave vai só no cabeçalho `Authorization: Bearer` (a API recusa a chave pela URL) e nunca entra numa
 mensagem: as mensagens dizem o que fazer, não repetem o pedido. Os códigos de saída são distintos por tipo
 de problema, para o agente decidir sem ler o texto (`Saida`).
+
+O limite do minuto (HTTP 429 que não é a quota do mês) não derruba o comando de primeira: a CLI espera o
+`Retry-After` uma vez e repete o pedido, para quem não programa não ter de rodar de novo à mão. Espera
+acima de `ESPERA_MAXIMA`, ou ilegível, vira o erro de sempre: o terminal nunca fica preso.
 """
 
-from collections.abc import Callable, Mapping
+import time
+from collections.abc import Callable, Mapping, Sequence
 from enum import IntEnum
 from typing import IO
 
@@ -15,6 +20,15 @@ import httpx
 from tickerlab import __version__
 
 PREFIXO = "/data/v1"
+ESPERA_MAXIMA = (
+    60  # segundos: o limite é por minuto; mais que isso não é o limite do minuto
+)
+CODIGO_DA_QUOTA_DO_MES = "monthly_quota_exceeded"
+esperar: Callable[[float], None] = time.sleep  # os testes trocam, para não dormir
+PAGINAS_MAXIMAS = 100  # `prospectar --todas`: até 100 pedidos de uma vez; o resto fica no próximo cursor
+CAMINHO_DA_BUSCA = "/companies"
+
+Parametros = Mapping[str, str | Sequence[str]]
 TEMPO_MAXIMO = (
     30.0  # segundos: a maior resposta (100 linhas de demonstrações) sai bem antes disso
 )
@@ -51,9 +65,9 @@ SEM_CHAVE = (
     "ou defina TICKERLAB_API_KEY."
 )
 SEM_DADO = (
-    "Não há dado disponível para este pedido com a sua chave: o CNPJ pode não ter este dado na data "
-    "pedida, ou o conjunto não está no contrato da sua organização. A API não diz qual dos dois, de "
-    "propósito. Veja o que a sua chave pode pedir com `tickerlab catalogo`."
+    "Não há dado disponível para este pedido com a sua chave: o CNPJ (ou o setor) pode não ter este dado "
+    "na data pedida, ou o conjunto não está no contrato da sua organização. A API não diz qual dos dois, "
+    "de propósito. Veja o que a sua chave pode pedir com `tickerlab catalogo`."
 )
 MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
     (401, "invalid_api_key"): (
@@ -63,7 +77,7 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
         ),
         Saida.CHAVE,
     ),
-    (429, "monthly_quota_exceeded"): (
+    (429, CODIGO_DA_QUOTA_DO_MES): (
         "A quota de pedidos do mês acabou. Veja o consumo com `tickerlab consumo`; ela volta no dia 1º.",
         Saida.LIMITE,
     ),
@@ -79,6 +93,17 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
     (400, "invalid_assumed_return"): (
         "O --retorno-suposto precisa ser uma fração ao ano entre -1 e 1 (0.12 quer dizer 12% ao ano).",
         Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_filter"): (
+        (
+            "A API recusou um dos filtros (CNAE, UF, município, porte, natureza, situação ou data). "
+            "Confira com `tickerlab prospectar --help`."
+        ),
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "filter_required"): (
+        "A busca precisa de pelo menos um filtro (por exemplo --cnae 3511 --uf SP).",
+        Saida.USO,
     ),
     (400, "api_key_in_url"): (
         (
@@ -140,6 +165,18 @@ def erro_da_resposta(resposta: httpx.Response, endereco: str) -> ErroDaCli:
     return ErroDaCli(f"Resposta inesperada da API (HTTP {status}).", Saida.ERRO)
 
 
+def _espera_do_minuto(resposta: httpx.Response) -> int | None:
+    """Os segundos a esperar se a recusa é o limite do minuto e a espera é curta; None nos outros casos."""
+    if resposta.status_code != httpx.codes.TOO_MANY_REQUESTS:
+        return None
+    if _detalhe(resposta) == CODIGO_DA_QUOTA_DO_MES:
+        return None
+    texto = resposta.headers.get("Retry-After", "")
+    if not texto.isdigit() or int(texto) > ESPERA_MAXIMA:
+        return None
+    return int(texto)
+
+
 class ApiDoTickerlab:
     """Os pedidos à API externa com uma chave; cada método devolve o corpo da resposta, já em JSON."""
 
@@ -148,8 +185,23 @@ class ApiDoTickerlab:
         self._chave = chave
         self.endereco = endereco
 
-    def pedir(self, caminho: str, parametros: Mapping[str, str] | None = None) -> dict:
-        """GET em `/data/v1<caminho>`; `ErroDaCli` se a API recusa, não responde ou responde sem JSON."""
+    def pedir(self, caminho: str, parametros: Parametros | None = None) -> dict:
+        """GET em `/data/v1<caminho>`; `ErroDaCli` se a API recusa, não responde ou responde sem JSON.
+
+        No limite do minuto, espera o `Retry-After` (até `ESPERA_MAXIMA`) e tenta mais uma vez.
+        """
+        resposta = self._get(caminho, parametros)
+        segundos = _espera_do_minuto(resposta)
+        if segundos is not None:
+            click.echo(
+                f"Limite de pedidos por minuto: esperando {segundos} segundos e tentando de novo...",
+                err=True,
+            )
+            esperar(segundos)
+            resposta = self._get(caminho, parametros)
+        return self._corpo(resposta)
+
+    def _get(self, caminho: str, parametros: Parametros | None) -> httpx.Response:
         try:
             resposta = self._http.get(
                 PREFIXO + caminho,
@@ -163,6 +215,9 @@ class ApiDoTickerlab:
                 "Confira a internet e TICKERLAB_API_URL.",
                 Saida.FORA_DO_AR,
             ) from None
+        return resposta
+
+    def _corpo(self, resposta: httpx.Response) -> dict:
         if resposta.status_code != httpx.codes.OK:
             raise erro_da_resposta(resposta, self.endereco)
         try:
@@ -185,6 +240,9 @@ class ApiDoTickerlab:
     def empresa(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}", _datas(known_at=como_era))
 
+    def perfil(self, cnpj: str, como_era: str | None) -> dict:
+        return self.pedir(f"/companies/{cnpj}/profile", _datas(known_at=como_era))
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:
@@ -200,6 +258,54 @@ class ApiDoTickerlab:
         if retorno_suposto is not None:
             parametros["assumed_return"] = repr(retorno_suposto)
         return self.pedir(f"/funds/{cnpj}", parametros)
+
+    def buscar_empresas(self, filtros: Parametros, todas: bool = False) -> dict:
+        """A busca de empresas por filtros; com `todas`, segue o cursor até o fim (ou `PAGINAS_MAXIMAS`).
+
+        Cada página é um pedido da quota. As páginas viram uma resposta só: as empresas em sequência, as
+        fontes sem repetir, e `truncated`/`next_cursor` da última página (cursor vazio = acabou).
+        """
+        corpo = self.pedir(CAMINHO_DA_BUSCA, filtros)
+        paginas = 1
+        while todas and corpo.get("next_cursor") and paginas < PAGINAS_MAXIMAS:
+            paginas += 1
+            click.echo(
+                f"{len(corpo.get('companies') or [])} empresas até agora; buscando a página {paginas}...",
+                err=True,
+            )
+            seguinte = self.pedir(
+                CAMINHO_DA_BUSCA, {**filtros, "cursor": str(corpo["next_cursor"])}
+            )
+            corpo = juntar_paginas(corpo, seguinte)
+        return corpo
+
+    def setores(self) -> dict:
+        return self.pedir("/sectors")
+
+    def setor(self, chave: str, como_era: str | None) -> dict:
+        return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))
+
+
+def juntar_paginas(anterior: Mapping, seguinte: Mapping) -> dict:
+    """Duas páginas da busca numa resposta só (a ordem das empresas é a da API, por CNPJ)."""
+    fontes = list(anterior.get("sources") or [])
+    vistas = {_chave_da_fonte(fonte) for fonte in fontes}
+    for fonte in seguinte.get("sources") or []:
+        if _chave_da_fonte(fonte) not in vistas:
+            fontes.append(fonte)
+            vistas.add(_chave_da_fonte(fonte))
+    return {
+        **seguinte,
+        "companies": [
+            *(anterior.get("companies") or []),
+            *(seguinte.get("companies") or []),
+        ],
+        "sources": fontes,
+    }
+
+
+def _chave_da_fonte(fonte: object) -> str:
+    return str(fonte.get("source")) if isinstance(fonte, Mapping) else str(fonte)
 
 
 def _datas(**datas: str | None) -> dict[str, str]:

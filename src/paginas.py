@@ -6,7 +6,12 @@ mudar o texto de ajuda ou trocar de grupo, é só mexer aqui.
 
 from dataclasses import dataclass
 
-from src.planos import APRENDIZADO_DE_MAQUINA, PARES, motivo_sem_acesso
+from src.planos import (
+    APRENDIZADO_DE_MAQUINA,
+    DOSSIE_DA_BASE,
+    PARES,
+    motivo_sem_acesso,
+)
 
 # Páginas sem grupo: aparecem direto na barra do menu (o Streamlit as põe no começo)
 GRUPO_TOPO = ""
@@ -192,6 +197,17 @@ PAGINAS = (
         "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
         area=AREA_INICIO,
         precisa_do_ativo=False,
+    ),
+    Pagina(
+        "o_que_mudou",
+        "O que mudou",
+        GRUPO_TOPO,
+        ":material/new_releases:",
+        "O que entrou no app a cada dia, com o link para abrir.",
+        area=AREA_CONTA,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/o-que-mudou", (), "OQueMudouV1"),
+        so_no_app_novo=True,
     ),
     Pagina(
         "relatorio",
@@ -604,6 +620,68 @@ PAGINAS = (
                 ),
             ),
             "BuscaPorCnpjV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
+        "ficha_da_empresa",
+        "Ficha da empresa",
+        GRUPO_AVANCADO,  # tem recurso do plano (test_o_grupo_avancado_tem_so_paginas_pro_e_so_ele)
+        ":material/business_center:",
+        "Digite o CNPJ de uma empresa e veja o cadastro na Receita e, da companhia aberta, as entregas "
+        "de balanço à CVM, com a fonte e a data de cada campo. Baixe tudo em Excel.",
+        area=AREA_ACOMPANHAR,
+        recurso=DOSSIE_DA_BASE,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "POST",
+            "/v1/analista/ficha",
+            (
+                Entrada(
+                    "cnpj",
+                    "texto",
+                    "O CNPJ da empresa, com ou sem pontuação.",
+                    obrigatoria=True,
+                ),
+            ),
+            "FichaDaEmpresaV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
+        "encontrar_empresas",
+        "Encontrar empresas",
+        GRUPO_AVANCADO,  # tem recurso do plano (test_o_grupo_avancado_tem_so_paginas_pro_e_so_ele)
+        ":material/travel_explore:",
+        "Escolha o setor, o estado e a idade mínima e veja as empresas ativas que se encaixam, com a "
+        "fonte e a data de cada campo. Abra a ficha de cada uma e baixe a lista em Excel.",
+        area=AREA_ACOMPANHAR,
+        recurso=DOSSIE_DA_BASE,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "POST",
+            "/v1/analista/empresas",
+            (
+                Entrada(
+                    "setores",
+                    "lista de textos",
+                    "Até três setores (seções do CNAE do IBGE), pela letra.",
+                ),
+                Entrada("ufs", "lista de textos", "Os estados da sede, pela sigla."),
+                Entrada(
+                    "idade_minima",
+                    "inteiro",
+                    "Anos desde a abertura na Receita, no mínimo.",
+                    minimo=1,
+                    maximo=100,
+                ),
+                Entrada(
+                    "cursor",
+                    "texto",
+                    "A página seguinte, como a resposta anterior deu.",
+                ),
+            ),
+            "BuscaDeEmpresasV1",
         ),
         so_no_app_novo=True,
     ),

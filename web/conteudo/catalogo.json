@@ -2403,7 +2403,7 @@
       "orgao": "Receita Federal",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 10
+      "tabelas": 12
     },
     {
       "historico_desde": "2002-01-01",
@@ -2900,7 +2900,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 34,
-    "tabelas": 117,
+    "tabelas": 119,
     "temas": [
       {
         "chave": "cvm",
@@ -2926,7 +2926,7 @@
         "orgaos": [
           "Receita Federal"
         ],
-        "tabelas": 8,
+        "tabelas": 10,
         "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro.",
         "titulo": "Cadastro e situação na Receita"
       },
@@ -3005,7 +3005,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 54
+      "tabelas": 56
     },
     {
       "chave": "credito_e_fidc",
@@ -7814,7 +7814,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
-      "consultavel": false,
+      "consultavel": true,
       "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -7921,6 +7921,28 @@
       "orgao": "Receita Federal",
       "situacao": "licenciada",
       "tabela": "cnpj_empresas_historico"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": true,
+      "frase": "Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_empresas_pj"
+    },
+    {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": true,
+      "frase": "Estabelecimentos (matriz e filiais) das pessoas jurídicas de cnpj_empresas_pj, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "cnpj_estabelecimentos_pj"
     },
     {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
@@ -8820,6 +8842,6 @@
     "fontes": 46,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 154
+    "tabelas": 156
   }
 }

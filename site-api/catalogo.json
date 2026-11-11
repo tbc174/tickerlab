@@ -16,6 +16,44 @@
       "situacao_cadastral"
     ]
   },
+  "comparables": {
+    "fontes": {
+      "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "cnpj",
+      "divida_liquida",
+      "divida_liquida_sobre_ebitda",
+      "ebitda",
+      "empresa",
+      "exercicio",
+      "grupo_de_setores",
+      "lucro_liquido",
+      "margem_ebitda",
+      "margem_liquida",
+      "patrimonio_liquido",
+      "receita",
+      "roe",
+      "setor"
+    ]
+  },
+  "credit": {
+    "fontes": {
+      "cvm-fidc": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-ipe": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "carteira_dos_fundos_em_que_cede",
+      "fatos_relevantes_12_meses",
+      "fundos_em_que_cede",
+      "maior_inadimplencia_dos_fundos_em_que_cede",
+      "maior_participacao_como_cedente",
+      "situacao_cadastral_na_receita",
+      "situacao_especial_na_receita"
+    ]
+  },
   "financials": {
     "fontes": {
       "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -62,6 +100,76 @@
       "texto_taxa_administracao",
       "texto_taxa_performance",
       "tipo",
+      "valor"
+    ]
+  },
+  "profiles": {
+    "fontes": {
+      "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-itr": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "data_exclusao_simples",
+      "data_opcao_simples",
+      "data_situacao_cadastral",
+      "dias_uteis_de_atraso",
+      "documento",
+      "matriz",
+      "mes_do_retrato",
+      "motivo_situacao",
+      "natureza_juridica",
+      "optante_simples",
+      "prazo",
+      "primeira_entrega",
+      "razao_social",
+      "referencia",
+      "situacao_cadastral",
+      "situacao_da_entrega"
+    ]
+  },
+  "prospecting": {
+    "fontes": {
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "capital_social",
+      "cnae_principal",
+      "data_inicio_atividade",
+      "matriz",
+      "municipio",
+      "n_estabelecimentos",
+      "natureza_juridica",
+      "porte",
+      "razao_social",
+      "situacao_cadastral",
+      "uf"
+    ]
+  },
+  "sectors": {
+    "fontes": {
+      "anatel-acessos": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "aneel-samp": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "ans-beneficiarios": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "bcb-ifdata": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "cvm-cadastros": "ODbL (dados abertos da CVM; citar a fonte)",
+      "susep-ses": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas"
+    },
+    "campos": [
+      "ano",
+      "cnpj",
+      "cr4",
+      "delta_hhi",
+      "empresa",
+      "faixa",
+      "hhi",
+      "meses",
+      "motivo",
+      "participacao",
+      "participantes",
+      "por_entidade",
+      "total",
+      "ultimo_mes",
       "valor"
     ]
   }

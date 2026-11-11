@@ -1,6 +1,7 @@
 # O pacote da CLI `tickerlab` (linha 772; ADR 0127): um cliente fino da API externa do TickerLab Data.
 # Fica numa pasta própria para não levar o `src/` ao PC do cliente: só depende do `click` e do `httpx`.
-# Instala do repositório (pip install "git+https://github.com/tbc174/tickerlab#subdirectory=cli");
+# Instala do zip da main, sem Git (pipx install "https://github.com/tbc174/tickerlab/archive/refs/heads/main.zip#subdirectory=cli"),
+# ou do repositório (pip install "git+https://github.com/tbc174/tickerlab#subdirectory=cli"); ver docs/cli.md.
 # publicar num índice público (PyPI) e o nome público do pacote são do "pode" do beta (linha 569).
 
 [build-system]

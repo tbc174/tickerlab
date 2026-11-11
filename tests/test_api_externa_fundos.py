@@ -8,6 +8,7 @@ no custo da taxa e o lote contando 1 na quota.
 
 import dataclasses
 import hashlib
+import sys
 from datetime import UTC, datetime
 
 import duckdb
@@ -441,3 +442,18 @@ def test_lote_que_passa_da_quota_volta_inteiro(cliente, cenario, banco):
     assert resposta.status_code == 429
     assert resposta.json() == {"detail": "monthly_quota_exceeded"}
     assert _pedidos_do_mes(banco, org) == 10_000 - 1
+
+
+@pytest.fixture
+def cadastro_com_data_em_texto(monkeypatch):
+    """O cadastro como chegou no VPS (linha 792): `DT_REG` em texto, uma data boa e uma ruim."""
+    modelo = _cadastro().astype({"DT_REG": "object"})
+    modelo["DT_REG"] = ["2015-01-01", "lixo"]
+    monkeypatch.setattr(sys.modules[__name__], "_cadastro", lambda: modelo)
+
+
+@pytest.mark.usefixtures("cadastro_com_data_em_texto")
+@pytest.mark.parametrize("fundo", [FUNDO, OUTRO])
+def test_dt_reg_em_texto_nunca_da_500(cliente, cenario, fundo):
+    resposta = _get(cliente, cenario, f"/data/v1/funds/{fundo}", known_at="2025-01-01")
+    assert resposta.status_code in (200, 404)

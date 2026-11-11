@@ -275,6 +275,10 @@ ROTAS_DE_ARQUIVO = {
     "/v1/relatorio-setor/apresentacao": "/v1/relatorio-setor",
     "/v1/relatorio-empresa/apresentacao": "/v1/relatorio-empresa",
     "/v1/relatorio-empresa/markdown": "/v1/relatorio-empresa",
+    "/v1/analista/ficha/planilha": "/v1/analista/ficha",
+    # o plano é o da ficha; quem vê pessoa é outra conferência, na própria rota (analista_pessoas.py)
+    "/v1/analista/ficha/pessoas": "/v1/analista/ficha",
+    "/v1/analista/empresas/planilha": "/v1/analista/empresas",
 }
 
 

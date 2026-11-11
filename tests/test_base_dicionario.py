@@ -327,7 +327,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     ]  # fmt: skip
     situacao = [
         "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo",
-        "data_situacao_especial", "mes_do_retrato", "disponivel_em",
+        "data_situacao_especial", "mes_do_retrato", "disponivel_em", "trata_como_pessoa",
     ]  # fmt: skip
     curva = [
         "data_base", "curva", "prazo_anos", "taxa", "titulos", "maior_prazo_anos",
@@ -365,6 +365,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         ],
         "trocas_de_auditor": [
             *auditores.COLUNAS_DAS_TROCAS,
+            "trata_como_pessoa",
             "montado_em",
             "versao_do_codigo",
         ],
@@ -446,3 +447,17 @@ def test_contrato_comeca_na_versao_1():
     assert maiores.pop("ifdata_cadastro") == "2"
     assert maiores.pop("scr_credito") == "2"
     assert set(maiores.values()) == {"1"}
+
+
+def test_dado_de_pessoa_diz_quando_a_rota_tira_as_linhas():
+    from base.dicionario import _dado_de_pessoa
+
+    for nome in ("cnpj_empresas_historico", "cnpj_simples_historico"):
+        texto = _dado_de_pessoa(TABELAS[nome])
+        assert texto.startswith("sim em casa") and "MEI" in texto and "rota" in texto
+        assert (
+            "Contém dado de pessoa:** não"
+            not in documento_em_markdown().split(f"## `{nome}`")[1].split("\n## ")[0]
+        )
+    assert _dado_de_pessoa(TABELAS["pgfn_divida"]).startswith("sim em casa")
+    assert _dado_de_pessoa(TABELAS["demonstracoes_como_era"]) == "não"

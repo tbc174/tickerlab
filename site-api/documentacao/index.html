@@ -35,11 +35,18 @@
   <table class="tabela-docs">
     <thead><tr><th>Rota</th><th>O que devolve</th><th>Parâmetros</th></tr></thead>
     <tbody>
+      <tr><td><code>GET /companies</code></td><td>Busca de empresas (só pessoa jurídica) por CNAE, UF, município, porte, natureza jurídica, situação, abertura, matriz, capital social e número de estabelecimentos ativos, com fonte e dia de publicação em cada campo. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Ordena por CNPJ, <code>capital</code> ou <code>branches</code> (<code>-</code> na frente, decrescente). Exige ao menos um filtro além da situação; 50 por página (máximo 100), próxima página por <code>next_cursor</code>. Conjunto <code>prospecting</code></td><td><code>cnae</code>, <code>state</code>, <code>municipality</code>, <code>size</code>, <code>legal_nature</code>, <code>registration_status</code>, <code>opened_before</code>, <code>opened_after</code>, <code>head_office</code>, <code>capital_min</code>, <code>capital_max</code>, <code>branches_min</code>, <code>sort</code>, <code>cursor</code>, <code>limit</code>, <code>known_at</code></td></tr>
       <tr><td><code>GET /companies/{cnpj}</code></td><td>Situação cadastral do estabelecimento na Receita (situação, data, motivo, matriz, mês do retrato)</td><td><code>known_at</code></td></tr>
       <tr><td><code>GET /companies/{cnpj}/financials</code></td><td>DFP e ITR da CVM: um valor por conta e período, com documento, versão e origem</td><td><code>known_at</code>, <code>period_end</code></td></tr>
+      <tr><td><code>GET /companies/{cnpj}/profile</code></td><td>O perfil da empresa: o cadastro na Receita (o mesmo de <code>/companies/{cnpj}</code>) e, da companhia aberta, cada DFP e ITR devida até a data, com o prazo da CVM, o dia da entrega, os dias úteis de atraso e a situação (<code>on_time</code>, <code>gray_zone</code>, <code>late</code>, <code>severely_late</code>, <code>not_filed</code>). A situação é a regra do TickerLab sobre o índice público da CVM, não opinião sobre a empresa</td><td><code>known_at</code></td></tr>
+      <tr><td><code>GET /companies/{cnpj}/comparables</code></td><td>Os comparáveis da companhia aberta: as companhias do mesmo grupo de setores (pelo setor do FCA à CVM), cada uma com receita, EBITDA, lucro, patrimônio, dívida líquida, margens, ROE e dívida líquida sobre EBITDA do último DFP já entregue, e a mediana de cada razão entre os pares (só com pelo menos 8 pares). EBITDA, dívida líquida e as razões são contas do TickerLab sobre as linhas do DFP</td><td><code>known_at</code></td></tr>
       <tr><td><code>GET /funds/{cnpj}</code></td><td>Cadastro e taxas do fundo, carteira da competência mais nova já pública e, com <code>assumed_return</code>, o custo da taxa em 5 e 20 anos</td><td><code>known_at</code>, <code>assumed_return</code></td></tr>
+      <tr><td><code>GET /credit/{cnpj}</code></td><td>Ficha de crédito do cedente ou do sacado, só fatos: situação cadastral e situação especial na Receita, fatos relevantes dos últimos 12 meses e presença como cedente em FIDCs, cada um com a fonte e o dia em que ficou público. Não é nota nem opinião de crédito</td><td><code>known_at</code></td></tr>
+      <tr><td><code>GET /sectors</code></td><td>Os setores que a API entrega hoje, com o dia da conta mais nova. Não gasta cota</td><td>nenhum</td></tr>
+      <tr><td><code>GET /sectors/{key}</code></td><td>Um setor (<code>eletricas</code>, <code>bancos</code>, <code>seguros</code>, <code>saude_suplementar</code>, <code>telecom</code>): por série da agência, o total do mercado, CR4, HHI e a faixa de concentração por ano, a fatia de cada companhia aberta, e a lista das companhias do setor. Só empresas</td><td><code>known_at</code></td></tr>
       <tr><td><code>POST /companies/batch</code></td><td>O mesmo de <code>/companies/{cnpj}</code> para até 100 CNPJs</td><td>corpo: <code>cnpjs</code>, <code>known_at</code></td></tr>
       <tr><td><code>POST /funds/batch</code></td><td>O mesmo de <code>/funds/{cnpj}</code> para até 100 CNPJs</td><td>corpo: <code>cnpjs</code>, <code>known_at</code>, <code>assumed_return</code></td></tr>
+      <tr><td><code>POST /credit/batch</code></td><td>O mesmo de <code>/credit/{cnpj}</code> para até 100 CNPJs</td><td>corpo: <code>cnpjs</code>, <code>known_at</code></td></tr>
       <tr><td><code>GET /catalog</code></td><td>O que a sua chave pode pedir hoje</td><td>nenhum</td></tr>
       <tr><td><code>GET /usage</code></td><td>Seu consumo do mês, limites do plano e o que falta da cota</td><td>nenhum</td></tr>
     </tbody>
@@ -85,9 +92,13 @@
   <table class="tabela-docs">
     <thead><tr><th>Fonte</th><th>Conjunto</th><th>Licença</th><th>Como citar</th></tr></thead>
     <tbody>
-      <tr><td>CVM · DFP e ITR (<code>cvm-hist-dfp</code>, <code>cvm-hist-itr</code>)</td><td>financials</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
-      <tr><td>CVM · cadastro e carteiras de fundos (<code>cvm-cadastros</code>, <code>cvm-cda-recente</code>, <code>cvm-hist-cda</code>)</td><td>funds</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
-      <tr><td>Receita Federal · CNPJ (<code>rfb-cnpj</code>)</td><td>companies</td><td>CC BY</td><td>a frase de <code>attribution</code> da resposta</td></tr>
+      <tr><td>CVM · DFP e ITR (<code>cvm-hist-dfp</code>, <code>cvm-hist-itr</code>)</td><td>financials, profiles, comparables</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
+      <tr><td>CVM · formulário cadastral (<code>cvm-hist-fca</code>)</td><td>comparables</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
+      <tr><td>CVM · cadastros de companhias e de fundos e carteiras de fundos (<code>cvm-cadastros</code>, <code>cvm-cda-recente</code>, <code>cvm-hist-cda</code>)</td><td>funds, sectors</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
+      <tr><td>CVM · fatos relevantes (<code>cvm-hist-ipe</code>) e informe mensal dos FIDCs (<code>cvm-fidc</code>)</td><td>credit</td><td>ODbL</td><td>Fonte: CVM, Portal de Dados Abertos (ODbL)</td></tr>
+      <tr><td>ANEEL · SAMP (<code>aneel-samp</code>) e Banco Central · IF.data (<code>bcb-ifdata</code>)</td><td>sectors</td><td>ODbL</td><td>a frase de <code>attribution</code> da resposta</td></tr>
+      <tr><td>SUSEP · SES (<code>susep-ses</code>), ANS · beneficiários (<code>ans-beneficiarios</code>) e Anatel · acessos (<code>anatel-acessos</code>)</td><td>sectors</td><td>CC BY</td><td>a frase de <code>attribution</code> da resposta</td></tr>
+      <tr><td>Receita Federal · CNPJ (<code>rfb-cnpj</code>)</td><td>companies, credit, profiles, prospecting</td><td>CC BY</td><td>a frase de <code>attribution</code> da resposta</td></tr>
     </tbody>
   </table>
   <p>A licença exata e a frase de atribuição de cada resposta vêm no campo <code>sources</code>; esta tabela é só um resumo. Uma fonte sem licença conhecida não sai pela API. A chave pode ser suspensa se o uso quebrar a licença de uma fonte.</p>
