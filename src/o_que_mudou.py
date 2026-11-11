@@ -31,6 +31,14 @@ ENTREGAS: tuple[Entrega, ...] = (
     Entrega(
         data=date(2026, 11, 11),
         o_que=(
+            "Ficha da empresa: agora mostra os documentos que a companhia entregou à CVM e as trocas de "
+            "auditor, do mais novo ao mais velho, cada um com a fonte e a data."
+        ),
+        pagina="ficha_da_empresa",
+    ),
+    Entrega(
+        data=date(2026, 11, 11),
+        o_que=(
             "Comparar empresas: ponha de duas a cinco empresas lado a lado pelo CNPJ, cada campo com a fonte "
             "e a data. Leve a empresa da ficha para a comparação e baixe tudo em Excel."
         ),

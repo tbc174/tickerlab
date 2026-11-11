@@ -30,6 +30,7 @@ from src.api_externa.conjuntos import (
     Permitido,
     Servido,
     comparaveis,
+    compradores,
     credito,
     demonstracoes,
     empresas,
@@ -380,6 +381,36 @@ def busca_de_empresas(
             _portao(conexao, contexto, prospeccao.CONJUNTO),
             acesso.linhas_por_resposta(contexto),
         ).buscar(busca, dia),
+    )
+
+
+@router.get("/buyers")
+def compradores_do_setor(
+    contexto: Chave,
+    cnae: str,
+    state: str | None = None,
+    years: int | None = None,
+    limit: int | None = None,
+    known_at: date | None = None,
+) -> object:
+    """Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa
+    com estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se
+    dada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas
+    com controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por
+    sinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra."""
+    dia = _dia_pedido(known_at)
+    try:
+        pedido = compradores.pedido_dos_parametros(cnae, state, years, limit)
+    except compradores.PedidoInvalido as erro:
+        raise _recusa(erro.codigo) from erro
+    return _um_pedido(
+        contexto,
+        compradores.CONJUNTO,
+        lambda conexao, porta: compradores.LeitorDeCompradores(
+            porta,
+            _portao(conexao, contexto, compradores.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).compradores(pedido, dia),
     )
 
 

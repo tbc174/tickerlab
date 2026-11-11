@@ -37,6 +37,7 @@ from src.api_externa.conjuntos import (
     fundos,
     prospeccao,
     setores,
+    vinculos,
 )
 from src.api_externa.envelope import campo
 from src.banco import chaves_da_api as cb
@@ -46,6 +47,8 @@ from tests import test_api_externa_por_cnpj_comparaveis_rota as rota_dos_compara
 from tests import test_api_externa_por_cnpj_eventos as eventos_de_mentira
 from tests import test_api_externa_por_cnpj_eventos_rota as rota_dos_eventos
 from tests import test_api_externa_por_cnpj_ficha as ficha_de_mentira
+from tests import test_api_externa_por_cnpj_vinculos as vinculos_de_mentira
+from tests import test_api_externa_por_cnpj_vinculos_rota as rota_dos_vinculos
 from tests import test_api_externa_prospeccao as busca_de_mentira
 from tests.test_api_externa_demonstracoes import (
     AGORA,
@@ -1079,6 +1082,7 @@ def test_instrucoes_do_agente(rodar):
         "prospectar",
         "comparaveis",
         "eventos",
+        "vinculos",
         "catalogo",
         "consumo",
     ):
@@ -1698,4 +1702,119 @@ def test_eventos_recusa_da_api_em_portugues(rodar, chave, codigo, trecho):
         "eventos", eventos_de_mentira.ALFA, http=http, **_com_chave(chave)
     )
     assert resultado.exit_code == Saida.PEDIDO_INVALIDO
+    assert trecho in resultado.stderr
+
+
+# ---------------------------------------------------------------- vinculos (rota da linha 736, PR 5)
+
+DIA_DOS_VINCULOS = vinculos_de_mentira.DIA.isoformat()
+
+
+@pytest.fixture
+def vinculos_prontos(banco, cenario, monkeypatch, tmp_path):
+    """A base de mentira dos vínculos, as tabelas prontas e o contrato de `links`."""
+    base = vinculos_de_mentira.gravar_base(tmp_path / "base")
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", rota_dos_vinculos._regras)
+    ator, org, _chave = cenario
+    aj.contrato(banco, ator, org, conjunto=vinculos.CONJUNTO)
+
+
+@pytest.mark.usefixtures("vinculos_prontos")
+def test_vinculos_em_tabela_tem_as_pontas_com_nome_fonte_e_data(rodar, chave):
+    resultado = rodar(
+        "vinculos", vinculos_de_mentira.ALFA, "--como-era", DIA_DOS_VINCULOS,
+        **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    saida = resultado.stdout
+    mae = next(
+        linha for linha in saida.splitlines() if "60" in linha and "ALFA LTDA" in linha
+    )
+    assert "(11111111)" in mae and "cvm-hist-fre" in mae and "2019-05-31" in mae
+    assert "{" not in saida  # as pontas não saem como dicionário
+    assert "## limits" in saida and "- rfb-cnpj:" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+@pytest.mark.usefixtures("vinculos_prontos")
+def test_vinculos_em_json_e_o_envelope_da_rota(rodar, chave, api_em_memoria):
+    alfa = vinculos_de_mentira.ALFA
+    resultado = rodar(
+        "vinculos", alfa, "--como-era", DIA_DOS_VINCULOS, "--json", **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    direto = api_em_memoria.get(
+        f"/data/v1/companies/{alfa}/links",
+        params={"known_at": DIA_DOS_VINCULOS, "depth": "1"},
+        headers=aj.bearer(chave),
+    ).json()
+    assert json.loads(resultado.stdout) == direto
+    assert len(direto["links"]) == rota_dos_vinculos.VINCULOS_NO_DIA
+
+
+@pytest.mark.usefixtures("vinculos_prontos")
+def test_vinculos_profundidade_e_tipo_vao_para_a_api(rodar, chave):
+    resultado = rodar(
+        "vinculos", vinculos_de_mentira.ALFA, "--como-era", DIA_DOS_VINCULOS,
+        "--profundidade", "3", "--tipo", "controlada", "--json", **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    corpo = json.loads(resultado.stdout)
+    assert corpo["depth"] == 3
+    assert {v["kind"]["value"] for v in corpo["links"]} == {"subsidiary_of"}
+    assert max(v["hops"] for v in corpo["links"]) == 3
+
+
+@pytest.mark.usefixtures("vinculos_prontos")
+def test_vinculos_em_planilha_tem_uma_linha_por_vinculo(rodar, chave, tmp_path):
+    arquivo = tmp_path / "vinculos.xlsx"
+    resultado = rodar(
+        "vinculos", vinculos_de_mentira.ALFA, "--como-era", DIA_DOS_VINCULOS,
+        "--planilha", str(arquivo), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    assert {"links", "fontes"} <= set(abas)
+    linhas = _linhas_com_cabecalho(abas["links"])
+    assert len(linhas) == rota_dos_vinculos.VINCULOS_NO_DIA
+    assert all(linha["de"] and linha["para"] and linha["fonte"] for linha in linhas)
+
+
+def test_vinculos_fora_do_contrato_e_sem_dado(rodar, chave, tmp_path, monkeypatch):
+    base = vinculos_de_mentira.gravar_base(tmp_path / "base")
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", rota_dos_vinculos._regras)
+    resultado = rodar("vinculos", vinculos_de_mentira.ALFA, **_com_chave(chave))
+    assert resultado.exit_code == Saida.SEM_DADO, resultado.output
+
+
+@pytest.mark.parametrize(
+    "argumentos",
+    [("--profundidade", "4"), ("--profundidade", "0"), ("--tipo", "fusao")],
+)
+def test_vinculos_pedido_mal_escrito_nem_chega_a_api(rodar, chave, argumentos):
+    resultado = rodar(
+        "vinculos",
+        vinculos_de_mentira.ALFA,
+        *argumentos,
+        http=None,
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == Saida.USO, resultado.output
+
+
+@pytest.mark.parametrize(
+    ("codigo", "saida", "trecho"),
+    [
+        ("invalid_depth", Saida.USO, "1 a 3 saltos"),
+        ("invalid_link_type", Saida.PEDIDO_INVALIDO, "Tipo de vínculo"),
+    ],
+)
+def test_vinculos_recusa_da_api_em_portugues(rodar, chave, codigo, saida, trecho):
+    http = _http_falso(lambda _p: httpx.Response(400, json={"detail": codigo}))
+    resultado = rodar(
+        "vinculos", vinculos_de_mentira.ALFA, http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == saida
     assert trecho in resultado.stderr

@@ -1,5 +1,6 @@
-// O cabeçalho de toda tela com formulário (ADR 0096): o olho (a área do menu: Ativo, Estratégias...), o
-// título, a descrição e, à direita, as ações da tela (ex.: o relatório).
+// O cabeçalho de toda tela com formulário (ADR 0096): o olho (a área do menu: Empresas, Companhias
+// abertas; a área "Mais" não diz nada sobre a tela e fica sem olho), o título, a descrição e, à direita, as
+// ações da tela (ex.: o relatório).
 import type { ReactNode } from "react";
 import { type PaginaDoApp, conteudoDoApp } from "../conteudo";
 
@@ -10,7 +11,7 @@ interface Propriedades {
 
 export function CabecalhoDaTela({ pagina, acoes }: Propriedades) {
   // direto do conteúdo (não de areas.ts): areas.ts lê rotas.tsx, que lê as telas, que leem este arquivo
-  const area = conteudoDoApp.areas.find((a) => a.chave === pagina.area);
+  const area = conteudoDoApp.areas.find((a) => a.chave === pagina.area && a.chave !== "mais");
   return (
     <header className="cabecalho-da-tela">
       <div className="cabecalho-texto">

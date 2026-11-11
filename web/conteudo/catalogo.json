@@ -7957,7 +7957,7 @@
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: que empresa entrou como sócia de que empresa, com a data de entrada que a Receita dá.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
