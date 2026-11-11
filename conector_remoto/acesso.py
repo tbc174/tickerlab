@@ -1,8 +1,8 @@
 """Quem é o analista: a chave da API dele, conferida na própria API (`/catalog`).
 
-Entrada provisória do PR 1: a IA manda `Authorization: Bearer <chave tld_...>`. O PR 2 troca a entrada
-pelo OAuth (o token passa a levar a chave cifrada), e o resto do conector não muda: as ferramentas só
-leem o `AcessoDoAnalista` do pedido.
+A IA manda ou o token do OAuth, que leva a chave cifrada (`oauth.py`), ou a própria chave
+(`Authorization: Bearer tld_...`, a entrada direta do Claude Code). As ferramentas só leem o
+`AcessoDoAnalista` do pedido.
 
 O catálogo de cada chave fica 60 s na memória do processo, para a lista de ferramentas não gastar um
 pedido do minuto da organização a cada mensagem. Uma chave revogada continua na lista por esse tempo,
@@ -95,6 +95,14 @@ class VerificadorDeChave:
         guardado = self._memoria.get(impressao)
         if guardado is not None and guardado.vence_em > self._relogio():
             return guardado.acesso
+        return await self.conferir_na_api(token)
+
+    async def conferir_na_api(self, token: str) -> AcessoDoAnalista | None:
+        """Confere a chave na API agora, sem a memória (a página de entrada e a renovação do token)."""
+        identificador = id_da_chave(token)
+        if identificador is None:
+            return None
+        impressao = hashlib.sha256(token.encode()).hexdigest()
         resposta = await self._cliente.get(token, "/catalog")
         if not resposta.ok:
             self._memoria.pop(impressao, None)
