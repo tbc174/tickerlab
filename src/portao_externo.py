@@ -610,7 +610,7 @@ def regras_vigentes() -> Regras:
         coleta_e_guarda=COLETA_E_GUARDA,
         termos_lidos_em=TERMOS_LIDOS_EM,
         robots_fecha_sai=ROBOTS_FECHA_SAI_PROVISORIO,
-        prontidao=prontidao.PRONTIDAO,
+        prontidao=prontidao.registro_vigente(),
         versoes_maiores=prontidao.versoes_maiores(),
     )
 
