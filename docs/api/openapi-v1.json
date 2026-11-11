@@ -5504,6 +5504,38 @@
         "title": "PiorQuedaV1",
         "type": "object"
       },
+      "PontaDoVinculoV1": {
+        "description": "Uma ponta do vínculo: a raiz do CNPJ e a razão social que valia no dia (sem nome quando a Receita não tem).",
+        "properties": {
+          "raiz_do_cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raiz Do Cnpj"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "raiz_do_cnpj",
+          "razao_social"
+        ],
+        "title": "PontaDoVinculoV1",
+        "type": "object"
+      },
       "PontoAnualDoCafeV1": {
         "properties": {
           "ano_safra": {
@@ -7156,6 +7188,92 @@
         "title": "VereditoV1",
         "type": "object"
       },
+      "VinculoDaEmpresaV1": {
+        "description": "Uma ligação `de` → `para`: `tipo` diz o que `de` é de `para` (controlada, coligada, participada, auditora).",
+        "properties": {
+          "campos": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Campos",
+            "type": "object"
+          },
+          "de": {
+            "$ref": "#/components/schemas/PontaDoVinculoV1"
+          },
+          "para": {
+            "$ref": "#/components/schemas/PontaDoVinculoV1"
+          },
+          "salto": {
+            "title": "Salto",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "salto",
+          "de",
+          "para",
+          "campos"
+        ],
+        "title": "VinculoDaEmpresaV1",
+        "type": "object"
+      },
+      "VinculosDaEmpresaV1": {
+        "description": "Os vínculos da empresa na ficha (linha 798, PR 5): o estado, a lista, as fontes e os limites, sempre.",
+        "properties": {
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "vinculos": {
+            "items": {
+              "$ref": "#/components/schemas/VinculoDaEmpresaV1"
+            },
+            "title": "Vinculos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "vinculos",
+          "cortada",
+          "fontes",
+          "limites"
+        ],
+        "title": "VinculosDaEmpresaV1",
+        "type": "object"
+      },
       "VisaoGeralV1": {
         "properties": {
           "ativo": {
@@ -7485,6 +7603,45 @@
           }
         },
         "summary": "Ficha Da Empresa Em Planilha"
+      }
+    },
+    "/v1/analista/ficha/vinculos": {
+      "post": {
+        "description": "Controle, coligação, participação e auditoria da empresa, a um salto, cada campo com fonte e dia. Mesmo\nacesso, mesmo plano e mesmos estados da ficha; pessoa natural nunca sai.",
+        "operationId": "vinculos_da_empresa_v1_analista_ficha_vinculos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VinculosDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vinculos Da Empresa"
       }
     },
     "/v1/apagar-simulacao": {
