@@ -27,14 +27,21 @@ entradas e saídas já públicas; o FIP precisa estar registrado e não cancelad
 recebido pela CVM, e a versão mais nova já recebida.
 """
 
-from collections import defaultdict
+import copy
+import threading
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
 import pandas as pd
 
 from base.porta import Porta
-from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
+from base.porta.duckdb import (
+    arquivos_da_tabela,
+    condicao_como_era,
+    dia_de,
+    nome_da_view,
+)
 from base.porta.rede import views
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
@@ -104,6 +111,31 @@ LIMITES = (
         "campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra."
     ),
 )
+
+
+# A resposta de um pedido só depende do pedido, do dia, do teto de linhas, de quais sinais o portão libera
+# e dos arquivos da base; nada da conta, da chave ou da organização entra além do que o portão liberou, e
+# isso já está na chave. Mudou um arquivo (data, tamanho), a chave muda e a conta é refeita (linha 848).
+TAMANHO_DO_CACHE = 64
+_CACHE: OrderedDict[tuple, "CompradoresServidos"] = OrderedDict()
+_TRAVA = threading.Lock()
+TABELAS_LIDAS = (ESTABELECIMENTOS, EMPRESAS, ENTRADAS, FUNDOS, CONTROLADAS)
+
+
+def zerar_o_cache() -> None:
+    with _TRAVA:
+        _CACHE.clear()
+
+
+def _impressao_da_base(porta: Porta) -> tuple:
+    """Os arquivos das tabelas lidas (caminho, data e tamanho): muda quando a base muda."""
+    impressao = []
+    for tabela in TABELAS_LIDAS:
+        padrao = porta.arquivos.get(tabela)
+        for arquivo in arquivos_da_tabela(porta.pasta, padrao) if padrao else []:
+            estado = arquivo.stat()
+            impressao.append((arquivo.as_posix(), estado.st_mtime_ns, estado.st_size))
+    return tuple(impressao)
 
 
 class PedidoInvalido(ValueError):
@@ -231,6 +263,30 @@ class LeitorDeCompradores:
         sinais = self._sinais_liberados()
         if not sinais:
             return None
+        chave = (
+            pedido,
+            como_era_em,
+            self.linhas_maximas,
+            sinais,
+            _impressao_da_base(self.porta),
+        )
+        with _TRAVA:
+            guardado = _CACHE.get(chave)
+            if guardado is not None:
+                _CACHE.move_to_end(chave)
+        if guardado is not None:
+            return copy.deepcopy(guardado)
+        servido = self._montar(pedido, como_era_em, sinais)
+        if servido is not None:
+            with _TRAVA:
+                _CACHE[chave] = copy.deepcopy(servido)
+                while len(_CACHE) > TAMANHO_DO_CACHE:
+                    _CACHE.popitem(last=False)
+        return servido
+
+    def _montar(
+        self, pedido: PedidoDeCompradores, como_era_em: date, sinais: tuple[str, ...]
+    ) -> CompradoresServidos | None:
         mes = self._mes_do_retrato(como_era_em)
         if mes is None:
             return None
@@ -243,9 +299,14 @@ class LeitorDeCompradores:
         lista = _Lista(setor)
         fontes = {RECEITA}
         if ENTROU in sinais or FUNDO in sinais:
-            socias = consulta.socias_no_dia()
-            if ENTROU in sinais:
-                lista.anotar_entradas(consulta.entradas(setor), socias)
+            entradas = consulta.entradas(setor) if ENTROU in sinais else None
+            # só o quadro de sócios de quem pesa na conta: as empresas do setor e quem entrou nelas
+            relevantes = set(setor["raiz"].astype(str))
+            if entradas is not None:
+                relevantes |= set(entradas["comprador"].astype(str))
+            socias = consulta.socias_no_dia(relevantes)
+            if entradas is not None:
+                lista.anotar_entradas(entradas, socias)
             if FUNDO in sinais:
                 lista.anotar_fundos(consulta.fundos_socios(setor, socias))
                 fontes.add(REGISTRO)
@@ -299,15 +360,21 @@ class _Consulta:
             {"mes": self.mes, "ativa": ATIVA, "cnae": cnae, "uf": uf},
         )
 
-    def socias_no_dia(self) -> pd.DataFrame:
-        """O quadro de sócios PJ do dia, refeito das entradas e saídas já públicas: o último movimento do par."""
+    def socias_no_dia(self, raizes: set[str]) -> pd.DataFrame:
+        """O quadro de sócios PJ do dia das `raizes`, refeito das entradas e saídas já públicas: o último
+        movimento do par. Filtrar pela raiz antes da janela não muda o resultado (a raiz é chave da partição)
+        e poupa ler e montar o quadro de todas as empresas do país a cada pedido (linha 848)."""
         return self._df(
             f"SELECT cnpj_basico AS raiz, raiz_socio_pj AS socia, data_entrada, {PUBLICADO_EM} "
             f"FROM {_view(ENTRADAS)} WHERE movimento IN ('entrou', 'saiu') "
+            "AND cnpj_basico IN (SELECT raiz FROM relevantes) "
             f"AND {PUBLICADO_EM} <= CAST($dia AS DATE) "
             f"QUALIFY row_number() OVER (PARTITION BY cnpj_basico, raiz_socio_pj "
             f"ORDER BY {MES} DESC, movimento = 'saiu' DESC) = 1 AND movimento = 'entrou'",
             {"dia": dia_de(self.dia)},
+            relevantes=pd.DataFrame(
+                {"raiz": pd.Series(sorted(raizes), dtype="string")}
+            ),
         )
 
     def entradas(self, setor: pd.DataFrame) -> pd.DataFrame:
