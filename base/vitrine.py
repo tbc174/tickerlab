@@ -447,6 +447,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         (
             "cnpj_qsa",
             "cnpj_qsa_mudancas",
+            "entradas_de_socio_pj",
             "fre_acionistas",
             "fre_distribuicao_capital",
             "controladas",

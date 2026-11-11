@@ -2403,7 +2403,7 @@
       "orgao": "Receita Federal",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 12
+      "tabelas": 13
     },
     {
       "historico_desde": "2002-01-01",
@@ -2900,7 +2900,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 34,
-    "tabelas": 120,
+    "tabelas": 121,
     "temas": [
       {
         "chave": "cvm",
@@ -2917,7 +2917,7 @@
           "Receita Federal",
           "CVM"
         ],
-        "tabelas": 8,
+        "tabelas": 9,
         "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
         "titulo": "Quem é dono e quem controla"
       },
@@ -3005,7 +3005,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 56
+      "tabelas": 57
     },
     {
       "chave": "credito_e_fidc",
@@ -7956,6 +7956,17 @@
       "tabela": "cnpj_estabelecimentos_pj"
     },
     {
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
+      "consultavel": true,
+      "frase": "Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: que empresa entrou como sócia de que empresa, com a data de entrada que a Receita dá.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "licenciada",
+      "tabela": "entradas_de_socio_pj"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -8853,6 +8864,6 @@
     "fontes": 46,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 157
+    "tabelas": 158
   }
 }
