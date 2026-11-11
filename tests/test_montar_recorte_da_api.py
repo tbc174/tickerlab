@@ -324,3 +324,77 @@ def test_cnpj_de_14_digitos_na_razao_nao_e_pessoa(tmp_path):
         "('22222222')",
     )
     envio.montar(base, tmp_path / "saida", TABELAS_PJ)
+
+
+# ---------------------------------------------------------------- entradas de sócio PJ (linha 810)
+
+COM_ENTRADAS = (*TABELAS_PJ, "entradas_de_socio_pj")
+
+
+def _entradas(base: Path, pares: str) -> None:
+    """Entradas (empresa, sócia PJ) com as colunas da tabela de verdade."""
+    _parquet(
+        base / "entradas_de_socio_pj" / "00.parquet",
+        "SELECT 'entrada' AS movimento, cnpj_basico, raiz_socio_pj, DATE '2024-05-01' AS data_entrada, "
+        "'49' AS qualificacao, '2026-10' AS mes_do_retrato, DATE '2026-10-30' AS disponivel_em "
+        f"FROM (VALUES {pares}) t(cnpj_basico, raiz_socio_pj)",
+    )
+
+
+def _empresas_e_entradas(base: Path, pares: str) -> None:
+    _empresas_pj(
+        base,
+        "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais'), "
+        "('11111111', 'HOLDING SA', '2054', 'demais'), "
+        "('55555555', 'FULANO DE TAL', '2062', 'micro')",
+        "('00000000'), ('11111111')",
+    )
+    _entradas(base, pares)
+
+
+def test_entradas_de_socio_pj_sobe_com_o_pode_da_diretoria():
+    """Pode da Diretoria de 11/11/2026 (Emenda 4), linha 810: só PJ com PJ, conferida na saída."""
+    # vai com as empresas PJ (a guarda as exige) e só a API externa a serve: a consulta aberta não (opção a)
+    assert "entradas_de_socio_pj" in envio.tabelas_do_degrau(2)
+    assert "entradas_de_socio_pj" not in envio.tabelas_do_degrau(1)
+    assert "entradas_de_socio_pj" not in envio.FICAM_EM_CASA
+    assert not pode_consultar("entradas_de_socio_pj")
+
+
+def test_entradas_pj_com_pj_sai_inteira(tmp_path):
+    base = tmp_path / "base"
+    _empresas_e_entradas(base, "('00000000', '11111111')")
+    envio.montar(base, tmp_path / "saida", COM_ENTRADAS)
+    arquivo = tmp_path / "saida" / "entradas_de_socio_pj" / "00.parquet"
+    assert duckdb.sql(f"SELECT count(*) FROM '{arquivo.as_posix()}'").fetchone() == (1,)
+
+
+@pytest.mark.parametrize(
+    "par",
+    [
+        "('00000000', '99999999')",  # sócia fora da lista sem pessoa
+        "('99999999', '11111111')",  # empresa fora da lista
+        "('00000000', '55555555')",  # sócia de MEI, que a saída de empresas tira
+        "('00000000', NULL)",  # sócia sem raiz
+    ],
+)
+def test_entradas_com_raiz_fora_da_lista_sem_pessoa_derruba_o_envio(tmp_path, par):
+    base = tmp_path / "base"
+    _empresas_e_entradas(base, f"('00000000', '11111111'), {par}")
+    with pytest.raises(envio.RecorteErro, match="fora da lista sem pessoa"):
+        envio.montar(base, tmp_path / "saida", COM_ENTRADAS)
+
+
+def test_entradas_nao_vai_sem_empresas_pj(tmp_path):
+    base = tmp_path / "base"
+    _entradas(base, "('00000000', '11111111')")
+    with pytest.raises(envio.RecorteErro, match="junto"):
+        envio.montar(base, tmp_path / "saida", ("entradas_de_socio_pj",))
+
+
+def test_a_da_api_externa_ainda_passa_pela_trava_de_mostrar(monkeypatch):
+    """Fora da consulta aberta não quer dizer sem conferência: a trava de licença e de pessoa ainda vale."""
+    envio.conferir_a_lista(("entradas_de_socio_pj",))
+    monkeypatch.setattr(envio, "pode_mostrar", lambda _: False)
+    with pytest.raises(envio.RecorteErro, match="API externa não pode"):
+        envio.conferir_a_lista(("entradas_de_socio_pj",))

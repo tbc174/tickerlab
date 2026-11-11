@@ -109,6 +109,14 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
         "Tipo de evento desconhecido. Confira com `tickerlab eventos --help`.",
         Saida.PEDIDO_INVALIDO,
     ),
+    (400, "invalid_depth"): (
+        "A profundidade vai de 1 a 3 saltos.",
+        Saida.USO,
+    ),
+    (400, "invalid_link_type"): (
+        "Tipo de vínculo desconhecido. Confira com `tickerlab vinculos --help`.",
+        Saida.PEDIDO_INVALIDO,
+    ),
     (400, "invalid_cursor"): (
         "A API não reconheceu a página pedida. Rode o comando de novo, do começo.",
         Saida.PEDIDO_INVALIDO,
@@ -253,6 +261,21 @@ class ApiDoTickerlab:
 
     def comparaveis(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}/comparables", _datas(known_at=como_era))
+
+    def vinculos(
+        self,
+        cnpj: str,
+        como_era: str | None,
+        profundidade: int,
+        tipos: Sequence[str],
+    ) -> dict:
+        parametros: dict[str, str | Sequence[str]] = {
+            **_datas(known_at=como_era),
+            "depth": str(profundidade),
+        }
+        if tipos:
+            parametros["types"] = list(tipos)
+        return self.pedir(f"/companies/{cnpj}/links", parametros)
 
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
