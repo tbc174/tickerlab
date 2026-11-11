@@ -1,7 +1,8 @@
 """A trava de pessoa da API externa (`empresas.e_empresa`) com a rede e sem ela (pelas listas sem pessoa).
 
-Com a rede, a resposta é a de sempre (os casos dela estão em `test_api_externa_empresas.py`). Sem a rede (o VPS),
-decidem as listas sem pessoa da Receita do retrato mais novo: MEI, empresário individual, grupo 4, natureza
+Quando a rede conhece o CNPJ, decide ela, e pessoa ou conflito nela não cai para as listas (os casos dela
+também estão em `test_api_externa_empresas.py`). O que ela não conhece, e qualquer CNPJ sem a rede, decidem
+as listas sem pessoa da Receita do retrato mais novo: MEI, empresário individual, grupo 4, natureza
 vazia, raiz ausente e estabelecimento ausente dão não.
 """
 
@@ -178,6 +179,93 @@ def test_com_a_rede_vale_a_rede_e_nao_as_listas(listas):
     assert empresas.e_empresa(porta, MEI)
 
 
+OUTRA = "E" + "3" * 20  # uma companhia que a rede conhece, de outra raiz
+
+
+def test_com_a_rede_a_empresa_fechada_que_ela_nao_conhece_cai_nas_listas(listas):
+    # a rede (a do VPS, linha 843) só tem as companhias da CVM e dos reguladores: a fechada vem das listas
+    _gravar_rede(listas, [(OUTRA, "12121212", "empresa", False, False)])
+    porta = Porta(listas)
+    assert empresas.e_empresa(porta, EMPRESA)
+    assert empresas.e_empresa(porta, FILIAL)
+
+
+@pytest.mark.parametrize(
+    "cnpj",
+    [
+        MEI,
+        EMPRESARIO_INDIVIDUAL,
+        GRUPO_4,
+        NATUREZA_VAZIA,
+        SEM_EMPRESA,
+        SO_NO_MES_VELHO,
+        INEXISTENTE,
+        REPETIDA,
+    ],
+)
+def test_com_a_rede_quem_ela_nao_conhece_e_as_listas_negam_nao_e(listas, cnpj):
+    _gravar_rede(listas, [(OUTRA, "12121212", "empresa", False, False)])
+    assert not empresas.e_empresa(Porta(listas), cnpj)
+
+
+def test_com_a_rede_a_companhia_que_ela_conhece_e_empresa_mesmo_fora_das_listas(
+    listas,
+):
+    _gravar_rede(listas, [(OUTRA, INEXISTENTE[:8], "empresa", False, False)])
+    assert empresas.e_empresa(Porta(listas), INEXISTENTE)
+
+
+@pytest.mark.parametrize(
+    "entidade",
+    [
+        ("E" + "1" * 20, EMPRESA[:8], "empresa", False, True),  # tratada como pessoa
+        ("E" + "1" * 20, EMPRESA[:8], "empresa", True, False),  # MEI
+        (
+            "E" + "1" * 20,
+            EMPRESA[:8],
+            "empresa",
+            False,
+            None,
+        ),  # marca vazia: na dúvida, pessoa
+        ("E" + "1" * 20, EMPRESA[:8], "empresa", None, False),
+        ("P" + "1" * 20, EMPRESA[:8], "pessoa", False, False),  # id de pessoa
+        (
+            "E" + "1" * 20,
+            EMPRESA[:8],
+            "fundo",
+            False,
+            False,
+        ),  # conhecida, mas não é empresa
+    ],
+)
+def test_pessoa_na_rede_nao_e_empresa_mesmo_nas_listas(listas, entidade):
+    # a EMPRESA está nas duas listas; a rede a conhece e diz que não: não cai para as listas
+    _gravar_rede(listas, [entidade])
+    porta = Porta(listas)
+    assert not empresas.e_empresa(porta, EMPRESA)
+    assert not empresas.e_empresa(porta, FILIAL)  # a filial da mesma raiz também
+
+
+def test_conflito_na_rede_nao_cai_para_as_listas(listas):
+    # a mesma raiz em duas entidades: a rede conhece o CNPJ, mas não sabe qual é; na dúvida, não
+    _gravar_rede(
+        listas,
+        [
+            ("E" + "1" * 20, EMPRESA[:8], "empresa", False, False),
+            ("E" + "2" * 20, EMPRESA[:8], "empresa", False, False),
+        ],
+    )
+    assert not empresas.e_empresa(Porta(listas), EMPRESA)
+
+
+def test_com_a_rede_sem_as_listas_quem_ela_nao_conhece_nao_e(tmp_path):
+    base = tmp_path / "base"
+    _gravar_rede(base, [(OUTRA, "12121212", "empresa", False, False)])
+    porta = Porta(base)
+    assert not empresas.e_empresa(porta, EMPRESA)
+    assert empresas.e_empresa(porta, "12121212000191")
+
+
 @settings(
     max_examples=40,
     deadline=None,
@@ -203,3 +291,10 @@ def test_sem_a_rede_so_a_natureza_informada_e_que_nao_e_de_pessoa_passa(
     limpa = (natureza or "").strip()
     pessoa = limpa == "2135" or limpa.startswith("4")
     assert empresas.e_empresa(Porta(base), EMPRESA) == (bool(limpa) and not pessoa)
+
+
+def test_rede_sem_identificadores_nao_cai_para_as_listas(listas):
+    # carga parcial da rede (entidades sem identificadores): não dá para saber quem ela conhece; na dúvida, não
+    _gravar_rede(listas, [("E" + "1" * 20, EMPRESA[:8], "empresa", False, True)])
+    (listas / "rede" / "identificadores.parquet").unlink()
+    assert not empresas.e_empresa(Porta(listas), EMPRESA)
