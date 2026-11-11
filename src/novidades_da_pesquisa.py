@@ -1,7 +1,7 @@
 """O que vale para uma novidade da pesquisa (linha 830), dos dois lados: o exportador no PC e a API no servidor.
 
 Uma novidade é uma fonte que o bot conferente provou (trecho literal e sha256 do original). Aqui ficam as regras
-que decidem se ela pode sair: só órgão público da tabela `ORGAOS`, citação curta e nenhuma marca de pessoa
+que decidem se ela pode sair: só conjunto público da lista `CONJUNTOS`, citação curta e nenhuma marca de pessoa
 física. Sem Streamlit e sem acesso ao banco: tipos simples.
 """
 
@@ -9,26 +9,30 @@ import re
 import unicodedata
 from urllib.parse import urlsplit
 
-from base.cnpj import SEPARADORES, dv_confere
+from base.cnpj import dv_confere
+from src.pessoa_no_texto import telefone_no_texto, texto_de_pessoa
 
 TRECHO_MAXIMO = 300  # citação curta, não a página
+CNPJ_TAMANHO = 14
 
-# domínio -> (chave da fonte no catálogo de licenças `LICENCAS`, nome do órgão). Lista de fontes **só de empresa**,
-# negada por padrão (Diretoria, 11/11/2026, ADR 0128): fonte que traz linha de pessoa física (TCU, Portal da
-# Transparência, PNCP, PGFN, SUSEP...) ou mista fica fora até existir lista por conjunto. Domínio fora daqui não sai.
-ORGAOS: dict[str, tuple[str, str]] = {
-    "dados.cvm.gov.br": ("cvm", "CVM"),
-    "conteudo.cvm.gov.br": ("cvm", "CVM"),
-    "dadosabertos.bcb.gov.br": ("bcb", "Banco Central do Brasil"),
-    "www.bcb.gov.br": ("bcb", "Banco Central do Brasil"),
-    "dadosabertos.aneel.gov.br": ("aneel", "ANEEL"),
-    "dados.anp.gov.br": ("anp", "ANP"),
-}
-
-# CNPJ (numérico ou alfanumérico), com ou sem pontuação, solto no texto
-CNPJ_NO_TEXTO = re.compile(
-    r"(?<![0-9A-Za-z])[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}/?[0-9A-Z]{4}-?\d{2}(?![0-9A-Za-z])"
+# (domínio, prefixo do caminho) -> (chave da fonte no catálogo de licenças `LICENCAS`, nome do órgão). Lista positiva
+# **por conjunto**, negada por padrão (Diretoria, 11/11/2026, ADR 0128): só entra conjunto que se verificou que não
+# traz pessoa na linha (o cadastro de companhias e o de fundos da CVM trazem responsável, e-mail, telefone e diretor:
+# ficam fora). Domínio ou caminho fora daqui não sai. BCB, ANEEL e ANP esperam o conjunto verificado.
+CONJUNTOS: tuple[tuple[str, str, str, str], ...] = (
+    ("dados.cvm.gov.br", "/dados/CIA_ABERTA/DOC/DFP/", "cvm", "CVM"),
+    ("dados.cvm.gov.br", "/dados/CIA_ABERTA/DOC/ITR/", "cvm", "CVM"),
+    ("dados.cvm.gov.br", "/dados/FI/DOC/INF_DIARIO/", "cvm", "CVM"),
 )
+
+# CNPJ (numérico ou alfanumérico) solto no texto, depois do NFKC e da caixa alta: tolera espaço, ponto, barra,
+# hífen e travessão entre os grupos, e letra colada antes ou depois (só dígito colado não vale). Quem acha mais
+# CNPJ só deixa a regra mais estreita (todos precisam estar na lista sem pessoa).
+_SEP = r"[\s./\-‐-―]*"
+CNPJ_NO_TEXTO = re.compile(
+    rf"(?=((?<![0-9])[0-9A-Z]{{2}}{_SEP}[0-9A-Z]{{3}}{_SEP}[0-9A-Z]{{3}}{_SEP}[0-9A-Z]{{4}}{_SEP}\d{{2}}(?![0-9])))"
+)
+SEPARADOR_DE_CNPJ = re.compile(_SEP)
 CPF_FORMATADO = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)")
 ONZE_DIGITOS = re.compile(r"(?<!\d)\d{11}(?!\d)")
 # qualquer separador comum entre dígitos (espaço, ponto, traços Unicode, barra, vírgula, sublinhado)
@@ -68,16 +72,28 @@ def achar_cpf(texto: str) -> bool:
 
 def cnpjs_validos(texto: str) -> set[str]:
     """Os CNPJs (14 caracteres, sem pontuação) do texto cujos dígitos verificadores conferem."""
-    achados = (SEPARADORES.sub("", m.group()) for m in CNPJ_NO_TEXTO.finditer(texto))
-    return {cnpj for cnpj in achados if dv_confere(cnpj)}
+    texto = unicodedata.normalize("NFKC", texto).upper()
+    limpos = (
+        SEPARADOR_DE_CNPJ.sub("", m.group(1)) for m in CNPJ_NO_TEXTO.finditer(texto)
+    )
+    return {cnpj for cnpj in limpos if len(cnpj) == CNPJ_TAMANHO and dv_confere(cnpj)}
 
 
 def orgao_da_url(url: str) -> tuple[str, str] | None:
-    """(fonte, órgão) do endereço, se o domínio é de um órgão da tabela; senão None."""
-    partes = urlsplit(url)
-    if partes.scheme not in ("http", "https") or "\\" in url:
+    """(fonte, órgão) do endereço, se o domínio e o caminho são de um conjunto da lista; senão None."""
+    try:
+        partes = urlsplit(url)
+        host = (partes.hostname or "").lower()
+    except ValueError:  # `https://[dados...`: endereço malformado nunca é fonte
         return None
-    return ORGAOS.get((partes.hostname or "").lower())
+    if partes.scheme not in ("http", "https") or "\\" in url or "%" in partes.path:
+        return None
+    if ".." in partes.path.split("/"):
+        return None
+    for dominio, prefixo, fonte, orgao in CONJUNTOS:
+        if host == dominio and partes.path.startswith(prefixo):
+            return fonte, orgao
+    return None
 
 
 def fonte_liberada(fonte: str) -> bool:
@@ -93,12 +109,21 @@ def fonte_liberada(fonte: str) -> bool:
     ).startswith("vendável")
 
 
-def texto_publicavel(afirmacao: str, trecho: str, *outros: str) -> bool:
-    """Citação curta, com CNPJ válido, sem CPF nem marca de pessoa física; `outros` (endereço, posição) sem CPF."""
-    texto = f"{afirmacao}\n{trecho}"
+def sinal_de_contato(texto: str) -> bool:
+    """CPF, e-mail ou telefone no texto (a mesma busca nas duas pontas: exportador e API)."""
+    normal = unicodedata.normalize("NFKC", texto)
+    return achar_cpf(normal) or texto_de_pessoa(normal) or telefone_no_texto(normal)
+
+
+def texto_publicavel(trecho: str, *textos: str, url: str = "") -> bool:
+    """Citação curta com CNPJ válido **no próprio trecho servido**, sem sinal de pessoa em nenhum texto.
+
+    `textos` (afirmação, trecho inteiro, posição) e o `url` não saem, mas também não podem trazer CPF, e-mail,
+    telefone nem marca de pessoa (a marca não olha o endereço)."""
+    tudo = " ".join((trecho, *textos, url))
     return (
         0 < len(trecho) <= TRECHO_MAXIMO
-        and bool(cnpjs_validos(texto))
-        and not achar_cpf("\n".join((texto, *outros)))
-        and not MARCAS_DE_PESSOA.search(texto)
+        and bool(cnpjs_validos(trecho))
+        and not sinal_de_contato(tudo)
+        and not MARCAS_DE_PESSOA.search(" ".join((trecho, *textos)))
     )

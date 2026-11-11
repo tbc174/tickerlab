@@ -208,7 +208,6 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "orgao": "agency",
     "fonte_url": "source_url",
     "data": "date",
-    "afirmacao": "claim",
     "trecho": "excerpt",
     "sha256": "original_sha256",
     "posicao": "location",

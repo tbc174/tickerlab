@@ -16,7 +16,7 @@ from scripts import exportar_novidades
 
 AGORA = datetime(2026, 11, 11, 12, tzinfo=UTC)
 HASH = "a" * 64
-URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/exemplo.csv"
+URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/exemplo.csv"
 TRECHO = "Parque Exemplo Eólico: 120 MW, vigência 2035, CNPJ 11.222.333/0001-81"
 CPF_INVENTADO = "529.982.247-25"
 CNPJ = "11.222.333/0001-81"
@@ -209,7 +209,11 @@ def test_script_para_e_nao_grava_se_achar_cpf(tmp_path, capsys, base_de_mentira)
 
 def test_pessoa_fisica_e_url_com_cpf_nao_saem(tmp_path):
     memoria = _memoria(tmp_path)
-    _visto(memoria, url="https://dados.cvm.gov.br/x.csv?cpf=" + "52998224725")
+    _visto(
+        memoria,
+        url="https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/x.csv?cpf="
+        + "52998224725",
+    )
     _fato(memoria)
     with pytest.raises(novidades.CpfNoTrechoError):
         novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
@@ -218,9 +222,14 @@ def test_pessoa_fisica_e_url_com_cpf_nao_saem(tmp_path):
 def test_endereco_com_barra_invertida_ou_sem_http_nao_e_orgao():
     from src.novidades_da_pesquisa import orgao_da_url
 
-    assert orgao_da_url("https://dados.cvm.gov.br/x") is not None
-    assert orgao_da_url(r"https://evil.com\@dados.cvm.gov.br/x") is None
-    assert orgao_da_url("javascript://dados.cvm.gov.br/x") is None
+    assert orgao_da_url(URL) is not None
+    assert (
+        orgao_da_url(r"https://evil.com\@dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/x")
+        is None
+    )
+    assert (
+        orgao_da_url("javascript://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/x") is None
+    )
 
 
 def test_fonte_so_de_empresa_nome_sem_tratamento_em_fonte_que_saiu_da_lista_nao_sai(

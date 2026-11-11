@@ -1932,9 +1932,8 @@ CORPO_DE_NOVIDADES = {
         {
             "agency": "CVM",
             "source": "cvm",
-            "source_url": "https://dados.cvm.gov.br/dados/exemplo.csv",
+            "source_url": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/exemplo.csv",
             "date": "2026-11-10",
-            "claim": "Parque Exemplo: 120 MW",
             "excerpt": "Parque Exemplo Eólico: 120 MW, vigência 2035",
             "original_sha256": "a" * 64,
             "position": "linha 3",
