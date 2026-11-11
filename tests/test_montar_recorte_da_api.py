@@ -354,8 +354,11 @@ def _empresas_e_entradas(base: Path, pares: str) -> None:
 
 def test_entradas_de_socio_pj_sobe_com_o_pode_da_diretoria():
     """Pode da Diretoria de 11/11/2026 (Emenda 4), linha 810: só PJ com PJ, conferida na saída."""
+    # vai com as empresas PJ (a guarda as exige) e só a API externa a serve: a consulta aberta não (opção a)
     assert "entradas_de_socio_pj" in envio.tabelas_do_degrau(2)
+    assert "entradas_de_socio_pj" not in envio.tabelas_do_degrau(1)
     assert "entradas_de_socio_pj" not in envio.FICAM_EM_CASA
+    assert not pode_consultar("entradas_de_socio_pj")
 
 
 def test_entradas_pj_com_pj_sai_inteira(tmp_path):

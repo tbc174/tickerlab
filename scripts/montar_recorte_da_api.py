@@ -35,7 +35,7 @@ from pathlib import Path
 import duckdb
 
 from base.dicionario import TABELAS
-from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
+from base.dossie import COLUNAS_DE_PESSOA, SO_PELA_API_EXTERNA, pode_consultar
 from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
 from base.rede.entidades import EMPRESARIO_INDIVIDUAL, GRUPO_DAS_PESSOAS_FISICAS
 from src import acervo
@@ -99,8 +99,9 @@ DEGRAU_2_ACRESCENTA = (
     # sem pessoa por desenho (linha 584): 213-5, grupo 4 e CPF fora na origem; o MEI com natureza de empresa sai aqui (`tirar_raizes_de_mei`); a saída ainda é conferida
     # aqui (`conferir_sem_pessoa_do_cnpj`). Pode da Diretoria, 10/11/2026 18h31 (Emenda 4), linha 796.
     "cnpj_empresas_pj", "cnpj_estabelecimentos_pj",
-    # sem pessoa por desenho (linha 810, PR 2): sócia PJ de empresa PJ; toda raiz da saída tem de estar em
-    # `cnpj_empresas_pj` da própria saída (`conferir_entradas_so_pj`). Pode da Diretoria, 11/11/2026 (Emenda 4).
+    # sem pessoa por desenho (linha 810, PR 2): sócia PJ de empresa PJ, só para a API externa (a consulta aberta
+    # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_entradas_so_pj`
+    # exige `cnpj_empresas_pj` na mesma saída. Pode da Diretoria, 11/11/2026 (Emenda 4).
     "entradas_de_socio_pj",
 )  # fmt: skip
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
@@ -143,7 +144,11 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
             raise RecorteErro(f"{nome}: tabela de pessoa natural")
         if nome in FICAM_EM_CASA:
             raise RecorteErro(f"{nome}: fica em casa")
-        if nome not in DEGRAU_1 and not pode_consultar(nome):
+        if (
+            nome not in DEGRAU_1
+            and nome not in SO_PELA_API_EXTERNA
+            and not pode_consultar(nome)
+        ):
             raise RecorteErro(f"{nome}: a consulta aberta não a libera")
         if ARQUIVOS[nome].split("/")[0] in PASTAS_PROIBIDAS:
             raise RecorteErro(f"{nome}: mora em pasta proibida")
