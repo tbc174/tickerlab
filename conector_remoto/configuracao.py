@@ -22,7 +22,7 @@ VARIAVEL_DAS_REDES_CONFIAVEIS = "TICKERLAB_MCP_PROXIES_CONFIAVEIS"
 API_PADRAO = "http://tickerlab-api:8000"
 URL_PUBLICA_PADRAO = "https://mcp.tickerlab.com.br"
 # quem chama o conector são os servidores da Anthropic e da OpenAI; um navegador só manda Origin destes
-ORIGENS_PADRAO = ("https://claude.ai", "https://chatgpt.com")
+ORIGENS_PADRAO = ("https://claude.ai", "https://claude.com", "https://chatgpt.com")
 # a API externa costuma responder em menos de 1 s; o Claude espera até 240 s por ferramenta
 TEMPO_LIMITE_DA_API_S = 30.0
 

@@ -20,8 +20,8 @@ Há duas entradas, que levam ao mesmo lugar:
 
 ### O caminho do OAuth
 
-1. **Registro (DCR, RFC 7591).** Só os endereços de volta do Claude (`https://claude.ai/api/mcp/auth_callback`)
-   e do ChatGPT (`https://chatgpt.com/connector_platform_oauth_redirect` e
+1. **Registro (DCR, RFC 7591).** Só os endereços de volta do Claude (`https://claude.ai/api/mcp/auth_callback`
+   e `https://claude.com/api/mcp/auth_callback`, que a Anthropic avisa que pode passar a usar) e do ChatGPT (`https://chatgpt.com/connector_platform_oauth_redirect` e
    `https://chatgpt.com/connector/oauth/<id>`) são aceitos (`oauth.ENDERECOS_DE_VOLTA`). Qualquer outro é
    recusado com `invalid_redirect_uri`, inclusive `localhost`.
 2. **`/authorize`.** PKCE S256 obrigatório. O conector responde com a página `/autorizar?pedido=...`; o
@@ -55,14 +55,30 @@ Há duas entradas, que levam ao mesmo lugar:
 - **Sem rota de revogação.** Quem corta o acesso é a revogação da chave na API, que vale na chamada
   seguinte (o catálogo da chave fica no máximo 60 s na memória; nenhum dado sai com a chave revogada,
   porque cada ferramenta chama a API com ela).
+- **API sem resposta não é chave revogada.** Só 401 e 403 do `/catalog` dizem que a chave não vale.
+  Limite de pedidos da organização (429), erro da API (5xx) ou a API desligada (404) são falha passageira:
+  o `/mcp` responde 503 com `Retry-After: 30` (um 401 faria a IA pedir a chave de novo), a renovação
+  responde `invalid_request` sem gastar o token e a página diz que o TickerLab não respondeu, sem contar
+  no limite por IP.
 - **Sem o `iss` na volta (RFC 9207).** O ChatGPT usa então o endereço `connector/oauth/<id>`, que está na
   lista fechada.
+
+### Riscos aceitos (revisão cruzada do PR 2)
+
+- **Cadeia de renovação sem prazo final.** Cada renovação emite outro token de 30 dias; quem capturar um
+  token de renovação e usá-lo antes do dono segue renovando, e o conector não derruba a família ao ver o
+  reuso (não guarda estado). O corte é revogar a chave do analista na API.
+- **Ligar o assistente de outra pessoa.** Alguém pode começar a ligação no próprio Claude ou ChatGPT e
+  mandar o endereço da página `/autorizar` ao analista. Se ele colar a chave, a conta de quem mandou passa a
+  consultar com a chave dele. A chave não vaza e o destino é sempre uma das duas IAs, mas a única defesa
+  é o aviso da página ("Só continue se foi você que começou esta ligação agora") e o guia do analista.
 
 ## Limite por IP atrás do túnel
 
 A página `/autorizar` aceita no máximo **20 falhas por IP a cada 15 minutos** (chave errada, CSRF errado,
 pedido mexido); passou disso, 429 até a janela andar. Acerto não conta: um escritório inteiro entra pelo
-mesmo IP.
+mesmo IP. O IPv6 conta pela faixa /64 (um provedor entrega a faixa inteira a cada cliente), e o IPv4
+escrito como IPv6 conta como IPv4.
 
 O conector só é alcançado pelo túnel. A porta 8010 fica só no `127.0.0.1` do VPS, e o IP de quem chamou
 vem no cabeçalho `CF-Connecting-IP`, que **só vale quando o pedido chega de uma rede de confiança**

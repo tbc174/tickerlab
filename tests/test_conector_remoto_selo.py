@@ -6,7 +6,9 @@ from starlette.requests import Request
 from conector_remoto.configuracao import ler_configuracao
 from conector_remoto.limite import (
     REDES_CONFIAVEIS_PADRAO,
+    SEM_ENDERECO,
     LimitePorIp,
+    faixa_do_limite,
     ip_do_pedido,
     redes,
 )
@@ -134,3 +136,15 @@ def test_limite_nao_cresce_sem_fim():
     for i in range(50):
         limite.falhou(f"ip-{i}")
     assert len(limite._falhas) <= 10
+
+
+def test_limite_conta_o_ipv6_pela_faixa_64():
+    assert faixa_do_limite("203.0.113.10") == "203.0.113.10"
+    assert faixa_do_limite("::ffff:203.0.113.10") == "203.0.113.10"
+    assert faixa_do_limite("2001:db8:1:2:aaaa::1") == "2001:db8:1:2::/64"
+    assert faixa_do_limite(SEM_ENDERECO) == SEM_ENDERECO
+    limite = LimitePorIp(3, 60, relogio=lambda: 0.0)
+    for final in range(3):  # um endereço novo da mesma faixa a cada tentativa
+        limite.falhou(f"2001:db8:1:2::{final + 1}")
+    assert limite.bloqueado("2001:db8:1:2:ffff::9")
+    assert not limite.bloqueado("2001:db8:1:3::1")

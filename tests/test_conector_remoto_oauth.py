@@ -53,11 +53,37 @@ def test_sem_token_o_mcp_responde_401_com_o_ponteiro_dos_metadados(api):
     )
 
 
+@pytest.mark.parametrize("entrada", ["chave", "token"])
+def test_api_sem_resposta_no_mcp_da_503_e_nao_401(api, entrada):
+    # regressão da revisão cruzada: um 401 faria a IA pedir a chave de novo ao analista
+    ambiente = {"TICKERLAB_MCP_CHAVE_DOS_TOKENS": nova_chave()}
+    with aj.conector(api.transporte, ambiente) as cliente:
+        token = ao.CHAVE_A
+        if entrada == "token":
+            token = ao.tokens_para(cliente, ao.CHAVE_A)[1]["access_token"]
+    # processo novo, com a mesma chave do servidor: sem o catálogo na memória
+    with aj.conector(api.transporte, ambiente) as cliente:
+        api.status_forcado = 429
+        limite = aj.rpc(cliente, token, "tools/list")
+        api.status_forcado = 401
+        recusada = aj.rpc(cliente, token, "tools/list")
+    assert limite.status_code == 503
+    assert limite.headers["retry-after"] == "30"
+    assert limite.json()["error"] == "temporarily_unavailable"
+    assert recusada.status_code == 401
+
+
 # ------------------------------------------------------------------ registro (DCR)
 
 
 @pytest.mark.parametrize(
-    "volta", [ao.VOLTA_DO_CLAUDE, ao.VOLTA_DO_CHATGPT, ao.VOLTA_DO_CHATGPT_POR_ID]
+    "volta",
+    [
+        ao.VOLTA_DO_CLAUDE,
+        ao.VOLTA_DO_CLAUDE_COM,
+        ao.VOLTA_DO_CHATGPT,
+        ao.VOLTA_DO_CHATGPT_POR_ID,
+    ],
 )
 def test_registro_aceita_o_claude_e_o_chatgpt_como_cliente_publico(api, volta):
     with aj.conector(api.transporte) as cliente:
@@ -319,6 +345,23 @@ def test_api_fora_do_ar_na_pagina_diz_que_nao_respondeu(api):
     assert "não respondeu" in resposta.text
 
 
+def test_limite_da_api_na_pagina_nao_conta_como_chave_errada(api):
+    # regressão da revisão cruzada: o 429 da API não vira "chave não aceita" nem conta no limite por IP
+    with aj.conector(api.transporte) as cliente:
+        registrado = ao.registrar_ok(cliente)
+        endereco = ao.endereco_da_pagina(cliente, registrado["client_id"], ao.pkce()[1])
+        _, pedido, csrf = ao.abrir_pagina(cliente, endereco)
+        api.status_forcado = 429
+        respostas = [
+            ao.enviar_chave(cliente, pedido, csrf, ao.CHAVE_A) for _ in range(21)
+        ]
+        api.status_forcado = None
+        depois = ao.enviar_chave(cliente, pedido, csrf, ao.CHAVE_A)
+    assert {r.status_code for r in respostas} == {503}
+    assert all("não respondeu" in r.text for r in respostas)
+    assert depois.status_code == 303, depois.text
+
+
 def test_cancelar_volta_para_a_ia_com_access_denied(api):
     with aj.conector(api.transporte) as cliente:
         registrado = ao.registrar_ok(cliente)
@@ -469,6 +512,29 @@ def test_api_fora_do_ar_na_renovacao_nao_gasta_o_token(api):
     assert falhou.status_code == 400
     assert falhou.json()["error"] == "invalid_request"
     assert depois.status_code == 200, depois.text
+
+
+@pytest.mark.parametrize("status", [429, 500, 503, 404])
+def test_limite_ou_erro_da_api_na_renovacao_nao_gasta_o_token(api, status):
+    # regressão da revisão cruzada: 429/5xx não é chave revogada (só 401 e 403 são)
+    with aj.conector(api.transporte) as cliente:
+        registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        api.status_forcado = status
+        falhou = ao.renovar(cliente, registrado, tokens["refresh_token"])
+        api.status_forcado = None
+        depois = ao.renovar(cliente, registrado, tokens["refresh_token"])
+    assert falhou.status_code == 400
+    assert falhou.json()["error"] == "invalid_request"
+    assert depois.status_code == 200, depois.text
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_recusa_da_chave_pela_api_nao_renova(api, status):
+    with aj.conector(api.transporte) as cliente:
+        registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        api.status_forcado = status
+        resposta = ao.renovar(cliente, registrado, tokens["refresh_token"])
+    assert resposta.json()["error"] == "invalid_grant"
 
 
 # ------------------------------------------------------------------ chave do servidor (incidente)

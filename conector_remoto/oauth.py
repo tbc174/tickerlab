@@ -42,10 +42,12 @@ from pydantic import AnyUrl, Field
 from conector_remoto.acesso import VerificadorDeChave, id_da_chave
 from conector_remoto.selo import Selador
 
-# os endereços de volta das duas IAs (documentação lida em 11/11/2026); o Claude Code entra pela chave em
+# os endereços de volta das duas IAs (documentação lida em 11/11/2026; a da Anthropic avisa que o do
+# Claude pode passar a `claude.com` e pede para aceitar os dois); o Claude Code entra pela chave em
 # cabeçalho, então o retorno para `localhost` fica de fora (qualquer programa do PC poderia ouvir ali)
 ENDERECOS_DE_VOLTA = {
     "https://claude.ai/api/mcp/auth_callback": "Claude",
+    "https://claude.com/api/mcp/auth_callback": "Claude",
     "https://chatgpt.com/connector_platform_oauth_redirect": "ChatGPT",
 }
 VOLTA_DO_CHATGPT_POR_ID = re.compile(

@@ -18,6 +18,9 @@ CABECALHO_DO_TUNEL = "cf-connecting-ip"
 # o VPS (cloudflared no host) e as redes privadas que o Docker usa para o Compose
 REDES_CONFIAVEIS_PADRAO = ("127.0.0.0/8", "::1/128", "172.16.0.0/12")
 SEM_ENDERECO = "desconhecido"
+# um provedor entrega um /64 inteiro a cada cliente IPv6: o limite conta por /64, senão bastaria
+# trocar de endereço a cada tentativa
+PREFIXO_DO_IPV6 = 64
 Rede = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 
@@ -48,6 +51,16 @@ def ip_do_pedido(pedido: Request, confiaveis: tuple[Rede, ...]) -> str:
     return str(endereco)
 
 
+def faixa_do_limite(ip: str) -> str:
+    """A quem o limite conta a falha: o IPv4, ou a faixa /64 do IPv6 (o IPv4 dentro de IPv6 vira IPv4)."""
+    endereco = _ip(ip)
+    if not isinstance(endereco, ipaddress.IPv6Address):
+        return ip
+    if endereco.ipv4_mapped is not None:
+        return str(endereco.ipv4_mapped)
+    return str(ipaddress.ip_network(f"{endereco}/{PREFIXO_DO_IPV6}", strict=False))
+
+
 class LimitePorIp:
     """No máximo `maximo` falhas por IP numa janela de `janela_s` segundos (memória do processo)."""
 
@@ -73,11 +86,12 @@ class LimitePorIp:
         return falhas
 
     def bloqueado(self, ip: str) -> bool:
-        """Se o IP já gastou as tentativas da janela."""
-        return len(self._recentes(ip)) >= self._maximo
+        """Se o IP (ou a faixa /64 do IPv6) já gastou as tentativas da janela."""
+        return len(self._recentes(faixa_do_limite(ip))) >= self._maximo
 
     def falhou(self, ip: str) -> None:
         """Conta uma falha do IP (só as falhas contam: um escritório inteiro entra pelo mesmo IP)."""
+        ip = faixa_do_limite(ip)
         if ip not in self._falhas and len(self._falhas) >= self._maximo_de_ips:
             self._falhas = {i: f for i, f in self._falhas.items() if self._recentes(i)}
             while len(self._falhas) >= self._maximo_de_ips:

@@ -16,6 +16,7 @@ from starlette.testclient import TestClient
 from tests.ajudantes_do_conector import CABECALHOS, URL_PUBLICA
 
 VOLTA_DO_CLAUDE = "https://claude.ai/api/mcp/auth_callback"
+VOLTA_DO_CLAUDE_COM = "https://claude.com/api/mcp/auth_callback"
 VOLTA_DO_CHATGPT = "https://chatgpt.com/connector_platform_oauth_redirect"
 VOLTA_DO_CHATGPT_POR_ID = "https://chatgpt.com/connector/oauth/AbC_123-x"
 RECURSO = f"{URL_PUBLICA}/mcp"
@@ -27,7 +28,8 @@ CONJUNTOS_B = ("sectors",)
 
 
 class ApiComChaves:
-    """Dublê da API com chaves que podem ser revogadas no meio do teste, ou com a API fora do ar."""
+    """Dublê da API com chaves que podem ser revogadas no meio do teste, com a API fora do ar ou
+    respondendo um status forçado (429 do limite, 503...)."""
 
     def __init__(self) -> None:
         self.chaves: dict[str, tuple[str, ...]] = {
@@ -35,6 +37,7 @@ class ApiComChaves:
             CHAVE_B: CONJUNTOS_B,
         }
         self.fora_do_ar = False
+        self.status_forcado: int | None = None
         self.pedidos: list[httpx.Request] = []
 
     def revogar(self, chave: str) -> None:
@@ -44,6 +47,8 @@ class ApiComChaves:
         self.pedidos.append(pedido)
         if self.fora_do_ar:
             raise httpx.ConnectError("API fora do ar", request=pedido)
+        if self.status_forcado is not None:
+            return httpx.Response(self.status_forcado, json={"detail": "forcado"})
         chave = pedido.headers.get("authorization", "").removeprefix("Bearer ")
         if chave not in self.chaves:
             return httpx.Response(401, json={"detail": "invalid_api_key"})

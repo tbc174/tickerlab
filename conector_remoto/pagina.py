@@ -37,7 +37,7 @@ MAXIMO_DO_CORPO = 16_384
 CABECALHOS_DA_PAGINA = {
     "Content-Security-Policy": (
         "default-src 'none'; style-src 'unsafe-inline'; "
-        "form-action 'self' https://claude.ai https://chatgpt.com; "
+        "form-action 'self' https://claude.ai https://claude.com https://chatgpt.com; "
         "frame-ancestors 'none'; base-uri 'none'"
     ),
     "X-Frame-Options": "DENY",

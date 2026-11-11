@@ -5,7 +5,8 @@ Quem chega sem token recebe 401 com o ponteiro para os metadados do recurso prot
 como o Claude e o ChatGPT descobrem o OAuth do próprio conector (`oauth.py`, `pagina.py`). A chave
 `tld_...` direto no cabeçalho continua valendo (Claude Code e o plano B no PC). Pedido para um Host que
 não é o do conector recebe 421 antes de qualquer outra coisa (proteção contra DNS rebinding); Origin de
-fora da lista recebe 403.
+fora da lista recebe 403. Se a API não diz se a chave vale (limite de pedidos, erro dela), a IA
+recebe 503 com `Retry-After`, nunca 401: um 401 a faria pedir a chave de novo ao analista.
 """
 
 import logging
@@ -33,7 +34,7 @@ from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route, request_response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from conector_remoto.acesso import VerificadorDeChave, acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi
@@ -43,7 +44,11 @@ from conector_remoto.ferramentas import (
     ferramenta_liberada,
     registrar_ferramentas,
 )
-from conector_remoto.oauth import ProvedorOAuth, VerificadorDoProvedor
+from conector_remoto.oauth import (
+    MENSAGEM_API_FORA,
+    ProvedorOAuth,
+    VerificadorDoProvedor,
+)
 from conector_remoto.pagina import CAMINHO, MAXIMO_DO_CORPO, nova_pagina
 from conector_remoto.selo import TAMANHO_DA_CHAVE, Selador
 
@@ -52,6 +57,8 @@ logger = logging.getLogger(__name__)
 NOME = "tickerlab"
 STATUS_HOST_ERRADO = 421
 STATUS_ORIGEM_ERRADA = 403
+STATUS_API_FORA = 503
+ESPERA_COM_A_API_FORA_S = "30"
 # o Claude e o ChatGPT se registram como cliente público (sem segredo, só PKCE)
 METODOS_DE_ENTRADA_ANUNCIADOS = ["none", "client_secret_post", "client_secret_basic"]
 METADADOS_DO_SERVIDOR = "/.well-known/oauth-authorization-server"
@@ -118,6 +125,40 @@ class ProtecaoDeHost:
                 await recusa(scope, receive, send)
                 return
         await self._app(scope, receive, send)
+
+
+class FalhaPassageiraDaApi:
+    """503 com `Retry-After` quando a conferência da chave não teve resposta da API (antes da resposta)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+        comecou = False
+
+        async def enviar(mensagem: Message) -> None:
+            nonlocal comecou
+            comecou = comecou or mensagem["type"] == "http.response.start"
+            await send(mensagem)
+
+        try:
+            await self._app(scope, receive, enviar)
+        except httpx.HTTPError:
+            if comecou:
+                raise
+            logger.warning("API sem resposta ao conferir a chave: 503 para a IA")
+            resposta = JSONResponse(
+                {
+                    "error": "temporarily_unavailable",
+                    "error_description": MENSAGEM_API_FORA,
+                },
+                STATUS_API_FORA,
+                headers={"Retry-After": ESPERA_COM_A_API_FORA_S},
+            )
+            await resposta(scope, receive, send)
 
 
 def _selador(configuracao: Configuracao) -> Selador:
@@ -228,6 +269,7 @@ def criar_app(
     app.router.routes[0:0] = rotas_do_oauth(
         configuracao, provedor, autorizacao.issuer_url
     )
+    app.add_middleware(FalhaPassageiraDaApi)
     app.add_middleware(
         ProtecaoDeHost,
         hosts=configuracao.hosts_permitidos,
