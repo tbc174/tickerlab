@@ -98,8 +98,6 @@ def rodar(pasta: Path) -> None:
     from base.arquivo.cliente_http import ClienteHttp
     from pesquisa import renderizacao
 
-    renderizador = (
-        renderizacao.renderizar if renderizacao.crawl4ai_instalado() else None
-    )
+    renderizador = renderizacao.escolher_renderizador()
     pesquisador = Pesquisador(pasta, ClienteHttp(), renderizador=renderizador)
     criar_servidor(pesquisador).run("stdio")
