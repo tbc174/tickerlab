@@ -1632,6 +1632,68 @@ def de_eventos_do_analista(
     )
 
 
+class PontaDoVinculoV1(BaseModel):
+    """Uma ponta do vínculo: a raiz do CNPJ e a razão social que valia no dia (sem nome quando a Receita não tem)."""
+
+    raiz_do_cnpj: str | None
+    razao_social: CampoComFonteV1 | None
+
+
+class VinculoDaEmpresaV1(BaseModel):
+    """Uma ligação `de` → `para`: `tipo` diz o que `de` é de `para` (controlada, coligada, participada, auditora)."""
+
+    salto: int
+    de: PontaDoVinculoV1
+    para: PontaDoVinculoV1
+    campos: dict[str, CampoComFonteV1]
+
+
+class VinculosDaEmpresaV1(BaseModel):
+    """Os vínculos da empresa na ficha (linha 798, PR 5): o estado, a lista, as fontes e os limites, sempre."""
+
+    estado: str  # "pronta", "nao_liberada" ou "nao_disponivel", como a ficha
+    como_era_em: date | None
+    vinculos: list[VinculoDaEmpresaV1]
+    cortada: bool
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def _ponta_do_analista(ponta: dict) -> PontaDoVinculoV1:
+    return PontaDoVinculoV1(
+        raiz_do_cnpj=ponta.get("raiz_do_cnpj"),
+        razao_social=ponta.get("razao_social"),
+    )
+
+
+def _vinculo_do_analista(linha: dict) -> VinculoDaEmpresaV1:
+    campos = {
+        nome: valor
+        for nome, valor in linha.items()
+        if nome not in ("salto", "de", "para")
+    }
+    return VinculoDaEmpresaV1(
+        salto=linha["salto"],
+        de=_ponta_do_analista(linha["de"]),
+        para=_ponta_do_analista(linha["para"]),
+        campos=campos,  # type: ignore[arg-type]
+    )
+
+
+def de_vinculos_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> VinculosDaEmpresaV1:
+    corpo = resposta.corpo or {}
+    return VinculosDaEmpresaV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        vinculos=[_vinculo_do_analista(v) for v in corpo.get("vinculos", [])],
+        cortada=bool(corpo.get("cortada", False)),
+        fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
+        limites=list(limites),
+    )
+
+
 class EmpresaDaBuscaV1(BaseModel):
     """Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão
     não serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita."""
