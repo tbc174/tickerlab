@@ -6069,7 +6069,7 @@
       "tabela": "cnpj_situacao_especial",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "2.0.0",
+      "versao": "2.1.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -6102,6 +6102,10 @@
         "disponivel_em": {
           "descricao": "Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo baixado depois)",
           "unidade": "data (dia)"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada no dia da montagem não tem (ADR 0075): a linha não sai da porta",
+          "unidade": "verdadeiro ou falso"
         },
         "origem_sha256": {
           "descricao": "SHA-256 do arquivo original no acervo",
@@ -6141,7 +6145,8 @@
       "revenda": "vendável com atribuição à fonte",
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
-      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
+      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "cnpj_situacao_cadastral": {
       "tabela": "cnpj_situacao_cadastral",
@@ -6976,7 +6981,7 @@
       "tabela": "cnpj_empresas_pj",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cnpj_basico": {
           "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
@@ -6993,6 +6998,14 @@
         "porte": {
           "descricao": "nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita)",
           "unidade": "texto"
+        },
+        "capital_social": {
+          "descricao": "Capital social declarado à Receita (aproximação do porte, não é faturamento; 0 se ilegível)",
+          "unidade": "reais (R$)"
+        },
+        "n_estabelecimentos": {
+          "descricao": "Estabelecimentos ativos da raiz (matriz e filiais) no retrato, contados na montagem",
+          "unidade": "número inteiro"
         },
         "mes_do_retrato": {
           "descricao": "Mês do arquivo da Receita de onde a linha veio",
@@ -14169,7 +14182,7 @@
       "tabela": "trocas_de_auditor",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -14211,6 +14224,10 @@
           "descricao": "Número na CVM do FCA que mostrou a troca",
           "unidade": "texto"
         },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro quando o auditor anterior ou o novo vem sem CNPJ de firma (pode ser pessoa física) ou tem a raiz de empresário individual, natureza do grupo 4 ou MEI, ou quando a Receita guardada no dia da montagem não tem a raiz da empresa ou da firma (ADR 0075): a linha não sai da porta",
+          "unidade": "verdadeiro ou falso"
+        },
         "montado_em": {
           "descricao": "Quando a tabela foi montada",
           "unidade": "data e hora (UTC)"
@@ -14240,7 +14257,8 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Refeita a cada montagem de `auditores`",
-      "atraso": "A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)"
+      "atraso": "A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "curva_juros": {
       "tabela": "curva_juros",

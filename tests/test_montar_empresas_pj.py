@@ -1,12 +1,15 @@
 """Montagem das tabelas sem pessoa do CNPJ (linha 584): arquivos de mentira, sem internet."""
 
 import json
+import shutil
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
+from base.receita_retrato import ErroDeLayout
 from scripts import montar_empresas_pj as montar
 
 EMPRESAS = (
@@ -63,6 +66,10 @@ def test_monta_as_duas_tabelas_sem_pessoa(tmp_path):
     assert list(vista["cnpj_basico"]) == ["33000167"]
     assert "logradouro" not in vista.columns
     assert "FULANO" not in empresas.to_csv()
+    # capital lido do arquivo e estabelecimentos ativos contados na vista (a MEI nem entra nela)
+    petroleo = empresas[empresas["cnpj_basico"] == "33000167"].iloc[0]
+    assert petroleo["capital_social"] == 1000.0
+    assert petroleo["n_estabelecimentos"] == 1
 
 
 def test_remontar_o_mesmo_mes_nao_regrava(tmp_path):
@@ -87,3 +94,10 @@ def test_carregar_usa_pasta_temporaria_e_so_deixa_as_tabelas_novas(tmp_path):
         montar.EMPRESAS,
         montar.ESTABELECIMENTOS,
     ]
+
+
+def test_sem_a_tabela_do_simples_inteira_a_montagem_para(tmp_path):
+    cnpj, arquivo_zip = _base(tmp_path)
+    shutil.rmtree(cnpj / "vigente" / "simples")
+    with pytest.raises(ErroDeLayout):
+        montar.montar(cnpj, tmp_path / "base", "2026-10", [arquivo_zip], AGORA)

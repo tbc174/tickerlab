@@ -199,6 +199,8 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     if api_v1_ligada(ambiente):
         # só aqui: as contas da v1 carregam o pandas, e desligada a API continua leve
         from src.api_v1.acesso import CABECALHO_DO_MOTIVO
+        from src.api_v1.analista import router as router_do_analista
+        from src.api_v1.analista_pessoas import router as router_das_pessoas
         from src.api_v1.base_publica import router as router_da_base_publica
         from src.api_v1.base_tabelas import router as router_das_tabelas_da_base
         from src.api_v1.compartilhados import router as router_compartilhados
@@ -206,6 +208,7 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
         from src.api_v1.entrada import router as router_da_entrada
         from src.api_v1.estudos import router as router_dos_estudos
         from src.api_v1.ferramentas import router as router_das_ferramentas
+        from src.api_v1.o_que_mudou import router as router_do_que_mudou
         from src.api_v1.rotas import router as router_v1
         from src.api_v1.sala import router as router_da_sala
         from src.api_v1.sala_garantias import router as router_das_garantias
@@ -238,6 +241,9 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
             router_do_painel_da_sala,
             router_do_trabalho_na_sala,
             router_das_garantias,
+            router_do_analista,
+            router_das_pessoas,
+            router_do_que_mudou,
         ):
             nova.include_router(rotas)
             nova.include_router(rotas, prefix="/api")

@@ -974,3 +974,90 @@ export interface PainelDoCafeV1 {
   calendario: BlocoDoCafeV1<CalendarioDoCafeV1>;
   contrapartes: BlocoDoCafeV1<ContrapartesDoCafeV1>;
 }
+
+/** Um campo da ficha do CNPJ (tela do analista): o valor, a fonte e o dia em que ficou público. */
+export interface CampoComFonteV1 {
+  valor: string | number | boolean | null;
+  fonte: string;
+  publico_em: string; // AAAA-MM-DD
+  visto_em: string | null;
+}
+
+/** Uma fonte usada na ficha, com a licença e a frase de atribuição que ela pede. */
+export interface FonteDaFichaV1 {
+  fonte: string;
+  licenca: string;
+  atribuicao: string;
+}
+
+/** A ficha como a base a conhecia no dia (as chaves do leitor da API externa, em português). */
+export interface FichaDoCnpjV1 {
+  cnpj: string;
+  como_era_em: string; // AAAA-MM-DD
+  cadastro_na_receita: Record<string, CampoComFonteV1>;
+  entregas?: Record<string, CampoComFonteV1>[] | null; // só da companhia aberta (DFP e ITR)
+}
+
+/** A ficha da empresa (tela do analista, POST /v1/analista/ficha): o estado decide o que a tela mostra. */
+export interface BlocoDaFichaV1 {
+  titulo: string;
+  fonte: string;
+  o_que_traz: string;
+}
+
+export interface FichaDaEmpresaV1 {
+  // nao_liberada: o dado ainda não foi liberado; nao_disponivel: a base não serve este CNPJ
+  estado: "pronta" | "nao_liberada" | "nao_disponivel";
+  ficha: FichaDoCnpjV1 | null;
+  fontes: FonteDaFichaV1[];
+  limites: string[]; // "Limites e cuidados": sempre presentes
+  o_que_vem: BlocoDaFichaV1[]; // os blocos da ficha e a fonte de cada um, para quando o dado não sai
+}
+
+// O que mudou (linha 804): uma linha por entrega, a mais nova primeiro; url é o endereço da página no app
+export interface EntregaDoDiaV1 {
+  data: string;
+  o_que: string;
+  titulo: string;
+  url: string;
+}
+
+export interface OQueMudouV1 {
+  entregas: EntregaDoDiaV1[];
+}
+
+// Encontrar empresas (tela do analista, linha 798): a matriz ativa por setor, UF e idade mínima. Cada campo
+// vem no envelope (null se o portão não serve); os *_descricao/_nome são os nomes da Receita ao lado do código
+export interface EmpresaDaBuscaV1 {
+  cnpj: string;
+  razao_social: CampoComFonteV1 | null;
+  natureza_juridica: CampoComFonteV1 | null;
+  porte: CampoComFonteV1 | null;
+  situacao_cadastral: CampoComFonteV1 | null;
+  data_inicio_atividade: CampoComFonteV1 | null;
+  cnae_principal: CampoComFonteV1 | null;
+  uf: CampoComFonteV1 | null;
+  municipio: CampoComFonteV1 | null;
+  matriz: CampoComFonteV1 | null;
+  cnae_descricao: string | null;
+  municipio_nome: string | null;
+  porte_descricao: string | null;
+}
+
+export interface SetorDaBuscaV1 {
+  codigo: string; // a letra da seção do CNAE (IBGE)
+  nome: string;
+}
+
+export interface BuscaDeEmpresasV1 {
+  // sem_filtro: nada foi lido (o formulário abre assim); nao_liberada: o dado ainda não foi liberado
+  estado: "pronta" | "sem_filtro" | "nao_liberada";
+  como_era_em: string | null;
+  empresas: EmpresaDaBuscaV1[];
+  cortada: boolean;
+  proximo_cursor: string | null;
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+  setores: SetorDaBuscaV1[];
+  ufs: string[];
+}

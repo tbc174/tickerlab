@@ -176,6 +176,35 @@ class Porta:
             )
         return hashes
 
+    def nomes_de_pessoa_da_rede(self) -> list[str]:
+        """Os nomes que o acervo guarda das entidades que a rede trata como pessoa (marca vazia
+        conta como pessoa), que a view `entidades` esconde na saída (linha 787). Só para a trava que
+        barra um texto que cite um deles (a ficha do dossiê); nunca para servir: nenhuma rota chama
+        isto. Sem a rede ou sem as colunas, nenhum."""
+        padrao = self.arquivos.get("entidades")
+        arquivos = (
+            [a.as_posix() for a in arquivos_da_tabela(self.pasta, padrao)]
+            if padrao
+            else []
+        )
+        if not arquivos:
+            return []
+        colunas = {
+            nome
+            for nome, *_ in self.con.execute(
+                "DESCRIBE SELECT * FROM read_parquet($arquivos, union_by_name=true)",
+                {"arquivos": arquivos},
+            ).fetchall()
+        }
+        if not {"nome", "trata_como_pessoa"} <= colunas:
+            return []
+        linhas = self.con.execute(
+            "SELECT DISTINCT nome FROM read_parquet($arquivos, union_by_name=true) "
+            "WHERE coalesce(trata_como_pessoa, true) AND nome IS NOT NULL",
+            {"arquivos": arquivos},
+        ).fetchall()
+        return sorted(nome for (nome,) in linhas)
+
     def _onde(
         self,
         tabela: str,

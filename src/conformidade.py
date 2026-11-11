@@ -14,6 +14,9 @@ from src import auditoria
 from src.banco import novidades_por_email
 from src.banco.compartilhamentos import dados_para_exportar as links_para_exportar
 from src.banco.garantias import dados_para_exportar as garantias_para_exportar
+from src.banco.membros_da_organizacao import (
+    dados_para_exportar as organizacao_para_exportar,
+)
 from src.banco.modelo import (
     alertas,
     assinaturas,
@@ -187,6 +190,8 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         "originacao": originacao_para_exportar(conexao, usuario_id=usuario_id),
         # as garantias das operações (B-17): exposição, haircut, validade e o laudo citado
         "garantias": garantias_para_exportar(conexao, usuario_id=usuario_id),
+        # a organização de que a conta é membro (ADR 0128, Emenda 1): o nome dela e desde quando
+        "organizacao": organizacao_para_exportar(conexao, usuario_id=usuario_id),
         "origem_do_cadastro": _origem_do_cadastro(conexao, usuario_id),
         "favoritos": [
             l.ticker

@@ -19,7 +19,7 @@ from typing import Annotated
 
 import duckdb
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from base import porta as porta_da_base
@@ -29,11 +29,13 @@ from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organiz
 from src.api_externa.conjuntos import (
     Permitido,
     Servido,
+    comparaveis,
     credito,
     demonstracoes,
     empresas,
     ficha,
     fundos,
+    prospeccao,
     setores,
 )
 from src.api_externa.envelope import fontes_da_resposta
@@ -331,6 +333,54 @@ def _leitor_de_empresas(
     )
 
 
+@router.get("/companies")
+def busca_de_empresas(
+    contexto: Chave,
+    cnae: Annotated[list[str], Query()] = [],  # noqa: B006 - o FastAPI copia o padrão
+    state: Annotated[list[str], Query()] = [],  # noqa: B006
+    municipality: Annotated[list[str], Query()] = [],  # noqa: B006
+    size: Annotated[list[str], Query()] = [],  # noqa: B006
+    legal_nature: Annotated[list[str], Query()] = [],  # noqa: B006
+    registration_status: Annotated[list[str], Query()] = [],  # noqa: B006
+    opened_before: date | None = None,
+    opened_after: date | None = None,
+    head_office: bool | None = None,
+    capital_min: float | None = None,
+    capital_max: float | None = None,
+    branches_min: int | None = None,
+    sort: str | None = None,
+    cursor: str | None = None,
+    limit: int | None = None,
+    known_at: date | None = None,
+) -> object:
+    """Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),
+    UF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,
+    `capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que
+    valia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,
+    por CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um
+    filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte."""
+    dia = _dia_pedido(known_at)
+    try:
+        busca = prospeccao.busca_dos_pedidos(
+            cnae=cnae, state=state, municipality=municipality, size=size,
+            legal_nature=legal_nature, registration_status=registration_status,
+            opened_before=opened_before, opened_after=opened_after, head_office=head_office,
+            cursor=cursor, limit=limit, capital_min=capital_min, capital_max=capital_max,
+            branches_min=branches_min, sort=sort,
+        )  # fmt: skip
+    except prospeccao.FiltroInvalido as erro:
+        raise _recusa(erro.codigo) from erro
+    return _um_pedido(
+        contexto,
+        prospeccao.CONJUNTO,
+        lambda conexao, porta: prospeccao.LeitorDeProspeccao(
+            porta,
+            _portao(conexao, contexto, prospeccao.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).buscar(busca, dia),
+    )
+
+
 # antes de `/companies/{cnpj}` só por clareza: um é POST, o outro GET
 @router.post("/companies/batch")
 def lote_de_empresas(pedido: LoteDeEmpresas, contexto: Chave) -> object:
@@ -374,6 +424,27 @@ def perfil_da_empresa(
         lambda conexao, porta: ficha.LeitorDeFicha(
             porta, _portao(conexao, contexto, ficha.CONJUNTO)
         ).ficha(numeros, dia),
+    )
+
+
+@router.get("/companies/{cnpj}/comparables")
+def comparaveis_da_empresa(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> object:
+    """Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores
+    (pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida
+    líquida e as razões), e a mediana de cada razão entre os pares. Empresa sem FCA no dia, MEI,
+    empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    return _um_pedido(
+        contexto,
+        comparaveis.CONJUNTO,
+        lambda conexao, porta: comparaveis.LeitorDeComparaveis(
+            porta,
+            _portao(conexao, contexto, comparaveis.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).comparaveis(numeros, dia),
     )
 
 

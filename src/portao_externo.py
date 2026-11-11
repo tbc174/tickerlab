@@ -279,6 +279,36 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
         _PROVA_RECEITA,
     ),
+    # prospecting (linha 794): a busca de empresas. Lê só as duas tabelas sem pessoa do CNPJ (linha 584:
+    # `cnpj_empresas_pj` e `cnpj_estabelecimentos_pj`, sem empresário individual, grupo 4, MEI, endereço fino
+    # nem contato); por isso a linha de direito vale para o campo inteiro.
+    *_campos(
+        ("rfb-cnpj",),
+        "prospecting",
+        ("cnpj_empresas_pj",),
+        (
+            "razao_social",
+            "natureza_juridica",
+            "porte",
+            "capital_social",
+            "n_estabelecimentos",
+        ),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "prospecting",
+        ("cnpj_estabelecimentos_pj",),
+        (
+            "situacao_cadastral",
+            "data_inicio_atividade",
+            "cnae_principal",
+            "uf",
+            "municipio",
+            "matriz",
+        ),
+        _PROVA_RECEITA,
+    ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),
         "financials",
@@ -452,6 +482,35 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "primeira_entrega",
             "dias_uteis_de_atraso",
             "situacao_da_entrega",
+        ),
+        _PROVA_CVM,
+    ),
+    # comparables (linha 736, PR 3): os pares da companhia aberta. O setor vem do FCA como era
+    # (`fca_geral`), com o grupo de setores do app (conta nossa); os números, do DFP como era
+    # (`demonstracoes_como_era`), com EBITDA, dívida líquida e as razões (contas nossas sobre as linhas).
+    # Quem é pessoa sai antes, pela rede (`conjuntos/comparaveis.py`).
+    *_campos(
+        ("cvm-hist-fca",),
+        "comparables",
+        ("fca_geral",),
+        ("cnpj", "empresa", "setor", "grupo_de_setores"),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-dfp",),
+        "comparables",
+        ("demonstracoes_como_era",),
+        (
+            "exercicio",
+            "receita",
+            "ebitda",
+            "lucro_liquido",
+            "patrimonio_liquido",
+            "divida_liquida",
+            "margem_ebitda",
+            "margem_liquida",
+            "roe",
+            "divida_liquida_sobre_ebitda",
         ),
         _PROVA_CVM,
     ),
