@@ -99,8 +99,8 @@ aparecerem.
 
 A IA usa a **Ficha da empresa** duas vezes ("como era em" e hoje) e, se couber, as **Demonstrações**.
 
-Em todo roteiro, peça a fonte e a data de cada informação. A IA separa o que a base diz do que ela
-deduz, mas confira antes de levar para um material.
+Em todo roteiro, peça a fonte e a data de cada informação. Peça à IA que separe o que a base diz do
+que ela deduz, e confira antes de levar para um material.
 
 ## Limites e cuidados
 
