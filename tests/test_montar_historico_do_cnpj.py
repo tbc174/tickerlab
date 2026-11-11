@@ -367,3 +367,95 @@ def test_a_porta_le_a_situacao_como_era_sem_o_futuro(tmp_path):
     assert situacao_em(date(2023, 5, 30)) == []
     assert situacao_em(date(2023, 7, 30)) == ["02"]
     assert situacao_em(date(2023, 7, 31)) == ["02", "04"]
+
+
+# --- Situação só do vigente (linha 841, plano de segunda da Diretoria) -------------------------------------
+def test_situacao_so_do_vigente_da_uma_versao_por_estabelecimento_do_mes_dele(tmp_path):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    montar.montar_situacao(cnpj, destino, AGORA, so_vigente=True)
+    versoes = _situacoes(destino)
+    # a OUTRA saiu do arquivo antes do vigente: sem a série, não tem versão; o MEI nunca entra
+    assert list(versoes["cnpj"]) == ["11.111.111/0001-11"]
+    assert list(versoes[historico.MES]) == [MESES[-1]]
+    assert list(versoes["situacao_cadastral"]) == ["04"]
+    assert list(versoes[historico.CONSTA]) == [True]
+    assert list(versoes["origem_sha256"]) == [f"est-{MESES[-1]}"]
+    assert "nome_fantasia" not in versoes.columns and "telefone" not in versoes.columns
+    assert not (destino / montar.SITUACAO / montar.TRABALHO).exists()
+
+
+def test_situacao_so_do_vigente_nem_le_as_mudancas(tmp_path, monkeypatch):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    # uma mudança quebrada (a cadeia de 2024-11 no servidor) não pode derrubar o modo só do vigente
+    quebrada = cnpj / "mudancas" / "estabelecimentos" / f"{MESES[1]}.parquet"
+    quebrada.write_bytes(b"nao e parquet")
+
+    def nao_leia(*_argumentos):
+        raise AssertionError("o modo só do vigente leu as mudanças")
+
+    monkeypatch.setattr(montar, "_repartir_mudancas_de_estabelecimentos", nao_leia)
+    contagem = montar.montar_situacao(cnpj, destino, AGORA, so_vigente=True)
+    assert contagem == {"11": 1}
+
+
+def test_situacao_so_do_vigente_com_a_lista_de_outro_mes_para(tmp_path):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino, mes="2023-06")
+    with pytest.raises(montar.ListaSemPessoaForaDoMes):
+        montar.montar_situacao(cnpj, destino, AGORA, so_vigente=True)
+    assert not (destino / montar.SITUACAO / "11.parquet").exists()
+
+
+def test_main_da_situacao_so_do_vigente(tmp_path):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    argumentos = ["situacao", "--cnpj", str(cnpj), "--destino", str(destino)]
+    assert montar.main([*argumentos, "--so-vigente"]) == 0
+    assert set(_situacoes(destino)[historico.MES]) == {MESES[-1]}
+
+
+def test_a_porta_le_a_situacao_so_do_vigente_so_depois_do_retrato(tmp_path):
+    """Sem olhar o futuro: antes do último dia do mês do vigente, nada sai (a ficha dá not_available)."""
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    montar.montar_situacao(cnpj, destino, AGORA, so_vigente=True)
+    porta = Porta(destino, None)
+
+    def situacao_em(dia: date) -> list[str]:
+        linhas = porta.ler(
+            "cnpj_situacao_cadastral",
+            como_era_em=dia,
+            filtros={"cnpj": "11.111.111/0001-11"},
+        )
+        return list(linhas["situacao_cadastral"])
+
+    assert situacao_em(date(2023, 5, 30)) == []
+    assert situacao_em(date(2023, 7, 30)) == []
+    assert situacao_em(date(2023, 7, 31)) == ["04"]
+
+
+def test_a_serie_completa_depois_do_so_vigente_tem_o_mesmo_contrato(tmp_path):
+    cnpj, destino = _base_com_estabelecimentos(tmp_path / "cnpj"), tmp_path / "base"
+    _lista_sem_pessoa(destino)
+    montar.montar_situacao(cnpj, destino, AGORA, so_vigente=True)
+    so_vigente = _situacoes(destino)
+    (destino / montar.SITUACAO).rename(
+        destino / "situacao-so-vigente"
+    )  # movida para o lado, como manda o uso
+    montar.montar_situacao(cnpj, destino, AGORA)
+    completa = _situacoes(destino)
+    assert list(completa.columns) == list(so_vigente.columns)
+    assert dict(completa.dtypes) == dict(so_vigente.dtypes)
+    # a versão que vale hoje é a mesma nos dois modos
+    ultima = completa.sort_values(historico.MES).groupby("cnpj").tail(1)
+    ultima = ultima[ultima[historico.CONSTA]]
+    colunas = [
+        "cnpj",
+        "situacao_cadastral",
+        "data_situacao_cadastral",
+        "motivo_situacao",
+        "matriz",
+    ]
+    assert ultima[colunas].reset_index(drop=True).equals(so_vigente[colunas])
