@@ -6,7 +6,8 @@ Duas APIs, no mesmo serviço FastAPI (`src/api.py`):
 - **API externa de dados (`/data/v1`, TickerLab Data)**, para quem integra: a organização entra pela
   chave dela. Ver [a seção dela](#api-externa-de-dados-datav1).
 
-As duas estão **desligadas** em produção.
+Em produção, a de leitura está **no ar** e serve o app; a externa segue **desligada**. Cada uma só
+entra no serviço com a variável dela (`TICKERLAB_API_V1=1` e `TICKERLAB_API_EXTERNA=1`).
 
 # API de leitura (v1)
 
@@ -14,8 +15,9 @@ A interface nova do TickerLab (React, ADR 0048) não calcula nada: ela pede os n
 chama as mesmas funções de `src/` que as telas do Streamlit usam. Assim, o número na tela nova é o
 mesmo da tela antiga.
 
-**Estado:** pronta e **desligada** em produção. Ela só responde com `TICKERLAB_API_V1=1` e
-`TICKERLAB_GOOGLE_CLIENT_ID` no ambiente; sem isso, toda rota `/api/v1/...` responde 404.
+**Estado:** **no ar** em produção, servindo o app (com login). As rotas só são montadas com
+`TICKERLAB_API_V1=1` no ambiente; sem isso, toda rota `/api/v1/...` responde 404. O login pelo Google
+precisa também de `TICKERLAB_GOOGLE_CLIENT_ID`; sem ele, responde 503.
 
 ## Onde está cada coisa
 
@@ -120,12 +122,13 @@ quando o IP passa do limite por minuto; 503 quando a porta não abre, a tabela n
 as portas ao mesmo tempo estão todas ocupadas (no máximo 2 por processo, cada uma com 512MB e 2
 threads do DuckDB: o contêiner é pequeno e serve também o webhook).
 
-**Em produção isto ainda não responde:** a API v1 está desligada (`TICKERLAB_API_V1=1` liga) e o
-contêiner da API (`compose.yaml`, serviço `tickerlab-api`) não monta o acervo da base; para a página
-Dados consultar de verdade, a API precisa de `TICKERLAB_ACERVO` apontando para a cópia da base montada
-no contêiner. Até lá, a página Dados não mostra a coluna "Consulta", a frase nem o painel: eles nascem
-escondidos e só aparecem quando `GET /api/v1/base/tabelas` responde. A `fidc_informe` (410 colunas)
-não cabe nos 512MB da porta nem numa leitura simples: a consulta dela dá 503 até um PR próprio.
+**Em produção, estas rotas dependem da base montada no contêiner:** a API v1 está no ar, e o contêiner
+da API (`compose.yaml`, serviço `tickerlab-api`) lê a base de `TICKERLAB_ACERVO`, uma pasta só de
+leitura com o recorte sem pessoa que `scripts/montar_recorte_da_api.py` envia. Com a pasta ausente ou
+vazia, a API sobe igual e estas rotas respondem 503; a tabela que não está no recorte também dá 503.
+Na página Dados, a coluna "Consulta", a frase e o painel nascem escondidos e só aparecem quando
+`GET /api/v1/base/tabelas` responde. A `fidc_informe` (410 colunas) não cabe nos 512MB da porta nem
+numa leitura simples e fica fora do recorte: a consulta aberta não a anuncia nem a serve (404, como as outras 14 da linha 842) até ter prontidão.
 
 Sem `taxa`, a taxa livre de risco é o CDI do período (zero se o Banco Central não responder), como
 na tela. Toda resposta traz `ativo` com o período real, a origem dos preços (`atual`,
@@ -197,6 +200,7 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 | `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 | `GET /data/v1/companies/{cnpj}/profile` | o perfil da empresa: o cadastro na Receita e as entregas de DFP e ITR à CVM como eram (`profiles`, ver abaixo) | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/comparables` | os pares da companhia aberta no mesmo grupo de setores, com os números do último DFP e a mediana de cada razão (`comparables`, ver abaixo) | sim, 1 |
+| `GET /data/v1/companies/{cnpj}/links` | os vínculos da empresa na rede (controle, coligação e participação pelo FRE, auditoria pelo FCA), de 1 a 3 saltos (`links`, ver abaixo); `depth` e `types` | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/events` | os documentos da companhia no IPE da CVM e as trocas de auditor, do mais novo ao mais velho (`events`, ver abaixo); `types` filtra, `cursor` pega a página seguinte | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/financials` | as DFP e os ITR da companhia, um valor por conta e período (`financials`); `period_end` filtra o período | sim |
 | `GET /data/v1/funds/{cnpj}` | taxas, custo da taxa e carteira do fundo (`funds`); o custo só com `assumed_return` | sim |
@@ -289,6 +293,27 @@ filtra. A página vai até o limite de linhas do plano (`truncated`); `next_curs
 nem repetir evento. A rotulagem de insolvência nunca sai (inferência
 individual); a empresa sem eventos não quer dizer que nada aconteceu. Pessoa (MEI, empresário individual) e
 quem a rede não conhece saem `not_available`.
+
+### Vínculos (`links`, linha 736)
+
+Os vínculos de uma empresa como eram no dia (`conjuntos/vinculos.py`), lidos da rede de entidades do TickerLab
+(ADR 0077) de 1 a 3 saltos (`depth`), nos dois sentidos:
+
+- `subsidiary_of`, `affiliate_of` e `investee_of`: a sociedade controlada, coligada ou só participada da outra
+  (`from` é a controlada; `to`, quem a controla), com `ownership_pct`, como o FRE informou (`controladas`, fonte
+  `cvm-hist-fre`);
+- `audits`: a firma de auditoria (`from`) que auditava a companhia (`to`), pelo FCA (`auditores`, fonte
+  `cvm-hist-fca`).
+
+Cada vínculo traz `hops` (o salto a partir da empresa pedida), `kind` (o tipo, no envelope, com a fonte e o
+dia em que ficou público), `valid_from` e, quando acabou, `valid_until`. Cada ponta sai com `entity_id` (o id
+na rede), `cnpj_root` e `legal_name`: a razão social que valia em `known_at`, do histórico datado da Receita
+(`rfb-cnpj`, o mesmo de `GET /companies/{cnpj}`, que começa em 05/2023; antes dele, ou numa ponta sem CNPJ, a
+ponta sai sem nome). Nada publicado depois de `known_at` entra, e o fim que só se soube depois do dia não aparece. `types` filtra (repetível); a
+lista vai até o limite de linhas do plano (`truncated`). O fundo que detém o papel, o conglomerado do Banco
+Central e a série do regulador não saem por aqui. A ponta que é pessoa (MEI, empresário individual, sócio
+pessoa física) ou que a rede trata como pessoa não sai, nem a ligação com ela; a empresa sem vínculos não quer
+dizer que ela não tenha grupo. Pessoa e quem a rede não conhece saem `not_available`.
 
 ### Ficha de crédito (`credit`, linha 754)
 

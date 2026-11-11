@@ -91,6 +91,9 @@ def _retratos(linhas=RETRATOS) -> pd.DataFrame:
     tabela["cnpj_basico"] = tabela["cnpj"].str[:8]
     tabela["cnpj"] = tabela["cnpj"].map(_formatado)
     tabela["matriz"] = True
+    tabela["consta"] = (
+        True  # uma linha por versão (linha 841); falso: saiu do arquivo da Receita
+    )
     tabela["data_situacao_cadastral"] = pd.to_datetime(
         tabela["data_situacao_cadastral"]
     ).dt.date
@@ -358,6 +361,25 @@ def test_known_at_ve_o_retrato_que_ja_era_publico(
 
 def test_known_at_antes_do_retrato_da_not_available(cliente, cenario, banco):
     resposta = _get(cliente, cenario, known_at="2025-01-30")
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_cnpj_que_saiu_do_arquivo_da_receita_da_not_available(
+    tmp_path, cenario, monkeypatch
+):
+    """A versão de quem saiu do arquivo vem sem campos e com `consta` falso: dali em diante, nada sai."""
+    saiu = _retratos([(EMPRESA, "02", "2010-05-01", "00", "2025-09", "2025-09-15")])
+    saiu[["situacao_cadastral", "motivo_situacao"]] = None
+    saiu = saiu.astype({"situacao_cadastral": "string", "motivo_situacao": "string"})
+    saiu = saiu.assign(consta=False, matriz=pd.array([None], dtype="boolean"))
+    base = tmp_path / "saiu"
+    _gravar_base(base, pd.concat([_retratos(), saiu], ignore_index=True))
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    antes = _get(cliente, cenario, known_at="2025-09-29").json()
+    assert antes["registration_status"]["value"] == "08"
+    resposta = _get(cliente, cenario, known_at="2025-09-30")
     assert resposta.status_code == 404
     assert resposta.json() == {"detail": "not_available"}
 

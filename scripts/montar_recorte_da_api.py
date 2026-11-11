@@ -35,8 +35,20 @@ from pathlib import Path
 import duckdb
 
 from base.dicionario import TABELAS
-from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
-from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
+from base.dossie import (
+    COLUNAS_DE_PESSOA,
+    SO_PELA_API_EXTERNA,
+    pode_consultar,
+    pode_mostrar,
+    tem_dia_publico,
+)
+from base.porta.duckdb import (
+    ARQUIVOS,
+    PASTA_TEMPORARIA,
+    arquivos_da_tabela,
+    servida_pela_porta,
+)
+from base.rede.entidades import EMPRESARIO_INDIVIDUAL, GRUPO_DAS_PESSOAS_FISICAS
 from src import acervo
 
 log = logging.getLogger("montar_recorte_da_api")
@@ -74,9 +86,6 @@ FICAM_EM_CASA = (
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
-    # sem pessoa por desenho (linha 584), mas ir ao VPS é decisão do recorte (739): até lá ficam em casa
-    "cnpj_empresas_pj",
-    "cnpj_estabelecimentos_pj",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
@@ -98,6 +107,16 @@ DEGRAU_2_ACRESCENTA = (
     "rotulos_atraso", "securitizacao_cedente_devedor", "securitizacao_certificados",
     "sus_ambulatorial", "sus_internacoes", "susep_seguros", "tickers_no_tempo",
     "usda_psd_cafe", "valores_mobiliarios",
+    # sem pessoa por desenho (linha 584): 213-5, grupo 4 e CPF fora na origem; o MEI com natureza de empresa sai aqui (`tirar_raizes_de_mei`); a saída ainda é conferida
+    # aqui (`conferir_sem_pessoa_do_cnpj`). Pode da Diretoria, 10/11/2026 18h31 (Emenda 4), linha 796.
+    "cnpj_empresas_pj", "cnpj_estabelecimentos_pj",
+    # sem pessoa por desenho (linha 810, PR 2): sócia PJ de empresa PJ, só para a API externa (a consulta aberta
+    # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_raizes_so_pj`
+    # exige `cnpj_empresas_pj` na mesma saída. Pode da Diretoria, 11/11/2026 (Emenda 4).
+    "entradas_de_socio_pj",
+    # sem pessoa por desenho (linha 841): só das raízes de `cnpj_estabelecimentos_pj`, só para a API externa
+    # (ficha por CNPJ e crédito). A mesma guarda (`conferir_raizes_so_pj`) confere cada raiz na saída.
+    "cnpj_situacao_cadastral",
 )  # fmt: skip
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
@@ -139,7 +158,15 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
             raise RecorteErro(f"{nome}: tabela de pessoa natural")
         if nome in FICAM_EM_CASA:
             raise RecorteErro(f"{nome}: fica em casa")
-        if nome not in DEGRAU_1 and not pode_consultar(nome):
+        if nome in SO_PELA_API_EXTERNA:
+            # fora da consulta aberta só por estar nesta lista: o resto da regra de consultar ainda vale
+            if not (
+                pode_mostrar(nome)
+                and servida_pela_porta(nome)
+                and tem_dia_publico(nome)
+            ):
+                raise RecorteErro(f"{nome}: a API externa não pode servi-la")
+        elif nome not in DEGRAU_1 and not pode_consultar(nome):
             raise RecorteErro(f"{nome}: a consulta aberta não a libera")
         if ARQUIVOS[nome].split("/")[0] in PASTAS_PROIBIDAS:
             raise RecorteErro(f"{nome}: mora em pasta proibida")
@@ -239,12 +266,156 @@ def conferir_saida(con: duckdb.DuckDBPyConnection, nome: str, arquivo: Path) -> 
         raise RecorteErro(f"{nome}: {arquivo.name} saiu com linha de pessoa")
 
 
+# Os mesmos padrões de `base.receita_empresas.NUMERO_COMPRIDO_DE_PESSOA`, na sintaxe do DuckDB (RE2).
+_NUMERO_DE_PESSOA = r"(^|\D)(\d{11,12}|\d{3}[.\s]?\d{3}[.\s]?\d{3}[-./\s]?\d{2})(\D|$)"
+
+
+def conferir_sem_pessoa_do_cnpj(
+    con: duckdb.DuckDBPyConnection, nome: str, arquivo: Path
+) -> None:
+    """Na saída de `cnpj_empresas_pj`: nenhum 213-5, grupo 4 ou número de CPF na razão social."""
+    if nome != "cnpj_empresas_pj":
+        return
+    fonte = f"read_parquet({_aspas(arquivo.as_posix())})"
+    achadas = con.execute(
+        f"SELECT count(*) FROM {fonte} WHERE trim(natureza_juridica) = '{EMPRESARIO_INDIVIDUAL}' "
+        f"OR trim(natureza_juridica) LIKE '{GRUPO_DAS_PESSOAS_FISICAS}%' "
+        f"OR regexp_matches(razao_social, '{_NUMERO_DE_PESSOA}')"
+    ).fetchone()
+    if achadas and achadas[0]:
+        raise RecorteErro(
+            f"{nome}: {arquivo.name} saiu com pessoa ({achadas[0]} linha(s))"
+        )
+
+
+def tirar_raizes_de_mei(
+    con: duckdb.DuckDBPyConnection, saida: Path, tabelas: tuple[str, ...]
+) -> int:
+    """Em `cnpj_empresas_pj` da saída, deixa só a raiz que tem estabelecimento em `cnpj_estabelecimentos_pj`.
+
+    A vista de estabelecimentos já tira o MEI (opção pelo Simples), mas a tabela de empresas só tira por
+    natureza: MEI com natureza de empresa tem a razão social = nome da pessoa (revisão cruzada, 10/11/2026).
+    As duas vão juntas ou nenhuma; devolve as linhas tiradas.
+    """
+    if "cnpj_empresas_pj" not in tabelas:
+        return 0
+    if "cnpj_estabelecimentos_pj" not in tabelas:
+        raise RecorteErro("cnpj_empresas_pj só vai junto com cnpj_estabelecimentos_pj")
+    tiradas = 0
+    for arquivo in sorted((saida / "cnpj_empresas_pj").glob("*.parquet")):
+        estab = saida / "cnpj_estabelecimentos_pj" / arquivo.name
+        if not estab.is_file():
+            raise RecorteErro(
+                f"{arquivo.name}: sem estabelecimentos para conferir o MEI"
+            )
+        ficam = (
+            f"SELECT * FROM read_parquet({_aspas(arquivo.as_posix())}) "
+            f"WHERE cnpj_basico IN (SELECT cnpj_basico FROM read_parquet({_aspas(estab.as_posix())}))"
+        )
+        antes = _contar(con, arquivo, "true")
+        novo = arquivo.with_suffix(".novo")
+        con.execute(
+            f"COPY ({ficam}) TO {_aspas(novo.as_posix())} (FORMAT PARQUET, COMPRESSION ZSTD)"
+        )
+        depois = _contar(con, novo, "true")
+        novo.replace(arquivo)
+        if (
+            antes != depois
+        ):  # o manifesto (hash) era do arquivo de origem: não vale mais
+            arquivo.with_suffix(SUFIXO_DO_MANIFESTO).unlink(missing_ok=True)
+        tiradas += antes - depois
+    return tiradas
+
+
+# As tabelas só de PJ por desenho e as colunas de raiz de cada uma: toda raiz tem de estar em `cnpj_empresas_pj`
+# da mesma saída (`conferir_raizes_so_pj`).
+RAIZES_SO_PJ: dict[str, tuple[str, ...]] = {
+    "entradas_de_socio_pj": (
+        "cnpj_basico",
+        "raiz_socio_pj",
+    ),  # a empresa e a sócia (linha 810)
+    "cnpj_situacao_cadastral": ("cnpj_basico",),  # o estabelecimento (linha 841)
+}
+# A tabela que também traz o CNPJ inteiro: a raiz conferida tem de ser a do CNPJ (senão a guarda olharia outra).
+CNPJ_DA_RAIZ: dict[str, str] = {"cnpj_situacao_cadastral": "cnpj"}
+
+
+def conferir_raizes_so_pj(
+    con: duckdb.DuckDBPyConnection, saida: Path, tabelas: tuple[str, ...]
+) -> None:
+    """Toda raiz das tabelas de `RAIZES_SO_PJ` da saída está em `cnpj_empresas_pj` da saída.
+
+    As tabelas são só PJ por desenho (linhas 810 e 841); a garantia não pode depender da contagem de um dia: a
+    raiz que a saída de empresas não tem (fora da lista, ou MEI tirado por `tirar_raizes_de_mei`) derruba o envio.
+    """
+    for nome, colunas in RAIZES_SO_PJ.items():
+        if nome not in tabelas:
+            continue
+        if "cnpj_empresas_pj" not in tabelas:
+            raise RecorteErro(f"{nome} só vai junto com cnpj_empresas_pj")
+        arquivos = sorted((saida / nome).glob("*.parquet"))
+        empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
+        if not arquivos:
+            continue
+        if not empresas:
+            raise RecorteErro(f"{nome} sem cnpj_empresas_pj na saída para conferir")
+        _conferir_raizes(con, nome, colunas, arquivos, empresas)
+
+
+def _conferir_raizes(
+    con: duckdb.DuckDBPyConnection,
+    nome: str,
+    colunas: tuple[str, ...],
+    arquivos: list[Path],
+    empresas: list[Path],
+) -> None:
+    lista = ", ".join(_aspas(a.as_posix()) for a in empresas)
+    fonte = ", ".join(_aspas(a.as_posix()) for a in arquivos)
+    juncoes = " ".join(
+        f'LEFT JOIN pj j{i} ON j{i}.cnpj_basico = t."{coluna}"'
+        for i, coluna in enumerate(colunas)
+    )
+    # raiz nula também é fora: a junção não acha nada
+    fora_da_lista = " OR ".join(
+        f"j{i}.cnpj_basico IS NULL" for i in range(len(colunas))
+    )
+    fora = con.execute(
+        f"WITH pj AS (SELECT DISTINCT cnpj_basico FROM read_parquet([{lista}])) "
+        f"SELECT count(*) FROM read_parquet([{fonte}]) t {juncoes} WHERE {fora_da_lista}"
+    ).fetchone()
+    if fora and fora[0]:
+        raise RecorteErro(
+            f"{nome}: {fora[0]} linha(s) com raiz fora da lista sem pessoa"
+        )
+    if nome in CNPJ_DA_RAIZ:
+        trocadas = con.execute(
+            f"SELECT count(*) FROM read_parquet([{fonte}]) "
+            f"WHERE cnpj_basico IS DISTINCT FROM "
+            f"left(regexp_replace(\"{CNPJ_DA_RAIZ[nome]}\", '[^0-9]', '', 'g'), 8)"
+        ).fetchone()
+        if trocadas and trocadas[0]:
+            raise RecorteErro(
+                f"{nome}: {trocadas[0]} linha(s) com a raiz diferente da do CNPJ"
+            )
+
+
+def conectar() -> duckdb.DuckDBPyConnection:
+    """Uma conexão do DuckDB que despeja na temporária do sistema, não em `.tmp` da pasta atual.
+
+    No cron a pasta atual é a `/app` da imagem, sem permissão de escrita: a junção da conferência das entradas
+    de sócio PJ passou da memória do contêiner e o envio de 11/11/2026 caiu ali (a porta teve a mesma falha
+    em 20/10, `base.porta.duckdb.conectar`)."""
+    con = duckdb.connect()
+    con.execute("SET temp_directory = " + _aspas(str(PASTA_TEMPORARIA)))
+    return con
+
+
 def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]:
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
     conferir_a_lista(tabelas)
     base = base.resolve()
     resultados: list[Resultado] = []
-    con = duckdb.connect()
+    con = conectar()
     try:
         for nome in tabelas:
             arquivos = arquivos_da_tabela(base, ARQUIVOS[nome])
@@ -256,6 +427,7 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
                 destino = saida / relativo
                 igual, tirou = recortar_arquivo(con, nome, origem, destino)
                 conferir_saida(con, nome, destino)
+                conferir_sem_pessoa_do_cnpj(con, nome, destino)
                 copiados += igual
                 recortados += not igual
                 tiradas += tirou
@@ -263,6 +435,10 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
             resultados.append(
                 Resultado(nome, len(arquivos), copiados, recortados, tiradas, enviados)
             )
+        tiradas_de_mei = tirar_raizes_de_mei(con, saida, tabelas)
+        if tiradas_de_mei:
+            log.info("cnpj_empresas_pj: %d raiz(es) de MEI tiradas", tiradas_de_mei)
+        conferir_raizes_so_pj(con, saida, tabelas)
     finally:
         con.close()
     return resultados

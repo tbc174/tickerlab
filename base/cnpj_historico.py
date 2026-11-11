@@ -162,10 +162,16 @@ def _em_texto(tabela: pd.DataFrame) -> np.ndarray:
 
 
 def _iguais(a: pd.DataFrame, b: pd.DataFrame) -> bool:
-    """Mesmo conteúdo, com vazio igual a vazio, sem olhar o tipo exato de cada coluna."""
+    """Mesmo conteúdo, com vazio igual a vazio, sem olhar o tipo exato de cada coluna.
+
+    O vazio se confere à parte: no pandas 3 o `map` de `_em_texto` devolve coluna de texto, e o `None`
+    volta como `nan`, que não é igual a si mesmo (uma data vazia no vigente não conferia consigo).
+    """
     if a.shape != b.shape:
         return False
-    return bool((_em_texto(a) == _em_texto(b)).all())
+    x, y = _em_texto(a), _em_texto(b)
+    vazio_x, vazio_y = pd.isna(x), pd.isna(y)
+    return bool(((x == y) | (vazio_x & vazio_y)).all() and (vazio_x == vazio_y).all())
 
 
 def conferir_com_o_vigente(

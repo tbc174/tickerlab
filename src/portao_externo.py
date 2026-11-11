@@ -532,6 +532,69 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("efetiva_em", "anterior", "novo", "anos_com_o_anterior"),
         _PROVA_CVM,
     ),
+    # links (linha 736, PR 5): as ligações da rede (`ligacoes`, ADR 0077) que vêm do FRE (controle, coligação e
+    # participação, `controladas`) e do FCA (auditoria, `auditores`), e a razão social de cada ponta como era no
+    # dia (o histórico datado da Receita; o nome da rede é o de hoje e não sai). A ponta que é pessoa ou que a
+    # rede trata como pessoa não sai (`conjuntos/vinculos.py`), e as outras ligações não são lidas.
+    *_campos(
+        ("cvm-hist-fre",),
+        "links",
+        ("ligacoes", "entidades", "identificadores"),
+        ("tipo", "participacao", "aconteceu_em", "ate"),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-fca",),
+        "links",
+        ("ligacoes", "entidades", "identificadores"),
+        ("tipo", "aconteceu_em", "ate"),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "links",
+        ("cnpj_empresas_historico",),
+        ("razao_social",),
+        _PROVA_RECEITA,
+    ),
+    # buyers (linha 810, PR 4): quem já se mexeu num setor, só pessoa jurídica. O setor e os nomes saem das
+    # duas tabelas sem pessoa do CNPJ (linha 584); as entradas, da tabela de sócios PJ (só sócio do tipo 1);
+    # o FIP, do registro de fundos da CVM; a controlada, do FRE. A linha vale para o campo inteiro.
+    *_campos(
+        ("rfb-cnpj",),
+        "buyers",
+        ("cnpj_empresas_pj",),
+        ("razao_social",),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "buyers",
+        ("cnpj_estabelecimentos_pj",),
+        ("cnae_principal", "uf"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "buyers",
+        ("entradas_de_socio_pj",),
+        ("data_entrada",),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("cvm-fidc-base",),
+        "buyers",
+        ("registro_de_fundos",),
+        ("Tipo_Fundo",),
+        _PROVA_CVM,
+    ),
+    *_campos(
+        ("cvm-hist-fre",),
+        "buyers",
+        ("controladas",),
+        ("tipo", "participacao", "referencia"),
+        _PROVA_CVM,
+    ),
 )
 
 
@@ -585,7 +648,7 @@ def regras_vigentes() -> Regras:
         coleta_e_guarda=COLETA_E_GUARDA,
         termos_lidos_em=TERMOS_LIDOS_EM,
         robots_fecha_sai=ROBOTS_FECHA_SAI_PROVISORIO,
-        prontidao=prontidao.PRONTIDAO,
+        prontidao=prontidao.registro_vigente(),
         versoes_maiores=prontidao.versoes_maiores(),
     )
 

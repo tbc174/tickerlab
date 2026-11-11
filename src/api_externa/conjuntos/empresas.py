@@ -16,6 +16,11 @@ pessoa (MEI, empresário individual e as naturezas de pessoa física, `trata_com
 conhece, o que é fundo ou outra coisa, e o conflito (o mesmo CNPJ em duas entidades) saem como
 `not_available`, igual a um CNPJ que não existe: a resposta não diz qual foi o motivo. A rede usada é a de
 hoje: quem hoje se sabe pessoa não sai nem numa data em que ainda não se sabia.
+
+Onde a rede não está (o VPS: ela fica em casa até a linha 843), a trava decide pelas listas sem pessoa da
+Receita do retrato mais novo, o mesmo nas duas (linha 584): o estabelecimento tem de estar em `cnpj_estabelecimentos_pj` (sem
+MEI) e a raiz em `cnpj_empresas_pj` (sem empresário individual nem grupo 4), com a natureza informada (a
+natureza vazia conta como pessoa, como na rede desde a linha 787). Sem a rede nem as duas listas, nada sai.
 """
 
 from dataclasses import dataclass, field
@@ -25,7 +30,9 @@ import pandas as pd
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from base.porta.duckdb import nome_da_view
 from base.porta.rede import resolver, views
+from base.rede.entidades import natureza_de_pessoa
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
 
@@ -44,6 +51,9 @@ RAIZ = "cnpj_basico"
 MES = "mes_do_retrato"
 CONSTA = "consta"
 TAMANHO_DA_RAIZ = 8
+# as listas sem pessoa de `scripts/montar_empresas_pj.py`, a trava onde a rede não está
+LISTA_DE_EMPRESAS = "cnpj_empresas_pj"
+LISTA_DE_ESTABELECIMENTOS = "cnpj_estabelecimentos_pj"
 
 
 @dataclass(frozen=True)
@@ -93,12 +103,21 @@ def _sim(valor: object) -> bool:
 
 
 def e_empresa(porta: Porta, cnpj: str) -> bool:
-    """A rede de hoje conhece o CNPJ como uma só empresa que não é pessoa; qualquer dúvida é não.
+    """O CNPJ (14 caracteres, sem pontuação) é de uma só empresa que não é pessoa; qualquer dúvida é não.
 
+    Pela rede de hoje, se a porta a tem; senão, pelas listas sem pessoa da Receita; sem nenhuma, não.
     Também serve à rota de crédito (`conjuntos/credito.py`): as duas tiram pessoa do mesmo jeito."""
+    existem = views(porta.con)
+    if "entidades" in existem:
+        return _pela_rede(porta, cnpj)
+    if {LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS} <= existem:
+        return _pelas_listas_sem_pessoa(porta, cnpj)
+    return False
+
+
+def _pela_rede(porta: Porta, cnpj: str) -> bool:
+    """A rede conhece o CNPJ como uma só entidade, empresa, que não é MEI nem tratada como pessoa."""
     con = porta.con
-    if "entidades" not in views(con):
-        return False
     try:
         id_entidade = resolver(con, cnpj, None)
     except LookupError:
@@ -113,6 +132,48 @@ def e_empresa(porta: Porta, cnpj: str) -> bool:
         return False
     tipo, mei, trata_como_pessoa = achadas[0]
     return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
+
+
+def _view(tabela: str) -> str:
+    return '"' + nome_da_view(tabela) + '"'
+
+
+def _retrato_das_duas_listas(porta: Porta) -> str | None:
+    """O mês mais novo, se é o mesmo nas duas listas; senão None (uma lista de outro mês não tira o MEI
+    nem a pessoa daquele mês)."""
+    meses = {
+        porta.con.execute(f"SELECT max({MES}) FROM {_view(tabela)}").fetchone()
+        for tabela in (LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS)
+    }
+    if len(meses) != 1:
+        return None
+    (mes,) = meses.pop() or (None,)
+    return None if mes is None else str(mes)
+
+
+def _pelas_listas_sem_pessoa(porta: Porta, cnpj: str) -> bool:
+    """No retrato mais novo, o mesmo nas duas listas, o estabelecimento está na lista sem MEI e a raiz, uma só
+    vez, na lista de empresas com uma natureza informada que não é de pessoa."""
+    mes = _retrato_das_duas_listas(porta)
+    if mes is None:
+        return False
+    con = porta.con
+    estabelecimentos = con.execute(
+        f"SELECT count(*) FROM {_view(LISTA_DE_ESTABELECIMENTOS)} WHERE cnpj = $cnpj AND {MES} = $mes",
+        {"cnpj": cnpj, "mes": mes},
+    ).fetchone()
+    if estabelecimentos != (1,):
+        return False
+    naturezas = con.execute(
+        f"SELECT natureza_juridica FROM {_view(LISTA_DE_EMPRESAS)} WHERE {RAIZ} = $raiz AND {MES} = $mes",
+        {"raiz": cnpj[:TAMANHO_DA_RAIZ], "mes": mes},
+    ).fetchall()
+    if len(naturezas) != 1:
+        return False
+    natureza = naturezas[0][0]
+    if natureza is None or pd.isna(natureza) or not str(natureza).strip():
+        return False
+    return not natureza_de_pessoa(str(natureza).strip())
 
 
 class LeitorDeEmpresas:
@@ -150,9 +211,10 @@ class LeitorDeEmpresas:
         }  # fmt: skip
 
     def empresa(self, cnpj: str, como_era_em: date) -> EmpresaServida | None:
-        """A situação cadastral do CNPJ no retrato mais novo já público em `como_era_em` e, da raiz, a
+        """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, a
         versão do histórico datado que valia no dia, só com o que o portão libera; None se o CNPJ não é de
-        empresa, se não há retrato público da situação ou se nada sai."""
+        empresa, se não há versão pública da situação, se o estabelecimento tinha saído do arquivo ou se
+        nada sai."""
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
@@ -162,11 +224,13 @@ class LeitorDeEmpresas:
             TABELA,
             como_era_em=como_era_em,
             filtros={"cnpj": cnpj_.formatar(normal)},
-            colunas=[*CAMPOS, PUBLICADO_EM],
+            colunas=[*CAMPOS, CONSTA, PUBLICADO_EM],
         )
         if retratos.empty:
             return None
         retrato = retratos.sort_values([MES, PUBLICADO_EM]).iloc[-1]
+        if not bool(retrato[CONSTA]):
+            return None  # o estabelecimento tinha saído do arquivo da Receita no dia pedido
         servidos = self._servidos(retrato, CAMPOS)
         for historico in HISTORICOS:
             versao = self._versao(historico, normal[:TAMANHO_DA_RAIZ], como_era_em)

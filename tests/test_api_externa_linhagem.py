@@ -18,11 +18,13 @@ from base.raio_x_de_fundo import CADASTRO, CAMPOS_DO_CADASTRO
 from src import portao_externo as portao
 from src.api_externa.conjuntos import (
     comparaveis,
+    compradores,
     credito,
     empresas,
     ficha,
     prospeccao,
     setores,
+    vinculos,
 )
 from src.banco.coletas import Marca, marca_da_fonte
 from src.portao_externo import (
@@ -41,7 +43,8 @@ from src.portao_externo import (
 # (linha 754, PR 2) é o único de crédito; "sectors" (linha 781) é o único com agregado de mercado;
 # "profiles" (linha 736, PR 2) repete o cadastro de "companies" e junta as entregas de DFP e ITR;
 # "comparables" (linha 736, PR 3) junta o setor do FCA e os números do DFP dos pares; "events" (linha 736,
-# PR 4) lista os documentos do IPE e as trocas de auditor
+# PR 4) lista os documentos do IPE e as trocas de auditor; "links" (linha 736, PR 5) lê a rede de entidades;
+# "buyers" (linha 810, PR 4) lista quem já se mexeu num setor, só pessoa jurídica
 CONJUNTOS_DO_BETA = {
     "companies",
     "financials",
@@ -52,6 +55,8 @@ CONJUNTOS_DO_BETA = {
     "prospecting",
     "comparables",
     "events",
+    "links",
+    "buyers",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
@@ -63,9 +68,21 @@ TABELAS_DA_LIGACAO_DO_SETOR = {"empresa_serie", "cadastro_das_companhias"}
 # fonte com carga própria, fora do arquivista (`DESTINOS` só tem as dele): a tabela que ela alimenta, cuja
 # linhagem no dicionário cita a fonte (`scripts/carga_bcb_credito.py`, o IF.data pela API do BC)
 FONTES_DE_CARGA_PROPRIA = {"bcb-ifdata": "ifdata_valores"}
+# fonte com carga própria cuja tabela diz o script no `onde` (o registro de fundos da CVM 175, do FIP do `buyers`)
+CARGA_PROPRIA_PELO_SCRIPT = {
+    "cvm-fidc-base": ("registro_de_fundos", "scripts/carga_fidc.py")
+}
 # tabela montada na base a partir de outra que a fonte alimenta (as trocas de auditor saem dos auditores de
 # cada FCA, `base/auditores.py`): a de origem é a que está nos destinos do arquivista
-MONTADAS_DE_OUTRA_TABELA = {"trocas_de_auditor": "auditores"}
+MONTADAS_DE_OUTRA_TABELA = {
+    "trocas_de_auditor": "auditores",
+    # as entradas de sócio PJ saem do quadro de sócios, cortado pelas raízes da lista sem pessoa (linha 810)
+    "entradas_de_socio_pj": "cnpj_estabelecimentos_pj",
+}
+# a rede de entidades (ADR 0077, `base/rede/montar.py`) é montada de várias tabelas; a de cada fonte que sai em
+# `links` é a que está nos destinos do arquivista: as controladas do FRE e os auditores do FCA
+TABELAS_DA_REDE = {"ligacoes", "entidades", "identificadores"}
+ORIGEM_NA_REDE = {"cvm-hist-fre": "controladas", "cvm-hist-fca": "auditores"}
 # tabela montada na base histórica com os arquivos anuais da fonte (o manifesto lista cada um), fora dos
 # destinos do arquivista: as entregas do perfil saem do índice das entregas da DFP e do ITR
 MONTADAS_DOS_ARQUIVOS_DA_FONTE = {
@@ -153,12 +170,22 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
                 assert "arquivo anual da DFP e do ITR" in TABELAS[tabela].linhagem, (
                     linha
                 )
+            elif linha.fonte in CARGA_PROPRIA_PELO_SCRIPT:
+                assert (tabela, linha.fonte) == (
+                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][0],
+                    linha.fonte,
+                ), linha
+                assert (
+                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][1] in TABELAS[tabela].onde
+                ), (linha, tabela)
             elif linha.fonte in FONTES_DE_CARGA_PROPRIA:
                 assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
                 assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)
             else:
                 assert linha.fonte in DESTINOS, linha
                 origem = MONTADAS_DE_OUTRA_TABELA.get(tabela, tabela)
+                if tabela in TABELAS_DA_REDE:
+                    origem = ORIGEM_NA_REDE[linha.fonte]
                 assert origem in DESTINOS[linha.fonte].tabelas, (linha, tabela)
             assert _da_familia(linha.fonte, TABELAS[tabela].familia_da_fonte), linha
 
@@ -217,6 +244,24 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
             # a busca lê só as duas tabelas montadas sem pessoa (linha 584): o corte é na montagem
             assert tabela in {prospeccao.EMPRESAS, prospeccao.ESTABELECIMENTOS}, linha
             assert linha.campo in prospeccao.CAMPOS, linha
+            continue
+        if linha.conjunto == compradores.CONJUNTO:
+            # a lista de compradores lê o setor e os nomes das duas tabelas sem pessoa (linha 584) e as entradas
+            # da tabela de sócios PJ, montada só com raízes dessa lista (linha 810): o corte é na montagem
+            assert tabela in {
+                compradores.EMPRESAS,
+                compradores.ESTABELECIMENTOS,
+                compradores.ENTRADAS,
+            }, linha
+            continue
+        if linha.conjunto == vinculos.CONJUNTO:
+            # os vínculos leem só a razão social, e só da ponta que passou pela trava da rede (MEI e quem a
+            # rede trata como pessoa saem antes, `vinculos.LeitorDeVinculos._pontas`); na tabela, a razão
+            # social do empresário individual e do MEI já vem vazia (ADR 0106)
+            assert (tabela, linha.campo) == (
+                vinculos.HISTORICO_DOS_NOMES,
+                vinculos.NOME,
+            ), linha
             continue
         # o perfil lê o cadastro pelo mesmo leitor de `companies` (`conjuntos/ficha.py`)
         assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha

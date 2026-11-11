@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from base.cnpj import normalizar_cnpj
-from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar
+from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar_aberto
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import (
     FONTES_SO_INTERNAS,
@@ -257,7 +257,7 @@ def tabelas_do_catalogo(catalogo: dict, frases: dict[str, str]) -> list[TabelaDo
             frequencia=frequencia_do_site(t["frequencia"]),
             atraso=atraso_do_site(t["atraso"]),
             historico_desde=t["historico_desde"],
-            consultavel=pode_consultar(nome),
+            consultavel=pode_consultar_aberto(nome),
         )
         for nome, t in catalogo["tabelas"].items()
     ]
@@ -447,6 +447,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         (
             "cnpj_qsa",
             "cnpj_qsa_mudancas",
+            "entradas_de_socio_pj",
             "fre_acionistas",
             "fre_distribuicao_capital",
             "controladas",

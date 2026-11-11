@@ -2,8 +2,8 @@
 
 Uso: python -m scripts.gerar_openapi
 
-Roda: manual (python -m scripts.gerar_openapi); coberto por test_api_v1_contrato.py; ver README.md,
-erros-e-solucoes.md.
+Roda: manual (python -m scripts.gerar_openapi); coberto por test_api_v1_contrato.py; ver
+docs/api/README.md ("Mudou uma rota ou um esquema?"), erros-e-solucoes.md.
 """
 
 import json

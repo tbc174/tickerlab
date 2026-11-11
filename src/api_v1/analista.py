@@ -3,8 +3,10 @@
 `POST /v1/analista/ficha` devolve a ficha do CNPJ pedido (cadastro na Receita e, da companhia aberta, as
 entregas à CVM), e `POST /v1/analista/ficha/planilha` a mesma ficha em Excel. As duas pedem a conta logada,
 os termos aceitos e o plano da página `ficha_da_empresa` (`src/paginas.py`, recurso Dossiê da base).
-`POST /v1/analista/empresas` busca empresas por setor, UF e idade mínima (página `encontrar_empresas`, o
-mesmo recurso), e `POST /v1/analista/empresas/planilha` leva a busca para o Excel.
+`POST /v1/analista/empresas` busca empresas por setor, UF, idade mínima, capital social e estabelecimentos
+ativos, com a ordem por um deles (página `encontrar_empresas`, o mesmo recurso), e `POST /v1/analista/empresas/planilha` leva a busca para o Excel.
+`POST /v1/analista/comparar` põe de dois a cinco CNPJs lado a lado (página `comparar_empresas`, o mesmo
+recurso), e `POST /v1/analista/comparar/planilha` leva a comparação para o Excel.
 
 Nada aqui lê a base por outro caminho: a porta e as regras do portão são as da API externa
 (`src/api_externa/rotas.py`, `abrir_porta` e `regras_da_api`), e a leitura é a do leitor da API
@@ -25,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from base.porta import Porta
-from src.analista import busca, leitura, planilha
+from src.analista import busca, comparacao, eventos, leitura, planilha
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
@@ -41,8 +43,10 @@ NOME_DA_PLANILHA = (
 )
 PAGINA_DA_BUSCA = "encontrar_empresas"
 NOME_DA_PLANILHA_DA_BUSCA = "empresas-tickerlab.xlsx"
-TAMANHO_MAXIMO_DO_CURSOR = (
-    256  # o cursor ordenado (coluna, valor e CNPJ em JSON) passa de 70 caracteres
+# o cursor ordenado (coluna, valor e CNPJ em JSON) passa de 70 caracteres
+TAMANHO_MAXIMO_DO_CURSOR = 256
+TAMANHO_MAXIMO_DA_ORDEM = (
+    32  # a ordem fora da lista o leitor recusa (422) sem repetir o texto
 )
 BUSCA_INDISPONIVEL = "Busca não disponível: escolha um filtro e tente de novo."
 FILTRO_INVALIDO = "Filtro fora do que a tela oferece."
@@ -50,6 +54,11 @@ TIPO_DA_PLANILHA = "application/vnd.openxmlformats-officedocument.spreadsheetml.
 TAMANHO_MAXIMO_DO_CNPJ = 32  # com pontuação e espaços; o resto é erro de quem chama
 CNPJ_INVALIDO = "CNPJ inválido: confira os 14 caracteres."
 FICHA_INDISPONIVEL = "Ficha não disponível."
+CURSOR_INVALIDO = "Cursor inválido: peça a primeira página de novo."
+PAGINA_DA_COMPARACAO = "comparar_empresas"
+NOME_DA_PLANILHA_DA_COMPARACAO = "comparacao-de-empresas-tickerlab.xlsx"
+COMPARACAO_INVALIDA = "Escolha de 2 a 5 CNPJs diferentes, cada um com 14 caracteres."
+COMPARACAO_INDISPONIVEL = "Comparação não disponível."
 BASE_FORA_DO_AR = "A base não está disponível agora. Tente de novo em alguns minutos."
 
 Conta = Annotated[Usuario, Depends(conta_com_acesso)]
@@ -64,6 +73,12 @@ class PedidoDaBuscaV1(BaseModel):
     setores: list[str] = Field(default_factory=list, max_length=busca.SETORES_MAXIMOS)
     ufs: list[str] = Field(default_factory=list, max_length=len(busca.UFS))
     idade_minima: int | None = Field(None, ge=1, le=busca.IDADE_MAXIMA)
+    capital_minimo: float | None = Field(None, ge=0, le=busca.CAPITAL_MAXIMO)
+    capital_maximo: float | None = Field(None, ge=0, le=busca.CAPITAL_MAXIMO)
+    estabelecimentos_minimo: int | None = Field(
+        None, ge=1, le=busca.ESTABELECIMENTOS_MAXIMOS
+    )
+    ordem: str | None = Field(None, max_length=TAMANHO_MAXIMO_DA_ORDEM)
     cursor: str | None = Field(None, max_length=TAMANHO_MAXIMO_DO_CURSOR)
 
     def filtros(self) -> busca.Filtros:
@@ -71,8 +86,17 @@ class PedidoDaBuscaV1(BaseModel):
             setores=tuple(self.setores),
             ufs=tuple(self.ufs),
             idade_minima=self.idade_minima,
+            capital_minimo=self.capital_minimo,
+            capital_maximo=self.capital_maximo,
+            estabelecimentos_minimo=self.estabelecimentos_minimo,
+            ordem=self.ordem,
             cursor=self.cursor,
         )
+
+
+class PedidoDaComparacaoV1(BaseModel):
+    # sem limite aqui: o 422 do FastAPI repetiria o texto pedido (os limites ficam na rota)
+    cnpjs: list[str]
 
 
 def hoje() -> date:
@@ -144,6 +168,44 @@ def ficha_da_empresa_em_planilha(_conta: Conta, pedido: PedidoDaFichaV1) -> Resp
     )
 
 
+class PedidoDosEventosV1(BaseModel):
+    cnpj: str  # sem limite aqui: o 422 do FastAPI repetiria o texto pedido (os limites ficam na rota)
+    cursor: str | None = None
+
+
+@router.post("/ficha/eventos")
+def eventos_da_empresa(
+    _conta: Conta, pedido: PedidoDosEventosV1
+) -> esquemas.EventosDaEmpresaV1:
+    """Os documentos à CVM e as trocas de auditor da empresa, do mais novo ao mais velho, por página. Mesmo
+    acesso, mesmo plano e mesmos estados da ficha; `proximo_cursor` abre a página seguinte."""
+    if len(pedido.cnpj) > TAMANHO_MAXIMO_DO_CNPJ:
+        raise HTTPException(status_code=422, detail=CNPJ_INVALIDO)
+    if (
+        pedido.cursor is not None
+        and len(pedido.cursor) > eventos.TAMANHO_MAXIMO_DO_CURSOR
+    ):
+        raise HTTPException(status_code=422, detail=CURSOR_INVALIDO)
+    with _porta() as porta:
+        try:
+            resposta = eventos.eventos(
+                porta,
+                pedido.cnpj,
+                hoje=hoje(),
+                cursor=pedido.cursor,
+                regras=rotas_da_api_externa.regras_da_api(),
+            )
+        except ValueError as erro:  # inclui eventos.PedidoInvalido
+            detalhe = (
+                CURSOR_INVALIDO
+                if isinstance(erro, eventos.PedidoInvalido)
+                else CNPJ_INVALIDO
+            )
+            raise HTTPException(status_code=422, detail=detalhe) from erro
+    log.info("eventos do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
+    return esquemas.de_eventos_do_analista(resposta, eventos.LIMITES)
+
+
 def _busca_do_pedido(
     pedido: PedidoDaBuscaV1, *, para_planilha: bool
 ) -> leitura.Resposta:
@@ -167,7 +229,7 @@ def _busca_do_pedido(
 def encontrar_empresas(
     _conta: Conta, pedido: PedidoDaBuscaV1
 ) -> esquemas.BuscaDeEmpresasV1:
-    """Uma página de empresas (a matriz ativa) por setor, UF e idade mínima, cada campo com a fonte e o dia
+    """Uma página de empresas (a matriz ativa) pelos filtros da tela, cada campo com a fonte e o dia
     em que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o
     portão ainda não libera sai `nao_liberada`."""
     return esquemas.de_busca_do_analista(_busca_do_pedido(pedido, para_planilha=False))
@@ -186,6 +248,58 @@ def encontrar_empresas_em_planilha(_conta: Conta, pedido: PedidoDaBuscaV1) -> Re
         media_type=TIPO_DA_PLANILHA,
         headers={
             "Content-Disposition": f'attachment; filename="{NOME_DA_PLANILHA_DA_BUSCA}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+def _comparacao_do_pedido(pedido: PedidoDaComparacaoV1) -> leitura.Resposta:
+    cnpjs = pedido.cnpjs
+    if len(cnpjs) > comparacao.MAXIMO or any(
+        len(cnpj) > TAMANHO_MAXIMO_DO_CNPJ for cnpj in cnpjs
+    ):
+        raise HTTPException(status_code=422, detail=COMPARACAO_INVALIDA)
+    with _porta() as porta:
+        try:
+            resposta = comparacao.comparar(
+                porta, cnpjs, hoje=hoje(), regras=rotas_da_api_externa.regras_da_api()
+            )
+        except (
+            comparacao.PedidoInvalido
+        ) as erro:  # só o pedido; erro da base não vira 422
+            raise HTTPException(status_code=422, detail=COMPARACAO_INVALIDA) from erro
+    log.info("comparação do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
+    return resposta
+
+
+@router.post("/comparar")
+def comparar_empresas(
+    _conta: Conta, pedido: PedidoDaComparacaoV1
+) -> esquemas.ComparacaoDeEmpresasV1:
+    """De dois a cinco CNPJs lado a lado: o cadastro na Receita, o porte, a abertura, a atividade, o lugar, o
+    capital, os estabelecimentos e, da companhia aberta, a última entrega à CVM e os atrasos, cada campo com
+    a fonte e o dia. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece saem `nao_disponivel`,
+    sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`."""
+    return esquemas.de_comparacao_do_analista(
+        _comparacao_do_pedido(pedido), comparacao.LIMITES
+    )
+
+
+@router.post("/comparar/planilha", response_class=Response)
+def comparar_empresas_em_planilha(
+    _conta: Conta, pedido: PedidoDaComparacaoV1
+) -> Response:
+    """A mesma comparação em Excel (mesmo acesso, mesmo plano), uma linha por empresa, com a aba das fontes
+    e o aviso."""
+    resposta = _comparacao_do_pedido(pedido)
+    if resposta.corpo is None:
+        raise HTTPException(status_code=404, detail=COMPARACAO_INDISPONIVEL)
+    corpo = resposta.corpo | {"fontes": resposta.fontes}
+    return Response(
+        content=planilha.xlsx(corpo),
+        media_type=TIPO_DA_PLANILHA,
+        headers={
+            "Content-Disposition": f'attachment; filename="{NOME_DA_PLANILHA_DA_COMPARACAO}"',
             "Cache-Control": "no-store",
         },
     )

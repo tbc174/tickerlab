@@ -1,6 +1,7 @@
 """Prontidão por tabela para a API externa (ADR 0108, D10): as três provas, o prazo e o contrato."""
 
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -192,3 +193,89 @@ def test_registro_comeca_vazio() -> None:
     """D10: nenhuma tabela tem as três provas ainda (o placar da 427 é a A2b). Quando a primeira
     entrar, por PR de nível 2 da mesa Dados, este teste sai junto."""
     assert prontidao.PRONTIDAO == {}
+
+
+# ---- ensaio local (linha 800): a regra só liga com TICKERLAB_AMBIENTE=ensaio ----
+
+
+@pytest.mark.parametrize(
+    "ambiente",
+    [{}, {"TICKERLAB_AMBIENTE": ""}, {"TICKERLAB_AMBIENTE": "producao"},
+     {"TICKERLAB_AMBIENTE": "ensaio2"}, {"TICKERLAB_AMBIENTE": "local"}],
+)  # fmt: skip
+def test_fora_do_ensaio_o_registro_e_o_de_verdade(ambiente) -> None:
+    assert prontidao.em_ensaio(ambiente) is False
+    assert prontidao.registro_vigente(ambiente) is PRONTIDAO
+
+
+def test_no_ensaio_toda_tabela_do_dicionario_vale_como_pronta() -> None:
+    ambiente = {"TICKERLAB_AMBIENTE": " Ensaio "}
+    registro = prontidao.registro_vigente(ambiente, HOJE)
+    assert set(registro) >= set(TABELAS)
+    assert (
+        negacao_da_prontidao(
+            ("demonstracoes_como_era",), registro, versoes_maiores(), HOJE
+        )
+        is None
+    )
+
+
+def test_no_ensaio_o_registro_de_verdade_tem_precedencia(monkeypatch) -> None:
+    real = _pronta(versao_maior=versoes_maiores()["demonstracoes_como_era"])
+    monkeypatch.setitem(PRONTIDAO, "demonstracoes_como_era", real)
+    registro = prontidao.registro_vigente({"TICKERLAB_AMBIENTE": "ensaio"}, HOJE)
+    assert registro["demonstracoes_como_era"] is real
+
+
+def test_em_producao_o_portao_segue_negando(monkeypatch) -> None:
+    """Mesmo com a tabela no dicionário e o ambiente de produção, sem registro o portão nega."""
+    monkeypatch.setenv("TICKERLAB_AMBIENTE", "producao")
+    registro = prontidao.registro_vigente()
+    assert (
+        negacao_da_prontidao(
+            ("demonstracoes_como_era",), registro, versoes_maiores(), HOJE
+        )
+        is Falta.SEM_PRONTIDAO
+    )
+
+
+def test_regras_vigentes_do_portao_usam_o_registro_do_ambiente(monkeypatch) -> None:
+    from src import portao_externo as portao
+
+    monkeypatch.setenv("TICKERLAB_AMBIENTE", "ensaio")
+    assert "demonstracoes_como_era" in portao.regras_vigentes().prontidao
+    monkeypatch.setenv("TICKERLAB_AMBIENTE", "producao")
+    assert portao.regras_vigentes().prontidao is PRONTIDAO
+
+
+def test_ensaio_se_anuncia_em_toda_resposta_e_producao_nao() -> None:
+    from fastapi.testclient import TestClient
+
+    from src.api import criar_app
+
+    no_ensaio = TestClient(criar_app({"TICKERLAB_AMBIENTE": "ensaio"}))
+    assert (
+        no_ensaio.get("/saude").headers[prontidao.CABECALHO_DO_ENSAIO]
+        == prontidao.AVISO_DO_ENSAIO
+    )
+    for ambiente in ({}, {"TICKERLAB_AMBIENTE": "producao"}):
+        resposta = TestClient(criar_app(ambiente)).get("/saude")
+        assert prontidao.CABECALHO_DO_ENSAIO not in resposta.headers
+
+
+def test_deploy_de_producao_nao_aceita_o_ambiente_de_ensaio() -> None:
+    """O compose, o Dockerfile e o script de deploy nunca levam TICKERLAB_AMBIENTE=ensaio."""
+    raiz = Path(__file__).resolve().parents[1]
+    arquivos = [
+        *raiz.glob("compose*.y*ml"),
+        raiz / "Dockerfile",
+        raiz / "scripts" / "deploy-automatico.sh",
+        *raiz.glob(".env*example"),
+    ]
+    assert arquivos
+    for arquivo in arquivos:
+        if arquivo.is_file():
+            texto = arquivo.read_text(encoding="utf-8").lower()
+            assert "ambiente=ensaio" not in texto.replace(" ", ""), arquivo.name
+            assert "ambiente: ensaio" not in texto, arquivo.name
+            assert 'ambiente: "ensaio"' not in texto, arquivo.name

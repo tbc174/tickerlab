@@ -26,17 +26,21 @@ describe("rotas do app novo", () => {
     expect(TELAS_DO_APP.map((p) => p.url)).toEqual(comContrato);
     expect(comContrato).toContain("visao-geral");
     expect(TELAS_DO_APP.every((p) => !p.somente_admin)).toBe(true);
-    // a ficha da empresa e a busca de empresas (tela do analista, linha 798) são as telas do plano Pro no app
+    // a ficha, a busca e a comparação de empresas (tela do analista, linha 798) são as telas do plano Pro no app
     // novo: o 403 do plano vira o caminho para os Planos (ErroDaTela); outra tela Pro entra aqui de propósito
-    expect(TELAS_DO_APP.filter((p) => p.e_pro).map((p) => p.url)).toEqual(["ficha-da-empresa", "encontrar-empresas"]);
+    expect(TELAS_DO_APP.filter((p) => p.e_pro).map((p) => p.url)).toEqual([
+      "ficha-da-empresa",
+      "encontrar-empresas",
+      "comparar-empresas",
+    ]);
   });
 
-  it("a página inicial lista as telas novas", async () => {
+  it("a página inicial abre pelos passos do analista", async () => {
     abrir("/");
     // o <main> do aviso "Carregando" é trocado quando a configuração chega: pegar o de depois
     await screen.findByRole("navigation", { name: "Telas" });
     const principal = screen.getByRole("main");
-    expect(await within(principal).findByRole("link", { name: "Visão geral" })).toBeTruthy();
+    expect(await within(principal).findByRole("link", { name: "Encontrar empresas" })).toBeTruthy();
   });
 
   it("endereço desconhecido mostra que a página não existe", async () => {
