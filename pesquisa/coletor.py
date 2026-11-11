@@ -313,7 +313,7 @@ class Coletor:
             if tamanho > self.rodada.limites.bytes_maximos:
                 raise LimiteExcedido("o arquivo passou do limite de bytes da rodada")
             sha = _sha256_do_arquivo(temporario)
-            tipo = leitores.descobrir_tipo(temporario)
+            tipo = leitores.descobrir_tipo(temporario, urlsplit(url).path)
             if tipo_do_link(url) in TIPOS_QUE_EXIGEM_DOCUMENTO and tipo == "html":
                 raise Recusa("a fonte devolveu uma página HTML no lugar do documento")
             self._gravar_original(sha, tipo, temporario)
@@ -344,7 +344,7 @@ class Coletor:
         temporario = self.documentos / f"gravando-{sha}.tmp"
         temporario.write_bytes(conteudo)
         try:
-            tipo = leitores.descobrir_tipo(temporario)
+            tipo = leitores.descobrir_tipo(temporario, urlsplit(url_final).path)
             self._gravar_original(sha, tipo, temporario)
         finally:
             temporario.unlink(missing_ok=True)

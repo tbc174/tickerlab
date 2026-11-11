@@ -29,11 +29,12 @@ from tickerlab.cliente import Saida
 from base.porta import Porta
 from src import api
 from src.api_externa import acesso, rotas
-from src.api_externa.conjuntos import empresas, ficha, fundos, setores
+from src.api_externa.conjuntos import empresas, ficha, fundos, prospeccao, setores
 from src.api_externa.envelope import campo
 from src.banco import chaves_da_api as cb
 from tests import ajudantes_da_api_externa as aj
 from tests import test_api_externa_por_cnpj_ficha as ficha_de_mentira
+from tests import test_api_externa_prospeccao as busca_de_mentira
 from tests.test_api_externa_demonstracoes import (
     AGORA,
     EMPRESA,
@@ -1063,10 +1064,12 @@ def test_instrucoes_do_agente(rodar):
         "demonstracoes",
         "fundo",
         "setor",
+        "prospectar",
         "catalogo",
         "consumo",
     ):
         assert f"tickerlab {comando}" in agentes.stdout
+        assert f"tickerlab {comando}" in rodar("instrucoes", "skill").stdout
     skill = rodar("instrucoes", "skill").stdout
     assert "--planilha" in agentes.stdout and "--planilha" in skill
     assert skill.startswith("---\nname: tickerlab\ndescription: ")
@@ -1172,3 +1175,289 @@ def test_o_cliente_http_de_verdade_nao_leva_a_chave():
         assert http.timeout.read == cliente.TEMPO_MAXIMO
         assert http.headers["User-Agent"].startswith("tickerlab-cli/")
         assert "Authorization" not in http.headers
+
+
+# ---------------------------------------------------------------- prospectar (busca de empresas, rota 794)
+# Contra um servidor falso que segue a rota da 584 (PR #973); o teste contra a API em memória entra
+# quando a rota estiver na main.
+
+DIA_DO_CADASTRO = "2026-10-12"
+
+
+def _env(valor, fonte: str = "rfb-cnpj") -> dict:
+    return {
+        "value": valor,
+        "source": fonte,
+        "published_at": DIA_DO_CADASTRO,
+        "observed_at": None,
+    }
+
+
+def _linha_da_busca(cnpj: str, nome: str) -> dict:
+    return {
+        "cnpj": cnpj,  # a chave da linha sai sem envelope, como na rota
+        "legal_name": _env(nome),
+        "cnae_code": _env("3511501"),
+        "state_code": _env("SP"),
+        "size": _env("other"),
+    }
+
+
+FONTE_DA_RECEITA = {
+    "source": "rfb-cnpj",
+    "attribution": "Receita Federal, CNPJ",
+    "license": "dados abertos",
+}
+
+
+def _busca_falsa(paginas: list[list[dict]]):
+    """Um servidor da busca que serve `paginas` em sequência pelo cursor, e guarda os pedidos."""
+    pedidos: list[httpx.Request] = []
+
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        pedidos.append(pedido)
+        assert pedido.url.path == "/data/v1/companies"
+        indice = int(pedido.url.params.get("cursor", "0"))
+        seguinte = str(indice + 1) if indice + 1 < len(paginas) else None
+        return httpx.Response(
+            200,
+            json={
+                "companies": paginas[indice],
+                "truncated": False,
+                "next_cursor": seguinte,
+                "sources": [FONTE_DA_RECEITA],
+            },
+        )
+
+    return _http_falso(responder), pedidos
+
+
+PAGINAS_DA_BUSCA = [
+    [_linha_da_busca("11111111000191", "ALFA ENERGIA S.A.")],
+    [_linha_da_busca("22222222000191", "BETA ENERGIA S.A.")],
+    [_linha_da_busca("33333333000191", "GAMA ENERGIA LTDA")],
+]
+
+
+def test_prospectar_traduz_os_filtros_para_a_api(rodar, chave):
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA[:1])
+    resultado = rodar(
+        "prospectar", "--cnae", "35.11-5/01", "--cnae", "3512", "--uf", "sp", "--uf", "RJ",
+        "--municipio", "7107", "--municipio", "Campinas", "--porte", "demais", "--porte", "pequena",
+        "--natureza", "205-4", "--situacao", "ativa", "--situacao", "suspensa",
+        "--aberta-antes", "2016-11-10", "--aberta-depois", "1990-01-01",
+        "--so-matriz", "--por-pagina", "100", "--como-era", "2026-11-01",
+        http=http, **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = pedidos
+    listas = {
+        nome: pedido.url.params.get_list(nome)
+        for nome in ("cnae", "state", "municipality", "size", "registration_status")
+    }
+    assert listas == {
+        "cnae": ["3511501", "3512"],
+        "state": ["SP", "RJ"],
+        "municipality": ["7107", "Campinas"],
+        "size": ["other", "small"],
+        "registration_status": ["ativa", "suspensa"],
+    }
+    assert {n: v for n, v in pedido.url.params.items() if n not in listas} == {
+        "legal_nature": "2054",
+        "opened_before": "2016-11-10",
+        "opened_after": "1990-01-01",
+        "head_office": "true",
+        "limit": "100",
+        "known_at": "2026-11-01",
+    }
+    assert pedido.headers["Authorization"] == f"Bearer {chave}"
+
+
+def test_prospectar_mostra_a_pagina_com_fonte_e_avisa_que_ha_mais(rodar, chave):
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA)
+    resultado = rodar("prospectar", "--cnae", "35", http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert len(pedidos) == 1
+    saida = resultado.stdout
+    assert saida.startswith(
+        "1 empresas nesta resposta. Há mais: rode de novo com --todas"
+    )
+    alfa = next(linha for linha in saida.splitlines() if "ALFA ENERGIA" in linha)
+    assert "rfb-cnpj" in alfa and DIA_DO_CADASTRO in alfa
+    assert "BETA" not in saida and "next_cursor" not in saida
+    assert "- rfb-cnpj: Receita Federal, CNPJ" in saida
+    assert saida.rstrip().endswith(formato.AVISO)
+
+
+def test_prospectar_todas_segue_o_cursor_e_junta_as_paginas(rodar, chave):
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA)
+    resultado = rodar(
+        "prospectar", "--uf", "SP", "--todas", "--json", http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert [p.url.params.get("cursor") for p in pedidos] == [None, "1", "2"]
+    assert all(
+        p.url.params.get("state") == "SP" for p in pedidos
+    )  # o filtro vai em toda página
+    corpo = json.loads(resultado.stdout)
+    assert [e["cnpj"] for e in corpo["companies"]] == [
+        "11111111000191", "22222222000191", "33333333000191",
+    ]  # fmt: skip
+    assert corpo["next_cursor"] is None and corpo["sources"] == [FONTE_DA_RECEITA]
+    assert "buscando a página 3" in resultado.stderr
+
+
+def test_prospectar_todas_para_no_maximo_de_paginas(rodar, chave, monkeypatch):
+    monkeypatch.setattr(cliente, "PAGINAS_MAXIMAS", 2)
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA)
+    resultado = rodar(
+        "prospectar", "--uf", "SP", "--todas", http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert len(pedidos) == 2
+    assert resultado.stdout.startswith("2 empresas nesta resposta. Há mais")
+
+
+def test_prospectar_em_planilha_tem_uma_linha_por_empresa(rodar, chave, tmp_path):
+    http, _pedidos = _busca_falsa(PAGINAS_DA_BUSCA)
+    arquivo = tmp_path / "energia.xlsx"
+    resultado = rodar(
+        "prospectar", "--cnae", "35", "--todas", "--planilha", str(arquivo),
+        http=http, **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    empresas = _linhas_com_cabecalho(abas["companies"])
+    assert [e["legal_name"] for e in empresas] == [
+        "ALFA ENERGIA S.A.", "BETA ENERGIA S.A.", "GAMA ENERGIA LTDA",
+    ]  # fmt: skip
+    assert {(e["fonte"], e["publicado_em"]) for e in empresas} == {
+        ("rfb-cnpj", DIA_DO_CADASTRO)
+    }
+
+
+def test_prospectar_sem_resultado_diz_o_que_fazer(rodar, chave):
+    http, _pedidos = _busca_falsa([[]])
+    resultado = rodar("prospectar", "--cnae", "35", http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert resultado.stdout.startswith("Nenhuma empresa com estes filtros")
+
+
+@pytest.mark.parametrize(
+    "argumentos",
+    [
+        (),  # sem filtro: a base inteira não sai
+        ("--como-era", "2026-11-01"),  # a data sozinha não é filtro
+        ("--situacao", "baixada"),  # a situação sozinha também não
+        ("--cnae", "3"),
+        ("--cnae", "35115010"),
+        ("--uf", "S"),
+        ("--municipio", "3550308"),  # o código do IBGE não é o da Receita
+        ("--municipio", " "),
+        ("--natureza", "20545"),
+        ("--porte", "grande"),
+        ("--situacao", "ATIVA_X", "--uf", "SP"),
+        tuple(arg for _ in range(51) for arg in ("--uf", "SP")),
+        ("--uf", "SP", "--por-pagina", "101"),
+    ],
+)
+def test_prospectar_filtro_mal_escrito_nem_chega_a_api(rodar, chave, argumentos):
+    resultado = rodar("prospectar", *argumentos, http=None, **_com_chave(chave))
+    assert resultado.exit_code == Saida.USO, resultado.output
+
+
+@pytest.mark.parametrize(
+    ("codigo", "saida", "trecho"),
+    [
+        ("invalid_filter", Saida.PEDIDO_INVALIDO, "recusou um dos filtros"),
+        ("filter_required", Saida.USO, "pelo menos um filtro"),
+    ],
+)
+def test_prospectar_recusa_da_api_em_portugues(rodar, chave, codigo, saida, trecho):
+    http = _http_falso(lambda _p: httpx.Response(400, json={"detail": codigo}))
+    resultado = rodar("prospectar", "--uf", "SP", http=http, **_com_chave(chave))
+    assert resultado.exit_code == saida
+    assert trecho in resultado.stderr
+
+
+# ---------------------------------------------------------------- prospectar contra a API em memória (rota 794)
+
+
+@pytest.fixture
+def busca_pronta(banco, cenario, monkeypatch, tmp_path):
+    """A base de mentira da busca (as duas tabelas sem pessoa), as tabelas prontas e o contrato."""
+    base = tmp_path / "base"
+    busca_de_mentira._gravar(
+        base, prospeccao.ESTABELECIMENTOS, busca_de_mentira._estabelecimentos()
+    )
+    busca_de_mentira._gravar(base, prospeccao.EMPRESAS, busca_de_mentira._empresas())
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", busca_de_mentira._regras_da_busca)
+    ator, org, _chave = cenario
+    aj.contrato(banco, ator, org, conjunto=prospeccao.CONJUNTO)
+
+
+@pytest.mark.usefixtures("busca_pronta")
+def test_prospectar_em_json_e_o_envelope_da_rota(rodar, chave, api_em_memoria):
+    resultado = rodar(
+        "prospectar", "--cnae", "4711302", "--uf", "SP", "--municipio", "7107", "--json",
+        **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    direto = api_em_memoria.get(
+        "/data/v1/companies",
+        params={
+            "cnae": "4711302",
+            "state": "SP",
+            "municipality": "7107",
+            "registration_status": "ativa",
+        },
+        headers=aj.bearer(chave),
+    ).json()
+    assert json.loads(resultado.stdout) == direto
+    assert direto["companies"], "a base de mentira tem empresa nesse filtro"
+    assert direto["companies"][0]["legal_name"]["source"] == "rfb-cnpj"
+
+
+@pytest.mark.usefixtures("busca_pronta")
+def test_prospectar_todas_percorre_as_paginas_da_rota(rodar, chave, api_em_memoria):
+    resultado = rodar(
+        "prospectar", "--uf", "SP", "--uf", "MG", "--situacao", "ativa", "--situacao", "baixada",
+        "--por-pagina", "1", "--todas", "--json", **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    juntas = [e["cnpj"] for e in json.loads(resultado.stdout)["companies"]]
+    de_uma_vez = api_em_memoria.get(
+        "/data/v1/companies",
+        params={
+            "state": ["SP", "MG"],
+            "registration_status": ["ativa", "baixada"],
+            "limit": "100",
+        },
+        headers=aj.bearer(chave),
+    ).json()
+    assert juntas == [e["cnpj"] for e in de_uma_vez["companies"]]
+    assert len(juntas) > 1 and len(set(juntas)) == len(juntas)
+
+
+@pytest.mark.usefixtures("busca_pronta")
+def test_prospectar_em_tabela_tem_fonte_e_aviso(rodar, chave):
+    resultado = rodar("prospectar", "--cnae", "62", **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert "empresas nesta resposta" in resultado.stdout
+    assert "rfb-cnpj" in resultado.stdout
+    assert resultado.stdout.rstrip().endswith(formato.AVISO)
+
+
+def test_prospectar_sem_o_conjunto_no_contrato_e_sem_dado(
+    rodar, chave, tmp_path, monkeypatch
+):
+    base = tmp_path / "base"
+    busca_de_mentira._gravar(
+        base, prospeccao.ESTABELECIMENTOS, busca_de_mentira._estabelecimentos()
+    )
+    busca_de_mentira._gravar(base, prospeccao.EMPRESAS, busca_de_mentira._empresas())
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    monkeypatch.setattr(rotas, "regras_da_api", busca_de_mentira._regras_da_busca)
+    resultado = rodar("prospectar", "--cnae", "62", **_com_chave(chave))
+    assert resultado.exit_code == Saida.SEM_DADO, resultado.output

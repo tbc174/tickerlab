@@ -2681,7 +2681,7 @@ Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ abert
 - **Chaves:** `cnpj_basico`
 - **Três datas:** publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/cnpj_empresas_pj/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
 - **Linhagem:** Cada linha guarda o SHA-256 do ZIP da Receita do mês dela (`origem_sha256`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -2691,6 +2691,8 @@ Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ abert
 | `razao_social` | Razão social como a Receita publica | texto |
 | `natureza_juridica` | Código da natureza jurídica (tabela da Receita, 4 dígitos) | texto |
 | `porte` | nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita) | texto |
+| `capital_social` | Capital social declarado à Receita (aproximação do porte, não é faturamento; 0 se ilegível) | reais (R$) |
+| `n_estabelecimentos` | Estabelecimentos ativos da raiz (matriz e filiais) no retrato, contados na montagem | número inteiro |
 | `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
 | `disponivel_em` | Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |

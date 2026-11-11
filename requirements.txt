@@ -115,3 +115,25 @@ pycryptodomex==3.24.1
 # imagem do app só no PR 5, com o tamanho medido
 duckdb==1.5.6
 zstandard==0.25.0  # lê o Zarr do CHIRPS v3 (base/arquivo/chirps_v3.py)
+# conector remoto (linha 570): o servidor MCP dos analistas, para o Claude e o ChatGPT (MIT); as
+# dependências que só ele puxa vêm fixadas junto (PyJWT MIT, sse-starlette BSD-3)
+mcp==2.3.0
+mcp-types==2.3.0
+PyJWT==2.15.1
+sse-starlette==3.7.0
+# pins das dependências que o pip só puxava (linha 758): a imagem Docker instala o -prod com
+# `-c requirements.txt`, então tudo o que entra nela fica na versão conferida
+annotated-doc==0.0.5
+annotated-types==0.8.0
+colorlog==6.12.0
+flatbuffers==25.12.19
+httpcore==1.0.9
+omegaconf==2.4.0
+opentelemetry-api==1.45.2
+pyclipper==1.4.0
+pydantic_core==2.50.0
+PyYAML==6.0.3
+shapely==2.2.0
+tqdm==4.70.1
+typing-inspection==0.4.5
+xlsxwriter==3.3.1

@@ -71,7 +71,10 @@ def _linha(
 def _zip(csv: str, nome: str = "portal-devedores.csv") -> bytes:
     saida = io.BytesIO()
     with zipfile.ZipFile(saida, "w") as arquivo:
-        arquivo.writestr(nome, csv.encode("utf-8-sig"))
+        # Data fixa: sem ela o ZIP leva a hora de agora, e o id do teste parametrizado
+        # muda entre os processos do xdist ("Different tests were collected").
+        info = zipfile.ZipInfo(nome, date_time=(2026, 11, 6, 0, 0, 0))
+        arquivo.writestr(info, csv.encode("utf-8-sig"))
     return saida.getvalue()
 
 

@@ -9,15 +9,21 @@ município e UF. Desenho no plano da API externa, "Achado para a fila".
   deles é o nome e o CPF da pessoa;
 - a vista deixa de fora o MEI (opção pelo MEI no Simples), mesmo com natureza de empresa, e a raiz que não
   está na tabela de empresas (na dúvida, é pessoa);
-- na razão social das outras, um CPF escrito no texto sai (`base.pessoas.sem_cpf`);
+- na razão social das outras, um CPF escrito no texto sai (`base.pessoas.sem_cpf`); também sai qualquer
+  sequência de 11 ou 12 dígitos soltos, ou escrita como CPF com separadores fora do padrão (CPF colado a hífen ou com dígito a mais, achado na carga de 10/11/2026;
+  CNPJ tem 14 e fica);
 - a vista só tem o CNPJ, a situação, a abertura, a atividade, o município e a UF: sem logradouro, CEP,
   contato nem nome fantasia.
 
 Layout do `Empresas*.zip` (conferido em 15/10/2026): sem cabeçalho, `;`, aspas, latin-1; básico; razão
-social; natureza; qualificação; capital; porte; ente federativo. Capital, qualificação do responsável e
-ente federativo não são lidos.
+social; natureza; qualificação; capital; porte; ente federativo. O capital social ("1000,00") é lido e
+vira número (`capital_social`; ilegível vira 0); qualificação do responsável e ente federativo não são lidos.
+
+`n_estabelecimentos` (estabelecimentos **ativos** da raiz na vista, matriz e filiais) é contado na montagem
+(`com_estabelecimentos_ativos`), para a busca filtrar e ordenar sem varrer a vista inteira a cada pedido.
 """
 
+import re
 import zipfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -30,12 +36,35 @@ from base.receita_retrato import CODIFICACAO, TAMANHO_DA_PARTE, _conferir_campos
 from base.rede.entidades import natureza_de_pessoa
 
 CAMPOS_NO_ARQUIVO_DE_EMPRESAS = 7
-EMPRESA = {0: "cnpj_basico", 1: "razao_social", 2: "natureza_juridica", 5: "porte"}
+EMPRESA = {
+    0: "cnpj_basico", 1: "razao_social", 2: "natureza_juridica", 4: "capital_social", 5: "porte",
+}  # fmt: skip
+ATIVA = "02"
 PORTES = {"00": "nao_informado", "01": "micro", "03": "pequeno", "05": "demais"}
 COLUNAS_DA_VISTA = (
     "cnpj", "cnpj_basico", "matriz", "situacao_cadastral", "data_inicio_atividade",
     "cnae_principal", "uf", "municipio",
 )  # fmt: skip
+
+
+NUMERO_COMPRIDO_DE_PESSOA = re.compile(
+    r"-?(?<!\d)(?:\d{11,12}|\d{3}[.\s]?\d{3}[.\s]?\d{3}[-./\s]?\d{2})(?!\d)"
+)
+ESPACOS = re.compile(r"\s{2,}")
+
+
+def _sem_numero_de_pessoa(razao: pd.Series) -> pd.Series:
+    """Tira 11 ou 12 dígitos soltos da razão social (CPF mal escrito); CNPJ (14) não é tocado."""
+    limpo = razao.str.replace(NUMERO_COMPRIDO_DE_PESSOA, "", regex=True)
+    return limpo.str.replace(ESPACOS, " ", regex=True).str.strip(" -")
+
+
+def _capital(texto: pd.Series) -> pd.Series:
+    """O capital como a Receita escreve ("1000,00", vírgula decimal, sem milhar) em número; ilegível vira 0."""
+    numero = pd.to_numeric(
+        texto.str.strip().str.replace(",", ".", regex=False), errors="coerce"
+    )
+    return numero.fillna(0.0).astype("float64")
 
 
 def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
@@ -44,8 +73,11 @@ def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
     saida = pd.DataFrame(
         {
             "cnpj_basico": parte["cnpj_basico"].str.strip(),
-            "razao_social": tirar_cpf_da_coluna(parte["razao_social"].str.strip()),
+            "razao_social": _sem_numero_de_pessoa(
+                tirar_cpf_da_coluna(parte["razao_social"].str.strip())
+            ),
             "natureza_juridica": natureza,
+            "capital_social": _capital(parte["capital_social"]),
             "porte": parte["porte"].str.strip().map(PORTES).fillna("nao_informado"),
         }
     )
@@ -53,7 +85,7 @@ def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
 
 
 def ler_empresas_pj(arquivo_zip: Path | IO[bytes]) -> Iterator[pd.DataFrame]:
-    """(cnpj_basico, razao_social, natureza_juridica, porte) das pessoas jurídicas de um `Empresas*.zip`.
+    """(cnpj_basico, razao_social, natureza_juridica, capital_social, porte) das pessoas jurídicas de um `Empresas*.zip`.
 
     Empresário individual e grupo 4 são descartados antes de qualquer coisa ser guardada. `porte` sai como
     `nao_informado`, `micro`, `pequeno` ou `demais`.
@@ -80,9 +112,25 @@ def estabelecimentos_sem_pessoa(
     saída de `ler_empresas_pj` e `simples` a de `ler_simples`. Fica só a raiz que está em `empresas_pj` (a
     que a tabela de empresas não conhece, ou é de pessoa, sai) e que não optou pelo MEI.
     """
-    mei = set(simples.loc[simples["optante_mei"].astype(bool), "cnpj_basico"])
+    # prefixo sem nenhum registro no Simples (ex.: raízes 99...) chega vazio, sem colunas: ninguém é MEI
+    # lá, porque todo MEI tem registro no Simples
+    mei = (
+        set(simples.loc[simples["optante_mei"].astype(bool), "cnpj_basico"])
+        if "optante_mei" in simples.columns
+        else set()
+    )
     vista = estabelecimentos[
         estabelecimentos["cnpj_basico"].isin(set(empresas_pj["cnpj_basico"]))
         & ~estabelecimentos["cnpj_basico"].isin(mei)
     ]
     return vista[list(COLUNAS_DA_VISTA)].reset_index(drop=True)
+
+
+def com_estabelecimentos_ativos(
+    empresas_pj: pd.DataFrame, vista: pd.DataFrame
+) -> pd.DataFrame:
+    """`empresas_pj` com `n_estabelecimentos`: os estabelecimentos ativos da raiz na `vista` (0 se nenhum)."""
+    ativos = vista.loc[vista["situacao_cadastral"] == ATIVA, "cnpj_basico"]
+    contagem = ativos.value_counts()
+    numero = empresas_pj["cnpj_basico"].map(contagem).fillna(0).astype("int64")
+    return empresas_pj.assign(n_estabelecimentos=numero)

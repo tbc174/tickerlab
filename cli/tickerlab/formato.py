@@ -182,6 +182,22 @@ def resposta_de_dado(corpo: Mapping) -> str:
     return "\n\n".join(partes)
 
 
+def prospeccao(corpo: Mapping) -> str:
+    """A busca de empresas: quantas vieram, se há mais, e cada empresa com a fonte e a data."""
+    empresas = [e for e in corpo.get("companies") or [] if isinstance(e, Mapping)]
+    if not empresas:
+        topo = "Nenhuma empresa com estes filtros. Afrouxe algum (CNAE mais curto, sem município...)."
+    else:
+        topo = f"{len(empresas)} empresas nesta resposta."
+    if corpo.get("next_cursor"):
+        topo += (
+            " Há mais: rode de novo com --todas para buscar as outras páginas (cada página é um pedido "
+            "da quota)."
+        )
+    resto = {nome: valor for nome, valor in corpo.items() if nome != "next_cursor"}
+    return f"{topo}\n\n{resposta_de_dado(resto)}"
+
+
 def setores(corpo: Mapping) -> str:
     """Os setores que a ficha da noite tem, com o dia dela; a lista não traz dado nem gasta a quota."""
     lista = [s for s in corpo.get("sectors") or [] if isinstance(s, Mapping)]

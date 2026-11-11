@@ -1384,6 +1384,26 @@ direitos_da_organizacao = sa.Table(
     ),
 )
 
+# A conta com login que é de uma organização (ADR 0128, Emenda 1): uma conta, uma organização. O
+# vínculo sozinho não mostra nada: a tela só mostra pessoa física do cadastro da Receita se o contrato
+# da organização tiver a linha `pessoa_na_tela` vigente (`src/banco/membros_da_organizacao.py`).
+membros_da_organizacao = sa.Table(
+    "membros_da_organizacao",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column(
+        "organizacao_id",
+        sa.Uuid,
+        sa.ForeignKey("organizacoes.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    _momento("vinculado_em"),
+    _quem_fez("vinculado_por"),
+)
+sa.Index(
+    "ix_membros_da_organizacao_organizacao_id", membros_da_organizacao.c.organizacao_id
+)
+
 # O botão de parar um conjunto para todas as organizações (B-32a, PR 6): fonte que mudou a licença ou
 # dado que saiu errado. Vale também para contrato concedido depois; reativar não mexe no direito que
 # foi suspenso sozinho. Como em `organizacoes`, suspender é preencher, reativar é limpar: nada se apaga.

@@ -106,6 +106,16 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "optante_simples": "simples_nacional",
     "data_opcao_simples": "simples_nacional_since",
     "data_exclusao_simples": "simples_nacional_until",
+    # prospecting: a busca de empresas (linha 794)
+    "empresas": "companies",
+    "proximo_cursor": "next_cursor",
+    "porte": "size",
+    "capital_social": "share_capital",
+    "n_estabelecimentos": "active_establishments",
+    "cnae_principal": "cnae_code",
+    "uf": "state_code",
+    "municipio": "municipality",
+    "data_inicio_atividade": "opened_at",
     # sectors: o mercado do setor (molde D, linha 781)
     "setor": "sector",
     "setores": "sectors",

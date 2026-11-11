@@ -128,6 +128,24 @@
       "situacao_da_entrega"
     ]
   },
+  "prospecting": {
+    "fontes": {
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "capital_social",
+      "cnae_principal",
+      "data_inicio_atividade",
+      "matriz",
+      "municipio",
+      "n_estabelecimentos",
+      "natureza_juridica",
+      "porte",
+      "razao_social",
+      "situacao_cadastral",
+      "uf"
+    ]
+  },
   "sectors": {
     "fontes": {
       "anatel-acessos": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",

@@ -531,6 +531,30 @@
         "title": "BlocoDaBienalidadeV1",
         "type": "object"
       },
+      "BlocoDaFichaV1": {
+        "description": "Um bloco da ficha: o título, a fonte e o que ele traz (sem data nem número).",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "o_que_traz": {
+            "title": "O Que Traz",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "fonte",
+          "o_que_traz"
+        ],
+        "title": "BlocoDaFichaV1",
+        "type": "object"
+      },
       "BlocoDaSafraV1": {
         "properties": {
           "chave": {
@@ -1213,6 +1237,90 @@
         "title": "BoasVindasDoBetaV1",
         "type": "object"
       },
+      "BuscaDeEmpresasV1": {
+        "description": "A resposta da busca: o estado, as empresas (só quando pronta), o cursor da página seguinte, as fontes,\nos limites e as opções do formulário, sempre.",
+        "properties": {
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "empresas": {
+            "items": {
+              "$ref": "#/components/schemas/EmpresaDaBuscaV1"
+            },
+            "title": "Empresas",
+            "type": "array"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "proximo_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo Cursor"
+          },
+          "setores": {
+            "items": {
+              "$ref": "#/components/schemas/SetorDaBuscaV1"
+            },
+            "title": "Setores",
+            "type": "array"
+          },
+          "ufs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ufs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "empresas",
+          "cortada",
+          "proximo_cursor",
+          "fontes",
+          "limites",
+          "setores",
+          "ufs"
+        ],
+        "title": "BuscaDeEmpresasV1",
+        "type": "object"
+      },
       "BuscaPorCnpjV1": {
         "description": "O relatório do CNPJ (molde B): as seções no formato do relatório da empresa.",
         "properties": {
@@ -1406,6 +1514,60 @@
           "historico"
         ],
         "title": "CambioDoCafeV1",
+        "type": "object"
+      },
+      "CampoComFonteV1": {
+        "description": "Um campo no envelope da API externa: o valor, a fonte e o dia em que ficou público.",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "publico_em": {
+            "format": "date",
+            "title": "Publico Em",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "visto_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visto Em"
+          }
+        },
+        "required": [
+          "valor",
+          "fonte",
+          "publico_em",
+          "visto_em"
+        ],
+        "title": "CampoComFonteV1",
         "type": "object"
       },
       "ChecagemV1": {
@@ -1811,6 +1973,143 @@
         "title": "DocumentoUsadoV1",
         "type": "object"
       },
+      "EmpresaDaBuscaV1": {
+        "description": "Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão\nnão serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita.",
+        "properties": {
+          "cnae_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnae Descricao"
+          },
+          "cnae_principal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "data_inicio_atividade": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matriz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipio Nome"
+          },
+          "natureza_juridica": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Porte Descricao"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "situacao_cadastral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "EmpresaDaBuscaV1",
+        "type": "object"
+      },
       "EncerradasV1": {
         "properties": {
           "encerradas": {
@@ -1899,6 +2198,36 @@
           "publicado_em"
         ],
         "title": "EntradaDoNumeroV1",
+        "type": "object"
+      },
+      "EntregaDoDiaV1": {
+        "description": "Uma linha de \"O que mudou\": o dia, o que entrou e a página para abrir.",
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "o_que": {
+            "title": "O Que",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "o_que",
+          "titulo",
+          "url"
+        ],
+        "title": "EntregaDoDiaV1",
         "type": "object"
       },
       "ErroDaSafraV1": {
@@ -2363,6 +2692,100 @@
         "title": "FichaDaContraparteV1",
         "type": "object"
       },
+      "FichaDaEmpresaV1": {
+        "description": "A resposta da tela: o estado, a ficha (só quando pronta), as fontes e os limites, sempre.",
+        "properties": {
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "ficha": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FichaDoCnpjV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "o_que_vem": {
+            "items": {
+              "$ref": "#/components/schemas/BlocoDaFichaV1"
+            },
+            "title": "O Que Vem",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "ficha",
+          "fontes",
+          "limites",
+          "o_que_vem"
+        ],
+        "title": "FichaDaEmpresaV1",
+        "type": "object"
+      },
+      "FichaDoCnpjV1": {
+        "description": "A ficha como a base a conhecia no dia, com as chaves do leitor da API externa (em português).",
+        "properties": {
+          "cadastro_na_receita": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Cadastro Na Receita",
+            "type": "object"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "como_era_em": {
+            "format": "date",
+            "title": "Como Era Em",
+            "type": "string"
+          },
+          "entregas": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/CampoComFonteV1"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entregas"
+          }
+        },
+        "required": [
+          "cnpj",
+          "como_era_em",
+          "cadastro_na_receita"
+        ],
+        "title": "FichaDoCnpjV1",
+        "type": "object"
+      },
       "FichaV1": {
         "description": "A ficha \"Foi sorte?\" do backtest (ADR 0037, D1 e D2), com os textos de `src/ficha.py`.",
         "properties": {
@@ -2420,6 +2843,30 @@
           "nota"
         ],
         "title": "FichaV1",
+        "type": "object"
+      },
+      "FonteDaFichaV1": {
+        "description": "Uma fonte usada na ficha, com a licença e a frase de atribuição que ela pede.",
+        "properties": {
+          "atribuicao": {
+            "title": "Atribuicao",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "licenca": {
+            "title": "Licenca",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fonte",
+          "licenca",
+          "atribuicao"
+        ],
+        "title": "FonteDaFichaV1",
         "type": "object"
       },
       "FraseDaAnaliseV1": {
@@ -3829,6 +4276,23 @@
         "title": "NumeroDeJurosV1",
         "type": "object"
       },
+      "OQueMudouV1": {
+        "description": "O que entrou no app a cada dia (`src/o_que_mudou.py`), a mais nova primeiro.",
+        "properties": {
+          "entregas": {
+            "items": {
+              "$ref": "#/components/schemas/EntregaDoDiaV1"
+            },
+            "title": "Entregas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entregas"
+        ],
+        "title": "OQueMudouV1",
+        "type": "object"
+      },
       "OpcaoDeRegiaoV1": {
         "properties": {
           "id": {
@@ -4173,6 +4637,66 @@
           "url"
         ],
         "title": "PassoDoBetaV1",
+        "type": "object"
+      },
+      "PedidoDaBuscaV1": {
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "idade_minima": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idade Minima"
+          },
+          "setores": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Setores",
+            "type": "array"
+          },
+          "ufs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 27,
+            "title": "Ufs",
+            "type": "array"
+          }
+        },
+        "title": "PedidoDaBuscaV1",
+        "type": "object"
+      },
+      "PedidoDaFichaV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "PedidoDaFichaV1",
         "type": "object"
       },
       "PedidoDeBacktestV1": {
@@ -5688,6 +6212,25 @@
         "title": "SecaoDoRelatorioV1",
         "type": "object"
       },
+      "SetorDaBuscaV1": {
+        "description": "Um setor que a tela oferece: a letra da seção do CNAE e o nome do IBGE.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "SetorDaBuscaV1",
+        "type": "object"
+      },
       "SetorV1": {
         "description": "Um setor do relatório: a chave que vai em `/v1/relatorio-setor?setor=` e quantas companhias.",
         "properties": {
@@ -6138,6 +6681,148 @@
           }
         },
         "summary": "Registrar O Aceite"
+      }
+    },
+    "/v1/analista/empresas": {
+      "post": {
+        "description": "Uma página de empresas (a matriz ativa) por setor, UF e idade mínima, cada campo com a fonte e o dia\nem que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o\nportão ainda não libera sai `nao_liberada`.",
+        "operationId": "encontrar_empresas_v1_analista_empresas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaBuscaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuscaDeEmpresasV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encontrar Empresas"
+      }
+    },
+    "/v1/analista/empresas/planilha": {
+      "post": {
+        "description": "A mesma busca em Excel (mesmo acesso, mesmo plano): até dez páginas, com os nomes ao lado dos códigos,\na aba das fontes e o aviso.",
+        "operationId": "encontrar_empresas_em_planilha_v1_analista_empresas_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaBuscaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encontrar Empresas Em Planilha"
+      }
+    },
+    "/v1/analista/ficha": {
+      "post": {
+        "description": "A ficha do CNPJ: o cadastro na Receita e, da companhia aberta, as entregas à CVM, cada campo com a\nfonte e o dia em que ficou público. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece\nsaem `nao_disponivel`, sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`.",
+        "operationId": "ficha_da_empresa_v1_analista_ficha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FichaDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ficha Da Empresa"
+      }
+    },
+    "/v1/analista/ficha/planilha": {
+      "post": {
+        "description": "A mesma ficha em Excel (mesmo acesso, mesmo plano), com a aba das fontes e o aviso.",
+        "operationId": "ficha_da_empresa_em_planilha_v1_analista_ficha_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ficha Da Empresa Em Planilha"
       }
     },
     "/v1/apagar-simulacao": {
@@ -6784,6 +7469,25 @@
           }
         },
         "summary": "Meus Dados"
+      }
+    },
+    "/v1/o-que-mudou": {
+      "get": {
+        "description": "As entregas visíveis do app, a mais nova primeiro.",
+        "operationId": "o_que_mudou_no_app_v1_o_que_mudou_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OQueMudouV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "O Que Mudou No App"
       }
     },
     "/v1/pagamento-da-assinatura": {

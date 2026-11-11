@@ -6981,7 +6981,7 @@
       "tabela": "cnpj_empresas_pj",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cnpj_basico": {
           "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
@@ -6998,6 +6998,14 @@
         "porte": {
           "descricao": "nao_informado, micro, pequeno ou demais (códigos 00, 01, 03 e 05 da Receita)",
           "unidade": "texto"
+        },
+        "capital_social": {
+          "descricao": "Capital social declarado à Receita (aproximação do porte, não é faturamento; 0 se ilegível)",
+          "unidade": "reais (R$)"
+        },
+        "n_estabelecimentos": {
+          "descricao": "Estabelecimentos ativos da raiz (matriz e filiais) no retrato, contados na montagem",
+          "unidade": "número inteiro"
         },
         "mes_do_retrato": {
           "descricao": "Mês do arquivo da Receita de onde a linha veio",
