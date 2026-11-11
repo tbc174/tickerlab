@@ -9,6 +9,7 @@ import pytest
 from base import cruzada
 from base.cruzada import (
     MESMA_FONTE_OUTRO_DOCUMENTO,
+    MESMO_DOCUMENTO,
     OUTRO_ORGAO,
     PARES,
     Par,
@@ -119,9 +120,9 @@ def test_relatorio_sem_pessoas() -> None:
 
 
 def test_pares_declaram_independencia_e_tolerancia() -> None:
-    assert len(PARES) == 3
-    assert {p.independencia for p in PARES} >= {OUTRO_ORGAO}
-    assert len({p.nome for p in PARES}) == 3
+    assert len(PARES) == 4
+    assert {p.independencia for p in PARES} >= {OUTRO_ORGAO, MESMO_DOCUMENTO}
+    assert len({p.nome for p in PARES}) == 4
 
 
 def test_par_selic_com_dados_de_exemplo() -> None:
@@ -254,3 +255,66 @@ def test_cada_par_diz_de_que_tabelas_e_prova() -> None:
     for par in PARES:
         assert par.tabelas and set(par.tabelas) <= set(TABELAS)
         assert par_sem_dados(par, "x").como_dict()["tabelas"] == list(par.tabelas)
+
+
+def test_par_informativo_fica_visivel_mas_nunca_deixa_o_placar_vermelho() -> None:
+    """Regra: o par só conta para a exigência 6 quando os dois lados medem o mesmo perímetro."""
+    informativo = Par(
+        "perimetros",
+        "d",
+        ("k",),
+        Tolerancia(),
+        OUTRO_ORGAO,
+        informativo="perímetros diferentes",
+    )
+    r = comparar(informativo, _lado(x=1.0), _lado(x=9.0), set())
+    assert r.diferentes == 1 and r.sem_explicacao == 1
+    assert not r.vermelho
+    dia = montar_relatorio_do_dia("2026-11-10", [r])
+    assert dia["vermelho"] is False
+    assert dia["por_independencia"] == {}  # não soma na prova
+    assert (
+        dia["pares"][0]["informativo"] == "perímetros diferentes"
+    )  # e continua à vista
+
+
+def test_pares_dos_bancos_sao_informativos_com_a_causa() -> None:
+    from base.cruzada import PARES
+
+    bancos = [p for p in PARES if p.nome.startswith("banco_")]
+    assert len(bancos) == 2
+    assert all("perímetro" in p.informativo for p in bancos)
+
+
+def test_par_do_enet_casa_balanco_sem_inicio_e_so_o_ultimo_exercicio() -> None:
+    from base.cruzada import PARES
+
+    par = next(p for p in PARES if p.nome == "dfp_enet_x_nossa_leitura")
+    assert par.tabelas == ("demonstracoes_como_era",)
+    assert (
+        not par.informativo
+    )  # os dois lados são o mesmo documento: conta para a prova
+    base = {"cnpj": "1", "grupo": "DF_CONS", "demonstracao": "BPA", "conta": "1"}
+    nossa = pd.DataFrame(
+        [
+            {
+                **base,
+                "ordem": "ultimo",
+                "inicio": pd.NaT,
+                "fim": "2024-12-31",
+                "valor": 10.0,
+            },
+            {
+                **base,
+                "ordem": "penultimo",
+                "inicio": pd.NaT,
+                "fim": "2023-12-31",
+                "valor": 7.0,
+            },
+        ]
+    )
+    enet = nossa.assign(valor=[10.1, 7.0])
+    assert par.preparar is not None
+    a, b = par.preparar({"demonstracoes_como_era": nossa, "enet_amostra": enet})
+    r = comparar(par, a, b, set())
+    assert r.comparadas == 1 and r.diferentes == 0  # 1% < 2%; o penúltimo ficou de fora
