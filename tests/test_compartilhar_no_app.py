@@ -199,3 +199,39 @@ def test_meus_dados_avisa_quando_nao_consegue_ler_os_links(banco, monkeypatch):
     app = abrir_app("meus_dados")
     assert not app.exception
     assert "Não consegui ler os seus links agora" in _textos(app)
+
+
+def test_falha_inesperada_ao_criar_o_link_avisa_sem_criar_nada(banco, monkeypatch):
+    entrar_como(monkeypatch, "lia", "lia@exemplo.com")
+
+    def _falha(*_args, **_kwargs):
+        raise RuntimeError("banco fora do ar")
+
+    monkeypatch.setattr("telas.compartilhar.links.criar_link_da_ficha", _falha)
+    app = abrir_app("backtest")
+    app.button(key="compartilhar_ficha_criar").click().run()
+    assert not app.exception
+    assert "Não consegui criar o link agora" in _textos(app)
+    assert not [c for c in app.code if comp.ENDERECO_DA_PAGINA in c.value]
+    assert _links(banco) == []
+
+
+def test_falha_ao_revogar_mantem_o_link_valendo(banco, monkeypatch):
+    entrar_como(monkeypatch, "lia", "lia@exemplo.com")
+    abrir_app()
+    usuario_id = id_do_usuario(banco, "lia")
+    with banco.begin() as conexao:
+        codigo = links.criar_link_da_ficha(
+            conexao, usuario_id, "gratuito", _congelada(), 30
+        )
+        (link,) = links.listar_links(conexao, usuario_id)
+
+    def _falha(*_args, **_kwargs):
+        raise RuntimeError("banco fora do ar")
+
+    monkeypatch.setattr("telas.compartilhar.links.revogar_link", _falha)
+    app = abrir_app("meus_dados")
+    app.button(key=f"revogar_link_{link.id}").click().run()
+    assert not app.exception
+    with banco.begin() as conexao:
+        assert links.abrir_link(conexao, codigo) is not None
