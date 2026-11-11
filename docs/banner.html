@@ -1,52 +1,76 @@
 <!doctype html>
-<!-- Banner do README (docs/imagens/banner.png). Para gerar de novo, no Windows:
-  msedge --headless=new --allow-file-access-from-files --hide-scrollbars --force-device-scale-factor=2
-         --window-size=1280,400 --screenshot=docs/imagens/banner.png docs/banner.html
-  O gráfico é decorativo (caminho aleatório com semente fixa), não são dados de mercado. -->
+<!-- As imagens do GitHub saem deste arquivo: o cabeçalho do README (docs/imagens/banner.png, 1280x400) e
+  a prévia social do repositório (docs/imagens/previa-social.png, 1280x640; abra com ?formato=previa).
+  Para gerar de novo: python -m scripts.gerar_imagens_do_github
+  Cores e fontes são as de src/marca.py. O terminal só lista comandos que a CLI tem (há teste), sem
+  saída e sem número: nada aqui fica velho quando a base cresce. -->
 <html lang="pt-BR"><head><meta charset="utf-8">
 <style>
 @font-face { font-family: M; src: url("../static/fontes/Manrope-VariableFont_wght.ttf"); font-weight: 200 800; }
-@font-face { font-family: J; src: url("../static/fontes/JetBrainsMono-SemiBold.ttf"); }
+@font-face { font-family: J; src: url("../static/fontes/JetBrainsMono-VariableFont_wght.ttf"); font-weight: 100 800; }
 html, body { margin: 0; width: 1280px; height: 400px; overflow: hidden; background: #0a1f44; }
 .c { position: relative; width: 1280px; height: 400px; font-family: M, sans-serif; color: #f6f8fb; background: #0a1f44; }
 .grade { position: absolute; inset: 0; background-image: linear-gradient(rgba(232,240,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(232,240,255,.07) 1px, transparent 1px); background-size: 40px 40px; mask-image: linear-gradient(90deg, transparent 0%, #000 55%); }
-svg.graf { position: absolute; right: 0; top: 0; }
-.txt { position: absolute; left: 72px; top: 60px; }
-.marca { display: flex; align-items: center; gap: 22px; }
-.nome { font-weight: 800; font-size: 76px; letter-spacing: -0.03em; line-height: 1; }
+.brilho { position: absolute; right: -160px; top: -200px; width: 760px; height: 760px; border-radius: 50%; background: radial-gradient(closest-side, rgba(41,98,255,.30), rgba(41,98,255,0)); }
+.txt { position: absolute; left: 72px; top: 56px; width: 620px; }
+.marca { display: flex; align-items: center; gap: 20px; }
+.nome { font-weight: 800; font-size: 68px; letter-spacing: -0.03em; line-height: 1; }
 .nome b { color: #2962ff; font-weight: 800; }
-.olho { margin-top: 30px; color: #6e95ff; font-weight: 800; font-size: 15px; letter-spacing: .16em; text-transform: uppercase; }
-.frase { margin-top: 10px; font-size: 27px; font-weight: 600; line-height: 1.3; max-width: 600px; }
+.olho { margin-top: 28px; color: #6e95ff; font-weight: 800; font-size: 15px; letter-spacing: .16em; text-transform: uppercase; }
+.frase { margin-top: 10px; font-size: 27px; font-weight: 600; line-height: 1.3; }
 .frase span { color: #a9b8d6; font-weight: 500; }
-.pilulas { margin-top: 30px; display: flex; gap: 10px; }
-.p { border: 1px solid rgba(232,240,255,.22); background: #102752; border-radius: 999px; padding: 7px 14px; font-size: 15px; font-weight: 600; color: #e8f0ff; }
-.tk { position: absolute; right: 64px; bottom: 34px; font-family: J, monospace; font-size: 14px; color: #a9b8d6; display: flex; gap: 22px; }
-.tk .a { color: #2ebd85; } .tk .q { color: #f76169; }
+.pilulas { margin-top: 26px; display: flex; gap: 10px; }
+.p { border: 1px solid rgba(232,240,255,.22); background: #102752; border-radius: 999px; padding: 7px 14px; font-size: 15px; font-weight: 600; color: #e8f0ff; white-space: nowrap; }
+.terminal { position: absolute; right: 64px; top: 64px; width: 504px; border: 1px solid rgba(232,240,255,.18); border-radius: 16px; background: #071733; box-shadow: 0 24px 60px rgba(3,10,26,.55); font-family: J, monospace; }
+.barra { display: flex; align-items: center; gap: 7px; padding: 13px 18px; border-bottom: 1px solid rgba(232,240,255,.12); color: #8796b5; font-size: 13px; }
+.barra i { width: 10px; height: 10px; border-radius: 50%; background: #102752; border: 1px solid rgba(232,240,255,.22); }
+.barra span { margin-left: auto; }
+.linhas { padding: 16px 20px 18px; font-size: 13.5px; line-height: 1.5; }
+.linhas .c1 { color: #8796b5; margin-top: 11px; }
+.linhas .c1:first-child { margin-top: 0; }
+.linhas .cmd { color: #f6f8fb; font-weight: 600; white-space: nowrap; }
+.linhas .cmd::before { content: "$ "; color: #2ebd85; }
+.fontes { position: absolute; right: 64px; bottom: 30px; font-family: J, monospace; font-size: 13px; color: #8796b5; }
+/* prévia social do repositório: 1280x640, mesma peça com mais ar */
+.previa, .previa body, .previa .c { height: 640px; }
+.previa .txt { top: 96px; width: 580px; }
+.previa .nome { font-size: 84px; }
+.previa .olho { margin-top: 40px; font-size: 17px; }
+.previa .frase { font-size: 30px; margin-top: 12px; }
+.previa .pilulas { margin-top: 36px; }
+.previa .p { font-size: 15px; padding: 8px 14px; }
+.previa .terminal { top: 150px; width: 528px; }
+.previa .linhas { font-size: 14px; padding: 20px 22px 24px; }
+.previa .linhas .c1 { margin-top: 16px; }
+.previa .fontes { bottom: 56px; font-size: 14px; }
 </style></head>
 <body><div class="c">
 <div class="grade"></div>
-<svg class="graf" width="760" height="400" viewBox="0 0 760 400" id="g"></svg>
+<div class="brilho"></div>
 <div class="txt">
   <div class="marca">
-    <svg width="84" height="84" viewBox="9 14 60 60"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="#f6f8fb"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg>
+    <svg width="76" height="76" viewBox="9 14 60 60"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="#f6f8fb"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg>
     <div class="nome">Ticker<b>Lab</b></div>
   </div>
-  <div class="olho">Laboratório de ações · B3 e EUA</div>
-  <div class="frase">Analise ativos e teste estratégias com dados do passado. <span>Com cada número explicado e honestidade sobre o que não funciona.</span></div>
-  <div class="pilulas"><span class="p">Backtest honesto</span><span class="p">Relatórios em PDF</span><span class="p">Carteiras</span><span class="p">Pesquisa com ML</span></div>
+  <div class="olho">Plataforma de inteligência financeira</div>
+  <div class="frase">Dados auditáveis para quem analisa empresas no Brasil. <span>Fonte e data em cada número.</span></div>
+  <div class="pilulas"><span class="p">Base por CNPJ</span><span class="p">API e CLI</span><span class="p">Empresas e setores</span><span class="p">Fontes públicas</span></div>
 </div>
+<div class="terminal">
+  <div class="barra"><i></i><i></i><i></i><span>tickerlab</span></div>
+  <div class="linhas">
+    <div class="c1"># uma empresa pelo CNPJ</div>
+    <div class="cmd">tickerlab empresa &lt;cnpj&gt;</div>
+    <div class="c1"># o que a base sabia naquele dia</div>
+    <div class="cmd">tickerlab demonstracoes &lt;cnpj&gt; --como-era 2024-12-31</div>
+    <div class="c1"># tamanho e concentração de um setor</div>
+    <div class="cmd">tickerlab setor eletricas</div>
+  </div>
+</div>
+<div class="fontes">Receita · CVM · Banco Central · Tesouro · B3 · agências reguladoras</div>
 </div>
 <script>
-// caminho aleatório determinístico (só decoração)
-let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
-const n = 110, w = 720, pts = []; let y = 250;
-for (let i = 0; i < n; i++) { y += (r() - 0.56) * 9; if (y < 70) y = 140 - y; if (y > 280) y = 560 - y; pts.push([i * w / (n - 1), y]); }
-const g = document.getElementById('g'), ns = 'http://www.w3.org/2000/svg';
-const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
-g.innerHTML = `<defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2962ff" stop-opacity=".35"/><stop offset="1" stop-color="#2962ff" stop-opacity="0"/></linearGradient>
-<linearGradient id="f" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity="1"/></linearGradient>
-<mask id="m"><rect width="760" height="400" fill="url(#f)"/></mask></defs>
-<g mask="url(#m)"><path d="${d} L${pts[n-1][0]} 400 L0 400 Z" fill="url(#a)"/><path d="${d}" fill="none" stroke="#2962ff" stroke-width="4" stroke-linejoin="round"/>
-<circle cx="${pts[n-1][0]}" cy="${pts[n-1][1]}" r="7" fill="#f6f8fb"/></g>`;
+// a prévia social é a mesma peça, mais alta
+if (new URLSearchParams(location.search).get("formato") === "previa") document.documentElement.classList.add("previa");
 </script>
 </body></html>
