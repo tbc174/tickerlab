@@ -33,6 +33,9 @@ ORGAOS: dict[str, tuple[str, str]] = {
 
 CPF_FORMATADO = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)")
 ONZE_DIGITOS = re.compile(r"(?<![\d.\-/])\d{11}(?![\d.\-/])")
+SEPARADOR_ENTRE_DIGITOS = re.compile(
+    r"(?<=\d)[ .\-](?=\d)"
+)  # "529 982 247 25", "529.982.24725"
 MARCAS_DE_PESSOA = re.compile(
     r"\b(?:cpf|rg|sr\.|sra\.|dr\.|dra\.|nascid[oa]|filiação)(?!\w)", re.IGNORECASE
 )
@@ -49,10 +52,17 @@ def _cpf_valido(onze: str) -> bool:
 
 
 def achar_cpf(texto: str) -> bool:
-    """Formato de CPF, ou 11 dígitos soltos com os dígitos verificadores certos."""
+    """Formato de CPF, ou 11 dígitos (também com espaço ou ponto no meio) com os dígitos verificadores certos."""
     if CPF_FORMATADO.search(texto):
         return True
-    return any(_cpf_valido(achado) for achado in ONZE_DIGITOS.findall(texto))
+    colado = SEPARADOR_ENTRE_DIGITOS.sub(
+        "", texto
+    )  # na dúvida, para (falso alarme é aceitável)
+    return any(
+        _cpf_valido(achado)
+        for variante in (texto, colado)
+        for achado in ONZE_DIGITOS.findall(variante)
+    )
 
 
 def orgao_da_url(url: str) -> tuple[str, str] | None:

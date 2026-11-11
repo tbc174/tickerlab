@@ -102,6 +102,8 @@ def test_fora_da_janela_nao_sai(tmp_path):
     [
         f"Sócio com CPF {CPF_INVENTADO} entrou na empresa em 2025",
         "Sócio 52998224725 entrou na empresa em 2025",
+        "Sócio 529 982 247 25 entrou na empresa em 2025",
+        "Sócio 529.982.24725 entrou na empresa em 2025",
     ],
 )
 def test_cpf_no_trecho_derruba_o_exportador(tmp_path, trecho):
