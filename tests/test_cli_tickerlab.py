@@ -1082,6 +1082,7 @@ def test_instrucoes_do_agente(rodar):
         "prospectar",
         "comparaveis",
         "eventos",
+        "dossie",
         "compradores",
         "vinculos",
         "catalogo",
@@ -1917,3 +1918,92 @@ def test_vinculos_recusa_da_api_em_portugues(rodar, chave, codigo, saida, trecho
     )
     assert resultado.exit_code == saida
     assert trecho in resultado.stderr
+
+
+def _env(valor):
+    return {
+        "value": valor,
+        "source": "rfb-cnpj",
+        "published_at": "2026-10-01",
+        "observed_at": "2026-10-02",
+    }
+
+
+def _secoes_do_dossie(faltando: dict[str, int] | None = None):
+    faltando = faltando or {}
+    corpos = {
+        "/profile": {
+            "cnpj": {"razao": _env("EMPRESA EXEMPLO S.A.")},
+            "sources": [{"source": "rfb-cnpj"}],
+        },
+        "/events": {
+            "events": [],
+            "sources": [{"source": "rfb-cnpj"}, {"source": "cvm"}],
+        },
+        "/links": {
+            "links": [],
+            "limits": [{"source": "x", "text": "limite dos vínculos"}],
+        },
+        "/comparables": {"comparables": [], "sources": [{"source": "cvm"}]},
+    }
+    vistos: list[str] = []
+
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        sufixo = "/" + pedido.url.path.rsplit("/", 1)[1]
+        vistos.append(sufixo)
+        if sufixo in faltando:
+            codigo = {403: "dataset_not_in_contract", 404: "not_available"}[
+                faltando[sufixo]
+            ]
+            return httpx.Response(faltando[sufixo], json={"detail": codigo})
+        return httpx.Response(200, json=dict(corpos[sufixo]))
+
+    return responder, vistos
+
+
+def test_dossie_junta_as_quatro_secoes_sem_repetir_fonte(rodar, chave):
+    responder, vistos = _secoes_do_dossie()
+    resultado = rodar(
+        "dossie",
+        "11111111000191",
+        "--json",
+        http=_http_falso(responder),
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos == ["/profile", "/events", "/links", "/comparables"]
+    corpo = json.loads(resultado.stdout)
+    assert corpo["requests_used"] == 4 and corpo["gaps"] == []
+    assert [f["source"] for f in corpo["sources"]] == ["rfb-cnpj", "cvm"]
+    assert corpo["limits"] == [{"source": "x", "text": "limite dos vínculos"}]
+    assert "sources" not in corpo["events"]
+
+
+def test_dossie_secao_sem_dado_vira_lacuna_dita(rodar, chave):
+    responder, _ = _secoes_do_dossie({"/links": 404})
+    resultado = rodar(
+        "dossie", "11111111000191", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert "Ficou de fora: links" in resultado.stdout
+    assert "## comparables" in resultado.stdout
+
+
+def test_dossie_sem_perfil_e_erro(rodar, chave):
+    responder, _ = _secoes_do_dossie({"/profile": 404})
+    resultado = rodar(
+        "dossie", "11111111000191", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.SEM_DADO
+
+
+def test_dossie_em_planilha_tem_aba_das_fontes(rodar, chave, tmp_path):
+    responder, _ = _secoes_do_dossie()
+    arquivo = tmp_path / "dossie.xlsx"
+    resultado = rodar(
+        "dossie", "11111111000191", "--planilha", str(arquivo),
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    assert any("fonte" in aba.lower() for aba in abas)
