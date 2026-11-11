@@ -35,8 +35,14 @@ from pathlib import Path
 import duckdb
 
 from base.dicionario import TABELAS
-from base.dossie import COLUNAS_DE_PESSOA, SO_PELA_API_EXTERNA, pode_consultar
-from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
+from base.dossie import (
+    COLUNAS_DE_PESSOA,
+    SO_PELA_API_EXTERNA,
+    pode_consultar,
+    pode_mostrar,
+    tem_dia_publico,
+)
+from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela, servida_pela_porta
 from base.rede.entidades import EMPRESARIO_INDIVIDUAL, GRUPO_DAS_PESSOAS_FISICAS
 from src import acervo
 
@@ -144,11 +150,15 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
             raise RecorteErro(f"{nome}: tabela de pessoa natural")
         if nome in FICAM_EM_CASA:
             raise RecorteErro(f"{nome}: fica em casa")
-        if (
-            nome not in DEGRAU_1
-            and nome not in SO_PELA_API_EXTERNA
-            and not pode_consultar(nome)
-        ):
+        if nome in SO_PELA_API_EXTERNA:
+            # fora da consulta aberta só por estar nesta lista: o resto da regra de consultar ainda vale
+            if not (
+                pode_mostrar(nome)
+                and servida_pela_porta(nome)
+                and tem_dia_publico(nome)
+            ):
+                raise RecorteErro(f"{nome}: a API externa não pode servi-la")
+        elif nome not in DEGRAU_1 and not pode_consultar(nome):
             raise RecorteErro(f"{nome}: a consulta aberta não a libera")
         if ARQUIVOS[nome].split("/")[0] in PASTAS_PROIBIDAS:
             raise RecorteErro(f"{nome}: mora em pasta proibida")

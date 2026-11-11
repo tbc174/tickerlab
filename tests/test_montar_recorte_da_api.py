@@ -390,3 +390,11 @@ def test_entradas_nao_vai_sem_empresas_pj(tmp_path):
     _entradas(base, "('00000000', '11111111')")
     with pytest.raises(envio.RecorteErro, match="junto"):
         envio.montar(base, tmp_path / "saida", ("entradas_de_socio_pj",))
+
+
+def test_a_da_api_externa_ainda_passa_pela_trava_de_mostrar(monkeypatch):
+    """Fora da consulta aberta não quer dizer sem conferência: a trava de licença e de pessoa ainda vale."""
+    envio.conferir_a_lista(("entradas_de_socio_pj",))
+    monkeypatch.setattr(envio, "pode_mostrar", lambda _: False)
+    with pytest.raises(envio.RecorteErro, match="API externa não pode"):
+        envio.conferir_a_lista(("entradas_de_socio_pj",))
