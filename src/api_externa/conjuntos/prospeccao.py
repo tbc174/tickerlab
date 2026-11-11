@@ -405,6 +405,18 @@ def _ordenacao(busca: Busca) -> str:
     return f"{_valor_da_ordem(busca)} {sentido}, e.cnpj"
 
 
+def _depende_da_empresa(busca: Busca) -> bool:
+    """O filtro ou a ordem olha uma coluna da empresa (então o corte só vale depois da junção)?"""
+    return bool(
+        busca.ordem
+        or busca.portes
+        or busca.naturezas
+        or busca.capital_min is not None
+        or busca.capital_max is not None
+        or busca.filiais_min is not None
+    )
+
+
 def _aspas(nome: str) -> str:
     return '"' + nome.replace('"', '""') + '"'
 
@@ -452,17 +464,7 @@ class LeitorDeProspeccao:
         limite = max(1, min(busca.limite, self.linhas_maximas))
         condicoes, parametros = _onde(busca, mes)
         parametros["limite"] = limite + 1
-        consulta = (
-            f"SELECT e.cnpj, e.{PUBLICADO_EM}, e.{MES}, "
-            + ", ".join(f"p.{c}" for c in CAMPOS_DA_EMPRESA if c in existentes)
-            + ", "
-            + ", ".join(f"e.{c}" for c in CAMPOS_DO_ESTABELECIMENTO)
-            + f" FROM {_aspas(nome_da_view(ESTABELECIMENTOS))} e"
-            + f" JOIN {_aspas(nome_da_view(EMPRESAS))} p"
-            + f" ON p.cnpj_basico = e.cnpj_basico AND p.{MES} = e.{MES}"
-            + f" WHERE {' AND '.join(condicoes)} ORDER BY {_ordenacao(busca)} LIMIT $limite"
-        )
-        achadas = self.porta.con.execute(consulta, parametros).df()
+        achadas = self._executar(busca, condicoes, parametros, existentes)
         cortada = len(achadas) > limite
         achadas = achadas.head(limite)
         empresas = [self._empresa(linha) for _, linha in achadas.iterrows()]
@@ -473,6 +475,43 @@ class LeitorDeProspeccao:
             "proximo_cursor": self._proximo_cursor(busca, achadas) if cortada else None,
         }
         return BuscaServida(corpo, {FONTE} if empresas else set(), len(empresas))
+
+    def _executar(
+        self,
+        busca: Busca,
+        condicoes: list[str],
+        parametros: dict[str, object],
+        existentes: set[str],
+    ) -> pd.DataFrame:
+        """A página pedida. Sem filtro nem ordem que dependam da empresa, o corte de `limite + 1` acontece
+        nos estabelecimentos e só essas linhas são juntadas à empresa (em tabelas inteiras, a junção
+        antes do corte leva segundos); se a junção perder alguma (estabelecimento sem empresa), refaz
+        pelo caminho de junção primeiro, que é a resposta de referência."""
+        estab = _aspas(nome_da_view(ESTABELECIMENTOS))
+        empresa = _aspas(nome_da_view(EMPRESAS))
+        campos = (
+            f"e.cnpj, e.{PUBLICADO_EM}, e.{MES}, "
+            + ", ".join(f"p.{c}" for c in CAMPOS_DA_EMPRESA if c in existentes)
+            + ", "
+            + ", ".join(f"e.{c}" for c in CAMPOS_DO_ESTABELECIMENTO)
+        )
+        juncao = (
+            f" JOIN {empresa} p ON p.cnpj_basico = e.cnpj_basico AND p.{MES} = e.{MES}"
+        )
+        onde = " AND ".join(condicoes)
+        if not _depende_da_empresa(busca):
+            achadas = self.porta.con.execute(
+                f"WITH achadas AS (SELECT e.* FROM {estab} e WHERE {onde} ORDER BY e.cnpj LIMIT $limite)"
+                f" SELECT {campos}, (SELECT count(*) FROM achadas) AS cortadas FROM achadas e{juncao}"
+                " ORDER BY e.cnpj",
+                parametros,
+            ).df()
+            if achadas.empty or len(achadas) == achadas["cortadas"].iloc[0]:
+                return achadas.drop(columns="cortadas")
+        return self.porta.con.execute(
+            f"SELECT {campos} FROM {estab} e{juncao} WHERE {onde} ORDER BY {_ordenacao(busca)} LIMIT $limite",
+            parametros,
+        ).df()
 
     @staticmethod
     def _proximo_cursor(busca: Busca, achadas: pd.DataFrame) -> str:
