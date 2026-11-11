@@ -1,24 +1,40 @@
-"""O app do conector: o servidor MCP (Streamable HTTP, sem estado) com a entrada por chave e o Host conferido.
+"""O app do conector: o servidor MCP (Streamable HTTP, sem estado), o OAuth e o Host conferido.
 
 `criar_app` monta tudo a partir da `Configuracao`; o transporte da API é injetável para os testes.
-Quem não manda chave recebe 401 com o ponteiro para os metadados do recurso protegido (RFC 9728), que é
-como o Claude e o ChatGPT descobrem onde entrar. Pedido para um Host que não é o do conector recebe 421
-antes de qualquer outra coisa (proteção contra DNS rebinding); Origin de fora da lista recebe 403.
+Quem chega sem token recebe 401 com o ponteiro para os metadados do recurso protegido (RFC 9728), que é
+como o Claude e o ChatGPT descobrem o OAuth do próprio conector (`oauth.py`, `pagina.py`). A chave
+`tld_...` direto no cabeçalho continua valendo (Claude Code e o plano B no PC). Pedido para um Host que
+não é o do conector recebe 421 antes de qualquer outra coisa (proteção contra DNS rebinding); Origin de
+fora da lista recebe 403. Se a API não diz se a chave vale (limite de pedidos, erro dela), a IA
+recebe 503 com `Retry-After`, nunca 401: um 401 a faria pedir a chave de novo ao analista.
 """
 
+import logging
+import os
 from typing import Any
 
 import httpx
-from mcp.server.auth.settings import AuthSettings
+from mcp.server.auth.handlers.metadata import MetadataHandler
+from mcp.server.auth.routes import build_metadata, cors_middleware, create_auth_routes
+from mcp.server.auth.settings import (
+    AuthSettings,
+    ClientRegistrationOptions,
+    RevocationOptions,
+)
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.server.transport_security import TransportSecuritySettings
+from mcp.server.transport_security import (
+    RequestBodyLimitMiddleware,
+    TransportSecuritySettings,
+)
 from mcp.types import Tool
+from pydantic import AnyHttpUrl
 from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.routing import Route, request_response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from conector_remoto.acesso import VerificadorDeChave, acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi
@@ -28,10 +44,28 @@ from conector_remoto.ferramentas import (
     ferramenta_liberada,
     registrar_ferramentas,
 )
+from conector_remoto.oauth import (
+    MENSAGEM_API_FORA,
+    ProvedorOAuth,
+    VerificadorDoProvedor,
+)
+from conector_remoto.pagina import CAMINHO, MAXIMO_DO_CORPO, nova_pagina
+from conector_remoto.selo import TAMANHO_DA_CHAVE, Selador
+
+logger = logging.getLogger(__name__)
 
 NOME = "tickerlab"
 STATUS_HOST_ERRADO = 421
 STATUS_ORIGEM_ERRADA = 403
+STATUS_API_FORA = 503
+ESPERA_COM_A_API_FORA_S = "30"
+# o Claude e o ChatGPT se registram como cliente público (sem segredo, só PKCE)
+METODOS_DE_ENTRADA_ANUNCIADOS = ["none", "client_secret_post", "client_secret_basic"]
+METADADOS_DO_SERVIDOR = "/.well-known/oauth-authorization-server"
+AVISO_SEM_CHAVE = (
+    "TICKERLAB_MCP_CHAVE_DOS_TOKENS ausente: os tokens do OAuth usam uma chave só deste processo "
+    "(reiniciar obriga todos a entrar de novo)"
+)
 INSTRUCOES = (
     "TickerLab: dados públicos de empresas brasileiras (pessoa jurídica) para a análise de M&A: "
     "cadastro na Receita, busca de empresas por filtros, demonstrações e comparáveis de companhias "
@@ -93,21 +127,75 @@ class ProtecaoDeHost:
         await self._app(scope, receive, send)
 
 
-def criar_servidor(
+class FalhaPassageiraDaApi:
+    """503 com `Retry-After` quando a conferência da chave não teve resposta da API (antes da resposta)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+        comecou = False
+
+        async def enviar(mensagem: Message) -> None:
+            nonlocal comecou
+            comecou = comecou or mensagem["type"] == "http.response.start"
+            await send(mensagem)
+
+        try:
+            await self._app(scope, receive, enviar)
+        except httpx.HTTPError:
+            if comecou:
+                raise
+            logger.warning("API sem resposta ao conferir a chave: 503 para a IA")
+            resposta = JSONResponse(
+                {
+                    "error": "temporarily_unavailable",
+                    "error_description": MENSAGEM_API_FORA,
+                },
+                STATUS_API_FORA,
+                headers={"Retry-After": ESPERA_COM_A_API_FORA_S},
+            )
+            await resposta(scope, receive, send)
+
+
+def _selador(configuracao: Configuracao) -> Selador:
+    chave = configuracao.chave_dos_tokens
+    if chave is None:
+        logger.warning(AVISO_SEM_CHAVE)
+        chave = os.urandom(TAMANHO_DA_CHAVE)
+    return Selador(chave)
+
+
+def criar_provedor(
     configuracao: Configuracao, transporte: httpx.AsyncBaseTransport | None = None
-) -> ServidorDoConector:
-    """O servidor MCP com a entrada por chave e as sete ferramentas."""
+) -> tuple[ProvedorOAuth, ClienteDaApi]:
+    """O provedor do OAuth e o cliente da API que ele e as ferramentas usam."""
     cliente = ClienteDaApi(
         configuracao.url_da_api,
         tempo_limite_s=configuracao.tempo_limite_s,
         transporte=transporte,
     )
+    provedor = ProvedorOAuth(
+        _selador(configuracao),
+        VerificadorDeChave(cliente, configuracao.url_do_mcp),
+        url_publica=configuracao.url_publica,
+        recurso=configuracao.url_do_mcp,
+    )
+    return provedor, cliente
+
+
+def criar_servidor(
+    configuracao: Configuracao, provedor: ProvedorOAuth, cliente: ClienteDaApi
+) -> ServidorDoConector:
+    """O servidor MCP com a entrada por token (OAuth ou chave direta) e as ferramentas."""
     servidor = ServidorDoConector(
         NOME,
         instructions=INSTRUCOES,
-        token_verifier=VerificadorDeChave(cliente, configuracao.url_do_mcp),
+        token_verifier=VerificadorDoProvedor(provedor),
         auth=AuthSettings(
-            # o próprio conector será o servidor de autorização no PR 2 (OAuth)
             issuer_url=configuracao.url_publica,  # type: ignore[arg-type]
             resource_server_url=configuracao.url_do_mcp,  # type: ignore[arg-type]
             validate_token_resource=True,
@@ -123,11 +211,48 @@ def criar_servidor(
     return servidor
 
 
+def rotas_do_oauth(
+    configuracao: Configuracao, provedor: ProvedorOAuth, issuer: AnyHttpUrl
+) -> list[Route]:
+    """As rotas do servidor de autorização: as do SDK (metadados, /authorize, /token, /register), com os
+    metadados anunciando o cliente público, e a página `/autorizar`."""
+    registro = ClientRegistrationOptions(enabled=True)
+    sem_revogacao = RevocationOptions(enabled=False)
+    metadados = build_metadata(issuer, None, registro, sem_revogacao)
+    metadados.token_endpoint_auth_methods_supported = METODOS_DE_ENTRADA_ANUNCIADOS
+    rota_dos_metadados = Route(
+        METADADOS_DO_SERVIDOR,
+        endpoint=cors_middleware(MetadataHandler(metadados).handle, ["GET", "OPTIONS"]),
+        methods=["GET", "OPTIONS"],
+    )
+    rotas_do_sdk = create_auth_routes(
+        provedor,
+        issuer_url=issuer,
+        client_registration_options=registro,
+        revocation_options=sem_revogacao,
+    )
+    pagina = nova_pagina(provedor, configuracao.redes_confiaveis)
+    return [
+        rota_dos_metadados,
+        *(r for r in rotas_do_sdk if r.path != METADADOS_DO_SERVIDOR),
+        Route(CAMINHO, endpoint=pagina.mostrar, methods=["GET"]),
+        Route(
+            CAMINHO,
+            endpoint=RequestBodyLimitMiddleware(
+                request_response(pagina.receber), MAXIMO_DO_CORPO
+            ),
+            methods=["POST"],
+        ),
+    ]
+
+
 def criar_app(
     configuracao: Configuracao, transporte: httpx.AsyncBaseTransport | None = None
 ) -> Starlette:
     """O app ASGI do conector (rode com o lifespan: o gerenciador de sessões do MCP vive nele)."""
-    app = criar_servidor(configuracao, transporte).streamable_http_app(
+    provedor, cliente = criar_provedor(configuracao, transporte)
+    servidor = criar_servidor(configuracao, provedor, cliente)
+    app = servidor.streamable_http_app(
         json_response=True,
         stateless_http=True,
         transport_security=TransportSecuritySettings(
@@ -137,6 +262,14 @@ def criar_app(
         ),
         host="0.0.0.0",  # quem limita a 127.0.0.1 é a porta publicada no compose
     )
+    # o mesmo `issuer` dos metadados do recurso protegido (o ChatGPT exige os dois iguais)
+    autorizacao = servidor.settings.auth
+    if autorizacao is None:  # pragma: no cover - criar_servidor sempre liga a entrada
+        raise RuntimeError("o servidor do conector precisa da entrada por token")
+    app.router.routes[0:0] = rotas_do_oauth(
+        configuracao, provedor, autorizacao.issuer_url
+    )
+    app.add_middleware(FalhaPassageiraDaApi)
     app.add_middleware(
         ProtecaoDeHost,
         hosts=configuracao.hosts_permitidos,
