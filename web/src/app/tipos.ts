@@ -1026,7 +1026,7 @@ export interface OQueMudouV1 {
   entregas: EntregaDoDiaV1[];
 }
 
-// Encontrar empresas (tela do analista, linha 798): a matriz ativa por setor, UF e idade mínima. Cada campo
+// Encontrar empresas (tela do analista, linha 798): a matriz ativa por setor, UF, idade, capital e estabelecimentos. Cada campo
 // vem no envelope (null se o portão não serve); os *_descricao/_nome são os nomes da Receita ao lado do código
 export interface EmpresaDaBuscaV1 {
   cnpj: string;
@@ -1039,6 +1039,8 @@ export interface EmpresaDaBuscaV1 {
   uf: CampoComFonteV1 | null;
   municipio: CampoComFonteV1 | null;
   matriz: CampoComFonteV1 | null;
+  capital_social?: CampoComFonteV1 | null; // R$, o declarado na Receita (falta na tabela antiga)
+  n_estabelecimentos?: CampoComFonteV1 | null; // os ativos, a matriz junto
   cnae_descricao: string | null;
   municipio_nome: string | null;
   porte_descricao: string | null;
@@ -1046,6 +1048,11 @@ export interface EmpresaDaBuscaV1 {
 
 export interface SetorDaBuscaV1 {
   codigo: string; // a letra da seção do CNAE (IBGE)
+  nome: string;
+}
+
+export interface OrdemDaBuscaV1 {
+  codigo: string; // vai de volta no pedido; sem ordem é pelo CNPJ
   nome: string;
 }
 
@@ -1060,4 +1067,5 @@ export interface BuscaDeEmpresasV1 {
   limites: string[];
   setores: SetorDaBuscaV1[];
   ufs: string[];
+  ordens: OrdemDaBuscaV1[];
 }

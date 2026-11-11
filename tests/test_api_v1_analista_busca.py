@@ -83,6 +83,17 @@ def test_carregar_mais_pelo_cursor(cliente, monkeypatch):
     assert [e["cnpj"] for e in segunda["empresas"]] == ["22222222000191"]
 
 
+def test_capital_estabelecimentos_e_ordem_pela_rota(cliente):
+    pedido = {"ufs": ["SP", "MG"], "capital_minimo": 50_000, "ordem": "menor_capital"}
+    dados = cliente.post(ROTA, json=pedido).json()
+    assert [e["cnpj"] for e in dados["empresas"]] == ["22222222000191", ALFA]
+    assert dados["empresas"][1]["capital_social"]["valor"] == 6_000_000.0
+    assert dados["empresas"][1]["n_estabelecimentos"]["valor"] == 1
+    assert dados["ordens"] == busca.ordens_como_lista()
+    pedido = {"ufs": ["SP", "MG"], "estabelecimentos_minimo": 2}
+    assert cliente.post(ROTA, json=pedido).json()["empresas"] == []
+
+
 def test_sem_filtro_traz_as_opcoes_sem_abrir_a_base(cliente, monkeypatch):
     # a tela abre o formulário com este pedido: nem a base fora do ar o derruba
     monkeypatch.setattr(rotas_da_api_externa, "abrir_porta", _nao_abre)
@@ -118,6 +129,10 @@ def test_sem_prontidao_e_estado_da_tela_nao_erro(cliente, monkeypatch):
         {"idade_minima": busca.IDADE_MAXIMA + 1},
         {"ufs": ["SP"], "cursor": "nao-e-cursor"},
         {"ufs": ["SP"] * (len(busca.UFS) + 1)},
+        {"capital_minimo": -1},
+        {"capital_minimo": 2, "capital_maximo": 1},
+        {"estabelecimentos_minimo": 0},
+        {"ufs": ["SP"], "ordem": "faturamento"},
     ],
 )
 def test_filtro_fora_do_que_a_tela_oferece_e_422(cliente, pedido):

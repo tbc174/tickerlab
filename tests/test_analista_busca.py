@@ -137,6 +137,75 @@ def test_a_pagina_tem_tamanho_fixo_e_cursor(pasta, monkeypatch):
     assert _cnpjs(segunda) == ["22222222000191"]
 
 
+def test_capital_e_estabelecimentos_filtram_e_saem_com_fonte(pasta):
+    # outubro: ALFA (MG) com capital de 6 milhões e um estabelecimento ativo; BETA (SP) com 100 mil e um
+    assert _cnpjs(_buscar(pasta, capital_minimo=1_000_000)) == ["11111111000191"]
+    assert _cnpjs(_buscar(pasta, ufs=("SP", "MG"), capital_maximo=200_000)) == [
+        "22222222000191"
+    ]
+    assert _cnpjs(_buscar(pasta, ufs=("SP", "MG"), estabelecimentos_minimo=2)) == []
+    (empresa,) = _buscar(pasta, setores=("J",)).corpo["empresas"]
+    assert empresa["capital_social"]["valor"] == 6_000_000.0
+    assert empresa["capital_social"]["fonte"] == "rfb-cnpj"
+    assert empresa["n_estabelecimentos"]["valor"] == 1
+
+
+def test_ordem_por_capital_com_cursor(pasta, monkeypatch):
+    todas = ("SP", "MG")
+    assert _cnpjs(_buscar(pasta, ufs=todas, ordem="maior_capital")) == [
+        "11111111000191",
+        "22222222000191",
+    ]
+    assert _cnpjs(_buscar(pasta, ufs=todas, ordem="menor_capital")) == [
+        "22222222000191",
+        "11111111000191",
+    ]
+    monkeypatch.setattr(busca, "TAMANHO_DA_PAGINA", 1)
+    primeira = _buscar(pasta, ufs=todas, ordem="menor_capital")
+    assert _cnpjs(primeira) == ["22222222000191"]
+    cursor = primeira.corpo["proximo_cursor"]
+    segunda = _buscar(pasta, ufs=todas, ordem="menor_capital", cursor=cursor)
+    assert _cnpjs(segunda) == ["11111111000191"]
+    # o cursor de uma ordem não serve para outra
+    with pytest.raises(busca.FiltroInvalido):
+        _buscar(pasta, ufs=todas, cursor=cursor)
+
+
+def test_a_ordem_sozinha_nao_e_filtro(pasta):
+    assert _buscar(pasta, ordem="maior_capital").estado == busca.SEM_FILTRO
+
+
+def test_tabela_sem_capital_nao_responde_ao_filtro_de_capital(tmp_path):
+    # a tabela montada antes da linha 584 não tem as colunas: a tela diz "não liberado", nunca inventa
+    base = tmp_path / "base"
+    base_de_mentira._gravar(
+        base, prospeccao.ESTABELECIMENTOS, base_de_mentira._estabelecimentos()
+    )
+    antiga = base_de_mentira._empresas().drop(
+        columns=["capital_social", "n_estabelecimentos"]
+    )
+    base_de_mentira._gravar(base, prospeccao.EMPRESAS, antiga)
+    resposta = _buscar(base, capital_minimo=1)
+    assert resposta == leitura.Resposta(leitura.NAO_LIBERADA)
+    assert _cnpjs(_buscar(base, ufs=("SP",))) == ["22222222000191"]
+
+
+def test_as_ordens_da_tela_sao_as_da_api():
+    assert [o["codigo"] for o in busca.ordens_como_lista()] == list(busca.ORDENS)
+    for codigo, (ordem_da_api, _nome) in busca.ORDENS.items():
+        assert prospeccao.busca_dos_pedidos(
+            cnae=[], state=["SP"], municipality=[], size=[], legal_nature=[],
+            registration_status=[], opened_before=None, opened_after=None,
+            head_office=True, cursor=None, limit=None, sort=ordem_da_api,
+        ).ordem, codigo  # fmt: skip
+
+
+def test_os_limites_dizem_que_capital_e_so_aproximacao_e_nao_mede_faturamento():
+    texto = " ".join(busca.LIMITES).lower()
+    assert "aproximação" in texto and "capital social" in texto
+    assert "nenhum dos dois mede faturamento" in texto
+
+
 # ---------------------------------------------------------------- o que não sai
 
 
@@ -165,6 +234,11 @@ def test_risco_1_sem_prontidao_nada_sai_e_o_estado_nao_depende_do_filtro(pasta):
         {"idade_minima": 0},
         {"idade_minima": busca.IDADE_MAXIMA + 1},
         {"ufs": ("SP",), "cursor": "nao-e-cursor"},
+        {"capital_minimo": -1},
+        {"capital_minimo": 2_000_000, "capital_maximo": 1_000_000},
+        {"capital_maximo": 1e16},
+        {"estabelecimentos_minimo": 0},
+        {"ufs": ("SP",), "ordem": "faturamento"},
     ],
 )
 def test_risco_3_filtro_que_a_api_recusaria_e_erro(pasta, filtros):
