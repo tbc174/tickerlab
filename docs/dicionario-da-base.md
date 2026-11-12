@@ -2812,12 +2812,12 @@ Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para 
 - **Licença:** CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)
 - **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)
-- **Atraso de divulgação:** Herda a de `anvisa_registros`: a fonte publica o estado de hoje sem dizer desde quando, e a porta, como nas outras fontes de governo, só mostra o retrato a partir do último dia do mês dele
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando. **Por dia, não por mês** (decisão da Diretoria, 12/11/2026, só para esta tabela): o retrato vale desde o dia em que o arquivista viu o arquivo (`visto_em`), nunca desde a data de referência da Anvisa nem um dia antes. A `anvisa_registros`, de que ela deriva, continua por mês (contrato publicado; mudar pede versão maior). Motivo: a contagem é nossa, feita sobre o que o arquivista já guardou, e esperar o fim do mês esconderia um dado que a base já tinha na véspera
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj_basico`, `disponivel_em`
 - **Três datas:** publico_em = `disponivel_em`; coletado_em = `montado_em`
-- **Histórico desde:** 2026-10-29 (`publico_em` por mes)
+- **Histórico desde:** 2026-10-29 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/anvisa_por_empresa/anvisa_por_empresa.parquet` (servidor de casa, `scripts/montar_anvisa_por_empresa.py`)
 - **Linhagem:** Derivada de `anvisa_registros`; o manifesto lista o SHA-256 de cada cadastro lido. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
@@ -2825,7 +2825,7 @@ Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para 
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
-| `disponivel_em` | Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até ele). A porta só o mostra a partir do último dia do mês | data (dia) |
+| `disponivel_em` | Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até ele), que é o dia em que o arquivista o viu. A porta o mostra desde esse dia | data (dia) |
 | `trata_como_pessoa` | Sempre falso: a raiz com alguma linha de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
 | `cosmeticos_total` | Registros de cosméticos da empresa, em vigor ou não | número inteiro |
 | `cosmeticos_ativos` | Registros de cosméticos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |

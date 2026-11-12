@@ -289,7 +289,7 @@ def test_o_dicionario_descreve_exatamente_as_colunas_que_a_montagem_grava():
     assert list(contrato.colunas) == list(tabela.columns)
     assert contrato.linhas_de_pessoa == "trata_como_pessoa"
     assert contrato.datas["publico_em"] == porte.RETRATO
-    assert contrato.granularidade_do_publico_em == "mes"
+    assert contrato.granularidade_do_publico_em == "dia"
 
 
 # --- o script: lê pela porta, grava a tabela e não regrava sem retrato novo --------------------------------------
@@ -354,15 +354,50 @@ def test_a_porta_serve_a_tabela_montada_e_recusa_a_linha_de_pessoa(tmp_path):
     assert {EMPRESA, OUTRA} <= set(lidas["cnpj_basico"])
 
 
-def test_a_porta_so_mostra_o_retrato_depois_do_fim_do_mes(tmp_path):
-    """O retrato de 2026-10-29 vale a partir de 2026-10-31 (regra do mês da porta), nunca antes."""
+def test_a_porta_mostra_o_retrato_desde_o_dia_em_que_o_arquivista_viu_o_arquivo(
+    tmp_path,
+):
+    """Granularidade "dia" (Diretoria, 12/11/2026): o retrato de 2026-10-29 vale em 29/10, nunca na véspera."""
     base = _acervo(tmp_path, _registros_do_acervo())
     script.montar(base, AGORA, "x")
     with porta.abrir(base) as p:
-        antes = p.ler(porte.TABELA, como_era_em="2026-10-30")
-        depois = p.ler(porte.TABELA, como_era_em="2026-10-31")
-    assert antes.empty
-    assert set(depois["cnpj_basico"]) == {EMPRESA}
+        vespera = p.ler(porte.TABELA, como_era_em="2026-10-28")
+        no_dia = p.ler(porte.TABELA, como_era_em=PRIMEIRO)
+        depois = p.ler(porte.TABELA, como_era_em="2026-11-09")
+        com_o_segundo = p.ler(porte.TABELA, como_era_em=SEGUNDO)
+    assert vespera.empty  # na véspera: não disponível
+    assert set(no_dia["cnpj_basico"]) == {EMPRESA}
+    assert set(depois["cnpj_basico"]) == {
+        EMPRESA
+    }  # o retrato de 10/11 ainda não existia
+    assert {OUTRA, EMPRESA} <= set(com_o_segundo["cnpj_basico"])
+
+
+def test_cortar_o_futuro_da_tabela_montada_nao_muda_o_passado(tmp_path):
+    """O que a porta responde para uma data não muda se as linhas de depois dela forem tiradas."""
+    completo = _registros_do_acervo()
+    ate_o_primeiro = completo[completo["disponivel_em"] <= pd.Timestamp(PRIMEIRO)]
+    base_a, base_b = tmp_path / "a", tmp_path / "b"
+    for pasta, registros in ((base_a, completo), (base_b, ate_o_primeiro)):
+        script.montar(_acervo(pasta, registros), AGORA, "x")
+    lidas = []
+    for pasta in (base_a, base_b):
+        with porta.abrir(pasta / "base") as p:
+            lidas.append(p.ler(porte.TABELA, como_era_em=PRIMEIRO))
+    colunas = list(porte.colunas_de_contagem())
+    a, b = (x.sort_values("cnpj_basico")[["cnpj_basico", *colunas]] for x in lidas)
+    pd.testing.assert_frame_equal(a.reset_index(drop=True), b.reset_index(drop=True))
+
+
+def test_o_retrato_nunca_vale_antes_do_dia_em_que_a_linha_foi_vista():
+    """Linha com `visto_em` depois do `disponivel_em`: o retrato dela é o dia em que foi vista."""
+    registros = _registros(
+        _linha(EMPRESA, "cosmeticos", "c1", "S", retrato=PRIMEIRO, visto_em=SEGUNDO)
+    )
+    tabela = porte.contar(registros)
+    assert list(pd.to_datetime(tabela[porte.RETRATO]).dt.strftime("%Y-%m-%d")) == [
+        SEGUNDO
+    ]
 
 
 def test_remontar_sem_retrato_novo_nao_regrava(tmp_path):

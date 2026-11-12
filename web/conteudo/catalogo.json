@@ -7967,7 +7967,7 @@
       "tabela": "entradas_de_socio_pj"
     },
     {
-      "atraso": null,
+      "atraso": "A fonte publica o estado de hoje sem dizer desde quando",
       "consultavel": false,
       "frase": "Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas práticas).",
       "frequencia": "Mensal",

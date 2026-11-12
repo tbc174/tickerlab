@@ -17,9 +17,11 @@ Regras que têm teste (`tests/test_anvisa_porte.py`):
   guardada por versão (`medicamentos.v1.parquet`) contaria o medicamento em dobro: aqui só entra o que a porta
   serve.
 - **Sem olhar o futuro.** Um retrato por dia de arquivo (`disponivel_em`), e cada um conta só o que a base tinha
-  visto até aquele dia. A tabela herda a regra de data do cadastro de origem (público a partir do último dia
-  do mês do retrato, como as outras fontes de governo): o leitor escolhe o retrato mais novo público no dia
-  pedido.
+  visto até aquele dia. **O retrato vale desde o dia em que o arquivista viu o arquivo** (granularidade "dia",
+  decisão da Diretoria de 12/11/2026): o `publico_em` é esse dia, nunca a data de referência do arquivo nem um
+  dia antes. Se uma linha vier com `visto_em` depois do `disponivel_em`, o retrato dela passa a ser o `visto_em`
+  (o dado nunca entra antes de ser visto). O leitor escolhe o retrato mais novo público no dia pedido. A
+  `anvisa_registros` de origem continua no "mês" (contrato publicado); só esta tabela nova é por dia.
 - **"Ativo" muda de nome por tipo** (`ATIVAS`): `S` nos cosméticos e saneantes, `Ativo` nos alimentos e
   medicamentos, `Válido` nos produtos para saúde e no certificado, `SIM` na autorização. Medicamento com
   apresentações de situações diferentes (`Ativo / Inativo`) conta como ativo: o produto continua registrado
@@ -189,7 +191,10 @@ def contar(registros: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"colunas ausentes em anvisa_registros: {sorted(faltam)}")
     dados = registros[list(COLUNAS_DE_ENTRADA)].copy()
     dados = dados[dados["cadastro"].isin(TIPO_DO_CADASTRO)]
-    dados[RETRATO] = pd.to_datetime(dados[RETRATO])
+    # o retrato é o dia em que o arquivista viu a linha: nunca antes do `visto_em` (nada entra antes de ser visto)
+    dados[RETRATO] = pd.concat(
+        [pd.to_datetime(dados[RETRATO]), pd.to_datetime(dados["visto_em"])], axis=1
+    ).max(axis=1)
     dados = dados[dados["cnpj_basico"].astype(str).str.len() == TAMANHO_DA_RAIZ]
     pessoas = _raizes_de_pessoa(dados)
     partes = []

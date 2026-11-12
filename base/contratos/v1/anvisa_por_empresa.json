@@ -9,7 +9,7 @@
       "unidade": "texto"
     },
     "disponivel_em": {
-      "descricao": "Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até ele). A porta só o mostra a partir do último dia do mês",
+      "descricao": "Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até ele), que é o dia em que o arquivista o viu. A porta o mostra desde esse dia",
       "unidade": "data (dia)"
     },
     "trata_como_pessoa": {
@@ -102,11 +102,11 @@
     "montado_em": "coletado_em"
   },
   "historico_desde": "2026-10-29",
-  "granularidade_do_publico_em": "mes",
+  "granularidade_do_publico_em": "dia",
   "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
   "revenda": "vendável com atribuição à fonte",
   "pessoa": false,
   "frequencia": "Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)",
-  "atraso": "Herda a de `anvisa_registros`: a fonte publica o estado de hoje sem dizer desde quando, e a porta, como nas outras fontes de governo, só mostra o retrato a partir do último dia do mês dele",
+  "atraso": "A fonte publica o estado de hoje sem dizer desde quando. **Por dia, não por mês** (decisão da Diretoria, 12/11/2026, só para esta tabela): o retrato vale desde o dia em que o arquivista viu o arquivo (`visto_em`), nunca desde a data de referência da Anvisa nem um dia antes. A `anvisa_registros`, de que ela deriva, continua por mês (contrato publicado; mudar pede versão maior). Motivo: a contagem é nossa, feita sobre o que o arquivista já guardou, e esperar o fim do mês esconderia um dado que a base já tinha na véspera",
   "linhas_de_pessoa": "trata_como_pessoa"
 }

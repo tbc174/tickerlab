@@ -856,9 +856,12 @@ def _tabela_da_anvisa_por_empresa() -> dict[str, Tabela]:
             familia_da_fonte="anvisa",
             frequencia="Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)",
             atraso=(
-                "Herda a de `anvisa_registros`: a fonte publica o estado de hoje sem dizer desde quando, e a "
-                "porta, como nas outras fontes de governo, só mostra o retrato a partir do último dia do mês "
-                "dele"
+                "A fonte publica o estado de hoje sem dizer desde quando. **Por dia, não por mês** (decisão da "
+                "Diretoria, 12/11/2026, só para esta tabela): o retrato vale desde o dia em que o arquivista viu "
+                "o arquivo (`visto_em`), nunca desde a data de referência da Anvisa nem um dia antes. A "
+                "`anvisa_registros`, de que ela deriva, continua por mês (contrato publicado; mudar pede versão "
+                "maior). Motivo: a contagem é nossa, feita sobre o que o arquivista já guardou, e esperar o fim "
+                "do mês esconderia um dado que a base já tinha na véspera"
             ),
             onde=(
                 "Parquet em `<acervo>/base/anvisa_por_empresa/anvisa_por_empresa.parquet` (servidor de "
@@ -873,7 +876,7 @@ def _tabela_da_anvisa_por_empresa() -> dict[str, Tabela]:
                 "disponivel_em": (
                     (
                         "Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até "
-                        "ele). A porta só o mostra a partir do último dia do mês"
+                        "ele), que é o dia em que o arquivista o viu. A porta o mostra desde esse dia"
                     ),
                     DATA,
                 ),
@@ -9542,7 +9545,7 @@ _CONTRATO = {
     "processos_datajud_movimentos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo", "grau", "aconteceu_em", "movimento_codigo", "complementos"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_DATAJUD),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
-    "anvisa_por_empresa": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj_basico", "disponivel_em"), datas={"publico_em": "disponivel_em", "coletado_em": "montado_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "anvisa_por_empresa": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj_basico", "disponivel_em"), datas={"publico_em": "disponivel_em", "coletado_em": "montado_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="dia"),  # por dia (12/11/2026, Diretoria): público desde o dia em que o arquivista viu o arquivo; a anvisa_registros fica em "mes"
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
