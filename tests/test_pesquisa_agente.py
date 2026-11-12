@@ -175,7 +175,7 @@ def test_ferramenta_desconhecida_ou_argumento_quebrado_volta_como_erro(tmp_path:
 
 def test_hipotese_com_cpf_e_recusada_antes_de_chamar_o_modelo(tmp_path: Path):
     modelo = ModeloRoteirizado(ROTEIRO_COMPLETO)
-    for hipotese in ("sócios do CPF 123.456.789-09", "renda de 12345678909"):
+    for hipotese in ("sócios do CPF 888.000.000-46", "renda de 88800000046"):
         with pytest.raises(ValueError, match="pessoa física"):
             agente.rodar_agente(hipotese, _pesquisador(tmp_path), modelo)
     assert modelo.conversas == []

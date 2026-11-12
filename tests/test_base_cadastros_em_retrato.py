@@ -53,7 +53,7 @@ def _cnpj(raiz: str, filial: str = "0001") -> str:
 EMPRESA = _cnpj("11222333")
 OUTRA = _cnpj("33000167")
 MEI = _cnpj("44555666")
-CPF = "366.176.019-04"
+CPF = "888.000.005-51"
 
 
 def _coletar(banco, fonte: str, url: str, conteudo: bytes, dia: date) -> None:

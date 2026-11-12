@@ -98,7 +98,7 @@ def test_diff_do_qsa_com_pessoa():
                 "nome_socio": nome,
                 "qualificacao": qualificacao,
                 "data_entrada": pd.NaT,
-                "cpf_mascarado": "***982247**",
+                "cpf_mascarado": "***000001**",
             }
         ]
         return rd.qsa_para_diff(_qsa(socios, pessoas), chave)

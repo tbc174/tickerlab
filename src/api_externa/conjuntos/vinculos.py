@@ -23,6 +23,7 @@ pessoa natural (vista publicada, ADR 0075), e aqui sai também a ligação com a
 pessoa (MEI, empresário individual, natureza não informada) ou que ainda não era pública no dia.
 """
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -31,6 +32,7 @@ import pandas as pd
 from base import cnpj as cnpj_
 from base.porta import Porta
 from base.porta.rede import views
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos.empresas import FONTE as RECEITA
 from src.api_externa.conjuntos.empresas import (
@@ -72,19 +74,14 @@ TIPOS: dict[str, TipoDeVinculo] = {
 TIPO_PELO_NOME_DE_FORA = {tipo.de_fora: nome for nome, tipo in TIPOS.items()}
 # a chave da resposta quando a coluna tem outro sentido em outro conjunto ("participacao" é a do mercado)
 CHAVE_NA_RESPOSTA = {"participacao": "participacao_no_capital"}
-LIMITES = (
+# os limites que valem para a resposta inteira; os de cada fonte (`LIMITES_DA_FONTE`) só entram quando algum
+# tipo dela é servido, para a resposta não afirmar o que não consultou (linha 880)
+LIMITES_GERAIS = (
     (
         "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra, e a "
         "ligação que só se soube ter acabado depois do dia ainda aparece."
     ),
-    (
-        "Controle, coligação e participação vêm do FRE (só de companhia aberta, uma vez por ano, e só as "
-        "sociedades com CNPJ); a auditoria vem do FCA. Fundos, sócios e administradores não saem por aqui."
-    ),
-    (
-        "O tipo (controlada, coligada) e a participação no capital são os que a companhia escreveu no FRE, sem "
-        "correção nossa: um número estranho (uma controlada com 0,12% do capital) vem da própria entrega."
-    ),
+    "Fundos, sócios e administradores não saem por aqui.",
     (
         "Uma empresa sem vínculos não quer dizer que ela não tenha grupo: quer dizer que nenhuma fonte servida "
         "mostra um no dia. Nada aqui é recomendação de investimento."
@@ -96,6 +93,41 @@ LIMITES = (
     ),
     "Pessoa natural (MEI, empresário individual, sócio pessoa física) não é servida.",
 )
+
+LIMITES_DA_FONTE = {
+    FRE: (
+        "Controle, coligação e participação vêm do FRE (só de companhia aberta, uma vez por ano, e só as "
+        "sociedades com CNPJ). O tipo (controlada, coligada) e a participação no capital são os que a "
+        "companhia escreveu no FRE, sem correção nossa: um número estranho (uma controlada com 0,12% do "
+        "capital) vem da própria entrega."
+    ),
+    FCA: "A auditoria vem do FCA.",
+}
+
+# os tipos pedidos que o portão não libera, com o nome de fora (o padrão de `nao_disponivel`, linha 880)
+NAO_DISPONIVEIS = "tipos_de_vinculo_nao_disponiveis"
+LIMITE_DO_TIPO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "tipos", "a lista de vínculos"
+)
+
+
+def limites(
+    tipos_servidos: Iterable[str], nao_disponiveis: Sequence[str] = ()
+) -> list[str]:
+    """Os limites da resposta: o primeiro geral, os das fontes dos tipos servidos, o aviso dos tipos pedidos
+    que o portão não libera (se houver) e o resto dos gerais."""
+    fontes = (TIPOS[tipo].fonte for tipo in tipos_servidos)
+    return nao_disponivel.limites(
+        LIMITES_GERAIS,
+        LIMITES_DA_FONTE,
+        fontes,
+        nao_disponiveis,
+        LIMITE_DO_TIPO_NAO_DISPONIVEL,
+    )
+
+
+# os limites com todos os tipos servidos (a tela do analista os usa como texto fixo)
+LIMITES = tuple(limites(TIPOS))
 
 
 class PedidoInvalido(ValueError):
@@ -276,16 +308,22 @@ class LeitorDeVinculos:
         tipos: tuple[str, ...] = tuple(TIPOS),
     ) -> VinculosServidos | None:
         """Os vínculos do CNPJ como eram em `como_era_em`, até `profundidade` saltos, só com o que o portão
-        libera; None se o CNPJ não é de empresa ou se o portão não libera nenhum dos tipos pedidos. Empresa
-        sem vínculo no dia sai com a lista vazia."""
+        libera; None se o CNPJ não é de empresa ou se o portão não libera nenhum dos tipos pedidos. O tipo pedido
+        que o portão não libera não some em silêncio: vai, com o nome de fora, em
+        `tipos_de_vinculo_nao_disponiveis` (linha 880), e os limites não falam da fonte dele. Empresa sem
+        vínculo no dia sai com a lista vazia; com essa lista também vazia, todos os tipos pedidos foram
+        consultados."""
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
         profundidade_do_pedido(profundidade)
-        servidos = {t: self._servidos(TIPOS[t]) for t in tipos}
-        servidos = {t: campos for t, campos in servidos.items() if campos}
+        pedidos = {t: self._servidos(TIPOS[t]) for t in tipos}
+        servidos = {t: campos for t, campos in pedidos.items() if campos}
         if not servidos:
             return None
+        nao_disponiveis = [
+            TIPOS[t].de_fora for t in nao_disponivel.nao_disponiveis(pedidos)
+        ]
         if not e_empresa(self.porta, normal):
             return None
         ligacoes, pontas = self._da_rede(normal, como_era_em, profundidade, servidos)
@@ -306,7 +344,8 @@ class LeitorDeVinculos:
             "profundidade": profundidade,
             "vinculos": lista,
             "cortada": cortada,
-            "limites": list(LIMITES),
+            NAO_DISPONIVEIS: nao_disponiveis,
+            "limites": limites(servidos, nao_disponiveis),
         }
         return VinculosServidos(corpo=corpo, fontes=fontes, linhas=len(lista))
 

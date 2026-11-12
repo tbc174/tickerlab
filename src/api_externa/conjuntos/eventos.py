@@ -24,6 +24,7 @@ nem repetir evento quando dois têm o mesmo dia.
 import base64
 import binascii
 import json
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -32,6 +33,7 @@ import pandas as pd
 from base import cnpj as cnpj_
 from base.porta import Porta
 from base.porta.rede import views
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos.empresas import e_empresa
 from src.api_externa.envelope import campo
@@ -75,19 +77,49 @@ ORIGENS: dict[str, OrigemDoEvento] = {
     ),
 }
 
-LIMITES = (
+# os limites que valem para a resposta inteira; os de cada tipo (`LIMITES_DO_TIPO`) só entram quando o tipo é
+# servido, para a resposta não afirmar o que não consultou (linha 878)
+LIMITES_GERAIS = (
     "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra.",
     (
+        "Uma empresa sem eventos não quer dizer que nada aconteceu, e nada aqui é recomendação de "
+        "investimento."
+    ),
+    "Pessoa natural (MEI, empresário individual) não é servida.",
+)
+
+LIMITES_DO_TIPO = {
+    DOCUMENTO_DO_IPE: (
         "Os documentos são os do IPE da CVM (só companhia aberta e quem entrega à CVM), de todos os "
         "estabelecimentos da mesma raiz do CNPJ; o assunto escrito pela companhia não sai, só a categoria e o "
         "tipo da CVM e o endereço do documento."
     ),
-    (
-        "As trocas de auditor vêm dos FCAs; os anos com o auditor anterior são conta do TickerLab. Uma empresa "
-        "sem eventos não quer dizer que nada aconteceu, e nada aqui é recomendação de investimento."
+    TROCA_DE_AUDITOR: (
+        "As trocas de auditor vêm dos FCAs; os anos com o auditor anterior são conta do TickerLab."
     ),
-    "Pessoa natural (MEI, empresário individual) não é servida.",
+}
+
+# os tipos pedidos que o portão não libera (o padrão de `nao_disponivel`, linhas 878 e 880)
+NAO_DISPONIVEIS = "tipos_nao_disponiveis"
+LIMITE_DO_TIPO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "tipos", "a lista de eventos"
 )
+
+
+def limites(servidos: Iterable[str], nao_disponiveis: Sequence[str] = ()) -> list[str]:
+    """Os limites da resposta: o primeiro geral, os dos tipos servidos, o aviso dos tipos pedidos que o portão
+    não libera (se houver) e o resto dos gerais."""
+    return nao_disponivel.limites(
+        LIMITES_GERAIS,
+        LIMITES_DO_TIPO,
+        servidos,
+        nao_disponiveis,
+        LIMITE_DO_TIPO_NAO_DISPONIVEL,
+    )
+
+
+# os limites com todos os tipos servidos (a tela do analista os usa como texto fixo)
+LIMITES = tuple(limites(ORIGENS))
 
 
 class PedidoInvalido(ValueError):
@@ -244,7 +276,9 @@ class LeitorDeEventos:
     ) -> EventosServidos | None:
         """Os eventos do CNPJ como eram em `como_era_em`, do mais novo ao mais velho, depois do `cursor`, só
         com o que o portão libera; None se o CNPJ não é de empresa ou se o portão não libera nenhum campo
-        dos tipos pedidos. Empresa sem evento sai com a lista vazia."""
+        dos tipos pedidos. O tipo pedido que o portão não libera não some em silêncio: vai em
+        `tipos_nao_disponiveis` (linha 878). A lista vazia com essa lista vazia quer dizer que todos os tipos
+        pedidos foram consultados e a base não tem evento da empresa."""
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
@@ -252,6 +286,7 @@ class LeitorDeEventos:
         servidos = {tipo: self._servidos(ORIGENS[tipo]) for tipo in tipos}
         if not any(servidos.values()):
             return None
+        nao_disponiveis = nao_disponivel.nao_disponiveis(servidos)
         if not e_empresa(self.porta, normal):
             return None
         raiz = normal[: cnpj_.TAMANHO_DA_RAIZ]
@@ -274,7 +309,10 @@ class LeitorDeEventos:
             "eventos": [e.linha for e in pagina],
             "cortada": cortada,
             "proximo_cursor": cursor_de(pagina[-1].chave) if cortada else None,
-            "limites": list(LIMITES),
+            NAO_DISPONIVEIS: nao_disponiveis,
+            "limites": limites(
+                (tipo for tipo, campos in servidos.items() if campos), nao_disponiveis
+            ),
         }
         fontes = {ORIGENS[e.tipo].fonte for e in pagina}
         return EventosServidos(corpo=corpo, fontes=fontes, linhas=len(pagina))

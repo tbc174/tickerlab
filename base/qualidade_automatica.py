@@ -294,4 +294,21 @@ REGRAS: dict[str, Regra] = {
             "data_do_retrato",
         )
     ),
+    # ANS (linha 877): uma linha por valor diferente da chave; a revisão de um mês passado vira linha nova com outro `visto_em`.
+    # Medida em 12/11/2026 no acervo local: 483.875 linhas de 2017 a 2026, sem repetida e sem vazio na chave;
+    # 2026 é o ano em curso (o salto e a escala não o comparam)
+    "ans_beneficiarios": Regra(
+        chave=(
+            "competencia",
+            "cd_operadora",
+            "modalidade",
+            "cobertura",
+            "vigencia_do_plano",
+            "contratacao",
+            "financiamento",
+            "visto_em",
+        ),
+        periodo="competencia",
+        valor="beneficiarios",
+    ),
 }

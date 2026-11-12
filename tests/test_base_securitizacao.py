@@ -26,7 +26,7 @@ ARQUIVOS = {
     "inf_mensal_cra_2026.zip": "cra",
     "inf_mensal_ots_2026.zip": "ots",
 }
-CPF_FICTICIO = "52998224725"  # dígitos verificadores certos, de ninguém
+CPF_FICTICIO = "88800000127"  # dígitos verificadores certos, de ninguém
 QUADROS_DA_CVM_175 = {
     "geral",
     "ativo_passivo",

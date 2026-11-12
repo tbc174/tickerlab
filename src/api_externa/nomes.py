@@ -180,6 +180,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     # events: os documentos do IPE e as trocas de auditor (linha 736, PR 4)
     "eventos": "events",
     "tipo_de_evento": "event_type",
+    "tipos_nao_disponiveis": "unavailable_event_types",
     "protocolo": "filing_id",
     "categoria": "category",
     "link": "document_url",
@@ -196,6 +197,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "id_na_rede": "entity_id",
     "raiz_do_cnpj": "cnpj_root",
     "participacao_no_capital": "ownership_pct",
+    "tipos_de_vinculo_nao_disponiveis": "unavailable_link_types",
     # buyers: quem já se mexeu num setor (linha 810, PR 4), só pessoa jurídica
     "compradores": "buyers",
     "total_de_compradores": "total_buyers",

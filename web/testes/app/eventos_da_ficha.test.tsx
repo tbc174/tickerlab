@@ -127,6 +127,25 @@ describe("eventos da ficha", () => {
     expect(within(secao).getByText(/Sem eventos desta empresa/)).toBeTruthy();
   });
 
+  it("tipo não liberado não vira 'sem eventos' (linha 878)", async () => {
+    abrir(() =>
+      respostaJson(200, { ...PAGINA, eventos: [], fontes: [], tipos_nao_disponiveis: ["ipe_filing"] }),
+    );
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).queryByText(/Sem eventos desta empresa/)).toBeNull();
+    expect(within(secao).getByText("Nenhum evento dos tipos consultados.")).toBeTruthy();
+    expect(within(secao).getByText(/os documentos à CVM ainda não estão liberados/)).toBeTruthy();
+  });
+
+  it("com um tipo não liberado, a lista que vem leva o aviso do outro", async () => {
+    abrir(() => respostaJson(200, { ...PAGINA, eventos: [TROCA], tipos_nao_disponiveis: ["ipe_filing"] }));
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByText("Troca de auditor")).toBeTruthy();
+    expect(within(secao).getByText(/os documentos à CVM ainda não estão liberados/)).toBeTruthy();
+  });
+
   it("se o pedido falha, a ficha segue sem a seção", async () => {
     abrir(() => respostaJson(503, { detail: "A base não está disponível agora." }));
     await verFicha();
