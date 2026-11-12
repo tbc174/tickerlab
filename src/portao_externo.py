@@ -203,6 +203,10 @@ class LinhaDeDireito(NamedTuple):
 BETA_COMECA_EM = date(2026, 11, 3)
 _PROVA_CVM = "ADR 0108 D2.2 e D3: dados abertos da CVM, ODbL, revenda com atribuição"
 _PROVA_RECEITA = "ADR 0108 D2.2 e D3: dados abertos do CNPJ da Receita, CC BY, revenda com atribuição"
+_PROVA_ANVISA = (
+    "ADR 0108 D2.2 e D3: dados abertos da Anvisa, CC BY, revenda com atribuição; contagem por empresa "
+    "(linha 860), só pessoa jurídica"
+)
 _PROVA_DAS_AGENCIAS = (
     "ADR 0108 D2.2 e D3: dados abertos da agência (ANEEL e BC em ODbL; SUSEP, ANS e Anatel em CC BY), "
     "marca vendável, revenda com atribuição"
@@ -308,6 +312,15 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "matriz",
         ),
         _PROVA_RECEITA,
+    ),
+    # prospecting, registros na Anvisa (linha 860): a contagem por empresa, só pessoa jurídica (a tabela
+    # `anvisa_por_empresa` não carrega raiz nenhuma que tenha tido linha de pessoa); sinal de porte, não receita.
+    *_campos(
+        ("anvisa-produtos",),
+        "prospecting",
+        ("anvisa_por_empresa",),
+        ("registros_anvisa_total", "registros_anvisa_ativos"),
+        _PROVA_ANVISA,
     ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),

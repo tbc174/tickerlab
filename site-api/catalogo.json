@@ -178,6 +178,7 @@
   },
   "prospecting": {
     "fontes": {
+      "anvisa-produtos": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
       "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
     },
     "campos": [
@@ -190,6 +191,8 @@
       "natureza_juridica",
       "porte",
       "razao_social",
+      "registros_anvisa_ativos",
+      "registros_anvisa_total",
       "situacao_cadastral",
       "uf"
     ]

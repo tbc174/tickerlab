@@ -112,6 +112,11 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "porte": "size",
     "capital_social": "share_capital",
     "n_estabelecimentos": "active_establishments",
+    # registros na Anvisa (linha 860)
+    "registros_anvisa_total": "anvisa_registrations_total",
+    "registros_anvisa_ativos": "anvisa_registrations_active",
+    "anvisa_tipo": "anvisa_type",
+    "anvisa_aviso": "anvisa_notice",
     "cnae_principal": "cnae_code",
     "uf": "state_code",
     "municipio": "municipality",
