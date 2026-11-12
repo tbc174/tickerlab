@@ -586,8 +586,9 @@ def eventos_da_empresa(
     """Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à
     CVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor
     (`auditor_change`). `types` filtra; a página vai até `limit` linhas (sem ele, até o limite do plano; o
-    plano é o teto) e `next_cursor` traz a seguinte. MEI, empresário individual e o que não é empresa saem
-    `not_available`."""
+    plano é o teto) e `next_cursor` traz a seguinte. Um tipo pedido que não está disponível para a organização
+    vem em `unavailable_event_types` (não foi consultado: a lista não diz nada sobre ele); se nenhum tipo pedido
+    está, a resposta é `not_available`, como para MEI, empresário individual e o que não é empresa."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     try:
