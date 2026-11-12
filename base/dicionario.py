@@ -263,6 +263,12 @@ _FINALIDADE_DO_CNPJ = (
     "M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o "
     "RIPD da base e a ADR 0106"
 )
+_SEM_PESSOA_PELA_RAIZ = (
+    " **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa "
+    "jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto "
+    "livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, "
+    "rodada antes de cada concessão do piloto"
+)
 _LIMITE_DA_CONFERENCIA_DA_RECEITA = (
     "**Limite da conferência:** a Receita é a única que publica o CNPJ, então ele é conferido contra o que "
     "outro órgão cadastra do mesmo CNPJ, e só nisso: a conferência cobre os CNPJs que esse outro órgão "
@@ -3599,6 +3605,7 @@ TABELAS: dict[str, Tabela] = {
             "Uma linha por valor diferente que cada conta de cada período já teve (versão 1, "
             "reapresentações e o balanço seguinte refazendo o ano anterior), com o dia em que "
             "ficou público e o dia em que foi trocado. `como_era_em(base, data)` dá a foto."
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte=(
             "CVM: dados abertos de DFP e ITR (versão mais nova) e ENET (versões anteriores, "
@@ -3992,6 +3999,7 @@ TABELAS: dict[str, Tabela] = {
             "bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor. Fundos e "
             "posições que saíram continuam (sem viés de sobrevivência). Um Parquet por ano; quando a "
             "CVM regrava um ano, a versão anterior fica como `<ano>.v<N>`"
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 4",
         familia_da_fonte="cvm",
@@ -6977,6 +6985,7 @@ TABELAS: dict[str, Tabela] = {
             "reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: "
             "contagem calculada por ela, não coluna desta tabela. "
             "**Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega)."
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
         familia_da_fonte="cvm",
@@ -7764,6 +7773,7 @@ TABELAS: dict[str, Tabela] = {
             "ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, "
             'como a companhia informou naquele formulário. É o cadastro "como era na data" do '
             "modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje"
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="CVM: dados abertos do FCA, tabela de dados gerais (`base/fca_geral.py`)",
         familia_da_fonte="cvm",
@@ -8212,7 +8222,7 @@ TABELAS: dict[str, Tabela] = {
             "registro ou entre dois registros), o que manda depois do cancelamento e o das "
             "empresas fora do cadastro (quase todas emissores estrangeiros); o manifesto conta "
             "quantos ficaram de fora, por motivo (`fora_dos_exemplos`). Não é coluna para prever: "
-            "é a resposta que o modelo tenta acertar (ADR 0027)"
+            "é a resposta que o modelo tenta acertar (ADR 0027)" + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias",
         familia_da_fonte="cvm",
