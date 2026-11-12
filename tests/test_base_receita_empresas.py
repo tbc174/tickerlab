@@ -105,7 +105,7 @@ def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
             "cnpj_basico": [str(n) for n in range(8)],
             "razao_social": [
                 "MARIA DE PAULA-88800000127 LTDA",
-                "PESSOA INVENTADA LICITACAO 529982247251 LTDA",
+                "PESSOA INVENTADA LICITACAO 888000007000 LTDA",
                 "CASA 12345678000195 LTDA",
                 "FULANO 888000001-27 LTDA",
                 f"FULANO {no_formato(CPF_DE_TESTE, 'ddd ddd ddd dd')} LTDA",
