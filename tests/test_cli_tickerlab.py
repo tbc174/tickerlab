@@ -2116,6 +2116,220 @@ def test_eventos_pede_50_por_pagina_e_com_todas_deixa_o_plano_decidir(monkeypatc
     assert "limit" not in pedidos[1]
 
 
+# ------------------------------------------------ aviso de piloto (865, D11)
+# A frase vem da API (base/prontidao.AVISO_DE_PILOTO); a CLI só mostra a que veio. Estes testes usam uma
+# frase qualquer: o que se confere é que a que chegou aparece na saída, não o texto fixo.
+
+FRASE_DE_PILOTO = (
+    "FRASE-QUALQUER-DO-PILOTO: dado de piloto, ainda sem a conferência cheia."
+)
+CNPJ_PILOTO = "11111111000191"
+
+
+def _piloto(valor: object, fonte: str = "fonte-x") -> dict:
+    return {
+        "value": valor,
+        "source": fonte,
+        "published_at": "2026-01-02",
+        "pilot": True,
+        "pilot_notice": FRASE_DE_PILOTO,
+    }
+
+
+def _resposta_fixa(corpo: dict):
+    return _http_falso(lambda _p: httpx.Response(200, json=corpo))
+
+
+def _perfil_de_piloto() -> dict:
+    return {
+        "pilot_notice": FRASE_DE_PILOTO,
+        "cnpj": {"razao": _piloto("EMPRESA EXEMPLO S.A."), "porte": _env("grande")},
+        "sources": [{"source": "fonte-x"}],
+    }
+
+
+def test_piloto_na_tela_mostra_a_frase_e_marca_o_campo(rodar, chave):
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, http=_resposta_fixa(_perfil_de_piloto()),
+        **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout  # inteira, sem truncar
+    assert (
+        "piloto" in resultado.stdout.splitlines()[0]
+        or "Aviso de piloto" in resultado.stdout
+    )
+    assert any(
+        linha.startswith("razao") and linha.rstrip().endswith("sim")
+        for linha in resultado.stdout.splitlines()
+    )
+
+
+def test_piloto_em_linhas_de_lista_marca_a_linha_e_traz_a_frase(rodar, chave):
+    corpo = {
+        "pilot_notice": FRASE_DE_PILOTO,
+        "events": [
+            {"kind": _piloto("capital"), "year": _env(2025)},
+            {"kind": _env("x")},
+        ],
+        "sources": [],
+    }
+    resultado = rodar(
+        "eventos", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert resultado.stdout.count(FRASE_DE_PILOTO) >= 1
+    assert "piloto" in resultado.stdout
+
+
+def test_piloto_no_json_passa_inteiro(rodar, chave):
+    corpo = _perfil_de_piloto()
+    resultado = rodar(
+        "empresa",
+        CNPJ_PILOTO,
+        "--json",
+        http=_resposta_fixa(corpo),
+        **_com_chave(chave),
+    )
+    saida = json.loads(resultado.stdout)
+    assert saida["pilot_notice"] == FRASE_DE_PILOTO
+    assert saida["cnpj"]["razao"]["pilot"] is True
+    assert saida["cnpj"]["razao"]["pilot_notice"] == FRASE_DE_PILOTO
+
+
+def test_piloto_na_planilha_xlsx_leva_a_marca_e_a_frase(rodar, chave, tmp_path):
+    arquivo = tmp_path / "piloto.xlsx"
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, "--planilha", str(arquivo),
+        http=_resposta_fixa(_perfil_de_piloto()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout  # a confirmação também avisa
+    abas = _abrir_xlsx(arquivo)
+    texto = json.dumps(abas, ensure_ascii=False)
+    assert FRASE_DE_PILOTO in texto
+    assert "piloto" in texto
+
+
+def test_piloto_na_planilha_csv_leva_a_marca_e_a_frase(rodar, chave, tmp_path):
+    arquivo = tmp_path / "piloto.csv"
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, "--planilha", str(arquivo),
+        http=_resposta_fixa(_perfil_de_piloto()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    texto = arquivo.read_text(encoding="utf-8-sig")
+    assert FRASE_DE_PILOTO in texto
+    assert texto.splitlines()[0].split(";")[-1] == "piloto"
+
+
+def test_piloto_marcado_sem_frase_nunca_passa_calado(rodar, chave):
+    corpo = {"cnpj": {"razao": {**_env("X"), "pilot": True}}, "sources": []}
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert "Aviso de piloto" in resultado.stdout
+
+
+def test_sem_piloto_a_saida_nao_ganha_nada(rodar, chave):
+    corpo = {"cnpj": {"razao": _env("X")}, "sources": [{"source": "fonte-x"}]}
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert "piloto" not in resultado.stdout.lower()
+
+
+def test_piloto_no_dossie_aparece_na_tela(rodar, chave):
+    responder, _ = _secoes_do_dossie()
+
+    def com_piloto(pedido: httpx.Request) -> httpx.Response:
+        resposta = responder(pedido)
+        corpo = json.loads(resposta.content)
+        if pedido.url.path.endswith("/comparables"):
+            corpo["pilot_notice"] = FRASE_DE_PILOTO
+            corpo["comparables"] = [{"cnpj": _piloto("22222222000191")}]
+        return httpx.Response(200, json=corpo)
+
+    resultado = rodar(
+        "dossie", CNPJ_PILOTO, http=_http_falso(com_piloto), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout
+
+
+def test_piloto_no_catalogo_aparece_na_tela(rodar, chave):
+    corpo = {
+        "pilot_notice": FRASE_DE_PILOTO,
+        "datasets": [
+            {
+                "dataset": "d",
+                "purpose": "p",
+                "fields": [{"field": "f", "source": "s", "pilot": True}],
+            }
+        ],
+        "sources": [],
+    }
+    resultado = rodar("catalogo", http=_resposta_fixa(corpo), **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout
+
+
+def test_piloto_no_csv_da_lista_a_frase_vai_na_propria_coluna(rodar, chave, tmp_path):
+    corpo = {
+        "events": [{"kind": _piloto("capital")}, {"kind": _env("x")}],
+        "sources": [],
+    }
+    arquivo = tmp_path / "ev.csv"
+    resultado = rodar(
+        "eventos", CNPJ_PILOTO, "--planilha", str(arquivo),
+        http=_resposta_fixa(corpo), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    linhas = arquivo.read_text(encoding="utf-8-sig").splitlines()
+    assert linhas[0].split(";")[-1] == "piloto"
+    assert linhas[1].split(";")[-1] == FRASE_DE_PILOTO  # a linha marcada leva a frase
+    assert linhas[2].split(";")[-1] == ""  # a que não é de piloto, não
+
+
+def test_piloto_dentro_da_serie_do_setor_marca_a_linha_certa():
+    corpo = {
+        "market": {"hhi": _env(1)},
+        "series": [{"name": "aneel", "points": [], "total": _piloto(5)}],
+        "sources": [],
+    }
+    campos = planilha.tabelas_da_resposta(corpo)[0]
+    assert campos.cabecalho[-1] == "piloto"
+    por_nome = {linha[0]: linha[-1] for linha in campos.linhas}
+    assert por_nome["series › aneel › total"] == FRASE_DE_PILOTO
+    assert por_nome["market › hhi"] is None
+
+
+def test_piloto_no_nome_da_ponta_do_vinculo_marca_a_linha(rodar, chave):
+    ponta = {"cnpj_root": "11111111", "legal_name": _piloto("EMPRESA A")}
+    outra = {"cnpj_root": "22222222", "legal_name": _env("EMPRESA B")}
+    corpo = {
+        "links": [
+            {"hops": 1, "kind": "socio", "from": ponta, "to": outra, "share": _env(10)},
+            {"hops": 1, "kind": "socio", "from": outra, "to": outra, "share": _env(20)},
+        ],
+        "sources": [],
+    }
+    resultado = rodar(
+        "vinculos", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    linhas = [l for l in resultado.stdout.splitlines() if l.startswith("1")]
+    assert linhas[0].rstrip().endswith("sim")
+    assert not linhas[1].rstrip().endswith("sim")
+    assert FRASE_DE_PILOTO in resultado.stdout
+
+
+def test_piloto_de_uma_pagina_sobrevive_ao_juntar_paginas():
+    primeira = {"companies": [1], "pilot_notice": FRASE_DE_PILOTO, "sources": []}
+    ultima = {"companies": [2], "sources": []}
+    assert cliente.juntar_paginas(primeira, ultima)["pilot_notice"] == FRASE_DE_PILOTO
+
+
 # ---------------------------------------------------------------- deck
 
 

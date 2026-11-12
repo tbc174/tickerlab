@@ -231,7 +231,7 @@ def _mostrar(
     if como_json:
         click.echo(json.dumps(corpo, ensure_ascii=False, indent=2))
     else:
-        click.echo(formatar(corpo))
+        click.echo(formato.com_aviso_de_piloto(formatar(corpo), corpo))
 
 
 def _extensao_da_planilha(
