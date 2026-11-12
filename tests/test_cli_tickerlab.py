@@ -383,6 +383,8 @@ def test_cnpj_sem_demonstracoes_sai_com_codigo_de_sem_dado(rodar, chave):
     assert resultado.stdout == ""
     assert "Não há dado disponível" in resultado.stderr
     assert "tickerlab catalogo" in resultado.stderr
+    # a pergunta "quanto a fechada fatura?" ganha um "não temos" claro (linha 831, item d)
+    assert cliente.SEM_FATURAMENTO_DE_FECHADA in resultado.stderr
 
 
 @pytest.mark.usefixtures("base_das_demonstracoes")
@@ -392,6 +394,8 @@ def test_conjunto_fora_do_contrato_tambem_e_sem_dado(rodar, banco):
     chave_da_beta = aj.chave(banco, ator, beta).valor  # sem contrato nenhum
     resultado = rodar("demonstracoes", EMPRESA, **_com_chave(chave_da_beta))
     assert resultado.exit_code == Saida.SEM_DADO
+    # a mesma frase: a resposta não diz se faltou o dado ou o contrato
+    assert cliente.SEM_FATURAMENTO_DE_FECHADA in resultado.stderr
 
 
 # ---------------------------------------------------------------- fundo

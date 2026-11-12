@@ -10,7 +10,7 @@ sem comando, só em `SO_NO_CONECTOR`, também com o motivo.
 import httpx
 import pytest
 from click.testing import CliRunner
-from tickerlab import comandos, configuracao
+from tickerlab import cliente, comandos, configuracao
 
 from conector_remoto import ferramentas
 from tests import ajudantes_do_conector as aj
@@ -142,6 +142,15 @@ def _pedidos_da_ferramenta(ferramenta: str, argumentos: dict) -> set:
     with aj.conector(_gravador(pedidos)) as cliente:
         aj.chamar(cliente, aj.CHAVE_DE_MENTIRA, ferramenta, **argumentos)
     return {_como_pedido(p) for p in pedidos}
+
+
+def test_frase_sem_faturamento_de_fechada_e_a_mesma_na_cli_e_no_conector():
+    # o lugar da frase é a CLI (`cliente.SEM_FATURAMENTO_DE_FECHADA`); a imagem do conector não leva o
+    # pacote `cli/`, então ele guarda uma cópia, e este teste não a deixa divergir (linha 831, item d)
+    assert ferramentas.SEM_FATURAMENTO_DE_FECHADA == cliente.SEM_FATURAMENTO_DE_FECHADA
+    assert ferramentas.MENSAGEM_SEM_DEMONSTRACAO.endswith(
+        cliente.SEM_FATURAMENTO_DE_FECHADA
+    )
 
 
 def test_todo_comando_da_cli_tem_ferramenta_ou_motivo_escrito():

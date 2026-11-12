@@ -69,6 +69,13 @@ SEM_DADO = (
     "na data pedida, ou o conjunto não está no contrato da sua organização. A API não diz qual dos dois, "
     "de propósito. Veja o que a sua chave pode pedir com `tickerlab catalogo`."
 )
+# a pergunta "quanto a fechada fatura?" merece um "não temos" claro, não só o SEM_DADO (linha 831,
+# item d). É o lugar da frase: o conector remoto guarda uma cópia, que um teste não deixa divergir.
+SEM_FATURAMENTO_DE_FECHADA = (
+    "A base só tem demonstrações financeiras de companhia aberta, entregues à CVM. Faturamento de "
+    "empresa fechada a base não tem: capital social, porte e financiamento não são receita, e o "
+    "TickerLab não estima."
+)
 MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
     (401, "invalid_api_key"): (
         (
@@ -354,10 +361,17 @@ class ApiDoTickerlab:
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:
-        return self.pedir(
-            f"/companies/{cnpj}/financials",
-            _datas(known_at=como_era, period_end=periodo),
-        )
+        try:
+            return self.pedir(
+                f"/companies/{cnpj}/financials",
+                _datas(known_at=como_era, period_end=periodo),
+            )
+        except ErroDaCli as erro:
+            if erro.exit_code != Saida.SEM_DADO:
+                raise
+            raise ErroDaCli(
+                f"{erro.format_message()} {SEM_FATURAMENTO_DE_FECHADA}", Saida.SEM_DADO
+            ) from None
 
     def fundo(
         self, cnpj: str, como_era: str | None, retorno_suposto: float | None

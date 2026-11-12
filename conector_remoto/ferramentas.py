@@ -76,13 +76,19 @@ MENSAGEM_DE_PESSOA = (
 )
 MENSAGEM_SEM_CHAVE = "Pedido sem chave do TickerLab: refaça a ligação do conector."
 MENSAGEM_NAO_LIBERADA = "Esta ferramenta não está disponível para a chave usada."
-# a pergunta "quanto a fechada fatura?" merece um "não temos" claro, não um vazio (linha 831, item d)
-MENSAGEM_SEM_DEMONSTRACAO = (
-    "Não disponível: a base só tem demonstrações financeiras de companhia aberta, entregues à CVM, "
-    "e não as tem para esse pedido, ou a chave não tem acesso a elas (a API não diz qual dos dois, "
-    "de propósito). Faturamento de empresa fechada a base não tem: capital social, porte e "
-    "financiamento não são receita, e o TickerLab não estima."
+MENSAGEM_NAO_DISPONIVEL = (
+    "Não disponível: o dado não está na base para esse pedido, ou a chave não tem acesso a "
+    "ele (a API não diz qual dos dois, de propósito)."
 )
+# a pergunta "quanto a fechada fatura?" merece um "não temos" claro, não um vazio (linha 831, item d).
+# Cópia de `tickerlab.cliente.SEM_FATURAMENTO_DE_FECHADA` (a imagem do conector não leva o `cli/`);
+# o teste de paridade com a CLI não deixa as duas divergirem.
+SEM_FATURAMENTO_DE_FECHADA = (
+    "A base só tem demonstrações financeiras de companhia aberta, entregues à CVM. Faturamento de "
+    "empresa fechada a base não tem: capital social, porte e financiamento não são receita, e o "
+    "TickerLab não estima."
+)
+MENSAGEM_SEM_DEMONSTRACAO = f"{MENSAGEM_NAO_DISPONIVEL} {SEM_FATURAMENTO_DE_FECHADA}"
 STATUS_OK = 200
 STATUS_PEDIDO_INVALIDO = 400
 STATUS_CHAVE_RECUSADA = 401
@@ -139,10 +145,7 @@ def mensagem_do_erro(resposta: RespostaDaApi) -> str:
             "Peça uma chave nova a quem administra a conta da organização no TickerLab."
         )
     if resposta.status == STATUS_NAO_DISPONIVEL:
-        return (
-            "Não disponível: o dado não está na base para esse pedido, ou a chave não tem acesso a "
-            "ele (a API não diz qual dos dois, de propósito)."
-        )
+        return MENSAGEM_NAO_DISPONIVEL
     if resposta.status == STATUS_LIMITE and codigo == CODIGO_DO_MINUTO:
         espera = resposta.espera_s or ESPERA_PADRAO_S
         return (
