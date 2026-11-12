@@ -214,10 +214,15 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
             # conta nossa sobre as colunas da tabela: o grupo do setor, o fim do exercício, as somas e razões
             assert set(comparaveis.ORIGEM_DAS_CONTAS[linha.campo]) <= colunas, linha
             continue
-        if linha.conjunto == prospeccao.CONJUNTO and linha.campo in prospeccao.CAMPOS_DA_ANVISA:
+        if (
+            linha.conjunto == prospeccao.CONJUNTO
+            and linha.campo in prospeccao.CAMPOS_DA_ANVISA
+        ):
             # soma nossa das colunas `<tipo>_total` e `<tipo>_ativos` dos tipos servidos (linha 860)
             sufixo = linha.campo.removeprefix("registros_anvisa_")
-            tipos = {t for prefixos in prospeccao.TIPOS_DA_ANVISA.values() for t in prefixos}
+            tipos = {
+                t for prefixos in prospeccao.TIPOS_DA_ANVISA.values() for t in prefixos
+            }
             assert {f"{t}_{sufixo}" for t in tipos} <= colunas, linha
             continue
         if linha.tabelas == (CADASTRO,):
