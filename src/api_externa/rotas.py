@@ -13,18 +13,18 @@ mesmo de um CNPJ que não existe, para não dizer qual foi o motivo.
 import math
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
 from functools import cache
 from typing import Annotated
 
 import duckdb
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
 from base import porta as porta_da_base
 from base.porta import Porta
-from src.api_externa import acesso, lote
+from src.api_externa import acesso, deck, lote
 from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organizacao
 from src.api_externa.conjuntos import (
     Permitido,
@@ -44,6 +44,7 @@ from src.api_externa.conjuntos import (
 )
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import traduzir_chaves
+from src.apresentacao import Apresentacao
 from src.banco.chaves_da_api import registrar_consumo
 from src.banco.conexao import obter_engine
 from src.chaves_da_api import ContextoDaChave
@@ -244,11 +245,19 @@ def _um_pedido(
 ) -> object:
     """Um pedido de dado: lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
 
+    return _pedido_contado(contexto, conjunto, _pela_porta(ler), finalidade)
+
+
+def _pela_porta(
+    ler: Callable[[sa.Connection, Porta], Servido | None],
+) -> Callable[[sa.Connection], Servido | None]:
+    """A leitura com a porta da base aberta só durante ela."""
+
     def pela_porta(conexao: sa.Connection) -> Servido | None:
         with _porta(conexao) as porta:
             return ler(conexao, porta)
 
-    return _pedido_contado(contexto, conjunto, pela_porta, finalidade)
+    return pela_porta
 
 
 def _pedido_contado(
@@ -258,6 +267,19 @@ def _pedido_contado(
     finalidade: str = FINALIDADE,
 ) -> object:
     """Lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
+    servido = _servido_contado(contexto, conjunto, ler, finalidade)
+    corpo = servido.corpo | {"fontes": fontes_da_resposta(servido.fontes)}
+    return traduzir_chaves(corpo)
+
+
+def _servido_contado(
+    contexto: ContextoDaChave,
+    conjunto: str,
+    ler: Callable[[sa.Connection], Servido | None],
+    finalidade: str = FINALIDADE,
+) -> Servido:
+    """O que a leitura serviu, já contado no consumo (a recusa conta como negada); 404 se nada sai. O JSON
+    e o deck passam por aqui: o mesmo portão, a mesma quota e a mesma conta de linhas."""
     with obter_engine().begin() as conexao:
         servido = ler(conexao)
         # o 404 sai depois do `with` para o consumo não voltar atrás
@@ -268,8 +290,25 @@ def _pedido_contado(
         )  # fmt: skip
     if servido is None:
         raise HTTPException(status_code=404, detail=NAO_DISPONIVEL)
-    corpo = servido.corpo | {"fontes": fontes_da_resposta(servido.fontes)}
-    return traduzir_chaves(corpo)
+    return servido
+
+
+def _arquivo_do_deck(
+    servido: Servido,
+    montar: Callable[[dict, list[dict], datetime], Apresentacao],
+    nome: str,
+) -> Response:
+    """O deck do corpo servido como arquivo para baixar; `nome` só com o que a rota já validou."""
+    agora = acesso.agora().astimezone(deck.FUSO)
+    apresentacao = montar(servido.corpo, fontes_da_resposta(servido.fontes), agora)
+    return Response(
+        content=deck.em_arquivo(apresentacao, agora),
+        media_type=deck.TIPO_DO_ARQUIVO,
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome}.pptx"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 def _cnpj_pedido(cnpj: str) -> str:
@@ -493,6 +532,47 @@ def perfil_da_empresa(
     )
 
 
+DO_DECK = {
+    200: {"content": {deck.TIPO_DO_ARQUIVO: {}}, "description": "o deck (.pptx)"}
+}
+
+
+@router.get("/companies/{cnpj}/deck", response_class=Response, responses=DO_DECK)
+def deck_da_empresa(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> Response:
+    """O perfil da empresa (o mesmo de `/companies/{cnpj}/profile`, com o mesmo contrato `profiles`) como
+    deck `.pptx`: o cadastro e as entregas à CVM, com a fonte e o dia de cada tabela, as fontes e os
+    limites. Conta na quota como o JSON."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    servido = _servido_contado(
+        contexto,
+        ficha.CONJUNTO,
+        _pela_porta(
+            lambda conexao, porta: ficha.LeitorDeFicha(
+                porta, _portao(conexao, contexto, ficha.CONJUNTO)
+            ).ficha(numeros, dia)
+        ),
+    )
+    return _arquivo_do_deck(servido, deck.da_empresa, f"tickerlab-empresa-{numeros}")
+
+
+@router.get("/sectors/{key}/deck", response_class=Response, responses=DO_DECK)
+def deck_do_setor(key: str, contexto: Chave, known_at: date | None = None) -> Response:
+    """O setor (o mesmo de `/sectors/{key}`, com o mesmo contrato `sectors` e o mesmo corte do plano) como
+    deck `.pptx`: a concentração, a parte de cada companhia e quem são, com a fonte e o dia de cada
+    tabela, as fontes e os limites. Conta na quota como o JSON."""
+    dia = _dia_pedido(known_at)
+    servido = _servido_contado(
+        contexto, setores.CONJUNTO, _leitura_do_setor(contexto, key, dia)
+    )
+    # o nome do arquivo sai da chave que o leitor achou na lista do relatório, nunca do endereço cru
+    return _arquivo_do_deck(
+        servido, deck.do_setor, f"tickerlab-setor-{servido.corpo['setor']}"
+    )
+
+
 @router.get("/companies/{cnpj}/events")
 def eventos_da_empresa(
     cnpj: str,
@@ -500,26 +580,31 @@ def eventos_da_empresa(
     known_at: date | None = None,
     types: Annotated[list[str], Query()] = [],  # noqa: B006 - o FastAPI copia o padrão
     cursor: str | None = None,
+    limit: int | None = None,
 ) -> object:
     """Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à
     CVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor
-    (`auditor_change`). `types` filtra; a página vai até o limite de linhas do plano e `next_cursor` traz a
-    seguinte. MEI, empresário individual e o que não é empresa saem `not_available`."""
+    (`auditor_change`). `types` filtra; a página vai até `limit` linhas (sem ele, até o limite do plano; o
+    plano é o teto) e `next_cursor` traz a seguinte. MEI, empresário individual e o que não é empresa saem
+    `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     try:
         tipos = eventos.tipos_do_pedido(types)
         if cursor is not None:
             eventos.chave_do_cursor(cursor)
+        if limit is not None and limit < 1:
+            raise eventos.PedidoInvalido("invalid_limit")
     except eventos.PedidoInvalido as erro:
         raise _recusa(erro.codigo) from erro
+    do_plano = acesso.linhas_por_resposta(contexto)
     return _um_pedido(
         contexto,
         eventos.CONJUNTO,
         lambda conexao, porta: eventos.LeitorDeEventos(
             porta,
             _portao(conexao, contexto, eventos.CONJUNTO),
-            acesso.linhas_por_resposta(contexto),
+            do_plano if limit is None else min(limit, do_plano),
         ).eventos(numeros, dia, tipos, cursor),
     )
 
@@ -630,12 +715,21 @@ def setor(key: str, contexto: Chave, known_at: date | None = None) -> object:
     """O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem
     são, como a última noite os deixou; `known_at` antes da noite sai `not_available`."""
     dia = _dia_pedido(known_at)
+    return _pedido_contado(
+        contexto, setores.CONJUNTO, _leitura_do_setor(contexto, key, dia)
+    )
+
+
+def _leitura_do_setor(
+    contexto: ContextoDaChave, chave: str, dia: date
+) -> Callable[[sa.Connection], Servido | None]:
+    """A leitura do setor para um pedido (a mesma no JSON e no deck), com o corte de linhas do plano."""
 
     def ler(conexao: sa.Connection) -> Servido | None:
         leitor = setores.LeitorDeSetores(
             _portao(conexao, contexto, setores.CONJUNTO),
             acesso.linhas_por_resposta(contexto),
         )
-        return leitor.setor(key, dia)
+        return leitor.setor(chave, dia)
 
-    return _pedido_contado(contexto, setores.CONJUNTO, ler)
+    return ler

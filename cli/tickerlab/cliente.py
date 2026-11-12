@@ -25,6 +25,7 @@ ESPERA_MAXIMA = (
 )
 CODIGO_DA_QUOTA_DO_MES = "monthly_quota_exceeded"
 esperar: Callable[[float], None] = time.sleep  # os testes trocam, para não dormir
+EVENTOS_POR_PAGINA = 50  # `eventos` sem --todas: uma página de 50 (a de uma Petrobras passa de mil e enche o terminal)
 PAGINAS_MAXIMAS = 100  # `prospectar --todas`: até 100 pedidos de uma vez; o resto fica no próximo cursor
 CAMINHO_DA_BUSCA = "/companies"
 
@@ -68,6 +69,14 @@ SEM_DADO = (
     "Não há dado disponível para este pedido com a sua chave: o CNPJ (ou o setor) pode não ter este dado "
     "na data pedida, ou o conjunto não está no contrato da sua organização. A API não diz qual dos dois, "
     "de propósito. Veja o que a sua chave pode pedir com `tickerlab catalogo`."
+)
+# a pergunta "quanto a fechada fatura?" merece um "não temos" claro, não um vazio (linha 831, item d);
+# a mesma frase do conector (conector_remoto/ferramentas.py::MENSAGEM_SEM_DEMONSTRACAO)
+SEM_DEMONSTRACAO = (
+    "Não disponível: a base só tem demonstrações financeiras de companhia aberta, entregues à CVM, "
+    "e não as tem para esse pedido, ou a chave não tem acesso a elas (a API não diz qual dos dois, "
+    "de propósito). Faturamento de empresa fechada a base não tem: capital social, porte e "
+    "financiamento não são receita, e o TickerLab não estima."
 )
 MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
     (401, "invalid_api_key"): (
@@ -354,10 +363,15 @@ class ApiDoTickerlab:
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:
-        return self.pedir(
-            f"/companies/{cnpj}/financials",
-            _datas(known_at=como_era, period_end=periodo),
-        )
+        try:
+            return self.pedir(
+                f"/companies/{cnpj}/financials",
+                _datas(known_at=como_era, period_end=periodo),
+            )
+        except ErroDaCli as erro:
+            if erro.exit_code != Saida.SEM_DADO:
+                raise
+            raise ErroDaCli(SEM_DEMONSTRACAO, Saida.SEM_DADO) from erro
 
     def fundo(
         self, cnpj: str, como_era: str | None, retorno_suposto: float | None
@@ -378,10 +392,12 @@ class ApiDoTickerlab:
     def eventos(
         self, cnpj: str, como_era: str | None, tipos: Sequence[str], todas: bool
     ) -> dict:
-        """Os eventos da empresa, do mais novo ao mais velho; com `todas`, segue o cursor como a busca."""
+        """Os eventos da empresa, do mais novo ao mais velho: 50 por página; com `todas`, segue o cursor como a busca."""
         parametros: dict[str, str | Sequence[str]] = {**_datas(known_at=como_era)}
         if tipos:
             parametros["types"] = list(tipos)
+        if not todas:
+            parametros["limit"] = str(EVENTOS_POR_PAGINA)
         return self._paginas(f"/companies/{cnpj}/events", parametros, "events", todas)
 
     def _paginas(

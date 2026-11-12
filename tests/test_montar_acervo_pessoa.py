@@ -626,3 +626,16 @@ def test_conferir_acusa_linha_de_quem_se_opos_que_seguiu_no_acervo(tmp_path, cap
     assert cli.main(argumentos) == 1 and "FALHAS" in capsys.readouterr().out
     oposicao_na_tela.aplicar_no_acervo(destino, oposicoes.ids_opostos(restrita))
     assert cli.main(argumentos) == 0
+
+
+def test_montagem_zera_o_endereco_do_individual_e_mantem_o_da_empresa(tmp_path):
+    destino, _ = _montar_com(tmp_path, SEM_OPOSTOS)
+    contato = _tabela(destino, montar.CONTATO)
+    do_mei = contato[contato["cnpj_basico"] == "22333444"].iloc[0]
+    for coluna in (*rc.ENDERECO, "cep"):
+        assert pd.isna(do_mei[coluna]), coluna
+    assert do_mei["uf"] and do_mei["municipio"] and do_mei["email"] is not None
+    manifesto = json.loads((destino / montar.MANIFESTO).read_text(encoding="utf-8"))
+    assert manifesto["descartes"][rc.ENDERECO_CORTADO] == 1  # a marca que a rota exige
+    da_empresa = contato[contato["cnpj_basico"] == "11222333"].iloc[0]
+    assert da_empresa["logradouro"] == "DOS EXEMPLOS" and da_empresa["cep"]

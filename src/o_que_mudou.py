@@ -29,6 +29,30 @@ class Entrega:
 
 ENTREGAS: tuple[Entrega, ...] = (
     Entrega(
+        data=date(2026, 11, 12),
+        o_que=(
+            "Conectar: o endereço, os passos para ligar o TickerLab à sua IA, os comandos da CLI e "
+            "perguntas prontas para copiar."
+        ),
+        pagina="conectar",
+    ),
+    Entrega(
+        data=date(2026, 11, 12),
+        o_que=(
+            "Dados e cobertura: cada tabela que a base serve, agrupada por módulo, com o que traz, a fonte, "
+            "a licença, o histórico e a frequência, como o catálogo público declara."
+        ),
+        pagina="dados_e_cobertura",
+    ),
+    Entrega(
+        data=date(2026, 11, 12),
+        o_que=(
+            'Encontrar empresas: cada linha da lista tem o link "Pôr na comparação", que leva o CNPJ da linha '
+            "para a tela de comparar empresas, já preenchido."
+        ),
+        pagina="encontrar_empresas",
+    ),
+    Entrega(
         data=date(2026, 11, 11),
         o_que=(
             "Ficha da empresa: agora mostra os documentos entregues à CVM, as trocas de auditor e os "

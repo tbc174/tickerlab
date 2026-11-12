@@ -266,8 +266,14 @@ _FINALIDADE_DO_CNPJ = (
 _LIMITE_DA_CONFERENCIA_DA_RECEITA = (
     "**Limite da conferência:** a Receita é a única que publica o CNPJ, então ele é conferido contra o que "
     "outro órgão cadastra do mesmo CNPJ, e só nisso: a conferência cobre os CNPJs que esse outro órgão "
-    "registra (ANATEL, ANVISA, ANCINE, Banco Central, CVM), não é amostra dos ~21 milhões; MEI e pessoa "
-    "física não entram. As taxas de acordo e os pisos estão em `base/cruzada_por_taxa.py`"
+    "registra, não é amostra dos ~21 milhões; MEI e pessoa física não entram. As taxas de acordo e os "
+    "pisos estão em `base/cruzada_por_taxa.py`. "
+)
+_ORGAOS_DA_CONFERENCIA_DAS_EMPRESAS = (
+    "Nesta tabela: a razão social contra a CVM; o nome no IF.data, do Banco Central, só informa (abaixo do piso)"
+)
+_ORGAOS_DA_CONFERENCIA_DOS_ESTABELECIMENTOS = (
+    "Nesta tabela: a UF contra ANATEL, ANVISA e ANCINE, e contra o IF.data, do Banco Central"
 )
 _RESSALVA_DO_CNPJ = 'CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair'
 _CONTATOS_FORA = (
@@ -675,6 +681,7 @@ def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
                 "físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto "
                 "sai. Sem sócios. "
                 + _LIMITE_DA_CONFERENCIA_DA_RECEITA
+                + _ORGAOS_DA_CONFERENCIA_DAS_EMPRESAS
                 + ". "
                 + _FINALIDADE_DO_CNPJ
             ),
@@ -714,6 +721,7 @@ def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
                 + _CONTATOS_FORA
                 + ". "
                 + _LIMITE_DA_CONFERENCIA_DA_RECEITA
+                + _ORGAOS_DA_CONFERENCIA_DOS_ESTABELECIMENTOS
                 + ". "
                 "A UF se confere contra ANATEL, ANVISA e ANCINE; divergência de UF costuma ser mudança de sede "
                 "ou outra filial da mesma raiz. " + _FINALIDADE_DO_CNPJ
@@ -814,6 +822,98 @@ def _tabela_de_entradas_de_socio_pj() -> dict[str, Tabela]:
                 "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
             },
             ressalva_de_revenda=_RESSALVA_DO_CNPJ,
+        ),
+    }
+
+
+_NOME_DO_TIPO_DA_ANVISA = {
+    "cosmeticos": "cosméticos",
+    "produtos_saude": "produtos para saúde",
+    "saneantes": "saneantes",
+    "alimentos": "alimentos",
+    "medicamentos": "medicamentos",
+    "produtos": "produtos (a soma dos cinco tipos de produto)",
+    "afe": "autorizações de funcionamento (AFE)",
+    "cbpf": "certificados de boas práticas de fabricação (CBPF)",
+}
+
+
+def _colunas_da_anvisa_por_empresa() -> dict[str, tuple[str, str]]:
+    """As colunas de contagem de `anvisa_por_empresa`: o total e os ativos de cada tipo."""
+    colunas: dict[str, tuple[str, str]] = {}
+    for tipo, nome in _NOME_DO_TIPO_DA_ANVISA.items():
+        colunas[f"{tipo}_total"] = (
+            f"Registros de {nome} da empresa, em vigor ou não",
+            NUMERO,
+        )
+        colunas[f"{tipo}_ativos"] = (
+            f"Registros de {nome} da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+            NUMERO,
+        )
+    return colunas
+
+
+def _tabela_da_anvisa_por_empresa() -> dict[str, Tabela]:
+    """Registros da Anvisa contados por empresa (linha 860, `base/anvisa_porte.py`): o sinal de porte de empresa
+    fechada na busca de prospecção."""
+    return {
+        "anvisa_por_empresa": Tabela(
+            descricao=(
+                "Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, "
+                "saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas "
+                "práticas): o total e os que estão em vigor, uma linha por raiz de CNPJ e por retrato do "
+                "arquivo da Anvisa. **É um sinal de porte, uma aproximação, não faturamento:** um registro "
+                "não diz quanto a empresa vende, e empresa pequena pode ter muitos produtos. **Sem "
+                "pessoa:** só pessoa jurídica; a raiz que tem qualquer linha de empresário individual, MEI, "
+                "natureza do grupo 4 ou CNPJ que a Receita guardada não tem sai inteira, nos totais e nos "
+                "ativos. Cada registro conta uma vez (a versão mais nova vista até o retrato), o que saiu "
+                "do arquivo não conta, e situação vazia ou fora do vocabulário nunca conta como ativa. "
+                "Medicamento com apresentações de situações diferentes ('Ativo / Inativo') conta como "
+                "ativo. O retrato mais antigo é de 2026-10-29 (o arquivista começou ali): antes disso a "
+                "base não viu a Anvisa."
+            ),
+            fonte=(
+                "Anvisa: dados abertos, consultas de empresas e de produtos, contados de "
+                "`anvisa_registros` (`scripts/montar_anvisa_por_empresa.py`)"
+            ),
+            familia_da_fonte="anvisa",
+            frequencia="Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)",
+            atraso=(
+                "A fonte publica o estado de hoje sem dizer desde quando. **Por dia, não por mês** (decisão da "
+                "Diretoria, 12/11/2026, só para esta tabela): o retrato vale desde o dia em que o arquivista viu "
+                "o arquivo (`visto_em`), nunca desde a data de referência da Anvisa nem um dia antes. A "
+                "`anvisa_registros`, de que ela deriva, continua por mês (contrato publicado; mudar pede versão "
+                "maior). Motivo: a contagem é nossa, feita sobre o que o arquivista já guardou, e esperar o fim "
+                "do mês esconderia um dado que a base já tinha na véspera"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/anvisa_por_empresa/anvisa_por_empresa.parquet` (servidor de "
+                "casa, `scripts/montar_anvisa_por_empresa.py`)"
+            ),
+            linhagem=(
+                "Derivada de `anvisa_registros`; o manifesto lista o SHA-256 de cada cadastro lido. "
+                + COM_VERSAO_DO_CODIGO
+            ),
+            colunas={
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+                "disponivel_em": (
+                    (
+                        "Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até "
+                        "ele), que é o dia em que o arquivista o viu. A porta o mostra desde esse dia"
+                    ),
+                    DATA,
+                ),
+                "trata_como_pessoa": (
+                    (
+                        "Sempre falso: a raiz com alguma linha de pessoa já saiu na montagem. Fica para a "
+                        "porta recusar uma linha que um dia vier diferente (ADR 0075)"
+                    ),
+                    SIM_OU_NAO,
+                ),
+                **_colunas_da_anvisa_por_empresa(),
+                "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+                "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+            },
         ),
     }
 
@@ -4145,9 +4245,10 @@ TABELAS: dict[str, Tabela] = {
             "registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes "
             "possíveis do Capital. Fundos cancelados continuam. Sem dado pessoal: o diretor "
             "responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF. "
-            "**Um CNPJ pode ter várias linhas:** o cadastro repete o fundo uma vez por gestor, auditor, "
-            "custodiante, administrador e controlador, e uma linha idêntica em todas as colunas vem "
-            "duplicada no arquivo da CVM (a base não corrige); para contar fundos, conte CNPJ_FUNDO distintos"
+            "**Um CNPJ pode ter várias linhas:** em 12/11/2026, de 41103 CNPJs, 5244 aparecem em mais de "
+            "uma linha, e em 4805 deles com mais de um `TP_FUNDO` (o mesmo CNPJ registrado em mais de um "
+            "tipo); a repetição também pode vir de o fundo trocar de gestor, auditor, custodiante, "
+            "administrador ou controlador (a base não corrige); para contar fundos, conte CNPJ_FUNDO distintos"
         ),
         fonte="CVM: cadastro de fundos (`cad_fi.csv`, `cad_fi_hist.zip`, `registro_fundo_classe.zip`)",
         familia_da_fonte="cvm",
@@ -4277,7 +4378,8 @@ TABELAS: dict[str, Tabela] = {
             "serve para reconhecer um fundo no quadro de sócios da Receita. Uma linha por fundo e "
             "gestor (o fundo com mais de um gestor repete). Fundos cancelados continuam. Sem dado "
             "pessoal: o gestor pessoa física fica só com a marca PF, sem CPF e sem nome, e o diretor "
-            "responsável fica fora"
+            "responsável fica fora. "
+            "**Limites medidos em 12/11/2026:** 17 linhas são idênticas em todas as colunas que a base guarda (o diretor responsável sai na montagem); o gestor fica vazio em 26679 linhas, quase todas de fundos cancelados (a CVM os deixa sem gestor) ou de gestor pessoa física. Os registros vão de 1957 a hoje, esparsos nos primeiros anos."
         ),
         fonte="CVM: registro de fundos e classes da CVM 175 (`registro_fundo_classe.zip`)",
         familia_da_fonte="cvm",
@@ -4316,6 +4418,34 @@ TABELAS: dict[str, Tabela] = {
                 TEXTO,
             ),
             "Gestor": ("Nome do gestor; vazio quando é pessoa física", TEXTO),
+        },
+    ),
+    "fips_registrados": Tabela(
+        descricao=(
+            "Cópia reduzida de `registro_de_fundos` que vai ao VPS só para a lista de compradores por setor da "
+            "API externa (linha 844): só FIP, só o fundo cuja raiz está em `cnpj_empresas_pj` (sem pessoa), uma "
+            "linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM "
+            "não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. "
+            "Montada no envio, não fica no acervo de casa"
+        ),
+        fonte="CVM: registro de fundos e classes da CVM 175 (cópia reduzida de `registro_de_fundos`)",
+        familia_da_fonte="cvm",
+        frequencia="A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+        atraso="O de `registro_de_fundos`: um retrato do registro na data da coleta",
+        onde=(
+            "Parquet em `<acervo>/base/fips_registrados/fips_registrados.parquet`, só no VPS (montado pelo "
+            "recorte, `base/recorte_dos_compradores.py`)"
+        ),
+        linhagem=(
+            "Derivada de `registro_de_fundos` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` "
+            "lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou fundo que "
+            "não é FIP."
+        ),
+        colunas={
+            "CNPJ_Fundo": ("CNPJ do fundo (14 dígitos)", TEXTO),
+            "Tipo_Fundo": ("Tipo do fundo: sempre FIP", TEXTO),
+            "Data_Registro": ("Data do registro na CVM", DATA),
+            "Data_Cancelamento": ("Data do cancelamento (vazio: ativo)", DATA),
         },
     ),
     "painel_dos_fundos": Tabela(
@@ -6849,7 +6979,8 @@ TABELAS: dict[str, Tabela] = {
             "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, "
             "resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega "
             "reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: "
-            "contagem calculada por ela, não coluna desta tabela."
+            "contagem calculada por ela, não coluna desta tabela. "
+            "**Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega)."
         ),
         fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
         familia_da_fonte="cvm",
@@ -7092,6 +7223,7 @@ TABELAS: dict[str, Tabela] = {
     **_historicos_do_cnpj(),
     **_tabelas_sem_pessoa_do_cnpj(),
     **_tabela_de_entradas_de_socio_pj(),
+    **_tabela_da_anvisa_por_empresa(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -7676,7 +7808,8 @@ TABELAS: dict[str, Tabela] = {
         descricao=(
             'Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de '
             "`auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca "
-            "com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta."
+            "com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta. "
+            "**Limite medido em 12/11/2026:** o arquivo começa em maio de 2010 (`conhecido_em`); `efetiva_em` vai de 2001 a 2027. As trocas se concentram em 2012, 2017 e 2022, o que é compatível com o rodízio obrigatório de cinco anos; isso é leitura, não campo da fonte."
         ),
         fonte="CVM: dados abertos do FCA, pela tabela `auditores`",
         familia_da_fonte="cvm",
@@ -8000,7 +8133,8 @@ TABELAS: dict[str, Tabela] = {
         descricao=(
             "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a "
             "participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco "
-            "em muitas linhas, e o FRE guarda ligações antigas."
+            "em muitas linhas, e o FRE guarda ligações antigas. "
+            "**Limites medidos em 12/11/2026:** 8643 linhas não têm CNPJ (o formulário não traz CNPJ para essas investidas; só o nome as distingue); a chave se repete em 8373 linhas (866 idênticas em todas as colunas; as demais são investidas sem CNPJ com nomes diferentes ou o mesmo CNPJ com participação ou tipo diferente no mesmo documento). Quem junta por CNPJ pode receber mais de uma linha por investida."
         ),
         fonte="CVM: dados abertos do FRE, tabela de participação em sociedades",
         familia_da_fonte="cvm",
@@ -8023,6 +8157,50 @@ TABELAS: dict[str, Tabela] = {
                 PONTOS_PERCENTUAIS,
             ),
             **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "controladas_pj": Tabela(
+        descricao=(
+            "Cópia reduzida de `controladas` que vai ao VPS só para a lista de compradores por setor da API "
+            "externa (linha 844): só a companhia e a controlada cujas raízes estão em `cnpj_empresas_pj` (sem "
+            "pessoa), sem a razão social da sociedade nem o nome da companhia. Cada documento do FRE (companhia, "
+            "referência e versão) tem ainda uma linha de marca, com `cnpj`, `tipo` e `participacao` vazios: assim "
+            "o FRE mais recente da companhia continua o mesmo da tabela inteira, mesmo quando ele só tinha "
+            "controladas fora da lista. Montada no envio, não fica no acervo de casa"
+        ),
+        fonte="CVM: dados abertos do FRE, tabela de participação em sociedades (cópia reduzida de `controladas`)",
+        familia_da_fonte="cvm",
+        frequencia="A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+        atraso=ATRASO_DO_FRE + "; a ligação vale a partir de `publico_em`",
+        onde=(
+            "Parquet em `<acervo>/base/controladas_pj/controladas_pj.parquet`, só no VPS (montado pelo recorte, "
+            "`base/recorte_dos_compradores.py`)"
+        ),
+        linhagem=(
+            "Derivada de `controladas` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê "
+            "a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou linha sem CNPJ "
+            "com tipo ou participação."
+        ),
+        colunas={
+            "cnpj_companhia": ("CNPJ da companhia que informou (14 dígitos)", TEXTO),
+            "cnpj": (
+                "CNPJ da sociedade (14 dígitos); vazio só na linha de marca do documento",
+                TEXTO,
+            ),
+            "tipo": (
+                "controlada, coligada ou vazio (não informado, ou a linha de marca)",
+                TEXTO,
+            ),
+            "participacao": (
+                "Participação da companhia na sociedade",
+                PONTOS_PERCENTUAIS,
+            ),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO),
+            "publico_em": (
+                "Data em que a CVM recebeu essa versão do FRE (`conhecido_em`)",
+                DATA,
+            ),
         },
     ),
     "rotulos_atraso": Tabela(
@@ -8372,7 +8550,8 @@ TABELAS: dict[str, Tabela] = {
             "letras), raiz, LEI, ticker, emissor e códigos dos reguladores (`codigo_<fonte>`). "
             "Resolvidos por regras de código em ordem fixa (1 CNPJ, 2 raiz, 3 LEI, 4 emissor e "
             "ticker, 5 código do regulador, 7 tabela conferida); o mesmo identificador em duas "
-            "entidades no mesmo período é conflito e não entra em nenhuma"
+            "entidades no mesmo período é conflito e não entra em nenhuma. "
+            "**Limite medido em 12/11/2026:** `desde` só existe para ticker e emissor; nos registros oficiais (CNPJ, ISIN, códigos da CVM e das agências) a fonte não diz desde quando o código vale, e a coluna fica vazia (193197 de 194489 linhas)."
         ),
         fonte=(
             "CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF e os reguladores da "
@@ -8422,7 +8601,8 @@ TABELAS: dict[str, Tabela] = {
             "(IF.data), firma que audita a companhia (FCA), empresa que emite o valor mobiliário e "
             "fundo que o detém (carteiras do CDA, meses seguidos num período só). Nada é apagado "
             "entre cargas: o que some da fonte fica, encerrado pela carga. Esta é a vista interna; "
-            "a publicada (sem pessoas) sai de `base/rede/vistas.py`"
+            "a publicada (sem pessoas) sai de `base/rede/vistas.py`. "
+            "**Limite medido em 12/11/2026:** `papel` fica vazio em 25182 linhas, todas dos tipos controlada_de, participada_de, coligada_de, audita e emite, que não têm papel; ele só existe nos tipos detem, do_conglomerado_de e opera_para."
         ),
         fonte=(
             "CVM (FRE, FCA, carteiras dos fundos), Banco Central (IF.data) e os reguladores da "
@@ -9396,6 +9576,7 @@ _CONTRATO = {
     "cadastro_gestor_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_GESTOR"), datas={"aconteceu_em": "DT_INI_GESTOR"}, historico_desde=_CVM),
     "cadastro_admin_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_ADMIN"), datas={"aconteceu_em": "DT_INI_ADMIN"}, historico_desde=_CVM),
     "registro_de_fundos": _contrato(modulo=_FIDC, chaves=("ID_Registro_Fundo", "CPF_CNPJ_Gestor"), datas={"aconteceu_em": "Data_Registro"}, historico_desde=_CVM),
+    "fips_registrados": _contrato(modulo=_FIDC, chaves=("CNPJ_Fundo", "Data_Registro"), datas={"aconteceu_em": "Data_Registro"}, historico_desde=_CVM),  # linha 844: cópia reduzida de `registro_de_fundos`, só no VPS
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
     "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM, versao_do_contrato="1.1.0"),
@@ -9470,6 +9651,7 @@ _CONTRATO = {
     "processos_datajud_movimentos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo", "grau", "aconteceu_em", "movimento_codigo", "complementos"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_DATAJUD),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "anvisa_por_empresa": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj_basico", "disponivel_em"), datas={"publico_em": "disponivel_em", "coletado_em": "montado_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="dia"),  # por dia (12/11/2026, Diretoria): público desde o dia em que o arquivista viu o arquivo; a anvisa_registros fica em "mes"
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -9636,6 +9818,7 @@ _CONTRATO = {
     "noticias_fatos": _contrato(modulo=_ME, chaves=("id_fato",), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "noticias_numeros": _contrato(modulo=_ME, chaves=("id_fato", "campo"), datas={"publico_em": "origem_divulgado_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "controladas_pj": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em"}, historico_desde=_CVM),  # linha 844: cópia reduzida de `controladas`, só no VPS
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "colunas_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "data_da_previsao", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
@@ -9733,6 +9916,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "anvisa_registros": {
         "pasta": "anvisa_registros",
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "anvisa_por_empresa": {
+        "pasta": "anvisa_por_empresa",
+        "nao_nulas": ("cnpj_basico", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
+        "faixas": {c: _SEM_NEGATIVO for c in _colunas_da_anvisa_por_empresa()},
     },
     "antt_rntrc": {
         "pasta": "antt_rntrc",

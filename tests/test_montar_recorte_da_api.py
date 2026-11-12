@@ -520,3 +520,103 @@ def test_montar_usa_a_conexao_com_a_temporaria(tmp_path, monkeypatch):
     monkeypatch.setattr(envio, "conectar", espiao)
     envio.montar(tmp_path / "base", tmp_path / "saida", ())
     assert usadas == [True]
+
+
+# --- as cópias reduzidas da lista de compradores (linha 844) -----------------------------------------
+
+COM_REDUZIDAS = (*TABELAS_PJ, *envio.REDUZIDAS)
+
+
+def _empresas_controladas_e_fundos(base: Path) -> None:
+    """A aberta, a controlada e o FIP têm estabelecimento; o MEI com natureza de empresa (55555555) não."""
+    _empresas_pj(
+        base,
+        "('14000001', 'ABERTA SA', '2046', 'demais'), ('11000001', 'ALVO SA', '2054', 'demais'), "
+        "('13000001', 'FIP DE MENTIRA', '2224', 'demais'), ('55555555', 'FULANO DE TAL', '2062', 'micro')",
+        "('14000001'), ('11000001'), ('13000001')",
+    )
+    _parquet(
+        base / "controladas" / "2025.parquet",
+        "SELECT '14000001000101' AS cnpj_companhia, 'ABERTA SA' AS companhia, DATE '2024-12-31' AS referencia, "
+        "1 AS versao, DATE '2025-05-01' AS conhecido_em, cnpj, razao_social, 'controlada' AS tipo, "
+        "60.0 AS participacao FROM (VALUES ('11000001000101', 'ALVO SA'), ('55555555000101', 'FULANO DE TAL')) "
+        "t(cnpj, razao_social)",
+    )
+    _parquet(
+        base / "fidc" / "cadastro" / "registro_fundo.parquet",
+        "SELECT '1' AS ID_Registro_Fundo, CNPJ_Fundo, Tipo_Fundo, '2020-01-01' AS Data_Registro, "
+        "NULL::VARCHAR AS Data_Cancelamento, 'PF' AS Tipo_Pessoa_Gestor, NULL::VARCHAR AS CPF_CNPJ_Gestor, "
+        "NULL::VARCHAR AS Gestor, 'ADM SA' AS Administrador "
+        "FROM (VALUES ('13000001000101', 'FIP'), ('55555555000101', 'FIP'), ('11000001000101', 'FIDC')) "
+        "t(CNPJ_Fundo, Tipo_Fundo)",
+    )
+
+
+def test_as_reduzidas_so_vao_pelo_degrau_4():
+    """O cron diário (degrau 2) não as manda: o envio pede o pode da Diretoria com as contagens."""
+    for degrau in (1, 2, 3):
+        assert not set(envio.REDUZIDAS) & set(envio.tabelas_do_degrau(degrau))
+    assert envio.tabelas_do_degrau(4) == (*envio.tabelas_do_degrau(3), *envio.REDUZIDAS)
+    assert envio._argumentos(["--degrau", "4"]).degrau == 4
+    # as tabelas inteiras seguem em casa, e a consulta aberta não serve as cópias
+    assert "controladas" in envio.FICAM_EM_CASA
+    for nome in envio.REDUZIDAS:
+        assert not pode_consultar(nome)
+        with pytest.raises(envio.RecorteErro, match="degrau 4"):
+            envio.conferir_a_lista((nome,))
+
+
+def test_reduzidas_saem_so_pj_e_sem_gestor(tmp_path):
+    base = tmp_path / "base"
+    _empresas_controladas_e_fundos(base)
+    saida = tmp_path / "saida"
+    resultados = envio.montar(base, saida, COM_REDUZIDAS)
+    assert {r.tabela for r in resultados} >= set(envio.REDUZIDAS)
+    controladas = saida / "controladas_pj" / "controladas_pj.parquet"
+    fundos = saida / "fips_registrados" / "fips_registrados.parquet"
+    # o MEI tirado de `cnpj_empresas_pj` leva junto a controlada e o fundo dele
+    assert duckdb.sql(
+        f"SELECT cnpj FROM '{controladas.as_posix()}' ORDER BY cnpj NULLS LAST"
+    ).fetchall() == [("11000001000101",), (None,)]
+    assert duckdb.sql(
+        f"SELECT CNPJ_Fundo, Tipo_Fundo FROM '{fundos.as_posix()}'"
+    ).fetchall() == [("13000001000101", "FIP")]
+    for arquivo in (controladas, fundos):
+        colunas = {
+            c[0].lower()
+            for c in duckdb.sql(
+                f"DESCRIBE SELECT * FROM '{arquivo.as_posix()}'"
+            ).fetchall()
+        }
+        assert not {
+            c for c in colunas if "gestor" in c or "administrador" in c or "razao" in c
+        }
+    # nada da tabela inteira foi junto
+    assert not (saida / "controladas").exists()
+    assert not (saida / "fidc").exists()
+
+
+def test_reduzidas_nao_vao_sem_empresas_pj(tmp_path):
+    base = tmp_path / "base"
+    _empresas_controladas_e_fundos(base)
+    with pytest.raises(envio.RecorteErro, match="junto com cnpj_empresas_pj"):
+        envio.montar(base, tmp_path / "saida", envio.REDUZIDAS)
+
+
+def test_reduzida_com_pessoa_na_saida_derruba_o_envio(tmp_path, monkeypatch):
+    """A trava lê a saída: se o filtro deixasse passar o gestor, nada sairia."""
+    from base import recorte_dos_compradores
+
+    def sem_filtro(con, origem, empresas, destino):
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        lista = ", ".join(f"'{a.as_posix()}'" for a in origem)
+        con.execute(
+            f"COPY (SELECT * FROM read_parquet([{lista}])) TO '{destino.as_posix()}' (FORMAT PARQUET)"
+        )
+        return 0
+
+    monkeypatch.setattr(recorte_dos_compradores, "montar_fips_registrados", sem_filtro)
+    base = tmp_path / "base"
+    _empresas_controladas_e_fundos(base)
+    with pytest.raises(envio.RecorteErro, match="fora da lista"):
+        envio.montar(base, tmp_path / "saida", COM_REDUZIDAS)

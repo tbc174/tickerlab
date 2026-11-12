@@ -7,12 +7,15 @@ depois de públicos) e contar como compra o que não é (fundador, mesmo grupo, 
 """
 
 import dataclasses
+import shutil
 from datetime import UTC, datetime
 
+import duckdb
 import pandas as pd
 import pytest
 
 from base import prontidao
+from base import recorte_dos_compradores as reduzidas
 from base.porta import Porta
 from base.prontidao import Prontidao, Prova
 from src import portao_externo as portao
@@ -426,3 +429,77 @@ def test_sem_contrato_do_conjunto_e_404(banco, monkeypatch, pasta):
     cliente = aj.cliente_da_api(monkeypatch, AGORA)
     resposta = cliente.get(ROTA, params={"cnae": SETOR}, headers=aj.bearer(chave.valor))
     assert resposta.status_code == 404
+
+
+# ---------------------------------------------------------------- as cópias reduzidas do VPS (linha 844)
+
+
+def _so_reduzidas(pasta) -> None:
+    """Troca as tabelas inteiras do FRE e do registro de fundos pelas cópias reduzidas, como no VPS: montadas
+    e conferidas pela mesma trava do recorte."""
+    con = duckdb.connect()
+    empresas = sorted((pasta / compradores.EMPRESAS).glob("*.parquet"))
+    origens = {
+        reduzidas.CONTROLADAS_PJ: sorted(
+            (pasta / compradores.CONTROLADAS).glob("*.parquet")
+        ),
+        reduzidas.FIPS_REGISTRADOS: [
+            pasta / "fidc" / "cadastro" / "registro_fundo.parquet"
+        ],
+    }
+    montar = {
+        reduzidas.CONTROLADAS_PJ: reduzidas.montar_controladas_pj,
+        reduzidas.FIPS_REGISTRADOS: reduzidas.montar_fips_registrados,
+    }
+    destinos = {nome: pasta / nome / f"{nome}.parquet" for nome in reduzidas.REDUZIDAS}
+    for nome, destino in destinos.items():
+        montar[nome](con, origens[nome], empresas, destino)
+    reduzidas.conferir_reduzidas(con, destinos, empresas)
+    shutil.rmtree(pasta / compradores.CONTROLADAS)
+    shutil.rmtree(pasta / "fidc")
+
+
+def test_so_com_as_copias_reduzidas_a_resposta_e_a_mesma(cliente, cenario, pasta):
+    antes = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    _so_reduzidas(pasta)
+    depois = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    assert depois == antes
+    assert _comprador(_get(cliente, cenario), FUNDO)["signals"] == [
+        "took_stake",
+        "fund_stake",
+    ]
+    assert ABERTA in _raizes(_get(cliente, cenario))
+
+
+def test_na_copia_reduzida_a_versao_nova_sem_a_controlada_tambem_tira_o_sinal(
+    cliente, cenario, pasta
+):
+    # a versão 2 só tem uma controlada fora da lista sem pessoa (MEI, por exemplo): ela não vai à cópia, mas a
+    # marca do documento vai, e a versão 1 não volta a valer
+    sem_lista = "99000099"
+    assert sem_lista not in NOMES
+    fre = (
+        _controladas().iloc[:2].assign(cnpj=[f"{ALVO_SP}000100", f"{sem_lista}000100"])
+    )
+    _gravar(pasta / compradores.CONTROLADAS / "2025.parquet", fre)
+    _so_reduzidas(pasta)
+    assert ABERTA not in _raizes(_get(cliente, cenario))
+    assert ABERTA in _raizes(_get(cliente, cenario, known_at="2026-10-15"))
+
+
+def test_na_copia_reduzida_o_portao_segue_pela_tabela_inteira(
+    cliente, cenario, pasta, monkeypatch
+):
+    # a prontidão é a da tabela de onde a cópia sai: sem a do FRE, o sinal não sai nem pela cópia
+    _so_reduzidas(pasta)
+    sem_fre = tuple(t for t in TABELAS if t != compradores.CONTROLADAS)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_fre))
+    resposta = _get(cliente, cenario)
+    assert resposta.status_code == 200
+    assert ABERTA not in _raizes(resposta)
