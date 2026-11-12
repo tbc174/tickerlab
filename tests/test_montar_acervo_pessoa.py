@@ -225,7 +225,7 @@ def _argumentos(tmp_path, cnpj, bruto, destino, restrita=True) -> list[str]:
     argumentos = ["--cnpj", str(cnpj), "--bruto", str(bruto), "--destino", str(destino)]
     if restrita:
         pasta = tmp_path / "restrita"
-        pasta.mkdir(exist_ok=True)
+        (pasta / "pessoas").mkdir(parents=True, exist_ok=True)
         argumentos += ["--restrita", str(pasta)]
     return argumentos
 
@@ -432,3 +432,16 @@ def test_cpf_e_id_nunca_vao_a_arquivo_log_nem_saida(tmp_path, caplog, capsys):
             assert not any(p in conteudo for p in proibidos), arquivo.name
     texto = caplog.text + capsys.readouterr().out
     assert not any(p.decode() in texto for p in proibidos)
+
+
+def test_pasta_que_existe_mas_nao_e_a_restrita_de_pessoas_nada_e_montado(
+    tmp_path, capsys
+):
+    cnpj, bruto = _acervo(tmp_path)
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    errada = tmp_path / "pasta-mae"
+    errada.mkdir()
+    argumentos = _argumentos(tmp_path, cnpj, bruto, destino, restrita=False)
+    assert montar.main([*argumentos, "--restrita", str(errada)]) == 1
+    assert "SemOposicoesError" in capsys.readouterr().out
+    assert not destino.exists()

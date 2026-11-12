@@ -14,9 +14,11 @@ import pytest
 
 from base import receita_individuais as ri
 from base.oposicao_na_tela import Opostos
+from base.pessoas import chave as chaves
 from base.receita_retrato import ErroDeLayout
 
-SEM_OPOSTOS = Opostos(frozenset(), b"k" * 32)
+CHAVE = b"k" * 32
+SEM_OPOSTOS = Opostos(frozenset(), CHAVE)
 CPF = (
     "52998224725"  # número de exemplo que fecha nos dígitos; não é de ninguém conhecido
 )
@@ -90,6 +92,33 @@ def test_nome_que_sobra_vazio_ou_so_de_numeros_nao_sai(razao):
 def test_cnpj_com_letras_sai_em_maiusculas():
     tabela, _ = _ler(_linha(raiz="1a2b3c4d"))
     assert tabela.loc[0, "cnpj_basico"] == "1A2B3C4D"
+
+
+@pytest.mark.parametrize(
+    "escrito",
+    [
+        "52998224725",
+        "529.982.247-25",
+        "***982247**",
+        "***.982.247-**",
+        "529 982 247 25",
+        "CPF 529/982/247/25",
+        "529.982.247 25",
+    ],
+)
+def test_oposto_sai_com_o_cpf_escrito_em_qualquer_formato(escrito):
+    primeiro, ultimo = chaves.primeiro_e_ultimo("FULANA EXEMPLO")
+    opostos = Opostos(
+        frozenset({chaves.id_pessoa(CPF, primeiro, ultimo, CHAVE)}), CHAVE
+    )
+    tiradas: set[str] = set()
+    partes = list(
+        ri.ler_individuais(
+            _zip(_linha(razao=f"FULANA EXEMPLO {escrito}")), opostos, tiradas
+        )
+    )
+    assert partes[0].individuais.empty and tiradas == {"11222333"}
+    assert partes[0].descartes[ri.OPOSTO] == 1
 
 
 def test_layout_com_campo_a_mais_quebra_a_leitura():

@@ -16,6 +16,7 @@ import pandas as pd
 
 from base.pessoas import chave as chaves
 from base.pessoas import oposicoes
+from base.porta import pessoas as porta
 
 
 class SemOposicoesError(RuntimeError):
@@ -46,6 +47,6 @@ class Opostos:
 
 def carregar(restrita: Path) -> Opostos:
     """As oposições da pasta restrita e a chave do pseudônimo; recusa pasta ou chave ausentes."""
-    if not restrita.is_dir():
+    if not (restrita / porta.PASTA_DAS_PESSOAS).is_dir():  # a pasta-mãe errada não vale
         raise SemOposicoesError("pasta restrita de pessoas ausente")
     return Opostos(frozenset(oposicoes.ids_opostos(restrita)), chaves.ler_chave())

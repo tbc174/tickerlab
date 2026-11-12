@@ -11,6 +11,7 @@ pessoa) e o nome que, sem o CPF, sobra vazio ou só com números. O arquivo não
 titular menor emancipado não é detectável aqui (pendência de regra levada à Diretoria no PR).
 """
 
+import re
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
@@ -20,7 +21,7 @@ import pandas as pd
 
 from base.cnpj_historico import CAMPOS_NO_ARQUIVO_DE_EMPRESAS, EMPRESA
 from base.oposicao_na_tela import Opostos
-from base.pessoas.sem_cpf import tirar_cpf_da_coluna
+from base.pessoas.sem_cpf import CPF_COM_SEPARADOR_LARGO, tirar_cpf_da_coluna
 from base.receita_contato import ONZE_DIGITOS_SEPARADOS
 from base.receita_retrato import _partes
 
@@ -34,7 +35,12 @@ OPOSTO = (
     "titular_individual_oposto"  # linha 829: sai da tela, e o contato dessa raiz também
 )
 MOTIVOS = (NAO_E_INDIVIDUAL, TITULAR_SEM_NOME, OPOSTO)
-CPF_NA_RAZAO = r"\*{3}\d{6}\*{2}|\d{3}\.?\d{3}\.?\d{3}-?\d{2}"  # o CPF no fim da razão social, só em memória
+SEPARADOR = r"[\s.\-/]?"
+CPF_MASCARADO_LARGO = (
+    re.compile(  # ***982247**, ***.982.247-** e parecidos: o miolo basta para o id
+        rf"\*{{3}}{SEPARADOR}(\d{{3}}){SEPARADOR}(\d{{3}}){SEPARADOR}-?\*{{2}}"
+    )
+)
 
 
 class ParteDosIndividuais(NamedTuple):
@@ -42,6 +48,16 @@ class ParteDosIndividuais(NamedTuple):
 
     individuais: pd.DataFrame
     descartes: Counter[str]
+
+
+def _cpf_da_razao(razao: str) -> str:
+    """O último CPF escrito na razão social (mascarado ou não, em qualquer separador), só em memória."""
+    mascarados = CPF_MASCARADO_LARGO.findall(razao)
+    if mascarados:
+        return "***" + "".join(mascarados[-1]) + "**"
+    inteiros = [m.group() for m in CPF_COM_SEPARADOR_LARGO.finditer(razao)]
+    digitos = re.sub(r"\D", "", inteiros[-1]) if inteiros else ""
+    return digitos if len(digitos) == 11 else ""
 
 
 def _individuais(
@@ -69,8 +85,7 @@ def _individuais(
         }
     )
     saida = saida.loc[com_nome]
-    cpf = fica.loc[com_nome, "razao_social"].str.findall(CPF_NA_RAZAO).str[-1]
-    cpf = cpf.fillna("")
+    cpf = fica.loc[com_nome, "razao_social"].map(_cpf_da_razao)
     oposto = opostos.marcar(cpf, saida["titular"])
     descartes[OPOSTO] += int(oposto.sum())
     tiradas.update(
