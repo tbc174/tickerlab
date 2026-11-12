@@ -65,6 +65,7 @@ function Empresas({ empresas }: { empresas: EmpresaDaBuscaV1[] }) {
             <th scope="col">Porte na Receita</th>
             <th scope="col">Capital social</th>
             <th scope="col">Estabelecimentos ativos</th>
+            <th scope="col">Comparar</th>
           </tr>
         </thead>
         <tbody>
@@ -89,6 +90,12 @@ function Empresas({ empresas }: { empresas: EmpresaDaBuscaV1[] }) {
               <td>{empresa.porte_descricao ?? textoDe(empresa.porte)}</td>
               <td>{reaisDe(empresa.capital_social)}</td>
               <td>{textoDe(empresa.n_estabelecimentos ?? null)}</td>
+              <td>
+                {/* também pelo estado da navegação: o CNPJ nunca vai no endereço */}
+                <Link to="/comparar-empresas" state={{ cnpjs: [empresa.cnpj] }}>
+                  Pôr na comparação
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>
