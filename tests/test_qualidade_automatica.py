@@ -188,3 +188,20 @@ def test_ans_beneficiarios_tem_a_chave_do_contrato_e_acusa_repetida_e_vazio():
         2026,
     )
     assert len(sem_explicacao(achados)) == 2
+
+
+def test_ifdata_valores_e_estrita_com_a_chave_do_contrato_sem_visto_em():
+    """Linha 877: nenhuma linha repetida aceita (a 2025-09 da carga de 14/10 deixa a tabela vermelha);
+    a chave é a do contrato menos `visto_em`, que os arquivos de 14/10 ainda não têm."""
+    regra = REGRAS["ifdata_valores"]
+    assert regra.chave + ("visto_em",) == _contrato_de("ifdata_valores")["chaves"]
+    assert regra.periodo == "data_base" and regra.valor == "saldo"
+    assert regra.repetidas_aceitas == 0 and regra.porque_repetidas == ""
+    limpa = _perfil(vazios_na_chave={"cod_inst": 0, "grupo": 5})
+    assert sem_explicacao(avaliar(regra, limpa, 2026)) == []
+    uma_repetida = _perfil(repetidas=1, vazios_na_chave={"grupo": 5})
+    assert len(sem_explicacao(avaliar(regra, uma_repetida, 2026))) == 1
+    vazio_no_cod_inst = _perfil(vazios_na_chave={"cod_inst": 1})
+    assert len(sem_explicacao(avaliar(regra, vazio_no_cod_inst, 2026))) == 1
+    conglomerado_entra = _perfil(por_ano=_anos(a2013=100, a2014=300))
+    assert sem_explicacao(avaliar(regra, conglomerado_entra, 2026)) == []

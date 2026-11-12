@@ -335,4 +335,27 @@ REGRAS: dict[str, Regra] = {
         periodo="competencia",
         valor="beneficiarios",
     ),
+    # estrita (Diretoria, 12/11/2026, linha 877): nenhuma linha repetida aceita. A resposta do BC de 2025-09
+    # veio com cada linha ~3 vezes e a carga de 14/10 gravou assim: a tabela fica vermelha até essa data-base
+    # ser refeita. Sem `visto_em` na chave: os arquivos de 14/10 não têm a coluna que o contrato 2.0.0 pede;
+    # quando todos a tiverem, ela entra na chave (a revisão do BC é linha nova da mesma chave).
+    "ifdata_valores": Regra(
+        chave=(
+            "data_base",
+            "tipo_instituicao",
+            "cod_inst",
+            "relatorio",
+            "grupo",
+            "conta",
+            "coluna",
+        ),
+        periodo="data_base",
+        valor="saldo",
+        opcionais={
+            "grupo": "só alguns relatórios do IF.data dividem as linhas em grupos; nos outros a fonte deixa o grupo vazio"
+        },
+        saltos_explicados={
+            2014: "em 2014 começam o conglomerado prudencial (tipo 1) e os relatórios 7 a 14 (carteira de crédito)"
+        },
+    ),
 }
