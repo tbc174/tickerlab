@@ -216,6 +216,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "mapa_do_cafe",
                 "painel_do_cafe",
                 "busca_por_cnpj",
+                "dados_e_cobertura",
             },
         ),
         (
@@ -230,7 +231,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "o_que_mudou",
             },
         ),
-        ("ajuda", {"guia", "termos", "privacidade", "trade", "dados_e_cobertura"}),
+        ("ajuda", {"guia", "termos", "privacidade", "trade"}),
     ],
 )
 def test_cada_area_tem_as_paginas_do_mapa(area, chaves):

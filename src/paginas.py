@@ -225,7 +225,7 @@ PAGINAS = (
         ":material/database:",
         "O que a base serve de verdade: cada tabela, o que traz, a fonte, a licença, o histórico e a "
         "frequência, como o catálogo público a declara.",
-        area=AREA_AJUDA,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/dados-e-cobertura", (), "DadosECoberturaV1"),
         so_no_app_novo=True,

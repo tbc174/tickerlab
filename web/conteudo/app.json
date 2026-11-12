@@ -60,6 +60,7 @@
       "frase": "Regras testadas no passado, com custos, e o que você acompanha: teses, carteira, alertas, juros e inflação.",
       "icone": "mais",
       "paginas": [
+        "dados_e_cobertura",
         "backtest",
         "ranking",
         "carteira",
@@ -103,7 +104,6 @@
       "frase": "Como os números são calculados, as regras de uso e a pesquisa em curso.",
       "icone": "ajuda",
       "paginas": [
-        "dados_e_cobertura",
         "guia",
         "termos",
         "privacidade",
