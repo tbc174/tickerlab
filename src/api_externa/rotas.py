@@ -24,7 +24,7 @@ from pydantic import BaseModel
 
 from base import porta as porta_da_base
 from base.porta import Porta
-from src.api_externa import acesso, lote
+from src.api_externa import acesso, lote, piloto
 from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organizacao
 from src.api_externa.conjuntos import (
     Permitido,
@@ -129,10 +129,12 @@ def _portao(
 
     @cache
     def permitido(fonte: str, campo: str, derivado: bool) -> bool:
-        return acesso.autorizar(
+        decisao = acesso.autorizar(
             conexao, contexto, fonte=fonte, conjunto=conjunto, campo=campo,
             finalidade=finalidade, hoje=hoje, derivado=derivado, regras=regras,
-        ).libera  # fmt: skip
+        )  # fmt: skip
+        # D11: o campo de piloto só sai com o registro do pedido aberto, para o bloco levar o aviso
+        return piloto.registrar(fonte, campo, decisao)
 
     return permitido
 
@@ -194,7 +196,7 @@ def _lote(
     itens: list[dict] = []
     fontes: set[str] = set()
     linhas = 0
-    with obter_engine().begin() as conexao:
+    with obter_engine().begin() as conexao, piloto.anotar() as liberados:
         acesso.exigir_quota(conexao, contexto, lido.pedidos, acesso.agora())
         with _porta(conexao) as porta:
             ler = leitor(conexao, porta)
@@ -214,12 +216,8 @@ def _lote(
         {"cnpj": invalido, "situacao_do_item": "invalid_cnpj"}
         for invalido in lido.invalidos
     ]
-    corpo = {
-        "como_era_em": dia.isoformat(),
-        "itens": itens,
-        "fontes": fontes_da_resposta(fontes),
-    }
-    return traduzir_chaves(corpo)
+    corpo = piloto.marcar({"como_era_em": dia.isoformat(), "itens": itens}, liberados)
+    return traduzir_chaves(corpo | {"fontes": fontes_da_resposta(fontes)})
 
 
 # o lote vem antes de `/funds/{cnpj}` só por clareza: um é POST, o outro GET
@@ -258,7 +256,7 @@ def _pedido_contado(
     finalidade: str = FINALIDADE,
 ) -> object:
     """Lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
-    with obter_engine().begin() as conexao:
+    with obter_engine().begin() as conexao, piloto.anotar() as liberados:
         servido = ler(conexao)
         # o 404 sai depois do `with` para o consumo não voltar atrás
         registrar_consumo(
@@ -268,8 +266,8 @@ def _pedido_contado(
         )  # fmt: skip
     if servido is None:
         raise HTTPException(status_code=404, detail=NAO_DISPONIVEL)
-    corpo = servido.corpo | {"fontes": fontes_da_resposta(servido.fontes)}
-    return traduzir_chaves(corpo)
+    corpo = piloto.marcar(servido.corpo, liberados)
+    return traduzir_chaves(corpo | {"fontes": fontes_da_resposta(servido.fontes)})
 
 
 def _cnpj_pedido(cnpj: str) -> str:

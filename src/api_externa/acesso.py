@@ -18,7 +18,12 @@ import sqlalchemy as sa
 from fastapi import Header, HTTPException, Request
 
 from src.api_v1.acesso import LimiteDePedidos
-from src.banco.chaves_da_api import conferir_chave, consumo_do_mes, contrato_permite
+from src.banco.chaves_da_api import (
+    conferir_chave,
+    consumo_do_mes,
+    contrato_permite,
+    e_organizacao_do_piloto,
+)
 from src.banco.conexao import obter_engine
 from src.chaves_da_api import INICIO, ContextoDaChave
 from src.planos import limites_da_api
@@ -207,5 +212,9 @@ def autorizar(
         canal=contexto.canal,
         finalidade=finalidade,
         derivado=derivado,
+        # D11: a marca de piloto se confere aqui, no servidor, a cada pedido (desligada por padrão)
+        piloto=e_organizacao_do_piloto(
+            conexao, contexto.organizacao_id, finalidade=finalidade, dia=hoje
+        ),
     )
     return decidir(pedido, hoje, regras)
