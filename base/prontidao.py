@@ -147,7 +147,7 @@ class ProntidaoDePiloto(NamedTuple):
 
 
 # As entradas são da mesa Dados (linha 784), só com as duas provas existindo e a marca de pessoa decidida:
-# as quatro abaixo passaram em `scripts.conferir_sem_pessoa` (todo CNPJ dentro da `cnpj_empresas_pj`) em 12/11/2026.
+# a marca de cada uma está decidida (pela raiz medida em `scripts.conferir_sem_pessoa` ou pela montagem sem pessoa) e o placar de qualidade de 12/11/2026 está verde.
 PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
     "carteiras_dos_fundos": ProntidaoDePiloto(
         versao_maior=1,
@@ -165,6 +165,31 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
     "rotulos_atraso": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "cnpj_empresas_pj": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "cnpj_estabelecimentos_pj": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "entradas_de_socio_pj": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "registro_de_fundos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "trocas_de_auditor": ProntidaoDePiloto(
         versao_maior=1,
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
