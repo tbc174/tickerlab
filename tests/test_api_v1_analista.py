@@ -173,6 +173,39 @@ def test_os_dois_documentos_servidos_nada_fica_de_fora(cliente):
     assert leitura.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL not in dados["limites"]
 
 
+def test_simples_barrado_vem_listado_e_os_limites_dizem_que_nao_foi_consultado(
+    cliente, monkeypatch
+):
+    """Linha 897 com a 891: o Simples sem prontidão sumia do cadastro em silêncio e lia como "a empresa não é
+    optante"; a tela diz que não foi consultado, com a chave que o corpo dela leva."""
+    tabelas = tuple(
+        t for t in leitura_de_mentira.TABELAS_DA_FICHA if t != "cnpj_simples_historico"
+    )
+    regras = leitura_de_mentira._regras(tabelas)
+    monkeypatch.setattr(rotas_da_api_externa, "regras_da_api", lambda: regras)
+    dados = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
+    assert dados["estado"] == leitura.PRONTA
+    assert dados["ficha"]["campos_do_cadastro_nao_disponiveis"] == [
+        "simples_nacional",
+        "simples_nacional_since",
+        "simples_nacional_until",
+    ]
+    assert "optante_simples" not in dados["ficha"]["cadastro_na_receita"]
+    assert leitura.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in dados["limites"]
+    assert (
+        ficha.CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS
+        in leitura.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
+    )
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL not in dados["limites"]
+    assert not any("unavailable_" in l or "known_at" in l for l in dados["limites"])
+
+
+def test_com_tudo_servido_nenhum_campo_do_cadastro_fica_de_fora(cliente):
+    dados = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
+    assert dados["ficha"]["campos_do_cadastro_nao_disponiveis"] == []
+    assert leitura.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL not in dados["limites"]
+
+
 # ---------------------------------------------------------------- pedido, acesso e base
 
 

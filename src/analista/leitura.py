@@ -55,8 +55,14 @@ LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL = (
     "Os documentos em entregas_nao_disponiveis não estão liberados para a tela e não foram consultados: a lista "
     "de entregas não diz nada sobre eles."
 )
+# o campo do cadastro barrado (o Simples sem prontidão, por exemplo): o cadastro da tela não fala dele (linha 897)
+LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL = (
+    "Os campos em campos_do_cadastro_nao_disponiveis não estão liberados para a tela e não foram consultados: o "
+    "cadastro mostrado aqui não diz nada sobre eles."
+)
 AVISOS_DA_TELA = {
-    ficha_.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL: LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL
+    ficha_.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL: LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL,
+    ficha_.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL: LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL,
 }
 # os limites com os dois documentos consultados: os das respostas sem ficha (não liberada, não disponível)
 LIMITES = limites_da_tela(ficha_.LIMITES, AVISOS_DA_TELA)

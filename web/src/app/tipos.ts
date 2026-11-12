@@ -997,6 +997,7 @@ export interface FichaDoCnpjV1 {
   cadastro_na_receita: Record<string, CampoComFonteV1>;
   entregas?: Record<string, CampoComFonteV1>[] | null; // só da companhia aberta (DFP e ITR)
   entregas_nao_disponiveis?: string[]; // documentos (DFP, ITR) que o portão não libera: não consultados (linha 897)
+  campos_do_cadastro_nao_disponiveis?: string[]; // campos do cadastro que o portão não libera (linhas 891 e 897)
 }
 
 /** A ficha da empresa (tela do analista, POST /v1/analista/ficha): o estado decide o que a tela mostra. */
