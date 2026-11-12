@@ -7770,7 +7770,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",

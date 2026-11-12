@@ -129,7 +129,13 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
     "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
     "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
+    "eventos",
 })  # fmt: skip
+# A `eventos` entrou em 12/11/2026 (linha 884, contenção; ADR 0101 Emenda 4; Tiago, 11/11: "Sim, fecha", linha 842):
+# o `assunto` é texto livre que a companhia escreve no IPE e tem número com forma de CPF (5 linhas medidas). Ela NÃO
+# volta só com a prontidão: fica fechada na consulta aberta até a máscara entrar na carga (linha 784); então se tira
+# daqui, com o teste que a cobra. A API por chave e a tela com login não passam por aqui.
+FECHADAS_ATE_O_CONSERTO_DO_DADO = frozenset({"eventos"})
 
 
 def exige_prontidao_na_consulta_aberta(nome_da_tabela: str) -> bool:
@@ -211,6 +217,8 @@ def pode_consultar_aberto(nome_da_tabela: str) -> bool:
     outras seguem a regra de sempre. Lê o registro de verdade (`PRONTIDAO`), nunca o de ensaio."""
     if not pode_consultar(nome_da_tabela):
         return False
+    if nome_da_tabela in FECHADAS_ATE_O_CONSERTO_DO_DADO:
+        return False  # nem a prontidão a abre: o dado tem de ser consertado antes
     if not exige_prontidao_na_consulta_aberta(nome_da_tabela):
         return True
     from base import (

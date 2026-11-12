@@ -24,6 +24,7 @@ from base.dossie import (
     COLUNAS_DE_PESSOA,
     ESPERAM_A_MARCA_DE_PESSOA,
     FECHADAS_ATE_A_PRONTIDAO,
+    FECHADAS_ATE_O_CONSERTO_DO_DADO,
     SO_PELA_API_EXTERNA,
     e_do_cnpj,
     exige_prontidao_na_consulta_aberta,
@@ -165,7 +166,11 @@ def test_lista_so_as_tabelas_consultaveis_com_colunas_fonte_e_licenca(cliente):
     r = cliente.get(ROTA, headers=SITE)
     assert r.status_code == 200, r.text
     tabelas = {t["tabela"]: t for t in r.json()["tabelas"]}
-    assert set(tabelas) == {nome for nome in TABELAS if pode_consultar(nome)}
+    assert set(tabelas) == {
+        nome
+        for nome in TABELAS
+        if pode_consultar(nome) and nome not in FECHADAS_ATE_O_CONSERTO_DO_DADO
+    }
     assert {
         "pgfn_divida",
         "cnpj_empresas_historico",
@@ -874,7 +879,7 @@ def test_csv_que_nunca_e_lido_fecha_a_porta_e_devolve_a_vaga(
 
 # --- as 15 da linha 842 -------------------------------------------------------------------------
 def test_as_15_da_linha_842_estao_no_dicionario():
-    assert len(FECHADAS_ATE_A_PRONTIDAO) == 15
+    assert len(FECHADAS_ATE_A_PRONTIDAO - FECHADAS_ATE_O_CONSERTO_DO_DADO) == 15
     assert set(TABELAS) >= FECHADAS_ATE_A_PRONTIDAO
 
 
@@ -891,6 +896,25 @@ def test_sem_prontidao_as_15_nao_servem_linhas_nem_csv(sem_prontidao, nome):
     for rota in (f"{ROTA}/{nome}", f"{ROTA}/{nome}.csv"):
         r = sem_prontidao.get(rota, headers=SITE)
         assert r.status_code == 404 and r.json() == inexistente.json(), rota
+
+
+def test_eventos_fica_fora_da_consulta_aberta_mesmo_com_prontidao(cliente, monkeypatch):
+    """Linha 884: o `assunto` da `eventos` é texto livre com número de forma de CPF. Fecha na consulta aberta e
+    NÃO volta com a prontidão (nem se alguém a pôr no registro): só sai da lista de conserto quando a máscara
+    entrar na carga e este teste for trocado de propósito."""
+    assert "eventos" in FECHADAS_ATE_A_PRONTIDAO
+    assert FECHADAS_ATE_O_CONSERTO_DO_DADO == {"eventos"}
+    assert pode_consultar("eventos") and not pode_consultar_aberto("eventos")
+    for registro in ({}, _prontidao_de_todas_do_cnpj(), {"eventos": object()}):
+        monkeypatch.setattr(prontidao, "PRONTIDAO", registro)
+        assert not pode_consultar_aberto("eventos")
+        assert "eventos" not in {
+            t["tabela"] for t in cliente.get(ROTA).json()["tabelas"]
+        }
+        inexistente = cliente.get(f"{ROTA}/nao_existe", headers=SITE)
+        for rota in (f"{ROTA}/eventos", f"{ROTA}/eventos.csv"):
+            r = cliente.get(rota, headers=SITE)
+            assert r.status_code == 404 and r.json() == inexistente.json(), rota
 
 
 def test_ma_datas_e_ma_regua_voltam_com_prontidao(cliente, monkeypatch):
