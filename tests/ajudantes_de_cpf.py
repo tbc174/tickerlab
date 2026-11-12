@@ -55,5 +55,3 @@ def cpf_que_tambem_passa_como_cnpj() -> str:
 
 CPF_DE_TESTE = cpf_que_confere("888000001")
 OUTRO_CPF_DE_TESTE = cpf_que_confere("888000002")
-TERCEIRO_CPF_DE_TESTE = cpf_que_confere("888000003")
-QUARTO_CPF_DE_TESTE = cpf_que_confere("888000004")
