@@ -5,12 +5,12 @@ A tela lê pelo mesmo `LeitorDeEventos` da API externa (linha 736) e pelo mesmo 
 esconde o assunto livre do documento e a troca com auditor que pode ser pessoa física.
 
 Os três estados são os da ficha (`leitura`): `pronta` (o corpo do leitor, com `proximo_cursor` quando a lista
-é maior que a página), `nao_liberada` (o portão ainda não libera nenhum campo de nenhum tipo; decide-se sem
+é maior que a página, e `tipos_nao_disponiveis` com os tipos que o portão não libera), `nao_liberada` (o portão ainda não libera nenhum campo de nenhum tipo; decide-se sem
 ler o CNPJ) e `nao_disponivel` (o leitor não serve o CNPJ: não existe, é pessoa ou a rede não o conhece como
 empresa), sem dizer o motivo.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import date
 
 from base import cnpj as cnpj_
@@ -25,11 +25,27 @@ LINHAS_POR_PAGINA = 50
 TAMANHO_MAXIMO_DO_CURSOR = 200
 
 
-# os limites do leitor, sem o nome de campo para quem programa (`known_at`): a tela fala do "dia da ficha"
-LIMITES = tuple(
-    leitura.DIA_DA_FICHA if "known_at" in limite else limite
-    for limite in eventos_.LIMITES
+# o aviso do leitor fala do campo da API externa; a tela usa o nome do campo dela (linha 878)
+LIMITE_DO_TIPO_NAO_DISPONIVEL = (
+    "Os tipos em tipos_nao_disponiveis não estão liberados para a tela e não foram consultados: a lista de "
+    "eventos não diz nada sobre eles."
 )
+
+
+def _limites_da_tela(limites: Iterable[str]) -> tuple[str, ...]:
+    """Os limites do leitor sem os nomes de campo para quem programa: `known_at` vira o "dia da ficha"."""
+    return tuple(
+        leitura.DIA_DA_FICHA
+        if "known_at" in limite
+        else LIMITE_DO_TIPO_NAO_DISPONIVEL
+        if limite == eventos_.LIMITE_DO_TIPO_NAO_DISPONIVEL
+        else limite
+        for limite in limites
+    )
+
+
+# os limites com todos os tipos servidos: os das respostas sem eventos (não liberada, não disponível)
+LIMITES = _limites_da_tela(eventos_.LIMITES)
 
 
 class PedidoInvalido(ValueError):
@@ -67,7 +83,11 @@ def eventos(
         raise PedidoInvalido from erro
     if servidos is None:
         return leitura.Resposta(leitura.NAO_DISPONIVEL)
-    corpo = {**servidos.corpo, "limites": list(LIMITES)}
+    # os limites são os do leitor (só dos tipos servidos), não o texto fixo: linha 878
+    corpo = {
+        **servidos.corpo,
+        "limites": list(_limites_da_tela(servidos.corpo["limites"])),
+    }
     return leitura.Resposta(
         leitura.PRONTA, corpo, fontes_da_resposta(servidos.fontes), servidos.linhas
     )
