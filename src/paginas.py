@@ -219,6 +219,18 @@ PAGINAS = (
         so_no_app_novo=True,
     ),
     Pagina(
+        "dados_e_cobertura",
+        "Dados e cobertura",
+        GRUPO_TOPO,
+        ":material/database:",
+        "O que a base serve de verdade: cada tabela, o que traz, a fonte, a licença, o histórico e a "
+        "frequência, como o catálogo público a declara.",
+        area=AREA_AJUDA,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/dados-e-cobertura", (), "DadosECoberturaV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "relatorio",
         "Gerar relatório",
         GRUPO_TOPO,

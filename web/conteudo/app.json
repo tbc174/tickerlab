@@ -103,6 +103,7 @@
       "frase": "Como os números são calculados, as regras de uso e a pesquisa em curso.",
       "icone": "ajuda",
       "paginas": [
+        "dados_e_cobertura",
         "guia",
         "termos",
         "privacidade",

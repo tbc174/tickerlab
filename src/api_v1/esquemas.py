@@ -1845,3 +1845,24 @@ class OQueMudouV1(BaseModel):
     """O que entrou no app a cada dia (`src/o_que_mudou.py`), a mais nova primeiro."""
 
     entregas: list[EntregaDoDiaV1]
+
+
+class TabelaDaCoberturaV1(BaseModel):
+    """Uma tabela da base como o catálogo público a declara: o que traz, de onde vem e com que licença."""
+
+    tabela: str
+    modulo: str
+    frase: str
+    fonte: str
+    orgao: str
+    licenca: str
+    historico_desde: str
+    frequencia: str
+    situacao_da_licenca: str
+    n_colunas: int
+
+
+class DadosECoberturaV1(BaseModel):
+    """O que a base serve de verdade (`GET /v1/base/tabelas` sem as colunas), na ordem do catálogo."""
+
+    tabelas: list[TabelaDaCoberturaV1]

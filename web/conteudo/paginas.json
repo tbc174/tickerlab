@@ -29,6 +29,23 @@
     "url": "o-que-mudou"
   },
   {
+    "area": "ajuda",
+    "chave": "dados_e_cobertura",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "DadosECoberturaV1",
+      "rota": "/v1/dados-e-cobertura"
+    },
+    "descricao": "O que a base serve de verdade: cada tabela, o que traz, a fonte, a licença, o histórico e a frequência, como o catálogo público a declara.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Dados e cobertura",
+    "url": "dados-e-cobertura"
+  },
+  {
     "area": "ativo",
     "chave": "relatorio",
     "contrato": null,
