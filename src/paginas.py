@@ -225,7 +225,7 @@ PAGINAS = (
         ":material/database:",
         "O que a base serve de verdade: cada tabela, o que traz, a fonte, a licença, o histórico e a "
         "frequência, como o catálogo público a declara.",
-        area=AREA_AJUDA,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/dados-e-cobertura", (), "DadosECoberturaV1"),
         so_no_app_novo=True,
@@ -237,7 +237,7 @@ PAGINAS = (
         ":material/cable:",
         "Ligue o TickerLab ao Claude ou ao ChatGPT e use a CLI: endereço do conector, passos, comandos e "
         "perguntas prontas para copiar.",
-        area=AREA_AJUDA,
+        area=AREA_MAIS,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/conectar", (), "ConectarV1"),
         so_no_app_novo=True,

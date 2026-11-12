@@ -29,7 +29,7 @@
     "url": "o-que-mudou"
   },
   {
-    "area": "ajuda",
+    "area": "mais",
     "chave": "dados_e_cobertura",
     "contrato": {
       "entradas": [],
@@ -46,7 +46,7 @@
     "url": "dados-e-cobertura"
   },
   {
-    "area": "ajuda",
+    "area": "mais",
     "chave": "conectar",
     "contrato": {
       "entradas": [],
