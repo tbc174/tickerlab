@@ -454,7 +454,9 @@ def compradores_do_setor(
     com estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se
     dada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas
     com controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por
-    sinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra."""
+    sinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra. O sinal
+    que não foi consultado (o portão não o libera para a organização ou a base não tem a tabela) vem em
+    `unavailable_signals`: a lista não diz nada sobre ele."""
     dia = _dia_pedido(known_at)
     try:
         pedido = compradores.pedido_dos_parametros(cnae, state, years, limit)
@@ -537,7 +539,9 @@ def perfil_da_empresa(
 ) -> object:
     """O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)
     e, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a
-    situação da entrega. MEI, empresário individual e o que não é empresa saem `not_available`."""
+    situação da entrega. O documento (DFP, ITR) que não foi consultado vem em `unavailable_filings`: a lista
+    de entregas não diz nada sobre ele. MEI, empresário individual e o que não é empresa saem
+    `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     return _um_pedido(
@@ -693,8 +697,9 @@ def comparaveis_da_empresa(
 ) -> object:
     """Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores
     (pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida
-    líquida e as razões), e a mediana de cada razão entre os pares. Empresa sem FCA no dia, MEI,
-    empresário individual e o que não é empresa saem `not_available`."""
+    líquida e as razões), e a mediana de cada razão entre os pares. O número ou a razão que o portão não
+    libera para a organização vem em `unavailable_figures`: os pares e as medianas não dizem nada sobre ele.
+    Empresa sem FCA no dia, MEI, empresário individual e o que não é empresa saem `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     return _um_pedido(

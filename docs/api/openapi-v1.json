@@ -3326,6 +3326,14 @@
               }
             ],
             "title": "Entregas"
+          },
+          "entregas_nao_disponiveis": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Entregas Nao Disponiveis",
+            "type": "array"
           }
         },
         "required": [

@@ -16,9 +16,13 @@ fica fora: o portão não a deixa sair (sem a guarda dita, como na ficha de cré
 
 Pessoa não sai (ADR 0108 D2.2): o CNPJ só é servido se a rede o conhece como empresa que não é pessoa
 (`empresas.e_empresa`, dentro do `LeitorDeEmpresas`); sem o cadastro, nada sai, e o resto é `not_available`,
-sem dizer o motivo. Bloco negado pelo portão some da resposta, sem `null`.
+sem dizer o motivo. Campo negado pelo portão some da resposta, sem `null`. O documento (DFP, ITR) que o portão
+não libera não some em silêncio (linha 881, `src/api_externa/nao_disponivel.py`): ele vai em
+`entregas_nao_disponiveis` e os limites avisam que a lista de entregas não diz nada sobre ele; com algum
+documento consultado, `entregas` sai sempre, vazia quando a empresa não tem entrega.
 """
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -29,6 +33,7 @@ from base.dias_uteis import dias_uteis
 from base.dossie import entregas_conhecidas_em
 from base.porta import Porta
 from base.porta.rede import views
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos.empresas import LeitorDeEmpresas
 from src.api_externa.envelope import campo
@@ -53,8 +58,12 @@ ZONA_CINZENTA = "gray_zone"  # atraso curto, que um feriado local pode explicar
 ATRASO_GRAVE = "severely_late"
 NAO_ENTREGUE = "not_filed"  # até o dia pedido (ou até o dia em que a base conferiu)
 
-LIMITES = (
+# os limites que valem para todo perfil; os das entregas só entram quando algum documento foi consultado
+LIMITES_GERAIS = (
     "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra.",
+    "Pessoa natural (MEI, empresário individual) não é servida.",
+)
+_FRASES_DAS_ENTREGAS = (
     (
         "As entregas cobrem só as companhias do cadastro de companhias abertas da CVM; uma empresa sem "
         "entregas não quer dizer que nada era devido."
@@ -63,8 +72,33 @@ LIMITES = (
         "A situação de cada entrega é a regra do TickerLab sobre o índice público da CVM (prazo com feriados "
         "e prorrogações); não é opinião sobre a empresa, e nada aqui é recomendação de investimento."
     ),
-    "Pessoa natural (MEI, empresário individual) não é servida.",
 )
+LIMITES_DO_DOCUMENTO = {
+    documento: _FRASES_DAS_ENTREGAS for documento in FONTES_DAS_ENTREGAS
+}
+# o nome de dentro da lista dos documentos (DFP, ITR) que o portão não libera (ou sem a tabela na base)
+NAO_DISPONIVEIS = "entregas_nao_disponiveis"
+LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "documentos", "a lista de entregas"
+)
+
+
+def limites(
+    documentos_servidos: Iterable[str], nao_disponiveis: Sequence[str] = ()
+) -> list[str]:
+    """Os limites de um perfil: os gerais, as frases das entregas quando algum documento foi consultado e,
+    quando algum ficou de fora, o aviso de que a lista de entregas não diz nada sobre ele."""
+    return nao_disponivel.limites(
+        LIMITES_GERAIS,
+        LIMITES_DO_DOCUMENTO,
+        documentos_servidos,
+        nao_disponiveis,
+        LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL,
+    )
+
+
+# os limites com os dois documentos consultados
+LIMITES = tuple(limites(FONTES_DAS_ENTREGAS))
 
 
 @dataclass(frozen=True)
@@ -161,22 +195,31 @@ class LeitorDeFicha:
         }  # fmt: skip
         return (servidos, fonte) if servidos else None
 
-    def _entregas(
-        self, normal: str, como_era_em: date
-    ) -> tuple[list[dict], set[str]] | None:
-        """As entregas que a base conhecia no dia, da mais nova à mais velha; None se a base não tem a
-        tabela ou se o portão não deixa sair nenhum campo delas."""
+    def _documentos_servidos(self) -> dict[str, list[str]]:
+        """Os campos que o portão libera de cada documento (DFP, ITR), na ordem de `CAMPOS_DAS_ENTREGAS`;
+        sem a tabela na base, nenhum documento é consultado."""
+        tem_a_tabela = TABELA_DAS_ENTREGAS in views(self.porta.con)
+        return {
+            documento: [
+                nome
+                for nome in CAMPOS_DAS_ENTREGAS
+                if tem_a_tabela and self.permitido(fonte, nome, nome in DERIVADOS)
+            ]
+            for documento, fonte in FONTES_DAS_ENTREGAS.items()
+        }
+
+    def _entregas(self, normal: str, como_era_em: date) -> tuple[list[dict], set[str]]:
+        """As entregas que a base conhecia no dia, da mais nova à mais velha, só dos documentos com campo
+        liberado (a entrega sem nenhum campo liberado não sai); a lista vazia é a empresa sem entrega."""
         rotulos = self._rotulos(normal)
         if rotulos is None:
-            return None
+            return [], set()
         dia = pd.Timestamp(como_era_em).normalize()
         servidas = [
             servida
             for _, linha in entregas_conhecidas_em(rotulos, dia).iterrows()
             if (servida := self._entrega_servida(linha, dia)) is not None
         ]
-        if not servidas:
-            return None
         return [linha for linha, _ in servidas], {fonte for _, fonte in servidas}
 
     def ficha(self, cnpj: str, como_era_em: date) -> FichaServida | None:
@@ -199,15 +242,20 @@ class LeitorDeFicha:
         }
         fontes = set(cadastro.fontes)
         linhas = cadastro.linhas
-        entregas = self._entregas(normal, como_era_em)
-        if entregas is not None:
-            blocos["entregas"], fontes_das_entregas = entregas
+        documentos = self._documentos_servidos()
+        servidos = [documento for documento, campos in documentos.items() if campos]
+        nao_disponiveis = nao_disponivel.nao_disponiveis(documentos)
+        if servidos:
+            # o bloco sai sempre que algum documento foi consultado, mesmo vazio: sumir é só "não consultado"
+            entregas, fontes_das_entregas = self._entregas(normal, como_era_em)
+            blocos["entregas"] = entregas
             fontes |= fontes_das_entregas
-            linhas += len(entregas[0])
+            linhas += len(entregas)
         corpo = {
             "cnpj": normal,
             "como_era_em": como_era_em.isoformat(),
             **blocos,
-            "limites": list(LIMITES),
+            NAO_DISPONIVEIS: nao_disponiveis,
+            "limites": limites(servidos, nao_disponiveis),
         }
         return FichaServida(corpo, fontes, linhas)
