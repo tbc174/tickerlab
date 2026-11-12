@@ -352,7 +352,7 @@ class ApiDoTickerlab:
                 lacunas.append(
                     {
                         "section": nome,
-                        "reason": f"não disponível para a organização, não foi consultado ({rotulo}: {', '.join(valores)})",
+                        "reason": f"{rotulo} {', '.join(valores)} não consultados (não disponíveis para a organização); o resto da seção veio",
                     }
                 )
             fontes += resposta.pop("sources", None) or []

@@ -325,7 +325,7 @@ def _paginada(corpo: Mapping, lista: str, nome: str, vazia: str) -> str:
         topo = f"{faltou} " + (
             f"{len(linhas)} {nome} nesta resposta."
             if linhas
-            else f"Nos demais, nenhum dos {nome} até o dia."
+            else f"Nos demais, nenhum dos {nome} até o dia. Sem evento não quer dizer que nada aconteceu."
         )
     if corpo.get("next_cursor"):
         topo += (
