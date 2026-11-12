@@ -279,3 +279,192 @@ def test_deploy_de_producao_nao_aceita_o_ambiente_de_ensaio() -> None:
             assert "ambiente=ensaio" not in texto.replace(" ", ""), arquivo.name
             assert "ambiente: ensaio" not in texto, arquivo.name
             assert 'ambiente: "ensaio"' not in texto, arquivo.name
+
+
+# --- D11 (Emenda 2): o registro de piloto, separado do cheio ---
+
+
+def _de_piloto(**outros) -> prontidao.ProntidaoDePiloto:
+    base = {
+        "versao_maior": 2,
+        "qualidade": _prova(),
+        "dicionario": _prova(prova="dicionario-escrito-2026-11-01"),
+    }
+    return prontidao.ProntidaoDePiloto(**(base | outros))
+
+
+def _negacao_do_piloto(
+    registro: dict | None = None,
+    versoes: dict[str, int] | None = None,
+    decididas: frozenset[str] = frozenset({"dfp"}),
+    hoje: date = HOJE,
+    tabelas: tuple[str, ...] = ("dfp",),
+) -> Falta | None:
+    registro = {"dfp": _de_piloto()} if registro is None else registro
+    versoes = {"dfp": 2} if versoes is None else versoes
+    return prontidao.negacao_do_piloto(tabelas, registro, versoes, decididas, hoje)
+
+
+def test_piloto_com_a_qualidade_o_dicionario_e_a_versao_libera() -> None:
+    assert _negacao_do_piloto() is None
+
+
+def test_o_registro_de_piloto_e_vazio_e_separado_do_cheio() -> None:
+    assert prontidao.PRONTIDAO_DE_PILOTO == {}
+    assert prontidao.PRONTIDAO_DE_PILOTO is not PRONTIDAO
+
+
+@pytest.mark.parametrize("exigencia", ["qualidade", "dicionario"])
+def test_piloto_sem_uma_das_duas_provas_nega(exigencia: str) -> None:
+    registro = {"dfp": _de_piloto(**{exigencia: None})}
+    assert _negacao_do_piloto(registro) == Falta.SEM_PRONTIDAO
+
+
+def test_piloto_com_prova_sem_identificador_ou_do_futuro_nega() -> None:
+    vazia = {"dfp": _de_piloto(qualidade=_prova(prova="  "))}
+    futura = {"dfp": _de_piloto(qualidade=_prova(dias_atras=-1))}
+    assert _negacao_do_piloto(vazia) == Falta.SEM_PRONTIDAO
+    assert _negacao_do_piloto(futura) == Falta.SEM_PRONTIDAO
+
+
+def test_prova_7_do_piloto_vence_em_90_dias() -> None:
+    no_limite = {"dfp": _de_piloto(qualidade=_prova(dias_atras=PRAZO_DA_PROVA.days))}
+    vencida = {"dfp": _de_piloto(qualidade=_prova(dias_atras=PRAZO_DA_PROVA.days + 1))}
+    assert _negacao_do_piloto(no_limite) is None
+    assert _negacao_do_piloto(vencida) == Falta.PRONTIDAO_VENCIDA
+
+
+def test_piloto_com_versao_maior_diferente_nega() -> None:
+    assert _negacao_do_piloto(versoes={"dfp": 3}) == Falta.CONTRATO_MUDOU
+    assert _negacao_do_piloto(versoes={}) == Falta.CONTRATO_MUDOU
+
+
+def test_piloto_sem_a_marca_de_pessoa_decidida_nega() -> None:
+    assert _negacao_do_piloto(decididas=frozenset()) == Falta.SEM_PRONTIDAO
+
+
+def test_piloto_exige_todas_as_tabelas_e_alguma_tabela() -> None:
+    duas = ("dfp", "cnpj")
+    assert _negacao_do_piloto(tabelas=duas) == Falta.SEM_PRONTIDAO
+    assert _negacao_do_piloto(tabelas=()) == Falta.SEM_TABELA
+
+
+# --- D11.4: a marca de pessoa decidida, lida do dicionário ---
+
+
+def test_tabela_de_pessoa_nunca_tem_a_marca_decidida() -> None:
+    assert not prontidao.pessoa_decidida(
+        "x", pessoa=True, colunas=("ano",), linhas_de_pessoa="trata_como_pessoa"
+    )
+    com_pessoa = {nome for nome, tabela in TABELAS.items() if tabela.pessoa}
+    assert com_pessoa
+    assert not com_pessoa & prontidao.tabelas_com_pessoa_decidida()
+
+
+def test_tabela_com_cnpj_precisa_da_marca_por_linha() -> None:
+    sem = prontidao.pessoa_decidida(
+        "x", pessoa=False, colunas=("cnpj", "valor"), linhas_de_pessoa=""
+    )
+    com = prontidao.pessoa_decidida(
+        "x", pessoa=False, colunas=("cnpj",), linhas_de_pessoa="trata_como_pessoa"
+    )
+    sem_cnpj = prontidao.pessoa_decidida(
+        "x", pessoa=False, colunas=("ano", "valor"), linhas_de_pessoa=""
+    )
+    assert (sem, com, sem_cnpj) == (False, True, True)
+
+
+def test_rede_e_montagem_sem_pessoa_contam_como_decididas() -> None:
+    for nome in prontidao.TABELAS_DA_REDE | prontidao.SEM_PESSOA_NA_MONTAGEM:
+        assert prontidao.pessoa_decidida(
+            nome, pessoa=False, colunas=("cnpj",), linhas_de_pessoa=""
+        )
+
+
+def test_as_regras_da_marca_sao_as_do_teste_da_porta() -> None:
+    """Um lugar só para cada verdade: se o teste da porta mudar a regra, este cobra a mesma mudança aqui."""
+    from tests import test_porta_sem_pessoa as porta
+
+    assert prontidao.TABELAS_DA_REDE == porta.DA_REDE
+    assert prontidao.SEM_PESSOA_NA_MONTAGEM == porta.SEM_PESSOA_NA_MONTAGEM
+    assert prontidao.COLUNA_DE_CNPJ.pattern == porta.COLUNA_DE_CNPJ.pattern
+    assert not porta.AINDA_SEM_A_MARCA & prontidao.tabelas_com_pessoa_decidida()
+
+
+def test_pessoa_tirada_na_rota_nao_basta() -> None:
+    """Na dúvida, a leitura mais estreita: o histórico do CNPJ tira o MEI na rota, mas não tem a marca."""
+    assert TABELAS["cnpj_simples_historico"].pessoa_tirada_na_rota
+    assert "cnpj_simples_historico" not in prontidao.tabelas_com_pessoa_decidida()
+
+
+# --- D11.3: a frase do aviso, num lugar só ---
+
+
+def test_a_frase_do_aviso_diz_que_falta_a_conferencia_com_outra_fonte() -> None:
+    """Vale para as duas frases que o Tiago escolhe (12/11): trocar o texto é mudar só a constante."""
+    frase = prontidao.AVISO_DE_PILOTO
+    assert "piloto" in frase.lower()
+    assert "outra fonte" in frase
+    assert "conferid" not in frase.lower()  # o dado de piloto não está conferido
+    assert prova_publicavel(frase)
+
+
+# --- o ensaio do piloto não vaza para produção ---
+
+ENSAIO = {"TICKERLAB_AMBIENTE": "ensaio"}
+ENSAIO_DO_PILOTO = ENSAIO | {"TICKERLAB_ENSAIO_DO_PILOTO": "1"}
+
+
+@pytest.mark.parametrize(
+    "ambiente",
+    [
+        {},
+        {"TICKERLAB_ENSAIO_DO_PILOTO": "1"},
+        {"TICKERLAB_AMBIENTE": "producao", "TICKERLAB_ENSAIO_DO_PILOTO": "1"},
+        ENSAIO,
+        ENSAIO | {"TICKERLAB_ENSAIO_DO_PILOTO": "sim"},
+    ],
+)
+def test_fora_do_ensaio_do_piloto_o_registro_de_piloto_e_o_de_verdade(ambiente) -> None:
+    assert not prontidao.em_ensaio_do_piloto(ambiente)
+    assert (
+        prontidao.registro_de_piloto_vigente(ambiente, HOJE)
+        is prontidao.PRONTIDAO_DE_PILOTO
+    )
+
+
+@pytest.mark.parametrize("ambiente", [None, "producao", "teste"])
+def test_variavel_do_ensaio_do_piloto_fora_do_ensaio_nao_faz_nada(
+    monkeypatch, ambiente
+) -> None:
+    """Em produção a `TICKERLAB_ENSAIO_DO_PILOTO=1` é ignorada: os dois registros do portão ficam os de verdade."""
+    from src.portao_externo import regras_vigentes
+
+    if ambiente is None:
+        monkeypatch.delenv("TICKERLAB_AMBIENTE", raising=False)
+    else:
+        monkeypatch.setenv("TICKERLAB_AMBIENTE", ambiente)
+    monkeypatch.setenv("TICKERLAB_ENSAIO_DO_PILOTO", "1")
+
+    assert not prontidao.em_ensaio_do_piloto()
+    assert prontidao.registro_de_piloto_vigente() is prontidao.PRONTIDAO_DE_PILOTO
+    assert prontidao.registro_vigente() is PRONTIDAO
+    regras = regras_vigentes()
+    assert regras.prontidao_de_piloto is prontidao.PRONTIDAO_DE_PILOTO
+    assert regras.prontidao is PRONTIDAO
+
+
+def test_no_ensaio_do_piloto_a_prova_vai_so_para_o_registro_de_piloto() -> None:
+    assert prontidao.registro_vigente(ENSAIO_DO_PILOTO, HOJE) is PRONTIDAO
+    piloto = prontidao.registro_de_piloto_vigente(ENSAIO_DO_PILOTO, HOJE)
+    assert set(piloto) == set(versoes_maiores())
+    (prova,) = {registro.qualidade for registro in piloto.values()}
+    assert prova is not None and prova.prova == prontidao.PROVA_DE_ENSAIO
+
+
+def test_o_ensaio_comum_nao_enche_o_registro_de_piloto() -> None:
+    assert (
+        prontidao.registro_de_piloto_vigente(ENSAIO, HOJE)
+        is prontidao.PRONTIDAO_DE_PILOTO
+    )
+    assert prontidao.registro_vigente(ENSAIO, HOJE) is not PRONTIDAO

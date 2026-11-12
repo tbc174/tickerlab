@@ -811,6 +811,25 @@ def contrato_permite(
     ).scalar_one()
 
 
+# D11 (ADR 0108, Emenda 2): a marca de piloto é uma linha de contrato com este conjunto reservado, na finalidade
+# do pedido. Desligada por padrão (sem a linha); ligar numa organização em produção é só do Tiago
+# (`conceder_direito`); desligar na hora é `suspender_direito` (ou `suspender_conjunto`, para todas).
+CONJUNTO_DO_PILOTO = "prontidao_de_piloto"
+
+
+def e_organizacao_do_piloto(
+    conexao: sa.Connection, organizacao_id: uuid.UUID, *, finalidade: str, dia: date
+) -> bool:
+    """A organização tem a marca de piloto vigente no dia, para esta finalidade?"""
+    return contrato_permite(
+        conexao,
+        organizacao_id,
+        conjunto=CONJUNTO_DO_PILOTO,
+        finalidade=finalidade,
+        dia=dia,
+    )
+
+
 # ---------------------------------------------------------------- consumo (D10)
 
 

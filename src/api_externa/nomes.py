@@ -28,6 +28,9 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "fontes": "sources",
     "licenca": "license",
     "atribuicao": "attribution",
+    # D11: o bloco servido pela prontidão de piloto
+    "piloto": "pilot",
+    "aviso_de_piloto": "pilot_notice",
     # o catálogo
     "conjuntos": "datasets",
     "conjunto": "dataset",
