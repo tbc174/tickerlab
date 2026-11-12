@@ -42,7 +42,9 @@ def _controladas(pasta: Path) -> list[Path]:
         "('14000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000101', 'ALVO SA', 'controlada', 60.0), "
         f"('14000001000101', DATE '2024-12-31', 2, DATE '2025-06-01', '{FORA}000101', 'FULANO DE TAL', 'coligada', 20.0), "
         "('14000001000101', DATE '2024-12-31', 2, DATE '2025-06-01', NULL, 'ESTRANGEIRA LTD', 'controlada', 100.0), "
-        "('98000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000101', 'ALVO SA', 'controlada', 51.0)"
+        "('98000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000101', 'ALVO SA', 'controlada', 51.0), "
+        # um CPF (11 dígitos) cuja raiz coincide com a de uma PJ da lista: não é CNPJ e não sai
+        "('14000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001901', 'FULANO', 'controlada', 5.0)"
     )
     return [
         _parquet(
@@ -62,7 +64,8 @@ def _registro(pasta: Path) -> list[Path]:
         "('1', '13.000.001/0001-01', 'FIP', '2020-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
         "('1', '13.000.001/0001-01', 'FIP', '2020-01-01', NULL, 'PF', NULL, NULL, 'ADM SA'), "
         f"('2', '{FORA}000101', 'FIP', '2021-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
-        "('3', '11000001000101', 'FIDC', '2019-01-01', '2023-01-01', 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA')"
+        "('3', '11000001000101', 'FIDC', '2019-01-01', '2023-01-01', 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        "('4', '13000001901', 'FIP', '2022-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA')"
     )
     return [
         _parquet(
@@ -213,6 +216,18 @@ FIP = (
             r"coluna\(s\) fora da lista",
         ),
         (
+            "controladas_pj",
+            CONTROLADA.format(
+                cnpj="'11000001901'", tipo="'controlada'", participacao="5.0"
+            ),
+            "sem os 14 caracteres",
+        ),
+        (
+            "fips_registrados",
+            FIP.format(cnpj="'13000001901'", tipo="'FIP'"),
+            "sem os 14 caracteres",
+        ),
+        (
             "fips_registrados",
             FIP.format(cnpj=f"'{FORA}000101'", tipo="'FIP'"),
             "raiz fora da lista",
@@ -268,3 +283,23 @@ def test_o_site_nao_conta_a_copia_reduzida_como_tabela_nova():
     publico = vitrine.catalogo_publico(catalogo())["tabelas"]
     assert not set(reduzidas.REDUZIDAS) & set(publico)
     assert set(reduzidas.ORIGEM.values()) <= set(publico)
+
+
+def test_a_trava_derruba_a_copia_sem_uma_coluna_da_lista(tmp_path):
+    con, destinos, empresas = _saida_com(
+        tmp_path,
+        "fips_registrados",
+        "SELECT '13000001000101' AS CNPJ_Fundo, 'FIP' AS Tipo_Fundo, '2020-01-01' AS Data_Registro",
+    )
+    with pytest.raises(
+        reduzidas.ReduzidaComPessoa, match=r"sem \['Data_Cancelamento'\]"
+    ):
+        reduzidas.conferir_reduzidas(con, destinos, empresas)
+
+
+def test_a_trava_so_aceita_as_copias_reduzidas(tmp_path):
+    con, destinos, empresas = _montar(tmp_path)
+    with pytest.raises(reduzidas.ReduzidaComPessoa, match="não é uma cópia reduzida"):
+        reduzidas.conferir_reduzidas(
+            con, {**destinos, "controladas": destinos["controladas_pj"]}, empresas
+        )

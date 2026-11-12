@@ -15,7 +15,8 @@ nome próprio**, mais estreita que a tabela inteira:
   não dá carimbo de público por linha: a data é a do registro, como na tabela inteira.
 
 `conferir_reduzidas` lê **a saída** e derruba a montagem (`ReduzidaComPessoa`) em qualquer coisa fora disso, sem
-depender do filtro: coluna fora da lista (gestor, nome), raiz fora da lista sem pessoa, controlada sem CNPJ com
+depender do filtro: coluna fora da lista (gestor, nome), raiz fora da lista sem pessoa, CNPJ sem os 14 caracteres
+(um CPF cuja raiz coincidisse com a de uma PJ), controlada sem CNPJ com
 tipo ou participação, fundo que não é FIP. A mensagem leva só contagens, nunca um CNPJ ou um nome (vai ao log e
 ao aviso do Kuma).
 """
@@ -47,6 +48,9 @@ PEDACOS_PROIBIDOS = (
 )
 FIP = "FIP"
 TAMANHO_DA_RAIZ = 8
+TAMANHO_DO_CNPJ = (
+    14  # sem pontuação; um CPF (11) cuja raiz coincidisse com a de uma PJ não passa
+)
 
 
 class ReduzidaComPessoa(Exception):
@@ -60,6 +64,11 @@ def _aspas(texto: str) -> str:
 def _raiz(coluna: str) -> str:
     """A raiz do CNPJ como a lista de compradores a lê: os 8 primeiros caracteres sem pontuação."""
     return f"substr(regexp_replace(CAST({coluna} AS VARCHAR), '[^0-9A-Za-z]', '', 'g'), 1, {TAMANHO_DA_RAIZ})"
+
+
+def _cnpj_inteiro(coluna: str) -> str:
+    """O CNPJ tem os 14 caracteres (sem pontuação): não é um CPF nem um pedaço."""
+    return f"length(regexp_replace(CAST({coluna} AS VARCHAR), '[^0-9A-Za-z]', '', 'g')) = {TAMANHO_DO_CNPJ}"
 
 
 def _lista_pj(empresas_pj: Sequence[Path]) -> str:
@@ -92,10 +101,14 @@ def montar_controladas_pj(
     """Escreve `controladas_pj` em `destino` a partir dos Parquets de `controladas`; devolve as linhas que saíram."""
     pj = _lista_pj(empresas_pj)
     fonte = fonte_dos_arquivos(origem)
-    da_lista = f"{_raiz('cnpj_companhia')} IN ({pj}) AND conhecido_em IS NOT NULL"
+    da_lista = (
+        f"{_cnpj_inteiro('cnpj_companhia')} AND {_raiz('cnpj_companhia')} IN ({pj}) "
+        "AND conhecido_em IS NOT NULL"
+    )
     consulta = (
         "SELECT cnpj_companhia, cnpj, tipo, participacao, referencia, versao, conhecido_em AS publico_em "
-        f"FROM {fonte} WHERE {da_lista} AND cnpj IS NOT NULL AND {_raiz('cnpj')} IN ({pj}) "
+        f"FROM {fonte} WHERE {da_lista} AND cnpj IS NOT NULL AND {_cnpj_inteiro('cnpj')} "
+        f"AND {_raiz('cnpj')} IN ({pj}) "
         # a marca de cada documento: guarda qual é o FRE mais recente da companhia
         "UNION ALL SELECT DISTINCT cnpj_companhia, NULL::VARCHAR, NULL::VARCHAR, NULL::DOUBLE, referencia, versao, "
         f"conhecido_em FROM {fonte} WHERE {da_lista} "
@@ -114,7 +127,8 @@ def montar_fips_registrados(
     pj = _lista_pj(empresas_pj)
     consulta = (
         f"SELECT DISTINCT {', '.join(COLUNAS[FIPS_REGISTRADOS])} FROM {fonte_dos_arquivos(origem)} "
-        f"WHERE Tipo_Fundo = {_aspas(FIP)} AND {_raiz('CNPJ_Fundo')} IN ({pj}) "
+        f"WHERE Tipo_Fundo = {_aspas(FIP)} AND {_cnpj_inteiro('CNPJ_Fundo')} "
+        f"AND {_raiz('CNPJ_Fundo')} IN ({pj}) "
         "ORDER BY CNPJ_Fundo, Data_Registro"
     )
     return _copiar(con, consulta, destino)
@@ -147,6 +161,10 @@ def _consultas_de_linha(nome: str, fonte: str, pj: str) -> dict[str, str]:
                 f"SELECT * FROM {fonte} WHERE cnpj_companhia IS NULL OR {_raiz('cnpj_companhia')} NOT IN ({pj}) "
                 f"OR (cnpj IS NOT NULL AND {_raiz('cnpj')} NOT IN ({pj}))"
             ),
+            "linha(s) com CNPJ sem os 14 caracteres (pode ser CPF)": (
+                f"SELECT * FROM {fonte} WHERE NOT {_cnpj_inteiro('cnpj_companhia')} "
+                f"OR (cnpj IS NOT NULL AND NOT {_cnpj_inteiro('cnpj')})"
+            ),
             "linha(s) sem CNPJ com tipo ou participação (só a marca do documento pode)": (
                 f"SELECT * FROM {fonte} WHERE cnpj IS NULL AND (tipo IS NOT NULL OR participacao IS NOT NULL)"
             ),
@@ -154,6 +172,9 @@ def _consultas_de_linha(nome: str, fonte: str, pj: str) -> dict[str, str]:
     return {
         "linha(s) com a raiz fora da lista sem pessoa": (
             f"SELECT * FROM {fonte} WHERE CNPJ_Fundo IS NULL OR {_raiz('CNPJ_Fundo')} NOT IN ({pj})"
+        ),
+        "linha(s) com CNPJ sem os 14 caracteres (pode ser CPF)": (
+            f"SELECT * FROM {fonte} WHERE NOT {_cnpj_inteiro('CNPJ_Fundo')}"
         ),
         "linha(s) de fundo que não é FIP": (
             f"SELECT * FROM {fonte} WHERE Tipo_Fundo IS DISTINCT FROM {_aspas(FIP)}"
