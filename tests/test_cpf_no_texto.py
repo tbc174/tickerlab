@@ -135,3 +135,13 @@ def test_o_recorte_confere_a_coluna_so_das_tabelas_de_texto_livre(tmp_path):
     arquivo = tmp_path / "outra" / "a.parquet"
     _parquet(arquivo, f"SELECT '{CPF}' AS assunto")
     envio.conferir_sem_cpf_no_texto(duckdb.connect(), "outra_tabela", arquivo)
+
+
+def test_o_recorte_ve_cpf_separado_por_espaco_nao_separavel_e_quebra_de_linha(tmp_path):
+    arquivo = tmp_path / "eventos" / "a.parquet"
+    _parquet(
+        arquivo,
+        "SELECT * FROM (VALUES ('a 111 444 777 35'), ('b 111.444.777\n35')) t(assunto)",
+    )
+    with pytest.raises(envio.RecorteErro, match="CPF no texto"):
+        envio.conferir_sem_cpf_no_texto(duckdb.connect(), "eventos", arquivo)

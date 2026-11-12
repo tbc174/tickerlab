@@ -330,7 +330,9 @@ TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
     "ratings": ("evidencia", "outras_notas", "nota_original"),
     "noticias_fatos": ("trecho",),
 }
-_CANDIDATO_A_CPF_SQL = r"(^|\D)\d{3}[. ]?\d{3}[. ]?\d{3}[- ]?\d{2}($|\D)"
+_CANDIDATO_A_CPF_SQL = (
+    r"(^|\D)\d{3}[.\s\x{00A0}]?\d{3}[.\s\x{00A0}]?\d{3}[-\s\x{00A0}]?\d{2}($|\D)"
+)
 
 
 def conferir_sem_cpf_no_texto(
