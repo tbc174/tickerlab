@@ -15,6 +15,7 @@ Três estados, para a tela nunca mostrar erro onde o certo é explicar:
   não o conhece como empresa), sem dizer o motivo, como o 404 da API.
 """
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from functools import cache
@@ -36,9 +37,29 @@ ANCORA = (empresas_.FONTE, "situacao_cadastral")
 # os limites da ficha da API, menos o nome de campo para quem programa (`known_at`): o analista lê "o dia da
 # ficha", que a tela mostra no topo; os outros são os mesmos, na mesma ordem
 DIA_DA_FICHA = "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois do dia da ficha entra."
-LIMITES = tuple(
-    DIA_DA_FICHA if "known_at" in limite else limite for limite in ficha_.LIMITES
+
+
+def limites_da_tela(
+    limites: Iterable[str], avisos_da_tela: Mapping[str, str]
+) -> tuple[str, ...]:
+    """Os limites do leitor da API sem os nomes de campo para quem programa: `known_at` vira o "dia da ficha" e
+    o aviso da parte não disponível, que cita o campo da API externa, vira o da tela (molde do #1088)."""
+    return tuple(
+        DIA_DA_FICHA if "known_at" in limite else avisos_da_tela.get(limite, limite)
+        for limite in limites
+    )
+
+
+# o aviso do leitor fala do campo da API externa; a tela usa o nome do campo dela (linha 897)
+LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL = (
+    "Os documentos em entregas_nao_disponiveis não estão liberados para a tela e não foram consultados: a lista "
+    "de entregas não diz nada sobre eles."
 )
+AVISOS_DA_TELA = {
+    ficha_.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL: LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL
+}
+# os limites com os dois documentos consultados: os das respostas sem ficha (não liberada, não disponível)
+LIMITES = limites_da_tela(ficha_.LIMITES, AVISOS_DA_TELA)
 
 
 @dataclass(frozen=True)
@@ -125,5 +146,8 @@ def ficha(
     servida = ficha_.LeitorDeFicha(porta, permitido).ficha(cnpj, dia)
     if servida is None:
         return Resposta(NAO_DISPONIVEL)
-    corpo = {**servida.corpo, "limites": list(LIMITES)}
+    # os limites são os do leitor (só dos documentos consultados, com o aviso do que ficou de fora), não o texto
+    # fixo: linha 897
+    limites = limites_da_tela(servida.corpo["limites"], AVISOS_DA_TELA)
+    corpo = {**servida.corpo, "limites": list(limites)}
     return Resposta(PRONTA, corpo, fontes_da_resposta(servida.fontes), servida.linhas)
