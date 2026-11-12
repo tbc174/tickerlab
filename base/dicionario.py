@@ -269,12 +269,8 @@ _LIMITE_DA_CONFERENCIA_DA_RECEITA = (
     "registra, não é amostra dos ~21 milhões; MEI e pessoa física não entram. As taxas de acordo e os "
     "pisos estão em `base/cruzada_por_taxa.py`. "
 )
-_ORGAOS_DA_CONFERENCIA_DAS_EMPRESAS = (
-    "Nesta tabela: a razão social contra a CVM; o nome no IF.data, do Banco Central, só informa (abaixo do piso)"
-)
-_ORGAOS_DA_CONFERENCIA_DOS_ESTABELECIMENTOS = (
-    "Nesta tabela: a UF contra ANATEL, ANVISA e ANCINE, e contra o IF.data, do Banco Central"
-)
+_ORGAOS_DA_CONFERENCIA_DAS_EMPRESAS = "Nesta tabela: a razão social contra a CVM; o nome no IF.data, do Banco Central, só informa (abaixo do piso)"
+_ORGAOS_DA_CONFERENCIA_DOS_ESTABELECIMENTOS = "Nesta tabela: a UF contra ANATEL, ANVISA e ANCINE, e contra o IF.data, do Banco Central"
 _RESSALVA_DO_CNPJ = 'CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair'
 _CONTATOS_FORA = (
     "Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5)"
