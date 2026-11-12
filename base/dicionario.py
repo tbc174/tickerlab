@@ -263,6 +263,14 @@ _FINALIDADE_DO_CNPJ = (
     "M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o "
     "RIPD da base e a ADR 0106"
 )
+_LIMITE_DA_CONFERENCIA_DA_RECEITA = (
+    "**Limite da conferência:** a Receita é a única que publica o CNPJ, então ele é conferido contra o que "
+    "outro órgão cadastra do mesmo CNPJ, e só nisso: a conferência cobre os CNPJs que esse outro órgão "
+    "registra, não é amostra dos ~21 milhões; MEI e pessoa física não entram. As taxas de acordo e os "
+    "pisos estão em `base/cruzada_por_taxa.py`. "
+)
+_ORGAOS_DA_CONFERENCIA_DAS_EMPRESAS = "Nesta tabela: a razão social contra a CVM; o nome no IF.data, do Banco Central, só informa (abaixo do piso)"
+_ORGAOS_DA_CONFERENCIA_DOS_ESTABELECIMENTOS = "Nesta tabela: a UF contra ANATEL, ANVISA e ANCINE, e contra o IF.data, do Banco Central"
 _RESSALVA_DO_CNPJ = 'CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair'
 _CONTATOS_FORA = (
     "Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5)"
@@ -667,7 +675,11 @@ def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
                 "Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, "
                 "o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas "
                 "físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto "
-                "sai. Sem sócios. " + _FINALIDADE_DO_CNPJ
+                "sai. Sem sócios. "
+                + _LIMITE_DA_CONFERENCIA_DA_RECEITA
+                + _ORGAOS_DA_CONFERENCIA_DAS_EMPRESAS
+                + ". "
+                + _FINALIDADE_DO_CNPJ
             ),
             onde=(
                 "Parquet em `<acervo>/base/cnpj_empresas_pj/<2 primeiros caracteres da raiz>.parquet` "
@@ -701,7 +713,14 @@ def _tabelas_sem_pessoa_do_cnpj() -> dict[str, Tabela]:
                 "Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do "
                 "mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica "
                 "de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, "
-                "CEP...). " + _CONTATOS_FORA + ". " + _FINALIDADE_DO_CNPJ
+                "CEP...). "
+                + _CONTATOS_FORA
+                + ". "
+                + _LIMITE_DA_CONFERENCIA_DA_RECEITA
+                + _ORGAOS_DA_CONFERENCIA_DOS_ESTABELECIMENTOS
+                + ". "
+                "A UF se confere contra ANATEL, ANVISA e ANCINE; divergência de UF costuma ser mudança de sede "
+                "ou outra filial da mesma raiz. " + _FINALIDADE_DO_CNPJ
             ),
             onde=(
                 "Parquet em `<acervo>/base/cnpj_estabelecimentos_pj/<2 primeiros caracteres da raiz>.parquet` "
@@ -4221,7 +4240,11 @@ TABELAS: dict[str, Tabela] = {
             "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o "
             "registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes "
             "possíveis do Capital. Fundos cancelados continuam. Sem dado pessoal: o diretor "
-            "responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF"
+            "responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF. "
+            "**Um CNPJ pode ter várias linhas:** em 12/11/2026, de 41103 CNPJs, 5244 aparecem em mais de "
+            "uma linha, e em 4805 deles com mais de um `TP_FUNDO` (o mesmo CNPJ registrado em mais de um "
+            "tipo); a repetição também pode vir de o fundo trocar de gestor, auditor, custodiante, "
+            "administrador ou controlador (a base não corrige); para contar fundos, conte CNPJ_FUNDO distintos"
         ),
         fonte="CVM: cadastro de fundos (`cad_fi.csv`, `cad_fi_hist.zip`, `registro_fundo_classe.zip`)",
         familia_da_fonte="cvm",

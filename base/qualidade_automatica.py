@@ -177,7 +177,7 @@ REGRAS: dict[str, Regra] = {
             "CNPJ_CONTROLADOR": "fundo sem controlador informado",
         },
         repetidas_aceitas=1,
-        porque_repetidas="uma linha idêntica em todas as colunas (FIC-FITVM, mesmo CNPJ), duplicada no arquivo da CVM; a base não corrige",
+        porque_repetidas="um par de linhas do mesmo CNPJ que só difere na situação do fundo (`SIT`); a base não corrige",
     ),
     "carteiras_dos_fundos": Regra(
         chave=(
@@ -200,6 +200,23 @@ REGRAS: dict[str, Regra] = {
         },
         repetidas_aceitas=100,
         porque_repetidas="linhas idênticas em todas as colunas, duplicadas no arquivo da CVM (cerca de 0,0005% da tabela); a base não corrige",
+    ),
+    # retrato mensal da Receita: um único mês por vez, sem série por ano para comparar; vale a chave única
+    # (um estabelecimento por CNPJ de 14 dígitos) e nenhuma coluna de cadastro vazia
+    "cnpj_estabelecimentos_pj": Regra(
+        chave=(
+            "cnpj",
+            "cnpj_basico",
+            "matriz",
+            "situacao_cadastral",
+            "uf",
+            "municipio",
+            "cnae_principal",
+            "data_inicio_atividade",
+        ),
+    ),
+    "cnpj_empresas_pj": Regra(
+        chave=("cnpj_basico", "razao_social", "natureza_juridica", "porte"),
     ),
     # ---- tabelas do roteiro de M&A (linha 784, piloto D11): chave = a do dicionário; primeira medida de 12/11/2026
     "rotulos_atraso": Regra(chave=("cnpj", "documento", "referencia"), periodo="prazo"),

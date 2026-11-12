@@ -395,7 +395,7 @@ O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_
 
 ## `cadastro_de_fundos`
 
-O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes possíveis do Capital. Fundos cancelados continuam. Sem dado pessoal: o diretor responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF
+O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes possíveis do Capital. Fundos cancelados continuam. Sem dado pessoal: o diretor responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF. **Um CNPJ pode ter várias linhas:** em 12/11/2026, de 41103 CNPJs, 5244 aparecem em mais de uma linha, e em 4805 deles com mais de um `TP_FUNDO` (o mesmo CNPJ registrado em mais de um tipo); a repetição também pode vir de o fundo trocar de gestor, auditor, custodiante, administrador ou controlador (a base não corrige); para contar fundos, conte CNPJ_FUNDO distintos
 
 - **Fonte:** CVM: cadastro de fundos (`cad_fi.csv`, `cad_fi_hist.zip`, `registro_fundo_classe.zip`)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -2734,7 +2734,7 @@ Natureza jurídica e razão social de cada empresa, versão por versão desde 05
 
 ## `cnpj_empresas_pj`
 
-Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto sai. Sem sócios. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto sai. Sem sócios. **Limite da conferência:** a Receita é a única que publica o CNPJ, então ele é conferido contra o que outro órgão cadastra do mesmo CNPJ, e só nisso: a conferência cobre os CNPJs que esse outro órgão registra, não é amostra dos ~21 milhões; MEI e pessoa física não entram. As taxas de acordo e os pisos estão em `base/cruzada_por_taxa.py`. Nesta tabela: a razão social contra a CVM; o nome no IF.data, do Banco Central, só informa (abaixo do piso). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
@@ -2766,7 +2766,7 @@ Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ abert
 
 ## `cnpj_estabelecimentos_pj`
 
-Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, CEP...). Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, CEP...). Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5). **Limite da conferência:** a Receita é a única que publica o CNPJ, então ele é conferido contra o que outro órgão cadastra do mesmo CNPJ, e só nisso: a conferência cobre os CNPJs que esse outro órgão registra, não é amostra dos ~21 milhões; MEI e pessoa física não entram. As taxas de acordo e os pisos estão em `base/cruzada_por_taxa.py`. Nesta tabela: a UF contra ANATEL, ANVISA e ANCINE, e contra o IF.data, do Banco Central. A UF se confere contra ANATEL, ANVISA e ANCINE; divergência de UF costuma ser mudança de sede ou outra filial da mesma raiz. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
